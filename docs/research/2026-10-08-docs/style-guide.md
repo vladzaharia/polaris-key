@@ -109,19 +109,19 @@ phone.
 
 These come from docs/design/EXPERIENCE.md §2 and apply to every page.
 
-| Rule                            | Use                                                                        | Not                                                         |
-| ------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Headings                        | Sentence case, no full stop: "Move your license to a new computer"         | "Move Your License To A New Computer."                      |
-| Spelling                        | US: license, recognize, localization, color, canceled                      | licence, recognise, localisation, colour                    |
-| Say exactly what happens        | "Publish", then "Published"; "The key is shown once"                       | "Your request was processed"                                |
-| Errors                          | What happened, then the fix: "tonebox is taken. Try tonebox-app."          | "The server refused this (422 bad_request)"                 |
-| Retry                           | Try again                                                                  | Retry                                                       |
-| Secrets                         | Never shown again.                                                         | Four different phrasings of it                              |
-| Confirm buttons, named in steps | The verb and the object: **Halt 2 rollouts**, **Deauthorize Old iMac**     | Confirm, OK, Yes                                            |
-| Sign-in                         | Sign in · Sign in again                                                    | Log in, Back to sign-in                                     |
-| Theme                           | System · Dark · Light                                                      | Match my device                                             |
-| People and things               | Names; ids as secondary text                                               | `lic_1 · seat 1`, "by u1"                                   |
-| When a line earns its place     | A consequence, an irreversible fact, a constraint, or the one missing fact | Restating the title; defining the label; promising a future |
+| Rule                            | Use                                                                                                                                                     | Not                                                         |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| Headings                        | Sentence case, no full stop: "Move your license to a new computer". A feature label is Title Case in English (owner, 2026-10-31): "Sync Across Devices" | "Move Your License To A New Computer."                      |
+| Spelling                        | US: license, recognize, localization, color, canceled                                                                                                   | licence, recognise, localisation, colour                    |
+| Say exactly what happens        | "Publish", then "Published"; "The key is shown once"                                                                                                    | "Your request was processed"                                |
+| Errors                          | What happened, then the fix: "tonebox is taken. Try tonebox-app."                                                                                       | "The server refused this (422 bad_request)"                 |
+| Retry                           | Try again                                                                                                                                               | Retry                                                       |
+| Secrets                         | Never shown again.                                                                                                                                      | Four different phrasings of it                              |
+| Confirm buttons, named in steps | The verb and the object: **Halt 2 rollouts**, **Deauthorize Old iMac**                                                                                  | Confirm, OK, Yes                                            |
+| Sign-in                         | Sign in · Sign in again                                                                                                                                 | Log in, Back to sign-in                                     |
+| Theme                           | System · Dark · Light                                                                                                                                   | Match my device                                             |
+| People and things               | Names; ids as secondary text                                                                                                                            | `lic_1 · seat 1`, "by u1"                                   |
+| When a line earns its place     | A consequence, an irreversible fact, a constraint, or the one missing fact                                                                              | Restating the title; defining the label; promising a future |
 
 Repo rules also apply (AGENTS.md rule 4):
 

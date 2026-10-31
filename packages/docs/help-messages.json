@@ -1046,7 +1046,7 @@
     },
     "cursor_expired": {
       "page": "other",
-      "why": "This device went too long without syncing, so Cloud Sync can't continue from where it stopped.",
+      "why": "This device went too long without syncing, so syncing can't continue from where it stopped.",
       "fix": "Nothing. The device starts over from your saved data. Open the app once while online."
     },
     "quota_exceeded": {
@@ -1057,7 +1057,7 @@
     },
     "writes_paused": {
       "page": "other",
-      "why": "The app's developer paused Cloud Sync. Your changes stay on this device.",
+      "why": "The app's developer paused syncing. Your changes stay on this device.",
       "fix": "Nothing. They send once syncing resumes."
     },
     "device_keys_invalid": {

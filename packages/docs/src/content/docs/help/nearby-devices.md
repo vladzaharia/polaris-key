@@ -1,6 +1,6 @@
 ---
-title: "Use your devices together"
-description: "What a nearby device is, the permission your phone or computer asks for, and how to remove a linked device."
+title: "Nearby Devices"
+description: "What a nearby device is, the permission your phone or computer asks for, and how to remove a device."
 type: "help"
 status: "shipped"
 lastReviewed: "2026-10-28"
@@ -8,13 +8,15 @@ sidebar:
   order: 10
 ---
 
-Some apps let your own devices find each other and share things, such as a file or a save, without going through the internet first. Each device you are signed in on with your Polaris Locker account is a **linked device**. When one is close by, the app calls it a **nearby device**.
+Some apps let your own devices find each other and share things, such as a file or a save, without going through the internet first. Each device you are signed in on with your Polaris Locker account can take part. When one is close by, the app calls it a **nearby device**.
 
 ## Who can see a nearby device
 
 Only you. A device appears only if it is signed in to your account in the same app. What you send between devices is private: nobody else can read it, and neither can Polaris Locker.
 
-If you are not on the same network, the app may send the data through Polaris Locker's relay. The relay passes it on without being able to read it.
+## Remote Connection
+
+When your devices aren't on the same network, **Remote Connection** connects them through Polaris Locker. It can't read what passes.
 
 ## The permission prompt
 
@@ -26,11 +28,11 @@ If you said no, the app reports **Local network blocked**. Allow it again in you
 - **Mac:** System Settings, then **Privacy & Security**, then **Local Network**.
 - **Android:** the app's permissions, under **Nearby devices** or **Local network**.
 
-The app still works without it. It uses the relay instead, when the developer has turned that on.
+The app still works without it. It uses Remote Connection instead, when the developer has turned that on.
 
-## Remove a linked device
+## Remove a device
 
-Removing a device unlinks it. It stops seeing your other devices, and they stop seeing it.
+Removing a device stops it seeing your other devices, and them seeing it.
 
 1. Sign in at [polaris.locker](https://polaris.locker).
 2. Open the app's page and find **Devices**.
@@ -40,4 +42,4 @@ See [Your devices](/docs/help/devices/) for what else changes when you remove on
 
 ## Undo
 
-Open the app on that device and activate it or sign in again. It links again.
+Open the app on that device and activate it or sign in again. It joins again.
