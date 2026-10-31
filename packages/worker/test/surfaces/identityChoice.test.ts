@@ -862,55 +862,36 @@ describe("the pending sign-in grant (app mode, §12.5.1)", () => {
       id,
     );
 
-  it("a redirect grant keeps token's device_name for the bind", async () => {
-    const grant = await pendingNamed("Den TV");
+  /** Complete a pending grant with licence `lic_a`, then read the bound device's label. */
+  async function bound(
+    grant: string,
+    extra: Record<string, unknown> = {},
+  ): Promise<string | null> {
     const done = await grantReq("complete", {
       grant,
       choice: { kind: "license", licenseId: "lic_a" },
+      ...extra,
     });
     expect(done.status).toBe(200);
-    expect((await labelOf(DEVICE))?.label).toBe("Den TV");
+    return (await labelOf(DEVICE))?.label ?? null;
+  }
+
+  it("a redirect grant keeps token's device_name for the bind", async () => {
+    expect(await bound(await pendingNamed("Den TV"))).toBe("Den TV");
   });
 
   it("a body deviceName is used only when the grant has no label", async () => {
-    const named = await pendingNamed("Den TV");
-    expect(
-      (
-        await grantReq("complete", {
-          grant: named,
-          choice: { kind: "license", licenseId: "lic_a" },
-          deviceName: "Other name",
-        })
-      ).status,
-    ).toBe(200);
-    expect((await labelOf(DEVICE))?.label).toBe("Den TV");
+    const grant = await pendingNamed("Den TV");
+    expect(await bound(grant, { deviceName: "Other name" })).toBe("Den TV");
   });
 
   it("complete's deviceName names the device when the grant has none", async () => {
-    const bare = await pendingNamed();
-    expect(
-      (
-        await grantReq("complete", {
-          grant: bare,
-          choice: { kind: "license", licenseId: "lic_a" },
-          deviceName: "Body name",
-        })
-      ).status,
-    ).toBe(200);
-    expect((await labelOf(DEVICE))?.label).toBe("Body name");
+    const grant = await pendingNamed();
+    expect(await bound(grant, { deviceName: "Body name" })).toBe("Body name");
   });
 
   it("a grant stored without a label binds as before", async () => {
-    const bare = await pendingNamed();
-    expect(
-      (
-        await grantReq("complete", {
-          grant: bare,
-          choice: { kind: "license", licenseId: "lic_a" },
-        })
-      ).status,
-    ).toBe(200);
-    expect((await labelOf(DEVICE))?.label ?? null).toBeNull();
+    expect(await bound(await pendingNamed())).toBeNull();
   });
 
   it("a label is cleaned at use", async () => {
@@ -922,17 +903,11 @@ describe("the pending sign-in grant (app mode, §12.5.1)", () => {
     );
     const stored = JSON.parse((await getArtefact(env, ref))!) as {
       label?: string;
-      exp: number;
     };
     expect(stored.label).toBe("Den TV");
     stored.label = "Den\u202e TV";
     await putArtefact(env, ref, JSON.stringify(stored), 300);
-    const done = await grantReq("complete", {
-      grant,
-      choice: { kind: "license", licenseId: "lic_a" },
-    });
-    expect(done.status).toBe(200);
-    expect((await labelOf(DEVICE))?.label).toBe("Den TV");
+    expect(await bound(grant)).toBe("Den TV");
   });
 
   it("a grant redeemed from another device id is invalid_grant and is not burned", async () => {

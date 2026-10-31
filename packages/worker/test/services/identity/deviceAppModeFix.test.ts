@@ -10,7 +10,6 @@
 //   - the `choice.complete` audit row says "(device code)".
 
 import { describe, expect, it } from "vitest";
-import { upsertDevice } from "../../../src/core/devices/store.js";
 import {
   getArtefact,
   putArtefact,
@@ -35,6 +34,7 @@ import {
 import {
   CHOICE,
   noGrantWorld,
+  seedFullLicense,
   pollDevice,
   signedIn as shared,
   VERIFIED,
@@ -91,6 +91,16 @@ const complete = (w: World, grant: string, choice: unknown, headers = {}) =>
     { ...asDevice, ...headers },
   );
 
+/** A licence to enter by key, and a device grant waiting for it. */
+async function pendingKeyGrant(
+  w: World,
+): Promise<{ grant: string; key: string; licenseId: string }> {
+  const { key, licenseId } = await seedLicense(w);
+  const { started } = await signedIn(w);
+  const { grant } = await choose(w, started);
+  return { grant, key, licenseId };
+}
+
 const notices = (sent: Mail[]): Mail[] =>
   sent.filter((m) => / signed in on /.test(m.subject));
 
@@ -136,9 +146,7 @@ describe("the new-device security notice on an app-mode device-code bind (R1-07)
     pinned("uk-42-22f-notice", async () => {
       const w = await noGrantWorld();
       const sent = mailbox(w);
-      const { key } = await seedLicense(w);
-      const { started } = await signedIn(w);
-      const { grant } = await choose(w, started);
+      const { grant, key } = await pendingKeyGrant(w);
       expect(notices(sent)).toHaveLength(0);
       const res = await complete(w, grant, { kind: "key", key });
       expect(res.status).toBe(200);
@@ -204,44 +212,7 @@ describe("a device grant (§12.5.1 rule 5)", () => {
     pinned("uk-42-22f-grant", async () => {
       const w = await noGrantWorld();
       const { started } = await signedIn(w);
-      // The account holds a FULL licence (limit one, taken by another device): a card or
-      // same-device grant would offer Replace on it.
-      const account = await w.db.first<{ account_id: string }>(
-        "SELECT account_id FROM account_links WHERE kind = 'oidc' AND subject = ?",
-        PLAYER.sub,
-      );
-      await w.db.run(
-        `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id, activated_at,
-         expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
-         modified_by, modified_at, account_id)
-       VALUES (?, 'lic_full', 'active', NULL, 'Full', NULL, NULL, NULL, ?, NULL, NULL, '{}', NULL, NULL, NULL, NULL, ?, ?)`,
-        PRODUCT,
-        T0,
-        T0,
-        account!.account_id,
-      );
-      await w.db.run(
-        "UPDATE products SET default_device_limit = 1 WHERE slug = ?",
-        PRODUCT,
-      );
-      await upsertDevice(w.db, {
-        product: PRODUCT,
-        device_id: "other-device",
-        customer_id: null,
-        license_id: "lic_full",
-        status: "authorized",
-        first_seen: T0,
-        last_seen: T0,
-        ua: null,
-        label: "Other PC",
-        overrides_json: null,
-        reported_json: null,
-        token_hash: null,
-      });
-      await w.db.run(
-        "UPDATE devices SET seat_no = 1 WHERE product = ? AND device_id = 'other-device'",
-        PRODUCT,
-      );
+      await seedFullLicense(w);
       const { grant } = await choose(w, started);
       const res = await complete(w, grant, {
         kind: "license",
@@ -261,9 +232,7 @@ describe("a device grant (§12.5.1 rule 5)", () => {
     pinned("uk-42-22f-grant", async () => {
       const w = await noGrantWorld();
       const sent = mailbox(w);
-      const { key } = await seedLicense(w);
-      const { started } = await signedIn(w);
-      const { grant } = await choose(w, started);
+      const { grant, key } = await pendingKeyGrant(w);
       const res = await complete(w, grant, { kind: "key", key });
       expect(res.status).toBe(200);
       const got = notices(sent);
@@ -312,9 +281,7 @@ describe("a device grant (§12.5.1 rule 5)", () => {
   it("binds a licence key the person enters, as the account's subject", () =>
     pinned("uk-42-22f-grant", async () => {
       const w = await noGrantWorld();
-      const { key, licenseId } = await seedLicense(w);
-      const { started } = await signedIn(w);
-      const { grant } = await choose(w, started);
+      const { grant, key, licenseId } = await pendingKeyGrant(w);
       const res = await complete(w, grant, { kind: "key", key });
       expect(res.status).toBe(200);
       const out = (await res.json()) as {
