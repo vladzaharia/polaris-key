@@ -39,7 +39,7 @@ export function DeleteData({
         stepUpKey={`sync-delete:${subject}`}
         consequences={[
           "Their synced settings, records, files, file history and key ring are removed from Polaris Key.",
-          "Their devices keep their local copies. Syncing pauses for 24 hours.",
+          "Their devices keep their local copies. Syncing pauses for 24 hours, then starts fresh.",
           "This can't be undone.",
         ]}
         typedConfirmation={
