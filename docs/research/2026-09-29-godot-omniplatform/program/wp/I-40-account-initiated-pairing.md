@@ -7,7 +7,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                                                                                                                    |
 | Size        | 0.8–1.1 engineer-weeks                                                                                                                                                                |
 | Depends on  | [I-08](I-08-app-passthrough.md), [I-37](I-37-device-code-explicit-confirm.md), [I-13](I-13-exchange-endpoint.md), [CC-03](CC-03-core-device-keys.md), [CC-01](CC-01-combined-plan.md) |
-| Unblocks    | [CC-15](CC-15-nearby-mode-v.md), [I-47](I-47-node-python-auto-signin.md), [I-50](I-50-signin-docs-help.md)                                                                            |
+| Unblocks    | [CC-15](CC-15-nearby-mode-v.md), [I-47](I-47-node-python-auto-signin.md), [I-50](I-50-signin-docs-help.md), [I-51](I-51-device-label-strip.md)                                        |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                 |
 | Plan mode   | yes: planning-only; the plan needs human approval and also covers the package that implements it                                                                                      |
 | Gates       | plan-mode, threat-model                                                                                                                                                               |

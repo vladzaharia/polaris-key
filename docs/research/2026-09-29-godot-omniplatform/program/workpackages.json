@@ -5403,7 +5403,7 @@
         "plans/CC-01.md §4, §6"
       ],
       "brief": "wp/I-40-account-initiated-pairing.md",
-      "status": "todo",
+      "status": "in-review",
       "planRef": "CC-01"
     },
     {
@@ -6086,7 +6086,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-22-collections-sdk-node-react-python.md",
-      "status": "todo",
+      "status": "in-progress",
       "planRef": "U-01"
     },
     {
@@ -6125,7 +6125,7 @@
         "plans/CC-01-cloud-sync.md §5"
       ],
       "brief": "wp/U-23-collections-sdk-swift-kotlin-godot.md",
-      "status": "todo",
+      "status": "in-progress",
       "planRef": "U-01"
     },
     {
@@ -18811,7 +18811,7 @@
         "plans/CC-01.md §4"
       ],
       "brief": "wp/CC-04-wire-v5.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -18837,7 +18837,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §2.4-§2.7", "plans/CC-01.md §4"],
       "brief": "wp/CC-05-peer-engine.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -18893,7 +18893,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §2.7", "plans/CC-01.md §4"],
       "brief": "wp/CC-07-relay-do.md",
-      "status": "todo",
+      "status": "done",
       "planRef": "CC-01"
     },
     {
@@ -19077,7 +19077,7 @@
         "plans/CC-01.md §4"
       ],
       "brief": "wp/CC-15-nearby-mode-v.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "CC-16",
@@ -19183,7 +19183,7 @@
         "needs its own plan before code"
       ],
       "brief": "wp/CC-20-direct-transfer.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "CC-21",
@@ -19653,7 +19653,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5", "plans/CC-01.md §4"],
       "brief": "wp/U-41-background-transfers.md",
-      "status": "todo"
+      "status": "in-progress"
     },
     {
       "id": "U-42",
@@ -19748,6 +19748,266 @@
       ],
       "brief": "wp/U-46-collection-records-every-sdk.md",
       "status": "todo"
+    },
+    {
+      "id": "CC-27",
+      "title": "IPv6 on Cloud Connect's LAN path (CC-IPV6)",
+      "phase": "CC",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["CC-15"],
+      "planMode": false,
+      "gates": ["all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/CC-IPV6.md (lead plan, 2026-10-31; lives in the lead directory, not in the repo)"
+      ],
+      "brief": "wp/CC-27-cc-ipv6.md",
+      "status": "done"
+    },
+    {
+      "id": "CC-28",
+      "title": "Connect pass fixes from the C3a/C5 reviews: A6-FIX-NP (Node, Python), A6-FIX-SK (Swift, Kotlin), A6-FIX-G (Godot)",
+      "phase": "CC",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.3, 0.6],
+      "deps": ["CC-15"],
+      "planMode": false,
+      "gates": ["all-sdks", "security-review"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "reviews/SIGNOFF/C3a-red.md (lead directory)",
+        "LF 2026-10-31 A6-FIX-NP/SK/G entries"
+      ],
+      "brief": "wp/CC-28-a6-fix.md",
+      "status": "in-progress"
+    },
+    {
+      "id": "I-51",
+      "title": "Invisible blanks in device labels and peer display names (DEVICE-LABEL-STRIP)",
+      "phase": "I",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["I-40"],
+      "planMode": false,
+      "gates": ["all-sdks", "corpus-runner"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/DEVICE-LABEL-STRIP.md (lead plan, 2026-10-31; lives in the lead directory, not in the repo)"
+      ],
+      "brief": "wp/I-51-device-label-strip.md",
+      "status": "done"
+    },
+    {
+      "id": "I-52",
+      "title": "Invisible characters in product and listing display names (DNI, DISPLAY-NAME-INVISIBLE)",
+      "phase": "I",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": [],
+      "planMode": false,
+      "gates": ["security-review"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/DISPLAY-NAME-INVISIBLE.md (lead plan, 2026-10-31; lives in the lead directory, not in the repo)"
+      ],
+      "brief": "wp/I-52-display-name-invisible.md",
+      "status": "done"
+    },
+    {
+      "id": "I-53",
+      "title": "Remove a licence-less device in Polaris Locker, 'Signed in from backup', and the notice's Remove action (DEVICE-REMOVAL)",
+      "phase": "I",
+      "lane": "worker",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.8],
+      "deps": ["I-49"],
+      "planMode": false,
+      "gates": ["security-review"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/DEVICE-REMOVAL.md (lead plan, 2026-10-31; lives in the lead directory, not in the repo)"
+      ],
+      "brief": "wp/I-53-device-removal.md",
+      "status": "todo"
+    },
+    {
+      "id": "UK-65",
+      "title": "The bind notice names the device the person approved (UK-42.22-DN)",
+      "phase": "UK",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.1, 0.3],
+      "deps": ["UK-42"],
+      "planMode": false,
+      "gates": ["all-sdks"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/UK-42.22-DN.md (lead plan, 2026-10-31; lives in the lead directory, not in the repo)",
+        "reviews/SIGNOFF/C7-blue.md C7-B3 (lead directory)"
+      ],
+      "brief": "wp/UK-65-uk-42-22-dn.md",
+      "status": "done"
+    },
+    {
+      "id": "UK-66",
+      "title": "The confirm step names Game Center or Play Games (UI-CONFIRM-PROVIDER, UCP)",
+      "phase": "UK",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.3, 0.6],
+      "deps": ["UK-42"],
+      "planMode": false,
+      "gates": ["all-sdks", "corpus-runner"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/UI-CONFIRM-PROVIDER.md (lead plan, 2026-10-31; lives in the lead directory, not in the repo)"
+      ],
+      "brief": "wp/UK-66-ucp.md",
+      "status": "todo",
+      "deferred": "Held on wp/UCP (9a9bd3106d) until the SwiftUI simulator baselines exist (owner step 8z); the uiMatrixVersion bump coordinates with I-47.U."
+    },
+    {
+      "id": "U-47",
+      "title": "Kit saves: SaveConflict and CloudSync transfer in the kits (KIT-SAVES, K.0 to K.5; K.S held)",
+      "phase": "U",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.6, 1.0],
+      "deps": ["U-22", "U-23"],
+      "planMode": false,
+      "gates": ["all-sdks", "corpus-runner"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/U-22-U-23-U-37-U-41-slices.md (lead directory)",
+        "wp/U-22.K (K.0-K.2 done), K.3 SwiftUI, K.4 Compose, K.5 Godot; K.S (SwiftUI baselines) held on owner step 8z"
+      ],
+      "brief": "wp/U-47-kit-saves.md",
+      "status": "in-progress"
+    },
+    {
+      "id": "U-48",
+      "title": "Saves bindings per SDK (SAVES: U-22/U-23 .x5, SAVES.R/S/K/G, U-22.5, U-22.6)",
+      "phase": "U",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.6, 1.0],
+      "deps": ["U-22", "U-23"],
+      "planMode": false,
+      "gates": ["all-sdks", "corpus-runner"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["plans/U-22-U-23-U-37-U-41-slices.md (lead directory)"],
+      "brief": "wp/U-48-saves-bindings.md",
+      "status": "in-progress"
+    },
+    {
+      "id": "U-49",
+      "title": "Save-conflict and transfer-state contracts from the built UX reviews (U-22.UX2)",
+      "phase": "U",
+      "lane": "ui",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.3, 0.6],
+      "deps": ["U-47"],
+      "planMode": false,
+      "gates": ["all-sdks", "corpus-runner"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "U-22.UX2 plan (lead directory, plans/U-22.UX2.md; outside the repo)"
+      ],
+      "brief": "wp/U-49-u-22-ux2.md",
+      "status": "in-progress"
+    },
+    {
+      "id": "U-50",
+      "title": "Cross-SDK read-after-write for saves: putAt carries finalize's pointer (SAVES-FILEPTR)",
+      "phase": "U",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.3, 0.6],
+      "deps": ["U-48"],
+      "planMode": false,
+      "gates": ["all-sdks", "corpus-runner"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["LF 2026-10-31 CROSS-SDK READ-AFTER-WRITE (lead directory)"],
+      "brief": "wp/U-50-saves-fileptr.md",
+      "status": "todo"
+    },
+    {
+      "id": "SP-69",
+      "title": "Anchored validators in Python, Kotlin and Godot (ANCHOR-HARDEN)",
+      "phase": "SP",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": [],
+      "planMode": false,
+      "gates": ["all-sdks", "security-review"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["reviews/U-22/newline-anchor-sweep.md (lead directory)"],
+      "brief": "wp/SP-69-anchor-harden.md",
+      "status": "in-review"
+    },
+    {
+      "id": "SP-70",
+      "title": "Anchored validators and redirect hardening in Swift (SWIFT-HARDEN)",
+      "phase": "SP",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": [],
+      "planMode": false,
+      "gates": ["security-review"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["reviews/U-22/SWIFT-HARDEN.md (lead directory)"],
+      "brief": "wp/SP-70-swift-harden.md",
+      "status": "in-review"
+    },
+    {
+      "id": "SP-71",
+      "title": "Advisory swift-linux CI job (SWIFT-LINUX-CI)",
+      "phase": "SP",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.1, 0.2],
+      "deps": ["SP-70"],
+      "planMode": false,
+      "gates": [],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["ci-scope.json lane swift-linux"],
+      "brief": "wp/SP-71-swift-linux-ci.md",
+      "status": "in-review"
     }
   ]
 }
