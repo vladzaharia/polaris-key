@@ -115,15 +115,15 @@ private func openPair(
 ) async throws -> Open {
     let (pa, pb) = MemPipe.pair()
     let k = rnd()
-    let A = Dev(idA, signByte: 1)
-    let B = Dev(idB, signByte: 2)
+    let devA = Dev(idA, signByte: 1)
+    let devB = Dev(idB, signByte: 2)
     let ha = ConnectSessionHandlers(role: "initiator", budget: budget)
     let hb = ConnectSessionHandlers(role: "responder", budget: budget)
     let la = try await PeerLink.make(
-        pipe: pa, options: options(.initiator, A, keysA ?? [k]), handlers: ha.handlers,
+        pipe: pa, options: options(.initiator, devA, keysA ?? [k]), handlers: ha.handlers,
         handshakeSeconds: handshakeSeconds)
     let lb = try await PeerLink.make(
-        pipe: pb, options: options(.responder, B, keysB ?? [k]), handlers: hb.handlers,
+        pipe: pb, options: options(.responder, devB, keysB ?? [k]), handlers: hb.handlers,
         handshakeSeconds: handshakeSeconds)
     ha.attach(la)
     hb.attach(lb)
@@ -188,12 +188,12 @@ final class ConnectSessionTests: XCTestCase {
         let (pa, pb) = MemPipe.pair()
         let stall = StallPipe(pa)
         let k = rnd()
-        let A = Dev(idA, signByte: 1)
-        let B = Dev(idB, signByte: 2)
+        let devA = Dev(idA, signByte: 1)
+        let devB = Dev(idB, signByte: 2)
         let ha = ConnectSessionHandlers(role: "initiator")
         let hb = ConnectSessionHandlers(role: "responder")
-        let la = try await PeerLink.make(pipe: stall, options: options(.initiator, A, [k]), handlers: ha.handlers)
-        let lb = try await PeerLink.make(pipe: pb, options: options(.responder, B, [k]), handlers: hb.handlers)
+        let la = try await PeerLink.make(pipe: stall, options: options(.initiator, devA, [k]), handlers: ha.handlers)
+        let lb = try await PeerLink.make(pipe: pb, options: options(.responder, devB, [k]), handlers: hb.handlers)
         ha.attach(la)
         hb.attach(lb)
         Task { await la.run() }
@@ -219,12 +219,12 @@ final class ConnectSessionTests: XCTestCase {
         let (pa, pb) = MemPipe.pair()
         let stall = StallPipe(pa)
         let k = rnd()
-        let A = Dev(idA, signByte: 1)
-        let B = Dev(idB, signByte: 2)
+        let devA = Dev(idA, signByte: 1)
+        let devB = Dev(idB, signByte: 2)
         let ha = ConnectSessionHandlers(role: "initiator")
         let hb = ConnectSessionHandlers(role: "responder")
-        let la = try await PeerLink.make(pipe: stall, options: options(.initiator, A, [k]), handlers: ha.handlers)
-        let lb = try await PeerLink.make(pipe: pb, options: options(.responder, B, [k]), handlers: hb.handlers)
+        let la = try await PeerLink.make(pipe: stall, options: options(.initiator, devA, [k]), handlers: ha.handlers)
+        let lb = try await PeerLink.make(pipe: pb, options: options(.responder, devB, [k]), handlers: hb.handlers)
         ha.attach(la)
         hb.attach(lb)
         Task { await la.run() }
@@ -249,13 +249,13 @@ final class ConnectSessionTests: XCTestCase {
         let (pa, pb) = MemPipe.pair()
         let stall = StallPipe(pa)
         let k = rnd()
-        let A = Dev(idA, signByte: 1)
-        let B = Dev(idB, signByte: 2)
+        let devA = Dev(idA, signByte: 1)
+        let devB = Dev(idB, signByte: 2)
         let ha = ConnectSessionHandlers(role: "initiator")
         let hb = ConnectSessionHandlers(role: "responder")
         let la = try await PeerLink.make(
-            pipe: stall, options: options(.initiator, A, [k]), handlers: ha.handlers, pipeGraceSeconds: 0.2)
-        let lb = try await PeerLink.make(pipe: pb, options: options(.responder, B, [k]), handlers: hb.handlers)
+            pipe: stall, options: options(.initiator, devA, [k]), handlers: ha.handlers, pipeGraceSeconds: 0.2)
+        let lb = try await PeerLink.make(pipe: pb, options: options(.responder, devB, [k]), handlers: hb.handlers)
         ha.attach(la)
         hb.attach(lb)
         Task { await la.run() }
@@ -571,8 +571,8 @@ final class ConnectSessionTests: XCTestCase {
         }
         // The refresh gap runs on the monotonic clock (G12): the test drives it with the same counter.
         let src = ConnectPeerDocsSource(
-            now: { 0 }, mono: { Double(c.now.current) }, refresh: refresh ? refreshFn : nil, adoptRing: adopt ? adoptFn : nil,
-            applyTrust: trust ? trustFn : nil)
+            now: { 0 }, mono: { Double(c.now.current) }, refresh: refresh ? refreshFn : nil,
+            adoptRing: adopt ? adoptFn : nil, applyTrust: trust ? trustFn : nil)
         let d = ConnectPeerDocs(
             source: src,
             timer: { s, fn in

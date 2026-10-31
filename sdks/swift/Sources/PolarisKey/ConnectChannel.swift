@@ -315,7 +315,9 @@ public final class ConnectPeerDocs: Sendable, CustomStringConvertible, CustomRef
         let gate: Gate = state.with { s in
             if s.closed { return .closed }
             // One slot is kept for RING: a flood of TRUST documents cannot starve a roster (G11).
-            let full = kind == "ring" ? s.queued.count >= connectMaxDocsQueued : s.queued.count >= connectMaxDocsQueued - 1
+            let full =
+                kind == "ring"
+                ? s.queued.count >= connectMaxDocsQueued : s.queued.count >= connectMaxDocsQueued - 1
             if s.queued.contains(key) || full {
                 // At most one busy notice per kind per second; the rest are dropped, not reported.
                 let notify = s.lastBusy[kind].map { now - $0 >= 1 } ?? true
