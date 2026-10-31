@@ -53,7 +53,7 @@ public struct CloudSyncOptions: Sendable {
     public var saves: SavesOptions
     /// Carry the bulk bodies of a save transfer on a background `URLSession` (`pkey.sync.<product>`), so it
     /// goes on while the app is suspended (U-41). Apple platforms only; off by default. The app delegate then
-    /// calls `PolarisKey.handleBackgroundEvents(identifier:completion:)`.
+    /// calls `PolarisKeyClient.handleBackgroundEvents(identifier:completion:)`.
     public var backgroundTransfers: Bool
 
     public init(

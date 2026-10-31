@@ -29,7 +29,7 @@
 // A cancel is final: `cancelTasks(transferId:)` cancels that transfer's tasks and spool, and leaves the id
 // tombstoned so a late completion never writes the journal after the engine deleted its record.
 //
-// Relaunch. `PolarisKey.handleBackgroundEvents(identifier:completion:)` hands the system's completion
+// Relaunch. `PolarisKeyClient.handleBackgroundEvents(identifier:completion:)` hands the system's completion
 // to the session; the delegate's late completions (no one is waiting) feed the journal: a 2xx part is
 // added to the record's `done`. The server's `received` list stays the truth at resume.
 //
@@ -516,12 +516,11 @@ public final class CloudSyncBackgroundRegistry: @unchecked Sendable {
     }
 }
 
-/// The app delegate's entry point.
-public enum PolarisKey {
-    /// Call from `application(_:handleEventsForBackgroundURLSession:completionHandler:)`. Creates no
-    /// client: when the client is built, its Cloud Sync session picks the completion up. Returns false when
-    /// `identifier` is not a Polaris Key session. The completion runs on the main queue once the session
-    /// has delivered its events.
+extension PolarisKeyClient {
+    /// The app delegate's entry point: call from `application(_:handleEventsForBackgroundURLSession:completionHandler:)`.
+    /// Creates no client: when the client is built, its Cloud Sync session picks the completion up. Returns
+    /// false when `identifier` is not a Polaris Key session. The completion runs on the main queue once the
+    /// session has delivered its events.
     @discardableResult
     public static func handleBackgroundEvents(identifier: String, completion: @escaping @Sendable () -> Void) -> Bool {
         CloudSyncBackgroundRegistry.shared.handle(identifier: identifier, completion: completion)
