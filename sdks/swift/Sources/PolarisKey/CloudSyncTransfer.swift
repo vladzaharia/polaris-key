@@ -130,7 +130,7 @@ public struct FileBody: Sendable {
 /// The upload and download routes of §13.8 under `/<p>/sync/files/{collection}/{id}`. `sha256` is the
 /// lowercase hex of the body; a host sends it as `Content-Digest`. Requests and answers are the JSON
 /// objects of the wire (`protocol/sync.ts`). A host bounds `getFile` to the range it asked for and
-/// `getChunk` to `serverChunkMaxStoredBytes`.
+/// `getChunk` to `SYNC_CHUNK_MAX_STORED_BYTES`.
 public protocol FileTransport: Sendable {
     func begin(_ target: FileTarget, request: JSONValue) async throws -> FileReply<JSONValue>
     /// `GET …/upload/{uploadId}`.
@@ -1109,7 +1109,7 @@ private final class DownloadRun: @unchecked Sendable {
         let object = try value(
             try await engine.call(hold) { try await engine.transport.getChunk(collection: req.collection, chunkId: id) }
         )
-        if object.count > serverChunkMaxStoredBytes { throw TransferError.invalid("chunk-size") }
+        if object.count > SYNC_CHUNK_MAX_STORED_BYTES { throw TransferError.invalid("chunk-size") }
         switch codec.openChunk(id: rec.id, object: object) {
         case .invalid(let r): throw TransferError.invalid("chunk-" + r)
         case .ok(let plain):
