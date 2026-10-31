@@ -55,6 +55,8 @@ public data class KitRowData(
     val features: List<String> = emptyList(),
     /** The update's download fraction (0..1) when the inputs carry one, for the bar of a progress state. */
     val progress: Float? = null,
+    /** A Cloud Sync transfer's fraction (0..1) when counted bytes are known; null draws an indeterminate bar. */
+    val transferFraction: Float? = null,
 ) {
     public companion object {
         /** The row data in [inputs] (the matrix's `choices`, `releaseNotes` and `offers.features` members). */
@@ -68,6 +70,7 @@ public data class KitRowData(
                 releaseNotes = notes.orEmpty(),
                 features = inputs.obj("offers")?.array("features")?.strings().orEmpty(),
                 progress = progressOf(inputs.obj("update").obj("progress")),
+                transferFraction = inputs.obj("cloudSync").obj("transfer").double("fraction")?.toFloat()?.coerceIn(0f, 1f),
             )
         }
 

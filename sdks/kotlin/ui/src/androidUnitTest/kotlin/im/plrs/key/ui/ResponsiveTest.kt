@@ -154,12 +154,17 @@ internal val controlScreens: List<String> =
         listOf(
             "signInHandoff-code", "polarisKeyGate-needs-activation", "activate-device-limit", "deviceLimit-browser-mode", "statusScreen-revoked", "updatePrompt-available",
             "unlockSync-code", "unlockSync-start-over", "recoveryCode-show", "recoveryCode-saved", "ringChange-confirm",
+            "saveConflict-choose", "saveConflict-choose-full", "saveConflict-choose-deleted", "saveConflict-failed", "saveConflict-kept",
+            "cloudSyncTransfer-failed",
         ) + messageScreens
         ).distinct()
 
 /** The Cloud Sync screens: their panes scroll in a short window. */
 internal val syncScreens: Set<String> =
-    setOf("unlockSync-code", "unlockSync-start-over", "recoveryCode-show", "recoveryCode-saved", "ringChange-confirm")
+    setOf(
+        "unlockSync-code", "unlockSync-start-over", "recoveryCode-show", "recoveryCode-saved", "ringChange-confirm",
+        "saveConflict-choose", "saveConflict-choose-full", "saveConflict-choose-deleted", "saveConflict-failed", "saveConflict-kept",
+    )
 
 internal fun kitScreen(name: String): @Composable () -> Unit = kitScreens.first { it.first == name }.second
 
