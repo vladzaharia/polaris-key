@@ -812,6 +812,32 @@ function contact(m: PeerMatrix): void {
   });
 }
 
+/**
+ * `xfer` (CC-20.1): the Direct Transfer rows exist before the machines that run them. CC-20.2
+ * (client-core `peer/xfer.ts`) replaces this with a real suite. Until then the section is named
+ * here, so the coverage check above still fails on any other uncovered section.
+ */
+function xferPending(m: PeerMatrix): void {
+  describe("peer-matrix xfer (pending CC-20.2)", () => {
+    it.todo("xfer rows run once client-core peer/xfer.ts exists (CC-20.2)");
+    it("the section is present and has every sub-section", () => {
+      const x = (m as Record<string, unknown>).xfer as Record<string, unknown>;
+      expect(Object.keys(x)).toEqual(
+        expect.arrayContaining([
+          "codecs",
+          "window",
+          "offer",
+          "hash",
+          "ending",
+          "resume",
+          "name",
+          "limits",
+        ]),
+      );
+    });
+  });
+}
+
 /** Keys of the matrix that are not sections. */
 const META = new Set(["peerMatrixVersion", "description"]);
 
@@ -831,6 +857,7 @@ const SUITES: {
   { sections: ["mdnsAnswers"], run: mdnsAnswers },
   { sections: ["vouch"], run: vouch },
   { sections: ["contact"], run: contact },
+  { sections: ["xfer"], run: xferPending },
 ];
 
 /** Register every suite whose sections the matrix has, and fail on a section no suite covers. */
