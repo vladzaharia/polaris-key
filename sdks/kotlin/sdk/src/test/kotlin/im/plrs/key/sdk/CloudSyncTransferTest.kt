@@ -109,7 +109,7 @@ private class FakeServer : FileTransport {
                 buildJsonObject {
                     put("uploadId", id)
                     put("mode", mode)
-                    put("expiresAt", CLOCK + 86400)
+                    put("expiresAt", (CLOCK + 86400) * 1000)
                     if (mode == "multipart") put("partBytes", partBytes)
                 },
             )
@@ -266,7 +266,7 @@ class CloudSyncTransferTest {
         if (detail != null) assertEquals(detail, e.detail)
     }
 
-    private fun record(id: String, uploadId: String = "u", expiresAt: Double = CLOCK + 100, sha: String = "a".repeat(64), size: Int = 5) =
+    private fun record(id: String, uploadId: String = "u", expiresAt: Double = (CLOCK + 100) * 1000, sha: String = "a".repeat(64), size: Int = 5) =
         JournalRecord(id, "saves", "rec1", uploadId, "single", null, emptyList(), sha, size, expiresAt, "uploading")
 
     private fun tempDir(): File = Files.createTempDirectory("u23k4").toFile().also { it.deleteOnExit() }
@@ -466,9 +466,17 @@ class CloudSyncTransferTest {
         val data = noise(2000)
         val s = FakeServer()
         val j = MemoryJournal()
-        j.put("e1", record("e1", expiresAt = CLOCK - 5, sha = shaHex(data), size = data.size))
+        j.put("e1", record("e1", expiresAt = (CLOCK - 5) * 1000, sha = shaHex(data), size = data.size))
         engine(s, j).upload(upReq("e1", data))
         assertEquals(1, s.beginRequests.size)
+        // expiresAt is milliseconds: a record live in ms is resumed (a status call); one past in ms is not,
+        // although its number would read as live in seconds.
+        val live = MemoryJournal()
+        live.put("e2", record("e2", expiresAt = (CLOCK + 100) * 1000, sha = shaHex(data), size = data.size))
+        val s5 = FakeServer()
+        engine(s5, live).upload(upReq("e2", data))
+        assertTrue("a record live in milliseconds is resumed", "status" in s5.calls)
+        assertFalse("a record past in milliseconds is not", "status" in s.calls)
         val foreign = buildJsonObject {
             put("v", 2)
             put("id", "v2")
@@ -562,7 +570,7 @@ class CloudSyncTransferTest {
             beginAnswer = buildJsonObject {
                 put("uploadId", "x")
                 put("mode", "single")
-                put("expiresAt", CLOCK + 5)
+                put("expiresAt", (CLOCK + 5) * 1000)
             }
         }
         expect(Reason.BAD_REPLY) { engine(s2).uploadChunked(chunkedReq("c6", noise(1000), codec)) }

@@ -82,6 +82,7 @@ public const val DOWNLOAD_RANGE_BYTES: Int = 8 * 1024 * 1024
 private const val MANIFEST_PLAIN_MAX_BYTES: Long = SyncManifest.HEADER_BYTES.toLong() + SyncManifest.RECORD_BYTES.toLong() * SYNC_MAX_CHUNKS_PER_FILE
 
 private const val HASH_SLICE = 1_048_576
+private const val MS_PER_SECOND = 1000
 private const val BACKOFF_BASE = 0.5
 private const val BACKOFF_CAP = 30.0
 private const val RETRYABLE_FROM = 500
@@ -412,8 +413,8 @@ public class FileTransferEngine(
     private suspend fun loadRecord(req: UploadRequest): JournalRecord? {
         val rec = readRecord(req.id) ?: return null
         val same = rec.collection == req.collection && rec.record == req.record && rec.sha256 == req.sha256 && rec.size == req.size
-        // `expiresAt` is Unix seconds; the server's 410 still ends an upload read wrongly as live.
-        if (same && rec.expiresAt > now()) return rec
+        // `expiresAt` is epoch MILLISECONDS (V5 §13); `now` is seconds.
+        if (same && rec.expiresAt > now() * MS_PER_SECOND) return rec
         if (!same) abortQuietly(FileTarget(rec.collection, rec.record), rec.uploadId)
         journal.delete(req.id)
         return null

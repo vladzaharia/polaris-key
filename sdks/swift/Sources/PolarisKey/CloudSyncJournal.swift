@@ -23,7 +23,7 @@ import PolarisKeyCore
 public let transferJournalVersion = 1
 public let cloudSyncTransfersDirName = "cloud-sync-transfers"
 
-/// One upload's record. `expiresAt` is Unix seconds, from `begin`.
+/// One upload's record. `expiresAt` is epoch milliseconds, as `begin` answers it (V5 §13).
 public struct JournalRecord: Sendable, Equatable, Codable {
     public var v: Int
     public var id: String

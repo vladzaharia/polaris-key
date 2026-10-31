@@ -55,7 +55,7 @@ private const val JOURNAL_MAX_BYTES = 1024 * 1024
 private val HEX64 = Regex("[0-9a-f]{64}")
 private val JOURNAL_FILE = Regex("[0-9a-f]{64}\\.json")
 
-/** One upload's record. [expiresAt] is Unix seconds, from `begin`. */
+/** One upload's record. [expiresAt] is epoch milliseconds, as `begin` answers it (V5 §13). */
 public data class JournalRecord(
     val id: String,
     val collection: String,

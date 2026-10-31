@@ -6,6 +6,8 @@ extends RefCounted
 ##   {v: 1, id, kind: "upload", collection, record, uploadId, mode, partBytes, done: [...], sha256,
 ##    size, expiresAt, state}
 ##
+## `expiresAt` is epoch milliseconds, as `begin` answers it (V5 §13).
+##
 ## `mode` is single, multipart or chunks; `done` is ascending part numbers (always empty for chunks, whose
 ## record only lets the next run abort the previous upload); `state` is uploading, then finalizing. A reader
 ## refuses a `v` it does not know and leaves the record alone. A record holds ids, counts, hashes and

@@ -340,7 +340,8 @@ func _load_record(req: Dictionary) -> Dictionary:
 		return r
 	var rec: Dictionary = r["record"]
 	var same: bool = rec["collection"] == req["collection"] and rec["record"] == req["record"] and rec["sha256"] == req["sha256"] and rec["size"] == req["size"]
-	if same and float(rec["expiresAt"]) > float(now.call()):
+	# `expiresAt` is epoch MILLISECONDS (V5 §13); `now` is seconds.
+	if same and float(rec["expiresAt"]) > float(now.call()) * 1000.0:
 		return {"ok": true, "record": rec}
 	if not same:
 		_pending_aborts.append([{"collection": rec["collection"], "record": rec["record"]}, rec["uploadId"]])

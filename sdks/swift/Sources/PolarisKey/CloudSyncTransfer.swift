@@ -448,8 +448,8 @@ public final class FileTransferEngine: Sendable {
         let same =
             rec.collection == req.collection && rec.record == req.record && rec.sha256 == req.sha256
             && rec.size == req.size
-        // `expiresAt` is Unix seconds; the server's 410 still ends an upload read wrongly as live.
-        if same && rec.expiresAt > now() { return rec }
+        // `expiresAt` is epoch MILLISECONDS (V5 §13); `now` is seconds.
+        if same && rec.expiresAt > now() * 1000 { return rec }
         if !same { await abortQuietly(FileTarget(collection: rec.collection, record: rec.record), rec.uploadId) }
         journal.delete(req.id)
         return nil

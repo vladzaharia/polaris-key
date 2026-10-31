@@ -77,7 +77,7 @@ private final class FakeServer: FileTransport, @unchecked Sendable {
                 ? "chunks" : (size <= 16 * mib && !multipartAlways ? "single" : "multipart")
             uploads[id] = Upload(size: size, sha256: sha, mode: mode)
             var out: [String: JSONValue] = [
-                "uploadId": .string(id), "mode": .string(mode), "expiresAt": .double(clockNow + 86400),
+                "uploadId": .string(id), "mode": .string(mode), "expiresAt": .double((clockNow + 86400) * 1000),
             ]
             if mode == "multipart" { out["partBytes"] = .int(partBytes) }
             return .ok(.object(out))
@@ -277,7 +277,7 @@ final class CloudSyncTransferTests: XCTestCase {
     }
 
     private func record(
-        _ id: String, uploadId: String = "u", expiresAt: Double = clockNow + 100,
+        _ id: String, uploadId: String = "u", expiresAt: Double = (clockNow + 100) * 1000,
         sha: String = String(repeating: "a", count: 64), size: Int = 5
     ) -> JournalRecord {
         JournalRecord(
@@ -522,9 +522,18 @@ final class CloudSyncTransferTests: XCTestCase {
         let data = noise(2000)
         let s = FakeServer()
         let j = MemoryJournal()
-        j.put("e1", record("e1", expiresAt: clockNow - 5, sha: shaHex(data), size: data.count))
+        j.put("e1", record("e1", expiresAt: (clockNow - 5) * 1000, sha: shaHex(data), size: data.count))
         try await engine(s, j).upload(upReq("e1", data))
         XCTAssertEqual(s.beginRequests.count, 1)
+
+        // expiresAt is milliseconds: a record live in ms is resumed (a status call); one past in ms is not,
+        // although its number would read as live in seconds.
+        let live = MemoryJournal()
+        live.put("e2", record("e2", expiresAt: (clockNow + 100) * 1000, sha: shaHex(data), size: data.count))
+        let s5 = FakeServer()
+        try await engine(s5, live).upload(upReq("e2", data))
+        XCTAssertTrue(s5.calls.contains("status"), "a record live in milliseconds is resumed")
+        XCTAssertFalse(s.calls.contains("status"), "a record past in milliseconds is not")
 
         let foreign = JSONValue.object(["v": .int(2), "id": .string("v2"), "anything": .bool(true)])
         j.putRaw("v2", foreign)
@@ -611,7 +620,7 @@ final class CloudSyncTransferTests: XCTestCase {
         XCTAssertEqual(s.aborted.count, 1)
         let s2 = FakeServer()
         s2.beginAnswer = .object([
-            "uploadId": .string("x"), "mode": .string("single"), "expiresAt": .double(clockNow + 5),
+            "uploadId": .string("x"), "mode": .string("single"), "expiresAt": .double((clockNow + 5) * 1000),
         ])
         await expect(.badReply) { try await self.engine(s2).uploadChunked(self.chunkedReq("c6", noise(1000), codec)) }
     }

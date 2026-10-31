@@ -49,7 +49,7 @@ class FakeServer:
 		var id := "up%d" % seq
 		var mode := "chunks" if r["format"] == "chunks" else ("single" if r["size"] <= 16 * MIB else "multipart")
 		uploads[id] = {"size": r["size"], "sha256": r["sha256"], "mode": mode, "parts": {}, "manifest": null}
-		var out := {"uploadId": id, "mode": mode, "expiresAt": NOW + 86400}
+		var out := {"uploadId": id, "mode": mode, "expiresAt": (NOW + 86400) * 1000.0}
 		if mode == "multipart":
 			out["partBytes"] = part_bytes
 		return Transfer.reply_ok(out)
@@ -404,9 +404,17 @@ func _resume_and_restart(t: PKeyTestContext) -> void:
 	# An expired record begins afresh; an unknown version is left alone.
 	srv = FakeServer.new()
 	j = Journal.Memory.new()
-	j.put("e1", _rec({"id": "e1", "collection": "saves", "record": "rec1", "uploadId": "old", "sha256": _sha(data), "size": data.size(), "expiresAt": NOW - 5}))
+	j.put("e1", _rec({"id": "e1", "collection": "saves", "record": "rec1", "uploadId": "old", "sha256": _sha(data), "size": data.size(), "expiresAt": (NOW - 5) * 1000.0}))
 	r = await _engine(srv, j).upload(_upload_req("e1", data))
 	t.check("expiry: a record past expiresAt is dropped and the upload begins afresh", r.ok and srv.begin_requests.size() == 1, str(r))
+	# expiresAt is milliseconds: a record live in ms is resumed (a status call), one past in ms is not, although
+	# its number (995000) would read as live in seconds.
+	var live := Journal.Memory.new()
+	live.put("e2", _rec({"id": "e2", "collection": "saves", "record": "rec1", "uploadId": "up1", "sha256": _sha(data), "size": data.size(), "expiresAt": (NOW + 100) * 1000.0}))
+	var srv_live := FakeServer.new()
+	await _engine(srv_live, live).upload(_upload_req("e2", data))
+	t.check("expiry: a record live in milliseconds is resumed", srv_live.calls.has("status"), str(srv_live.calls))
+	t.check("expiry: ... and one past in milliseconds is not", not srv.calls.has("status"), str(srv.calls))
 	j.put("v2", {"v": 2, "id": "v2", "anything": true})
 	srv.calls.clear()
 	r = await _engine(srv, j).upload(_upload_req("v2", data))
@@ -513,7 +521,7 @@ func _chunks_upload(t: PKeyTestContext) -> void:
 	# A begin that does not answer chunks is refused.
 	var srv4 := FakeServer.new()
 	srv4.hook = func(kind: String) -> Variant:
-		return Transfer.reply_ok({"uploadId": "x", "mode": "single", "expiresAt": NOW + 5}) if kind == "begin" else null
+		return Transfer.reply_ok({"uploadId": "x", "mode": "single", "expiresAt": (NOW + 5) * 1000.0}) if kind == "begin" else null
 	r = await _engine(srv4).upload_chunked(_chunked_req("c6", _noise(1000), codec))
 	t.check("begin: a mode other than chunks is a bad reply", not r.ok and r.detail["reason"] == "bad-reply")
 	# End to end: the server holds sealed chunks (never the plaintext) and a sealed manifest.
@@ -860,7 +868,7 @@ func _lane(t: PKeyTestContext) -> void:
 	# cancel(): aborts the server's upload and forgets the record.
 	var j := Journal.Memory.new()
 	srv = FakeServer.new()
-	j.put("z", _rec({"id": "z", "uploadId": "upX", "size": 5, "expiresAt": NOW + 9}))
+	j.put("z", _rec({"id": "z", "uploadId": "upX", "size": 5, "expiresAt": (NOW + 9) * 1000.0}))
 	await _engine(srv, j).cancel("z")
 	t.check("cancel: aborts the upload and forgets the record", srv.aborted == ["upX"] and j.get_record("z") == null)
 
