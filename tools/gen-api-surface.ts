@@ -292,6 +292,9 @@ function renderPython(api: Api): string {
       attrs.push(`(${q(r.id)}, "SignInNamespace", "start")`);
     } else if (r.id.startsWith("identity.signIn.session.")) {
       attrs.push(`(${q(r.id)}, "SignInSession", ${q(r.name)})`);
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloud_connect.links`.
+      attrs.push(`(${q(r.id)}, "CloudLinks", ${q(r.name)})`);
     } else if (PY_CLASS[r.ns]) {
       attrs.push(`(${q(r.id)}, ${q(PY_CLASS[r.ns]!)}, ${q(r.name)})`);
     }
@@ -314,6 +317,7 @@ import pytest
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
+from polaris_key.connect.links import CloudLinks
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
@@ -329,6 +333,7 @@ CLASSES = {
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
+    "CloudLinks": CloudLinks,
 }
 
 ${list("ATTRS", attrs)}

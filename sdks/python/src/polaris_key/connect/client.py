@@ -24,6 +24,7 @@ Rules this module keeps:
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import threading
@@ -62,8 +63,16 @@ from ..core.peer_cert import (
 from ..core.token import TokenManager
 from ..devices.client import DevicesClient
 from ..devices.keys import DEVICE_KEYS_FILE, DeviceKeyStorage, DeviceKeyStore, FileDeviceKeyStorage
+from .contacts import LiveContact, contact_id, drop_stale_rows, promote_row, store_row, trial_order_of
 from .errors import RELAY_PROTOCOL, LanError, RelayError
-from .state import CONNECT_STATE_FILE, ConnectStateRecord, connect_storage, keys_after_ring, parse_connect_state
+from .state import (
+    CONNECT_STATE_FILE,
+    ConnectStateRecord,
+    ContactRow,
+    connect_storage,
+    keys_after_ring,
+    parse_connect_state,
+)
 
 __all__ = [
     "ConnectClient",
@@ -137,6 +146,8 @@ class RelayGrant:
     protocol: str
     #: Seconds since the epoch.
     expires_at: int
+    #: ``"c"`` for a contact-room ticket, echoed by the Worker; ``None`` for an account ticket.
+    room: Optional[str] = None
 
     def __repr__(self) -> str:
         return "<RelayGrant>"
@@ -260,7 +271,10 @@ class ConnectClient:
         *,
         device_keys: Optional[DeviceKeyPort] = None,
         allow_ephemeral_keys: bool = False,
+        inter_account: Optional[Callable[[], bool]] = None,
     ) -> None:
+        self._inter_account = inter_account
+        self._on_contacts: List[Callable[[], None]] = []
         self._ctx = ctx
         self._tokens = tokens
         self._devices = devices
@@ -356,11 +370,15 @@ class ConnectClient:
                 prev = b64url_decode(held.disc_keys[1])
             return DiscoveryKeys(b64url_decode(held.disc_keys[0]), prev)
 
-    def relay_ticket(self) -> RelayGrant:
-        """``POST /<p>/connect/relay/ticket``: a single-use ``pkeyrt_`` ticket for the WebSocket. Raises
-        :class:`RelayError`: ``disabled``, ``paused`` (with ``retry_after_seconds``), ``quota`` (with the
-        ``scope``), ``ticket_invalid`` (a ticket that is not in the contract shape); and
-        :class:`~polaris_key.core.errors.PolarisError` for ``no-token`` and the Worker's other refusals."""
+    def relay_ticket(self, contact: Optional[Tuple[str, str]] = None) -> RelayGrant:
+        """``POST /<p>/connect/relay/ticket``: a single-use ``pkeyrt_`` ticket for the WebSocket. With a
+        ``contact`` body (``(room, rid)``, §15.7: ``("c", rid)``) it is a ticket for that contact room; the
+        answer must echo ``room: "c"``, else the Worker predates contact rooms and ``contact_unsupported``
+        is raised. The body is sent as given: the Worker is the judge of it. Raises :class:`RelayError`:
+        ``disabled``, ``paused`` (with ``retry_after_seconds``), ``quota`` (with the ``scope``),
+        ``links_disabled`` (contact tickets only), ``ticket_invalid`` (a ticket that is not in the
+        contract shape); and :class:`~polaris_key.core.errors.PolarisError` for ``no-token`` and the
+        Worker's other refusals."""
         # The Worker answers ``device_keys_required`` for a device without registered keys, and 404 when
         # the operator's launch gate is off; identity() is what registers and checks discovery.
         token = self._require_token()
@@ -369,11 +387,19 @@ class ConnectClient:
         try:
             # Straight to the HTTP client: ``ctx.request`` turns a 503 into ``server-error`` and drops
             # ``Retry-After``, which is what a paused relay answers with.
+            kw: Dict[str, Any] = {}
+            hdrs = {"authorization": f"Bearer {token}"}
+            if contact is not None:
+                hdrs["content-type"] = "application/json"
+                kw["content"] = json.dumps({"room": contact[0], "rid": contact[1]}, separators=(",", ":")).encode(
+                    "utf-8"
+                )
             res = self._ctx.http().request(
                 "POST",
                 url,
-                headers=self._ctx.headers({"authorization": f"Bearer {token}"}),
+                headers=self._ctx.headers(hdrs),
                 timeout=self._ctx.timeout,
+                **kw,
             )
         except (httpx.HTTPError, OSError) as e:
             raise PolarisError(
@@ -386,6 +412,13 @@ class ConnectClient:
             if wire == ErrorCode.RELAY_DISABLED:
                 raise RelayError(
                     "disabled", "This product has its relay off.", retry_after_seconds=retry, status=status
+                )
+            if wire == ErrorCode.CONNECT_LINKS_DISABLED:
+                raise RelayError(
+                    "links_disabled",
+                    "This product has links between accounts off.",
+                    retry_after_seconds=retry,
+                    status=status,
                 )
             if wire == ErrorCode.RELAY_PAUSED:
                 raise RelayError(
@@ -413,9 +446,9 @@ class ConnectClient:
             body = res.json()
         except Exception:
             body = None
-        return self._grant(body)
+        return self._grant(body, contact is not None)
 
-    def _grant(self, body: Any) -> RelayGrant:
+    def _grant(self, body: Any, contact: bool = False) -> RelayGrant:
         """The ticket answer, shape-checked, and bound to this Worker: the ticket goes only to the
         Worker's own host over ``wss:`` and only for the protocol this client speaks."""
 
@@ -423,6 +456,12 @@ class ConnectClient:
             return RelayError("ticket_invalid", "The relay ticket answer is not in the contract shape.")
 
         if not isinstance(body, dict):
+            raise bad()
+        # A contact request is answered with ``room: "c"`` echoed (§15.7); an older Worker ignores the
+        # body and hands out an account ticket, which must not be used for a contact room.
+        if contact and body.get("room") != "c":
+            raise RelayError("contact_unsupported", "This Worker does not serve contact rooms.")
+        if not contact and "room" in body:
             raise bad()
         ticket, url = body.get("ticket"), body.get("url")
         protocol, expires = body.get("protocol"), body.get("expiresAt")
@@ -444,7 +483,7 @@ class ConnectClient:
             raise bad() from None
         if target.scheme != "wss" or not same_host or target.hostname is None:
             raise bad()
-        return RelayGrant(ticket, url, protocol, expires)
+        return RelayGrant(ticket, url, protocol, expires, "c" if contact else None)
 
     def peer_source(self) -> PeerSource:
         """A snapshot of the held identity for a LAN or relay session: slug, trust, subject, device id,
@@ -518,6 +557,7 @@ class ConnectClient:
                 registered=held.registered,
                 stored_at=now,
                 keys_stale=removed or held.keys_stale,
+                contacts=held.contacts,
             )
             try:
                 self._store().update(lambda _cur: rec.to_bytes())
@@ -540,6 +580,114 @@ class ConnectClient:
                 store.clear()
             except DeviceKeyError as e:
                 raise self._store_error(e) from e
+        # The links went with the record: adverts, rooms and open sessions follow.
+        self.notify_contacts()
+
+    # ── Contacts (inter-account links, §15.10) ───────────────────────────────────────────────
+
+    def inter_account(self) -> bool:
+        """The cached discovery answer ``services.connect.interAccount`` (§15.9): true only while the
+        product's setting, ``launch.connectLinks`` and the service are on. False before discovery."""
+        f = self._inter_account
+        return f is not None and f() is True
+
+    def contact_rows(self) -> List[ContactRow]:
+        """The contact rows held for this device, pending ones that lapsed (24 h) dropped. Empty without a
+        held identity. The rows carry secrets: they stay inside the SDK."""
+        with self._lock:
+            held = self._load()
+            if held is None or not held.contacts:
+                return []
+            kept = drop_stale_rows(held.contacts, self._ctx.now())
+            if len(kept) != len(held.contacts):
+                self._write_contacts(held, kept)
+            return kept
+
+    def update_contacts(self, fn: Callable[[List[ContactRow], int], Optional[List[ContactRow]]]) -> List[ContactRow]:
+        """Change the contact rows under the state lock: ``fn`` gets the current rows and the time and
+        returns the new rows, or ``None`` for no change. Raises :class:`LanError` ``no_identity`` without
+        a held identity. Returns the rows as they are after."""
+        with self._lock:
+            held = self._load()
+            if held is None:
+                raise LanError("no_identity", "No Cloud Connect identity is held; call identity() first.")
+            now = self._ctx.now()
+            base = drop_stale_rows(held.contacts, now)
+            nxt = fn(base, now)
+            if nxt is None:
+                return base
+            self._write_contacts(held, nxt)
+        self.notify_contacts()
+        return nxt
+
+    def live_contacts(self) -> List[LiveContact]:
+        """The live contacts in trial order, decoded; ``[]`` while the gate is off. The caller wipes them."""
+        if not self.inter_account():
+            return []
+        return trial_order_of(self.contact_rows())
+
+    def on_contacts_changed(self, fn: Callable[[], None]) -> Callable[[], None]:
+        """Called when the contacts changed or the ``interAccount`` answer may have (on the caller's thread)."""
+        self._on_contacts.append(fn)
+        return lambda: self._on_contacts.remove(fn) if fn in self._on_contacts else None
+
+    def notify_contacts(self) -> None:
+        for f in list(self._on_contacts):
+            try:
+                f()
+            except Exception:
+                pass  # a host's listener cannot stop the others
+
+    def promote_contact(self, agree_key: str) -> None:
+        """The first handshake under the pending contact of ``agree_key`` passed the pin: it replaces the
+        held one."""
+        self.update_contacts(
+            lambda rows, _now: promote_row(rows, agree_key)
+            if any(r.pending_since is not None and r.agree_key == agree_key for r in rows)
+            else None
+        )
+
+    def _write_contacts(self, held: ConnectStateRecord, rows: Any) -> None:
+        import dataclasses
+
+        rec = dataclasses.replace(held, contacts=tuple(rows))
+        try:
+            self._store().update(lambda _cur: rec.to_bytes())
+        except DeviceKeyError as e:
+            raise self._store_error(e) from e
+
+    def pair_source(self) -> Any:
+        """What pairing reads of this client (§15.10)."""
+        from .pairing import PairSource
+
+        def agree_key() -> str:
+            return b64url_encode(self.peer_source().agree_public)
+
+        def held() -> List[str]:
+            return [r.agree_key for r in self.contact_rows() if r.pending_since is None]
+
+        def store(agree: str, secret: bytes, cats: Any, label: Optional[str]) -> Tuple[bool, bool, str]:
+            out = {"pending": False, "full": False}
+
+            def fn(rows: List[ContactRow], now: int) -> Optional[List[ContactRow]]:
+                ok, nxt, pending = store_row(rows, agree, secret, cats, label, now)
+                if not ok:
+                    out["full"] = True
+                    return None
+                out["pending"] = pending
+                return nxt
+
+            self.update_contacts(fn)
+            return (not out["full"]), out["pending"], contact_id(agree)
+
+        return PairSource(
+            slug=self._ctx.product,
+            now=self._ctx.now,
+            agree_key=agree_key,
+            held=held,
+            store=store,
+            allowed=self.inter_account,
+        )
 
     # ── Identity ─────────────────────────────────────────────────────────────────────────────
 
@@ -661,6 +809,8 @@ class ConnectClient:
             epoch=ring.epoch,
             registered=(mine.sign_key, mine.agree_key),
             stored_at=now,
+            # The links are the device's own and outlive a roster refresh.
+            contacts=held.contacts if held is not None else (),
         )
         return rec, self._view(rec, ring, cert)
 

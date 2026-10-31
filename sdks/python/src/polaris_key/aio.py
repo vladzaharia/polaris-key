@@ -232,10 +232,26 @@ class _AsyncEvents(_AsyncFacet):
         return _queue_stream(lambda fn: self._target.subscribe(fn, k))
 
 
+class _AsyncLinks(_AsyncFacet):
+    """``cloud_connect.links`` on the async client: ``pair``, ``list``, ``remove``, ``set_reachable`` and
+    ``open`` are coroutines run on a worker thread. ``on_link`` and ``inter_account`` return at once; the
+    callbacks (and the pairing offers' ``confirm`` and ``decline``, which block) are the Connect thread's."""
+
+    def on_link(self, fn: Callable[..., Any]) -> Callable[[], None]:
+        return self._target.on_link(fn)  # type: ignore[no-any-return]
+
+    def inter_account(self) -> bool:
+        return self._target.inter_account()  # type: ignore[no-any-return]
+
+
 class _AsyncCloudConnect(_AsyncFacet):
     """``cloud_connect`` on the async client: the blocking calls (``start``, ``stop``, ``open``, ``peers``,
     ``refresh_peers``, ``devices``) are coroutines run on a worker thread. The registrations and
     ``status`` return at once; their callbacks run on the Connect thread, not the event loop."""
+
+    @property
+    def links(self) -> _AsyncLinks:
+        return _AsyncLinks(self._target.links)
 
     def on_channel(self, fn: Callable[..., Any]) -> Callable[[], None]:
         return self._target.on_channel(fn)  # type: ignore[no-any-return]

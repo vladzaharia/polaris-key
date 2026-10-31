@@ -486,12 +486,13 @@ def test_a_closed_session_wakes_a_blocked_receive_and_late_subscribers_are_told(
     assert s.closed == SessionClosed("peer_bye", True)
 
 
-def test_close_takes_only_the_two_host_codes_and_send_maps_link_failures() -> None:
+def test_close_takes_only_the_three_host_codes_and_send_maps_link_failures() -> None:
     s, link = fake_session()
     with pytest.raises(ValueError):
-        s.close("peer_revoked")
+        s.close("peer_bad_frame")
     s.close("peer_busy")
-    assert link.closed == ["peer_busy"]
+    s.close("peer_revoked")  # what a deleted contact's open sessions hear (§15.10)
+    assert link.closed == ["peer_busy", "peer_revoked"]
 
     class Boom(FakeLink):
         def send_record(self, t: int, b: bytes) -> None:

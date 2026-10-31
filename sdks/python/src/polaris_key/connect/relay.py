@@ -1000,10 +1000,12 @@ class RelayLink:
     def _event(self, e: Any) -> None:
         h = self._h
         if isinstance(e, Established):
-            if e.peer_device_id is None:
+            # Mode c (a contact room, §15.7) has no device id: the contact that opened the session names
+            # the peer, and the room's alias is the stamp.
+            if e.peer_device_id is None and e.contact_index is None:
                 return
             # The certificate, not the room's stamp, names the peer; they must agree (G8).
-            if e.peer_device_id != b64url_encode(self.peer):
+            if e.peer_device_id is not None and e.peer_device_id != b64url_encode(self.peer):
                 self._why = "wrong_peer"
                 self.channel.close("peer_bye")
                 self._finish(Closed("handshake_failed", False))

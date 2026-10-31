@@ -6,6 +6,7 @@ import pytest
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
+from polaris_key.connect.links import CloudLinks
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
@@ -21,6 +22,7 @@ CLASSES = {
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
+    "CloudLinks": CloudLinks,
 }
 
 ATTRS = [
@@ -106,6 +108,13 @@ ATTRS = [
     ("cloudConnect.refreshPeers", "CloudConnect", "refresh_peers"),
     ("cloudConnect.status", "CloudConnect", "status"),
     ("cloudConnect.onNotice", "CloudConnect", "on_notice"),
+    ("cloudConnect.links.pair", "CloudLinks", "pair"),
+    ("cloudConnect.links.list", "CloudLinks", "list"),
+    ("cloudConnect.links.remove", "CloudLinks", "remove"),
+    ("cloudConnect.links.setReachable", "CloudLinks", "set_reachable"),
+    ("cloudConnect.links.open", "CloudLinks", "open"),
+    ("cloudConnect.links.onLink", "CloudLinks", "on_link"),
+    ("cloudConnect.links.interAccount", "CloudLinks", "inter_account"),
 ]
 OPTION_PARAMS = [
     ("options.productSlug", "product_slug"),

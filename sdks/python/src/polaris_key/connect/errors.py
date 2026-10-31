@@ -29,6 +29,7 @@ LAN_CODE: Dict[str, str] = {
     "closed": ErrorCode.NETWORK_ERROR,
     "too_large": ErrorCode.INVALID_ARGUMENT,
     "bad_type": ErrorCode.INVALID_ARGUMENT,
+    "bad_input": ErrorCode.INVALID_ARGUMENT,
 }
 
 #: The registered code of each relay reason: the Worker's own for the four it answers with.
@@ -46,6 +47,10 @@ RELAY_CODE: Dict[str, str] = {
     "wrong_peer": ErrorCode.PEER_CERT_INVALID,
     "unknown_peer": ErrorCode.INVALID_ARGUMENT,
     "mode_not_allowed": ErrorCode.INVALID_ARGUMENT,
+    #: A contact ticket while links between accounts are off (403 ``connect_links_disabled``).
+    "links_disabled": ErrorCode.CONNECT_LINKS_DISABLED,
+    #: The Worker did not echo ``room: "c"``: it predates contact rooms (§15.7).
+    "contact_unsupported": ErrorCode.CONNECT_UNAVAILABLE,
     "replaced": ErrorCode.CANCELLED,
     "stopped": ErrorCode.CANCELLED,
 }

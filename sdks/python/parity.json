@@ -534,8 +534,8 @@
       "note": "client.connect.relay_ticket() and polaris_key.connect.relay (ticket offer, WebSocket socket via the optional websockets extra, reconnect policy, LIMIT and close codes, redirects refused, mode-a relay sessions, pacing, 8 MiB queue cap); tests/test_connect_relay*.py and test_connect_client_relay.py; tests/test_transcripts.py replays connect-relay-ticket and connect-relay-quota."
     },
     "connect.links": {
-      "status": "planned",
-      "wp": "CC-19"
+      "status": "implemented",
+      "note": "client.cloud_connect.links (sdks/python/src/polaris_key/connect/links.py, CC-19.6; WIRE-CONTRACT-V5 section 15.10), the same API and store as Node: pair() opens the mode-p pairing window (pairing.py: m=p advert, own listener, the lower instance dials, the core/peer_contact.py exchange), list(), remove(id) (open sessions hear peer_revoked), set_reachable(), open(id) (mode c over the LAN, then the contact relay in contact_relay.py with the {room:c, rid} ticket and aliases only) and on_link(). Contacts are rows of pkey.connect.v1 (state.py). The shared LAN listener tries the account keys then the contact secrets under one HandshakeLimiter; everything is gated on the cached discovery interAccount (typed N/A otherwise). tests/test_connect_contact.py runs the peer-matrix contact rows and mode c sessions in memory; tests/test_connect_links.py is the loopback two-account test."
     },
     "connect.transfer": {
       "status": "planned",

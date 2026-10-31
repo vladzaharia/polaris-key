@@ -331,6 +331,7 @@ class PolarisKeyClient:
             lambda: self._trust.effective,
             device_keys=device_keys,
             allow_ephemeral_keys=allow_ephemeral_keys,
+            inter_account=self._inter_account,
         )
         #: Cloud Connect (WIRE-CONTRACT-V5 §15): LAN and relay behind one facade. Nothing starts until
         #: ``cloud_connect.start()``: no thread, no socket.
@@ -533,6 +534,13 @@ class PolarisKeyClient:
                 self._cache.patch(**patch)
         return r
 
+    def _inter_account(self) -> bool:
+        """WIRE-CONTRACT-V5 §15.9: links are on only while the cached discovery document says so."""
+        doc = self._discovery_doc
+        services = doc.get("services") if isinstance(doc, dict) else None
+        f = services.get("connect") if isinstance(services, dict) else None
+        return isinstance(f, dict) and f.get("enabled") is True and f.get("interAccount") is True
+
     def _stop_cloud_connect(self) -> None:
         """The sign-out hook: stop Cloud Connect. A host callback that holds the Connect thread cannot hold
         the sign-out past the bound: the transports are force-cancelled and sign-out goes on."""
@@ -611,6 +619,8 @@ class PolarisKeyClient:
         if isinstance(result, DiscoveryOk):
             self._discovery_doc = result.manifest
             self.core.set_services(result.services)
+            # ``interAccount`` may have moved: links follow the document (§15.10 "Gates").
+            self.connect.notify_contacts()
             self.cloud_sync_host.note_discovery()
             self._cloud_sync_api.attach_soon()
             try:
