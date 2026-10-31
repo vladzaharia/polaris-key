@@ -39,6 +39,10 @@ This lists the browsers signed in to your account. Yours is marked **This browse
 this one included, and signs you out of apps you signed in to with Locker. Devices that use a
 license are on each app's page in your library.
 
+## Devices
+
+This lists devices signed in to your account that use no license. A device that signed in from your backup says **Signed in from backup**. Select **Remove** to sign it out; this also stops backup sign-in for that app on your other devices.
+
 ## Appearance
 
 Choose a **Theme**: **Match device**, **Dark** or **Light**. Choose **Motion**: **Match
