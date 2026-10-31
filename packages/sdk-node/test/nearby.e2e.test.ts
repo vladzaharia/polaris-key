@@ -425,12 +425,16 @@ describe("nearby sign-in, D and M through the Identity API", () => {
       identity: { email: "ana@example.com" },
     });
     expect(d.hasToken).toBe(true);
+    // Held unconfirmed: automatic sign-in does not count it until the person confirms.
+    expect(await d.identity.autoSignIn()).toMatchObject({
+      kind: "needsSignIn",
+    });
+    expect(await s.wait({ once: true })).toBe(done);
+    await s.confirmAccount();
     expect(await d.identity.autoSignIn()).toMatchObject({
       kind: "signedIn",
       via: "stored",
     });
-    expect(await s.wait({ once: true })).toBe(done);
-    await s.confirmAccount();
     expect(await m.identity.current()).not.toBeNull();
   });
 

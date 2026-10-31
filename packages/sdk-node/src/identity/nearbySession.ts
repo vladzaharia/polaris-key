@@ -12,6 +12,8 @@
 //   confirmAccount()              the person saw the signed-in account and says it is theirs
 //   declineAccount()              it is not: the wrap is dropped and the device signs out
 //   cancel()                      stop; the LAN request closes
+//   ended / onEnd(fn)             the sign-in ended unconfirmed (decline, cancel, the 300 s screen
+//                                 deadline): the device is signed out and holds no token
 //
 // Rules this module keeps:
 //  - the order is `start`, then the LAN request, and the poll is paced from `start`: the first
@@ -22,6 +24,14 @@
 //    later `wait()` gets the same;
 //  - the LAN half stays open after `signedIn` so a Sync record can still arrive (the wrap, I-47.10),
 //    until the person confirms or declines the account, the request expires (300 s), or `cancel()`;
+//  - unconfirmed until `confirmAccount()` (V5 §15.6.1 rule 12, D-21): the token is held under the
+//    unconfirmed mark; a decline, a `cancel()` (the abort signal included) or the `expiresIn`-second
+//    screen deadline discards the session: the wrap and every held record are dropped, the device
+//    signs out (a best effort) and the token goes locally whatever the Worker answered. A `ready`
+//    poll that lands after such an end does the same at once. The stored subject, the `signedIn`
+//    event (and so Sync and Connect) wait for `confirmAccount()`. `req.onClose` is deliberately
+//    NOT an end: M closing the LAN session after `approved` leaves the sign-in awaiting the person
+//    (rule 8: the server copy is the fallback, and M's CLI stops its listener right after approving);
 //  - records `0x0030` to `0x003F` reach `onRecord` only after `confirmAccount()` (the engine holds
 //    them: rule 12). `KEYRING_WRAP` (0x0030) is kept; the others are not this session's;
 //  - the request handle, the proofs, the token, the code and the wrap are in no print, repr or
@@ -87,6 +97,12 @@ export interface NearbySessionDeps {
   lan: () => NearbyLan;
   /** `identity.signOut()`: a declined account signs the device out again. */
   signOut: () => Promise<unknown>;
+  /** The person confirmed the account: the token becomes a sign-in, the subject is stored and the
+   *  `signedIn` event is raised (Sync and Connect start only now). */
+  confirm: (subject: string) => Promise<void>;
+  /** Drop the unconfirmed sign-in locally, whatever the Worker answered: the token, its mark and
+   *  the stored identity. */
+  dropLocal: () => Promise<void>;
   /** @internal Test seam: whether this runtime can browse the LAN (default: the optional
    *  `multicast-dns` dependency loads). */
   runtime?: () => Promise<boolean>;
@@ -121,6 +137,11 @@ export class NearbySignInSession {
   #final: Final | null = null;
   #signedIn = false;
   #confirmed = false;
+  #ended = false;
+  #subject: string | null = null;
+  #deadline: ReturnType<typeof setTimeout> | null = null;
+  #discarding: Promise<void> = Promise.resolve();
+  readonly #onEnd = new Set<() => void>();
   #wrap: Uint8Array | null = null;
   #wrapState: NearbyWrapState = "none";
   #applying: Promise<void> = Promise.resolve();
@@ -199,11 +220,73 @@ export class NearbySignInSession {
     return r;
   }
 
-  /** Stop. A running `wait()` answers `cancelled`; the request simply lapses on the Worker. */
+  /** Stop. A running `wait()` answers `cancelled`; the request simply lapses on the Worker. After
+   *  `signedIn` and before the confirmation it also signs the device out (D-21). */
   cancel(): void {
+    this.#halt();
+    void this.#closeLan();
+    if (this.#signedIn && !this.#confirmed) void this.#discard();
+  }
+
+  /** True once the sign-in ended unconfirmed (a decline, a cancel, the screen deadline). */
+  get ended(): boolean {
+    return this.#ended;
+  }
+
+  /** Called once when the sign-in ends unconfirmed, so a screen can leave. Returns the remover;
+   *  called at once when it already ended. */
+  onEnd(fn: () => void): () => void {
+    if (this.#ended) {
+      guarded(fn);
+      return () => undefined;
+    }
+    this.#onEnd.add(fn);
+    return () => this.#onEnd.delete(fn);
+  }
+
+  /** The end of this sign-in: no further poll is honoured, the deadline stops and listeners hear
+   *  of it (once, and only while unconfirmed). */
+  #halt(): void {
     this.#cancelled = true;
     this.#abort.abort();
-    void this.#closeLan();
+    if (this.#deadline !== null) clearTimeout(this.#deadline);
+    this.#deadline = null;
+    if (this.#ended || this.#confirmed) return;
+    this.#ended = true;
+    for (const f of [...this.#onEnd]) guarded(f);
+    this.#onEnd.clear();
+  }
+
+  /** The confirm screen's deadline: `expiresIn` seconds from the moment the poll answered, on the
+   *  timer clock (monotonic), not on a wall-clock the host could move. */
+  #armDeadline(): void {
+    const t = setTimeout(() => {
+      if (this.#confirmed) return;
+      this.#halt();
+      void this.#discard();
+    }, this.expiresIn * 1000);
+    t.unref?.();
+    this.#deadline = t;
+  }
+
+  /**
+   * The one end path for an unconfirmed sign-in; idempotent and serialized. The held wrap is
+   * zeroed and dropped, the LAN request declines and closes, the Worker is asked to sign out as a
+   * best effort, and whatever it answered the token, its mark and the stored identity go.
+   */
+  #discard(): Promise<void> {
+    const run = this.#discarding.then(async () => {
+      this.#wrap?.fill(0);
+      this.#wrap = null;
+      await this.#req.declineAccount().catch(() => undefined);
+      await this.#closeLan();
+      if (!this.#signedIn) return;
+      await this.#deps.signOut().catch(() => undefined);
+      await this.#deps.dropLocal().catch(() => undefined);
+      this.#signedIn = false;
+    });
+    this.#discarding = run.catch(() => undefined);
+    return run;
   }
 
   /**
@@ -240,10 +323,19 @@ export class NearbySignInSession {
         throw e;
       }
       this.#notBefore = Date.now() + this.interval * 1000;
-      if (this.#cancelled && p.kind !== "ready") return { kind: "cancelled" };
+      if (p.kind === "ready") {
+        // The routes stored the token (unconfirmed). A decline or cancel that got in before this
+        // answer discards it at once; nothing is handed to the caller (D-21).
+        this.#signedIn = true;
+        this.#subject = p.subject;
+        if (this.#cancelled) {
+          await this.#discard();
+          return { kind: "cancelled" };
+        }
+        this.#armDeadline();
+      } else if (this.#cancelled) return { kind: "cancelled" };
       switch (p.kind) {
         case "ready":
-          this.#signedIn = true;
           return this.#end({
             kind: "signedIn",
             subject: p.subject,
@@ -379,13 +471,26 @@ export class NearbySignInSession {
    * is still signed in and the normal unlock works later.
    */
   async confirmAccount(): Promise<void> {
-    if (!this.#signedIn)
+    if (this.#ended)
+      throw new PolarisError(
+        ErrorCode.signInFailed,
+        "The sign-in ended before it was confirmed.",
+      );
+    if (!this.#signedIn || this.#subject === null)
       throw new PolarisError(
         ErrorCode.signInFailed,
         "Nothing to confirm: the device is not signed in.",
       );
     if (this.#confirmed) return;
     this.#confirmed = true;
+    if (this.#deadline !== null) clearTimeout(this.#deadline);
+    this.#deadline = null;
+    try {
+      await this.#deps.confirm(this.#subject);
+    } catch (e) {
+      this.#confirmed = false;
+      throw e;
+    }
     try {
       await this.#req.confirmAccount();
     } catch {
@@ -401,11 +506,8 @@ export class NearbySignInSession {
    * device signs out (rule 12). Safe to call more than once.
    */
   async declineAccount(): Promise<void> {
-    this.#wrap?.fill(0);
-    this.#wrap = null;
-    await this.#req.declineAccount().catch(() => undefined);
-    await this.#closeLan();
-    if (this.#signedIn) await this.#deps.signOut();
+    this.#halt();
+    await this.#discard();
   }
 }
 

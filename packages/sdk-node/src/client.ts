@@ -370,7 +370,9 @@ export class PolarisKeyClient {
           await this.discover().catch(() => undefined);
         return identityFragmentFrom(this.discoveryDoc);
       },
-      signedIn: async () => (await this.identity.current()) !== null,
+      // An unconfirmed nearby sign-in is not a sign-in yet (V5 §15.6.1 rule 12).
+      signedIn: async () =>
+        !this.tokens.unconfirmed && (await this.identity.current()) !== null,
       signer: () => this.connect.nearbySigner(),
     });
     this.cloudSyncHost = new CloudSyncHost(

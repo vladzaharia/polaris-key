@@ -183,6 +183,41 @@ describe("login: nearby first", () => {
     expect(s.confirmed).toBe(0);
   });
 
+  it("nearby sign-in CLI: the confirm screen ends when the session times out", async () => {
+    const s = new FakeNearbySession([ANA]);
+    const { result, text } = await run(
+      { interactive: true, fastDelay: true },
+      async (h) => {
+        const done = loginFlow(h.ctx, nearby(s));
+        await until(() => plain(h.screen.text()).includes("not you, sign out"));
+        s.end();
+        return done;
+      },
+    );
+    expect(result.exitCode).toBe(EXIT.failed);
+    expect(result.state).toBe("expired");
+    expect(s.confirmed).toBe(0);
+    expect(text).not.toContain("✓  Signed in as");
+  });
+
+  it("nearby sign-in CLI: confirm after the deadline reports expired", async () => {
+    const s = new FakeNearbySession([ANA]);
+    const { result, text } = await run(
+      { interactive: true, fastDelay: true },
+      async (h) => {
+        const done = loginFlow(h.ctx, nearby(s));
+        await until(() => plain(h.screen.text()).includes("not you, sign out"));
+        // The deadline passes in the same turn as Enter: the session refuses to confirm.
+        s.ended = true;
+        h.stdin.press("return");
+        return done;
+      },
+    );
+    expect(result.state).toBe("expired");
+    expect(s.confirmed).toBe(0);
+    expect(text).not.toContain("✓  Signed in as");
+  });
+
   it("several approvers are listed and picked by number", async () => {
     const s = new FakeNearbySession([ANA, BEN], { signedInAfterChoose: false });
     let list = "";

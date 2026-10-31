@@ -3,7 +3,7 @@
 // sign-out flag survives a restart and fails closed, and `nearby.available()` is a pure read of
 // discovery plus the runtime. Node answers `signedIn`, `needsSignIn` and `unavailable` only.
 
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { nearbyAvailable } from "../src/identity/autoSignIn.js";
@@ -88,8 +88,13 @@ async function restart(dir: string, store: FixedStore, over = routes()) {
 /** The client's token manager (private: reached through a cast, as the replay runners do). */
 const tokensOf = (
   c: Client,
-): { set(t: string, s: string): Promise<void>; clear(): Promise<void> } =>
-  (c as unknown as { tokens: ReturnType<typeof tokensOf> }).tokens;
+): {
+  set(t: string, s: string, o?: boolean | { unconfirmed: true }): Promise<void>;
+  clear(): Promise<void>;
+  confirmSignIn(): Promise<void>;
+  unconfirmed: boolean;
+  signedIn: boolean;
+} => (c as unknown as { tokens: ReturnType<typeof tokensOf> }).tokens;
 
 const stateOf = (c: Client): string =>
   (c.identity as unknown as { ctx: { dirs: { state: string } } }).ctx.dirs
@@ -286,6 +291,87 @@ describe("autoSignIn(): the explicit sign-out flag", () => {
     await signIn(client);
     writeFileSync(join(stateOf(client), "sign-in.json"), "{ not json");
     // The mark is read at load: a restart finds garbage.
+    const again = await restart(dir, store);
+    expect(await again.client.identity.autoSignIn()).toEqual({
+      kind: "needsSignIn",
+      reason: "signed_out",
+    });
+    again.client.close();
+    client.close();
+  });
+});
+
+describe("autoSignIn(): the unconfirmed nearby token (V5 15.6.1 rule 12, D-21)", () => {
+  it("token marks: the unconfirmed mark is written before the token", async () => {
+    const { client, store } = await seededClient({
+      token: null,
+      extra,
+      routes: routes(),
+    });
+    const file = join(stateOf(client), "sign-in.json");
+    const marked = (): boolean => {
+      try {
+        return readFileSync(file, "utf8").includes('"unconfirmed"');
+      } catch {
+        return false;
+      }
+    };
+    const seen: boolean[] = [];
+    const set = store.setToken.bind(store);
+    store.setToken = async (t) => {
+      seen.push(marked());
+      await set(t);
+    };
+    await tokensOf(client).set("pkeyt_nearby", "signin", { unconfirmed: true });
+    expect(seen).toEqual([true]);
+    const t = tokensOf(client);
+    expect(t.unconfirmed).toBe(true);
+    // Not a sign-in until the person confirms, and a re-acquire keeps the mark.
+    expect(t.signedIn).toBe(false);
+    await t.set("pkeyt_next", "reacquire");
+    expect(marked()).toBe(true);
+    await t.confirmSignIn();
+    expect(marked()).toBe(false);
+    expect(t.signedIn).toBe(true);
+    client.close();
+  });
+
+  it("auto sign-in: an unconfirmed token is dropped at load and rung 1 answers needsSignIn", async () => {
+    const { client, store, dir } = await seededClient({
+      token: null,
+      extra,
+      routes: routes(),
+    });
+    await tokensOf(client).set("pkeyt_nearby", "signin", { unconfirmed: true });
+    // While held, rung 1 does not count it.
+    expect((await client.identity.autoSignIn()).kind).toBe("needsSignIn");
+    // A restart finds the mark: the token goes before anything reads it.
+    const again = await restart(dir, store);
+    expect(await store.getToken()).toBeNull();
+    expect(again.client.hasToken).toBe(false);
+    expect(await again.client.identity.autoSignIn()).toEqual({
+      kind: "needsSignIn",
+      reason: "no_credential",
+    });
+    // The drop was local: nothing was sent, and the mark is gone.
+    expect(again.seen).toEqual([]);
+    expect(existsSync(join(stateOf(again.client), "sign-in.json"))).toBe(false);
+    again.client.close();
+    client.close();
+  });
+
+  it("auto sign-in: an unconfirmed token keeps an explicit sign-out reason across the drop", async () => {
+    const { client, store, dir } = await seededClient({
+      token: null,
+      extra,
+      routes: routes(),
+    });
+    mkdirSync(stateOf(client), { recursive: true });
+    writeFileSync(
+      join(stateOf(client), "sign-in.json"),
+      JSON.stringify({ signedOut: true, unconfirmed: true }),
+    );
+    await store.setToken("pkeyt_nearby");
     const again = await restart(dir, store);
     expect(await again.client.identity.autoSignIn()).toEqual({
       kind: "needsSignIn",

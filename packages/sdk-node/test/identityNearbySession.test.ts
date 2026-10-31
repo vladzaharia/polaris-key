@@ -5,6 +5,7 @@
 // reach the session only after the account is confirmed; no secret reaches a print or an error.
 
 import { format, inspect } from "node:util";
+import { readStoredSubject } from "../src/identity/account.js";
 import { describe, expect, it, vi } from "vitest";
 import type {
   NearbyApproverInfo,
@@ -102,6 +103,7 @@ function sessionOn(
   const id = client.identity as unknown as {
     ctx: CoreContext;
     nearbyRoutes: NearbyRoutes;
+    nearbySessionHooks: Pick<NearbySessionDeps, "confirm" | "dropLocal">;
   };
   return startNearbySignIn(
     {
@@ -109,6 +111,7 @@ function sessionOn(
       routes: id.nearbyRoutes,
       lan: () => ({ request: async () => req }),
       signOut: async () => undefined,
+      ...id.nearbySessionHooks,
       pause: noPause,
       runtime: async () => true,
       ...over,
@@ -288,6 +291,11 @@ describe("nearby sign-in session: the poll decides", () => {
     });
     expect(w.polls()).toBe(3);
     expect(w.client.hasToken).toBe(true);
+    // Unconfirmed until the person says so: rung 1 does not count it.
+    expect(await w.client.identity.autoSignIn()).toMatchObject({
+      kind: "needsSignIn",
+    });
+    await w.session.confirmAccount();
     expect(await w.client.identity.autoSignIn()).toMatchObject({
       kind: "signedIn",
       subject: SUBJECT,
@@ -526,5 +534,196 @@ describe("nearby sign-in session: no secret is printed", () => {
       expect(text).not.toContain(REQ);
       expect(text).not.toContain(TOKEN);
     }
+  });
+});
+
+// ── D-21 / C4-G1: the sign-in is unconfirmed until the person confirms ───────────────────────
+
+const tokensOf = (c: Client): { unconfirmed: boolean; signedIn: boolean } =>
+  (c as unknown as { tokens: { unconfirmed: boolean; signedIn: boolean } })
+    .tokens;
+const stateDir = (c: Client): string =>
+  (c.identity as unknown as { ctx: { dirs: { state: string } } }).ctx.dirs
+    .state;
+
+/** A poll answer the test releases by hand, so a decline can land while the poll is in flight. */
+function gate(): {
+  handler: Handler;
+  entered: Promise<void>;
+  release: () => void;
+} {
+  let release!: () => void;
+  let enter!: () => void;
+  const entered = new Promise<void>((r) => (enter = r));
+  const open = new Promise<void>((r) => (release = r));
+  return {
+    entered,
+    release,
+    handler: async (r) => {
+      enter();
+      await open;
+      return ready(r);
+    },
+  };
+}
+
+describe("nearby sign-in: the unconfirmed sign-in ends cleanly (D-21)", () => {
+  it("nearby sign-in: a decline ends the session even when the poll lands afterwards (before the poll)", async () => {
+    const w = await world(ready);
+    await w.session.declineAccount();
+    expect(await w.session.wait()).toEqual({ kind: "cancelled" });
+    expect(w.polls()).toBe(0);
+    expect(w.client.hasToken).toBe(false);
+  });
+
+  it("nearby sign-in: a decline ends the session even when the poll lands afterwards (poll in flight)", async () => {
+    const g = gate();
+    const w = await world(g.handler);
+    const waiting = w.session.wait({ once: true });
+    await g.entered;
+    await w.session.declineAccount();
+    g.release();
+    expect(await waiting).toEqual({ kind: "cancelled" });
+    expect(w.client.hasToken).toBe(false);
+    expect(w.signOut).toHaveBeenCalledTimes(1);
+    expect(await readStoredSubject(stateDir(w.client))).toBeNull();
+    await expect(w.session.confirmAccount()).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
+  });
+
+  it("nearby sign-in: a cancel before confirm signs the device out, including a poll that lands after it", async () => {
+    const g = gate();
+    const w = await world(g.handler);
+    const waiting = w.session.wait({ once: true });
+    await g.entered;
+    w.session.cancel();
+    g.release();
+    expect(await waiting).toEqual({ kind: "cancelled" });
+    expect(w.client.hasToken).toBe(false);
+    expect(w.signOut).toHaveBeenCalledTimes(1);
+
+    // And after the token was handed over: cancel() signs out.
+    const w2 = await world(ready);
+    await w2.session.wait();
+    expect(w2.client.hasToken).toBe(true);
+    const ended = vi.fn();
+    w2.session.onEnd(ended);
+    w2.session.cancel();
+    await until(() => !w2.client.hasToken);
+    expect(w2.signOut).toHaveBeenCalledTimes(1);
+    expect(w2.session.ended).toBe(true);
+    expect(ended).toHaveBeenCalledTimes(1);
+  });
+
+  it("nearby sign-in: the confirm screen times out after expiresIn and signs the device out", async () => {
+    const w = await world(ready);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      await w.session.wait();
+      const ended = vi.fn();
+      w.session.onEnd(ended);
+      await vi.advanceTimersByTimeAsync(299_000);
+      expect(w.client.hasToken).toBe(true);
+      expect(ended).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(2_000);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(w.session.ended).toBe(true);
+    expect(w.client.hasToken).toBe(false);
+    expect(w.signOut).toHaveBeenCalledTimes(1);
+    expect(w.req.declined).toBe(1);
+    await expect(w.session.confirmAccount()).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
+  });
+
+  it("nearby sign-in: confirming stops the deadline", async () => {
+    const w = await world(ready);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      await w.session.wait();
+      await w.session.confirmAccount();
+      await vi.advanceTimersByTimeAsync(400_000);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(w.session.ended).toBe(false);
+    expect(w.client.hasToken).toBe(true);
+    expect(w.signOut).not.toHaveBeenCalled();
+  });
+
+  it("nearby sign-in: a peer closing the LAN session after approval leaves the sign-in awaiting confirm", async () => {
+    const w = await world(ready);
+    await w.session.wait();
+    await w.req.close();
+    expect(w.session.ended).toBe(false);
+    expect(w.client.hasToken).toBe(true);
+    expect(w.signOut).not.toHaveBeenCalled();
+    await w.session.confirmAccount();
+    expect(tokensOf(w.client).signedIn).toBe(true);
+  });
+
+  it("nearby sign-in: a failed sign-out on decline or timeout still leaves no token", async () => {
+    for (const how of ["decline", "timeout"] as const) {
+      const w = await world(ready);
+      w.signOut.mockRejectedValue(new Error("offline"));
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      try {
+        await w.session.wait();
+        if (how === "decline") await w.session.declineAccount();
+        else await vi.advanceTimersByTimeAsync(301_000);
+      } finally {
+        vi.useRealTimers();
+      }
+      expect(w.signOut).toHaveBeenCalledTimes(1);
+      expect(w.client.hasToken).toBe(false);
+      expect(tokensOf(w.client).unconfirmed).toBe(false);
+      expect(await w.client.identity.autoSignIn()).toMatchObject({
+        kind: "needsSignIn",
+      });
+    }
+  });
+
+  it("nearby sign-in: Cloud Sync, the stored subject and the signedIn event wait for confirmAccount", async () => {
+    const w = await world(ready, {
+      extra: {
+        "POST /djdl/identity/signout": () => json({ released: false }),
+      },
+    });
+    const events: string[] = [];
+    w.client.events.on("identity", (e) => events.push(e.kind));
+    await w.session.wait();
+    expect(tokensOf(w.client).unconfirmed).toBe(true);
+    expect(await readStoredSubject(stateDir(w.client))).toBeNull();
+    expect(events).toEqual([]);
+    await w.session.confirmAccount();
+    expect(tokensOf(w.client).unconfirmed).toBe(false);
+    expect(await readStoredSubject(stateDir(w.client))).toBe(SUBJECT);
+    expect(events).toEqual(["signedIn"]);
+
+    // A decline before confirm, through the real sign-out: no Sync flush, no subject, no event.
+    const d = await world(ready, {
+      extra: {
+        "POST /djdl/identity/signout": () => json({ released: false }),
+      },
+    });
+    const seen: string[] = [];
+    d.client.events.on("identity", (e) => seen.push(e.kind));
+    const real = await sessionOn(
+      d.client,
+      new FakeRequest(),
+      {
+        signOut: () => d.client.identity.signOut(),
+      },
+      {},
+    );
+    await real.wait();
+    await real.declineAccount();
+    expect(d.client.hasToken).toBe(false);
+    expect(await readStoredSubject(stateDir(d.client))).toBeNull();
+    expect(seen).toEqual(["signedOut"]);
+    expect(d.seen.some((s) => /\/sync\b/.test(s.path))).toBe(false);
   });
 });

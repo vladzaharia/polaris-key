@@ -470,20 +470,38 @@ export async function nearbyLogin(
   ]);
   let confirmed = false;
   let interrupted = false;
-  for (;;) {
-    const k = await keys.next();
-    if (k === null) break;
-    if (k.name === "return" || k.name === "enter") {
-      confirmed = true;
-      break;
+  // The screen ends with the session (decline elsewhere, cancel, the 300 s deadline): D-21.
+  const over = new AbortController();
+  const offEnd = session.onEnd(() => over.abort());
+  const expired = (): ReturnType<typeof hooks.ended> => {
+    const b = hooks.ended("expired");
+    finish(b.rows);
+    return b;
+  };
+  try {
+    for (;;) {
+      const k = await keys.next(over.signal);
+      if (k === null) break; // the session ended, or stdin did: neither is a confirmation
+      if (k.name === "return" || k.name === "enter") {
+        confirmed = true;
+        break;
+      }
+      if (k.name === "n" || isCancel(k)) {
+        interrupted = isInterrupt(k);
+        break;
+      }
     }
-    if (k.name === "n" || isCancel(k)) {
-      interrupted = isInterrupt(k);
-      break;
-    }
+  } finally {
+    offEnd();
   }
+  if (!confirmed && session.ended && !interrupted) return expired().result;
   if (confirmed) {
-    await session.confirmAccount().catch(() => undefined);
+    try {
+      await session.confirmAccount();
+    } catch {
+      // The deadline passed first: the device is signed out, never "signed in".
+      return expired().result;
+    }
     finish([stepRow("ok", line), endRow()]);
     return {
       exitCode: EXIT.ok,

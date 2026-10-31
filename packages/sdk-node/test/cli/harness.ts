@@ -581,7 +581,28 @@ export class FakeNearbySession {
     };
   }
 
+  /** The sign-in ended unconfirmed (D-21): a decline elsewhere, a cancel, the 300 s deadline. */
+  ended = false;
+  private readonly enders = new Set<() => void>();
+
+  onEnd(fn: () => void): () => void {
+    if (this.ended) {
+      fn();
+      return () => undefined;
+    }
+    this.enders.add(fn);
+    return () => this.enders.delete(fn);
+  }
+
+  /** Simulate the end (the deadline passing). */
+  end(): void {
+    this.ended = true;
+    for (const f of [...this.enders]) f();
+  }
+
   async confirmAccount(): Promise<void> {
+    if (this.ended)
+      throw new PolarisError("sign-in-failed", "The sign-in ended.");
     this.confirmed += 1;
   }
 

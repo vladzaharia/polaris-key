@@ -49,7 +49,6 @@ import {
   type IdentityFragment,
   type ProductDiscoveryDocument,
 } from "../discovery.js";
-import { writeStoredSubject } from "./account.js";
 import type { IdentityEvent, ShownIdentity } from "./signIn.js";
 
 const REQUEST_RE = new RegExp(NEARBY_REQUEST_PATTERN);
@@ -401,12 +400,13 @@ export class NearbyRoutes {
         ErrorCode.badResponse,
         "nearby poll answered without a complete sign-in.",
       );
-    await tokens.set(t.accessToken, "signin");
+    // Held unconfirmed (V5 §15.6.1 rule 12): not a sign-in, no stored subject and no `signedIn`
+    // event until the person confirms the account (`NearbySignInSession.confirmAccount`), so Sync
+    // and Connect do not start for an account nobody has accepted.
+    await tokens.set(t.accessToken, "signin", { unconfirmed: true });
     const who = shownFrom(t.license);
     await this.#d.storeIdentity(who);
-    await writeStoredSubject(ctx.dirs.state, t.subject).catch(() => undefined);
     await this.#d.onAcquired();
-    this.#d.emit({ kind: "signedIn", subject: t.subject });
     return {
       kind: "ready",
       subject: t.subject,

@@ -24,6 +24,7 @@ import {
   type AttachResult,
   BeforeSignOutHooks,
   subjectFile,
+  writeStoredSubject,
   type OpenAccountResult,
   type SignOutResult,
 } from "./account.js";
@@ -50,6 +51,7 @@ import {
   startNearbySignIn,
   type NearbyKeyring,
   type NearbyLan,
+  type NearbySessionDeps,
   type NearbySignInOptions,
   type NearbySignInSession,
 } from "./nearbySession.js";
@@ -355,6 +357,7 @@ export class IdentityClient {
             lan: () => b.lan(),
             keyring: b.keyring(),
             signOut: () => this.signOut(),
+            ...this.nearbySessionHooks,
           },
           opts,
         );
@@ -400,6 +403,27 @@ export class IdentityClient {
         (opts: RedirectSignInOptions): Promise<RedirectSession>;
         (opts: NearbySignInOptions): Promise<NearbySignInSession>;
       };
+    };
+  }
+
+  /** What a nearby sign-in session calls at the person's decision (V5 §15.6.1 rule 12). @internal */
+  get nearbySessionHooks(): Pick<NearbySessionDeps, "confirm" | "dropLocal"> {
+    return {
+      // Confirmed: the token is a sign-in, the subject is stored and the event goes out, so Sync
+      // and Connect start now and not before (V5 §12.11.5 rule 9).
+      confirm: async (subject) => {
+        await this.tokens.confirmSignIn();
+        await writeStoredSubject(this.ctx.dirs.state, subject).catch(
+          () => undefined,
+        );
+        this.emit({ kind: "signedIn", subject });
+      },
+      // Unconfirmed and ended: the token, its mark and the stored identity go, whatever the
+      // Worker answered to the sign-out.
+      dropLocal: async () => {
+        await this.tokens.clear();
+        await this.forget();
+      },
     };
   }
 

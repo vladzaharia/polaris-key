@@ -66,6 +66,8 @@ export type AutoSignInResult =
 interface Marks {
   signin: boolean;
   signedOut: boolean;
+  /** A nearby sign-in's token no person has confirmed. Exclusive with `signin`. */
+  unconfirmed: boolean;
 }
 
 /** The two facts above, in `sign-in.json` (0600, atomic writes). Never throws. */
@@ -85,27 +87,32 @@ export class SignInState implements TokenMarks {
     } catch (e) {
       // No file: a device that never signed out. Any other failure fails closed.
       return (e as NodeJS.ErrnoException).code === "ENOENT"
-        ? { signin: false, signedOut: false }
-        : { signin: false, signedOut: true };
+        ? { signin: false, signedOut: false, unconfirmed: false }
+        : { signin: false, signedOut: true, unconfirmed: false };
     }
     try {
       const v: unknown = JSON.parse(text);
       if (v === null || typeof v !== "object" || Array.isArray(v))
         throw new Error("shape");
       const o = v as Record<string, unknown>;
-      return { signin: o.signin === true, signedOut: o.signedOut === true };
+      return {
+        signin: o.signin === true,
+        signedOut: o.signedOut === true,
+        unconfirmed: o.unconfirmed === true,
+      };
     } catch {
-      return { signin: false, signedOut: true };
+      return { signin: false, signedOut: true, unconfirmed: false };
     }
   }
 
   async #write(m: Marks): Promise<void> {
-    if (!m.signin && !m.signedOut)
+    if (!m.signin && !m.signedOut && !m.unconfirmed)
       await rm(this.#file, { force: true }).catch(() => undefined);
     else
       await writeJson(this.#file, {
         ...(m.signin ? { signin: true } : {}),
         ...(m.signedOut ? { signedOut: true } : {}),
+        ...(m.unconfirmed ? { unconfirmed: true } : {}),
       }).catch(() => undefined);
   }
 
@@ -123,17 +130,29 @@ export class SignInState implements TokenMarks {
     return (await this.#read()).signin;
   }
 
-  /** A sign-in stores its token (and so ends a sign-out); any other token or none is not one. */
-  stored(signin: boolean): Promise<void> {
+  /** @inheritdoc */
+  async loadedUnconfirmed(): Promise<boolean> {
+    await this.#queue;
+    return (await this.#read()).unconfirmed;
+  }
+
+  /** A sign-in stores its token (and so ends a sign-out); any other token or none is not one.
+   *  An unconfirmed token is not one either, and leaves the sign-out flag as it was. */
+  stored(signin: boolean, unconfirmed = false): Promise<void> {
     return this.#update((m) => ({
       signin,
       signedOut: signin ? false : m.signedOut,
+      unconfirmed: signin ? false : unconfirmed,
     }));
   }
 
   /** The person signed out on purpose (the Worker accepted it): set the flag, drop the mark. */
   signedOut(): Promise<void> {
-    return this.#update(() => ({ signin: false, signedOut: true }));
+    return this.#update(() => ({
+      signin: false,
+      signedOut: true,
+      unconfirmed: false,
+    }));
   }
 
   /** True while the flag is set. Unreadable counts as set. */
