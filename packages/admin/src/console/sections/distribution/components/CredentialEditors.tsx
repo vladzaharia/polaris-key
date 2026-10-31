@@ -38,7 +38,8 @@ import {
 } from "../model/credentialKinds.js";
 import { humanField } from "../model/channelCopy.js";
 import { channelsOfKind } from "../model/channelScope.js";
-import { PinDialog, SetCredentialDrawer } from "./CredentialForms.js";
+import { SetCredentialDrawer } from "./CredentialForms.js";
+import { PinDialog } from "./CredentialPin.js";
 
 export function LastResult({
   c,
