@@ -435,7 +435,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
       {
         label: "Cloud Sync",
         collapsed: true,
-        items: leaves("features/cloud-sync/index"),
+        items: leaves("features/cloud-sync/index", "features/cloud-sync/files"),
       },
       {
         label: "Commerce",
