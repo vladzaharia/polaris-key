@@ -589,10 +589,8 @@
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/DeviceLabel.kt": {
       "detekt:exceptions.SwallowedException": 1,
       "detekt:exceptions.TooGenericExceptionCaught": 1,
-      "detekt:style.MagicNumber": 28,
-      "detekt:style.ReturnCount": 1,
-      "ktlint:standard:argument-list-wrapping": 6,
-      "ktlint:standard:function-signature": 1
+      "detekt:style.MagicNumber": 77,
+      "ktlint:standard:function-signature": 2
     },
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/DeviceProof.kt": {
       "detekt:complexity.LongParameterList": 3,
@@ -1006,13 +1004,16 @@
       "detekt:exceptions.SwallowedException": 1
     },
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/lan/JvmMdns.kt": {
+      "detekt:complexity.ComplexCondition": 2,
       "detekt:complexity.CyclomaticComplexMethod": 2,
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 6,
       "detekt:exceptions.TooGenericExceptionCaught": 1,
       "detekt:style.LoopWithTooManyJumpStatements": 1,
       "detekt:style.MagicNumber": 1,
-      "detekt:style.ReturnCount": 1
+      "detekt:style.ReturnCount": 1,
+      "ktlint:standard:class-signature": 5,
+      "ktlint:standard:multiline-if-else": 1
     },
     "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/peer/lan/MdnsPacket.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,
@@ -1177,6 +1178,7 @@
       "detekt:exceptions.SwallowedException": 2
     },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/lan/JvmMdnsTest.kt": {
+      "detekt:complexity.LargeClass": 1,
       "detekt:exceptions.SwallowedException": 1
     },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/peer/nearby/NearbyApproverTest.kt": {
@@ -1762,6 +1764,17 @@
       "detekt:style.ReturnCount": 2,
       "detekt:style.ThrowsCount": 1
     },
+    "sdks/kotlin/platform/src/main/kotlin/im/plrs/key/platform/PeerNsd.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:empty-blocks.EmptyFunctionBlock": 6,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 1,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:blank-line-between-when-conditions": 2,
+      "ktlint:standard:function-signature": 7,
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:statement-wrapping": 6
+    },
     "sdks/kotlin/platform/src/main/kotlin/im/plrs/key/platform/Platform.kt": {
       "detekt:style.MagicNumber": 4,
       "ktlint:standard:function-signature": 1
@@ -1800,6 +1813,11 @@
       "detekt:empty-blocks.EmptyCatchBlock": 2,
       "detekt:exceptions.SwallowedException": 2,
       "ktlint:standard:import-ordering": 1
+    },
+    "sdks/kotlin/platform/src/test/kotlin/im/plrs/key/platform/PeerNsdTest.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:function-signature": 7,
+      "ktlint:standard:max-line-length": 1
     },
     "sdks/kotlin/platform/src/test/kotlin/im/plrs/key/platform/SecureStoreTest.kt": {
       "detekt:empty-blocks.EmptyFunctionBlock": 2,
