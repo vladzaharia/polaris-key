@@ -308,7 +308,7 @@ describe("a successful restore", () => {
     expect(await keyRows()).toBe(1);
   });
 
-  it("sends the security notice to the primary address, pointing at Sign out everywhere", async () => {
+  it("sends the security notice to the primary address, offering Remove this device and Sign out everywhere", async () => {
     await seedConsent();
     const r = await redeem(await enrol());
     expect(r.res.status).toBe(200);
@@ -317,10 +317,10 @@ describe("a successful restore", () => {
     expect(mail[0]!.subject).toContain("signed in on");
     expect(mail[0]!.subject).toContain("from your backup");
     expect(mail[0]!.text).toContain(
-      `Sign out everywhere: ${BASE}/#/account/sessions`,
+      `Remove this device: ${BASE}/#/account/devices`,
     );
+    expect(mail[0]!.text).toContain(`${BASE}/#/account/sessions`);
     expect(mail[0]!.text).toContain("every verified email on the account");
-    expect(mail[0]!.text).not.toContain("Remove this device");
     expect(mail[0]!.text).not.toMatch(/rs_|rk_/);
   });
 

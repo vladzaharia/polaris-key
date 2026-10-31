@@ -459,7 +459,7 @@ describe("notice templates: rules", () => {
     expect(bare.text).toContain("remove it from your devices");
   });
 
-  it("restore variant (I-49.7): names the backup, points at Sign out everywhere, is a security notice, escapes", () => {
+  it("restore variant (I-49.7): names the backup, offers Remove this device with a link that carries no id, is a security notice, escapes", () => {
     const m = appDeviceApprovedNotice({
       deviceLabel: "Living room TV",
       productName: "Diceroll",
@@ -472,15 +472,16 @@ describe("notice templates: rules", () => {
     );
     expect(m.text).toContain("It used a key saved in your device backup.");
     expect(m.text).toContain(
-      "If this wasn't you, sign out everywhere in Polaris Locker.",
+      "If this wasn't you, remove this device in Polaris Locker. Or sign out everywhere.",
     );
-    expect(m.text).toContain(
-      `Sign out everywhere: ${ORIGIN}/#/account/sessions`,
-    );
+    expect(m.text).toContain(`Remove this device: ${ORIGIN}/#/account/devices`);
+    expect(m.text).toContain(`${ORIGIN}/#/account/sessions`);
+    // Email links get logged: no link in the mail names the device or the product's device id.
+    const links = m.text.match(/https?:\/\/\S+/g) ?? [];
+    for (const l of links) expect(l).not.toMatch(/Living|[?&]|device\//i);
     expect(m.text).toContain(
       "We sent it to every verified email on the account.",
     );
-    expect(m.text).not.toContain("Remove this device");
     expect(m.text).not.toContain("You approved it");
     const hostile = appDeviceApprovedNotice({
       deviceLabel: "TV <b>x</b>\nBcc: v@example.com",

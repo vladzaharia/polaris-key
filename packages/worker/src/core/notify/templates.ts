@@ -511,8 +511,9 @@ export function deviceReplacedNotice(input: {
  *
  * `via: "restore"` (I-49.7; WIRE-CONTRACT-V5 §12.11.8): the sign-in came from a restore key in the
  * person's platform backup, not from an approval. It is a security notice (every verified
- * address gets it) whose action is "Sign out everywhere": that unbinds every device of the
- * account, which ends every restore key. The label is chosen by the new device, so it is shown
+ * address gets it) whose action is "Remove this device", a link to the Devices section that
+ * carries no device id; the secure line is "sign out everywhere", which unbinds every device of
+ * the account and so ends every restore key. The label is chosen by the new device, so it is shown
  * in quotes, and a label that looks like a link is replaced by "a new device".
  */
 export function appDeviceApprovedNotice(input: {
@@ -529,15 +530,18 @@ export function appDeviceApprovedNotice(input: {
       label === "" || /:\/\/|www\./i.test(label)
         ? "a new device"
         : `\u201c${label}\u201d`;
+    // The links carry no device id: an email link gets logged, so the person finds the row in
+    // the Devices section by its label and its "Signed in from backup" badge.
+    const remove = appLink(input.origin, "account/devices");
     const signOut = appLink(input.origin, "account/sessions");
     return buildNotice({
       help: "app-device-approved",
       subject: `${name} signed in on ${device} from your backup`,
       paragraphs: [
         "It used a key saved in your device backup.",
-        "If this wasn't you, sign out everywhere in Polaris Locker.",
+        "If this wasn't you, remove this device in Polaris Locker. Or sign out everywhere.",
       ],
-      action: { label: "Sign out everywhere", url: signOut },
+      action: { label: "Remove this device", url: remove },
       secureUrl: signOut,
       origin: input.origin,
     });
