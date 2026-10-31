@@ -269,18 +269,20 @@ class _Entry:
 
 
 class _Addrs:
-    __slots__ = ("at", "ips")
+    __slots__ = ("at", "ips", "seen")
 
     def __init__(self, at: float) -> None:
         self.at = at
         self.ips: List[str] = []
+        self.seen: Dict[str, float] = {}  # when each address was last seen
 
 
 class AddressBook:
     """The addresses learned for each host name (§15.4 Addresses; the ``mdnsAnswers`` rows). The rule is the
     whole of learning: a record counts only when its address equals the packet's source (an IPv4-mapped
     source as its IPv4 address), whatever the address is; TTL 0 removes it; names fold by ASCII; four per
-    name, first seen first. Bounded in names: the least recently refreshed is evicted."""
+    name, first seen first. Bounded in names: the least recently refreshed is evicted. An address not seen
+    for ``ENTRY_TTL_SECONDS`` lapses and frees its place, whether or not the name is refreshed by others."""
 
     def __init__(self, max_names: int = MAX_INSTANCES) -> None:
         self._max = max_names
@@ -309,6 +311,7 @@ class AddressBook:
             if e is None:
                 return
             e.ips = [x for x in e.ips if x != address]
+            e.seen.pop(address, None)
             if not e.ips:
                 del self._m[name]
             return
@@ -320,15 +323,26 @@ class AddressBook:
             e = _Addrs(now)
         else:
             del self._m[name]
+        self._lapse(e, now)
         if address not in e.ips and len(e.ips) < MAX_ADDRS:
             e.ips.append(address)
+        if address in e.ips:
+            e.seen[address] = now
         e.at = now
         self._m[name] = e  # most recently refreshed last
 
-    def hosts(self, name: str) -> List[str]:
-        """The addresses held for ``name``, first seen first."""
+    @staticmethod
+    def _lapse(e: "_Addrs", now: float) -> None:
+        e.ips = [a for a in e.ips if now - e.seen.get(a, now) <= ENTRY_TTL_SECONDS]
+        e.seen = {a: t for a, t in e.seen.items() if a in e.ips}
+
+    def hosts(self, name: str, now: Optional[float] = None) -> List[str]:
+        """The addresses held for ``name``, first seen first; with ``now``, those unseen for five minutes
+        are left out."""
         e = self._m.get(fold_name(name))
-        return list(e.ips) if e is not None else []
+        if e is None:
+            return []
+        return [a for a in e.ips if now is None or now - e.seen.get(a, now) <= ENTRY_TTL_SECONDS]
 
     def hold(self, name: str, address: str, now: float = 0.0) -> None:
         """Seed the table (a conformance row's ``prior``)."""
@@ -337,6 +351,7 @@ class AddressBook:
         if e is None:
             e = self._m[n] = _Addrs(now)
         e.ips.append(address)
+        e.seen[address] = now
 
     def table(self) -> List[Tuple[str, str]]:
         """The table as ``(name, address)`` entries, grouped by name, each name first seen first."""
@@ -848,7 +863,7 @@ class MulticastDnsAdapter:
             for inst, e in list(seen.items()):
                 if e.port is None or e.txt is None:
                     continue
-                ips = book.hosts(e.target) if e.target is not None else []
+                ips = book.hosts(e.target, now) if e.target is not None else []
                 if not ips:
                     # Every address was withdrawn: the peer cannot be dialled until one is learned again.
                     if e.up is not None:

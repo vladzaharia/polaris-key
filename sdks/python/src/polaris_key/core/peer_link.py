@@ -39,7 +39,7 @@ HANDSHAKE_SECONDS = 30.0
 _READ_CHUNK = 65_536
 #: What may sit unsent in the socket's write buffer (G10, S5): a peer that never reads (and keeps
 #: sending PINGs, each answered with a PONG) is closed ``peer_busy`` rather than growing it forever.
-WRITE_BUFFER_MAX = 8 * 1024 * 1024
+WRITE_BUFFER_MAX = 4 * 1024 * 1024
 _ABORT_AFTER = 2.0
 #: The least a deadline timer waits, so a deadline that is due now cannot spin the loop.
 _MIN_WAKE = 0.05

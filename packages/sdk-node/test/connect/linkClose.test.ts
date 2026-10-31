@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   LanError,
   SocketLink,
+  WRITE_MAX_BYTES,
   type SessionClosed,
 } from "../../src/connect/session.js";
 import { until } from "../lanFixtures.js";
@@ -81,5 +82,28 @@ describe("a zero-length frame before the transport", () => {
     await expect(link.opened).rejects.toMatchObject({
       closeCode: "peer_bad_frame",
     });
+  });
+});
+
+describe("the TCP write bound", () => {
+  it("lan: a peer that does not read is closed peer_busy at the write bound", async () => {
+    const socket = await dial(await silentPort());
+    // The socket reports more unsent bytes than the bound allows, as it does for a peer that
+    // never reads.
+    Object.defineProperty(socket, "writableLength", {
+      get: () => WRITE_MAX_BYTES + 1,
+    });
+    let closed: SessionClosed | null = null;
+    const link = new SocketLink({
+      socket,
+      channel,
+      handshakeMs: 5000,
+      onEvent: () => undefined,
+      onClosed: (c) => (closed = c),
+    });
+    void link.channel.start();
+    await until(() => closed !== null, 2000);
+    expect(closed).toEqual({ code: "peer_busy", byPeer: false });
+    expect(socket.destroyed).toBe(true);
   });
 });

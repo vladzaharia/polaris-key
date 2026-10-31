@@ -47,6 +47,8 @@ const MAX_QUEUED_MESSAGES = 256;
 export const QUEUE_PAUSE_BYTES = 4 * 1024 * 1024;
 export const QUEUE_RESUME_BYTES = 1024 * 1024;
 export const QUEUE_MAX_BYTES = 8 * 1024 * 1024;
+/** Bytes the socket may hold unsent for a peer that does not read, before the link ends `peer_busy`. */
+export const WRITE_MAX_BYTES = 4 * 1024 * 1024;
 
 export type LanErrorReason =
   | "no_identity"
@@ -126,10 +128,12 @@ export interface ChannelLink {
   /** Stop (true) or resume (false) reading from the transport, where it can. */
   pause?(on: boolean): void;
   /**
-   * A link with a bounded send queue: true when a send of `bytes` is refused, the link having ended
-   * `peer_busy` before anything was encrypted (so the keys do not advance for a dropped message).
+   * A link with a bounded send queue: reserve room for a host send of `bytes` before anything is
+   * encrypted. Null when it is refused, the link having ended `peer_busy` (so the keys do not
+   * advance for a dropped message); otherwise a function that releases the reservation once the
+   * send has settled. Reserving at check time means unawaited sends cannot all pass together.
    */
-  refuses?(bytes: number): boolean;
+  hold?(bytes: number): (() => void) | null;
 }
 
 /** Which path a session took (WIRE-CONTRACT-V5 §15.7: the relay is the fallback). */
@@ -177,7 +181,8 @@ export class ConnectSession {
       throw new LanError("bad_type", "Application types are 0x0100 to 0x7FFF.");
     if (this.#closed !== null)
       throw new LanError("closed", "The session is closed.");
-    if (this.#link.refuses?.(body.length) === true) return;
+    const release = this.#link.hold?.(body.length);
+    if (release === null) return;
     try {
       await this.#link.channel.sendRecord(type, body);
     } catch (e) {
@@ -187,14 +192,19 @@ export class ConnectSession {
           "The message is larger than the peer accepts.",
         );
       throw new LanError("closed", "The session is closed.", { cause: e });
+    } finally {
+      release?.();
     }
   }
 
   /** Send a record of any type the session does not own (a peer document, a later transfer
    *  type). The channel refuses HELLO, CLOSE, REKEY and SAS records. @internal */
   sendRecord(type: number, body: Uint8Array): Promise<void> {
-    if (this.#link.refuses?.(body.length) === true) return Promise.resolve();
-    return this.#link.channel.sendRecord(type, body);
+    const release = this.#link.hold?.(body.length);
+    if (release === null) return Promise.resolve();
+    const sent = this.#link.channel.sendRecord(type, body);
+    if (release === undefined) return sent;
+    return sent.finally(release);
   }
 
   /** The next message; rejects when the session closes with none waiting. */
@@ -224,9 +234,17 @@ export class ConnectSession {
     return () => this.#onClose.delete(fn);
   }
 
+  /** The peer's Noise static key (its `agreeKey` in mode a). @internal */
+  peerStatic: Uint8Array | null = null;
+
   /** Close with `peer_bye` (or another code); resolves when the socket is down. */
   async close(code: "peer_bye" | "peer_busy" = "peer_bye"): Promise<void> {
     await this.#link.channel.close(code);
+  }
+
+  /** The roster no longer lists the peer: close `peer_revoked`. @internal */
+  async revoke(): Promise<void> {
+    await this.#link.channel.close("peer_revoked");
   }
 
   /** @internal */
@@ -325,8 +343,9 @@ export class SocketLink {
     this.channel = new PeerChannel({
       ...o.channel,
       send: (noise) => {
-        if (!socket.destroyed && !socket.writableEnded)
-          socket.write(encodeFrame(noise));
+        if (socket.destroyed || socket.writableEnded) return;
+        socket.write(encodeFrame(noise));
+        if (socket.writableLength > WRITE_MAX_BYTES) this.#unread();
       },
       onEvent: (e) => this.#event(e),
     });
@@ -389,6 +408,7 @@ export class SocketLink {
           this.#o.channel.role,
           this.#o.socket.remoteAddress ?? "",
         );
+        this.#session.peerStatic = e.remoteStatic;
         this.#o.onEstablished?.(this.#session);
         this.#settle.resolve(this.#session);
         break;
@@ -426,6 +446,14 @@ export class SocketLink {
     // the channel's `closed` event ends the link.
     if (!this.#up) this.#finish({ code, byPeer: false });
     void this.channel.close(code === "handshake_failed" ? "peer_bye" : code);
+  }
+
+  /** The peer is not reading and the socket holds too much: end `peer_busy` and drop the socket
+   *  at once (no CLOSE, because nobody is reading it). */
+  #unread(): void {
+    if (this.#ended) return;
+    this.#finish({ code: "peer_busy", byPeer: false });
+    this.#o.socket.destroy();
   }
 
   #finish(c: SessionClosed): void {

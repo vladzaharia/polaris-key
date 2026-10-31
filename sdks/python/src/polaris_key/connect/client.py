@@ -282,6 +282,7 @@ class ConnectClient:
         self._allow_ephemeral = allow_ephemeral_keys is True
         self._storage: Optional[DeviceKeyStorage] = None
         self._lock = threading.RLock()
+        self._on_roster: List[Callable[[Ring], None]] = []
 
     def __repr__(self) -> str:
         return "<ConnectClient>"
@@ -544,7 +545,26 @@ class ConnectClient:
                 self._store().update(lambda _cur: rec.to_bytes())
             except DeviceKeyError as e:
                 raise self._store_error(e) from e
+            self._roster_stored(ring)
             return RingAdoption(True, epoch=ring.epoch)
+
+    def on_roster(self, fn: Callable[[Ring], None]) -> Callable[[], None]:
+        """Called with each roster this device stores, from a peer's push or an identity fetch (on the
+        thread that stored it; the callback must not block). Returns the unsubscribe."""
+        self._on_roster.append(fn)
+
+        def off() -> None:
+            if fn in self._on_roster:
+                self._on_roster.remove(fn)
+
+        return off
+
+    def _roster_stored(self, ring: Ring) -> None:
+        for f in list(self._on_roster):
+            try:
+                f(ring)
+            except Exception:  # noqa: BLE001 - a listener's fault is not this device's
+                pass
 
     def leave(self) -> None:
         """Forget the held roster, certificate and K_disc (sign-out, leaving the person's devices). The
@@ -599,11 +619,12 @@ class ConnectClient:
         except Exception:
             body = None
         answer = _parse_answer(body)
-        rec, view = self._accept(answer, mine, held_ring, held, now)
+        rec, view, ring = self._accept(answer, mine, held_ring, held, now)
         try:
             self._store().update(lambda _cur: rec.to_bytes())
         except DeviceKeyError as e:
             raise self._store_error(e) from e
+        self._roster_stored(ring)
         return view
 
     def _accept(
@@ -613,7 +634,7 @@ class ConnectClient:
         held_ring: Optional[Ring],
         held: Optional[ConnectStateRecord],
         now: int,
-    ) -> Tuple[ConnectStateRecord, ConnectIdentity]:
+    ) -> Tuple[ConnectStateRecord, ConnectIdentity, Ring]:
         """Verify the answer and decide what to store. Raises ``peer-cert-invalid`` on any refusal; nothing is
         written before this returns."""
         ring_jws, cert_jws, disc_keys = answer
@@ -683,7 +704,7 @@ class ConnectClient:
             registered=(mine.sign_key, mine.agree_key),
             stored_at=now,
         )
-        return rec, self._view(rec, ring, cert)
+        return rec, self._view(rec, ring, cert), ring
 
     @staticmethod
     def _fresh(held: ConnectStateRecord, ring: Ring, cert: PeerCert, mine: DevicePublicKeys, now: int) -> bool:

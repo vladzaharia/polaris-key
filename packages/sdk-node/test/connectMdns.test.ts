@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   MulticastDnsAdapter,
   PEER_SERVICE,
+  AddressBook,
   isLanAddress,
   NewNameLimiter,
   ownInterfaces,
@@ -1052,5 +1053,25 @@ describe("who may teach a browser (CC-IPV6 fix round)", () => {
     expect(ownSubnets(false, all)).toEqual(["192.168.1.5/24"]);
     // Loopback is counted only when allowed, and its zero MAC does not exclude it.
     expect(ownSubnets(true, all)).toEqual(["192.168.1.5/24", "127.0.0.1/8"]);
+  });
+});
+
+describe("mdns address lapse", () => {
+  it("mdns: an address not seen for five minutes lapses and frees its place", () => {
+    const book = new AddressBook();
+    const name = "p1-aaaaaaaaaaaaaaaa.local";
+    const four = ["192.168.1.1", "192.168.1.2", "192.168.1.3", "192.168.1.4"];
+    const learn = (ip: string, now: number): void =>
+      book.learn({ name, type: "A", ttl: 120, data: ip }, ip, null, now);
+    four.forEach((ip) => learn(ip, 0));
+    // A fifth address cannot take a place while the four are held, and a refresh of one of them
+    // (the name stays alive) does not keep the others.
+    learn("192.168.1.5", 60_000);
+    expect(book.hosts(name, 60_000)).toEqual(four);
+    learn(four[0]!, 200_000);
+    const later = 5 * 60_000 + 1000;
+    learn("192.168.1.5", later);
+    expect(book.hosts(name, later)).toEqual([four[0], "192.168.1.5"]);
+    expect(book.hosts(name, later + 5 * 60_000 + 1)).toEqual([]);
   });
 });

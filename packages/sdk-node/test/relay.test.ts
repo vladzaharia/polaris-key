@@ -425,6 +425,48 @@ describe("reconnect and the typed stops", () => {
   });
 });
 
+describe("inbound envelopes", () => {
+  it("relay: inbound envelopes past the pending-byte cap close the socket", async () => {
+    const { a, room } = await world();
+    const r = svc(a, room, new ManualTimer(), { maxPendingBytes: 150 });
+    await r.ready();
+    const sock = room.sockets[0]!;
+    const frame = (): { data: ArrayBuffer } => ({
+      data: new Uint8Array(100).fill(0x99).buffer,
+    });
+    // Two envelopes in one turn: the first waits for the handler, the second would pass the cap.
+    sock.onmessage?.(frame());
+    sock.onmessage?.(frame());
+    await until(() => sock.closeCode !== null);
+    expect(sock.closeCode).toBe(1013);
+  });
+
+  it("relay: a refused envelope closes the socket under the WebSocket close-code rule", async () => {
+    const { a, room } = await world();
+    // A socket that only closes with 1000 or 3000 to 4999 and throws on any other code.
+    const strict = (url: string, protocols: string[]) => {
+      const s = room.webSocket(url, protocols);
+      const close = s.close.bind(s);
+      s.close = (code?: number) => {
+        if (
+          code !== undefined &&
+          code !== 1000 &&
+          !(code >= 3000 && code <= 4999)
+        )
+          throw new Error("invalid close code");
+        close(code);
+      };
+      return s;
+    };
+    const r = svc(a, room, new ManualTimer(), { webSocket: strict });
+    await r.ready();
+    const before = room.received.length;
+    for (const s of room.sockets) s.deliver(Uint8Array.of(0x99, 1, 2, 3));
+    await until(() => room.everOpened[0]!.closeCode === 1000);
+    expect(room.received.length).toBe(before);
+  });
+});
+
 describe("modes v and p never cross the relay", () => {
   it("is mode a only, and refuses any other", () => {
     expect([...RELAY_MODES]).toEqual(["a"]);
