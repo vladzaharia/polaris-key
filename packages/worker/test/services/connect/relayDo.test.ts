@@ -728,10 +728,11 @@ describe("metering bounds: a room counts its bytes before it erases", () => {
     expect(res.status).toBe(204);
     expect(await owing(w)).toBeGreaterThan(1000);
     expect(w.state.store.has("room")).toBe(true);
-    // The alarm throws, so the runtime retries, with the bytes still owed.
+    // The alarm re-arms (see the backoff test) with the bytes still owed.
     w.state.alarmAt = null;
-    await expect(room.alarm()).rejects.toThrow();
+    await room.alarm();
     expect(await owing(w)).toBeGreaterThan(1000);
+    expect(w.state.store.has("room")).toBe(true);
     // The next alarm (the database back) counts them and erases.
     const owed = await owing(w);
     await w.make().alarm();
@@ -763,4 +764,119 @@ describe("metering bounds: a room counts its bytes before it erases", () => {
     expect([...w2.state.store.keys()]).toEqual(["erasedAt"]);
     expect(w2.pairs.map((p) => p.server.closed)).toEqual([4003, 4003]);
   });
+});
+
+describe("erase critical section and alarm re-arm (C2-G2, C2-G3)", () => {
+  const SUBJECT = "ps_AAAAAAAAAAAAAAAAAAAAAA";
+  /** Fail the first count while a concurrent caller (behind the input gate) tries to enter. */
+  const hooked = (
+    w: ReturnType<typeof world>,
+    during: () => void,
+    fail = false,
+  ): Db =>
+    Object.assign(Object.create(w.db) as Db, {
+      batch: async (...a: Parameters<Db["batch"]>) => {
+        during();
+        await new Promise((r) => setTimeout(r, 5));
+        if (fail) throw new Error("d1 down");
+        return w.db.batch(...a);
+      },
+    });
+  const behindGate = async (
+    w: ReturnType<typeof world>,
+    room: ConnectRelayDO,
+    req: Request,
+  ): Promise<Response> => {
+    while (w.state.gate) await w.state.gate;
+    return room.fetch(req);
+  };
+
+  it("an upgrade arriving during a purge's count waits for the erase and is refused", async () => {
+    const w = world();
+    let entering: Promise<Response> | undefined;
+    let room!: ConnectRelayDO;
+    room = w.make({
+      db: () =>
+        hooked(w, () => {
+          entering ??= behindGate(w, room, upgrade(adm(A)));
+        }),
+    });
+    await room.fetch(upgrade(adm(A)));
+    await room.fetch(upgrade(adm(B)));
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    const ns = {
+      idFromName: (n: string) => n,
+      get: () => ({ fetch: (q: Request) => room.fetch(q) }),
+    } as unknown as DurableObjectNamespace;
+    await purgeRelay({ CONNECT_RELAY: ns }, "djdl", SUBJECT);
+    const res = await entering!;
+    expect(res.status).not.toBe(200);
+    expect(w.state.getWebSockets()).toEqual([]);
+  });
+
+  it("an upgrade arriving during the poke's erase count never survives in an empty room", async () => {
+    const w = world();
+    let entering: Promise<Response> | undefined;
+    let room!: ConnectRelayDO;
+    room = w.make({
+      db: () =>
+        hooked(w, () => {
+          entering ??= behindGate(w, room, upgrade(adm(A)));
+        }),
+    });
+    await room.fetch(upgrade(adm(A)));
+    await room.fetch(upgrade(adm(B)));
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    await seedRoster(w, []);
+    await room.fetch(
+      new Request("https://connect-relay.do/", {
+        method: "PUT",
+        body: JSON.stringify({ product: "djdl", subject: SUBJECT, epoch: 3 }),
+      }),
+    );
+    await entering!;
+    // Whatever was admitted after the erase has a room behind it; nothing is left unmetered.
+    if (w.state.getWebSockets().length > 0)
+      expect(w.state.store.has("room")).toBe(true);
+  });
+
+  it("a count that fails on every alarm re-arms with a bounded backoff, then erases once it lands", async () => {
+    const w = world();
+    const room = w.make({ db: () => failingBatch(w) });
+    await room.fetch(upgrade(adm(A)));
+    await room.fetch(upgrade(adm(B)));
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    await seedRoster(w, []);
+    const owed = await owing(w);
+    const gaps: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      w.state.alarmAt = null;
+      await room.alarm();
+      expect(w.state.alarmAt).not.toBeNull();
+      gaps.push(w.state.alarmAt! - w.now());
+      expect(w.state.store.has("room")).toBe(true);
+      expect(await owing(w)).toBe(owed);
+    }
+    expect(gaps[1]!).toBeGreaterThan(gaps[0]!);
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(600_000);
+    // The database is back.
+    await w.make().alarm();
+    expect(w.state.store.has("room")).toBe(false);
+    expect(await meter(w)).toBe(owed);
+  });
+
+  const meter = async (w: ReturnType<typeof world>): Promise<number> =>
+    (await w.db.first<{ b: number | null }>(
+      "SELECT COALESCE(SUM(bytes), 0) AS b FROM connect_relay_daily",
+    ))!.b ?? 0;
+  const owing = async (w: ReturnType<typeof world>): Promise<number> => {
+    const p = (await w.state.storage.get("pending")) as
+      | Record<string, { bytes: number }>
+      | undefined;
+    return Object.values(p ?? {}).reduce((n, d) => n + d.bytes, 0);
+  };
+  const failingBatch = (w: ReturnType<typeof world>): Db =>
+    Object.assign(Object.create(w.db) as Db, {
+      batch: () => Promise.reject(new Error("d1 down")),
+    });
 });

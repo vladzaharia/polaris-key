@@ -63,8 +63,19 @@ export class FakeState {
   getWebSockets(): FakeSocket[] {
     return this.sockets.filter((s) => s.closed === null);
   }
+  /** The input gate: set while a `blockConcurrencyWhile` callback runs; a caller awaits it. */
+  gate: Promise<void> | null = null;
   blockConcurrencyWhile<T>(f: () => Promise<T>): Promise<T> {
-    return f();
+    const run = f();
+    const mine = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.gate = mine;
+    void mine.then(() => {
+      if (this.gate === mine) this.gate = null;
+    });
+    return run;
   }
 }
 

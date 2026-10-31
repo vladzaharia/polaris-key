@@ -275,25 +275,28 @@ export class ConnectRelayDO implements DurableObject {
       (pinned.product !== body.product || pinned.subject !== body.subject)
     )
       return new Response(null, { status: 403 });
-    for (const ws of this.ctx.getWebSockets()) {
-      try {
-        ws.close(RELAY_CLOSE.notMember, "erased");
-      } catch {
-        // Already closed.
+    // One critical section: no lease or upgrade is admitted between the count and the delete.
+    await this.ctx.blockConcurrencyWhile(async () => {
+      for (const ws of this.ctx.getWebSockets()) {
+        try {
+          ws.close(RELAY_CLOSE.notMember, "erased");
+        } catch {
+          // Already closed.
+        }
       }
-    }
-    // Count what the room owes first, best effort: erasure never waits on the meter.
-    const product = pinned?.product ?? body.product;
-    if (typeof product === "string") {
-      try {
-        await this.flushPending(product);
-      } catch {
-        // The count is lost with the room; the erasure goes ahead.
+      // Count what the room owes first, best effort: erasure never waits on the meter.
+      const product = pinned?.product ?? body.product;
+      if (typeof product === "string") {
+        try {
+          await this.flushPending(product);
+        } catch {
+          // The count is lost with the room; the erasure goes ahead.
+        }
       }
-    }
-    await this.ctx.storage.deleteAlarm();
-    await this.ctx.storage.deleteAll();
-    await this.ctx.storage.put("erasedAt", this.now());
+      await this.ctx.storage.deleteAlarm();
+      await this.ctx.storage.deleteAll();
+      await this.ctx.storage.put("erasedAt", this.now());
+    });
     this.cached = undefined;
     this.engine.restore(
       {
@@ -490,7 +493,10 @@ export class ConnectRelayDO implements DurableObject {
     if (roster !== null) {
       if (roster.length === 0) {
         try {
-          await this.eraseRoom(RELAY_CLOSE.notMember);
+          // Under the input gate: nothing is admitted between the count and the delete.
+          await this.ctx.blockConcurrencyWhile(() =>
+            this.eraseRoom(RELAY_CLOSE.notMember),
+          );
         } catch {
           // The owed bytes could not be counted: the room stays and the next alarm erases it.
         }
@@ -638,7 +644,19 @@ export class ConnectRelayDO implements DurableObject {
       if (roster !== null && !closeAll) {
         if (roster.length === 0) {
           // The person has no device left: nothing can reconnect, so the room goes.
-          await this.eraseRoom(RELAY_CLOSE.notMember);
+          try {
+            await this.eraseRoom(RELAY_CLOSE.notMember);
+          } catch {
+            // The count did not land: the room is not erased. Re-arm with a bounded backoff
+            // instead of throwing, so a long write outage cannot exhaust the runtime's retries.
+            const n =
+              ((await this.ctx.storage.get<number>("eraseFails")) ?? 0) + 1;
+            await this.ctx.storage.put("eraseFails", n);
+            await this.ctx.storage.setAlarm(
+              this.now() +
+                Math.min(ERASE_RETRY_MAX_MS, ERASE_RETRY_MS * 2 ** (n - 1)),
+            );
+          }
           return;
         }
         // Devices that left the roster lose their sockets (4003) and are announced gone.
@@ -849,6 +867,10 @@ export class ConnectRelayDO implements DurableObject {
       await this.ctx.storage.setAlarm(this.now() + ALARM_MS);
   }
 }
+
+/** Alarm re-arm after a failed erase count: 30 s, doubling, capped at 10 min. */
+const ERASE_RETRY_MS = 30_000;
+const ERASE_RETRY_MAX_MS = 600_000;
 
 function withTimeout<T>(p: Promise<T>): Promise<T> {
   let t: ReturnType<typeof setTimeout>;
