@@ -1039,6 +1039,14 @@ jobs:
           mkdir -p "$T" && cp "$D/templates/ios.zip" "$D/templates/version.txt" "$T/"
       - name: xcframework (device + simulator)
         run: GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2-ios/godot" sdks/godot/native/ios/build.sh
+      # I-48.6a: the opt-in Game Center extension is a build of its own (-DPKEY_GAMECENTER, the PolarisKeyGameCenter
+      # slices under warnings-as-errors). GameKit must be a weak load there and absent from pkey_apple.
+      - name: Game Center extension xcframework (weak GameKit, absent from pkey_apple)
+        run: |
+          GODOT_BIN="$HOME/.cache/pkey-godot/4.7.2-ios/godot" EXTENSION=gamecenter \
+            OUT="$RUNNER_TEMP/gc/pkey_gamecenter.xcframework" sdks/godot/native/ios/build.sh
+          sdks/godot/native/check_gamekit_weak.sh "$RUNNER_TEMP/gc/pkey_gamecenter.xcframework" \
+            sdks/godot/addons/polaris_key/native/ios/pkey_apple.xcframework
       - name: iOS export check (store vs sideload, device builds)
         run: |
           gem install --user-install xcodeproj -v 1.27.0 --no-document
@@ -1326,6 +1334,7 @@ jobs:
           ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest :ui:verifyRoborazziDebug
           :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest :billing:testDebugUnitTest
+          :games:testDebugUnitTest
           :sample-compose-android:testDirectDebugUnitTest
       - name: Lint and assembleRelease (play and direct)
         working-directory: sdks/kotlin
@@ -1334,6 +1343,7 @@ jobs:
           :godot:lintPlayRelease :godot:lintDirectRelease :android:lintPlayRelease :android:lintDirectRelease
           :platform:assembleRelease :godot:assembleRelease :android:assembleRelease :boundary:assembleRelease
           :ui:lintRelease :ui:assembleRelease :billing:lintRelease :billing:assembleRelease
+          :games:lintRelease :games:assembleRelease
           :sample-compose-android:assembleDebug
       - name: Flavour boundary
         run: sdks/kotlin/tools/check_flavours.sh

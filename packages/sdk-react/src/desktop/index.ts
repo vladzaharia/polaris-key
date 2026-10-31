@@ -14,6 +14,7 @@ export {
   type PolarisBridgeWindow,
   type BridgeState,
   type BridgeOidcBegin,
+  type BridgeSignInBegin,
   type BridgeOidcPoll,
   type BridgeActivation,
   type BridgeImportBundle,

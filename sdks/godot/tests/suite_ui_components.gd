@@ -469,7 +469,7 @@ func _settings_section(t: PKeyTestContext) -> void:
 	var p: PKeySettingsPanel = st[1]
 	await _settle()
 	await _settle()
-	t.check("settings: the Account and license section is the first in the rail", p._rail_buttons.size() >= 2 and (p._rail_buttons[0] as Button).text == "Account and license", str(p._rail_buttons.map(func(b): return b.text)))
+	t.check("settings: the Account and license section is the first in the rail", p._rail_buttons.size() >= 2 and (p._rail_buttons[0] as Button).text == "Account and License", str(p._rail_buttons.map(func(b): return b.text)))
 	t.check("settings: the section holds the account pane, and the pad reaches it", p.account.is_inside_tree() and p.account.is_visible_in_tree() and p.focus_order().any(func(c): return p.account.is_ancestor_of(c)))
 	p.section = 1
 	p.layout_content()
@@ -477,7 +477,7 @@ func _settings_section(t: PKeyTestContext) -> void:
 	t.check("settings: the game's own sections are beside it", not p.account.is_visible_in_tree() and p._groups.size() >= 2)
 	p.account_tab = false
 	await _settle()
-	t.check("settings: without the tab the panel is as it was", not p.account.is_inside_tree() and (p._rail_buttons.size() == 0 or (p._rail_buttons[0] as Button).text != "Account and license"))
+	t.check("settings: without the tab the panel is as it was", not p.account.is_inside_tree() and (p._rail_buttons.size() == 0 or (p._rail_buttons[0] as Button).text != "Account and License"))
 	_drop(st)
 
 

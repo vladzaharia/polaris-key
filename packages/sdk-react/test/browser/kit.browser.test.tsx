@@ -829,6 +829,7 @@ const SAVE_SIZES: Size[] = [
   { label: "390", width: 390, height: 844 },
   { label: "844x390", width: 844, height: 390 },
   { label: "640x360", width: 640, height: 360 },
+  { label: "844x390-text200", width: 844, height: 390, rootPx: 32 },
   { label: "1440", width: 1440, height: 900 },
   { label: "390-text200", width: 390, height: 844, rootPx: 32 },
   { label: "1440-text200", width: 1440, height: 900, rootPx: 32 },
@@ -878,6 +879,41 @@ describe("the save screens at the §7.1 sizes", () => {
             "polaris-key",
           );
           const kit = document.querySelector<HTMLElement>(".pk-root")!;
+          // Layout first: scrolling for the hit tests below moves everything.
+          if (name !== "failed") {
+            const box = (sel: string) =>
+              kit.querySelector(sel)!.getBoundingClientRect();
+            const card = box("[data-side=remote]");
+            const mine = box("[data-side=local]");
+            const keep = box('[data-key="saveConflict.keepThis"]');
+            if (size.label === "844x390" || size.label === "640x360") {
+              // Two panes, both starting at the top; each pane is at least 18 rem wide.
+              expect(
+                card.right,
+                "cards left of the choices",
+              ).toBeLessThanOrEqual(keep.left + 1);
+              expect(card.width, "pane of 18rem").toBeGreaterThanOrEqual(288);
+              expect(keep.width, "pane of 18rem").toBeGreaterThanOrEqual(288);
+              for (const r of [
+                box("h1"),
+                mine,
+                card,
+                keep,
+                box('[data-key="common.cancel"]'),
+              ]) {
+                expect(r.top, "top edge on screen").toBeGreaterThanOrEqual(0);
+                expect(r.bottom, "in the first viewport").toBeLessThanOrEqual(
+                  size.height,
+                );
+              }
+            } else {
+              expect(
+                card.bottom,
+                "versions before choices",
+              ).toBeLessThanOrEqual(keep.top + 1);
+              expect(mine.top, "versions on screen").toBeGreaterThanOrEqual(0);
+            }
+          }
           expect(unreachable(kit).join("\n")).toBe("");
           const h1 = kit.querySelector("h1")!;
           expect(h1).not.toBeNull();

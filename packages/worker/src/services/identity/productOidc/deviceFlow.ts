@@ -1,7 +1,6 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { constantTimeEqual } from "../../../platform/compare.js";
-import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
 import { hashKey } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
@@ -38,6 +37,7 @@ import {
 } from "../../../core/singleUse.js";
 import { readBodyText } from "../../../core/cappedBody.js";
 import { sameOriginPost } from "../../../core/accounts/browserRequestGuard.js";
+import { parseDeviceStart } from "../passthrough/request.js";
 import { beginAuthFlow } from "./browserFlow.js";
 import { startAgainPage } from "./chooser.js";
 import {
@@ -103,9 +103,10 @@ export async function handleAuthDeviceStart(
     req.headers.get(HEADER_DEVICE) ||
     url.searchParams.get("device");
   if (!deviceId) return errorResponse(400, "bad_request", "missing device id");
-  // WIRE-CONTRACT-V4 §12.7.1 (PX-W13): display data only, normalised exactly as the SDK
-  // normalised it, never rejected. Absent when nothing is left.
-  const deviceName = normalizeDeviceLabel(body.deviceName) ?? undefined;
+  // The label (V4 §12.7.1, display data, never rejected) and the hints (V5 §12.10.1).
+  const parsed = parseDeviceStart(body);
+  if (!parsed) return errorResponse(400, "bad_request", "invalid hints");
+  const { deviceName, hints } = parsed;
   const flow = await beginAuthFlow(
     req,
     env,
@@ -121,6 +122,7 @@ export async function handleAuthDeviceStart(
       startPlace: (({ country, label }) => ({ country, label }))(
         requestLocation(req),
       ),
+      appChoice: hints?.licenseChoice === "app",
     },
   );
   if (flow instanceof Response) return flow;
@@ -146,6 +148,7 @@ export async function handleAuthDeviceStart(
     userCode,
     authorizeUrl: flow.authorizeUrl,
     deviceName,
+    ...(hints ? { hints } : {}),
     startedAt: Math.floor(Date.now() / 1000),
   };
   await putArtefact(

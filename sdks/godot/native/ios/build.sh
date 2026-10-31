@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build.sh: builds addons/polaris_key/native/ios/pkey_apple.xcframework, the Godot iOS binding of
+# build.sh: builds addons/polaris_key/native/ios/$NAME.xcframework, the Godot iOS binding of
 # PolarisKeyPlatform (P5-05; notes/S-09 §Recommendation 6), and installs pkey_apple.gdextension
 # beside it (see that file for why it is not committed in the addon).
 #
@@ -20,6 +20,12 @@
 #   GDEXTENSION_HEADER  an existing gdextension_interface.h to use instead
 #   OUT             the output xcframework (default: the addon path above)
 #
+# EXTENSION=gamecenter builds the OPT-IN Game Center extension instead (I-48.6a; Q-4): the same glue
+# compiled with -DPKEY_GAMECENTER over PolarisKeyGameCenter and its C surface PolarisKeyGameCenterC
+# (sdks/swift/Sources), into addons/polaris_key/native/ios/pkey_gamecenter.xcframework with
+# pkey_gamecenter.gdextension beside it, class PolarisKeyGameCenter. GameKit is weak-linked there and
+# nowhere else: a game that does not ask for Game Center never ships it.
+#
 # The output is a build product and is never committed (.gitignore). Each framework carries its
 # own bundle id (dev.polariskey.godot.pkey-apple): a framework that reuses the app's id blocks
 # the install (S-01). Never links StoreKitTest or XCTest.
@@ -30,9 +36,17 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../../../.." && pwd)"
 SRC="$REPO/sdks/swift/Sources/PolarisKeyPlatform"
 CSRC="$REPO/sdks/swift/Sources/PolarisKeyPlatformC"
-OUT="${OUT:-$REPO/sdks/godot/addons/polaris_key/native/ios/pkey_apple.xcframework}"
+GCSRC="$REPO/sdks/swift/Sources/PolarisKeyGameCenter"
+GCCSRC="$REPO/sdks/swift/Sources/PolarisKeyGameCenterC"
+EXTENSION="${EXTENSION:-apple}"
+case "$EXTENSION" in
+  apple) NAME=pkey_apple ;;
+  gamecenter) NAME=pkey_gamecenter ;;
+  *) echo "build.sh: EXTENSION must be apple or gamecenter" >&2; exit 2 ;;
+esac
+OUT="${OUT:-$REPO/sdks/godot/addons/polaris_key/native/ios/$NAME.xcframework}"
 MIN_IOS="${MIN_IOS:-18.0}"
-BUNDLE_ID="dev.polariskey.godot.pkey-apple"
+BUNDLE_ID="dev.polariskey.godot.${NAME//_/-}"
 VERSION="$(sed -n 's/^config\/version="\(.*\)"$/\1/p' "$REPO/sdks/godot/project.godot")"
 
 # The package floor is iOS 18 (UK-07): refuse anything lower rather than build a binary that would
@@ -42,7 +56,9 @@ if [ "$(printf '%s\n18.0\n' "$MIN_IOS" | sort -V | head -n1)" != "18.0" ]; then
   exit 2
 fi
 
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/pkey_apple.XXXXXX")"
+GLUE_DEFS=""
+[ "$EXTENSION" = gamecenter ] && GLUE_DEFS="-DPKEY_GAMECENTER"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/$NAME.XXXXXX")"
 trap 'rm -rf "$WORK"' EXIT
 
 if [ -n "${GDEXTENSION_HEADER:-}" ]; then
@@ -62,7 +78,7 @@ slice() {
   sdkp="$(xcrun --sdk "$sdk" --show-sdk-path)"
   mkdir -p "$dir"
   xcrun --sdk "$sdk" clang -c -fobjc-arc -fmodules -O2 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-cast-function-type \
-    -I"$WORK" -target "$triple" -isysroot "$sdkp" "$HERE/pkey_apple.m" -o "$dir/pkey_apple.o"
+    $GLUE_DEFS -I"$WORK" -target "$triple" -isysroot "$sdkp" "$HERE/pkey_apple.m" -o "$dir/pkey_apple.o"
   # Two modules, as in the Swift package: PolarisKeyPlatform (a static library + its module),
   # then the C surface PolarisKeyPlatformC over it, linked with the glue into one dylib.
   mkdir -p "$dir/mods"
@@ -70,22 +86,36 @@ slice() {
     -parse-as-library -module-name PolarisKeyPlatform -emit-library -static \
     -emit-module -emit-module-path "$dir/mods/PolarisKeyPlatform.swiftmodule" \
     "$SRC"/*.swift -o "$dir/libPolarisKeyPlatform.a"
-  xcrun --sdk "$sdk" swiftc -target "$triple" -sdk "$sdkp" -swift-version 6 -warnings-as-errors -O \
-    -parse-as-library -module-name PolarisKeyPlatformC -I "$dir/mods" -emit-library "$CSRC"/*.swift \
-    "$dir/pkey_apple.o" "$dir/libPolarisKeyPlatform.a" \
-    -Xlinker -install_name -Xlinker @rpath/pkey_apple.framework/pkey_apple \
-    -framework Foundation -framework StoreKit -framework Security -o "$dir/pkey_apple"
+  if [ "$EXTENSION" = gamecenter ]; then
+    # PolarisKeyGameCenter (standalone, static), then its C surface over it and PolarisKeyPlatform's
+    # event sink; GameKit is weak-linked, so the framework loads where GameKit is absent.
+    xcrun --sdk "$sdk" swiftc -target "$triple" -sdk "$sdkp" -swift-version 6 -warnings-as-errors -O \
+      -parse-as-library -module-name PolarisKeyGameCenter -emit-library -static \
+      -emit-module -emit-module-path "$dir/mods/PolarisKeyGameCenter.swiftmodule" \
+      "$GCSRC"/*.swift -o "$dir/libPolarisKeyGameCenter.a"
+    xcrun --sdk "$sdk" swiftc -target "$triple" -sdk "$sdkp" -swift-version 6 -warnings-as-errors -O \
+      -parse-as-library -module-name PolarisKeyGameCenterC -I "$dir/mods" -emit-library "$GCCSRC"/*.swift \
+      "$dir/pkey_apple.o" "$dir/libPolarisKeyGameCenter.a" "$dir/libPolarisKeyPlatform.a" \
+      -Xlinker -install_name -Xlinker "@rpath/$NAME.framework/$NAME" \
+      -framework Foundation -Xlinker -weak_framework -Xlinker GameKit -o "$dir/$NAME"
+  else
+    xcrun --sdk "$sdk" swiftc -target "$triple" -sdk "$sdkp" -swift-version 6 -warnings-as-errors -O \
+      -parse-as-library -module-name PolarisKeyPlatformC -I "$dir/mods" -emit-library "$CSRC"/*.swift \
+      "$dir/pkey_apple.o" "$dir/libPolarisKeyPlatform.a" \
+      -Xlinker -install_name -Xlinker "@rpath/$NAME.framework/$NAME" \
+      -framework Foundation -framework StoreKit -framework Security -o "$dir/$NAME"
+  fi
 }
 
-# framework <dir> <binary>: wrap a binary as pkey_apple.framework.
+# framework <dir> <binary>: wrap a binary as $NAME.framework.
 framework() {
-  local fw="$1/pkey_apple.framework"
+  local fw="$1/$NAME.framework"
   mkdir -p "$fw"
-  cp "$2" "$fw/pkey_apple"
+  cp "$2" "$fw/$NAME"
   /usr/libexec/PlistBuddy \
-    -c "Add :CFBundleExecutable string pkey_apple" \
+    -c "Add :CFBundleExecutable string $NAME" \
     -c "Add :CFBundleIdentifier string $BUNDLE_ID" \
-    -c "Add :CFBundleName string pkey_apple" \
+    -c "Add :CFBundleName string $NAME" \
     -c "Add :CFBundlePackageType string FMWK" \
     -c "Add :CFBundleShortVersionString string ${VERSION:-0.0.0}" \
     -c "Add :CFBundleVersion string 1" \
@@ -98,18 +128,18 @@ framework() {
 slice iphoneos "arm64-apple-ios$MIN_IOS" "$WORK/device"
 slice iphonesimulator "arm64-apple-ios$MIN_IOS-simulator" "$WORK/sim-arm64"
 slice iphonesimulator "x86_64-apple-ios$MIN_IOS-simulator" "$WORK/sim-x86_64"
-lipo -create "$WORK/sim-arm64/pkey_apple" "$WORK/sim-x86_64/pkey_apple" -output "$WORK/sim-fat"
+lipo -create "$WORK/sim-arm64/$NAME" "$WORK/sim-x86_64/$NAME" -output "$WORK/sim-fat"
 
-framework "$WORK/fw-device" "$WORK/device/pkey_apple"
-/usr/libexec/PlistBuddy -c "Add :CFBundleSupportedPlatforms:0 string iPhoneOS" "$WORK/fw-device/pkey_apple.framework/Info.plist"
+framework "$WORK/fw-device" "$WORK/device/$NAME"
+/usr/libexec/PlistBuddy -c "Add :CFBundleSupportedPlatforms:0 string iPhoneOS" "$WORK/fw-device/$NAME.framework/Info.plist"
 framework "$WORK/fw-sim" "$WORK/sim-fat"
-/usr/libexec/PlistBuddy -c "Add :CFBundleSupportedPlatforms:0 string iPhoneSimulator" "$WORK/fw-sim/pkey_apple.framework/Info.plist"
+/usr/libexec/PlistBuddy -c "Add :CFBundleSupportedPlatforms:0 string iPhoneSimulator" "$WORK/fw-sim/$NAME.framework/Info.plist"
 
 rm -rf "$OUT"
 mkdir -p "$(dirname "$OUT")"
 xcodebuild -create-xcframework \
-  -framework "$WORK/fw-device/pkey_apple.framework" \
-  -framework "$WORK/fw-sim/pkey_apple.framework" \
+  -framework "$WORK/fw-device/$NAME.framework" \
+  -framework "$WORK/fw-sim/$NAME.framework" \
   -output "$OUT" >/dev/null
-cp "$HERE/pkey_apple.gdextension" "$(dirname "$OUT")/pkey_apple.gdextension"
+cp "$HERE/$NAME.gdextension" "$(dirname "$OUT")/$NAME.gdextension"
 echo "build.sh: built $OUT (iOS $MIN_IOS; $(du -sk "$OUT" | cut -f1) KB)"

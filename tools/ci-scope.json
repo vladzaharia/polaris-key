@@ -179,7 +179,7 @@
             "live": true
           },
           {
-            "os": "macos-14",
+            "os": "macos-15",
             "python": "3.12"
           }
         ]
@@ -259,7 +259,7 @@
           },
           {
             "name": "Godot SDK (4.7.2 editor, macOS smoke)",
-            "os": "macos-14",
+            "os": "macos-15",
             "godot": "4.7.2",
             "template": "",
             "suites": "platform,devices"

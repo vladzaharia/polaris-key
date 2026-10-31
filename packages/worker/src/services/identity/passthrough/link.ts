@@ -42,7 +42,10 @@ import type {
   LinkReach,
   LinkResponse,
 } from "@polaris-key/protocol/identity";
-import { LINK_HANDLE_PATTERN } from "@polaris-key/protocol/identity";
+import {
+  EXCHANGE_SUBJECT_TOKEN_TYPE,
+  LINK_HANDLE_PATTERN,
+} from "@polaris-key/protocol/identity";
 import { OidcNetworkError } from "../../../core/oidc/client.js";
 import { sha256B64url } from "../../../platform/hash.js";
 import { randomId } from "../../../platform/crypto.js";
@@ -71,12 +74,20 @@ import { verifiedAccountEmails } from "../../../core/accounts/verifiedEmails.js"
 import { consumeArtefact, getArtefact } from "../../../core/singleUse.js";
 import { deviceHolder, deviceOf } from "../attach.js";
 import { linkIdentity, type LinkResult } from "../accounts/links.js";
-import { listLinks } from "../accounts/repo.js";
+import { findLink, listLinks, rekeyLinkSubject } from "../accounts/repo.js";
 import {
   readPlatformSignIn,
   type PlatformSignInAudiences,
 } from "../platformSignIn.js";
-import { verifyNativeToken, type NativeIdentity } from "../providers/native.js";
+import { pgsScope } from "../providers/playGames.js";
+import {
+  gameKindsOn,
+  PGS_RETRY_AFTER_SECONDS,
+  PgsBudgetError,
+  servedTokenType,
+  verifySubjectToken,
+  type SubjectIdentity,
+} from "./subjectToken.js";
 import { exchangeLinkRef, type ExchangeLinkRecord } from "./exchange.js";
 import { freshLive, spendFresh } from "./fresh.js";
 import { consumeExchangeNonce, signKeyThumbprint } from "./nonce.js";
@@ -116,9 +127,14 @@ function scopesOf(
   return {
     google: server ? ["", `google-client:${server}`] : [],
     apple: teamId && bundleIds.length > 0 ? [`apple-team:${teamId}`] : [],
-    // §12.11.7: the game kinds are wired by I-14.8; until then no scope, so no offer.
-    gamecenter: [],
-    pgs: [],
+    // §12.11.7: both game links are developer-scoped; whether they are served is `gameKindsOn`.
+    gamecenter:
+      audiences.gameCenter && teamId && bundleIds.length > 0
+        ? [`apple-team:${teamId}`]
+        : [],
+    pgs: audiences.playGames.applicationId
+      ? [pgsScope(audiences.playGames.applicationId)]
+      : [],
   };
 }
 
@@ -165,23 +181,29 @@ async function offer(
   if (!holder || holder === "unavailable") return empty();
   const row = await getProduct(db, product.slug);
   if (!row) return empty();
-  const scopes = scopesOf(await readPlatformSignIn(db, row));
+  const audiences = await readPlatformSignIn(db, row);
+  const scopes = scopesOf(audiences);
+  const games = await gameKindsOn(env, db, product.slug, audiences);
   const held = await listLinks(db, holder.accountId);
   const out: LinkOfferResponse["offer"] = [];
-  for (const kind of ["google", "apple"] as const) {
+  for (const kind of ["google", "apple", "gamecenter", "pgs"] as const) {
     if (scopes[kind].length === 0) continue;
+    const isGame = kind === "gamecenter" || kind === "pgs";
+    if (isGame && !games.includes(kind)) continue;
     // A link of the kind in any scope of this product ends the offer.
     if (
       held.some((l) => l.kind === kind && scopes[kind].includes(l.tenant_scope))
     )
       continue;
-    out.push({ kind, reach: null });
+    // A game link is always the developer's: its reach is known before any token.
+    out.push({ kind, reach: isGame ? "developer" : null });
   }
   return noStore(json({ offer: out } satisfies LinkOfferResponse));
 }
 
 interface Parsed {
   linkHandle?: string;
+  subjectTokenType?: string;
   subjectToken?: string;
   nonce?: string;
   signKey?: string;
@@ -213,11 +235,22 @@ async function parseBody(req: Request): Promise<Parsed | null> {
     return { linkHandle, proof };
   }
   const subjectToken = str("subjectToken");
+  const subjectTokenType =
+    r.subjectTokenType === undefined ? undefined : str("subjectTokenType");
+  if (r.subjectTokenType !== undefined && subjectTokenType === undefined)
+    return null;
   const nonce = str("nonce");
   const signKey = str("signKey");
   const agreeKey = str("agreeKey");
   if (!subjectToken || !nonce || !signKey || !agreeKey) return null;
-  return { subjectToken, nonce, signKey, agreeKey, proof };
+  return {
+    subjectToken,
+    ...(subjectTokenType !== undefined ? { subjectTokenType } : {}),
+    nonce,
+    signKey,
+    agreeKey,
+    proof,
+  };
 }
 
 /** What a link is made from: the verified identity, however the request carried it. */
@@ -241,6 +274,18 @@ async function link(
 ): Promise<Response> {
   const body = await parseBody(req);
   if (!body) return noStore(wireError(400, ErrorCode.BadRequest));
+  // The type defaults to an ID token; one this build does not serve (a game type with its gate
+  // off included) is a malformed request.
+  const tokenType =
+    body.linkHandle !== undefined
+      ? null
+      : await servedTokenType(
+          env,
+          db,
+          body.subjectTokenType ?? EXCHANGE_SUBJECT_TOKEN_TYPE,
+        );
+  if (body.linkHandle === undefined && !tokenType)
+    return noStore(wireError(400, ErrorCode.BadRequest));
   const held = await deviceSignKey(db, product.slug, deviceId);
 
   // The proof first: it needs no state, so nobody without the key spends a step-up, a nonce or a
@@ -288,6 +333,8 @@ async function link(
   if (!(await freshLive(env, product.slug, deviceId, bound))) return stepUp();
 
   let source: LinkSource;
+  // Play Games' alternate player id, known only on the token branch.
+  let alternate: string | null = null;
   if (body.linkHandle !== undefined) {
     const ref = await exchangeLinkRef(env, product.slug, body.linkHandle);
     const raw = await getArtefact(env, ref);
@@ -330,21 +377,36 @@ async function link(
     if (!spent || spent.agreeKey !== body.agreeKey) return refused();
     const row = await getProduct(db, product.slug);
     if (!row) return refused();
-    let id: NativeIdentity;
+    let id: SubjectIdentity;
     try {
-      id = await verifyNativeToken(
+      id = await verifySubjectToken(
+        tokenType!,
         body.subjectToken!,
         body.nonce!,
-        await readPlatformSignIn(db, row),
-        env as unknown as Readonly<Record<string, unknown>>,
+        {
+          env,
+          db,
+          product: product.slug,
+          audiences: await readPlatformSignIn(db, row),
+        },
       );
     } catch (e) {
+      if (e instanceof PgsBudgetError) {
+        const res = noStore(
+          wireError(429, "rate_limited", {
+            retryAfter: PGS_RETRY_AFTER_SECONDS,
+          }),
+        );
+        res.headers.set("retry-after", String(PGS_RETRY_AFTER_SECONDS));
+        return res;
+      }
       if (e instanceof OidcNetworkError)
         return noStore(wireError(503, "unavailable"));
       return refused();
     }
     if (!(await spendFresh(env, product.slug, deviceId, bound)))
       return stepUp();
+    alternate = id.alternateSubject ?? null;
     source = {
       kind: id.kind,
       issuerKey: id.issuerKey,
@@ -367,6 +429,36 @@ async function link(
   const tenantScope = globalOk ? "" : scoped;
   if (tenantScope === undefined) return refused();
   const reach: LinkReach = tenantScope === "" ? "global" : "developer";
+
+  // A Play Games link may still sit under the alternate id. This account's own is moved to the
+  // player id rather than adding a second link; another account's is a conflict.
+  if (
+    source.kind === "pgs" &&
+    alternate !== null &&
+    alternate !== source.subject
+  ) {
+    const old = await findLink(db, {
+      issuerKey: source.issuerKey,
+      tenantScope,
+      subject: alternate,
+    });
+    if (old && old.account_id !== holder.accountId)
+      return noStore(wireError(409, "link_conflict"));
+    if (old && (await rekeyLinkSubject(db, old.id, alternate, source.subject)))
+      await appendAudit(db, {
+        product: product.slug,
+        id: randomId("aud"),
+        at: now,
+        actor_sub: holder.subject,
+        actor_name: null,
+        actor_email: null,
+        action: "identity.link.rekeyed",
+        target_kind: "link",
+        target_id: old.id,
+        parent_id: null,
+        summary: "Moved a pgs sign-in to the player's current id",
+      });
+  }
 
   const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
   const result: LinkResult = await linkIdentity(

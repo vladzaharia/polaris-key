@@ -90,6 +90,8 @@ const API: string[] = [
   "/signin/requests/{rq}/licenses/{lic}",
   "/signin/requests/{rq}/continue",
   "/signin/requests/{rq}/cancel",
+  "/signin/requests/{rq}/key",
+  "/signin/requests/{rq}/key/x",
   "/signin/requests/{rq}/other",
   "/signin/requests/{rq}/continue/x",
   "/signin/email/start",

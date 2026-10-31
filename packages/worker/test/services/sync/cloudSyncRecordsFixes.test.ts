@@ -417,6 +417,128 @@ describe("N3: a policy conversion keeps the 1 KiB caps", () => {
   });
 });
 
+describe("F7-R2: a policy conversion keeps the record budget and the quota", () => {
+  const ROOM = { quotaBytes: 1 << 30 };
+  // 2,000 short names: a valid `revision` value, but over the 64 KiB budget as `merge` cells.
+  const wide = (n: number) =>
+    Object.fromEntries(Array.from({ length: n }, (_, i) => [`k${i}`, i]));
+  const seed = (value: unknown, array = false): MemoryStore => {
+    reset();
+    const s = new MemoryStore();
+    put(s, [
+      mut("c", "r", "set", {
+        value: (array ? Object.values(value as object) : value) as never,
+      }),
+      route("revision"),
+    ]);
+    return s;
+  };
+  const MERGE_OPS: [
+    string,
+    (s: MemoryStore) => SyncMutation,
+    Classification,
+  ][] = [
+    [
+      "merge via removeField",
+      () => mut("c", "r", "removeField", { field: "k1" }),
+      MERGE,
+    ],
+    [
+      "union via remove",
+      (s) =>
+        mut("c", "r", "remove", { element: 1, observedSeq: s.currentSeq() }),
+      UNION,
+    ],
+  ];
+  const isArrayCase = (name: string) => name.startsWith("union");
+
+  for (const [name, op, rt] of MERGE_OPS) {
+    it(`${name}: a base over the budget is op_invalid_for_policy and keeps its shape`, () => {
+      const s = seed(wide(2000), isArrayCase(name));
+      const before = s.getRecord("c", "r");
+      expect(applyAll(s, [[op(s), rt]], ROOM)[0]).toMatchObject({
+        status: "rejected",
+        code: "op_invalid_for_policy",
+      });
+      expect(s.getRecord("c", "r")).toEqual(before);
+      expect(before?.kind).toBe("value");
+    });
+
+    it(`${name}: a base within the budget but over the quota is quota_exceeded`, () => {
+      const s = seed(wide(300), isArrayCase(name));
+      const limits = { quotaBytes: s.getUsage().bytes + 1 };
+      expect(applyAll(s, [[op(s), rt]], limits)[0]).toMatchObject({
+        status: "rejected",
+        code: "quota_exceeded",
+      });
+      expect(s.getRecord("c", "r")?.kind).toBe("value");
+    });
+
+    it(`${name}: a base within both converts and is charged what it costs`, () => {
+      const s = seed(wide(300), isArrayCase(name));
+      expect(applyAll(s, [[op(s), rt]], ROOM)[0]?.status).toBe("ok");
+      const row = s.getRecord("c", "r")!;
+      expect(row.kind).toBe(isArrayCase(name) ? "set" : "fields");
+      expect(s.getUsage().bytes).toBe(recordCost(row).bytes);
+    });
+  }
+
+  it("a delete of the old shape still works", () => {
+    for (const rt of [MERGE, UNION]) {
+      const s = seed(wide(2000), rt === UNION);
+      expect(
+        applyAll(s, [[mut("c", "r", "delete"), rt]], { quotaBytes: 0 })[0]
+          ?.status,
+      ).toBe("ok");
+    }
+  });
+});
+
+describe("F7-B1: a retried absorb of a mixed source writes nothing", () => {
+  it("absorbing the same mixed export twice writes nothing", () => {
+    reset();
+    const src = new MemoryStore();
+    put(
+      src,
+      [mut("c", "p", "set", { value: 1 }), route("revision")],
+      [settingOp("k", "set", { value: 3 }), settingRoute("lastWrite")],
+    );
+    put(src, [
+      mut("c", BLIND(1), "set", { ct: envelope(7) }),
+      route("revision", { sealed: true }),
+    ]);
+    const dst = new MemoryStore();
+    const first = absorb(dst, src);
+    expect(first).toMatchObject({ parked: 0, skipped: 0 });
+    const again = absorb(dst, src);
+    expect(again).toMatchObject({ rows: 0, parked: 0, skipped: 0 });
+    expect(dst.parkedRecords()).toHaveLength(0);
+  });
+});
+
+describe("F7-R3: a conflict copy of a sealed union record carries elements", () => {
+  it("answers elements, not value", () => {
+    reset();
+    const s = new MemoryStore();
+    const SEALED_UNION = route("union", { sealed: true });
+    put(s, [
+      mut("c", BLIND(1), "add", { element: BLIND(2), ct: envelope(5) }),
+      SEALED_UNION,
+    ]);
+    const r = one(
+      s,
+      mut("c", BLIND(1), "delete", { editedHlc: at(-50_000) }),
+      route("merge", { sealed: true }),
+    );
+    expect(r.status).toBe("conflict");
+    const server = (r as unknown as { server: Record<string, unknown> }).server;
+    expect(server.elements).toEqual([
+      expect.objectContaining({ element: BLIND(2) }),
+    ]);
+    expect(server).not.toHaveProperty("value");
+  });
+});
+
 describe("N5 and N6: encryptionSince is fixed by a write, and closes the store to plaintext", () => {
   it("a sealed mutation that wrote nothing does not fix it", () => {
     reset();

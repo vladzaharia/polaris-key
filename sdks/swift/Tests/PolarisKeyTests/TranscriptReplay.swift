@@ -431,6 +431,11 @@ actor ReplayServer {
                 redirectEndpoints["choice\(name)"] = .string("\(base)/identity/choice/\(name.lowercased())")
             }
         }
+        // The restore transcripts (identity.restore) ride a product whose Identity fragment names the
+        // restore member and endpoint (§12.11.6) beside the token, sign-out and grant routes.
+        if transcript.steps.contains(where: { $0.action.hasPrefix("restore") }) {
+            return Self.restoreDiscovery(product: transcript.product, base: transcript.baseUrl)
+        }
         // The account transcripts (identity.account, identity.attach) ride a product that runs
         // Licence, Config and Identity; the identity fragment names the account endpoints (§12.6).
         if transcript.steps.contains(where: { ["subject", "signOut", "attach"].contains($0.action) }) {
@@ -481,7 +486,7 @@ actor ReplayServer {
                             "enabled": .bool(true), "configured": .bool(true),
                             "issuer": .string("\(base)/identity"),
                             "exchange": .object([
-                                "kinds": .array([.string("google"), .string("apple")]),
+                                "kinds": .array([.string("google"), .string("apple"), .string("gamecenter")]),
                                 "google": .object([
                                     "serverClientId": .string("1234-web.apps.googleusercontent.com")
                                 ]),
@@ -519,6 +524,50 @@ actor ReplayServer {
             ]),
         ])
         return try? JSONEncoder().encode(doc)
+    }
+}
+
+extension ReplayServer {
+    /// A discovery document for a product that runs Identity with silent restore on.
+    static func restoreDiscovery(product: String, base: String) -> Data? {
+        let root = "\(base)/\(product)"
+        return try? JSONEncoder().encode(
+            JSONValue.object([
+                "product": .string(product),
+                "services": .object([
+                    "identity": .object([
+                        "enabled": .bool(true), "configured": .bool(true), "account": .bool(true),
+                        "restore": .bool(true), "issuer": .string("\(root)/identity"),
+                        "endpoints": .object([
+                            "authorize": .string("\(root)/identity/authorize"),
+                            "token": .string("\(root)/identity/token"),
+                            "signout": .string("\(root)/identity/signout"),
+                            "restore": .string("\(root)/identity/restore"),
+                            "choiceLicenses": .string("\(root)/identity/choice/licenses"),
+                            "choiceDevices": .string("\(root)/identity/choice/devices"),
+                            "choiceComplete": .string("\(root)/identity/choice/complete"),
+                            "choiceCancel": .string("\(root)/identity/choice/cancel"),
+                        ]),
+                    ])
+                ]),
+            ]))
+    }
+}
+
+/// Serves the stub discovery of a second product (`restoreRedeem`'s `args.product`) and forwards every
+/// other request to the replay.
+struct OtherProductTransport: PolarisTransport {
+    let inner: any PolarisTransport
+    let product: String
+    let base: String
+
+    func send(_ request: PolarisRequest) async throws -> PolarisResponse {
+        if request.url.path == "/\(product)/.well-known/polaris.json",
+            let body = ReplayServer.restoreDiscovery(product: product, base: base)
+        {
+            return PolarisResponse(status: 200, body: body, headers: ["content-type": "application/json"])
+        }
+        return try await inner.send(request)
     }
 }
 

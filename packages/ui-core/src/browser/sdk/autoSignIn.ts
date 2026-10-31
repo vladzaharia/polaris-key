@@ -84,6 +84,23 @@ export function outcomeOf(r: AutoSignInResult): AutoOutcome | null {
   }
 }
 
+/** `outcomeOf`, plus the tier a first-time account's confirm names: with no license anchor, one
+ *  dry read of the license list on the same grant gives the tier the new license is created at. */
+export async function outcomeWithTier(
+  a: PolarisAdapter,
+  r: AutoSignInResult,
+): Promise<AutoOutcome | null> {
+  const o = outcomeOf(r);
+  if (o?.kind !== "confirm" || o.input.license !== "new" || !a.choice) return o;
+  try {
+    const v = await a.choice.licenses(o.grant);
+    const tier = v.kind === "ok" ? v.view.create?.tierName : undefined;
+    return tier ? { ...o, input: { ...o.input, tier } } : o;
+  } catch {
+    return o;
+  }
+}
+
 /** Run the ladder once, giving up after `waitMs` (a late answer still moves the license state by
  *  itself). `open` is true when the answer asks for the in-app form straight away. */
 export async function runAuto(
@@ -97,7 +114,7 @@ export async function runAuto(
   const r = await Promise.race([autoSignInOnce(a), late]);
   clearTimeout(cap);
   if (r === null) return { seed: null, open: false };
-  const seed = outcomeOf(r);
+  const seed = await outcomeWithTier(a, r);
   return {
     seed,
     open:

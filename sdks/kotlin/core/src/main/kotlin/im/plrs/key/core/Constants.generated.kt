@@ -725,11 +725,14 @@ public object Feature {
     public const val identityAccount: String = "identity.account"
     public const val identityRedirectWeb: String = "identity.redirect.web"
     public const val identityChoice: String = "identity.choice"
+    public const val identityDevicecodeChoice: String = "identity.devicecode.choice"
     public const val identitySigninHints: String = "identity.signin.hints"
+    public const val identityKeyreturn: String = "identity.keyreturn"
     public const val identityExchange: String = "identity.exchange"
     public const val identityGamecenter: String = "identity.gamecenter"
     public const val identityPgs: String = "identity.pgs"
     public const val identityAutosignin: String = "identity.autosignin"
+    public const val identityRestore: String = "identity.restore"
     public const val identityLink: String = "identity.link"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
@@ -866,11 +869,14 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.account",
     "identity.redirect.web",
     "identity.choice",
+    "identity.devicecode.choice",
     "identity.signin.hints",
+    "identity.keyreturn",
     "identity.exchange",
     "identity.gamecenter",
     "identity.pgs",
     "identity.autosignin",
+    "identity.restore",
     "identity.link",
     "release.changelog",
     "release.download",
@@ -1581,7 +1587,7 @@ public const val PRESENTATION_MATRIX_VERSION: Int = 1
 public const val PORTAL_MATRIX_VERSION: Int = 1
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-public const val UI_MATRIX_VERSION: Int = 7
+public const val UI_MATRIX_VERSION: Int = 10
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 public const val BACKEND_MATRIX_VERSION: Int = 1
@@ -2047,11 +2053,14 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.account" to CapabilityRow("implemented", "identity", listOf()),
     "identity.redirect.web" to CapabilityRow("implemented", "identity", listOf()),
     "identity.choice" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.devicecode.choice" to CapabilityRow("planned", "identity", listOf()),
     "identity.signin.hints" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.keyreturn" to CapabilityRow("planned", "identity", listOf()),
     "identity.exchange" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.gamecenter" to CapabilityRow("na", "identity", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
-    "identity.pgs" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
+    "identity.pgs" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.autosignin" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.restore" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.link" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
@@ -2120,4 +2129,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "20e755f2dc1c022788debba099998d19c9cdd1a63f17fa10887bc1d557d6c478"
+public const val CAPABILITY_DIGEST: String = "05164d483bd89d2e76b5f80e8bf6b6bf562a9dd5c8e2db862bff3c6677864af4"

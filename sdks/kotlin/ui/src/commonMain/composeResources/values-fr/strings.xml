@@ -315,8 +315,8 @@
     <string name="activate_recommend_title">Gardez %1$s dans votre compte</string>
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">Recommandé</string>
-    <!-- ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">La synchronisation cloud conserve vos réglages et vos sauvegardes sur chaque appareil</string>
+    <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
+    <string name="activate_recommend_sync">Gardez vos réglages identiques sur chaque appareil</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
     <string name="activate_recommend_recover">Récupérez votre licence si vous perdez la clé ou cet appareil</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
@@ -328,16 +328,24 @@
     <string name="activate_recommend_skip">Ou continuez sans compte. %1$s fonctionne de la même façon.</string>
     <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
     <string name="activate_recommend_portal">Gardez votre licence en sécurité dans Polaris Locker</string>
-    <!-- AddToAccount: under the name and email fields. -->
-    <string name="activate_attach_lede">Votre licence et ses appareils restent tels quels. Vous confirmerez l’e-mail avec un code dans votre navigateur.</string>
+    <!-- AddToAccount: under the title, above the fields. -->
+    <string name="activate_attach_lede">Votre licence et ses appareils restent tels quels.</string>
     <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_fine">Nous envoyons un code à cet e-mail dans votre navigateur. %1$s ne le voit jamais.</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$s est dans votre compte</string>
-    <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
-    <string name="activate_attach_syncOn">La synchronisation cloud est activée sur cet %1$s. Connectez-vous sur vos autres appareils pour les synchroniser aussi.</string>
+    <!-- AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
+    <string name="activate_attach_syncOn">La synchronisation est activée sur cet %1$s. Connectez-vous sur vos autres appareils pour les synchroniser aussi.</string>
     <!-- AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form. -->
     <string name="activate_attach_failed">Impossible d’ajouter cette licence. Réessayez dans un instant.</string>
+    <!-- AddToAccount: the name field. The title is Add your name and email, so the label is one word. -->
+    <string name="activate_attach_name">Nom</string>
+    <!-- AddToAccount: shown under the name field when it is empty. -->
+    <string name="activate_attach_nameRequired">Saisissez votre nom.</string>
+    <!-- AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere. -->
+    <string name="activate_otherAccount_title">Vous vous êtes connecté avec un autre compte</string>
+    <!-- AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated). Arguments: 1=email, 2=maskedEmail. -->
+    <string name="activate_otherAccount_body">Vous vous êtes connecté en tant que %1$s, pas %2$s. Rien n’a été ajouté.</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
     <string name="activate_waiting">Cette licence a été envoyée à %1$s. Connectez-vous avec cet e-mail pour la garder dans votre compte.</string>
     <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->
@@ -356,6 +364,9 @@
     <string name="activate_otherEmail_verify__macos">Vérifier cet e-mail</string>
     <!-- AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email. -->
     <string name="account_notInAccount">Dans aucun compte</string>
+    <!-- AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device. -->
+    <string name="account_removeKey">Retirer la licence de cet appareil</string>
+    <string name="account_removeKey__macos">Retirer la licence de cet appareil</string>
     <!-- The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="signin_attach_header">Ajouter %1$s à votre compte</string>
     <!-- License key step: under Continue without an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
@@ -671,8 +682,8 @@
     <string name="account_keyOnly">Activé avec une clé de licence</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
     <string name="account_devices">Appareils</string>
-    <!-- AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term. -->
-    <string name="account_cloudSync">Synchronisation cloud</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows. -->
+    <string name="account_cloudSync">Synchronisation entre appareils</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Group header. -->
     <string name="account_updates">Mises à jour</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Switch label. -->
@@ -762,7 +773,7 @@
     <string name="cloudSync_error">Échec de la synchronisation. Réessayez plus tard.</string>
     <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
     <string name="cloudSync_signedOut">Vous êtes déconnecté.</string>
-    <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
+    <!-- CloudSyncStatus: a small sync status. Syncing needs an account. -->
     <string name="cloudSync_signIn">Se connecter pour synchroniser</string>
     <string name="cloudSync_signIn__macos">Se connecter pour synchroniser</string>
     <!-- CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it. -->
@@ -875,14 +886,25 @@
     <string name="saveConflict_bothFull">Tous les emplacements sont utilisés. Supprimez une sauvegarde pour garder les deux.</string>
     <!-- SaveConflict: the choice is being applied. -->
     <string name="saveConflict_keeping">Application de votre choix…</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptLocal">Sauvegarde de cet appareil conservée.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptRemote">Autre sauvegarde conservée.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptBoth">Les deux sont conservées. L’autre est enregistrée en copie.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptDeleted">La sauvegarde est supprimée.</string>
+    <!-- SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerThis">Plus récente</string>
+    <!-- SaveConflict: tag on the other card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerOther">Plus récente</string>
+    <!-- SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied. -->
+    <string name="saveConflict_chooseAgain">Choisir à nouveau</string>
+    <string name="saveConflict_chooseAgain__macos">Choisir à nouveau</string>
+    <!-- SaveConflict: the choice failed after the other copy was deleted; only this device's save exists. -->
+    <string name="saveConflict_failedDeleted">Impossible d’appliquer votre choix. Votre sauvegarde est inchangée.</string>
+    <!-- SaveConflict: result title after Keep this device's version. -->
+    <string name="saveConflict_keptLocalTitle">Version de cet appareil conservée</string>
+    <!-- SaveConflict: result title after Keep the other version. -->
+    <string name="saveConflict_keptRemoteTitle">Autre version conservée</string>
+    <!-- SaveConflict: result title after Keep both. -->
+    <string name="saveConflict_keptBothTitle">Les deux versions conservées</string>
+    <!-- SaveConflict: under Kept both versions, where the other version went. -->
+    <string name="saveConflict_keptCopy">L’autre version est enregistrée comme copie.</string>
+    <!-- SaveConflict: result title after Delete it here too. -->
+    <string name="saveConflict_keptDeletedTitle">Sauvegarde supprimée</string>
     <!-- SaveConflict: applying the choice failed; Try again repeats it. -->
     <string name="saveConflict_failed">Impossible d’appliquer votre choix. Les deux sauvegardes sont inchangées.</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -1254,6 +1276,10 @@
     <string name="signin_auto_confirm_as">en tant que %1$s</string>
     <!-- Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private). -->
     <string name="signin_auto_confirm_asApple">avec votre compte Apple</string>
+    <!-- Automatic sign-in: the confirm step. After a Game Center sign-in (it shares no email). "Game Center" is Apple's product name (never translated). -->
+    <string name="signin_auto_confirm_asGameCenter">avec Game Center</string>
+    <!-- Automatic sign-in: the confirm step. After a Google Play Games sign-in (it shares no email). "Google Play Games" is Google's product name; use Google's localized name (glossary). -->
+    <string name="signin_auto_confirm_asPlayGames">avec Google Play Jeux</string>
     <!-- Automatic sign-in: the confirm step's main button. -->
     <string name="signin_auto_confirm_primary">Continuer</string>
     <!-- Automatic sign-in: the confirm step's secondary button; opens the regular sign-in. -->
@@ -2016,7 +2042,7 @@
     <string name="signin_consent_deny">Ne pas autoriser</string>
     <string name="signin_consent_deny__macos">Ne pas autoriser</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_consent_cloudSync">Synchronisation cloud</string>
+    <string name="signin_consent_cloudSync">Vos réglages et données synchronisés</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="signin_consent_newLicense">Nouvelle licence %1$s, créée lorsque vous continuez</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -2276,13 +2302,13 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_invalid_message">Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_title">Appareil non lié</string>
+    <string name="core_codes_device_keys_required_title">Appareil non configuré pour se connecter</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez.</string>
+    <string name="core_codes_device_keys_required_message">Mettez à jour l'app et réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">Trop d'appareils</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_ring_too_large_message">Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez.</string>
+    <string name="core_codes_ring_too_large_message">Ce compte compte plus d'appareils que l'on ne peut en connecter. Retirez-en un et réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_disabled_title">Connexion à distance désactivée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2292,9 +2318,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_paused_message">La connexion à distance est en pause pour le moment. Réessayez plus tard.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_title">Limite à distance atteinte</string>
+    <string name="core_codes_relay_quota_exceeded_title">Limite de connexion à distance atteinte</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_message">La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.</string>
+    <string name="core_codes_relay_quota_exceeded_message">Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">Connexion expirée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2498,7 +2524,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_title">Chiffrement incompatible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_encryption_mismatch_message">L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.</string>
+    <string name="core_codes_encryption_mismatch_message">L’app et Polaris Locker ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_revision_conflict_title">Modifié ailleurs</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2804,9 +2830,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_message">Enregistrement impossible sur cet appareil. Vérifiez le stockage et réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_title">Connexion indisponible</string>
+    <string name="core_codes_connect_unavailable_title">Appareils à proximité indisponibles</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_message">La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil.</string>
+    <string name="core_codes_connect_unavailable_message">Cette app ne peut pas les utiliser sur cet appareil.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_title">Appareil non vérifié</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

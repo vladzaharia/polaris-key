@@ -1,0 +1,127 @@
+---
+title: "AddToAccount"
+description: "Add your name and email: the person types both, the browser confirms the email, and the license they already activated moves into their Polaris Locker account with its devices intact."
+sidebar:
+  order: 12
+type: "reference"
+lastReviewed: "2026-10-28"
+lanes: ["kit"]
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
+
+The form behind **Add your name and email**, reached from [ActivateDone](/docs/build/ui/components/activate-done/)
+or from the account pane's "Not in an account" row. The license keeps its seats and devices; it
+only gains an account. The person types a name and an email here, never a password.
+
+## What the person sees
+
+1. **The form.** "Your license and its devices stay as they are." Name and Email, and the line
+   "We send a code to this email in your browser. Tidewater never sees it." **Continue** is the
+   one primary; **Cancel** goes back. An empty name or a malformed email shows its reason under
+   the field, and Continue focuses the first wrong one.
+2. **Working.** Continue reads "Working…". The browser opens on the sign-in with the email and name
+   filled in (they prefill the page and verify nothing; no code is sent until the person asks for
+   it there). **Open browser again** brings the tab back; **Cancel** ends the sign-in.
+3. **A preview before anything is written.** When the browser step ends, the kit asks what
+   attaching would do, with nothing changed. Only then does it attach.
+4. **Added.** "Tidewater is in your account", and, when the product has Cloud Sync, "Cloud Sync is
+   on for this computer. Sign in on your other devices to sync them too." The primary is **Start
+   using Tidewater**; opened from Settings, the app is already running, so the primary is **Done**.
+5. **Something else happened.** Each has a title, a sentence and a way on:
+   - the license is already in a Polaris Locker account: **Sign in to that account**;
+   - the license was sent to another email: **Verify that email**, or **Use another account**;
+   - the person signed in with a different account than the one they typed: the masked emails,
+     "Nothing was added", and **Try again**;
+   - it failed: "Couldn't add this license. Try again in a moment." and **Try again**. Nothing
+     changed.
+
+With Identity off there is no form: the offer is **Add it in Polaris Locker**, which opens the
+portal in the browser.
+
+## States and copy
+
+<ComponentStates component="AddToAccount" />
+
+## Keyboard
+
+- Focus lands on **Name** when the form opens, and moves to the first wrong field after a refused
+  Continue.
+- Return in a field presses Continue. Escape is Cancel, also while working.
+- On the added state focus lands on the primary; Escape there is the primary too (Done when opened from Settings).
+
+## Baselines
+
+<KitBaselines component="AddToAccount" />
+
+## In each kit
+
+<Tabs syncKey="ui-kit">
+  <TabItem label="React">
+    <KitStatus kit="react" />
+
+    **Drop-in.** Inside `<SignIn>` and `<PolarisKeyGate>`: **Add your name and email** on the Done step runs the whole step over the SDK, from the sign-in to the attach. The account pane's row opens it too.
+
+    **Styled part.** `<AddToAccount />` from `@polaris-key/react/kit`. With `attach`, it confirms the email in the browser and attaches, then draws added, owned, email-bound or failed itself. Without `attach`, you drive the step and hear `common.continue` with `name` and `email` in the action. `onCancel`, `onStart`, `onSignIn`, `onVerify` and `onReopen` report the other controls.
+
+    **Headless.** `useAddToAccount({ attach, input, deviceKind, onSubmit })` returns `{ view, input, step, name, email, setName, setEmail, submit, retry, reset }`. `submit()` checks the fields and returns the first wrong one, for focus.
+
+    ```tsx
+    import { AddToAccount } from "@polaris-key/react/kit";
+
+    export function AddName(props: { onBack: () => void }) {
+      return (
+        <AddToAccount
+          attach={async () => "added"}
+          deviceKind="computer"
+          onCancel={props.onBack}
+          onStart={props.onBack}
+        />
+      );
+    }
+    ```
+
+    [React](/docs/build/ui/frameworks/react/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Web components">
+    <KitStatus kit="elements" />
+
+    **Drop-in.** Inside `<pk-sign-in>` and `<pk-gate>`: the form runs the step itself.
+
+    **Styled part.** `<pk-add-to-account>` given an `input` property with `addToAccount` (`step`, and `deviceKind`). Continue and Try again report a `pk-action` event with `detail.name` and `detail.email`, read at the press; they leave in that event only.
+
+    **Headless.** `addToAccountView(context)` from `@polaris-key/elements/headless`, or `viewOf("AddToAccount", input)`. The state machine is `AddToAccountModel` in `@polaris-key/ui-core`.
+
+    ```html
+    <pk-add-to-account id="add"></pk-add-to-account>
+    <script type="module">
+      const el = document.getElementById("add");
+      el.input = { addToAccount: { step: "form", deviceKind: "computer" } };
+      el.addEventListener("pk-action", (e) => {
+        if (e.detail.key === "common.continue") attach(e.detail.name, e.detail.email);
+      });
+    </script>
+    ```
+
+    [Web components](/docs/build/ui/frameworks/elements/) has the theme and the sample.
+
+  </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** Drawn by `<PolarisKeyGate>` from the Done step, in the chrome of the OS.
+
+    **Styled part.** The React kit's `<AddToAccount />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("AddToAccount", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+</Tabs>
+
+The native kits (SwiftUI, Compose, Godot and the terminals) have no tab yet; they follow.

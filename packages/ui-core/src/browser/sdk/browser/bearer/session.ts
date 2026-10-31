@@ -100,6 +100,7 @@ import {
 } from "../../core/activation.js";
 import {
   PolarisError,
+  isSecureTransportUrl,
   type AttachResult,
   type PolarisErrorCode,
 } from "../../core/types.js";
@@ -1112,6 +1113,17 @@ export class BearerSession {
     );
   }
 
+  private ownOrigin(url: string): boolean {
+    try {
+      return (
+        isSecureTransportUrl(url) &&
+        new URL(url).origin === new URL(this.opts.baseUrl).origin
+      );
+    } catch {
+      return false;
+    }
+  }
+
   /** POST a JSON body to the named choice endpoint, no device bearer except for `keep` (the grant is the
    *  credential). A 5xx or a network failure throws; any other answer is returned. */
   private async choicePost(
@@ -1141,11 +1153,23 @@ export class BearerSession {
         },
         ErrorCode.serviceUnavailable,
       );
+    // Discovery is data the network supplied: a choice request (the device bearer rides on
+    // `keep`) goes only to the product's own origin, over https (or loopback).
+    if (!this.ownOrigin(url))
+      throw new UnsupportedError(
+        {
+          supported: false,
+          feature: Feature.identityChoice,
+          reason: "product",
+          detail: `this product's ${name} endpoint is not on its own origin`,
+        },
+        ErrorCode.serviceUnavailable,
+      );
     let res: Response;
     try {
-      res = await this.opts.fetchImpl(url, {
+      res = await this.sendTo(url, {
         method: "POST",
-        credentials: "omit",
+        redirect: "error",
         headers: this.headers({
           "content-type": "application/json",
           ...(bearer ? { authorization: `Bearer ${bearer}` } : {}),
@@ -2290,7 +2314,7 @@ export class BearerSession {
    * `sign-in-failed`, nothing sent), then POSTs the form body to the token endpoint.
    * `error=access_denied` is `cancelled`; any other callback error is `sign-in-failed`; the
    * Worker's refusal is thrown under its own code (`invalid_grant`, `rate_limited` with
-   * `retryAfterSeconds`, …) and changes nothing. Only `signedIn` stores a token (and syncs).
+   * `retryAfterSeconds`, …) and changes nothing. Only `signedIn` and `activated` store a token (and sync).
    */
   async redeemRedirect(
     pending: RedirectPending,
@@ -2309,14 +2333,30 @@ export class BearerSession {
       now: this.now(),
       held: { token: this.token, baseUrl: this.opts.baseUrl },
     });
-    if (answer.kind !== "token") return answer;
-    await this.setToken(answer.accessToken, "signin");
-    await this.syncAfterSignIn();
-    this.subjectValue = answer.subject;
+    // The cancelled and choose outcomes carry no token; the token answers do.
+    if (!("accessToken" in answer)) return answer;
     const licenseId =
       answer.license && typeof answer.license.id === "string"
         ? answer.license.id
         : null;
+    if (answer.kind === "activated") {
+      // A key return (LK-SKIP, §12.5 rule 3): the device is bound on the key's license with no
+      // account, as `activate(key)` leaves it. The token is a key activation (provenance "key",
+      // re-acquired by `license/token`), never a sign-in, and the account the device held, if
+      // any, is gone (U-02).
+      await this.setToken(answer.accessToken, "activate");
+      await this.syncAfterSignIn();
+      this.subjectValue = null;
+      return {
+        kind: "activated",
+        subject: null,
+        activation: { licenseId },
+        keyEntries: answer.keyEntries,
+      };
+    }
+    await this.setToken(answer.accessToken, "signin");
+    await this.syncAfterSignIn();
+    this.subjectValue = answer.subject;
     return {
       kind: "signedIn",
       subject: answer.subject,

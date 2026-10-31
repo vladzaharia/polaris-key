@@ -323,6 +323,10 @@ export async function runExchange(
     if ((await port.persistence?.()) === "memory")
       return unavailable("device-keys");
     keys = await port.ensure();
+    // A store falls back to memory inside `ensure()`: look again, or every reload would register
+    // a new pair.
+    if ((await port.persistence?.()) === "memory")
+      return unavailable("device-keys");
   } catch (e) {
     // No Ed25519 or X25519 here: the exchange cannot bind a device. An unreadable record is a
     // real error and propagates.

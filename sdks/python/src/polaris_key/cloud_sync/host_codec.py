@@ -364,6 +364,8 @@ def _invalid_row(e: Entry) -> Tuple[Entry, Entry]:
     out = _stripped(e)
     out.pop("value", None)
     out.pop("members", None)
+    out.pop("fields", None)
+    out.pop("elements", None)
     return out, {"invalid": True}
 
 

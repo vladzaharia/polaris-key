@@ -46,6 +46,7 @@ export type Surface = [
   ReturnType<typeof usePolarisAuth>["signIn"],
   ReturnType<typeof usePolarisAuth>["signOut"],
   ReturnType<typeof usePolarisAuth>["choice"],
+  ReturnType<typeof usePolarisAuth>["autoSignIn"],
   ReturnType<typeof useCloudSync>["status"],
   ReturnType<typeof useCloudSync>["flush"],
   ReturnType<typeof useCloudSync>["status"],

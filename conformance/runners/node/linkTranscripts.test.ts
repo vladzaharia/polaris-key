@@ -29,6 +29,7 @@ import {
   errorCode,
   replay,
   runExchange,
+  subjectOf,
   type Observed,
 } from "./exchangeReference.js";
 
@@ -37,6 +38,48 @@ function observeLink(status: number, body: Record<string, unknown>): Observed {
   if (status === 200 && body.linked !== undefined)
     return { result: "ok", linked: body.linked as JsonValue };
   return { result: "refused", status, code: errorCode(body) };
+}
+
+/** The link with a provider token and no handle (I-14.9): a nonce for the device's keys, then
+ *  {subjectToken, subjectTokenType, nonce, signKey, agreeKey, proof}. */
+async function linkByToken(
+  server: ReplayServer,
+  t: Transcript,
+  step: Step,
+): Promise<Observed> {
+  const base = `${t.baseUrl}/${t.product}`;
+  const device = deviceHeaders(t);
+  const keys = deviceKeys(String(step.args.keyLabel));
+  const { token, type } = subjectOf(step.args);
+  const keyBody = { signKey: keys.signKey, agreeKey: keys.agreeKey };
+  const nonceRes = await server.fetch(`${base}/identity/nonce`, {
+    method: "POST",
+    headers: { ...device, "content-type": "application/json" },
+    body: JSON.stringify(keyBody),
+  });
+  const nonce = (await json(nonceRes)).nonce as string;
+  const res = await server.fetch(`${base}/identity/link`, {
+    method: "POST",
+    headers: {
+      ...device,
+      authorization: `Bearer ${server.bindings.token}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      subjectToken: token,
+      subjectTokenType: type,
+      nonce,
+      ...keyBody,
+      proof: keys.proof({
+        purpose: "link",
+        product: t.product,
+        deviceId: t.initial.deviceId,
+        value: `${nonce}.${keys.signKey}`,
+        token,
+      }),
+    }),
+  });
+  return observeLink(res.status, await json(res));
 }
 
 async function runStep(
@@ -102,6 +145,8 @@ async function runStep(
     }
     case "link": {
       const keys = deviceKeys(String(step.args.keyLabel));
+      if (step.args.linkHandle === undefined)
+        return linkByToken(server, t, step);
       const handle = String(step.args.linkHandle);
       const res = await server.fetch(`${base}/identity/link`, {
         method: "POST",
@@ -134,7 +179,11 @@ const LINK = loadTranscripts().filter((t) =>
 
 describe("identity.link transcripts, reference client", () => {
   it("covers the link scenarios", () => {
-    expect(LINK.map((t) => t.id).sort()).toEqual(["link-errors", "link-offer"]);
+    expect(LINK.map((t) => t.id).sort()).toEqual([
+      "link-errors",
+      "link-game",
+      "link-offer",
+    ]);
   });
 
   for (const t of LINK)

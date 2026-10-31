@@ -43,8 +43,18 @@ signal pack_ready(id: String, path: String)
 signal pack_failed(id: String, err: String)
 
 const NATIVE_CLASS := "PolarisKeyApple"
+## The opt-in Game Center extension's class (native/ios/build.sh with EXTENSION=gamecenter): GameKit is
+## linked by it alone, so a game that never asks for Game Center ships none.
+const GAME_CENTER_CLASS := "PolarisKeyGameCenter"
+const GAME_CENTER_META := "pkey_game_center_facade"
 ## The AppDistributor deadline (OUTLET_PLATFORM_DATA.deadlineMs; notes/S-06 rule 5).
 const DISTRIBUTOR_DEADLINE := 2.0
+
+## The features that also run on macOS, through the desktop dylib: the Keychain and Sign in with Apple.
+const MACOS_FEATURES := [PKeyConstants.Feature.CORE_STORE, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, PKeyConstants.Feature.IDENTITY_GAMECENTER]
+## An abandoned request is forgotten after this long, and at most this many are kept.
+const ABANDONED_TTL_MSEC := 600000
+const ABANDONED_MAX := 64
 
 ## The platform this answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var platform := ""
@@ -62,7 +72,9 @@ var _dropped := 0
 ## native queue is one per process, so whichever instance polls may drain another instance's
 ## result. Entries are consumed by the awaiting call, or dropped when it times out.
 static var _results := {}
-## Requests whose caller timed out: their results are dropped when they arrive.
+## Requests whose caller timed out, with the tick they were given up at: their results are dropped when
+## they arrive. A result that never arrives is forgotten after `ABANDONED_TTL_MSEC`, and at most
+## `ABANDONED_MAX` are kept (the oldest go first), so the set cannot grow without bound.
 static var _abandoned := {}
 
 static var _shared: PKeyApple = null
@@ -85,6 +97,23 @@ static func shared() -> PKeyApple:
 		if tree != null and tree.root != null:
 			tree.root.add_child.call_deferred(_shared)
 	return _shared
+
+
+## The facade of the opt-in Game Center extension (class PolarisKeyGameCenter): one per process,
+## polled by the tree like shared(). Its only call is gc_identity(). Without the extension every call
+## answers Unsupported (`dependency` on iOS and macOS, `runtime` elsewhere).
+static func game_center() -> PKeyApple:
+	# Held in the Engine's metadata: one more static variable would be one more lint finding.
+	var held = Engine.get_meta(GAME_CENTER_META, null)
+	if held == null or not is_instance_valid(held):
+		held = PKeyApple.new()
+		held.native_class = GAME_CENTER_CLASS
+		held.name = "PKeyGameCenter"
+		Engine.set_meta(GAME_CENTER_META, held)
+		var tree := Engine.get_main_loop() as SceneTree
+		if tree != null and tree.root != null:
+			tree.root.add_child.call_deferred(held)
+	return held
 
 
 ## The launch work (once per process; the PolarisKey autoload calls it on iOS):
@@ -150,7 +179,7 @@ func unsupported_reason(feature := "") -> String:
 
 func _runs_here(feature: String) -> bool:
 	var p := _platform()
-	return p == PKeyConstants.Platform.IOS or (p == PKeyConstants.Platform.MACOS and feature == PKeyConstants.Feature.CORE_STORE)
+	return p == PKeyConstants.Platform.IOS or (p == PKeyConstants.Platform.MACOS and MACOS_FEATURES.has(feature))
 
 
 func is_available() -> bool:
@@ -169,8 +198,10 @@ func availability(feature := PKeyConstants.Feature.OUTLET_DETECT) -> PKeyResult:
 	if why == PKeyConstants.UnsupportedReason.RUNTIME:
 		return PKeyResult.unsupported(feature, why, "The Apple platform plugin runs on iOS, not %s." % (_platform() if _platform() != "" else "this platform"))
 	if why == PKeyConstants.UnsupportedReason.DEPENDENCY:
-		var lib := "libpkey_apple.dylib" if _platform() == PKeyConstants.Platform.MACOS else "pkey_apple.xcframework"
-		return PKeyResult.unsupported(feature, why, "The PolarisKeyApple GDExtension (%s) is not in this build." % lib)
+		var stem := "pkey_gamecenter" if native_class == GAME_CENTER_CLASS else "pkey_apple"
+		var lib := "lib%s.dylib" % stem if _platform() == PKeyConstants.Platform.MACOS else "%s.xcframework" % stem
+		var how := " (build it with EXTENSION=gamecenter and turn on polaris_key/game_center)" if native_class == GAME_CENTER_CLASS else ""
+		return PKeyResult.unsupported(feature, why, "The %s GDExtension (%s) is not in this build%s." % [native_class, lib, how])
 	return PKeyResult.success()
 
 
@@ -192,8 +223,8 @@ func call_sync(q: Dictionary, feature := "") -> Dictionary:
 
 ## One request awaited to its result: a synchronous reply as it is, or the event carrying the
 ## asynchronous reply's `req` ({ok:false, error:"timeout"} after `timeout_s`).
-func call_async(q: Dictionary, wait_s := -1.0) -> Dictionary:
-	var r := call_sync(q)
+func call_async(q: Dictionary, wait_s := -1.0, feature := "") -> Dictionary:
+	var r := call_sync(q, feature)
 	if not r.has("req") or not r.get("ok", false):
 		return r
 	var req := int(r["req"])
@@ -207,7 +238,7 @@ func call_async(q: Dictionary, wait_s := -1.0) -> Dictionary:
 			break
 		if Time.get_ticks_msec() - t0 > limit_ms or tree == null:
 			# A late result must not linger: poll() drops results nobody waits for any more.
-			_abandoned[key] = true
+			_abandon(key)
 			return {"ok": false, "error": "timeout", "req": req}
 		await tree.process_frame
 	var out: Dictionary = _results[key]
@@ -216,16 +247,29 @@ func call_async(q: Dictionary, wait_s := -1.0) -> Dictionary:
 
 
 ## The shared-results key of request `req` on this instance's native side.
+## Give request `key` up: drop its result when it arrives, forget it if it never does.
+static func _abandon(key: String) -> void:
+	var now := Time.get_ticks_msec()
+	for k in _abandoned.keys():
+		if now - int(_abandoned[k]) > ABANDONED_TTL_MSEC:
+			_abandoned.erase(k)
+	while _abandoned.size() >= ABANDONED_MAX:
+		_abandoned.erase(_abandoned.keys()[0])
+	_abandoned[key] = now
+
+
 func _key(req: int) -> String:
-	return "%d:%d" % [native.get_instance_id() if native != null else 0, req]
+	# The class names the extension: the Apple plugin and the Game Center extension count requests apart.
+	return "%d:%s:%d" % [native.get_instance_id() if native != null else 0, native_class if native == null else "", req]
 
 
 ## Drain the native event queue: results go to their awaiting call, the rest become signals.
 ## The number of events drained.
 func poll() -> int:
-	if unsupported_reason() != "":
+	# Polls wherever any call can run (macOS too, for Sign in with Apple's asynchronous ops).
+	if unsupported_reason(PKeyConstants.Feature.CORE_STORE) != "":
 		return 0
-	var r := call_sync({"op": "poll"})
+	var r := call_sync({"op": "poll"}, PKeyConstants.Feature.CORE_STORE)
 	_dropped += int(r.get("dropped", 0))
 	var events = r.get("events", [])
 	if not (events is Array):
@@ -263,7 +307,8 @@ func _process(_delta: float) -> void:
 # ── Typed calls (each a PKeyResult; the native reply is `detail`) ─────────────────────────────
 
 ## The plugin's view of this process: {protocol, platform, appDistributor, appDistributorWeb,
-## managedAssetPacks, backgroundAssetsConfigured, storeKit, keychain, entitlementsForID, appAttest}.
+## managedAssetPacks, backgroundAssetsConfigured, storeKit, keychain, entitlementsForID, appAttest,
+## appleSignIn}.
 func capabilities() -> PKeyResult:
 	return _wrap(PKeyConstants.Feature.OUTLET_DETECT, call_sync({"op": "capabilities"}))
 
@@ -373,6 +418,44 @@ func unwatch_pack(id: String) -> PKeyResult:
 	return await _async(PKeyConstants.Feature.PACKS_TRANSPORT_APPLE, {"op": "packs_unwatch", "id": id})
 
 
+# ── Sign in with Apple (I-48.4b; the Apple provider drives these) ─────────────────────────────
+
+## The one Sign in with Apple sheet over the Worker's `nonce` (set as given). `immediate` asks only
+## for a credential this app already has (the ladder's rung 4); false is the plain account sheet. On
+## success detail.token is the identity token (a secret) and detail.userID Apple's user id; a failure
+## is `platform-error` with detail.error `cancelled` or `unavailable`.
+func apple_sign_in(nonce: String, immediate := true) -> PKeyResult:
+	return await _async(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, {"op": "apple_sign_in", "nonce": nonce, "immediate": immediate}, 300.0)
+
+
+## The stored Apple user id's credential state: detail.state is `authorized`, `revoked`, `notFound`,
+## `transferred`, or `none` (this app never signed in with Apple).
+func apple_credential_state() -> PKeyResult:
+	return await _async(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, {"op": "apple_credential_state"})
+
+
+## Keep Apple's user id for the launch check, once the Worker accepted the token.
+func apple_remember(user_id: String) -> PKeyResult:
+	return _wrap(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, call_sync({"op": "apple_remember", "userID": user_id}, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN))
+
+
+## Forget the stored Apple user id (sign-out).
+func apple_forget() -> PKeyResult:
+	return _wrap(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, call_sync({"op": "apple_forget"}, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN))
+
+
+# ── Game Center (I-48.6a; the Game Center provider drives this, on the game_center() facade) ──────
+
+## The signed-in local player's identity-verification parts for the exchange. detail has
+## `publicKeyUrl`, `signature` and `salt` (base64url), `timestamp` (a decimal string), `teamPlayerId`
+## and `bundleId`: secrets for about two minutes. PKeyGameCenterToken.encode() builds the `gc1.`
+## token from them. A failure is `platform-error` with detail.error `not_authenticated`,
+## `ids_not_persistent`, `unsupported`, `verification_failed` or `malformed`; the extension never
+## presents Game Center's sign-in.
+func gc_identity() -> PKeyResult:
+	return await _async(PKeyConstants.Feature.IDENTITY_GAMECENTER, {"op": "gc_identity"}, 30.0)
+
+
 # ── App Attest (P6-02; PolarisKey.devices.attest() drives these) ───────────────────────────────
 
 ## Whether App Attest runs here: success with detail.supported, or unsupported `runtime` (off iOS,
@@ -403,7 +486,7 @@ func _async(feature: String, q: Dictionary, wait_s := -1.0) -> PKeyResult:
 	var gate := availability(feature)
 	if not gate.ok:
 		return gate
-	return _wrap(feature, await call_async(q, wait_s))
+	return _wrap(feature, await call_async(q, wait_s, feature))
 
 
 ## A native reply as a PKeyResult: success with the reply as `detail`; `unsupported` with the

@@ -30,7 +30,7 @@ afterEach(() => {
 
 function mount(
   result: AutoSignInResult | null,
-  over: { off?: boolean; complete?: unknown } = {},
+  over: { off?: boolean; complete?: unknown; licenses?: unknown } = {},
 ) {
   const adapter = desktopAdapter({
     bridge: makeFakeBridge(emptyBridgeState()),
@@ -47,7 +47,7 @@ function mount(
   Object.assign(adapter, {
     autoSignIn,
     choice: {
-      licenses: async () => ({ kind: "ok", view: VIEW_FREE }),
+      licenses: async () => ({ kind: "ok", view: over.licenses ?? VIEW_FREE }),
       devices: async () => ({ kind: "ok", view: {} }),
       complete,
       cancel,
@@ -88,6 +88,34 @@ describe("automatic sign-in in the gate", () => {
     expect(m.complete).toHaveBeenCalledWith("sg_1", undefined, {
       consent: { claims: ["email", "name"] },
     });
+  });
+
+  it("a first-time account's confirm names the tier the new license is created at", async () => {
+    const noAnchor = {
+      ...(CONSENT as unknown as { items: { kind: string }[] }),
+    };
+    noAnchor.items = noAnchor.items.filter((i) => i.kind !== "license");
+    const m = mount(
+      {
+        kind: "confirm",
+        grant: "sg_n",
+        expiresIn: 300,
+        consent: noAnchor as never,
+      },
+      {
+        licenses: {
+          create: { tierName: "Standard" },
+          choices: [],
+          keep: false,
+        },
+      },
+    );
+    await shows(m, "signin.auto.confirm.primary");
+    const line = m.container.querySelector(
+      '[data-key="signin.consent.newLicense"]',
+    );
+    expect(line?.textContent).toMatch(/Standard/);
+    expect(line?.textContent).not.toMatch(/[{}]/);
   });
 
   it("Use another account gives the grant up and shows the methods", async () => {

@@ -723,11 +723,14 @@ export const Feature = {
   identityAccount: "identity.account",
   identityRedirectWeb: "identity.redirect.web",
   identityChoice: "identity.choice",
+  identityDevicecodeChoice: "identity.devicecode.choice",
   identitySigninHints: "identity.signin.hints",
+  identityKeyreturn: "identity.keyreturn",
   identityExchange: "identity.exchange",
   identityGamecenter: "identity.gamecenter",
   identityPgs: "identity.pgs",
   identityAutosignin: "identity.autosignin",
+  identityRestore: "identity.restore",
   identityLink: "identity.link",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
@@ -865,11 +868,14 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.account",
   "identity.redirect.web",
   "identity.choice",
+  "identity.devicecode.choice",
   "identity.signin.hints",
+  "identity.keyreturn",
   "identity.exchange",
   "identity.gamecenter",
   "identity.pgs",
   "identity.autosignin",
+  "identity.restore",
   "identity.link",
   "release.changelog",
   "release.download",
@@ -1638,7 +1644,7 @@ export const PRESENTATION_MATRIX_VERSION = 1;
 export const PORTAL_MATRIX_VERSION = 1;
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-export const UI_MATRIX_VERSION = 7;
+export const UI_MATRIX_VERSION = 10;
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 export const BACKEND_MATRIX_VERSION = 1;
@@ -2137,11 +2143,17 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [],
   },
   "identity.choice": { status: "implemented", service: "identity", na: [] },
+  "identity.devicecode.choice": {
+    status: "planned",
+    service: "identity",
+    na: [],
+  },
   "identity.signin.hints": {
     status: "implemented",
     service: "identity",
     na: [],
   },
+  "identity.keyreturn": { status: "implemented", service: "identity", na: [] },
   "identity.exchange": {
     status: "na",
     service: "identity",
@@ -2158,6 +2170,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [{ runtime: "node", reason: "runtime" }],
   },
   "identity.autosignin": { status: "planned", service: "identity", na: [] },
+  "identity.restore": {
+    status: "na",
+    service: "identity",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
   "identity.link": {
     status: "na",
     service: "identity",
@@ -2287,4 +2304,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "5276db4441392924f74c50e160f662fde33309faac438a122858f08a185b0590";
+  "3a1e8a718760ae46175967ad152e67cc8643de1a6e003ce6e9fcda95fb4b7562";

@@ -1214,7 +1214,7 @@ The outlet kind `direct` is presented as Polaris Key: the console, the download 
 
 v5 is additive on the wire: the six v4 documents keep their shapes and bytes, and no SDK enforces `protocolVersion`, so a deployed v4 SDK is unaffected. The two new `typ`s (§2) enter with the bump, as `pkey-bundle+jws` entered with v3 and `pkey-feed+jws` and `pkey-release+jws` with v4. An SDK that predates v5 never fetches or verifies either, and refuses an unknown `typ`. Every SDK's constant follows `PROTOCOL_VERSION` through `pnpm gen constants`; nothing else is required until its parity row for the Cloud Connect features (`connect.*`) flips. The new corpus sections and files (§15.9) are inert until then, because runners read named sections. Version counters: `PROTOCOL_VERSION` goes from 4 to 5. `corpusVersion` stays 2 (the sections are additive, as `feedCases` were), `DISCOVERY_VERSION` stays 2, and `CACHE_VERSION` stays 3: Connect state is its own store record, never the licence cache. The new counters are `noiseVectorsVersion = 1` and `peerMatrixVersion = 1`. The statements below that say a counter "stays 4" were written inside v4 and are restated for v5 with the new value.
 
-v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 5` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), `syncScenariosVersion = 2` (§11.5), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. HA-12 adds the unsigned discovery member `core.presentation` (§5.5) and the client table `presentation-matrix.json` (`presentationMatrixVersion = 1`). Every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because an SDK that predates it ignores the member. The trust-custody amendment (§1, §2.3, §4.1, §7) changes no counter either (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `gateMatrixVersion` 2, `CACHE_VERSION` 3): its two cache slices are additive, its corpus cases are appended, and its one changed verdict (`trust-member-shapes-ignored`) is a client tightening. I-09 adds the account routes (§12.3), `license_owned` on key entry (§12.2 step 3) and the identity fragment's account members (§12.6): the identity routes are additive within v4 and detected from discovery (a client uses a route only when the fragment advertises it), no signed document changes, and every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2). Deployed SDKs keep the behaviour they shipped with: no SDK enforces `protocolVersion`, and an SDK that predates `?signer=` reads the default manifest as before. An install activated by a bundle through the old `importedBundle` marker re-imports after upgrading, and a bundle past its 30-day import window needs a fresh mint. Cloud Sync adds unsigned routes detected from `services.sync` (§13): every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because Cloud Sync data is never signed, the config document keeps its shape and resolution (§2.2.1), and an SDK that predates it ignores `services.sync` and the catalog's `user` and `cloudSync` members. A new SDK on a Worker without the routes finds no `settings: true` and keeps `config.set` on the device. SP-53 changes no counter; it adds `backendMatrixVersion = 1` (§14, `backend-matrix.json`). Product backends add one request header to the developer's own backend and no Worker route, `typ`, claim or signed shape, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3. A deployed SDK never sends `X-PKey-License`, so a backend that adopts a drop-in before its apps update answers `license_required` until they do. SP-54 changes no counter: it adds one optional member inside the licence document's `profile` (`user`, §2.1), which §3.2 already leaves unchecked, appends three `licenseDocCases` and the section `licenseUserCases`, and adds no `typ`, claim or route, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2 and `CACHE_VERSION` 3. Every SDK that predates it ignores the member; a new reader against an older Worker reads `null`, and a backend that requires sign-in then answers `sign_in_required` until the Worker that signs the member is deployed. CM-29 adds the unsigned discovery member `services.commerce` and moves two device routes (§5.6). Every counter is unchanged, because an SDK that predates it ignores the member. DISC-01 adds the unsigned discovery member `core.portal` (§5.7) and the client table `portal-matrix.json` (`portalMatrixVersion = 1`); the terminal kits' ui-matrix goes to `uiMatrixVersion = 6`. Every other counter is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because a shipped SDK ignores the member and keeps printing the link it printed before; nothing can change a shipped build. Cloud Sync files and end-to-end encryption (§13.2–§13.4, §13.8–§13.11) add unsigned routes, discovery members and one new cipher suite for stored data, and no `typ`, claim, header or signed shape. `PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2 and `CACHE_VERSION` 3. Two client tables move when their corpus lands: `syncScenariosVersion` goes from 2 to 3 (§11.5) and the new `sync-vectors.json` starts at `syncVectorsVersion = 1` (§13.10.8). A new SDK on a Worker that does not advertise `services.sync.encryption` stays local with status `unsupported` when the app requires E2E; an SDK that predates this amendment ignores every new member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 5` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), `syncScenariosVersion = 2` (§11.5), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. HA-12 adds the unsigned discovery member `core.presentation` (§5.5) and the client table `presentation-matrix.json` (`presentationMatrixVersion = 1`). Every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because an SDK that predates it ignores the member. The trust-custody amendment (§1, §2.3, §4.1, §7) changes no counter either (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `gateMatrixVersion` 2, `CACHE_VERSION` 3): its two cache slices are additive, its corpus cases are appended, and its one changed verdict (`trust-member-shapes-ignored`) is a client tightening. I-09 adds the account routes (§12.3), `license_owned` on key entry (§12.2 step 3) and the identity fragment's account members (§12.6): the identity routes are additive within v4 and detected from discovery (a client uses a route only when the fragment advertises it), no signed document changes, and every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2). Deployed SDKs keep the behaviour they shipped with: no SDK enforces `protocolVersion`, and an SDK that predates `?signer=` reads the default manifest as before. An install activated by a bundle through the old `importedBundle` marker re-imports after upgrading, and a bundle past its 30-day import window needs a fresh mint. LK-SKIP (§12.4.2) changes no counter: it adds the optional `authorize` parameter `key_return`, the request view's `keyReturn`, one portal route and the token answer's `via: "key"` behind an opt-in no deployed SDK sends, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2, `CACHE_VERSION` 3 and `transcriptVersion` 1. Cloud Sync adds unsigned routes detected from `services.sync` (§13): every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because Cloud Sync data is never signed, the config document keeps its shape and resolution (§2.2.1), and an SDK that predates it ignores `services.sync` and the catalog's `user` and `cloudSync` members. A new SDK on a Worker without the routes finds no `settings: true` and keeps `config.set` on the device. SP-53 changes no counter; it adds `backendMatrixVersion = 1` (§14, `backend-matrix.json`). Product backends add one request header to the developer's own backend and no Worker route, `typ`, claim or signed shape, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3. A deployed SDK never sends `X-PKey-License`, so a backend that adopts a drop-in before its apps update answers `license_required` until they do. SP-54 changes no counter: it adds one optional member inside the licence document's `profile` (`user`, §2.1), which §3.2 already leaves unchecked, appends three `licenseDocCases` and the section `licenseUserCases`, and adds no `typ`, claim or route, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2 and `CACHE_VERSION` 3. Every SDK that predates it ignores the member; a new reader against an older Worker reads `null`, and a backend that requires sign-in then answers `sign_in_required` until the Worker that signs the member is deployed. CM-29 adds the unsigned discovery member `services.commerce` and moves two device routes (§5.6). Every counter is unchanged, because an SDK that predates it ignores the member. DISC-01 adds the unsigned discovery member `core.portal` (§5.7) and the client table `portal-matrix.json` (`portalMatrixVersion = 1`); the terminal kits' ui-matrix goes to `uiMatrixVersion = 6`. Every other counter is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because a shipped SDK ignores the member and keeps printing the link it printed before; nothing can change a shipped build. Cloud Sync files and end-to-end encryption (§13.2–§13.4, §13.8–§13.11) add unsigned routes, discovery members and one new cipher suite for stored data, and no `typ`, claim, header or signed shape. `PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2 and `CACHE_VERSION` 3. Two client tables move when their corpus lands: `syncScenariosVersion` goes from 2 to 3 (§11.5) and the new `sync-vectors.json` starts at `syncVectorsVersion = 1` (§13.10.8). A new SDK on a Worker that does not advertise `services.sync.encryption` stays local with status `unsupported` when the app requires E2E; an SDK that predates this amendment ignores every new member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
 
 ## 10. Divergence & hardening ledger
 
@@ -1394,14 +1394,20 @@ a new device and point the person at an account instead (PORTAL §4.6).
 
 1. **Surfaces.** A key entry happens on one of three surfaces, on a product with Identity on:
    - `app`: `POST /<p>/license/activate`;
-   - `browser`: `POST /<p>/identity/session/license`;
+   - `browser`: `POST /<p>/identity/session/license`, and redeeming a key-return code at `token`
+     (§12.4.2). For that code the device is the app's own, not `browser:<licenseId>`, and the
+     entry is counted once, in the seat batch at `token`;
    - `portal`: `POST /api/claim/license-key`, once the licence's attach to the account commits.
 2. **Enrolled.** A device is enrolled on a licence when the `devices` row for
    `(product, device_id)` has that `license_id` and `status = 'authorized'`. A browser session's
    device is `browser:<licenseId>`, so the `browser` surface counts at most once per enrolment.
+   That id is derived from the licence, not presented by the caller, so on
+   `identity/session/license` enrolment spares an entry from counting but not from step 3: a
+   licence in an account is refused there even when `browser:<licenseId>` is enrolled.
 3. **Order on the two device routes.**
    1. The rate limit, the key and the licence, unchanged.
-   2. An enrolled device is answered as before: never refused, never counted.
+   2. An enrolled device is answered as before: never refused (except by step 3 on
+      `identity/session/license`, rule 2), never counted.
    3. When `identity.keyEntryRefusals` is on and the licence is usable and in an account
       (`licenses.account_id IS NOT NULL`): the flat
       `403 {"error":"license_owned","message":…,"signInUrl":…}`. `signInUrl` is the product's
@@ -1508,7 +1514,7 @@ Pinned by `identity-attach.json`, `identity-attach-errors.json` and
 5. **Sign-out.** Drops this device's binding, and no other device's, so its next licence document carries no `profile.user` (§2.1). `released` is true only
    when the sign-in bound the device (`bound_by = 'signin'`) to a licence of the account signing
    out: the device is then deauthorized and its token stops working. A device activated by key
-   or enrolment keeps its licence and token. A client flushes Cloud Sync before it signs out
+   or enrolment keeps its licence and token. It also deletes this device's restore key, whatever the gates say (§12.11.8). A client flushes Cloud Sync before it signs out
    (S-17 §5.4 rule 5) and drops its token when `released` is true.
 6. **Not auth failures.** `account_required`, `license_owned` and `license_email_bound` keep the
    client's token and state.
@@ -1534,6 +1540,7 @@ on (§12.8).
 | `scope`                                                | Optional, space-delimited `profile`, `email`, `cloudSync`. Absent: every one the product grants. Unknown values are ignored. `openid` is `invalid_scope` until I-21                                    |
 | `nonce`                                                | Optional, at most 255 characters, kept for I-21                                                                                                                                                        |
 | `login_hint`, `name_hint`, `purpose`, `license_choice` | Optional Polaris extensions. A hint prefills the card and verifies nothing, and one that does not normalise is dropped. `purpose` is `signin` or `attach`; `license_choice` is `card` or `app` (I-08b) |
+| `key_return`                                           | Optional, sent last. Only `allow`; any other value is `invalid_request`. Kept for `purpose=signin` on a product with License and the launch gate on, else dropped silently (§12.4.2)                   |
 
 1. **No redirect before both are valid.** `client_id` and `redirect_uri` are checked first. A bad
    `client_id` renders `invalid_client` (401) and a bad `redirect_uri` renders
@@ -1585,7 +1592,17 @@ on (§12.8).
 3. **A `200`** carries exactly `access_token` (the `pkeyt_` device token, not repeated as
    `token`), `token_type: "Bearer"`, `scope` (the granted subset), `schemaVersion`, `device`,
    `license` (`null` on a licence-less device) and `subject`. There is no `expires_in` and no
-   `refresh_token` before I-21, and no `keyEntries` before I-08b.
+   `refresh_token` before I-21, and no `keyEntries` before I-08b. The `200` for a key-return code
+   (§12.4.2) is exactly these members plus `via: "key"` and `keyEntries`. In it `scope` is `""`,
+   `license` is never `null`, and `subject` is `null`: the bind by key re-binds the device without an account, as `license/activate` does,
+   so it writes no binding and clears any binding the device held (U-02). The Worker sends
+   `via` only for a §12.4.2 code. A client reads the answer as a key return only when it sent
+   `key_return=allow` and the body carries `via: "key"`; `via` with any other value, or
+   `via: "key"` without the opt-in, is malformed. A `via: "key"` body is also malformed, and a
+   client refuses it, unless `scope` is `""`, `license` is an object, `keyEntries` is
+   `{used, limit}` with non-negative integers, `subject` is a pairwise-subject string or `null`,
+   and `access_token`, `token_type`, `device` and `schemaVersion` are as in the ordinary answer.
+   The client-core unit vectors pin this rule.
 4. **The device binds here.** With the licence chosen at Continue, the device claims a seat
    (seat-checked, `bound_by = 'signin'`, the pairwise subject written). With none to choose, it is
    bound licence-less. A device that presents its own live token in `Authorization: Bearer`
@@ -1600,7 +1617,9 @@ on (§12.8).
    beside them, as on `license/activate`: `403 not_entitled`, `403 device_limit` (with `limit`,
    `deviceCount`, `manageUrl`), `409 license_choice_required`, `429 rate_limited`.
    `interstitial_required` is answered only by the token-exchange grant (§12.11.3); refresh
-   (I-21) answers `unsupported_grant_type` until then.
+   (I-21) answers `unsupported_grant_type` until then. On a key-return code, `license_owned` (with
+   `signInUrl`) and `key_entry_limit` (with `keyEntries` and `manageUrl`) are flat under their own
+   codes, as on `license/activate`, and are not folded into `not_entitled`.
 6. **Never a token in a URL.** The device token is in the body of this response only, and the
    redirect carries a code that is useless without the verifier.
 
@@ -1692,9 +1711,90 @@ own token in `Authorization: Bearer`), `{kind: "create"}` or `{kind: "key", key}
    for the time it has left.
 4. **Budgets.** 30 reads per grant (`licenses`, `devices`, and each key attempt), 60 calls a minute
    per client network, failing closed.
-5. **Device code never issues a grant.** The cross-device channel can be phished (R1-07); only the
-   same-device channels (the web redirect here; loopback, scheme and claimed HTTPS by I-15; the
-   native exchange by I-13) can.
+5. **A device-code grant is issued only to a start that asked `licenseChoice: app`** (§12.10.1).
+   The cross-device channel can be phished (R1-07), so the grant it issues is narrower than the
+   same-device one (the web redirect here; loopback, scheme and claimed HTTPS by I-15; the native
+   exchange by I-13), and the person's approval page (I-37) is the consent. A grant with
+   `via: "device"` is bound to the product, the account, the subject and the flow's `deviceId`, as
+   any grant is, and it:
+   - never carries `fresh`, so it never makes the step-up that §12.11 asks for;
+   - cannot read devices: `devices` answers `404 not_found`;
+   - cannot Replace: `complete` with a `replaceDeviceId` answers `409 license_choice_required`, and
+     the view's `replace` is `null` (the `freeDeviceUrl` stays, so the person frees a seat in the
+     portal);
+   - keeps `keep` (the device's own token in `Authorization: Bearer`), `create`, `key` and a
+     listed `license` as they are.
+
+### 12.4.2 The key return [C]
+
+Pinned by `redirect-web-key-return.json` and `redirect-web-key-return-limit.json` (transcripts,
+recorded by LK-SKIP.4; their `browser` steps are the requests no SDK makes). The long form is
+`plans/LK-SKIP.md`. A person sent to the Polaris Locker card by an app, who holds a licence key,
+can return to the app on that licence without an account. The app gets a device on the key's
+licence, with no account and no subject. Nothing is signed and no signed document changes:
+`PROTOCOL_VERSION` stays 5.
+
+1. **Opt-in at both ends.** The app sends `key_return=allow` on `authorize` (§12.4) with
+   `purpose=signin`, and the request view answers `keyReturn: true` (§12.7.2). Without the
+   parameter, with `purpose=attach`, with License off or with the launch gate
+   `launch.identityKeyReturn` off, the request carries no key return and the card offers none.
+   `attach` never gets it, because it would bind the device to a different licence. A request
+   created by device code never gets it, because that channel can be phished (R1-07); the route
+   answers `404` for it.
+2. **The route** is `POST /api/signin/requests/<handle>/key`, same-origin portal JSON with the
+   binder cookie of the browser that started the request and no account session. The body is
+   `{"key": "pkey_…"}` (at most 1 KiB) and the answer is
+   `{"redirect": "<redirect_uri>?code=…&state=…&iss=<issuer>"}`. The key is in this body only:
+   never in a URL, the redirect, the request or code record, a log or the audit.
+3. **Refusals** are checked in this order, and none of them consumes the request:
+   1. a method other than `POST` is `405`; a cross-origin request is `404`; a content type other
+      than JSON, a body over 1 KiB or a body that is not valid JSON is `400 invalid_request`;
+   2. 10 calls a minute per client network, charged before any lookup, failing closed:
+      `429 rate_limited` with `retryAfter`;
+   3. a handle that is unknown, expired, bound to another browser, already taken, for a product
+      whose Identity or License is off, without `keyReturn`, or whose launch gate is off is
+      `404 not_found`, always in the same shape;
+   4. 5 calls per request handle in 600 seconds: `429 rate_limited`;
+   5. a malformed key is `422 bad_request`; a key that is unknown, inactive, or for another
+      product than the request's, a missing licence, or a licence that is not usable (not
+      `active`, or past `expiresAt`), is `401 unauthorized` (the answers of
+      `POST /api/key/preview`, §12.2 rule 8, and for an unusable licence the answer of
+      `license/activate`, §12.2 rule 3.3);
+   6. a licence in an account is `403 license_owned` with `signInUrl`, whatever
+      `identity.keyEntryRefusals` says. An owned licence never moves by key through the card;
+   7. with `identity.keyEntryRefusals` on and `used ≥ limit`: `403 key_entry_limit` with
+      `keyEntries` and `manageUrl` (§12.2 rule 3 step 4).
+4. **Success** takes the request in one atomic consume, so one press gives one code, and issues a
+   code that lives 60 seconds and is single use, bound to the product, `client_id`, `redirect_uri`
+   and the PKCE challenge. It names the key (by its peppered hash) and its licence, no account and
+   no scope. Seats are not checked here, because the device is unknown until `token`.
+5. **`token`** redeems the code as in §12.5 rules 1 and 2. With `launch.identityKeyReturn` off,
+   or Identity or License off for the product, a key code is `invalid_grant`. It re-resolves the
+   key by the code's key hash and answers `invalid_grant` if the key is no longer active, the
+   licence is unusable, or the licence's product differs. It repeats item 3.6 whatever
+   `identity.keyEntryRefusals` says: a licence that is in an account at `token` is refused with
+   a flat `403 license_owned` with `signInUrl`, and nothing is counted. A claim that commits
+   after that check and before the seat claim is refused the same way: the seat claim and the
+   key entry in its batch write nothing while the licence is in an account, so no seat is taken
+   and no entry is counted. The guard is on the seat claim of `token` always and of
+   `license/activate` and `identity/session/license` while `identity.keyEntryRefusals` is on. It then binds the device
+   exactly as `license/activate` binds the same key and `X-PKey-Device`: `bound_by = 'key'`, one
+   `browser` key entry (§12.2 rule 1), and the seat, fingerprint and hardware rules unchanged, so
+   `device_limit`, `fingerprint_required`, `hardware_mismatch` and `key_entry_limit` come from
+   there. `token` carries no fingerprint, so on a tier whose fingerprint mode is `strict` the
+   answer is always `403 fingerprint_required`, as for a sign-in at `token`, and in the other
+   modes the device is recorded unverified. It writes no sign-in binding, clears any binding the device held (U-02), and never
+   answers `choose` (§12.5.1). The `200` is the key-return body of §12.5 rule 3. The code is consumed before the bind, so a refusal at `token`
+   spends it and the person presses the card again for a fresh code; no seat was taken.
+6. **A client** uses the answer only after its own opt-in, and only if the body is well formed
+   (§12.5 rule 3: `scope` `""`, `license` an object, `keyEntries` `{used, limit}` of
+   non-negative integers, `subject` a pairwise-subject string or `null`, the other members as in
+   the ordinary answer; anything else is malformed and refused). It stores the token as a key
+   activation, sets its stored subject to the answered value (which clears it on `null`), and
+   reports an activation, never a sign-in.
+7. **Old Workers and clients.** A Worker without this feature ignores `key_return`, and the card
+   shows no skip. A client that never sends it gets today's answers byte for byte. A key code
+   redeemed by a `token` that predates this feature fails closed with `invalid_grant`.
 
 ### 12.6 Discovery
 
@@ -1721,6 +1821,12 @@ client decides what it can offer by the endpoints present (`authorize`, `token`,
 and never by `configured` alone. I-08b adds `choiceLicenses`, `choiceDevices`, `choiceComplete` and
 `choiceCancel` (§12.5.1) beside `token`; an SDK sends `license_choice=app` only when all four are
 present.
+
+The identity fragment gains `"deviceChoice": true` (§12.10.1) from the release that serves the
+`choose` poll answer, beside `endpoints`, while the product's License service is on. An SDK sends `licenseChoice: "app"` on the device start
+only when `deviceChoice` is present and all four `choice*` endpoints are present. It may always
+send `loginHint`, `nameHint` and `purpose`: an older Worker ignores them. `DISCOVERY_VERSION`
+stays 2, because an SDK that predates the member ignores it.
 
 ### 12.7 Passthrough request metadata
 
@@ -1758,7 +1864,8 @@ overrides the default in its configuration or per call, and opts out with an emp
 `PKeyOptions.send_device_name = false`).
 
 `POST /<p>/identity/auth/device/start` answers `deviceName`: the stored label, or `null`. An
-older Worker omits the member, and an SDK then shows the label it sent. `license/activate` and
+older Worker omits the member, and an SDK then shows the label it sent. The start also takes the hints and
+the licence-choice mode (§12.10.1). `license/activate` and
 `devices/register` store the label only while the device row has none, so a console or portal
 rename always wins.
 
@@ -1776,10 +1883,14 @@ nameVerified}`, with `kind` one of `web`, `native` and `device`. `appName` and
   product, the kind, the label, the user code, the origin and a flow reference. The device-code
   confirmation page creates handles. There is no public creation route.
 - **`GET /api/signin/requests/:handle`** answers `{request, client, deviceLabel, userCode,
-expiresAt}` to the binding browser, with `cache-control: no-store`. An unknown, expired or
+expiresAt}` to the binding browser, plus `purpose`, `licenseChoice`, `loginHint` and `nameHint`
+  on a request that carries them: an `authorize` request (§12.4) and a `device` request whose start
+  sent them (§12.10.1; the view has no `scope` for a `device` request), with `cache-control: no-store`. An unknown, expired or
   unbound handle answers `404 not_found`, and so does a handle for a product whose Identity toggle
   is off. No display query parameter is read: `appName`, `name`, `icon`, `developer`, `origin`
-  and `device` are all ignored.
+  and `device` are all ignored. The view carries `keyReturn: true` on a request that recorded
+  `key_return=allow` (§12.4.2) and no such member otherwise, so every earlier answer is byte for
+  byte what it was.
 
 #### 12.7.3 App consent
 
@@ -1818,6 +1929,7 @@ expiresAt}` to the binding browser, with `cache-control: no-store`. An unknown, 
    licence's key still activates a device. No device of the product carries a sign-in binding:
    turning Identity off clears every binding (no seat is released, documents are unchanged), and
    the Worker refuses to write one while the toggle is off.
+6. Restore keys (§12.11.8) are revoked, not hidden: `DELETE /<p>/identity/restore` answers `204` and every deletion runs while Identity is off; `POST` and the restore grant are gated.
 
 This discloses nothing new: discovery already publishes `identity: {enabled:false}` for every
 existing product, and an unknown slug keeps its 404. The transcript `identity-disabled.json`
@@ -1867,15 +1979,16 @@ and `deviceId`). Nothing here is signed: `PROTOCOL_VERSION` stays 5. The types a
 `DevicePollResponse`, `DevicePollSlowDown` and `DevicePollUnavailable` in `@polaris-key/protocol/identity`; the transcripts
 `devicecode-*.json` and `locker-devicecode.json` pin it.
 
-| HTTP | Body                                                              | Meaning                                                                              | SDK result                               |
-| ---- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------- |
-| 200  | `{"status":"pending"}`                                            | Not yet confirmed, signed in and approved                                            | keep polling                             |
-| 429  | `{"status":"slow_down","interval":n}`                             | Polled inside `interval` (a state, not an error body)                                | lengthen the interval                    |
-| 200  | `confirm` / `ready`                                               | Unchanged (I-37: `attachable` is always `false`)                                     | unchanged                                |
-| 200  | `{"status":"timeout"}`                                            | The flow is gone: expired, redeemed, or dropped after a refusal                      | `expired`                                |
-| 200  | `{"status":"error","reason":"access_denied"}`                     | A person refused: Deny, **Not you?**, the chooser's Cancel, or Deny on the code page | `sign-in-denied`                         |
-| 503  | `{"error":"unavailable","message":"try again"}`, `Retry-After: n` | Approved, but the sign-in could not finish yet. The flow is kept                     | keep polling (`server-error`, transient) |
-| 200  | `{"status":"error"}`                                              | The sign-in failed after approval and will not be retried; the cause is not said     | `sign-in-failed`                         |
+| HTTP | Body                                                                             | Meaning                                                                              | SDK result                               |
+| ---- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------- |
+| 200  | `{"status":"pending"}`                                                           | Not yet confirmed, signed in and approved                                            | keep polling                             |
+| 429  | `{"status":"slow_down","interval":n}`                                            | Polled inside `interval` (a state, not an error body)                                | lengthen the interval                    |
+| 200  | `confirm` / `ready`                                                              | Unchanged (I-37: `attachable` is always `false`)                                     | unchanged                                |
+| 200  | `{"status":"timeout"}`                                                           | The flow is gone: expired, redeemed, or dropped after a refusal                      | `expired`                                |
+| 200  | `{"status":"choose","grant":"sg_…","expiresIn":300,"choices":LicenseChoiceView}` | A licence choice is due, and the start asked `licenseChoice: "app"` (§12.10.1)       | the choose outcome; stop polling         |
+| 200  | `{"status":"error","reason":"access_denied"}`                                    | A person refused: Deny, **Not you?**, the chooser's Cancel, or Deny on the code page | `sign-in-denied`                         |
+| 503  | `{"error":"unavailable","message":"try again"}`, `Retry-After: n`                | Approved, but the sign-in could not finish yet. The flow is kept                     | keep polling (`server-error`, transient) |
+| 200  | `{"status":"error"}`                                                             | The sign-in failed after approval and will not be retried; the cause is not said     | `sign-in-failed`                         |
 
 1. `reason` appears only on `error`, and `access_denied` is its only value. A client reads an
    unknown `reason` as absent.
@@ -1908,6 +2021,50 @@ first and nothing else changes for it. Every SDK since its first device-code bui
 the poll as transient, so a build that predates rule 5 completes on the retry. The Worker deploys
 first, and nothing else changes for it.
 
+#### 12.10.1 Device start members and the `choose` answer [C]
+
+Written by UK-42.22. Nothing here is signed: `PROTOCOL_VERSION` stays 5 and `DISCOVERY_VERSION` 2.
+The types are `DeviceStartRequest` and `DevicePollResponse` in `@polaris-key/protocol/identity`;
+the transcript `holders-add-to-account-device.json` pins it.
+
+1. **The start body.** `POST /<p>/identity/auth/device/start` takes, beside `deviceId` and
+   `deviceName` (§12.7.1), four optional members in camelCase JSON:
+
+   | Member          | Value              | Rule                                                                 |
+   | --------------- | ------------------ | -------------------------------------------------------------------- |
+   | `loginHint`     | an email address   | not a strict email: dropped                                          |
+   | `nameHint`      | a label            | normalised as a device label (§12.7.1); dropped when nothing is left |
+   | `purpose`       | `signin`, `attach` | any other value, or a non-string: `400 bad_request`                  |
+   | `licenseChoice` | `card`, `app`      | any other value, or a non-string: `400 bad_request`                  |
+
+   A hint prefills the card and verifies nothing, as on `authorize` (§12.4). A non-string
+   `loginHint` or `nameHint` is `400 bad_request`. `scope` is ignored: the device sign-in keeps the
+   product's full grant. The members are stored with the flow and with the device request record
+   (§12.7.2). The start's answer does not change. A start that sends none of them is card mode, as
+   every start was before this subsection.
+
+2. **The `choose` answer.** The poll answers `200` `{"status":"choose","grant":"sg_…",
+"expiresIn":300,"choices":LicenseChoiceView}` (`PendingSignIn`, §12.5.1) only when:
+   - the start carried `licenseChoice: "app"`;
+   - the product runs License; and
+   - a choice is due, which means what it means for `token` (§12.5.1): the account holds a
+     candidate, the device runs on a licence outside the list (`keep`), or it holds none, the policy
+     grants none and the product accepts keys.
+
+   With no choice due the poll binds as `token` does with no choice due and answers `ready`. It
+   never mints a second licence in app mode.
+
+3. **Order.** Every refusal, `confirm` (when it is asked) and the account claim come before
+   `choose`, unchanged. In app mode the legacy chooser never opens, so the person never picks a
+   licence on the card. In card mode (absent or `card`) the poll is exactly §12.10 without this
+   subsection.
+4. **The grant.** It is §12.5.1's grant with `via: "device"` and the narrowing of §12.5.1 rule 5.
+   The flow is consumed atomically when the grant is issued, so a later poll answers `timeout`; a
+   client stops at `choose`. A store failure while issuing the grant is the `503` of rule 5, and
+   the flow is kept.
+5. **Capability.** The identity fragment of discovery carries `"deviceChoice": true` while the
+   Worker serves this subsection and the product's License service is on (§12.6).
+
 ### 12.11 Platform sign-in, the link offer and nearby approval
 
 Written by I-13.1 (`plans/CC-01-auto-sign-in.md` §2). Nothing here signs a new document: `PROTOCOL_VERSION` stays 5 and `DISCOVERY_VERSION` 2. The Worker serves the subsections in the slices named below, and discovery names an endpoint only from the release that serves it (§12.6), so an SDK uses a rung only when its endpoint is present. The types are in `@polaris-key/protocol/identity`. The platform sign-in answers only while the product's Identity service is on; with it off every route here is `404 not_found` and discovery omits the members (§12.8).
@@ -1923,7 +2080,7 @@ Every route here that binds a device takes `proof`: an Ed25519 signature (64 byt
 5. the purpose's value
 6. the base64url SHA-256 of the presented provider token, or `-` when none
 
-A field makes the proof invalid unless it is non-empty and every byte is in 0x21..0x7e (so a newline, a space, a control byte or a non-ASCII byte fails). Purposes are `keys`, `nonce`, `exchange`, `link`, `nearby-start`, `nearby-poll`, `nearby-approve`, `vouch` and `restore`. Keys are raw 32-byte public keys in base64url. A proof is one purpose only: one signed for another purpose, product or device does not verify. Its vectors are `device-proof.json` (§15.8). A bad proof is `400 invalid_grant` on `token`; no refusal names the field that failed. A purpose outside the nine is invalid. The signature is checked strictly (§1.1): canonical base64url of 64 bytes, `S` below `L`, and the signing key and `R` neither of small order nor non-canonical. The `keys` purpose (§15.8) also needs `issuedAt` strictly newer than the last one accepted for the device.
+A field makes the proof invalid unless it is non-empty and every byte is in 0x21..0x7e (so a newline, a space, a control byte or a non-ASCII byte fails). Purposes are `keys`, `nonce`, `exchange`, `link`, `nearby-start`, `nearby-poll`, `nearby-approve`, `vouch` and `restore`. Keys are raw 32-byte public keys in base64url. A proof is one purpose only: one signed for another purpose, product or device does not verify. Its vectors are `device-proof.json` (§15.8). A bad proof is `400 invalid_grant` on `token`; no refusal names the field that failed. A purpose outside the nine is invalid. The `restore` value is defined in §12.11.8. The signature is checked strictly (§1.1): canonical base64url of 64 bytes, `S` below `L`, and the signing key and `R` neither of small order nor non-canonical. The `keys` purpose (§15.8) also needs `issuedAt` strictly newer than the last one accepted for the device.
 
 Three purposes need a word on their value. **`nonce`:** no route uses `nonce` today; it is reserved. **`link`:** the value depends on the branch of `POST /<p>/identity/link` (§12.11.4). With a `linkHandle` it is the `linkHandle` and line 6 is `-`. With a `subjectToken` it is `<nonce>.<signKey>` (the nonce of §12.11.2 and the presenting signing key) and line 6 is the SHA-256 of the `subjectToken`. **`restore`:** the `restore` value is defined in §12.11.8. The `device-proof.json` rows for `nonce`, `link` and `restore` are illustrative: they pin the line format and the one-purpose rule, and their values are not what a route signs (the `nonce` row signs `<signKey>.<agreeKey>`, the `link` and `restore` rows a bare key, and the `link` row pairs it with a token hash).
 
@@ -1972,7 +2129,7 @@ The lookup finds an existing link and never creates an account. It is never by e
 2. **`complete` takes consent.** `choice/complete` (§12.5.1) takes `{grant, choice, consent?: {claims}, deviceName?}`. `consent` is required on a grant that was issued with `confirm`, and its absence is `400 bad_request` with the grant left open. The consent row is written right after the device is bound (and, for `create`, the licence minted), before the token is returned. `cancel` writes nothing.
 3. **`confirm` carries no licence view.** Before the person consents the app learns nothing about the account beyond what the token already showed. A client that gets `confirm` shows the consent, then sends it to `complete` alone. If a licence choice is due, `complete` refuses with `license_choice_required` and the view (§12.5.1), the grant stays open, and the client sends the choice with the consent.
 4. **`interstitial_required`.** `reason` is `no_link` or `terms`; a client reads an unknown `reason` as `no_link`. `url` is the sign-in card for this product. `linkHandle` is `lh_` and 43 base64url characters, held 600 seconds, and bound to the product, the device and the key. It is used once, by the link offer (§12.11.4), so the app does not ask the provider for a second token. This answer registers no device key: a client that links by handle first registers its keys with `PUT /<p>/devices/keys` (§15.8), because the link proof is checked against the device's registered signing key.
-5. **The grant is same-device.** A grant issued here follows §12.5.1 rule 5: the exchange is a same-device channel. Device code and nearby approval never issue one.
+5. **The grant is same-device.** A grant issued here follows §12.5.1 rule 5: the exchange is a same-device channel. Nearby approval never issues one, and the device code issues only the narrower one of §12.5.1 rule 5.
 6. **Never a token in a URL**, and a `subject_token` is never logged or audited. Audit carries the provider kind and the outcome only.
 
 #### 12.11.4 The link offer
@@ -2016,6 +2173,7 @@ All three live under `/<p>/identity`. The request handle is `nr_` and 22 base64u
 #### 12.11.6 Discovery and errors
 
 - **Discovery** (identity fragment): `exchange: {"kinds":("google"|"apple")[], "google"?: {"serverClientId"}}`, present only when the product declares a kind; `nearby: true`; the endpoints `nonce`, `link`, `nearbyStart`, `nearbyApprove` and `nearbyPoll`. `nearby` and its three endpoints are present only while Identity, the product setting `identity.nearby` (on by default) and the operator gate `launch.identityNearby` (off by default) all allow it. Unsigned and additive. A client that finds none of them starts at the regular sign-in.
+- **Silent restore** (§12.11.8). `restore: true` and the endpoint `restore`, present only while Identity, the product setting `identity.restore` (on by default) and the operator gate `launch.identityRestore` (off by default) all allow it.
 - **Game kinds** (§12.11.7). `exchange.kinds` may also hold `gamecenter` and `pgs`, and `exchange.pgs` is `{"serverClientId"}`. A client ignores a kind it does not know: it is never a decode failure.
 - **Errors.** Two new Worker codes: `interstitial_required` (403, flat, on the exchange) and `not_nearby` (403, nested, on `nearby/approve`). One new client-only code: `platform-identity-unavailable` (no Play services, no declared kind, or the OS refused). The rest are existing codes: `invalid_grant`, `bad_request`, `device_keys_invalid`, `device_keys_required` (widened: Core, not only Cloud Connect, §12.11.5 rule 5), `step_up_required`, `link_conflict`, `device_limit`, `license_choice_required`, `account_required`, `not_found`, `rate_limited`, `cancelled` and `sign-in-denied`. The registry is `conformance/parity/errors.json`.
 - **Deployed clients and workers.** The Worker deploys first. A client that predates this subsection ignores the discovery members and never sends the grant. A client of this version against an older Worker sees no `exchange` member and starts at the regular sign-in; an `unsupported_grant_type` is treated as a failed rung. Pending nonces, handles and requests expire within 600 seconds.
@@ -2036,10 +2194,10 @@ Two more platform identities use the exchange. This subsection is unsigned and a
 
 **The Play Games code.** The client asks for a server-side access code for the `serverClientId` of discovery's `exchange.pgs`, with no extra scopes, and never starts Play Games' sign-in at launch.
 
-**Checks.** The checks run where §12.11.3's run, after the nonce is spent. Every failure is the one `400 invalid_grant`, with no oracle.
+**Checks.** The checks run where §12.11.3's run, after the nonce is spent. Every failure is the one `400 invalid_grant`, with no oracle, except an exhausted Play Games redemption budget (below).
 
-- **Game Center.** The product has Game Center on, a team id, and the bundle id among its Apple bundle ids (declared and outlets). The signature's timestamp is Apple's, in milliseconds, and satisfies `now − 120 s ≤ timestamp ≤ now + 30 s`. The key URL is an `https://static.gc.apple.com/public-key/*.cer` address, fetched without redirects, and its certificate chain must reach a pinned DigiCert root through a pinned intermediate, with the leaf issued to `Apple Inc.` for code signing. The signature is RSASSA-PKCS1-v1_5 with SHA-256 over `teamPlayerID ‖ bundleId ‖ u64be(timestamp) ‖ salt`. One signature is accepted once, for 180 seconds.
-- **Play Games.** The product has `playGames.applicationId` and `playGames.serverClientId` set and a server credential present. The Worker redeems the code once at Google's token endpoint with the product's client id and secret, then calls `applications.verify` for the application with the access token. Both answers must succeed. The access token is discarded, and no refresh token or ID token is kept or read.
+- **Game Center.** The product has Game Center on, a team id, and the bundle id among its Apple bundle ids (declared and outlets). The signature's timestamp is Apple's, in milliseconds, and satisfies `now − 120 s ≤ timestamp ≤ now + 30 s`. The key URL is `https://static.gc.apple.com/public-key/gc-prod-<n>.cer`, n of 1 to 4 digits, and `teamPlayerID` is `T:` followed by 1 to 128 of `A–Z a–z 0–9 _ -`. The key is fetched without redirects, and its certificate chain must reach a pinned DigiCert root through a pinned intermediate, with the leaf issued to `Apple Inc.` for code signing. The signature is RSASSA-PKCS1-v1_5 with SHA-256 over `teamPlayerID ‖ bundleId ‖ u64be(timestamp) ‖ salt`. One signature is accepted once, for 180 seconds.
+- **Play Games.** The product has `playGames.applicationId` and `playGames.serverClientId` set and a server credential present. The Worker redeems the code once at Google's token endpoint with the product's client id and secret, then calls `applications.verify` for the application with the access token. When `applications.verify` answers `403`, the player is read from `players/me` with the same token. That call names no application and returns no alternate id, so the redemption remains the binding. Every other answer must succeed. Redemptions are limited to 300 a minute per product, counted before the secret is opened. An exhausted or unavailable budget answers `429 rate_limited` with `Retry-After` (60 seconds at most), which says nothing about the code. The access token is discarded, and no refresh token or ID token is kept or read.
 
 **Subject.** Game Center's subject is `teamPlayerID`, the only player id Apple signs, and it is per team. Play Games' subject is `player_id` from `applications.verify`, per application; when no link is found and Google sent `alternate_player_id`, the lookup tries it too. Both links carry no email and `reach` `developer`.
 
@@ -2054,6 +2212,81 @@ Two more platform identities use the exchange. This subsection is unsigned and a
 **Errors.** No new code. `invalid_grant` covers a refused signature or code, `invalid_request` an unknown token type or the gate being off, `unavailable` an unreachable Apple or Google host, and the client-only `platform-identity-unavailable` a player who is not signed in to Game Center or Play Games.
 
 **Deployed clients and workers.** The Worker deploys first with the gate off. A client of this version against an older Worker, or with the gate off, sees no game kind in discovery and skips the rung; a game token sent anyway is `400 invalid_request`, a failed rung. Links with issuer `gamecenter` or `pgs` stay inert after a rollback, and single-use records expire within 600 seconds.
+
+#### 12.11.8 Silent restore (I-49)
+
+A device that was signed in keeps a restore key in an end-to-end platform backup (iCloud Keychain, Block Store). A new device of the same person redeems it, once, and is signed in with no click. This subsection is unsigned and additive: no signed document, proof format or error code changes, and `PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2 and `corpusVersion` 2. The types are in `@polaris-key/protocol/identity`.
+
+**The key.** One row per (product, device), held as an id, `rk_` and 16 random bytes in base64url (22 characters), and a secret, `rs_` and 32 random bytes in base64url (43 characters). The Worker keeps the id, the product, the device, the pairwise subject, the peppered HMAC of the secret and two dates (`created_at`, `checked_at`); never the secret. A key reaches one product and one account: never another product, the card or the licence. A key is redeemed only for the product it was made for: the secret of one product's key, presented with another product's `client_id`, is refused exactly as a wrong secret is.
+
+**Enrol and revoke.** `POST|DELETE /<p>/identity/restore` (device bearer, CORS, `no-store`).
+
+- **`POST`** takes JSON `{restoreId?}`.
+  - `200 {"status":"current"}` only when `restoreId` is a live key of this product and subject, **held by the calling device** (its `device_id` is the caller's), and made less than 90 days ago. Its `checked_at` moves. A key of another device of the same subject is never `current` for this one: a shared backup item cannot keep a signed-out device's key alive.
+  - Otherwise `201 {"restoreId","secret"}`, which replaces this device's key. A subject holds at most 10 keys for a product; the one with the oldest `checked_at` goes.
+  - `403 account_required` when the device holds no sign-in binding; `404 not_found` when the feature is off; `400 bad_request`; `401`; `429 rate_limited`.
+- **`DELETE`** deletes this device's key and answers `204`, whether or not one existed, and whatever the state of Identity, the product setting or the launch gate. Only the device bearer is required.
+
+A client enrols after any completed sign-in, from any rung, and checks at most once every 24 hours on a stored sign-in. It writes the item only on a `201`. Enrolment and check are one route, so a client that finds its key older than 90 days simply gets a `201`.
+
+**The grant.** `POST /<p>/identity/token`, form-encoded, as §12.5, with `X-PKey-Device`:
+
+| Parameter                       | Value                                                                                                                    |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `grant_type`                    | `urn:polaris-key:grant-type:restore`                                                                                     |
+| `client_id`                     | the product slug                                                                                                         |
+| `restore_id`, `restore_secret`  | the key's id and secret                                                                                                  |
+| `device_key`, `agree_key`       | the device's signing and agreement keys                                                                                  |
+| `proof`                         | the `restore` proof (§12.11.1): value `<restore_id>.<device_key>`; the sixth line is the base64url SHA-256 of the secret |
+| `license_choice`, `device_name` | as §12.11.3                                                                                                              |
+
+The checks run in this order. Every failure after step 1 is the one `400 invalid_grant`, with no oracle:
+
+1. the gate: with the launch gate or the product setting off, the answer is `400 unsupported_grant_type`; with Identity off the route answers `404`, as every identity route does. Either way nothing is read or consumed;
+2. the shape of the parameters, and the rate limit;
+3. the proof, which is stateless;
+4. the device's held signing key equals `device_key` (a device with none registers it in step 10);
+5. the key is found by id **and** belongs to the product `client_id` names, and its peppered HMAC equals the secret's, in constant time. The HMAC is computed for a missing row too, against a fixed value, so the time says nothing. A wrong secret, or a key of another product, does not consume the key;
+6. the key is consumed by one compare-and-set delete on its id, its product and its hash, so a replay finds nothing;
+7. the subject resolves to an active account through merge aliases; the device that enrolled the key is still authorized and signed in as that account; the account has an address a security notice can reach (a verified address that is not suppressed; an Apple private-relay address only once the platform's relay sender is registered); and the account has redeemed fewer than 5 restore keys for the product today, else `429 rate_limited`;
+8. an `agree_key` held by another device of the product is refused;
+9. the product's terms are accepted, then consent for this product stands (§12.11.3 rule 1);
+10. the device is bound and the answer built as §12.11.3's silent single path, and the device's keys are registered through Core's operation (§15.8) with `via: "restore"`.
+
+The answers are §12.11.3's, less `interstitial_required` with `no_link`: a `200` token (`issued_token_type` device), `confirm`, `choose`, `403 terms`, `not_entitled`, `device_limit`, `license_choice_required` (409) or `429`. A store failure is `503 unavailable`. In protocol terms the `200` and `403` bodies are `RestoreTokenResult`.
+
+- **`confirm`.** Its `consent.as` is `{provider: null, email: null}`: a restore proves a key, not a provider token, so the view names no provider and carries no address. Everything else in the view is §12.11.3 rule 1's.
+- **After the key is consumed.** Steps 7 to 10 may still refuse (`terms`, `not_entitled`, `device_limit`, a pending `confirm` or `choose` the person abandons). The key is gone and the next enrolment replaces it. `choice/complete` on a restore grant does not check the restore gate again, so a person who started before the gate went off can finish.
+- A restore never writes a `signin-fresh` mark, so it offers no link (§12.11.4). Audit `signin.restore` names the device and never the secret.
+- **The notice.** A sign-in by restore sends the security notice `appDeviceApprovedNotice` with `via: "restore"` to every verified address on the account. It is sent when the sign-in completes: on the `200` of the grant, or on `choice/complete` after a `confirm` or `choose`, for which the grant carries `via: "restore"`. Its action is "Remove this device", a link to Polaris Locker's Devices section; the link carries no device id, because email links get logged, and the person finds the row by its label and its "Signed in from backup" badge (the badge shows while the device is marked as a restore origin, at most 270 days). The notice's second line, "Or sign out everywhere", links to the sessions section; signing out everywhere unbinds every device of the account and so ends every restore key (step 7 refuses a key whose enrolling device is no longer signed in). Removing the device deletes every restore key of the account for the product, as Revocation below says. `GET /api/me/devices` lists the account's licence-less devices and `DELETE /api/me/devices/{product}/{deviceId}` removes one; a device bound to a licence is removed through its licence and the account route answers it `404`.
+
+**Revocation.** A key is deleted:
+
+- by `identity/signout`, in the same request and before it answers (§12.3 rule 5);
+- when its device is unbound or removed. Removing a device that signed in by restore deletes **all** the subject's keys for the product, because the secret may have been copied with the backup;
+- when the app is removed from Connected apps (the account's keys for that product);
+- on account deletion, and for the losing account of a merge;
+- on product deletion;
+- when the product's Identity is turned back on (all the product's keys, because `DELETE` answers `404` while Identity is off; one audit row names the reason);
+- by maintenance, 180 days after its last check;
+- by `DELETE`, above.
+
+A deletion this list misses leaves no working key: step 7 refuses a key whose enrolling device is no longer authorized and signed in as the key's account.
+
+Every deletion and `DELETE` runs whatever the state of Identity, the product setting or the launch gate, and so does the 180-day maintenance. Only `POST` and the grant are gated. The operator has a "purge restore keys" action per product (step-up, the product's slug typed), which deletes that product's restore keys and restore marks and is audited.
+
+The account export lists `{createdAt, checkedAt}` per key and never the hash.
+
+**Limits** (all fail closed, `429 rate_limited`): the grant, 10 a minute per client network, 5 a minute per device and 5 a day per account (counted once the key's account is known, so a refused grant has used its key); enrolment, 10 a day per device and 20 a minute per client network.
+
+**Gates.** The platform launch gate `launch.identityRestore` is off by default. The product setting `identity.restore` (manifest member `identity.restore`) is on unless the developer switches it off. Discovery's identity fragment carries `restore: true` and the endpoint `restore` only while Identity, the setting and the gate all allow it. Keys stay inert while the feature is off, and are still revoked (above).
+
+**Client rung.** A client tries the grant (rung 2 of the sign-in ladder) after a stored sign-in misses, with no explicit sign-out, when discovery names `restore` and the app's option allows it.
+
+- **Sign-out.** An explicit sign-out sets a flag in storage that no backup carries (outside iCloud Keychain and Android Auto Backup). Only an interactive sign-in clears it, and while it is set the client skips rung 2 and does not enrol. The client then deletes its item and sends `DELETE restore`. It does so whatever the Worker's sign-out answers, and also when discovery cannot be loaded; a sign-out that cannot reach the Worker reports a network error. A platform backup call that does not answer within a bound counts as an unavailable store. When `DELETE restore` cannot reach the Worker, the client queues it and retries at the next launch, before any other call. With no bearer, the DELETE stays queued until a sign-in provides one.
+- **Answers.** On `invalid_grant` an Android client deletes its item; an Apple client does not, because a synchronizable delete reaches every device. On `429`, `503`, a network failure or an unavailable store it leaves the item and goes on. When the key was consumed and the sign-in was then refused (above), the client falls to rung 3 of the ladder. A client never logs the secret.
+
+**Deployed clients and workers.** The Worker deploys first with the gate off. A client that predates this subsection ignores `restore` and never enrols. A client of this version against an older Worker finds no member, skips the rung and never enrols. After a rollback the table goes unread and items in backups stay inert (`unsupported_grant_type` counts as a failed rung); after a roll-forward, keys younger than 180 days work again.
 
 ## 13. Cloud Sync (HTTP, additive)
 
@@ -2107,7 +2340,7 @@ Every answer is `no-store` except the pull's ETag revalidation. Deleting a file 
 
 ### 13.3 Push (U-05, U-09)
 
-Body: `{"clientId":"c_…","cursor":N,"atomic":false,"mutations":[{"mutationId":41,"target":{"setting":"audio.music.volume","scope":"user"},"op":"set","value":0.6,"editedHlc":"0190f3a2c1b4:0003"}]}`. More than 100 mutations is `400 bad_request`; more than 256 KiB is `413 body_too_large`.
+Body: `{"clientId":"c_…","cursor":N,"atomic":false,"mutations":[{"mutationId":41,"target":{"setting":"audio.music.volume","scope":"user"},"op":"set","value":0.6,"editedHlc":"0190f3a2c1b4:0003"}]}`. More than 100 mutations is `400 bad_request`; a body that nests more than 64 levels (`MAX_JSON_DEPTH`, §1.2) is `400 bad_request`; more than 256 KiB is `413 body_too_large`.
 
 - **Setting targets** are `{setting, scope}`, `scope` `user` or `platform` (the server derives the platform family from the device row). The server classifies the key against the active catalog with `syncedSettings`. A declared key that is not a `config` key, or a `local` key, is `rejected` with `setting_not_synced`; this is a backstop, because the client never sends one. A synced key pushed with another scope than its route's is refused the same way, and so is an open setting pushed with `platform`. A declared key is validated against its entry (`value_invalid`). An undeclared key is an open setting: `lastWrite`, schema-less, at most 8 KiB (`value_invalid` beyond). The server never refuses a key for a lock, because locks differ per device.
 - **Record targets** are `{record: [collection, id]}` (U-09). The name is matched against the catalog's declarations by the rule of §13.7, and the server answers the first check that fails, in this order:
@@ -2143,12 +2376,12 @@ A `setMember` or `removeMember` whose `member` is longer than 1 KiB of UTF-8 (`S
 - **Absent records.** A `delete` of a record the store holds no row for answers `ok`, with the store sequence as `version`, and writes nothing: no tombstone. Inventing ids therefore stores nothing.
 - **Forgotten state is bounded.** Record tombstones and removed field cells are each kept to 2 × `maxRecords` per concrete collection, and to 20,000 (2 × the 10,000 records a collection can hold) per person in all. Past either bound the oldest, by clock, are forgotten, as past the 90-day horizon: an older write that then arrives is no longer beaten by the forgotten tombstone. A tombstone costs no quota, so this bound, not the quota, is what stops a device from growing the store with deletes, create-and-delete cycles or `removeField`s. A `merge` record also keeps at most 256 removed cells of its own (`SYNC_MAX_MERGE_MEMBERS`), the oldest by stamp forgotten first, so a record never holds the whole of those bounds and a write to it reads a bounded number of rows.
 - **Collection quota.** `quota_exceeded` with `scope: "collection"` means the collection's `maxRecords` (16 slots for `saves`) is reached. Only a create (a record id the person does not yet hold) can hit it: an update or a `delete` never does. It answers before `product` and `user` (see the check order above).
-- **A policy change** reads the policy at push time (§13.6). In server mode the server converts a stored object to field cells and back, and an array to elements and back, when it next writes the record; a read converts nothing. A stored shape that cannot convert (a number or text for a `merge` or `union` policy, an object for `union`, an array for `merge`) is `op_invalid_for_policy`. In E2E mode the server cannot read a sealed record, so it converts nothing: an operation for a shape other than the one stored is `op_invalid_for_policy`, and a `delete` always works (it needs no conversion). A conversion keeps the caps of a push: a field name over 1 KiB or empty, or an element over 1 KiB of canonical JSON, is `op_invalid_for_policy`. The same holds for a live legacy plaintext `merge` or `union` record, which takes no sealed cell.
+- **A policy change** reads the policy at push time (§13.6). In server mode the server converts a stored object to field cells and back, and an array to elements and back, when it next writes the record; a read converts nothing. A stored shape that cannot convert (a number or text for a `merge` or `union` policy, an object for `union`, an array for `merge`) is `op_invalid_for_policy`. In E2E mode the server cannot read a sealed record, so it converts nothing: an operation for a shape other than the one stored is `op_invalid_for_policy`, and a `delete` always works (it needs no conversion). A conversion keeps the caps of a push: a field name over 1 KiB or empty, or an element over 1 KiB of canonical JSON, is `op_invalid_for_policy`. The same holds for a live legacy plaintext `merge` or `union` record, which takes no sealed cell. A conversion grows the record whatever operation causes it, a `removeField` or `remove` included: a record that would be over its budget once converted is `op_invalid_for_policy` and keeps its shape, and the converted record is charged to the quota (`quota_exceeded`). A `delete` always works.
 
 The `200` body is `{subject, serverNow, results, lastMutationId, …the pull members of §13.4}`. Each result is `{mutationId, status}`:
 
 - `ok` with `version` (and `renamedTo`, or `dropped: true`, when a catalog migration applied);
-- `conflict` with `server {value, version, editedHlc, members?}`: a compare-and-swap mismatch, a `lastWrite` write older than the stored clock, or a `max`/`min` write the stored value beats. The client takes the server copy (§11.5). For a record, `value` is the live record (a `merge` record's object), and a `union` record never conflicts;
+- `conflict` with `server {value, version, editedHlc, members?}`: a compare-and-swap mismatch, a `lastWrite` write older than the stored clock, or a `max`/`min` write the stored value beats. The client takes the server copy (§11.5). For a record, `value` is the live record (a `merge` record's object), and a `union` record conflicts only after a policy change (§13.3), when a write meets a stored record of another shape;
 - `rejected` with `code`: `value_invalid`, `setting_not_synced`, `op_invalid_for_policy`, `collection_unknown`, `entitlement_required`, or `quota_exceeded` with `scope` (`user`, `collection` or `product`);
 - `duplicate` (at or below the client's last processed `mutationId`), or `aborted` (the rest of a failed atomic batch).
 
@@ -2165,7 +2398,7 @@ The `200` body is `{subject, serverNow, results, lastMutationId, …the pull mem
 - Member, field and element operations carry blinded names: `setMember {member: "x:…", ct}`, `setField {field: "x:…", ct}` and `add {element: "x:…", ct}`. `removeMember`, `removeField` and `remove` take the blinded name alone. A `remove` also carries `observedSeq`.
 - `max` and `min` settings and records are a compare-and-swap register in E2E mode: `set` carries `baseVersion`, and the client decides the better value (§11.5, §13.10.5). The server never reads a `conflictField` it cannot see.
 - **The register (U-09.1, records U-09).** A `max` or `min` `set` in E2E mode is decided by `baseVersion` alone, never by value. A number must equal the row's current `version` (a missing row, or any other version, is a `conflict`); `"*"` is create-only (a `conflict` while the key is live); absent falls back to the `editedHlc` order of `lastWrite`. A cleared key keeps its `version`, so a client re-pushes on the `version` a `conflict` carries. A `baseVersion` that is neither `"*"` nor a non-negative integer is `value_invalid`. `clear` is unchanged. A `max` or `min` record's `delete` is decided like a `clear`: by `editedHlc` alone (a later `set` beats it, an older one loses to it), and it carries no `baseVersion`; one that does is `value_invalid`. A later `set` re-creates the record on `"*"` or on the `version` a `conflict` carries.
-- **Conflict copy.** A `conflict` on a sealed row carries `server {ct, version, editedHlc}` in place of `value`; a sealed `merge` setting carries `server {members: [{member, ct, editedHlc}], version, editedHlc}` and a sealed `merge` record `server {fields: [{field, ct, editedHlc}], version, editedHlc}`. A row below `encryptionSince` (legacy plaintext) still carries `value`. A client rejects, as malformed, a conflict copy that carries more than one of `value`, `ct`, `members` and `fields`: a plaintext `value` beside sealed members is the downgrade the latch of §11.5 exists to catch. A record's conflict copy gains the `file` pointer of §13.4 when the record has a file; the pointer is not a value and does not count in that rule.
+- **Conflict copy.** A `conflict` on a sealed row carries `server {ct, version, editedHlc}` in place of `value`; a sealed `merge` setting carries `server {members: [{member, ct, editedHlc}], version, editedHlc}` and a sealed `merge` record `server {fields: [{field, ct, editedHlc}], version, editedHlc}`; a sealed `union` record `server {elements: [{element, ct}], version, editedHlc}`. A row below `encryptionSince` (legacy plaintext) still carries `value`. A client rejects, as malformed, a conflict copy that carries more than one of `value`, `ct`, `members`, `fields` and `elements`: a plaintext `value` beside sealed members is the downgrade the latch of §11.5 exists to catch. A record's conflict copy gains the `file` pointer of §13.4 when the record has a file; the pointer is not a value and does not count in that rule.
 - **Charges.** The quota charges the stored bytes (the `ct` string, quoted, plus the key); the budgets (256 keys, 64 KiB) charge `envelopeBytes − 113` per value. An open setting is at most 8 KiB on that count (`value_invalid` beyond); a blinded name is a fixed 45 characters. A record's 64 KiB budget is charged per entry, as the Budget bullet above says.
 
 Push and journal rules 1–8 are normative as S-17 §5.4 states them. Rule 1: the last processed `mutationId` advances past every processed mutation, and only a request-level failure leaves it (transport error, `5xx`, `400`, `401`, `403`, `409 client_mismatch`, `413`, `429`, `503 writes_paused`). Rule 4: `clientId` matches §8's pattern, one per (install, partition), stored with the next `mutationId` (an integer from 1 to 2^53−1, strictly increasing) in one atomic journal write. The HLC orders writes, with `clientId` as the final tie-break. The server clamps an `editedHlc` later than `serverNow + 300 000 ms` to `serverNow` and accepts every earlier stamp, the import floor `000000000000:0000` included.
@@ -2460,9 +2693,11 @@ A device with no root is `locked` (§11.5). It reads the ring (`GET`) to learn `
 On by default, with a developer opt-out, a device keeps `R` in a synchronizable platform item so a new device of the same person restores silently.
 
 - **Apple:** an iCloud Keychain item (`kSecAttrSynchronizable`), service `pkey-sync:<product>`, account `<subject>:<ringId>`.
-- **Android:** Block Store with `setShouldBackupToCloud(true)`, only when `isEndToEndEncryptionAvailable()`.
+- **Android:** Block Store, entry `pkey-sync-<product>`, one per product, whose value names the subject and the ring. It reaches the cloud (`setShouldBackupToCloud(true)`) only when `isEndToEndEncryptionAvailable()`; otherwise it stays on the device and moves only device to device.
 
 A sign-out keeps the root backup item: deleting a synchronizable keychain item deletes it on every device of that Apple ID. Only Reset encryption, Start over or account deletion removes it. A platform without a backup API (web, Node, Python, JVM desktop) relies on the recovery code and nearby approval.
+
+The silent-restore key (§12.11.8) is a separate item, service `pkey-restore:<product>` (Android: `pkey-restore-<product>`). A sign-out deletes it and never touches the root item.
 
 #### 13.11.6 Rotation
 
@@ -2659,7 +2894,7 @@ devices expire on the same horizon.
 - **K_disc.** It is 32 random bytes per `(product, subject)` per ring epoch, stored in
   `connect_rings`. `GET /connect/identity` delivers the current key and the previous one (for 24 h
   after a bump). A device advertises only under the newest key.
-  The previous key is delivered only when every device of the earlier epoch is still a member: a bump in which a device left drops it, so a removed device has no window. A bump caused by a device rotating its keys is treated as a leave and drops it too. A bump that only adds devices keeps it.
+  The previous key is delivered only when every device of the earlier epoch is still a member: a bump in which a device left drops it, so a removed device has no window. A bump in which a device's keys changed is treated as a leave and drops it too, whichever path moved the epoch. A bump that only adds devices keeps it.
   Clients treat the delivered previous key as authoritative but SHOULD stop using it 24 h after first seeing it, and drop it at once on a local leave or when a fetched roster lost or re-keyed a device compared with the held one. A client does not know the bump time, so its bound can exceed the Worker's window by up to 24 h; the Worker's rule above is what closes a removed device's window.
 - **Why server-delivered.** This keeps L-13's server-delivered key over a root-key derivation.
   Connect then works without Cloud Sync E2E, and rotation is trivial.
@@ -2799,15 +3034,15 @@ from the client.
 **Rules:**
 
 - §15.2 step 4 applies to both keys.
-- `agreeKey` is unique per product.
+- No key is held twice in a product: a registration whose `signKey` or `agreeKey` another device holds in either role, or whose two keys are equal, is refused with `device_keys_invalid`.
 - A registration whose `agreeKey` is not the canonical X25519 spelling is refused (§15.2 step 4).
 - A proof that changes the keys must carry an `issuedAt` strictly newer than the last one accepted for the device, so a captured proof cannot be replayed inside its window. The Worker keeps that floor, and the highest `keySeq`, in a row that outlives the device's keys.
 - `keySeq` only increases: after the device is deauthorized and registers again it continues from its last value.
-- A device may rotate at most 4 times a day (a rate limit).
+- A device may rotate at most 4 times a day (a rate limit; on this route, and a proof refused by the floor does not count).
 - A rotation bumps the device's `keySeq` and raises a device-change event of kind `keys` inside the Worker.
 - When a device is removed or purged, its row goes too; the floors above stay until the device row or the product is erased.
 
-**Registration.** A device's keys are registered by one Core operation with three entry points: this route, the platform sign-in exchange (§12.11) and nearby approval (§12.11). Every registration carries both keys. The route is matched before `/devices/{deviceId}`.
+**Registration.** A device's keys are registered by one Core operation with four entry points: this route, the platform sign-in exchange, nearby approval and silent restore (§12.11). Every registration carries both keys. The route is matched before `/devices/{deviceId}`.
 
 **Generation and use.** Keys are generated on first need: Connect, or the platform sign-in's
 device-bound nonce (§12.11). They are not generated at launch.

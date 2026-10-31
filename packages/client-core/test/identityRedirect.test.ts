@@ -75,6 +75,18 @@ describe("startRedirect: the authorize URL", () => {
       { licenseChoice: "app", choiceAvailable: false },
       AUTH,
     ],
+    ["key_return=allow, last", { keyReturn: true }, `${AUTH}&key_return=allow`],
+    [
+      "key_return after license_choice",
+      {
+        purpose: "signin",
+        licenseChoice: "app",
+        choiceAvailable: true,
+        keyReturn: true,
+      },
+      `${AUTH}&purpose=signin&license_choice=app&key_return=allow`,
+    ],
+    ["key_return=false sends nothing", { keyReturn: false }, AUTH],
     [
       "license_choice=card is never sent",
       { licenseChoice: "card", choiceAvailable: true },
@@ -349,5 +361,217 @@ describe("parseTokenAnswer", () => {
     ],
   ])("%i %j", (status, body, expected) => {
     expect(parseTokenAnswer(status, body)).toEqual(expected);
+  });
+});
+
+describe("parseTokenAnswer: the key return (LK-SKIP)", () => {
+  const device = { id: "D", status: "authorized" };
+  const license = { id: "L", tier: "pro" };
+  const SUBJECT = "ps_" + "A".repeat(22);
+  const good = {
+    access_token: "pkeyt_x",
+    token_type: "Bearer",
+    via: "key",
+    scope: "",
+    schemaVersion: 1,
+    device,
+    license,
+    subject: null,
+    keyEntries: { used: 1, limit: 3 },
+  };
+  const opt = { keyReturn: true };
+  const activated = {
+    kind: "activated",
+    accessToken: "pkeyt_x",
+    scope: "",
+    subject: null,
+    schemaVersion: 1,
+    device,
+    license,
+    keyEntries: { used: 1, limit: 3 },
+  };
+
+  it("the opt-in is recorded on the pending request, and only when set", async () => {
+    expect((await startRedirect({ ...base, keyReturn: true })).keyReturn).toBe(
+      true,
+    );
+    expect(await startRedirect(base)).not.toHaveProperty("keyReturn");
+    expect(
+      await startRedirect({ ...base, keyReturn: false }),
+    ).not.toHaveProperty("keyReturn");
+  });
+  it("an opted-in via:key body is activated, subject null", () => {
+    expect(parseTokenAnswer(200, good, opt)).toEqual(activated);
+  });
+  it("a pairwise subject string is accepted", () => {
+    expect(parseTokenAnswer(200, { ...good, subject: SUBJECT }, opt)).toEqual({
+      ...activated,
+      subject: SUBJECT,
+    });
+  });
+  it("zero counts are non-negative integers", () => {
+    expect(
+      parseTokenAnswer(
+        200,
+        { ...good, keyEntries: { used: 0, limit: 0 } },
+        opt,
+      ),
+    ).toEqual({ ...activated, keyEntries: { used: 0, limit: 0 } });
+  });
+  it("via:key without the opt-in is malformed", () => {
+    expect(parseTokenAnswer(200, good)).toEqual({ kind: "malformed" });
+    expect(parseTokenAnswer(200, good, {})).toEqual({ kind: "malformed" });
+    expect(parseTokenAnswer(200, good, { keyReturn: false })).toEqual({
+      kind: "malformed",
+    });
+  });
+  it.each([
+    ["via is not key", { via: "account" }],
+    ["via is null", { via: null }],
+    ["via is empty", { via: "" }],
+    ["scope is not empty", { scope: "profile" }],
+    ["scope is absent", { scope: undefined }],
+    ["license is null", { license: null }],
+    ["license is a string", { license: "L" }],
+    ["license is an array", { license: [] }],
+    ["license is absent", { license: undefined }],
+    ["keyEntries is absent", { keyEntries: undefined }],
+    ["keyEntries is null", { keyEntries: null }],
+    ["keyEntries is an array", { keyEntries: [1, 3] }],
+    ["keyEntries.used is absent", { keyEntries: { limit: 3 } }],
+    ["keyEntries.limit is absent", { keyEntries: { used: 1 } }],
+    ["keyEntries.used is negative", { keyEntries: { used: -1, limit: 3 } }],
+    ["keyEntries.limit is negative", { keyEntries: { used: 1, limit: -3 } }],
+    ["keyEntries.used is fractional", { keyEntries: { used: 1.5, limit: 3 } }],
+    ["keyEntries.limit is a string", { keyEntries: { used: 1, limit: "3" } }],
+    ["keyEntries.used is NaN", { keyEntries: { used: NaN, limit: 3 } }],
+    ["subject is absent", { subject: undefined }],
+    ["subject is a number", { subject: 7 }],
+    ["subject is empty", { subject: "" }],
+    ["subject is not a pairwise subject", { subject: "user-1" }],
+    ["subject is a short pairwise subject", { subject: "ps_abc" }],
+    ["access_token is absent", { access_token: undefined }],
+    ["access_token is empty", { access_token: "" }],
+    ["device is absent", { device: undefined }],
+    ["device is a string", { device: "D" }],
+  ])("an opted-in via:key body where %s is malformed", (_n, patch) => {
+    expect(parseTokenAnswer(200, { ...good, ...patch }, opt)).toEqual({
+      kind: "malformed",
+    });
+  });
+  it("a via member of any other value is malformed, opted in or not", () => {
+    const ordinary = {
+      access_token: "t",
+      scope: "profile",
+      subject: SUBJECT,
+      schemaVersion: 1,
+      device,
+      license: null,
+    };
+    expect(parseTokenAnswer(200, { ...ordinary, via: "other" }, opt)).toEqual({
+      kind: "malformed",
+    });
+    expect(parseTokenAnswer(200, { ...ordinary, via: "other" })).toEqual({
+      kind: "malformed",
+    });
+  });
+  it("an ordinary answer is still a token when opted in, and a null subject is not one", () => {
+    const ordinary = {
+      access_token: "t",
+      scope: "profile",
+      subject: SUBJECT,
+      schemaVersion: 1,
+      device,
+      license: null,
+    };
+    expect(parseTokenAnswer(200, ordinary, opt)).toMatchObject({
+      kind: "token",
+      subject: SUBJECT,
+    });
+    expect(parseTokenAnswer(200, { ...ordinary, subject: null }, opt)).toEqual({
+      kind: "malformed",
+    });
+  });
+  it("choose is decided first, even with the opt-in and via:key beside it", () => {
+    const GRANT = "sg_" + "A".repeat(43);
+    expect(
+      parseTokenAnswer(
+        200,
+        { ...good, status: "choose", grant: GRANT, expiresIn: 3, choices: {} },
+        opt,
+      ),
+    ).toMatchObject({ kind: "choose", grant: GRANT });
+  });
+  it("a non-200 is refused whatever the opt-in", () => {
+    expect(
+      parseTokenAnswer(400, { ...good, error: "invalid_grant" }, opt),
+    ).toMatchObject({
+      kind: "refused",
+      error: "invalid_grant",
+    });
+  });
+
+  describe("refusal details", () => {
+    it("device_limit carries limit, deviceCount and manageUrl", () => {
+      expect(
+        parseTokenAnswer(403, {
+          error: "device_limit",
+          limit: 2,
+          deviceCount: 2,
+          manageUrl: "https://key.plrs.im/manage",
+        }),
+      ).toEqual({
+        kind: "refused",
+        error: "device_limit",
+        status: 403,
+        details: {
+          limit: 2,
+          deviceCount: 2,
+          manageUrl: "https://key.plrs.im/manage",
+        },
+      });
+    });
+    it("key_entry_limit carries keyEntries and manageUrl", () => {
+      expect(
+        parseTokenAnswer(403, {
+          error: "key_entry_limit",
+          keyEntries: { used: 3, limit: 3 },
+          manageUrl: "https://m.example/x",
+        }),
+      ).toEqual({
+        kind: "refused",
+        error: "key_entry_limit",
+        status: 403,
+        details: {
+          keyEntries: { used: 3, limit: 3 },
+          manageUrl: "https://m.example/x",
+        },
+      });
+    });
+    it("license_owned carries signInUrl", () => {
+      expect(
+        parseTokenAnswer(403, {
+          error: "license_owned",
+          signInUrl: "https://s.example/in",
+        }),
+      ).toEqual({
+        kind: "refused",
+        error: "license_owned",
+        status: 403,
+        details: { signInUrl: "https://s.example/in" },
+      });
+    });
+    it("a member of the wrong type is dropped, and no details member appears when none is left", () => {
+      expect(
+        parseTokenAnswer(403, {
+          error: "device_limit",
+          limit: "2",
+          deviceCount: -1,
+          manageUrl: 5,
+          keyEntries: { used: 1 },
+          signInUrl: "",
+        }),
+      ).toEqual({ kind: "refused", error: "device_limit", status: 403 });
+    });
   });
 });

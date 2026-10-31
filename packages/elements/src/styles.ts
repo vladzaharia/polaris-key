@@ -360,13 +360,14 @@ const KIT_CSS = String.raw`
   margin-block: calc(-1 * var(--pk-space-2));
   background: var(--pk-surface-raised);
 }
-/* The docked bar's opaque ground spans the whole window, so content scrolling under it is hidden
-   edge to edge, never sliced at the bar's own width (the stage clips it to the window). */
+/* The docked bar's opaque ground spans the card edge to edge, so content scrolling under it is
+   hidden, never sliced at the bar's own width. It stops at the card: past it the page's own ground
+   shows, so a wide short window paints no band across the page. */
 .pk-root[data-shape="short"] .stage[data-kind="screen"] .card > .actions::before {
   content: "";
   position: absolute;
   inset-block: 0;
-  inset-inline: -100vw;
+  inset-inline: calc(-1 * var(--pk-space-5));
   z-index: -1;
   background: var(--pk-surface-raised);
 }
@@ -376,7 +377,8 @@ const KIT_CSS = String.raw`
   content: none;
 }
 .pk-root[data-shape="short"][data-fill] .stage {
-  align-content: center;
+  /* safe: a card taller than the window starts at the top and scrolls, never clipped above it. */
+  align-content: safe center;
 }
 /* Height is what a short window lacks: a group of links is two columns, not a column. */
 .pk-root[data-shape="short"] .links:has(> :nth-child(3)) {
@@ -1301,6 +1303,11 @@ bdi {
 /* A pane starts at the host's start edge, its links too (DL2). */
 .pane .links {
   justify-content: start;
+}
+/* A link in a pane ("Check for updates") reads as a link, not a stray label: underlined at rest. */
+.pane .links .btn[data-variant="link"] {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 /* ── Banner, toast, inline status ────────────────────────────────────────────────────────── */

@@ -44,6 +44,7 @@ final class CSurfaceTests: XCTestCase {
         let caps = call(#"{"op":"capabilities"}"#)
         XCTAssertEqual(caps["protocol"], 1)
         XCTAssertEqual(caps["backgroundAssetsConfigured"], false)
+        XCTAssertNotNil(caps["appleSignIn"])
         #if os(macOS)
         XCTAssertEqual(caps["platform"], "macos")
         XCTAssertEqual(caps["appDistributor"], false)

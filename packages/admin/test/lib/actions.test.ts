@@ -78,6 +78,7 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "connector.submitReview",
     "connector.iapPriceChange",
     "user.deleteData",
+    "sync.deleteData",
     "storefront.audienceEveryone",
     "license.reassign",
     "license.makeFloating",

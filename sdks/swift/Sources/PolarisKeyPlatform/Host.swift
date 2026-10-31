@@ -3,11 +3,13 @@
 //   {"op": "<name>", …}  →  a synchronous result, or {"ok":true,"req":N} now and, later, one
 //                           event {"ev":"<name>","req":N, …result} through the event sink.
 //
-// Synchronous: ping, capabilities, kc_get, kc_set, kc_delete, dk_seal, dk_open, dk_destroy, app_attest_supported (none of them
+// Synchronous: ping, capabilities, kc_get, kc_set, kc_delete, dk_seal, dk_open, dk_destroy, app_attest_supported,
+// apple_remember, apple_forget (none of them
 // waits on anything). Asynchronous (each in its own detached task; the caller's thread never
 // blocks): distributor, app_transaction, products, purchase, entitlements, listen, finish,
 // packs_status, packs_ensure, packs_check_updates, packs_remove, packs_url, packs_watch,
-// packs_unwatch, app_attest_attest, app_attest_assert (P6-02, AppAttest.swift). Unsolicited events:
+// packs_unwatch, app_attest_attest, app_attest_assert (P6-02, AppAttest.swift), apple_sign_in, apple_credential_state (I-48.4a,
+// AppleSignIn.swift). Unsolicited events:
 // transaction_updated, pack_progress, pack_ready, pack_failed, pack_status.
 //
 // Every failure is `{"ok":false,"error":"<code>", …}`; an API this OS or build lacks is
@@ -26,12 +28,14 @@ public struct PlatformServices: Sendable {
     public var keychain: (any KeychainBackendBox)?
     public var assetPacks: any AssetPackClient
     public var appAttest: any AppAttestClient
+    /// Sign in with Apple (I-48.4a); nil where AuthenticationServices does not exist.
+    public var appleSignIn: AppleSignIn?
 
     public init(
         availability: PlatformAvailability, distributor: any DistributorSource,
         bundleEvidence: @escaping @Sendable () -> BundleEvidence, appTransaction: (any AppTransactionSource)?,
         store: (any StoreClient)?, keychain: (any KeychainBackendBox)?, assetPacks: any AssetPackClient,
-        appAttest: any AppAttestClient = UnavailableAppAttestClient()
+        appAttest: any AppAttestClient = UnavailableAppAttestClient(), appleSignIn: AppleSignIn? = nil
     ) {
         self.availability = availability
         self.distributor = distributor
@@ -41,6 +45,7 @@ public struct PlatformServices: Sendable {
         self.keychain = keychain
         self.assetPacks = assetPacks
         self.appAttest = appAttest
+        self.appleSignIn = appleSignIn
     }
 
     /// The real system: MarketplaceKit, StoreKit, Security and Background Assets where they exist.
@@ -55,6 +60,9 @@ public struct PlatformServices: Sendable {
         #endif
         #if canImport(Security)
             services.keychain = SystemKeychainBackend()
+        #endif
+        #if canImport(AuthenticationServices) && (os(iOS) || os(macOS))
+            services.appleSignIn = AppleSignIn()
         #endif
         #if os(iOS) && canImport(DeviceCheck)
             services.appAttest = SystemAppAttestClient()
@@ -268,6 +276,49 @@ public final class PlatformHost: Sendable {
             let watch = op == "packs_watch"
             return later(op) { watch ? await packs.watch(id: id) : await packs.unwatch(id: id) }
 
+        case "apple_sign_in":
+            guard let apple = services.appleSignIn else {
+                return Self.unsupported("runtime", "Sign in with Apple is not available here.")
+            }
+            guard let nonce = str("nonce"), !nonce.isEmpty else { return ["ok": false, "error": "missing_nonce"] }
+            let immediate = q["immediate"]?.boolValue ?? true
+            // The event carries the identity token (bearer material): it is never logged or described.
+            return later(op) {
+                do {
+                    let grant = try await apple.sheet(nonce: nonce, preferImmediate: immediate)
+                    return ["ok": true, "token": .string(grant.identityToken), "userID": .string(grant.userID)]
+                } catch AppleSignInFailure.cancelled {
+                    return ["ok": false, "error": "cancelled"]
+                } catch {
+                    return ["ok": false, "error": "unavailable"]
+                }
+            }
+
+        case "apple_credential_state":
+            guard let apple = services.appleSignIn else {
+                return Self.unsupported("runtime", "Sign in with Apple is not available here.")
+            }
+            return later(op) {
+                // `none` is a person who never signed in with Apple in this app.
+                let state = await apple.credentialState()
+                return ["ok": true, "state": .string(state?.rawValue ?? "none")]
+            }
+
+        case "apple_remember":
+            guard let apple = services.appleSignIn else {
+                return Self.unsupported("runtime", "Sign in with Apple is not available here.")
+            }
+            guard let userID = str("userID"), !userID.isEmpty else { return ["ok": false, "error": "missing_user_id"] }
+            apple.remember(userID: userID)
+            return ["ok": true]
+
+        case "apple_forget":
+            guard let apple = services.appleSignIn else {
+                return Self.unsupported("runtime", "Sign in with Apple is not available here.")
+            }
+            apple.signOutCleanup()
+            return ["ok": true]
+
         case "app_attest_supported":
             return appAttest.supported()
 
@@ -312,6 +363,7 @@ public final class PlatformHost: Sendable {
             "storeKit": .bool(services.store != nil), "keychain": .bool(services.keychain != nil),
             "entitlementsForID": .bool(a.entitlementsForID),
             "appAttest": .bool(appAttest.unsupported() == nil),
+            "appleSignIn": .bool(services.appleSignIn != nil),
         ]
     }
 

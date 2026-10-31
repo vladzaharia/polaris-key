@@ -9,6 +9,7 @@ import {
   type SettingRoute,
 } from "@polaris-key/catalog";
 import {
+  infiniteQueryOptions,
   queryOptions,
   useQuery,
   type UseQueryResult,
@@ -109,3 +110,52 @@ export function useProductCeilingBytes(slug: string): number {
     ? value
     : CLOUD_SYNC_CEILINGS.perProduct.bytes;
 }
+
+/**
+ * What a person's Cloud Sync holds as values, read after a step-up and audited on the server: never
+ * cached past the view (`gcTime: 0`), never refetched by a refocus, never retried (a refusal is a
+ * sign-in, not a flaky read).
+ */
+export const syncValuesQuery = (slug: string, subject: string) =>
+  queryOptions({
+    queryKey: [...qk.syncSubject(slug, subject), "values"],
+    queryFn: () => api.syncValues(slug, subject),
+    retry: false,
+    gcTime: 0,
+    staleTime: Infinity,
+  });
+
+/** One collection's records, a page at a time (`next` is the cursor of the following page). */
+export const syncRecordsQuery = (
+  slug: string,
+  subject: string,
+  collection: string,
+) =>
+  infiniteQueryOptions({
+    queryKey: [...qk.syncSubject(slug, subject), "records", collection],
+    queryFn: ({ pageParam }) =>
+      api.syncValues(slug, subject, {
+        collection,
+        ...(pageParam ? { cursor: pageParam } : {}),
+      }),
+    initialPageParam: "",
+    getNextPageParam: (last) => last.next ?? undefined,
+    retry: false,
+    gcTime: 0,
+    staleTime: Infinity,
+  });
+
+/** The kept older versions of a record's file. */
+export const syncRevisionsQuery = (
+  slug: string,
+  subject: string,
+  collection: string,
+  id: string,
+) =>
+  queryOptions({
+    queryKey: [...qk.syncSubject(slug, subject), "revisions", collection, id],
+    queryFn: () => api.syncFileRevisions(slug, subject, collection, id),
+    retry: false,
+    gcTime: 0,
+    staleTime: Infinity,
+  });

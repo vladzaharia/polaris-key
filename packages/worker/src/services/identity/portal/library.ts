@@ -81,6 +81,7 @@ import {
   listPortalLicenses,
   listVisibleDevices,
   portalAudit,
+  restoredDeviceIds,
   removeLibraryEntry,
   type LibraryEntryRow,
   type PortalLicenseRow,
@@ -545,6 +546,16 @@ export async function productView(
     hooksFor,
     now,
   );
+  const subject = await existingSubjectFor(db, accountId, slug);
+  const restored = subject
+    ? await restoredDeviceIds(
+        db,
+        slug,
+        subject,
+        shaped.flatMap((l) => l.devices.map((d) => d.device_id)),
+        now,
+      )
+    : new Set<string>();
   const licenses = [];
   for (const l of shaped) {
     licenses.push({
@@ -562,6 +573,7 @@ export async function productView(
           firstSeen: d.first_seen,
           lastSeen: d.last_seen,
           dormant: isDormant(d, now),
+          restored: restored.has(d.device_id) && d.subject === subject,
         })),
     });
   }

@@ -375,15 +375,48 @@ describe("DesktopAdapter — signIn.start over the bridge (UK-06.16)", () => {
     adapter.dispose();
   });
 
-  it("still refuses the app's own licence choice and the hints the bridge cannot carry", async () => {
-    for (const extra of [{ licenseChoice: "app" }, { loginHint: "a@b.c" }]) {
+  it("carries the hints, purpose attach and licenseChoice app in the beginSignIn bag (UK-42.17)", async () => {
+    const { bridge, adapter, start } = await started({
+      channel: "device-code",
+      deviceName: "Den",
+      loginHint: "ada@example.com",
+      nameHint: "Ada",
+      purpose: "attach",
+      licenseChoice: "app",
+    });
+    await expect(start()).resolves.toMatchObject({ userCode: "ABCD" });
+    expect(bridge.beginSignIn).toHaveBeenCalledWith({
+      deviceName: "Den",
+      loginHint: "ada@example.com",
+      nameHint: "Ada",
+      purpose: "attach",
+      licenseChoice: "app",
+    });
+    adapter.dispose();
+  });
+
+  it("sends no bag when there is nothing to carry", async () => {
+    const { bridge, adapter, start } = await started({
+      channel: "device-code",
+    });
+    await start();
+    expect(bridge.beginSignIn).toHaveBeenCalledWith(undefined);
+    adapter.dispose();
+  });
+
+  it("refuses a scope typed, and a malformed hint, before the bridge is called", async () => {
+    for (const [extra, name] of [
+      [{ scope: "openid" }, "UnsupportedError"],
+      [{ loginHint: "a".repeat(255) }, "PolarisError"],
+      [{ nameHint: "a\nb" }, "PolarisError"],
+      [{ purpose: "signin" }, "PolarisError"],
+      [{ licenseChoice: "x" }, "PolarisError"],
+    ] as const) {
       const { bridge, adapter, start } = await started({
         channel: "device-code",
         ...extra,
       });
-      await expect(start()).rejects.toMatchObject({
-        name: "UnsupportedError",
-      });
+      await expect(start()).rejects.toMatchObject({ name });
       expect(bridge.beginSignIn).not.toHaveBeenCalled();
       adapter.dispose();
     }

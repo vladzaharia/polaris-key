@@ -21,9 +21,9 @@ export class BodyTooLargeError extends Error {
   }
 }
 
-/** Read at most `maxBytes` of the request body; throws `BodyTooLargeError` past the cap. */
+/** Read at most `maxBytes` of the body of a request (or of a fetched response); throws `BodyTooLargeError` past the cap. */
 export async function readBodyBytes(
-  req: Request,
+  req: Pick<Request, "headers" | "body">,
   maxBytes: number = DEFAULT_BODY_CAP,
 ): Promise<Uint8Array> {
   const declared = Number(req.headers.get("content-length") ?? "");

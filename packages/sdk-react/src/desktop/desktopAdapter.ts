@@ -99,12 +99,7 @@ import type {
 import type { BootState, StoreStatus } from "@polaris-key/client-core";
 import type { BootResult, BootRunOptions } from "../core/boot.js";
 import type { BootAttempt } from "../core/bootGuard.js";
-import {
-  isWireInstallOutcome,
-  notInstallable,
-  type InstallOptions,
-  type InstallOutcome,
-} from "../core/install.js";
+import { type InstallOptions, type InstallOutcome } from "../core/install.js";
 import type { CrashTags, CrashTagsOptions } from "../core/crash.js";
 import type {
   UpdateEventEntry,
@@ -926,8 +921,8 @@ export class DesktopAdapter implements PolarisAdapter {
       ),
   };
 
-  /** `identity.choice.*`: the desktop renderer never holds a grant (its sign-in cannot ask for
-   *  `licenseChoice: "app"`, and the bridge has no verb that spends one), so each call is the typed
+  /** `identity.choice.*`: the desktop renderer never holds a grant (the bridge's device-code
+   *  sign-in never answers `choose`, and the bridge has no verb that spends one), so each call is the typed
    *  unsupported. */
   readonly choice: ChoiceNamespace = {
     licenses: () => this.noChoice(),
@@ -1003,17 +998,10 @@ export class DesktopAdapter implements PolarisAdapter {
           `unknown sign-in channel: ${String((opts as { channel?: unknown }).channel)}`,
         ),
       );
-    // `beginSignIn` carries only the device name: a hint the host never sees would be a quiet
-    // no-op, so it is refused.
-    if (
-      opts.loginHint !== undefined ||
-      opts.nameHint !== undefined ||
-      opts.purpose !== undefined ||
-      opts.scope !== undefined ||
-      // `card` is what `beginSignIn` does already; a hint for the app's own choice is not.
-      (opts.licenseChoice !== undefined &&
-        (opts.licenseChoice as string) !== "card")
-    )
+    // The scope is the one thing `beginSignIn` still does not carry: refuse it, typed, rather
+    // than drop it. The hints, `purpose` and `licenseChoice` ride the bag (UK-42.17); the host
+    // validates them again.
+    if (opts.scope !== undefined)
       throw this.fail(
         "identity",
         new UnsupportedError(
@@ -1022,17 +1010,25 @@ export class DesktopAdapter implements PolarisAdapter {
             feature: Feature.identitySigninHints,
             reason: "runtime",
             detail:
-              "The bridge's beginSignIn carries only deviceName; the host starts a sign-in that needs hints, a scope or a licence choice.",
+              "The bridge's beginSignIn carries the hints, the purpose and the licence choice, not a scope; the host starts a sign-in that needs one.",
           },
           "unsupported",
         ),
       );
+    // The hint check and the bag load on demand: a sign-in is rare, and every provider ships
+    // this adapter (SIZE-5).
+    const { signInBag } = await import("./signInBag.js");
+    const made = signInBag(opts);
+    if (typeof made === "string")
+      throw this.fail(
+        "identity",
+        new PolarisError(ErrorCode.invalidArgument, made),
+      );
+    const bag = made;
     this.setBusy("identity", true);
     let begin: BridgeOidcBegin;
     try {
-      begin = await this.bridge.beginSignIn(
-        opts.deviceName ? { deviceName: opts.deviceName } : undefined,
-      );
+      begin = await this.bridge.beginSignIn(bag);
     } catch (e) {
       throw this.fail(
         "identity",
@@ -1318,8 +1314,9 @@ export class DesktopAdapter implements PolarisAdapter {
     decision: UpdateDecision,
     opts: InstallOptions = {},
   ): Promise<InstallOutcome> {
+    const lazy = import("./installUpdate.js");
     if (decision.action !== "binary" && decision.action !== "store")
-      return notInstallable(decision);
+      return (await lazy).notInstallable(decision);
     opts.signal?.throwIfAborted();
     if (!this.bridge.invoke || !this.speaksV4())
       return {
@@ -1343,19 +1340,9 @@ export class DesktopAdapter implements PolarisAdapter {
     } finally {
       off?.();
     }
-    if (!isWireInstallOutcome(r))
-      throw new PolarisError(
-        "unknown",
-        "The host answered update.install with something that is not an install outcome.",
-      );
-    if (r.kind !== "restartRequired") return r;
-    return {
-      kind: "restartRequired",
-      version: r.version,
-      restart: async () => {
-        await this.invoke<unknown>("update", "restart");
-      },
-    };
+    return (await lazy).installOutcome(r, async () => {
+      await this.invoke<unknown>("update", "restart");
+    });
   }
 
   /** `invoke("update", "markBootAttempt")`: the host's boot guard counts this launch

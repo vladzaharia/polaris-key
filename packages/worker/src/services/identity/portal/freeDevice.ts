@@ -40,6 +40,8 @@ import {
   portalAudit,
 } from "./repo.js";
 import { notifyDeviceChange } from "../../../core/devices/lifecycle.js";
+import { existingSubjectFor } from "../../../core/accounts/accountSubjects.js";
+import { revokeRemovedDevice } from "../restore/store.js";
 import { sendSecurityNotice } from "../../../core/notify/send.js";
 import {
   deviceRemovedNotice,
@@ -82,6 +84,30 @@ export function windowRetryAfter(now: number, windowSec: number): number {
   return windowSec - (now % windowSec);
 }
 
+/** Spend one removal from the shared budget; the refusal when it is spent, else `null`. */
+async function chargeRemoval(
+  req: Request,
+  env: Env,
+  accountId: string,
+  product: string,
+  now: number,
+): Promise<{ ok: false; reason: "rate_limited"; retryAfter: number } | null> {
+  const { shard, rl } = portalActionLimit(
+    req,
+    accountId,
+    DEVICE_DISCONNECT_BUCKET,
+    DEVICE_DISCONNECT_LIMIT,
+    product,
+    DEVICE_DISCONNECT_WINDOW,
+  );
+  if (await rateLimitOk(env, shard, rl, now)) return null;
+  return {
+    ok: false,
+    reason: "rate_limited",
+    retryAfter: windowRetryAfter(now, DEVICE_DISCONNECT_WINDOW),
+  };
+}
+
 export type FreeDeviceResult =
   | { ok: true; device: DeviceRow }
   | { ok: false; reason: "not_found" }
@@ -99,6 +125,71 @@ export type PlannedFree =
     }
   | { ok: false; reason: "not_found" }
   | { ok: false; reason: "rate_limited"; retryAfter: number };
+
+/**
+ * The tail of every device removal, whatever the device is bound to (the licence Remove, the
+ * sign-in's Replace and the account's licence-less Remove): run once the deauthorize committed.
+ * It drops the token record, deletes the restore keys (a device that signed in by restore takes
+ * every restore key of its account for the product with it), tells the other listeners, writes
+ * the audit row and sends the security notice to every verified address.
+ */
+export async function releaseAccountDevice(
+  req: Request,
+  env: Env,
+  db: Db,
+  actor: { accountId: string; email: string | null | undefined },
+  product: string,
+  device: DeviceRow,
+  now: number,
+  opts: { forLabel?: string | null } = {},
+): Promise<void> {
+  const deviceId = device.device_id;
+  if (device.token_hash)
+    await deleteTokenRecord(env, product, device.token_hash);
+  // Read the origin mark before the listener drops it: the rule does not depend on the listener.
+  await revokeRemovedDevice(db, product, deviceId);
+  await notifyDeviceChange(
+    { db, env, now },
+    { product, deviceId, kind: "removed", subject: device.subject },
+  );
+  const forLabel = opts.forLabel?.trim();
+  await portalAudit(db, {
+    accountId: actor.accountId,
+    action: "portal.device.disconnect",
+    product,
+    targetKind: "device",
+    targetId: deviceId,
+    summary: forLabel
+      ? `Disconnected device ${deviceId} to sign in ${forLabel}`
+      : `Disconnected device ${deviceId}`,
+    now,
+  });
+  // A security notice (PORTAL.md §6.3): every verified address, the device by its label and
+  // the product by its name, never the ids.
+  await sendSecurityNotice(
+    env,
+    db,
+    actor.accountId,
+    actor.email,
+    // A Replace from the sign-in card says which device took the seat (SIGN-IN.md §3.15).
+    forLabel
+      ? deviceReplacedNotice({
+          deviceLabel: device.label,
+          newDeviceLabel: forLabel,
+          productName: (await getProduct(db, product))?.name,
+          productSlug: product,
+          at: now,
+          origin: new URL(req.url).origin,
+        })
+      : deviceRemovedNotice({
+          deviceLabel: device.label,
+          productName: (await getProduct(db, product))?.name,
+          productSlug: product,
+          origin: new URL(req.url).origin,
+        }),
+    now,
+  );
+}
 
 /**
  * Every check of the removal, with its writes returned instead of run (I-08b, plans/I-04.md
@@ -132,21 +223,8 @@ export async function planFreeAccountDevice(
   if (!license) return { ok: false, reason: "not_found" };
   // R5-05: charged AFTER ownership is proven, so a caller who owns no licence on this product
   // cannot spend a budget at all, and the budget they do spend is scoped to this product.
-  const { shard, rl } = portalActionLimit(
-    req,
-    actor.accountId,
-    DEVICE_DISCONNECT_BUCKET,
-    DEVICE_DISCONNECT_LIMIT,
-    product,
-    DEVICE_DISCONNECT_WINDOW,
-  );
-  if (!(await rateLimitOk(env, shard, rl, now))) {
-    return {
-      ok: false,
-      reason: "rate_limited",
-      retryAfter: windowRetryAfter(now, DEVICE_DISCONNECT_WINDOW),
-    };
-  }
+  const limited = await chargeRemoval(req, env, actor.accountId, product, now);
+  if (limited) return limited;
   const device = await getDevice(db, product, deviceId);
   if (!device || device.license_id !== licenseId)
     return { ok: false, reason: "not_found" };
@@ -154,51 +232,8 @@ export async function planFreeAccountDevice(
     ok: true,
     device,
     statements: stmtsDeauthorizeDevice(product, deviceId, licenseId),
-    async finish() {
-      if (device.token_hash)
-        await deleteTokenRecord(env, product, device.token_hash);
-      await notifyDeviceChange(
-        { db, env, now },
-        { product, deviceId, kind: "removed", subject: device.subject },
-      );
-      const forLabel = opts.forLabel?.trim();
-      await portalAudit(db, {
-        accountId: actor.accountId,
-        action: "portal.device.disconnect",
-        product,
-        targetKind: "device",
-        targetId: deviceId,
-        summary: forLabel
-          ? `Disconnected device ${deviceId} to sign in ${forLabel}`
-          : `Disconnected device ${deviceId}`,
-        now,
-      });
-      // A security notice (PORTAL.md §6.3): every verified address, the device by its label and
-      // the product by its name, never the ids.
-      await sendSecurityNotice(
-        env,
-        db,
-        actor.accountId,
-        actor.email,
-        // A Replace from the sign-in card says which device took the seat (SIGN-IN.md §3.15).
-        forLabel
-          ? deviceReplacedNotice({
-              deviceLabel: device.label,
-              newDeviceLabel: forLabel,
-              productName: (await getProduct(db, product))?.name,
-              productSlug: product,
-              at: now,
-              origin: new URL(req.url).origin,
-            })
-          : deviceRemovedNotice({
-              deviceLabel: device.label,
-              productName: (await getProduct(db, product))?.name,
-              productSlug: product,
-              origin: new URL(req.url).origin,
-            }),
-        now,
-      );
-    },
+    finish: () =>
+      releaseAccountDevice(req, env, db, actor, product, device, now, opts),
   };
 }
 
@@ -211,7 +246,66 @@ export async function freeAccountDevice(
 ): Promise<FreeDeviceResult> {
   const plan = await planFreeAccountDevice(...args);
   if (!plan.ok) return plan;
-  await args[2].batch(plan.statements);
+  // Two concurrent removes both pass the checks; only the one whose UPDATE changed the row runs
+  // the tail, so there is one audit row and one notice.
+  if (!(await commitRemoval(args[2], plan.statements))) {
+    return { ok: true, device: plan.device };
+  }
   await plan.finish();
   return { ok: true, device: plan.device };
+}
+
+/** Run a removal's statements; whether the first (the deauthorize UPDATE) changed a row. */
+async function commitRemoval(
+  db: Db,
+  statements: DbStatement[],
+): Promise<boolean> {
+  if (db.batchChanges) return (await db.batchChanges(statements))[0] === 1;
+  await db.batch(statements);
+  return true;
+}
+
+/** `devices.license_id` of a device bound to no licence. */
+export const NO_LICENSE = "";
+
+/**
+ * Remove a device of the account that holds no licence (an app that uses sign-in or Cloud Sync
+ * alone, or a device that signed in from backup): `DELETE /api/me/devices/<p>/<deviceId>`.
+ * The same budget, audit row and notice as the licence Remove. `not_found` covers every refusal
+ * that must not tell the caller which check failed: the portal off, a device of another account
+ * or product, an unknown or already removed one, and a device bound to a licence (those are
+ * removed through the licence, whose ownership checks this route must not bypass).
+ */
+export async function freeLicenselessDevice(
+  req: Request,
+  env: Env,
+  db: Db,
+  actor: { accountId: string; email: string | null | undefined },
+  product: string,
+  deviceId: string,
+  now: number,
+): Promise<FreeDeviceResult> {
+  const settings = await getPortalProductSettings(db, product);
+  if (settings.portal_enabled !== 1) return { ok: false, reason: "not_found" };
+  const subject = await existingSubjectFor(db, actor.accountId, product);
+  if (!subject) return { ok: false, reason: "not_found" };
+  const device = await getDevice(db, product, deviceId);
+  if (
+    !device ||
+    device.license_id !== NO_LICENSE ||
+    device.status !== "authorized" ||
+    device.subject !== subject
+  )
+    return { ok: false, reason: "not_found" };
+  // Charged after ownership is proven, like the licence route.
+  const limited = await chargeRemoval(req, env, actor.accountId, product, now);
+  if (limited) return limited;
+  const changed = await commitRemoval(
+    db,
+    stmtsDeauthorizeDevice(product, deviceId, NO_LICENSE, subject),
+  );
+  // Lost the race to a concurrent remove: it ran the tail, the device is gone.
+  if (!changed) return { ok: false, reason: "not_found" };
+  await releaseAccountDevice(req, env, db, actor, product, device, now);
+  return { ok: true, device };
 }

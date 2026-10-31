@@ -1,4 +1,4 @@
-// @pkey-feature ui.kit.holders ui.kit license.activate
+// @pkey-feature ui.kit.holders ui.kit license.activate identity.keyreturn
 //
 // `<PolarisKeyGate>` after a key with no account (UK-42.10), mirroring ui-core's GateDriver cases
 // (browserGate.test.ts): Done after the key, Add your name and email, the typed refusals, the
@@ -221,7 +221,14 @@ function mount(
   /** Done, then Add with Identity off: the portal opens. */
   const portal = async () => {
     await activate();
-    await press("activate.recommend.action");
+    // Identity off: the action opens polaris.locker, so it says so and draws the external glyph.
+    // With Identity on and the web switch at "portal" it is the same Add your name and email.
+    const locker = btn("signin.key.addInLocker");
+    if (locker) expect(locker.querySelector("svg")).not.toBeNull();
+    else expect(btn("activate.recommend.action")).not.toBeNull();
+    await press(
+      locker ? "signin.key.addInLocker" : "activate.recommend.action",
+    );
     await waitFor(() => expect(opened).toHaveLength(1));
   };
   return {
@@ -328,6 +335,10 @@ describe("<PolarisKeyGate>: a key with no account", () => {
       expect(m.btn("activate.recommend.action")).not.toBeNull(),
     );
     expect(m.app()).toBeNull();
+    // Focus returns to the control that opened it (DL9).
+    await waitFor(() =>
+      expect(document.activeElement).toBe(m.btn("activate.recommend.action")),
+    );
   });
 
   it("by default (the web switch) Add opens the portal, never the device-code form", async () => {
@@ -382,9 +393,17 @@ describe("<PolarisKeyGate>: a key with no account", () => {
       waits: [{ kind: "signedIn", identity: { email: "other@example.com" } }],
     });
     await m.addFilled();
-    await waitFor(() =>
-      expect(m.btn("activate.otherEmail.verify")).not.toBeNull(),
+    // Its own step, naming both emails masked: never the email-bound sentence with an empty email.
+    await waitFor(() => expect(m.btn("common.tryAgain")).not.toBeNull());
+    expect(
+      m.container.querySelector('[data-key="activate.otherAccount.title"]'),
+    ).not.toBeNull();
+    const body = m.container.querySelector(
+      '[data-key="activate.otherAccount.body"]',
     );
+    expect(body?.textContent).toContain("o•••@example.com");
+    expect(body?.textContent).not.toContain("other@example.com");
+    expect(m.btn("activate.otherEmail.verify")).toBeNull();
     expect(m.calls).toContainEqual(["preview", { confirm: false }]);
     expect(m.calls.some(([n]) => n === "attach")).toBe(false);
   });
@@ -394,8 +413,15 @@ describe("<PolarisKeyGate>: a key with no account", () => {
     const hold = new Promise<void>((r) => (release = r));
     const m = mount({ hold });
     await m.addFilled();
+    // The blank tab was opened synchronously by the press, before any request answered.
+    expect(m.opened[0]).toBe("about:blank");
     await waitFor(() =>
       expect(m.calls.some(([n]) => n === "signIn.start")).toBe(true),
+    );
+    // Busy keeps Continue (aria-disabled), offers the browser again, and Cancel is the way out.
+    await waitFor(() => expect(m.btn("signin.handoff.again")).not.toBeNull());
+    expect(m.btn("common.continue")?.getAttribute("aria-disabled")).toBe(
+      "true",
     );
     await m.press("common.cancel");
     await waitFor(() => expect(m.calls).toContainEqual(["cancel", null]));
@@ -488,5 +514,80 @@ describe("<PolarisKeyGate>: Sign in to that account on a license-owned refusal",
     await waitFor(() => expect(m.calls).toContainEqual(["cancel", null]));
     expect(m.calls.filter(([n]) => n === "signIn.start")).toHaveLength(1);
     expect(m.calls.some(([n]) => n === "complete")).toBe(false);
+  });
+});
+
+describe("<PolarisKeyGate>: a key return (LK-SKIP.6b)", () => {
+  it("starts the app at once, with no ActivateDone: a key return that landed holds the license", async () => {
+    const m = mount();
+    await waitFor(() => expect(m.btn("welcome.useKey")).not.toBeNull());
+    // `signIn.complete` answered `activated`: the license is held by key, no account.
+    m.set({
+      status: "ok",
+      profile: { email: "", name: "", firstName: "", activatedAt: 1 },
+    });
+    await waitFor(() => expect(m.app()).not.toBeNull());
+    expect(m.btn("signin.done.start")).toBeNull();
+    expect(m.btn("activate.recommend.action")).toBeNull();
+  });
+
+  it("a refusal at token (device limit) opens the key step with the manage link", async () => {
+    const m = mount();
+    await waitFor(() => expect(m.btn("welcome.useKey")).not.toBeNull());
+    const manageUrl = "https://key.plrs.im/activate?product=acme";
+    m.set({
+      error: {
+        license: {
+          code: "device_limit",
+          wireCode: "device_limit",
+          manageUrl,
+          activation: {
+            kind: "deviceLimit",
+            code: "device_limit",
+            limit: 1,
+            deviceCount: 1,
+            manageUrl,
+          },
+        },
+        identity: null,
+      },
+    });
+    await waitFor(() => expect(m.btn("deviceLimit.title")).not.toBeNull());
+    fireEvent.click(m.btn("deviceLimit.title")!);
+    await waitFor(() => expect(m.opened).toHaveLength(1));
+    expect(m.opened[0]).toContain("key.plrs.im/activate");
+  });
+
+  // CORE-SEAT-GUARD: the licence can join an account between the card's press and `token`, so a
+  // key return can meet `license_owned` there. It is the owned step, not a generic error.
+  const SIGN_IN_URL = "https://key.plrs.im/signin?product=acme";
+  const owned = {
+    code: "license_owned",
+    wireCode: "license_owned",
+    activation: {
+      kind: "licenseOwned",
+      code: "license_owned",
+      signInUrl: SIGN_IN_URL,
+    },
+  };
+
+  it("license_owned at token opens the owned step and offers the in-page sign-in", async () => {
+    const m = mount();
+    await waitFor(() => expect(m.btn("welcome.useKey")).not.toBeNull());
+    m.set({ error: { license: owned, identity: null } });
+    await waitFor(() => expect(m.btn("signin.key.ownedSignIn")).not.toBeNull());
+    expect(m.container.innerHTML).not.toContain(KEY);
+    fireEvent.click(m.btn("signin.key.ownedSignIn")!);
+    await waitFor(() =>
+      expect(m.calls.some(([n]) => n === "signIn.start")).toBe(true),
+    );
+  });
+
+  it("license_owned at token with Identity off opens the sign-in link the refusal carried", async () => {
+    const m = mount({ identity: false });
+    await waitFor(() => expect(m.btn("welcome.useKey")).not.toBeNull());
+    m.set({ error: { license: owned, identity: null } });
+    await m.press("signin.key.ownedSignIn");
+    await waitFor(() => expect(m.opened).toEqual([SIGN_IN_URL]));
   });
 });

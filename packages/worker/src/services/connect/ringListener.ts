@@ -65,8 +65,8 @@ export async function bumpRingNow(
   }
 }
 
-/** The subjects whose ring lists the device (an exact match on a line of `member_ids`). */
-async function subjectsListing(
+/** The subjects whose ring lists the device (a line `deviceId:keySeq` of `member_ids`, or a legacy bare id). */
+export async function subjectsListing(
   db: Db,
   product: string,
   deviceId: string,
@@ -74,8 +74,10 @@ async function subjectsListing(
   const rows = await db.all<{ subject: string }>(
     `SELECT subject FROM connect_rings
       WHERE product = ?
-        AND instr(char(10) || member_ids || char(10), char(10) || ? || char(10)) > 0`,
+        AND (instr(char(10) || member_ids, char(10) || ? || ':') > 0
+          OR instr(char(10) || member_ids || char(10), char(10) || ? || char(10)) > 0)`,
     product,
+    deviceId,
     deviceId,
   );
   return rows.map((r) => r.subject);

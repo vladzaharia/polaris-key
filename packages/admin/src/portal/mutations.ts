@@ -138,6 +138,11 @@ export const PORTAL_MUTATIONS = {
     invalidates: () => [],
     why: "The app card ends in a redirect to the app; a raced choice re-reads its own license list.",
   },
+  signinKeyReturn: {
+    label: "Return to an app on a license key, with no account",
+    invalidates: () => [],
+    why: "The card ends in a redirect to the app, as Continue does; the request is consumed there and nothing else in the portal reads it.",
+  },
   signinCancel: {
     label: "Cancel an app's sign-in",
     invalidates: () => [],
@@ -199,6 +204,12 @@ export const PORTAL_MUTATIONS = {
       prefix(qk.license(product, licenseId)),
       ...licenceViews(product),
     ],
+  },
+  removeAccountDevice: {
+    label: "Remove a device that holds no license",
+    // A license's own devices never change here, but a restore key is gone, which the product
+    // pages do not show; only this list refreshes.
+    invalidates: () => [exact(qk.accountDevices())],
   },
   claimDiscover: {
     label: "Add a Discover product to the library",

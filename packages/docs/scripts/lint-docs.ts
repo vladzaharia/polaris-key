@@ -234,7 +234,7 @@ const COUNT = new RegExp(
 /** Developer words Help does not use (style guide section 5.2). */
 // "personal token" is the one sanctioned use of "token" in Help (style guide §5.2).
 const HELP_WORDS =
-  /\b(products?|tenants?|platform|operators?|console|customers?|end users?|tiers?|entitlements?|fingerprints?|attestation|hardware hash|OIDC|SSO|IdP|SDKs?|APIs?|endpoints?|(?<!personal )tokens?|manifests?|webhooks?|JSON|CLI|sessions?|seats?|machines?)\b/gi;
+  /\b(products?|tenants?|platform|operators?|console|customers?|end users?|tiers?|entitlements?|fingerprints?|attestation|hardware hash|OIDC|SSO|IdP|SDKs?|APIs?|endpoints?|(?<!personal )tokens?|manifests?|webhooks?|JSON|CLI|sessions?|seats?|machines?|Cloud Sync|Cloud Connect|Direct Transfer|linked devices?|unlink(?:s|ed|ing)?)\b/gi;
 
 /** The prose of a page: no code, no link targets, no comments, no imports. */
 export interface Line {

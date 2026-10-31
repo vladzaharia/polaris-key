@@ -26,15 +26,16 @@ identity:
 
 Send the browser to `GET /<product>/identity/authorize`. Read the address from discovery's `identity.endpoints.authorize`.
 
-| Parameter                                 | Value                                                                                            |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `response_type`                           | `code`                                                                                           |
-| `client_id`                               | The product slug                                                                                 |
-| `redirect_uri`                            | A registered URI                                                                                 |
-| `state`                                   | 16 to 512 characters, checked by the app on return                                               |
-| `code_challenge`, `code_challenge_method` | The S256 challenge of a verifier the app keeps. `plain` is refused                               |
-| `scope`                                   | Any of `profile`, `email`, `cloudSync`. Absent means all the product grants. `openid` is refused |
-| `login_hint`, `name_hint`, `purpose`      | Optional. They prefill the card and verify nothing. `purpose` is `signin` or `attach`            |
+| Parameter                                 | Value                                                                                              |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `response_type`                           | `code`                                                                                             |
+| `client_id`                               | The product slug                                                                                   |
+| `redirect_uri`                            | A registered URI                                                                                   |
+| `state`                                   | 16 to 512 characters, checked by the app on return                                                 |
+| `code_challenge`, `code_challenge_method` | The S256 challenge of a verifier the app keeps. `plain` is refused                                 |
+| `scope`                                   | Any of `profile`, `email`, `cloudSync`. Absent means all the product grants. `openid` is refused   |
+| `login_hint`, `name_hint`, `purpose`      | Optional. They prefill the card and verify nothing. `purpose` is `signin` or `attach`              |
+| `key_return`                              | Optional. `allow` accepts a [key return](#continue-without-an-account). Any other value is refused |
 
 A bad `client_id` or `redirect_uri` shows an error page and never redirects. Any other error redirects to the registered URI with `error`, `state` and `iss`. Check `iss` against `identity.issuer` from discovery.
 
@@ -106,14 +107,36 @@ The grant lives five minutes and answers only the device that redeemed the code.
 
 A `choice` is `license` (with `replaceDeviceId` on a full license), `keep` (the device sends its own token), `create` or `key`. A key entered here counts as one key entry. A refusal you can fix, such as `device_limit`, leaves the grant open.
 
+## Continue without an account
+
+A person who has a license key can press **Continue without an account** on the card. Send `key_return=allow` to `authorize` to accept that. The Worker records it only for a sign-in on a product that runs License, and drops it otherwise. The request view then answers `keyReturn: true`.
+
+`token` redeems the code the way `license/activate` binds a key: the device holds the key's license, with no account. The answer is the ordinary body plus `via` and `keyEntries`:
+
+```json
+{
+  "access_token": "pkeyt_…",
+  "scope": "",
+  "subject": null,
+  "license": { "id": "lic_…" },
+  "via": "key",
+  "keyEntries": { "used": 1, "limit": 10 }
+}
+```
+
+Read it as a key return only when you sent `key_return=allow`. Without the opt-in, a body with `via` is malformed. Seats are checked at `token`, so a full license answers `403 device_limit` with `limit`, `deviceCount` and `manageUrl`; a license that joined an account meanwhile answers `403 license_owned` with `signInUrl`, and a key at its entry limit answers `403 key_entry_limit` with `keyEntries` and `manageUrl`. A refusal uses up the code: send the person back to the card for a fresh one.
+
 ## From an SDK
 
-Node, Python and React run this flow with `signIn.start({ channel: "redirect", redirectUri })` (Python: `sign_in.start(channel="redirect", redirect_uri=...)`). The SDK reads `authorize`, `token` and `iss` from discovery, builds the S256 challenge and `state`, and answers a session with `authorizeUrl`. Open that URL in a browser. When the browser lands on your redirect URI, pass the full URL to `complete(callbackUrl)`. The SDK checks `state` and `iss`, redeems the code and stores the device token.
+Node, Python, React, Swift, Kotlin and Godot run this flow with `signIn.start({ channel: "redirect", redirectUri })` (Python: `sign_in.start(channel="redirect", redirect_uri=...)`; Swift: `SignInOptions(channel: .redirect, redirectUri:)`; Kotlin: `SignInOptions(channel = SignInChannel.Redirect, redirectUri = ...)`; Godot: `sign_in.start({channel = "redirect", redirect_uri = ...})`). The SDK reads `authorize`, `token` and `iss` from discovery, builds the S256 challenge and `state`, and answers a session with `authorizeUrl`. Open that URL in a browser. When the browser lands on your redirect URI, pass the full URL to `complete(callbackUrl)`. The SDK checks `state` and `iss`, redeems the code and stores the device token.
 
-| Outcome (Node) | Meaning                                                                     |
-| -------------- | --------------------------------------------------------------------------- |
-| `signedIn`     | The device holds the token. `subject`, `scope` and `licenseId` come back    |
-| `choose`       | With `licenseChoice: "app"` and a choice due. Finish with `identity.choice` |
-| `cancelled`    | The person pressed Cancel                                                   |
+| Outcome (Node) | Meaning                                                                                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `signedIn`     | The device holds the token. `subject`, `scope` and `licenseId` come back                                                                             |
+| `choose`       | With `licenseChoice: "app"` and a choice due. Finish with `identity.choice`                                                                          |
+| `activated`    | With `keyReturn: true`: the person continued without an account. The device holds the key's license, `subject` is `null` and `keyEntries` comes back |
+| `cancelled`    | The person pressed Cancel                                                                                                                            |
 
-A session is single use: `complete` and `cancel` drop the PKCE verifier, and a replayed callback is refused without a request. A refusal throws under its own code (`invalid_grant`, `rate_limited`, `sign-in-failed`) and leaves the device token alone. React keeps the verifier in `sessionStorage` across the navigation, so call `usePolarisAuth().signIn.complete(callbackUrl)` on the page the browser returns to. The [Node](/docs/build/sdks/node/your-own-ui/#redirect-sign-in) and [Python](/docs/build/sdks/python/your-own-ui/#redirect-sign-in) pages have the code.
+A key return starts the app at once: there is no account to name and the card already showed the reasons to add one. The device is a key activation, as after `activateWithKey`, and any account it held is forgotten. A refusal at `token` carries its numbers: Node throws a `RedirectRefusedError` with `details`; React's error has the typed `activation` and `manageUrl`, and the drop-in gate opens its key step on it.
+
+A session is single use: `complete` and `cancel` drop the PKCE verifier, and a replayed callback is refused without a request. A refusal throws under its own code (`invalid_grant`, `rate_limited`, `sign-in-failed`) and leaves the device token alone. React keeps the verifier in `sessionStorage` across the navigation, so call `usePolarisAuth().signIn.complete(callbackUrl)` on the page the browser returns to. The [Node](/docs/build/sdks/node/your-own-ui/#redirect-sign-in), [Python](/docs/build/sdks/python/your-own-ui/#redirect-sign-in), [Swift](/docs/build/sdks/swift/your-own-ui/#redirect-sign-in), [Kotlin](/docs/build/sdks/kotlin/your-own-ui/#redirect-sign-in) and [Godot](/docs/build/sdks/godot/your-own-ui/#redirect-sign-in) pages have the code. The native outcomes are `signedIn` / `.signedIn`, `choose` / `.chooseLicense` / `license_choice` and `cancelled`; the Swift kit's browser sheet has no callback scheme, so a Swift app opens `authorizeUrl` itself and passes the returned URL to `complete(callbackUrl:)`.

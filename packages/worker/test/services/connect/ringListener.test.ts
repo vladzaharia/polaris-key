@@ -42,6 +42,18 @@ async function seedRing(w: World, subject = w.subject): Promise<void> {
   );
 }
 
+/** The `member_ids` text for these devices: one `deviceId:keySeq` line each, as stored. */
+async function linesOf(w: World, ids: string[]): Promise<string> {
+  const rows = await w.db.all<{ device_id: string; key_seq: number }>(
+    "SELECT device_id, key_seq FROM device_keys WHERE product = ?",
+    SLUG,
+  );
+  return ids
+    .map((id) => `${id}:${rows.find((r) => r.device_id === id)!.key_seq}`)
+    .sort()
+    .join("\n");
+}
+
 async function bumpAudits(w: World) {
   return w.db.all<Record<string, unknown>>(
     "SELECT * FROM audit WHERE product = ? AND action = 'connect.ring.bump' ORDER BY at, id",
@@ -82,7 +94,7 @@ describe("connect ring listener (CC-06.3)", () => {
     expect(after.epoch).toBe(before.epoch + 1);
     expect(after.disc_key).not.toBe(before.disc_key);
     expect(after.prev_disc_key).toBeNull();
-    expect(after.member_ids).toBe(A);
+    expect(after.member_ids).toBe(await linesOf(w, [A]));
     expect(pokes).toEqual([{ subject: w.subject, epoch: after.epoch }]);
   });
 
@@ -107,7 +119,7 @@ describe("connect ring listener (CC-06.3)", () => {
     const grAfter = (await ringOf(w, grace))!;
     // Joining: the epoch moves and the previous key is kept.
     expect(adaAfter.epoch).toBe(ada.epoch + 1);
-    expect(adaAfter.member_ids).toBe([A, B, C].join("\n"));
+    expect(adaAfter.member_ids).toBe(await linesOf(w, [A, B, C]));
     expect(adaAfter.prev_disc_key).toBe(ada.disc_key);
     // Leaving: the epoch moves and no previous key is kept.
     expect(grAfter.epoch).toBe(gr.epoch + 1);
@@ -127,6 +139,56 @@ describe("connect ring listener (CC-06.3)", () => {
     // A rotation is treated as a leave: no previous key.
     expect(after.prev_disc_key).toBeNull();
     expect(pokes).toHaveLength(1);
+  });
+
+  const readRing = (w: World, now: number) =>
+    currentRing(
+      w.db,
+      SLUG,
+      w.subject,
+      () => accountDeviceKeys(w.db, SLUG, w.subject, { seatsHeld: true, now }),
+      now,
+    );
+
+  it("a key change drops the previous discovery key when a read sees it first", async () => {
+    const before = (await ringOf(w))!;
+    await upsertDeviceKeys(w.db, SLUG, B, await newKeys(), NOW + 1);
+    const { bumped } = await readRing(w, NOW + 2);
+    expect(bumped).toBe(true);
+    const after = (await ringOf(w))!;
+    expect(after.epoch).toBe(before.epoch + 1);
+    expect(after.prev_disc_key).toBeNull();
+    expect(after.prev_epoch).toBeNull();
+  });
+
+  it("a key change made while Cloud Connect is off drops the previous discovery key at the next read", async () => {
+    const before = (await ringOf(w))!;
+    await enable(w.db, ["license", "identity"]);
+    await upsertDeviceKeys(w.db, SLUG, B, await newKeys(), NOW + 1);
+    await enable(w.db, ["license", "identity", "connect"]);
+    await readRing(w, NOW + 2);
+    const after = (await ringOf(w))!;
+    expect(after.epoch).toBe(before.epoch + 1);
+    expect(after.prev_disc_key).toBeNull();
+  });
+
+  it("finds a ring by device id in the keyed member list", async () => {
+    // A legacy bare-id line is found too; a device id that only prefixes another is not.
+    await w.db.run(
+      `INSERT INTO connect_rings (product, subject, epoch, members_hash, member_ids, disc_key, bumped_at)
+       VALUES (?, 'keyed', 1, 'h', ?, 'k', 1), (?, 'legacy', 1, 'h', ?, 'k', 1)`,
+      SLUG,
+      `Xaaa:3\n${B}:2`,
+      SLUG,
+      `Yaaa\n${B}`,
+    );
+    const { subjectsListing } =
+      await import("../../../src/services/connect/ringListener.js");
+    expect((await subjectsListing(w.db, SLUG, B)).sort()).toEqual(
+      ["keyed", "legacy", w.subject].sort(),
+    );
+    expect(await subjectsListing(w.db, SLUG, "Xaa")).toEqual([]);
+    expect(await subjectsListing(w.db, SLUG, "Yaaa")).toEqual(["legacy"]);
   });
 
   it("registering a rotation through the Core operation bumps the ring, and the same keys again do not (I-13.9)", async () => {
@@ -227,7 +289,7 @@ describe("connect ring listener (CC-06.3)", () => {
     await expect(
       setDeviceStatus(w.db, SLUG, B, "deauthorized"),
     ).resolves.not.toThrow();
-    expect((await ringOf(w))!.member_ids).toBe(A);
+    expect((await ringOf(w))!.member_ids).toBe(await linesOf(w, [A]));
   });
 
   it("a dormant seat released by the sweep leaves the roster at once", async () => {
@@ -240,7 +302,7 @@ describe("connect ring listener (CC-06.3)", () => {
     expect(await releaseDormantSeats(w.db, SLUG, NOW)).toBe(1);
     const after = (await ringOf(w))!;
     expect(after.epoch).toBe(before.epoch + 1);
-    expect(after.member_ids).toBe(A);
+    expect(after.member_ids).toBe(await linesOf(w, [A]));
     expect(after.prev_disc_key).toBeNull();
   });
 
@@ -327,7 +389,7 @@ describe("connect ring through the real account merge (CC-06.3)", () => {
     if (!merged.ok) throw new Error(merged.reason);
     const joined = (await ringOf(w))!;
     expect(joined.epoch).toBe(before.epoch + 1);
-    expect(joined.member_ids).toBe([A, B, C].join("\n"));
+    expect(joined.member_ids).toBe(await linesOf(w, [A, B, C]));
     expect(joined.prev_disc_key).toBe(before.disc_key);
     expect(await ringOf(w, bob.subject)).toBeNull();
 
@@ -339,7 +401,7 @@ describe("connect ring through the real account merge (CC-06.3)", () => {
     expect(undone).toMatchObject({ ok: true });
     const left = (await ringOf(w))!;
     expect(left.epoch).toBeGreaterThan(joined.epoch);
-    expect(left.member_ids).toBe([A, B].join("\n"));
+    expect(left.member_ids).toBe(await linesOf(w, [A, B]));
     expect(left.prev_disc_key).toBeNull();
   });
 });

@@ -309,7 +309,7 @@ describe("<pk-gate config>: activation without an account (UK-42.8)", () => {
     control(gate, "activate.recommend.action")!.click();
     await settle(gate, () => control(gate, "common.continue") !== null);
     expect(
-      gate.shadowRoot!.querySelector('[data-key="signin.gate.name"]'),
+      gate.shadowRoot!.querySelector('[data-key="activate.attach.name"]'),
     ).not.toBeNull();
     // Cancel goes back to ActivateDone; Start using lets the app in.
     gate
@@ -350,7 +350,7 @@ describe("<pk-gate config>: activation without an account (UK-42.8)", () => {
       f.value = value;
       f.dispatchEvent(new Event("input", { bubbles: true }));
     };
-    type("signin.gate.name", "Mara Quill");
+    type("activate.attach.name", "Mara Quill");
     type("signin.email.label", "mara@example.test");
     control(gate, "common.continue")!.click();
     await settle(gate, () => false);

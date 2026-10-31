@@ -28,6 +28,8 @@ Every send goes through one function that applies these checks in order. The fir
 
 When a send answers `email_unavailable`, the login card offers another sign-in method.
 
+Silent restore (`launch.identityRestore`) sends a security notice to the account on every restore sign-in. It refuses an account whose only verified address is an Apple private relay address until `EMAIL_APPLE_RELAY` is `registered`, so register the sender before you turn the gate on.
+
 ## Limits per person
 
 These limits protect one person and one product. They answer exactly as a sent message does, so nobody can learn which address exists.

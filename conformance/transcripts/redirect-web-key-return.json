@@ -1,0 +1,326 @@
+{
+  "transcriptVersion": 1,
+  "id": "redirect-web-key-return",
+  "description": "Continue without an account (LK-SKIP, WIRE-CONTRACT-V5 §12.4.2). A web app opts in with key_return=allow on authorize. The card reads the request (keyReturn true), previews the key and posts it to the card's key route, which answers the redirect with a code, state and the issuer: the key travels in that body only. The SDK checks state and iss and redeems the code at token with a form body and its PKCE verifier. The answer is a key activation, never a sign-in: via key, an empty scope, the licence, the key-entry count and a null subject. The device holds the licence by key, with no account. The same code again is invalid_grant.",
+  "features": ["identity.keyreturn"],
+  "requires": ["identity.redirect.web"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "browser",
+      "note": "The app sends the person's browser to authorize with key_return=allow; the Worker answers with a 303 to the card and the request's binder cookie.",
+      "args": {
+        "state": "tidewater-state-0123456789",
+        "redirectUri": "https://app.example/auth/callback",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+        "keyReturn": true
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/identity/authorize?response_type=code&client_id=djdl&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&state=tidewater-state-0123456789&code_challenge=-583Jx3Gn4AKAj7xr5NSDQ3V6snyKHhZUDKua28Tp10&code_challenge_method=S256&scope=profile+email&key_return=allow",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 303,
+              "headers": {
+                "cache-control": "no-store",
+                "location": "https://key.plrs.im/signin?request=rq_LTKJglwgEJseKIMedsSqkQ"
+              },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "card" }
+    },
+    {
+      "action": "browser",
+      "note": "Continue without an account: the card reads the request, previews the key and posts it; the answer carries the code and no key.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/api/signin/requests/rq_LTKJglwgEJseKIMedsSqkQ",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": {
+                "request": "rq_LTKJglwgEJseKIMedsSqkQ",
+                "client": {
+                  "product": "djdl",
+                  "kind": "web",
+                  "appName": "djdl",
+                  "developerName": null,
+                  "iconUrl": null,
+                  "origins": ["https://app.example"],
+                  "services": { "license": true, "cloudSync": false },
+                  "nameVerified": true
+                },
+                "deviceLabel": null,
+                "userCode": null,
+                "expiresAt": 1700000600,
+                "purpose": "signin",
+                "licenseChoice": "card",
+                "scope": ["profile", "email"],
+                "loginHint": null,
+                "nameHint": null,
+                "keyReturn": true
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/api/key/preview",
+              "headers": {},
+              "requiredHeaders": ["content-type"],
+              "body": {
+                "json": { "key": "pkey_djdl_csUQxgxEYVXWpNgAQgMhIw" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": {
+                "product": {
+                  "slug": "djdl",
+                  "name": "djdl",
+                  "branding": null,
+                  "developerName": null,
+                  "tintColor": null,
+                  "iconUrl": null,
+                  "headerUrl": null
+                },
+                "verdict": "addable",
+                "license": { "tierName": null, "term": "perpetual" },
+                "keyEntries": { "used": 0, "limit": 10 },
+                "upgrade": "skippable"
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/api/signin/requests/rq_LTKJglwgEJseKIMedsSqkQ/key",
+              "headers": {},
+              "requiredHeaders": ["content-type"],
+              "body": {
+                "json": { "key": "pkey_djdl_csUQxgxEYVXWpNgAQgMhIw" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": {
+                "redirect": "https://app.example/auth/callback?code=wMzv6uK_3ZS44TCaXzIpWaQXi_JeyrEQWF8OeY_rRZI&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity"
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "app" }
+    },
+    {
+      "action": "redirectComplete",
+      "note": "The SDK redeems the code. State and iss are checked by the SDK before this request.",
+      "args": {
+        "callbackUrl": "https://app.example/auth/callback?code=wMzv6uK_3ZS44TCaXzIpWaQXi_JeyrEQWF8OeY_rRZI&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+        "state": "tidewater-state-0123456789",
+        "keyReturn": true
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "authorization_code",
+                  "client_id": "djdl",
+                  "code": "wMzv6uK_3ZS44TCaXzIpWaQXi_JeyrEQWF8OeY_rRZI",
+                  "code_verifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+                  "redirect_uri": "https://app.example/auth/callback"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "code",
+                  "code_verifier",
+                  "redirect_uri",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_4birg6yvgPooBnoq_XfPEjnTdfq1bq2VkyCgjQWCLMA",
+                "token_type": "Bearer",
+                "via": "key",
+                "scope": "",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "lic_djdl_1",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000000,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": {
+                  "id": "lic_djdl_1",
+                  "status": "active",
+                  "name": "Ada Lovelace",
+                  "email": "ada@example.com",
+                  "tierId": null,
+                  "activatedAt": 1700000000,
+                  "expiresAt": null,
+                  "maxOfflineDays": null,
+                  "channels": [],
+                  "minVersion": null,
+                  "maxVersion": null
+                },
+                "subject": null,
+                "keyEntries": { "used": 1, "limit": 10 }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "activated",
+        "scope": "",
+        "licenseId": "lic_djdl_1",
+        "subject": null,
+        "keyEntries": { "used": 1, "limit": 10 },
+        "tokenHeld": true
+      }
+    },
+    {
+      "action": "redirectComplete",
+      "note": "A replayed code is refused: it was single use.",
+      "args": {
+        "callbackUrl": "https://app.example/auth/callback?code=wMzv6uK_3ZS44TCaXzIpWaQXi_JeyrEQWF8OeY_rRZI&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+        "state": "tidewater-state-0123456789",
+        "keyReturn": true
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "authorization_code",
+                  "client_id": "djdl",
+                  "code": "wMzv6uK_3ZS44TCaXzIpWaQXi_JeyrEQWF8OeY_rRZI",
+                  "code_verifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+                  "redirect_uri": "https://app.example/auth/callback"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "code",
+                  "code_verifier",
+                  "redirect_uri",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "invalid-grant", "code": "invalid_grant" }
+    }
+  ]
+}

@@ -58,13 +58,19 @@ import {
 import { bindChoice, type BindRefusal } from "./bind.js";
 import { bindWithoutChoice, tokenBody } from "./token.js";
 import { markFresh } from "./fresh.js";
+import { noticeDeviceCodeBind } from "./deviceNotice.js";
 import {
   DeviceKeysConflictError,
   DeviceKeysInvalidError,
-  agreeKeyHeldElsewhere,
+  deviceKeysHeldElsewhere,
   deviceSignKey,
 } from "../../../core/devices/keys.js";
 import { registerDeviceKeys } from "../../../core/devices/registerKeys.js";
+import { markRestoreOrigin } from "../restore/store.js";
+import {
+  deviceBelongsElsewhere,
+  sendRestoreNotice,
+} from "../restore/signedIn.js";
 
 /** The grant routes: 60 a minute per client network (a guess at a grant or a key is not free). */
 export const CHOICE_RATE = {
@@ -227,14 +233,19 @@ export async function handleChoice(
         ? fail(429, "rate_limited")
         : invalidGrant();
     const cx = { env, db, product, now };
+    // A device-code grant (§12.5.1 rule 5): the view withholds Replace, and the devices of a
+    // licence are not listed at all (the same `404` as any licence that is not replaceable).
+    const viaDevice = spent.record.via === "device";
     if (action === "licenses")
       return noStore(
         json(
           await licenseChoiceView(cx, req, spent.record.accountId, {
             deviceId,
+            ...(viaDevice ? { withholdReplace: true } : {}),
           }),
         ),
       );
+    if (viaDevice) return fail(404, ErrorCode.NotFound);
     const licenseId = (body as Partial<ChoiceDevicesRequest>).licenseId;
     // One 404 for a licence that is unknown, another account's, not full, or not replaceable.
     const view =
@@ -274,6 +285,21 @@ export async function handleChoice(
       ? fail(409, ErrorCode.LicenseChoiceRequired)
       : fail(400, ErrorCode.BadRequest);
   }
+  // A device-code grant cannot Replace (§12.5.1 rule 5): nothing is taken or burned, and the view
+  // it gets back withholds Replace.
+  if (
+    early.record.via === "device" &&
+    choice?.kind === "license" &&
+    choice.replaceDeviceId !== undefined
+  )
+    return fail(409, ErrorCode.LicenseChoiceRequired, {
+      view: await licenseChoiceView(
+        { env, db, product, now },
+        req,
+        early.record.accountId,
+        { deviceId, withholdReplace: true },
+      ),
+    });
   // A key is an online oracle for licence keys: each attempt is a read of the grant's budget.
   if (choice?.kind === "key") {
     const spent = await spendRead(env, product.slug, grant as string, deviceId);
@@ -321,15 +347,24 @@ export async function handleChoice(
     heldSignKey = await deviceSignKey(db, product.slug, deviceId);
     if (
       (heldSignKey !== null && heldSignKey !== taken.keys.signKey) ||
-      (await agreeKeyHeldElsewhere(
-        db,
-        product.slug,
-        taken.keys.agreeKey,
-        deviceId,
-      ))
+      (await deviceKeysHeldElsewhere(db, product.slug, taken.keys, deviceId))
     )
       return invalidGrant();
   }
+
+  // A sign-in by restore never takes over a device row of another person or licence (I-49.7). The
+  // device proving it holds its licence with its own bearer is the exception for the licence.
+  if (
+    taken.via === "restore" &&
+    (await deviceBelongsElsewhere(
+      db,
+      product.slug,
+      deviceId,
+      taken.subject,
+      held ? undefined : choice?.kind === "license" ? choice.licenseId : null,
+    ))
+  )
+    return invalidGrant();
 
   const bcx = {
     req,
@@ -365,13 +400,23 @@ export async function handleChoice(
               { env, db, product, now },
               req,
               account.id,
-              { deviceId },
+              {
+                deviceId,
+                ...(taken.via === "device" ? { withholdReplace: true } : {}),
+              },
             ),
           }
         : {};
     return nestedRefusal(r, extra);
   }
 
+  if (taken.via === "restore")
+    await markRestoreOrigin(db, {
+      product: product.slug,
+      deviceId,
+      subject: taken.subject,
+      now,
+    });
   if (taken.keys) {
     try {
       await registerDeviceKeys(
@@ -381,6 +426,7 @@ export async function handleChoice(
         taken.keys,
         undefined,
         heldSignKey,
+        taken.via === "restore" ? "restore" : undefined,
       );
     } catch (e) {
       // A key another device registered inside the grant window, or a malformed one.
@@ -427,6 +473,9 @@ export async function handleChoice(
     });
   }
   if (taken.fresh) await markFresh(env, product.slug, deviceId, taken.subject);
+  // R1-07: a device-code grant binds a device the person only approved from elsewhere; they are told.
+  if (taken.via === "device")
+    await noticeDeviceCodeBind(bcx, who, deviceId, label ?? null);
   await appendAudit(db, {
     product: product.slug,
     id: randomId("aud"),
@@ -434,14 +483,23 @@ export async function handleChoice(
     actor_sub: taken.subject,
     actor_name: null,
     actor_email: null,
-    action: "signin.choice.complete",
+    action:
+      taken.via === "restore" ? "signin.restore" : "signin.choice.complete",
     target_kind: "device",
     target_id: deviceId,
     parent_id: bound.licenseId === NO_LICENSE_ID ? null : bound.licenseId,
-    summary: choice
-      ? `Chose a license in the app (${choice.kind})`
-      : "Confirmed consent",
+    summary:
+      (choice
+        ? `Chose a license in the app (${choice.kind})`
+        : "Confirmed consent") +
+      (taken.via === "device" ? " (device code)" : ""),
   });
+  if (taken.via === "restore")
+    await sendRestoreNotice(bcx, {
+      accountId: account.id,
+      email: account.primary_email,
+      deviceLabel: bound.device.label,
+    });
   return noStore(
     json(
       await tokenBody(

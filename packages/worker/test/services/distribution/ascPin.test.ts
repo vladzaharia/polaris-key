@@ -515,6 +515,11 @@ describe("the admin API", () => {
         field: "appId",
         label: "Steam app id",
       },
+      // I-14 adopted it for the Play Games server client.
+      "pgs-server-client": {
+        field: "serverClientId",
+        label: "Play Games server client id",
+      },
     });
     expect(body.credentials.find((c) => c.id === "asc")!.meta.appleId).toBe(
       APPLE_ID,

@@ -9,7 +9,7 @@
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay
-// @pkey-feature identity.exchange sync.keyring sync.settings
+// @pkey-feature identity.exchange identity.pgs sync.keyring sync.settings identity.restore
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -95,6 +95,7 @@ import im.plrs.key.identity.ExchangeNonce
 import im.plrs.key.identity.ExchangeOutcome
 import im.plrs.key.identity.LicenseChoice
 import im.plrs.key.identity.RedirectEntropy
+import im.plrs.key.identity.RestoreEnrolResult
 import im.plrs.key.identity.SignInChannel
 import im.plrs.key.identity.SignInError
 import im.plrs.key.identity.SignInOptions
@@ -415,6 +416,9 @@ object KotlinReplay {
                     val identity = doc.services[ServiceSlug.identity]
                     out["exchange"] = if (identity?.enabled == true) identity.extras["exchange"] ?: JsonNull else JsonNull
                     out["nonceEndpoint"] = JsonPrimitive(identity?.enabled == true && identity.endpoints["nonce"] != null)
+                    // identity.restore: the fragment's `restore` flag and the endpoint (V5 section 12.11.6).
+                    out["restore"] = JsonPrimitive(identity?.enabled == true && identity.extras["restore"].boolValue == true)
+                    out["restoreEndpoint"] = JsonPrimitive(identity?.enabled == true && identity.endpoints["restore"] != null)
                 }
             }
 
@@ -431,7 +435,8 @@ object KotlinReplay {
                 val before = store.getToken()
                 val kind = ExchangeKind.entries.first { it.wire == args["kind"].stringValue }
                 // A step that dials nothing (the product offers no exchange) carries no token; the SDK never reads it.
-                val subject = args["subjectToken"].stringValue ?: "not-a-token"
+                val subject =
+                    (if (kind == ExchangeKind.pgs) args["serverAuthCode"].stringValue else args["subjectToken"].stringValue) ?: "not-a-token"
                 try {
                     val outcome = args["nonce"].stringValue?.let { client.identity.exchange(kind, subject, ExchangeNonce(it)) }
                         ?: client.identity.exchangeWithFreshNonce(kind, subject)
@@ -473,6 +478,77 @@ object KotlinReplay {
                 }
                 out["tokenHeld"] = JsonPrimitive(store.getToken().let { it != null && it != before })
             }
+
+            // `identity.restore` (I-49.12, V5 section 12.11.8): the recorded client is the new device; the backup item is the step's args.
+            "restoreRedeem" -> {
+                val label = args["keyLabel"].stringValue!!
+                if (session.keyLabel != label) {
+                    session.keys.use(label)
+                    session.keyLabel = label
+                }
+                client.identity.useDeviceKeys(session.keys)
+                val before = store.getToken()
+                try {
+                    val outcome = client.identity.restoreRedeemRecorded(
+                        args["restoreId"].stringValue!!,
+                        args["restoreSecret"].stringValue!!,
+                        args["proofValue"].stringValue,
+                        args["product"].stringValue,
+                    )
+                    when (outcome) {
+                        is ExchangeOutcome.SignedIn -> {
+                            out["result"] = JsonPrimitive("ok")
+                            out["scope"] = JsonPrimitive(outcome.scope)
+                            out["issuedTokenType"] = outcome.issuedTokenType?.let { JsonPrimitive(it) } ?: JsonNull
+                            out["licenseId"] = outcome.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
+                        }
+
+                        is ExchangeOutcome.PendingConsent -> {
+                            out["result"] = JsonPrimitive("confirm")
+                            out["firstTime"] = JsonPrimitive(outcome.consent.firstTime)
+                            out["changed"] = JsonPrimitive(outcome.consent.changed)
+                            out["as"] = JsonObject(
+                                mapOf(
+                                    "provider" to (outcome.consent.asProvider?.let { JsonPrimitive(it) } ?: JsonNull),
+                                    "email" to (outcome.consent.asEmail?.let { JsonPrimitive(it) } ?: JsonNull),
+                                ),
+                            )
+                        }
+
+                        is ExchangeOutcome.PendingSignIn -> out["result"] = JsonPrimitive("choose")
+
+                        is ExchangeOutcome.NeedsSignIn -> out["result"] = JsonPrimitive("interstitial-required")
+
+                        is ExchangeOutcome.Unavailable -> out["result"] = JsonPrimitive("unavailable")
+                    }
+                } catch (e: PolarisException) {
+                    out["result"] = JsonPrimitive("refused")
+                    out["code"] = JsonPrimitive(e.code)
+                    out["status"] = e.httpStatus?.let { jsonInt(it.toLong()) } ?: JsonNull
+                    e.retryAfterSeconds?.let { out["retryAfter"] = jsonInt(it.toLong()) }
+                }
+                out["tokenHeld"] = JsonPrimitive(store.getToken().let { it != null && it != before })
+            }
+
+            "restoreEnroll" -> when (val r = client.identity.restoreEnrolRecorded(args["restoreId"].stringValue)) {
+                is RestoreEnrolResult.Enrolled -> {
+                    out["result"] = JsonPrimitive("enrolled")
+                    out["restoreId"] = JsonPrimitive(r.restoreId)
+                    out["secret"] = JsonPrimitive(r.secret)
+                }
+
+                RestoreEnrolResult.Current -> out["result"] = JsonPrimitive("current")
+
+                RestoreEnrolResult.Unavailable -> out["result"] = JsonPrimitive("unavailable")
+
+                is RestoreEnrolResult.Refused -> {
+                    out["result"] = JsonPrimitive("refused")
+                    out["status"] = jsonInt(r.status.toLong())
+                    out["code"] = JsonPrimitive(r.code)
+                }
+            }
+
+            "restoreDelete" -> out["result"] = JsonPrimitive(if (client.identity.restoreDeleteRecorded()) "ok" else "refused")
 
             // `client.connect` (CC-06.4, `connect.identity`): the identity and the device list.
             "connectIdentity", "connectDevices" -> {
@@ -1073,7 +1149,11 @@ object KotlinReplay {
         )
         // The redirect and platform-exchange recordings hold the token exchange, not the sync a sign-in triggers after it.
         @OptIn(ConformanceReplayOnly::class)
-        if (redirects || t.steps.any { it["action"].stringValue == "exchange" }) client.identity.redirectAcquisitionSync = false
+        if (redirects ||
+            t.steps.any { it["action"].stringValue in setOf("exchange", "restoreRedeem") }
+        ) {
+            client.identity.redirectAcquisitionSync = false
+        }
         try {
             t.steps.forEachIndexed { i, _ ->
                 val step = server.beginStep(i)
@@ -1289,6 +1369,10 @@ class TranscriptTest : ConformanceSuite() {
             // I-45.3: the platform-token exchange.
             "discovery-identity-exchange", "exchange-silent", "exchange-confirm", "exchange-choose", "exchange-no-link",
             "exchange-errors", "exchange-disabled", "exchange-gate-off", "exchange-gate-off-stale",
+            // I-45.5: Play Games' server auth code.
+            "exchange-pgs-silent", "exchange-pgs-no-link", "exchange-pgs-errors",
+            // I-49.12: silent restore.
+            "restore-happy", "restore-confirm", "restore-errors", "restore-signout", "restore-gate-off", "discovery-identity-restore",
         )
     }
 }

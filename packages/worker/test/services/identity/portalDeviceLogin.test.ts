@@ -359,7 +359,7 @@ describe("approving a new device", () => {
     expect(sent[0]!.text).toContain("Chrome on macOS signed in on ");
     expect(sent[0]!.text).toContain("from Portugal");
     expect(sent[0]!.text).toContain(
-      "If this wasn't you, sign it out in Polaris Locker under Where you're signed in.",
+      "If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.",
     );
     expect(sent[0]!.text).toContain("Open Polaris Locker: ");
   });

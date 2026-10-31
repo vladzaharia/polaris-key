@@ -26,7 +26,7 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_red
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 6]
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/Category: Label "Managed settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/Category: Label "Managed Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by \u2068Polaris Key SDK\u2069"
@@ -67,7 +67,7 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Network/List/Rows/Row_net_prox
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 8]
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/Category: Label "Managed settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/Category: Label "Managed Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by \u2068Polaris Key SDK\u2069"
@@ -103,7 +103,7 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_the
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 7]
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/Category: Label "Managed settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/Category: Label "Managed Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by \u2068Polaris Key SDK\u2069"
@@ -144,7 +144,7 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_red
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 6]
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/Category: Label "Managed settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/Category: Label "Managed Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by \u2068Lanternworks\u2069"
@@ -155,7 +155,7 @@ Card/Frame/Body/Pane/Fade: TextureRect
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Monogram/Initial: Label "P"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Head/Titles/Title: Label "Settings"
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/Category: Label "Account and license"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/Category: Label "Account and License"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Label: Label "\u2068Pro\u2069 license"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_tier/Text/Sub: Label "Active"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_holder/Text/Label: Label "Signed in as \u2068Mara Lindqvist\u2069"
@@ -163,13 +163,13 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Sc
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Text/Action: Button "Devices" [focus 2]
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_License/List/Rows/Row_devices/Control/Caption: Label "2 of 3 in use"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_Updates/Heading: Label "Updates"
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Text/Label: Label "Update automatically"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Text/Label: Label "Update Automatically"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_auto/Control/Switch: CheckButton [focus 3]
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Text/Label: Label "Release channel"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Text/Label: Label "Release Channel"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_channel/Control/Channel: OptionButton "Stable" [items [Stable, Beta], focus 4]
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_check/Text/Action: Button "Check for updates" [focus 5]
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_Updates/List/Rows/Row_version/Text/Label: Label "Version 2.5.0"
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_Managed/List/Rows/Row_managed/Text/Action: Button "Managed settings" [focus 6]
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_Managed/List/Rows/Row_managed/Text/Action: Button "Managed Settings" [focus 6]
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Account/PKeyAccountTab/Card/Scroll/Frame/Groups/Group_SignOut/List/Rows/Row_sign_out/Text/Action: Button "Sign out" [focus 7]
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/Category: Label "Audio"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Audio/List/Rows/Row_audio_volume/Text/Label: Label "Volume"
@@ -195,7 +195,7 @@ Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Interface/List/Rows/Row_ui_red
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/Category: Label "Notes"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Text/Label: Label "Message of the day"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_Notes/List/Rows/Row_notes_motd/Control/Line/Input: TextEdit "Welcome" [focus 13]
-Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/Category: Label "Managed settings"
+Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/Category: Label "Managed Settings"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Label: Label "Online play off"
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Locked/Lock: TextureRect
 Card/Frame/Body/Pane/Scroll/Inset/Body/Rows/Group_pkey_managed/List/Rows/Row_game_killSwitch/Text/Locked/SetBy: Label "Set by \u2068Polaris Key SDK\u2069"

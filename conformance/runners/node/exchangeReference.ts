@@ -85,6 +85,42 @@ export const offered = new WeakMap<ReplayServer, boolean>();
 
 const EXCHANGE_GRANT = "urn:ietf:params:oauth:grant-type:token-exchange";
 const ID_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token";
+const GAME_CENTER_TYPE = "urn:polaris-key:token-type:gamecenter-signature";
+const PGS_TYPE = "urn:polaris-key:token-type:pgs-server-auth-code";
+
+const utf8url = (text: string): string => b64u(Buffer.from(text, "utf8"));
+
+/**
+ * The subject token an `exchange` or token-branch `link` step sends, and its type (I-14.9,
+ * WIRE-CONTRACT-V5 §12.11.7). A Google or Apple token is what the platform returned (recorded in
+ * `args.subjectToken`). A Game Center token is encoded here from the fields the device holds: six
+ * dot-joined fields after the `gc1` prefix, every one base64url over its UTF-8 bytes except the
+ * signature and salt (already base64url) and the decimal timestamp. A Play Games token is the
+ * server auth code.
+ */
+export function subjectOf(args: Record<string, JsonValue>): {
+  token: string;
+  type: string;
+} {
+  if (typeof args.serverAuthCode === "string")
+    return { token: args.serverAuthCode, type: PGS_TYPE };
+  if (args.gameCenter !== undefined) {
+    const g = args.gameCenter as Record<string, string | number>;
+    return {
+      token: [
+        "gc1",
+        utf8url(String(g.publicKeyUrl)),
+        String(g.signature),
+        String(g.salt),
+        String(g.timestamp),
+        utf8url(String(g.teamPlayerId)),
+        utf8url(String(g.bundleId)),
+      ].join("."),
+      type: GAME_CENTER_TYPE,
+    };
+  }
+  return { token: args.subjectToken as string, type: ID_TOKEN_TYPE };
+}
 
 /** What the client reports for a Worker answer (the `expect` vocabulary of format.ts). */
 export function observe(
@@ -160,12 +196,12 @@ export async function runExchange(
     nonce = body.nonce as string;
   }
   // The platform's provider returns its token for the nonce the Worker issued.
-  const token = step.args.subjectToken as string;
+  const { token, type } = subjectOf(step.args);
   const form = new URLSearchParams({
     grant_type: EXCHANGE_GRANT,
     client_id: t.product,
     subject_token: token,
-    subject_token_type: ID_TOKEN_TYPE,
+    subject_token_type: type,
     nonce,
     device_key: keys.signKey,
     proof: keys.proof({
@@ -181,6 +217,30 @@ export async function runExchange(
     headers: { ...device, "content-type": "application/x-www-form-urlencoded" },
     body: form.toString(),
   });
+  return observe(res.status, await json(res));
+}
+
+/**
+ * One `choiceComplete` step: the SDK's input is the consent (or choice) the host gave, which the
+ * recording holds, plus the pending grant the step names.
+ */
+export async function runChoiceComplete(
+  server: ReplayServer,
+  t: Transcript,
+  step: Step,
+): Promise<Observed> {
+  const sent = step.exchanges.items[0]!.request.body!.json as Record<
+    string,
+    JsonValue
+  >;
+  const res = await server.fetch(
+    `${t.baseUrl}/${t.product}/identity/choice/complete`,
+    {
+      method: "POST",
+      headers: { ...deviceHeaders(t), "content-type": "application/json" },
+      body: JSON.stringify({ ...sent, grant: step.args.grant }),
+    },
+  );
   return observe(res.status, await json(res));
 }
 

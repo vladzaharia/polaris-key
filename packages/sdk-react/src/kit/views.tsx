@@ -205,25 +205,8 @@ function contentFor(c: KitCtx): ReactNode {
       );
     case "OfflineActivation":
       return rowsOf()?.offlineSteps(c) ?? null;
-    case "UpdatePrompt": {
-      // What's new on the update prompt: the first lines of this version's notes.
-      if (!c.view.copy.includes("update.whatsNew")) return null;
-      const notes = c.input.releaseNotes ?? [];
-      const note =
-        notes.find((n) => n.version === c.input.update?.version) ?? notes[0];
-      const lines = (note?.notes ?? "")
-        .split(/\n+/)
-        .map((l) => l.trim())
-        .filter(Boolean)
-        .slice(0, 3);
-      return lines.length === 0 ? null : (
-        <ul className="notes" data-part="notes">
-          {lines.map((l, i) => (
-            <li key={i}>{l}</li>
-          ))}
-        </ul>
-      );
-    }
+    case "UpdatePrompt":
+      return rowsOf()?.updateNotes(c) ?? null;
     case "AccountAndLicense":
       return rowsOf()?.accountRows(c) ?? null;
     case "ChannelPicker":
@@ -310,6 +293,7 @@ const LOADING: Record<string, readonly string[]> = {
   EntitlementGate: ["loading"],
   SignInHandoff: ["starting", "finishing"],
   SignIn: ["finishing"],
+  SaveConflict: ["keeping"],
 };
 
 function isLoading(view: View): boolean {
@@ -736,6 +720,11 @@ function statusGlyph(view: View): ReactNode {
         ? GLYPHS.warning()
         : GLYPHS.info();
   if (view.component === "GraceBanner") return GLYPHS.offline();
+  if (view.component === "CloudSyncStatus" && s === "waiting")
+    // A connection is the offline glyph; power or the app being closed is information.
+    return view.copy.includes("cloudSync.waitingNetwork")
+      ? GLYPHS.offline()
+      : GLYPHS.info();
   if (view.component === "CloudSyncStatus")
     return view.decisions.tone === "neutral"
       ? GLYPHS.info()
@@ -777,17 +766,25 @@ function strip(c: KitCtx, layout: Layout, kind: "banner" | "toast"): ReactNode {
   const p = place(c, layout);
   const lines = [...p.titles, ...p.body, ...p.meta];
   const role = c.view.decisions.tone === "danger" ? "alert" : "status";
+  // A transfer's label is the live region, so a state change is announced once and byte updates
+  // are not.
+  const labelLive = c.view.component === "CloudSyncStatus";
   return (
     <div
       className={kind}
       data-part={kind}
       data-status={statusOf(c.view)}
-      role={role}
+      role={labelLive ? undefined : role}
     >
       {statusGlyph(c.view)}
       <div className="texts">
         {lines.map((k, i) => (
-          <span key={k} className={i === 0 ? "label" : "meta"} data-key={k}>
+          <span
+            key={labelLive ? i : k}
+            className={i === 0 ? "label" : "meta"}
+            data-key={k}
+            role={labelLive && i === 0 ? role : undefined}
+          >
             {text(c, k)}
           </span>
         ))}
@@ -824,14 +821,19 @@ function inline(c: KitCtx, layout: Layout): ReactNode {
       className="inline-status"
       data-part="status"
       data-status={statusOf(c.view)}
-      role="status"
+      role={c.view.component === "CloudSyncStatus" ? undefined : "status"}
     >
       {statusGlyph(c.view)}
-      {lines.map((k) => (
+      {lines.map((k, i) => (
         <span
-          key={k}
+          key={i}
           className={p.titles.includes(k) ? "label" : undefined}
           data-key={k}
+          role={
+            c.view.component === "CloudSyncStatus" && i === 0
+              ? "status"
+              : undefined
+          }
         >
           {text(c, k)}
         </span>
@@ -885,102 +887,17 @@ function deviceLimitContent(c: KitCtx): ReactNode {
     c.input.activation?.deviceCount ?? c.input.replaceView?.seats.used;
   const limit =
     c.input.activation?.limit ?? c.input.replaceView?.seats.limit ?? undefined;
-  const devices = c.input.devices ?? [];
   const link = c.view.decisions.link;
   const qr = qrCode(c, link?.qr ? link.url : null, "a11y.qrManage");
   if (!keys.has("signin.replace.meta") && !keys.has("part.seatMeter.caption"))
     return qr;
-  // Least recent preselected (SIGN-IN.md §3.7).
-  const order = devices
-    .map((d, i) => ({ d, i }))
-    .sort((a, b) => (b.d.lastSeenDays ?? 0) - (a.d.lastSeenDays ?? 0));
-  const leastRecent = order[0]?.i;
-  const selected =
-    c.input.selected !== undefined ? Number(c.input.selected) : leastRecent;
-  const pick = selected !== undefined ? devices[selected] : undefined;
   return (
     <>
       {qr}
       {keys.has("part.seatMeter.caption") && used !== undefined && limit != null
         ? seatMeter(c, used, limit, !keys.has("deviceLimit.heading"))
         : null}
-      {keys.has("signin.replace.meta") ? (
-        <div
-          className="list"
-          role="radiogroup"
-          aria-labelledby="pk-title"
-          data-part="device-list"
-          data-scroll={devices.length > 6 ? "" : undefined}
-          ref={devices.length > 6 ? openOnChecked : undefined}
-        >
-          {devices.map((d, i) => (
-            <div
-              key={i}
-              className="row"
-              role="radio"
-              data-part="device-row"
-              tabIndex={i === selected ? 0 : -1}
-              aria-checked={i === selected ? "true" : "false"}
-              onClick={() => c.pick(String(i))}
-              onKeyDown={(e) => radioKeys(e, c, i, devices.length)}
-            >
-              <span
-                aria-label={
-                  keys.has("a11y.formFactor")
-                    ? plain(c, "a11y.formFactor", {
-                        formFactor: d.formFactor ?? "other",
-                      })
-                    : ""
-                }
-                role="img"
-              >
-                {GLYPHS.device(d.formFactor)}
-              </span>
-              <span>
-                <span className="row-title">
-                  <bdi>{d.name ?? ""}</bdi>
-                </span>
-                {i === leastRecent && keys.has("signin.replace.leastRecent") ? (
-                  <>
-                    {" "}
-                    <span
-                      className="pill"
-                      data-key="signin.replace.leastRecent"
-                    >
-                      {text(c, "signin.replace.leastRecent")}
-                    </span>
-                  </>
-                ) : null}
-                <br />
-                <span className="meta">
-                  {text(c, "signin.replace.meta", {
-                    platform: platformLabel(d.platform),
-                    when: days(d.lastSeenDays),
-                  })}
-                </span>
-              </span>
-              {i === selected ? GLYPHS.check() : <span />}
-            </div>
-          ))}
-        </div>
-      ) : null}
-      {keys.has("deviceLimit.confirmTitle") && pick ? (
-        <div className="callout" data-part="confirm">
-          <span className="callout-title">
-            {text(c, "deviceLimit.confirmTitle", { device: pick.name ?? "" })}
-          </span>
-          {keys.has("deviceLimit.consequence") ? (
-            <span>
-              {text(c, "deviceLimit.consequence", {
-                device: pick.name ?? "",
-                thisDevice: plain(c, "part.thisDevice", {
-                  formFactor: c.input.platform?.formFactor ?? "computer",
-                }),
-              })}
-            </span>
-          ) : null}
-        </div>
-      ) : null}
+      {rowsOf()?.deviceLimitPick(c) ?? null}
     </>
   );
 }

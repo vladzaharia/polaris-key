@@ -1,0 +1,20 @@
+; The OPT-IN Game Center extension of the Godot iOS build (I-48.6a): class PolarisKeyGameCenter with one
+; static cmd(json) -> String (op `gc_identity`), used only through the GDScript facade PKeyApple.game_center().
+;
+; `EXTENSION=gamecenter native/ios/build.sh` installs this file beside the xcframework it builds, at
+; addons/polaris_key/native/ios/; neither is committed there. A project without them never links
+; GameKit: the Apple plugin (pkey_apple.xcframework) has no Game Center code, and the Game Center rung
+; answers `unavailable` (dependency). It is kept out of the committed addon for the same reason as
+; pkey_apple.gdextension: a desktop editor reports a .gdextension with no library for its own OS.
+;
+; Only ios.* entries. The glue is pkey_apple.m compiled with -DPKEY_GAMECENTER.
+
+[configuration]
+
+entry_symbol = "pkey_gamecenter_library_init"
+compatibility_minimum = "4.4"
+
+[libraries]
+
+ios.debug = "res://addons/polaris_key/native/ios/pkey_gamecenter.xcframework"
+ios.release = "res://addons/polaris_key/native/ios/pkey_gamecenter.xcframework"

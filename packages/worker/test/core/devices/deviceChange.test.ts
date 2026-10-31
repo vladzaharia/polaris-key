@@ -14,7 +14,10 @@ import type {
 } from "../../../src/core/devices/lifecycle.js";
 import { writeDeviceSubject } from "../../../src/core/devices.js";
 import { setDeviceStatus } from "../../../src/core/devices/store.js";
-import { getDeviceKeys } from "../../../src/core/devices/keys.js";
+import {
+  DeviceKeysInvalidError,
+  getDeviceKeys,
+} from "../../../src/core/devices/keys.js";
 import { registerDeviceKeys } from "../../../src/core/devices/registerKeys.js";
 import type { Db, DbStatement } from "../../../src/db/types.js";
 
@@ -46,7 +49,7 @@ function listen(
 }
 
 describe("onDeviceChange", () => {
-  it("a rotation whose guarded UPDATE matches no row reports unchanged and fires no `keys` event", async () => {
+  it("a rotation whose guarded UPDATE matches no row is refused and fires no `keys` event", async () => {
     const w = await world();
     const token = await register(w);
     const k1 = await newKeys();
@@ -71,14 +74,14 @@ describe("onDeviceChange", () => {
       },
     };
     const k2 = await newKeys();
-    const r = await registerDeviceKeys(
-      { db: racing, env: w.env, now: NOW + 1 },
-      "djdl",
-      DEVICE,
-      { signKey: k2.signKey, agreeKey: k2.agreeKey },
-    );
-    expect(r.changed).toBe(false);
-    expect(r.rotated).toBe(false);
+    await expect(
+      registerDeviceKeys(
+        { db: racing, env: w.env, now: NOW + 1 },
+        "djdl",
+        DEVICE,
+        { signKey: k2.signKey, agreeKey: k2.agreeKey },
+      ),
+    ).rejects.toBeInstanceOf(DeviceKeysInvalidError);
     expect(seen).toEqual([]);
   });
 

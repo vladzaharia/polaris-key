@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature outlet.detect core.store packs.transport.apple commerce.receipt devices.attest
+# @pkey-feature outlet.detect core.store packs.transport.apple commerce.receipt devices.attest identity.autosignin identity.gamecenter
 # The Apple platform plugin's GDScript side (P5-05), headless on every OS:
 #
 #   stubs     PKeyApple without the native class: every call answers Unsupported, reason
@@ -21,8 +21,11 @@ const TOKEN := "6F2C3B1A-0000-4000-8000-00000000C0DE"
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_stubs(t)
 	await _facade(t)
+	await _sign_in_with_apple(t)
+	await _game_center(t)
 	_keychain(t)
 	_export(t)
+	_export_entitlements(t)
 	return true
 
 
@@ -171,6 +174,16 @@ func _facade(t: PKeyTestContext) -> void:
 	a.poll()
 	t.check("facade: a result that arrives after its timeout is dropped", not PKeyApple._results.has(a._key(int(late.detail["req"]))) \
 			and not PKeyApple._abandoned.has(a._key(int(late.detail["req"]))))
+	# A result that never arrives cannot grow the set without bound (SR-4 L3): capped, and expired by age.
+	PKeyApple._abandoned.clear()
+	for i in PKeyApple.ABANDONED_MAX + 20:
+		PKeyApple._abandon("cap-%d" % i)
+	t.check("facade: the abandoned set is capped, the oldest first",
+		PKeyApple._abandoned.size() == PKeyApple.ABANDONED_MAX and not PKeyApple._abandoned.has("cap-0") and PKeyApple._abandoned.has("cap-%d" % (PKeyApple.ABANDONED_MAX + 19)))
+	PKeyApple._abandoned["old"] = Time.get_ticks_msec() - PKeyApple.ABANDONED_TTL_MSEC - 1000
+	PKeyApple._abandon("fresh")
+	t.check("facade: an abandoned request older than its ttl is forgotten", not PKeyApple._abandoned.has("old") and PKeyApple._abandoned.has("fresh"))
+	PKeyApple._abandoned.clear()
 	a.timeout_s = 2.0
 	fake.never = PackedStringArray()
 	fake.packs_supported = true
@@ -269,6 +282,132 @@ func _keychain(t: PKeyTestContext) -> void:
 	t.check("keychain: off iOS the preferred store is not the Keychain store", PKeyHeaders.platform() == "ios" or not (PKeyKeychainStore.preferred("diceroll", root) is PKeyKeychainStore))
 	for a in made:
 		a.free()
+
+
+## Sign in with Apple (I-48.4b): the facade's apple_* calls and the provider over the fake plugin.
+func _sign_in_with_apple(t: PKeyTestContext) -> void:
+	var none := _apple("windows")
+	var r: PKeyResult = await none.apple_sign_in("n")
+	t.check("siwa: off iOS and macOS the facade is Unsupported (runtime)", not r.ok and r.code == &"unsupported" and r.detail.get("reason") == "runtime")
+	var mac := _apple("macos")
+	mac.native_class = "PolarisKeyAppleMissingForTests"
+	r = await mac.apple_sign_in("n")
+	t.check("siwa: macOS without the dylib is Unsupported (dependency), not runtime", r.code == &"unsupported" and r.detail.get("reason") == "dependency")
+
+	var fake := PKeyFakeAppleNative.new()
+	var a := _apple("ios", fake)
+	var provider := PKeyAppleProvider.new(a)
+	t.check("siwa: kind apple, no silent mode, a sheet", provider.kind == "apple" and not provider.has_silent() and provider.has_sheet())
+	var silent: Dictionary = await provider.silent("n", "")
+	t.check("siwa: silent is unavailable and never reaches the plugin", silent.has("unavailable") and fake.calls.filter(func(c): return str(c["op"]).begins_with("apple_")).is_empty())
+
+	var got: Dictionary = await provider.sheet("bm9uY2U", "")
+	var sent := fake.calls.filter(func(c): return c["op"] == "apple_sign_in")
+	t.check("siwa: the sheet answers the token and the user id", got.get("token") == "eyJ.apple.token" and got.get("user_id") == "001234.abcd", str(got.keys()))
+	t.check("siwa: the sheet sends the server nonce as it is, immediate", sent.size() == 1 and sent[0]["nonce"] == "bm9uY2U" and sent[0]["immediate"] == true)
+	await provider.provider_row("n2", "")
+	sent = fake.calls.filter(func(c): return c["op"] == "apple_sign_in")
+	t.check("siwa: the form's row is the plain account sheet (immediate false)", sent.size() == 2 and sent[1]["immediate"] == false)
+
+	fake.apple_result = {"ok": false, "error": "cancelled"}
+	got = await provider.sheet("n", "")
+	t.check("siwa: a dismissed sheet is cancelled", got.get("cancelled") == true and not got.has("token"))
+	fake.apple_result = {"ok": false, "error": "unavailable"}
+	got = await provider.sheet("n", "")
+	t.check("siwa: a system failure is unavailable", got.has("unavailable") and not got.has("token"))
+	fake.apple_result = {"ok": true, "userID": "u"}
+	got = await provider.sheet("n", "")
+	t.check("siwa: an answer without a token is unavailable", got.has("unavailable"))
+	fake.apple_supported = false
+	got = await provider.sheet("n", "")
+	t.check("siwa: an unsupported plugin is unavailable", got.has("unavailable"))
+	fake.apple_supported = true
+
+	t.check("siwa: nothing is revoked before a user id is kept", not await provider.credential_revoked())
+	await provider.session_started({"user_id": "001234.abcd"})
+	t.check("siwa: session_started keeps the user id", fake.apple_user_id == "001234.abcd")
+	await provider.session_started({})
+	t.check("siwa: session_started without an id changes nothing", fake.apple_user_id == "001234.abcd")
+	t.check("siwa: an authorized credential is not revoked", not await provider.credential_revoked())
+	fake.apple_state = "notFound"
+	t.check("siwa: not found is not revoked", not await provider.credential_revoked())
+	fake.apple_state = "transferred"
+	t.check("siwa: transferred is not revoked", not await provider.credential_revoked())
+	fake.apple_state = "revoked"
+	t.check("siwa: revoked is revoked", await provider.credential_revoked())
+	provider.sign_out_cleanup()
+	t.check("siwa: sign-out forgets the user id", fake.apple_user_id == "")
+	fake.apple_supported = false
+	t.check("siwa: an unsupported plugin is never revoked", not await provider.credential_revoked())
+	a.free()
+	none.free()
+	mac.free()
+
+
+## Game Center (I-48.6b): the opt-in extension's facade and the provider over the fake plugin.
+func _game_center(t: PKeyTestContext) -> void:
+	var off := _apple("windows")
+	var r: PKeyResult = await off.gc_identity()
+	t.check("gc: off iOS and macOS the facade is Unsupported (runtime)", r.code == &"unsupported" and r.detail.get("reason") == "runtime")
+	var missing := _apple("ios")
+	missing.native_class = "PolarisKeyGameCenterMissingForTests"
+	r = await missing.gc_identity()
+	t.check("gc: without the extension it is Unsupported (dependency) and names the build switch", r.code == &"unsupported" and r.detail.get("reason") == "dependency")
+	missing.native_class = PKeyApple.GAME_CENTER_CLASS
+	r = await missing.gc_identity()
+	t.check("gc: the missing-extension message names EXTENSION=gamecenter", String(r.message).contains("EXTENSION=gamecenter") and String(r.message).contains("pkey_gamecenter"), r.message)
+	var mac := _apple("macos")
+	mac.native_class = PKeyApple.GAME_CENTER_CLASS
+	r = await mac.gc_identity()
+	t.check("gc: macOS without the dylib is dependency, not runtime", r.detail.get("reason") == "dependency" and String(r.message).contains("libpkey_gamecenter.dylib"), r.message)
+
+	var fake := PKeyFakeAppleNative.new()
+	var a := _apple("ios", fake)
+	a.native_class = PKeyApple.GAME_CENTER_CLASS
+	var p := PKeyGameCenterProvider.new(a)
+	t.check("gc: kind gamecenter, silent only", p.kind == "gamecenter" and p.has_silent() and not p.has_sheet())
+	var got: Dictionary = await p.silent("bm9uY2U", "")
+	t.check("gc: silent answers the gc1. token built from the raw fields", got.get("token") == PKeyGameCenterToken.encode(fake.gc_result) and str(got.get("token")).begins_with("gc1."))
+	var asked := fake.calls.filter(func(c): return c["op"] == "gc_identity")
+	t.check("gc: the request is just gc_identity (no nonce, nothing to present)", asked.size() == 1 and asked[0].keys() == ["op"])
+	t.check("gc: the sheet is unavailable and asks nobody", (await p.sheet("n", "")).has("unavailable") and fake.calls.filter(func(c): return c["op"] == "gc_identity").size() == 1)
+	for error in ["not_authenticated", "ids_not_persistent", "unsupported", "verification_failed", "malformed"]:
+		fake.gc_result = {"ok": false, "error": error}
+		got = await p.silent("n", "")
+		t.check("gc: %s is unavailable with no token" % error, got.has("unavailable") and not got.has("token") and str(got["unavailable"]).contains(error))
+	fake.gc_result = {"ok": true, "publicKeyUrl": "u", "signature": "AQID=", "salt": "UEtleQECAwQ", "timestamp": "1", "teamPlayerId": "t", "bundleId": "b"}
+	t.check("gc: malformed fields are unavailable", (await p.silent("n", "")).has("unavailable"))
+	t.check("gc: no revocation check, no sign-out state", not await p.credential_revoked())
+	a.free()
+	off.free()
+	missing.free()
+	mac.free()
+
+
+func _export_entitlements(t: PKeyTestContext) -> void:
+	var ex := PKeyAppleExport
+	var frag := ex.entitlement_fragments(true)
+	var key := "<key>com.apple.developer.applesignin</key>"
+	t.check("export: sign-in off adds no entitlement", ex.entitlement_fragments(false).is_empty())
+	t.check("export: sign-in on adds applesignin", frag.size() == 1 and frag[0].contains(key) and frag[0].contains("<string>Default</string>"))
+	var merged := ex.merge_entitlements("", frag)
+	t.check("export: the entitlement is appended to an empty preset text", merged == frag[0] + "\n", merged)
+	var own := "<key>aps-environment</key><string>production</string>"
+	merged = ex.merge_entitlements(own, frag)
+	t.check("export: the preset's own text is kept first, the entitlement follows", merged.begins_with(own) and merged.count("applesignin") == 1, merged)
+	t.check("export: merging twice adds nothing", ex.merge_entitlements(merged, frag) == merged)
+	t.check("export: the preset's own applesignin is not doubled", ex.merge_entitlements(key + "<array/>", frag) == key + "<array/>")
+	var both := ex.entitlement_fragments(true, true)
+	t.check("export: game center adds its entitlement as <true/>", both.size() == 2 and both[1] == "<key>com.apple.developer.game-center</key>\n<true/>")
+	t.check("export: game center alone adds just that one", ex.entitlement_fragments(false, true).size() == 1)
+	var present := func(_p: String): return true
+	var absent := func(_p: String): return false
+	t.check("export: the extension is installed where its .gdextension is", ex.extension_installed("ios", present) and not ex.extension_installed("ios", absent))
+	t.check("export: …and only on iOS and macOS", ex.extension_installed("macos", present) and not ex.extension_installed("linux", present))
+	t.check("export: option and extension agree is quiet", ex.game_center_warning(true, true) == "" and ex.game_center_warning(false, false) == "")
+	t.check("export: option on without the extension warns", ex.game_center_warning(true, false).contains("EXTENSION=gamecenter"))
+	t.check("export: the extension without the option warns that GameKit is linked", ex.game_center_warning(false, true).contains("GameKit is linked"))
+	t.check("export: macOS warns, iOS and off do not", ex.sign_in_warning(true, "macos") != "" and ex.sign_in_warning(true, "ios") == "" and ex.sign_in_warning(false, "macos") == "")
 
 
 func _export(t: PKeyTestContext) -> void:

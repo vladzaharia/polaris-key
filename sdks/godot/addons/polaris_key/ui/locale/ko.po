@@ -851,10 +851,10 @@ msgstr "{product}을(를) 계정에 보관하세요"
 msgid "activate.recommend.badge"
 msgstr "추천"
 
-#. Cloud Sync keeps your settings and saves on every device
-#. ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them.
+#. Sync your settings across your devices
+#. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "클라우드 동기화로 설정과 저장 데이터를 모든 기기에서 유지하세요"
+msgstr "설정을 모든 기기에서 똑같이 유지하세요"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -886,10 +886,10 @@ msgstr "또는 계정 없이 계속하세요. {product}은(는) 똑같이 작동
 msgid "activate.recommend.portal"
 msgstr "라이선스를 Polaris Locker에 안전하게 보관하세요"
 
-#. Your license and its devices stay as they are. You'll confirm the email with a code in your browser.
-#. AddToAccount: under the name and email fields.
+#. Your license and its devices stay as they are.
+#. AddToAccount: under the title, above the fields.
 msgid "activate.attach.lede"
-msgstr "라이선스와 기기는 그대로입니다. 브라우저에서 코드로 이메일을 확인합니다."
+msgstr "라이선스와 기기는 그대로입니다."
 
 #. We send a code to this email in your browser. {product} never sees it.
 #. AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated).
@@ -901,15 +901,35 @@ msgstr "브라우저에서 이 이메일로 코드를 보냅니다. {product}은
 msgid "activate.attach.done"
 msgstr "{product}이(가) 계정에 있습니다"
 
-#. Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.
-#. AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone).
+#. Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too.
+#. AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone).
 msgid "activate.attach.syncOn"
-msgstr "이 {deviceKind}에서 클라우드 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다."
+msgstr "이 {deviceKind}에서 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다."
 
 #. Couldn't add this license. Try again in a moment.
 #. AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form.
 msgid "activate.attach.failed"
 msgstr "이 라이선스를 추가하지 못했어요. 잠시 후 다시 시도하세요."
+
+#. Name
+#. AddToAccount: the name field. The title is Add your name and email, so the label is one word.
+msgid "activate.attach.name"
+msgstr "이름"
+
+#. Enter your name.
+#. AddToAccount: shown under the name field when it is empty.
+msgid "activate.attach.nameRequired"
+msgstr "이름을 입력하세요."
+
+#. You signed in with a different account
+#. AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere.
+msgid "activate.otherAccount.title"
+msgstr "다른 계정으로 로그인했습니다"
+
+#. You signed in as {email}, not {maskedEmail}. Nothing was added.
+#. AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated).
+msgid "activate.otherAccount.body"
+msgstr "{email}(으)로 로그인했지만 입력한 이메일은 {maskedEmail}입니다. 아무것도 추가되지 않았습니다."
 
 #. This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.
 #. ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated).
@@ -960,6 +980,16 @@ msgstr "해당 이메일 확인"
 #. AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email.
 msgid "account.notInAccount"
 msgstr "계정에 없음"
+
+#. Remove license from this device
+#. AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device.
+msgid "account.removeKey"
+msgstr "이 기기에서 라이선스 제거"
+
+#. macos: Remove License from This Device
+msgctxt "macos"
+msgid "account.removeKey"
+msgstr "이 기기에서 라이선스 제거"
 
 #. Add {product} to your account
 #. The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated).
@@ -1782,7 +1812,7 @@ msgstr "오프라인 · 오늘까지 {product}을(를) 사용할 수 있어요"
 msgid "grace.deadline"
 msgstr "{date}까지 오프라인으로 사용할 수 있어요"
 
-#. Account and license
+#. Account and License
 #. AccountAndLicense: the settings pane for the license and account.
 msgid "account.title"
 msgstr "계정 및 라이선스"
@@ -1807,22 +1837,22 @@ msgstr "라이선스 키로 활성화됨"
 msgid "account.devices"
 msgstr "기기"
 
-#. Cloud Sync
-#. AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term.
+#. Sync Across Devices
+#. AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows.
 msgid "account.cloudSync"
-msgstr "클라우드 동기화"
+msgstr "기기 간 동기화"
 
 #. Updates
 #. AccountAndLicense: the settings pane for the license and account. Group header.
 msgid "account.updates"
 msgstr "업데이트"
 
-#. Update automatically
+#. Update Automatically
 #. AccountAndLicense: the settings pane for the license and account. Switch label.
 msgid "account.autoUpdate"
 msgstr "자동으로 업데이트"
 
-#. Release channel
+#. Release Channel
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.channel"
 msgstr "릴리스 채널"
@@ -1832,7 +1862,7 @@ msgstr "릴리스 채널"
 msgid "account.version"
 msgstr "버전 {version}"
 
-#. Managed settings
+#. Managed Settings
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.managedSettings"
 msgstr "관리되는 설정"
@@ -2048,7 +2078,7 @@ msgid "cloudSync.signedOut"
 msgstr "로그아웃된 상태예요."
 
 #. Sign in to sync
-#. CloudSyncStatus: a small sync status. Cloud Sync needs an account.
+#. CloudSyncStatus: a small sync status. Syncing needs an account.
 msgid "cloudSync.signIn"
 msgstr "로그인하여 동기화"
 
@@ -2357,25 +2387,55 @@ msgstr "저장 슬롯이 모두 사용 중이에요. 둘 다 유지하려면 저
 msgid "saveConflict.keeping"
 msgstr "선택을 적용하는 중…"
 
-#. Kept this device's save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptLocal"
-msgstr "이 기기의 저장 데이터를 유지했어요."
+#. Newer
+#. SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerThis"
+msgstr "최신"
 
-#. Kept the other save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptRemote"
-msgstr "다른 저장 데이터를 유지했어요."
+#. Newer
+#. SaveConflict: tag on the other card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerOther"
+msgstr "최신"
 
-#. Kept both. The other is saved as a copy.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptBoth"
-msgstr "둘 다 유지했어요. 다른 쪽은 사본으로 저장됐어요."
+#. Choose again
+#. SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied.
+msgid "saveConflict.chooseAgain"
+msgstr "다시 선택"
 
-#. The save is deleted.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptDeleted"
-msgstr "저장 데이터를 삭제했어요."
+#. macos: Choose Again
+msgctxt "macos"
+msgid "saveConflict.chooseAgain"
+msgstr "다시 선택"
+
+#. Couldn't keep your choice. Your save is unchanged.
+#. SaveConflict: the choice failed after the other copy was deleted; only this device's save exists.
+msgid "saveConflict.failedDeleted"
+msgstr "선택을 적용하지 못했어요. 저장 데이터는 그대로예요."
+
+#. Kept this device's version
+#. SaveConflict: result title after Keep this device's version.
+msgid "saveConflict.keptLocalTitle"
+msgstr "이 기기의 버전을 유지했어요"
+
+#. Kept the other version
+#. SaveConflict: result title after Keep the other version.
+msgid "saveConflict.keptRemoteTitle"
+msgstr "다른 버전을 유지했어요"
+
+#. Kept both versions
+#. SaveConflict: result title after Keep both.
+msgid "saveConflict.keptBothTitle"
+msgstr "두 버전을 모두 유지했어요"
+
+#. The other version is saved as a copy.
+#. SaveConflict: under Kept both versions, where the other version went.
+msgid "saveConflict.keptCopy"
+msgstr "다른 버전은 사본으로 저장돼요."
+
+#. Save deleted
+#. SaveConflict: result title after Delete it here too.
+msgid "saveConflict.keptDeletedTitle"
+msgstr "저장 데이터를 삭제했어요"
 
 #. Couldn't keep your choice. Both saves are unchanged.
 #. SaveConflict: applying the choice failed; Try again repeats it.
@@ -2437,7 +2497,7 @@ msgstr "진단 정보 복사"
 msgid "about.diagnosticsCopied"
 msgstr "진단 정보 복사됨"
 
-#. Release channel
+#. Release Channel
 #. ChannelPicker: the release channel choice.
 msgid "channel.title"
 msgstr "릴리스 채널"
@@ -3360,6 +3420,16 @@ msgstr "{email} 계정으로"
 msgid "signin.auto.confirm.asApple"
 msgstr "Apple 계정으로"
 
+#. with Game Center
+#. Automatic sign-in: the confirm step. After a Game Center sign-in (it shares no email). "Game Center" is Apple's product name (never translated).
+msgid "signin.auto.confirm.asGameCenter"
+msgstr "Game Center로"
+
+#. with Google Play Games
+#. Automatic sign-in: the confirm step. After a Google Play Games sign-in (it shares no email). "Google Play Games" is Google's product name; use Google's localized name (glossary).
+msgid "signin.auto.confirm.asPlayGames"
+msgstr "Google Play 게임즈로"
+
 #. Continue
 #. Automatic sign-in: the confirm step's main button.
 msgid "signin.auto.confirm.primary"
@@ -4112,7 +4182,7 @@ msgstr "{date}에 {product}에 로그인하면서 {device}이(가) {newDevice}(�
 msgid "signin.mail.newDevice.subject"
 msgstr "Polaris Locker 계정에 새 기기가 로그인했어요"
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
 msgstr "{date}에 {place}에서 {device}에 로그인했어요. 본인이 아니라면 Polaris Locker의 “로그인된 위치”에서 해당 기기를 로그아웃하세요."
@@ -5342,10 +5412,10 @@ msgctxt "macos"
 msgid "signin.consent.deny"
 msgstr "허용 안 함"
 
-#. Cloud Sync
+#. Your synced settings and data
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.consent.cloudSync"
-msgstr "클라우드 동기화"
+msgstr "동기화된 설정과 데이터"
 
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
@@ -5993,55 +6063,55 @@ msgstr "기기를 설정하지 못했어요"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요."
 
-#. Device not linked
+#. Device not set up to connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.title"
-msgstr "기기가 연결되지 않음"
+msgstr "기기를 연결하도록 설정되지 않음"
 
-#. This device has not been set up to link with your others. Update the app and try again.
+#. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "이 기기는 다른 기기와 연결하도록 설정되지 않았습니다. 앱을 업데이트한 후 다시 시도하세요."
+msgstr "앱을 업데이트한 후 다시 시도하세요."
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.title"
 msgstr "기기가 너무 많음"
 
-#. This account has more linked devices than can be connected. Remove one and try again.
+#. This account has more devices than can be connected. Remove one and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.message"
 msgstr "이 계정에 연결된 기기가 연결 가능한 수보다 많습니다. 하나를 제거한 후 다시 시도하세요."
 
-#. Remote connect is off
+#. Remote connection is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.title"
 msgstr "원격 연결 꺼짐"
 
-#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Remote connection is off for this app. Your devices connect only on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.message"
 msgstr "이 앱은 원격 연결이 꺼져 있습니다. 기기는 같은 네트워크에서만 연결됩니다."
 
-#. Remote connect paused
+#. Remote connection paused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.title"
 msgstr "원격 연결 일시 중지"
 
-#. Remote connect is paused for now. Try again later.
+#. Remote connection is paused for now. Try again later.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.message"
 msgstr "원격 연결이 잠시 중지되었습니다. 나중에 다시 시도하세요."
 
-#. Remote limit reached
+#. Remote connection limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.title"
 msgstr "원격 연결 한도 도달"
 
-#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
-msgstr "원격 연결 한도를 모두 사용했습니다. 곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다."
+msgstr "곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다."
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6548,10 +6618,10 @@ msgstr "동기화가 잠시 일시 중지되었습니다. 변경 사항은 보�
 msgid "core.codes.encryption_mismatch.title"
 msgstr "암호화 불일치"
 
-#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. This app and Polaris Locker don't agree on encryption. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
-msgstr "앱과 동기화 서비스의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요."
+msgstr "앱과 Polaris Locker의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요."
 
 #. Changed elsewhere
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7313,15 +7383,15 @@ msgstr "저장소 문제"
 msgid "core.codes.store-failed.message"
 msgstr "이 기기에 저장하지 못했어요. 저장 공간을 확인하고 다시 시도하세요."
 
-#. Connect unavailable
+#. Nearby devices unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.title"
-msgstr "연결할 수 없음"
+msgstr "근처 기기를 사용할 수 없음"
 
-#. Nearby connection isn't available for this app on this device.
+#. This app can't use them on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
-msgstr "이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다."
+msgstr "이 기기에서는 이 앱이 사용할 수 없습니다."
 
 #. Device not verified
 #. Core copy (conformance/parity/copy.en.json, codes).

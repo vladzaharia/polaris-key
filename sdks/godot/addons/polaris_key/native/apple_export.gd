@@ -17,6 +17,13 @@ extends RefCounted
 ## true. The plist content goes through `add_apple_embedded_platform_plist_content` (4.5+) or
 ## `add_ios_plist_content` (4.4).
 ##
+## Capabilities (I-48.4b, Q-7): `polaris_key/apple_sign_in` (env PKEY_APPLE_SIGN_IN), a boolean that is
+## `off` by default, adds the `com.apple.developer.applesignin` entitlement to an iOS export through
+## the preset's `entitlements/additional` option (the plugin overrides it, keeping the preset's own
+## text). It is off by default because an entitlement the App ID lacks breaks signing. A macOS preset
+## has no such option in Godot: the setting there only warns, and the entitlement goes into the
+## preset's custom entitlements file.
+##
 ## The xcframework is iOS 17.0 (PolarisKeyPlatform's floor), so a preset below 17.0 is warned
 ## about: a framework newer than the app fails to load on the older devices.
 
@@ -27,6 +34,21 @@ const STORE_KINDS := ["app-store", "testflight"]
 const SIDELOAD_KINDS := ["altstore", "altstore-pal", "direct"]
 ## PolarisKeyPlatform's iOS floor, and the xcframework's (sdks/godot/native/ios/build.sh).
 const MIN_IOS := "18.0"
+const SIGN_IN_OPTION := "polaris_key/apple_sign_in"
+const SIGN_IN_ENV := "PKEY_APPLE_SIGN_IN"
+## The iOS preset option whose text lands in the app's .entitlements <dict>.
+const IOS_ENTITLEMENTS_OPTION := "entitlements/additional"
+const ENTITLEMENT_SIGN_IN := "com.apple.developer.applesignin"
+const GAME_CENTER_OPTION := "polaris_key/game_center"
+const GAME_CENTER_ENV := "PKEY_APPLE_GAME_CENTER"
+const ENTITLEMENT_GAME_CENTER := "com.apple.developer.game-center"
+## The opt-in Game Center extension's .gdextension files (native/ios/build.sh and
+## native/macos/build_apple.sh with EXTENSION=gamecenter install them): its presence in the project is
+## the opt-in, because Godot exports every GDExtension it finds and an export plugin cannot keep one out.
+const GAME_CENTER_EXTENSION_FILES := {
+	"ios": "res://addons/polaris_key/native/ios/pkey_gamecenter.gdextension",
+	"macos": "res://addons/polaris_key/native/bin/pkey_gamecenter_macos.gdextension",
+}
 const XCFRAMEWORK := "res://addons/polaris_key/native/ios/pkey_apple.xcframework"
 
 
@@ -49,6 +71,56 @@ static func plist_content(on: bool, bundle_id: String) -> String:
 		lines.append("<key>PKeyAppleAppGroup</key>")
 		lines.append("<string>group.%s</string>" % bundle_id.xml_escape())
 	return "\n".join(lines) + "\n"
+
+
+## The entitlement entries (plist fragments) the switches ask for.
+static func entitlement_fragments(sign_in: bool, game_center := false) -> PackedStringArray:
+	var out := PackedStringArray()
+	if sign_in:
+		out.append("<key>%s</key>\n<array><string>Default</string></array>" % ENTITLEMENT_SIGN_IN)
+	if game_center:
+		out.append("<key>%s</key>\n<true/>" % ENTITLEMENT_GAME_CENTER)
+	return out
+
+
+## Whether the opt-in Game Center extension is installed in this project for `platform` (ios, macos).
+static func extension_installed(platform: String, exists := Callable()) -> bool:
+	if not GAME_CENTER_EXTENSION_FILES.has(platform):
+		return false
+	var path: String = GAME_CENTER_EXTENSION_FILES[platform]
+	return bool(exists.call(path)) if exists.is_valid() else FileAccess.file_exists(path)
+
+
+## A warning when the Game Center option and the installed extension disagree ("" when they agree).
+static func game_center_warning(on: bool, installed: bool) -> String:
+	if on and not installed:
+		var how := "Build it with EXTENSION=gamecenter (native/ios/build.sh or native/macos/build_apple.sh)."
+		return "%s is on but the Game Center extension is not installed: the entitlement is added and the rung answers unavailable. %s" % [GAME_CENTER_OPTION, how]
+	if installed and not on:
+		var fix := "Turn the option on, or remove pkey_gamecenter from the project."
+		return "the Game Center extension is installed, so GameKit is linked, but %s is off: the entitlement is not added. %s" % [GAME_CENTER_OPTION, fix]
+	return ""
+
+
+## `existing` (the preset's own `entitlements/additional` text) plus the fragments whose key it does
+## not already name. The preset's text is never changed or reordered.
+static func merge_entitlements(existing: String, fragments: PackedStringArray) -> String:
+	var out := existing
+	for f in fragments:
+		var key := f.get_slice("</key>", 0).trim_prefix("<key>")
+		if existing.contains("<key>%s</key>" % key):
+			continue
+		out += ("" if out == "" or out.ends_with("\n") else "\n") + f + "\n"
+	return out
+
+
+## A warning for an entitlement option on a macOS preset ("" otherwise): Godot's macOS export has no
+## entitlement text option, so the entitlement goes into the preset's custom entitlements file.
+static func sign_in_warning(on: bool, platform: String, option := SIGN_IN_OPTION, entitlement := ENTITLEMENT_SIGN_IN) -> String:
+	if on and platform == "macos":
+		var why := "Godot's macOS export has no entitlement text option. Add %s to the preset's custom entitlements file."
+		return "%s: %s" % [option, why % entitlement]
+	return ""
 
 
 ## A warning for the option ("" when none).

@@ -173,6 +173,7 @@ describe("Cloud Connect → Setup", () => {
     ).toHaveLength(1);
     expect(screen.queryByRole("heading", { name: "Relay" })).toBeNull();
     expect(screen.queryByText(/platform operator/)).toBeNull();
+    expect(screen.getByText("People see it as Nearby Devices.")).toBeTruthy();
     expect(screen.getByText("Platform default")).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Change the relay ceiling" }),

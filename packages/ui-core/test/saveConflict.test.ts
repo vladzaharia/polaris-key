@@ -82,27 +82,97 @@ describe("SaveConflict", () => {
     expect(both.copy).not.toContain("saveConflict.deletedTitle");
   });
 
-  it("focuses the heading on a failed choice, never Try again", () => {
-    const v = viewOf(
+  it("offers three controls on a failed choice, fills none, and focuses the heading", () => {
+    for (const remote of [OTHER, null]) {
+      const v = viewOf(
+        "SaveConflict",
+        sc({ step: "failed", keep: "remote", local: THIS, remote }),
+      );
+      expect(v.decisions.focus).toBe("heading");
+      expect(v.decisions.primary).toBeNull();
+      expect(v.actions).toEqual(["cancel", "choose-again", "retry"]);
+    }
+    const gone = viewOf(
       "SaveConflict",
       sc({ step: "failed", keep: "remote", local: THIS, remote: null }),
     );
-    expect(v.decisions.focus).toBe("heading");
-    expect(v.decisions.primary).toBe("common.tryAgain");
+    expect(gone.copy).toContain("saveConflict.deletedTitle");
+    expect(gone.copy).toContain("saveConflict.failedDeleted");
+    expect(gone.copy).not.toContain("saveConflict.failed");
   });
 
-  it("offers no control while a choice is applied, and names it once kept", () => {
+  it("offers no control while a choice is applied, shows it busy, and keeps the title", () => {
     const keeping = viewOf(
       "SaveConflict",
       sc({ step: "keeping", keep: "both", local: THIS, remote: OTHER }),
     );
     expect(keeping.actions).toEqual([]);
-    const kept = viewOf(
+    expect(keeping.copy).toContain("a11y.busy");
+    expect(keeping.copy).toContain("saveConflict.title");
+    const gone = viewOf(
       "SaveConflict",
-      sc({ step: "kept", keep: "both", local: THIS, remote: OTHER }),
+      sc({ step: "keeping", keep: "remote", local: THIS, remote: null }),
     );
-    expect(kept.copy).toContain("saveConflict.keptBoth");
-    expect(kept.copy).not.toContain("saveConflict.keptLocal");
+    expect(gone.copy).toContain("saveConflict.deletedTitle");
+    expect(gone.copy).not.toContain("saveConflict.title");
+  });
+
+  it("titles kept by the choice made, focusing the heading with Done primary", () => {
+    const kept = (extra: Obj) =>
+      viewOf(
+        "SaveConflict",
+        sc({ step: "kept", local: THIS, remote: OTHER, ...extra }),
+      );
+    expect(kept({ keep: "both" }).copy).toEqual(
+      expect.arrayContaining([
+        "saveConflict.keptBothTitle",
+        "saveConflict.keptCopy",
+      ]),
+    );
+    expect(kept({ keep: "remote" }).copy).toContain(
+      "saveConflict.keptRemoteTitle",
+    );
+    expect(kept({ keep: "local" }).copy).not.toContain("saveConflict.keptCopy");
+    expect(kept({ keep: "remote", remote: null }).copy).toContain(
+      "saveConflict.keptDeletedTitle",
+    );
+    // Not reachable: with one copy there is no "both", so it reads as local.
+    const odd = kept({ keep: "both", remote: null });
+    expect(odd.copy).toContain("saveConflict.keptLocalTitle");
+    expect(odd.copy).not.toContain("saveConflict.keptCopy");
+    const v = kept({ keep: "local" });
+    expect(v.decisions.primary).toBe("common.done");
+    expect(v.decisions.focus).toBe("heading");
+  });
+
+  it("tags the newer card, never with one copy, and chooses nothing", () => {
+    const choose = (extra: Obj) =>
+      viewOf(
+        "SaveConflict",
+        sc({
+          step: "choose",
+          local: THIS,
+          remote: OTHER,
+          bothAvailable: true,
+          ...extra,
+        }),
+      );
+    const plain = choose({});
+    expect(plain.copy).not.toContain("saveConflict.newerThis");
+    expect(plain.copy).not.toContain("saveConflict.newerOther");
+    const remote = choose({ newer: "remote" });
+    expect(remote.copy).toContain("saveConflict.newerOther");
+    expect(remote.copy).not.toContain("saveConflict.newerThis");
+    const local = choose({ newer: "local" });
+    expect(local.copy).toContain("saveConflict.newerThis");
+    for (const v of [remote, local]) {
+      expect(v.decisions.primary).toBe(plain.decisions.primary);
+      expect(v.decisions.focus).toBe(plain.decisions.focus);
+      expect(v.actions).toEqual(plain.actions);
+    }
+    const gone = choose({ remote: null, newer: "local" });
+    expect(gone.copy).not.toContain("saveConflict.newerThis");
+    expect(gone.copy).not.toContain("saveConflict.newerOther");
   });
 
   it("is hidden with Cloud Sync off, and with no conflict", () => {

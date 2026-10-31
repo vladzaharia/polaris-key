@@ -76,6 +76,48 @@ export async function identityWorld(): Promise<World> {
   return w;
 }
 
+/**
+ * The same product with the PLATFORM sign-in (`provider: platform`) and the I-17 claim on: the
+ * callback lands the verified subject on a Polaris Locker account (`claimAccount`), which is the
+ * account an app-mode device-code sign-in settles for (UK-42.22, WIRE-CONTRACT-V5 §12.10.1). The
+ * platform IdP is the same mocked issuer.
+ */
+export async function platformIdentityWorld(): Promise<World> {
+  const w = await productWorld(IDENTITY);
+  await seedTier(w.db, PRODUCT, "pro");
+  w.env.PLATFORM_OIDC_ISSUER = IDP_ISSUER;
+  w.env.PLATFORM_OIDC_CLIENT_ID = IDP_CLIENT_ID;
+  w.env.PLATFORM_OIDC_MIGRATION = "claim";
+  await w.db.run(
+    "INSERT INTO oidc_config (product, provider, redirect_uris_json, group_role_map_json) VALUES (?,?,?,?)",
+    PRODUCT,
+    "platform",
+    JSON.stringify([`${BASE_URL}/${PRODUCT}/identity/auth/callback`]),
+    JSON.stringify({ players: { role: "user", tier: "pro" } }),
+  );
+  return w;
+}
+
+/** A JSON POST to the Worker as a device would send it (outside the recording). */
+export function postJson(
+  w: World,
+  now: number,
+  path: string,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Promise<Response> {
+  return dispatchWith(
+    new Request(`${BASE_URL}${path}`, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...headers },
+      body: JSON.stringify(body),
+    }) as unknown as Request,
+    w.env,
+    w.db,
+    now,
+  );
+}
+
 /** A request from the player's BROWSER, outside the recording: no device headers, no bearer. */
 async function browser(
   w: World,
@@ -115,7 +157,8 @@ export async function playerSignsIn(
   now: number,
   verificationUriComplete: string,
   decision: "approve" | "deny" = "approve",
-): Promise<void> {
+  player: typeof PLAYER & { email_verified?: boolean } = PLAYER,
+): Promise<string> {
   const complete = new URL(verificationUriComplete);
   const userCode = complete.searchParams.get("user_code")!;
   const page = await browser(
@@ -140,7 +183,7 @@ export async function playerSignsIn(
   // The confirming browser holds the flow's binder; the callback must come back with it.
   const binder = (confirmed.headers.get("set-cookie") ?? "").split(";")[0]!;
 
-  const idToken = await signIdToken(PLAYER, nonce, now);
+  const idToken = await signIdToken(player, nonce, now);
   const callback = await answerTokenExchange(idToken, () =>
     browser(
       w,
@@ -165,9 +208,8 @@ export async function playerSignsIn(
     binder,
   );
   expect(approvePage.status).toBe(200);
-  const token = /name="token" value="([^"]+)"/.exec(
-    await approvePage.text(),
-  )?.[1];
+  const approveHtml = await approvePage.text();
+  const token = /name="token" value="([^"]+)"/.exec(approveHtml)?.[1];
   expect(token).toBeTruthy();
   const approved = await browser(
     w,
@@ -178,6 +220,8 @@ export async function playerSignsIn(
     binder,
   );
   expect(approved.status).toBe(200);
+  // The approval page the person pressed the button on, for a test that reads its words.
+  return approveHtml;
 }
 
 /** The KV records a device flow lives in expire with the flow (`FLOW_TTL_SECONDS`). The test KV

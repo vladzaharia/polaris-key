@@ -99,13 +99,13 @@ describe("the sign-in form: a key with no account, then Add your name and email"
         expect(el.view.state).toBe("attach");
         // Name takes focus on a fine pointer, the heading (Add your name and email) on a coarse
         // one (DL9).
-        expect(["signin.gate.name", "activate.recommend.action"]).toContain(
+        expect(["activate.attach.name", "activate.recommend.action"]).toContain(
           (el.shadowRoot!.activeElement?.getAttribute("data-key") ??
             el.shadowRoot!.activeElement?.id) as string,
         );
         await check(el, "form-attach", size, scheme, "common.continue");
 
-        type(el.shadowRoot!, "signin.gate.name", "Mara Quill");
+        type(el.shadowRoot!, "activate.attach.name", "Mara Quill");
         type(el.shadowRoot!, "signin.email.label", "mara@example.test");
         button(el.shadowRoot!, "common.continue")!.click();
         await settle(el, () => el.view.state === "added");
@@ -114,33 +114,38 @@ describe("the sign-in form: a key with no account, then Add your name and email"
       });
 });
 
+/** A gate over the fake Worker, taken through a key to the Done step. */
+async function gateToDone(scheme: "dark" | "light") {
+  const w = world();
+  const gate = document.createElement("pk-gate") as PkGate;
+  gate.colorScheme = scheme;
+  gate.innerHTML = `<main data-testid="app"><p>The app</p></main>`;
+  gate.seams = {
+    fetchImpl: fakeFetch(w),
+    navigate: () => {},
+    now: () => NOW,
+    // The in-page Add is off on the web by default; these paths drive the form.
+    addIn: "app",
+  };
+  gate.config = { ...PAGE, version: "1.0.0" };
+  document.body.style.background = scheme === "dark" ? "#060912" : "#f6f8ff";
+  document.body.replaceChildren(gate);
+  const root = gate.shadowRoot!;
+  await settle(gate, () => button(root, "welcome.useKey") !== null);
+  button(root, "welcome.useKey")!.click();
+  await settle(gate, () => root.querySelector("#pk-key") !== null);
+  await typeKey(gate, "pkey_acme_KEY");
+  button(root, "activate.submit")!.click();
+  await settle(gate, () => button(root, "signin.done.start") !== null);
+  return { gate, root };
+}
+
 describe("<pk-gate config>: the whole path", () => {
   for (const size of SIZES)
     for (const scheme of SCHEMES)
       it(`key, Done, Add, back, Start using, and the Settings row at ${size.label} ${scheme}`, async () => {
         await page.viewport(size.width, size.height);
-        const w = world();
-        const gate = document.createElement("pk-gate") as PkGate;
-        gate.colorScheme = scheme;
-        gate.innerHTML = `<main data-testid="app"><p>The app</p></main>`;
-        gate.seams = {
-          fetchImpl: fakeFetch(w),
-          navigate: () => {},
-          now: () => NOW,
-          // The in-page Add is off on the web by default; this path pins the form's layout.
-          addIn: "app",
-        };
-        gate.config = { ...PAGE, version: "1.0.0" };
-        document.body.style.background =
-          scheme === "dark" ? "#060912" : "#f6f8ff";
-        document.body.replaceChildren(gate);
-        const root = gate.shadowRoot!;
-        await settle(gate, () => button(root, "welcome.useKey") !== null);
-        button(root, "welcome.useKey")!.click();
-        await settle(gate, () => root.querySelector("#pk-key") !== null);
-        await typeKey(gate, "pkey_acme_KEY");
-        button(root, "activate.submit")!.click();
-        await settle(gate, () => button(root, "signin.done.start") !== null);
+        const { gate, root } = await gateToDone(scheme);
         await check(gate, "gate-done", size, scheme, "signin.done.start");
 
         button(root, "activate.recommend.action")!.click();
@@ -176,4 +181,88 @@ describe("<pk-gate config>: the whole path", () => {
         await settle(gate, () => root.querySelector("slot") !== null);
         expect(gate.querySelector('[data-testid="app"]')).not.toBeNull();
       });
+});
+
+describe("<pk-gate config>: focus after the UX review (UK-42.15)", () => {
+  const toDone = () => gateToDone("light");
+  const focused = (root: ShadowRoot) =>
+    root.activeElement?.getAttribute("data-key") ?? root.activeElement?.id;
+
+  /** Done, then Add, then an empty Continue: the form is invalid and Name has focus. */
+  const toInvalid = async () => {
+    const { gate, root } = await toDone();
+    button(root, "activate.recommend.action")!.click();
+    await settle(gate, () => button(root, "common.continue") !== null);
+    button(root, "common.continue")!.focus();
+    button(root, "common.continue")!.click();
+    await settle(
+      gate,
+      () => key(root, "activate.attach.nameRequired") !== null,
+    );
+    expect(focused(root)).toBe("activate.attach.name");
+    return { gate, root };
+  };
+
+  it("an empty Continue moves focus to Name; Cancel returns it to Add your name and email", async () => {
+    const { gate, root } = await toInvalid();
+    key(root, "common.cancel")!.click();
+    await settle(gate, () => button(root, "signin.done.start") !== null);
+    expect(focused(root)).toBe("activate.recommend.action");
+  });
+
+  it("Escape on Done is Start using: the app comes in", async () => {
+    const { gate, root } = await toDone();
+    button(root, "signin.done.start")!.focus();
+    root.activeElement!.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        composed: true,
+      }),
+    );
+    await settle(gate, () => root.querySelector("slot") !== null);
+    expect(gate.querySelector('[data-testid="app"]')).not.toBeNull();
+  });
+
+  // UK-42.16 N4: a second Continue while the form is still invalid moves focus to the first
+  // wrong field again (the state does not change, so only the press can do it).
+  it("a second Continue while invalid focuses the first wrong field", async () => {
+    const { gate, root } = await toInvalid();
+    button(root, "common.continue")!.focus();
+    expect(focused(root)).toBe("common.continue");
+    button(root, "common.continue")!.click();
+    await settle(gate, () => focused(root) === "activate.attach.name");
+    expect(focused(root)).toBe("activate.attach.name");
+  });
+});
+
+describe("<pk-gate config>: the focused field is clear of the docked bar (UK-42.16 N1)", () => {
+  // The 400 % zoom row: 320x256 CSS px.
+  it("Name is not under Continue at 320x256", async () => {
+    await page.viewport(320, 256);
+    const { gate, root } = await gateToDone("dark");
+    button(root, "activate.recommend.action")!.click();
+    await settle(gate, () => button(root, "common.continue") !== null);
+    await settle(
+      gate,
+      () =>
+        root.activeElement?.getAttribute("data-key") === "activate.attach.name",
+    );
+    const name = key(root, "activate.attach.name")!;
+    expect(root.activeElement).toBe(name);
+    const dock = button(root, "common.continue")!.closest<HTMLElement>(
+      ".actions",
+    )!;
+    const n = name.getBoundingClientRect();
+    const d = dock.getBoundingClientRect();
+    expect(n.top, "Name is above the top edge").toBeGreaterThanOrEqual(-0.5);
+    expect(
+      n.bottom,
+      `Name (${n.top}-${n.bottom}) sits under the dock (${d.top})`,
+    ).toBeLessThanOrEqual(d.top + 0.5);
+    if (__PKEY_KIT_SHOTS__)
+      await commands.kitShot(
+        `${__PKEY_KIT_SHOTS__}/elements.flow.gate-add/320x256-focus.png`,
+      );
+  });
 });

@@ -388,6 +388,11 @@
       "why": "Your license doesn't cover the feature you tried to use.",
       "fix": "Ask the app's developer about adding it, or use a feature your license includes."
     },
+    "entitlement_required": {
+      "page": "license-status",
+      "why": "Your license doesn't include this part of the app.",
+      "fix": "Upgrade your license, then try again, or ask the app's developer."
+    },
     "release-refused": {
       "page": "license-status",
       "entry": "not_entitled",
@@ -1046,7 +1051,7 @@
     },
     "cursor_expired": {
       "page": "other",
-      "why": "This device went too long without syncing, so Cloud Sync can't continue from where it stopped.",
+      "why": "This device went too long without syncing, so syncing can't continue from where it stopped.",
       "fix": "Nothing. The device starts over from your saved data. Open the app once while online."
     },
     "quota_exceeded": {
@@ -1057,7 +1062,7 @@
     },
     "writes_paused": {
       "page": "other",
-      "why": "The app's developer paused Cloud Sync. Your changes stay on this device.",
+      "why": "The app's developer paused syncing. Your changes stay on this device.",
       "fix": "Nothing. They send once syncing resumes."
     },
     "device_keys_invalid": {
@@ -1067,12 +1072,12 @@
     },
     "device_keys_required": {
       "page": "devices",
-      "why": "This device hasn't been set up to link with your other devices yet, usually because the app is out of date.",
+      "why": "This device hasn't been set up to connect with your other devices yet, usually because the app is out of date.",
       "fix": "Update the app, then try again. If it keeps happening, tell the app's developer."
     },
     "ring_too_large": {
       "page": "devices",
-      "why": "Your account has more linked devices than can be connected to each other at once.",
+      "why": "Your account has more devices than can be connected to each other at once.",
       "fix": "Remove a device you no longer use, then try again."
     },
     "interstitial_required": {
@@ -1087,7 +1092,7 @@
     },
     "encryption_mismatch": {
       "page": "other",
-      "why": "The app and the sync service use different encryption, so the app can't sync.",
+      "why": "The app and Polaris Locker use different encryption, so the app can't sync.",
       "fix": "Update the app, then try again."
     },
     "revision_conflict": {
@@ -1131,6 +1136,11 @@
       "why": "Your synced data is encrypted, and this device doesn't have the key to open it yet.",
       "fix": "Unlock sync with your recovery code or with another signed-in device."
     },
+    "sync-file-invalid": {
+      "page": "accounts",
+      "why": "A file synced from your other devices failed its integrity check, so the app didn't use it.",
+      "fix": "Try again. If it keeps happening, open the app on the device that saved the file so it syncs again, or tell the app's developer."
+    },
     "recovery-code-invalid": {
       "page": "accounts",
       "why": "The recovery code you entered doesn't match the one for this account.",
@@ -1148,12 +1158,12 @@
     },
     "relay_disabled": {
       "page": "other",
-      "why": "The app's developer turned off remote connect. Your devices connect only on the same network.",
-      "fix": "Use devices on the same network. If you need remote connect, ask the app's developer."
+      "why": "The app's developer turned off remote connection. Your devices connect only on the same network.",
+      "fix": "Use devices on the same network. If you need remote connection, ask the app's developer."
     },
     "relay_paused": {
       "page": "other",
-      "why": "Remote connect is paused. Devices on the same network still connect.",
+      "why": "Remote connection is paused. Devices on the same network still connect.",
       "fix": "Try again later."
     },
     "relay_quota_exceeded": {
@@ -1178,7 +1188,7 @@
     },
     "connect-unavailable": {
       "page": "other",
-      "why": "Nearby connection isn't available for this app on this device.",
+      "why": "Nearby devices aren't available for this app on this device.",
       "fix": "Use the app's other ways to sign in or sync."
     },
     "peer-cert-invalid": {

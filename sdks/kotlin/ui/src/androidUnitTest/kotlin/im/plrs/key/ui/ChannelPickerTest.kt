@@ -36,7 +36,7 @@ class ChannelPickerTest {
     fun aPickIsReportedAndTheCurrentChannelIsSelected() {
         val picks = mutableListOf<String>()
         show { PolarisChannelPicker(sampleChannel, onSelect = { picks += it }) }
-        rule.onNodeWithText("Release channel").assertIsDisplayed()
+        rule.onNodeWithText("Release Channel").assertIsDisplayed()
         rule.onNodeWithText("Stable").assertIsSelected()
         rule.onNodeWithText("Stable").performClick()
         rule.onNodeWithText("Beta").performClick()
@@ -46,7 +46,7 @@ class ChannelPickerTest {
     @Test
     fun withoutAHandlerTheSwitchablePickerIsNotDrawn() {
         show { PolarisChannelPicker(sampleChannel) }
-        rule.onNodeWithText("Release channel").assertDoesNotExist()
+        rule.onNodeWithText("Release Channel").assertDoesNotExist()
         rule.onNodeWithText("Beta").assertDoesNotExist()
     }
 
@@ -78,13 +78,13 @@ class ChannelPickerTest {
     @Test
     fun aPickerWithOneChannelAndNoLockIsNotDrawn() {
         show { PolarisChannelPicker(PolarisChannelUi("stable", listOf("stable")), onSelect = {}) }
-        rule.onNodeWithText("Release channel").assertDoesNotExist()
+        rule.onNodeWithText("Release Channel").assertDoesNotExist()
     }
 
     @Test
     fun withReleaseOffTheSettingsScreenDrawsNoPicker() {
         show { PolarisSettingsScreen(sampleSettings.copy(channel = null), onChannel = {}) }
-        rule.onNodeWithText("Release channel").assertDoesNotExist()
+        rule.onNodeWithText("Release Channel").assertDoesNotExist()
     }
 
     @Test
@@ -96,12 +96,12 @@ class ChannelPickerTest {
     @Test
     fun theSettingsScreenDrawsNoSwitchablePickerWithoutAHandler() {
         show { PolarisSettingsScreen(sampleSettings.copy(channel = sampleChannel)) }
-        rule.onNodeWithText("Release channel").assertDoesNotExist()
+        rule.onNodeWithText("Release Channel").assertDoesNotExist()
     }
 
     @Test
     fun theSettingsScreenDrawsTheSwitchablePickerWithAHandler() {
         show { PolarisSettingsScreen(sampleSettings.copy(channel = sampleChannel), onChannel = {}) }
-        rule.onNodeWithText("Release channel").assertIsDisplayed()
+        rule.onNodeWithText("Release Channel").assertIsDisplayed()
     }
 }

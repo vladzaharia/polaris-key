@@ -120,6 +120,7 @@ export function parseDiscovery(
 export interface ExchangeDiscovery {
   kinds: readonly ExchangeKind[];
   google?: { serverClientId: string };
+  pgs?: { serverClientId: string };
   nonceEndpoint: string;
   tokenEndpoint: string;
   linkEndpoint?: string;
@@ -138,8 +139,8 @@ export function exchangeDiscoveryOf(
   if (!isRecord(identity) || identity.enabled !== true) return null;
   const exchange = identity.exchange;
   if (!isRecord(exchange) || !Array.isArray(exchange.kinds)) return null;
-  const kinds = (["google", "apple"] as const).filter((k) =>
-    (exchange.kinds as unknown[]).includes(k),
+  const kinds = (["google", "apple", "gamecenter", "pgs"] as const).filter(
+    (k) => (exchange.kinds as unknown[]).includes(k),
   );
   const endpoints = isRecord(identity.endpoints) ? identity.endpoints : {};
   if (
@@ -149,10 +150,14 @@ export function exchangeDiscoveryOf(
   )
     return null;
   const google = exchange.google;
+  const pgs = exchange.pgs;
   return {
     kinds,
     ...(isRecord(google) && nonEmpty(google.serverClientId)
       ? { google: { serverClientId: google.serverClientId } }
+      : {}),
+    ...(isRecord(pgs) && nonEmpty(pgs.serverClientId)
+      ? { pgs: { serverClientId: pgs.serverClientId } }
       : {}),
     nonceEndpoint: endpoints.nonce,
     tokenEndpoint: endpoints.token,

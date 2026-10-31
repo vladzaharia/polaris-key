@@ -83,11 +83,26 @@ export interface RingEngineOptions {
   now?: () => number;
   /** A test seam: the id for the next ring (default `rg_` and 16 random bytes in base64url). */
   newRingId?: () => string;
-  /** How long root bytes stay in memory after a create, a recovery or an unwrap. Default 300. */
+  /**
+   * How long root bytes stay in memory after a create, a recovery or an unwrap. Default 300;
+   * a value above 900 is clamped to 900, and a non-finite or non-positive one is `invalid-options`.
+   */
   sessionRootSeconds?: number;
 }
 
 const DEFAULT_SESSION_ROOT_SECONDS = 300;
+const MAX_SESSION_ROOT_SECONDS = 900;
+
+/** The window in seconds: the default when unset, the ceiling when above it, else an error. */
+function sessionRootWindow(v: number | undefined): number {
+  if (v === undefined) return DEFAULT_SESSION_ROOT_SECONDS;
+  if (typeof v !== "number" || !Number.isFinite(v) || v <= 0)
+    throw new PolarisError(
+      "invalid-options",
+      "keyring.sessionRootSeconds must be a finite number above 0.",
+    );
+  return Math.min(v, MAX_SESSION_ROOT_SECONDS);
+}
 /**
  * `kem` on the wire is the HPKE KEM id as a JSON integer (V5 §13.11.1). The Worker's first
  * routes took the text "x25519" for the same key type, so a reader accepts that too (and "32").
@@ -233,9 +248,12 @@ export class RingEngine implements KeyringClient {
     kid: string;
   } | null = null;
 
+  private readonly sessionRootMs: number;
+
   constructor(private readonly o: RingEngineOptions) {
     this.p = o.crypto ?? webCryptoSyncPort;
     this.now = o.now ?? (() => Date.now());
+    this.sessionRootMs = sessionRootWindow(o.sessionRootSeconds) * 1000;
   }
 
   // ── State ──────────────────────────────────────────────────────────────────────────────────
@@ -547,16 +565,14 @@ export class RingEngine implements KeyringClient {
     // The first root acquired (create, recover or unwrap) pins its ring; a later one re-pins.
     await vault.putPin(identityPin({ ringId, epoch, rootKid }));
     this.dropSession();
-    const ms =
-      (this.o.sessionRootSeconds ?? DEFAULT_SESSION_ROOT_SECONDS) * 1000;
-    const timer = setTimeout(() => this.dropSession(), ms);
+    const timer = setTimeout(() => this.dropSession(), this.sessionRootMs);
     (timer as { unref?: () => void }).unref?.();
     this.session = {
       ringId,
       epoch,
       kid,
       bytes: root,
-      until: this.now() + ms,
+      until: this.now() + this.sessionRootMs,
       timer,
     };
     this.setHeld(true);

@@ -11,7 +11,11 @@ import { dispatchWith } from "../../../src/dispatch.js";
 import { NOW, seedLicenseWithKey, TEST_KID, TEST_PUB } from "../../seed.js";
 import { newKeys } from "../../deviceKeyFixtures.js";
 
-import { upsertDeviceKeys } from "../../../src/core/devices/keys.js";
+import {
+  DeviceKeysConflictError,
+  getDeviceKeys,
+  upsertDeviceKeys,
+} from "../../../src/core/devices/keys.js";
 import { assertConnectDoc } from "../../../src/core/signing.js";
 import {
   currentRing,
@@ -167,6 +171,22 @@ describe("GET /<p>/connect/identity", () => {
     );
     expect(r3?.payload.epoch).toBe(3);
     expect(r3?.payload.devices).toHaveLength(1);
+  });
+
+  it("every accepted registration leaves the roster signable: a repeated key string is refused", async () => {
+    const first = await identity(w);
+    const held = (await getDeviceKeys(w.db, SLUG, B))!;
+    const mine = await newKeys();
+    for (const keys of [
+      { signKey: held.sign_key, agreeKey: mine.agreeKey },
+      { signKey: mine.signKey, agreeKey: mine.signKey },
+      { signKey: mine.signKey, agreeKey: held.agree_key },
+    ])
+      await expect(
+        upsertDeviceKeys(w.db, SLUG, A, keys, NOW + 1),
+      ).rejects.toBeInstanceOf(DeviceKeysConflictError);
+    const again = await identity(w, A, NOW + 2);
+    expect(again.discKeys).toEqual(first.discKeys);
   });
 
   it("never includes another person's devices", async () => {

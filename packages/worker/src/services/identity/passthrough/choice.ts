@@ -154,6 +154,11 @@ export async function licenseChoiceView(
     deviceId: string | null;
     /** The card's request handle and the device's label, for the Free-a-device link. */
     card?: { handle: string; deviceLabel: string | null };
+    /**
+     * A grant earned by a device code cannot Replace (§12.5.1 rule 5): every row's `replace` is
+     * `null`. The Free-a-device link stays, so the person frees a seat in the portal.
+     */
+    withholdReplace?: boolean;
   },
 ): Promise<LicenseChoiceView> {
   const { db, product } = cx;
@@ -166,7 +171,8 @@ export async function licenseChoiceView(
   for (const c of offer.candidates) {
     const license = await getLicense(db, product.slug, c.licenseId);
     if (!license) continue;
-    choices.push(await choiceRow(cx, customer, license, c, portal, opts.card));
+    const row = await choiceRow(cx, customer, license, c, portal, opts.card);
+    choices.push(opts.withholdReplace ? { ...row, replace: null } : row);
   }
   const state: LicenseChoiceView["state"] =
     offer.candidates.length > 0 || offer.keep

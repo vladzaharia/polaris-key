@@ -11,7 +11,7 @@
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../platform/env.js";
 import { portalAudit } from "../accounts/portalAudit.js";
-import { deliverEmail } from "./emailDelivery.js";
+import { deliverEmail, wouldDeliver } from "./emailDelivery.js";
 import { linkText, whatIsLockerLink } from "../helpLinks.js";
 import { emailAssetOrigin, renderEmail } from "./render.js";
 import { securityNoticeRecipients, type AlsoTo } from "./recipients.js";
@@ -165,6 +165,22 @@ export async function sendNotice(
     now,
   );
   return result.ok;
+}
+
+/**
+ * Can a security notice reach this account? True when any address `sendSecurityNotice` would use
+ * passes `wouldDeliver`. Sends and records nothing.
+ */
+export async function securityNoticeDeliverable(
+  env: Env,
+  db: Db,
+  accountId: string,
+  alsoTo: AlsoTo,
+  now: number,
+): Promise<boolean> {
+  for (const to of await securityNoticeRecipients(db, accountId, alsoTo))
+    if (await wouldDeliver(env, db, to, now)) return true;
+  return false;
 }
 
 /**

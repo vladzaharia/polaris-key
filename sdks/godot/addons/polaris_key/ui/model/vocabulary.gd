@@ -4,7 +4,7 @@ extends RefCounted
 ## pins them for every language; a screen reads them from here instead of spelling a string.
 
 ## The UI matrix version these models implement (the generated `UI_MATRIX_VERSION`).
-const UI_MATRIX_VERSION := 7
+const UI_MATRIX_VERSION := 10
 
 ## UI-KITS.md §4.1: every component, must and should.
 const COMPONENTS := [
@@ -12,7 +12,7 @@ const COMPONENTS := [
 	"OfflineActivation", "DeviceLimit", "LicenseChoice", "Devices", "UpdatePrompt",
 	"UpdateProgress", "ReleaseNotes", "StatusScreen", "GraceBanner", "AccountAndLicense",
 	"Settings", "Paywall", "EntitlementGate", "CloudSyncStatus", "About", "ChannelPicker", "Toast",
-	"UnlockSync", "RecoveryCode", "RingChange",
+	"UnlockSync", "RecoveryCode", "RingChange", "SaveConflict",
 ]
 
 ## The reserved state of a component its service turns off: the drop-in renders nothing.
@@ -20,7 +20,8 @@ const HIDDEN := "hidden"
 
 ## The actions a view offers, named by what they do (`vocabulary.actions`).
 const ACTIONS := ["open-card", "open-browser", "replace-in-browser", "open-manage-url", "start-sign-in", "copy-link", "retry", "cancel",
-	"unlock", "start-over", "confirm-start-over", "accept-ring-change", "use-recovery-code", "copy-code"]
+	"unlock", "start-over", "confirm-start-over", "accept-ring-change", "use-recovery-code", "copy-code",
+	"keep-local", "keep-remote", "keep-both", "choose-again"]
 
 ## Which controls perform each action, by their label's copy key (`vocabulary.actionKeys`).
 const ACTION_KEYS := {
@@ -38,6 +39,10 @@ const ACTION_KEYS := {
 	"accept-ring-change": ["ringChange.accept"],
 	"use-recovery-code": ["ringChange.useCode"],
 	"copy-code": ["recoveryCode.copy"],
+	"keep-local": ["saveConflict.keepThis"],
+	"keep-remote": ["saveConflict.keepOther", "saveConflict.acceptDelete"],
+	"keep-both": ["saveConflict.keepBoth"],
+	"choose-again": ["saveConflict.chooseAgain"],
 }
 
 ## The opt-in services (tools/services.json) and what each requires (ST-38's closure rule).

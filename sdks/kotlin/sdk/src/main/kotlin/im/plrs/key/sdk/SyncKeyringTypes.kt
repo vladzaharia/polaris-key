@@ -8,6 +8,7 @@ import im.plrs.key.core.DeviceKeyPersistence
 import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.DeviceKeyStorage
 import im.plrs.key.core.ErrorCode
+import im.plrs.key.core.PlatformBackupStore
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.sync.SyncBlind
 import im.plrs.key.core.sync.SyncCodecPort
@@ -33,6 +34,15 @@ public data class KeyringOptions @JvmOverloads constructor(
      * the state directory, or memory only without one. Android: `androidSyncRootStorage(...)`.
      */
     val rootStorage: DeviceKeyStorage? = null,
+    /**
+     * The platform backup of the root (U-39.10): Block Store on the Play flavour, which the Android
+     * entry point installs. The root is saved when the ring is made, recovered or opened, and read
+     * back on a new device before the recovery code is asked for. Null (a JVM desktop, the direct
+     * flavour): no backup, and the device falls through to its wrap or the code.
+     */
+    val backup: PlatformBackupStore? = null,
+    /** False turns the backup off: [backup] is neither written nor read (the developer's opt-out). */
+    val keyBackup: Boolean = true,
 )
 
 /** Told when this device gains or loses the root: Cloud Sync's machine takes the root as a flag. */

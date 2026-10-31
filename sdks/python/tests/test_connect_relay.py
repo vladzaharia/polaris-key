@@ -622,3 +622,15 @@ def test_the_default_opener_never_follows_a_redirect_so_the_ticket_stays_on_one_
 
     assert run(go()) is None
     assert hits == []
+
+
+def test_relay_ticket_retry_after_is_capped_before_conversion() -> None:
+    from polaris_key.connect.client import RELAY_MAX_RETRY_AFTER_S as CAP
+    from polaris_key.connect.client import _retry_after_seconds as parse
+
+    for digits in (19, 20, 400):
+        assert parse("9" * digits) == CAP
+    assert parse("3601") == CAP and parse("3600") == 3600 and parse("0") == 0 and parse("300") == 300
+    assert parse("1.2") == 2
+    assert parse("Fri, 31 Dec 9999 23:59:59 GMT") == CAP
+    assert parse("-5") is None and parse("1e999") is None and parse("garbage") is None and parse(None) is None

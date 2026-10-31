@@ -468,6 +468,7 @@ describe("GET /api/products/<p>", () => {
         firstSeen: NOW - 1000,
         lastSeen: NOW - 5,
         dormant: false,
+        restored: false,
       },
       {
         deviceId: "dev-old",
@@ -478,6 +479,7 @@ describe("GET /api/products/<p>", () => {
         firstSeen: NOW - 1000,
         lastSeen: DORMANT_AT,
         dormant: true,
+        restored: false,
       },
     ]);
   });

@@ -33,9 +33,11 @@ class PlayCommands(
     private val updateManager: (() -> AppUpdateManager)? = null,
     private val packManager: (() -> PackManager)? = null,
     private val integrityBackend: (() -> IntegrityBackend)? = null,
+    playGamesBackend: PlayGamesBackend? = null,
 ) : FlavorCommands(c) {
     override val ops: Set<String> = Commands.PLAY_OPS
 
+    private val playGames = PlayGamesCommands(c, playGamesBackend ?: SystemPlayGames { c.host.appContext })
     private var updates: InAppUpdates? = null
     private var packs: AssetPacks? = null
     private var integrity: PlayIntegrity? = null
@@ -43,7 +45,7 @@ class PlayCommands(
     private val packListener: (PackState) -> Unit = { s -> c.event("pack_state", s.toJson()) }
 
     override fun capabilities(out: JSONObject) {
-        out.put("inAppUpdates", true).put("assetPacks", true).put("playIntegrity", true)
+        out.put("inAppUpdates", true).put("assetPacks", true).put("playIntegrity", true).put("playGames", playGames.available())
     }
 
     /** Created on first use (UI or render thread), with the listener registered once. */
@@ -65,6 +67,7 @@ class PlayCommands(
     }
 
     override fun handle(op: String, q: JSONObject): JSONObject = when (op) {
+        "pgs_code", "pgs_sign_in" -> playGames.handle(op, q)
         "integrity_prepare", "integrity_token" -> {
             val project = cloudProjectNumber(q)
             val hash = q.optString("requestHash")

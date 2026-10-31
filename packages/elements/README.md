@@ -33,6 +33,23 @@ import "@polaris-key/elements"; // registers pk-gate, pk-welcome, pk-activate, .
 - Build your own UI on `@polaris-key/elements/headless`, which re-exports the `@polaris-key/ui-core` models.
 - The shared stylesheet is `@polaris-key/elements/styles.css`, which the React kit reuses.
 
+## Automatic sign-in
+
+`<pk-gate config>` signs a person in by itself when it can, once, as the page loads: in a browser
+that offers Google through FedCM it asks for the account the person is already signed in with. A
+confirm or the license choice shows only when the sign-in needs one. When it cannot sign the person in, the normal sign-in
+shows. Set `auto-sign-in="off"` to turn it off:
+
+With a Content-Security-Policy it needs `connect-src https://accounts.google.com` (the browser
+fetches its FedCM configuration from there); inside an iframe the frame needs
+`allow="identity-credentials-get"`.
+
+```html
+<pk-gate config='{"product":"acme"}' auto-sign-in="off"
+  ><my-app></my-app
+></pk-gate>
+```
+
 ## Before you start
 
 The elements draw the views of `@polaris-key/ui-core` with the tokens and fonts of `@polaris-key/brand`. Most apps on a framework want that framework's kit instead; see [UI kits](https://key.plrs.im/docs/build/ui/).

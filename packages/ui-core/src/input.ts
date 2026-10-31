@@ -174,6 +174,9 @@ export interface ActivateDoneInput {
   /** This device's place among the license's devices, and the limit. */
   position?: number;
   limit?: number;
+  /** The person came back from AddToAccount (Cancel): focus returns to the control that opened it
+   *  (DL9), not to the primary. */
+  returned?: boolean;
 }
 
 /** AddToAccount's steps (SIGN-IN.md §3.9, frames 43 to 46). */
@@ -184,6 +187,7 @@ export type AddToAccountStep =
   | "added"
   | "owned"
   | "email-bound"
+  | "other-account"
   | "failed";
 
 export interface AddToAccountInput {
@@ -192,6 +196,13 @@ export interface AddToAccountInput {
   field?: "name" | "email" | "both";
   /** The device kind already worded, for the lines that name this device. */
   deviceKind?: string;
+  /** `other-account`: the email the person typed and the one of the account that signed in,
+   *  both already masked (`a•••@example.com`). A sentence that names one leaves out an empty one. */
+  typedEmail?: string;
+  signedEmail?: string;
+  /** Opened from the app's Settings, not from the Done step: `added` closes ("Done") instead of
+   *  saying Start using, because the app is already running. */
+  fromSettings?: boolean;
 }
 
 /** Automatic sign-in's own steps (plans/auto-sign-in.md §3), drawn in the sign-in form's body. */
@@ -231,6 +242,9 @@ export interface AutoSignInInput {
   };
   /** The name this device goes by in the license line. */
   device?: string;
+  /** The tier a new license is created at (the confirm's "New: {tier} license" line), read from
+   *  the license list when no account is signed in yet. */
+  tier?: string;
 }
 
 /** The approving device's side of nearby sign-in. Absent: the account-menu entry. */
@@ -509,6 +523,10 @@ export interface UiInput {
     remote?: { when?: string; device?: string } | null;
     bothAvailable?: boolean;
     keep?: "local" | "remote" | "both";
+    /** The version the app knows was saved later, from its own metadata and never from the
+     *  `when` strings. It tags that card and chooses, fills, focuses and reorders nothing; it is
+     *  ignored when the other copy was deleted. */
+    newer?: "local" | "remote";
   };
   /** UnlockSync's step (U-42). `nearby` says the host could unlock from a nearby device:
    *  v0.10.0 never offers it, because NearbyApproval does not ship. */

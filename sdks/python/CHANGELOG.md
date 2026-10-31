@@ -6,6 +6,8 @@ only API (no deprecated aliases).
 
 ## Unreleased
 
+- **Relay `Retry-After` is capped before conversion.** Retry-After values from the relay are capped at one hour before they are converted to whole seconds; an unreadable value reads as absent.
+
 - **Record values in the host codec (U-22.0).** `host_codec.seal_push` seals a record `set` under its collection with `k = id` and sends the id as `blind("record", collection, id)`; `open_pull` opens a pulled record only when the id is blinded and the envelope's `k` re-blinds to it, opens a conflict copy under the mutation's own record, and maps a record tombstone back for the records in the new `record_keys` argument. A record `delete` is blinded and carries nothing sealed. `setField`, `removeField`, `add`, `remove`, a member, a malformed reference, an empty or NUL-holding id and a `$` collection are refused with `invalid-options`, and sealed `fields` and `elements` read as invalid (saves are `revision` records). New client code `sync-file-invalid` (a downloaded file failed a check).
 
 - **Cloud Connect (CC-10.16).** `client.cloud_connect` finds a person's other devices on the LAN (bounded mDNS, TCP channels) and falls back to the relay (ticket, WebSocket, quotas; the optional `websockets` extra), over the `pkey-peer/1` protocol and Noise_XX_25519_AESGCM_SHA256 on `cryptography`. The parity manifest now claims `connect.noise`, `connect.protocol`, `connect.lan`, `connect.relay` and `connect.app`; `connect.links` and `connect.transfer` stay planned.

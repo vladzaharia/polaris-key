@@ -319,4 +319,27 @@ final class IdentityRedirectTests: XCTestCase {
                 "\(status) \(body)")
         }
     }
+
+    func testStringFormsDoNotPrintTheCodeTheTokenOrTheGrant() {
+        let code = "code-value-0123456789"
+        let token = "pkeyt_secret_value"
+        let grant = "sg_" + String(repeating: "A", count: 43)
+        let answers: [Any] = [
+            CallbackResult.code(code),
+            TokenAnswer.token(
+                accessToken: token, scope: "profile", subject: "ps_x", schemaVersion: 1, device: [:],
+                license: nil),
+            TokenAnswer.choose(grant: grant, expiresIn: 300, choices: [:]),
+        ]
+        for value in answers {
+            for text in [
+                "\(value)", String(reflecting: value), String(describing: value),
+                { () -> String in var out = ""; dump(value, to: &out); return out }(),
+            ] {
+                XCTAssertFalse(text.contains(code), text)
+                XCTAssertFalse(text.contains(token), text)
+                XCTAssertFalse(text.contains(grant), text)
+            }
+        }
+    }
 }

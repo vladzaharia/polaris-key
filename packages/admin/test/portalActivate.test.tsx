@@ -644,7 +644,7 @@ describe("Activate license modal (PX-06)", () => {
     };
   }
 
-  it("a floating key's devices come with it: the count on Confirm and on Done, with Cloud Sync's sign-in", async () => {
+  it("a floating key's devices come with it: the count on Confirm and on Done, with the sync sign-in line", async () => {
     mockFetch({
       ...routes(),
       "POST /api/activate/preview": floatingPreview(2, true),
@@ -657,8 +657,8 @@ describe("Activate license modal (PX-06)", () => {
     expect(confirm.textContent).toContain(
       "It's on 2 devices already. They keep working and come with it.",
     );
-    // Cloud Sync is Done's to mention, once they came with it.
-    expect(confirm.textContent).not.toContain("Cloud Sync");
+    // Syncing is Done's to mention, once they came with it.
+    expect(confirm.textContent).not.toMatch(/sync/i);
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(
       within(confirm).getByRole("button", { name: "Add to my library" }),
@@ -667,12 +667,12 @@ describe("Activate license modal (PX-06)", () => {
       name: "Mossgarden is in your library",
     });
     expect(done.textContent).toContain(
-      "Its 2 devices came with it. Sign in on them to turn on Cloud Sync.",
+      "Its 2 devices came with it. Sign in on them to turn on syncing.",
     );
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("one device, and no Cloud Sync: the singular, and no sign-in line", async () => {
+  it("one device, and no sync: the singular, and no sign-in line", async () => {
     mockFetch({
       ...routes(),
       "POST /api/activate/preview": floatingPreview(1, false),
@@ -692,7 +692,7 @@ describe("Activate license modal (PX-06)", () => {
       name: "Mossgarden is in your library",
     });
     expect(done.textContent).toContain("Its 1 device came with it.");
-    expect(done.textContent).not.toContain("Cloud Sync");
+    expect(done.textContent).not.toMatch(/sync/i);
   });
 
   it("a licence on no device says nothing about devices", async () => {
@@ -712,7 +712,7 @@ describe("Activate license modal (PX-06)", () => {
     const done = await screen.findByRole("dialog", {
       name: "Mossgarden is in your library",
     });
-    expect(done.textContent).not.toMatch(/came with it|Cloud Sync/);
+    expect(done.textContent).not.toMatch(/came with it|sync/i);
   });
 
   it("Change key goes back to the field with the key kept", async () => {

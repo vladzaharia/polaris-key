@@ -207,10 +207,15 @@ function codeBlock(c: RenderCtx, code: string): Out {
 function saveCard(
   c: RenderCtx,
   side: "local" | "remote",
-  keys: { who: string; when: string },
+  keys: { who: string; when: string; newer?: string },
 ): Out {
   return html`<li class="save-card" data-part="save-card" data-side=${side}>
     <span class="label" data-key=${keys.who}>${text(c, keys.who)}</span>
+    ${keys.newer && shown(c, keys.newer)
+      ? html`<span class="meta newer" data-part="newer" data-key=${keys.newer}
+          >${text(c, keys.newer)}</span
+        >`
+      : nothing}
     ${shown(c, keys.when)
       ? html`<span class="meta" data-key=${keys.when}
           >${text(c, keys.when)}</span
@@ -218,13 +223,6 @@ function saveCard(
       : nothing}
   </li>`;
 }
-
-const KEPT_KEYS = [
-  "saveConflict.keptLocal",
-  "saveConflict.keptRemote",
-  "saveConflict.keptBoth",
-  "saveConflict.keptDeleted",
-];
 
 /** SaveConflict: the two copies, then the way on for each state. The choices are plain buttons
  *  with no filled one (nothing is the default); Keep both stays on screen, unavailable and
@@ -238,6 +236,7 @@ function saveConflictContent(c: RenderCtx): Out {
         ${saveCard(c, "local", {
           who: "saveConflict.thisDevice",
           when: "saveConflict.savedThis",
+          newer: "saveConflict.newerThis",
         })}
         ${saveCard(c, "remote", {
           who: gone
@@ -246,6 +245,7 @@ function saveConflictContent(c: RenderCtx): Out {
               ? "saveConflict.otherDevice"
               : "saveConflict.otherUnknown",
           when: "saveConflict.savedOther",
+          newer: "saveConflict.newerOther",
         })}
       </ul>
       <div
@@ -283,16 +283,23 @@ function saveConflictContent(c: RenderCtx): Out {
     return html`<p class="body" role="status" data-key="saveConflict.keeping">
       ${text(c, "saveConflict.keeping")}
     </p>`;
-  if (state === "kept") {
-    const key = KEPT_KEYS.find((k) => shown(c, k));
-    return html`${key
-      ? html`<p class="body" role="status" data-key=${key}>${text(c, key)}</p>`
+  // kept: the title is the result; Done is the only control.
+  if (state === "kept")
+    return html`${shown(c, "saveConflict.keptCopy")
+      ? html`<p class="body" data-key="saveConflict.keptCopy">
+          ${text(c, "saveConflict.keptCopy")}
+        </p>`
       : nothing}${row(c, ["common.done"])}`;
-  }
-  return html`${callout(c, ["saveConflict.failed"])}${row(
+  return html`${callout(c, [
+    shown(c, "saveConflict.failedDeleted")
+      ? "saveConflict.failedDeleted"
+      : "saveConflict.failed",
+  ])}${row(
     c,
-    ["common.tryAgain", "common.cancel"],
-    { quiet: true },
+    ["common.tryAgain", "saveConflict.chooseAgain", "common.cancel"],
+    {
+      quiet: true,
+    },
   )}`;
 }
 

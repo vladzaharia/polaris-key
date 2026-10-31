@@ -40,6 +40,7 @@ export type {
   PortalLicenseSummary,
   PortalKey,
   PortalDevice,
+  PortalAccountDevice,
   PortalLicenseDetail,
   PortalArtifact,
   PortalRelease,

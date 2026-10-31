@@ -429,14 +429,23 @@ public actor ConnectClient {
         let text = (header ?? "").trimmingCharacters(in: .whitespaces)
         if text.isEmpty { return nil }
         if text.range(of: #"^[0-9]+(\.[0-9]+)?$"#, options: .regularExpression) != nil {
-            return Double(text).map { Int($0.rounded(.up)) }
+            guard let seconds = Double(text) else { return nil }
+            return Self.cappedSeconds(seconds)
         }
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.timeZone = TimeZone(identifier: "GMT")
         f.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
         guard let at = f.date(from: text) else { return nil }
-        return max(0, Int(at.timeIntervalSince(now).rounded(.up)))
+        return Self.cappedSeconds(at.timeIntervalSince(now))
+    }
+
+    /// A finite delay in whole seconds, never negative and never above `connectRelayMaxRetryAfterSeconds`.
+    /// The clamp comes before `Int(...)`, which traps on a value out of range. A NaN reads as absent; infinity clamps to the cap.
+    private static func cappedSeconds(_ value: Double) -> Int? {
+        guard !value.isNaN else { return nil }
+        let cap = Double(connectRelayMaxRetryAfterSeconds)
+        return Int(min(max(value, 0), cap).rounded(.up))
     }
 
     /// The ticket answer, shape-checked, and bound to this Worker: the ticket goes only to the

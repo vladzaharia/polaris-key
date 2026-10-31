@@ -207,7 +207,7 @@ describe("motion", () => {
   it("the reason lines enter one after another, three at most, and the check draws once", async () => {
     await page.viewport(1440, 900);
     const kit = await mount(ready(), "light", 16, "polaris-key", false);
-    const lines = [...kit.querySelectorAll<HTMLElement>(".reasons li")];
+    const lines = [...kit.querySelectorAll<HTMLElement>(".holder-reasons li")];
     const running = lines.map((li) => li.getAnimations().length);
     expect(lines.length).toBeLessThanOrEqual(3);
     expect(
@@ -228,8 +228,39 @@ describe("motion", () => {
     await page.viewport(1440, 900);
     await commands.emulateMotion("reduce");
     const kit = await mount(ready(), "light", 16, "polaris-key", false);
-    expect(kit.querySelectorAll(".reasons li").length).toBeGreaterThan(0);
-    for (const el of kit.querySelectorAll(".reasons li, .success path, .card"))
+    expect(kit.querySelectorAll(".holder-reasons li").length).toBeGreaterThan(
+      0,
+    );
+    for (const el of kit.querySelectorAll(
+      ".holder-reasons li, .success path, .card",
+    ))
       expect(el.getAnimations(), el.className.toString()).toEqual([]);
+  });
+});
+
+describe("the focused field is clear of the docked bar (WCAG 2.4.11)", () => {
+  // The 400 % zoom row: 1280x1024 at 400 % is 320x256 CSS px.
+  it("AddToAccount.form: Name is not under Continue at 320x256", async () => {
+    await page.viewport(320, 256);
+    const row = SCENES.find(
+      (r) => r.expect.component === "AddToAccount" && r.expect.state === "form",
+    )!;
+    const kit = await mount(row, "dark", 16);
+    const name = kit.querySelector<HTMLElement>('[data-field="name"]')!;
+    const dock = kit.querySelector<HTMLElement>(".card > .actions")!;
+    for (let i = 0; i < 30 && document.activeElement !== name; i++)
+      await nextFrame();
+    expect(document.activeElement, "Name has focus").toBe(name);
+    const n = name.getBoundingClientRect();
+    const d = dock.getBoundingClientRect();
+    expect(n.top, "Name is above the top edge").toBeGreaterThanOrEqual(-0.5);
+    expect(
+      n.bottom,
+      `Name (${n.top}-${n.bottom}) sits under the dock (${d.top})`,
+    ).toBeLessThanOrEqual(d.top + 0.5);
+    if (__PKEY_KIT_SHOTS__)
+      await commands.kitShot(
+        `${__PKEY_KIT_SHOTS__}/react.AddToAccount.form/320x256-focus.png`,
+      );
   });
 });

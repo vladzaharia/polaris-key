@@ -2,7 +2,8 @@
 // structure by P6-09). Two flavours, and the flavour is a POLICY boundary (Play forbids self-update
 // and REQUEST_INSTALL_PACKAGES in Play builds):
 //   play    install source, Keystore, Play In-App Updates, Play Asset Delivery, the standard Play
-//           Integrity API (P6-02). No PackageInstaller session code, no install permission.
+//           Integrity API (P6-02), Credential Manager (I-45.4) and Block Store (I-49.1b). No PackageInstaller
+//           session code, no install permission.
 //   direct  install source, Keystore, verified PackageInstaller self-update; Integrity answers
 //           Unsupported("outlet"). No Play Core.
 // STANDALONE: it depends on no other SDK module (checkStandalone below enforces it), so the Godot
@@ -85,6 +86,8 @@ dependencies {
     "playImplementation"(libs.androidx.credentials)
     "playImplementation"(libs.androidx.credentials.play.services.auth)
     "playImplementation"(libs.googleid)
+    // Block Store (I-49.1b): the play flavour only; the direct AAR carries no com.google.android.gms.auth.blockstore class.
+    "playImplementation"(libs.play.blockstore)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
