@@ -162,6 +162,52 @@ class SecureStoreTest {
     }
 
     @Test
+    fun aPresentAliasIsNeverReadAsMissingNorReplaced() {
+        val keys = FakeKeyProvider()
+        val s = store(keys)
+        s.put("token", "pkeyt_abc")
+        val createdBefore = keys.created
+        // get answers null for an alias that is present
+        val glitchy = object : KeyProvider by keys {
+            override fun get(alias: String): SecretKey? = null
+
+            override fun exists(alias: String): Boolean = true
+        }
+        val again = SecureStore(tmp.root, "diceroll", glitchy)
+        try {
+            again.get("token")
+            fail("expected a keystore error")
+        } catch (e: SecureStoreException) {
+            assertEquals("keystore", e.reason)
+        }
+        assertTrue(File(tmp.root, "token.kv").exists())
+        assertFalse(File(tmp.root, "token.kv.quarantine").exists())
+        try {
+            again.put("token", "pkeyt_new")
+            fail("expected a keystore error")
+        } catch (e: SecureStoreException) {
+            assertEquals("keystore", e.reason)
+        }
+        assertEquals(createdBefore, keys.created)
+        assertTrue(File(tmp.root, "token.kv").exists())
+        assertFalse(File(tmp.root, "token.kv.quarantine").exists())
+        assertEquals("pkeyt_abc", s.get("token").value)
+    }
+
+    @Test
+    fun aConfirmedMissingKeyStillResets() {
+        val keys = FakeKeyProvider()
+        val s = store(keys)
+        s.put("token", "pkeyt_abc")
+        keys.keys.clear()
+        assertFalse(keys.exists("pkey:diceroll:device"))
+        assertEquals(SecureStore.Read(null, SecureStore.RESET_MISSING), s.get("token"))
+        assertTrue(File(tmp.root, "token.kv.quarantine").exists())
+        s.put("token", "pkeyt_new")
+        assertEquals("pkeyt_new", s.get("token").value)
+    }
+
+    @Test
     fun aKeyThatStaysMissingQuarantinesTheBlobInsteadOfDeletingIt() {
         val keys = FakeKeyProvider()
         val s = store(keys)

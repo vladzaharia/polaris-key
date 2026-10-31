@@ -263,10 +263,19 @@ public class SecureStore(
         wipeBlobs()
     }
 
-    /** A transient null from the Keystore must not read as "key gone": ask once more. */
-    private fun keyOrRetry(): SecretKey? = keys.get(alias) ?: keys.get(alias)
+    /**
+     * The key, or null only when the alias is CONFIRMED absent (a fresh `KeyStore.load` and
+     * `containsAlias`). A null from `get` for an alias that is present is ambiguous and throws
+     * [SecureStoreException], so a glitch can never read as "key gone" nor lead to a new key.
+     */
+    private fun keyOrRetry(): SecretKey? {
+        keys.get(alias)?.let { return it }
+        keys.get(alias)?.let { return it }
+        if (keys.exists(alias)) throw SecureStoreException("keystore", "$alias is present but could not be loaded")
+        return null
+    }
 
-    /** Moves the blobs aside instead of deleting them, so a key that comes back can still open them. */
+    /** Moves the blobs aside instead of deleting them. */
     private fun quarantineBlobs() {
         dir.listFiles { f -> f.name.endsWith(SUFFIX) }?.forEach { it.renameTo(File(dir, it.name + QUARANTINE)) }
     }
