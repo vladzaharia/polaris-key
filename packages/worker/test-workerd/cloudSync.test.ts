@@ -22,6 +22,7 @@ import { D1Db } from "../src/db/d1.js";
 import { seedProduct } from "./seed.js";
 import { formatHlc } from "../src/services/sync/engine/hlc.js";
 import type { Classification } from "../src/services/sync/engine/types.js";
+import { SCHEMA_VERSION } from "../src/services/sync/do/sqlMigrations.js";
 
 const NOW = Date.now();
 const LAST_WRITE: Classification = {
@@ -274,7 +275,7 @@ describe("CloudSyncDO under workerd (U-05.7)", () => {
           .exec("SELECT value FROM meta WHERE key = 'schema_version'")
           .one().value,
     );
-    expect(version).toBe("3");
+    expect(version).toBe(String(SCHEMA_VERSION));
   });
 
   it("deleteAll clears the data and the alarm, and the object can be written again", async () => {
@@ -314,10 +315,10 @@ describe("account-merge absorb under workerd (U-05.8)", () => {
     const to = { product: "wd", subject: "sub_to" };
     await pushTo(from, "theme");
     const doc = (await exportCloudSync(env, from))!;
-    expect(await absorbCloudSync(env, to, doc)).toBeGreaterThan(0);
+    expect((await absorbCloudSync(env, to, doc)).changed).toBeGreaterThan(0);
     // The same export again changes nothing (no new sequence number).
     const seq = (await callCloudSync<"usage">(env, to, { op: "usage" })).seq;
-    expect(await absorbCloudSync(env, to, doc)).toBe(0);
+    expect((await absorbCloudSync(env, to, doc)).changed).toBe(0);
     expect((await callCloudSync<"usage">(env, to, { op: "usage" })).seq).toBe(
       seq,
     );
