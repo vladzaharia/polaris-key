@@ -4239,7 +4239,7 @@
       "jscpd:duplicate": 5
     },
     "packages/worker/test/surfaces/keyEntries.test.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/worker/test/surfaces/keysOutOfLogs.test.ts": {
       "jscpd:duplicate": 1
