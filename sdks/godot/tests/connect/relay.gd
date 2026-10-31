@@ -64,6 +64,7 @@ class Clock extends RefCounted:
 ## Tickets: a new one each call, scripted results first.
 class Tickets extends RefCounted:
 	var issued := 0
+	var last: PKeyConnectClient.Grant = null
 	var queue: Array = []
 	var url := "wss://key.plrs.im/api/connect/relay"
 
@@ -78,6 +79,7 @@ class Tickets extends RefCounted:
 		g.protocol = PKeyConnectRelay.PROTOCOL
 		g.expires_at = 2000000000
 		g._ticket = "pkeyrt_" + "a".repeat(31) + char(96 + (issued % 26))
+		last = g
 		return PKeyResult.success(g)
 
 
@@ -223,8 +225,11 @@ func _open(t: PKeyTestContext) -> void:
 	var secret: String = offered[1]
 	t.check("open: the ticket is in no str() or status", not str(r.svc).contains(secret) and not str(r.svc.status()).contains(secret) and not str(r.room.last()).contains(secret))
 	t.check("open: and the grant prints nothing", str(PKeyConnectClient.Grant.new()) == "RelayGrant(redacted)")
+	t.check("open: the spent ticket is forgotten by the grant once the socket is open (R-6G2 N6)", r.tickets.last != null and r.tickets.last.ticket() == "")
+	t.check("open: before the stop the service holds an identity", r.svc._id != null)
 	r.svc.stop()
 	await _frames(2)
+	t.check("open: stop() lets the identity go (R-6G2 N3)", r.svc._id == null)
 
 
 func _refusals(t: PKeyTestContext) -> void:
@@ -544,6 +549,7 @@ func _stop(t: PKeyTestContext) -> void:
 	a.svc.abort()
 	await _frames(3)
 	t.check("abort: no close frame is sent, the state is stopped", c2.closed_by_client == -1 and a.svc.status()["state"] == "stopped" and not a.svc.is_open())
+	t.check("abort: and the identity is let go (R-6G2 N3)", a.svc._id == null)
 	# stop() while napping.
 	var n := _rig()
 	n.room.refuse_open = true

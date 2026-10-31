@@ -23,19 +23,26 @@ extends RefCounted
 ##    (`get_packet_ip()`, G5); there is no filter on the address when it is learned, the dial-time
 ##    `PKeyLanAddress.verdict` decides what is dialled; TTL 0 removes it; four per name, first seen
 ##    first;
-##  - a response is read only from a source in the same private block (10/8, 172.16/12, 192.168/16;
-##    127/8 when loopback is allowed) as one of the device's own addresses. Godot lists no netmask, so
-##    this is the union test of V5 section 15.4 widened to the block; a host in the block costs one
-##    blind connect, never a trusted address;
+##  - a datagram is read, answered or learned from only when its source is in the same private block
+##    (10/8, 172.16/12, 192.168/16; 127/8 when loopback is allowed) as one of the device's own addresses;
+##    nothing else is parsed. Godot lists no netmask, so this is the union test of V5 section 15.4
+##    widened to the block ("Godot: block, not subnet"): a host elsewhere in the block that can route UDP
+##    to us AND uses a name it could only have heard on the link can fill a name's four address slots
+##    (denial of discovery) or cost one blind connect, and never a trusted address, since the handshake
+##    and the certificate decide. A phone's mobile-data interfaces are dropped by name so their carrier
+##    address does not widen the block, and the interface list is read again every sweep;
 ##  - only a name `accept` allows (the roster's instance names) enters a table, one source adds at
 ##    most 16 new names a minute, an SRV port below 1024 is ignored, and the SRV target must be the
 ##    instance's own `.local` name;
 ##  - tables hold at most 256 entries, an entry lives 5 minutes after its last refresh, the least
 ##    recently refreshed goes first when full, and a PTR whose TTL lapses without a refresh reports
 ##    the peer down like a goodbye;
-##  - a query is answered at most once a second per advert, a legacy (non-5353) query by a unicast
-##    answer with its ID, and each poll reads at most MAX_PACKETS_PER_POLL datagrams so a flood
+##  - a query is answered at most once a second per advert, a legacy (non-5353) query from a port of 1024
+##    or more by a unicast answer with its ID (from a lower port, by nothing), and each poll reads at most MAX_PACKETS_PER_POLL datagrams so a flood
 ##    cannot stall a frame;
+##  - Godot's `PacketPeerUDP` does not say whether a datagram was sent to the group or to this host, so
+##    V5 section 15.4's "says so" is this sentence: a unicast response cannot be told from a multicast one,
+##    and a response is believed on its source address alone;
 ##  - nothing is bound or joined until `advertise` or `browse` is called, and the last `stop()`
 ##    closes the socket.
 ##
@@ -60,11 +67,15 @@ const MAX_PACKETS_PER_POLL := 64
 const SWEEP_SECONDS := 5.0
 const ASK_AGAIN_SECONDS := 30.0
 const MIN_SRV_PORT := 1024
+## A legacy query is answered by unicast only from a port at or above this (and not 5353).
+const LEGACY_MIN_PORT := 1024
 const REASON_QUERIER_ONLY := "querier_only"
 const REASON_UNAVAILABLE := "mdns_unavailable"
 
 ## Interface names that are tunnels, VPNs, direct-link or virtual adapters: not a LAN.
-const _NOT_A_LAN := ["awdl", "llw", "utun", "ppp", "tun", "tap", "wg", "gif", "stf", "ipsec", "docker", "veth", "virbr", "vmnet", "vboxnet", "ts0"]
+const _NOT_A_LAN := ["awdl", "llw", "utun", "ppp", "tun", "tap", "wg", "gif", "stf", "ipsec", "docker", "veth", "virbr", "vmnet", "vboxnet", "ts0",
+	# Carrier (mobile data) interfaces: their CGNAT 10.x address would widen the link's block to 10/8.
+	"rmnet", "ccmni", "pdp_ip", "clat", "v4-"]
 ## Substrings of a Windows friendly name for the same.
 const _NOT_A_LAN_FRIENDLY := ["vethernet", "hyper-v", "wireguard", "tunnel", "vpn", "pseudo", "virtualbox", "vmware", "tap-", "teredo", "6to4", "isatap", "loopback"]
 
@@ -86,6 +97,7 @@ var _socket: Socket = null
 var _responder := false
 var _faces: Array = []
 var _blocks: Array[String] = []
+var _joined: Array = []
 var _refs := 0
 var _adverts: Array[Advertisement] = []
 var _browsers: Array[Browser] = []
@@ -203,6 +215,7 @@ func poll() -> void:
 		_browser_timers(b, now)
 	if now >= _next_sweep:
 		_next_sweep = now + SWEEP_SECONDS
+		_refresh_interfaces(now)
 		for b in _browsers:
 			_sweep(b, now)
 
@@ -231,6 +244,7 @@ func _release() -> void:
 	_responder = false
 	_faces = []
 	_blocks = []
+	_joined = []
 
 
 func _open() -> PKeyResult:
@@ -238,12 +252,8 @@ func _open() -> PKeyResult:
 	if _faces.is_empty():
 		return _unavailable("No LAN interface to use; LAN discovery is off.")
 	var names: Array = _faces.map(func(f: Dictionary) -> String: return f["name"])
-	_blocks = []
-	for f: Dictionary in _faces:
-		for a: String in f["addresses"]:
-			var block := private_block(a)
-			if block != "" and not _blocks.has(block):
-				_blocks.append(block)
+	_blocks = _blocks_of(_faces)
+	_joined = names
 	var s: Socket = _make_socket.call(PORT, names)
 	_responder = s != null
 	if s == null:
@@ -253,6 +263,37 @@ func _open() -> PKeyResult:
 	_socket = s
 	_next_sweep = _now() + SWEEP_SECONDS
 	return PKeyResult.success()
+
+
+static func _blocks_of(faces: Array) -> Array[String]:
+	var out: Array[String] = []
+	for f: Dictionary in faces:
+		for a: String in f["addresses"]:
+			var block := private_block(a)
+			if block != "" and not out.has(block):
+				out.append(block)
+	return out
+
+
+## The network may have changed (Wi-Fi to Ethernet, a new lease): read the interface list again, so the
+## link's blocks and the advertised addresses follow it, and join the group on a new interface (R-6G2 N4).
+## An advert whose addresses changed is announced again. When nothing is usable the blocks are empty and
+## no source is on the link: fail closed.
+func _refresh_interfaces(now: float) -> void:
+	_faces = usable_interfaces(_list_interfaces.call() as Array, allow_loopback, _only)
+	_blocks = _blocks_of(_faces)
+	var names: Array = _faces.map(func(f: Dictionary) -> String: return f["name"])
+	var added := names.filter(func(n: String) -> bool: return not _joined.has(n))
+	if not added.is_empty() and _socket != null:
+		_socket.join(added)
+		_joined.append_array(added)
+	if _own_addresses.is_valid():
+		return
+	var fresh := _advert_addresses()
+	for ad in _adverts:
+		if not ad.stopped and ad.addresses != fresh:
+			ad.addresses = fresh
+			ad.next_again = now
 
 
 static func _unavailable(message: String) -> PKeyResult:
@@ -397,7 +438,7 @@ func _records(ad: Advertisement, ttl: int) -> Array:
 	var out: Array = [
 		{"name": PKeyMdnsPacket.PEER_SERVICE, "type": &"PTR", "ttl": ttl, "data": ad.fqdn},
 		{"name": ad.fqdn, "type": &"SRV", "ttl": ttl, "data": {"port": ad.port, "target": ad.host, "priority": 0, "weight": 0}},
-		{"name": ad.fqdn, "type": &"TXT", "ttl": 0 if ttl == 0 else TXT_TTL, "data": ad.txt},
+		{"name": ad.fqdn, "type": &"TXT", "ttl": ttl if ttl <= LEGACY_TTL else TXT_TTL, "data": ad.txt},
 	]
 	for a: String in ad.addresses:
 		out.append({"name": ad.host, "type": &"A", "ttl": ttl, "data": a})
@@ -435,12 +476,17 @@ func _on_query(parsed: Dictionary, data: PackedByteArray, source: String, port: 
 				break
 		if not hit or now - ad.last_reply < REPLY_GAP_SECONDS:
 			continue
+		if port != PORT and port < LEGACY_MIN_PORT:
+			# A legacy query is answered by unicast only from an unprivileged port: never a service port
+			# to be reflected at (R-6G2 B2).
+			continue
 		ad.last_reply = now
 		if port == PORT:
 			_send(PKeyMdnsPacket.build_response(_records(ad, TTL)))
 		else:
-			# A legacy query (RFC 6762 section 6.7): a unicast answer carrying its ID, with a short TTL.
-			var reply := PKeyMdnsPacket.build_response(_records(ad, LEGACY_TTL))
+			# A legacy query (RFC 6762 section 6.7): a unicast answer carrying its ID, repeating at most four of
+			# its questions, every record at TTL 10 and none with the cache-flush bit.
+			var reply := PKeyMdnsPacket.build_response(_records(ad, LEGACY_TTL), false, (parsed["questions"] as Array).slice(0, PKeyMdnsPacket.MAX_REPEATED_QUESTIONS))
 			if reply.size() >= 2 and data.size() >= 2:
 				reply[0] = data[0]
 				reply[1] = data[1]
@@ -452,14 +498,15 @@ func _on_query(parsed: Dictionary, data: PackedByteArray, source: String, port: 
 
 func _on_packet(pkt: Dictionary, now: float) -> void:
 	var data: PackedByteArray = pkt.get("data", PackedByteArray())
+	# Nothing from outside the link's private blocks is parsed, answered or learned from (RFC 6762
+	# section 11): a spoofed or routed source gets no reflected reply and burns no reply gap (R-6G2 B2).
+	var source := str(pkt.get("source", ""))
+	if not source_on_link(source):
+		return
 	var parsed := PKeyMdnsPacket.parse(data)
 	if not parsed["ok"]:
 		return
-	var source := str(pkt.get("source", ""))
 	if parsed["response"]:
-		# A response from outside the link's private blocks teaches nothing (RFC 6762 section 11).
-		if not source_on_link(source):
-			return
 		for b in _browsers.duplicate():
 			if not b.stopped:
 				_learn(b, parsed["answers"], source, now)
@@ -515,7 +562,9 @@ func _learn(b: Browser, records: Array, source: String, now: float) -> void:
 		e.at = now
 		# A PTR is the refresh signal: its own TTL (capped) restarts the clock.
 		if type == &"PTR":
-			e.exp = now + minf(float(r["ttl"]), ENTRY_TTL_SECONDS)
+			# Never under the re-ask interval (plus a sweep): a legacy answer carries TTL 10, and a
+			# querier-only device would otherwise report the peer lost and found again every 30 s (R-6G2 N1).
+			e.exp = now + maxf(minf(float(r["ttl"]), ENTRY_TTL_SECONDS), ASK_AGAIN_SECONDS + SWEEP_SECONDS)
 		b.seen[instance] = e
 		if type == &"SRV":
 			var srv2: Dictionary = r["data"]
@@ -636,6 +685,11 @@ class Socket extends RefCounted:
 		pass
 
 
+	## Join the group on more interfaces (by name), after a network change.
+	func join(_names: Array) -> void:
+		pass
+
+
 	func close() -> void:
 		pass
 
@@ -672,6 +726,13 @@ class UdpSocket extends Socket:
 			return
 		if _udp.set_dest_address(host, port) == OK:
 			_udp.put_packet(data)
+
+
+	func join(names: Array) -> void:
+		if _udp == null:
+			return
+		for n in names:
+			_udp.join_multicast_group(PKeyMdns.GROUP, str(n))
 
 
 	func close() -> void:

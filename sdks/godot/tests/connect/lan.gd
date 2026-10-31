@@ -150,6 +150,16 @@ class Events extends RefCounted:
 		return self
 
 
+## A real connection to a loopback port that reports another address, so the verdict and the race see a
+## neighbour at one address and the real device at another.
+class NetAttempt extends PKeyConnectLan.TcpAttempt:
+	var address := ""
+
+
+	func remote() -> String:
+		return address
+
+
 ## A fake race attempt: CONNECTING until `after` polls, then `end`.
 class FakeAttempt extends PKeyConnectLan.Attempt:
 	var log: Array
@@ -194,6 +204,8 @@ func run(t: PKeyTestContext) -> void:
 	await _gate(t)
 	await _limits(t)
 	await _race(t)
+	await _fall_through(t)
+	await _closed_between(t)
 	await _stop(t)
 
 
@@ -732,6 +744,89 @@ func _race(t: PKeyTestContext) -> void:
 	svc.stop()
 
 
+## A neighbour answers first with its own address (V5 section 15.4.1): when the race's winner fails the
+## handshake, the dial runs again over the addresses left and still reaches the real device (R-6G2 N5).
+func _fall_through(t: PKeyTestContext) -> void:
+	var bus := Bus.new()
+	var env_a := _env(_pair["a"], _ring, _roster2())
+	var env_b := _env(_pair["b"], _ring, _roster2())
+	var ra := _service(env_a, FakeMdns.new(bus), {"pump": _pump(true)})
+	var neighbour := TCPServer.new()
+	neighbour.listen(0, "127.0.0.1")
+	var ports := {"10.9.9.1": neighbour.get_local_port()}
+	if ra.ok:
+		ports["10.9.9.2"] = (ra.detail as PKeyConnectLan).port()
+	var dialled_hosts: Array = []
+	var connector := func(host: String, _port: int) -> PKeyConnectLan.Attempt:
+		var at := NetAttempt.new()
+		at.host = host
+		at.address = host
+		at._peer = StreamPeerTCP.new()
+		at._peer.connect_to_host("127.0.0.1", ports[host])
+		dialled_hosts.append(host)
+		return at
+	var rb := _service(env_b, FakeMdns.new(bus), {"pump": _pump(true), "connector": connector, "dial_stagger": 0.0, "advertise": false, "browse": false})
+	if not t.check("fall through: both services start", ra.ok and rb.ok):
+		neighbour.stop()
+		return
+	var a: PKeyConnectLan = ra.detail
+	var b: PKeyConnectLan = rb.detail
+	var target := {"device_id": _pair["a"]["id"], "host": "10.9.9.1", "hosts": ["10.9.9.1", "10.9.9.2"], "port": a.port()}
+	# How the neighbour answers: it takes the connection and answers with a frame that is no handshake.
+	var taken: Array = []
+	var neighbour_tick := func() -> void:
+		while neighbour.is_connection_available():
+			var c := neighbour.take_connection()
+			c.put_data(PackedByteArray([0, 5, 1, 2, 3, 4, 5]))
+			taken.append(c)
+	var tree := _tree()
+	tree.process_frame.connect(neighbour_tick)
+	var dialled := await b.dial(target)
+	tree.process_frame.disconnect(neighbour_tick)
+	t.check("fall through: the neighbour answered first and the dial still reached the device", dialled.ok, str(dialled))
+	t.check("fall through: the neighbour's address was tried first, then the device's", dialled_hosts.size() >= 2 and dialled_hosts[0] == "10.9.9.1" and dialled_hosts.has("10.9.9.2"), str(dialled_hosts))
+	t.check("fall through: the session is with the device", dialled.ok and (dialled.detail as PKeyConnectSession).peer_device_id == _pair["a"]["id"])
+	if dialled.ok:
+		(dialled.detail as PKeyConnectSession).close()
+	# Only the neighbour: the dial fails, typed.
+	tree.process_frame.connect(neighbour_tick)
+	var only := await b.dial({"device_id": _pair["a"]["id"], "host": "10.9.9.1", "hosts": ["10.9.9.1"], "port": a.port()})
+	tree.process_frame.disconnect(neighbour_tick)
+	t.check("fall through: with only the neighbour the dial fails with a LAN reason", not only.ok and ["connect_failed", "handshake_failed"].has(PKeyConnectErrors.reason_of(only)), str(only))
+	for c in taken:
+		(c as StreamPeerTCP).disconnect_from_host()
+	neighbour.stop()
+	a.stop()
+	b.stop()
+
+
+## A session that closes in the frame the dial yields to the caller is not returned as a success (R-6G2 N7).
+func _closed_between(t: PKeyTestContext) -> void:
+	var bus := Bus.new()
+	var ra := _service(_env(_pair["a"], _ring, _roster2()), FakeMdns.new(bus), {"pump": _pump(true)})
+	var rb := _service(_env(_pair["b"], _ring, _roster2()), FakeMdns.new(bus), {"pump": _pump(true)})
+	if not t.check("closed between: two services start", ra.ok and rb.ok):
+		return
+	var a: PKeyConnectLan = ra.detail
+	var b: PKeyConnectLan = rb.detail
+	var out := [null]
+	var run := func() -> void: out[0] = await b.dial(_pair["a"]["id"])
+	run.call()
+	var hooked := false
+	while not hooked and out[0] == null:
+		if not b._attached.is_empty():
+			(b._attached.values()[0] as PKeyConnectChannel.Attachment).opened.connect(func(s: PKeyConnectSession) -> void: s.close())
+			hooked = true
+		else:
+			await _tree().process_frame
+	await _wait_until(func() -> bool: return out[0] != null, 600)
+	var r: PKeyResult = out[0]
+	t.check("closed between: a session closed before the dial returned is a typed failure", hooked and r != null and not r.ok and
+		["handshake_failed", "connect_failed"].has(PKeyConnectErrors.reason_of(r)), str(r))
+	a.stop()
+	b.stop()
+
+
 # ── stop and abort ───────────────────────────────────────────────────────────────────────────
 
 
@@ -750,7 +845,10 @@ func _stop(t: PKeyTestContext) -> void:
 	var sb: PKeyConnectSession = dialled.detail
 	var raw := _raw(port)
 	await _wait_until(func() -> bool: return _connected(raw) and a.pending_count() == 1, 200)
+	t.check("stop: before it, the names are worked out and the signature is a digest, not the key", a._names.size() > 0 and a._names_sig.length() == 64 and
+		not a._names_sig.contains(_disc.hex_encode()), a._names_sig)
 	a.stop()
+	t.check("stop: and then the held identity, the names and the signature are gone (R-6G2 N3)", a._id == null and a._names.is_empty() and a._names_sig == "" and a._names_epoch == -1)
 	t.check("stop: the advert and the browse are stopped", (mdns_a.adverts[0]["handle"] as FakeHandle).stops == 1 and mdns_a.browse_handle.stops == 1)
 	t.check("stop: the pending socket is gone", a.pending_count() == 0)
 	await _wait_until(func() -> bool: return sb.is_closed(), 400)

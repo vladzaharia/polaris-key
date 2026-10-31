@@ -270,6 +270,7 @@ func stop() -> void:
 		return
 	_stopped = true
 	_shutdown(true)
+	_forget()
 
 
 ## Stop at once: no goodbyes, nothing waited on, the held identity dropped (the sign-out bound's
@@ -279,7 +280,15 @@ func abort() -> void:
 		return
 	_stopped = true
 	_shutdown(false)
+	_forget()
+
+
+## Let go of the held identity and of every name worked out from K_disc (R-6G2 N3).
+func _forget() -> void:
 	_id = null
+	_names = {}
+	_names_sig = ""
+	_names_epoch = -1
 
 
 # ── start ────────────────────────────────────────────────────────────────────────────────────
@@ -398,7 +407,14 @@ func _pushed() -> Variant:
 ## HMACs.
 func _refresh_names(v: PKeyConnectClient.PeerSource) -> void:
 	var epoch := PKeyPeerAdvert.advert_epoch(_now())
-	var sig := "%d|%s|%s|%s" % [epoch, v.disc_current.hex_encode(), v.disc_previous.hex_encode(), ",".join(PackedStringArray(v.roster))]
+	# A digest, not the keys' hex: a String cannot be wiped, so none holds K_disc for the service's life.
+	var material := PackedByteArray()
+	material.append_array(("%d|" % epoch).to_utf8_buffer())
+	material.append_array(v.disc_current)
+	material.append_array("|".to_utf8_buffer())
+	material.append_array(v.disc_previous)
+	material.append_array(("|" + ",".join(PackedStringArray(v.roster))).to_utf8_buffer())
+	var sig := PKeySyncHkdf.sha256(material).hex_encode()
 	if sig == _names_sig:
 		return
 	var keys: Array = [v.disc_current]
@@ -712,6 +728,10 @@ func _dial_once(hosts: Array, port: int, ident: PKeyConnectClient.PeerSource) ->
 			opened = PKeyConnectErrors.lan("connect_failed", "The device did not answer.")
 		return {"error": opened, "host": won["host"]}
 	var session: PKeyConnectSession = opened.detail
+	if session.is_closed():
+		# Closed while the caller's stack was being cleaned: not a success (R-6G2 N7).
+		link.destroy()
+		return {"error": PKeyConnectErrors.lan("handshake_failed", "The session closed before it could be used."), "host": won["host"]}
 	_track(session)
 	return {"session": session}
 

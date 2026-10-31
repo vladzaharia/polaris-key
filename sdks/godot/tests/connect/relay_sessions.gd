@@ -97,6 +97,9 @@ func run(t: PKeyTestContext) -> void:
 	await _inbound(t)
 	await _gone_and_lost(t)
 	await _pacing(t)
+	await _flush_refused(t)
+	await _closed_between(t)
+	await _pipe_budget(t)
 	await _queue_cap(t)
 	await _stop(t)
 	await _frames(30)
@@ -240,6 +243,28 @@ func _pacer(t: PKeyTestContext) -> void:
 	clock.t += 10.5
 	t.check("pacer: after ten seconds the rate is whole again", h.rate() == 180.0)
 	t.check("pacer: str() shows nothing", str(h) == "PKeyConnectPacer()")
+	# A token taken for a send the socket refused is given back (R-6G2 B1), never above the cap.
+	var r := PKeyConnectPacer.new(180.0, 360.0, Callable(clock, "mono"))
+	taken = 0
+	while r.try_take() == 0.0 and taken < 1000:
+		taken += 1
+	t.check("pacer: empty after the burst", r.try_take() > 0.0)
+	r.refund()
+	t.check("pacer: a refunded token can be taken again, once", r.try_take() == 0.0 and r.try_take() > 0.0)
+	var full := PKeyConnectPacer.new(180.0, 360.0, Callable(clock, "mono"))
+	full.refund()
+	taken = 0
+	while full.try_take() == 0.0 and taken < 1000:
+		taken += 1
+	t.check("pacer: a refund never lifts the bucket over the burst (%d)" % taken, taken == 360, str(taken))
+	# While LIMIT 1 is honoured the bucket refills only to half the burst (R-6G2 N9).
+	var cap := PKeyConnectPacer.new(180.0, 360.0, Callable(clock, "mono"))
+	cap.halve()
+	clock.t += 1.0
+	taken = 0
+	while cap.try_take() == 0.0 and taken < 1000:
+		taken += 1
+	t.check("pacer: and a halved bucket does not refill past half the burst (%d)" % taken, taken == 180, str(taken))
 
 
 func _outbox(t: PKeyTestContext) -> void:
@@ -254,6 +279,9 @@ func _outbox(t: PKeyTestContext) -> void:
 	t.check("outbox: pop is first in, first out, and frees the bytes", first.size() == 60 and q.queued() == 60 and not q.is_empty())
 	q.pop()
 	t.check("outbox: empty again", q.is_empty() and q.queued() == 0)
+	q.put(a)
+	t.check("outbox: peek shows the next and leaves it queued", q.peek().size() == 60 and q.size() == 1 and q.queued() == 60)
+	q.pop()
 	t.check("outbox: the default cap is 8 MiB", PKeyConnectPacer.Outbox.new().max_bytes == 8 * 1024 * 1024 and PKeyConnectPacer.MAX_QUEUED_BYTES == 8 * 1024 * 1024)
 
 
@@ -379,7 +407,12 @@ func _inbound(t: PKeyTestContext) -> void:
 		fits = pipe.deliver(chunk)
 		n += 1
 	t.check("inbound: the pipe holds at most 9 MiB unread, then refuses (%d messages)" % n, not fits and n >= 150 and n <= 160, str(n))
-	t.check("inbound: reading it empties it", pipe.read().size() > 9 * 1024 * 1024 - 100000 and pipe.read().is_empty())
+	var first := pipe.read()
+	t.check("inbound: a read hands over at most one 64 KiB chunk (%d)" % first.size(), first.size() > 0 and first.size() <= PKeyConnectRelay.READ_CHUNK, str(first.size()))
+	var reads := 1
+	while not pipe.read().is_empty() and reads < 1000:
+		reads += 1
+	t.check("inbound: reading it a chunk at a time empties it", reads >= 100 and pipe.read().is_empty(), str(reads))
 	a.svc.stop()
 	b.svc.stop()
 	await _frames(3)
@@ -501,6 +534,101 @@ func _pacing(t: PKeyTestContext) -> void:
 	a.svc.stop()
 	b.svc.stop()
 	await _frames(3)
+
+
+## A socket whose outbound queue is full refuses the second send of a poll (R-6G2 B1): the envelope stays
+## queued and goes next frame, in order, so no Noise message is lost and the session survives.
+func _flush_refused(t: PKeyTestContext) -> void:
+	var rig := await _pair_up()
+	var a: Peer = rig["a"]
+	var b: Peer = rig["b"]
+	var room: PKeyRelayFakeRoom = rig["room"]
+	for c in room.clients:
+		c.sends_per_poll = 1
+	var dialled := await a.svc.dial(ID_B)
+	if not t.check("refused: a session opens over a socket that takes one send a poll", dialled.ok, str(dialled)):
+		return
+	var sa: PKeyConnectSession = dialled.detail
+	await _until(func() -> bool: return b.sessions.size() == 1)
+	var sb: PKeyConnectSession = b.sessions[0]
+	for i in 30:
+		sa.send(PackedByteArray([i, 7, 7]))
+	var heard: Array = []
+	for i in 30:
+		var got: PKeyResult = await sb.receive()
+		if not got.ok:
+			break
+		heard.append((got.detail["body"] as PackedByteArray)[0])
+	var in_order := heard.size() == 30
+	for i in heard.size():
+		in_order = in_order and heard[i] == i
+	t.check("refused: all 30 messages arrive, in order (%d)" % heard.size(), in_order, str(heard))
+	t.check("refused: the socket did refuse some (%d)" % room.refused_sends, room.refused_sends > 0)
+	t.check("refused: and the session is still open both ways", not sa.is_closed() and not sb.is_closed())
+	sb.send("still here".to_utf8_buffer())
+	var back: PKeyResult = await sa.receive()
+	t.check("refused: and carries more", back.ok and (back.detail["body"] as PackedByteArray).get_string_from_utf8() == "still here")
+	t.check("refused: nothing is left queued", a.svc._outbox.is_empty())
+	# The goodbyes of a stop go out the same way.
+	a.svc.stop()
+	await _until(func() -> bool: return sb.is_closed())
+	t.check("refused: the stop's goodbye still reaches the peer", sb.is_closed())
+	b.svc.stop()
+	await _frames(3)
+
+
+## A session that closes in the frame the dial yields to the caller is not returned as a success (R-6G2 N7).
+func _closed_between(t: PKeyTestContext) -> void:
+	var rig := await _pair_up()
+	var a: Peer = rig["a"]
+	var b: Peer = rig["b"]
+	var out := [null]
+	var run := func() -> void: out[0] = await a.svc.dial(ID_B)
+	run.call()
+	var rl: PKeyConnectRelay.Rl = a.svc._links.values()[0]
+	rl.attachment.opened.connect(func(s: PKeyConnectSession) -> void: s.close())
+	await _until(func() -> bool: return out[0] != null)
+	var r: PKeyResult = out[0]
+	t.check("closed between: a session closed before the dial returned is a typed failure", r != null and not r.ok and PKeyConnectErrors.reason_of(r) == "handshake_failed", str(r))
+	a.svc.stop()
+	b.svc.stop()
+	await _frames(3)
+
+
+## The unread messages of every relay session count against one budget (G10); a closed session gives its
+## share back (R-6G2 N2).
+func _pipe_budget(t: PKeyTestContext) -> void:
+	var budget := PKeyConnectSession.Budget.new(200000)
+	var p1 := PKeyConnectRelay.RelayPipe.new()
+	var p2 := PKeyConnectRelay.RelayPipe.new()
+	p1.budget = budget
+	p2.budget = budget
+	var chunk := _filled(1, 60000)
+	var size := PKeyPeerFrame.encode(chunk).size()
+	t.check("budget: two pipes take three messages, the fourth does not fit", p1.deliver(chunk) and p2.deliver(chunk) and p1.deliver(chunk) and not p2.deliver(chunk))
+	t.check("budget: the shared budget counts them", budget.used == 3 * size, str(budget.used))
+	var got := p1.read()
+	t.check("budget: a read gives its bytes back", got.size() > 0 and budget.used == 3 * size - got.size(), str(budget.used))
+	p2.abort()
+	p1.close()
+	t.check("budget: a pipe that is closed or aborted gives all of its share back", budget.used == 0, str(budget.used))
+	# Through a service: a flood past the shared budget ends the session peer_busy.
+	var shared := PKeyConnectSession.Budget.new(100000)
+	var rig := await _pair_up({"budget": shared}, {})
+	var a: Peer = rig["a"]
+	var b: Peer = rig["b"]
+	var dialled := await b.svc.dial(ID_A)
+	if not t.check("budget: a session opens with a budget of its own", dialled.ok, str(dialled)):
+		return
+	await _until(func() -> bool: return a.sessions.size() == 1)
+	var rl: PKeyConnectRelay.Rl = a.svc._links.values()[0]
+	var ok1: bool = rl.pipe.deliver(_filled(2, 60000))
+	var ok2: bool = rl.pipe.deliver(_filled(2, 60000))
+	t.check("budget: the service's pipe draws on the shared budget", ok1 and not ok2 and shared.used > 0, "%s %s %d" % [ok1, ok2, shared.used])
+	a.svc.stop()
+	b.svc.stop()
+	await _frames(5)
+	t.check("budget: and returns it when the service stops", shared.used == 0, str(shared.used))
 
 
 func _queue_cap(t: PKeyTestContext) -> void:

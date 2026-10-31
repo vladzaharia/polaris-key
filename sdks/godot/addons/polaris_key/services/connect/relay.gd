@@ -10,11 +10,13 @@ extends RefCounted
 ##  - a ticket is single use and lives 60 seconds, so every connect fetches a new one (`ticket`, a
 ##    coroutine). The socket is opened offering `pkey-relay.1` and then the ticket as subprotocols, and
 ##    the client requires `pkey-relay.1` echoed back (G14). The ticket is read at the moment the socket
-##    opens, handed to the opener and kept nowhere: not in a field, a `str()`, a result or a log (G13);
+##    opens and handed to the opener; the service keeps no copy in a field, a `str()`, a result or a log, and
+##    forgets the grant's own once the socket is open (G13). The engine's socket object holds the offered
+##    subprotocols until it closes: the ticket is single use, spent at the upgrade, and only ever on TLS;
 ##  - the real opener (`WsSocket.open`) is `WebSocketPeer` with `TLSOptions.client()` and nothing laxer:
 ##    only a `wss:` URL opens (the grant already names the Worker's own host), a redirect is a failed
-##    handshake, the inbound and outbound buffers are one message (65,564 bytes), and a larger message
-##    is refused;
+##    handshake, the inbound buffer is one message (65,564 bytes) and the outbound one holds four, and a
+##    larger message is refused;
 ##  - a message is at most 65,564 bytes; an envelope that fails its layout, or a text frame, closes the
 ##    socket with 1002 and is never answered (G14); each running service has one socket;
 ##  - the room stamps `from`, and it is never trusted for identity: the certificate names the peer, and the
@@ -54,6 +56,9 @@ const PROTOCOL := "pkey-relay.1"
 const MAX_MESSAGE := PKeyPeerRelayCodec.MAX_MESSAGE
 ## Both WebSocket buffers hold one message with room for the frame.
 const BUFFER_BYTES := MAX_MESSAGE + 64
+## The outbound queue holds a few messages, so several records of one frame (the pacer allows a burst) do not
+## trip a full queue; `_flush` also keeps a refused one queued.
+const OUTBOUND_BYTES := BUFFER_BYTES * 4
 const MAX_RETRY_AFTER_S := 3600
 const UNAVAILABLE_AFTER := 5
 const UNAVAILABLE_RETRY_S := 300.0
@@ -74,7 +79,10 @@ const ENDED_MEMORY := 256
 const HANDSHAKE_SECONDS := 30.0
 const MAX_SESSION_ID := 0xffffffff
 ## Noise messages the room delivered and a paused link has not read: past this the session ends `peer_busy`.
-const MAX_PIPE_BUFFER := 9 * 1024 * 1024
+const RelayPipe := preload("relay_pipe.gd")
+const MAX_PIPE_BUFFER := RelayPipe.MAX_BUFFER
+## `RelayPipe.read` hands the link at most this much, as the TCP pipe does.
+const READ_CHUNK := RelayPipe.READ_CHUNK
 
 var _src: PKeyConnectLan.Source
 var _ticket: Callable
@@ -133,7 +141,11 @@ func _init(source: PKeyConnectLan.Source, ticket: Callable, options := {}) -> vo
 	_pump = options.get("pump", null) as PKeyPeerPump
 	if _pump == null:
 		_pump = PKeyPeerPump.new(_tree)
+	# One budget for every session's queue and every pipe's unread bytes (G10); the process-wide one when
+	# the caller gives none.
 	_budget = options.get("budget", null) as PKeyConnectSession.Budget
+	if _budget == null:
+		_budget = PKeyConnectSession.shared_budget
 
 
 func _to_string() -> String:
@@ -239,6 +251,7 @@ func stop() -> void:
 	_close_socket(1000)
 	_on_socket_lost()
 	_nap_cancel = true
+	_id = null
 
 
 ## Stop at once, with no close frame (the sign-out bound's force path).
@@ -255,6 +268,7 @@ func abort() -> void:
 	for rl: Rl in _links.values():
 		rl.link.destroy()
 	_nap_cancel = true
+	_id = null
 
 
 # ── the connect loop ─────────────────────────────────────────────────────────────────────────
@@ -353,7 +367,7 @@ func _random() -> float:
 
 ## Open one socket and run it to its close. A coroutine answering the close code, -1 for none.
 func _session(grant: PKeyConnectClient.Grant) -> int:
-	# The ticket is read here, handed to the opener, and not kept.
+	# The ticket is read here and handed to the opener.
 	var sock: Socket = _opener.call(grant.url, [PROTOCOL, grant.ticket()])
 	if sock == null:
 		return -1
@@ -375,6 +389,8 @@ func _session(grant: PKeyConnectClient.Grant) -> int:
 	if _stopped:
 		sock.close(1000)
 		return -1
+	# The ticket is spent at the upgrade: let the grant's own copy go.
+	grant.forget()
 	_socket = sock
 	_open = true
 	var opened_at := _mono()
@@ -455,15 +471,20 @@ func _flush(sock: Socket) -> void:
 	while not _outbox.is_empty():
 		if _pacer.try_take() > 0.0:
 			return
-		if not sock.send(_outbox.pop()):
+		# Leave the envelope queued until the socket took it: a refused one that was dropped would
+		# leave a gap in the session's nonce, and the peer's next record would fail to open.
+		if not sock.send(_outbox.peek()):
+			_pacer.refund()
 			return
+		_outbox.pop()
 
 
 ## Send everything queued now, ignoring the pace (the goodbyes of a stop).
 func _flush_all(sock: Socket) -> void:
 	while not _outbox.is_empty():
-		if not sock.send(_outbox.pop()):
+		if not sock.send(_outbox.peek()):
 			return
+		_outbox.pop()
 
 
 ## Queue one envelope. False when it is refused: only a non-forced one past the queue's byte cap. While the
@@ -577,6 +598,8 @@ func dial(device_id: String) -> PKeyResult:
 		# Resumed from inside the session's own step: give the caller a clean stack, so that a close it
 		# asks for at once is not deferred behind that step.
 		await _tree.process_frame
+		if rl.session.is_closed():
+			return PKeyConnectErrors.relay("handshake_failed", "The session closed before it could be used.", {"close_code": rl.close_code})
 		return PKeyResult.success(rl.session)
 	return PKeyConnectErrors.relay(rl.why, "The peer was not admitted over the relay.", {"close_code": rl.close_code})
 
@@ -655,6 +678,7 @@ func _make_link(peer: PackedByteArray, session_id: int, role: String, ident: PKe
 	if not assert_relay_mode(str(so["mode"])).ok:
 		return null
 	var pipe := RelayPipe.new()
+	pipe.budget = _budget
 	pipe.peer = peer
 	pipe.session_id = session_id
 	pipe.sender = Callable(self, "_send_session")
@@ -712,6 +736,7 @@ func _on_link_closed(code: StringName, _by_peer: bool, key: String) -> void:
 		return
 	rl.ended = true
 	rl.close_code = code
+	rl.pipe.release()
 	_links.erase(key)
 	_remember_ended(key)
 	rl.settled.emit()
@@ -729,6 +754,8 @@ func _remember_ended(key: String) -> void:
 
 ## The held identity (a PeerSource), re-read at most every IDENTITY_TTL_S; null when there is none.
 func _identity(force: bool) -> Variant:
+	if _stopped:
+		return null
 	var now := int(_src.now.call())
 	if not force and _id != null:
 		var held: Dictionary = _id
@@ -847,79 +874,6 @@ class Rl extends RefCounted:
 		return "PKeyConnectRelay.Rl(%d)" % session_id
 
 
-## The pipe of a relay session: the room delivers whole Noise messages (`deliver`) and takes whole ones
-## (`write` is what the link frames, un-framed here and sent as a SEND envelope through `sender`).
-class RelayPipe extends PKeyPeerPipe:
-	var peer := PackedByteArray()
-	var session_id := 0
-	## Callable(peer, session_id, noise, force) -> bool: queue a SEND; false when the queue refuses it.
-	var sender: Callable
-	## Callable() -> bool: the session is closing, so its last records are never refused.
-	var closing: Callable
-
-	var _in := PackedByteArray()
-	var _reader := PKeyPeerFrame.Reader.new()
-	var _open := true
-
-
-	func _to_string() -> String:
-		return "PKeyConnectRelay.RelayPipe()"
-
-
-	## One Noise message from the room. False when too much waits unread.
-	func deliver(noise: PackedByteArray) -> bool:
-		var frame := PKeyPeerFrame.encode(noise)
-		if frame.is_empty() or _in.size() + frame.size() > PKeyConnectRelay.MAX_PIPE_BUFFER:
-			return false
-		_in.append_array(frame)
-		return true
-
-
-	func read() -> PackedByteArray:
-		var out := _in
-		_in = PackedByteArray()
-		return out
-
-
-	func write(bytes: PackedByteArray) -> bool:
-		if not _open:
-			return false
-		var cut := _reader.push(bytes)
-		if not cut["ok"]:
-			return false
-		var force: bool = closing.is_valid() and bool(closing.call())
-		for noise: PackedByteArray in cut["frames"]:
-			if not bool(sender.call(peer, session_id, noise, force)):
-				return false
-		return true
-
-
-	func is_open() -> bool:
-		return _open or not _in.is_empty()
-
-
-	## The room dropped the peer or the socket went: the link ends `connection_lost`.
-	func lost() -> void:
-		_open = false
-
-
-	func close() -> void:
-		_open = false
-
-
-	func abort() -> void:
-		_open = false
-		_in = PackedByteArray()
-
-
-	func is_finished() -> bool:
-		return not _open
-
-
-	func remote_address() -> String:
-		return "relay"
-
-
 ## The real socket: a `WebSocketPeer`. Its `str()` shows nothing.
 class WsSocket extends Socket:
 	var _ws: WebSocketPeer
@@ -989,7 +943,7 @@ static func open_ws(url: String, protocols: Array, allow_ws := false) -> Socket:
 	var ws := WebSocketPeer.new()
 	ws.supported_protocols = PackedStringArray(protocols)
 	ws.inbound_buffer_size = BUFFER_BYTES
-	ws.outbound_buffer_size = BUFFER_BYTES
+	ws.outbound_buffer_size = OUTBOUND_BYTES
 	ws.max_queued_packets = 256
 	var err := ws.connect_to_url(url, TLSOptions.client() if wss else null)
 	if err != OK:

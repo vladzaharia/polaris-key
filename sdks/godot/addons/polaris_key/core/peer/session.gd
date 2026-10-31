@@ -467,7 +467,7 @@ func _write_third(hs: PKeyPeerNoise.Handshake) -> StringName:
 	if own.is_empty():
 		return HANDSHAKE_FAILED
 	var third := await _noise(func() -> PKeyResult: return hs.write_message(own))
-	if not third.ok:
+	if not third.ok or _aborted:
 		return HANDSHAKE_FAILED
 	_send_cb.call(third.detail)
 	return &""
@@ -559,6 +559,9 @@ func _admit(cert_jws: String, ring_jws: Variant, remote: PackedByteArray) -> Dic
 
 ## The handshake is done: the transport ciphers, then HELLO.
 func _open_transport(hs: PKeyPeerNoise.Handshake, remote: PackedByteArray, peer_device_id: String) -> StringName:
+	if _aborted:
+		# Aborted mid-step (the wipe is pending): do not come back to life as `hello` (R-6G2 N8).
+		return HANDSHAKE_FAILED
 	_hash = hs.handshake_hash()
 	var tp := hs.transport()
 	if not tp.ok:

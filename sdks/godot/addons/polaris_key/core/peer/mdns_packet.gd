@@ -28,6 +28,8 @@ const MAX_NAME := 255
 const MAX_LABEL := 63
 const MAX_JUMPS := 16
 const MAX_TXT := 8
+## A legacy answer repeats at most this many of the query's questions (RFC 6762 section 6.7).
+const MAX_REPEATED_QUESTIONS := 4
 ## The addresses one name keeps, of any family, in first-seen order.
 const MAX_ADDRESSES := 4
 
@@ -269,7 +271,7 @@ static func _encode_rdata(type: StringName, data: Variant) -> Array:
 	return [out.size() == (4 if type == &"A" else 16), out]
 
 
-static func _encode_record(r: Dictionary) -> PackedByteArray:
+static func _encode_record(r: Dictionary, cache_flush := true) -> PackedByteArray:
 	var type: StringName = StringName(str(r.get("type", "")))
 	if not _CODES.has(type):
 		return PackedByteArray()
@@ -282,7 +284,7 @@ static func _encode_record(r: Dictionary) -> PackedByteArray:
 	var out := name
 	_be16(out, _CODES[type])
 	# The cache-flush bit is set on unique records, never on the shared PTR.
-	_be16(out, _CLASS_IN if type == &"PTR" else _CLASS_IN | _CACHE_FLUSH)
+	_be16(out, _CLASS_IN if type == &"PTR" or not cache_flush else _CLASS_IN | _CACHE_FLUSH)
 	_be32(out, ttl)
 	_be16(out, body.size())
 	out.append_array(body)
@@ -302,30 +304,42 @@ static func build_query(questions: Array, packet_id: int = 0) -> PackedByteArray
 	_be16(out, 0)
 	_be16(out, 0)
 	for q in questions:
-		var type: StringName = StringName(str(q.get("type", "")))
-		var name := _encode_name(str(q.get("name", "")))
-		if name.is_empty() or not _CODES.has(type):
+		var one := _encode_question(q)
+		if one.is_empty():
 			return PackedByteArray()
-		out.append_array(name)
-		_be16(out, _CODES[type])
-		_be16(out, _CLASS_IN)
+		out.append_array(one)
 	return out if out.size() <= MAX_PACKET else PackedByteArray()
+
+
+static func _encode_question(q: Dictionary) -> PackedByteArray:
+	var type: StringName = StringName(str(q.get("type", "")))
+	var name := _encode_name(str(q.get("name", "")))
+	if name.is_empty() or not _CODES.has(type):
+		return PackedByteArray()
+	_be16(name, _CODES[type])
+	_be16(name, _CLASS_IN)
+	return name
 
 
 ## An authoritative response (flags 0x8400) holding `answers`, each {name, type, ttl, data} as
 ## `parse` answers them. Empty when a record is refused or the packet would be over MAX_PACKET.
-static func build_response(answers: Array) -> PackedByteArray:
+static func build_response(answers: Array, cache_flush := true, questions: Array = []) -> PackedByteArray:
 	var out := PackedByteArray()
-	if answers.size() > MAX_RECORDS:
+	if answers.size() > MAX_RECORDS or questions.size() > MAX_REPEATED_QUESTIONS:
 		return out
 	_be16(out, 0)
 	_be16(out, _RESPONSE_FLAGS)
-	_be16(out, 0)
+	_be16(out, questions.size())
 	_be16(out, answers.size())
 	_be16(out, 0)
 	_be16(out, 0)
+	for q in questions:
+		var one := _encode_question(q)
+		if one.is_empty():
+			return PackedByteArray()
+		out.append_array(one)
 	for r in answers:
-		var rec := _encode_record(r)
+		var rec := _encode_record(r, cache_flush)
 		if rec.is_empty():
 			return PackedByteArray()
 		out.append_array(rec)

@@ -12,8 +12,9 @@ extends RefCounted
 ## the subprotocols offered, the second of which is the ticket. Nothing here prints one.
 ##
 ## Knobs (read at each open): `refuse_open` (the opener answers null), `open_after` (polls before the
-## socket opens), `echo` (the protocol the server selects; "" selects none), `tickets` (every ticket
-## offered, for a test that checks they differ).
+## socket opens), `echo` (the protocol the server selects; "" selects none), `sends_per_poll` (a full
+## outbound queue: a client's `send` refuses once it took this many since its last `poll`; -1: never),
+## `tickets` (every ticket offered, for a test that checks they differ).
 
 var devices: Array = []
 var opens: Array[Dictionary] = []
@@ -21,6 +22,8 @@ var clients: Array = []
 var refuse_open := false
 var open_after := 0
 var echo := PKeyConnectRelay.PROTOCOL
+var sends_per_poll := -1
+var refused_sends := 0
 var auto := true
 var tickets: Array = []
 
@@ -53,6 +56,7 @@ func _open_as(url: String, protocols: Array, device: PackedByteArray) -> PKeyCon
 	var c := Client.new(self, device)
 	c.open_after = open_after
 	c.echo = echo
+	c.sends_per_poll = sends_per_poll
 	clients.append(c)
 	return c
 
@@ -111,7 +115,9 @@ class Client extends PKeyConnectRelay.Socket:
 	var closed_by_client := -1
 	var inbox: Array = []
 	var polls := 0
+	var sends_per_poll := -1
 
+	var _taken := 0
 	var _state := CONNECTING
 	var _code := -1
 	## The room holds its clients, so a client holds the room weakly.
@@ -129,6 +135,7 @@ class Client extends PKeyConnectRelay.Socket:
 
 	func poll() -> void:
 		polls += 1
+		_taken = 0
 		if _state == CONNECTING and polls > open_after:
 			_state = OPEN
 
@@ -151,6 +158,11 @@ class Client extends PKeyConnectRelay.Socket:
 		if _state != OPEN:
 			return false
 		var room: Object = _room.get_ref()
+		if sends_per_poll >= 0 and _taken >= sends_per_poll:
+			if room != null:
+				room.refused_sends += 1
+			return false
+		_taken += 1
 		if room != null:
 			room.call("_from_client", self, data)
 		return true

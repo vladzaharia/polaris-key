@@ -808,5 +808,9 @@ class Grant extends RefCounted:
 	func ticket() -> String:
 		return _ticket
 
+	## The ticket is single use and spent once the socket is open: drop this copy.
+	func forget() -> void:
+		_ticket = ""
+
 	func _to_string() -> String:
 		return "RelayGrant(redacted)"

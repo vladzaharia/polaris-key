@@ -63,10 +63,20 @@ func try_take() -> float:
 	return (1.0 - _tokens) / rate()
 
 
+## Give back a token taken for a send the socket then refused (R-6G2 B1), so a retry is not charged twice.
+func refund() -> void:
+	_tokens = minf(_cap(), _tokens + 1.0)
+
+
+## While a LIMIT 1 is honoured the bucket holds at most half the burst, as `halve` cut it (R-6G2 N9).
+func _cap() -> float:
+	return _burst / 2.0 if _now() < _halved_until else _burst
+
+
 func _refill() -> void:
 	var now := _now()
 	if now > _at:
-		_tokens = minf(_burst, _tokens + (now - _at) * rate())
+		_tokens = minf(_cap(), _tokens + (now - _at) * rate())
 	_at = now
 
 
@@ -113,6 +123,11 @@ class Outbox extends RefCounted:
 		_q.append(data)
 		_bytes += data.size()
 		return true
+
+
+	## The next envelope, left queued: it leaves only once the socket took it (`pop`).
+	func peek() -> PackedByteArray:
+		return _q[0]
 
 
 	func pop() -> PackedByteArray:

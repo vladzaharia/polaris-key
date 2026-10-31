@@ -28,6 +28,7 @@ func run(t: PKeyTestContext) -> void:
 	await _first_message_cap(t)
 	await _ring_flood(t)
 	await _abort(t)
+	await _abort_midstep(t)
 
 
 func _a() -> Dictionary:
@@ -736,6 +737,26 @@ func _ring_flood(t: PKeyTestContext) -> void:
 	await older.session.start()
 	await PKeyTestPeers.pump(older, newer)
 	t.check("ring flood: a real roster in the first window is still surfaced", older.of(&"ring").size() == 1 and older.of(&"ring")[0]["epoch"] == 2)
+
+
+## N8 (R-6G2): an abort in the step that finishes the handshake leaves the session closed, not `hello`.
+func _abort_midstep(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var slow := func(work: Callable) -> Variant:
+		await tree.process_frame
+		return work.call()
+	var a := PKeyTestPeers.account_side("initiator", _a(), [_disc], "", 1, {"offload": slow})
+	var b := PKeyTestPeers.account_side("responder", _b(), [_disc], "", 1)
+	await a.session.start()
+	await b.session.receive(a.out.pop_front())
+	a.session.receive(b.out.pop_front())
+	t.check("abort mid-step: the closing step is running", a.session.is_busy())
+	var sent := a.out.size()
+	a.session.abort()
+	for i in 4:
+		await tree.process_frame
+	t.check("abort mid-step: the session stays closed, says nothing and is not busy", a.session.is_closed() and not a.session.is_busy() and a.out.size() == sent and a.of(&"established").is_empty(),
+		"%s %d %d" % [a.session.is_closed(), a.out.size(), sent])
 
 
 ## N3: abort() ends a session with no CLOSE and no event, releases the approver's slot and wipes.

@@ -23,6 +23,7 @@ class FakeSocket extends PKeyMdns.Socket:
 	var unicast: Array = []
 	var closed := false
 	var port := 0
+	var joined: Array = []
 
 
 	func receive() -> Dictionary:
@@ -35,6 +36,10 @@ class FakeSocket extends PKeyMdns.Socket:
 
 	func send_to(data: PackedByteArray, host: String, p: int) -> void:
 		unicast.append({"data": data, "host": host, "port": p})
+
+
+	func join(names: Array) -> void:
+		joined.append_array(names)
 
 
 	func close() -> void:
@@ -120,6 +125,9 @@ func run(t: PKeyTestContext) -> void:
 	_tables(t)
 	_expiry(t)
 	_lanes(t)
+	_off_link(t)
+	_legacy_ttl(t)
+	_interface_refresh(t)
 	_budget(t)
 	_real_socket(t)
 	await _live(t)
@@ -198,6 +206,11 @@ func _interfaces(t: PKeyTestContext) -> void:
 		{"name": "lo0", "addresses": ["127.0.0.1"]},
 		{"name": "utun3", "addresses": ["10.9.9.9"]},
 		{"name": "awdl0", "addresses": ["192.168.7.7"]},
+		{"name": "rmnet_data0", "addresses": ["10.64.12.5"]},
+		{"name": "ccmni1", "addresses": ["10.65.1.1"]},
+		{"name": "pdp_ip0", "addresses": ["10.66.2.2"]},
+		{"name": "v4-rmnet_data0", "addresses": ["192.0.0.4"]},
+		{"name": "clat4", "addresses": ["10.67.0.1"]},
 		{"name": "{AB-CD}", "friendly": "vEthernet (Default Switch)", "addresses": ["172.20.0.1"]},
 		{"name": "{EF-GH}", "friendly": "Ethernet", "addresses": ["10.0.0.5", "10.0.0.5"]},
 		{"name": "br0", "addresses": ["169.254.3.3", "100.64.0.5"]},
@@ -211,6 +224,8 @@ func _interfaces(t: PKeyTestContext) -> void:
 		u[1]["addresses"] == ["10.0.0.5"], str(u))
 	t.check("interfaces: loopback, tunnel, direct-link, virtual, link-local, CGNAT and v6-only are dropped", not names.has("lo0") and not names.has("utun3") and not names.has("awdl0") and
 		not names.has("{AB-CD}") and not names.has("br0") and not names.has("wlan9"))
+	t.check("interfaces: so are the carrier's mobile-data interfaces (R-6G2 N4)", not names.has("rmnet_data0") and not names.has("ccmni1") and not names.has("pdp_ip0") and
+		not names.has("v4-rmnet_data0") and not names.has("clat4"), str(names))
 	var withlo := PKeyMdns.usable_interfaces(raw, true)
 	t.check("interfaces: loopback only when allowed", withlo.map(func(f: Dictionary) -> String: return f["name"]).has("lo0"))
 	var only_name := PKeyMdns.usable_interfaces(raw, false, ["en0"])
@@ -423,8 +438,28 @@ func _replies(t: PKeyTestContext) -> void:
 		s.multicast.size() == count)
 	var answer: PackedByteArray = s.unicast[0]["data"]
 	var ttls := _ttls(answer)
-	var short := ttls.all(func(x: int) -> bool: return x == PKeyMdns.LEGACY_TTL or x == PKeyMdns.TXT_TTL or x == 0)
-	t.check("reply: carrying its ID and a short TTL", answer[0] == 0x12 and answer[1] == 0x34 and short and ttls[0] == 10)
+	var short := ttls.all(func(x: int) -> bool: return x == PKeyMdns.LEGACY_TTL)
+	t.check("reply: carrying its ID, and every record, TXT included, at TTL 10", answer[0] == 0x12 and answer[1] == 0x34 and short and ttls.size() == 4, str(ttls))
+	var parsed_answer := PKeyMdnsPacket.parse(answer)
+	t.check("reply: repeating the question (RFC 6762 section 6.7)", parsed_answer["ok"] and parsed_answer["questions"] == [{"name": SERVICE, "type": &"PTR"}], str(parsed_answer.get("questions")))
+	# No cache-flush bit on any record: only the class bytes differ from the multicast build, one per unique record.
+	var recs := m._records(m._adverts[0], PKeyMdns.LEGACY_TTL)
+	var flushed := PKeyMdnsPacket.build_response(recs, true, [{"name": SERVICE, "type": &"PTR"}])
+	var diff := 0
+	for i in answer.size():
+		if i > 1 and answer[i] != flushed[i]:
+			diff += 1
+	var plain := PKeyMdnsPacket.build_response(recs, false, [{"name": SERVICE, "type": &"PTR"}])
+	t.check("reply: and no cache-flush bit (the three unique records would carry it)", answer.size() == flushed.size() and diff == 3 and plain.slice(2) == answer.slice(2), str(diff))
+	# At most four of a query's questions are repeated.
+	w.t += 2.0
+	var many := PKeyMdnsPacket.build_query([{"name": SERVICE, "type": &"PTR"}, {"name": INST_A + "." + SERVICE, "type": &"SRV"}, {"name": INST_A + "." + SERVICE, "type": &"TXT"},
+		{"name": INST_A + ".local", "type": &"A"}, {"name": INST_A + ".local", "type": &"AAAA"}, {"name": "x.local", "type": &"A"}], 0x0707)
+	s.push(many, "192.168.1.30", 51516)
+	m.poll()
+	var repeated := PKeyMdnsPacket.parse(s.unicast[s.unicast.size() - 1]["data"])
+	var echoed: Array = repeated.get("questions", [])
+	t.check("reply: a query with six questions is answered repeating four", repeated["ok"] and echoed.size() == PKeyMdnsPacket.MAX_REPEATED_QUESTIONS, str(echoed))
 	m.advertise({"instance": INST_B, "port": PORT_A, "txt": []})
 	t.check("reply: a second advert shares the socket", w.sockets.size() == 1 and w.calls.size() == 1)
 
@@ -436,6 +471,121 @@ func _replies(t: PKeyTestContext) -> void:
 	s2.push(service_q, "192.168.1.20")
 	m2.poll()
 	t.check("reply: two queries in one poll get one answer", s2.multicast.size() == 2)
+
+
+## A datagram from outside the link's private blocks is neither parsed, answered nor learned from, and
+## burns no reply gap (R-6G2 B2). A legacy unicast answer goes only to a port at or above 1024.
+func _off_link(t: PKeyTestContext) -> void:
+	var w := World.new()
+	var m := w.adapter()
+	m.advertise({"instance": INST_A, "port": PORT_A, "txt": ["v=1", "m=a"]})
+	var s := w.last()
+	var legacy := PKeyMdnsPacket.build_query([{"name": SERVICE, "type": &"PTR"}], 0x4321)
+	var base := s.multicast.size()
+	s.push(legacy, "8.8.8.8", 40000)
+	s.push(legacy, "10.0.0.9", 40000)
+	s.push(legacy, "172.20.1.1", 40000)
+	s.push(PKeyMdnsPacket.build_query([{"name": SERVICE, "type": &"PTR"}]), "8.8.8.8", 5353)
+	s.push(PKeyMdnsPacket.build_query([{"name": SERVICE, "type": &"PTR"}]), "10.0.0.9", 5353)
+	m.poll()
+	t.check("off-link: a legacy query from a public or an off-block source is answered by nothing", s.unicast.is_empty() and s.multicast.size() == base)
+	# The refusals took no turn of the reply gap: an on-link query in the same second is answered.
+	s.push(legacy, "192.168.1.30", 40000)
+	m.poll()
+	t.check("off-link: and burned no reply gap: the next on-link legacy query is answered with its ID", s.unicast.size() == 1 and s.unicast[0]["host"] == "192.168.1.30" and
+		s.unicast[0]["data"][0] == 0x43 and s.unicast[0]["data"][1] == 0x21)
+	# A port below 1024 is never answered by unicast, and takes no turn either.
+	w.t += 2.0
+	m.poll()  # the advert's second announcement goes out now
+	base = s.multicast.size()
+	s.push(legacy, "192.168.1.30", 53)
+	s.push(legacy, "192.168.1.30", 1023)
+	m.poll()
+	t.check("off-link: a legacy query from a port under 1024 is answered by nothing", s.unicast.size() == 1 and s.multicast.size() == base)
+	s.push(legacy, "192.168.1.30", 1024)
+	m.poll()
+	t.check("off-link: and from 1024 up it is", s.unicast.size() == 2 and s.unicast[1]["port"] == 1024)
+	# 5353 is the multicast answer, never a unicast one.
+	w.t += 2.0
+	s.push(PKeyMdnsPacket.build_query([{"name": SERVICE, "type": &"PTR"}]), "192.168.1.30", 5353)
+	m.poll()
+	t.check("off-link: a query from 5353 is answered by multicast", s.unicast.size() == 2 and s.multicast.size() == base + 1)
+	# Nothing is parsed: a response from outside teaches nothing, and a flood of garbage costs no parse.
+	var f := Found.new()
+	var made := _browser(w, f)
+	var bs := w.last()
+	bs.push(_advert_packet(INST_B, "10.0.0.9"), "10.0.0.9")
+	bs.push(_advert_packet(INST_B, "8.8.8.8"), "8.8.8.8")
+	(made[0] as PKeyMdns).poll()
+	t.check("off-link: a response from outside the block teaches nothing", f.up.is_empty() and f.allowed.is_empty())
+	bs.push(_advert_packet(INST_B, "192.168.1.31"), "192.168.1.31")
+	(made[0] as PKeyMdns).poll()
+	t.check("off-link: one from the block does", f.up.size() == 1)
+
+
+## A legacy answer carries PTR TTL 10; a querier-only device asks every 30 s, so the peer must stay up
+## in between (R-6G2 N1).
+func _legacy_ttl(t: PKeyTestContext) -> void:
+	var w := World.new()
+	w.refuse_5353 = true
+	var f := Found.new()
+	var made := _browser(w, f)
+	var m: PKeyMdns = made[0]
+	var s := w.last()
+	var answer := func() -> PackedByteArray:
+		return PKeyMdnsPacket.build_response([_ptr(INST_A, PKeyMdns.LEGACY_TTL), _srv(INST_A), _txt(INST_A), _a(INST_A, "192.168.1.20")])
+	s.push(answer.call(), "192.168.1.20", 5353)
+	m.poll()
+	t.check("legacy ttl: the first answer reports the peer up", f.up.size() == 1)
+	for i in 6:
+		w.t += 5.0
+		m.poll()
+	t.check("legacy ttl: 30 s later, before the re-ask, the peer is still up (no lost)", f.down.is_empty() and f.up.size() == 1, str(f.down))
+	s.push(answer.call(), "192.168.1.20", 5353)
+	m.poll()
+	for i in 6:
+		w.t += 5.0
+		m.poll()
+	t.check("legacy ttl: a refreshed answer keeps it up another 30 s, and never found again", f.down.is_empty() and f.up.size() == 1)
+	# Unrefreshed it does lapse, soon after the next ask would have been answered.
+	for i in 3:
+		w.t += 5.0
+		m.poll()
+	t.check("legacy ttl: with no refresh it lapses", f.down == [INST_A], str(f.down))
+
+
+## The interface list is read again in the sweep: the link's blocks follow a network change, a new
+## interface is joined, and an advert's addresses follow (R-6G2 N4).
+func _interface_refresh(t: PKeyTestContext) -> void:
+	var w := World.new()
+	var f := Found.new()
+	var m := w.adapter()
+	var adv := m.advertise({"instance": INST_A, "port": PORT_A, "txt": []})
+	var made := m.browse(Callable(f, "on_up"), Callable(f, "on_down"), Callable(f, "accept"))
+	var s := w.last()
+	t.check("refresh: on 192.168 a 10.x source is off the link", not m.source_on_link("10.0.0.9") and m.source_on_link("192.168.1.9") and made.ok)
+	var sent := s.multicast.size()
+	# Wi-Fi to a 10.x network, and a second interface.
+	w.interfaces = [
+		{"index": 4, "name": "en0", "friendly": "en0", "addresses": ["10.0.0.20"]},
+		{"index": 5, "name": "en1", "friendly": "en1", "addresses": ["172.20.0.5"]},
+		{"index": 9, "name": "rmnet_data0", "friendly": "rmnet_data0", "addresses": ["192.168.77.7"]},
+	]
+	w.t += PKeyMdns.SWEEP_SECONDS + 0.1
+	m.poll()
+	m.poll()
+	t.check("refresh: after a sweep the blocks follow the network", m.source_on_link("10.0.0.9") and m.source_on_link("172.20.1.1") and not m.source_on_link("192.168.1.9"))
+	t.check("refresh: the group is joined on the new interface only", s.joined == ["en1"], str(s.joined))
+	var ads := PKeyMdnsPacket.parse(s.multicast[s.multicast.size() - 1])
+	var addrs: Array = (ads["answers"] as Array).filter(func(r: Dictionary) -> bool: return r["type"] == &"A").map(func(r: Dictionary) -> String: return r["data"])
+	t.check("refresh: and the advert is announced again with the new addresses", s.multicast.size() > sent and addrs == ["10.0.0.20", "172.20.0.5"], str(addrs))
+	# No usable interface: fail closed.
+	w.interfaces = []
+	w.t += PKeyMdns.SWEEP_SECONDS + 0.1
+	m.poll()
+	t.check("refresh: with no interface left no source is on the link", not m.source_on_link("10.0.0.9") and not m.source_on_link("192.168.1.9"))
+	(adv.detail as PKeyMdns.Handle).stop()
+	(made.detail as PKeyMdns.Handle).stop()
 
 
 # ── browse ───────────────────────────────────────────────────────────────────────────────────
