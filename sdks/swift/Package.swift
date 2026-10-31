@@ -30,6 +30,11 @@ import PackageDescription
 //                   Unity, MAUI and Tauri link it alone. Code that needs an Xcode 26+ SDK is
 //                   behind `#if compiler(>=6.3/6.4)`, because the macos-15 job compiles this
 //                   package with Xcode 16.4.                                   (deps none)
+//   PolarisKeyGameCenter Game Center identity (I-44.5, Q-2): GKLocalPlayer's authenticated check, the
+//                   identity-verification signature and the `gc1.` token. STANDALONE like
+//                   PolarisKeyPlatform, so the Godot natives link it alone.      (deps none)
+//   PolarisKeyGameCenterSignIn the ladder provider over it (deps Identity, GameCenter); opt-in, so the
+//                   umbrella links no GameKit.
 //   PolarisKeyPlatformC the C surface over it (`pkp_call`, `pkp_free`,
 //                   `pkp_set_event_callback`), linked by native hosts only, so a Swift
 //                   consumer of PolarisKeyPlatform exports no `pkp_*` symbols.  (deps Platform)
@@ -102,6 +107,10 @@ let package = Package(
         // host links PolarisKeyPlatformC, so Swift consumers export no `pkp_*` symbols).
         .library(name: "PolarisKeyPlatform", targets: ["PolarisKeyPlatform"]),
         .library(name: "PolarisKeyPlatformC", targets: ["PolarisKeyPlatformC"]),
+        // Game Center identity (I-44.5): standalone; the umbrella adapts it to the sign-in ladder.
+        .library(name: "PolarisKeyGameCenter", targets: ["PolarisKeyGameCenter"]),
+        // Its `GameCenterSignInProvider` for `AutoSignInOptions(provider:)`; an app opts in.
+        .library(name: "PolarisKeyGameCenterSignIn", targets: ["PolarisKeyGameCenterSignIn"]),
     ],
     dependencies: [
         // D-24: Sparkle continues as the update mechanism. 2.9.6 is the security floor: the
@@ -152,6 +161,16 @@ let package = Package(
         ),
         .target(
             name: "PolarisKeyPlatform",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .target(
+            name: "PolarisKeyGameCenter",
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        // The ladder provider over it: opt-in, so the umbrella and Identity never link GameKit.
+        .target(
+            name: "PolarisKeyGameCenterSignIn",
+            dependencies: ["PolarisKeyIdentity", "PolarisKeyGameCenter"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(
@@ -233,7 +252,8 @@ let package = Package(
             dependencies: [
                 "PolarisKey", "PolarisKeyCore", "PolarisKeyLicense", "PolarisKeyConfig",
                 "PolarisKeyIdentity", "PolarisKeyUI", "PolarisKeyUICore", "PolarisKeyUpdate",
-                "PolarisKeyUpdateUI", "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform", "libzstd",
+                "PolarisKeyUpdateUI", "PolarisKeyRelease", "PolarisKeyPacks", "PolarisKeyPlatform", "PolarisKeyGameCenter",
+                "PolarisKeyGameCenterSignIn", "libzstd",
             ],
             // No resources: the tests read the SAME cross-language corpus the Node and Python
             // runners drive (`conformance/corpus/v2/`) and the HTTP transcripts
@@ -262,7 +282,7 @@ let package = Package(
         // tests run in the hosted XCTest project under PlatformHostTests/ instead.
         .testTarget(
             name: "PolarisKeyPlatformTests",
-            dependencies: ["PolarisKeyPlatform", "PolarisKeyPlatformC"],
+            dependencies: ["PolarisKeyPlatform", "PolarisKeyPlatformC", "PolarisKeyGameCenter"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
     ]

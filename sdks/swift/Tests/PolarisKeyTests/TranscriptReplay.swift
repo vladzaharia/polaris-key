@@ -486,7 +486,7 @@ actor ReplayServer {
                             "enabled": .bool(true), "configured": .bool(true),
                             "issuer": .string("\(base)/identity"),
                             "exchange": .object([
-                                "kinds": .array([.string("google"), .string("apple")]),
+                                "kinds": .array([.string("google"), .string("apple"), .string("gamecenter")]),
                                 "google": .object([
                                     "serverClientId": .string("1234-web.apps.googleusercontent.com")
                                 ]),
