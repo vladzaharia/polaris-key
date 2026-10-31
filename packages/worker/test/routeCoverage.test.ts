@@ -179,6 +179,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // I-16: passkeys on the login card, and the account's passkeys.
     ["/api/signin/passkey/options", ["post"]],
     ["/api/signin/passkey/verify", ["post"]],
+    // DEVICE-REMOVAL: the account's licence-less devices, and removing one.
+    ["/api/me/devices", ["get"]],
+    ["/api/me/devices/{product}/{deviceId}", ["delete"]],
     ["/api/me/passkeys", ["get", "post"]],
     ["/api/me/passkeys/options", ["post"]],
     ["/api/me/passkeys/{passkeyId}", ["delete", "patch"]],

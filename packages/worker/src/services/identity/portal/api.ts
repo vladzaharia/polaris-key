@@ -76,6 +76,7 @@ import {
   getPortalProductSettings,
   listLinkedProducts,
   listPortalLicenses,
+  listLicenselessDevices,
   listVisibleDevices,
   listVisibleKeys,
   portalAuthCapabilities,
@@ -167,7 +168,12 @@ import {
   handleDeviceLoginPoll,
   handleDeviceLoginStart,
 } from "./deviceLogin.js";
-import { freeAccountDevice, portalActionLimit } from "./freeDevice.js";
+import {
+  freeAccountDevice,
+  type FreeDeviceResult,
+  freeLicenselessDevice,
+  portalActionLimit,
+} from "./freeDevice.js";
 import {
   handleAccountExport,
   handleProductDataRemove,
@@ -1375,6 +1381,67 @@ async function handleRegistryTokens(
   return portalJson({ ok: true, token: res.token, view: res.view }, 201);
 }
 
+/**
+ * `GET /api/me/devices`: the account's licence-less devices (an app that uses sign-in or Cloud
+ * Sync alone, a device that signed in from backup), for every product whose portal is on.
+ */
+async function handleAccountDevices(
+  db: Db,
+  session: PortalSession,
+  now: number,
+): Promise<Response> {
+  const rows = await listLicenselessDevices(db, session.accountId, now);
+  const on = new Map<string, boolean>();
+  const devices = [];
+  for (const r of rows) {
+    if (!on.has(r.product))
+      on.set(
+        r.product,
+        (await getPortalProductSettings(db, r.product)).portal_enabled === 1,
+      );
+    if (!on.get(r.product)) continue;
+    devices.push({
+      product: r.product,
+      productName: r.product_name,
+      deviceId: r.device_id,
+      label: r.label,
+      platform: r.platform,
+      lastSeen: r.last_seen,
+      restored: r.restored === 1,
+    });
+  }
+  return portalJson({ devices });
+}
+
+/** The answer to a device removal: the device is gone, or the budget is spent, or there is no such device. */
+function freedResponse(freed: FreeDeviceResult, deviceId: string): Response {
+  if (freed.ok) return portalJson({ ok: true, deviceId });
+  if (freed.reason === "rate_limited")
+    return err(429, "rate_limited", "too many attempts");
+  return notFound();
+}
+
+async function handleAccountDeviceDelete(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: PortalSession,
+  product: string,
+  deviceId: string,
+  now: number,
+): Promise<Response> {
+  const freed = await freeLicenselessDevice(
+    req,
+    env,
+    db,
+    { accountId: session.accountId, email: session.email },
+    product,
+    deviceId,
+    now,
+  );
+  return freedResponse(freed, deviceId);
+}
+
 async function handleDeviceDelete(
   req: Request,
   env: Env,
@@ -1398,12 +1465,7 @@ async function handleDeviceDelete(
     deviceId,
     now,
   );
-  if (!freed.ok) {
-    if (freed.reason === "rate_limited")
-      return err(429, "rate_limited", "too many attempts");
-    return notFound();
-  }
-  return portalJson({ ok: true, deviceId });
+  return freedResponse(freed, deviceId);
 }
 
 /**
@@ -2070,6 +2132,33 @@ export const PORTAL_API_ROUTES: readonly PortalApiRoute[] = [
       c.req.method === "POST"
         ? handleMeDeletionCancel(c.req, c.env, c.db, s.session, c.now)
         : notFound(),
+  },
+  // DEVICE-REMOVAL: the account's devices that hold no licence, and removing one.
+  {
+    path: "me/devices",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: async (c, _m, s) =>
+      methodNotAllowedUnless(c.req, "GET") ??
+      handleAccountDevices(c.db, s.session, c.now),
+  },
+  {
+    path: "me/devices/:product/:device",
+    auth: "session",
+    csrf: "change",
+    sweep: true,
+    handler: async (c, m, s) =>
+      methodNotAllowedUnless(c.req, "DELETE") ??
+      handleAccountDeviceDelete(
+        c.req,
+        c.env,
+        c.db,
+        s.session,
+        m.params.product!,
+        m.params.device!,
+        c.now,
+      ),
   },
   // I-16: the account's passkeys (list, add, remove). Adding and removing check step-up and the
   // email rule themselves.

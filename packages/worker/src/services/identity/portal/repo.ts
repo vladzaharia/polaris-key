@@ -1,4 +1,5 @@
 import { adminOidcConfig } from "../../../platform/platformOidc.js";
+import { RESTORE_ORIGIN_SECONDS } from "../restore/store.js";
 import { operatorIssuerAllowed } from "../../../core/rbac/operatorIssuer.js";
 import { portalAudit } from "../../../core/accounts/portalAudit.js";
 import { normalizeEmail } from "../../../platform/email.js";
@@ -709,6 +710,70 @@ export async function listVisibleDevices(
     product,
     licenseId,
   );
+}
+
+/** One of the account's devices that holds no licence, for the Devices section. */
+export interface LicenselessDeviceRow {
+  product: string;
+  product_name: string;
+  device_id: string;
+  label: string | null;
+  platform: string | null;
+  last_seen: number;
+  /** 1 while the device is marked as signed in from backup. */
+  restored: number;
+}
+
+/**
+ * The authorized devices of `accountId`'s products that are bound to no licence: the device's
+ * subject is the account's pairwise subject for that product, nothing else. `restored` reads the
+ * origin mark under that same subject and only while the mark is inside its 270 days.
+ */
+export async function listLicenselessDevices(
+  db: Db,
+  accountId: string,
+  now: number,
+): Promise<LicenselessDeviceRow[]> {
+  return db.all<LicenselessDeviceRow>(
+    `SELECT d.product AS product, COALESCE(p.name, d.product) AS product_name,
+            d.device_id AS device_id, d.label AS label, d.platform AS platform,
+            d.last_seen AS last_seen,
+            CASE WHEN o.device_id IS NULL THEN 0 ELSE 1 END AS restored
+       FROM account_product_subjects s
+       JOIN devices d ON d.product = s.product AND d.subject = s.subject
+       LEFT JOIN products p ON p.slug = d.product
+       LEFT JOIN identity_restore_origins o
+              ON o.product = d.product AND o.device_id = d.device_id
+             AND o.subject = d.subject AND o.created_at > ?
+      WHERE s.account_id = ? AND d.license_id = '' AND d.status = 'authorized'
+      ORDER BY d.last_seen DESC, d.device_id`,
+    now - RESTORE_ORIGIN_SECONDS,
+    accountId,
+  );
+}
+
+/**
+ * Which of `deviceIds` (devices of `product` bound to `subject`) signed in by restore. Read under
+ * the caller's own subject, so another account's marks never show.
+ */
+export async function restoredDeviceIds(
+  db: Db,
+  product: string,
+  subject: string,
+  deviceIds: readonly string[],
+  now: number,
+): Promise<Set<string>> {
+  if (deviceIds.length === 0) return new Set();
+  const rows = await db.all<{ device_id: string }>(
+    `SELECT device_id FROM identity_restore_origins
+      WHERE product = ? AND subject = ? AND created_at > ?
+        AND device_id IN (SELECT value FROM json_each(?))`,
+    product,
+    subject,
+    now - RESTORE_ORIGIN_SECONDS,
+    JSON.stringify(deviceIds),
+  );
+  return new Set(rows.map((r) => r.device_id));
 }
 
 /**
