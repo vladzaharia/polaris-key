@@ -6,6 +6,8 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Cloud Sync end-to-end (SYNC-E2E.F.K).** The `sync.e2e` parity row is implemented: the machine seals and opens every synced value (`e2e` by default), including the X-1 conflict-copy cursor guard; `SyncScenariosTest` replays every scenario on JCA and on Tink. No API change.
+
 - **Cloud Sync settings (U-07).** `client.cloudSync` answers `status()`, `flush()` and `newRecoveryCode()` (plus `recoveryCode.generate()`, `statusFuture` and `flushFuture`), and `client.events` carries `PolarisEvent.CloudSync`. `config.set`, `clear` and `setting(k)` go through the sync machine while a person is signed in; `setting(k).sync()` answers `local`, `pending` or `synced` and `ConfigChange.origin` names where a change came from. `PolarisKeyClientOptions.cloudSync` carries the mode (default end-to-end), the compiled catalog and the renames; the Worker never sets them. Sign-out flushes (bounded) while the root is held, forgets the ring (a failure stops the sign-out), then purges; a person change never sends under the new token. The state file is `cloud-sync.json` in the store's state directory (`noBackupFilesDir` on Android), and `PolarisKeyLifecycle` flushes when the last activity stops. The parity manifest claims `sync.settings`, `config.sync` and `sync.scenarios`; `sync.e2e` stays planned.
 
 - **`config.setting(key)` is the setting handle (U-07.K8).** It returns a `ConfigSetting` with `value`, `source`, `locked`, `visibility`, `set`, `clear`, `on` (a `ConfigSubscription`) and `flow: StateFlow<JsonElement?>`; the reads are the last resolution, kept current by every `set`, `clear` and new document. `setting(k)` no longer is the `StateFlow`; `rememberPolarisSetting` reads `.flow`. No aliases.
