@@ -696,7 +696,7 @@
       "gdlint:max-line-length": 16
     },
     "sdks/godot/tests/suite_sync_ring.gd": {
-      "gdlint:max-line-length": 16,
+      "gdlint:max-line-length": 28,
       "gdlint:max-returns": 1
     },
     "sdks/godot/tests/suite_sync_scenarios.gd": {

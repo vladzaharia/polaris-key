@@ -60,7 +60,7 @@ func _init(p_product: String, root := "user://pkey", memory := false,
 	_root_ok = name_ok and not p_product.contains("..") and PKeyBackupExclusion.is_private_root(root)
 	if not memory and _root_ok:
 		sealer = p_sealer
-		if sealer == null and OS.get_environment("PKEY_DESKTOP_KEYRING") != "0":
+		if sealer == null and not PKeyRecordSealer.switched_off():
 			sealer = PKeyRecordSealer.for_platform(p_product)
 
 

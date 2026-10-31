@@ -164,7 +164,7 @@ func _init(p_product: String, root := "user://pkey", memory := false, encrypted 
 	_encrypted = encrypted
 	if not memory and encrypted and _root_ok:
 		sealer = p_sealer
-		if sealer == null and OS.get_environment("PKEY_DESKTOP_KEYRING") != "0":
+		if sealer == null and not PKeyRecordSealer.switched_off():
 			sealer = PKeyRecordSealer.for_platform(p_product)
 
 

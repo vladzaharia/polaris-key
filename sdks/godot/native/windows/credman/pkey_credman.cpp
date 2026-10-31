@@ -24,7 +24,8 @@
 //   unprotect(blob, entropy)  {ok, plain} | {ok: false, error, win32, unopenable}
 //
 // CryptProtectData with CRYPTPROTECT_UI_FORBIDDEN and no CRYPTPROTECT_LOCAL_MACHINE: the blob opens
-// only for this Windows user on this machine, with no prompt. The entropy is the caller's context
+// only for this Windows user, with no prompt (a roaming profile carries it to that user's other
+// machines). The entropy is the caller's context
 // (the product slug), so a blob of one product does not open as another's. `unopenable` is set only
 // for an error that cannot pass (the blob is not DPAPI data, or another user or machine made it);
 // every other failure is a fault the store reports as such, never as "the keys are gone". DPAPI

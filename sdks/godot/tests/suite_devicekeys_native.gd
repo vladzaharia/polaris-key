@@ -116,6 +116,23 @@ func _selection(t: PKeyTestContext) -> void:
 	t.check("selection: a test-only plain-file store has no sealer", PKeyDeviceKeyStore.for_tests(PRODUCT, _dir("sel4t")).sealer == null)
 	var outside := PKeyDeviceKeyStore.new(PRODUCT, "/tmp/x", false, true, fake)
 	t.check("selection: a root outside user:// gets no sealer (and still refuses to write)", outside.sealer == null and not outside.ensure().ok)
+	# The keyring switch is honoured in debug builds only, like the token keyring's.
+	var prev_env := OS.get_environment(PKeyKeyringStore.ENV_SWITCH)
+	var prev_src := PKeyKeyringStore.debug_build_source
+	OS.set_environment(PKeyKeyringStore.ENV_SWITCH, "0")
+	PKeyKeyringStore.debug_build_source = func() -> bool: return true
+	var in_debug := PKeyRecordSealer.switched_off()
+	PKeyKeyringStore.debug_build_source = func() -> bool: return false
+	var in_release := PKeyRecordSealer.switched_off()
+	OS.set_environment(PKeyKeyringStore.ENV_SWITCH, "1")
+	PKeyKeyringStore.debug_build_source = func() -> bool: return true
+	var unset_debug := PKeyRecordSealer.switched_off()
+	PKeyKeyringStore.debug_build_source = prev_src
+	if prev_env == "":
+		OS.unset_environment(PKeyKeyringStore.ENV_SWITCH)
+	else:
+		OS.set_environment(PKeyKeyringStore.ENV_SWITCH, prev_env)
+	t.check("sealer selection: the keyring switch is honoured only in debug builds", in_debug and not in_release and not unset_debug, "%s %s %s" % [in_debug, in_release, unset_debug])
 	# No native lane in this run: the platform's choice is the fallback, unchanged.
 	t.check("fallback: no lane, no sealer", PKeyRecordSealer.for_platform(PRODUCT, "linux") == null and PKeyRecordSealer.for_platform(PRODUCT, "windows") == null \
 			and PKeyRecordSealer.for_platform(PRODUCT, "") == null)

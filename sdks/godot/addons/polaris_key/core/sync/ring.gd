@@ -17,7 +17,8 @@ extends RefCounted
 ##    root_kid}` before it is held: no root is held without a pin. A served ring that differs is
 ##    never opened: `unlock()` answers kind `ring-changed`, and only the recovery code (`recover`) or
 ##    an explicit `accept_ring_change` re-pins. `forget()` drops the pin and the stored root; the
-##    sign-out hook calls it. The stored root is used only while it matches the pin.
+##    sign-out hook calls it. The stored root is used only while it matches the pin. With no pin,
+##    the stored root's `{ring_id, epoch, kid}` is the pin.
 ##  * A bad recovery code is refused before any request.
 ##  * Host misuse (locked, a bad argument, no device keys) is a failure result, never an assert.
 ##
@@ -300,11 +301,20 @@ func _unlock_with(accept: Variant) -> PKeyResult:
 	if not pin_r.ok:
 		return pin_r
 	var pinned: Variant = pin_r.detail
-	var expected: Variant = accept if accept != null else pinned
+	# With no pin and no confirmed accept, the stored root is the pin. Unknown is not absent: an
+	# unreadable root opens, writes and pins nothing.
+	var anchor: Variant = pinned
+	if anchor == null and accept == null:
+		var sr := _vault.read_root()
+		if not sr.ok:
+			return sr
+		if sr.detail != null:
+			anchor = {"ring_id": sr.detail["ring_id"], "epoch": sr.detail["epoch"], "root_kid": sr.detail["kid"]}
+	var expected: Variant = accept if accept != null else anchor
 	var served := {"ring_id": ring["ring_id"], "epoch": ring["epoch"], "root_kid": ring["root_kid"]}
 	if expected != null and not _same_pin(expected, served):
 		var w: Variant = st.detail["wrap"]
-		return PKeyResult.success({"kind": "ring-changed", "pinned": pinned if pinned != null else expected, "served": served, "created_at": ring["created_at"], "by": w["by"] if w != null else null})
+		return PKeyResult.success({"kind": "ring-changed", "pinned": anchor if anchor != null else expected, "served": served, "created_at": ring["created_at"], "by": w["by"] if w != null else null})
 	var unlocked_r := PKeyResult.success({"kind": "unlocked", "ring_id": ring["ring_id"], "epoch": ring["epoch"]})
 	var kid := _unhex(ring["root_kid"], 16)
 	if kid == null:
@@ -314,7 +324,9 @@ func _unlock_with(accept: Variant) -> PKeyResult:
 		return unlocked_r
 	var stored := _stored_root(served)
 	if stored != null:
-		_memory.set_held(stored, _others_with(stored))
+		var sr_hold := _hold(stored, false)
+		if not sr_hold.ok:
+			return sr_hold
 		return unlocked_r
 	var wrap: Variant = st.detail["wrap"]
 	if wrap == null:
