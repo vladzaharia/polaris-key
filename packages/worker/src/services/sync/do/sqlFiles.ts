@@ -286,6 +286,19 @@ export class FileTables {
       .map(toUpload);
   }
 
+  nextExpiry(): number | undefined {
+    const r = this.q.all<{ at: number | null } & Row>(
+      `SELECT MIN(expires_at) AS at FROM uploads`,
+    )[0];
+    return r?.at ?? undefined;
+  }
+
+  allUploads(): UploadRow[] {
+    return this.q
+      .all<UploadDbRow>(`SELECT * FROM uploads ORDER BY created_at, upload_id`)
+      .map(toUpload);
+  }
+
   parts(uploadId: string): UploadPart[] {
     return this.q
       .all<PartRow>(

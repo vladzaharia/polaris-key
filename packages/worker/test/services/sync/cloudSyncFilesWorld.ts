@@ -66,6 +66,11 @@ export async function filesWorld(
     catalog: opts.catalog ?? FILES_CATALOG,
     files: r2,
   });
+  // The alarm writes the directory to D1: a stub that takes the batch (the directory has its own tests).
+  (w.ns as unknown as { opts: { db?: unknown } }).opts.db = () => ({
+    batch: async () => undefined,
+    batchChanges: async (s: unknown[]) => s.map(() => 1),
+  });
   return Object.assign(w, { r2 });
 }
 

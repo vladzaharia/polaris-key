@@ -6,6 +6,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { R2Mock, asR2 } from "../../r2Mock.js";
 import {
   type MutationResult,
   type SyncMutation,
@@ -277,7 +278,10 @@ describe("CloudSyncDO: schema v4 (files, U-10.4)", () => {
   });
 
   it("an erased object keeps no file row, upload or SSE-C key", async () => {
-    const ns = new CloudSyncNamespaceMock();
+    // U-10.10: an erasure that holds files deletes their objects first, so it needs the file store.
+    const ns = new CloudSyncNamespaceMock({}, {
+      SYNC_FILES: asR2(new R2Mock()),
+    } as never);
     ids = 1;
     await push(ns, ALICE, [mut("a", "set", { value: 1 })], [LAST_WRITE]);
     const db = ns.instance(nameOf(P, ALICE)).storage.sql.db;

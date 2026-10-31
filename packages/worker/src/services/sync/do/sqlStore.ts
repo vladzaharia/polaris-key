@@ -670,6 +670,16 @@ export class SqlStore implements SyncStore {
     return this.fileTables.open(nowMs);
   }
 
+  nextUploadExpiry(): number | undefined {
+    if (!this.hasSchema()) return undefined;
+    return this.fileTables.nextExpiry();
+  }
+
+  allUploads(): UploadRow[] {
+    if (!this.hasSchema()) return [];
+    return this.fileTables.allUploads();
+  }
+
   expiredUploads(nowMs: number, limit: number): UploadRow[] {
     if (!this.hasSchema()) return [];
     return this.fileTables.expired(nowMs, limit);

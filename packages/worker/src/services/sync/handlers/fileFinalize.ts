@@ -116,7 +116,7 @@ async function finalizeUpload(
 
   // 3. The bytes: the stored object against what `begin` declared.
   const bucket = env.SYNC_FILES as R2Bucket;
-  const { key, size, sha256: declared } = p.verify;
+  const { key, size, sha256: declared, ssecKey } = p.verify;
   let verified = false;
   try {
     const head = await bucket.head(key);
@@ -125,7 +125,7 @@ async function finalizeUpload(
       // completed multipart object has none, and is streamed.
       verified =
         checksumHex(head) === declared ||
-        (await hashedObject(bucket, key, size)) === declared;
+        (await hashedObject(bucket, key, size, ssecKey)) === declared;
     }
   } catch {
     await end(false);
@@ -178,8 +178,12 @@ async function hashedObject(
   bucket: R2Bucket,
   key: string,
   size: number,
+  ssecKey?: string,
 ): Promise<string | null> {
-  const obj = await bucket.get(key);
+  const obj = await bucket.get(
+    key,
+    ssecKey !== undefined ? { ssecKey } : undefined,
+  );
   if (!obj || !("body" in obj)) return null;
   const { sha256: got, bytes } = await streamSha256(obj.body);
   return bytes === size ? got : null;

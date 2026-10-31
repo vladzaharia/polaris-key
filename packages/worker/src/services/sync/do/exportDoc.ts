@@ -5,6 +5,7 @@
  */
 
 import { SYNC_KEY_PATTERN, type SyncJson } from "@polaris-key/protocol/sync";
+import { hexDecode } from "../../../platform/bytes.js";
 import { isClientId, isHlc } from "../engine/hlc.js";
 import type { RecordJoin } from "../engine/absorbRecords.js";
 import { MAX_ELEMENT_TAGS } from "../engine/recordSets.js";
@@ -18,6 +19,7 @@ import type {
   SetElement,
   SettingPolicy,
   Stamp,
+  StoredFile,
   StoredRecord,
   StoredSetting,
 } from "../engine/types.js";
@@ -250,6 +252,72 @@ function parkedOf(v: unknown): ParkedRecord | null {
     : null;
 }
 
+const SHA256_RE = /^[0-9a-f]{64}$/;
+/** The key id of an SSE-C key (`ensureSsecKey` in `fileOps.ts`). */
+const SSEC_KID_RE = /^sk_[A-Za-z0-9_-]{16}$/;
+const SUBJECT_RE = /^[A-Za-z0-9_-]{1,256}$/;
+const FILE_STATUSES: ReadonlySet<string> = new Set([
+  "live",
+  "revision",
+  "parked",
+]);
+/** More subjects than this folded into one object is not a person's history. */
+const MAX_ABSORBED_FROM = 256;
+
+/**
+ * A file row of a merge export. The R2 key is checked against the grammar the Worker writes
+ * (`u/<product>/<subject>/o/<uploadId>`, the product being the document's own): the survivor will
+ * read and delete by it, so nothing else is accepted. A dead file is never exported, so one in a
+ * document is refused with the rest.
+ */
+function fileOf(v: unknown, product: string): StoredFile | null {
+  if (!isObject(v)) return null;
+  const stamp = typeof v.clientId === "string" && isClientId(v.clientId);
+  if (
+    typeof v.collection !== "string" ||
+    !KEY_RE.test(v.collection) ||
+    typeof v.recordId !== "string" ||
+    !KEY_RE.test(v.recordId) ||
+    !Number.isSafeInteger(v.version) ||
+    (v.version as number) < 1 ||
+    typeof v.objectKey !== "string" ||
+    !objectKeyOf(product).test(v.objectKey) ||
+    (v.format !== "whole" && v.format !== "chunks") ||
+    (v.enc !== "e2e" && v.enc !== "none") ||
+    !Number.isSafeInteger(v.size) ||
+    (v.size as number) < 0 ||
+    typeof v.sha256 !== "string" ||
+    !SHA256_RE.test(v.sha256) ||
+    typeof v.status !== "string" ||
+    !FILE_STATUSES.has(v.status) ||
+    (v.ssecKid !== undefined &&
+      !(typeof v.ssecKid === "string" && SSEC_KID_RE.test(v.ssecKid))) ||
+    !Number.isSafeInteger(v.createdAt) ||
+    (v.createdAt as number) < 0 ||
+    !stamp
+  )
+    return null;
+  return {
+    collection: v.collection as string,
+    recordId: v.recordId as string,
+    version: v.version as number,
+    objectKey: v.objectKey,
+    format: v.format,
+    enc: v.enc,
+    size: v.size as number,
+    sha256: v.sha256,
+    status: v.status as StoredFile["status"],
+    ...(v.ssecKid !== undefined ? { ssecKid: v.ssecKid as string } : {}),
+    createdAt: v.createdAt as number,
+    clientId: v.clientId as string,
+  };
+}
+
+const objectKeyOf = (product: string): RegExp =>
+  new RegExp(
+    `^u/${product.replace(/[^a-z0-9-]/g, "")}/[A-Za-z0-9_-]{1,256}/o/up_[A-Za-z0-9_-]{22}$`,
+  );
+
 export interface ParsedExport {
   settings: StoredSetting[];
   /** Records, tombstones included; an export from before U-09.8 has none. */
@@ -259,6 +327,12 @@ export interface ParsedExport {
   clients: ClientRecord[];
   /** The absorbed store's `encryptionSince`, when it has one. */
   encryptionSince?: number;
+  /** The absorbed store's live files, revisions and parked files (U-10); an older export has none. */
+  files: StoredFile[];
+  /** The SSE-C keys the files reference, by key id. */
+  ssecKeys: Map<string, Uint8Array>;
+  /** Subjects the absorbed object had already folded in, whose R2 prefixes hold files now the survivor's. */
+  absorbedFrom: string[];
 }
 
 /** The document's rows and clients, or `null` when its shape is wrong. */
@@ -291,6 +365,47 @@ export function parseExportDocument(doc: unknown): ParsedExport | null {
       (into as unknown[]).push(row);
     }
   }
+  const files: StoredFile[] = [];
+  if (doc.files !== undefined) {
+    if (!Array.isArray(doc.files)) return null;
+    const product = typeof doc.product === "string" ? doc.product : "";
+    for (const raw of doc.files) {
+      const f = fileOf(raw, product);
+      if (!f) return null;
+      files.push(f);
+    }
+  }
+  const ssecKeys = new Map<string, Uint8Array>();
+  if (doc.ssecKeys !== undefined) {
+    if (!Array.isArray(doc.ssecKeys)) return null;
+    for (const pair of doc.ssecKeys) {
+      if (!Array.isArray(pair) || pair.length !== 2) return null;
+      const [kid, hex] = pair as [unknown, unknown];
+      const key = typeof hex === "string" ? hexDecode(hex) : null;
+      if (
+        typeof kid !== "string" ||
+        !SSEC_KID_RE.test(kid) ||
+        !key ||
+        key.length !== 32
+      )
+        return null;
+      ssecKeys.set(kid, key);
+    }
+  }
+  // Every key a file names is in the document: a file the survivor could not open is refused.
+  for (const f of files) if (f.ssecKid && !ssecKeys.has(f.ssecKid)) return null;
+  const absorbedFrom: string[] = [];
+  if (doc.absorbedFrom !== undefined) {
+    if (
+      !Array.isArray(doc.absorbedFrom) ||
+      doc.absorbedFrom.length > MAX_ABSORBED_FROM ||
+      !doc.absorbedFrom.every(
+        (s) => typeof s === "string" && SUBJECT_RE.test(s),
+      )
+    )
+      return null;
+    absorbedFrom.push(...(doc.absorbedFrom as string[]));
+  }
   const clients: ClientRecord[] = [];
   for (const c of doc.clients) {
     if (
@@ -312,6 +427,9 @@ export function parseExportDocument(doc: unknown): ParsedExport | null {
     settings,
     records,
     parked,
+    files,
+    ssecKeys,
+    absorbedFrom,
     clients,
     ...(since !== undefined ? { encryptionSince: since as number } : {}),
   };

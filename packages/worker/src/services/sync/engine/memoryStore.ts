@@ -493,6 +493,17 @@ export class MemoryStore implements SyncStore {
       .map((u) => ({ ...u }));
   }
 
+  nextUploadExpiry(): number | undefined {
+    let min: number | undefined;
+    for (const u of this.uploads.values())
+      if (min === undefined || u.expiresAt < min) min = u.expiresAt;
+    return min;
+  }
+
+  allUploads(): UploadRow[] {
+    return [...this.uploads.values()].map((u) => ({ ...u }));
+  }
+
   expiredUploads(nowMs: number, limit: number): UploadRow[] {
     return [...this.uploads.values()]
       .filter((u) => u.expiresAt <= nowMs)

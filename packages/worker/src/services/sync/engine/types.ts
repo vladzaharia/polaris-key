@@ -388,6 +388,10 @@ export interface SyncStore {
   openUploads(nowMs: number): UploadRow[];
   /** Sessions with `expiresAt <= nowMs`, whatever their state, oldest first, at most `limit`. */
   expiredUploads(nowMs: number, limit: number): UploadRow[];
+  /** The earliest `expiresAt` of any session (the alarm's next date for collecting them), if there is one. */
+  nextUploadExpiry(): number | undefined;
+  /** Every session, whatever its state (an erasure or a merge's delete clears them from R2). */
+  allUploads(): UploadRow[];
   getParts(uploadId: string): UploadPart[];
   /** Inserts or replaces part `n` of the session. */
   putPart(row: UploadPart): void;

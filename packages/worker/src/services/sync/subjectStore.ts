@@ -56,7 +56,11 @@ async function absorbObject(
   to: string,
 ): Promise<number> {
   for (let round = 0; round < ABSORB_ROUNDS; round++) {
-    const doc = await exportCloudSync(env, { product, subject: from });
+    const doc = await exportCloudSync(
+      env,
+      { product, subject: from },
+      { forMerge: true },
+    );
     if (!doc) return 0;
     const { skipped } = await absorbCloudSync(
       env,
