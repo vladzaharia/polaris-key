@@ -117,8 +117,53 @@ class SyncVectorsTest : ConformanceSuite() {
             } else {
                 f.equal(expect.s("reason"), (got as? SyncEnvelope.Opened.Refused)?.reason?.wire ?: "ok") { "${c.s("id")} reason" }
             }
+            c["record"]?.takeIf { it is JsonObject }?.let { checkRecordRow(f, c, openRecord(root, collection, it.obj, env)) }
         }
         f.done(list("envelopeCases").size)
+    }
+
+    /** A record row (the reader of section 13.10.4): what [got] must be, from the row's own `expect`. */
+    private fun checkRecordRow(f: Failures, c: JsonObject, got: SyncEnvelope.Opened) {
+        val expect = c["expect"]!!.obj
+        if (expect.s("result") == "ok") {
+            val ok = got as? SyncEnvelope.Opened.Ok
+            f.check(ok != null && ok.name == expect.s("name")) { "${c.s("id")} record name" }
+            val want = canonical(expect["value"] ?: kotlinx.serialization.json.JsonNull)
+            f.equal(want, ok?.value?.let(::canonical)) { "${c.s("id")} record value" }
+        } else {
+            f.equal(expect.s("reason"), (got as? SyncEnvelope.Opened.Refused)?.reason?.wire ?: "ok") { "${c.s("id")} record reason" }
+        }
+    }
+
+    /**
+     * Opens a sealed record value, field or element: the envelope first, then `k` split at its first U+0000, the
+     * blinded forms recomputed and compared with the wire names; a difference is `name`. The container fixes the
+     * kind, and an element's canonical JSON must be the name part of `k`.
+     */
+    private fun openRecord(root: ByteArray, collection: String, wire: JsonObject, env: ByteArray): SyncEnvelope.Opened {
+        val r = SyncEnvelope.openAnyName(root, collection, env)
+        return if (r is SyncEnvelope.Opened.Ok &&
+            !recordNamesMatch(root, collection, wire, r)
+        ) {
+            SyncEnvelope.Opened.Refused(SyncEnvelope.Invalid.Name)
+        } else {
+            r
+        }
+    }
+
+    private fun recordNamesMatch(root: ByteArray, collection: String, wire: JsonObject, r: SyncEnvelope.Opened.Ok): Boolean {
+        val kind = wire.s("kind")
+        val cut = r.name.indexOf('\u0000')
+        val id = if (kind == "value") r.name else r.name.substringBefore('\u0000')
+        val rest = r.name.substring(cut + 1)
+        val blindKind = SyncBlind.Kind.fromWire(kind)
+        return when {
+            kind != "value" && cut < 0 -> false
+            SyncBlind.blind(root, SyncBlind.Kind.Record, collection, id) != wire.s("id") -> false
+            kind == "value" -> true
+            blindKind == null || SyncBlind.blind(root, blindKind, collection, rest) != wire.s("name") -> false
+            else -> kind != "element" || canonical(r.value) == rest
+        }
     }
 
     @Test

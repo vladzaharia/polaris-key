@@ -137,8 +137,8 @@ class HostCodecTest {
     }
 
     @Test
-    fun hc6RefusesRecordMutationHalfValidBatchAndUnsealableValue() {
-        val record = j("""{"mutationId":2,"target":{"record":["slots","a"]},"op":"set","value":1}""")
+    fun hc6RefusesMergeRecordMutationHalfValidBatchAndUnsealableValue() {
+        val record = j("""{"mutationId":2,"target":{"record":["slots","a"]},"op":"setField","field":"hp","value":1}""")
         val c = FixtureCodec(ROOT)
         // The valid mutation before it is not returned: the call threw.
         assertEquals(ErrorCode.invalidOptions, codeOf { HostCodec.sealPush(push(set(1, VOL, JsonPrimitive(1)), record), c, DECLARED) })

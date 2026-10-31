@@ -168,7 +168,7 @@ private func pull(
     }
 
     // HC-6: a seal failure sends nothing, and a half-valid batch returns nothing.
-    @Test func hc6RefusesRecordMutationHalfValidBatchAndUnsealableValue() {
+    @Test func hc6RefusesMergeRecordMutationHalfValidBatchAndUnsealableValue() {
         func code(_ f: () throws -> JSONValue) -> String? {
             do {
                 _ = try f()
@@ -176,8 +176,8 @@ private func pull(
             } catch let e as PolarisError { return e.code } catch { return "other" }
         }
         let record = obj([
-            "mutationId": .int(2), "target": obj(["record": .array([str("slots"), str("a")])]), "op": str("set"),
-            "value": .int(1),
+            "mutationId": .int(2), "target": obj(["record": .array([str("slots"), str("a")])]),
+            "op": str("setField"), "field": str("hp"), "value": .int(1),
         ])
         let c = FixtureCodec(root)
         #expect(

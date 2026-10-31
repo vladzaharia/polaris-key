@@ -1,24 +1,21 @@
 extends RefCounted
 # Cloud Sync end-to-end primitives over the generator-owned mirror of conformance/corpus/v2/
 # sync-vectors.json (WIRE-CONTRACT-V5 §13.10, U-40.1): the the settings-size sections (primitives, AES-256-GCM, the
-# envelope, HPKE, wrap, recovery, adopt, U-40.5). Sections that need the chunker, the file stream or the
-# transfer planner are typed N/A below, by name, and the suite
-# fails on a section that is in neither list, so a new corpus section is noticed.
+# envelope, HPKE, wrap, recovery, adopt, U-40.5) and, from U-23.G1, the chunker, the chunk objects and
+# the manifest (cdcCases, cdcEditCases, deltaCases, chunkCases, manifestCases). From U-23.G2 the file
+# stream with its ranged open and the transfer planner (fileStreamCases, transferPlanCases) run in
+# suite_sync_files. A section that is neither run, run elsewhere nor typed N/A below fails the suite,
+# so a new corpus section is noticed.
 
 const VECTORS := "res://tests/corpus/v2/sync-vectors.json"
 
 ## Implemented sections.
-const RUN := ["hkdfCases", "blindCases", "canonicalJsonCases", "recoveryCodeCases", "envelopeCases", "hpkeAnchor", "wrapCases", "adoptCases"]
-## Typed N/A: the section needs a primitive this slice does not ship.
-const NOT_APPLICABLE := {
-	"transferPlanCases": "needs the transfer planner (U-40.5)",
-	"cdcCases": "needs the chunker (U-40.5)",
-	"cdcEditCases": "needs the chunker (U-40.5)",
-	"deltaCases": "needs the chunker (U-40.5)",
-	"chunkCases": "needs the chunk codec and zstd frames (U-40.5); AES-256-GCM is at most 64 KiB per call",
-	"fileStreamCases": "files are native-only (U-23); GDScript AES-GCM refuses over 64 KiB",
-	"manifestCases": "needs the chunk manifest (U-40.5)",
-}
+const RUN := ["hkdfCases", "blindCases", "canonicalJsonCases", "recoveryCodeCases", "envelopeCases", "hpkeAnchor", "wrapCases", "adoptCases",
+		"cdcCases", "cdcEditCases", "deltaCases", "chunkCases", "manifestCases"]
+## Run by suite_sync_files (the file stream is big enough to be a suite of its own).
+const RUN_ELSEWHERE := ["fileStreamCases", "transferPlanCases"]
+## Typed N/A: a section whose primitive this lane does not ship (none now).
+const NOT_APPLICABLE := {}
 ## Members of the file that are not sections.
 const META := ["syncVectorsVersion", "description", "constants", "ringId"]
 
@@ -35,7 +32,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	t.check("syncVectorsVersion is 1", d.get("syncVectorsVersion") == 1)
 	_constants = d["constants"]
 	for k in d:
-		if META.has(k) or RUN.has(k):
+		if META.has(k) or RUN.has(k) or RUN_ELSEWHERE.has(k):
 			continue
 		if NOT_APPLICABLE.has(k):
 			t.info("N/A %s: %s" % [k, NOT_APPLICABLE[k]])
@@ -55,6 +52,10 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_adopt(t, d["adoptCases"])
 	_recovery_blobs(t, d["recoveryCodeCases"])
 	_u405_extras(t)
+	_cdc(t, d["cdcCases"])
+	_chunks(t, d["chunkCases"])
+	_manifest(t, d["manifestCases"])
+	_cdc_edit(t, d["cdcEditCases"], d["deltaCases"])
 	return true
 
 
@@ -266,6 +267,9 @@ const GCM_GENERATED := [
 	[6, 100, 0, "dccfc53f97d18418d790f7b9c1bda95b1872cc4a00594fecf90be8d3bfb9970e"],
 	[7, 8192, 13, "c786d39a3561125d5c60f3cc4639d7c293e0e39c4df4ec826d8be6ec74158999"],
 	[8, 65536, 0, "bf67f08359cf5a0b4d607e9e985e337f32920a5351cdbec136c2a308be7cfc50"],
+	# U-23.G2 (D-10): a whole file segment in one call, with a file header as the AAD.
+	[9, 1048576, 64, "ed83240442c3290253fcdb5f82631fe850a440059f0eca7a057df9e06c8f0107"],
+	[10, 1048575, 0, "d839150e91d26a92f2f2adf74e0241fb9bf5e549435eb2421cef19000b82cef9"],
 ]
 
 
@@ -319,9 +323,8 @@ func _aes_gcm(t: PKeyTestContext, d: Dictionary) -> void:
 	t.check("a 16-byte key is refused", PKeySyncAesGcm.seal(k.slice(0, 16), n, m).is_empty())
 	t.check("an 11-byte nonce is refused", PKeySyncAesGcm.seal(k, n.slice(0, 11), m).is_empty())
 	t.check("a 13-byte nonce is refused", PKeySyncAesGcm.seal(k, _gen(13, 1, 0, 0), m).is_empty())
-	t.check("65537 bytes are refused", PKeySyncAesGcm.seal(k, n, _gen(65537, 1, 0, 0)).is_empty())
-	t.check("65536 bytes are accepted", PKeySyncAesGcm.seal(k, n, _gen(65536, 1, 0, 0)).size() == 65536 + 16)
-	t.check("an open of 65537 bytes is refused", PKeySyncAesGcm.open(k, n, _gen(65537 + 16, 1, 0, 0)) == null)
+	t.check("1 MiB + 1 bytes are refused", PKeySyncAesGcm.seal(k, n, _gen(PKeySyncAesGcm.MAX_BYTES + 1, 1, 0, 0)).is_empty())
+	t.check("an open of 1 MiB + 1 bytes is refused", PKeySyncAesGcm.open(k, n, _gen(PKeySyncAesGcm.MAX_BYTES + 1 + 16, 1, 0, 0)) == null)
 	t.check("an empty message opens to empty", (PKeySyncAesGcm.open(k, n, PKeySyncAesGcm.seal(k, n, PackedByteArray())) as PackedByteArray).is_empty())
 	_aes_gcm_timing(t, k, n)
 
@@ -376,6 +379,29 @@ func _aes_gcm_timing(t: PKeyTestContext, k: PackedByteArray, n: PackedByteArray)
 	var ratio := float(maxi(best_first, best_last)) / float(maxi(1, mini(best_first, best_last)))
 	t.info("tag compare, 4096 bytes x20: mismatch first %d us, last %d us, ratio %.3f" % [best_first, best_last, ratio])
 	t.check("tag compare time does not depend on the mismatch position", ratio < 1.5, "ratio %.3f" % ratio)
+	_aes_gcm_timing_segment(t, k, n)
+
+
+## D-10: one call takes a whole 1 MiB file segment. The numbers go to the log (CC-13 measured about
+## 1.6 MB/s, so 32 MiB, the lane cap, takes about 20 s). The only assertion is an order-of-magnitude
+## guard (30 s a call, 50 times the CC-13 figure), so a loaded machine does not fail it but a
+## regression to a quadratic path does.
+func _aes_gcm_timing_segment(t: PKeyTestContext, k: PackedByteArray, n: PackedByteArray) -> void:
+	var pt := _gen(PKeySyncAesGcm.MAX_BYTES, 31, 3, 1)
+	var aad := _gen(64, 1, 0, 0)
+	var t0 := Time.get_ticks_usec()
+	var sealed := PKeySyncAesGcm.seal(k, n, pt, aad)
+	var seal_us := Time.get_ticks_usec() - t0
+	t0 = Time.get_ticks_usec()
+	var o: Variant = PKeySyncAesGcm.open(k, n, sealed, aad)
+	var open_us := Time.get_ticks_usec() - t0
+	t.check("1 MiB seals and opens in one call", sealed.size() == pt.size() + 16 and o != null and (o as PackedByteArray) == pt)
+	var mbps_seal := pt.size() / float(seal_us)
+	var mbps_open := pt.size() / float(open_us)
+	t.info("aes-gcm 1 MiB: seal %.0f ms (%.2f MB/s), open %.0f ms (%.2f MB/s)" % [seal_us / 1000.0, mbps_seal, open_us / 1000.0, mbps_open])
+	t.info("aes-gcm 32 MiB lane cap: about %.0f s a file" % (32.0 * seal_us / 1000000.0))
+	t.check("1 MiB seals in under 30 s (order-of-magnitude guard)", seal_us < 30000000, "%d us" % seal_us)
+	t.check("1 MiB opens in under 30 s (order-of-magnitude guard)", open_us < 30000000, "%d us" % open_us)
 
 
 # ── U-40.5: envelope, HPKE, wrap, recovery blob, adopt ───────────────────────────────────────────
@@ -418,6 +444,13 @@ func _envelope(t: PKeyTestContext, rows: Array) -> void:
 				t.check("envelope %s opens under any name" % c["id"], any["ok"] and any["name_bytes"] == got["name_bytes"])
 		else:
 			t.check("envelope %s is refused as %s" % [c["id"], want["reason"]], not got["ok"] and got["reason"] == want["reason"], str(got.get("reason")))
+		if c.has("record"):
+			# The reader of a record (section 13.10.4): open without a name, split k, recompute, compare.
+			var rec := _open_record(root, c["collection"], c["record"], env)
+			if want["result"] == "ok":
+				t.check("envelope %s opens as a record" % c["id"], rec["ok"] and rec["name_bytes"] == _name_of(want["name"]) and PKeySyncCanonicalJson.canonicalize_value(rec["value"]).get("canonical") == PKeySyncCanonicalJson.canonicalize_value(want["value"]).get("canonical"))
+			else:
+				t.check("envelope %s is refused as a record (%s)" % [c["id"], want["reason"]], not rec["ok"] and rec["reason"] == want["reason"], str(rec.get("reason")))
 	t.info("envelope section: %d rows in %.1f ms" % [rows.size(), (Time.get_ticks_usec() - t0) / 1000.0])
 	var consts: Dictionary = {"envelopeOverheadBytes": PKeySyncEnvelope.OVERHEAD_BYTES, "envelopeFixedBytes": PKeySyncEnvelope.FIXED_BYTES, "paddingBlockBytes": PKeySyncEnvelope.PAD_BLOCK}
 	var same_consts := true
@@ -427,6 +460,33 @@ func _envelope(t: PKeyTestContext, rows: Array) -> void:
 
 
 var _constants := {}
+
+
+## Opens a sealed record value, field or element: the envelope first, then `k` split at its first NUL, the
+## blinded forms recomputed and compared with the wire names; a difference is `name`. `wire.kind` fixes
+## the container, and an element's canonical JSON must be the name part of `k`.
+func _open_record(root: PackedByteArray, collection: String, wire: Dictionary, env: PackedByteArray) -> Dictionary:
+	var r := PKeySyncEnvelope.open_value_any_name(root, collection, env)
+	if r["ok"] and not _record_names_match(root, collection, wire, r):
+		return {"ok": false, "reason": "name"}
+	return r
+
+
+func _record_names_match(root: PackedByteArray, collection: String, wire: Dictionary, opened: Dictionary) -> bool:
+	var kind: String = wire["kind"]
+	var nb: PackedByteArray = opened["name_bytes"]
+	var cut := nb.find(0)
+	if kind != "value" and cut < 0:
+		return false
+	var id_bytes := nb if kind == "value" else nb.slice(0, cut)
+	if id_bytes.has(0) or PKeySyncBlind.blind(root, "record", collection, id_bytes.get_string_from_utf8()) != wire["id"]:
+		return false
+	if kind == "value":
+		return true
+	var rest := nb.slice(cut + 1).get_string_from_utf8()
+	if PKeySyncBlind.blind(root, kind, collection, rest) != wire["name"]:
+		return false
+	return kind != "element" or PKeySyncCanonicalJson.canonicalize_value(opened["value"]).get("canonical") == rest
 
 
 func _hpke_anchor(t: PKeyTestContext, v: Dictionary) -> void:
@@ -540,3 +600,264 @@ func _u405_extras(t: PKeyTestContext) -> void:
 	t.check("a wrong tag on an empty message is refused", PKeySyncAesGcm.open(k, n, bad) == null)
 	var ok_empty: Variant = PKeySyncAesGcm.open(k, n, e)
 	t.check("an empty message opens to an empty array, not null", ok_empty != null and (ok_empty as PackedByteArray).is_empty())
+
+
+## The deterministic bytes of a vector row: SHA-256 counter blocks `sha256(prefix + label + u32be(n))`.
+func _counter_bytes(prefix: String, label: String, length: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	out.resize(length)
+	var at := 0
+	var n := 0
+	while at < length:
+		var ctr := PackedByteArray()
+		ctr.resize(4)
+		ctr.encode_u32(0, n)
+		var swapped := PackedByteArray([ctr[3], ctr[2], ctr[1], ctr[0]])
+		var block := PKeySyncHkdf.sha256((prefix + label).to_utf8_buffer() + swapped)
+		for i in mini(32, length - at):
+			out[at + i] = block[i]
+		at += 32
+		n += 1
+	return out
+
+
+## The input of a `cdcCases` row (counter blocks, or one repeated byte).
+func _cdc_input(i: Dictionary, prefix := "pkey-sync vector cdc ") -> PackedByteArray:
+	if i["kind"] == "byte":
+		var b := PackedByteArray()
+		b.resize(int(i["length"]))
+		b.fill(int(i["value"]))
+		return b
+	return _counter_bytes(prefix, i["label"], int(i["length"]))
+
+
+func _int_array(a: Array) -> Array:
+	var out := []
+	for x in a:
+		out.append(int(x))
+	return out
+
+
+func _lens_of(data: PackedByteArray, avg: int, piece: int) -> Array:
+	var c := PKeySyncCdc.Chunker.new(avg)
+	var lens := []
+	var at := 0
+	while at < data.size():
+		for ch in c.push(data.slice(at, at + piece)):
+			lens.append((ch as PackedByteArray).size())
+		at += piece
+	for ch in c.finish():
+		lens.append((ch as PackedByteArray).size())
+	return lens
+
+
+func _cdc(t: PKeyTestContext, rows: Array) -> void:
+	for c in rows:
+		var avg := int(c["avg"])
+		var p := PKeySyncCdc.params(avg)
+		t.check("cdc %s params" % c["id"], p.get("min") == int(c["min"]) and p.get("max") == int(c["max"]), str(p))
+		var input := _cdc_input(c["input"])
+		var want := _int_array(c["lens"])
+		# Whole, then in awkward pieces: the cuts do not depend on how the input arrives. The big
+		# inputs run once in pieces (GDScript scans a megabyte in about a second).
+		var pieces := [maxi(input.size(), 1), 65537] if input.size() < (1 << 20) else [65537]
+		if input.size() < (1 << 20):
+			pieces.append(1000)
+		for piece in pieces:
+			t.check("cdc %s in pieces of %d" % [c["id"], piece], _lens_of(input, avg, piece) == want)
+		t.check("cdc %s lengths add up" % c["id"], want.reduce(func(a, b): return a + b, 0) == input.size())
+	t.check("cdc refuses an average that is not a power of two", PKeySyncCdc.params(1000).is_empty())
+	t.check("cdc refuses an average under 64", PKeySyncCdc.params(32).is_empty())
+	t.check("cdc defaults are 64 KiB, 256 KiB, 1 MiB", PKeySyncCdc.params() == {"avg": 262144, "min": 65536, "max": 1048576})
+	var dead := PKeySyncCdc.Chunker.new(100)
+	t.check("a chunker with a bad average answers nothing", not dead.valid and dead.push(PackedByteArray([1, 2, 3])).is_empty() and dead.finish().is_empty())
+	t.check("the static lengths helper agrees", PKeySyncCdc.lengths(_cdc_input(rows[8]["input"]), int(rows[8]["avg"])) == PackedInt64Array(_int_array(rows[8]["lens"])))
+
+
+func _chunks(t: PKeyTestContext, rows: Array) -> void:
+	for c in rows:
+		var root := _hex(c["rootHex"])
+		var id: String = c["id"]
+		if c["kind"] == "id":
+			var plain := _hex(c["plainHex"])
+			t.check("chunk %s e2e id" % id, PKeySyncChunks.chunk_id_hex(root, c["collection"], plain) == c["e2eIdHex"])
+			t.check("chunk %s server id" % id, PKeySyncChunks.chunk_id_hex(null, c["collection"], plain) == c["serverIdHex"])
+			continue
+		if c["kind"] == "pair":
+			t.check("chunk %s nonces differ" % id, c["rawNonceHex"] != c["zstdNonceHex"])
+			for pair in [[c["rawObjectHex"], c["rawNonceHex"], 0], [c["zstdObjectHex"], c["zstdNonceHex"], 1]]:
+				var obj := _hex(pair[0])
+				t.check("chunk %s codec %d nonce" % [id, pair[2]], obj.slice(2, 14).hex_encode() == pair[1])
+				var o := PKeySyncChunks.open(root, c["collection"], _hex(c["idHex"]), obj)
+				t.check("chunk %s codec %d opens" % [id, pair[2]], o["ok"] and (o["plain"] as PackedByteArray).hex_encode() == c["plainHex"] and o["codec"] == pair[2])
+			continue
+		var opened := PKeySyncChunks.open(root, c["collection"], _hex(c["idHex"]), _hex(c["objectHex"]))
+		var e: Dictionary = c["expect"]
+		if e["result"] == "ok":
+			t.check("chunk %s opens" % id, opened["ok"] and (opened["plain"] as PackedByteArray).hex_encode() == e["plainHex"] and opened["codec"] == int(e["codec"]), str(opened.get("reason")))
+		else:
+			t.check("chunk %s is refused as %s" % [id, e["reason"]], not opened["ok"] and opened["reason"] == e["reason"], str(opened))
+		if c.has("seal"):
+			var sealed := PKeySyncChunks.seal(root, c["collection"], _hex(c["idHex"]), int(c["seal"]["codec"]), _hex(c["seal"]["bodyHex"]))
+			t.check("chunk %s seals to the object" % id, sealed.hex_encode() == c["objectHex"])
+	# What the corpus does not pin.
+	var root := _gen(32, 5, 0, 1)
+	var plain := _gen(3000, 7, 3, 2)
+	var cid := PKeySyncChunks.chunk_id(root, "saves", plain)
+	var obj := PKeySyncChunks.seal(root, "saves", cid, PKeySyncChunks.CODEC_RAW, plain)
+	t.check("a fresh raw chunk round-trips", PKeySyncChunks.open(root, "saves", cid, obj)["ok"])
+	t.check("sealing the same chunk twice gives the same object", PKeySyncChunks.seal(root, "saves", cid, PKeySyncChunks.CODEC_RAW, plain) == obj)
+	t.check("seal refuses a bad codec", PKeySyncChunks.seal(root, "saves", cid, 2, plain).is_empty())
+	t.check("seal refuses a short id", PKeySyncChunks.seal(root, "saves", cid.slice(0, 31), 0, plain).is_empty())
+	t.check("seal refuses a short root", PKeySyncChunks.seal(root.slice(0, 31), "saves", cid, 0, plain).is_empty())
+	t.check("chunk_id refuses a short root", PKeySyncChunks.chunk_id(root.slice(0, 31), "saves", plain).is_empty())
+	t.check("an object under another collection is refused as auth", PKeySyncChunks.open(root, "other", cid, obj).get("reason") == "auth")
+	# The largest chunk (SYNC_CDC_MAX_BYTES = 1 MiB) is one AES-GCM call (D-10).
+	var top := _gen(PKeyConstants.SYNC_CDC_MAX_BYTES, 3, 0, 1)
+	var top_id := PKeySyncChunks.chunk_id(root, "saves", top)
+	var top_obj := PKeySyncChunks.seal(root, "saves", top_id, 0, top)
+	t.check("a 1 MiB chunk seals", top_obj.size() == top.size() + PKeySyncChunks.OBJECT_MIN_BYTES)
+	t.check("a 1 MiB chunk opens", PKeySyncChunks.open(root, "saves", top_id, top_obj).get("ok", false))
+	var big := _gen(PKeySyncAesGcm.MAX_BYTES + 1, 3, 0, 1)
+	t.check("a body over 1 MiB is not sealed", PKeySyncChunks.seal(root, "saves", PKeySyncChunks.chunk_id(root, "saves", big), 0, big).is_empty())
+	var long_obj := PackedByteArray([1, 0])
+	long_obj.resize(2 + 12 + PKeySyncAesGcm.MAX_BYTES + 1 + 16)
+	long_obj[0] = 1
+	t.check("an object with a body over 1 MiB is refused as size", PKeySyncChunks.open(root, "saves", cid, long_obj).get("reason") == "size")
+	t.check("id_bytes reads 64 lowercase hex characters", PKeySyncChunks.id_bytes(cid.hex_encode()) == cid)
+	t.check("id_bytes refuses uppercase", PKeySyncChunks.id_bytes(cid.hex_encode().to_upper()) == null)
+	t.check("id_bytes refuses a trailing newline", PKeySyncChunks.id_bytes(cid.hex_encode() + "\n") == null)
+	t.check("id_bytes refuses a short id", PKeySyncChunks.id_bytes("ab") == null)
+	# The zstd content-size reader, past the corpus: single-segment 1-, 2- and 4-byte fields and a
+	# frame with no declared size.
+	t.check("zstd size, one byte", PKeySyncChunks.zstd_content_size(_hex("28b52ffd2007")) == 7)
+	t.check("zstd size, two bytes carry the 256 offset", PKeySyncChunks.zstd_content_size(_hex("28b52ffd600100")) == 256 + 1)
+	t.check("zstd size, absent", PKeySyncChunks.zstd_content_size(_hex("28b52ffd000000")) == -1)
+	t.check("zstd size, no magic", PKeySyncChunks.zstd_content_size(_hex("00b52ffd2007")) == -1)
+	var seen := []
+	var short_frame := _hex("28b52ffd2007")
+	var short_obj := PKeySyncChunks.seal(root, "saves", cid, 1, short_frame)
+	var bad := PKeySyncChunks.open(root, "saves", cid, short_obj, func(_f: PackedByteArray, size: int) -> PackedByteArray:
+		seen.append(size)
+		return PackedByteArray([1, 2, 3]))
+	t.check("a decoder that answers the wrong size is refused as decode", bad.get("reason") == "decode" and seen == [7], str(bad))
+
+
+func _manifest(t: PKeyTestContext, rows: Array) -> void:
+	for c in rows:
+		var bytes := _hex(c["manifestHex"])
+		var parsed := PKeySyncManifest.parse(bytes)
+		var e: Dictionary = c["expect"]
+		if e["result"] == "invalid":
+			t.check("manifest %s is refused as %s" % [c["id"], e["reason"]], not parsed["ok"] and parsed["reason"] == e["reason"], str(parsed.get("reason")))
+			continue
+		if not t.check("manifest %s parses" % c["id"], parsed["ok"], str(parsed.get("reason"))):
+			continue
+		var m: Dictionary = parsed["manifest"]
+		t.check("manifest %s plain size" % c["id"], m["plain_size"] == int(e["plainSize"]))
+		t.check("manifest %s plain hash" % c["id"], (m["plain_sha256"] as PackedByteArray).hex_encode() == e["plainSha256Hex"])
+		var got := []
+		for r in m["records"]:
+			got.append({"idHex": (r["id"] as PackedByteArray).hex_encode(), "plainLen": r["plain_len"]})
+		var want := []
+		for r in e["records"]:
+			want.append({"idHex": r["idHex"], "plainLen": int(r["plainLen"])})
+		t.check("manifest %s records" % c["id"], got == want)
+		t.check("manifest %s encodes back to the same bytes" % c["id"], PKeySyncManifest.encode(m) == bytes)
+	t.check("manifest encode refuses a short hash", PKeySyncManifest.encode({"plain_size": 0, "plain_sha256": PackedByteArray([1]), "records": []}).is_empty())
+	t.check("manifest encode refuses a short id", PKeySyncManifest.encode({"plain_size": 1, "plain_sha256": _gen(32, 1, 0, 0), "records": [{"id": _gen(31, 1, 0, 0), "plain_len": 1}]}).is_empty())
+
+
+## The edited bytes of a `cdcEditCases` row (the recipe in the file's description).
+func _apply_edit(base: PackedByteArray, e: Dictionary) -> PackedByteArray:
+	var at := int(e["at"])
+	var length := int(e["length"])
+	var out := base.slice(0, at)
+	if e["op"] != "delete":
+		out.append_array(_counter_bytes("pkey-sync vector cdc-edit ", e["label"], length))
+	# An insert keeps the tail from `at`; a delete and an overwrite skip `length` bytes.
+	out.append_array(base.slice(at if e["op"] == "insert" else at + length))
+	return out
+
+
+func _cdc_edit(t: PKeyTestContext, rows: Array, deltas: Array) -> void:
+	var sides := {}
+	for c in rows:
+		var root := _hex(c["rootHex"])
+		var avg := int(c["avg"])
+		var base := _cdc_input(c["base"])
+		var edited := _apply_edit(base, c["edit"])
+		var edit_ids := {}
+		for side in [["base", base, "baseLens", "baseIdsHex", "baseManifestHex"], ["edited", edited, "editedLens", "editedIdsHex", "editedManifestHex"]]:
+			var buf: PackedByteArray = side[1]
+			var chunker := PKeySyncCdc.Chunker.new(avg)
+			var chunks := []
+			var at := 0
+			while at < buf.size():
+				chunks.append_array(chunker.push(buf.slice(at, at + 65537)))
+				at += 65537
+			chunks.append_array(chunker.finish())
+			var lens := []
+			var ids := []
+			for ch in chunks:
+				lens.append((ch as PackedByteArray).size())
+				ids.append(PKeySyncChunks.chunk_id_hex(root, c["collection"], ch))
+			var label := "cdc edit %s %s" % [c["id"], side[0]]
+			t.check(label + " lengths", lens == _int_array(c[side[2]]))
+			t.check(label + " ids", ids == Array(c[side[3]]))
+			var parsed := PKeySyncManifest.parse(_hex(c[side[4]]))
+			if not t.check(label + " manifest parses", parsed["ok"], str(parsed.get("reason"))):
+				continue
+			var m: Dictionary = parsed["manifest"]
+			t.check(label + " manifest size and hash", m["plain_size"] == buf.size() and m["plain_sha256"] == PKeySyncHkdf.sha256(buf))
+			var m_ids := []
+			var m_lens := []
+			for r in m["records"]:
+				m_ids.append((r["id"] as PackedByteArray).hex_encode())
+				m_lens.append(r["plain_len"])
+			t.check(label + " manifest records", m_ids == ids and m_lens == lens)
+			t.check(label + " manifest encodes back", PKeySyncManifest.encode(m).hex_encode() == c[side[4]])
+			edit_ids[side[0]] = ids
+		var have := {}
+		for id in c["baseIdsHex"]:
+			have[id] = true
+		var kept := []
+		var changed := []
+		var edited_ids: Array = c["editedIdsHex"]
+		for i in edited_ids.size():
+			(kept if have.has(edited_ids[i]) else changed).append(i)
+		t.check("cdc edit %s kept and changed indexes" % c["id"], kept == _int_array(c["keptIndexes"]) and changed == _int_array(c["changedIndexes"]))
+		sides[c["id"]] = c
+	for d in deltas:
+		var want_ids := _delta_side(sides, d["want"])
+		var have := {}
+		for id in _delta_have(sides, d["have"]):
+			have[id] = true
+		var move := {}
+		var bytes := 0
+		for r in want_ids:
+			if not have.has(r["id"]) and not move.has(r["id"]):
+				move[r["id"]] = r["plain_len"]
+				bytes += r["plain_len"]
+		t.check("delta %s moves the listed chunks" % d["id"], Array(move.keys()) == Array(d["moveIdsHex"]))
+		t.check("delta %s moves the listed bytes" % d["id"], bytes == int(d["moveBytes"]))
+
+
+## The (id, length) records of a delta side, from its manifest.
+func _delta_side(rows: Dictionary, w: Dictionary) -> Array:
+	var row: Dictionary = rows[w["row"]]
+	var parsed := PKeySyncManifest.parse(_hex(row["baseManifestHex"] if w["side"] == "base" else row["editedManifestHex"]))
+	var out := []
+	for r in parsed["manifest"]["records"]:
+		out.append({"id": (r["id"] as PackedByteArray).hex_encode(), "plain_len": r["plain_len"]})
+	return out
+
+
+func _delta_have(rows: Dictionary, h: Dictionary) -> Array:
+	if h.has("idsHex"):
+		return h["idsHex"]
+	var out := []
+	for r in _delta_side(rows, h):
+		out.append(r["id"])
+	return out
+

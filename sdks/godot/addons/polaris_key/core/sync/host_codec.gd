@@ -29,8 +29,15 @@ extends "res://addons/polaris_key/services/cloud_sync/codec_port.gd"
 ##
 ## Results are Dictionaries, never exceptions: `{"ok": false, "code": <error code>}` (`sync-locked`,
 ## `invalid-options`, `sync-failed`) means nothing is sent or delivered. No value, root or key is in
-## any result's message (there is none). Scope: the `$settings` collection; a record change carrying a
-## `ct` reads as `invalid`.
+## any result's message (there is none).
+##
+## Scope: the `$settings` collection, and records with a scalar value (D-2: saves are `revision`
+## records; U-23.G3). A record value is sealed under its collection with `k = id`, its id travels as
+## `blind("record", collection, id)`, and a pulled record opens only when the `k` inside the envelope
+## re-blinds to the id on the wire (§13.10.4), so a Worker cannot place a sealed value under another
+## record. A record mutation other than `set` and `delete` (a `merge` field, a `union` element), and a
+## sealed `merge` or `union` change (`fields`, `elements`), are outside this codec: a mutation is
+## refused (`invalid-options`) and a change reads as `invalid`.
 
 const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const SETTINGS_COLLECTION := "$settings"
@@ -58,8 +65,8 @@ func seal_push(body: Dictionary, routes: Array) -> Dictionary:
 	return seal_push_with(body, _ring.codec if _ring != null else null, routes)
 
 
-func open_pull(body: Dictionary, mutations: Variant, aliases: Variant, open_keys: Array) -> Dictionary:
-	return open_pull_with(body, _ring.codec if _ring != null else null, mutations, aliases, open_keys)
+func open_pull(body: Dictionary, mutations: Variant, aliases: Variant, open_keys: Array, record_keys: Array = []) -> Dictionary:
+	return open_pull_with(body, _ring.codec if _ring != null else null, mutations, aliases, open_keys, record_keys)
 
 
 # ── Push ─────────────────────────────────────────────────────────────────────────────────────
@@ -92,6 +99,8 @@ static func seal_push_with(body: Dictionary, codec: Object, routes: Array) -> Di
 
 static func _seal_mutation(m: Dictionary, codec: Object, declared: Dictionary) -> Dictionary:
 	var target: Variant = m.get("target")
+	if target is Dictionary and target.has("record"):
+		return _seal_record_mutation(m, target, codec)
 	if not (target is Dictionary) or not (target.get("setting") is String):
 		return _refuse()
 	if m.has("ct") or m.has("field") or m.has("element"):
@@ -141,6 +150,52 @@ static func _seal_mutation(m: Dictionary, codec: Object, declared: Dictionary) -
 	return {"ok": true, "mutation": out}
 
 
+## A record mutation (scalar value, D-2): `set` seals the value under the collection with `k = id`;
+## `delete` carries none. Either sends the id blinded. The collection travels in the clear (§13.10.2).
+static func _seal_record_mutation(m: Dictionary, target: Dictionary, codec: Object) -> Dictionary:
+	var ref: Variant = _record_ref(target.get("record"))
+	if ref == null:
+		return _refuse()
+	if m.has("ct") or m.has("field") or m.has("element") or m.has("member"):
+		return _refuse()
+	var collection: String = ref[0]
+	var id: String = ref[1]
+	var out := m.duplicate()
+	match m.get("op"):
+		"set":
+			if not m.has("value"):
+				return _refuse()
+			out.erase("value")
+			var env: PackedByteArray = codec.seal(collection, id, m["value"])
+			if env.is_empty():
+				return _refuse()
+			out["ct"] = PKeyB64Url.encode(env)
+		"delete":
+			if m.has("value"):
+				return _refuse()
+		_:
+			return _refuse()
+	var blinded: String = codec.blind("record", collection, id)
+	if blinded == "":
+		return _refuse()
+	var t := target.duplicate()
+	t["record"] = [collection, blinded]
+	out["target"] = t
+	return {"ok": true, "mutation": out}
+
+
+## `[collection, id]` when `v` is a pair of non-empty strings that can name a record: no U+0000 (the blind
+## input has no length prefix) and not the settings collection's namespace (`$`), or null.
+static func _record_ref(v: Variant) -> Variant:
+	if not (v is Array) or (v as Array).size() != 2:
+		return null
+	var c: Variant = v[0]
+	var id: Variant = v[1]
+	if not (c is String) or not (id is String) or c == "" or id == "" or _has_nul(c) or _has_nul(id) or (c as String).begins_with("$"):
+		return null
+	return [c, id]
+
+
 # ── Pull ─────────────────────────────────────────────────────────────────────────────────────
 
 ## Opens a pull or push answer: `{ok: true, body, opened}` or `{ok: false, code}` (locked, or an answer
@@ -148,9 +203,10 @@ static func _seal_mutation(m: Dictionary, codec: Object, declared: Dictionary) -
 ## request the answer belongs to (a conflict's server copy carries no name, so it opens against the
 ## mutation's own setting); `aliases` are the renames the app declares, never taken from the body;
 ## `open_keys` are the open-setting keys the machine already holds (a tombstone names a key blinded,
-## and only these can be mapped back). `opened` is `{changes: [row|null], conflicts: {mutationId: row}}`
+## and only these can be mapped back); `record_keys` are the `[collection, id]` pairs of the records the
+## machine already holds (a record tombstone names its id blinded, likewise). `opened` is `{changes: [row|null], conflicts: {mutationId: row}}`
 ## with a row of `{seq}`, `{sealed: true}`, `{invalid: true}` or `{}`.
-static func open_pull_with(body: Dictionary, codec: Object, mutations: Variant, aliases: Variant, open_keys: Array) -> Dictionary:
+static func open_pull_with(body: Dictionary, codec: Object, mutations: Variant, aliases: Variant, open_keys: Array, record_keys: Array = []) -> Dictionary:
 	if codec == null or codec.locked():
 		return _fail(PKeyConstants.ErrorCode.SYNC_LOCKED)
 	var app_aliases: Dictionary = aliases if aliases is Dictionary else {}
@@ -173,11 +229,16 @@ static func open_pull_with(body: Dictionary, codec: Object, mutations: Variant, 
 
 	if body.get("tombstones") is Array:
 		var names := _open_key_names(codec, open_keys)
+		var records := _record_key_names(codec, record_keys)
 		var tombs: Array = []
 		for t in body["tombstones"]:
 			if t is Dictionary and t.get("setting") is String and names.has(t["setting"]):
 				var u: Dictionary = (t as Dictionary).duplicate()
 				u["setting"] = names[t["setting"]]
+				tombs.append(u)
+			elif t is Dictionary and _record_ref_served(t.get("record")) != null and records.has(_record_ref_served(t["record"])):
+				var u: Dictionary = (t as Dictionary).duplicate()
+				u["record"] = [t["record"][0], records[_record_ref_served(t["record"])]]
 				tombs.append(u)
 			else:
 				tombs.append(t)
@@ -209,9 +270,10 @@ static func open_pull_with(body: Dictionary, codec: Object, mutations: Variant, 
 			if r.get("status") == "conflict" and r.get("server") is Dictionary:
 				var mid: Variant = r.get("mutationId")
 				var expect: Variant = _conflict_setting(mutations, mid)
+				var rec: Variant = _conflict_record(mutations, mid)
 				# Only a conflict for a mutation of this request opens: without one there is no name to
 				# open against and the copy reads as invalid.
-				var pair := _open_copy(r["server"], expect, codec, app_aliases)
+				var pair := _open_record_copy(r["server"], rec, codec) if rec != null else _open_copy(r["server"], expect, codec, app_aliases)
 				clean["server"] = pair[0]
 				if _is_whole(mid):
 					conflicts[int(mid)] = pair[1]
@@ -236,6 +298,36 @@ static func _conflict_setting(ms: Variant, mid: Variant) -> Variant:
 				return target["setting"]
 			return null
 	return null
+
+
+## The `[collection, id]` of record mutation `mid`, or null when the host did not say.
+static func _conflict_record(ms: Variant, mid: Variant) -> Variant:
+	if not _is_whole(mid) or not (ms is Array):
+		return null
+	for m in ms:
+		if m is Dictionary and _is_whole(m.get("mutationId")) and int(m["mutationId"]) == int(mid):
+			var target: Variant = m.get("target")
+			if target is Dictionary:
+				return _record_ref(target.get("record"))
+			return null
+	return null
+
+
+## The lookup key of a served `[collection, blinded id]`, or null when it is not a pair of strings.
+static func _record_ref_served(v: Variant) -> Variant:
+	if v is Array and (v as Array).size() == 2 and v[0] is String and v[1] is String:
+		return JSON.stringify([v[0], v[1]])
+	return null
+
+
+## Blinded record id (with its collection) to plaintext id, for the records the machine holds.
+static func _record_key_names(codec: Object, keys: Array) -> Dictionary:
+	var out := {}
+	for k in keys:
+		var ref: Variant = _record_ref(k)
+		if ref != null:
+			out[JSON.stringify([ref[0], codec.blind("record", ref[0], ref[1])])] = ref[1]
+	return out
 
 
 static func _open_key_names(codec: Object, keys: Array) -> Dictionary:
@@ -275,10 +367,57 @@ static func _plain_row(e: Dictionary) -> Array:
 static func _open_change(c: Dictionary, codec: Object, aliases: Dictionary) -> Array:
 	if c.get("setting") is String:
 		return _open_setting_change(c, codec, aliases)
-	# A record change: this slice seals no records, so a sealed one cannot be read.
+	if c.has("record"):
+		return _open_record_change(c, codec)
+	# Neither a setting nor a record: a sealed one cannot be placed.
 	if c.has("ct"):
 		return _invalid_row(c)
 	return _plain_row(c)
+
+
+## A record change: `{record: [collection, id], ct, version}`. A sealed `merge` or `union` change
+## (`fields`, `elements`) is outside the scalar codec and reads as invalid; a plaintext row is legacy
+## (the machine checks its `seq` against `encryptionSince`). A sealed id is accepted only when it is
+## blinded and the `k` inside the envelope re-blinds to it (HC-5), then it is replaced by the id.
+static func _open_record_change(c: Dictionary, codec: Object) -> Array:
+	if c.get("fields") is Array or c.get("elements") is Array:
+		return _invalid_row(c)
+	if not c.has("ct"):
+		return _plain_row(c)
+	var ref: Variant = _record_ref(c["record"])
+	if ref == null or not PKeySyncBlind.is_blinded_name(ref[1]):
+		return _invalid_row(c)
+	var env: Variant = _from_ct(c["ct"])
+	if env == null:
+		return _invalid_row(c)
+	var r: Dictionary = codec.open_any(ref[0], env)
+	if not r["ok"] or (r["name_bytes"] as PackedByteArray).has(0):
+		return _invalid_row(c)
+	var id: String = r["name"]
+	if id == "" or codec.blind("record", ref[0], id) != ref[1]:
+		return _invalid_row(c)
+	var entry := _stripped(c)
+	entry["record"] = [ref[0], id]
+	entry["value"] = r["value"]
+	return [entry, {"sealed": true}]
+
+
+## A conflict's server copy of the record `rec` (`[collection, id]` of the mutation): one `ct`, opened
+## under that id. Nothing else is accepted but a plaintext copy.
+static func _open_record_copy(e: Dictionary, rec: Variant, codec: Object) -> Array:
+	if e.get("fields") is Array or e.get("elements") is Array:
+		return _invalid_row(e)
+	if not e.has("ct"):
+		return _plain_row(e)
+	var env: Variant = _from_ct(e["ct"])
+	if env == null:
+		return _invalid_row(e)
+	var r: Dictionary = codec.open(rec[0], rec[1], env, [])
+	if not r["ok"]:
+		return _invalid_row(e)
+	var entry := _stripped(e)
+	entry["value"] = r["value"]
+	return [entry, {"sealed": true}]
 
 
 static func _open_setting_change(c: Dictionary, codec: Object, aliases: Dictionary) -> Array:
