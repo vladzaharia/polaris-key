@@ -7,6 +7,10 @@
 package im.plrs.key.sdk
 
 import im.plrs.key.core.CoreOptions
+import im.plrs.key.core.DeviceKeyStorage
+import im.plrs.key.core.ErrorCode
+import im.plrs.key.core.PolarisException
+import im.plrs.key.core.StoreException
 import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.DeviceKeyStore
 import im.plrs.key.core.InMemoryDeviceKeyStorage
@@ -31,6 +35,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -86,6 +91,21 @@ class CloudConnectTest {
         }
     }
 
+    /** A Connect state storage whose removal fails on demand; everything else is the wrapped storage. */
+    private class FaultyState(val inner: im.plrs.key.core.InMemoryDeviceKeyStorage) : DeviceKeyStorage by inner {
+        var removeFault: Exception? = null
+
+        override suspend fun clear() {
+            removeFault?.let { throw it }
+            inner.clear()
+        }
+
+        override suspend fun deleteRecord() {
+            removeFault?.let { throw it }
+            inner.deleteRecord()
+        }
+    }
+
     private class Device(val id: String, val port: DeviceKeyPort, val signKey: String, val agreeKey: String)
 
     private fun device(id: String): Device = runBlocking {
@@ -105,6 +125,7 @@ class CloudConnectTest {
         private val ticketUrl = "https://key.plrs.im/djdl/connect/relay/ticket"
         var connectFragment = """{"enabled":true,"relay":true,"endpoints":{"identity":"x","devices":"y","ticket":"$ticketUrl"}}"""
         val tickets = AtomicInteger()
+        val deauthorized = AtomicInteger()
 
         fun ring(): String = ringAt(1, listOf(a, b))
 
@@ -144,6 +165,11 @@ class CloudConnectTest {
 
             r.path.endsWith("/devices/keys") -> respond(200, """{"keySeq":1}""")
 
+            r.path.endsWith("/license/deauthorize") -> {
+                deauthorized.incrementAndGet()
+                respond(200, "{}")
+            }
+
             r.path.endsWith("/connect/relay/ticket") -> {
                 tickets.incrementAndGet()
                 val g = room.issue(me.id, "wss://key.plrs.im/djdl/connect/relay")
@@ -178,7 +204,7 @@ class CloudConnectTest {
             else -> respond(404, "")
         }
 
-        fun client(me: Device, trustRefresh: Boolean = false): PolarisKeyClient = runBlocking {
+        fun client(me: Device, trustRefresh: Boolean = false, state: DeviceKeyStorage? = null): PolarisKeyClient = runBlocking {
             val store = InMemoryStore("djdl", me.id)
             store.setToken("pkeyt_held")
             PolarisKeyClient.create(
@@ -194,7 +220,7 @@ class CloudConnectTest {
                         deviceName = "Test",
                     ),
                     license = LicenseClientOptions(fingerprint = false),
-                    connect = ConnectOptions(deviceKeys = me.port, allowEphemeralKeys = true),
+                    connect = ConnectOptions(deviceKeys = me.port, allowEphemeralKeys = true, state = state),
                 ),
             ).also { clients += it }
         }
@@ -218,6 +244,47 @@ class CloudConnectTest {
             cb.cloudConnect.start(o())
         }
         return ca to cb
+    }
+
+    @Test
+    fun deactivationLeavesCloudConnect() = runBlocking {
+        for (viaRoster in listOf(false, true)) {
+            val w = World()
+            val (ca, _) = both(w)
+            until { ca.cloudConnect.peers().any { it.deviceId == idB && it.lan } }
+            val s = ca.cloudConnect.open(idB)
+            assertNotNull(ca.connect.discoveryKeys())
+            if (viaRoster) ca.deauthorizeDevice(idA) else ca.license.deactivate()
+            until { s.closed != null }
+            assertFalse(ca.cloudConnect.status().running)
+            assertNull(ca.connect.current())
+            assertNull(ca.connect.discoveryKeys())
+            assertEquals(1, w.deauthorized.get())
+        }
+    }
+
+    @Test
+    fun deactivationStopsWhenConnectStateCannotBeCleared() = runBlocking {
+        val w = World()
+        val state = FaultyState(im.plrs.key.core.InMemoryDeviceKeyStorage())
+        val ca = w.client(w.a, state = state)
+        ca.cloudConnect.start(w.options())
+        assertNotNull(ca.connect.discoveryKeys())
+        state.removeFault = StoreException("busy")
+        try {
+            ca.license.deactivate()
+            fail("expected store_failed")
+        } catch (e: PolarisException) {
+            assertEquals(ErrorCode.storeFailed, e.code)
+        }
+        assertNotNull(ca.core.token())
+        assertEquals("no deauthorize request was sent", 0, w.deauthorized.get())
+        // Once the state can be removed, a retry completes.
+        state.removeFault = null
+        ca.license.deactivate()
+        assertNull(ca.core.token())
+        assertNull(ca.connect.discoveryKeys())
+        assertEquals(1, w.deauthorized.get())
     }
 
     @Test

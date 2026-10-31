@@ -910,6 +910,11 @@
       "reason": "an event-emitter field, not a verb; deactivation reaches apps through the events stream"
     },
     {
+      "sdk": "node",
+      "path": "license.beforeRelease",
+      "reason": "the hook the client sets so deactivation leaves Cloud Connect before the licence is released; wiring, not an app verb"
+    },
+    {
       "sdk": "python",
       "path": "config.doc",
       "reason": "internal wiring or a ConfigSetting field read through its row; not an app verb"

@@ -13,9 +13,8 @@ extends RefCounted
 ##      character is one code point), and trim a space the cut exposes;
 ##   5. an empty result is no label ("").
 ##
-## No Unicode normalisation (Godot has none); nothing is ever rejected. The peer HELLO cleaner
-## (§15.6, steps 1 and 2, NFC, then 3 to 5) is not here: Godot has no peer session yet, and it
-## needs an NFC Godot lacks (CC-14 owns that, and the corpus `helloCases`).
+## `normalize` applies no Unicode normalisation; nothing is ever rejected. The peer HELLO cleaner
+## (§15.6: steps 1 and 2, NFC, then 3 to 5) is `clean_hello`, over `PKeyNfc` (CC-14 D-20).
 
 ## Frozen at Unicode 16.0 as inclusive [lo, hi] pairs; the corpus `ranges` section pins both.
 const SPACE_RANGES := [
@@ -35,6 +34,23 @@ const STRIP_RANGES := [
 static func _in(cp: int, ranges: Array) -> bool:
 	for r in ranges:
 		if cp >= r[0] and cp <= r[1]:
+			return true
+	return false
+
+
+## `_in` for a table sorted ascending (both range tables are): a binary search, so a megabyte of
+## deleted code points costs a few comparisons each.
+static func _in_sorted(cp: int, ranges: Array) -> bool:
+	var lo := 0
+	var hi := ranges.size() - 1
+	while lo <= hi:
+		var mid := (lo + hi) >> 1
+		var r: Array = ranges[mid]
+		if cp < r[0]:
+			hi = mid - 1
+		elif cp > r[1]:
+			lo = mid + 1
+		else:
 			return true
 	return false
 
@@ -61,6 +77,51 @@ static func normalize(raw: String) -> String:
 	for cp in kept:
 		out += String.chr(cp)
 	return out
+
+
+## §15.6: the label or app a peer HELLO carries. Steps 1 and 2 of §12.7.1, then NFC, then steps 3 to
+## 5; "" when nothing is left. The cut counts code points AFTER NFC. Streams segment by segment and
+## stops once more than DEVICE_LABEL_MAX_CODEPOINTS output code points exist, so a mode-a HELLO of
+## a megabyte costs a bounded amount of NFC work.
+static func clean_hello(raw: String) -> String:
+	var cap: int = PKeyConstants.DEVICE_LABEL_MAX_CODEPOINTS
+	var res := PackedInt32Array()
+	var seg := PackedInt32Array()
+	var parts := PackedInt32Array()
+	var n := raw.length()
+	var i := 0
+	while i < n and res.size() <= cap:
+		var cp := raw.unicode_at(i)
+		i += 1
+		if cp < 0x21 or cp > 0x7E:
+			if _in_sorted(cp, SPACE_RANGES):
+				cp = 0x20
+			elif _in_sorted(cp, STRIP_RANGES):
+				continue
+		parts.clear()
+		PKeyNfc.decompose(cp, parts)
+		for d in parts:
+			if not seg.is_empty() and PKeyNfc.is_boundary(d):
+				_emit_collapsed(PKeyNfc.compose_segment(seg), res)
+				seg.clear()
+			seg.append(d)
+	if res.size() <= cap and not seg.is_empty():
+		_emit_collapsed(PKeyNfc.compose_segment(seg), res)
+	while not res.is_empty() and res[res.size() - 1] == 0x20:
+		res.remove_at(res.size() - 1)
+	if res.size() > cap:
+		res.resize(cap)
+	while not res.is_empty() and res[res.size() - 1] == 0x20:
+		res.remove_at(res.size() - 1)
+	return PKeyNfc.to_string_cps(res)
+
+
+## Step 3 on a stream: a space is dropped at the start and after a space.
+static func _emit_collapsed(cps: PackedInt32Array, res: PackedInt32Array) -> void:
+	for cp in cps:
+		if cp == 0x20 and (res.is_empty() or res[res.size() - 1] == 0x20):
+			continue
+		res.append(cp)
 
 
 ## The platform's own name for this device (the contract's default, WIRE-CONTRACT-V4 §12.7.1): the

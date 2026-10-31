@@ -3135,7 +3135,7 @@ from the client.
 
 **Byte-level choices (`peer-matrix.json` `relayEnvelopes`).** A device is its 24 decoded device-id bytes. `MEMBERS` carries its count `n` as one byte. `PONG` echoes the 8 bytes of the `PING` it answers. The limit of 65,564 bytes is the whole message: the op, 24, 4 and a Noise frame of at most 65,535 bytes. A message that does not match its layout exactly, an op in the wrong direction and a `LIMIT` outside 1 to 4 are refused.
 
-**Refused envelopes.** A message that fails its layout is never answered: the receiver closes the WebSocket (a client with 1002, the Room with 1008) and treats any frames after it as lost. The 4001 to 4009 codes above are the Room's own.
+**Refused envelopes.** A message that fails its layout is never answered: the receiver closes the WebSocket (a client with 1002, or 1013 when it has too many envelopes waiting, and with 1000 where its WebSocket API refuses those codes; the Room with 1008) and treats any frames after it as lost. The 4001 to 4009 codes above are the Room's own.
 
 **Close codes:** 4001 bad ticket · 4003 not a member · 4008 limit · 4009 replaced.
 
