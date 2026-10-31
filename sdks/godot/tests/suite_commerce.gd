@@ -79,6 +79,10 @@ func _binding(t: PKeyTestContext) -> void:
 	plan = {"/commerce/binding": _json(200, {"bindingId": "not-a-uuid", "products": []})}
 	var bad: PKeyResult = await sdk.commerce.binding()
 	t.check("binding: a body without a UUID is invalid-response", not bad.ok and bad.code == PKeyErrors.INVALID_RESPONSE, str(bad))
+	for tail in ["\n", "\r"]:
+		plan = {"/commerce/binding": _json(200, {"bindingId": BINDING + tail, "products": []})}
+		var tailed: PKeyResult = await sdk.commerce.binding()
+		t.check("binding: a trailing %s is refused" % ("LF" if tail == "\n" else "CR"), not tailed.ok and tailed.code == PKeyErrors.INVALID_RESPONSE, str(tailed))
 	sdk.queue_free()
 
 
