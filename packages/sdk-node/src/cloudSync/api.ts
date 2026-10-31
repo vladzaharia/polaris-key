@@ -45,6 +45,10 @@ export interface CloudSyncApiDeps {
   emit: (e: SyncEvent) => void;
   /** Diagnostics; never given a value or a secret. */
   log?: (message: string) => void;
+  /** Told whenever the person the machine is signed in as changes (null: nobody). */
+  onSubject?: (subject: string | null) => void;
+  /** Delete the person's save-transfer journal and chunk cache (U-22.5). */
+  purgeSaves?: () => Promise<void>;
 }
 
 export class CloudSyncApi {
@@ -58,6 +62,7 @@ export class CloudSyncApi {
   set #subject(s: string | null) {
     this.#subjectValue = s;
     this.#d.host.bindSubject(s);
+    this.#d.onSubject?.(s);
   }
   #forgot = false;
   #chain: Promise<void> = Promise.resolve();
@@ -239,7 +244,10 @@ export class CloudSyncApi {
     const data = this.#d.host.purge().catch(() => {
       this.#d.log?.("cloud sync: the synced data could not be deleted");
     });
-    await Promise.all([ring, data]);
+    const saves = (this.#d.purgeSaves?.() ?? Promise.resolve()).catch(() => {
+      this.#d.log?.("cloud sync: the save transfers could not be deleted");
+    });
+    await Promise.all([ring, data, saves]);
   }
 
   // ── The config client's port ─────────────────────────────────────────────────────────────

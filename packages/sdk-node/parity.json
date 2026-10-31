@@ -476,8 +476,8 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "client.cloudSync.saves (src/cloudSync/saves.ts): list, read, write, delete, revisions and resolve over client-core's SavesClient, bound to the machine's records (rows keep the file pointer; putAt and removeAt at an exact version, one outcome each: the fileRecordCases family of sync-scenarios.json) and the Node file transport, journal and chunk cache under one TransferEngine (maxRetryAfterSeconds 3600). client.cloudSync.transfers() lists the writes in flight; transferProgress, transferDone and transferFailed ride client.events under the cloudSync kind. The journal and chunk cache go with the person. test/cloudSyncSaves.test.ts; the cloudsync-files-single transcript replays through the transport."
     },
     "sync.keyring": {
       "status": "implemented",

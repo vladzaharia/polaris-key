@@ -21,6 +21,7 @@
 import { PolarisError, type DeviceKeyPort } from "@polaris-key/client-core";
 import {
   HPKE_KEM_X25519,
+  e2eFileCodec,
   RECOVERY_CODE_INVALID,
   SYNC_KID_BYTES,
   SYNC_ROOT_BYTES,
@@ -40,6 +41,7 @@ import {
   wrapRecovery,
   wrapRoot,
   type BlindKind,
+  type FileCodec,
   type OpenedValue,
   type SyncCryptoPort,
   type SyncJson,
@@ -256,6 +258,15 @@ export class KeyringClient {
     return () => {
       this.#listeners.delete(machine);
     };
+  }
+
+  /**
+   * The file codec of a collection, sealing with the ring's current root. The root is not exposed:
+   * the codec reads the same array the ring zeroes on `lock()`, so it fails once the ring locks.
+   * Refuses with `sync-locked` while locked.
+   */
+  fileCodec(collection: string): FileCodec {
+    return e2eFileCodec(this.#crypto, this.#need().root, collection);
   }
 
   /** Whether this device holds a root right now. */

@@ -1,0 +1,334 @@
+// @pkey-feature sync.saves sync.files
+// `client.cloudSync.saves` on the Node client (U-22.5): list, read, write and delete a save over the
+// machine's records binding and the file transport, against a small fake of the Worker's sync and
+// file routes (server mode, whole-file uploads). It pins the order (file first, then the metadata
+// `set` at the version `finalize` answered), the transfer events on `client.events`, `transfers()`,
+// a conflict that reports the server copy, and the journal and chunk cache going with the person.
+
+import { createHash } from "node:crypto";
+import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { TransferEvent } from "../src/constants.generated.js";
+import {
+  PRODUCT,
+  SUBJECT,
+  World,
+  open,
+  type Body,
+} from "./cloudSyncFixtures.js";
+
+const sha = (b: Uint8Array): string =>
+  createHash("sha256").update(b).digest("hex");
+
+interface Row {
+  value: unknown;
+  version: number;
+  file?: { version: number; size: number; sha256: string; format: "whole" };
+}
+
+/** The Worker's saves, as far as a whole-file save needs. */
+function savesWorld() {
+  const w = new World();
+  w.body = ((over: Body = {}) => ({
+    subject: SUBJECT,
+    serverNow: 1_700_000_000_000,
+    cursor: 0,
+    more: false,
+    lastMutationId: 0,
+    catalogVersion: 1,
+    aliases: {},
+    usage: { files: 0, records: 0, settings: 0, bytes: 0 },
+    quota: { files: true, bytes: 2 ** 28 },
+    encryption: "server",
+    changes: [],
+    tombstones: [],
+    ...over,
+  })) as typeof w.body;
+  const rows = new Map<string, Row>();
+  const stored = new Map<number, Uint8Array>();
+  const uploads = new Map<string, { id: string; bytes?: Uint8Array }>();
+  const files: string[] = [];
+  const change = (id: string, r: Row): Body => ({
+    record: ["saves", id],
+    version: r.version,
+    ...(r.value === undefined ? {} : { value: r.value }),
+    ...(r.file ? { file: r.file } : {}),
+  });
+  w.pull = () =>
+    w.body({
+      cursor: w.version,
+      changes: [...rows].map(([id, r]) => change(id, r)),
+    });
+  w.push = (body) => {
+    const results: Body[] = [];
+    const changes: Body[] = [];
+    const tombstones: Body[] = [];
+    for (const m of body.mutations as Array<Record<string, any>>) {
+      const id = m.target.record[1] as string;
+      const row = rows.get(id);
+      const base = m.baseVersion as number | "*";
+      const stale = base === "*" ? row !== undefined : row?.version !== base;
+      if (stale) {
+        results.push({
+          mutationId: m.mutationId,
+          status: "conflict",
+          server: row ? change(id, row) : { version: w.version },
+        });
+        continue;
+      }
+      const version = ++w.version;
+      if (m.op === "delete") {
+        rows.delete(id);
+        tombstones.push({ record: ["saves", id], version });
+      } else {
+        const next: Row = {
+          value: m.value,
+          version,
+          ...(row?.file ? { file: row.file } : {}),
+        };
+        rows.set(id, next);
+        changes.push(change(id, next));
+      }
+      results.push({ mutationId: m.mutationId, status: "ok", version });
+    }
+    return w.body({ cursor: w.version, results, changes, tombstones });
+  };
+  const inner = w.fetch;
+  const json = (b: unknown, status = 200): Response =>
+    new Response(JSON.stringify(b), { status });
+  w.fetch = (async (input: string | URL, init: RequestInit = {}) => {
+    const url = new URL(String(input));
+    const prefix = `/${PRODUCT}/sync/files/saves/`;
+    if (!url.pathname.startsWith(prefix)) return inner(input, init);
+    const [id, ...rest] = url.pathname.slice(prefix.length).split("/");
+    const method = init.method ?? "GET";
+    files.push(`${method} ${rest.join("/") || "-"}`);
+    if (method === "POST" && rest[0] === "begin") {
+      const base = JSON.parse(String(init.body)).baseVersion as number | "*";
+      const row = rows.get(id!);
+      if (base === "*" ? row !== undefined : row?.version !== base)
+        return json(
+          {
+            error: { code: "revision_conflict" },
+            server: { version: row?.version ?? 0 },
+          },
+          409,
+        );
+      const upId = `up_${uploads.size + 1}`;
+      uploads.set(upId, { id: id! });
+      return json({
+        uploadId: upId,
+        mode: "single",
+        expiresAt: 1_700_086_400_000,
+      });
+    }
+    if (method === "PUT" && rest[0] === "upload") {
+      uploads.get(rest[1]!)!.bytes = init.body as Uint8Array;
+      return new Response(null, { status: 204 });
+    }
+    if (method === "GET" && rest[0] === "upload")
+      return json({
+        mode: "single",
+        size: 0,
+        received: [1],
+        expiresAt: 1_700_086_400_000,
+      });
+    if (method === "POST" && rest[0] === "finalize") {
+      const up = uploads.get(JSON.parse(String(init.body)).uploadId)!;
+      const version = ++w.version;
+      const file = {
+        version,
+        size: up.bytes!.length,
+        sha256: sha(up.bytes!),
+        format: "whole" as const,
+      };
+      stored.set(version, up.bytes!);
+      rows.set(id!, { value: undefined, version, file });
+      return json(file);
+    }
+    if (method === "GET" && rest.length === 0) {
+      const row = rows.get(id!);
+      const bytes = row?.file ? stored.get(row.file.version) : undefined;
+      if (!bytes) return json({ error: { code: "not_found" } }, 404);
+      const range = /bytes=(\d+)-(\d+)/.exec(
+        new Headers(init.headers).get("range") ?? "",
+      );
+      if (!range) return new Response(bytes, { status: 200 });
+      const [a, b] = [Number(range[1]), Number(range[2])];
+      return new Response(bytes.slice(a, b + 1), {
+        status: 206,
+        headers: { "content-range": `bytes ${a}-${b}/${bytes.length}` },
+      });
+    }
+    return json({ error: { code: "not_found" } }, 404);
+  }) as typeof fetch;
+  return { w, rows, files };
+}
+
+async function signedIn(w: World) {
+  const stateDir = mkdtempSync(join(tmpdir(), "pkey-csaves-"));
+  const client = await open(w, stateDir, {
+    encryption: "server",
+    saves: { delta: false },
+  });
+  await client.cloudSyncHost.start();
+  client.events.safeEmit("identity", { kind: "signedIn", subject: SUBJECT });
+  await client.cloudSync.flush();
+  return { client, stateDir };
+}
+
+const bytes = (n: number, seed = 7): Uint8Array =>
+  Uint8Array.from({ length: n }, (_, i) => (i * 31 + seed) & 0xff);
+
+describe("cloudSync.saves", () => {
+  it("writes a file, then the metadata at the version finalize answered, and reads it back", async () => {
+    const { w, rows, files } = savesWorld();
+    const { client } = await signedIn(w);
+    const events: unknown[] = [];
+    client.events.on("cloudSync", (e) => {
+      if ("id" in e) events.push(e);
+    });
+    const data = bytes(3000);
+
+    const transfer = await client.cloudSync.saves.write("slot-1", data, {
+      chapter: "one",
+    });
+    expect(client.cloudSync.transfers().map((t) => t.id)).toEqual([
+      "saves:slot-1",
+    ]);
+    const out = await transfer.done;
+    expect(out).toMatchObject({ state: "done", id: "slot-1" });
+    expect(files.slice(0, 3)).toEqual([
+      "POST begin",
+      "PUT upload/up_1",
+      "POST finalize",
+    ]);
+    expect(rows.get("slot-1")).toMatchObject({
+      value: { chapter: "one" },
+      file: { size: 3000, sha256: sha(data) },
+    });
+    expect(client.cloudSync.transfers()).toEqual([]);
+    expect(events.at(-1)).toMatchObject({
+      type: TransferEvent.transferdone,
+      id: "saves:slot-1",
+      state: "done",
+    });
+    expect(
+      events.some(
+        (e) => (e as { type: string }).type === TransferEvent.transferprogress,
+      ),
+    ).toBe(true);
+
+    const list = await client.cloudSync.saves.list();
+    expect(list).toEqual([
+      expect.objectContaining({
+        id: "slot-1",
+        metadata: { chapter: "one" },
+        file: expect.objectContaining({ size: 3000 }),
+      }),
+    ]);
+    const read = await client.cloudSync.saves.read("slot-1");
+    expect(read).toMatchObject({ ok: true, metadata: { chapter: "one" } });
+    expect(
+      read.ok &&
+        read.bytes &&
+        Buffer.from(read.bytes).equals(Buffer.from(data)),
+    ).toBe(true);
+    client.close();
+  });
+
+  it("reports a stale write as a conflict that carries the server copy", async () => {
+    const { w, rows } = savesWorld();
+    rows.set("slot-1", {
+      value: { chapter: "two" },
+      version: 7,
+      file: { version: 7, size: 5, sha256: "a".repeat(64), format: "whole" },
+    });
+    w.version = 7;
+    const { client } = await signedIn(w);
+    const t = await client.cloudSync.saves.write(
+      "slot-1",
+      bytes(500),
+      { chapter: "mine" },
+      {
+        baseVersion: 5,
+      },
+    );
+    const out = await t.done;
+    expect(out.state).toBe("conflict");
+    if (out.state !== "conflict") return;
+    expect(out.conflict.remote).toMatchObject({
+      id: "slot-1",
+      metadata: { chapter: "two" },
+    });
+    expect(out.conflict.serverVersion).toBe(7);
+    client.close();
+  });
+
+  it("deletes a save at its version", async () => {
+    const { w, rows } = savesWorld();
+    rows.set("slot-1", {
+      value: { chapter: "one" },
+      version: 3,
+      file: { version: 3, size: 5, sha256: "a".repeat(64), format: "whole" },
+    });
+    w.version = 3;
+    const { client } = await signedIn(w);
+    expect(await client.cloudSync.saves.delete("slot-1")).toMatchObject({
+      ok: true,
+    });
+    expect(rows.has("slot-1")).toBe(false);
+    expect(await client.cloudSync.saves.list()).toEqual([]);
+    client.close();
+  });
+
+  it("lists a record that has a file and no value (file-only row)", async () => {
+    const { w, rows } = savesWorld();
+    rows.set("slot-9", {
+      value: undefined,
+      version: 4,
+      file: { version: 4, size: 9, sha256: "b".repeat(64), format: "whole" },
+    });
+    w.version = 4;
+    const { client } = await signedIn(w);
+    expect(await client.cloudSync.saves.list()).toEqual([
+      expect.objectContaining({
+        id: "slot-9",
+        metadata: {},
+        file: expect.objectContaining({ size: 9 }),
+      }),
+    ]);
+    client.close();
+  });
+
+  it("purges the transfer journal and chunk cache with the person", async () => {
+    const { w } = savesWorld();
+    const { client, stateDir } = await signedIn(w);
+    const dirs = (): string[] => {
+      const found: string[] = [];
+      const walk = (d: string): void => {
+        for (const e of readdirSync(d, { withFileTypes: true })) {
+          if (e.isDirectory()) {
+            if (/^cloud-sync-(transfers|chunks)$/.test(e.name))
+              found.push(e.name);
+            walk(join(d, e.name));
+          }
+        }
+      };
+      walk(stateDir);
+      return found;
+    };
+    // A parked transfer: the journal directory exists until the person goes.
+    const t = await client.cloudSync.saves.write("slot-1", bytes(100), {});
+    await t.done;
+    expect(dirs()).toContain("cloud-sync-transfers");
+    await (
+      client as unknown as { cloudSyncApi: { beforeSignOut(): Promise<void> } }
+    ).cloudSyncApi.beforeSignOut();
+    expect(dirs()).toEqual([]);
+    expect(existsSync(stateDir)).toBe(true);
+    client.close();
+  });
+});

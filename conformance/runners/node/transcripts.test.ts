@@ -19,7 +19,7 @@
 // @pkey-feature sync.keyring
 // @pkey-feature connect.relay
 // @pkey-feature sync.settings
-// @pkey-feature sync.files sync.files.delta
+// @pkey-feature sync.files sync.files.delta sync.saves
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,

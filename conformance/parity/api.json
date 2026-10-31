@@ -3807,9 +3807,7 @@
       "kind": "property",
       "feature": "sync.saves",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
+        "node": {},
         "python": {
           "planned": "U-22"
         },
@@ -3835,9 +3833,7 @@
       "kind": "method",
       "feature": "sync.saves",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
+        "node": {},
         "python": {
           "planned": "U-22"
         },
@@ -3869,9 +3865,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
+        "node": {},
         "python": {
           "planned": "U-22"
         },
@@ -3907,9 +3901,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
+        "node": {},
         "python": {
           "planned": "U-22"
         },
@@ -3941,9 +3933,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
+        "node": {},
         "python": {
           "planned": "U-22"
         },
@@ -3975,9 +3965,7 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
+        "node": {},
         "python": {
           "planned": "U-22"
         },
@@ -4003,9 +3991,7 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
+        "node": {},
         "python": {
           "planned": "U-22"
         },
@@ -4031,9 +4017,7 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
+        "node": {},
         "python": {
           "planned": "U-22"
         },
@@ -4059,9 +4043,7 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
+        "node": {},
         "python": {
           "planned": "U-22"
         },
@@ -4087,9 +4069,7 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
+        "node": {},
         "python": {
           "planned": "U-22"
         },
@@ -4116,9 +4096,7 @@
       "feature": "sync.files",
       "enum": "transferEvent",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
+        "node": {},
         "python": {
           "planned": "U-22"
         },
