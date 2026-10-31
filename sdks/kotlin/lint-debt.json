@@ -1764,6 +1764,11 @@
       "detekt:style.ReturnCount": 2,
       "detekt:style.ThrowsCount": 1
     },
+    "sdks/kotlin/platform/src/main/kotlin/im/plrs/key/platform/NetworkSubnets.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:style.MagicNumber": 5,
+      "detekt:style.ReturnCount": 2
+    },
     "sdks/kotlin/platform/src/main/kotlin/im/plrs/key/platform/PeerNsd.kt": {
       "detekt:complexity.LongParameterList": 1,
       "detekt:empty-blocks.EmptyFunctionBlock": 6,
