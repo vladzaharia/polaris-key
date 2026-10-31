@@ -8754,19 +8754,33 @@ ring for the product. The routes are recorded in the `keyring-*` transcripts.
   recovery code or a platform backup; there is no remote approval; a wrap is opened only against
   the ring's `rootKid`. The client also pins `{ringId, epoch, rootKid}` for its (product, subject)
   when it first acquires a root, by create, recover or unlock, and keeps the pin (no secret) in
-  its state directory, owner-only, or in the browser's IndexedDB beside the stored root. A served
-  ring or wrap that differs from the pin is not opened and replaces nothing: the client answers
-  `ring-changed`, and only the recovery code, or an explicit accept the person confirmed in the
-  app, re-pins. A reset made by the same device re-pins itself. Sign-out and deactivation lock the
-  client and drop the pin and, in the browser, the stored root. A client that has never held a root
-  has no pin and trusts the first ring it is wrapped into. The same trust on first use applies
+  its state directory, owner-only, or in the browser's IndexedDB beside the stored root. A client
+  that keeps the root on the device (the Apple Keychain, the Android Keystore or a sealed file,
+  Godot's sealed or engine-encrypted file, the browser's IndexedDB) treats that root's
+  `{ringId, epoch, kid}` as the pin whenever no pin can be read, so a pin lost while the root
+  survives still pins: an iOS reinstall keeps Keychain items and drops the app's files. A pin or a
+  root that cannot be read is an error, never an absent pin. Sign-out removes the root before the
+  pin and keeps the pin when the root cannot be removed. On a platform with no machine id (Godot
+  on the web, a Linux host without one), a Godot client keeps the root in memory and reopens it at
+  each start from its own wrap, and its device keys stay durable under a key derived from public
+  inputs and a salt beside them (`protection()` `file`), so whoever holds that folder and the
+  device token can do the same. Residual, at parity with the 0600 device-key files of Node and
+  Python. A served ring or wrap that differs from the pin is not opened and replaces nothing: the
+  client answers `ring-changed`, and only the recovery code, or an explicit accept the person
+  confirmed in the app, re-pins. A reset made by the same device re-pins itself. Sign-out and
+  deactivation lock the client and drop the pin and, in the browser, the stored root. A client that
+  has never held a root has no pin and trusts the first ring it is wrapped into. The same trust on first use applies
   wherever the pin is not durable: a Node client upgraded from a build without pins or run with an
-  ephemeral state directory, a Python client with no state directory, and a browser using the
-  memory vault or a degraded IndexedDB. The pin does not depend on the subject the Worker serves;
-  only sign-out or deactivation drops it. A confirmed accept names the ring the person was shown,
-  and a ring that changed again before the accept is refused. Residual: the server's device directory
-  is trusted for listing devices and nothing else, a client that skips the nearby step is not
-  stopped by the server, and a person who confirms a changed ring in the app accepts its root.
+  ephemeral state directory, a Python client with no state directory, a Kotlin client whose
+  `Store` has no state directory and that has no root storage, a Godot build whose `user://` does
+  not persist (the web without persistent storage), and a browser using the memory vault or an
+  IndexedDB that could not keep a write. The pin does not depend on the subject the Worker serves;
+  only sign-out or deactivation drops it. So a device whose app was removed while signed in keeps
+  its root, and the next person to sign in on it is shown `ring-changed` once; accepting replaces
+  that root on the device. A confirmed accept names the ring the person was shown, and a ring that
+  changed again before the accept is refused. Residual: the server's device directory is trusted
+  for listing devices and nothing else, a client that skips the nearby step is not stopped by the
+  server, and a person who confirms a changed ring in the app accepts its root.
 - **T22, key loss.** With every device lost and neither a recovery code nor a platform backup, the
   data cannot be recovered, by design. Start over (`POST .../reset`) creates a new ring, and the
   replaced ring stays readable as `previous` for 30 days, so a device that still holds the old root
@@ -8789,6 +8803,15 @@ rate_limited`). The device count includes a fetch with nothing to return; the su
   data away; the brakes make that visible, they do not prevent it.
   The code carries 128 bits of entropy; its 32-bit checksum is for typing errors and gives a
   guesser no advantage, so the effective strength is 128 bits, not the 160 written length.
+- **The root in the browser.** A browser keeps `R` as a non-extractable HKDF key in IndexedDB
+  beside the pin, so it cannot be exported. Its bytes stay in page memory only for
+  `sessionRootSeconds` after a create, a recovery or an unwrap (default 300 s; a larger value is
+  clamped to 900 s), because wrapping to another device, replacing the recovery code and adopting
+  need them. The copy a reset keeps for adopting ends with the window it came from. Residual: the
+  bytes are in page memory for that window. Script running on the app's origin can use the stored
+  key and the device's agreement key, so it can derive every key below `R` and open this device's
+  own wrap. The non-extractable key keeps `R` out of an export, not away from such script, which
+  has the same standing as the device token.
 - **Removing a device does not rotate R.** Removing a device deletes its wraps. A device that
   already held the root keeps it, so it can still open data sealed under that ring. Residual:
   the remedy is "reset", which creates a new ring; data written afterwards is sealed under the new
