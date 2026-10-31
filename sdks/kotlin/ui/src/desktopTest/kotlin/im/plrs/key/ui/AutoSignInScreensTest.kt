@@ -140,6 +140,39 @@ class AutoSignInScreensTest {
         })
     }
 
+    /** UX fix B3: the h1-to-group gap is the same with a subtitle (any kind) and without one. */
+    @Test
+    fun theConfirmGroupKeepsItsGapForEveryAccountLine() {
+        fun consentOf(asJson: String) = ExchangeConsentView.of(
+            obj(
+                """{"client":{"appName":"Tidewater Studio","nameVerified":true},$asJson""" +
+                    """"items":[{"kind":"license","anchor":{"name":"Tidewater Pro","tierName":"Pro",""" +
+                    """"term":1893456000,"seat":{"position":2,"limit":3}},"more":0}],"scopeHash":"abc","firstTime":true,"changed":false}""",
+            ),
+        )!!
+        val cases = mapOf(
+            "with Game Center" to """"as":{"provider":"gamecenter"},""",
+            "with Google Play Games" to """"as":{"provider":"pgs"},""",
+            "with your Apple Account" to """"as":{"provider":"apple"},""",
+            null to """"as":{},""",
+        )
+        for ((subtitle, asJson) in cases) {
+            val state = stateOf(Fake(AutoSignInResult.Confirm(ExchangeOutcome.PendingConsent(grant, 300.0, consentOf(asJson)))))
+            matrixFrame(420, 760, dark = false, content = { PolarisAutoSignIn(state) }, after = {
+                val label = onNodeWithText("License for this device", ignoreCase = true).fetchSemanticsNode().boundsInRoot
+                val title = onNodeWithText("Continue to Tidewater Studio", ignoreCase = true).fetchSemanticsNode().boundsInRoot
+                val above = if (subtitle != null) {
+                    texts(this, subtitle)
+                    onNodeWithText(subtitle, ignoreCase = true).fetchSemanticsNode().boundsInRoot
+                } else {
+                    title
+                }
+                // 16 dp between the h1 or subtitle and the first label; never the 4 dp hairline.
+                assertTrue(label.top - above.bottom >= 12f, "gap ${label.top - above.bottom} under ${subtitle ?: "the title"}")
+            })
+        }
+    }
+
     @Test
     fun noProviderNoGoogleRowAndTheDesktopLadderFallsBackSilently() {
         val form = stateOf(Fake(AutoSignInResult.NeedsSignIn(null, AutoSignInReason.Terms), hasProvider = false))
