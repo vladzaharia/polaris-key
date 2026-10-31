@@ -71,6 +71,8 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
     case keepRemote = "keep-remote"
     /// Resolve a save conflict by keeping both: the other is saved under a new name.
     case keepBoth = "keep-both"
+    /// Return a failed save conflict to its choices; nothing is applied.
+    case chooseAgain = "choose-again"
 
     public static func < (a: KitAction, b: KitAction) -> Bool { a.rawValue < b.rawValue }
 
@@ -106,6 +108,7 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
         "saveConflict.keepOther": .keepRemote,
         "saveConflict.acceptDelete": .keepRemote,
         "saveConflict.keepBoth": .keepBoth,
+        "saveConflict.chooseAgain": .chooseAgain,
     ]
 }
 

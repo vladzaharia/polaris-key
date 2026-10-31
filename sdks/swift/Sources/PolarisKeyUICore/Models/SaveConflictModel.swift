@@ -33,6 +33,8 @@ public final class SaveConflictModel {
     public var onKept: (@MainActor (KitSaveConflict.Keep) -> Void)?
     /// Told on Cancel: the conflict stays as it was.
     public var onCancel: (@MainActor () -> Void)?
+    /// Told on Choose again: the screen is back on `choose`, nothing applied.
+    public var onChooseAgain: (@MainActor () -> Void)?
     /// Told on Done, after the choice was kept.
     public var onDone: (@MainActor () -> Void)?
 
@@ -75,6 +77,15 @@ public final class SaveConflictModel {
     public func retry() async {
         guard step == .failed, let choice = conflict.keep else { return }
         await apply(choice)
+    }
+
+    /// Choose again, after a choice failed: back to the choices with the same versions. Nothing is
+    /// applied; the host is not told.
+    public func chooseAgain() {
+        guard step == .failed else { return }
+        inputs.saveConflict?.step = .choose
+        inputs.saveConflict?.keep = nil
+        onChooseAgain?()
     }
 
     private func apply(_ choice: KitSaveConflict.Keep) async {

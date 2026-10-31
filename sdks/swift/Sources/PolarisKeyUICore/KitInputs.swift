@@ -1052,10 +1052,13 @@ public struct KitSaveConflict: Sendable, Codable, Equatable, Hashable {
     /// A free slot of the 16 exists. Absent or false draws Keep both disabled, with its reason.
     public var bothAvailable: Bool?
     public var keep: Keep?
+    /// The version the app knows was saved later (its own metadata, never the display strings).
+    /// It tags that card and chooses nothing; ignored when the other copy was deleted.
+    public var newer: Keep?
 
     public init(
         step: Step, local: Copy? = nil, remote: Copy? = nil, remoteDeleted: Bool = false,
-        bothAvailable: Bool? = nil, keep: Keep? = nil
+        bothAvailable: Bool? = nil, keep: Keep? = nil, newer: Keep? = nil
     ) {
         self.step = step
         self.local = local
@@ -1063,9 +1066,12 @@ public struct KitSaveConflict: Sendable, Codable, Equatable, Hashable {
         self.remoteDeleted = remoteDeleted
         self.bothAvailable = bothAvailable
         self.keep = keep
+        self.newer = newer
     }
 
-    private enum CodingKeys: String, CodingKey { case step, local, remote, bothAvailable, keep }
+    private enum CodingKeys: String, CodingKey {
+        case step, local, remote, bothAvailable, keep, newer
+    }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -1078,6 +1084,7 @@ public struct KitSaveConflict: Sendable, Codable, Equatable, Hashable {
         remote = remoteDeleted ? nil : try c.decodeIfPresent(Copy.self, forKey: .remote)
         bothAvailable = try c.decodeIfPresent(Bool.self, forKey: .bothAvailable)
         keep = try c.decodeIfPresent(Keep.self, forKey: .keep)
+        newer = try c.decodeIfPresent(Keep.self, forKey: .newer)
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -1089,6 +1096,7 @@ public struct KitSaveConflict: Sendable, Codable, Equatable, Hashable {
         }
         try c.encodeIfPresent(bothAvailable, forKey: .bothAvailable)
         try c.encodeIfPresent(keep, forKey: .keep)
+        try c.encodeIfPresent(newer, forKey: .newer)
     }
 }
 
