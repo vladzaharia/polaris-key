@@ -73,6 +73,11 @@ dependencies {
     // metadata name.
     for (f in flavours) "${f}Implementation"("${project.group}:polaris-key-platform-$f:${project.version}")
     compileOnly(libs.godot)
+    // Play Games Services v2 (I-48.7a, Q-3): compile-time only, in the play flavour. The AAR carries none of
+    // it and the POM names none: the export opt-in (`polaris_key/play_games`) adds the Maven dependency, so a
+    // game that does not sign in through Play Games ships no Play Games library. PlayGamesCommands judges its
+    // presence by class name before anything that names one loads.
+    "playCompileOnly"(libs.play.games)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

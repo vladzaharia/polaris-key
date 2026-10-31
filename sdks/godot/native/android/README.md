@@ -39,6 +39,12 @@ JNI.
 | `iau_check`, `iau_start`, `iau_complete`, `pad_state`, `pad_fetch`, `pad_location`, `pad_remove`, `pad_cancel`, `pad_confirm`, `integrity_prepare`, `integrity_token` | play    |
 | `pi_can_install`, `pi_open_settings`, `pi_verify`, `pi_install`, `pi_last`, `pi_abandon_stale`, `pi_constraints`                                                      | direct  |
 
+The Google sign-in ops `gid_silent`, `gid_sheet` and `gid_provider` (`{serverClientId, nonce}`) and
+`gid_sign_out` (I-48.5a) are in the main source set. They answer `unavailable` with reason `outlet`
+in `direct`, and `dependency` in a `play` export that carries no `androidx.credentials` (checked by
+class name before anything loads). A token arrives only in the result event (`{ok: true, token}`);
+a failure is `{ok: false, error: cancelled | unavailable, reason}`.
+
 The other flavour's ops answer `{ok: false, unsupported: true, reason: "outlet"}`.
 
 `integrity_prepare {cloudProjectNumber}` and `integrity_token {cloudProjectNumber, requestHash}`

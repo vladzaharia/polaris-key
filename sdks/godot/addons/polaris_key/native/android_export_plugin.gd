@@ -19,14 +19,28 @@ func _supports_platform(platform: EditorExportPlatform) -> bool:
 func _get_export_options(platform: EditorExportPlatform) -> Array[Dictionary]:
 	if not (platform is EditorExportPlatformAndroid):
 		return []
-	return [{
-		"option": {"name": A.OPTION, "type": TYPE_STRING, "hint": PROPERTY_HINT_ENUM, "hint_string": ",".join(A.FLAVORS)},
-		"default_value": A.DEFAULT_FLAVOR,
-		"update_visibility": true,
-	}]
+	return [
+		{
+			"option": {"name": A.OPTION, "type": TYPE_STRING, "hint": PROPERTY_HINT_ENUM, "hint_string": ",".join(A.FLAVORS)},
+			"default_value": A.DEFAULT_FLAVOR,
+			"update_visibility": true,
+		},
+		{
+			"option": {"name": A.PLAY_GAMES_OPTION, "type": TYPE_BOOL},
+			"default_value": false,
+			"update_visibility": true,
+		},
+		{
+			"option": {"name": A.PLAY_GAMES_APP_ID_OPTION, "type": TYPE_STRING},
+			"default_value": "",
+			"update_visibility": true,
+		},
+	]
 
 
 func _get_export_option_warning(_platform: EditorExportPlatform, option: String) -> String:
+	if option == A.PLAY_GAMES_OPTION or option == A.PLAY_GAMES_APP_ID_OPTION:
+		return "\n".join(A.play_games_warnings(A.canonical(_flavor_raw()), _play_games(), _option(A.PLAY_GAMES_APP_ID_OPTION, A.PLAY_GAMES_APP_ID_ENV)))
 	if option != A.OPTION:
 		return ""
 	var flavor := _flavor_raw()
@@ -56,6 +70,21 @@ func _flavor() -> String:
 	return flavor
 
 
+## An option's value, environment first (what PKEY_* in CI sets), else the preset's; null when neither.
+func _option(name: String, env: String) -> Variant:
+	var preset := get_export_preset()
+	if preset == null:
+		var e := OS.get_environment(env)
+		return e if e != "" else null
+	return preset.get_or_env(name, env)
+
+
+## Whether this export opted in to Play Games (default off).
+func _play_games() -> bool:
+	var v = _option(A.PLAY_GAMES_OPTION, A.PLAY_GAMES_ENV)
+	return v == true or str(v).to_lower() in ["1", "true", "yes", "on"]
+
+
 func _gradle_build() -> bool:
 	var preset := get_export_preset()
 	if preset == null or not preset.has("gradle_build/use_gradle_build"):
@@ -82,6 +111,11 @@ func _export_begin(_features: PackedStringArray, _is_debug: bool, _path: String,
 	var raw = _flavor_raw()
 	for w in A.warnings(raw, _outlet_kind(), _gradle_build(), A.missing_libraries(A.canonical(raw))):
 		push_warning("Polaris Key Android plugin: %s" % w)
+	for pw in A.play_games_warnings(A.canonical(raw), _play_games(), _option(A.PLAY_GAMES_APP_ID_OPTION, A.PLAY_GAMES_APP_ID_ENV)):
+		push_warning("Polaris Key Android plugin: %s" % pw)
+	var cw := A.credentials_warning(_flavor(), Engine.get_version_info())
+	if cw != "":
+		push_warning("Polaris Key Android plugin: %s" % cw)
 	var err := A.error(raw, _outlet_kind())
 	if err != "":
 		push_error("Polaris Key Android plugin: %s" % err)
@@ -96,8 +130,12 @@ func _get_android_dependencies(_platform: EditorExportPlatform, _debug: bool) ->
 	if A.error(_flavor_raw(), _outlet_kind()) != "":
 		push_error("Polaris Key Android plugin: %s" % A.error(_flavor_raw(), _outlet_kind()))
 		return PackedStringArray([A.REFUSAL_DEPENDENCY])
-	return A.dependencies(_flavor())
+	return A.dependencies(_flavor(), Engine.get_version_info(), _play_games())
 
 
 func _get_android_manifest_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:
 	return A.manifest_elements(_flavor())
+
+
+func _get_android_manifest_application_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:
+	return A.application_elements(_flavor(), _play_games(), A.play_games_app_id(_option(A.PLAY_GAMES_APP_ID_OPTION, A.PLAY_GAMES_APP_ID_ENV)))

@@ -164,6 +164,10 @@ func read_cache() -> Variant:
 	return files.read_cache()
 
 
+func cache_unreadable() -> bool:
+	return files.cache_unreadable()
+
+
 func write_cache(record: Dictionary) -> bool:
 	return files.write_cache(record)
 

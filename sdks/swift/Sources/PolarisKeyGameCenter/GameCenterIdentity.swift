@@ -115,6 +115,37 @@ public protocol GameCenterPlayerPort: Sendable {
     func identityVerification() async throws -> GameCenterSignature
 }
 
+/// The parts of a `gc1.` token before they are encoded: what Godot's GDScript encoder is handed (Q-5),
+/// so the transcripts prove the encoder that ships. Secrets for the life of the signature, like
+/// [GameCenterSignature].
+public struct GameCenterFields: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
+    public let publicKeyURL: String
+    public let signature: Data
+    public let salt: Data
+    public let timestamp: UInt64
+    public let teamPlayerID: String
+    public let bundleID: String
+
+    public var description: String { "GameCenterFields(<redacted>)" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["signature": "[redacted]", "salt": "[redacted]"], displayStyle: .struct)
+    }
+
+    public init(
+        publicKeyURL: String, signature: Data, salt: Data, timestamp: UInt64, teamPlayerID: String, bundleID: String
+    ) {
+        self.publicKeyURL = publicKeyURL
+        self.signature = signature
+        self.salt = salt
+        self.timestamp = timestamp
+        self.teamPlayerID = teamPlayerID
+        self.bundleID = bundleID
+    }
+}
+
 public struct GameCenterIdentity: Sendable {
     private let port: any GameCenterPlayerPort
     private let bundleID: @Sendable () -> String?
@@ -141,6 +172,29 @@ public struct GameCenterIdentity: Sendable {
         }
         guard let bundle = bundleID(), !bundle.isEmpty else { throw GameCenterFailure.malformed }
         return try GameCenterToken.encode(signature, teamPlayerID: await port.teamPlayerID(), bundleID: bundle)
+    }
+
+    /// The raw parts of a token for the signed-in local player (a host that encodes the token itself),
+    /// or a `GameCenterFailure`. The same checks as [token]; the length limit is the encoder's.
+    public func fields() async throws -> GameCenterFields {
+        guard await port.isAuthenticated() else { throw GameCenterFailure.notAuthenticated }
+        guard await port.scopedIDsArePersistent() else { throw GameCenterFailure.idsNotPersistent }
+        let signature: GameCenterSignature
+        do {
+            signature = try await port.identityVerification()
+        } catch {
+            if error is CancellationError { throw error }
+            throw GameCenterFailure.verificationFailed
+        }
+        guard let bundle = bundleID(), !bundle.isEmpty else { throw GameCenterFailure.malformed }
+        let team = await port.teamPlayerID()
+        let key = signature.publicKeyURL.absoluteString
+        guard !key.isEmpty, !signature.signature.isEmpty, !signature.salt.isEmpty, !team.isEmpty else {
+            throw GameCenterFailure.malformed
+        }
+        return GameCenterFields(
+            publicKeyURL: key, signature: signature.signature, salt: signature.salt, timestamp: signature.timestamp,
+            teamPlayerID: team, bundleID: bundle)
     }
 }
 
@@ -177,7 +231,7 @@ public struct GameKitPlayer: GameCenterPlayerPort {
 }
 
 #if canImport(GameKit)
-    /// Sets `authenticateHandler` once and waits for its first answer. The handler may be given a
+    /// Sets `authenticateHandler` once (and only when none is set) and waits for its first answer. The handler may be given a
     /// view controller to present; it is dropped on the floor (a launch never shows Game Center).
     @MainActor
     final class GameCenterAuthentication {
@@ -190,6 +244,12 @@ public struct GameKitPlayer: GameCenterPlayerPort {
             if GKLocalPlayer.local.isAuthenticated { return true }
             // The handler already ran and the player is still out: it will not run again.
             if installed && !pending { return false }
+            // A handler somebody else set (the game's own Game Center plugin) keeps its place: setting ours
+            // would replace theirs. Wait for it to sign the player in instead, up to the same bound.
+            // [U] whether the getter reports a handler set elsewhere: confirm on a device.
+            if !installed && GKLocalPlayer.local.authenticateHandler != nil {
+                return await waitForForeignHandler()
+            }
             return await withCheckedContinuation { continuation in
                 waiting.append(continuation)
                 // GameKit may never call back (no capability, no network): the rung gives up.
@@ -203,6 +263,14 @@ public struct GameKitPlayer: GameCenterPlayerPort {
                     Task { @MainActor in GameCenterAuthentication.shared.answered() }
                 }
             }
+        }
+
+        private func waitForForeignHandler() async -> Bool {
+            for _ in 0..<40 {
+                if GKLocalPlayer.local.isAuthenticated { return true }
+                try? await Task.sleep(nanoseconds: 250_000_000)
+            }
+            return GKLocalPlayer.local.isAuthenticated
         }
 
         private func answered() {

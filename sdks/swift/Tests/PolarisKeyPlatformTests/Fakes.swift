@@ -297,11 +297,13 @@ func fakeServices(
     store: FakeStoreClient? = nil,
     keychain: FakeKeychain? = nil,
     packs: FakeAssetPackClient = FakeAssetPackClient(),
-    appAttest: any AppAttestClient = UnavailableAppAttestClient()
+    appAttest: any AppAttestClient = UnavailableAppAttestClient(),
+    appleSignIn: AppleSignIn? = nil
 ) -> PlatformServices {
     PlatformServices(
         availability: availability, distributor: distributor, bundleEvidence: { evidence },
-        appTransaction: appTransaction, store: store, keychain: keychain, assetPacks: packs, appAttest: appAttest)
+        appTransaction: appTransaction, store: store, keychain: keychain, assetPacks: packs, appAttest: appAttest,
+        appleSignIn: appleSignIn)
 }
 
 // ── App Attest ───────────────────────────────────────────────────────────────────────────────

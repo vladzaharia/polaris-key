@@ -1,0 +1,16 @@
+; The OPT-IN Game Center extension on macOS (I-48.6a): the desktop build of PolarisKeyGameCenter.
+; `EXTENSION=gamecenter native/macos/build_apple.sh --install PROJECT` copies this file and the universal
+; libpkey_gamecenter.dylib into res://addons/polaris_key/native/bin/, which is never committed
+; (.gitignore). Without them the Game Center rung answers `unavailable` (dependency), and the default
+; libpkey_apple.dylib links no GameKit.
+;
+; Same glue as iOS (sdks/godot/native/ios/pkey_apple.m, compiled with -DPKEY_GAMECENTER); only
+; macos.* entries here.
+[configuration]
+entry_symbol = "pkey_gamecenter_library_init"
+compatibility_minimum = "4.4"
+reloadable = false
+
+[libraries]
+macos.debug = "res://addons/polaris_key/native/bin/libpkey_gamecenter.dylib"
+macos.release = "res://addons/polaris_key/native/bin/libpkey_gamecenter.dylib"

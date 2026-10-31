@@ -36,6 +36,9 @@ const SETS := {
 
 
 func _initialize() -> void:
+	# The sign-in form draws the platform's own button on macOS, iOS and Android: pin the host's platform so
+	# the snapshots and PNGs read the same on every machine (a test that wants a platform sets its own).
+	PKeySignInDialog.default_platform = "linux"
 	var args := OS.get_cmdline_user_args()
 	var at := args.find("--pkey-test")
 	if at < 0:

@@ -55,8 +55,8 @@ done
 # The Godot binding (P6-10): per flavour the AAR, POM, sources jar and module metadata; the ONLY
 # im.plrs.key dependency, in the POM and in the module metadata, is polaris-key-platform-<same
 # flavour> at the same version (no :core, :license, :update, :packs or :sdk; never the other
-# flavour); Play Core arrives only through the platform POM. And the Godot export plugin adds, for a
-# play export, exactly the Play Core libraries the platform play POM names (android_export.gd's
+# flavour); Play Core arrives only through the platform POM (so does Credential Manager). And the Godot export plugin adds, for a
+# play export, exactly the Play Core and Credential Manager libraries the platform play POM names (android_export.gd's
 # PLAY_DEPENDENCIES), so the two lists cannot drift apart again.
 GODOT_EXPORT="$ROOT/../godot/addons/polaris_key/native/android_export.gd"
 if [ -d "$REPO/polaris-key-godot-play" ] || [ -d "$REPO/polaris-key-godot-direct" ]; then
@@ -88,9 +88,10 @@ if [ -d "$REPO/polaris-key-godot-play" ] || [ -d "$REPO/polaris-key-godot-direct
   done
   echo "── godot export plugin"
   play_pom="$REPO/polaris-key-platform-play/$VERSION/polaris-key-platform-play-$VERSION.pom"
-  want="$(sed '/<dependencies>/,$!d' "$play_pom" | tr -d ' \n' | grep -o '<groupId>com.google.android.play</groupId><artifactId>[^<]*</artifactId><version>[^<]*</version>' |
+  want="$(sed '/<dependencies>/,$!d' "$play_pom" | tr -d ' \n' | grep -oE '<groupId>(com.google.android.play|androidx.credentials|com.google.android.libraries.identity.googleid)</groupId><artifactId>[^<]*</artifactId><version>[^<]*</version>' |
     sed 's|<groupId>\([^<]*\)</groupId><artifactId>\([^<]*\)</artifactId><version>\([^<]*\)</version>|\1:\2:\3|' | sort | tr '\n' ' ' | sed 's/ $//')"
-  have="$(sed -n 's/^const PLAY_DEPENDENCIES := \[\(.*\)\]$/\1/p' "$GODOT_EXPORT" | tr ',' '\n' | tr -d ' "' | grep . | sort | tr '\n' ' ' | sed 's/ $//')"
+  # PLAY_DEPENDENCIES spans several lines: from its `[` to the closing `]`.
+  have="$(sed -n '/^const PLAY_DEPENDENCIES := \[/,/^\]/p' "$GODOT_EXPORT" | sed 's/^const PLAY_DEPENDENCIES := \[//' | tr ',' '\n' | tr -d ' \t"[]' | grep . | sort | tr '\n' ' ' | sed 's/ $//')"
   if [ -n "$want" ] && [ "$want" = "$have" ]; then
     ok "android_export.gd's PLAY_DEPENDENCIES match the platform play POM ($want)"
   else

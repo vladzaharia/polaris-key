@@ -376,12 +376,12 @@
       "gdlint:unused-argument": 1
     },
     "sdks/godot/addons/polaris_key/ui/sign_in/pkey_sign_in_dialog.gd": {
-      "gdlint:class-definitions-order": 2,
+      "gdlint:class-definitions-order": 3,
       "gdlint:function-argument-name": 1,
       "gdlint:unused-argument": 1
     },
     "sdks/godot/addons/polaris_key/ui/theme/pkey_kit_glyphs.gd": {
-      "gdlint:max-line-length": 8
+      "gdlint:max-line-length": 9
     },
     "sdks/godot/addons/polaris_key/ui/theme/pkey_ui_motion.gd": {
       "gdlint:class-definitions-order": 1
@@ -522,11 +522,17 @@
     "sdks/godot/tests/identity/test_account.gd": {
       "gdlint:max-line-length": 7
     },
+    "sdks/godot/tests/identity/test_auto_sign_in.gd": {
+      "gdlint:max-line-length": 1
+    },
     "sdks/godot/tests/identity/test_confirm.gd": {
       "gdlint:max-line-length": 4
     },
     "sdks/godot/tests/identity/test_flow.gd": {
       "gdlint:max-line-length": 4
+    },
+    "sdks/godot/tests/identity/test_gate_auto.gd": {
+      "gdlint:max-line-length": 8
     },
     "sdks/godot/tests/identity/test_redirect.gd": {
       "gdlint:class-definitions-order": 1,
@@ -744,7 +750,7 @@
     },
     "sdks/godot/tests/support/fake_android_native.gd": {
       "gdlint:class-definitions-order": 2,
-      "gdlint:max-line-length": 3,
+      "gdlint:max-line-length": 2,
       "gdlint:max-returns": 1
     },
     "sdks/godot/tests/support/fake_apple_native.gd": {
