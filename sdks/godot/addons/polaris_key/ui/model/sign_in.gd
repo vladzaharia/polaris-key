@@ -236,6 +236,20 @@ static func sign_in_view(ctx: RefCounted) -> Dictionary:
 
 
 ## The provider's identity is per developer: Apple always, Google unless it is shared across apps.
+## The confirm step's account line: the email when shared, else the exchange kind's wording, else none.
+static func _confirm_account_line(auto: Dictionary) -> Variant:
+	if View.truthy(auto.get("email")):
+		return "signin.auto.confirm.as"
+	match str(auto.get("kind", "")):
+		"gamecenter":
+			return "signin.auto.confirm.asGameCenter"
+		"pgs":
+			return "signin.auto.confirm.asPlayGames"
+		"apple":
+			return "signin.auto.confirm.asApple"
+	return null
+
+
 static func _per_developer(provider: String, reach: Variant) -> bool:
 	return provider == "Apple" or reach != "global"
 
@@ -260,7 +274,7 @@ static func _auto_step_view(ctx: RefCounted, auto: Dictionary, base_args: Dictio
 			var also := View.truthy(auto.get("alsoGets"))
 			copy = [
 				"signin.auto.confirm.title",
-				"signin.auto.confirm.as" if View.truthy(auto.get("email")) else "signin.auto.confirm.asApple",
+				_confirm_account_line(auto),
 				"signin.consent.license" if View.truthy(kind) else null,
 				"signin.consent.newLicense" if kind == "new" else null,
 				"signin.consent.licenseLine" if kind == "existing" else null,

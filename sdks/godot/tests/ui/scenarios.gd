@@ -429,6 +429,7 @@ func sign_in_step(kind: String) -> Control:
 			s.email = "ada@mail.io"
 		"confirm-apple":
 			s.provider = "Apple"
+			s.exchange_kind = "apple"
 		"confirm-license":
 			s.email = "ada@mail.io"
 			s.license_line = "new"
