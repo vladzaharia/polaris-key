@@ -175,9 +175,8 @@
       "note": "SignInOptions(licenseChoice: .app) sends license_choice=app (only when discovery lists the four choice routes; else the card chooses) and session.complete(callbackUrl:) then settles .chooseLicense(PendingSignIn); identity.choice.licenses/devices/complete/cancel(grant:) take the grant (complete with keep also sends the device's own bearer, which the Worker reads as held; every other choice sends none), store the device token on complete like a sign-in, and throw a typed ChoiceError (invalid_grant, license_choice_required and device_limit with a fresh view, not_found, rate_limited with retryAfterSeconds); UnsupportedError(product) when a route is not published. LicenseChoiceModel (PolarisKeyUICore, @Observable) drives the LicenseChoice screen's KitInputs from the SDK."
     },
     "identity.devicecode.choice": {
-      "status": "planned",
-      "wp": "UK-42",
-      "note": "UK-42.22 (SDK slice .9): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+      "status": "implemented",
+      "note": "signIn.start(SignInOptions(licenseChoice: .app, ...)) sends loginHint, nameHint, purpose and licenseChoice on the device start (the hints always; licenseChoice app only when discovery carries deviceChoice and the four choice routes); a poll status choose settles session.wait() as .chooseLicense(PendingSignIn), the redirect's outcome, which identity.choice completes. A choose that was not asked for is a sign-in-failed."
     },
     "identity.signin.hints": {
       "status": "implemented"

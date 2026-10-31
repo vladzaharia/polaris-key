@@ -10,7 +10,7 @@
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
 // @pkey-feature connect.relay
-// @pkey-feature identity.exchange sync.keyring sync.settings identity.restore identity.gamecenter
+// @pkey-feature identity.exchange sync.keyring sync.settings identity.restore identity.gamecenter identity.devicecode.choice
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -259,8 +259,15 @@ enum SwiftReplay {
         case "beginSignIn":
             let p: SignInSession
             do {
+                // UK-42.22: the recorded hints and licence choice ride the device start.
                 p = try await client.identity.signIn.start(
-                    SignInOptions(deviceName: step.args["deviceName"]?.stringValue))
+                    SignInOptions(
+                        deviceName: step.args["deviceName"]?.stringValue,
+                        loginHint: step.args["loginHint"]?.stringValue,
+                        nameHint: step.args["nameHint"]?.stringValue,
+                        purpose: step.args["purpose"]?.stringValue.flatMap(SignInPurpose.init),
+                        licenseChoice: step.args["licenseChoice"]?.stringValue.flatMap(
+                            LicenseChoiceMode.init)))
             } catch let e as PolarisError {
                 out["result"] = .string(e.code)
                 break
@@ -284,6 +291,7 @@ enum SwiftReplay {
                     out["interval"] = .int(interval)
                 case .ready: out["result"] = .string("ready")
                 case .confirm: out["result"] = .string("confirm")
+                case .choose: out["result"] = .string("choose")
                 case .expired: out["result"] = .string("expired")
                 case .error(_, let code):
                     out["result"] = .string("error")
@@ -1075,10 +1083,15 @@ enum SwiftReplay {
         let redirects =
             t.id != "cloudsync-cors"
             && t.steps.contains { ["browser", "redirectComplete"].contains($0.action) }
+        // identity.devicecode.choice rides the same product: License, Config and Identity.
+        let deviceChoice = t.steps.contains {
+            $0.action == "beginSignIn" && $0.args["licenseChoice"]?.stringValue == "app"
+        }
         let services =
             t.initial.services
             ?? (u != nil
-                ? ["release", "distribution", "update"] : (redirects ? ["license", "config", "identity"] : nil))
+                ? ["release", "distribution", "update"]
+                : (redirects || deviceChoice ? ["license", "config", "identity"] : nil))
         let tap = HeaderTap(ReplayTransport(server: server))
         let core = CoreOptions(
             productSlug: t.product, baseUrl: t.baseUrl,

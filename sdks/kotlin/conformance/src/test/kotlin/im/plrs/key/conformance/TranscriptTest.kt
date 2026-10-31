@@ -2,7 +2,7 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
-// @pkey-feature identity.devicecode identity.devicelabel identity.toggle config.mint
+// @pkey-feature identity.devicecode identity.devicecode.choice identity.devicelabel identity.toggle config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
@@ -709,7 +709,16 @@ object KotlinReplay {
 
             // D-6: the recorded action names map onto the session (`signIn.start`, `wait`).
             "beginSignIn" -> try {
-                val p = client.identity.signIn.start(SignInOptions(deviceName = args["deviceName"].stringValue))
+                // UK-42.22: the recorded hints and licence choice ride the device start.
+                val p = client.identity.signIn.start(
+                    SignInOptions(
+                        deviceName = args["deviceName"].stringValue,
+                        loginHint = args["loginHint"].stringValue,
+                        nameHint = args["nameHint"].stringValue,
+                        purpose = SignInPurpose.entries.firstOrNull { it.wire == args["purpose"].stringValue },
+                        licenseChoice = args["licenseChoice"].stringValue,
+                    ),
+                )
                 session.prompt = p
                 out["prompt"] = JsonObject(
                     mapOf(
@@ -1101,7 +1110,9 @@ object KotlinReplay {
             store.writeCache(CacheRecord(feeds = strings("feeds"), releaseRecords = strings("releaseRecords")))
         }
         // The redirect conversations ride a product that runs Identity (their discovery names it).
-        val redirects = t.id != "cloudsync-cors" && t.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }
+        val redirects = (t.id != "cloudsync-cors" && t.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }) ||
+            // identity.devicecode.choice rides the same product: License, Config and Identity.
+            t.steps.any { it["action"].stringValue == "beginSignIn" && it["args"].objectValue?.get("licenseChoice").stringValue == "app" }
         val services = (
             t.initial["services"]?.arrayValue?.map { it.stringValue!! }
                 ?: if (u != null) {

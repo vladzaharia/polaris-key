@@ -1,4 +1,4 @@
-// @pkey-feature identity.devicecode identity.toggle
+// @pkey-feature identity.devicecode identity.toggle identity.devicecode.choice
 //
 // I-10b.10: `identity.signIn.start()` and the `SignInSession` it returns: the code fields, the
 // settled outcomes (`signedIn`, `expired`, `cancelled`), the typed refusal, the `identity` event.
@@ -131,5 +131,78 @@ final class SignInSessionTests: XCTestCase {
             }
         }
         XCTAssertEqual(seen, .identity(kind: "signedIn", subject: "acct_1", previous: nil))
+    }
+    // ── UK-42.22: the device-code licence choice (§12.10) ────────────────────────────────
+
+    private func discovery(deviceChoice: Bool, routes: Bool = true) async {
+        let api = "https://key.example/djdl"
+        let r =
+            routes
+            ? #","choiceLicenses":"\#(api)/identity/choice/licenses","choiceDevices":"\#(api)/identity/choice/devices","choiceComplete":"\#(api)/identity/choice/complete","choiceCancel":"\#(api)/identity/choice/cancel""#
+            : ""
+        let member = deviceChoice ? #","deviceChoice":true"# : ""
+        await server.reply(
+            "/djdl/.well-known/polaris.json",
+            body:
+                #"{"product":"djdl","services":{"identity":{"enabled":true,"configured":true,"issuer":"\#(api)/identity"\#(member),"endpoints":{"authorize":"\#(api)/identity/authorize","token":"\#(api)/identity/token"\#(r)}}}}"#
+        )
+    }
+
+    private let chooseBody =
+        #"{"status":"choose","grant":"sg_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","expiresIn":300,"choices":{"state":"choose","choices":[],"keep":true,"preselected":null,"create":null,"getLicense":null}}"#
+
+    private func startBody() async throws -> [String: JSONValue] {
+        let sent = await server.requests(forPath: "/djdl/identity/auth/device/start").first
+        let data = try XCTUnwrap(sent?.body)
+        return try XCTUnwrap(try JSONDecoder().decode(JSONValue.self, from: data).objectValue)
+    }
+
+    func testTheGatePassingSendsTheFourMembersAndAChoosePollSettlesTheLicenceChoice() async throws {
+        await discovery(deviceChoice: true)
+        await startFlow()
+        await server.reply("/djdl/identity/auth/device/poll", body: chooseBody)
+        let c = try await client()
+        let session = try await c.identity.signIn.start(
+            SignInOptions(
+                loginHint: "ada@example.com", nameHint: "Ada", purpose: .attach, licenseChoice: .app))
+        let sent = try await startBody()
+        XCTAssertEqual(sent["licenseChoice"]?.stringValue, "app")
+        XCTAssertEqual(sent["purpose"]?.stringValue, "attach")
+        XCTAssertEqual(sent["loginHint"]?.stringValue, "ada@example.com")
+        XCTAssertEqual(sent["nameHint"]?.stringValue, "Ada")
+        guard case .chooseLicense(let pending) = try await session.wait() else {
+            return XCTFail("expected the licence choice")
+        }
+        XCTAssertEqual(pending.expiresIn, 300)
+        XCTAssertEqual(session.outcome.kind, "chooseLicense")
+        let token = await c.core.token
+        XCTAssertNil(token, "nothing is bound before the choice completes")
+    }
+
+    func testWithoutTheDiscoveryGateTheStartSendsNoLicenceChoice() async throws {
+        for (gate, routes) in [(false, true), (true, false)] {
+            server = StubServer()
+            await discovery(deviceChoice: gate, routes: routes)
+            await startFlow()
+            let c = try await client()
+            _ = try await c.identity.signIn.start(
+                SignInOptions(purpose: .signin, licenseChoice: .app))
+            let sent = try await startBody()
+            XCTAssertNil(sent["licenseChoice"], "gate \(gate) routes \(routes)")
+            XCTAssertEqual(sent["purpose"]?.stringValue, "signin", "the hints always ride")
+        }
+    }
+
+    func testAChoosePollThatWasNotAskedForIsAnError() async throws {
+        await startFlow()
+        await server.reply("/djdl/identity/auth/device/poll", body: chooseBody)
+        let c = try await client()
+        let session = try await c.identity.signIn.start()
+        do {
+            _ = try await session.wait()
+            XCTFail("expected sign-in-failed")
+        } catch let e as SignInError {
+            XCTAssertEqual(e.code, ErrorCode.signInFailed)
+        }
     }
 }
