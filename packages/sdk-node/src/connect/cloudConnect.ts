@@ -27,7 +27,8 @@ import {
   UnsupportedError,
   type DeviceKeyPort,
 } from "@polaris-key/client-core";
-import { stopWithin } from "@polaris-key/client-core/peer";
+import { stopWithin, type Ring } from "@polaris-key/client-core/peer";
+import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import type { IdentityFragment } from "../discovery.js";
 import { serialQueue, type ConnectNotice } from "./channel.js";
@@ -296,6 +297,25 @@ export class CloudConnect {
     nearby: NearbyDeps | null = null,
   ) {
     this.#nearby = new CloudNearby(nearby);
+    // A roster this device stores re-admits every open session (§15.6).
+    connect.onRoster((ring) => this.#readmit(ring));
+  }
+
+  /**
+   * Admit each open session again against a roster this device has just stored: a peer the roster
+   * no longer lists with the key the session was admitted under is closed `peer_revoked`. A
+   * roster that only adds devices keeps every session.
+   */
+  #readmit(ring: Ring): void {
+    for (const s of [...this.#sessions]) {
+      const key =
+        s.peerStatic === null ? null : base64UrlEncodeBytes(s.peerStatic);
+      const listed = ring.devices.some(
+        (d) =>
+          d.deviceId === s.peerDeviceId && (key === null || d.agreeKey === key),
+      );
+      if (!listed) void s.close("peer_revoked").catch(() => undefined);
+    }
   }
 
   /** Nearby approval (CC-15): `request()` on the new device, `onRequest()` on the approver. */

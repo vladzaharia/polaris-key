@@ -458,6 +458,10 @@ export class PolarisKeyClient {
     this.update.packs.on((p) => this.events.safeEmit("packs", p));
     this.update.onUpdateAvailable = (check) =>
       this.events.safeEmit("updateAvailable", check);
+    this.license.beforeRelease = async () => {
+      await this.cloudConnect.stopForSignOut();
+      await this.connect.leave();
+    };
     this.license.onDeactivated = async () => {
       await this.keyring.forget();
       await this.identity.forget();

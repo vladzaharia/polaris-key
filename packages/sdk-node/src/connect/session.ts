@@ -234,8 +234,13 @@ export class ConnectSession {
     return () => this.#onClose.delete(fn);
   }
 
+  /** The peer's Noise static key (its `agreeKey` in mode a). @internal */
+  peerStatic: Uint8Array | null = null;
+
   /** Close with `peer_bye` (or another code); resolves when the socket is down. */
-  async close(code: "peer_bye" | "peer_busy" = "peer_bye"): Promise<void> {
+  async close(
+    code: "peer_bye" | "peer_busy" | "peer_revoked" = "peer_bye",
+  ): Promise<void> {
     await this.#link.channel.close(code);
   }
 
@@ -400,6 +405,7 @@ export class SocketLink {
           this.#o.channel.role,
           this.#o.socket.remoteAddress ?? "",
         );
+        this.#session.peerStatic = e.remoteStatic;
         this.#o.onEstablished?.(this.#session);
         this.#settle.resolve(this.#session);
         break;
