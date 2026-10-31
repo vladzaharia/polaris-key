@@ -76,6 +76,18 @@ export interface HostCodec {
   ) => Promise<string>;
 }
 
+/**
+ * The record id as it goes on the wire: `blind("record", collection, id)` in end-to-end mode
+ * (`codec` given), the id itself in server mode (`codec` null). The file routes name a record by
+ * this id before any push has sealed it (U-22.5).
+ */
+export const wireId = (
+  codec: Pick<HostCodec, "blind"> | null,
+  collection: string,
+  id: string,
+): Promise<string> =>
+  codec === null ? Promise.resolve(id) : codec.blind("record", collection, id);
+
 /** What `openPull` may be told besides the body. Each member only narrows or completes. */
 export interface OpenPullContext {
   /** The plaintext mutations of the request this answer belongs to. A conflict's server copy

@@ -204,7 +204,8 @@ export class NodeFileTransport implements FileTransport {
       method,
       headers,
       redirect: "manual",
-      ...(body !== undefined ? { body } : {}),
+      // A Uint8Array is a valid body in every runtime; the DOM lib types it more narrowly.
+      ...(body !== undefined ? { body: body as RequestInit["body"] } : {}),
       ...(signals.length > 0 ? { signal: AbortSignal.any(signals) } : {}),
     };
     let res: Response;

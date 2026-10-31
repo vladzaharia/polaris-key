@@ -81,6 +81,10 @@ export interface SaveRecords {
     id: string,
     value: { [k: string]: Json },
     baseVersion: number | "*",
+    /** Fires when the caller cancels the write: stop waiting and reject with an `aborted`
+     *  `TransferError`. A pause does not fire it. There is no timeout: cancel, a sign-out drop and
+     *  the host's retries are what end a wait. */
+    cancel?: AbortSignal,
   ): Promise<SaveSetResult>;
   delete(id: string, baseVersion: number): Promise<SaveSetResult>;
 }
@@ -519,6 +523,7 @@ export class SavesClient {
     opts: WriteOptions,
     mode: { baseVersion: number | "*" } | { copy: true } | null,
   ): SaveTransfer {
+    const hard = new AbortController();
     const source = "read" in bytes ? bytes : rangedBytes(bytes);
     const transferId = (this.d.newTransferId ?? ((s) => `saves:${s}`))(id);
     let sealed: Promise<SealedFile> | null = null;
@@ -600,7 +605,12 @@ export class SavesClient {
             }
           : {}),
       };
-      const set = await this.d.records.set(targetId, value, file.version);
+      const set = await this.d.records.set(
+        targetId,
+        value,
+        file.version,
+        hard.signal,
+      );
       if (set.ok)
         return {
           state: "done",
@@ -623,8 +633,12 @@ export class SavesClient {
       };
     };
 
-    return new WriteTransfer(transferId, progress, attempt, () =>
-      this.d.engine.cancel(transferId),
+    return new WriteTransfer(
+      transferId,
+      progress,
+      attempt,
+      () => this.d.engine.cancel(transferId),
+      () => hard.abort(),
     );
   }
 
@@ -729,6 +743,7 @@ class WriteTransfer implements SaveTransfer {
     readonly progress: { done: number; total: number },
     private readonly attempt: (signal: AbortSignal) => Promise<SaveOutcome>,
     private readonly release: () => Promise<void>,
+    private readonly onCancel: () => void = () => undefined,
   ) {
     this.done = this.drive();
   }
@@ -748,6 +763,7 @@ class WriteTransfer implements SaveTransfer {
   async cancel(): Promise<void> {
     if (this.state === "done" || this.state === "failed") return;
     this.wanted = "cancel";
+    this.onCancel();
     this.controller.abort();
     this.gate?.();
     await this.done;
