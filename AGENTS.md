@@ -154,6 +154,7 @@ every SDK's conformance runner; detail: `conformance/README.md`.
 - `corpus`: Signed conformance corpus (v2) and its one Godot mirror
 - `ui-matrix`: UI-kit state matrix (the corpus's ui-matrix.json)
 - `services`: Service table in every language
+- `godot-nfc`: Godot NFC tables (UCD 16.0) and the expected-output fixture
 - `channels`: Distribution-channel catalogue
 - `roles-matrix`: Roles matrix: the docs page and the console's Roles tab data
 - `skills`: Agent-kit skill references (manifest validation codes)

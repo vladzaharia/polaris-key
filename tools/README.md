@@ -66,6 +66,7 @@ Generator families that read or write files here (a family regenerates with `pnp
 | `corpus`         | reads            | `pnpm gen corpus`                   |
 | `ui-matrix`      | reads            | runs with `corpus`                  |
 | `services`       | reads            | `pnpm gen services`                 |
+| `godot-nfc`      | reads            | `pnpm gen godot-nfc`                |
 | `channels`       | reads            | `pnpm gen channels`                 |
 | `roles-matrix`   | reads            | `pnpm gen roles-matrix`             |
 | `skills`         | reads            | `pnpm gen skills`                   |
