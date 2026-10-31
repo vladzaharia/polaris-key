@@ -96,6 +96,10 @@ const OLD_CORS_SERVICE_PATHS = [
   "sync/files/{collection}/{id}/begin",
   "sync/files/{collection}/{id}/upload/{uploadId}",
   "sync/files/{collection}/{id}/upload/{uploadId}/parts/{n}",
+  // U-37: the plan call, a chunk's PUT and the read of a chunk (the same bearer).
+  "sync/files/{collection}/{id}/upload/{uploadId}/chunks",
+  "sync/files/{collection}/{id}/upload/{uploadId}/chunks/{chunkId}",
+  "sync/files/{collection}/chunks/{chunkId}",
   "sync/files/{collection}/{id}/finalize",
   // U-10.8: the stored file and its kept versions, read with the same bearer.
   "sync/files/{collection}/{id}",

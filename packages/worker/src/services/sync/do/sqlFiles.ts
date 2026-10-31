@@ -261,6 +261,7 @@ export class FileTables {
 
   removeUpload(uploadId: string): void {
     this.q.run(`DELETE FROM upload_parts WHERE upload_id = ?`, uploadId);
+    this.q.run(`DELETE FROM upload_chunks WHERE upload_id = ?`, uploadId);
     this.q.run(`DELETE FROM uploads WHERE upload_id = ?`, uploadId);
   }
 

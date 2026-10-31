@@ -70,6 +70,7 @@ import { CHOICE_SCENARIOS } from "./choice.js";
 import { CLOUD_SYNC_SCENARIOS } from "./cloudSync.js";
 import { CLOUD_SYNC_RECORDS_SCENARIOS } from "./cloudSyncRecords.js";
 import { CLOUD_SYNC_FILES_SCENARIOS } from "./cloudSyncFiles.js";
+import { CLOUD_SYNC_CHUNKS_SCENARIOS } from "./cloudSyncChunks.js";
 import { CONNECT_SCENARIOS } from "./connect.js";
 import { KEYRING_SCENARIOS } from "./keyring.js";
 import { LOCKER_SCENARIOS } from "./locker.js";
@@ -130,6 +131,7 @@ export const SCENARIOS: Scenario[] = [
   ...CLOUD_SYNC_SCENARIOS,
   ...CLOUD_SYNC_RECORDS_SCENARIOS,
   ...CLOUD_SYNC_FILES_SCENARIOS,
+  ...CLOUD_SYNC_CHUNKS_SCENARIOS,
   ...KEYRING_SCENARIOS,
   ...CONNECT_SCENARIOS,
   ...HOLDERS_SCENARIOS,

@@ -10,6 +10,7 @@
  */
 
 import type { SyncFilePointer } from "@polaris-key/protocol/sync";
+import { unrefFileChunks } from "./chunks.js";
 import type { StoredFile, SyncStore } from "./types.js";
 import { fileUsage } from "./usage.js";
 
@@ -59,6 +60,9 @@ export function killFile(store: SyncStore, f: StoredFile): void {
   if (f.status === "live")
     moveFileUsage(store, { files: -1, fileBytes: -f.size });
   else moveFileUsage(store, { revisionBytes: -f.size });
+  // A delta file's manifest is all `size` counts: its chunks are released one reference each, and
+  // a chunk no file names any more gives its bytes back (U-37, §13.8.2).
+  if (f.format === "chunks") unrefFileChunks(store, f);
 }
 
 /**

@@ -255,7 +255,7 @@ describe("SqlStore: schema v3", () => {
     expect(store.schemaVersion()).toBe(2);
     store.prepare(false);
     expect(store.schemaVersion()).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(4);
+    expect(SCHEMA_VERSION).toBe(5);
     expect(store.getSetting("k", "user")?.value).toBe(5);
     const names = (
       storage.sql.db
@@ -265,7 +265,9 @@ describe("SqlStore: schema v3", () => {
         .all() as { name: string }[]
     ).map((r) => r.name);
     expect(names).toEqual([
+      "chunks",
       "clients",
+      "file_chunks",
       "files",
       "meta",
       "parked_records",
@@ -276,6 +278,7 @@ describe("SqlStore: schema v3", () => {
       "settings",
       "ssec_keys",
       "tombstones",
+      "upload_chunks",
       "upload_parts",
       "uploads",
     ]);
@@ -291,10 +294,10 @@ describe("SqlStore: schema v3", () => {
     expect(store.getRecord("saves", "s")?.version).toBe(2);
   });
 
-  it("a v5 store is refused, never rewritten", () => {
+  it("a v6 store is refused, never rewritten", () => {
     const store = new SqlTestStore();
-    store.setMeta("schema_version", "5");
+    store.setMeta("schema_version", "6");
     expect(() => store.prepare(true)).toThrow(/newer/);
-    expect(store.getMeta("schema_version")).toBe("5");
+    expect(store.getMeta("schema_version")).toBe("6");
   });
 });

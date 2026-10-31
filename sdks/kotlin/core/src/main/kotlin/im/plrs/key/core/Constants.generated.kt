@@ -1709,6 +1709,9 @@ public const val SYNC_CHUNK_FORMAT: String = "pkey-sync-chunk/1"
 /** Cloud Sync: `SYNC_CHUNK_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.8.3, `@polaris-key/protocol/sync`). */
 public const val SYNC_CHUNK_ID_PATTERN: String = "^[0-9a-f]{64}\$"
 
+/** Cloud Sync: `SYNC_CHUNK_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.3 (U-37), `@polaris-key/protocol/sync`). */
+public const val SYNC_CHUNK_MAX_STORED_BYTES: Int = 1048606
+
 /** Cloud Sync: `SYNC_CHUNK_PLAN_MAX_IDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
 public const val SYNC_CHUNK_PLAN_MAX_IDS: Int = 1024
 
@@ -1762,6 +1765,9 @@ public const val SYNC_KID_PATTERN: String = "^[0-9a-f]{32}\$"
 
 /** Cloud Sync: `SYNC_MANIFEST_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
 public const val SYNC_MANIFEST_FORMAT: String = "pkey-sync-chunks/1"
+
+/** Cloud Sync: `SYNC_MANIFEST_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.1 (U-37), `@polaris-key/protocol/sync`). */
+public const val SYNC_MANIFEST_MAX_STORED_BYTES: Int = 786576
 
 /** Cloud Sync: `SYNC_MAX_CHUNKS_PER_FILE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
 public const val SYNC_MAX_CHUNKS_PER_FILE: Int = 16384

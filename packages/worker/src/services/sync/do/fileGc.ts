@@ -33,6 +33,8 @@ import type { DoPin } from "./protocol.js";
 export const GC_UPLOAD_BATCH = 50;
 /** Dead files collected per alarm (one R2 `delete` call). */
 export const GC_DEAD_BATCH = 100;
+/** Unreferenced, unpinned chunks collected per alarm (one R2 `delete` call). */
+export const GC_CHUNK_BATCH = 100;
 /** The wait after an alarm that could not finish (R2 failed), ms. */
 export const GC_RETRY_MS = 60_000;
 /** The wait when there is work and no file store is bound, ms. */
@@ -124,7 +126,12 @@ export async function collectFileGarbage(
     const store = host.store;
     const expired = store.expiredUploads(nowMs, GC_UPLOAD_BATCH);
     const dead = store.filesWithStatus("dead", GC_DEAD_BATCH);
-    if (expired.length === 0 && dead.length === 0) return {};
+    if (
+      expired.length === 0 &&
+      dead.length === 0 &&
+      !hasCollectableChunks(store)
+    )
+      return {};
     if (!host.bucket) return { retryAt: nowMs + GC_NO_STORE_RETRY_MS };
     let failed = false;
 
@@ -157,9 +164,49 @@ export async function collectFileGarbage(
         failed = true;
       }
     }
+
+    // Chunks no file references and no open upload pins (D-7). Taken after the expired sessions
+    // above, whose pins they may have been. An object another row still names stays.
+    if (!(await collectChunks(host, host.bucket))) failed = true;
     return failed ? { retryAt: nowMs + GC_RETRY_MS } : {};
   } catch {
     return { retryAt: nowMs + GC_RETRY_MS };
+  }
+}
+
+/** Whether the collector has a chunk to delete. */
+export const hasCollectableChunks = (store: FileHost["store"]): boolean =>
+  store.collectableChunks(1).length > 0;
+
+/**
+ * Deletes one batch of collectable chunks: the objects first, then the rows, in one go with no
+ * interleaving request (the alarm holds the object's concurrency). A row whose object could not be
+ * deleted stays, and the alarm tries again. The rows are re-read before they go, so a chunk that
+ * gained a reference or a pin meanwhile is kept.
+ */
+async function collectChunks(
+  host: FileHost,
+  bucket: R2Bucket,
+): Promise<boolean> {
+  const store = host.store;
+  const batch = store.collectableChunks(GC_CHUNK_BATCH);
+  if (batch.length === 0) return true;
+  try {
+    await deleteKeys(bucket, [...new Set(batch.map((c) => c.objectKey))]);
+    store.transaction(() => {
+      for (const c of batch) {
+        const now = store.getChunk(c.collection, c.chunkId);
+        if (
+          now &&
+          now.refs === 0 &&
+          !store.chunkPinned(c.collection, c.chunkId)
+        )
+          store.deleteChunk(c.collection, c.chunkId);
+      }
+    });
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -170,6 +217,7 @@ function hasFileActivity(host: FileHost): boolean {
     s.getMeta(FILES_USED) !== undefined ||
     s.getMeta(ABSORBED_FROM) !== undefined ||
     s.allFiles().length > 0 ||
+    s.allChunks().length > 0 ||
     s.allUploads().length > 0
   );
 }
@@ -196,6 +244,7 @@ export async function eraseFileObjects(
     });
     const keys = new Set<string>();
     for (const f of host.store.allFiles()) keys.add(f.objectKey);
+    for (const c of host.store.allChunks()) keys.add(c.objectKey);
     for (const u of host.store.allUploads()) {
       const key = fileObjectKey(pin, u.uploadId);
       if (inFlight(u)) await abortMultipart(bucket, key, u);
@@ -223,7 +272,10 @@ export async function releaseForMerge(
   const store = host.store;
   const uploads = store.allUploads().filter(inFlight);
   const dead = store.filesWithStatus("dead", Number.MAX_SAFE_INTEGER);
-  if (uploads.length === 0 && dead.length === 0) return true;
+  // A chunk some file references moves to the survivor with that file; the rest does not.
+  const loose = store.allChunks().filter((c) => c.refs === 0);
+  if (uploads.length === 0 && dead.length === 0 && loose.length === 0)
+    return true;
   const bucket = host.bucket;
   if (!bucket) return false;
   try {
@@ -235,6 +287,7 @@ export async function releaseForMerge(
     }
     for (const f of dead)
       if (!store.fileKeyInUse(f.objectKey)) keys.push(f.objectKey);
+    for (const c of loose) keys.push(c.objectKey);
     await deleteKeys(bucket, keys);
     return true;
   } catch {

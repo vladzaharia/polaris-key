@@ -66,6 +66,7 @@ import {
   wrapRoot,
   sealValue,
   webCryptoSyncPort as port,
+  zstdContentSize,
   type BlindKind,
   type SyncCryptoPort,
   canonicalJson,
@@ -297,6 +298,13 @@ type ChunkRow =
       idHex: string;
       objectHex: string;
       seal?: { codec: number; bodyHex: string };
+      expect: Verdict<{ plainHex: string; codec: number }>;
+    }
+  | {
+      kind: "server-object";
+      id: string;
+      idHex: string;
+      objectHex: string;
       expect: Verdict<{ plainHex: string; codec: number }>;
     }
   | {
@@ -751,10 +759,48 @@ describe("sync-vectors.json: cdcCases", () => {
   }
 });
 
+// U-37.0: the server-mode chunk object (§13.8.3, `0x00 ‖ codec ‖ body`, the id the plain SHA-256).
+// No client-core reader exists on this branch yet (U-22.2's `serverFileCodec` is the SDK side), so
+// the runner reads the object by the written order of checks: this is the table's own proof.
+const SERVER_CHUNK_MAX_STORED = 1_048_606;
+const SERVER_CHUNK_MAX_PLAIN = 1_048_576;
+async function openServerChunk(
+  id: Uint8Array,
+  object: Uint8Array,
+): Promise<
+  { ok: true; plain: Uint8Array; codec: number } | { ok: false; reason: string }
+> {
+  if (object.length < 2) return { ok: false, reason: "shape" };
+  if (object.length > SERVER_CHUNK_MAX_STORED)
+    return { ok: false, reason: "size" };
+  if (object[0] !== 0) return { ok: false, reason: "version" };
+  const codec = object[1]!;
+  if (codec !== 0 && codec !== 1) return { ok: false, reason: "codec" };
+  const body = object.subarray(2);
+  let plain = body;
+  if (codec === 1) {
+    const size = zstdContentSize(body);
+    if (size === null) return { ok: false, reason: "decode" };
+    if (size > SERVER_CHUNK_MAX_PLAIN) return { ok: false, reason: "size" };
+    try {
+      plain = await zstdDecode(body, size);
+    } catch {
+      return { ok: false, reason: "decode" };
+    }
+    if (plain.length !== size) return { ok: false, reason: "decode" };
+  }
+  if (plain.length > SERVER_CHUNK_MAX_PLAIN)
+    return { ok: false, reason: "size" };
+  if (hex(await port.sha256(plain)) !== hex(id))
+    return { ok: false, reason: "id" };
+  return { ok: true, plain, codec };
+}
+
 describe("sync-vectors.json: chunkCases", () => {
   for (const c of vectors.chunkCases) {
     it(c.id, async () => {
-      const root = unhex(c.rootHex);
+      const root =
+        c.kind === "server-object" ? new Uint8Array(0) : unhex(c.rootHex);
       if (c.kind === "id") {
         const plain = unhex(c.plainHex);
         expect(await chunkIdHex(port, root, c.collection, plain)).toBe(
@@ -789,14 +835,17 @@ describe("sync-vectors.json: chunkCases", () => {
         }
         return;
       }
-      const opened = await openChunk(
-        port,
-        root,
-        c.collection,
-        unhex(c.idHex),
-        unhex(c.objectHex),
-        zstdDecode,
-      );
+      const opened =
+        c.kind === "server-object"
+          ? await openServerChunk(unhex(c.idHex), unhex(c.objectHex))
+          : await openChunk(
+              port,
+              root,
+              c.collection,
+              unhex(c.idHex),
+              unhex(c.objectHex),
+              zstdDecode,
+            );
       if (c.expect.result === "ok") {
         expect(opened.ok).toBe(true);
         if (opened.ok) {
@@ -806,7 +855,7 @@ describe("sync-vectors.json: chunkCases", () => {
       } else {
         expect(opened).toEqual({ ok: false, reason: c.expect.reason });
       }
-      if (c.seal !== undefined) {
+      if (c.kind === "object" && c.seal !== undefined) {
         const object = await sealChunk(
           port,
           root,

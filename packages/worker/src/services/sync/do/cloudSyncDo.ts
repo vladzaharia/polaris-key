@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
+import { SYNC_CHUNK_PLAN_MAX_IDS } from "@polaris-key/protocol/sync";
 import { D1Db } from "../../../db/d1.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -19,11 +20,13 @@ import type {
   CloudSyncOp,
   CloudSyncReply,
   ExportDocument,
+  ExportedChunk,
   ExportedFile,
   ExportedRecord,
   WireMigrations,
 } from "./protocol.js";
 import {
+  chunkImportOf,
   parseExportDocument,
   parsePolicies,
   parseRecordPolicies,
@@ -38,7 +41,11 @@ import {
 } from "./directory.js";
 import {
   fileAbort,
+  chunkPrepare,
+  chunkResolve,
+  chunkStored,
   fileBegin,
+  fileChunkPlan,
   fileFinalizeCommit,
   fileFinalizeEnd,
   fileFinalizePrepare,
@@ -53,6 +60,7 @@ import {
   absorbedFrom,
   collectFileGarbage,
   eraseFileObjects,
+  hasCollectableChunks,
   noteAbsorbed,
   releaseForMerge,
 } from "./fileGc.js";
@@ -309,6 +317,7 @@ export class CloudSyncDO implements DurableObject {
   private gcDueAt(nowMs: number, retryAt?: number): number | null {
     if (retryAt !== undefined) return retryAt;
     if (this.store.filesWithStatus("dead", 1).length > 0) return nowMs;
+    if (hasCollectableChunks(this.store)) return nowMs;
     const expiry = this.store.nextUploadExpiry();
     return expiry === undefined ? null : Math.max(nowMs, expiry);
   }
@@ -354,6 +363,8 @@ export class CloudSyncDO implements DurableObject {
         op.op === "absorb" ||
         op.op === "fileBegin" ||
         op.op === "filePart" ||
+        op.op === "fileChunkPlan" ||
+        op.op === "chunkStored" ||
         op.op === "fileFinalizePrepare" ||
         op.op === "fileFinalizeCommit")
     )
@@ -365,6 +376,9 @@ export class CloudSyncDO implements DurableObject {
       case "pull":
         return this.pull(op);
       case "fileBegin":
+      case "fileChunkPlan":
+      case "chunkPrepare":
+      case "chunkStored":
       case "fileStatus":
       case "fileAbort":
       case "filePrepare":
@@ -373,6 +387,12 @@ export class CloudSyncDO implements DurableObject {
       case "fileFinalizeCommit":
       case "fileFinalizeEnd":
         return this.fileOp(op);
+      case "chunkResolve": {
+        if (!isName(op.collection) || !/^[0-9a-f]{64}$/.test(op.chunkId))
+          return reply({ error: "bad_request" }, 400);
+        const out = chunkResolve(this.fileHost(), op);
+        return reply(out.body, out.status);
+      }
       case "fileResolve":
       case "fileRevisions": {
         if (
@@ -427,6 +447,9 @@ export class CloudSyncDO implements DurableObject {
       {
         op:
           | "fileBegin"
+          | "fileChunkPlan"
+          | "chunkPrepare"
+          | "chunkStored"
           | "fileStatus"
           | "fileAbort"
           | "filePrepare"
@@ -454,7 +477,11 @@ export class CloudSyncDO implements DurableObject {
         !Number.isSafeInteger(r.size) ||
         r.size < 0 ||
         typeof r.sha256 !== "string" ||
-        !(op.mode === "single" || op.mode === "multipart") ||
+        !(
+          op.mode === "single" ||
+          op.mode === "multipart" ||
+          op.mode === "chunks"
+        ) ||
         !isFileLimits(op.limits) ||
         typeof op.maxRecords !== "number"
       )
@@ -462,6 +489,40 @@ export class CloudSyncDO implements DurableObject {
       const out = await fileBegin(host, op);
       // The new session expires in 24 hours: the alarm owes a date for it.
       if (out.status === 200) await this.scheduleAlarm();
+      return reply(out.body, out.status);
+    }
+    if (op.op === "fileChunkPlan") {
+      if (
+        !Array.isArray(op.chunks) ||
+        op.chunks.length < 1 ||
+        op.chunks.length > SYNC_CHUNK_PLAN_MAX_IDS ||
+        !op.chunks.every(
+          (c) =>
+            Array.isArray(c) &&
+            c.length === 2 &&
+            typeof c[0] === "string" &&
+            typeof c[1] === "number",
+        ) ||
+        typeof op.maxBytes !== "number" ||
+        !isFileLimits(op.limits)
+      )
+        return reply({ error: "bad_request" }, 400);
+      const out = await fileChunkPlan(host, op);
+      return reply(out.body, out.status);
+    }
+    if (op.op === "chunkPrepare" || op.op === "chunkStored") {
+      if (
+        !/^[0-9a-f]{64}$/.test(op.chunkId) ||
+        (op.op === "chunkStored" &&
+          !(Number.isSafeInteger(op.bytes) && op.bytes > 0))
+      )
+        return reply({ error: "bad_request" }, 400);
+      const out =
+        op.op === "chunkPrepare"
+          ? await chunkPrepare(host, op)
+          : chunkStored(host, op);
+      // A chunk stored for a session that closed has no pin: the alarm owes its collection.
+      if (op.op === "chunkStored") await this.scheduleAlarm();
       return reply(out.body, out.status);
     }
     if (op.op === "filePart") {
@@ -726,6 +787,7 @@ export class CloudSyncDO implements DurableObject {
             parked: parsed.parked,
             files: parsed.files,
             ssecKeys: parsed.ssecKeys,
+            chunkImport: chunkImportOf(parsed),
             fromSubject: doc.subject,
             ...(parsed.encryptionSince !== undefined
               ? { encryptionSince: parsed.encryptionSince }
@@ -850,14 +912,30 @@ export class CloudSyncDO implements DurableObject {
    */
   private exportFiles(
     forMerge: boolean,
-  ): Pick<ExportDocument, "files" | "ssecKeys" | "absorbedFrom"> {
+  ): Pick<
+    ExportDocument,
+    "files" | "chunks" | "fileChunks" | "ssecKeys" | "absorbedFrom"
+  > {
     const rows = this.store.allFiles().filter((f) => f.status !== "dead");
     const files = rows.map((f): ExportedFile => {
       const { objectKey, ssecKid, clientId, ...pointer } = f;
       return forMerge ? f : pointer;
     });
+    // The chunks some file references (a chunk with none does not move: it is collected). A
+    // person's own export counts them; a merge's also carries the R2 keys and which file names which.
+    const chunkRows = this.store.allChunks().filter((c) => c.refs > 0);
+    const chunks = chunkRows.map((c): ExportedChunk => {
+      const { objectKey, ssecKid, unrefAt, ...pointer } = c;
+      void unrefAt;
+      return forMerge
+        ? { ...pointer, objectKey, ...(ssecKid ? { ssecKid } : {}) }
+        : pointer;
+    });
     const kids = [
-      ...new Set(rows.flatMap((f) => (f.ssecKid ? [f.ssecKid] : []))),
+      ...new Set([
+        ...rows.flatMap((f) => (f.ssecKid ? [f.ssecKid] : [])),
+        ...chunkRows.flatMap((c) => (c.ssecKid ? [c.ssecKid] : [])),
+      ]),
     ];
     const ssecKeys: [string, string][] = [];
     for (const kid of kids) {
@@ -865,8 +943,11 @@ export class CloudSyncDO implements DurableObject {
       if (key) ssecKeys.push([kid, hexEncode(key)]);
     }
     const from = forMerge ? absorbedFrom(this.fileHost()) : [];
+    const fileChunks = forMerge ? this.store.allFileChunks() : [];
     return {
       ...(files.length > 0 ? { files } : {}),
+      ...(chunks.length > 0 ? { chunks } : {}),
+      ...(fileChunks.length > 0 ? { fileChunks } : {}),
       ...(forMerge && ssecKeys.length > 0 ? { ssecKeys } : {}),
       ...(forMerge && from.length > 0 ? { absorbedFrom: from } : {}),
     };

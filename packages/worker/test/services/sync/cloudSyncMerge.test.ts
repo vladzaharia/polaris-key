@@ -916,6 +916,7 @@ describe("absorb: isolation", () => {
     ).toEqual([
       "services/sync/admin/subject.ts",
       "services/sync/handlers/common.ts",
+      "services/sync/handlers/fileChunks.ts",
       "services/sync/handlers/fileFinalize.ts",
       "services/sync/handlers/fileGet.ts",
       "services/sync/handlers/fileUpload.ts",

@@ -27,6 +27,7 @@
 
 import {
   SYNC_KEY_PATTERN,
+  SYNC_MANIFEST_MAX_STORED_BYTES,
   type BeginFileRequest,
   type BeginFileResponse,
 } from "@polaris-key/protocol/sync";
@@ -43,7 +44,7 @@ import { randomToken } from "../../../platform/random.js";
 import { trustRefusal } from "../../../core/trust/deviceTrust.js";
 import { callCloudSync } from "../do/client.js";
 import type { DoPin } from "../do/protocol.js";
-import { syncTransferPlan } from "../engine/files.js";
+import { syncTransferPlan, type FileLimits } from "../engine/files.js";
 import { isBlinded } from "../engine/sealed.js";
 import { filesLimited, partsLimited } from "../limits.js";
 import {
@@ -63,6 +64,8 @@ import {
 /** A `begin` body is a handful of members; this is far above any honest one. */
 const BEGIN_BODY_CAP = 4096;
 const HEX64 = /^[0-9a-f]{64}$/;
+/** The smallest manifest: the 64-byte header and one 48-byte record (plain; a sealed stream is larger). */
+const MANIFEST_MIN_BYTES = 112;
 
 /** The route's `:param` constraints (a segment that fails is no route at all). */
 export const FILE_PARAMS = {
@@ -72,6 +75,9 @@ export const FILE_PARAMS = {
   // Digits only; whether the number lies in the file's range is a `400` the handler answers.
   n: /^[0-9]{1,9}$/,
 } as const;
+
+/** A chunk id: 64 lowercase hex characters (U-37). Not in `FILE_PARAMS`: a route lists only the params its path has. */
+export const CHUNK_ID_PARAM = /^[0-9a-f]{64}$/;
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
@@ -231,6 +237,34 @@ export async function withObject<T>(
   return retryable();
 }
 
+/** What the object checks a write against: the device's allowance and the platform's ceilings. */
+export function fileLimits(
+  caller: SyncCaller,
+  ceilings: { bytes: boolean; users: boolean },
+): FileLimits {
+  return {
+    quotaBytes: caller.access.quota.bytes,
+    ...(ceilings.bytes ? { productOverCeiling: true } : {}),
+    ...(ceilings.users ? { usersAtCeiling: true } : {}),
+  };
+}
+
+/**
+ * The collection a call on a live product names, or the response to send: the product is live and
+ * not being erased, its catalog is readable, and the collection is declared.
+ */
+export async function declaredCollection(
+  ctx: ServiceContext,
+  collection: string,
+): Promise<NonNullable<ReturnType<typeof matchCollection>> | Response> {
+  const gone = await liveRefusal(ctx.env, ctx.db, ctx.product.slug);
+  if (gone) return gone;
+  const loaded = await readCatalog(ctx);
+  if (loaded instanceof Response) return loaded;
+  const decl = matchCollection(loaded.catalog, collection);
+  return decl ?? wireError(400, "collection_unknown");
+}
+
 /** The product's active catalog, or a `503` when it cannot be read (it cannot classify). */
 export async function readCatalog(
   ctx: ServiceContext,
@@ -307,14 +341,23 @@ async function fileBegin(
   const sealed = mode.serve === "e2e";
   if (request.enc !== (sealed ? "e2e" : "none") || (sealed && !isBlinded(id)))
     return wireError(400, "encryption_mismatch");
-  // The chunks mode is U-37's: until it lands, a chunked file is not a request this Worker serves.
-  if (request.format === "chunks") return wireError(400, ErrorCode.BadRequest);
+  // The chunks mode (§13.8.1): the stored manifest travels as a `single` object and the chunks go
+  // through the plan call. It needs `files.delta`; the server cannot tell the plain file's size
+  // from a manifest it does not read, so there is no lower bound on it.
+  let plan: ReturnType<typeof syncTransferPlan>;
+  if (request.format === "chunks") {
+    if (!decl.files.delta || request.size < MANIFEST_MIN_BYTES)
+      return wireError(400, ErrorCode.BadRequest);
+    if (request.size > SYNC_MANIFEST_MAX_STORED_BYTES)
+      return wireError(413, "file_too_large");
+    plan = { mode: "chunks" };
+  } else {
+    // A whole file never takes the chunks mode, so the plan is read as for a collection without delta.
+    plan = syncTransferPlan(request.size, false);
+    if (plan.mode === "too_large") return wireError(413, "file_too_large");
+  }
   if (request.size > decl.files.maxBytes)
     return wireError(413, "file_too_large");
-  // A whole file never takes the chunks mode, so the plan is read as for a collection without delta.
-  const plan = syncTransferPlan(request.size, false);
-  if (plan.mode === "too_large") return wireError(413, "file_too_large");
-  if (plan.mode === "chunks") return wireError(400, ErrorCode.BadRequest);
 
   // The product is live and not being erased, and its ceilings (read right before the object).
   const gone = await liveRefusal(env, db, product.slug);
@@ -333,11 +376,7 @@ async function fileBegin(
       mode: plan.mode,
       ...(plan.mode === "multipart" ? { partBytes: plan.partBytes } : {}),
       maxRecords: decl.maxRecords,
-      limits: {
-        quotaBytes: c.access.quota.bytes,
-        ...(ceilings.bytes ? { productOverCeiling: true } : {}),
-        ...(ceilings.users ? { usersAtCeiling: true } : {}),
-      },
+      limits: fileLimits(c, ceilings),
       serverNow: ctx.now * 1000,
     }),
   );

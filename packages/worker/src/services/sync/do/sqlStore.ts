@@ -17,6 +17,9 @@
  *   uploads          v4: one row per file upload session, from `begin` to the end of its retention
  *   upload_parts     v4: the parts a session has received (a single `PUT` is part 1)
  *   ssec_keys        v4: the SSE-C key of a server-mode file, referenced by `files.ssec_kid`
+ *   chunks           v5 (U-37): one row per (collection, chunk id): its R2 key, stored size and reference count
+ *   file_chunks      v5: the chunks a stored file version names
+ *   upload_chunks    v5: the chunks an open upload planned (each one is pinned against the collector)
  *   (v3 also adds a nullable `kid` to settings, tombstones and setting_members: the envelope key id
  *   of a sealed write; rows written before it stay NULL and are not backfilled)
  *
@@ -29,6 +32,7 @@
  */
 
 import type { SyncJson, SyncScope } from "@polaris-key/protocol/sync";
+import { ChunkTables } from "./sqlChunks.js";
 import { FileTables } from "./sqlFiles.js";
 import { SCHEMA_VERSION, MIGRATIONS } from "./sqlMigrations.js";
 import {
@@ -40,15 +44,18 @@ import {
 import { inspectTables, type InspectTables } from "./sqlInspect.js";
 import type {
   ClientRecord,
+  FileChunkRef,
   FileStatus,
   MemberCell,
   ParkedRecord,
   RemovedField,
+  StoredChunk,
   StoredFile,
   StoredRecord,
   StoredSetting,
   StoreUsage,
   SyncStore,
+  UploadChunk,
   UploadPart,
   UploadRow,
 } from "../engine/types.js";
@@ -98,6 +105,10 @@ export class SqlStore implements SyncStore {
     run: (q, ...b) => this.run(q, ...b),
   });
   private readonly fileTables = new FileTables({
+    all: (q, ...b) => this.all(q, ...b),
+    run: (q, ...b) => this.run(q, ...b),
+  });
+  private readonly chunkTables = new ChunkTables({
     all: (q, ...b) => this.all(q, ...b),
     run: (q, ...b) => this.run(q, ...b),
   });
@@ -719,6 +730,91 @@ export class SqlStore implements SyncStore {
   allSsecKeys(): [string, Uint8Array][] {
     if (!this.hasSchema()) return [];
     return this.fileTables.allSsecKeys();
+  }
+
+  // ---- chunks (U-37; the rows are `sqlChunks.ts`'s) ------------------------------------------
+
+  getChunk(collection: string, chunkId: string): StoredChunk | undefined {
+    if (!this.hasSchema()) return undefined;
+    return this.chunkTables.get(collection, chunkId);
+  }
+
+  putChunk(row: StoredChunk): void {
+    this.requireWritable();
+    this.chunkTables.put(row);
+  }
+
+  deleteChunk(collection: string, chunkId: string): void {
+    this.requireWritable();
+    this.chunkTables.remove(collection, chunkId);
+  }
+
+  allChunks(): StoredChunk[] {
+    if (!this.hasSchema()) return [];
+    return this.chunkTables.all();
+  }
+
+  collectableChunks(limit: number): StoredChunk[] {
+    if (!this.hasSchema()) return [];
+    return this.chunkTables.collectable(limit);
+  }
+
+  chunkPinned(collection: string, chunkId: string): boolean {
+    if (!this.hasSchema()) return false;
+    return this.chunkTables.pinned(collection, chunkId);
+  }
+
+  fileChunkIds(
+    collection: string,
+    recordId: string,
+    version: number,
+  ): string[] {
+    if (!this.hasSchema()) return [];
+    return this.chunkTables.fileChunkIds(collection, recordId, version);
+  }
+
+  putFileChunks(
+    collection: string,
+    recordId: string,
+    version: number,
+    chunkIds: readonly string[],
+  ): void {
+    this.requireWritable();
+    this.chunkTables.putFileChunks(collection, recordId, version, chunkIds);
+  }
+
+  deleteFileChunks(
+    collection: string,
+    recordId: string,
+    version: number,
+  ): void {
+    this.requireWritable();
+    this.chunkTables.removeFileChunks(collection, recordId, version);
+  }
+
+  allFileChunks(): FileChunkRef[] {
+    if (!this.hasSchema()) return [];
+    return this.chunkTables.allFileChunks();
+  }
+
+  getUploadChunk(uploadId: string, chunkId: string): UploadChunk | undefined {
+    if (!this.hasSchema()) return undefined;
+    return this.chunkTables.uploadChunk(uploadId, chunkId);
+  }
+
+  putUploadChunk(row: UploadChunk): void {
+    this.requireWritable();
+    this.chunkTables.putUploadChunk(row);
+  }
+
+  uploadChunks(uploadId: string): UploadChunk[] {
+    if (!this.hasSchema()) return [];
+    return this.chunkTables.uploadChunks(uploadId);
+  }
+
+  deleteUploadChunks(uploadId: string): void {
+    this.requireWritable();
+    this.chunkTables.removeUploadChunks(uploadId);
   }
 
   getParkedRecord(

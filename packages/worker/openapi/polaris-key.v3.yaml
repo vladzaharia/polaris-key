@@ -10168,8 +10168,9 @@ paths:
         file_too_large`, `409 revision_conflict` (a stale `baseVersion`, with the server's
         `version`), `429 rate_limited` (four uploads already open) and `403 quota_exceeded` (the
         person's quota with what open uploads reserve; `scope` is `collection` for `maxRecords`,
-        `product` past the operator's ceiling, else `user`). A `format` of `chunks` is
-        `400 bad_request` until the chunks mode ships (U-37).
+        `product` past the operator's ceiling, else `user`). A `format` of `chunks` opens
+        the chunks mode (§13.8) and needs the collection's `files.delta`; without it the request is
+        `400 bad_request`.
       security: [{ deviceToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -10217,7 +10218,7 @@ paths:
         "400":
           description: >
             `bad_request` (a malformed body, a missing or malformed `X-PKey-Device`, or the chunks
-            format before it ships), `collection_unknown`, or `encryption_mismatch` — NESTED.
+            format on a collection without `files.delta`), `collection_unknown`, or `encryption_mismatch` — NESTED.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -10572,6 +10573,243 @@ paths:
               schema: { $ref: "#/components/schemas/WireError" }
     options:
       operationId: preflightSyncFilePart
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/sync/files/{collection}/{id}/upload/{uploadId}/chunks:
+    post:
+      operationId: syncFileChunkPlan
+      tags: [sync]
+      summary: Plan the chunks of a delta file
+      description: >
+        U-37 (WIRE-CONTRACT-V5 §13.8.2, §13.8.3). The plan call of a session `begin` answered
+        `chunks`: `{chunks: [[id, storedBytes], …]}`, 1 to 1,024 distinct ids, each stored size
+        from the smallest chunk object to 1,048,606 bytes. The answer lists, for every id named,
+        whether the person's collection stores the chunk (`present`, with its stored size) or
+        lacks it (`missing`). The call reserves the stored bytes of every named chunk no file
+        references yet (`403 quota_exceeded`, or `413 file_too_large` over the collection's
+        `files.maxBytes`) and pins every named chunk to the upload until `finalize`, `DELETE` or
+        expiry, so the collector cannot take a `present` chunk before `finalize`. An upload names
+        at most 16,384 distinct ids over all its calls (`400 bad_request` past it). Naming an id
+        again re-evaluates it. A session of another mode is `400 upload_mismatch`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+        - { $ref: "#/components/parameters/SyncFileUploadId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SyncFileChunkPlanRequest" }
+      responses:
+        "200":
+          description: "Every id named, once, as `missing` or `present`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncFileChunkPlanResponse" }
+        "400":
+          description: "`bad_request` (a malformed body, a duplicate id, a size out of range, past 16,384 ids), `upload_mismatch` (not a `chunks` session) or `collection_unknown`, or a missing or malformed `X-PKey-Device` — NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`quota_exceeded` (with `scope`), `account_required` (the body carries the `signInUrl`) or `attestation_required`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "410":
+          description: "`upload_expired`. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "413":
+          description: "`file_too_large` — the manifest and the declared chunks together are over the collection's `files.maxBytes`, or the body is over 128 KiB (`body_too_large`). NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: "`writes_paused` (`Retry-After: 300`) or `unavailable` (`Retry-After: 5`). NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightSyncFileChunkPlan
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/sync/files/{collection}/{id}/upload/{uploadId}/chunks/{chunkId}:
+    put:
+      operationId: syncFileChunkPut
+      tags: [sync]
+      summary: Upload one chunk object
+      description: >
+        U-37 (WIRE-CONTRACT-V5 §13.8.2, §13.8.3). One chunk object of a `chunks` upload, as the
+        client sealed it (`0x00 ‖ codec ‖ body` in server mode, `pkey-sync-chunk/1` in end-to-end
+        mode), at most 1,048,606 bytes. The id must be one the plan call answered `missing` for this
+        session, and `Content-Length` must equal the `storedBytes` the plan declared for it, with
+        `Content-Digest: sha-256=:<base64>:` of the object: anything else is `400 upload_mismatch`
+        and nothing is stored. The object is written create-only under the person's prefix with the
+        digest as the store's checksum; one already there stands if its size and digest match. A `PUT`
+        of an id the plan answered `present`, or of one that landed, is `204` and stores nothing.
+        The server does not read the object: a reader checks the id against the plaintext.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+        - { $ref: "#/components/parameters/SyncFileUploadId" }
+        - { $ref: "#/components/parameters/SyncChunkId" }
+        - { $ref: "#/components/parameters/ContentDigest" }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "204": { description: "Stored (or already held)." }
+        "400":
+          description: "`upload_mismatch` (an id the plan did not answer `missing`, a wrong length, a missing or wrong digest, a session of another mode), or a missing or malformed `X-PKey-Device` — NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`account_required` (the body carries the `signInUrl`) or `attestation_required`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "410":
+          description: "`upload_expired`. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "413":
+          description: "`body_too_large` — `Content-Length` over 1,048,606. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: "`writes_paused` (`Retry-After: 300`) or `unavailable` (`Retry-After: 5`). NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightSyncFileChunkPut
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/sync/files/{collection}/chunks/{chunkId}:
+    get:
+      operationId: syncFileChunkGet
+      tags: [sync]
+      summary: Download one chunk object
+      description: >
+        U-37 (WIRE-CONTRACT-V5 §13.8.3). The stored chunk object, through the Worker only, for a
+        chunk some file of that collection references. Any other id, an unreferenced chunk and a
+        chunk of another collection are the same `404`. `application/octet-stream`,
+        `Content-Disposition: attachment`, `nosniff`, `no-store`, with the object's SHA-256 as its
+        `ETag`. One of the 600 requests a minute.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncChunkId" }
+      responses:
+        "200":
+          description: "The stored object."
+          headers:
+            ETag: { schema: { type: string } }
+            Content-Disposition: { schema: { type: string } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "400":
+          description: "A missing or malformed `X-PKey-Device` — NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`account_required` (the body carries the `signInUrl`) or `attestation_required`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: "`writes_paused` (`Retry-After: 300`) or `unavailable` (`Retry-After: 5`). NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightSyncFileChunkGet
       tags: [sync]
       summary: CORS preflight
       description: >
@@ -24581,6 +24819,12 @@ components:
       required: true
       description: "RFC 9530: `sha-256=:<base64>:` of the body (of the whole file for a single `PUT`, of the part for a part)."
       schema: { type: string, pattern: "^sha-256=:[A-Za-z0-9+/]{43}=:" }
+    SyncChunkId:
+      name: chunkId
+      in: path
+      required: true
+      description: "A chunk id: 64 lowercase hex characters (the plain SHA-256 in server mode, the keyed hash in end-to-end mode)."
+      schema: { type: string, pattern: "^[0-9a-f]{64}$" }
     SyncFileUploadId:
       name: uploadId
       in: path
