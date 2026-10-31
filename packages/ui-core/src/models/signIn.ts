@@ -262,6 +262,22 @@ function perDeveloper(
   return provider === "Apple" || reach !== "global";
 }
 
+/** The confirm step's account line: the email when the provider shared one, else the exchange
+ *  kind's wording; none when neither is known. */
+function confirmAccountLine(auto: AutoSignInInput): string | false {
+  if (auto.email) return "signin.auto.confirm.as";
+  switch (auto.kind) {
+    case "gamecenter":
+      return "signin.auto.confirm.asGameCenter";
+    case "pgs":
+      return "signin.auto.confirm.asPlayGames";
+    case "apple":
+      return "signin.auto.confirm.asApple";
+    default:
+      return false;
+  }
+}
+
 /** Automatic sign-in's steps, drawn in the form's body (plans/auto-sign-in.md §3): confirm the
  *  account, offer to link the provider, and the nearby wait. Every outcome has a title that takes
  *  focus and one way on (Continue). */
@@ -310,7 +326,7 @@ function autoStepView(
         "confirm",
         [
           "signin.auto.confirm.title",
-          auto.email ? "signin.auto.confirm.as" : "signin.auto.confirm.asApple",
+          confirmAccountLine(auto),
           // What Continue does: the license this device gets, and what the app also receives.
           auto.license && "signin.consent.license",
           auto.license === "new" && "signin.consent.newLicense",

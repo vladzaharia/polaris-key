@@ -1543,7 +1543,7 @@ public let PRESENTATION_MATRIX_VERSION = 1
 public let PORTAL_MATRIX_VERSION = 1
 
 /// `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-public let UI_MATRIX_VERSION = 7
+public let UI_MATRIX_VERSION = 8
 
 /// `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 public let BACKEND_MATRIX_VERSION = 1
