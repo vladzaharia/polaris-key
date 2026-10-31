@@ -547,6 +547,12 @@ export const UNREACHED: Readonly<
       "The card's email-code step (SIGN-IN.md §3.4, §4.16). Credentials are entered only on the card (S-16 D17); the kit form's `code` step is the device-code view, which SignInHandoff draws.",
     ]),
   ),
+  "SignIn.confirm": {
+    "signin.auto.confirm.asGameCenter":
+      "The no-email line of a Game Center grant. The confirm model picks its line by email alone, so no input reaches it until UI-CONFIRM-PROVIDER (UCP.1) adds the exchange-kind input member.",
+    "signin.auto.confirm.asPlayGames":
+      "The no-email line of a Google Play Games grant. The confirm model picks its line by email alone, so no input reaches it until UI-CONFIRM-PROVIDER (UCP.1) adds the exchange-kind input member.",
+  },
   "SignIn.choose": {
     "signin.consent.licenseInApp":
       "The card's ConsentStep in app mode (plans/I-04.md §G.3), not the kit form.",
@@ -2180,6 +2186,8 @@ function signInFamily(a: A): Draft[] {
         "SignIn",
         "confirm",
         "signin.auto.confirm.asApple",
+        "signin.auto.confirm.asGameCenter",
+        "signin.auto.confirm.asPlayGames",
         "signin.consent.licenseLine",
       ),
     ),
