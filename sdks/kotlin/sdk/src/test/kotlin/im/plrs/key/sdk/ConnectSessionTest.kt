@@ -266,8 +266,11 @@ class ConnectSessionTest {
         s.close()
         s.close("peer_busy")
         assertEquals(listOf(PeerCloseCode.peer_bye, PeerCloseCode.peer_busy), link.closes)
+        // A deleted contact's sessions hear peer_revoked (section 15.10).
+        s.close("peer_revoked")
+        assertEquals(PeerCloseCode.peer_revoked, link.closes.last())
         try {
-            s.close("peer_revoked")
+            s.close("peer_expired")
             fail("not a host code")
         } catch (e: IllegalArgumentException) {
             assertEquals("close code", e.message)

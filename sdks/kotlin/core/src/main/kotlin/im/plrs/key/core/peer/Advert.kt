@@ -109,7 +109,8 @@ public fun parseTxt(entries: List<String>): TxtResult {
         kv[k] = e.substring(at + 1)
     }
     if (kv["v"] != "1") return TxtResult.Refused(TxtRefusal.version)
-    val mode = PeerMode.values().firstOrNull { it.wire == kv["m"] } ?: return TxtResult.Refused(TxtRefusal.mode)
+    // `m=c` is judged by parseContactTxt and by no other path (section 15.4): here it is an unknown mode.
+    val mode = PeerMode.values().firstOrNull { it.wire == kv["m"] && it != PeerMode.c } ?: return TxtResult.Refused(TxtRefusal.mode)
     if (mode == PeerMode.a) return TxtResult.Ok(mode)
     val h = kv["h"]
     if (h == null || !TAG.matches(h)) return TxtResult.Refused(TxtRefusal.tag)

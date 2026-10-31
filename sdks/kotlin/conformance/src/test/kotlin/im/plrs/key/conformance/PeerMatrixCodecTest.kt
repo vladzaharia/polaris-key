@@ -68,7 +68,7 @@ class PeerMatrixCodecTest : ConformanceSuite() {
         val s = m.o("sas")
         assertEquals(31, listOf("commits", "codes", "reveals", "nonces").sumOf { rows(s[it]).size })
         val h = m.o("handshakePayloads")
-        assertEquals(65, rows(h["payloads"]).size + rows(h["intersection"]).size)
+        assertEquals(76, rows(h["payloads"]).size + rows(h["intersection"]).size)
     }
 
     @Test

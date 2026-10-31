@@ -134,6 +134,12 @@ public class CloudConnect internal constructor(
     @Volatile
     private var relay: RelayService? = null
 
+    @Volatile
+    private var contactRelay: ContactRelay? = null
+
+    /** Inter-account links (CC-19): `pair`, `list`, `remove`, `setReachable`, `open`, `onLink`. Off unless discovery says `interAccount`. */
+    public val links: CloudLinks = CloudLinks(connect)
+
     /** Test seam: the bound `stop()` waits ([CLOUD_STOP_MILLIS]). */
     @Volatile
     internal var stopMillis: Long = CLOUD_STOP_MILLIS
@@ -240,6 +246,15 @@ public class CloudConnect internal constructor(
             } else {
                 relayReason = reason
             }
+            // The contact rooms (section 15.7) and the links API ride the same transports. A device with no links
+            // keeps no room; the list is read again whenever it changes.
+            if (relayOn) {
+                val ro = o.relayOptions ?: RelayOptions(caps = o.lanOptions.caps, label = o.lanOptions.label)
+                val cr = ContactRelay(ContactRelaySource(src) { rid -> connect.relayTicket("c", rid) }, ro)
+                contactRelay = cr
+                cr.start()
+            }
+            links.attach(lan, contactRelay, o.lanAttemptSeconds, relayOn)
             running = true
         } catch (e: Throwable) {
             teardown()
@@ -274,7 +289,10 @@ public class CloudConnect internal constructor(
         lan = null
         relay = null
         synchronized(lock) { unsub.clear() }
+        val cr = contactRelay
+        contactRelay = null
         quietly { l?.abort() }
+        quietly { cr?.abort() }
         quietly { r?.abort() }
         val open = synchronized(lock) { sessions.toList().also { sessions.clear() } }
         for (s in open) quietly { withTimeoutOrNull(SESSION_CLOSE_MILLIS) { s.close() } }
@@ -296,13 +314,17 @@ public class CloudConnect internal constructor(
         for (u in offs) u()
         val l = lan
         val r = relay
+        val cr = contactRelay
         lan = null
         relay = null
+        contactRelay = null
         dyingLan = l
         dyingRelay = r
+        quietly { links.detach() }
         // The services first: each bounds itself and closes its own sessions and sockets, so a host
         // callback that blocks a session close cannot keep the listener or the relay socket up.
         quietly { l?.stop() }
+        quietly { cr?.stop() }
         quietly { r?.stop() }
         dyingLan = null
         dyingRelay = null
@@ -324,10 +346,14 @@ public class CloudConnect internal constructor(
     /** The client's `close()`: tear down in the background, then release the facade's scope. */
     internal fun shutdown() {
         if (!touched) {
+            links.shutdown()
             scope.cancel()
             return
         }
-        scope.launch { gate.withLock { teardown() } }.invokeOnCompletion { scope.cancel() }
+        scope.launch { gate.withLock { teardown() } }.invokeOnCompletion {
+            links.shutdown()
+            scope.cancel()
+        }
     }
 
     /** The person's other devices that can be reached now, with the paths each has. */

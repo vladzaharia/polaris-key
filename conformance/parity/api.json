@@ -6497,9 +6497,7 @@
           "planned": "CC-19"
         },
         "swift": {},
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -6521,9 +6519,7 @@
           "planned": "CC-19"
         },
         "swift": {},
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -6539,9 +6535,7 @@
           "planned": "CC-19"
         },
         "swift": {},
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -6563,9 +6557,7 @@
           "planned": "CC-19"
         },
         "swift": {},
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -6591,9 +6583,7 @@
           "planned": "CC-19"
         },
         "swift": {},
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -6619,9 +6609,7 @@
           "planned": "CC-19"
         },
         "swift": {},
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -6643,9 +6631,7 @@
           "planned": "CC-19"
         },
         "swift": {},
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "kotlin": {}
       },
       "layer": "client"
     }

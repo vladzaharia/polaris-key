@@ -105,6 +105,8 @@ public class ConnectSession internal constructor(
     public val remoteAddress: String,
     public val path: String = "lan",
     private val budget: QueueBudget = sharedBudget,
+    /** The link a mode-`c` session runs over (section 15.10); null for the person's own devices. */
+    public val contact: ContactRef? = null,
 ) {
     private val lock = Any()
     private val inbox = Channel<SessionMessage>(Channel.UNLIMITED)
@@ -118,7 +120,8 @@ public class ConnectSession internal constructor(
     /** The capabilities both sides listed. */
     public val caps: List<String> = caps.toList()
 
-    override fun toString(): String = "ConnectSession(peer=$peerDeviceId, path=$path, role=$role)"
+    override fun toString(): String =
+        contact?.let { "ConnectSession(contact=${it.id}, path=$path, role=$role)" } ?: "ConnectSession(peer=$peerDeviceId, path=$path, role=$role)"
 
     /** Why the session ended, or null while it is open. */
     public val closed: SessionClosed? get() = synchronized(lock) { ended }
@@ -188,9 +191,9 @@ public class ConnectSession internal constructor(
         return { closeListeners -= fn }
     }
 
-    /** Close with `peer_bye` (or `peer_busy`); the CLOSE record is sent first. */
+    /** Close with `peer_bye` (or `peer_busy`, or `peer_revoked` for a deleted contact); the CLOSE record is sent first. */
     public suspend fun close(code: String = "peer_bye") {
-        require(code == "peer_bye" || code == "peer_busy") { "close code" }
+        require(code == "peer_bye" || code == "peer_busy" || code == "peer_revoked") { "close code" }
         try {
             link.close(PeerCloseCode.valueOf(code))
         } catch (e: IllegalStateException) {
@@ -294,11 +297,15 @@ internal fun sessionHandlers(
     onEnded: () -> Unit = {},
     budget: QueueBudget? = null,
     path: String = "lan",
+    /** The contacts the channel was given (same order): a mode-`c` session names the one that opened it by index. */
+    contacts: List<ContactRef> = emptyList(),
 ): LinkHandlers<ConnectSession> {
     var box: ConnectSession? = null
     return LinkHandlers(
         onEstablished = { link: PeerLinkPort, e: SessionEvent.Established ->
-            val s = ConnectSession(link, e.peerDeviceId!!, e.caps, e.hello, role, link.remoteAddress, path, budget ?: sharedBudget)
+            // Mode c has no device id: the contact that opened the session names the peer.
+            val ref = e.contactIndex?.let { contacts.getOrNull(it) }
+            val s = ConnectSession(link, e.peerDeviceId ?: "", e.caps, e.hello, role, link.remoteAddress, path, budget ?: sharedBudget, ref)
             box = s
             onEstablished(s)
             s

@@ -17,6 +17,7 @@ import im.plrs.key.release.DistributionClient
 import im.plrs.key.release.ReleaseClient
 import im.plrs.key.sdk.BackendClient
 import im.plrs.key.sdk.CloudConnect
+import im.plrs.key.sdk.CloudLinks
 import im.plrs.key.sdk.CloudSyncClient
 import im.plrs.key.sdk.CloudSyncHostOptions
 import im.plrs.key.sdk.CommerceClient
@@ -174,4 +175,11 @@ internal suspend fun apiSurface() {
     CloudConnect::refreshPeers  // cloudConnect.refreshPeers
     CloudConnect::status  // cloudConnect.status
     CloudConnect::onNotice  // cloudConnect.onNotice
+    CloudLinks::pair  // cloudConnect.links.pair
+    CloudLinks::list  // cloudConnect.links.list
+    CloudLinks::remove  // cloudConnect.links.remove
+    CloudLinks::setReachable  // cloudConnect.links.setReachable
+    CloudLinks::open  // cloudConnect.links.open
+    CloudLinks::onLink  // cloudConnect.links.onLink
+    CloudLinks::interAccount  // cloudConnect.links.interAccount
 }
