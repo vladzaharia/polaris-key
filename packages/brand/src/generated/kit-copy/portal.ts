@@ -14,6 +14,7 @@ import type { KitCopyLocale } from "./index.js";
 
 /** Every key the portal table holds. */
 export type PortalCopyKey =
+  | "locker.key.noEntriesLead"
   | "profile.title"
   | "profile.subtitle"
   | "profile.edit"
@@ -509,6 +510,7 @@ export type PortalCopyKey =
   | "locker.key.long"
   | "locker.key.badChars"
   | "locker.key.unknown"
+  | "locker.key.cantUse"
   | "locker.key.emailMismatch"
   | "locker.key.emailMismatchAny"
   | "locker.key.managedElsewhere"

@@ -223,12 +223,12 @@ with `signin.key.skipNote` only when all of these hold:
 The press posts the key held in the `upgrade` step's state and follows `redirect`. Refusals stay
 in place:
 
-| Refusal           | What the card shows      |
-| ----------------- | ------------------------ |
-| `license_owned`   | the §3.9 owned copy      |
-| `key_entry_limit` | the forced body          |
-| `401`, `429`      | the field's verdicts     |
-| `404`             | the request's gone state |
+| Refusal             | What the card shows                                                              |
+| ------------------- | -------------------------------------------------------------------------------- |
+| `license_owned`     | the §3.9 owned copy                                                              |
+| `key_entry_limit`   | the forced body, led by "You can't continue without an account:", no key card    |
+| `401`, `422`, `429` | a message under the skip button (a `429` holds it for `retryAfter`, then clears) |
+| `404`               | the request's gone state                                                         |
 
 SIGN-IN.md §3.9 drops "Deferred (LK-polish M5)". §4.3 and §6.1 gain the route. The copy keys
 exist already.

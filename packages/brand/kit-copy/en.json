@@ -2603,6 +2603,11 @@
       "role": "body",
       "note": "License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
+    "locker.key.noEntriesLead": {
+      "value": "You can't continue without an account:",
+      "role": "body",
+      "note": "License key step (SIGN-IN.md §3.9), bold lead of the no-entries callout when Continue without an account was refused key_entry_limit (LK-SKIP.5)."
+    },
     "signin.key.skip": {
       "value": "Continue without an account",
       "role": "button",
@@ -7327,6 +7332,11 @@
       "value": "We couldn't find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it.",
       "role": "hint",
       "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.cantUse": {
+      "value": "This key can't be used here.",
+      "role": "hint",
+      "note": "The sign-in card's Continue without an account, when the key is refused (LK-SKIP.5): unknown, inactive, another product's, or a license that can't be used. Never 'not found'."
     },
     "locker.key.emailMismatch": {
       "value": "{product} was bought with {email}. It joins only the account with that email verified.",

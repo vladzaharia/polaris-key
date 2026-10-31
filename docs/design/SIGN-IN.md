@@ -624,11 +624,20 @@ One component, three entries.
   {n}", email with **Create account**, the product's providers, and the quiet **Sign in instead**
   (`signin.key.signInInstead`). Both lead to the sign-in card with the key carried, so a returning
   customer never loses it; nothing on this step drops the key. **Continue without an account**
-  (S-24 D13, **Skip for now**, `signin.key.skip`) appears only when an app sent the person (it
-  returns to the app with the key accepted and the license floating), with "<Product> works the
-  same. Add it to an account any time." under it. **Deferred (LK-polish M5):** the floating-key
-  return to an app is not wired in the portal, so the control is not drawn yet; the standalone
-  portal has no skip. Under
+  (S-24 D13, `signin.key.skip`) is a quiet, full-width button under **Create account**, with
+  "<Product> works the same. Add it to an account any time." under it. It is drawn only when the
+  request view answers `keyReturn: true`, the preview is `addable` and `skippable`, and the key's
+  product is the request's. The standalone portal has no skip, and neither does the forced body. The
+  press posts the key to `POST /api/signin/requests/:request/key` (§6.1; body only, never the URL)
+  and follows `{redirect}` back to the app, which gets a device on the key's licence and no
+  account. Refusals stay on the card: `401` (an unknown, inactive or other-product key, or a
+  license that can't be used) says "This key can't be used here." under the control with **Use a
+  different key**, never "not found"; `422` says the `locker.key.notKey` line; `429` says
+  `signin.request.tooMany` and holds the button for `retryAfter`; `403 license_owned` is a step,
+  "License in another account", with the §3.9 owned copy, **Sign in to that account** (this
+  card's sign-in, the request kept and the key not carried) and **Use a different key**;
+  `403 key_entry_limit` turns the step into the forced body below, with the Worker's
+  `keyEntries`; `404` is the request's gone state (`signin.request.goneTitle`). Under
   the h1 the body lists the reasons the product has (Cloud Sync only when Cloud Sync is on; getting
   the license back; moving it to a new device yourself; frame 48). At the limit: "No entries left", "Create an account
   to keep <Product>", a neutral callout (DL6) with **Create account** as the primary, no danger colour, no skip, "Sign in to add <Product>", and "<Product> keeps
@@ -1158,6 +1167,10 @@ to the existing `portal/` renders, which stand where this document does not redr
    browser device to the chosen license.
 5. Mismatched `redirect_uri`: an error card "This sign-in request isn't valid. Go back to <App> and
    try again." It never redirects.
+6. **Key return (LK-SKIP).** An app that sent `key_return=allow` gets the key on-ramp's
+   **Continue without an account** (§3.9). The press is `POST /api/signin/requests/:request/key`
+   instead of steps 2 to 4; its `{redirect}` is the same 302 back with `code`, and `token` binds the
+   device to the key's licence with no account.
 
 ### 4.4 App passthrough: native
 
@@ -1860,28 +1873,29 @@ wire change no approved plan carries is a plan-mode change (CLAUDE.md).
 
 ### 6.1 Steps and their routes
 
-| Step                | Relies on                                                                                                                                                                                                        | Status                                                               |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| MethodsStep         | `GET /api/capabilities?product=` with `product`, `providers`, method flags; `GET /api/me`; `pk_last_method` (G30)                                                                                                | Built without `product`/`providers` (gap, PX-12, I-06); G30 in PX-12 |
-| Passthrough header  | `GET /api/signin/requests/:handle` → `SignInRequestView` (PX-W13 §2.2), `__Host-pk_req`                                                                                                                          | Planned (PX-W13)                                                     |
-| CodeStep            | `POST /api/signin/email/start` / `verify`, `GET /api/signin/flow`; 6 digits, 10 min, 5 wrong, per-recipient 5/h and 20/day, Turnstile                                                                            | Built (I-07)                                                         |
-| FinishStep          | `/api/signin/confirm-email[/verify\|/join\|/cancel\|/picture]` (G31), profile claims (G32), R2 avatars (G33); the finish API extends `card/gate.ts` with screen name, picture, birth date and terms (I-27 §2.4)  | Built to the email stage (I-07); the rest: I-33 (API), PX-21 (UI)    |
-| Providers           | `GET /login/<provider>`, callbacks, `__Host-pkey_signin` binding                                                                                                                                                 | Built (I-06)                                                         |
-| ConsentStep         | `GET /api/signin/requests/:handle/consent` → `AppConsentView`, whose items gain `required` and `granted`; `account_product_grants.scope_hash`                                                                    | Planned (PX-W13 §2.3, I-34); its license item changes (§6.3)         |
-| KeyStep             | `POST /api/key/preview` (signed out, never counts; PX-W9), `POST /api/activate/preview` (G22), claim with `surface: portal` (I-11), `keyEntries {used, limit}`                                                   | Planned (PX-W9, PX-W5 done, PX-17, I-11)                             |
-| Key refusals (apps) | `license_owned` + `signInUrl`, `key_entry_limit` + `manageUrl` + `keyEntries`, `device_limit` + `manageUrl`                                                                                                      | Planned (I-09, PX-W9); `manageUrl` built (PX-W8)                     |
-| Attach              | `POST /<p>/identity/attach {confirm}`                                                                                                                                                                            | Planned (I-09 §2.2)                                                  |
-| Web redirect        | `GET /<p>/identity/authorize`, `POST /<p>/identity/token` (`grant_type=authorization_code`)                                                                                                                      | Planned (I-27 §2.1, I-08)                                            |
-| Device code         | `auth/device/start`, `auth/device/poll` (`ready` + `subject`)                                                                                                                                                    | Planned (I-04 §2.4, I-08)                                            |
-| Native redirect     | `request` (RFC 9126, answers a `request_uri`), `authorize` and `token` with native redirect URIs                                                                                                                 | Planned (I-15, I-27 §2.1)                                            |
-| Native exchange     | `POST /<p>/identity/nonce`, then `POST /<p>/identity/token` with the token-exchange grant: token, `confirm`, `choose`, or `interstitial_required` (403, `reason`, `url`, `linkHandle`) (WIRE-CONTRACT-V5 §12.11) | Planned (I-13)                                                       |
-| Hints               | `login_hint`, `name_hint`, `purpose` on `authorize`; `scope`, `loginHint`, `nameHint`, `purpose` on `auth/device/start` (§6.6; no SDK sends them)                                                                | Planned (I-08)                                                       |
-| DeviceApproval      | `POST /api/device-login/start`, `GET /api/device-login/<id>`, `POST …/lookup`, `POST …/approve`, `step_up_required`                                                                                              | Built (PX-W14); UI PX-15                                             |
-| Identity off        | 303 to `/signin?product=&error=identity_disabled`; `403 identity_disabled` on the passthrough context                                                                                                            | Built (PX-W17); card PX-14                                           |
-| Sign-out (device)   | `POST /<p>/identity/signout` → `{released}`; SDK Cloud Sync flush                                                                                                                                                | Planned (I-09 §2.2, S-17)                                            |
-| Account sessions    | `account_sessions` with `sid`, revocable and listable                                                                                                                                                            | Built (I-07)                                                         |
-| Console             | `GET /manage/login` serves the card in console context; PKCE on Continue; in-place 401                                                                                                                           | Planned (ST-30, which absorbs UX-02 and UX-42; EXPERIENCE §13.3)     |
-| Worker pages        | `renderAuthCard()`                                                                                                                                                                                               | Planned (UX-43)                                                      |
+| Step                | Relies on                                                                                                                                                                                                                                | Status                                                               |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| MethodsStep         | `GET /api/capabilities?product=` with `product`, `providers`, method flags; `GET /api/me`; `pk_last_method` (G30)                                                                                                                        | Built without `product`/`providers` (gap, PX-12, I-06); G30 in PX-12 |
+| Passthrough header  | `GET /api/signin/requests/:handle` → `SignInRequestView` (PX-W13 §2.2), `__Host-pk_req`                                                                                                                                                  | Planned (PX-W13)                                                     |
+| Key return          | `POST /api/signin/requests/:handle/key {key}` → `{redirect}`; no session, `__Host-pk_req`; `401`, `403 license_owned` + `signInUrl`, `403 key_entry_limit` + `keyEntries` + `manageUrl`, `404`, `422`, `429` + `retryAfter` (V5 §12.4.2) | Built (LK-SKIP.3b, .4, .5)                                           |
+| CodeStep            | `POST /api/signin/email/start` / `verify`, `GET /api/signin/flow`; 6 digits, 10 min, 5 wrong, per-recipient 5/h and 20/day, Turnstile                                                                                                    | Built (I-07)                                                         |
+| FinishStep          | `/api/signin/confirm-email[/verify\|/join\|/cancel\|/picture]` (G31), profile claims (G32), R2 avatars (G33); the finish API extends `card/gate.ts` with screen name, picture, birth date and terms (I-27 §2.4)                          | Built to the email stage (I-07); the rest: I-33 (API), PX-21 (UI)    |
+| Providers           | `GET /login/<provider>`, callbacks, `__Host-pkey_signin` binding                                                                                                                                                                         | Built (I-06)                                                         |
+| ConsentStep         | `GET /api/signin/requests/:handle/consent` → `AppConsentView`, whose items gain `required` and `granted`; `account_product_grants.scope_hash`                                                                                            | Planned (PX-W13 §2.3, I-34); its license item changes (§6.3)         |
+| KeyStep             | `POST /api/key/preview` (signed out, never counts; PX-W9), `POST /api/activate/preview` (G22), claim with `surface: portal` (I-11), `keyEntries {used, limit}`                                                                           | Planned (PX-W9, PX-W5 done, PX-17, I-11)                             |
+| Key refusals (apps) | `license_owned` + `signInUrl`, `key_entry_limit` + `manageUrl` + `keyEntries`, `device_limit` + `manageUrl`                                                                                                                              | Planned (I-09, PX-W9); `manageUrl` built (PX-W8)                     |
+| Attach              | `POST /<p>/identity/attach {confirm}`                                                                                                                                                                                                    | Planned (I-09 §2.2)                                                  |
+| Web redirect        | `GET /<p>/identity/authorize`, `POST /<p>/identity/token` (`grant_type=authorization_code`)                                                                                                                                              | Planned (I-27 §2.1, I-08)                                            |
+| Device code         | `auth/device/start`, `auth/device/poll` (`ready` + `subject`)                                                                                                                                                                            | Planned (I-04 §2.4, I-08)                                            |
+| Native redirect     | `request` (RFC 9126, answers a `request_uri`), `authorize` and `token` with native redirect URIs                                                                                                                                         | Planned (I-15, I-27 §2.1)                                            |
+| Native exchange     | `POST /<p>/identity/nonce`, then `POST /<p>/identity/token` with the token-exchange grant: token, `confirm`, `choose`, or `interstitial_required` (403, `reason`, `url`, `linkHandle`) (WIRE-CONTRACT-V5 §12.11)                         | Planned (I-13)                                                       |
+| Hints               | `login_hint`, `name_hint`, `purpose` on `authorize`; `scope`, `loginHint`, `nameHint`, `purpose` on `auth/device/start` (§6.6; no SDK sends them)                                                                                        | Planned (I-08)                                                       |
+| DeviceApproval      | `POST /api/device-login/start`, `GET /api/device-login/<id>`, `POST …/lookup`, `POST …/approve`, `step_up_required`                                                                                                                      | Built (PX-W14); UI PX-15                                             |
+| Identity off        | 303 to `/signin?product=&error=identity_disabled`; `403 identity_disabled` on the passthrough context                                                                                                                                    | Built (PX-W17); card PX-14                                           |
+| Sign-out (device)   | `POST /<p>/identity/signout` → `{released}`; SDK Cloud Sync flush                                                                                                                                                                        | Planned (I-09 §2.2, S-17)                                            |
+| Account sessions    | `account_sessions` with `sid`, revocable and listable                                                                                                                                                                                    | Built (I-07)                                                         |
+| Console             | `GET /manage/login` serves the card in console context; PKCE on Continue; in-place 401                                                                                                                                                   | Planned (ST-30, which absorbs UX-02 and UX-42; EXPERIENCE §13.3)     |
+| Worker pages        | `renderAuthCard()`                                                                                                                                                                                                                       | Planned (UX-43)                                                      |
 
 ### 6.2 License choice and Replace a device
 

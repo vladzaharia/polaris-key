@@ -68,17 +68,21 @@ export function QuietLinks({
 export function QuietLink({
   onClick,
   icon,
+  disabled = false,
   children,
 }: {
   onClick: () => void;
   icon?: React.ReactNode;
+  /** Not usable right now (a request is in flight): stays focusable, does nothing, looks muted. */
+  disabled?: boolean;
   children: React.ReactNode;
 }): React.ReactElement {
   return (
     <button
       type="button"
-      onClick={onClick}
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 underline decoration-2 underline-offset-4 transition-colors duration-(--pk-duration-fast) hover:text-fg-strong"
+      onClick={disabled ? undefined : onClick}
+      aria-disabled={disabled || undefined}
+      className="aria-disabled:cursor-default aria-disabled:opacity-60 aria-disabled:hover:text-inherit inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 underline decoration-2 underline-offset-4 transition-colors duration-(--pk-duration-fast) hover:text-fg-strong"
     >
       {icon}
       {children}

@@ -740,42 +740,49 @@ describe("fix round", () => {
   });
 });
 
-describe("AccountUpgrade on the key step (§3.9)", () => {
-  const KEY = `pkey_diceroll_${"A".repeat(22)}`;
-  function preview(over: Partial<KeyPreview> = {}): KeyPreview {
-    return {
-      product: {
-        slug: "diceroll",
-        name: "Diceroll",
-        branding: null,
-        developerName: "Example Games",
-        iconUrl: null,
-        headerUrl: null,
-      },
-      verdict: "addable",
-      license: { tierName: "Standard", term: "perpetual" },
-      keyEntries: { used: 3, limit: 5 },
-      upgrade: "skippable",
-      ...over,
-    };
-  }
-  async function enter(handle: boolean, p: KeyPreview, view: unknown = VIEW) {
-    if (!handle) window.history.replaceState(null, "", "/");
-    mockFetch({
-      "/api/me": { status: 401 },
-      "/api/capabilities": CAPS_ALL,
-      [REQUEST]: view,
-      "POST /api/key/preview": p,
-    });
-    renderPortal();
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Have a license key?" }),
-    );
-    await userEvent.click(await screen.findByRole("textbox"));
-    await userEvent.paste(KEY);
-    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
-  }
+const KEY = `pkey_diceroll_${"A".repeat(22)}`;
+function preview(over: Partial<KeyPreview> = {}): KeyPreview {
+  return {
+    product: {
+      slug: "diceroll",
+      name: "Diceroll",
+      branding: null,
+      developerName: "Example Games",
+      iconUrl: null,
+      headerUrl: null,
+    },
+    verdict: "addable",
+    license: { tierName: "Standard", term: "perpetual" },
+    keyEntries: { used: 3, limit: 5 },
+    upgrade: "skippable",
+    ...over,
+  };
+}
+/** The key on-ramp up to the preview's answer; `extra` adds routes (the key return's). */
+async function enter(
+  handle: boolean,
+  p: KeyPreview,
+  view: unknown = VIEW,
+  extra: Record<string, unknown> = {},
+) {
+  if (!handle) window.history.replaceState(null, "", "/");
+  mockFetch({
+    "/api/me": { status: 401 },
+    "/api/capabilities": CAPS_ALL,
+    [REQUEST]: view,
+    "POST /api/key/preview": p,
+    ...extra,
+  });
+  renderPortal();
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Have a license key?" }),
+  );
+  await userEvent.click(await screen.findByRole("textbox"));
+  await userEvent.paste(KEY);
+  await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+}
 
+describe("AccountUpgrade on the key step (§3.9)", () => {
   it("skippable while entries remain: the meter is neutral, never amber, and Sign in instead sits beside Create account", async () => {
     await enter(true, preview());
     expect(
@@ -881,6 +888,268 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
     await enter(false, preview({ verdict: "license_owned", license: null }));
     expect(
       await screen.findByText(/Sign in to the .* account that has this/i),
+    ).toBeTruthy();
+  });
+});
+
+describe("Continue without an account (LK-SKIP.5, §3.9)", () => {
+  const OPTED = { ...VIEW, keyReturn: true as const };
+  async function enterSkip(
+    p: KeyPreview,
+    view: unknown = OPTED,
+    key: unknown = { redirect: "https://app.example/cb?code=1&state=s" },
+  ) {
+    await enter(true, p, view, { [`POST ${REQUEST}/key`]: key });
+    await screen.findByRole("button", { name: "Create account" });
+  }
+  const skipButton = () =>
+    screen.getByRole("button", { name: "Continue without an account" });
+  const keyPosts = () =>
+    fetchedRequests().filter((r) => r === `POST ${REQUEST}/key`);
+
+  it("is drawn with its note only when the request opted in and the upgrade is skippable", async () => {
+    await enterSkip(preview());
+    expect(skipButton()).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Diceroll works the same. Add it to an account any time.",
+      ),
+    ).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("is absent without keyReturn, when forced, and for another product's request", async () => {
+    await enterSkip(preview(), VIEW);
+    expect(
+      screen.queryByRole("button", { name: "Continue without an account" }),
+    ).toBeNull();
+    cleanup();
+    await enterSkip(
+      preview({ keyEntries: { used: 5, limit: 5 }, upgrade: "forced" }),
+    );
+    expect(
+      screen.queryByRole("button", { name: "Continue without an account" }),
+    ).toBeNull();
+    cleanup();
+    await enterSkip(preview(), {
+      ...OPTED,
+      client: { ...OPTED.client, product: "other" },
+    });
+    expect(
+      screen.queryByRole("button", { name: "Continue without an account" }),
+    ).toBeNull();
+  });
+
+  it("posts the key in the body only and follows the redirect", async () => {
+    await enterSkip(preview());
+    await userEvent.click(skipButton());
+    await waitFor(() =>
+      expect(went).toEqual(["https://app.example/cb?code=1&state=s"]),
+    );
+    expect(posted(`${REQUEST}/key`)).toEqual({ key: KEY });
+    expect(keyPosts()).toHaveLength(1);
+    expect(window.location.href).not.toContain("pkey_");
+    expect(window.sessionStorage.length).toBe(0);
+  });
+
+  it("401: says the key can't be used here, never 'not found', and offers another key", async () => {
+    await enterSkip(preview(), OPTED, {
+      status: 401,
+      body: { error: "unauthorized" },
+    });
+    await userEvent.click(skipButton());
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("This key can't be used here.");
+    expect(document.body.textContent).not.toMatch(/couldn.t find|not found/i);
+    expect(went).toEqual([]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Use a different key" }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Have a license key?",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("422: a key that is not a key, under the control", async () => {
+    await enterSkip(preview(), OPTED, {
+      status: 422,
+      body: { error: "bad_request" },
+    });
+    await userEvent.click(skipButton());
+    expect((await screen.findByRole("alert")).textContent).toMatch(
+      /isn.t a Polaris Locker license key/,
+    );
+  });
+
+  it("429: says to wait and holds the control for retryAfter", async () => {
+    await enterSkip(preview(), OPTED, {
+      status: 429,
+      body: { error: "rate_limited", retryAfter: 30 },
+    });
+    await userEvent.click(skipButton());
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Too many tries. Wait a moment, then try again.",
+    );
+    expect(skipButton().getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(skipButton());
+    expect(keyPosts()).toHaveLength(1);
+  });
+
+  it("429: the held button keeps its focus and the message is read once", async () => {
+    await enterSkip(preview(), OPTED, {
+      status: 429,
+      body: { error: "rate_limited", retryAfter: 30 },
+    });
+    skipButton().focus();
+    await userEvent.keyboard("{Enter}");
+    const alert = await screen.findByRole("alert");
+    const button = skipButton();
+    expect(button.getAttribute("aria-disabled")).toBe("true");
+    // The same node, still focused: a reason that appears must not remount the button.
+    expect(document.activeElement).toBe(button);
+    // One description: the message under the button, not a second sr-only copy of it.
+    expect(button.getAttribute("aria-describedby")).toBe(alert.id);
+    expect(
+      screen.getAllByText("Too many tries. Wait a moment, then try again."),
+    ).toHaveLength(1);
+  });
+
+  it("429: the refusal clears when the hold ends", async () => {
+    await enterSkip(preview(), OPTED, {
+      status: 429,
+      body: { error: "rate_limited", retryAfter: 1 },
+    });
+    await userEvent.click(skipButton());
+    await screen.findByRole("alert");
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull(), {
+      timeout: 3000,
+    });
+    expect(skipButton().getAttribute("aria-disabled")).toBeNull();
+    expect(skipButton().getAttribute("aria-describedby")).toBeNull();
+  });
+
+  it("while the key is going the other paths are inert, and Escape drops a late refusal", async () => {
+    let answer: (v: unknown) => void = () => {};
+    const late = new Promise((r) => (answer = r));
+    await enterSkip(preview(), OPTED, () => late);
+    await userEvent.click(skipButton());
+    const create = screen.getByRole("button", { name: "Create account" });
+    const signIn = screen.getByRole("button", { name: "Sign in instead" });
+    expect(create.getAttribute("aria-disabled")).toBe("true");
+    expect(signIn.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(create);
+    await userEvent.click(signIn);
+    expect(window.location.search).not.toContain("activate");
+    expect(
+      screen.getByRole("button", { name: "Continue without an account" }),
+    ).toBeTruthy();
+    // Escape backs out to the key field; the 429 that lands afterwards is not drawn anywhere.
+    await userEvent.keyboard("{Escape}");
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Have a license key?",
+      }),
+    ).toBeTruthy();
+    answer({ status: 429, body: { error: "rate_limited" } });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Have a license key?" }),
+    ).toBeTruthy();
+  });
+
+  it("license_owned: the owned copy and the sign-in the card has, with the request kept", async () => {
+    await enterSkip(preview(), OPTED, {
+      status: 403,
+      body: {
+        error: "license_owned",
+        signInUrl: "https://key.example/signin?product=diceroll",
+      },
+    });
+    await userEvent.click(skipButton());
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "License in another account",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Sign in to the Polaris Locker account that has this Diceroll license to use it.",
+      ),
+    ).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Sign in to that account" }),
+    );
+    expect(
+      await screen.findByRole("button", { name: "Have a license key?" }),
+    ).toBeTruthy();
+    expect(window.location.search).toContain(HANDLE);
+    expect(went).toEqual([]);
+  });
+
+  it("key_entry_limit: the forced body, with the entries and no skip", async () => {
+    await enterSkip(preview(), OPTED, {
+      status: 403,
+      body: {
+        error: "key_entry_limit",
+        keyEntries: { used: 5, limit: 5 },
+        manageUrl: "https://key.example/activate?product=diceroll",
+      },
+    });
+    await userEvent.click(skipButton());
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Create an account to keep Diceroll",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/This key has no entries left in Diceroll/),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("img", { name: "5 of 5 key entries used" }),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Continue without an account" }),
+    ).toBeNull();
+    // It is a step of its own: the heading takes focus and the new title is announced.
+    const h1 = screen.getByRole("heading", {
+      level: 1,
+      name: "Create an account to keep Diceroll",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+    expect(document.querySelector("[data-step-announcer]")?.textContent).toBe(
+      "Create an account to keep Diceroll",
+    );
+    expect(document.title).toContain("Create an account to keep Diceroll");
+    // A key that has no entries "works" no more: no Key works card, and the callout says why.
+    expect(screen.queryByText("Key works")).toBeNull();
+    expect(
+      screen.getByText("You can't continue without an account:"),
+    ).toBeTruthy();
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("404: the request is gone", async () => {
+    await enterSkip(preview(), OPTED, {
+      status: 404,
+      body: { error: "not_found" },
+    });
+    await userEvent.click(skipButton());
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "This sign-in has ended",
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("Go back to the app and start signing in again."),
     ).toBeTruthy();
   });
 });
