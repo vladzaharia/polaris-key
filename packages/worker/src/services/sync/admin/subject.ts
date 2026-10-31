@@ -45,7 +45,7 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** What the active catalog declares: its synced setting routes and its collections. */
-function declaredOf(catalogJson: string | undefined): {
+export function declaredOf(catalogJson: string | undefined): {
   routes: Map<string, { scope: "user" | "platform" }>;
   collections: { name: string; label: string }[];
 } {

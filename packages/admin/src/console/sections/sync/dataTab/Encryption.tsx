@@ -23,7 +23,7 @@ export function Encryption({
           </span>
           <span className="text-fg-muted">
             {e2e
-              ? ". Values are sealed on the person's devices and Polaris Key can't read them."
+              ? ". Values and names stay on the person's devices."
               : ". Values are stored so the server can read them."}
           </span>
         </p>

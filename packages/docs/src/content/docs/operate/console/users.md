@@ -66,7 +66,34 @@ The record has four tabs:
 - **Devices**: devices on their licenses, or signed in with them.
 - **Activity**: console actions on this person and their licenses.
 
-A **Data** tab joins them on products that run Cloud Sync.
+A **Data** tab joins them on products that run Cloud Sync ([below](#data)).
+
+### Data
+
+The **Data** tab shows what Cloud Sync holds for this person in this product. Opening it is
+recorded in the audit log.
+
+- **Storage**: use against their limit, and the tier it comes from.
+- **Settings** and **Collections**: names, sizes and counts. Never a value.
+- **Encryption**: whether Polaris Key can read the values, and the person's key ring (which key,
+  the recovery code, the devices that open it).
+
+On a product whose Cloud Sync is **Readable by Polaris Key**, **Show values** reads the
+setting values and the records of one collection, a page at a time. A long value is cut to two
+lines in the list; select a setting or record to read it whole and copy it. A record with a file
+also lists its current version and the older ones it keeps, each with **Download** (saved as
+`<id>-v<version>.bin`). Each of these needs a sign-in from the last 5 minutes (you are asked to
+sign in again if it is older) and is recorded in the audit log. Reading values and downloading
+files need edit access to Cloud Sync.
+
+On an **End-to-end** product the values and names stay on the person's devices, so there is
+nothing to show and nothing to download. There is no restore and no edit here.
+
+**Delete Cloud Sync data** removes their settings, records, files, file history and key ring.
+It asks for a recent sign-in and for you to type `delete`, and can't be undone. Their devices keep
+their local copies, and syncing pauses for 24 hours. The user, their license and the rest of
+their data stay. To remove everything this product holds for them, use
+[Export and data deletion](#export-and-data-deletion).
 
 ### Account overrides
 

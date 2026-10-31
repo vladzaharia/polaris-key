@@ -29,7 +29,7 @@ export function Collections({
   if (collections.length === 0) return null;
   return (
     <SettingsSection id="sync-data-collections" title="Collections">
-      <ScrollTable label="Collections" className={TABLE.table}>
+      <ScrollTable label="Collection counts" className={TABLE.table}>
         <thead className={TABLE.head}>
           <tr className={TABLE.headRow}>
             <th scope="col" className={head}>

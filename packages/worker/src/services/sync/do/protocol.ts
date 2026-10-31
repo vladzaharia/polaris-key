@@ -15,6 +15,8 @@ import type {
   PushRequest,
   SyncChunkRef,
   SyncFileFormat,
+  SyncFilePointer,
+  SyncJson,
   SyncUploadMode,
   UploadStatus,
 } from "@polaris-key/protocol/sync";
@@ -230,6 +232,18 @@ export type CloudSyncOp =
    */
   | (DoPin & { op: "inspect" })
   /**
+   * The console's values read (U-11a.2), server mode only (the Worker refuses an end-to-end
+   * product first): the settings' values (no `collection`, no `after`) or one page of a
+   * collection's live records in id order, `after` being the last id of the page before. A row
+   * written under a key (sealed) is answered without its value.
+   */
+  | (DoPin & {
+      op: "inspectValues";
+      collection?: string;
+      after?: string;
+      limit: number;
+    })
+  /**
    * Everything the object holds. `forMerge` (an account merge's export, `subjectStore.ts`) also
    * carries what the survivor needs to keep the files opening: the files' R2 keys, the SSE-C keys
    * they reference and the subjects already absorbed. A person's own export carries none of it.
@@ -339,6 +353,25 @@ export interface InspectedSetting {
   updatedAt: number;
 }
 
+/** One live setting with its value (server mode, the console's values read). */
+export interface InspectedSettingValue extends InspectedSetting {
+  /** The live value; null when `sealed`. */
+  value: SyncJson | null;
+  sealed: boolean;
+}
+
+/** One live record with its value and file pointer (server mode, the console's values read). */
+export interface InspectedRecord {
+  id: string;
+  version: number;
+  /** The newest accepted write, milliseconds. */
+  updatedAt: number;
+  bytes: number;
+  value: SyncJson | null;
+  sealed: boolean;
+  file?: SyncFilePointer;
+}
+
 /**
  * One collection's counters, read from the records and files tables when the object has them
  * (they arrive with U-09 and U-10; an object without them answers none). `name` is the
@@ -390,6 +423,13 @@ export type CloudSyncReply =
       collections: InspectedCollection[];
       /** Uploads begun and not yet finalized, aborted or expired. */
       uploadsOpen: number;
+    }
+  | {
+      op: "inspectValues";
+      settings: InspectedSettingValue[] | null;
+      records: InspectedRecord[];
+      /** The id to ask `after` for the next page, or null on the last. */
+      next: string | null;
     }
   | { op: "exportAll"; document: ExportDocument | null }
   | { op: "absorb"; changed: number; skipped?: number; meter?: OpMeter }

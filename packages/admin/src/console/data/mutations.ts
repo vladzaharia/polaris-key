@@ -157,6 +157,7 @@ export type WriteMethod =
   | "resetDeviceFingerprint"
   | "deauthorizeProductDevice"
   | "deleteProductUserData"
+  | "syncDeleteData"
   | "detachProductUserLicense"
   | "relinkProductUserLicense"
   | "makeLicenseFloating"
@@ -692,6 +693,15 @@ export const MUTATIONS: MutationTable = {
     label: "user data delete",
     // Cloud Sync data is one of the stores it empties: the Data tab reads it afresh.
     invalidates: (slug) => [...users(slug), prefix(qk.syncSubjects(slug))],
+  },
+  syncDeleteData: {
+    label: "Cloud Sync data delete",
+    // The person's summary and every value read under it, the usage page and the user's size.
+    invalidates: (slug) => [
+      ...users(slug),
+      prefix(qk.syncSubjects(slug)),
+      prefix(qk.syncUsage(slug)),
+    ],
   },
   detachProductUserLicense: {
     label: "user license detach",
