@@ -68,8 +68,7 @@
     "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/PolarisKeyAndroid.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,
       "detekt:exceptions.SwallowedException": 1,
-      "detekt:exceptions.TooGenericExceptionCaught": 1,
-      "ktlint:standard:no-consecutive-blank-lines": 1
+      "detekt:exceptions.TooGenericExceptionCaught": 1
     },
     "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/PolarisKeyLifecycle.kt": {
       "detekt:complexity.TooManyFunctions": 1,
@@ -1824,8 +1823,7 @@
     },
     "sdks/kotlin/platform/src/test/kotlin/im/plrs/key/platform/KeystoreSealerTest.kt": {
       "detekt:empty-blocks.EmptyCatchBlock": 2,
-      "detekt:exceptions.SwallowedException": 2,
-      "ktlint:standard:import-ordering": 1
+      "detekt:exceptions.SwallowedException": 2
     },
     "sdks/kotlin/platform/src/test/kotlin/im/plrs/key/platform/PeerNsdTest.kt": {
       "detekt:style.MaxLineLength": 1,

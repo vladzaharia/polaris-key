@@ -40,7 +40,6 @@ package im.plrs.key.sdk
 import im.plrs.key.core.CoreContext
 import im.plrs.key.core.PeerTrustResult
 import im.plrs.key.core.ProductDiscoveryDocument
-import im.plrs.key.core.RuntimeFamily
 import im.plrs.key.core.ServiceSlug
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -220,14 +219,15 @@ public class CloudConnect internal constructor(
         val reason = if (!o.relay) "host" else relayWanted(core.discoveryDocument())
         val relayOn = reason == null
         val src = lanSource(connect, now = now, floored = floored, applyTrust = { applyPeerTrust(it) })
+        val lanOptions = androidLanOptions(o.lanOptions, ConnectPlatforms.android, ConnectPlatforms.installed)
         try {
             if (!o.lan) {
                 lanReason = "host"
-            } else if (RuntimeFamily.isAndroid && o.lanOptions.mdns == null) {
-                lanReason = "unsupported" // the :android glue supplies the adapter (CC-12b); the relay still works
+            } else if (lanOptions == null) {
+                lanReason = "unsupported" // Android below 14, or no :android glue installed; the relay still works
             } else {
                 try {
-                    val svc = LanService.start(src, o.lanOptions, onSession = { inbound(it) })
+                    val svc = LanService.start(src, lanOptions, onSession = { inbound(it) })
                     lan = svc
                     unsub += svc.onNotice { notice(it) }
                 } catch (e: CancellationException) {

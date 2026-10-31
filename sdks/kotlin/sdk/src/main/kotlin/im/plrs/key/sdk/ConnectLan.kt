@@ -136,6 +136,12 @@ public class LanOptions(
     public val lanPermission: suspend () -> Boolean = { true },
 ) {
     override fun toString(): String = "LanOptions"
+
+    /** These options with another adapter and permission hook (the platform's, on Android). */
+    internal fun with(mdns: MdnsAdapter?, lanPermission: suspend () -> Boolean): LanOptions = LanOptions(
+        mdns, host, port, caps, label, advertise, browse, allowLoopback, interfaces, maxPending, maxPendingPerAddress,
+        maxPendingPerGroup, maxSessions, rekeyMessages, rekeySeconds, handshakeSeconds, dialSeconds, timer, lanPermission,
+    )
 }
 
 /**
