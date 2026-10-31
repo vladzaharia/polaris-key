@@ -7044,6 +7044,16 @@ msgstr "Crittografia obbligatoria"
 msgid "core.codes.sync-encryption-pinned.message"
 msgstr "Questa app richiede la sincronizzazione crittografata, al momento non disponibile. La sincronizzazione resta disattivata."
 
+#. File not opened
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.title"
+msgstr "File non aperto"
+
+#. The synced file failed its check, so it wasn't used. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.message"
+msgstr "Il file sincronizzato non ha superato il controllo e non è stato usato. Riprova."
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

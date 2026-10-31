@@ -1229,6 +1229,8 @@
   "core.codes.recovery-code-invalid.message": "Dieser Wiederherstellungscode stimmt nicht. Prüfen Sie ihn und versuchen Sie es erneut.",
   "core.codes.sync-encryption-pinned.title": "Verschlüsselung erforderlich",
   "core.codes.sync-encryption-pinned.message": "Diese App braucht verschlüsselten Sync, der gerade nicht verfügbar ist. Der Sync bleibt aus.",
+  "core.codes.sync-file-invalid.title": "Datei nicht geöffnet",
+  "core.codes.sync-file-invalid.message": "Die synchronisierte Datei hat die Prüfung nicht bestanden und wurde nicht verwendet. Versuchen Sie es erneut.",
   "core.codes.invalid-options.title": "App nicht eingerichtet",
   "core.codes.invalid-options.message": "Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler.",
   "core.codes.invalid-argument.title": "Anfrage nicht akzeptiert",
