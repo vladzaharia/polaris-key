@@ -2655,7 +2655,7 @@ devices expire on the same horizon.
 - **K_disc.** It is 32 random bytes per `(product, subject)` per ring epoch, stored in
   `connect_rings`. `GET /connect/identity` delivers the current key and the previous one (for 24 h
   after a bump). A device advertises only under the newest key.
-  The previous key is delivered only when every device of the earlier epoch is still a member: a bump in which a device left drops it, so a removed device has no window. A bump caused by a device rotating its keys is treated as a leave and drops it too. A bump that only adds devices keeps it.
+  The previous key is delivered only when every device of the earlier epoch is still a member: a bump in which a device left drops it, so a removed device has no window. A bump in which a device's keys changed is treated as a leave and drops it too, whichever path moved the epoch. A bump that only adds devices keeps it.
   Clients treat the delivered previous key as authoritative but SHOULD stop using it 24 h after first seeing it, and drop it at once on a local leave or when a fetched roster lost or re-keyed a device compared with the held one. A client does not know the bump time, so its bound can exceed the Worker's window by up to 24 h; the Worker's rule above is what closes a removed device's window.
 - **Why server-delivered.** This keeps L-13's server-delivered key over a root-key derivation.
   Connect then works without Cloud Sync E2E, and rotation is trivial.
@@ -2795,11 +2795,11 @@ from the client.
 **Rules:**
 
 - §15.2 step 4 applies to both keys.
-- `agreeKey` is unique per product.
+- No key is held twice in a product: a registration whose `signKey` or `agreeKey` another device holds in either role, or whose two keys are equal, is refused with `device_keys_invalid`.
 - A registration whose `agreeKey` is not the canonical X25519 spelling is refused (§15.2 step 4).
 - A proof that changes the keys must carry an `issuedAt` strictly newer than the last one accepted for the device, so a captured proof cannot be replayed inside its window. The Worker keeps that floor, and the highest `keySeq`, in a row that outlives the device's keys.
 - `keySeq` only increases: after the device is deauthorized and registers again it continues from its last value.
-- A device may rotate at most 4 times a day (a rate limit).
+- A device may rotate at most 4 times a day (a rate limit; on this route, and a proof refused by the floor does not count).
 - A rotation bumps the device's `keySeq` and raises a device-change event of kind `keys` inside the Worker.
 - When a device is removed or purged, its row goes too; the floors above stay until the device row or the product is erased.
 
