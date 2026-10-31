@@ -827,6 +827,60 @@
     <!-- RingChange: confirm a changed sync key (U-42). Opens UnlockSync. -->
     <string name="ringChange_useCode">Usar código de recuperación</string>
     <string name="ringChange_useCode__macos">Usar código de recuperación</string>
+    <!-- CloudSyncStatus: a small sync status. Saves are uploading or downloading; never shown with Synced. -->
+    <string name="cloudSync_transferring">Sincronizando partidas…</string>
+    <!-- CloudSyncStatus: how much of the transfer is done. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
+    <string name="cloudSync_transferProgress">%1$s de %2$s</string>
+    <!-- CloudSyncStatus: a small sync status. A transfer is paused until the network is back. -->
+    <string name="cloudSync_waitingNetwork">Esperando conexión</string>
+    <!-- CloudSyncStatus: a small sync status. A transfer is paused until the device is charging or has enough battery. -->
+    <string name="cloudSync_waitingBattery">Esperando alimentación</string>
+    <!-- CloudSyncStatus: a small sync status. The system paused a transfer while the app is in the background. -->
+    <string name="cloudSync_waitingBackground">En pausa hasta que abras la app</string>
+    <!-- CloudSyncStatus: a small sync status. A transfer failed; Try again sits beside it. -->
+    <string name="cloudSync_transferFailed">No se pudieron sincronizar tus partidas.</string>
+    <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
+    <string name="saveConflict_title">Dos versiones de esta partida</string>
+    <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
+    <string name="saveConflict_lede">Elige cuál conservar. No se borra nada hasta entonces.</string>
+    <!-- SaveConflict: heading of the card for the copy on this device. -->
+    <string name="saveConflict_thisDevice">Versión en este dispositivo</string>
+    <!-- SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”). Arguments: 1=when. -->
+    <string name="saveConflict_savedThis">Guardada %1$s</string>
+    <!-- SaveConflict: when the other copy was saved. Arguments: {when} = a time already formatted by the platform (“yesterday, 21:40”). Arguments: 1=when. -->
+    <string name="saveConflict_savedOther">Guardada %1$s</string>
+    <!-- SaveConflict: heading of the card for the copy on another device. Arguments: {device} = the device's name, someone's own text. Arguments: 1=device. -->
+    <string name="saveConflict_otherDevice">Versión en %1$s</string>
+    <!-- SaveConflict: heading of the card for the other copy when the device is not known. -->
+    <string name="saveConflict_otherUnknown">Versión en otro dispositivo</string>
+    <!-- SaveConflict: the other copy no longer exists; there is nothing to compare. -->
+    <string name="saveConflict_deletedElsewhere">Eliminada en otro dispositivo</string>
+    <!-- SaveConflict: keep the copy on this device and replace the other. -->
+    <string name="saveConflict_keepThis">Conservar la de este dispositivo</string>
+    <string name="saveConflict_keepThis__macos">Conservar la de este dispositivo</string>
+    <!-- SaveConflict: keep the other copy and replace the one on this device. -->
+    <string name="saveConflict_keepOther">Conservar la otra</string>
+    <string name="saveConflict_keepOther__macos">Conservar la otra</string>
+    <!-- SaveConflict: the other copy was deleted; remove the one on this device as well. -->
+    <string name="saveConflict_acceptDelete">Eliminarla aquí también</string>
+    <string name="saveConflict_acceptDelete__macos">Eliminarla aquí también</string>
+    <!-- SaveConflict: keep both; the other copy is saved under a new name. Disabled while every save slot is in use. -->
+    <string name="saveConflict_keepBoth">Conservar ambas</string>
+    <string name="saveConflict_keepBoth__macos">Conservar ambas</string>
+    <!-- SaveConflict: why Keep both is disabled. Shown beside the disabled control. -->
+    <string name="saveConflict_bothFull">Todas las ranuras están en uso. Elimina una partida para conservar ambas.</string>
+    <!-- SaveConflict: the choice is being applied. -->
+    <string name="saveConflict_keeping">Aplicando tu elección…</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptLocal">Se conservó la partida de este dispositivo.</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptRemote">Se conservó la otra partida.</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptBoth">Se conservaron ambas. La otra se guardó como copia.</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptDeleted">La partida está eliminada.</string>
+    <!-- SaveConflict: applying the choice failed; Try again repeats it. -->
+    <string name="saveConflict_failed">No se pudo aplicar tu elección. Ambas partidas siguen igual.</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="about_title">Acerca de %1$s</string>
     <!-- About: product and build information. The bare section label in a navigation list; the product name is not repeated. -->

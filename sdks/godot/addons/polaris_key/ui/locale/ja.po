@@ -2227,6 +2227,151 @@ msgctxt "macos"
 msgid "ringChange.useCode"
 msgstr "リカバリーコードを使う"
 
+#. Syncing saves…
+#. CloudSyncStatus: a small sync status. Saves are uploading or downloading; never shown with Synced.
+msgid "cloudSync.transferring"
+msgstr "セーブデータを同期しています…"
+
+#. {size} of {total}
+#. CloudSyncStatus: how much of the transfer is done. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
+msgid "cloudSync.transferProgress"
+msgstr "{size} / {total}"
+
+#. Waiting for a connection
+#. CloudSyncStatus: a small sync status. A transfer is paused until the network is back.
+msgid "cloudSync.waitingNetwork"
+msgstr "接続を待っています"
+
+#. Waiting for power
+#. CloudSyncStatus: a small sync status. A transfer is paused until the device is charging or has enough battery.
+msgid "cloudSync.waitingBattery"
+msgstr "電源を待っています"
+
+#. Paused until you open the app
+#. CloudSyncStatus: a small sync status. The system paused a transfer while the app is in the background.
+msgid "cloudSync.waitingBackground"
+msgstr "アプリを開くまで一時停止中"
+
+#. Couldn't sync your saves.
+#. CloudSyncStatus: a small sync status. A transfer failed; Try again sits beside it.
+msgid "cloudSync.transferFailed"
+msgstr "セーブデータを同期できませんでした。"
+
+#. Two versions of this save
+#. SaveConflict: the same save changed on two devices; the person picks one.
+msgid "saveConflict.title"
+msgstr "このセーブデータの2つのバージョン"
+
+#. Choose the one to keep. Nothing is deleted until you do.
+#. SaveConflict: the same save changed on two devices; the person picks one.
+msgid "saveConflict.lede"
+msgstr "残す方を選んでください。選ぶまで何も削除されません。"
+
+#. Version on this device
+#. SaveConflict: heading of the card for the copy on this device.
+msgid "saveConflict.thisDevice"
+msgstr "このデバイスのバージョン"
+
+#. Saved {when}
+#. SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”).
+msgid "saveConflict.savedThis"
+msgstr "{when}に保存"
+
+#. Saved {when}
+#. SaveConflict: when the other copy was saved. Arguments: {when} = a time already formatted by the platform (“yesterday, 21:40”).
+msgid "saveConflict.savedOther"
+msgstr "{when}に保存"
+
+#. Version on {device}
+#. SaveConflict: heading of the card for the copy on another device. Arguments: {device} = the device's name, someone's own text.
+msgid "saveConflict.otherDevice"
+msgstr "{device}のバージョン"
+
+#. Version on another device
+#. SaveConflict: heading of the card for the other copy when the device is not known.
+msgid "saveConflict.otherUnknown"
+msgstr "別のデバイスのバージョン"
+
+#. Deleted on another device
+#. SaveConflict: the other copy no longer exists; there is nothing to compare.
+msgid "saveConflict.deletedElsewhere"
+msgstr "別のデバイスで削除済み"
+
+#. Keep this device's
+#. SaveConflict: keep the copy on this device and replace the other.
+msgid "saveConflict.keepThis"
+msgstr "このデバイスのものを残す"
+
+#. macos: Keep This Device's
+msgctxt "macos"
+msgid "saveConflict.keepThis"
+msgstr "このデバイスのものを残す"
+
+#. Keep the other
+#. SaveConflict: keep the other copy and replace the one on this device.
+msgid "saveConflict.keepOther"
+msgstr "もう一方を残す"
+
+#. macos: Keep the Other
+msgctxt "macos"
+msgid "saveConflict.keepOther"
+msgstr "もう一方を残す"
+
+#. Delete it here too
+#. SaveConflict: the other copy was deleted; remove the one on this device as well.
+msgid "saveConflict.acceptDelete"
+msgstr "こちらでも削除"
+
+#. macos: Delete It Here Too
+msgctxt "macos"
+msgid "saveConflict.acceptDelete"
+msgstr "こちらでも削除"
+
+#. Keep both
+#. SaveConflict: keep both; the other copy is saved under a new name. Disabled while every save slot is in use.
+msgid "saveConflict.keepBoth"
+msgstr "両方残す"
+
+#. macos: Keep Both
+msgctxt "macos"
+msgid "saveConflict.keepBoth"
+msgstr "両方残す"
+
+#. All save slots are in use. Delete a save to keep both.
+#. SaveConflict: why Keep both is disabled. Shown beside the disabled control.
+msgid "saveConflict.bothFull"
+msgstr "すべてのセーブ枠が使用中です。両方残すには、セーブデータを1つ削除してください。"
+
+#. Keeping your choice…
+#. SaveConflict: the choice is being applied.
+msgid "saveConflict.keeping"
+msgstr "選択を反映しています…"
+
+#. Kept this device's save.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptLocal"
+msgstr "このデバイスのセーブデータを残しました。"
+
+#. Kept the other save.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptRemote"
+msgstr "もう一方のセーブデータを残しました。"
+
+#. Kept both. The other is saved as a copy.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptBoth"
+msgstr "両方残しました。もう一方はコピーとして保存されています。"
+
+#. The save is deleted.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptDeleted"
+msgstr "セーブデータを削除しました。"
+
+#. Couldn't keep your choice. Both saves are unchanged.
+#. SaveConflict: applying the choice failed; Try again repeats it.
+msgid "saveConflict.failed"
+msgstr "選択を反映できませんでした。どちらのセーブデータも変わっていません。"
+
 #. About {product}
 #. About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "about.title"

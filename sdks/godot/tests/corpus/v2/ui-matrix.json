@@ -16,7 +16,10 @@
       "confirm-start-over": "Replace the sync key after the warning that synced data will be lost (T22).",
       "accept-ring-change": "Confirm the changed ring that was shown: hand `served` to `acceptRingChange`, never a fresh read.",
       "use-recovery-code": "Open the recovery code screen from the ring confirmation.",
-      "copy-code": "Copy the recovery code to the clipboard."
+      "copy-code": "Copy the recovery code to the clipboard.",
+      "keep-local": "Resolve a save conflict by keeping the copy on this device (Keep this device's).",
+      "keep-remote": "Resolve a save conflict by keeping the other copy, or accepting its deletion (Keep the other, Delete it here too).",
+      "keep-both": "Resolve a save conflict by keeping both: the other copy is saved under a new name (Keep both)."
     },
     "actionKeys": {
       "open-card": ["signin.desktop.continue", "signin.email.continue"],
@@ -27,6 +30,9 @@
       "accept-ring-change": ["ringChange.accept"],
       "use-recovery-code": ["ringChange.useCode"],
       "copy-code": ["recoveryCode.copy"],
+      "keep-local": ["saveConflict.keepThis"],
+      "keep-remote": ["saveConflict.keepOther", "saveConflict.acceptDelete"],
+      "keep-both": ["saveConflict.keepBoth"],
       "start-sign-in": [
         "signin.key.signIn",
         "signin.key.ownedSignIn",
@@ -86,7 +92,8 @@
       "offers": "{available, purchased?, url?}: url is the https page that sells the offer outside the app (a store page or the product's Polaris Locker page), from the integrator or the server; the hand-off shows only when the opener accepts it (DL14).",
       "toast": "{kind}: the toast being shown.",
       "error": "{code}: a core.codes code the step failed with.",
-      "cloudSync": "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed, signedIn?, canReview?, lastSynced?}. `ring-changed` always offers Review: the kit owns the confirmation.",
+      "cloudSync": "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed | transferring | waiting | transfer-failed, signedIn?, canReview?, lastSynced?, transfer?: {size?, total?, fraction?}, reason?: network | battery | background}. `ring-changed` always offers Review: the kit owns the confirmation. `transferring` shows `transfer.size` of `transfer.total` (display-ready sizes) when both are given, and a bar that is determinate only with `transfer.fraction` (counted bytes, 0 to 1); `waiting` names its `reason` (default network); `transfer-failed` offers Try again. While a transfer is pending the status never says Synced, whatever `lastSynced` holds.",
+      "saveConflict": "SaveConflict: {step: choose | keeping | kept | failed, local?: {when?}, remote?: {when?, device?} | null, bothAvailable?, keep?: local | remote | both}. `remote: null` means the other copy was deleted: Keep the other becomes Delete it here too and Keep both is not offered. `bothAvailable` is true only with a free slot of the 16; absent or false draws Keep both disabled, with its reason. `keep` is the choice being applied (keeping), applied (kept) or that failed; kept needs it. `when` and `device` are display-ready.",
       "licenseHolder": "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
       "activateDone": "The Done step after a key activates: {tier?, term?, deviceKind?, position?, limit?}, the strings and numbers the license line shows. Absent: ActivateDone is hidden. The state is `waiting` with a `licenseHolder` email, else `ready`; the reasons follow the services (Cloud Sync only with sync, Get your license back and Move it with Identity, else the portal line).",
       "addToAccount": "Add your name and email: {step: form | invalid | busy | added | owned | email-bound | failed, field?: name | email | both, deviceKind?}. `invalid` names the field to fix (absent: both). owned: someone attached the license meanwhile; email-bound: the license was sent to another email (with `licenseHolder`); failed: sign-in or attach did not finish. `added` names Cloud Sync only with sync on. Absent: AddToAccount is hidden.",
@@ -12648,6 +12655,407 @@
         }
       },
       "expect": { "component": "RingChange", "state": "hidden", "copy": [] }
+    }
+  ],
+  "saveConflict": [
+    {
+      "name": "CloudSyncStatus/transferring: saves are syncing",
+      "input": { "cloudSync": { "state": "transferring" } },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "transferring",
+        "copy": ["cloudSync.transferring"]
+      }
+    },
+    {
+      "name": "CloudSyncStatus/transferring: how much is done, and never Synced",
+      "input": {
+        "cloudSync": {
+          "state": "transferring",
+          "lastSynced": "2 min ago",
+          "transfer": { "size": "38 MB", "total": "61 MB", "fraction": 0.62 }
+        }
+      },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "transferring",
+        "copy": ["cloudSync.transferProgress", "cloudSync.transferring"]
+      },
+      "mustNot": {
+        "invariant": "A pending transfer is never reported as synced, whatever the last sync time was.",
+        "copy": ["cloudSync.synced"]
+      }
+    },
+    {
+      "name": "CloudSyncStatus/waiting: for a connection, and never Synced",
+      "input": {
+        "cloudSync": { "state": "waiting", "lastSynced": "2 min ago" }
+      },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "waiting",
+        "copy": ["cloudSync.waitingNetwork"]
+      },
+      "mustNot": {
+        "invariant": "A pending transfer is never reported as synced, whatever the last sync time was.",
+        "copy": ["cloudSync.synced"]
+      }
+    },
+    {
+      "name": "CloudSyncStatus/waiting: for power",
+      "input": { "cloudSync": { "state": "waiting", "reason": "battery" } },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "waiting",
+        "copy": ["cloudSync.waitingBattery"]
+      }
+    },
+    {
+      "name": "CloudSyncStatus/waiting: until the app opens",
+      "input": { "cloudSync": { "state": "waiting", "reason": "background" } },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "waiting",
+        "copy": ["cloudSync.waitingBackground"]
+      }
+    },
+    {
+      "name": "CloudSyncStatus/transfer-failed: Try again, and never Synced",
+      "input": {
+        "cloudSync": { "state": "transfer-failed", "lastSynced": "2 min ago" }
+      },
+      "expect": {
+        "component": "CloudSyncStatus",
+        "state": "transfer-failed",
+        "copy": ["cloudSync.transferFailed", "common.tryAgain"],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A pending transfer is never reported as synced, whatever the last sync time was.",
+        "copy": ["cloudSync.synced"]
+      }
+    },
+    {
+      "name": "SaveConflict/choose: the two copies and the three choices",
+      "input": {
+        "saveConflict": {
+          "step": "choose",
+          "local": { "when": "today, 14:02" },
+          "remote": {
+            "when": "yesterday, 21:40",
+            "device": "Maya's Steam Deck"
+          },
+          "bothAvailable": true
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "saveConflict.keepBoth",
+          "saveConflict.keepOther",
+          "saveConflict.keepThis",
+          "saveConflict.lede",
+          "saveConflict.otherDevice",
+          "saveConflict.savedOther",
+          "saveConflict.savedThis",
+          "saveConflict.thisDevice",
+          "saveConflict.title"
+        ],
+        "actions": ["cancel", "keep-both", "keep-local", "keep-remote"]
+      },
+      "mustNot": {
+        "invariant": "A save is never discarded without a choice.",
+        "states": ["keeping", "kept"]
+      }
+    },
+    {
+      "name": "SaveConflict/choose: the other device is not known",
+      "input": {
+        "saveConflict": {
+          "step": "choose",
+          "local": { "when": "today, 14:02" },
+          "remote": { "when": "yesterday, 21:40" },
+          "bothAvailable": true
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "saveConflict.keepBoth",
+          "saveConflict.keepOther",
+          "saveConflict.keepThis",
+          "saveConflict.lede",
+          "saveConflict.otherUnknown",
+          "saveConflict.savedOther",
+          "saveConflict.savedThis",
+          "saveConflict.thisDevice",
+          "saveConflict.title"
+        ],
+        "actions": ["cancel", "keep-both", "keep-local", "keep-remote"]
+      }
+    },
+    {
+      "name": "SaveConflict/choose: Keep both is disabled while every slot is in use",
+      "input": {
+        "saveConflict": {
+          "step": "choose",
+          "local": { "when": "today, 14:02" },
+          "remote": {
+            "when": "yesterday, 21:40",
+            "device": "Maya's Steam Deck"
+          },
+          "bothAvailable": false
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "saveConflict.bothFull",
+          "saveConflict.keepBoth",
+          "saveConflict.keepOther",
+          "saveConflict.keepThis",
+          "saveConflict.lede",
+          "saveConflict.otherDevice",
+          "saveConflict.savedOther",
+          "saveConflict.savedThis",
+          "saveConflict.thisDevice",
+          "saveConflict.title"
+        ],
+        "actions": ["cancel", "keep-local", "keep-remote"]
+      },
+      "mustNot": {
+        "invariant": "Keep both is disabled, with its reason, while all 16 save slots are in use; it never overwrites a slot.",
+        "actions": ["keep-both"]
+      }
+    },
+    {
+      "name": "SaveConflict/choose: the other copy was deleted",
+      "input": {
+        "saveConflict": {
+          "step": "choose",
+          "local": { "when": "today, 14:02" },
+          "remote": null,
+          "bothAvailable": true
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "choose",
+        "copy": [
+          "common.cancel",
+          "saveConflict.acceptDelete",
+          "saveConflict.deletedElsewhere",
+          "saveConflict.keepThis",
+          "saveConflict.lede",
+          "saveConflict.savedThis",
+          "saveConflict.thisDevice",
+          "saveConflict.title"
+        ],
+        "actions": ["cancel", "keep-local", "keep-remote"]
+      },
+      "mustNot": {
+        "invariant": "A deletion is accepted only by its own button, never as Keep the other, and Keep both has nothing to keep.",
+        "copy": ["saveConflict.keepBoth", "saveConflict.keepOther"],
+        "actions": ["keep-both"]
+      }
+    },
+    {
+      "name": "SaveConflict/keeping: the choice is being applied",
+      "input": {
+        "saveConflict": {
+          "step": "keeping",
+          "local": { "when": "today, 14:02" },
+          "remote": {
+            "when": "yesterday, 21:40",
+            "device": "Maya's Steam Deck"
+          },
+          "keep": "local"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "keeping",
+        "copy": ["saveConflict.keeping", "saveConflict.title"]
+      },
+      "mustNot": {
+        "invariant": "A choice is applied once: no control is offered while it runs.",
+        "actions": ["keep-both", "keep-local", "keep-remote"]
+      }
+    },
+    {
+      "name": "SaveConflict/kept: this device's copy",
+      "input": {
+        "saveConflict": {
+          "step": "kept",
+          "local": { "when": "today, 14:02" },
+          "remote": {
+            "when": "yesterday, 21:40",
+            "device": "Maya's Steam Deck"
+          },
+          "keep": "local"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "kept",
+        "copy": ["common.done", "saveConflict.keptLocal", "saveConflict.title"]
+      },
+      "mustNot": {
+        "invariant": "Kept names the choice that was made, and no other.",
+        "copy": [
+          "saveConflict.keptBoth",
+          "saveConflict.keptDeleted",
+          "saveConflict.keptRemote"
+        ]
+      }
+    },
+    {
+      "name": "SaveConflict/kept: the other copy",
+      "input": {
+        "saveConflict": {
+          "step": "kept",
+          "local": { "when": "today, 14:02" },
+          "remote": {
+            "when": "yesterday, 21:40",
+            "device": "Maya's Steam Deck"
+          },
+          "keep": "remote"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "kept",
+        "copy": ["common.done", "saveConflict.keptRemote", "saveConflict.title"]
+      },
+      "mustNot": {
+        "invariant": "Kept names the choice that was made, and no other.",
+        "copy": [
+          "saveConflict.keptBoth",
+          "saveConflict.keptDeleted",
+          "saveConflict.keptLocal"
+        ]
+      }
+    },
+    {
+      "name": "SaveConflict/kept: both copies",
+      "input": {
+        "saveConflict": {
+          "step": "kept",
+          "local": { "when": "today, 14:02" },
+          "remote": {
+            "when": "yesterday, 21:40",
+            "device": "Maya's Steam Deck"
+          },
+          "keep": "both"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "kept",
+        "copy": ["common.done", "saveConflict.keptBoth", "saveConflict.title"]
+      },
+      "mustNot": {
+        "invariant": "Kept names the choice that was made, and no other.",
+        "copy": [
+          "saveConflict.keptDeleted",
+          "saveConflict.keptLocal",
+          "saveConflict.keptRemote"
+        ]
+      }
+    },
+    {
+      "name": "SaveConflict/kept: the deletion",
+      "input": {
+        "saveConflict": {
+          "step": "kept",
+          "local": { "when": "today, 14:02" },
+          "remote": null,
+          "keep": "remote"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "kept",
+        "copy": [
+          "common.done",
+          "saveConflict.keptDeleted",
+          "saveConflict.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "Kept names the choice that was made, and no other.",
+        "copy": [
+          "saveConflict.keptBoth",
+          "saveConflict.keptLocal",
+          "saveConflict.keptRemote"
+        ]
+      }
+    },
+    {
+      "name": "SaveConflict/failed: both saves are unchanged",
+      "input": {
+        "saveConflict": {
+          "step": "failed",
+          "local": { "when": "today, 14:02" },
+          "remote": {
+            "when": "yesterday, 21:40",
+            "device": "Maya's Steam Deck"
+          },
+          "keep": "local"
+        }
+      },
+      "expect": {
+        "component": "SaveConflict",
+        "state": "failed",
+        "copy": [
+          "common.cancel",
+          "common.tryAgain",
+          "saveConflict.failed",
+          "saveConflict.title"
+        ],
+        "actions": ["cancel", "retry"]
+      },
+      "mustNot": {
+        "invariant": "A failed choice never says kept; both copies stay as they were.",
+        "states": ["kept"],
+        "copy": [
+          "saveConflict.keptBoth",
+          "saveConflict.keptDeleted",
+          "saveConflict.keptLocal",
+          "saveConflict.keptRemote"
+        ]
+      }
+    },
+    {
+      "name": "SaveConflict/hidden: Cloud Sync off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "commerce",
+          "connect"
+        ],
+        "saveConflict": {
+          "step": "choose",
+          "local": { "when": "today, 14:02" },
+          "remote": {
+            "when": "yesterday, 21:40",
+            "device": "Maya's Steam Deck"
+          },
+          "bothAvailable": true
+        }
+      },
+      "expect": { "component": "SaveConflict", "state": "hidden", "copy": [] }
     }
   ],
   "holders": [
