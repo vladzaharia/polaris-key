@@ -640,6 +640,9 @@ public class SavesClient internal constructor(
 internal class Phase {
     @Volatile var job: Job? = null
 
+    /** A pause cancelled the engine part; set under the transfer's lock, so a resume that lands first cannot hide it. */
+    @Volatile var pauseRequested: Boolean = false
+
     suspend fun <T> engine(block: suspend () -> T): T = coroutineScope {
         val j = async { block() }
         job = j
@@ -705,6 +708,7 @@ public class SaveTransfer internal constructor(
             if (state != TransferState.RUNNING || wanted != Wanted.RUN) return
             wanted = Wanted.PAUSE
             gate = CompletableDeferred()
+            phase?.pauseRequested = true
             running.cancel()
         }
     }
@@ -717,7 +721,10 @@ public class SaveTransfer internal constructor(
         }
     }
 
-    /** Settles the transfer as cancelled, whether it is moving bytes, paused or waiting for the metadata answer. */
+    /**
+     * Settles the transfer as cancelled, whether it is moving bytes, paused or waiting for the metadata answer. A metadata
+     * write already queued is not recalled: it is exact, so it only lands at its base version.
+     */
     public suspend fun cancel() {
         synchronized(lock) {
             if (state != TransferState.RUNNING && state != TransferState.PAUSED) return
@@ -756,8 +763,9 @@ public class SaveTransfer internal constructor(
                 val r = try {
                     attempt(p)
                 } catch (e: CancellationException) {
-                    // Only the engine part was cancelled when a pause asked for it; anything else goes up.
-                    if (want() != Wanted.PAUSE) throw e
+                    // Only the engine part was cancelled when a pause asked for it (even if a resume has already
+                    // undone it); anything else, a cancel included, goes up.
+                    if (want() == Wanted.CANCEL || !p.pauseRequested) throw e
                     synchronized(lock) { state = TransferState.PAUSED }
                     val g = synchronized(lock) { gate }
                     g?.await()

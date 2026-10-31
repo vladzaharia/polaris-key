@@ -428,4 +428,29 @@ class CloudSyncSavesClientTest {
         assertTrue(saves.list().isEmpty())
         assertTrue(saves.delete("s") is SaveSetResult.Rejected)
     }
+
+    @Test
+    fun aCancelDuringAPauseWinsOverTheResume() = runBlocking {
+        val cloud = Cloud(e2e = false).also { it.gate = CompletableDeferred() }
+        val saves = client(cloud, e2e = false)
+        val t = saves.write("s", bytes(500), meta("c"))
+        kotlinx.coroutines.delay(100)
+        t.pause()
+        t.cancel()
+        t.resume()
+        assertEquals(SaveResult.Cancelled, t.result())
+        assertEquals(TransferState.CANCELLED, t.state)
+    }
+
+    @Test
+    fun pauseThenResumeBackToBackFinishes() = runBlocking {
+        val cloud = Cloud(e2e = false).also { it.gate = CompletableDeferred() }
+        val saves = client(cloud, e2e = false)
+        val t = saves.write("s", bytes(500), meta("c"))
+        kotlinx.coroutines.delay(100)
+        t.pause()
+        t.resume()
+        cloud.gate!!.complete(Unit)
+        assertTrue(t.result() is SaveResult.Done)
+    }
 }

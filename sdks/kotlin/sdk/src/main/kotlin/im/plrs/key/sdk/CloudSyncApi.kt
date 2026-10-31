@@ -212,6 +212,9 @@ internal class CloudSyncApi(
     private val savesLock = Mutex()
     private var savesBinding: SavesBinding? = null
 
+    /** The person the chunk cache was last opened for. */
+    @Volatile private var savesSubject: String? = null
+
     private val savesHooks = SavesHooks(
         progress = { id, done, total -> emit(CloudSyncEvent.TransferProgress(id, done, total)) },
         settled = { id, result -> emit(settledEvent(id, result)) },
@@ -268,6 +271,7 @@ internal class CloudSyncApi(
         val e2e = h.withMachine { it.encryptionMode() == "e2e" }
         val codec = fileCodec(SAVES_COLLECTION, e2e)
         val who = withContext(dispatcher) { subject }
+        if (who != null) savesSubject = who
         val cache = if (decl.delta &&
             who != null
         ) {
@@ -288,7 +292,10 @@ internal class CloudSyncApi(
             runCatching { saves.cancelAll() }
             val dir = hostValue?.stateDir ?: return@withContext
             runCatching { FileJournal(dir).clear() }
-            runCatching { java.io.File(dir, CLOUD_SYNC_CHUNKS_DIR).deleteRecursively() }
+            // The leaving person's chunks only; the whole cache when nobody is known.
+            val who = savesSubject
+            val cache = if (who != null) chunkCacheDir(dir, who, SAVES_COLLECTION).parentFile else java.io.File(dir, CLOUD_SYNC_CHUNKS_DIR)
+            runCatching { cache.deleteRecursively() }
         }
     }
 
@@ -481,8 +488,9 @@ internal class CloudSyncApi(
     /**
      * The identity client's pre-sign-out hook (the old token is still current): bounded flush while the machine
      * is signed in and the root is held, then the ring forgets, THEN the machine signs out and the data is purged
-     * (A-3). A forget that fails stops the sign-out (D-13): its error is returned before the machine is touched
-     * or anything is purged, so everything stays as it was and a retry forgets again.
+     * (A-3). A forget that fails stops the sign-out (D-13): its error is returned before the machine is touched . The ring is
+     * already locked and the save transfers already deleted by then (fail safe); nothing else is touched, and a retry
+     * forgets again.
      */
     suspend fun beforeSignOut() {
         withContext(dispatcher) {

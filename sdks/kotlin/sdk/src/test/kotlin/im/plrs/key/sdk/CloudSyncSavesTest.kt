@@ -430,6 +430,36 @@ class CloudSyncSavesTest {
     }
 
     @Test
+    fun aFileCodecStopsWhenTheRootIsReplacedWhileHeld() = runBlocking {
+        val r = Rig(seedRoot = true)
+        val codec = r.client.keyring.fileCodec(SAVES_COLLECTION)
+        val id = codec.chunkId(ByteArray(10))
+        // The ring lets go of this root and takes a root back from its store: a new hold, not the one the codec was made for.
+        r.client.keyring.lock()
+        assertTrue(r.client.keyring.status().unlocked)
+        try {
+            codec.sealChunk(id, ByteArray(10))
+            fail("the old codec sealed under a root the ring let go")
+        } catch (e: PolarisException) {
+            assertEquals(ErrorCode.syncLocked, e.code)
+        }
+        r.client.close()
+    }
+
+    @Test
+    fun pauseThenResumeBackToBackStillFinishes() = runBlocking {
+        val r = Rig()
+        r.signIn()
+        repeat(5) { i ->
+            val t = r.saves.write("slot-$i", bytes(3000), meta("x"))
+            t.pause()
+            t.resume()
+            assertTrue("round $i", t.result() is SaveResult.Done)
+        }
+        r.client.close()
+    }
+
+    @Test
     fun aFileCodecStopsWithTheRing() = runBlocking {
         val r = Rig(seedRoot = true)
         val codec = r.client.keyring.fileCodec(SAVES_COLLECTION)
@@ -465,17 +495,24 @@ class CloudSyncSavesTest {
         lateinit var rig: Rig
         val roots = LoggedStorage(InMemoryDeviceKeyStorage()) {
             val journal = File(rig.dir, CLOUD_SYNC_TRANSFERS_DIR)
-            seen += "pin:locked=${!rig.client.keyring.unlocked},journal=${journal.exists()},chunks=${File(rig.dir, CLOUD_SYNC_CHUNKS_DIR).exists()}"
+            seen +=
+                "pin:locked=${!rig.client.keyring.unlocked},journal=${journal.exists()},chunks=${chunkCacheDir(
+                    rig.dir,
+                    ALICE,
+                    SAVES_COLLECTION,
+                ).parentFile.exists()}"
         }
         rig = Rig(roots = roots, seedRoot = true)
         rig.signIn()
         assertTrue(rig.saves.write("slot-1", bytes(100), meta("x")).result() is SaveResult.Done)
-        File(rig.dir, CLOUD_SYNC_CHUNKS_DIR).mkdirs()
+        val chunks = chunkCacheDir(rig.dir, ALICE, SAVES_COLLECTION).parentFile
+        chunks.mkdirs()
+        rig.client.cloudSync.saves.list()
         assertTrue("the journal is there before sign-out", File(rig.dir, CLOUD_SYNC_TRANSFERS_DIR).exists())
         rig.client.identity.signOut()
         assertEquals(listOf("pin:locked=true,journal=false,chunks=false"), seen.toList())
         assertFalse(File(rig.dir, CLOUD_SYNC_TRANSFERS_DIR).exists())
-        assertFalse(File(rig.dir, CLOUD_SYNC_CHUNKS_DIR).exists())
+        assertFalse(chunks.exists())
         rig.client.close()
     }
 
