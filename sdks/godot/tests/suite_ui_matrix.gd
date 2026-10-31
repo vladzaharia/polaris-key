@@ -222,8 +222,36 @@ static func _view_problems(tree: SceneTree, v: PKeyUiView, entry: Array, preset:
 	# (A 36 px host font on a 640 px wide canvas is the one tight case; see MATRIX.problems.)
 	if not ([entry[0], preset, s[0]] in MATRIX.TIGHT_CASES and s[1].x <= 640):
 		probs.append_array(_focus(v))
+	probs.append_array(await _save_conflict_top_problems(tree, v))
 	probs.append_array(await MATRIX.reach_problems(tree, v, entry[3], [entry[0], preset, s[0]] in MATRIX.TIGHT_CASES))
 	return probs
+
+
+## A save conflict that is asked to choose keeps its title and both copies in view after a host update
+## and after a resize, until the person moves the focus (K.5 UX round): the next render must not scroll
+## them away to the focused Cancel.
+static func _save_conflict_top_problems(tree: SceneTree, v: PKeyUiView) -> PackedStringArray:
+	var out := PackedStringArray()
+	if not (v is PKeySaveConflict) or (v as PKeySaveConflict).step != "choose" or not v.visible:
+		return out
+	var sc := v.find_child("Scroll", true, false) as ScrollContainer
+	if sc == null:
+		return out
+	var c := v as PKeySaveConflict
+	for round in ["a host update", "a resize"]:
+		if round == "a host update":
+			c.local_when = c.local_when + " "
+		else:
+			c.size = c.size + Vector2(1, 1)
+			c.layout_content()
+		for i in 4:
+			await tree.process_frame
+		var top := sc.get_global_rect().position.y - 1.0
+		for n in ["Title", "Local"]:
+			var node := v.find_child(n, true, false) as Control
+			if node != null and node.visible and node.get_global_rect().position.y < top:
+				out.append("after %s the %s is scrolled out of view (%d/%d)" % [round, n, sc.scroll_vertical, int(sc.get_v_scroll_bar().max_value)])
+	return out
 
 
 ## The arrangement is a pure function of the size (DL1): every screen laid out FRESH at each size, as

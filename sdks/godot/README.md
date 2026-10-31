@@ -490,7 +490,19 @@ key ring calls on `PolarisKey.keyring` through `PKeyCloudSyncController` unless 
 - **`PKeyCloudSyncStatus`** also draws `locked` ("Sync is locked." with **Unlock sync**, signal
   `unlock_requested`) and `ring-changed` ("Your sync key changed." with **Review**, which always
   shows, signal `review_requested`). Following the sync client's state is the host binding and not
-  built yet; set `state` yourself until then.
+  built yet; set `state` yourself until then. While saves move it draws `transferring` ("Syncing
+  saves…" before its figures, `transfer_size` / `transfer_total`, and a bar filled by
+  `transfer_fraction`, or running when that is negative), `waiting` (`reason`: `network`, `battery` or
+  `background`) and `transfer-failed` (a secondary **Try again**, signal `retry_requested`). None of
+  them ever says synced.
+- **`PKeySaveConflict`.** The same save changed on two devices (not bound to a live client yet: set
+  `step`, `local_when`, `remote_when`, `remote_device`, `remote_deleted`, `both_available`, `keep`
+  and connect the signals). It offers **Keep this device's version**, **Keep the other version** and
+  **Keep both** as one unfilled column, none the default; the first focus is **Cancel**. **Keep both**
+  stays on screen, disabled with its reason, while all 16 save slots are in use. When the other copy
+  was deleted it has its own title and lede and **Delete it here too** in place of the other two.
+  `keep_requested(keep)`, `retry_requested(keep)`, `cancelled()` and `done()`; `model` is the ui-core
+  view of the state.
 
 `PKeyCloudSyncController.begin(sdk)` says which screen a device needs: a locked device with no ring
 creates one and shows its recovery code, a ring this device cannot open asks for the code, a changed

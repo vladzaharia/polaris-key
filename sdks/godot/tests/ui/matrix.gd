@@ -104,6 +104,9 @@ const TIGHT_CASES := [
 	["recovery_code.saved", "native36", "1170x2532@3"],
 	["recovery_code.saved", "native36", "1280x720"],
 	["recovery_code.saved", "native36", "640x360"],
+	# The save screens (K.5): Done after a choice, in a game's 36 px type on a 360 px canvas, is a scroll
+	# away (asserted reachable by pad).
+	["save_conflict.kept", "native36", "640x360"],
 	["ring_change", "native", "pixel-art canvas_items 640x360 keep"],
 	["ring_change", "native36", "1170x2532@3"],
 	["ring_change", "native36", "640x360"],
@@ -377,6 +380,21 @@ const SCREENS := [
 	["cloud_sync.signed_out", "cloud_sync", "error: signed out", "strip"],
 	["cloud_sync.locked", "cloud_sync", "locked", "strip"],
 	["cloud_sync.ring_changed", "cloud_sync", "ring changed", "strip"],
+	# The save screens (ui-matrix `saveConflict`, K.5) and the transfer statuses.
+	["cloud_sync.transferring", "cloud_sync", "transferring", "strip"],
+	["cloud_sync.transferring_plain", "cloud_sync", "transferring, no figures", "strip"],
+	["cloud_sync.waiting", "cloud_sync", "waiting for the app", "strip"],
+	["cloud_sync.transfer_failed", "cloud_sync", "transfer failed", "strip"],
+	["save_conflict", "save_conflict", "choose", "full"],
+	["save_conflict.unknown_device", "save_conflict", "choose: the other device is not known", "full"],
+	["save_conflict.slots_full", "save_conflict", "choose: every slot in use", "full"],
+	["save_conflict.deleted", "save_conflict", "choose: the other copy was deleted", "full"],
+	["save_conflict.keeping", "save_conflict", "keeping", "full"],
+	["save_conflict.kept", "save_conflict", "kept: both", "full"],
+	["save_conflict.failed", "save_conflict", "failed", "full"],
+	# TV focus: a pad only, no pointer. The first focus is Cancel, never a control that overwrites.
+	["save_conflict.pad", "save_conflict", "choose: every slot in use", "full", "pad"],
+	["save_conflict.failed_pad", "save_conflict", "failed", "full", "pad"],
 	# The Cloud Sync screens (ui-matrix `cloudSync`, U-42.5).
 	["unlock_sync", "unlock_sync", "code, typed", "full"],
 	["unlock_sync.invalid", "unlock_sync", "invalid", "full"],

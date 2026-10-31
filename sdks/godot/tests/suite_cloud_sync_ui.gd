@@ -7,9 +7,16 @@ extends RefCounted
 # route to start over, the recovery code drawn in whole groups and never kept, a destructive Start
 # over that reads in every look, a confirm that arms after a beat and a first focus that is Cancel.
 #
+# The save screens (K.5, not bound to a live client): every row of ui-matrix.json's `saveConflict`
+# family (SaveConflict and the CloudSyncStatus transfer rows) is built as the scene and compared with
+# the row in English, German and Japanese; the Must-not rules are applied to the rendered scene and
+# to a negative fixture; a pad's first focus, Keep both disabled with its reason, one choice at a
+# time, and the strip that never says synced while a transfer is pending.
+#
 #   godot --headless --path sdks/godot -- --pkey-test cloud_sync_ui
 
 const SCENARIOS := preload("res://tests/ui/scenarios.gd")
+const MATRIX := preload("res://tests/ui/matrix.gd")
 ## Fixture text in the code's own shape, never a real code.
 const CODE := "AB3D-9FGH-JK4M-NP5Q-RS6T-VW7X-YZ80-1C2E"
 const RING := {"ring_id": "rg_AAAAAAAAAAAAAAAAAAAAAA", "epoch": 2, "root_kid": "00112233445566778899aabbccddeeff"}
@@ -95,6 +102,8 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _kit_account(t)
 	await _destructive(t)
 	await _ux_round(t)
+	await _saves_rows(t)
+	await _saves_behaviour(t)
 	PKeyUiTheme.reset()
 	PKeyCloudSyncController.memory_clipboard = false
 	root.size = size_before
@@ -793,3 +802,317 @@ func _ux_round(t: PKeyTestContext) -> void:
 	t.check("code: no code, no screen", not empty.visible)
 	_free(empty)
 	_free_node(sdk)
+
+
+# ── The save screens (K.5) ───────────────────────────────────────────────────────────────────
+
+const MATRIX_PATH := "res://tests/corpus/v2/ui-matrix.json"
+## The labels of the controls a save screen offers, by copy key.
+const BUTTON_KEYS := ["saveConflict.keepThis", "saveConflict.keepOther", "saveConflict.acceptDelete", "saveConflict.keepBoth", "common.cancel", "common.done", "common.tryAgain"]
+
+
+## Build the scene a `saveConflict` row names, from the row's own input.
+func _scene_for(row: Dictionary) -> Control:
+	var input: Dictionary = row["input"]
+	var on: bool = not input.has("services") or (input["services"] as Array).has("sync")
+	if row["expect"]["component"] == "SaveConflict":
+		var c: Dictionary = input["saveConflict"]
+		var s := PKeySaveConflict.new()
+		s.auto_sdk = false
+		_sc.add(s)
+		s.sync_on = on
+		s.local_when = String((c.get("local", {}) as Dictionary).get("when", ""))
+		s.remote_deleted = c.has("remote") and c["remote"] == null
+		if c.get("remote") is Dictionary:
+			s.remote_when = String(c["remote"].get("when", ""))
+			s.remote_device = String(c["remote"].get("device", ""))
+		s.both_available = c.get("bothAvailable") == true
+		s.keep = String(c.get("keep", ""))
+		s.step = String(c["step"])
+		s.refresh_view()
+		return s
+	var cs: Dictionary = input["cloudSync"]
+	var strip := PKeyCloudSyncStatus.new()
+	strip.auto_sdk = false
+	strip.follow_sdk = false
+	_sc.add(strip)
+	strip.service_on = on
+	strip.sync_time = String(cs.get("lastSynced", ""))
+	var tr: Dictionary = cs.get("transfer", {})
+	strip.transfer_size = String(tr.get("size", ""))
+	strip.transfer_total = String(tr.get("total", ""))
+	strip.transfer_fraction = float(tr.get("fraction", -1.0))
+	strip.reason = String(cs.get("reason", "network"))
+	strip.state = String(cs["state"])
+	strip.refresh_view()
+	return strip
+
+
+## The words a scene draws: its labels and buttons, bar the product header.
+func _drawn(v: Control) -> Array:
+	var out := []
+	for n in v.find_children("*", "Control", true, false):
+		if (n is Label or n is Button) and (n as Control).is_visible_in_tree() and not str(v.get_path_to(n)).contains("Product"):
+			out.append(n)
+	return out
+
+
+## The Must-not rules of a row applied to what is drawn: the state, the copy keys and the actions.
+## Returns the violated rule, or "".
+static func _violation(must_not: Variant, state: String, shown: Array, actions: Array) -> String:
+	if not (must_not is Dictionary):
+		return ""
+	for s in must_not.get("states", []):
+		if state == s:
+			return "state %s" % s
+	for k in must_not.get("copy", []):
+		if shown.has(k):
+			return "copy %s" % k
+	for a in must_not.get("actions", []):
+		if actions.has(a):
+			return "action %s" % a
+	return ""
+
+
+func _saves_rows(t: PKeyTestContext) -> void:
+	var m = PKeyTestFixtures.read_json(MATRIX_PATH)
+	var rows: Array = m["saveConflict"]
+	t.check("saves: the saveConflict family has rows to run", rows.size() >= 17, str(rows.size()))
+	var catalog = null
+	for locale in ["en", "de", "ja"]:
+		TranslationServer.set_locale(locale)
+		catalog = PKeyUiView.catalog()
+		var ran := 0
+		var texts_seen := 0
+		for row in rows:
+			var name := "saves rows (%s): %s" % [locale, row["name"]]
+			var v := _scene_for(row)
+			await _frames(2)
+			var want: Dictionary = row["expect"]
+			var model: Dictionary = (v as Variant).model
+			var ok: bool = model.get("state") == want["state"]
+			var copy: Array = model.get("copy", []).duplicate()
+			copy.sort()
+			var want_copy: Array = (want.get("copy", []) as Array).duplicate()
+			want_copy.sort()
+			ok = ok and copy == want_copy
+			var acts: Array = model.get("actions", []).duplicate()
+			acts.sort()
+			var want_acts: Array = (want.get("actions", []) as Array).duplicate()
+			want_acts.sort()
+			ok = ok and acts == want_acts
+			var detail := "" if ok else "%s %s %s / want %s %s %s" % [model.get("state"), copy, acts, want["state"], want_copy, want_acts]
+			# The scene draws the model's words in the running locale, and nothing else.
+			var key_args: Dictionary = model.get("keyArgs", {})
+			var device := ""
+			if v is PKeySaveConflict:
+				device = PKeyUiTheme.isolate((v as PKeySaveConflict).remote_device.strip_edges())
+			var expected: Array = []
+			for k in copy:
+				var args: Dictionary = key_args.get(k, model.get("args", {})).duplicate()
+				if args.has("device"):
+					args["device"] = device
+				expected.append(String(catalog.format(k, args)))
+			var drawn := _drawn(v)
+			if want["state"] == "hidden":
+				ok = ok and not v.visible
+			else:
+				for e in expected:
+					var found := false
+					for n in drawn:
+						found = found or String(n.text).contains(e)
+					ok = ok and found
+					if not found:
+						detail += " missing text [%s]" % e
+				for n in drawn:
+					var known := false
+					for e in expected:
+						known = known or String(n.text).contains(e)
+					if not known:
+						ok = false
+						detail += " stray text [%s]" % n.text
+					if n is Button and known:
+						texts_seen += 1
+				# The controls offered are the model's actions, and a disabled one is never one of them.
+				var offered := 0
+				for n in drawn:
+					if n is Button and not (n as Button).disabled and (n as Button).text != catalog.format("common.cancel", {}) and (n as Button).text != catalog.format("common.done", {}) and (n as Button).text != catalog.format("common.tryAgain", {}):
+						offered += 1
+				var model_actions := 0
+				for a in acts:
+					if a in ["keep-local", "keep-remote", "keep-both"]:
+						model_actions += 1
+				ok = ok and offered == model_actions
+				if offered != model_actions:
+					detail += " offered %d choices, model has %d" % [offered, model_actions]
+			# Must not, on the model and on what is drawn.
+			var shown_keys: Array = copy
+			var hit := _violation(want.get("mustNot"), String(model.get("state")), shown_keys, acts)
+			var must_not = row.get("mustNot")
+			if must_not is Dictionary and must_not.has("copy") and v.visible:
+				# Never "Synced" while a transfer is pending, in words as well as in keys.
+				for k in must_not["copy"]:
+					for n in drawn:
+						if String(n.text) == String(catalog.format(k, {"time": "2 min ago"})):
+							hit = "drawn %s" % k
+			if hit != "":
+				ok = false
+				detail += " Must not (%s): %s" % [must_not.get("invariant", ""), hit]
+			if t.check(name, ok, detail):
+				ran += 1
+			_free(v)
+		t.check("saves rows (%s): every row passes (%d/%d)" % [locale, ran, rows.size()], ran == rows.size())
+		t.check("saves rows (%s): controls were found and checked" % locale, texts_seen > 0)
+	TranslationServer.set_locale("en")
+	# The negative fixture: the rules catch a screen that breaks them.
+	var gone_wrong := {"states": ["keeping", "kept"]}
+	t.check("saves: Must-not catches a choice already applied on a screen that asked", _violation(gone_wrong, "kept", [], []) != "")
+	t.check("saves: Must-not catches Synced while a transfer is pending", _violation({"copy": ["cloudSync.synced"]}, "transferring", ["cloudSync.synced", "cloudSync.transferring"], []) != "")
+	t.check("saves: Must-not catches Keep both offered with every slot in use", _violation({"actions": ["keep-both"]}, "choose", [], ["keep-both", "keep-local"]) != "")
+	t.check("saves: Must-not passes a clean choice", _violation(gone_wrong, "choose", [], ["keep-local"]) == "")
+
+
+static func _contrast(a: Color, b: Color) -> float:
+	var la := _lum(a)
+	var lb := _lum(b)
+	return (maxf(la, lb) + 0.05) / (minf(la, lb) + 0.05)
+
+
+static func _lum(c: Color) -> float:
+	var l := c.srgb_to_linear()
+	return 0.2126 * l.r + 0.7152 * l.g + 0.0722 * l.b
+
+
+func _saves_behaviour(t: PKeyTestContext) -> void:
+	TranslationServer.set_locale("en")
+	# Nothing is the default: no filled control, the first focus is Cancel, and a choice is one press.
+	var v: PKeySaveConflict = _sc.save_conflict("choose")
+	await _frames(3)
+	var b := _buttons(v)
+	var primaries := 0
+	for n in b.values():
+		primaries += 1 if (n as Button).theme_type_variation == &"PKeyPrimary" else 0
+	t.check("saves: choose has no filled control", primaries == 0 and b.has("KeepThis") and b.has("KeepOther") and b.has("KeepBoth") and b.has("Cancel"))
+	t.check("saves: the first focus is Cancel, never a choice", v._initial_focus() == b["Cancel"])
+	t.check("saves: the choices are one column in reading order, Cancel last", v._actions.get_child(0) == b["KeepThis"] and v._actions.get_child(1) == b["KeepOther"] and v._actions.get_child(2) == b["KeepBoth"] and _last_visible(v._actions) == b["Cancel"])
+	t.check("saves: the choices are not split into a docked bar", b["Cancel"].get_parent() == b["KeepThis"].get_parent())
+	var picked: Array = []
+	v.keep_requested.connect(func(k: String) -> void: picked.append(k))
+	v.cancelled.connect(func() -> void: picked.append("cancelled"))
+	(b["KeepThis"] as Button).pressed.emit()
+	(b["KeepOther"] as Button).pressed.emit()
+	(b["KeepBoth"] as Button).pressed.emit()
+	(b["Cancel"] as Button).pressed.emit()
+	t.check("saves: each way on is its own signal", picked == ["local", "remote", "both", "cancelled"], str(picked))
+	picked.clear()
+	v._cancel()
+	t.check("saves: Escape cancels", picked == ["cancelled"])
+	_free(v)
+	# Every slot in use: Keep both stays, disabled, with its reason, and asks for nothing.
+	var full: PKeySaveConflict = _sc.save_conflict("slots-full")
+	await _frames(3)
+	var fb := _buttons(full)
+	var reason := full.find_child("BothFull", true, false) as Label
+	t.check("saves: Keep both is disabled while every slot is in use, with its reason under it", (fb["KeepBoth"] as Button).disabled and reason.visible and reason.get_index() == (fb["KeepBoth"] as Button).get_index() + 1 and reason.text == PKeyUiView.catalog().format("saveConflict.bothFull", {}))
+	var asked: Array = []
+	full.keep_requested.connect(func(k: String) -> void: asked.append(k))
+	full._on_keep_both()
+	t.check("saves: a disabled Keep both asks for nothing", asked.is_empty())
+	t.check("saves: the first focus is still Cancel", full._initial_focus() == fb["Cancel"] and not PKeyUiView.is_focusable(fb["KeepBoth"]))
+	_free(full)
+	# The other copy was deleted: its own title, lede and button, no Keep both.
+	var gone: PKeySaveConflict = _sc.save_conflict("deleted")
+	await _frames(3)
+	var gb := _buttons(gone)
+	var cat = PKeyUiView.catalog()
+	t.check("saves: a deleted copy has its own title and lede", (gone.find_child("Title", true, false) as Label).text == cat.format("saveConflict.deletedTitle", {}) and (gone.find_child("Lede", true, false) as Label).text == cat.format("saveConflict.deletedLede", {}))
+	t.check("saves: Delete it here too is its own button and Keep both goes", (gb["KeepOther"] as Button).text == "Delete it here too" and not gb.has("KeepBoth"))
+	t.check("saves: Delete it here too is outlined in the danger colour, never filled", (gb["KeepOther"] as Button).theme_type_variation != &"PKeyPrimary" and (gb["KeepOther"] as Button).has_theme_color_override(&"font_color"))
+	_free(gone)
+	# It keeps the shape and fill of the other choices, and its words read, in both schemes.
+	var mx = MATRIX.new()
+	mx.use_locale("en")
+	for scheme in ["dark", "light"]:
+		var st: Dictionary = await mx.stage(_tree(), ["save_conflict.deleted", "save_conflict", "choose: the other copy was deleted", "full"], Vector2i(1280, 720), 1.0, null, scheme)
+		var d: PKeySaveConflict = st["view"]
+		await _frames(4)
+		var db := _buttons(d)
+		var del := db["KeepOther"] as Button
+		var keep := db["KeepThis"] as Button
+		var dbox := del.get_theme_stylebox(&"normal") as StyleBoxFlat
+		var kbox := keep.get_theme_stylebox(&"normal") as StyleBoxFlat
+		t.check("saves (%s): Delete it here too has the other choices' corner radius and fill" % scheme, dbox != null and kbox != null and dbox.corner_radius_top_left == kbox.corner_radius_top_left and dbox.bg_color == kbox.bg_color and dbox.border_color != kbox.border_color, "%s %s" % [dbox, kbox])
+		var ratio := _contrast(del.get_theme_color(&"font_color"), kbox.bg_color if kbox != null else Color.BLACK)
+		t.check("saves (%s): Delete it here too reads at 4.5:1 or better" % scheme, ratio >= 4.5, "%.2f font %s fill %s" % [ratio, del.get_theme_color(&"font_color"), kbox.bg_color])
+		(st["vp"] as Node).free()
+		await _frames(1)
+	PKeyUiTheme.reset()
+	PKeyUiTheme.reduce_motion_mode = "on"
+	# Keeping offers nothing; kept names the choice and Done; failed focuses Cancel and Try again repeats.
+	var keeping: PKeySaveConflict = _sc.save_conflict("keeping")
+	await _frames(3)
+	var kb := _buttons(keeping)
+	t.check("saves: while a choice is applied nothing is offered", kb.is_empty() and keeping._initial_focus() == null)
+	await _tree().create_timer(0.4).timeout
+	keeping._process(0.0)
+	t.check("saves: while a choice is applied the busy bar shows with real width", keeping._loading_bar.visible and keeping._loading_bar.size.x > 20.0, str(keeping._loading_bar.size))
+	var gate := [0]
+	keeping.cancelled.connect(func() -> void: gate[0] += 1)
+	keeping._cancel()
+	t.check("saves: Escape does not take back a choice being applied", gate[0] == 0)
+	_free(keeping)
+	var kept: PKeySaveConflict = _sc.save_conflict("kept-remote")
+	await _frames(3)
+	var kd := _buttons(kept)
+	var finished: Array = []
+	kept.done.connect(func() -> void: finished.append(1))
+	t.check("saves: kept names the choice that was made, and Done takes the focus", (kept.find_child("Status", true, false) as Label).text == "Kept the other save." and kept._initial_focus() == kd["Done"] and kd.size() == 1)
+	kept._cancel()
+	t.check("saves: Escape on kept is Done", finished == [1])
+	_free(kept)
+	var failed: PKeySaveConflict = _sc.save_conflict("failed")
+	await _frames(3)
+	var fl := _buttons(failed)
+	var again: Array = []
+	failed.retry_requested.connect(func(k: String) -> void: again.append(k))
+	(fl["TryAgain"] as Button).pressed.emit()
+	t.check("saves: failed leaves both saves as they were, never says kept, and Try again repeats the choice", (failed.find_child("Status", true, false) as Label).text == PKeyUiView.catalog().format("saveConflict.failed", {}) and again == ["local"] and not (failed.model["copy"] as Array).has("saveConflict.keptLocal"))
+	t.check("saves: failed focuses Cancel (the TV lands on a safe control) and Try again is not filled", failed._initial_focus() == fl["Cancel"] and (fl["TryAgain"] as Button).theme_type_variation != &"PKeyPrimary")
+	_free(failed)
+	# TV focus: a pad only. The screen takes the focus onto Cancel, and a direction reaches the choices.
+	PKeyUiView.pad_only_override = true
+	var tv: PKeySaveConflict = _sc.save_conflict("choose")
+	await _frames(4)
+	tv.ensure_focus(true)
+	await _frames(2)
+	var owner := tv.get_viewport().gui_get_focus_owner()
+	var tb := _buttons(tv)
+	t.check("saves: on a TV the first focus lands on Cancel", owner == tb["Cancel"], str(owner))
+	var up: Control = tb["Cancel"].get_node_or_null(tb["Cancel"].focus_neighbor_top)
+	t.check("saves: a pad reaches the choices from Cancel", up == tb["KeepBoth"] or up == tb["KeepOther"])
+	_free(tv)
+	PKeyUiView.pad_only_override = null
+	# The strip: a pending transfer is never synced, and a figure never replaces the label.
+	var strip: PKeyCloudSyncStatus = _sc.cloud_sync("transferring")
+	await _frames(3)
+	var st := strip.find_child("Status", true, false) as Label
+	t.check("strip: transferring says Syncing saves before its figures", st.text == "Syncing saves… · 38 MB of 61 MB" and strip._bar.visible and not strip._bar.indeterminate and is_equal_approx(strip._bar.value, 0.62), st.text)
+	t.check("strip: the bar has real width", strip._bar.size.x > 20.0, str(strip._bar.size))
+	t.check("strip: transferring is never Synced, though the last sync time is known", not st.text.contains("Synced") and strip.sync_time != "" and not strip._action.visible)
+	_free(strip)
+	var plain: PKeyCloudSyncStatus = _sc.cloud_sync("transferring-plain")
+	await _frames(3)
+	t.check("strip: without figures the label stands alone and the bar runs", (plain.find_child("Status", true, false) as Label).text == "Syncing saves…" and plain._bar.visible and plain._bar.size.x > 20.0)
+	_free(plain)
+	var waiting: PKeyCloudSyncStatus = _sc.cloud_sync("waiting-battery")
+	await _frames(3)
+	t.check("strip: waiting names what it waits for, with no bar and no Synced", (waiting.find_child("Status", true, false) as Label).text == "Waiting for power" and not waiting._bar.visible and not waiting._action.visible)
+	_free(waiting)
+	var bad: PKeyCloudSyncStatus = _sc.cloud_sync("transfer-failed")
+	await _frames(3)
+	var retried: Array = []
+	bad.retry_requested.connect(func() -> void: retried.append(1))
+	t.check("strip: a failed transfer says so and Try again is secondary", (bad.find_child("Status", true, false) as Label).text == "Couldn't sync your saves." and bad._action.text == "Try again" and bad._action.theme_type_variation == &"PKeyLink")
+	bad._action.pressed.emit()
+	t.check("strip: Try again asks the game", retried == [1])
+	_free(bad)
