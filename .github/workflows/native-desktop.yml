@@ -10,7 +10,8 @@ name: Native desktop plugins
 #   windows  pkey_win.dll (Velopack, WinSparkle, StoreContext) and the Velopack shim, a Microsoft
 #            Store export without updater DLLs, the facades with the DLLs removed, StoreContext
 #            unpackaged, a Velopack delta through the 302 package route, and a WinSparkle silent
-#            installer
+#            installer, then the crypto stage: the Cloud Connect AES-256-GCM (CNG) and X25519
+#            (Monocypher) lane against the corpus known answers (CC-14b.6, .7)
 #   keyring  SP-27: the desktop keyring store's real-keyring contract (tests/suite_keyring.gd with
 #            PKEY_KEYRING_TESTS=1) on each OS: macOS builds PolarisKeyApple's desktop dylib
 #            (native/macos/build_apple.sh) and uses the login keychain; Windows builds pkey_win.dll
@@ -169,6 +170,18 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: native-desktop-windows-logs-winsparkle
+          path: ${{ runner.temp }}/e2e-windows/logs
+          retention-days: 7
+      # CC-14b.6, .7: the Cloud Connect crypto lane. Builds pkey_win.dll (CNG AES-256-GCM, Monocypher
+      # X25519) into the SDK project and runs tests/connect/crypto_win.gd against it with the real
+      # class required: the corpus known answers, RFC 7748, low-order points, tampered tags.
+      - name: Windows crypto lane (AES-256-GCM, X25519 known answers)
+        timeout-minutes: 20
+        run: sdks/godot/native/e2e/windows/ci-step.ps1 -Stage crypto -DeadlineMinutes 18
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-desktop-windows-logs-crypto
           path: ${{ runner.temp }}/e2e-windows/logs
           retention-days: 7
       - name: Windows end-to-end diagnostics

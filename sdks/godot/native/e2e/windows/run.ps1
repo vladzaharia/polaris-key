@@ -25,6 +25,11 @@
                      check, delta download through the 302, apply on exit, restart into 1.0.1
        winsparkle    the 1.0.0 installer /VERYSILENT, then PKeyWinSparkleBridge: check,
                      download, EdDSA, silent installer, relaunch into 1.0.1
+       crypto        (own stage, not part of `all`; CC-14b.6, .7) pkey_win.dll installed into the
+                     SDK project, then tests/connect/crypto_win.gd with PKEY_WIN_CRYPTO_REAL=1:
+                     the RFC 7748 X25519 known answers, the low-order points (dh_zero), the
+                     AES-256-GCM known answers, tampered tag, text, AAD, nonce and key, wrong
+                     lengths, and agreement with the GDScript port, all through PKeyWinCrypto
 
   Needs: -Godot (the console editor exe), -Template (windows_release_x86_64.exe; default: the
   editor's installed templates), Node 22 with the workspace installed and the worker's
@@ -39,7 +44,7 @@ param(
   [int]$DeadlineMinutes = 24,
   # The CI job runs one stage per step, so a step that ends leaves its logs uploaded before the
   # next one starts and a runner that is lost names the stage it was in. all = every stage here.
-  [ValidateSet("all", "prepare", "facades", "velopack", "winsparkle")] [string]$Stage = "all"
+  [ValidateSet("all", "prepare", "facades", "velopack", "winsparkle", "crypto")] [string]$Stage = "all"
 )
 $ErrorActionPreference = "Stop"
 $e2e = Split-Path $PSScriptRoot -Parent
@@ -96,6 +101,34 @@ function JCheck([string]$name, [string]$case, [string]$event, [string]$expr) {
   $ok = $LASTEXITCODE -eq 0
   $last = if (Test-Path $log) { (Select-String -Path $log -Pattern "`"event`":`"$event`"" | Select-Object -Last 1).Line } else { "" }
   Check $name $ok ($last | Out-String).Trim()
+}
+
+# 0. The crypto stage (CC-14b.6, .7): the built DLL's AES-256-GCM (CNG)
+# against the corpus known answers, in the editor, through the adapter the lane selector probes.
+# The DLL is installed into the SDK project (addons/polaris_key/native/bin is git-ignored).
+if ($Stage -eq "crypto") {
+Phase "crypto-build" 600
+& pwsh -NoProfile -File "$native\windows\build.ps1" -Deps $Deps -Out "$Work\ext-crypto" -SkipShim -Install $sdk *> "$Work\logs\crypto-build.log"
+if ($LASTEXITCODE -ne 0) { Get-Content "$Work\logs\crypto-build.log" -Tail 60; throw "crypto build failed" }
+Phase "crypto-tests" 420
+$bash = (Get-Command bash -ErrorAction SilentlyContinue).Source
+if (-not $bash) { $bash = "$env:ProgramFiles\Git\bin\bash.exe" }
+$env:GODOT_BIN = (& $fwd $Godot)
+$env:PKEY_WIN_CRYPTO_REAL = "1"
+$env:PKEY_TEST_SUITES = "connect"
+$env:PKEY_TEST_STAMPS = "0"
+& $bash (& $fwd "$sdk\tools\run_tests.sh") crypto_win *> "$Work\logs\crypto-tests.log"
+$code = $LASTEXITCODE
+Get-Content "$Work\logs\crypto-tests.log" | Select-String -Pattern "crypto_win|real:|PKeyWinCryptoNative|SUMMARY|FAIL" | ForEach-Object { Write-Host $_.Line }
+Copy-Item "$sdk\build\logs\*" "$Work\logs" -Recurse -Force -ErrorAction SilentlyContinue
+Check "crypto: the editor run of crypto_win passed" ($code -eq 0)
+$log = Get-Content "$Work\logs\crypto-tests.log" -Raw
+Check "crypto: the real DLL ran (class registered, CNG lane)" (($log -match "PASS PKeyWinCryptoNative is registered") -and ($log -match "real: Windows CNG AES-256-GCM"))
+Check "crypto: no failed check" (($log -notmatch "(?m)^FAIL ") -and ($log -match "failed=0"))
+Phase ""
+Stop-Run
+Write-Host "── Windows e2e (crypto): $script:failed failed; logs in $Work\logs"
+exit $(if ($script:failed -eq 0) { 0 } else { 1 })
 }
 
 # 1. Build and key.

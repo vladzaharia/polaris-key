@@ -1,5 +1,5 @@
-// The Windows GDExtension's entry point (P5-07): one DLL, four classes (SP-27 added the
-// Credential Manager one). None of them
+// The Windows GDExtension's entry point (P5-07): one DLL, five classes (SP-27 added the
+// Credential Manager one, CC-14b.6 the crypto one). None of them
 // import-links an updater library, so the extension always loads and each facade answers for
 // itself (velopack_libc.dll and WinSparkle.dll are loaded at run time; StoreContext is part of
 // Windows).
@@ -18,6 +18,7 @@ static void pkey_win_initialize(ModuleInitializationLevel level) {
   pkey_win::register_winsparkle();
   pkey_win::register_storecontext();
   pkey_win::register_credman();
+  pkey_win::register_crypto();
 }
 
 static void pkey_win_uninitialize(ModuleInitializationLevel level) {
