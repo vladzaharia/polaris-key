@@ -32,6 +32,9 @@ struct KitButton: View {
     var hero = false
     /// A leading-slot button of a Mac action row (Paste), kept at the row's left edge.
     var leading = false
+    /// A secondary whose word is a deletion: the label takes the danger colour (the caller adds
+    /// the outline), so it never reads as one more Keep.
+    var danger = false
     /// Whether a quiet Cancel answers Escape; off where another button in the group owns it.
     var escapes = true
     let action: () -> Void
@@ -68,7 +71,7 @@ struct KitButton: View {
         switch kind {
         case .primary: return p.accentOn
         case .destructive: return p.dangerOn
-        case .secondary: return p.textStrong
+        case .secondary: return danger ? p.danger : p.textStrong
         case .quiet: return p.accentFg
         }
     }

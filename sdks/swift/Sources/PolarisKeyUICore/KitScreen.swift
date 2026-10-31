@@ -32,6 +32,7 @@ public enum KitComponent: String, Sendable, CaseIterable, Codable {
     case unlockSync = "UnlockSync"
     case recoveryCode = "RecoveryCode"
     case ringChange = "RingChange"
+    case saveConflict = "SaveConflict"
 }
 
 /// What a control does, in the matrix's closed vocabulary (`vocabulary.actions`).
@@ -64,6 +65,12 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
     case useRecoveryCode = "use-recovery-code"
     /// Copy the recovery code to the clipboard.
     case copyCode = "copy-code"
+    /// Resolve a save conflict by keeping this device's copy.
+    case keepLocal = "keep-local"
+    /// Resolve a save conflict by keeping the other copy, or accepting its deletion.
+    case keepRemote = "keep-remote"
+    /// Resolve a save conflict by keeping both: the other is saved under a new name.
+    case keepBoth = "keep-both"
 
     public static func < (a: KitAction, b: KitAction) -> Bool { a.rawValue < b.rawValue }
 
@@ -95,6 +102,10 @@ public enum KitAction: String, Sendable, CaseIterable, Codable, Comparable {
         "ringChange.accept": .acceptRingChange,
         "ringChange.useCode": .useRecoveryCode,
         "recoveryCode.copy": .copyCode,
+        "saveConflict.keepThis": .keepLocal,
+        "saveConflict.keepOther": .keepRemote,
+        "saveConflict.acceptDelete": .keepRemote,
+        "saveConflict.keepBoth": .keepBoth,
     ]
 }
 
@@ -115,12 +126,21 @@ public struct KitScreen<State: KitStateID>: Sendable, Equatable {
     /// Replace to the card.
     public let actions: [KitAction]
 
-    public init(_ state: State?, _ copy: [CopyLine], extraActions: [KitAction] = []) {
+    /// Actions whose control is on screen but disabled (ui-core `disabledActions`): the control
+    /// draws, with its reason, and takes no action.
+    public let disabledActions: [KitAction]
+
+    public init(
+        _ state: State?, _ copy: [CopyLine], extraActions: [KitAction] = [],
+        withheld: [KitAction] = []
+    ) {
         self.state = state
         self.copy = state == nil ? [] : copy
         var actions = Set(self.copy.compactMap { KitAction.forCopyKey($0.key) })
         if state != nil { actions.formUnion(extraActions) }
+        actions.subtract(withheld)
         self.actions = actions.sorted()
+        self.disabledActions = state == nil ? [] : withheld.sorted()
     }
 
     /// The hidden answer.

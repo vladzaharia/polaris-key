@@ -176,13 +176,16 @@ public struct PolarisKeyPreview: View {
             RecoveryCodeView(model: recovery)
         case .ringChange:
             RingChangeView(model: RingChangeModel(inputs: model.inputs))
+        case .saveConflict:
+            SaveConflictView(model: SaveConflictModel(inputs: model.inputs))
         case .cloudSyncStatus:
             // A still: the buttons draw as the settings host (U-07) will wire them.
             PreviewSettingsHost {
                 Section {
                     CloudSyncStatusView(
                         screen: KitStates.cloudSyncStatus(model.inputs), onUnlock: {},
-                        onReview: {})
+                        onReview: {}, onRetry: {},
+                        fraction: model.inputs.cloudSync?.transfer?.fraction)
                 }
             }
         case .paywall:

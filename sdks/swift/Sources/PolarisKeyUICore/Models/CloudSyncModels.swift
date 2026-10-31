@@ -322,6 +322,8 @@ public final class CloudSyncStatusModel {
     public let onReview: @MainActor () -> Void
     /// Sign in to sync, for the signed-out error row. nil draws no button.
     public let onSignIn: (@MainActor () -> Void)?
+    /// Try again, for a failed transfer. nil draws no button.
+    public var onRetry: (@MainActor () -> Void)?
 
     public init(
         _ state: KitCloudSync.State = .locked, onUnlock: @escaping @MainActor () -> Void,
@@ -349,5 +351,10 @@ public final class CloudSyncStatusModel {
 
     public func show(_ state: KitCloudSync.State) {
         inputs.cloudSync = KitCloudSync(state: state)
+    }
+
+    /// A full status: a running transfer with its sizes, or a waiting one with its reason.
+    public func show(_ sync: KitCloudSync) {
+        inputs.cloudSync = sync
     }
 }

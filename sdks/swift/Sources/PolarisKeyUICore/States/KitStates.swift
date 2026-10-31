@@ -38,6 +38,7 @@ public enum KitStates {
         case .unlockSync: return unlockSync(inputs).erased
         case .recoveryCode: return recoveryCode(inputs).erased
         case .ringChange: return ringChange(inputs).erased
+        case .saveConflict: return saveConflict(inputs).erased
         }
     }
 }

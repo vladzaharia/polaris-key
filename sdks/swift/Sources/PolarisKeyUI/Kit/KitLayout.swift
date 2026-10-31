@@ -167,6 +167,10 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
     /// status screen's "License expired"). The one-line header already carries it.
     var heroName = false
     var tier: String?
+    /// Dock the actions to the bottom edge where the window is short or the text large (the
+    /// default). A screen whose actions are the choice itself (SaveConflict) turns it off: they
+    /// flow with the content, so they never cover it and never reorder.
+    var dockActions = true
     @ViewBuilder let heading: () -> Heading
     @ViewBuilder let content: () -> Content
     @ViewBuilder let actions: () -> Actions
@@ -219,6 +223,7 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
         #if os(macOS)
             KitMacScaffold(
                 arrangement: KitMacArrangement.of(window), hero: hero, header: header, tier: tier,
+                dockActions: dockActions,
                 heading: heading, content: content, actions: actions, footer: footer)
         #else
             switch KitArrangement.of(window) {
@@ -239,7 +244,7 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
             let regular = geo.size.width > 600
             // At accessibility sizes the lines scroll and the act docks to the bottom edge, so the
             // main action stays in the first viewport (SIGN-IN §3.19). A hero keeps its flow.
-            let docked = dynamicType.isAccessibilitySize && !hero
+            let docked = dynamicType.isAccessibilitySize && !hero && dockActions
             ScrollView {
                 VStack(spacing: 0) {
                     // A hero screen centres its block near the upper third (spacers 1:2); a
@@ -350,13 +355,14 @@ struct KitScreenScaffold<Heading: View, Content: View, Actions: View, Footer: Vi
 extension KitScreenScaffold where Footer == EmptyView {
     init(
         hero: Bool = false, header: Bool = true, heroName: Bool = false, tier: String? = nil,
+        dockActions: Bool = true,
         @ViewBuilder heading: @escaping () -> Heading,
         @ViewBuilder content: @escaping () -> Content,
         @ViewBuilder actions: @escaping () -> Actions
     ) {
         self.init(
-            hero: hero, header: header, heroName: heroName, tier: tier, heading: heading,
-            content: content,
+            hero: hero, header: header, heroName: heroName, tier: tier, dockActions: dockActions,
+            heading: heading, content: content,
             actions: actions, footer: { EmptyView() })
     }
 }

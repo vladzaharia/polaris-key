@@ -15,6 +15,9 @@ import Foundation
 public enum CloudSyncStatusState: String, KitStateID {
     case synced, syncing, offline, conflict, error, locked
     case ringChanged = "ring-changed"
+    /// A save transfer is running. Never reads as synced, whatever the last sync time was.
+    case transferring, waiting
+    case transferFailed = "transfer-failed"
     public static let component = KitComponent.cloudSyncStatus
 }
 
@@ -49,6 +52,27 @@ extension KitStates {
             // A changed ring is confirmed first (S5). The kit owns that screen, so Review shows.
             return KitScreen(
                 .ringChanged, [c.line("cloudSync.ringChanged"), c.line("common.review")])
+        case .transferring:
+            // A pending transfer is never reported as synced, whatever `lastSynced` holds.
+            let known = sync.transfer?.size != nil && sync.transfer?.total != nil
+            var lines = [c.line("cloudSync.transferring")]
+            if known, let t = sync.transfer, let size = t.size, let total = t.total {
+                lines.append(
+                    c.line("cloudSync.transferProgress", ["size": .text(size), "total": .text(total)]))
+            }
+            return KitScreen(.transferring, lines)
+        case .waiting:
+            let key: String
+            switch sync.reason ?? .network {
+            case .network: key = "cloudSync.waitingNetwork"
+            case .battery: key = "cloudSync.waitingBattery"
+            case .background: key = "cloudSync.waitingBackground"
+            }
+            return KitScreen(.waiting, [c.line(key)])
+        case .transferFailed:
+            // Try again repeats the transfer; the status never reads as an error of the account.
+            return KitScreen(
+                .transferFailed, [c.line("cloudSync.transferFailed"), c.line("common.tryAgain")])
         default:
             let state = CloudSyncStatusState(rawValue: sync.state.rawValue) ?? .error
             let signedOut = sync.state == .error && sync.signedIn == false
@@ -147,5 +171,78 @@ extension KitStates {
         if r.served != nil { lines.append(c.line("ringChange.accept")) }
         lines += [c.line("ringChange.useCode"), c.line("common.cancel")]
         return KitScreen(failed ? .failed : .confirm, lines)
+    }
+}
+
+// MARK: - SaveConflict
+
+public enum SaveConflictState: String, KitStateID {
+    case choose, keeping, kept, failed
+    public static let component = KitComponent.saveConflict
+}
+
+extension KitStates {
+    /// The same save changed on two devices: the person picks one, the kit never settles it for
+    /// them (reference: packages/ui-core/src/models/saveConflict.ts).
+    ///   - `choose` takes no default: no filled control, and nothing focused but the heading;
+    ///   - Keep both needs a free slot and a copy to keep: without either it is drawn disabled,
+    ///     with its reason (`KitSaveConflictScreen.disabledActions`), and not offered as an action;
+    ///   - a deleted other copy has its own title and lede, `Delete it here too` replaces Keep the
+    ///     other, and Keep both goes;
+    ///   - while a choice runs no control is offered, and `kept` names the choice made.
+    public static func saveConflict(_ i: KitInputs) -> KitScreen<SaveConflictState> {
+        let c = Ctx(i)
+        guard i.closedServices.contains(.sync), let s = i.saveConflict else { return .hidden }
+        let gone = s.remoteDeleted
+        switch s.step {
+        case .keeping:
+            return KitScreen(.keeping, [c.line("saveConflict.title"), c.line("saveConflict.keeping")])
+        case .kept:
+            let key: String
+            switch s.keep == .remote && gone ? "deleted" : (s.keep?.rawValue ?? "local") {
+            case "remote": key = "saveConflict.keptRemote"
+            case "both": key = "saveConflict.keptBoth"
+            case "deleted": key = "saveConflict.keptDeleted"
+            default: key = "saveConflict.keptLocal"
+            }
+            return KitScreen(
+                .kept, [c.line("saveConflict.title"), c.line(key), c.line("common.done")])
+        case .failed:
+            // Both copies are as they were. Try again repeats the choice, so the heading (not
+            // Try again) takes focus.
+            return KitScreen(
+                .failed,
+                [
+                    c.line("saveConflict.title"), c.line("saveConflict.failed"),
+                    c.line("common.tryAgain"), c.line("common.cancel"),
+                ])
+        case .choose:
+            let both = !gone && s.bothAvailable == true
+            var lines = [
+                c.line(gone ? "saveConflict.deletedTitle" : "saveConflict.title"),
+                c.line(gone ? "saveConflict.deletedLede" : "saveConflict.lede"),
+                c.line("saveConflict.thisDevice"),
+            ]
+            if let when = s.local?.when {
+                lines.append(c.line("saveConflict.savedThis", ["when": .text(when)]))
+            }
+            if gone {
+                lines.append(c.line("saveConflict.deletedElsewhere"))
+            } else if let device = s.remote?.device {
+                lines.append(c.line("saveConflict.otherDevice", ["device": .text(device)]))
+            } else {
+                lines.append(c.line("saveConflict.otherUnknown"))
+            }
+            if !gone, let when = s.remote?.when {
+                lines.append(c.line("saveConflict.savedOther", ["when": .text(when)]))
+            }
+            lines.append(c.line("saveConflict.keepThis"))
+            lines.append(c.line(gone ? "saveConflict.acceptDelete" : "saveConflict.keepOther"))
+            if !gone { lines.append(c.line("saveConflict.keepBoth")) }
+            if !gone && !both { lines.append(c.line("saveConflict.bothFull")) }
+            lines.append(c.line("common.cancel"))
+            // The disabled Keep both is on screen but takes no action.
+            return KitScreen(.choose, lines, withheld: both ? [] : [.keepBoth])
+        }
     }
 }
