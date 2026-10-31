@@ -12734,6 +12734,21 @@
           }
         },
         {
+          "id": "reason-missing",
+          "body": "{\"id\":\"D9FghtxWIhxlaxzwysyg4w\"}",
+          "want": { "ok": false }
+        },
+        {
+          "id": "reason-number",
+          "body": "{\"id\":\"D9FghtxWIhxlaxzwysyg4w\",\"reason\":1}",
+          "want": { "ok": false }
+        },
+        {
+          "id": "reason-null",
+          "body": "{\"id\":\"D9FghtxWIhxlaxzwysyg4w\",\"reason\":null}",
+          "want": { "ok": false }
+        },
+        {
           "id": "bad-id",
           "body": "{\"id\":\"FghtxWIhxlaxzwysyg4w\",\"reason\":\"cancelled\"}",
           "want": { "ok": false }
@@ -19598,6 +19613,62 @@
             "partial": [{ "create": "n1" }],
             "send": [
               { "t": "ACCEPT", "id": "gD12WzYzAN6ws5TMnhe6Kw", "offset": 0 }
+            ]
+          },
+          { "close": "peer_bad_frame" }
+        ]
+      },
+      {
+        "id": "done-before-the-senders-own-done-closes",
+        "ctx": {
+          "mode": "a",
+          "capsLocal": ["app/1", "xfer/1"],
+          "capsRemote": ["app/1", "xfer/1"],
+          "maxMessage": 1048576,
+          "hostLimit": null,
+          "free": null,
+          "handler": "accept",
+          "cats": [],
+          "partials": [],
+          "peerKey": "4e383783de96088f488baf77e4f7ea78a442a5ab622ca549b092db7e5375de20"
+        },
+        "steps": [
+          {
+            "at": 0,
+            "host": "offer",
+            "id": "gD12WzYzAN6ws5TMnhe6Kw",
+            "size": 200,
+            "chunk": 4,
+            "sha256": "747d3d709a302e1137f7f181a293da7e3450a6dae3bef650687006343520edc0"
+          },
+          {
+            "at": 1,
+            "rx": "ACCEPT",
+            "id": "gD12WzYzAN6ws5TMnhe6Kw",
+            "offset": 0
+          },
+          { "at": 2, "rx": "DONE", "id": "gD12WzYzAN6ws5TMnhe6Kw" }
+        ],
+        "want": [
+          {
+            "send": [
+              {
+                "t": "OFFER",
+                "id": "gD12WzYzAN6ws5TMnhe6Kw",
+                "size": 200,
+                "chunk": 4,
+                "sha256": "747d3d709a302e1137f7f181a293da7e3450a6dae3bef650687006343520edc0"
+              }
+            ]
+          },
+          {
+            "send": [
+              {
+                "t": "CHUNKS",
+                "id": "gD12WzYzAN6ws5TMnhe6Kw",
+                "offset": 0,
+                "bytes": 64
+              }
             ]
           },
           { "close": "peer_bad_frame" }

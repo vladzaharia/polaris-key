@@ -4592,6 +4592,9 @@
     "tools/corpus/update.ts": {
       "jscpd:duplicate": 3
     },
+    "tools/corpus/xfer.ts": {
+      "jscpd:duplicate": 8
+    },
     "tools/gate.mjs": {
       "jscpd:duplicate": 1
     },

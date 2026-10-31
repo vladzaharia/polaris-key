@@ -422,6 +422,9 @@ function buildCancelCodec(): unknown[] {
       id: "reason-wrong-case",
       text: JSON.stringify({ id: ID, reason: "Timeout" }),
     },
+    { id: "reason-missing", text: JSON.stringify({ id: ID }) },
+    { id: "reason-number", text: JSON.stringify({ id: ID, reason: 1 }) },
+    { id: "reason-null", text: JSON.stringify({ id: ID, reason: null }) },
     {
       id: "bad-id",
       text: JSON.stringify({ id: ID.slice(2), reason: "cancelled" }),
@@ -1314,6 +1317,11 @@ function buildEnding(): unknown[] {
     mrow("done-without-hash-for-an-id-we-received-closes", {}, [
       rxOffer(0, O),
       { at: 1, rx: "DONE", id: A },
+    ]),
+    mrow("done-before-the-senders-own-done-closes", {}, [
+      hostOffer(0, A, 200, 4),
+      { at: 1, rx: "ACCEPT", id: A, offset: 0 },
+      { at: 2, rx: "DONE", id: A },
     ]),
     mrow("second-accept-closes", {}, [
       hostOffer(0, A, 200, 4),
