@@ -10,9 +10,10 @@
  * The device bearer authenticates the request and names the device; the proof shows the sender
  * holds the private half of `signKey`. Checks, in order: the device token is live, the body is
  * well formed, the proof verifies (keys valid, `issuedAt` within the skew window, signature), the
- * keys are not already registered (answered `keySeq` unchanged, no budget spent), the device is
- * within 4 changes a day, then the write. A rejected key, a failed proof and an `agreeKey` another
- * device holds all answer one `400 device_keys_invalid`, so the answer says nothing about which
+ * keys are not already registered (answered `keySeq` unchanged, no budget spent), the proof is
+ * newer than the last accepted one (refused without spending budget), the device is within 4
+ * changes a day, then the write. A key another device holds still spends a change. A rejected
+ * key, a failed proof and a key another device holds all answer one `400 device_keys_invalid`, so the answer says nothing about which
  * check failed or which keys exist. The rate limit fails closed.
  */
 
@@ -27,6 +28,7 @@ import { licenseUsable, validateDeviceToken } from "../devices.js";
 import {
   DeviceKeysConflictError,
   DeviceKeysInvalidError,
+  deviceKeyFloorPopAt,
   getDeviceKeys,
 } from "./keys.js";
 import { verifyKeyPop } from "./proof.js";
@@ -102,6 +104,11 @@ export async function handleDeviceKeys(
   const current = await getDeviceKeys(db, product.slug, deviceId);
   if (current && current.sign_key === signKey && current.agree_key === agreeKey)
     return json({ keySeq: current.key_seq });
+
+  // A proof no newer than the last accepted one changes nothing, so it spends no budget either.
+  // `upsertDeviceKeys` repeats this check and stays authoritative.
+  const floorAt = await deviceKeyFloorPopAt(db, product.slug, deviceId);
+  if (floorAt !== null && issuedAt <= floorAt) return invalid();
 
   if (
     !(await rateLimitOk(

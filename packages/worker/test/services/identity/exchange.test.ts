@@ -501,6 +501,27 @@ describe("device key guards", () => {
     expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();
   });
 
+  it("a signing key another device holds is refused before the bind: nothing is bound", async () => {
+    await link("https://accounts.google.com", "", GOOGLE_SUB, "google");
+    const mine = await newKeys();
+    await upsertDeviceKeys(
+      h.db,
+      SLUG,
+      DEVICE_2,
+      { ...(await newKeys()), signKey: mine.signKey },
+      NOW,
+    );
+    const r = await exchange(google(), { keys: mine });
+    expect(r.status).toBe(400);
+    expect(r.body.error).toBe("invalid_grant");
+    const row = await h.db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM devices WHERE device_id = ?",
+      DEVICE,
+    );
+    expect(row!.n).toBe(0);
+    expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();
+  });
+
   it("a rotation expects the key it saw: a key that changed since is refused, not overwritten", async () => {
     const a = await newKeys();
     const b = await newKeys();
@@ -686,6 +707,20 @@ describe("L-1: consent on the exchange", () => {
     const { accountId, r, grant } = await confirmed();
     const other = await newKeys(base64UrlDecode(r.keys.agreeKey));
     await upsertDeviceKeys(h.db, SLUG, DEVICE_2, other, NOW);
+    await expectInvalidGrant(grant);
+    expect(await grantRow(accountId)).toBeNull();
+    expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();
+  });
+
+  it("a signing key registered by another device in the grant window is refused", async () => {
+    const { accountId, r, grant } = await confirmed();
+    await upsertDeviceKeys(
+      h.db,
+      SLUG,
+      DEVICE_2,
+      { ...(await newKeys()), signKey: r.keys.signKey },
+      NOW,
+    );
     await expectInvalidGrant(grant);
     expect(await grantRow(accountId)).toBeNull();
     expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();

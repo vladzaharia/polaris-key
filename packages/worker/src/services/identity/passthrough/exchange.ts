@@ -53,7 +53,7 @@ import { appendAudit } from "../../../core/audit.js";
 import { rateLimitOk } from "../../../core/rateLimit.js";
 import { isValidClientDeviceId } from "../../../core/devices.js";
 import {
-  agreeKeyHeldElsewhere,
+  deviceKeysHeldElsewhere,
   deviceSignKey,
 } from "../../../core/devices/keys.js";
 import { verifyDeviceProof } from "../../../core/devices/proof.js";
@@ -257,8 +257,15 @@ export async function handleExchange(ctx: {
     );
   }
 
-  // An agreement key another device holds is refused before anything is bound.
-  if (await agreeKeyHeldElsewhere(db, product.slug, spent.agreeKey, deviceId))
+  // A key string another device holds, in either role, is refused before anything is bound.
+  if (
+    await deviceKeysHeldElsewhere(
+      db,
+      product.slug,
+      { signKey: deviceKey, agreeKey: spent.agreeKey },
+      deviceId,
+    )
+  )
     return refused();
 
   const terms = await productTerms(
