@@ -64,6 +64,8 @@ import {
   identityRequestHints,
   redirectWebErrors,
   redirectWebHappy,
+  redirectWebKeyReturn,
+  redirectWebKeyReturnLimit,
 } from "./redirect.js";
 
 import { CHOICE_SCENARIOS } from "./choice.js";
@@ -121,6 +123,8 @@ export const SCENARIOS: Scenario[] = [
   identitySubjectSignout,
   redirectWebHappy,
   redirectWebErrors,
+  redirectWebKeyReturn,
+  redirectWebKeyReturnLimit,
   identityRequestHints,
   ...CHOICE_SCENARIOS,
   ...LOCKER_SCENARIOS,

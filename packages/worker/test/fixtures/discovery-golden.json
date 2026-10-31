@@ -216,6 +216,7 @@
         "configured": true,
         "issuer": "https://key.plrs.im/full/identity",
         "account": true,
+        "deviceChoice": true,
         "keyEntryLimit": 10,
         "endpoints": {
           "session": "https://key.plrs.im/full/identity/session",

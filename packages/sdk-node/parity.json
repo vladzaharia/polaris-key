@@ -178,8 +178,17 @@
     "identity.choice": {
       "status": "implemented"
     },
+    "identity.devicecode.choice": {
+      "status": "planned",
+      "wp": "UK-42",
+      "note": "UK-42.22 (SDK slice .6 and .7): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+    },
     "identity.signin.hints": {
       "status": "implemented"
+    },
+    "identity.keyreturn": {
+      "status": "implemented",
+      "note": "LK-SKIP.7: signIn.start({channel: \"redirect\", redirectUri, keyReturn: true}) appends key_return=allow and complete() settles an activated outcome (licenseId, subject null, keyEntries) for a via: \"key\" answer: the token is stored as a key activation, the stored account is forgotten and no signedIn is emitted. A refusal (device_limit, key_entry_limit, license_owned) is a RedirectRefusedError whose details carry limit, deviceCount, manageUrl, keyEntries and signInUrl. Both redirect-web-key-return transcripts replay."
     },
     "identity.exchange": {
       "status": "na",

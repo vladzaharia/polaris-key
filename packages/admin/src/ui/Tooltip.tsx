@@ -97,11 +97,19 @@ export function Tooltip({
   side?: "top" | "right" | "bottom" | "left";
   delayDuration?: number;
 }): React.ReactElement {
+  // Empty content (no label, no reason) is a tooltip that never opens: callers keep the wrapper in
+  // the tree so a text that comes or goes does not remount the trigger (and drop its focus).
+  const [open, setOpen] = React.useState(false);
+  const empty =
+    content === undefined ||
+    content === null ||
+    content === false ||
+    content === "";
   return (
     <TooltipPrimitive.Provider delayDuration={delayDuration}>
-      <TooltipRoot>
+      <TooltipRoot open={!empty && open} onOpenChange={setOpen}>
         <TooltipTrigger asChild>{children}</TooltipTrigger>
-        <TooltipContent side={side}>{content}</TooltipContent>
+        {empty ? null : <TooltipContent side={side}>{content}</TooltipContent>}
       </TooltipRoot>
     </TooltipPrimitive.Provider>
   );

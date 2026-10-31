@@ -938,7 +938,9 @@ class Feature:
     IDENTITY_ACCOUNT: Final = "identity.account"
     IDENTITY_REDIRECT_WEB: Final = "identity.redirect.web"
     IDENTITY_CHOICE: Final = "identity.choice"
+    IDENTITY_DEVICECODE_CHOICE: Final = "identity.devicecode.choice"
     IDENTITY_SIGNIN_HINTS: Final = "identity.signin.hints"
+    IDENTITY_KEYRETURN: Final = "identity.keyreturn"
     IDENTITY_EXCHANGE: Final = "identity.exchange"
     IDENTITY_GAMECENTER: Final = "identity.gamecenter"
     IDENTITY_PGS: Final = "identity.pgs"
@@ -1079,7 +1081,9 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.account",
     "identity.redirect.web",
     "identity.choice",
+    "identity.devicecode.choice",
     "identity.signin.hints",
+    "identity.keyreturn",
     "identity.exchange",
     "identity.gamecenter",
     "identity.pgs",
@@ -2497,7 +2501,9 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.account": CapabilityRow("implemented", "identity", ()),
         "identity.redirect.web": CapabilityRow("implemented", "identity", ()),
         "identity.choice": CapabilityRow("implemented", "identity", ()),
+        "identity.devicecode.choice": CapabilityRow("planned", "identity", ()),
         "identity.signin.hints": CapabilityRow("implemented", "identity", ()),
+        "identity.keyreturn": CapabilityRow("planned", "identity", ()),
         "identity.exchange": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.gamecenter": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
@@ -2571,4 +2577,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "e159051d1cb45b0ecd03fea9d2e66d564602c5b55c322a9917b6fe38c41cf23f"
+CAPABILITY_DIGEST: Final[str] = "022a020df5b5ae4e3059b282fbb39d1840e646763f9bd176ef7ccb45ab477051"

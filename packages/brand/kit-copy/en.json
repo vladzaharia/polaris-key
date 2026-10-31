@@ -653,17 +653,17 @@
       "note": "ActivateDone: the badge on the recommendation card."
     },
     "activate.recommend.sync": {
-      "value": "Cloud Sync keeps your settings and saves on every device",
+      "value": "**Cloud Sync** keeps your settings and saves on every device",
       "role": "body",
       "note": "ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them."
     },
     "activate.recommend.recover": {
-      "value": "Get your license back if you lose the key or this device",
+      "value": "**Get your license back** if you lose the key or this device",
       "role": "body",
       "note": "ActivateDone: a reason line, shown when Identity is on. The first words (\"Get your license back\") are a lead-in; the kit may style them."
     },
     "activate.recommend.devices": {
-      "value": "Move it to a new device yourself, without asking {developer}",
+      "value": "**Move it to a new device** yourself, without asking {developer}",
       "role": "body",
       "note": "ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words (\"Move it to a new device\") are a lead-in; the kit may style them."
     },
@@ -683,9 +683,9 @@
       "note": "ActivateDone: the single reason line when Identity is off; the action opens the portal."
     },
     "activate.attach.lede": {
-      "value": "Your license and its devices stay as they are. You'll confirm the email with a code in your browser.",
+      "value": "Your license and its devices stay as they are.",
       "role": "body",
-      "note": "AddToAccount: under the name and email fields."
+      "note": "AddToAccount: under the title, above the fields."
     },
     "activate.attach.fine": {
       "value": "We send a code to this email in your browser. {product} never sees it.",
@@ -706,6 +706,26 @@
       "value": "Couldn't add this license. Try again in a moment.",
       "role": "hint",
       "note": "AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form."
+    },
+    "activate.attach.name": {
+      "value": "Name",
+      "role": "label",
+      "note": "AddToAccount: the name field. The title is Add your name and email, so the label is one word."
+    },
+    "activate.attach.nameRequired": {
+      "value": "Enter your name.",
+      "role": "body",
+      "note": "AddToAccount: shown under the name field when it is empty."
+    },
+    "activate.otherAccount.title": {
+      "value": "You signed in with a different account",
+      "role": "title",
+      "note": "AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere."
+    },
+    "activate.otherAccount.body": {
+      "value": "You signed in as {email}, not {maskedEmail}. Nothing was added.",
+      "role": "body",
+      "note": "AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated)."
     },
     "activate.waiting": {
       "value": "This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.",
@@ -746,6 +766,11 @@
       "value": "Not in an account",
       "role": "body",
       "note": "AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email."
+    },
+    "account.removeKey": {
+      "value": "Remove license from this device",
+      "role": "button",
+      "note": "AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device."
     },
     "signin.attach.header": {
       "value": "Add {product} to your account",
@@ -2577,6 +2602,11 @@
       "value": "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
       "role": "body",
       "note": "License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "locker.key.noEntriesLead": {
+      "value": "You can't continue without an account:",
+      "role": "body",
+      "note": "License key step (SIGN-IN.md §3.9), bold lead of the no-entries callout when Continue without an account was refused key_entry_limit (LK-SKIP.5)."
     },
     "signin.key.skip": {
       "value": "Continue without an account",
@@ -7302,6 +7332,11 @@
       "value": "We couldn't find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it.",
       "role": "hint",
       "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.cantUse": {
+      "value": "This key can't be used here.",
+      "role": "hint",
+      "note": "The sign-in card's Continue without an account, when the key is refused (LK-SKIP.5): unknown, inactive, another product's, or a license that can't be used. Never 'not found'."
     },
     "locker.key.emailMismatch": {
       "value": "{product} was bought with {email}. It joins only the account with that email verified.",

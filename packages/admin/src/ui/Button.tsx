@@ -33,7 +33,9 @@ const WRAPPING = [
  *   variants take the action-disabled pair.
  * - `disabledReason` renders `aria-disabled` instead of `disabled`, so the button stays focusable,
  *   shows the reason in a tooltip and links it with `aria-describedby`; clicks do nothing. There
- *   is no `pointer-events: none` anywhere (fixes UI-2).
+ *   is no `pointer-events: none` anywhere (fixes UI-2). The tree is the same with or without a
+ *   reason (an empty Tooltip around the button), so a reason that comes or goes under focus keeps
+ *   focus.
  * - `type` defaults to `"button"`, so a button inside a `<form>` never submits by accident; a
  *   submit button says `type="submit"` (fixes UI-3).
  * - `asChild` honours `loading` and `disabledReason` with `aria-disabled` and a click guard.
@@ -188,13 +190,18 @@ export function Button({
     </button>
   );
 
-  if (!softDisabled) return element;
+  // One tree for every state: the Tooltip is always there (empty without a reason), so a reason
+  // that appears or goes while the button has focus never remounts it and drops focus to <body>.
   return (
     <>
-      <Tooltip content={disabledReason}>{element}</Tooltip>
-      <span id={reasonId} className="sr-only">
-        {disabledReason}
-      </span>
+      <Tooltip content={softDisabled ? disabledReason : undefined}>
+        {element}
+      </Tooltip>
+      {softDisabled ? (
+        <span id={reasonId} className="sr-only">
+          {disabledReason}
+        </span>
+      ) : null}
     </>
   );
 }

@@ -1,0 +1,125 @@
+---
+title: "ActivateDone"
+description: "The step after a license key activates: the product is ready, this device's place on the license, and one quiet offer to keep the license in a Polaris Locker account."
+sidebar:
+  order: 11
+type: "reference"
+lastReviewed: "2026-10-28"
+lanes: ["kit"]
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+import KitStatus from "../../../../../components/ui/KitStatus.astro";
+
+After a license key activates, the license is **floating**: it has devices and a term, and no
+account. This step says the app is ready and, once, recommends keeping the license in an account.
+The one primary is **Start using the product**; skipping the offer is never a refusal, and the app
+works the same either way.
+
+## What the person sees
+
+- The check, "Tidewater is ready" and the license line: tier, term and "this computer is device 1
+  of 3". The line is left out when its numbers are unknown, never drawn as a placeholder.
+- A quiet card, **Keep Tidewater in your account**, marked Recommended. It lists only the reasons
+  the product has, each with a bold lead-in: **Cloud Sync** (only when the product has it),
+  **Get your license back** and **Move it to a new device**. **Add your name and email** is the
+  card's one action, a secondary button.
+- **Start using Tidewater** is the only filled button, with "Or continue without an account" as a
+  line under the card.
+- With Identity off there is no account to add to: the card reads "Keep your license safe in
+  Polaris Locker" and its action, **Add it in Polaris Locker**, opens Polaris Locker in the browser
+  (it carries the new-window glyph).
+- When the license was sent to an email, the card gives way to **waiting**: "This license was sent
+  to a•••@example.com. Sign in with that email to keep it in your account", with **Sign in as
+  a•••@example.com**. The address is always masked.
+
+The recommendation shows once. The account pane keeps a
+[Not in an account](/docs/build/ui/components/account-and-license/) row for later.
+
+## States and copy
+
+<ComponentStates component="ActivateDone" />
+
+## Keyboard
+
+- Focus lands on **Start using** when the step opens.
+- Return presses the focused button. Escape is **Start using**: the person is not stuck on the
+  step.
+- Back from [AddToAccount](/docs/build/ui/components/add-to-account/) returns focus to **Add your
+  name and email**, the control that opened it, not to the primary.
+- Under reduced motion the card swaps at once, the check does not draw and the reasons do not
+  enter one after another.
+
+## Baselines
+
+<KitBaselines component="ActivateDone" />
+
+## In each kit
+
+<Tabs syncKey="ui-kit">
+  <TabItem label="React">
+    <KitStatus kit="react" />
+
+    **Drop-in.** Inside `<SignIn>` and `<PolarisKeyGate>`: a key that activates leaves the gate on this step, with the key held in memory only. Nothing to place.
+
+    **Styled part.** `<ActivateDone />` from `@polaris-key/react/kit`, given `input.activateDone` (the license line) and, when an email holds the license, `input.licenseHolder`. `onStart`, `onAddToAccount` and `onSignIn` report the three controls. Without `activateDone` it draws nothing.
+
+    **Headless.** `useActivateDone({ input, onStart, onAddToAccount, onSignIn })` returns `{ view, input, reasons, start, addToAccount, signIn }`: the view's state (`ready`, `waiting` or `hidden`), the reason lines as copy keys, and one function per control.
+
+    ```tsx
+    import { ActivateDone } from "@polaris-key/react/kit";
+
+    export function KeyDone(props: { onStart: () => void; onAdd: () => void }) {
+      return (
+        <ActivateDone
+          input={{
+            activateDone: { tier: "Pro", term: "Lifetime", position: 1, limit: 3 },
+          }}
+          onStart={props.onStart}
+          onAddToAccount={props.onAdd}
+        />
+      );
+    }
+    ```
+
+    [React](/docs/build/ui/frameworks/react/) has the theme, the restyle hooks and the sample.
+
+  </TabItem>
+  <TabItem label="Web components">
+    <KitStatus kit="elements" />
+
+    **Drop-in.** Inside `<pk-sign-in>` and `<pk-gate>`: a key that activates moves the form to this step.
+
+    **Styled part.** `<pk-activate-done>` given an `input` property with `activateDone`; it reports each control as a `pk-action` event (`detail.key` is the control's copy key).
+
+    **Headless.** `activateDoneView(context)` from `@polaris-key/elements/headless`, or `viewOf("ActivateDone", input)`.
+
+    ```html
+    <pk-activate-done id="done"></pk-activate-done>
+    <script type="module">
+      const el = document.getElementById("done");
+      el.input = { activateDone: { tier: "Pro", term: "Lifetime", position: 1, limit: 3 } };
+      el.addEventListener("pk-action", (e) => console.log(e.detail.key));
+    </script>
+    ```
+
+    [Web components](/docs/build/ui/frameworks/elements/) has the theme and the sample.
+
+  </TabItem>
+  <TabItem label="Electron">
+    <KitStatus kit="electron" />
+
+    **Drop-in.** Drawn by `<PolarisKeyGate>` after a key activates, in the chrome of the OS.
+
+    **Styled part.** The React kit's `<ActivateDone />`, drawn in the macOS, Windows or GNOME chrome with `theme.platform: "auto"`; restyle through `data-part` and the `--pk-*` hooks.
+
+    **Headless.** `viewOf("ActivateDone", input)`.
+
+    [Electron](/docs/build/ui/frameworks/electron/) has the bridge, the menu and the sample.
+
+  </TabItem>
+</Tabs>
+
+The native kits (SwiftUI, Compose, Godot and the terminals) have no tab yet; they follow.

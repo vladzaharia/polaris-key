@@ -183,8 +183,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.skip":
       "Or continue without an account. {product} works the same.",
     "activate.recommend.portal": "Keep your license safe in Polaris Locker",
-    "activate.attach.lede":
-      "Your license and its devices stay as they are. You'll confirm the email with a code in your browser.",
+    "activate.attach.lede": "Your license and its devices stay as they are.",
     "activate.attach.fine":
       "We send a code to this email in your browser. {product} never sees it.",
     "activate.attach.done": "{product} is in your account",
@@ -192,6 +191,11 @@ export const KIT_COPY: Readonly<
       "Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.",
     "activate.attach.failed":
       "Couldn't add this license. Try again in a moment.",
+    "activate.attach.name": "Name",
+    "activate.attach.nameRequired": "Enter your name.",
+    "activate.otherAccount.title": "You signed in with a different account",
+    "activate.otherAccount.body":
+      "You signed in as {email}, not {maskedEmail}. Nothing was added.",
     "activate.waiting":
       "This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.",
     "activate.waitingSignIn": "Sign in as {maskedEmail}",
@@ -203,6 +207,7 @@ export const KIT_COPY: Readonly<
       "It was sent to {maskedEmail}. Sign in with that email, or add it to this account and verify it.",
     "activate.otherEmail.verify": "Verify that email",
     "account.notInAccount": "Not in an account",
+    "account.removeKey": "Remove license from this device",
     "signin.attach.header": "Add {product} to your account",
     "signin.key.skipNote":
       "{product} works the same. Add it to an account any time.",
@@ -1999,8 +2004,7 @@ export const KIT_COPY: Readonly<
       "Oder ohne Konto fortfahren. {product} funktioniert genauso.",
     "activate.recommend.portal":
       "Ihre Lizenz sicher in Polaris Locker aufbewahren",
-    "activate.attach.lede":
-      "Ihre Lizenz und ihre Geräte bleiben unverändert. Die E-Mail bestätigen Sie mit einem Code in Ihrem Browser.",
+    "activate.attach.lede": "Ihre Lizenz und ihre Geräte bleiben unverändert.",
     "activate.attach.fine":
       "Wir senden einen Code an diese E-Mail in Ihrem Browser. {product} sieht ihn nie.",
     "activate.attach.done": "{product} ist in Ihrem Konto",
@@ -2008,6 +2012,12 @@ export const KIT_COPY: Readonly<
       "Die Cloud-Synchronisierung ist für dieses {deviceKind} aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren.",
     "activate.attach.failed":
       "Die Lizenz konnte nicht hinzugefügt werden. Versuchen Sie es gleich noch einmal.",
+    "activate.attach.name": "Name",
+    "activate.attach.nameRequired": "Geben Sie Ihren Namen ein.",
+    "activate.otherAccount.title":
+      "Sie haben sich mit einem anderen Konto angemeldet",
+    "activate.otherAccount.body":
+      "Sie haben sich als {email} angemeldet, nicht als {maskedEmail}. Es wurde nichts hinzugefügt.",
     "activate.waiting":
       "Diese Lizenz wurde an {maskedEmail} gesendet. Melden Sie sich mit dieser E-Mail an, um sie in Ihrem Konto zu behalten.",
     "activate.waitingSignIn": "Als {maskedEmail} anmelden",
@@ -2020,6 +2030,7 @@ export const KIT_COPY: Readonly<
       "Sie wurde an {maskedEmail} gesendet. Melden Sie sich mit dieser E-Mail an oder fügen Sie sie diesem Konto hinzu und bestätigen Sie sie.",
     "activate.otherEmail.verify": "Diese E-Mail bestätigen",
     "account.notInAccount": "In keinem Konto",
+    "account.removeKey": "Lizenz von diesem Gerät entfernen",
     "signin.attach.header": "{product} zu Ihrem Konto hinzufügen",
     "signin.key.skipNote":
       "{product} funktioniert genauso. Fügen Sie es jederzeit einem Konto hinzu.",
@@ -3929,7 +3940,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.portal":
       "Gardez votre licence en sécurité dans Polaris Locker",
     "activate.attach.lede":
-      "Votre licence et ses appareils restent tels quels. Vous confirmerez l’e-mail avec un code dans votre navigateur.",
+      "Votre licence et ses appareils restent tels quels.",
     "activate.attach.fine":
       "Nous envoyons un code à cet e-mail dans votre navigateur. {product} ne le voit jamais.",
     "activate.attach.done": "{product} est dans votre compte",
@@ -3937,6 +3948,12 @@ export const KIT_COPY: Readonly<
       "La synchronisation cloud est activée sur cet {deviceKind}. Connectez-vous sur vos autres appareils pour les synchroniser aussi.",
     "activate.attach.failed":
       "Impossible d’ajouter cette licence. Réessayez dans un instant.",
+    "activate.attach.name": "Nom",
+    "activate.attach.nameRequired": "Saisissez votre nom.",
+    "activate.otherAccount.title":
+      "Vous vous êtes connecté avec un autre compte",
+    "activate.otherAccount.body":
+      "Vous vous êtes connecté en tant que {email}, pas {maskedEmail}. Rien n’a été ajouté.",
     "activate.waiting":
       "Cette licence a été envoyée à {maskedEmail}. Connectez-vous avec cet e-mail pour la garder dans votre compte.",
     "activate.waitingSignIn": "Se connecter en tant que {maskedEmail}",
@@ -3949,6 +3966,7 @@ export const KIT_COPY: Readonly<
       "Elle a été envoyée à {maskedEmail}. Connectez-vous avec cet e-mail, ou ajoutez-le à ce compte et vérifiez-le.",
     "activate.otherEmail.verify": "Vérifier cet e-mail",
     "account.notInAccount": "Dans aucun compte",
+    "account.removeKey": "Retirer la licence de cet appareil",
     "signin.attach.header": "Ajouter {product} à votre compte",
     "signin.key.skipNote":
       "{product} fonctionne de la même façon. Ajoutez-le à un compte quand vous voulez.",
@@ -5840,7 +5858,7 @@ export const KIT_COPY: Readonly<
       "O continúa sin cuenta. {product} funciona igual.",
     "activate.recommend.portal": "Guarda tu licencia a salvo en Polaris Locker",
     "activate.attach.lede":
-      "Tu licencia y sus dispositivos se quedan como están. Confirmarás el correo con un código en tu navegador.",
+      "Tu licencia y sus dispositivos se quedan como están.",
     "activate.attach.fine":
       "Enviamos un código a este correo en tu navegador. {product} nunca lo ve.",
     "activate.attach.done": "{product} está en tu cuenta",
@@ -5848,6 +5866,11 @@ export const KIT_COPY: Readonly<
       "La sincronización en la nube está activada en este {deviceKind}. Inicia sesión en tus otros dispositivos para sincronizarlos también.",
     "activate.attach.failed":
       "No se pudo añadir esta licencia. Inténtalo de nuevo en un momento.",
+    "activate.attach.name": "Nombre",
+    "activate.attach.nameRequired": "Escribe tu nombre.",
+    "activate.otherAccount.title": "Iniciaste sesión con otra cuenta",
+    "activate.otherAccount.body":
+      "Iniciaste sesión como {email}, no como {maskedEmail}. No se añadió nada.",
     "activate.waiting":
       "Esta licencia se envió a {maskedEmail}. Inicia sesión con ese correo para conservarla en tu cuenta.",
     "activate.waitingSignIn": "Iniciar sesión como {maskedEmail}",
@@ -5860,6 +5883,7 @@ export const KIT_COPY: Readonly<
       "Se envió a {maskedEmail}. Inicia sesión con ese correo, o añádelo a esta cuenta y verifícalo.",
     "activate.otherEmail.verify": "Verificar ese correo",
     "account.notInAccount": "No está en una cuenta",
+    "account.removeKey": "Quitar la licencia de este dispositivo",
     "signin.attach.header": "Añade {product} a tu cuenta",
     "signin.key.skipNote":
       "{product} funciona igual. Añádelo a una cuenta cuando quieras.",
@@ -7744,7 +7768,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.portal":
       "Guarde sua licença com segurança no Polaris Locker",
     "activate.attach.lede":
-      "Sua licença e os dispositivos dela continuam como estão. Você confirma o e-mail com um código no navegador.",
+      "Sua licença e os dispositivos dela continuam como estão.",
     "activate.attach.fine":
       "Enviamos um código para este e-mail no navegador. {product} nunca o vê.",
     "activate.attach.done": "{product} está na sua conta",
@@ -7752,6 +7776,11 @@ export const KIT_COPY: Readonly<
       "A sincronização na nuvem está ativada neste {deviceKind}. Entre nos seus outros dispositivos para sincronizá-los também.",
     "activate.attach.failed":
       "Não foi possível adicionar esta licença. Tente novamente em instantes.",
+    "activate.attach.name": "Nome",
+    "activate.attach.nameRequired": "Digite seu nome.",
+    "activate.otherAccount.title": "Você entrou com outra conta",
+    "activate.otherAccount.body":
+      "Você entrou como {email}, não como {maskedEmail}. Nada foi adicionado.",
     "activate.waiting":
       "Esta licença foi enviada para {maskedEmail}. Entre com esse e-mail para guardá-la na sua conta.",
     "activate.waitingSignIn": "Entrar como {maskedEmail}",
@@ -7763,6 +7792,7 @@ export const KIT_COPY: Readonly<
       "Ela foi enviada para {maskedEmail}. Entre com esse e-mail, ou adicione-o a esta conta e verifique.",
     "activate.otherEmail.verify": "Verificar esse e-mail",
     "account.notInAccount": "Sem conta",
+    "account.removeKey": "Remover a licença deste dispositivo",
     "signin.attach.header": "Adicionar {product} à sua conta",
     "signin.key.skipNote":
       "{product} funciona do mesmo jeito. Adicione a uma conta quando quiser.",
@@ -9609,7 +9639,7 @@ export const KIT_COPY: Readonly<
       "Oppure continua senza account. {product} funziona allo stesso modo.",
     "activate.recommend.portal": "Tieni la licenza al sicuro in Polaris Locker",
     "activate.attach.lede":
-      "La licenza e i suoi dispositivi restano come sono. Confermerai l’e-mail con un codice nel browser.",
+      "La licenza e i suoi dispositivi restano come sono.",
     "activate.attach.fine":
       "Inviamo un codice a questa e-mail nel browser. {product} non lo vede mai.",
     "activate.attach.done": "{product} è nel tuo account",
@@ -9617,6 +9647,12 @@ export const KIT_COPY: Readonly<
       "La sincronizzazione cloud è attiva su questo {deviceKind}. Accedi sugli altri dispositivi per sincronizzare anche quelli.",
     "activate.attach.failed":
       "Impossibile aggiungere questa licenza. Riprova tra un momento.",
+    "activate.attach.name": "Nome",
+    "activate.attach.nameRequired": "Inserisci il tuo nome.",
+    "activate.otherAccount.title":
+      "Hai effettuato l’accesso con un altro account",
+    "activate.otherAccount.body":
+      "Hai effettuato l’accesso come {email}, non come {maskedEmail}. Non è stato aggiunto nulla.",
     "activate.waiting":
       "Questa licenza è stata inviata a {maskedEmail}. Accedi con quell’e-mail per tenerla nel tuo account.",
     "activate.waitingSignIn": "Accedi come {maskedEmail}",
@@ -9629,6 +9665,7 @@ export const KIT_COPY: Readonly<
       "È stata inviata a {maskedEmail}. Accedi con quell’e-mail, oppure aggiungila a questo account e verificala.",
     "activate.otherEmail.verify": "Verifica quell’e-mail",
     "account.notInAccount": "In nessun account",
+    "account.removeKey": "Rimuovi la licenza da questo dispositivo",
     "signin.attach.header": "Aggiungi {product} al tuo account",
     "signin.key.skipNote":
       "{product} funziona allo stesso modo. Aggiungilo a un account quando vuoi.",
@@ -11503,6 +11540,11 @@ export const KIT_COPY: Readonly<
       "この{deviceKind}でクラウド同期がオンになりました。ほかのデバイスでもサインインすると同期されます。",
     "activate.attach.failed":
       "このライセンスを追加できませんでした。しばらくしてからもう一度お試しください。",
+    "activate.attach.name": "名前",
+    "activate.attach.nameRequired": "名前を入力してください。",
+    "activate.otherAccount.title": "別のアカウントでサインインしました",
+    "activate.otherAccount.body":
+      "{email}でサインインしましたが、入力したのは{maskedEmail}です。何も追加されていません。",
     "activate.waiting":
       "このライセンスは{maskedEmail}に送られました。そのメールアドレスでサインインすると、アカウントに保存できます。",
     "activate.waitingSignIn": "{maskedEmail}でサインイン",
@@ -11516,6 +11558,7 @@ export const KIT_COPY: Readonly<
       "{maskedEmail}に送られました。そのメールアドレスでサインインするか、このアカウントに追加して確認してください。",
     "activate.otherEmail.verify": "そのメールアドレスを確認",
     "account.notInAccount": "アカウントにありません",
+    "account.removeKey": "このデバイスからライセンスを削除",
     "signin.attach.header": "{product}をアカウントに追加",
     "signin.key.skipNote":
       "{product}は同じように使えます。いつでもアカウントに追加できます。",
@@ -13399,8 +13442,7 @@ export const KIT_COPY: Readonly<
       "또는 계정 없이 계속하세요. {product}은(는) 똑같이 작동합니다.",
     "activate.recommend.portal":
       "라이선스를 Polaris Locker에 안전하게 보관하세요",
-    "activate.attach.lede":
-      "라이선스와 기기는 그대로입니다. 브라우저에서 코드로 이메일을 확인합니다.",
+    "activate.attach.lede": "라이선스와 기기는 그대로입니다.",
     "activate.attach.fine":
       "브라우저에서 이 이메일로 코드를 보냅니다. {product}은(는) 코드를 보지 못합니다.",
     "activate.attach.done": "{product}이(가) 계정에 있습니다",
@@ -13408,6 +13450,11 @@ export const KIT_COPY: Readonly<
       "이 {deviceKind}에서 클라우드 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다.",
     "activate.attach.failed":
       "이 라이선스를 추가하지 못했어요. 잠시 후 다시 시도하세요.",
+    "activate.attach.name": "이름",
+    "activate.attach.nameRequired": "이름을 입력하세요.",
+    "activate.otherAccount.title": "다른 계정으로 로그인했습니다",
+    "activate.otherAccount.body":
+      "{email}(으)로 로그인했지만 입력한 이메일은 {maskedEmail}입니다. 아무것도 추가되지 않았습니다.",
     "activate.waiting":
       "이 라이선스는 {maskedEmail}(으)로 전송되었습니다. 그 이메일로 로그인하면 계정에 보관할 수 있습니다.",
     "activate.waitingSignIn": "{maskedEmail}(으)로 로그인",
@@ -13419,6 +13466,7 @@ export const KIT_COPY: Readonly<
       "{maskedEmail}(으)로 전송되었습니다. 그 이메일로 로그인하거나, 이 계정에 추가한 뒤 확인하세요.",
     "activate.otherEmail.verify": "해당 이메일 확인",
     "account.notInAccount": "계정에 없음",
+    "account.removeKey": "이 기기에서 라이선스 제거",
     "signin.attach.header": "{product}을(를) 계정에 추가",
     "signin.key.skipNote":
       "{product}은(는) 똑같이 작동합니다. 언제든 계정에 추가할 수 있습니다.",
@@ -15219,6 +15267,11 @@ export const KIT_COPY: Readonly<
     "activate.attach.syncOn":
       "这台{deviceKind}已开启云同步。在其他设备上登录即可一并同步。",
     "activate.attach.failed": "无法添加此许可证。请稍后重试。",
+    "activate.attach.name": "姓名",
+    "activate.attach.nameRequired": "请输入你的姓名。",
+    "activate.otherAccount.title": "你登录的是另一个账户",
+    "activate.otherAccount.body":
+      "你登录的是 {email}，而不是 {maskedEmail}。没有添加任何内容。",
     "activate.waiting":
       "这个许可证已发送到 {maskedEmail}。用该电子邮件登录，即可保存到你的账户。",
     "activate.waitingSignIn": "以 {maskedEmail} 登录",
@@ -15230,6 +15283,7 @@ export const KIT_COPY: Readonly<
       "它发送到了 {maskedEmail}。请用该电子邮件登录，或将其添加到此账户并验证。",
     "activate.otherEmail.verify": "验证该电子邮件",
     "account.notInAccount": "不在账户中",
+    "account.removeKey": "从此设备移除许可证",
     "signin.attach.header": "将{product}添加到你的账户",
     "signin.key.skipNote":
       "{product}的使用方式完全相同。你可以随时将其添加到账户。",
@@ -16758,6 +16812,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "activate.recommend.action": { macos: "Add Your Name and Email" },
   "activate.waitingSignIn": { macos: "Sign In as {maskedEmail}" },
   "activate.otherEmail.verify": { macos: "Verify That Email" },
+  "account.removeKey": { macos: "Remove License from This Device" },
   "offlineActivation.copyCode": { macos: "Copy Code" },
   "offlineActivation.loadFile": { macos: "Load File…" },
   "offlineActivation.submit": { macos: "Activate from File" },

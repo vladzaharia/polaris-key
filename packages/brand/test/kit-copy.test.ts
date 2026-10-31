@@ -534,3 +534,30 @@ describe("renderers (goldens over a synthetic catalog)", () => {
   });
   it("Python", () => golden("python.py", pythonModule(model)));
 });
+
+describe("the lead markers (`**like this**`)", () => {
+  it("no generated native table or the Node terminal's carries them", () => {
+    const REPO = join(import.meta.dirname, "..", "..", "..");
+    const files = [
+      "packages/sdk-node/src/kitCopy.generated.ts",
+      "sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json",
+      "sdks/kotlin/ui-core/src/main/resources/kit-copy.json",
+      "sdks/python/src/polaris_key/ui/kit_copy_generated.py",
+      "sdks/python/src/polaris_key/ui/locale/polaris_key_ui.pot",
+      "sdks/godot/addons/polaris_key/ui/locale/polaris_key_ui.pot",
+      "sdks/godot/addons/polaris_key/ui/locale/en.po",
+      "sdks/godot/addons/polaris_key/ui/locale/ja.po",
+      "sdks/kotlin/ui/src/commonMain/composeResources/values/strings.xml",
+      "sdks/kotlin/ui/src/commonMain/composeResources/values-fr/strings.xml",
+    ];
+    for (const f of files)
+      expect(readFileSync(join(REPO, f), "utf8"), f).not.toMatch(/\*\*[^\s*/]/);
+  });
+  it("the source catalog keeps them, for the web kits and the portal", () => {
+    const REPO = join(import.meta.dirname, "..", "..", "..");
+    const src = JSON.parse(
+      readFileSync(join(REPO, "packages/brand/kit-copy/en.json"), "utf8"),
+    ) as { messages: Record<string, { value: string }> };
+    expect(src.messages["activate.recommend.sync"]!.value).toContain("**");
+  });
+});

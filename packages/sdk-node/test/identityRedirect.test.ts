@@ -1,13 +1,14 @@
-// @pkey-feature identity.redirect.web identity.signin.hints
+// @pkey-feature identity.redirect.web identity.signin.hints identity.keyreturn
 // The Node redirect session beyond what a recording shows (I-10a.7): the session is single use,
 // a refusal never wipes the device's token, a bad callback sends nothing, and the endpoints come
 // from discovery or not at all. The wire conversation itself is the transcripts'
 // (`redirect-web-*`, `identity-request-hints`).
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PolarisKeyClient } from "../src/client.js";
+import { RedirectRefusedError } from "../src/identity/redirect.js";
 import { InMemoryStore } from "../src/core/store.js";
 import type { ServiceSlug } from "../src/discovery.js";
 
@@ -109,7 +110,7 @@ async function boot(env: ReturnType<typeof setup>, token?: string) {
 async function begin(
   env: ReturnType<typeof setup>,
   deviceToken?: string,
-  extra: { licenseChoice?: "app" } = {},
+  extra: { licenseChoice?: "app"; keyReturn?: boolean } = {},
 ) {
   const c = await boot(env, deviceToken);
   const s = await c.identity.signIn.start({
@@ -312,5 +313,125 @@ describe("redirect sign-in", () => {
       c.identity.signIn.start({ channel: "redirect", redirectUri: REDIRECT }),
     ).rejects.toMatchObject({ code: "service-unavailable" });
     expect(env.seen).toHaveLength(0);
+  });
+});
+
+// LK-SKIP (WIRE-CONTRACT-V5 §12.4.2, §12.5): the wire conversations are the redirect-web-key-return
+// transcripts'; these pin the opt-in, the strictness and what the SDK keeps.
+describe("redirect key return", () => {
+  const KEY_OK = {
+    access_token: "pkeyt_key",
+    token_type: "Bearer",
+    scope: "",
+    schemaVersion: 1,
+    device: { id: "D" },
+    license: { id: "lic_1" },
+    subject: null,
+    via: "key",
+    keyEntries: { used: 1, limit: 10 },
+  };
+
+  it("sends key_return=allow last, and only when asked", async () => {
+    const off = await begin(setup({}));
+    expect(new URL(off.s.authorizeUrl).searchParams.has("key_return")).toBe(
+      false,
+    );
+    const on = await begin(setup({}), undefined, { keyReturn: true });
+    expect(on.s.authorizeUrl.endsWith("&key_return=allow")).toBe(true);
+  });
+
+  it("a via key answer is activated: a key activation, no account, the old identity forgotten", async () => {
+    const env = setup({ token: () => json(KEY_OK) });
+    const { c, s, cb } = await begin(env, "pkeyt_old", { keyReturn: true });
+    const dir = (c.identity as unknown as { ctx: { dirs: { state: string } } })
+      .ctx.dirs.state;
+    const events: unknown[] = [];
+    (c.identity as unknown as { emit: (e: unknown) => void }).emit = (e) =>
+      events.push(e);
+    expect(await s.complete(cb("code=C"))).toEqual({
+      kind: "activated",
+      subject: null,
+      licenseId: "lic_1",
+      activation: { licenseId: "lic_1" },
+      keyEntries: { used: 1, limit: 10 },
+    });
+    expect(await env.store.getToken()).toBe("pkeyt_key");
+    expect(existsSync(join(dir, "subject.json"))).toBe(false);
+    expect(
+      events.some((e) => (e as { kind: string }).kind === "signedIn"),
+    ).toBe(false);
+  });
+
+  it("a via key answer without the opt-in is malformed and stores nothing", async () => {
+    const env = setup({ token: () => json(KEY_OK) });
+    const { s, cb } = await begin(env, "pkeyt_old");
+    await expect(s.complete(cb("code=C"))).rejects.toMatchObject({
+      code: "bad_response",
+    });
+    expect(await env.store.getToken()).toBe("pkeyt_old");
+  });
+
+  it("an ordinary answer still signs in with the opt-in", async () => {
+    const env = setup({});
+    const { s, cb } = await begin(env, undefined, { keyReturn: true });
+    expect(await s.complete(cb("code=C"))).toMatchObject({
+      kind: "signedIn",
+      subject: "ps_abc",
+    });
+  });
+
+  it("a device_limit refusal carries its details and keeps the token", async () => {
+    const manageUrl = "https://key.plrs.im/activate?product=djdl";
+    const env = setup({
+      token: () =>
+        json(
+          { error: "device_limit", limit: 1, deviceCount: 1, manageUrl },
+          403,
+        ),
+    });
+    const { s, cb } = await begin(env, "pkeyt_old", { keyReturn: true });
+    const err = await s.complete(cb("code=C")).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RedirectRefusedError);
+    expect(err).toMatchObject({
+      code: "device_limit",
+      status: 403,
+      details: { limit: 1, deviceCount: 1, manageUrl },
+    });
+    expect(await env.store.getToken()).toBe("pkeyt_old");
+  });
+
+  it("a key_entry_limit and a license_owned refusal carry keyEntries and signInUrl; a link that is not https is dropped", async () => {
+    const owned = setup({
+      token: () =>
+        json(
+          {
+            error: "license_owned",
+            signInUrl: "https://key.plrs.im/signin?product=djdl",
+          },
+          403,
+        ),
+    });
+    const a = await begin(owned, undefined, { keyReturn: true });
+    await expect(a.s.complete(a.cb("code=C"))).rejects.toMatchObject({
+      details: { signInUrl: "https://key.plrs.im/signin?product=djdl" },
+    });
+    const entries = setup({
+      token: () =>
+        json(
+          {
+            error: "key_entry_limit",
+            keyEntries: { used: 3, limit: 3 },
+            manageUrl: "javascript:alert(1)",
+          },
+          403,
+        ),
+    });
+    const b = await begin(entries, undefined, { keyReturn: true });
+    const err = (await b.s
+      .complete(b.cb("code=C"))
+      .catch((e: unknown) => e)) as {
+      details: Record<string, unknown>;
+    };
+    expect(err.details).toEqual({ keyEntries: { used: 3, limit: 3 } });
   });
 });

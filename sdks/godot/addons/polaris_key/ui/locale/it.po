@@ -890,10 +890,10 @@ msgstr "Oppure continua senza account. {product} funziona allo stesso modo."
 msgid "activate.recommend.portal"
 msgstr "Tieni la licenza al sicuro in Polaris Locker"
 
-#. Your license and its devices stay as they are. You'll confirm the email with a code in your browser.
-#. AddToAccount: under the name and email fields.
+#. Your license and its devices stay as they are.
+#. AddToAccount: under the title, above the fields.
 msgid "activate.attach.lede"
-msgstr "La licenza e i suoi dispositivi restano come sono. Confermerai l’e-mail con un codice nel browser."
+msgstr "La licenza e i suoi dispositivi restano come sono."
 
 #. We send a code to this email in your browser. {product} never sees it.
 #. AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated).
@@ -914,6 +914,26 @@ msgstr "La sincronizzazione cloud è attiva su questo {deviceKind}. Accedi sugli
 #. AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form.
 msgid "activate.attach.failed"
 msgstr "Impossibile aggiungere questa licenza. Riprova tra un momento."
+
+#. Name
+#. AddToAccount: the name field. The title is Add your name and email, so the label is one word.
+msgid "activate.attach.name"
+msgstr "Nome"
+
+#. Enter your name.
+#. AddToAccount: shown under the name field when it is empty.
+msgid "activate.attach.nameRequired"
+msgstr "Inserisci il tuo nome."
+
+#. You signed in with a different account
+#. AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere.
+msgid "activate.otherAccount.title"
+msgstr "Hai effettuato l’accesso con un altro account"
+
+#. You signed in as {email}, not {maskedEmail}. Nothing was added.
+#. AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated).
+msgid "activate.otherAccount.body"
+msgstr "Hai effettuato l’accesso come {email}, non come {maskedEmail}. Non è stato aggiunto nulla."
 
 #. This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.
 #. ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated).
@@ -964,6 +984,16 @@ msgstr "Verifica quell’e-mail"
 #. AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email.
 msgid "account.notInAccount"
 msgstr "In nessun account"
+
+#. Remove license from this device
+#. AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device.
+msgid "account.removeKey"
+msgstr "Rimuovi la licenza da questo dispositivo"
+
+#. macos: Remove License from This Device
+msgctxt "macos"
+msgid "account.removeKey"
+msgstr "Rimuovi la licenza da questo dispositivo"
 
 #. Add {product} to your account
 #. The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated).

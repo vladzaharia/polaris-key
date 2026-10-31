@@ -32,6 +32,8 @@ const VIEW = {
   licenseChoice: "card",
   scope: ["openid"],
 };
+/** The request opted in to the key return (`key_return=allow`): the card may offer the skip. */
+const KEY_RETURN_VIEW = { ...VIEW, keyReturn: true };
 const DEVICE_VIEW = {
   ...VIEW,
   client: { ...VIEW.client, kind: "device" },
@@ -404,5 +406,71 @@ export const REQUEST_STATES: ShippedState[] = [
       }),
     },
     ready: (p) => keyStep(p, "Create an account to keep Diceroll"),
+  },
+  {
+    section: "3.9",
+    id: "app-key-skip",
+    title:
+      "Key on-ramp: Continue without an account, with its note (the request opted in)",
+    scenario: "signedOut",
+    path: PATH,
+    routes: {
+      ...signedOutRoutes(KEY_RETURN_VIEW),
+      "POST /api/key/preview": preview({}),
+    },
+    ready: async (p) => {
+      await keyStep(p, "Keep Diceroll in an account");
+      await p
+        .getByRole("button", { name: "Continue without an account" })
+        .waitFor();
+    },
+  },
+  {
+    section: "3.9",
+    id: "app-key-skip-refused",
+    title:
+      "Key on-ramp: the skip refused, the key can't be used here (401), Use a different key",
+    scenario: "signedOut",
+    path: PATH,
+    routes: {
+      ...signedOutRoutes(KEY_RETURN_VIEW),
+      "POST /api/key/preview": preview({}),
+      [`POST ${REQ}/key`]: {
+        status: 401,
+        body: { error: "unauthorized" },
+      },
+    },
+    ready: async (p) => {
+      await keyStep(p, "Keep Diceroll in an account");
+      await p
+        .getByRole("button", { name: "Continue without an account" })
+        .click();
+      await p.getByText("This key can't be used here.").waitFor();
+    },
+  },
+  {
+    section: "3.9",
+    id: "app-key-skip-owned",
+    title: "Key on-ramp: the skip refused, the license is in an account (403)",
+    scenario: "signedOut",
+    path: PATH,
+    routes: {
+      ...signedOutRoutes(KEY_RETURN_VIEW),
+      "POST /api/key/preview": preview({}),
+      [`POST ${REQ}/key`]: {
+        status: 403,
+        body: {
+          error: "license_owned",
+          signInUrl: "https://key.example/signin?product=diceroll",
+        },
+      },
+    },
+    ready: async (p) => {
+      await keyStep(p, "Keep Diceroll in an account");
+      await p
+        .getByRole("button", { name: "Continue without an account" })
+        .click();
+      await h1(p, "License in another account");
+    },
   },
 ];

@@ -247,3 +247,69 @@ export function blocksResend(verdict: KeyVerdict | null): boolean {
   if (!verdict || verdict.tone === "warning") return false;
   return verdict.code !== "failed" && verdict.code !== "rate_limited";
 }
+
+// ── The key return on the app card (LK-SKIP.5) ─────────────────────────────────────────────
+
+/**
+ * What a refused `POST /api/signin/requests/:request/key` leaves the card to do
+ * (WIRE-CONTRACT-V5 §12.4.2): `owned` offers sign-in to the licence's account (in the card, which keeps the request; the
+ * body's `signInUrl` is a plain portal page that would drop it), `full` turns the
+ * upgrade into its forced body, `gone` is the request's gone state, `message` stays in place under
+ * the control (`wait` seconds before another try, on a 429).
+ */
+export type SkipRefusal =
+  | { kind: "owned" }
+  | { kind: "full"; entries: KeyEntries | null }
+  | { kind: "gone" }
+  | {
+      kind: "message";
+      message: string;
+      wait?: number;
+      /** The key itself is the problem: offer **Use a different key**. */
+      differentKey?: true;
+    };
+
+/**
+ * The card's route answers. A 401 is an unknown, inactive or other-product key, or a licence that
+ * can't be used, so it says the key can't be used here, never "not found".
+ */
+export function skipRefusal(
+  err: {
+    status: number;
+    code?: string;
+    retryAfter?: number;
+    body?: unknown;
+  },
+  fallback: string,
+): SkipRefusal {
+  const extras: KeyVerdictExtras =
+    typeof err.body === "object" && err.body !== null
+      ? (err.body as KeyVerdictExtras)
+      : {};
+  if (err.status === 403 && err.code === "license_owned")
+    return { kind: "owned" };
+  if (err.status === 403 && err.code === "key_entry_limit")
+    return { kind: "full", entries: readEntries(extras) };
+  if (err.status === 404) return { kind: "gone" };
+  if (err.status === 401)
+    return {
+      kind: "message",
+      message: t("locker.key.cantUse"),
+      differentKey: true,
+    };
+  if (err.status === 422)
+    return {
+      kind: "message",
+      message: t("locker.key.notKey"),
+      differentKey: true,
+    };
+  if (err.status === 429)
+    return {
+      kind: "message",
+      message: t("signin.request.tooMany"),
+      ...(typeof err.retryAfter === "number" && err.retryAfter > 0
+        ? { wait: Math.ceil(err.retryAfter) }
+        : {}),
+    };
+  return { kind: "message", message: fallback };
+}

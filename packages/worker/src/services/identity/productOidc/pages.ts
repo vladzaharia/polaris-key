@@ -158,6 +158,7 @@ export async function renderDeviceConfirmation(
       kind: "device",
       deviceLabel: normalizeDeviceLabel(record.deviceName),
       userCode: record.userCode,
+      ...(record.hints ? { hints: record.hints } : {}),
       flowRef: (await deviceFlowKey(env, product.slug, deviceCode)).id,
     },
     now,

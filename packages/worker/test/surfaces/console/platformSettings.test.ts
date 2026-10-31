@@ -227,6 +227,7 @@ describe("PLATFORM_SETTINGS", () => {
       "KEYENTRY_REFUSALS",
       "LAUNCH_CONNECT",
       "LAUNCH_IDENTITY_EXCHANGE",
+      "LAUNCH_IDENTITY_RETURNKEY",
       "LAUNCH_RELAY",
       "LAUNCH_SYNC_E2E",
       "LAUNCH_SYNC_FILES",
@@ -252,6 +253,7 @@ describe("PLATFORM_SETTINGS", () => {
       // LG-1: the launch gates are kill switches that fail closed.
       LAUNCH_CONNECT: "ceiling",
       LAUNCH_IDENTITY_EXCHANGE: "ceiling",
+      LAUNCH_IDENTITY_RETURNKEY: "ceiling",
       LAUNCH_RELAY: "ceiling",
       LAUNCH_SYNC_E2E: "ceiling",
       LAUNCH_SYNC_FILES: "ceiling",

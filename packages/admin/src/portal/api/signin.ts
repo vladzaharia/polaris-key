@@ -1,6 +1,9 @@
 import { returnUrl } from "../carriedKey.js";
-import type { KeyPreview } from "@polaris-key/protocol/identity";
-import { call, readSsoNext, type PortalSsoNext } from "./transport.js";
+import type {
+  KeyPreview,
+  SignInRedirect,
+} from "@polaris-key/protocol/identity";
+import { call, enc, readSsoNext, type PortalSsoNext } from "./transport.js";
 
 /** A WebAuthn ceremony's options, as the Worker sends them (base64url strings). */
 export interface PortalPasskeyOptions {
@@ -215,6 +218,16 @@ export const signinApi = {
   /** PX-W9: what a key would do, before anyone signs in. Read-only, never counted. */
   previewKeySignedOut: (key: string) =>
     call<KeyPreview>("/api/key/preview", {
+      method: "POST",
+      body: JSON.stringify({ key }),
+    }),
+
+  /**
+   * LK-SKIP.5 (WIRE-CONTRACT-V5 §12.4.2): return to the app on the key's licence, with no account.
+   * The binder cookie, no session. The key is in the body only, never the URL.
+   */
+  signinKeyReturn: (handle: string, key: string) =>
+    call<SignInRedirect>(`/api/signin/requests/${enc(handle)}/key`, {
       method: "POST",
       body: JSON.stringify({ key }),
     }),

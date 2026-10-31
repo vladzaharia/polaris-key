@@ -29,6 +29,10 @@
  * runs on needs the device's own token in `Authorization: Bearer`: with that proof the sign-in
  * binds the account to the device where it stands and answers the token the device already holds.
  *
+ * A code the card's key route issued (`kind: "key"`, LK-SKIP, §12.4.2) names a key and no
+ * account: `redeemKeyReturn` binds the device by key, as `license/activate` does, and answers
+ * `via: "key"`.
+ *
  * ── ERRORS ──────────────────────────────────────────────────────────────────────────────────
  *
  * Flat RFC 6749 §5.2 bodies for the grant's own refusals, and flat Polaris refusals beside them
@@ -37,9 +41,8 @@
  */
 
 import {
-  CHOICE_GRANT_TTL_SECONDS,
   TOKEN_EXCHANGE_GRANT_TYPE,
-  type PendingSignIn,
+  type KeyReturnTokenResponse,
   type TokenResponse,
 } from "@polaris-key/protocol/identity";
 import { HEADER_DEVICE } from "@polaris-key/protocol/core";
@@ -69,16 +72,12 @@ import {
   isValidClientDeviceId,
   licenseUsable,
   NO_LICENSE_ID,
-  registerDeviceBinding,
   shapeDevice,
   shapeLicense,
   validateDeviceToken,
 } from "../../../core/devices.js";
-import { getDevice } from "../../../core/devices/store.js";
-import type { DeviceRow } from "../../../core/repo.js";
 import { getLicense } from "../../../core/licensing/store.js";
 import { customerTierId } from "../../../core/licensing/implicitTier.js";
-import { rankAnchorCandidates } from "../../../core/licensing/anchor.js";
 import { appendAudit } from "../../../core/audit.js";
 import { randomId } from "../../../platform/crypto.js";
 import {
@@ -88,13 +87,20 @@ import {
 } from "../../../core/devices/keys.js";
 import { registerDeviceKeys } from "../../../core/devices/registerKeys.js";
 import { getAccountRow } from "../accounts/repo.js";
-import { redeemAuthorizationCode } from "./code.js";
-import { acceptsKeys, licenseChoiceView, offerFor } from "./choice.js";
-import { issueGrant } from "./grant.js";
-import { bindChoice, type BindRefusal, type BindResult } from "./bind.js";
+import { redeemAuthorizationCode, type SignInCodeRecord } from "./code.js";
+import {
+  bindChoice,
+  bindKeyReturn,
+  type BindRefusal,
+  type BindResult,
+} from "./bind.js";
+import { bindWithoutChoice, settleAppMode } from "./settle.js";
 import { launchGateOn } from "../../../core/settings/platformRead.js";
 import { handleExchange } from "./exchange.js";
 import { markFresh } from "./fresh.js";
+
+// `choice/complete` binds without a choice through the same function (settle.ts).
+export { bindWithoutChoice };
 
 /** The token endpoint: 30 a minute per client network, 10 per device id; both fail closed. */
 export const TOKEN_RATE = { bucket: "identityToken", limit: 30, windowSec: 60 };
@@ -238,6 +244,15 @@ export async function handleToken(ctx: {
   )
     return oauth(400, ErrorCode.InvalidGrant);
 
+  // LK-SKIP (§12.4.2): a code the card's key route issued names a key, not an account.
+  if (record.kind === "key")
+    return redeemKeyReturn(
+      { req, env, db, product, now, ...(settings ? { settings } : {}) },
+      record,
+      deviceId,
+      form.get("device_name") ?? undefined,
+    );
+
   // The code is 60 s old at most; the account may not be what it was at Continue.
   const subject = await resolveSubject(db, product.slug, record.subject);
   const accountId = subject
@@ -272,6 +287,102 @@ export async function handleToken(ctx: {
       },
     },
   );
+}
+
+/**
+ * LK-SKIP (WIRE-CONTRACT-V5 §12.4.2 items 5 and 6, §12.5 rule 3): a key-return code binds the
+ * device on the key's licence as `license/activate` would, with no account and no sign-in binding.
+ *
+ * A code on a product whose launch gate, Identity or License is off is `invalid_grant`, and so is
+ * a code whose key, licence or product no longer holds (`bindKeyReturn`). A licence that is in an
+ * account is a flat `403 license_owned` with `signInUrl`. The answer is the ordinary one plus
+ * `via: "key"`, `scope: ""` and `keyEntries`; `subject` is always `null`, because the key bind
+ * clears any binding the device held (U-02). The code was consumed before this runs, so every
+ * refusal here spends it.
+ */
+async function redeemKeyReturn(
+  cx: {
+    req: Request;
+    env: Env;
+    db: Db;
+    product: Product;
+    now: number;
+    settings?: SettingsRegistry;
+  },
+  record: SignInCodeRecord,
+  deviceId: string,
+  deviceName: string | undefined,
+): Promise<Response> {
+  const { req, env, db, product, now } = cx;
+  const invalidGrant = (): Response => oauth(400, ErrorCode.InvalidGrant);
+  if (
+    record.product !== product.slug ||
+    typeof record.licenseId !== "string" ||
+    typeof record.keyHash !== "string" ||
+    !product.services.license.enabled ||
+    !product.services.identity?.enabled ||
+    !(await launchGateOn(env, db, "launch.identityKeyReturn"))
+  )
+    return invalidGrant();
+
+  const bound = await bindKeyReturn(
+    cx,
+    {
+      id: deviceId,
+      metadata: deviceMetadata(req),
+      label: normalizeDeviceLabel(deviceName),
+    },
+    { keyHash: record.keyHash, licenseId: record.licenseId },
+  );
+  if (!bound.ok) {
+    const r = bound.refusal;
+    if (r.reason === "invalid_grant") return invalidGrant();
+    if (r.reason === "license_owned")
+      return withNoStore(
+        errorResponse(403, ErrorCode.LicenseOwned, "license is in an account", {
+          signInUrl: r.signInUrl,
+        }),
+      );
+    if (r.reason === "key_entry_limit")
+      return withNoStore(
+        errorResponse(403, ErrorCode.KeyEntryLimit, "key entry limit reached", {
+          keyEntries: r.keyEntries,
+          ...(r.manageUrl !== undefined ? { manageUrl: r.manageUrl } : {}),
+        }),
+      );
+    return flatRefusal(r);
+  }
+  // Unreachable: Identity is on, so the gate admitted and counted. A fail-closed guard, so a
+  // missing count is never answered.
+  if (!bound.keyEntries) return oauth(503, "unavailable");
+
+  await appendAudit(db, {
+    product: product.slug,
+    id: randomId("aud"),
+    at: now,
+    actor_sub: null,
+    actor_name: null,
+    actor_email: null,
+    action: "signin.token.key",
+    target_kind: "device",
+    target_id: deviceId,
+    parent_id: bound.licenseId,
+    summary: "Returned a device to the app on a license key",
+  });
+  const license = await getLicense(db, product.slug, bound.licenseId);
+  if (!license) return oauth(503, "unavailable");
+  const body: KeyReturnTokenResponse = {
+    access_token: bound.token,
+    token_type: "Bearer",
+    via: "key",
+    scope: "",
+    schemaVersion: product.schemaVersion,
+    device: shapeDevice(bound.device, deviceId),
+    license: shapeLicense(license, await customerTierId(db, license)),
+    subject: null,
+    keyEntries: bound.keyEntries,
+  };
+  return withNoStore(json(body));
 }
 
 /** What `bindAndAnswer` needs about a sign-in that has found its account. */
@@ -356,56 +467,16 @@ export async function bindAndAnswer(
     });
   } else if (p.licenseChoice === "app" && product.services.license.enabled) {
     // App mode: the app runs the choice. If one is due, hand over the grant instead of a token.
-    const choiceCx = { env, db, product, now };
-    const offer = await offerFor(choiceCx, account.id, deviceId);
-    const due =
-      offer.candidates.length > 0 ||
-      offer.keep ||
-      (!offer.granted && acceptsKeys(product));
-    const only = offer.candidates[0];
-    const silent =
-      p.silentSingle === true &&
-      offer.candidates.length === 1 &&
-      !offer.keep &&
-      only !== undefined &&
-      only.state === "free";
-    if (silent && only) {
-      bound = await bindChoice(cx, who, deviceArgs, {
-        kind: "license",
-        licenseId: only.licenseId,
-      });
-    } else if (due) {
-      const grant = await issueGrant(
-        env,
-        {
-          product: product.slug,
-          accountId: account.id,
-          subject,
-          deviceId,
-          scope: p.scope,
-          ...(p.keys ? { keys: p.keys } : {}),
-          ...(p.fresh ? { fresh: true as const } : {}),
-        },
-        now,
-      );
-      const pending: PendingSignIn = {
-        status: "choose",
-        grant,
-        expiresIn: CHOICE_GRANT_TTL_SECONDS,
-        choices: await licenseChoiceView(choiceCx, req, account.id, {
-          deviceId,
-        }),
-      };
-      return withNoStore(json(pending));
-    } else {
-      bound = await bindWithoutChoice(
-        cx,
-        who,
-        deviceArgs,
-        keepable !== null,
-        proven !== null,
-      );
-    }
+    const settled = await settleAppMode(cx, who, deviceArgs, {
+      scope: p.scope,
+      ...(p.keys ? { keys: p.keys } : {}),
+      ...(p.fresh ? { fresh: true as const } : {}),
+      ...(p.silentSingle ? { silentSingle: true } : {}),
+      keepable: keepable !== null,
+      proven: proven !== null,
+    });
+    if (settled.kind === "choose") return withNoStore(json(settled.pending));
+    bound = settled.bound;
   } else {
     bound = await bindWithoutChoice(
       cx,
@@ -455,64 +526,6 @@ export async function bindAndAnswer(
   return withNoStore(
     json(await tokenBody(db, product, deviceId, p.scope, subject, bound)),
   );
-}
-
-/**
- * The cases where no choice rides on the code. In card mode Continue refused the press if a choice
- * was owed, so one still owed here means the offer changed since (a licence appeared): never
- * silent. The device's own proof keeps its licence; with none to choose, the device is bound
- * licence-less.
- */
-export async function bindWithoutChoice(
-  cx: { req: Request; env: Env; db: Db; product: Product; now: number },
-  who: { accountId: string; subject: string; email: string | null },
-  device: {
-    id: string;
-    metadata: ReturnType<typeof deviceMetadata>;
-    label: string | null;
-    held: { token: string; row: DeviceRow } | null;
-  },
-  keepable: boolean,
-  proven: boolean,
-): Promise<BindResult> {
-  const { env, db, product, now } = cx;
-  if (keepable && device.held)
-    return bindChoice(cx, who, device, { kind: "keep" });
-  if (product.services.license.enabled) {
-    const offer = await rankAnchorCandidates(db, product, who.accountId, now, {
-      deviceId: device.id,
-    });
-    if (offer.candidates.length > 0 || offer.keep)
-      return { ok: false, refusal: { reason: "license_choice_required" } };
-  }
-  const existing = await getDevice(db, product.slug, device.id);
-  if (existing && existing.license_id !== NO_LICENSE_ID)
-    return { ok: false, refusal: { reason: "license_choice_required" } };
-  // A licence-less device id that already holds a credential is taken over only by the device
-  // that presents it: registering rotates the token, so without the proof a person with any
-  // account could bind someone else's device id to theirs.
-  if (existing?.token_hash && !proven)
-    return { ok: false, refusal: { reason: "not_entitled" } };
-  const registered = await registerDeviceBinding(
-    env,
-    db,
-    product,
-    device.id,
-    now,
-    {
-      existing,
-      presented: null,
-      metadata: { ...device.metadata, label: device.label },
-      boundBy: "signin",
-      subject: who.subject,
-    },
-  );
-  return {
-    ok: true,
-    token: registered.token,
-    device: registered.device,
-    licenseId: NO_LICENSE_ID,
-  };
 }
 
 /** The `200` of `token` and of `choice/complete`: one shape (§12.5, §12.5.1). */

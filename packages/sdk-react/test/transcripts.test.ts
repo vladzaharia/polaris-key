@@ -8,7 +8,7 @@
 // @pkey-feature ui.boot release.fetch release.distribution
 // @pkey-feature core.presentation identity.keyentry identity.account identity.attach
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints
-// @pkey-feature sync.keyring identity.exchange identity.link
+// @pkey-feature sync.keyring identity.exchange identity.link identity.keyreturn
 //
 // `cloudSyncPull` / `cloudSyncPush` (U-20.4, sync.settings, WIRE-CONTRACT-V4 section 13.3, 13.4, V5 13.10):
 // the request goes through the browser host's own transport (`sendSync`, over `session.ringRequest`:
@@ -622,6 +622,9 @@ async function browserStep(
         ...(recorded.searchParams.get("license_choice") === "app"
           ? { licenseChoice: "app" as const }
           : {}),
+        ...(recorded.searchParams.get("key_return") === "allow"
+          ? { keyReturn: true }
+          : {}),
       });
       const built = new URL(pending.authorizeUrl);
       path = built.pathname + built.search;
@@ -1057,6 +1060,7 @@ async function replay(t: Transcript): Promise<void> {
         };
         const pending = await session.startRedirect({
           redirectUri: `${cb.origin}${cb.pathname}`,
+          ...(step.args.keyReturn === true ? { keyReturn: true } : {}),
         });
         try {
           const done = await session.redeemRedirect(pending, callbackUrl);
@@ -1066,10 +1070,27 @@ async function replay(t: Transcript): Promise<void> {
             observed.licenseId = done.activation.licenseId;
             observed.subject = done.subject;
           }
+          if (done.kind === "activated") {
+            // A key return: the key's license, no account, no scope.
+            observed.scope = "";
+            observed.licenseId = done.activation.licenseId;
+            observed.subject = done.subject;
+            observed.keyEntries = done.keyEntries;
+          }
         } catch (e) {
           if (!(e instanceof PolarisError)) throw e;
           observed.result = e.code.replace(/_/g, "-");
           observed.code = e.code;
+          // The refusal's details (device limit, key entries, owned): LK-SKIP's key return.
+          if (e.activation?.limit !== undefined)
+            observed.limit = e.activation.limit;
+          if (e.activation?.deviceCount !== undefined)
+            observed.deviceCount = e.activation.deviceCount;
+          if (e.manageUrl !== undefined) observed.manageUrl = e.manageUrl;
+          if (e.activation?.keyEntries !== undefined)
+            observed.keyEntries = { ...e.activation.keyEntries };
+          if (e.activation?.signInUrl !== undefined)
+            observed.signInUrl = e.activation.signInUrl;
         }
         break;
       }
@@ -1578,7 +1599,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // connect.identity is CC-06.4's connect-identity* transcripts, replayed here (CC-09.1).
     // sync.records is planned here (U-22) and the cloudsync-records-* transcripts are the Worker's
     // record-engine conversations, so they do not apply until it lands.
-    const plannedHere: string[] = ["sync.records"];
+    // identity.keyreturn is LK-SKIP's redirect-web-key-return* transcripts: replayed here (.6b).
+    // identity.devicecode.choice is UK-42.22's device start members and choose poll answer (planned).
+    const plannedHere: string[] = ["sync.records", "identity.devicecode.choice"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];

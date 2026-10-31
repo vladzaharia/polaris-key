@@ -32,7 +32,9 @@ import {
   REQUEST_HANDLE_TTL_SECONDS,
   type ClientKind,
 } from "@polaris-key/protocol/identity";
+import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { hashKey } from "../../../platform/crypto.js";
+import { strictEmail } from "../../../core/strictEmail.js";
 import { randomToken } from "../../../platform/random.js";
 import type { Env } from "../../../platform/env.js";
 import {
@@ -67,8 +69,53 @@ export interface AuthzRecord {
   nonce: string | null;
   licenseChoice: "card" | "app";
   purpose: "signin" | "attach";
+  /** LK-SKIP (§12.4.2): the app sent `key_return=allow` and every condition held at `authorize`. */
+  keyReturn?: true;
   loginHint: string | null;
   nameHint: string | null;
+}
+
+/**
+ * What a device-code start sent beside `deviceId` and `deviceName` (WIRE-CONTRACT-V5 §12.10.1):
+ * the same four members `authorize` carries, validated the same way. Hints prefill the card and
+ * verify nothing. Absent on a flow that sent none of them: that flow is card mode.
+ */
+export interface DeviceHints {
+  purpose: "signin" | "attach";
+  licenseChoice: "card" | "app";
+  loginHint: string | null;
+  nameHint: string | null;
+}
+
+/**
+ * The label and the optional members of a device start (WIRE-CONTRACT-V5 §12.7.1, §12.10.1). The
+ * label is normalised and never rejected. The hints are validated as `authorize` validates its
+ * own: `purpose` and `licenseChoice` are enumerations and anything else is a `400`; a hint that
+ * does not normalise is dropped, never an error. A body that names none of the four members yields
+ * no hints (card mode, exactly as before). `scope` is not read. `null`: answer `400`.
+ */
+export function parseDeviceStart(
+  body: Record<string, unknown>,
+): { deviceName: string | undefined; hints: DeviceHints | undefined } | null {
+  const deviceName = normalizeDeviceLabel(body.deviceName) ?? undefined;
+  const names = ["loginHint", "nameHint", "purpose", "licenseChoice"] as const;
+  if (names.every((n) => body[n] === undefined))
+    return { deviceName, hints: undefined };
+  for (const n of names)
+    if (body[n] !== undefined && typeof body[n] !== "string") return null;
+  const purpose = (body.purpose as string | undefined) ?? "signin";
+  const licenseChoice = (body.licenseChoice as string | undefined) ?? "card";
+  if (purpose !== "signin" && purpose !== "attach") return null;
+  if (licenseChoice !== "card" && licenseChoice !== "app") return null;
+  return {
+    deviceName,
+    hints: {
+      purpose,
+      licenseChoice,
+      loginHint: strictEmail(body.loginHint as string | undefined),
+      nameHint: normalizeDeviceLabel(body.nameHint),
+    },
+  };
 }
 
 /** What a handle's record holds. */
@@ -82,6 +129,8 @@ export interface SignInRequestRecord {
   flowRef: string;
   /** The `authorize` request behind a web (or later native) sign-in; absent on a device-code request. */
   authz?: AuthzRecord;
+  /** The hints a device-code start sent (§12.10.1); absent on a start that sent none. */
+  hints?: DeviceHints;
   /** The binder's peppered hash. */
   binder: string;
   /** Epoch seconds. */
@@ -135,6 +184,7 @@ export async function createSignInRequest(
     origin?: string | null;
     flowRef: string;
     authz?: AuthzRecord;
+    hints?: DeviceHints;
     /**
      * The card is on another host (LK-04): no cookie is set here. A fresh binder is bound to the
      * request and travels in a single-use bind token to the customer host.
@@ -158,6 +208,7 @@ export async function createSignInRequest(
     origin: init.origin ?? null,
     flowRef: init.flowRef,
     ...(init.authz ? { authz: init.authz } : {}),
+    ...(init.hints ? { hints: init.hints } : {}),
     binder: await hashKey(binder, env.KEY_HASH_PEPPER),
     expiresAt: now + REQUEST_HANDLE_TTL_SECONDS,
   };

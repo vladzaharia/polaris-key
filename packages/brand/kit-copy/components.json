@@ -305,13 +305,13 @@
         "attach": {
           "copy": [
             "activate.recommend.action",
-            "signin.gate.name",
-            "signin.email.label",
             "activate.attach.lede",
+            "activate.attach.name",
+            "signin.email.label",
             "activate.attach.fine",
             "common.continue",
             "common.cancel",
-            "signin.gate.nameRequired",
+            "activate.attach.nameRequired",
             "signin.email.invalid"
           ]
         },
@@ -319,7 +319,8 @@
           "copy": [
             "activate.attach.done",
             "activate.attach.syncOn",
-            "signin.done.start"
+            "signin.done.start",
+            "common.done"
           ]
         }
       }
@@ -589,6 +590,8 @@
             "activate.recommend.recover",
             "activate.recommend.devices",
             "activate.recommend.action",
+            "signin.key.addInLocker",
+            "a11y.externalLink",
             "activate.recommend.skip",
             "activate.recommend.portal",
             "signin.done.start"
@@ -612,9 +615,9 @@
         "form": {
           "copy": [
             "activate.recommend.action",
-            "signin.gate.name",
-            "signin.email.label",
             "activate.attach.lede",
+            "activate.attach.name",
+            "signin.email.label",
             "activate.attach.fine",
             "common.continue",
             "common.cancel"
@@ -623,24 +626,35 @@
         "invalid": {
           "copy": [
             "activate.recommend.action",
-            "signin.gate.name",
-            "signin.email.label",
             "activate.attach.lede",
+            "activate.attach.name",
+            "signin.email.label",
             "activate.attach.fine",
             "common.continue",
             "common.cancel",
-            "signin.gate.nameRequired",
+            "activate.attach.nameRequired",
             "signin.email.invalid"
           ]
         },
         "busy": {
-          "copy": ["activate.recommend.action", "common.working"]
+          "copy": [
+            "activate.recommend.action",
+            "activate.attach.lede",
+            "activate.attach.name",
+            "signin.email.label",
+            "activate.attach.fine",
+            "common.continue",
+            "common.working",
+            "signin.handoff.again",
+            "common.cancel"
+          ]
         },
         "added": {
           "copy": [
             "activate.attach.done",
             "activate.attach.syncOn",
-            "signin.done.start"
+            "signin.done.start",
+            "common.done"
           ]
         },
         "owned": {
@@ -657,6 +671,14 @@
             "activate.otherEmail.body",
             "activate.otherEmail.verify",
             "signin.auto.confirm.other",
+            "signin.done.start"
+          ]
+        },
+        "other-account": {
+          "copy": [
+            "activate.otherAccount.title",
+            "activate.otherAccount.body",
+            "common.tryAgain",
             "signin.done.start"
           ]
         },
@@ -1135,7 +1157,10 @@
             "account.keyOnly",
             "account.notInAccount",
             "activate.recommend.action",
+            "signin.key.addInLocker",
+            "a11y.externalLink",
             "account.updates",
+            "account.removeKey",
             "common.signOut"
           ]
         },

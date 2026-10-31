@@ -30,6 +30,14 @@ import {
 } from "../../../core/singleUse.js";
 
 export interface SignInCodeRecord {
+  /**
+   * LK-SKIP (§12.4.2): `"key"` on a code the card's key route issued. It names the key by its
+   * peppered hash and the licence, with `accountId` and `subject` empty. Absent on an account code.
+   */
+  kind?: "key";
+  /** A key code: the licence the key opens, and the key's peppered hash (never the key). */
+  licenseId?: string;
+  keyHash?: string;
   product: string;
   clientId: string;
   redirectUri: string;

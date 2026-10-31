@@ -231,6 +231,46 @@ function Choice({ grant }: { grant: string }) {
 }
 ```
 
+### Continue without an account
+
+Pass `keyReturn: true` to `signIn.start` and the card offers **Continue without an account** to a person
+who has a license key. `complete` then settles `activated`: the device holds the key's license as a key
+activation, `subject` is `null`, and `keyEntries` says how many entries the license has used. Start the
+app at once. There is no ActivateDone, because the card already showed the reasons to add an account, and
+the account page shows **Not in an account** from the license's profile. A license sent to an email that
+has no account yet keeps the key-only line.
+
+```tsx
+import { usePolarisAuth } from "@polaris-key/react";
+
+export function KeyReturnButton() {
+  const auth = usePolarisAuth();
+  return (
+    <button
+      onClick={async () => {
+        const session = await auth.signIn.start({
+          channel: "redirect",
+          redirectUri: `${window.location.origin}/auth/callback`,
+          keyReturn: true,
+        });
+        window.location.assign(session.authorizeUrl);
+      }}
+    >
+      Sign in
+    </button>
+  );
+}
+
+export async function onCallback(auth: ReturnType<typeof usePolarisAuth>) {
+  const outcome = await auth.signIn.complete(window.location.href);
+  return outcome.kind === "activated" ? outcome.keyEntries : null;
+}
+```
+
+A refusal at `token` throws the same typed error a key typed into the gate does: `err.activation` is
+`deviceLimit` (with `limit`, `deviceCount`, `manageUrl`), `keyEntryLimit` (with `keyEntries`) or
+`licenseOwned` (with `signInUrl`). Inside `<PolarisKeyGate>` it opens the key step, which draws it.
+
 A refusal is state, not a throw: `refusal` holds the last one, and `device_limit` swaps in the fresh
 `view`. A key entered with `{ kind: "key", key }` counts as one key entry. `status` is `loading`,
 `ready`, `working`, `done`, `cancelled` or `expired` (the grant lives 300 seconds).

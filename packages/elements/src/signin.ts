@@ -322,12 +322,14 @@ export class PkSignIn extends PkElement {
     const m = this.formModel!;
     const step = m.snapshot.session.step;
     switch (d.key) {
+      case "signin.key.addInLocker":
       case "activate.recommend.action":
         // With Identity off there is no account to add to: the host answers (the portal).
         if (step !== "key-done" || !this.identityOn()) return true;
         this.openAttach();
         return true;
       case "activate.recommend.skip":
+      case "common.done":
       case "signin.done.start":
         this.dropAdd();
         m.done();
@@ -353,6 +355,10 @@ export class PkSignIn extends PkElement {
       case "activate.otherEmail.verify":
       case "signin.auto.confirm.other":
         if (step === "attach") await this.addModel?.cancel();
+        return true;
+      case "signin.handoff.again":
+        // Busy AddToAccount: bring the browser tab back; the sign-in keeps running.
+        if (step === "attach") await this.addModel?.reopen();
         return true;
       case "signin.key.ownedSignIn":
         // The license is in an account already: sign in to it. One press at a time.
@@ -577,6 +583,14 @@ export class PkSignIn extends PkElement {
     return this.sheet;
   }
 
+  /** After a key the form's steps are the holders' screens: focus follows the one on screen, so
+   *  an owned or email-bound result moves it off the control that is gone (DL9). */
+  protected override focusView(view: View): View {
+    return HOLDER_STEPS.has(view.state)
+      ? holderBody(this.step.body, this.modelInput())
+      : view;
+  }
+
   /** The step drawn now. */
   get step(): FormStep {
     return formStep(this.modelInput());
@@ -625,11 +639,21 @@ export class PkSignIn extends PkElement {
 
   protected override renderBody(c: RenderCtx): unknown {
     const step = formStep(c.input);
-    const body = renderView({
-      ...c,
-      view: confirmWords(holderBody(step.body, c.input), c),
-      form: true,
-    });
+    let view = confirmWords(holderBody(step.body, c.input), c);
+    // On its own the form has no key step to go to from the methods step: the link is drawn only
+    // where something answers it, the gate that hosts the form or a page that says
+    // `handles="key"`. Never a dead control.
+    if (
+      !this.embedded &&
+      !(c.handles ?? []).includes("key") &&
+      view.state === "methods" &&
+      view.copy.includes("signin.choice.keyInstead")
+    )
+      view = {
+        ...view,
+        copy: view.copy.filter((k) => k !== "signin.choice.keyInstead"),
+      };
+    const body = renderView({ ...c, view, form: true });
     const announce = step.announce.length
       ? html`<p class="visually-hidden" role="status">
           ${step.announce.map(

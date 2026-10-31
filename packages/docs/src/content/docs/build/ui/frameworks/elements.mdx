@@ -151,6 +151,32 @@ browser hand-off or its code, the license choice, a license key, then Done. Set 
 `"inline"` (default), `"sheet"` (a modal dialog, a bottom sheet on a narrow window) or `"browser"`,
 and `primitives` to the SDK's sign-in primitives; without them it draws its `input`.
 
+## After a license key
+
+A key that activates leaves the license floating. `pk-sign-in` and `pk-gate` go on to
+`pk-activate-done` (the app is ready, with one quiet recommendation to add a name and email) and,
+from its **Add your name and email**, `pk-add-to-account`, which signs in with the typed email and
+name as hints, keeps this device's license and attaches it. For your own layout, draw either on its
+own and answer its `pk-action` events; Continue and Try again carry `detail.name` and
+`detail.email`, read at the press.
+
+```html
+<pk-activate-done id="done"></pk-activate-done>
+<pk-add-to-account id="add" hidden></pk-add-to-account>
+<script type="module">
+  const done = document.getElementById("done");
+  const add = document.getElementById("add");
+  done.input = { activateDone: { tier: "Pro", term: "Lifetime" } };
+  add.input = { addToAccount: { step: "form" } };
+  done.addEventListener("pk-action", (e) => {
+    if (e.detail.key === "activate.recommend.action") add.hidden = false;
+  });
+</script>
+```
+
+[ActivateDone](/docs/build/ui/components/activate-done/) and
+[AddToAccount](/docs/build/ui/components/add-to-account/) list the states, copy and keys.
+
 ## Styling and presentation
 
 Theme the whole page with `PolarisKey.theme({ … })`, a subtree with `<pk-provider theme='{…}'>`, or

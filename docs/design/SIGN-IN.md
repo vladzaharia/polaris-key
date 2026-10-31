@@ -624,11 +624,20 @@ One component, three entries.
   {n}", email with **Create account**, the product's providers, and the quiet **Sign in instead**
   (`signin.key.signInInstead`). Both lead to the sign-in card with the key carried, so a returning
   customer never loses it; nothing on this step drops the key. **Continue without an account**
-  (S-24 D13, **Skip for now**, `signin.key.skip`) appears only when an app sent the person (it
-  returns to the app with the key accepted and the license floating), with "<Product> works the
-  same. Add it to an account any time." under it. **Deferred (LK-polish M5):** the floating-key
-  return to an app is not wired in the portal, so the control is not drawn yet; the standalone
-  portal has no skip. Under
+  (S-24 D13, `signin.key.skip`) is a quiet, full-width button under **Create account**, with
+  "<Product> works the same. Add it to an account any time." under it. It is drawn only when the
+  request view answers `keyReturn: true`, the preview is `addable` and `skippable`, and the key's
+  product is the request's. The standalone portal has no skip, and neither does the forced body. The
+  press posts the key to `POST /api/signin/requests/:request/key` (§6.1; body only, never the URL)
+  and follows `{redirect}` back to the app, which gets a device on the key's licence and no
+  account. Refusals stay on the card: `401` (an unknown, inactive or other-product key, or a
+  license that can't be used) says "This key can't be used here." under the control with **Use a
+  different key**, never "not found"; `422` says the `locker.key.notKey` line; `429` says
+  `signin.request.tooMany` and holds the button for `retryAfter`; `403 license_owned` is a step,
+  "License in another account", with the §3.9 owned copy, **Sign in to that account** (this
+  card's sign-in, the request kept and the key not carried) and **Use a different key**;
+  `403 key_entry_limit` turns the step into the forced body below, with the Worker's
+  `keyEntries`; `404` is the request's gone state (`signin.request.goneTitle`). Under
   the h1 the body lists the reasons the product has (Cloud Sync only when Cloud Sync is on; getting
   the license back; moving it to a new device yourself; frame 48). At the limit: "No entries left", "Create an account
   to keep <Product>", a neutral callout (DL6) with **Create account** as the primary, no danger colour, no skip, "Sign in to add <Product>", and "<Product> keeps
@@ -949,7 +958,7 @@ Recommended, listing only the reasons the product has: **Cloud Sync** (when it i
 license back**, **Move it to a new device** yourself. Its secondary is **Add your name and email**;
 the primary stays **Start using <Product>**, with "Or continue without an account. <Product> works
 the same." **Add your name and email** morphs the body into Name and Email (native fields), **Continue
-in browser** with the provider row: the app starts a plain sign-in (the SDKs send no hints, §6.6), the card asks for the email and the
+in browser** with the provider row: the app starts a sign-in with the typed email and name as hints (§6.6), the card opens with them filled in and asks for the
 code (credentials stay on the card, D17), and
 when the code is redeemed the kit completes `{kind: "keep"}` and calls attach (I-09), with no
 license list. The body then reads "<Product> is in your account" with the person row and "Cloud
@@ -1158,6 +1167,10 @@ to the existing `portal/` renders, which stand where this document does not redr
    browser device to the chosen license.
 5. Mismatched `redirect_uri`: an error card "This sign-in request isn't valid. Go back to <App> and
    try again." It never redirects.
+6. **Key return (LK-SKIP).** An app that sent `key_return=allow` gets the key on-ramp's
+   **Continue without an account** (§3.9). The press is `POST /api/signin/requests/:request/key`
+   instead of steps 2 to 4; its `{redirect}` is the same 302 back with `code`, and `token` binds the
+   device to the key's licence with no account.
 
 ### 4.4 App passthrough: native
 
@@ -1737,19 +1750,25 @@ keys (`conformance/parity/copy.en.json`) for refusal codes instead of duplicatin
 | `activate.recommend.action`          | Add your name and email                                                                                                                                                                       |
 | `activate.recommend.skip`            | Or continue without an account. {product} works the same.                                                                                                                                     |
 | `activate.recommend.portal`          | Keep your license safe in Polaris Locker                                                                                                                                                      |
-| `activate.attach.lede`               | Your license and its devices stay as they are. You'll confirm the email with a code in your browser.                                                                                          |
+| `activate.attach.lede`               | Your license and its devices stay as they are.                                                                                                                                                |
 | `activate.attach.fine`               | We send a code to this email in your browser. {product} never sees it.                                                                                                                        |
 | `activate.attach.done`               | {product} is in your account                                                                                                                                                                  |
 | `activate.attach.syncOn`             | Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.                                                                                                       |
+| `activate.attach.name`               | Name                                                                                                                                                                                          |
+| `activate.attach.nameRequired`       | Enter your name.                                                                                                                                                                              |
+| `activate.attach.failed`             | Couldn't add this license. Try again in a moment.                                                                                                                                             |
 | `activate.waiting`                   | This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.                                                                                                   |
 | `activate.waitingSignIn`             | Sign in as {maskedEmail}                                                                                                                                                                      |
 | `account.notInAccount`               | Not in an account                                                                                                                                                                             |
+| `account.removeKey`                  | Remove license from this device                                                                                                                                                               |
 | `activate.inAccount`                 | This license is in a Polaris Locker account. Sign in to turn on Cloud Sync here.                                                                                                              |
 | `activate.owned.title`               | This license is in a Polaris Locker account                                                                                                                                                   |
 | `activate.owned.lede`                | Sign in with the email it was sent to. {product} starts on this {deviceKind} as soon as you do.                                                                                               |
 | `activate.otherEmail.title`          | This license was sent to another email                                                                                                                                                        |
 | `activate.otherEmail.body`           | It was sent to {maskedEmail}. Sign in with that email, or add it to this account and verify it.                                                                                               |
 | `activate.otherEmail.verify`         | Verify that email                                                                                                                                                                             |
+| `activate.otherAccount.title`        | You signed in with a different account                                                                                                                                                        |
+| `activate.otherAccount.body`         | You signed in as {email}, not {maskedEmail}. Nothing was added.                                                                                                                               |
 | `signin.attach.header`               | Add {product} to your account                                                                                                                                                                 |
 | `signin.return.yours`                | {product} is yours                                                                                                                                                                            |
 | `signin.return.signedIn`             | You're signed in to {app}                                                                                                                                                                     |
@@ -1854,28 +1873,29 @@ wire change no approved plan carries is a plan-mode change (CLAUDE.md).
 
 ### 6.1 Steps and their routes
 
-| Step                | Relies on                                                                                                                                                                                                        | Status                                                               |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| MethodsStep         | `GET /api/capabilities?product=` with `product`, `providers`, method flags; `GET /api/me`; `pk_last_method` (G30)                                                                                                | Built without `product`/`providers` (gap, PX-12, I-06); G30 in PX-12 |
-| Passthrough header  | `GET /api/signin/requests/:handle` → `SignInRequestView` (PX-W13 §2.2), `__Host-pk_req`                                                                                                                          | Planned (PX-W13)                                                     |
-| CodeStep            | `POST /api/signin/email/start` / `verify`, `GET /api/signin/flow`; 6 digits, 10 min, 5 wrong, per-recipient 5/h and 20/day, Turnstile                                                                            | Built (I-07)                                                         |
-| FinishStep          | `/api/signin/confirm-email[/verify\|/join\|/cancel\|/picture]` (G31), profile claims (G32), R2 avatars (G33); the finish API extends `card/gate.ts` with screen name, picture, birth date and terms (I-27 §2.4)  | Built to the email stage (I-07); the rest: I-33 (API), PX-21 (UI)    |
-| Providers           | `GET /login/<provider>`, callbacks, `__Host-pkey_signin` binding                                                                                                                                                 | Built (I-06)                                                         |
-| ConsentStep         | `GET /api/signin/requests/:handle/consent` → `AppConsentView`, whose items gain `required` and `granted`; `account_product_grants.scope_hash`                                                                    | Planned (PX-W13 §2.3, I-34); its license item changes (§6.3)         |
-| KeyStep             | `POST /api/key/preview` (signed out, never counts; PX-W9), `POST /api/activate/preview` (G22), claim with `surface: portal` (I-11), `keyEntries {used, limit}`                                                   | Planned (PX-W9, PX-W5 done, PX-17, I-11)                             |
-| Key refusals (apps) | `license_owned` + `signInUrl`, `key_entry_limit` + `manageUrl` + `keyEntries`, `device_limit` + `manageUrl`                                                                                                      | Planned (I-09, PX-W9); `manageUrl` built (PX-W8)                     |
-| Attach              | `POST /<p>/identity/attach {confirm}`                                                                                                                                                                            | Planned (I-09 §2.2)                                                  |
-| Web redirect        | `GET /<p>/identity/authorize`, `POST /<p>/identity/token` (`grant_type=authorization_code`)                                                                                                                      | Planned (I-27 §2.1, I-08)                                            |
-| Device code         | `auth/device/start`, `auth/device/poll` (`ready` + `subject`)                                                                                                                                                    | Planned (I-04 §2.4, I-08)                                            |
-| Native redirect     | `request` (RFC 9126, answers a `request_uri`), `authorize` and `token` with native redirect URIs                                                                                                                 | Planned (I-15, I-27 §2.1)                                            |
-| Native exchange     | `POST /<p>/identity/nonce`, then `POST /<p>/identity/token` with the token-exchange grant: token, `confirm`, `choose`, or `interstitial_required` (403, `reason`, `url`, `linkHandle`) (WIRE-CONTRACT-V5 §12.11) | Planned (I-13)                                                       |
-| Hints               | `login_hint`, `name_hint`, `purpose` on `authorize`; `scope`, `loginHint`, `nameHint`, `purpose` on `auth/device/start` (§6.6; no SDK sends them)                                                                | Planned (I-08)                                                       |
-| DeviceApproval      | `POST /api/device-login/start`, `GET /api/device-login/<id>`, `POST …/lookup`, `POST …/approve`, `step_up_required`                                                                                              | Built (PX-W14); UI PX-15                                             |
-| Identity off        | 303 to `/signin?product=&error=identity_disabled`; `403 identity_disabled` on the passthrough context                                                                                                            | Built (PX-W17); card PX-14                                           |
-| Sign-out (device)   | `POST /<p>/identity/signout` → `{released}`; SDK Cloud Sync flush                                                                                                                                                | Planned (I-09 §2.2, S-17)                                            |
-| Account sessions    | `account_sessions` with `sid`, revocable and listable                                                                                                                                                            | Built (I-07)                                                         |
-| Console             | `GET /manage/login` serves the card in console context; PKCE on Continue; in-place 401                                                                                                                           | Planned (ST-30, which absorbs UX-02 and UX-42; EXPERIENCE §13.3)     |
-| Worker pages        | `renderAuthCard()`                                                                                                                                                                                               | Planned (UX-43)                                                      |
+| Step                | Relies on                                                                                                                                                                                                                                | Status                                                               |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| MethodsStep         | `GET /api/capabilities?product=` with `product`, `providers`, method flags; `GET /api/me`; `pk_last_method` (G30)                                                                                                                        | Built without `product`/`providers` (gap, PX-12, I-06); G30 in PX-12 |
+| Passthrough header  | `GET /api/signin/requests/:handle` → `SignInRequestView` (PX-W13 §2.2), `__Host-pk_req`                                                                                                                                                  | Planned (PX-W13)                                                     |
+| Key return          | `POST /api/signin/requests/:handle/key {key}` → `{redirect}`; no session, `__Host-pk_req`; `401`, `403 license_owned` + `signInUrl`, `403 key_entry_limit` + `keyEntries` + `manageUrl`, `404`, `422`, `429` + `retryAfter` (V5 §12.4.2) | Built (LK-SKIP.3b, .4, .5)                                           |
+| CodeStep            | `POST /api/signin/email/start` / `verify`, `GET /api/signin/flow`; 6 digits, 10 min, 5 wrong, per-recipient 5/h and 20/day, Turnstile                                                                                                    | Built (I-07)                                                         |
+| FinishStep          | `/api/signin/confirm-email[/verify\|/join\|/cancel\|/picture]` (G31), profile claims (G32), R2 avatars (G33); the finish API extends `card/gate.ts` with screen name, picture, birth date and terms (I-27 §2.4)                          | Built to the email stage (I-07); the rest: I-33 (API), PX-21 (UI)    |
+| Providers           | `GET /login/<provider>`, callbacks, `__Host-pkey_signin` binding                                                                                                                                                                         | Built (I-06)                                                         |
+| ConsentStep         | `GET /api/signin/requests/:handle/consent` → `AppConsentView`, whose items gain `required` and `granted`; `account_product_grants.scope_hash`                                                                                            | Planned (PX-W13 §2.3, I-34); its license item changes (§6.3)         |
+| KeyStep             | `POST /api/key/preview` (signed out, never counts; PX-W9), `POST /api/activate/preview` (G22), claim with `surface: portal` (I-11), `keyEntries {used, limit}`                                                                           | Planned (PX-W9, PX-W5 done, PX-17, I-11)                             |
+| Key refusals (apps) | `license_owned` + `signInUrl`, `key_entry_limit` + `manageUrl` + `keyEntries`, `device_limit` + `manageUrl`                                                                                                                              | Planned (I-09, PX-W9); `manageUrl` built (PX-W8)                     |
+| Attach              | `POST /<p>/identity/attach {confirm}`                                                                                                                                                                                                    | Planned (I-09 §2.2)                                                  |
+| Web redirect        | `GET /<p>/identity/authorize`, `POST /<p>/identity/token` (`grant_type=authorization_code`)                                                                                                                                              | Planned (I-27 §2.1, I-08)                                            |
+| Device code         | `auth/device/start`, `auth/device/poll` (`ready` + `subject`)                                                                                                                                                                            | Planned (I-04 §2.4, I-08)                                            |
+| Native redirect     | `request` (RFC 9126, answers a `request_uri`), `authorize` and `token` with native redirect URIs                                                                                                                                         | Planned (I-15, I-27 §2.1)                                            |
+| Native exchange     | `POST /<p>/identity/nonce`, then `POST /<p>/identity/token` with the token-exchange grant: token, `confirm`, `choose`, or `interstitial_required` (403, `reason`, `url`, `linkHandle`) (WIRE-CONTRACT-V5 §12.11)                         | Planned (I-13)                                                       |
+| Hints               | `login_hint`, `name_hint`, `purpose` on `authorize`; `scope`, `loginHint`, `nameHint`, `purpose` on `auth/device/start` (§6.6; no SDK sends them)                                                                                        | Planned (I-08)                                                       |
+| DeviceApproval      | `POST /api/device-login/start`, `GET /api/device-login/<id>`, `POST …/lookup`, `POST …/approve`, `step_up_required`                                                                                                                      | Built (PX-W14); UI PX-15                                             |
+| Identity off        | 303 to `/signin?product=&error=identity_disabled`; `403 identity_disabled` on the passthrough context                                                                                                                                    | Built (PX-W17); card PX-14                                           |
+| Sign-out (device)   | `POST /<p>/identity/signout` → `{released}`; SDK Cloud Sync flush                                                                                                                                                                        | Planned (I-09 §2.2, S-17)                                            |
+| Account sessions    | `account_sessions` with `sid`, revocable and listable                                                                                                                                                                                    | Built (I-07)                                                         |
+| Console             | `GET /manage/login` serves the card in console context; PKCE on Continue; in-place 401                                                                                                                                                   | Planned (ST-30, which absorbs UX-02 and UX-42; EXPERIENCE §13.3)     |
+| Worker pages        | `renderAuthCard()`                                                                                                                                                                                                                       | Planned (UX-43)                                                      |
 
 ### 6.2 License choice and Replace a device
 
@@ -1979,15 +1999,17 @@ flow record that I-07 and PX-W13 already keep.
 
 ### 6.6 Sign-in hints
 
-`loginHint` and `nameHint` are dropped from the SDKs. The two packages that would have carried
-them are closed: PX-W18 (merged into I-08) and UK-44 (the `signIn.start({loginHint, nameHint,
-purpose})` members in six SDKs). I-08 keeps only the optional wire parameters `login_hint`,
-`name_hint` and `purpose: "signin" | "attach"` on `authorize`, and `loginHint`, `nameHint` and
-`purpose` on `auth/device/start`: a hint prefills the card (an email opens CodeStep, a name
-prefills FinishStep for a new account) and never verifies anything; invalid hints are ignored. No
-kit or SDK sends them, so the **Add your name and email** step (§3.17, step 4) starts a plain
-sign-in and the card asks for the email. No signed document or activation response changes:
-`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2.
+`loginHint`, `nameHint` and `purpose` are sent by the kits for one step: **Add your name and email**
+(§3.17, step 4). The kit starts the sign-in with `loginHint` set to the typed email, `nameHint` to
+the typed name and `purpose: "attach"`, and `license_choice=app`. On the wire these are the optional
+`login_hint`, `name_hint` and `purpose: "signin" | "attach"` on `authorize`, and `loginHint`,
+`nameHint` and `purpose` on `auth/device/start` (I-08, I-10a). A hint prefills the card and verifies
+nothing: an email is shown in the email field and never sent a code by itself, a name prefills
+FinishStep for a new account only, `purpose: "attach"` words the header ("Add {product} to your
+account"), and an invalid hint is ignored. No other flow sends hints; a plain sign-in sends none.
+After the code the kit completes `{kind: "keep"}` with the device token, previews with
+`attach {confirm: false}` and then attaches, so the same `licenseId` gains a `subject`. No signed
+document or activation response changes.
 
 ## 7. Decisions
 

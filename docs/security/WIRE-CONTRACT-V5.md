@@ -1214,7 +1214,7 @@ The outlet kind `direct` is presented as Polaris Key: the console, the download 
 
 v5 is additive on the wire: the six v4 documents keep their shapes and bytes, and no SDK enforces `protocolVersion`, so a deployed v4 SDK is unaffected. The two new `typ`s (§2) enter with the bump, as `pkey-bundle+jws` entered with v3 and `pkey-feed+jws` and `pkey-release+jws` with v4. An SDK that predates v5 never fetches or verifies either, and refuses an unknown `typ`. Every SDK's constant follows `PROTOCOL_VERSION` through `pnpm gen constants`; nothing else is required until its parity row for the Cloud Connect features (`connect.*`) flips. The new corpus sections and files (§15.9) are inert until then, because runners read named sections. Version counters: `PROTOCOL_VERSION` goes from 4 to 5. `corpusVersion` stays 2 (the sections are additive, as `feedCases` were), `DISCOVERY_VERSION` stays 2, and `CACHE_VERSION` stays 3: Connect state is its own store record, never the licence cache. The new counters are `noiseVectorsVersion = 1` and `peerMatrixVersion = 1`. The statements below that say a counter "stays 4" were written inside v4 and are restated for v5 with the new value.
 
-v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 5` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), `syncScenariosVersion = 2` (§11.5), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. HA-12 adds the unsigned discovery member `core.presentation` (§5.5) and the client table `presentation-matrix.json` (`presentationMatrixVersion = 1`). Every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because an SDK that predates it ignores the member. The trust-custody amendment (§1, §2.3, §4.1, §7) changes no counter either (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `gateMatrixVersion` 2, `CACHE_VERSION` 3): its two cache slices are additive, its corpus cases are appended, and its one changed verdict (`trust-member-shapes-ignored`) is a client tightening. I-09 adds the account routes (§12.3), `license_owned` on key entry (§12.2 step 3) and the identity fragment's account members (§12.6): the identity routes are additive within v4 and detected from discovery (a client uses a route only when the fragment advertises it), no signed document changes, and every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2). Deployed SDKs keep the behaviour they shipped with: no SDK enforces `protocolVersion`, and an SDK that predates `?signer=` reads the default manifest as before. An install activated by a bundle through the old `importedBundle` marker re-imports after upgrading, and a bundle past its 30-day import window needs a fresh mint. Cloud Sync adds unsigned routes detected from `services.sync` (§13): every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because Cloud Sync data is never signed, the config document keeps its shape and resolution (§2.2.1), and an SDK that predates it ignores `services.sync` and the catalog's `user` and `cloudSync` members. A new SDK on a Worker without the routes finds no `settings: true` and keeps `config.set` on the device. SP-53 changes no counter; it adds `backendMatrixVersion = 1` (§14, `backend-matrix.json`). Product backends add one request header to the developer's own backend and no Worker route, `typ`, claim or signed shape, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3. A deployed SDK never sends `X-PKey-License`, so a backend that adopts a drop-in before its apps update answers `license_required` until they do. SP-54 changes no counter: it adds one optional member inside the licence document's `profile` (`user`, §2.1), which §3.2 already leaves unchecked, appends three `licenseDocCases` and the section `licenseUserCases`, and adds no `typ`, claim or route, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2 and `CACHE_VERSION` 3. Every SDK that predates it ignores the member; a new reader against an older Worker reads `null`, and a backend that requires sign-in then answers `sign_in_required` until the Worker that signs the member is deployed. CM-29 adds the unsigned discovery member `services.commerce` and moves two device routes (§5.6). Every counter is unchanged, because an SDK that predates it ignores the member. DISC-01 adds the unsigned discovery member `core.portal` (§5.7) and the client table `portal-matrix.json` (`portalMatrixVersion = 1`); the terminal kits' ui-matrix goes to `uiMatrixVersion = 6`. Every other counter is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because a shipped SDK ignores the member and keeps printing the link it printed before; nothing can change a shipped build. Cloud Sync files and end-to-end encryption (§13.2–§13.4, §13.8–§13.11) add unsigned routes, discovery members and one new cipher suite for stored data, and no `typ`, claim, header or signed shape. `PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2 and `CACHE_VERSION` 3. Two client tables move when their corpus lands: `syncScenariosVersion` goes from 2 to 3 (§11.5) and the new `sync-vectors.json` starts at `syncVectorsVersion = 1` (§13.10.8). A new SDK on a Worker that does not advertise `services.sync.encryption` stays local with status `unsupported` when the app requires E2E; an SDK that predates this amendment ignores every new member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 5` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), `syncScenariosVersion = 2` (§11.5), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. HA-12 adds the unsigned discovery member `core.presentation` (§5.5) and the client table `presentation-matrix.json` (`presentationMatrixVersion = 1`). Every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because an SDK that predates it ignores the member. The trust-custody amendment (§1, §2.3, §4.1, §7) changes no counter either (`PROTOCOL_VERSION` 5, `corpusVersion` 2, `gateMatrixVersion` 2, `CACHE_VERSION` 3): its two cache slices are additive, its corpus cases are appended, and its one changed verdict (`trust-member-shapes-ignored`) is a client tightening. I-09 adds the account routes (§12.3), `license_owned` on key entry (§12.2 step 3) and the identity fragment's account members (§12.6): the identity routes are additive within v4 and detected from discovery (a client uses a route only when the fragment advertises it), no signed document changes, and every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2). Deployed SDKs keep the behaviour they shipped with: no SDK enforces `protocolVersion`, and an SDK that predates `?signer=` reads the default manifest as before. An install activated by a bundle through the old `importedBundle` marker re-imports after upgrading, and a bundle past its 30-day import window needs a fresh mint. LK-SKIP (§12.4.2) changes no counter: it adds the optional `authorize` parameter `key_return`, the request view's `keyReturn`, one portal route and the token answer's `via: "key"` behind an opt-in no deployed SDK sends, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2, `CACHE_VERSION` 3 and `transcriptVersion` 1. Cloud Sync adds unsigned routes detected from `services.sync` (§13): every counter above is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because Cloud Sync data is never signed, the config document keeps its shape and resolution (§2.2.1), and an SDK that predates it ignores `services.sync` and the catalog's `user` and `cloudSync` members. A new SDK on a Worker without the routes finds no `settings: true` and keeps `config.set` on the device. SP-53 changes no counter; it adds `backendMatrixVersion = 1` (§14, `backend-matrix.json`). Product backends add one request header to the developer's own backend and no Worker route, `typ`, claim or signed shape, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2, `DISCOVERY_VERSION` 2 and `CACHE_VERSION` 3. A deployed SDK never sends `X-PKey-License`, so a backend that adopts a drop-in before its apps update answers `license_required` until they do. SP-54 changes no counter: it adds one optional member inside the licence document's `profile` (`user`, §2.1), which §3.2 already leaves unchecked, appends three `licenseDocCases` and the section `licenseUserCases`, and adds no `typ`, claim or route, so `PROTOCOL_VERSION` stays 5, `corpusVersion` 2 and `CACHE_VERSION` 3. Every SDK that predates it ignores the member; a new reader against an older Worker reads `null`, and a backend that requires sign-in then answers `sign_in_required` until the Worker that signs the member is deployed. CM-29 adds the unsigned discovery member `services.commerce` and moves two device routes (§5.6). Every counter is unchanged, because an SDK that predates it ignores the member. DISC-01 adds the unsigned discovery member `core.portal` (§5.7) and the client table `portal-matrix.json` (`portalMatrixVersion = 1`); the terminal kits' ui-matrix goes to `uiMatrixVersion = 6`. Every other counter is unchanged (`PROTOCOL_VERSION` 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2, `CACHE_VERSION` 3), because a shipped SDK ignores the member and keeps printing the link it printed before; nothing can change a shipped build. Cloud Sync files and end-to-end encryption (§13.2–§13.4, §13.8–§13.11) add unsigned routes, discovery members and one new cipher suite for stored data, and no `typ`, claim, header or signed shape. `PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2, `corpusVersion` 2 and `CACHE_VERSION` 3. Two client tables move when their corpus lands: `syncScenariosVersion` goes from 2 to 3 (§11.5) and the new `sync-vectors.json` starts at `syncVectorsVersion = 1` (§13.10.8). A new SDK on a Worker that does not advertise `services.sync.encryption` stays local with status `unsupported` when the app requires E2E; an SDK that predates this amendment ignores every new member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
 
 ## 10. Divergence & hardening ledger
 
@@ -1394,14 +1394,20 @@ a new device and point the person at an account instead (PORTAL §4.6).
 
 1. **Surfaces.** A key entry happens on one of three surfaces, on a product with Identity on:
    - `app`: `POST /<p>/license/activate`;
-   - `browser`: `POST /<p>/identity/session/license`;
+   - `browser`: `POST /<p>/identity/session/license`, and redeeming a key-return code at `token`
+     (§12.4.2). For that code the device is the app's own, not `browser:<licenseId>`, and the
+     entry is counted once, in the seat batch at `token`;
    - `portal`: `POST /api/claim/license-key`, once the licence's attach to the account commits.
 2. **Enrolled.** A device is enrolled on a licence when the `devices` row for
    `(product, device_id)` has that `license_id` and `status = 'authorized'`. A browser session's
    device is `browser:<licenseId>`, so the `browser` surface counts at most once per enrolment.
+   That id is derived from the licence, not presented by the caller, so on
+   `identity/session/license` enrolment spares an entry from counting but not from step 3: a
+   licence in an account is refused there even when `browser:<licenseId>` is enrolled.
 3. **Order on the two device routes.**
    1. The rate limit, the key and the licence, unchanged.
-   2. An enrolled device is answered as before: never refused, never counted.
+   2. An enrolled device is answered as before: never refused (except by step 3 on
+      `identity/session/license`, rule 2), never counted.
    3. When `identity.keyEntryRefusals` is on and the licence is usable and in an account
       (`licenses.account_id IS NOT NULL`): the flat
       `403 {"error":"license_owned","message":…,"signInUrl":…}`. `signInUrl` is the product's
@@ -1534,6 +1540,7 @@ on (§12.8).
 | `scope`                                                | Optional, space-delimited `profile`, `email`, `cloudSync`. Absent: every one the product grants. Unknown values are ignored. `openid` is `invalid_scope` until I-21                                    |
 | `nonce`                                                | Optional, at most 255 characters, kept for I-21                                                                                                                                                        |
 | `login_hint`, `name_hint`, `purpose`, `license_choice` | Optional Polaris extensions. A hint prefills the card and verifies nothing, and one that does not normalise is dropped. `purpose` is `signin` or `attach`; `license_choice` is `card` or `app` (I-08b) |
+| `key_return`                                           | Optional, sent last. Only `allow`; any other value is `invalid_request`. Kept for `purpose=signin` on a product with License and the launch gate on, else dropped silently (§12.4.2)                   |
 
 1. **No redirect before both are valid.** `client_id` and `redirect_uri` are checked first. A bad
    `client_id` renders `invalid_client` (401) and a bad `redirect_uri` renders
@@ -1585,7 +1592,17 @@ on (§12.8).
 3. **A `200`** carries exactly `access_token` (the `pkeyt_` device token, not repeated as
    `token`), `token_type: "Bearer"`, `scope` (the granted subset), `schemaVersion`, `device`,
    `license` (`null` on a licence-less device) and `subject`. There is no `expires_in` and no
-   `refresh_token` before I-21, and no `keyEntries` before I-08b.
+   `refresh_token` before I-21, and no `keyEntries` before I-08b. The `200` for a key-return code
+   (§12.4.2) is exactly these members plus `via: "key"` and `keyEntries`. In it `scope` is `""`,
+   `license` is never `null`, and `subject` is `null`: the bind by key re-binds the device without an account, as `license/activate` does,
+   so it writes no binding and clears any binding the device held (U-02). The Worker sends
+   `via` only for a §12.4.2 code. A client reads the answer as a key return only when it sent
+   `key_return=allow` and the body carries `via: "key"`; `via` with any other value, or
+   `via: "key"` without the opt-in, is malformed. A `via: "key"` body is also malformed, and a
+   client refuses it, unless `scope` is `""`, `license` is an object, `keyEntries` is
+   `{used, limit}` with non-negative integers, `subject` is a pairwise-subject string or `null`,
+   and `access_token`, `token_type`, `device` and `schemaVersion` are as in the ordinary answer.
+   The client-core unit vectors pin this rule.
 4. **The device binds here.** With the licence chosen at Continue, the device claims a seat
    (seat-checked, `bound_by = 'signin'`, the pairwise subject written). With none to choose, it is
    bound licence-less. A device that presents its own live token in `Authorization: Bearer`
@@ -1600,7 +1617,9 @@ on (§12.8).
    beside them, as on `license/activate`: `403 not_entitled`, `403 device_limit` (with `limit`,
    `deviceCount`, `manageUrl`), `409 license_choice_required`, `429 rate_limited`.
    `interstitial_required` is answered only by the token-exchange grant (§12.11.3); refresh
-   (I-21) answers `unsupported_grant_type` until then.
+   (I-21) answers `unsupported_grant_type` until then. On a key-return code, `license_owned` (with
+   `signInUrl`) and `key_entry_limit` (with `keyEntries` and `manageUrl`) are flat under their own
+   codes, as on `license/activate`, and are not folded into `not_entitled`.
 6. **Never a token in a URL.** The device token is in the body of this response only, and the
    redirect carries a code that is useless without the verifier.
 
@@ -1692,9 +1711,90 @@ own token in `Authorization: Bearer`), `{kind: "create"}` or `{kind: "key", key}
    for the time it has left.
 4. **Budgets.** 30 reads per grant (`licenses`, `devices`, and each key attempt), 60 calls a minute
    per client network, failing closed.
-5. **Device code never issues a grant.** The cross-device channel can be phished (R1-07); only the
-   same-device channels (the web redirect here; loopback, scheme and claimed HTTPS by I-15; the
-   native exchange by I-13) can.
+5. **A device-code grant is issued only to a start that asked `licenseChoice: app`** (§12.10.1).
+   The cross-device channel can be phished (R1-07), so the grant it issues is narrower than the
+   same-device one (the web redirect here; loopback, scheme and claimed HTTPS by I-15; the native
+   exchange by I-13), and the person's approval page (I-37) is the consent. A grant with
+   `via: "device"` is bound to the product, the account, the subject and the flow's `deviceId`, as
+   any grant is, and it:
+   - never carries `fresh`, so it never makes the step-up that §12.11 asks for;
+   - cannot read devices: `devices` answers `404 not_found`;
+   - cannot Replace: `complete` with a `replaceDeviceId` answers `409 license_choice_required`, and
+     the view's `replace` is `null` (the `freeDeviceUrl` stays, so the person frees a seat in the
+     portal);
+   - keeps `keep` (the device's own token in `Authorization: Bearer`), `create`, `key` and a
+     listed `license` as they are.
+
+### 12.4.2 The key return [C]
+
+Pinned by `redirect-web-key-return.json` and `redirect-web-key-return-limit.json` (transcripts,
+recorded by LK-SKIP.4; their `browser` steps are the requests no SDK makes). The long form is
+`plans/LK-SKIP.md`. A person sent to the Polaris Locker card by an app, who holds a licence key,
+can return to the app on that licence without an account. The app gets a device on the key's
+licence, with no account and no subject. Nothing is signed and no signed document changes:
+`PROTOCOL_VERSION` stays 5.
+
+1. **Opt-in at both ends.** The app sends `key_return=allow` on `authorize` (§12.4) with
+   `purpose=signin`, and the request view answers `keyReturn: true` (§12.7.2). Without the
+   parameter, with `purpose=attach`, with License off or with the launch gate
+   `launch.identityKeyReturn` off, the request carries no key return and the card offers none.
+   `attach` never gets it, because it would bind the device to a different licence. A request
+   created by device code never gets it, because that channel can be phished (R1-07); the route
+   answers `404` for it.
+2. **The route** is `POST /api/signin/requests/<handle>/key`, same-origin portal JSON with the
+   binder cookie of the browser that started the request and no account session. The body is
+   `{"key": "pkey_…"}` (at most 1 KiB) and the answer is
+   `{"redirect": "<redirect_uri>?code=…&state=…&iss=<issuer>"}`. The key is in this body only:
+   never in a URL, the redirect, the request or code record, a log or the audit.
+3. **Refusals** are checked in this order, and none of them consumes the request:
+   1. a method other than `POST` is `405`; a cross-origin request is `404`; a content type other
+      than JSON, a body over 1 KiB or a body that is not valid JSON is `400 invalid_request`;
+   2. 10 calls a minute per client network, charged before any lookup, failing closed:
+      `429 rate_limited` with `retryAfter`;
+   3. a handle that is unknown, expired, bound to another browser, already taken, for a product
+      whose Identity or License is off, without `keyReturn`, or whose launch gate is off is
+      `404 not_found`, always in the same shape;
+   4. 5 calls per request handle in 600 seconds: `429 rate_limited`;
+   5. a malformed key is `422 bad_request`; a key that is unknown, inactive, or for another
+      product than the request's, a missing licence, or a licence that is not usable (not
+      `active`, or past `expiresAt`), is `401 unauthorized` (the answers of
+      `POST /api/key/preview`, §12.2 rule 8, and for an unusable licence the answer of
+      `license/activate`, §12.2 rule 3.3);
+   6. a licence in an account is `403 license_owned` with `signInUrl`, whatever
+      `identity.keyEntryRefusals` says. An owned licence never moves by key through the card;
+   7. with `identity.keyEntryRefusals` on and `used ≥ limit`: `403 key_entry_limit` with
+      `keyEntries` and `manageUrl` (§12.2 rule 3 step 4).
+4. **Success** takes the request in one atomic consume, so one press gives one code, and issues a
+   code that lives 60 seconds and is single use, bound to the product, `client_id`, `redirect_uri`
+   and the PKCE challenge. It names the key (by its peppered hash) and its licence, no account and
+   no scope. Seats are not checked here, because the device is unknown until `token`.
+5. **`token`** redeems the code as in §12.5 rules 1 and 2. With `launch.identityKeyReturn` off,
+   or Identity or License off for the product, a key code is `invalid_grant`. It re-resolves the
+   key by the code's key hash and answers `invalid_grant` if the key is no longer active, the
+   licence is unusable, or the licence's product differs. It repeats item 3.6 whatever
+   `identity.keyEntryRefusals` says: a licence that is in an account at `token` is refused with
+   a flat `403 license_owned` with `signInUrl`, and nothing is counted. A claim that commits
+   after that check and before the seat claim is refused the same way: the seat claim and the
+   key entry in its batch write nothing while the licence is in an account, so no seat is taken
+   and no entry is counted. The guard is on the seat claim of `token` always and of
+   `license/activate` and `identity/session/license` while `identity.keyEntryRefusals` is on. It then binds the device
+   exactly as `license/activate` binds the same key and `X-PKey-Device`: `bound_by = 'key'`, one
+   `browser` key entry (§12.2 rule 1), and the seat, fingerprint and hardware rules unchanged, so
+   `device_limit`, `fingerprint_required`, `hardware_mismatch` and `key_entry_limit` come from
+   there. `token` carries no fingerprint, so on a tier whose fingerprint mode is `strict` the
+   answer is always `403 fingerprint_required`, as for a sign-in at `token`, and in the other
+   modes the device is recorded unverified. It writes no sign-in binding, clears any binding the device held (U-02), and never
+   answers `choose` (§12.5.1). The `200` is the key-return body of §12.5 rule 3. The code is consumed before the bind, so a refusal at `token`
+   spends it and the person presses the card again for a fresh code; no seat was taken.
+6. **A client** uses the answer only after its own opt-in, and only if the body is well formed
+   (§12.5 rule 3: `scope` `""`, `license` an object, `keyEntries` `{used, limit}` of
+   non-negative integers, `subject` a pairwise-subject string or `null`, the other members as in
+   the ordinary answer; anything else is malformed and refused). It stores the token as a key
+   activation, sets its stored subject to the answered value (which clears it on `null`), and
+   reports an activation, never a sign-in.
+7. **Old Workers and clients.** A Worker without this feature ignores `key_return`, and the card
+   shows no skip. A client that never sends it gets today's answers byte for byte. A key code
+   redeemed by a `token` that predates this feature fails closed with `invalid_grant`.
 
 ### 12.6 Discovery
 
@@ -1721,6 +1821,12 @@ client decides what it can offer by the endpoints present (`authorize`, `token`,
 and never by `configured` alone. I-08b adds `choiceLicenses`, `choiceDevices`, `choiceComplete` and
 `choiceCancel` (§12.5.1) beside `token`; an SDK sends `license_choice=app` only when all four are
 present.
+
+The identity fragment gains `"deviceChoice": true` (§12.10.1) from the release that serves the
+`choose` poll answer, beside `endpoints`, while the product's License service is on. An SDK sends `licenseChoice: "app"` on the device start
+only when `deviceChoice` is present and all four `choice*` endpoints are present. It may always
+send `loginHint`, `nameHint` and `purpose`: an older Worker ignores them. `DISCOVERY_VERSION`
+stays 2, because an SDK that predates the member ignores it.
 
 ### 12.7 Passthrough request metadata
 
@@ -1758,7 +1864,8 @@ overrides the default in its configuration or per call, and opts out with an emp
 `PKeyOptions.send_device_name = false`).
 
 `POST /<p>/identity/auth/device/start` answers `deviceName`: the stored label, or `null`. An
-older Worker omits the member, and an SDK then shows the label it sent. `license/activate` and
+older Worker omits the member, and an SDK then shows the label it sent. The start also takes the hints and
+the licence-choice mode (§12.10.1). `license/activate` and
 `devices/register` store the label only while the device row has none, so a console or portal
 rename always wins.
 
@@ -1776,10 +1883,14 @@ nameVerified}`, with `kind` one of `web`, `native` and `device`. `appName` and
   product, the kind, the label, the user code, the origin and a flow reference. The device-code
   confirmation page creates handles. There is no public creation route.
 - **`GET /api/signin/requests/:handle`** answers `{request, client, deviceLabel, userCode,
-expiresAt}` to the binding browser, with `cache-control: no-store`. An unknown, expired or
+expiresAt}` to the binding browser, plus `purpose`, `licenseChoice`, `loginHint` and `nameHint`
+  on a request that carries them: an `authorize` request (§12.4) and a `device` request whose start
+  sent them (§12.10.1; the view has no `scope` for a `device` request), with `cache-control: no-store`. An unknown, expired or
   unbound handle answers `404 not_found`, and so does a handle for a product whose Identity toggle
   is off. No display query parameter is read: `appName`, `name`, `icon`, `developer`, `origin`
-  and `device` are all ignored.
+  and `device` are all ignored. The view carries `keyReturn: true` on a request that recorded
+  `key_return=allow` (§12.4.2) and no such member otherwise, so every earlier answer is byte for
+  byte what it was.
 
 #### 12.7.3 App consent
 
@@ -1867,15 +1978,16 @@ and `deviceId`). Nothing here is signed: `PROTOCOL_VERSION` stays 5. The types a
 `DevicePollResponse`, `DevicePollSlowDown` and `DevicePollUnavailable` in `@polaris-key/protocol/identity`; the transcripts
 `devicecode-*.json` and `locker-devicecode.json` pin it.
 
-| HTTP | Body                                                              | Meaning                                                                              | SDK result                               |
-| ---- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------- |
-| 200  | `{"status":"pending"}`                                            | Not yet confirmed, signed in and approved                                            | keep polling                             |
-| 429  | `{"status":"slow_down","interval":n}`                             | Polled inside `interval` (a state, not an error body)                                | lengthen the interval                    |
-| 200  | `confirm` / `ready`                                               | Unchanged (I-37: `attachable` is always `false`)                                     | unchanged                                |
-| 200  | `{"status":"timeout"}`                                            | The flow is gone: expired, redeemed, or dropped after a refusal                      | `expired`                                |
-| 200  | `{"status":"error","reason":"access_denied"}`                     | A person refused: Deny, **Not you?**, the chooser's Cancel, or Deny on the code page | `sign-in-denied`                         |
-| 503  | `{"error":"unavailable","message":"try again"}`, `Retry-After: n` | Approved, but the sign-in could not finish yet. The flow is kept                     | keep polling (`server-error`, transient) |
-| 200  | `{"status":"error"}`                                              | The sign-in failed after approval and will not be retried; the cause is not said     | `sign-in-failed`                         |
+| HTTP | Body                                                                             | Meaning                                                                              | SDK result                               |
+| ---- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------- |
+| 200  | `{"status":"pending"}`                                                           | Not yet confirmed, signed in and approved                                            | keep polling                             |
+| 429  | `{"status":"slow_down","interval":n}`                                            | Polled inside `interval` (a state, not an error body)                                | lengthen the interval                    |
+| 200  | `confirm` / `ready`                                                              | Unchanged (I-37: `attachable` is always `false`)                                     | unchanged                                |
+| 200  | `{"status":"timeout"}`                                                           | The flow is gone: expired, redeemed, or dropped after a refusal                      | `expired`                                |
+| 200  | `{"status":"choose","grant":"sg_…","expiresIn":300,"choices":LicenseChoiceView}` | A licence choice is due, and the start asked `licenseChoice: "app"` (§12.10.1)       | the choose outcome; stop polling         |
+| 200  | `{"status":"error","reason":"access_denied"}`                                    | A person refused: Deny, **Not you?**, the chooser's Cancel, or Deny on the code page | `sign-in-denied`                         |
+| 503  | `{"error":"unavailable","message":"try again"}`, `Retry-After: n`                | Approved, but the sign-in could not finish yet. The flow is kept                     | keep polling (`server-error`, transient) |
+| 200  | `{"status":"error"}`                                                             | The sign-in failed after approval and will not be retried; the cause is not said     | `sign-in-failed`                         |
 
 1. `reason` appears only on `error`, and `access_denied` is its only value. A client reads an
    unknown `reason` as absent.
@@ -1907,6 +2019,50 @@ before this subsection ignores `reason` and treats every `error` as a refusal; t
 first and nothing else changes for it. Every SDK since its first device-code build treats a 5xx on
 the poll as transient, so a build that predates rule 5 completes on the retry. The Worker deploys
 first, and nothing else changes for it.
+
+#### 12.10.1 Device start members and the `choose` answer [C]
+
+Written by UK-42.22. Nothing here is signed: `PROTOCOL_VERSION` stays 5 and `DISCOVERY_VERSION` 2.
+The types are `DeviceStartRequest` and `DevicePollResponse` in `@polaris-key/protocol/identity`;
+the transcript `holders-add-to-account-device.json` pins it.
+
+1. **The start body.** `POST /<p>/identity/auth/device/start` takes, beside `deviceId` and
+   `deviceName` (§12.7.1), four optional members in camelCase JSON:
+
+   | Member          | Value              | Rule                                                                 |
+   | --------------- | ------------------ | -------------------------------------------------------------------- |
+   | `loginHint`     | an email address   | not a strict email: dropped                                          |
+   | `nameHint`      | a label            | normalised as a device label (§12.7.1); dropped when nothing is left |
+   | `purpose`       | `signin`, `attach` | any other value, or a non-string: `400 bad_request`                  |
+   | `licenseChoice` | `card`, `app`      | any other value, or a non-string: `400 bad_request`                  |
+
+   A hint prefills the card and verifies nothing, as on `authorize` (§12.4). A non-string
+   `loginHint` or `nameHint` is `400 bad_request`. `scope` is ignored: the device sign-in keeps the
+   product's full grant. The members are stored with the flow and with the device request record
+   (§12.7.2). The start's answer does not change. A start that sends none of them is card mode, as
+   every start was before this subsection.
+
+2. **The `choose` answer.** The poll answers `200` `{"status":"choose","grant":"sg_…",
+"expiresIn":300,"choices":LicenseChoiceView}` (`PendingSignIn`, §12.5.1) only when:
+   - the start carried `licenseChoice: "app"`;
+   - the product runs License; and
+   - a choice is due, which means what it means for `token` (§12.5.1): the account holds a
+     candidate, the device runs on a licence outside the list (`keep`), or it holds none, the policy
+     grants none and the product accepts keys.
+
+   With no choice due the poll binds as `token` does with no choice due and answers `ready`. It
+   never mints a second licence in app mode.
+
+3. **Order.** Every refusal, `confirm` (when it is asked) and the account claim come before
+   `choose`, unchanged. In app mode the legacy chooser never opens, so the person never picks a
+   licence on the card. In card mode (absent or `card`) the poll is exactly §12.10 without this
+   subsection.
+4. **The grant.** It is §12.5.1's grant with `via: "device"` and the narrowing of §12.5.1 rule 5.
+   The flow is consumed atomically when the grant is issued, so a later poll answers `timeout`; a
+   client stops at `choose`. A store failure while issuing the grant is the `503` of rule 5, and
+   the flow is kept.
+5. **Capability.** The identity fragment of discovery carries `"deviceChoice": true` while the
+   Worker serves this subsection and the product's License service is on (§12.6).
 
 ### 12.11 Platform sign-in, the link offer and nearby approval
 
@@ -1972,7 +2128,7 @@ The lookup finds an existing link and never creates an account. It is never by e
 2. **`complete` takes consent.** `choice/complete` (§12.5.1) takes `{grant, choice, consent?: {claims}, deviceName?}`. `consent` is required on a grant that was issued with `confirm`, and its absence is `400 bad_request` with the grant left open. The consent row is written right after the device is bound (and, for `create`, the licence minted), before the token is returned. `cancel` writes nothing.
 3. **`confirm` carries no licence view.** Before the person consents the app learns nothing about the account beyond what the token already showed. A client that gets `confirm` shows the consent, then sends it to `complete` alone. If a licence choice is due, `complete` refuses with `license_choice_required` and the view (§12.5.1), the grant stays open, and the client sends the choice with the consent.
 4. **`interstitial_required`.** `reason` is `no_link` or `terms`; a client reads an unknown `reason` as `no_link`. `url` is the sign-in card for this product. `linkHandle` is `lh_` and 43 base64url characters, held 600 seconds, and bound to the product, the device and the key. It is used once, by the link offer (§12.11.4), so the app does not ask the provider for a second token. This answer registers no device key: a client that links by handle first registers its keys with `PUT /<p>/devices/keys` (§15.8), because the link proof is checked against the device's registered signing key.
-5. **The grant is same-device.** A grant issued here follows §12.5.1 rule 5: the exchange is a same-device channel. Device code and nearby approval never issue one.
+5. **The grant is same-device.** A grant issued here follows §12.5.1 rule 5: the exchange is a same-device channel. Nearby approval never issues one, and the device code issues only the narrower one of §12.5.1 rule 5.
 6. **Never a token in a URL**, and a `subject_token` is never logged or audited. Audit carries the provider kind and the outcome only.
 
 #### 12.11.4 The link offer

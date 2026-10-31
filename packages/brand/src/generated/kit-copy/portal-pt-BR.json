@@ -1,4 +1,5 @@
 {
+  "locker.key.noEntriesLead": "Você não pode continuar sem uma conta:",
   "profile.title": "Perfil",
   "profile.subtitle": "Como você aparece no Polaris Locker e, se concordar, em um app.",
   "profile.edit": "Editar perfil",
@@ -494,6 +495,7 @@
   "locker.key.long": "Esta chave é longa demais. Depois de {prefix}_ vêm 22 caracteres, e esta tem {used}. Copie só a chave.",
   "locker.key.badChars": "Esta chave não parece certa. Depois de {prefix}_ vêm exatamente 22 letras, dígitos, - ou _. Copie a chave inteira de novo.",
   "locker.key.unknown": "Não encontramos essa chave. Maiúsculas e minúsculas fazem diferença, e l, 1, O e 0 são fáceis de confundir, então cole a chave em vez de digitá-la.",
+  "locker.key.cantUse": "Esta chave não pode ser usada aqui.",
   "locker.key.emailMismatch": "{product} foi comprado com {email}. Ele entra só na conta que tiver esse e-mail verificado.",
   "locker.key.emailMismatchAny": "outro e-mail",
   "locker.key.managedElsewhere": "{developer} gerencia esta licença em outro lugar.",

@@ -102,6 +102,12 @@ export type AuthzError =
       racedAfterFree?: true;
     }
   | { error: "fingerprint_required" }
+  /**
+   * CORE-SEAT-GUARD: the licence is in an account, so its key seats no device. Returned only to a
+   * caller that passed `refuseOwnedLicense`, when the licence joined an account between its read
+   * and the seat claim. Nothing was written: no seat and no counted key entry.
+   */
+  | { error: "license_owned" }
   | {
       error: "hardware_mismatch";
       drift: number;
@@ -427,6 +433,14 @@ export async function authorizeDevice(
      * and store binding never pass it.
      */
     keyEntry?: { surface: "app" | "browser" };
+    /**
+     * CORE-SEAT-GUARD: this path must refuse a licence that is in an account, and must do so at
+     * commit. The seat claim (and the key entry beside it) write nothing while the licence has an
+     * `account_id`, and a refused claim answers `license_owned`, never `device_limit`. Set by the
+     * key return always and by `license/activate` while `identity.keyEntryRefusals` is on; absent
+     * it, the claim is unchanged.
+     */
+    refuseOwnedLicense?: boolean;
     /** Set only by the account sign-in (device-code) flow; see `provesOwnership`. */
     adoptAnonymousEnrolled?: boolean;
     /**
@@ -576,6 +590,7 @@ export async function authorizeDevice(
       : null;
     freeingRef = freeing;
     const keyEntry = opts.keyEntry;
+    const refuseOwnedLicense = opts.refuseOwnedLicense === true;
     if (
       !(await claimDeviceSeat(
         db,
@@ -587,6 +602,7 @@ export async function authorizeDevice(
         {
           ...(adoptFrom !== undefined ? { adoptFrom } : {}),
           ...(freeing ? { freeing } : {}),
+          ...(refuseOwnedLicense ? { refuseOwnedLicense } : {}),
           ...(keyEntry
             ? {
                 withClaim: () =>
@@ -596,13 +612,26 @@ export async function authorizeDevice(
                     deviceId,
                     keyEntry.surface,
                     now,
+                    refuseOwnedLicense,
                   ),
               }
             : {}),
         },
       ))
     ) {
-      // The claim declined. If the row now belongs to someone else live, that is a conflict (a
+      // The claim declined. A guarded claim declines when the licence has an account now; that
+      // is `license_owned`, not a full licence (the read is after the batch, and an `account_id`
+      // is never cleared by a key holder, so it still holds).
+      if (refuseOwnedLicense) {
+        const owner = await db.first<{ account_id: string | null }>(
+          "SELECT account_id FROM licenses WHERE product = ? AND id = ?",
+          product.slug,
+          license.id,
+        );
+        if ((owner?.account_id ?? null) !== null)
+          return refuse("license_owned", { error: "license_owned" });
+      }
+      // If the row now belongs to someone else live, that is a conflict (a
       // race lost to another licence), not a full licence.
       const current = await getDevice(db, product.slug, deviceId);
       if (

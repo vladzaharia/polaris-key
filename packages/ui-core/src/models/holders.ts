@@ -72,8 +72,9 @@ export function activateDoneView(
     n: done.position,
     limit: done.limit,
   };
-  const email = ctx.input.licenseHolder?.email;
-  if (email) {
+  // A holder email too malformed to mask counts as none: no sentence renders with an empty email.
+  const masked = maskEmail(ctx.input.licenseHolder?.email);
+  if (masked) {
     return makeView(ctx, "ActivateDone", {
       state: "waiting",
       copy: [
@@ -83,7 +84,7 @@ export function activateDoneView(
         "activate.waitingSignIn",
         "signin.done.start",
       ],
-      args: { ...args, maskedEmail: maskEmail(email) },
+      args: { ...args, maskedEmail: masked },
       primary: "signin.done.start",
     });
   }
@@ -95,12 +96,19 @@ export function activateDoneView(
       "activate.recommend.title",
       "activate.recommend.badge",
       ...reasonsOf(ctx),
-      "activate.recommend.action",
+      // With Identity off the action opens polaris.locker, so it says that (an external link).
+      ctx.on("identity")
+        ? "activate.recommend.action"
+        : "signin.key.addInLocker",
+      !ctx.on("identity") && "a11y.externalLink",
       "activate.recommend.skip",
       "signin.done.start",
     ],
     args,
     primary: "signin.done.start",
+    ...(done.returned && ctx.on("identity")
+      ? { focus: "activate.recommend.action" }
+      : {}),
   });
 }
 
@@ -113,10 +121,11 @@ export type AddToAccountState =
   | "added"
   | "owned"
   | "email-bound"
+  | "other-account"
   | "failed"
   | "hidden";
 
-const NAME = "signin.gate.name";
+const NAME = "activate.attach.name";
 const EMAIL = "signin.email.label";
 
 /** Add your name and email: the person types them here, the browser confirms the email. */
@@ -131,16 +140,18 @@ export function addToAccountView(
   const args = {
     product: id.name,
     deviceKind: a.deviceKind,
-    maskedEmail: maskEmail(ctx.input.licenseHolder?.email),
+    maskedEmail:
+      a.typedEmail || maskEmail(ctx.input.licenseHolder?.email) || undefined,
+    email: a.signedEmail || undefined,
   };
   const step = stepOverride ?? a.step;
   // DL9: Name takes focus; a field never does under a coarse pointer, where the heading does.
   const nameFocus = coarsePointer(ctx.platform) ? "heading" : NAME;
   const fields = [
     "activate.recommend.action",
+    "activate.attach.lede",
     NAME,
     EMAIL,
-    "activate.attach.lede",
     "activate.attach.fine",
     "common.continue",
     "common.cancel",
@@ -162,7 +173,7 @@ export function addToAccountView(
         state: "invalid",
         copy: [
           ...fields,
-          bad.includes(NAME) && "signin.gate.nameRequired",
+          bad.includes(NAME) && "activate.attach.nameRequired",
           bad.includes(EMAIL) && "signin.email.invalid",
         ],
         args,
@@ -176,22 +187,33 @@ export function addToAccountView(
     case "busy":
       return makeView(ctx, "AddToAccount", {
         state: "busy",
-        copy: ["activate.recommend.action", "common.working"],
+        // The person is in the browser, which can take minutes: Continue stays (busy), Open the
+        // browser again brings the tab back, and Cancel is the way out (DL9).
+        copy: [
+          ...fields.filter((k) => k !== "common.cancel"),
+          "common.working",
+          "signin.handoff.again",
+          "common.cancel",
+        ],
         args,
+        primary: "common.continue",
         focus: null,
       });
-    case "added":
+    case "added": {
+      // From Settings the app is already running: the screen closes with Done.
+      const closing = a.fromSettings ? "common.done" : "signin.done.start";
       return makeView(ctx, "AddToAccount", {
         state: "added",
         copy: [
           "activate.attach.done",
           // Cloud Sync is named only when the product has it.
           ctx.on("sync") && "activate.attach.syncOn",
-          "signin.done.start",
+          closing,
         ],
         args,
-        primary: "signin.done.start",
+        primary: closing,
       });
+    }
     case "owned":
       // Someone attached the license while this screen was open (frame 45).
       return makeView(ctx, "AddToAccount", {
@@ -212,13 +234,31 @@ export function addToAccountView(
         state: "email-bound",
         copy: [
           "activate.otherEmail.title",
-          "activate.otherEmail.body",
-          "activate.otherEmail.verify",
+          // The sentence and "Verify that email" name the email; with none known both are left
+          // out, never half-written, and Use another account leads (SIGN-IN §3.9).
+          args.maskedEmail && "activate.otherEmail.body",
+          args.maskedEmail && "activate.otherEmail.verify",
           "signin.auto.confirm.other",
           "signin.done.start",
         ],
         args,
-        primary: "activate.otherEmail.verify",
+        primary: args.maskedEmail
+          ? "activate.otherEmail.verify"
+          : "signin.auto.confirm.other",
+        tone: "neutral",
+      });
+    case "other-account":
+      // A different account signed in than the email typed: the license was added nowhere.
+      return makeView(ctx, "AddToAccount", {
+        state: "other-account",
+        copy: [
+          "activate.otherAccount.title",
+          args.maskedEmail && args.email && "activate.otherAccount.body",
+          "common.tryAgain",
+          "signin.done.start",
+        ],
+        args,
+        primary: "common.tryAgain",
         tone: "neutral",
       });
     case "failed":

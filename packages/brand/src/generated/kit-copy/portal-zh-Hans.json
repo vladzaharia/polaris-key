@@ -1,4 +1,5 @@
 {
+  "locker.key.noEntriesLead": "没有账户无法继续：",
   "profile.title": "个人资料",
   "profile.subtitle": "你在 Polaris Locker 中的显示方式，同意后也会显示给应用。",
   "profile.edit": "编辑个人资料",
@@ -494,6 +495,7 @@
   "locker.key.long": "此密钥太长了。{prefix}_ 之后应有 22 个字符，而这里有 {used} 个。请只复制密钥。",
   "locker.key.badChars": "此密钥似乎不正确。{prefix}_ 之后应恰好是 22 个字母、数字、- 或 _。请重新复制完整的密钥。",
   "locker.key.unknown": "找不到该密钥。字母大小写有区别，l、1、O 和 0 容易混淆，请粘贴密钥而不要手动输入。",
+  "locker.key.cantUse": "此密钥无法在此处使用。",
   "locker.key.emailMismatch": "{product} 是用 {email} 购买的。它只会加入已验证该邮箱的账户。",
   "locker.key.emailMismatchAny": "另一个邮箱",
   "locker.key.managedElsewhere": "{developer} 在别处管理此许可证。",
