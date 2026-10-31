@@ -4,11 +4,12 @@
  *   - `dataTab`: the Data tab's content (U-11a). The tab is shown only while Cloud Sync is on AND
  *     this is set, so the record never shows an empty or "coming soon" tab;
  *   - `overrideEditor`: the account override editor (U-03), drawn on Overview while Config is on;
- *   - `cloudSyncOn`: whether the product runs Cloud Sync. Cloud Sync is not a service yet (U-01
- *     adds it to the service table), so this answers false until then.
+ *   - `cloudSyncOn`: whether the product runs Cloud Sync (`services.sync.enabled`).
  *
  * A package fills its slot by assigning it here, once, at module load; nothing else in the record
- * changes.
+ * changes. The slot is filled from the Core section's chunk (`dataTabSlot.tsx`, `accountOverridesSlot.tsx`),
+ * which a user record always loads: a slot filled from a section that loads only on its own routes
+ * would stay empty on the record.
  */
 
 import type * as React from "react";
@@ -29,5 +30,5 @@ export interface UserSlots {
 export const userSlots: UserSlots = {
   dataTab: null,
   overrideEditor: null,
-  cloudSyncOn: () => false,
+  cloudSyncOn: (product) => product?.services?.sync?.enabled === true,
 };

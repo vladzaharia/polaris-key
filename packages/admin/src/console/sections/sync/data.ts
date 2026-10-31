@@ -69,6 +69,20 @@ export function useSyncUsage(slug: string): UseQueryResult<SyncUsageResponse> {
   return useQuery(syncUsageQuery(slug));
 }
 
+/**
+ * One person's Cloud Sync data (the user record's Data tab; U-11a). The server audits every load,
+ * so a refocused window does not read it again; it is read again after the tab is left for a
+ * minute, and after a write that empties the person's data.
+ */
+export const syncSubjectQuery = (slug: string, subject: string) =>
+  queryOptions({
+    queryKey: qk.syncSubject(slug, subject),
+    queryFn: () => api.syncSubject(slug, subject),
+    retry: false,
+    refetchOnWindowFocus: false,
+    staleTime: 60_000,
+  });
+
 /** The area the product's Cloud Sync limits are listed under (`cloudSync.ceiling.bytes`). */
 export const CEILING_AREA = "cloudSync.limits";
 

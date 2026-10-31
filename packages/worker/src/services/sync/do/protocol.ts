@@ -159,6 +159,11 @@ export type CloudSyncOp =
       serverNow: number;
     })
   | (DoPin & { op: "usage" })
+  /**
+   * The console's read-only summary of what the object holds (U-11a.1). Names, counts and bytes
+   * only: no value, no record id and no file name ever leaves the object through it.
+   */
+  | (DoPin & { op: "inspect" })
   | (DoPin & { op: "exportAll" })
   /**
    * The survivor of an account merge takes in the absorbed subject's export (U-05.8). Only the
@@ -222,6 +227,34 @@ export interface ExportDocument {
   clients: { clientId: string; deviceId: string; lastMutationId: number }[];
 }
 
+/** One live setting as the console's summary sees it: its name and size, never its value. */
+export interface InspectedSetting {
+  key: string;
+  scope: "user" | "platform";
+  /** The platform family of a `platform`-scope row. */
+  family?: string;
+  /** What the quota charges for the row (`rowCost`). */
+  bytes: number;
+  /** The newest accepted write, milliseconds (the row's HLC). */
+  updatedAt: number;
+}
+
+/**
+ * One collection's counters, read from the records and files tables when the object has them
+ * (they arrive with U-09 and U-10; an object without them answers none). `name` is the
+ * collection's name in the clear; in end-to-end mode it is the only name an object holds.
+ */
+export interface InspectedCollection {
+  name: string;
+  records: number;
+  bytes: number;
+  files: number;
+  fileBytes: number;
+  revisionBytes: number;
+  /** The newest record write, milliseconds, or null when no record carries a clock. */
+  lastWriteAt: number | null;
+}
+
 /** Rows the object's SQL read and wrote for one operation (U-05.18). Counts only. */
 export interface OpMeter {
   rowsRead: number;
@@ -240,6 +273,18 @@ export type CloudSyncReply =
   | { op: "fileFinalizeCommit"; outcome: FinalizeCommitOutcome }
   | { op: "fileFinalizeEnd"; outcome: FileAbortOutcome }
   | { op: "usage"; usage: StoreUsage; seq: number; empty: boolean }
+  | {
+      op: "inspect";
+      seq: number;
+      empty: boolean;
+      usage: StoreUsage;
+      /** The store sequence from which every row is sealed, or null before the first sealed write. */
+      encryptionSince: number | null;
+      settings: InspectedSetting[];
+      collections: InspectedCollection[];
+      /** Uploads begun and not yet finalized, aborted or expired. */
+      uploadsOpen: number;
+    }
   | { op: "exportAll"; document: ExportDocument | null }
   | { op: "absorb"; changed: number; skipped?: number; meter?: OpMeter }
   | { op: "deleteAll"; deleted: boolean };

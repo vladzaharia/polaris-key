@@ -232,6 +232,10 @@ export const qk = {
   // config
   catalog: (slug: string) => product(slug, "config", "catalog"),
   syncUsage: (slug: string) => product(slug, "sync", "usage"),
+  /** U-11a: one person's Cloud Sync data, and every such read of the product (a prefix). */
+  syncSubjects: (slug: string) => product(slug, "sync", "subjects"),
+  syncSubject: (slug: string, subject: string) =>
+    product(slug, "sync", "subjects", subject),
   connectPeople: (slug: string) => product(slug, "connect", "people"),
   connectUsage: (slug: string) => product(slug, "connect", "usage"),
   /** The version history (A-6). Under the catalog prefix, so a publish refreshes it. */
