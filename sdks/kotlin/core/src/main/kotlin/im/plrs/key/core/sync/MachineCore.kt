@@ -88,7 +88,7 @@ internal class MachineCore(val opts: CloudSyncOptions, var s: MachineState) {
 
     fun freshClientId(): String {
         val id = opts.newClientId()
-        require(clientIdPattern.containsMatchIn(id)) { "bad clientId" }
+        require(clientIdPattern.matches(id)) { "bad clientId" }
         return id
     }
 }

@@ -30,7 +30,7 @@ internal object SyncValues {
     }
 
     fun parseHlc(hlc: String): Pair<Long, Long> {
-        require(hlcPattern.containsMatchIn(hlc)) { "not an HLC" }
+        require(hlcPattern.matches(hlc)) { "not an HLC" }
         return hlc.substring(0, HLC_PHYSICAL_DIGITS).toLong(HEX) to hlc.substring(HLC_PHYSICAL_DIGITS + 1).toLong(HEX)
     }
 
