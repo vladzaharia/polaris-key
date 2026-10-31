@@ -175,7 +175,7 @@ jobs:
       # The docs snippet lane compiles every Python block on a covered page against the SDK with
       # mypy, so `pnpm test` needs the SDK's own venv with the same extras as ci.yml's JS/TS job
       # (`qt`: the Qt kit page imports PySide6).
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - name: Python venv for the docs snippet lane
