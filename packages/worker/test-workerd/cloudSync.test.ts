@@ -274,7 +274,7 @@ describe("CloudSyncDO under workerd (U-05.7)", () => {
           .exec("SELECT value FROM meta WHERE key = 'schema_version'")
           .one().value,
     );
-    expect(version).toBe("4");
+    expect(version).toBe("5");
   });
 
   it("deleteAll clears the data and the alarm, and the object can be written again", async () => {
