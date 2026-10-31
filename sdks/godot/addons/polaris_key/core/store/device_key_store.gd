@@ -132,6 +132,8 @@ var lock_stale_seconds := LOCK_STALE_SECONDS
 var unique_id := OS.get_unique_id()
 ## The native sealer in use (null: the engine-encrypted file, CC-26.6).
 var sealer: PKeyRecordSealer = null
+## The X25519 port (null until first use, then PKeyPeerCrypto.for_platform()).
+var crypto: PKeyPeerCrypto = null
 var _memory: bool
 ## False when `root` is outside `user://`: raw keys are never written to a shared or exported path.
 var _root_ok := true
@@ -153,8 +155,10 @@ var _salt_fault: PKeyResult = null
 ## A store for `product`. `root` is the parent directory, which must be under `user://` or the no-backup directory (PKeyBackupExclusion).
 ## `memory` keeps the keys in process memory only. `encrypted` turns the engine's file
 ## encryption on (the default) or off. `p_sealer` is a native sealer; null picks the platform's
-## when its lane is present (see the header).
-func _init(p_product: String, root := "user://pkey", memory := false, encrypted := true, p_sealer: PKeyRecordSealer = null) -> void:
+## when its lane is present (see the header). `p_crypto` is the X25519 port; null takes
+## `PKeyPeerCrypto.for_platform()` on first use (CC-14b.1: the private agreement key crosses into a
+## native lane as bytes in process, and the caller zeroes its copy).
+func _init(p_product: String, root := "user://pkey", memory := false, encrypted := true, p_sealer: PKeyRecordSealer = null, p_crypto: PKeyPeerCrypto = null) -> void:
 	product = p_product
 	dir = root.path_join(p_product)
 	var name_ok := RegEx.create_from_string("\\A[A-Za-z0-9][A-Za-z0-9@._-]{0,127}\\z").search(p_product) != null
@@ -162,6 +166,7 @@ func _init(p_product: String, root := "user://pkey", memory := false, encrypted 
 	_root_ok = name_ok and not p_product.contains("..") and PKeyBackupExclusion.is_private_root(root)
 	_memory = memory
 	_encrypted = encrypted
+	crypto = p_crypto
 	if not memory and encrypted and _root_ok:
 		sealer = p_sealer
 		if sealer == null and not PKeyRecordSealer.switched_off():
@@ -411,14 +416,22 @@ func _dh_locked(peer: PackedByteArray) -> PKeyResult:
 	if cur.detail == null:
 		return PKeyResult.success(null)
 	var rec: Dictionary = cur.detail
-	var secret := PKeyCurve25519.x25519(rec["agree_priv"], peer)
+	var secret = _port().x25519(rec["agree_priv"], peer)
 	_zero_record(rec)
+	if not (secret is PackedByteArray) or secret.size() != 32:
+		return PKeyResult.success(null)
 	var any := 0
 	for b in secret:
 		any |= b
 	if any == 0:
 		return PKeyResult.success(null)
 	return PKeyResult.success(secret)
+
+
+func _port() -> PKeyPeerCrypto:
+	if crypto == null:
+		crypto = PKeyPeerCrypto.for_platform()
+	return crypto
 
 
 # ── Records ──────────────────────────────────────────────────────────────────────────────
@@ -439,7 +452,7 @@ static func _zero_record(rec: Dictionary) -> void:
 	priv.fill(0)
 
 
-## Once per process: the curve code reproduces an RFC 7748 and an RFC 8032 vector, or this
+## Once per process: the curve code (through the X25519 port) reproduces an RFC 7748 and an RFC 8032 vector, or this
 ## runtime is unsupported (never "the record is bad").
 func _selftest() -> PKeyResult:  # null when the runtime is fine
 	if not _curve_checked:
@@ -448,7 +461,8 @@ func _selftest() -> PKeyResult:  # null when the runtime is fine
 		var want := "c3da55379de9c6908e94ea4df28d084f32eccf03491c71f754b4075577a28552"
 		var seed := "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60".hex_decode()
 		var pub := "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
-		_curve_ok = PKeyCurve25519.x25519(k, u).hex_encode() == want and PKeyCurve25519.ed25519_public(seed).hex_encode() == pub
+		var got = _port().x25519(k, u)
+		_curve_ok = got is PackedByteArray and got.hex_encode() == want and PKeyCurve25519.ed25519_public(seed).hex_encode() == pub
 		_curve_checked = true
 	if not _curve_ok:
 		return PKeyResult.unsupported("core.devicekeys", PKeyConstants.UnsupportedReason.RUNTIME, "device keys: the curve code failed its self-test")
@@ -466,9 +480,9 @@ func _write_new(generation: int) -> PKeyResult:
 		"seed": seed,
 		"sign_pub": PKeyCurve25519.ed25519_public(seed),
 		"agree_priv": agree_priv,
-		"agree_pub": PKeyCurve25519.x25519_public(agree_priv),
+		"agree_pub": _port().x25519_public(agree_priv),
 	}
-	if PKeyCurve25519.is_low_order(rec["agree_pub"]):
+	if rec["agree_pub"].size() != 32 or PKeyCurve25519.is_low_order(rec["agree_pub"]):
 		_zero_record(rec)
 		return PKeyResult.unsupported("core.devicekeys", PKeyConstants.UnsupportedReason.RUNTIME, "device keys: the curve code is inconsistent")
 	var bytes := _encode(rec)
@@ -519,7 +533,7 @@ func _decode(bytes: PackedByteArray) -> Variant:
 	var digest := ctx.finish().hex_encode()
 	if digest != _checked_digest:
 		var ok: bool = PKeyCurve25519.ed25519_public(rec["seed"]) == rec["sign_pub"] \
-				and PKeyCurve25519.x25519_public(rec["agree_priv"]) == rec["agree_pub"] \
+				and _port().x25519_public(rec["agree_priv"]) == rec["agree_pub"] \
 				and not PKeyCurve25519.is_low_order(rec["agree_pub"])
 		if not ok:
 			_zero_record(rec)

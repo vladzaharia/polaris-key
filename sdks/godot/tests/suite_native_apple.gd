@@ -12,6 +12,9 @@ extends RefCounted
 #   keychain  PKeyKeychainStore over the fake Keychain: token and device id round trips, the
 #             migration from the file store, a failing Keychain surfaced (no silent downgrade),
 #             and the file store everywhere off iOS
+#   binary    the D-13 binary entry (CC-14b.2): PKeyApple.cmd_bin / poll_bin over a fake, and, when the
+#             macOS dylib is built and installed (native/macos/build_apple.sh --install, run with
+#             PKEY_APPLE_SELFTEST=1), over the real glue: bounds, empty answers, byte round trips
 #   export    PKeyAppleExport: auto/on/off per outlet kind, the Info.plist mark, the warnings
 
 const FOES := "gg.vlad.diceroll.pack.foes"
@@ -22,8 +25,137 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_stubs(t)
 	await _facade(t)
 	_keychain(t)
+	_binary(t)
 	_export(t)
 	return true
+
+
+## A native object with the binary entry: it echoes for "echo", reverses for "rev", queues events.
+class FakeBin:
+	extends RefCounted
+	var events: Array = []
+	var seen_ops: Array[String] = []
+
+	func cmd_bin(op: String, data: PackedByteArray) -> Variant:
+		seen_ops.append(op)
+		if op == "echo":
+			return data
+		if op == "huge":
+			var big := PackedByteArray()
+			big.resize(PKeyApple.BIN_MAX + 1)
+			return big
+		if op == "wrong":
+			return "not bytes"
+		return PackedByteArray()
+
+	func poll_bin() -> Variant:
+		var out := events
+		events = []
+		return out
+
+
+class FakeNoBin:
+	extends RefCounted
+
+	func cmd(_json: String) -> String:
+		return "{}"
+
+
+func _binary(t: PKeyTestContext) -> void:
+	var fake := FakeBin.new()
+	var a := _apple("ios", fake)
+	t.check("binary: a native object with cmd_bin and poll_bin has the entry", a.binary_available())
+	var all := PackedByteArray()
+	for i in 256:
+		all.append(i)
+	t.check("binary: all 256 byte values round trip", a.cmd_bin("echo", all) == all)
+	t.check("binary: an unknown op is empty", a.cmd_bin("nope", all).is_empty())
+	t.check("binary: an empty op never reaches the native side", a.cmd_bin("", all).is_empty() and not fake.seen_ops.has(""))
+	t.check("binary: an over-long op never reaches the native side", a.cmd_bin("x".repeat(PKeyApple.BIN_OP_MAX + 1), all).is_empty() and fake.seen_ops.size() == 2)
+	t.check("binary: an oversized result is empty", a.cmd_bin("huge", all).is_empty())
+	t.check("binary: a result of the wrong type is empty", a.cmd_bin("wrong", all).is_empty())
+	var big := PackedByteArray()
+	big.resize(PKeyApple.BIN_MAX + 1)
+	var before := fake.seen_ops.size()
+	t.check("binary: an oversized input never reaches the native side", a.cmd_bin("echo", big).is_empty() and fake.seen_ops.size() == before)
+	fake.events = [["bj_data", PackedByteArray([1, 2])], ["x"], "junk", [1, PackedByteArray()], ["bj_closed", PackedByteArray()]]
+	var evs := a.poll_bin()
+	t.check("binary: poll_bin keeps well-formed events in order and drops the rest", evs.size() == 2 and evs[0][0] == "bj_data" and evs[0][1] == PackedByteArray([1, 2]) and evs[1][0] == "bj_closed")
+	t.check("binary: poll_bin drains", a.poll_bin().is_empty())
+	a.free()
+	var old := _apple("ios", FakeNoBin.new())
+	t.check("binary: a native build without it is unavailable and answers empty", not old.binary_available() and old.cmd_bin("echo", all).is_empty() and old.poll_bin().is_empty())
+	old.free()
+	var off := _apple("windows")
+	t.check("binary: off Apple platforms there is none", not off.binary_available())
+	off.free()
+	var gone := _apple("macos")
+	gone.native_class = "PolarisKeyAppleMissingForTests"
+	t.check("binary: without the GDExtension there is none", not gone.binary_available() and gone.cmd_bin("echo", all).is_empty())
+	gone.free()
+
+	if not (OS.get_name() == "macOS" and ClassDB.class_exists(PKeyApple.NATIVE_CLASS) and ClassDB.class_has_method(PKeyApple.NATIVE_CLASS, "cmd_bin")):
+		t.info("binary: the real glue is not built here (native/macos/build_apple.sh --install); skipped")
+		return
+	_binary_real(t, all)
+
+
+## The real libpkey_apple.dylib. The echo and event ops exist only under PKEY_APPLE_SELFTEST=1.
+func _binary_real(t: PKeyTestContext, all: PackedByteArray) -> void:
+	var m := _apple("macos")
+	t.check("real: the entry is available", m.binary_available() and ClassDB.class_has_method(PKeyApple.NATIVE_CLASS, "poll_bin"))
+	t.check("real: an unknown op is empty", m.cmd_bin("no_such_op", all).is_empty())
+	t.check("real: an empty op is empty", m.cmd_bin("", all).is_empty())
+	t.check("real: an over-long op is empty", m.cmd_bin("x".repeat(65), all).is_empty())
+	t.check("real: a JSON op is not a binary op", m.cmd_bin("ping", all).is_empty())
+	t.check("real: empty data with an unknown op is empty", m.cmd_bin("no_such_op", PackedByteArray()).is_empty())
+	t.check("real: poll_bin is an empty Array at rest", m.poll_bin().is_empty())
+	var raw = ClassDB.class_call_static(PKeyApple.NATIVE_CLASS, "poll_bin")
+	t.check("real: poll_bin through ClassDB is an Array", raw is Array and raw.is_empty())
+	if OS.get_environment("PKEY_APPLE_SELFTEST") != "1":
+		t.info("real: PKEY_APPLE_SELFTEST=1 is not set; the round trips are skipped")
+		m.free()
+		return
+	t.check("real: all 256 byte values round trip", m.cmd_bin("selftest_echo", all) == all)
+	t.check("real: empty data round trips as empty", m.cmd_bin("selftest_echo", PackedByteArray()).is_empty())
+	var mib := PackedByteArray()
+	mib.resize(1 << 20)
+	for i in mib.size():
+		mib[i] = (i * 7 + 3) & 0xFF
+	var echoed := m.cmd_bin("selftest_echo", mib)
+	t.check("real: 1 MiB round trips", echoed.size() == mib.size() and echoed == mib)
+	var edge := PackedByteArray()
+	edge.resize(PKeyApple.BIN_MAX)
+	t.check("real: the 16 MiB bound round trips", m.cmd_bin("selftest_echo", edge).size() == PKeyApple.BIN_MAX)
+	# The GDScript side refuses an oversized input; call the native one directly to prove its own bound.
+	edge.resize(PKeyApple.BIN_MAX + 1)
+	var direct = ClassDB.class_call_static(PKeyApple.NATIVE_CLASS, "cmd_bin", "selftest_echo", edge)
+	t.check("real: the native side refuses an input over 16 MiB", direct is PackedByteArray and direct.is_empty())
+	# A typed call (the engine may take the ptrcall path) and the dynamic one agree.
+	var typed := GDScript.new()
+	typed.source_code = "\n".join([
+		"extends RefCounted",
+		"func go(d: PackedByteArray) -> PackedByteArray:",
+		"\tvar r: PackedByteArray = PolarisKeyApple.cmd_bin(\"selftest_echo\", d)",
+		"\treturn r",
+		"func ev() -> Array:",
+		"\tvar a: Array = PolarisKeyApple.poll_bin()",
+		"\treturn a",
+		"",
+	])
+	if t.check("real: the typed caller compiles", typed.reload() == OK):
+		var o = typed.new()
+		t.check("real: a typed call (ptrcall) round trips", o.go(all) == all)
+		t.check("real: a typed poll_bin is an Array", o.ev() is Array)
+	m.cmd_bin("selftest_event", PackedByteArray([7, 8, 9]))
+	m.cmd_bin("selftest_event", PackedByteArray())
+	var evs := m.poll_bin()
+	t.check("real: binary events arrive in order as [kind, bytes]", evs.size() == 2 and evs[0][0] == "selftest" and evs[0][1] == PackedByteArray([7, 8, 9]) and evs[1][1].is_empty())
+	t.check("real: poll_bin drains", m.poll_bin().is_empty())
+	for i in 1100:
+		m.cmd_bin("selftest_event", PackedByteArray([i & 0xFF]))
+	t.check("real: the event queue is bounded at 1024, oldest dropped", m.poll_bin().size() == 1024)
+	m.free()
 
 
 static func _apple(p_platform: String, p_native: Object = null) -> PKeyApple:
@@ -36,7 +168,8 @@ static func _apple(p_platform: String, p_native: Object = null) -> PKeyApple:
 
 func _stubs(t: PKeyTestContext) -> void:
 	var desktop := _apple("linux")
-	t.check("stubs: the native class is not registered here", not ClassDB.class_exists(PKeyApple.NATIVE_CLASS) or OS.get_name() == "iOS")
+	var has_plugin_os := OS.get_name() == "iOS" or OS.get_name() == "macOS"
+	t.check("stubs: the native class is not registered here", not ClassDB.class_exists(PKeyApple.NATIVE_CLASS) or has_plugin_os)
 	t.check("stubs: off iOS the reason is runtime", desktop.unsupported_reason() == "runtime" and not desktop.is_available())
 	# SP-27: on macOS the Keychain calls (core.store) run through the desktop build, so without it
 	# they answer `dependency`; everything else stays iOS-only (`runtime`).

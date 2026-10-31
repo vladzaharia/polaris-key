@@ -45,6 +45,10 @@ signal pack_failed(id: String, err: String)
 const NATIVE_CLASS := "PolarisKeyApple"
 ## The AppDistributor deadline (OUTLET_PLATFORM_DATA.deadlineMs; notes/S-06 rule 5).
 const DISTRIBUTOR_DEADLINE := 2.0
+## The most bytes the binary entry takes or answers (the native side enforces the same figure), and
+## the longest op name.
+const BIN_MAX := 16 << 20
+const BIN_OP_MAX := 64
 
 ## The platform this answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var platform := ""
@@ -258,6 +262,47 @@ func dropped_events() -> int:
 
 func _process(_delta: float) -> void:
 	poll()
+
+
+# ── Binary entry (CC-14b.2, D-13) ────────────────────────────────────────────────────────────
+
+## Whether the native side has the binary entry (`cmd_bin` and `poll_bin`). False off iOS and macOS,
+## without the GDExtension, or in a build that predates it; callers then use their GDScript lane.
+func binary_available() -> bool:
+	if native != null:
+		return native.has_method("cmd_bin") and native.has_method("poll_bin")
+	var p := _platform()
+	if p != PKeyConstants.Platform.IOS and p != PKeyConstants.Platform.MACOS:
+		return false
+	return ClassDB.class_exists(native_class) and ClassDB.class_has_method(native_class, "cmd_bin") and ClassDB.class_has_method(native_class, "poll_bin")
+
+
+## One synchronous binary op: `data` in, the native bytes out, or an EMPTY array for an unknown op,
+## an unusable argument, an oversized input or result, or no binary entry. The bytes cross in
+## process with no JSON, no base64 and no String; the arrays belong to the caller, who zeroes them.
+## Never log, format or store what passes through here.
+func cmd_bin(op: String, data: PackedByteArray) -> PackedByteArray:
+	if op.is_empty() or op.to_utf8_buffer().size() > BIN_OP_MAX or data.size() > BIN_MAX or not binary_available():
+		return PackedByteArray()
+	var raw = native.call("cmd_bin", op, data) if native != null else ClassDB.class_call_static(native_class, "cmd_bin", op, data)
+	if not (raw is PackedByteArray) or raw.size() > BIN_MAX:
+		return PackedByteArray()
+	return raw
+
+
+## The binary events queued natively, oldest first: each [kind: String, data: PackedByteArray].
+## Malformed entries are dropped. Empty without the binary entry.
+func poll_bin() -> Array:
+	var out := []
+	if not binary_available():
+		return out
+	var raw = native.call("poll_bin") if native != null else ClassDB.class_call_static(native_class, "poll_bin")
+	if not (raw is Array):
+		return out
+	for e in raw:
+		if e is Array and e.size() == 2 and e[0] is String and e[1] is PackedByteArray:
+			out.append(e)
+	return out
 
 
 # ── Typed calls (each a PKeyResult; the native reply is `detail`) ─────────────────────────────
