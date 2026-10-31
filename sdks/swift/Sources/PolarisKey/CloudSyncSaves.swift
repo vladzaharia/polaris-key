@@ -534,7 +534,8 @@ public final class SavesClient: Sendable {
             return v
         }
         env.dropWaiting()
-        for t in running { await t.cancel() }
+        // The server's upload is released best effort in the background: a sign-out never waits on the network.
+        for t in running { Task { await t.cancel() } }
         await env.purgeFiles()
     }
 
@@ -764,7 +765,7 @@ public final class SaveTransfer: @unchecked Sendable {
 
     public func pause() {
         let task = lock.withLock { () -> Task<SaveOutcome, Error>? in
-            guard stateValue == .running else { return nil }
+            guard stateValue == .running, wanted != .cancel else { return nil }
             wanted = .pause
             return current
         }
@@ -773,7 +774,7 @@ public final class SaveTransfer: @unchecked Sendable {
 
     public func resume() {
         let g = lock.withLock { () -> CheckedContinuation<Void, Never>? in
-            guard stateValue == .paused || wanted == .pause else { return nil }
+            guard wanted != .cancel, stateValue == .paused || wanted == .pause else { return nil }
             wanted = .run
             let g = gate
             gate = nil
@@ -807,6 +808,7 @@ public final class SaveTransfer: @unchecked Sendable {
 
     private func drive() async -> SaveOutcome {
         while true {
+            if want() == .cancel { return await cancelled() }
             // A pause asked before the attempt began waits first.
             if want() == .pause {
                 let outcome = await waitWhilePaused()

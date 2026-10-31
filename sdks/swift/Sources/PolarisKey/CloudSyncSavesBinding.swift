@@ -176,8 +176,8 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
     private let options: SavesOptions
     private let journal: FileJournal
     private let engine: FileTransferEngine
-    private let state = LockedValue<(records: MachineRecords?, host: CloudSyncHost?, subjects: Set<String>)>(
-        (nil, nil, []))
+    private let state = LockedValue<(records: MachineRecords?, host: CloudSyncHost?, subject: String?)>(
+        (nil, nil, nil))
 
     init(core: CoreContext, api: CloudSyncApi, keyring: @escaping @Sendable () -> SyncKeyring, options: SavesOptions) {
         self.core = core
@@ -210,7 +210,7 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
         let codec: any FileCodec = e2e ? try keyring().fileCodec(collection: savesCollection) : ServerFileCodec()
         var cache: (any ChunkCache)?
         if options.delta, let subject = await host.machineSubject() {
-            state.with { _ = $0.subjects.insert(subject) }
+            state.with { $0.subject = subject }
             cache = FileChunkCache(
                 directory: chunkCacheDirectory(
                     stateDir: core.dirs.state, subject: subject, collection: savesCollection),
@@ -227,12 +227,13 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
 
     func purgeFiles() async {
         journal.clear()
-        let subjects = state.with { s -> Set<String> in
-            let v = s.subjects
-            s.subjects = []
+        // Only the signed-in person's cache (the last one a context used), never another's.
+        let subject = state.with { s -> String? in
+            let v = s.subject
+            s.subject = nil
             return v
         }
-        for subject in subjects {
+        if let subject {
             try? FileManager.default.removeItem(
                 at: chunkCachePersonDirectory(stateDir: core.dirs.state, subject: subject))
         }

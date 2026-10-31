@@ -520,4 +520,14 @@ final class SyncKeyringTests: XCTestCase {
         XCTAssertEqual(codec.plainSize(codec.storedSize(100)), 100)
         XCTAssertEqual(Mirror(reflecting: codec).children.count, 0, "the codec shows no key")
     }
+
+    func testReplacingTheRootWhileHeldMakesTheOldFileCodecRefuse() async throws {
+        let a = try await device("a", server: RingServer())
+        _ = try await a.keyring.create()
+        let old = try a.keyring.fileCodec(collection: "saves")
+        _ = try old.sealWhole(Data("x".utf8))
+        _ = try await a.keyring.reset()
+        XCTAssertEqual(lockedCode { _ = try old.sealWhole(Data("x".utf8)) }, ErrorCode.syncLocked)
+        XCTAssertNil(lockedCode { _ = try a.keyring.fileCodec(collection: "saves").sealWhole(Data("x".utf8)) })
+    }
 }

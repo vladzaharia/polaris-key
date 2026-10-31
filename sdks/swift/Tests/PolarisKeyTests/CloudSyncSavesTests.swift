@@ -685,4 +685,37 @@ final class CloudSyncSavesTests: XCTestCase {
         } catch {}
         XCTAssertTrue(rig.events.all.contains(.transferFailed(id: "saves:read:../x", code: "invalid-save")))
     }
+
+    func testCancelThenPauseSettlesCancelled() async throws {
+        let rig = Rig(e2e: false)
+        rig.records.lock.withLock { rig.records.holdSet = true }
+        let t = try await rig.client.write("slot1", bytes: Data("x".utf8), metadata: obj([:]))
+        for _ in 0..<200 where rig.records.lock.withLock({ rig.records.sets.isEmpty }) {
+            try await Task.sleep(nanoseconds: 5_000_000)
+        }
+        let cancelling = Task { await t.cancel() }
+        t.pause()
+        await cancelling.value
+        guard case .cancelled = await t.outcome() else { return XCTFail("not cancelled") }
+        XCTAssertEqual(t.state, .cancelled)
+    }
+
+    func testCancelThenResumeOnAPausedTransferSettlesCancelled() async throws {
+        let rig = Rig(e2e: false)
+        let gate = LockedValue<Bool>(true)
+        rig.files.onBegin = {
+            while gate.current { try await Task.sleep(nanoseconds: 5_000_000) }
+            return nil
+        }
+        let t = try await rig.client.write("slot1", bytes: Data("x".utf8), metadata: obj([:]))
+        try await Task.sleep(nanoseconds: 50_000_000)
+        t.pause()
+        for _ in 0..<200 where t.state != .paused { try await Task.sleep(nanoseconds: 5_000_000) }
+        XCTAssertEqual(t.state, .paused)
+        let cancelling = Task { await t.cancel() }
+        t.resume()
+        await cancelling.value
+        guard case .cancelled = await t.outcome() else { return XCTFail("not cancelled") }
+        XCTAssertEqual(t.state, .cancelled)
+    }
 }

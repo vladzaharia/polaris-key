@@ -1119,8 +1119,8 @@ final class TranscriptTests: XCTestCase {
     func testAFilePutWithAnotherDigestFails() async throws {
         var t = try XCTUnwrap(try transcripts().first { $0.id == "cloudsync-files-mismatch" })
         let i = try XCTUnwrap(t.steps.firstIndex { $0.args["op"]?.stringValue == "put" })
-        let zeros = String(repeating: "A", count: 43) + "="
-        t.steps[i].exchanges.items[0].request.headers["content-digest"] = "sha-256=:\(zeros):"
+        // A recorded digest the replay cannot read as a hash: it sends the bytes' own digest, which differs.
+        t.steps[i].exchanges.items[0].request.headers["content-digest"] = "sha-256=:not-a-digest:"
         await assertReplayFails(t, matching: "content-digest")
     }
 
