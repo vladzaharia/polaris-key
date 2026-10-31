@@ -5750,7 +5750,11 @@ function connectFamily(a: A): Draft[] {
         ),
       ),
       inv("A session that ended without a link never says it linked.", {
-        copy: ["linkPairing.linkedTitle", "linkPairing.linkedBody"],
+        copy: [
+          "linkPairing.linkedTitle",
+          "linkPairing.linkedBody",
+          "linkPairing.linkedWith",
+        ],
         states: ["linked"],
       }),
     );
@@ -5807,29 +5811,42 @@ function connectFamily(a: A): Draft[] {
       ),
     ),
     row(
-      `${LP}/confirm: waiting for the other person`,
-      pair("confirm", { ...CODE, categories: CATS }),
+      `${LP}/confirm: waiting for the other person, the code still on screen`,
+      pair("confirm", { ...CODE, device: "Maya's laptop", categories: CATS }),
       LP,
       "confirm",
-      "all",
+      // The code, the reported line and the categories stay on screen while the other person decides.
+      but(
+        LP,
+        "confirm",
+        "linkPairing.reportedUnnamed",
+        "linkPairing.sharesNone",
+      ),
       inv("Waiting never reads as linked.", {
         states: ["linked"],
         copy: ["linkPairing.linkedTitle"],
       }),
     ),
     row(
+      `${LP}/confirm: the device gave no name and nothing is shared`,
+      pair("confirm", { ...CODE, categories: [] }),
+      LP,
+      "confirm",
+      but(LP, "confirm", "linkPairing.reported", "linkPairing.shares"),
+    ),
+    row(
       `${LP}/linked: with what both approved`,
       pair("linked", { device: "Maya's laptop", categories: CATS }),
       LP,
       "linked",
-      but(LP, "linked", "linkPairing.sharesNone"),
+      but(LP, "linked", "linkPairing.sharesNone", "linkPairing.linkedBody"),
     ),
     row(
       `${LP}/linked: nothing shared yet`,
       pair("linked", { categories: [] }),
       LP,
       "linked",
-      but(LP, "linked", "linkPairing.shares"),
+      but(LP, "linked", "linkPairing.shares", "linkPairing.linkedWith"),
     ),
     failed("declined", "someone said no"),
     failed("timeout", "the window or the exchange ran out"),

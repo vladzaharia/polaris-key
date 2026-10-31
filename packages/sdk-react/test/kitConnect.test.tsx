@@ -135,9 +135,22 @@ describe("<LinkPairing>", () => {
     act(() => f.seen.o!.onCode(f.offer()));
     fireEvent.click(screen.getByRole("button", { name: "Codes match" }));
     await waitFor(() =>
-      expect(screen.getByText("Waiting for Them to Confirm")).toBeTruthy(),
+      expect(
+        screen.getByRole("heading", { name: /^Waiting for them to confirm$/i }),
+      ).toBeTruthy(),
     );
     expect(f.log).toContain("confirm");
+    // The other person may still be comparing against this screen: the code, the reported line and
+    // the categories stay, the wait is said in the status region, and Codes match is gone.
+    expect(document.querySelector(".pair-code")?.textContent).toBe("123 456");
+    expect(document.querySelector(".pair-reported")?.textContent).toBe(
+      "Reported by the device: Maya's laptop",
+    );
+    expect(document.querySelector(".pair-cats")).toBeTruthy();
+    expect(
+      document.querySelector("[role=status]")?.textContent?.toLowerCase(),
+    ).toContain("waiting for them to confirm");
+    expect(screen.queryByRole("button", { name: "Codes match" })).toBeNull();
     act(() =>
       f.seen.o!.onLinked({ label: "Maya's laptop", categories: ["contacts"] }),
     );
@@ -183,6 +196,29 @@ describe("<LinkPairing>", () => {
     );
   });
 
+  it("puts what is shared before Codes match, in the DOM, and does not dock the actions", async () => {
+    const f = fake();
+    const { container } = await opened(f);
+    act(() => f.seen.o!.onCode(f.offer()));
+    const shares = container.querySelector("[data-part=shares]")!;
+    const confirm = screen.getByRole("button", { name: "Codes match" });
+    expect(
+      shares.compareDocumentPosition(confirm) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // The actions are not the card's direct child, so the sticky action bar does not cover the shares.
+    expect(container.querySelector(".card > .actions")).toBeNull();
+  });
+
+  it("a category without a label is worded, not shown as its id", async () => {
+    const f = fake();
+    const { container } = await opened(f, { categoryLabels: {} });
+    act(() => f.seen.o!.onCode(f.offer()));
+    expect(container.querySelector(".pair-cats")?.textContent).toBe(
+      "ContactsPhotos",
+    );
+  });
+
   it("closes the window when it unmounts", async () => {
     const f = fake();
     const { unmount } = await opened(f);
@@ -202,6 +238,14 @@ describe("<LinkPairing>", () => {
     await waitFor(() =>
       expect(screen.getByText("Pairing is off")).toBeTruthy(),
     );
+    // The explanation comes before Done in the document, so it is read first.
+    const text = document.querySelector(
+      '[data-key="core.codes.connect_links_disabled.message"]',
+    )!;
+    const done = screen.getByRole("button", { name: "Done" });
+    expect(
+      text.compareDocumentPosition(done) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Codes match" })).toBeNull();
   });
 
@@ -265,6 +309,31 @@ describe("<TransferOffer>", () => {
     fireEvent.click(screen.getByRole("button", { name: "Decline" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(log).toEqual(["decline"]);
+  });
+
+  it("a long file name shortens in the heading and shows whole on its own row", () => {
+    const { d } = driverOf();
+    const name = `${"holiday-photos-".repeat(6)}final.zip`;
+    render(<TransferOffer driver={d} device="Ana" name={name} />);
+    const h = screen.getByRole("heading", { level: 1 });
+    expect(h.textContent).toContain("…");
+    expect(h.textContent).toContain("final.zip");
+    expect(h.textContent!.length).toBeLessThan(name.length);
+    expect(document.querySelector(".pair-file")?.textContent).toBe(name);
+  });
+
+  it("receiving shows a progress bar and Cancel", async () => {
+    const d: TransferOfferDriver = {
+      accept: () => new Promise(() => {}),
+      decline: async () => {},
+    };
+    render(<TransferOffer driver={d} device="Ana" name="a.txt" />);
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => screen.getByRole("progressbar"));
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe(
+      null,
+    );
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeTruthy();
   });
 
   it("a contact with no label is a paired device", () => {

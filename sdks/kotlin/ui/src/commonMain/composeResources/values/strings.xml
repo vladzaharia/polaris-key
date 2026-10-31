@@ -2139,7 +2139,7 @@
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code. -->
     <string name="linkPairing_searching">Looking for nearby devices…</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare. -->
-    <string name="linkPairing_codeTitle">Compare the Code</string>
+    <string name="linkPairing_codeTitle">Compare the code</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms. -->
     <string name="linkPairing_codeBody">Both screens must show this code.</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Arguments: {device} = the label the other device sent. Nothing authenticates it: any device on the network can send any label, so the line says it is reported, not verified. Arguments: 1=device. -->
@@ -2157,13 +2157,15 @@
     <string name="linkPairing_decline">Not a match</string>
     <string name="linkPairing_decline__macos">Not a Match</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet. -->
-    <string name="linkPairing_waiting">Waiting for Them to Confirm</string>
+    <string name="linkPairing_waiting">Waiting for them to confirm</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices. -->
     <string name="linkPairing_linkedTitle">Paired</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made. -->
     <string name="linkPairing_linkedBody">You can now connect without a code.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label. Arguments: 1=device. -->
+    <string name="linkPairing_linkedWith">Paired with %1$s.</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link. -->
-    <string name="linkPairing_failedTitle">Couldn’t Pair</string>
+    <string name="linkPairing_failedTitle">Couldn’t pair</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code. -->
     <string name="linkPairing_failedDeclined">Someone said no. Nothing was paired.</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first. -->

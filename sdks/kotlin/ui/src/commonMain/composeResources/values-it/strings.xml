@@ -2175,6 +2175,8 @@
     <string name="linkPairing_linkedTitle">Collegato</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made. -->
     <string name="linkPairing_linkedBody">Ora potete collegarvi senza codice.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label. Arguments: 1=device. -->
+    <string name="linkPairing_linkedWith">Collegato con %1$s.</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link. -->
     <string name="linkPairing_failedTitle">Impossibile collegare</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code. -->

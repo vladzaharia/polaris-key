@@ -5673,7 +5673,7 @@ msgstr "请对方在其设备上打开此页面。保持靠近，并连接同一
 msgid "linkPairing.searching"
 msgstr "正在查找附近的设备…"
 
-#. Compare the Code
+#. Compare the code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
 msgstr "核对验证码"
@@ -5723,7 +5723,7 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr "不一致"
 
-#. Waiting for Them to Confirm
+#. Waiting for them to confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
 msgstr "正在等待对方确认"
@@ -5738,7 +5738,12 @@ msgstr "已建立链接"
 msgid "linkPairing.linkedBody"
 msgstr "现在无需验证码即可连接。"
 
-#. Couldn’t Pair
+#. Paired with {device}.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label.
+msgid "linkPairing.linkedWith"
+msgstr "已与{device}建立链接。"
+
+#. Couldn’t pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
 msgstr "无法建立链接"

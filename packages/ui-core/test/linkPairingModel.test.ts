@@ -6,7 +6,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  categoryFallback,
   LinkPairingModel,
+  shortName,
   TransferOfferModel,
   viewOf,
   type LinkPairingDriver,
@@ -99,6 +101,57 @@ describe("LinkPairingModel", () => {
     f.seen.o!.onLinked({ label: "Maya's laptop", categories: ["contacts"] });
     expect(m.view().state).toBe("linked");
     expect(f.log).toContain("confirm");
+  });
+
+  it("keeps the code, the reported line and the categories while it waits for the other person", async () => {
+    const f = fakeDriver();
+    const m = make(f.driver);
+    await m.start();
+    f.seen.o!.onCode(offer(f.log));
+    await m.confirm();
+    const v = m.view();
+    expect(v.state).toBe("confirm");
+    expect(v.copy).toEqual(
+      expect.arrayContaining([
+        "linkPairing.waiting",
+        "a11y.linkCode",
+        "linkPairing.reported",
+        "linkPairing.shares",
+      ]),
+    );
+    expect(v.args).toMatchObject({ code: "123 456", device: "Maya's laptop" });
+  });
+
+  it("names who was paired when the device sent a label", async () => {
+    const f = fakeDriver();
+    const m = make(f.driver);
+    await m.start();
+    f.seen.o!.onCode(offer(f.log));
+    await m.confirm();
+    f.seen.o!.onLinked({ label: "Maya's laptop", categories: ["contacts"] });
+    expect(m.view().copy).toContain("linkPairing.linkedWith");
+    expect(m.view().args.device).toBe("Maya's laptop");
+  });
+
+  it("leads with Done, not Try again, when one device has no room for another pairing", async () => {
+    const f = fakeDriver();
+    const m = make(f.driver);
+    await m.start();
+    f.seen.o!.onCode(offer(f.log));
+    f.seen.o!.onFailed({ reason: "full" });
+    expect(m.view().decisions.primary).toBe("common.done");
+    expect(m.view().copy).toContain("common.tryAgain");
+  });
+
+  it("shortens a long name in the middle, keeping the extension, and words a bare id", () => {
+    const long = `${"a".repeat(70)}.zip`;
+    const s = shortName(long);
+    expect([...s].length).toBe(40);
+    expect(s.endsWith(".zip")).toBe(true);
+    expect(s).toContain("…");
+    expect(shortName("holiday.zip")).toBe("holiday.zip");
+    expect(categoryFallback("tax-forms")).toBe("Tax forms");
+    expect(categoryFallback("photos")).toBe("Photos");
   });
 
   it("decline closes that session and the window stays open", async () => {

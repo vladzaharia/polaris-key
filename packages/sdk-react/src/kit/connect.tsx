@@ -14,6 +14,7 @@
 
 import { useEffect, useInsertionEffect, useRef, type ReactNode } from "react";
 import {
+  categoryFallback,
   linkPairingView,
   transferOfferView,
   type ComponentName,
@@ -26,7 +27,7 @@ import {
 import { KitRoot, useKit, type KitAction, type KitProps } from "./component.js";
 import { spellOut, type Layout } from "./contract.js";
 import { useLinkPairing, useTransferOffer } from "./connectHooks.js";
-import { actions, plain, text, type KitCtx } from "./parts.js";
+import { actions, plain, progressBar, text, type KitCtx } from "./parts.js";
 import { CONNECT_LAYOUTS } from "./syncAssets.js";
 import { renderView } from "./views.js";
 
@@ -51,10 +52,21 @@ const CONNECT_CSS = `@layer polaris-key {
 }
 .pk-root .pair-reported {
   margin: 0;
-  color: var(--pk-text-muted);
-  font-size: var(--pk-kit-type-meta-size);
-  line-height: var(--pk-kit-type-meta-line-height);
+  color: var(--pk-text-strong);
   overflow-wrap: anywhere;
+}
+.pk-root .pair-actions {
+  display: contents;
+}
+.pk-root .pair-file {
+  margin: 0;
+  color: var(--pk-text-strong);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 .pk-root .pair-shares {
   display: grid;
@@ -193,6 +205,16 @@ export interface LinkPairingProps extends KitProps {
   onClose?: () => void;
 }
 
+/** Escape declines a code, cancels a window, and closes a finished screen. */
+const pairEscape = (v: View): string | null =>
+  v.copy.includes("linkPairing.decline")
+    ? "linkPairing.decline"
+    : v.copy.includes("common.cancel")
+      ? "common.cancel"
+      : v.copy.includes("common.done")
+        ? "common.done"
+        : null;
+
 function Categories(props: {
   c: KitCtx;
   labels?: Readonly<Record<string, string>>;
@@ -216,7 +238,7 @@ function Categories(props: {
           <ul className="pair-cats" aria-labelledby="pk-shares">
             {cats.map((id) => (
               <li key={id} data-key={`category.${id}`}>
-                <bdi>{labels?.[id] ?? id}</bdi>
+                <bdi>{labels?.[id] ?? categoryFallback(id)}</bdi>
               </li>
             ))}
           </ul>
@@ -230,13 +252,48 @@ function Categories(props: {
   );
 }
 
-/** What each state draws in its `content`: in the DOM order the person reads and acts in. */
+/** The code and the line that says which device reported it: kept on screen through `confirm`. */
+function CodeBlock(props: { c: KitCtx }): ReactNode {
+  const { c } = props;
+  const has = (k: string) => c.view.copy.includes(k);
+  const code = c.input.linkPairing?.code ?? "";
+  const reported = has("linkPairing.reported")
+    ? "linkPairing.reported"
+    : "linkPairing.reportedUnnamed";
+  return (
+    <>
+      <span
+        className="pair-code"
+        role="text"
+        data-key="a11y.linkCode"
+        aria-label={
+          has("a11y.linkCode")
+            ? plain(c, "a11y.linkCode", { code: spellOut(code) })
+            : spellOut(code)
+        }
+      >
+        {code}
+      </span>
+      <p className="pair-reported" data-key={reported}>
+        {text(c, reported)}
+      </p>
+    </>
+  );
+}
+
+/**
+ * What each state draws in its `content`: in the DOM order the person reads and acts in. The actions
+ * sit in a wrapper that is not the card's direct child, so the kit's docked action bar never applies:
+ * they flow after the categories, and Codes match cannot be on screen before what would be shared.
+ */
 function PairBody(props: {
   c: KitCtx;
   labels?: Readonly<Record<string, string>>;
 }): ReactNode {
   const { c, labels } = props;
-  const has = (k: string) => c.view.copy.includes(k);
+  const act = (keys: string[]) => (
+    <div className="pair-actions">{actions(c, keys)}</div>
+  );
   switch (c.view.state) {
     case "open":
       return (
@@ -249,56 +306,55 @@ function PairBody(props: {
             <span className="pair-dot" aria-hidden="true" />
             <span>{text(c, "linkPairing.searching")}</span>
           </p>
-          {actions(c, ["common.cancel"])}
+          {act(["common.cancel"])}
         </>
       );
-    case "code": {
-      const code = c.input.linkPairing?.code ?? "";
-      const reported = has("linkPairing.reported")
-        ? "linkPairing.reported"
-        : "linkPairing.reportedUnnamed";
+    case "code":
       return (
         <>
-          <span
-            className="pair-code"
-            role="text"
-            data-key="a11y.linkCode"
-            aria-label={
-              has("a11y.linkCode")
-                ? plain(c, "a11y.linkCode", { code: spellOut(code) })
-                : spellOut(code)
-            }
-          >
-            {code}
-          </span>
-          <p className="pair-reported" data-key={reported}>
-            {text(c, reported)}
-          </p>
+          <CodeBlock c={c} />
           <Categories c={c} labels={labels} />
-          {actions(c, ["linkPairing.confirm", "linkPairing.decline"])}
+          {act(["linkPairing.confirm", "linkPairing.decline"])}
         </>
       );
-    }
     case "confirm":
+      // The other person may still be comparing against this screen: the code stays, and the wait is
+      // said in the status region.
       return (
         <>
+          <CodeBlock c={c} />
+          <Categories c={c} labels={labels} />
           <p className="pair-wait" role="status">
             <span className="pair-dot" aria-hidden="true" />
+            <span className="visually-hidden">
+              {plain(c, "linkPairing.waiting")}
+            </span>
           </p>
-          {actions(c, ["common.cancel"])}
+          {act(["common.cancel"])}
         </>
       );
     case "linked":
       return (
         <>
           <Categories c={c} labels={labels} />
-          {actions(c, ["common.done"])}
+          {act(["common.done"])}
         </>
       );
     case "failed":
-      return actions(c, ["common.tryAgain", "common.done"]);
+      return act(["common.tryAgain", "common.done"]);
     case "unavailable":
-      return actions(c, ["common.done"]);
+      // The explanation comes before Done, on screen and in reading order.
+      return (
+        <>
+          <p
+            className="body"
+            data-key="core.codes.connect_links_disabled.message"
+          >
+            {text(c, "core.codes.connect_links_disabled.message")}
+          </p>
+          {act(["common.done"])}
+        </>
+      );
     default:
       return null;
   }
@@ -317,13 +373,7 @@ export function LinkPairing(props: LinkPairingProps): ReactNode {
       {...props}
       name="LinkPairing"
       input={props.input ?? {}}
-      escape={(v) =>
-        v.copy.includes("linkPairing.decline")
-          ? "linkPairing.decline"
-          : v.copy.includes("common.cancel")
-            ? "common.cancel"
-            : null
-      }
+      escape={pairEscape}
       body={(c) => <PairBody c={c} labels={props.categoryLabels} />}
       route={(a) => {
         if (a.key === "common.done" || a.key === "common.cancel")
@@ -358,13 +408,7 @@ function DrivenPairing(
       {...props}
       name="LinkPairing"
       input={pair.input}
-      escape={(v) =>
-        v.copy.includes("linkPairing.decline")
-          ? "linkPairing.decline"
-          : v.copy.includes("common.cancel")
-            ? "common.cancel"
-            : null
-      }
+      escape={pairEscape}
       body={(c) => <PairBody c={c} labels={props.categoryLabels} />}
       route={(a) => {
         switch (a.key) {
@@ -406,7 +450,22 @@ const offerEscape = (v: View): string | null =>
     ? "transferOffer.decline"
     : v.copy.includes("common.cancel")
       ? "common.cancel"
-      : null;
+      : v.copy.includes("common.done")
+        ? "common.done"
+        : null;
+
+/** The offer's own row: the whole file name, clamped, apart from the heading; a bar while receiving. */
+function offerBody(c: KitCtx): ReactNode {
+  const name = c.input.transferOffer?.name ?? "";
+  if (c.view.state === "ask" && name !== "")
+    return (
+      <p className="pair-file" data-part="file">
+        <bdi>{name}</bdi>
+      </p>
+    );
+  if (c.view.state === "receiving") return progressBar(c, undefined);
+  return null;
+}
 
 /**
  * A contact offers to send something: its label and the name it chose, Accept and Decline
@@ -421,6 +480,7 @@ export function TransferOffer(props: TransferOfferProps): ReactNode {
       name="TransferOffer"
       input={props.input ?? {}}
       escape={offerEscape}
+      body={offerBody}
       route={(a) => {
         if (
           a.key === "transferOffer.decline" ||
@@ -448,6 +508,7 @@ function DrivenOffer(
       name="TransferOffer"
       input={offer.input}
       escape={offerEscape}
+      body={offerBody}
       route={(a) => {
         switch (a.key) {
           case "transferOffer.accept":

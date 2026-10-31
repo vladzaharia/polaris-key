@@ -1739,6 +1739,7 @@
     "linkPairing.waiting": "En attente de leur confirmation",
     "linkPairing.linkedTitle": "Associé",
     "linkPairing.linkedBody": "Vous pouvez désormais vous connecter sans code.",
+    "linkPairing.linkedWith": "Associé à {device}.",
     "linkPairing.failedTitle": "Association impossible",
     "linkPairing.failedDeclined": "Quelqu’un a refusé. Rien n’a été associé.",
     "linkPairing.failedTimeout": "Le temps est écoulé avant votre confirmation à tous les deux. Rien n’a été associé.",

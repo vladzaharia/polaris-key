@@ -971,6 +971,7 @@
   "linkPairing.waiting": "In attesa della loro conferma",
   "linkPairing.linkedTitle": "Collegato",
   "linkPairing.linkedBody": "Ora potete collegarvi senza codice.",
+  "linkPairing.linkedWith": "Collegato con {device}.",
   "linkPairing.failedTitle": "Impossibile collegare",
   "linkPairing.failedDeclined": "Qualcuno ha rifiutato. Non è stato collegato nulla.",
   "linkPairing.failedTimeout": "Il tempo è scaduto prima che confermaste entrambi. Non è stato collegato nulla.",

@@ -5699,7 +5699,7 @@ msgstr "Pídele que abra esto en su dispositivo. Estad cerca, en la misma red."
 msgid "linkPairing.searching"
 msgstr "Buscando dispositivos cercanos…"
 
-#. Compare the Code
+#. Compare the code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
 msgstr "Compara el código"
@@ -5749,7 +5749,7 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr "No coinciden"
 
-#. Waiting for Them to Confirm
+#. Waiting for them to confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
 msgstr "Esperando su confirmación"
@@ -5764,7 +5764,12 @@ msgstr "Vinculado"
 msgid "linkPairing.linkedBody"
 msgstr "Ahora podéis conectaros sin código."
 
-#. Couldn’t Pair
+#. Paired with {device}.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label.
+msgid "linkPairing.linkedWith"
+msgstr "Vinculado con {device}."
+
+#. Couldn’t pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
 msgstr "No se pudo vincular"

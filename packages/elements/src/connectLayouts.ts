@@ -22,6 +22,7 @@ export const CONNECT_LAYOUTS: Readonly<Record<ConnectScreenName, Layout>> = {
       "linkPairing.sharesNone",
       "linkPairing.confirm",
       "linkPairing.decline",
+      "core.codes.connect_links_disabled.message",
       "common.tryAgain",
       "common.cancel",
       "common.done",

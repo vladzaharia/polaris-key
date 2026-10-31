@@ -13402,24 +13402,53 @@
       }
     },
     {
-      "name": "LinkPairing/confirm: waiting for the other person",
+      "name": "LinkPairing/confirm: waiting for the other person, the code still on screen",
       "input": {
         "linkPairing": {
           "step": "confirm",
           "code": "123 456",
+          "device": "Maya's laptop",
           "categories": ["contacts", "photos"]
         }
       },
       "expect": {
         "component": "LinkPairing",
         "state": "confirm",
-        "copy": ["common.cancel", "linkPairing.waiting"],
+        "copy": [
+          "a11y.linkCode",
+          "common.cancel",
+          "linkPairing.reported",
+          "linkPairing.shares",
+          "linkPairing.waiting"
+        ],
         "actions": ["cancel"]
       },
       "mustNot": {
         "invariant": "Waiting never reads as linked.",
         "states": ["linked"],
         "copy": ["linkPairing.linkedTitle"]
+      }
+    },
+    {
+      "name": "LinkPairing/confirm: the device gave no name and nothing is shared",
+      "input": {
+        "linkPairing": {
+          "step": "confirm",
+          "code": "123 456",
+          "categories": []
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "confirm",
+        "copy": [
+          "a11y.linkCode",
+          "common.cancel",
+          "linkPairing.reportedUnnamed",
+          "linkPairing.sharesNone",
+          "linkPairing.waiting"
+        ],
+        "actions": ["cancel"]
       }
     },
     {
@@ -13436,8 +13465,8 @@
         "state": "linked",
         "copy": [
           "common.done",
-          "linkPairing.linkedBody",
           "linkPairing.linkedTitle",
+          "linkPairing.linkedWith",
           "linkPairing.shares"
         ]
       }
@@ -13479,7 +13508,11 @@
       "mustNot": {
         "invariant": "A session that ended without a link never says it linked.",
         "states": ["linked"],
-        "copy": ["linkPairing.linkedBody", "linkPairing.linkedTitle"]
+        "copy": [
+          "linkPairing.linkedBody",
+          "linkPairing.linkedTitle",
+          "linkPairing.linkedWith"
+        ]
       }
     },
     {
@@ -13505,7 +13538,11 @@
       "mustNot": {
         "invariant": "A session that ended without a link never says it linked.",
         "states": ["linked"],
-        "copy": ["linkPairing.linkedBody", "linkPairing.linkedTitle"]
+        "copy": [
+          "linkPairing.linkedBody",
+          "linkPairing.linkedTitle",
+          "linkPairing.linkedWith"
+        ]
       }
     },
     {
@@ -13531,7 +13568,11 @@
       "mustNot": {
         "invariant": "A session that ended without a link never says it linked.",
         "states": ["linked"],
-        "copy": ["linkPairing.linkedBody", "linkPairing.linkedTitle"]
+        "copy": [
+          "linkPairing.linkedBody",
+          "linkPairing.linkedTitle",
+          "linkPairing.linkedWith"
+        ]
       }
     },
     {
@@ -13557,7 +13598,11 @@
       "mustNot": {
         "invariant": "A session that ended without a link never says it linked.",
         "states": ["linked"],
-        "copy": ["linkPairing.linkedBody", "linkPairing.linkedTitle"]
+        "copy": [
+          "linkPairing.linkedBody",
+          "linkPairing.linkedTitle",
+          "linkPairing.linkedWith"
+        ]
       }
     },
     {

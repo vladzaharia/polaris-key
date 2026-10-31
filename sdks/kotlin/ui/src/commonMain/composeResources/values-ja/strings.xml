@@ -2149,6 +2149,8 @@
     <string name="linkPairing_linkedTitle">リンクしました</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made. -->
     <string name="linkPairing_linkedBody">今後はコードなしで接続できます。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label. Arguments: 1=device. -->
+    <string name="linkPairing_linkedWith">%1$sとリンクしました。</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link. -->
     <string name="linkPairing_failedTitle">リンクできませんでした</string>
     <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code. -->

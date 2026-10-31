@@ -152,7 +152,9 @@ describe("the connect screens at the §7.1 rows", () => {
                 '.btn[data-variant="primary"]',
               ),
             ].find(visible);
-            if (primary && size.rootPx === 16) {
+            // The code step is exempt: its actions flow after what is shared (see the next suite), they are
+            // not docked into the first viewport.
+            if (primary && size.rootPx === 16 && row.expect.state !== "code") {
               const r = primary.getBoundingClientRect();
               expect(r.top).toBeGreaterThanOrEqual(-0.5);
               expect(
@@ -212,6 +214,69 @@ describe("text scales with the root font", () => {
     const big = await sizeAt(32);
     base.forEach((b, i) => expect(big[i]! / b).toBeCloseTo(2, 1));
   });
+});
+
+// What the person would share is never behind, or after, Codes match: the actions flow after the
+// categories (no docked bar), so wherever Codes match is on screen the shares are above it and not covered.
+describe("the code step keeps what is shared above Codes match", () => {
+  const SIX = [
+    "contacts",
+    "photos",
+    "notes",
+    "calendar",
+    "tax-forms",
+    "bookmarks",
+  ];
+  const base = SCENES.find((s) => s.expect.state === "code")!;
+  const row: Row = {
+    ...base,
+    input: {
+      ...base.input,
+      linkPairing: { ...(base.input as any).linkPairing, categories: SIX },
+    } as UiInput,
+  };
+  const CASES = [
+    { label: "390x844@200", width: 390, height: 844, rootPx: 32 },
+    { label: "320x256 (400 % zoom)", width: 320, height: 256, rootPx: 16 },
+    { label: "844x390", width: 844, height: 390, rootPx: 16 },
+    { label: "640x360", width: 640, height: 360, rootPx: 16 },
+    { label: "1440x900@200", width: 1440, height: 900, rootPx: 32 },
+  ];
+  for (const c of CASES)
+    it(`${c.label}: shares above Codes match and never covered`, async () => {
+      await page.viewport(c.width, c.height);
+      const kit = await mount(row, "light", c.rootPx);
+      const shares = kit.querySelector<HTMLElement>('[data-part="shares"]')!;
+      const confirm = kit.querySelector<HTMLElement>(
+        '[data-key="linkPairing.confirm"]',
+      )!;
+      const reported = kit.querySelector<HTMLElement>(".pair-reported")!;
+      expect(
+        reported.compareDocumentPosition(confirm) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+        "the device line comes before Codes match",
+      ).toBeTruthy();
+      const cr = confirm.getBoundingClientRect();
+      const sr = shares.getBoundingClientRect();
+      expect(sr.bottom, "the shares end above Codes match").toBeLessThanOrEqual(
+        cr.top + 0.5,
+      );
+      // Scroll Codes match into view: the shares stay out of its way, and nothing sits over them.
+      confirm.scrollIntoView({ block: "end" });
+      await nextFrame();
+      const s2 = shares.getBoundingClientRect();
+      const midY = Math.min(Math.max(s2.top, 0) + 4, innerHeight - 1);
+      if (s2.bottom > 0 && s2.top < innerHeight) {
+        const hit = document.elementFromPoint(s2.left + 4, midY);
+        expect(hit && shares.contains(hit), "something covers the shares").toBe(
+          true,
+        );
+      }
+      expect(
+        document.documentElement.scrollWidth,
+        "sideways scroll",
+      ).toBeLessThanOrEqual(document.documentElement.clientWidth + 1);
+    });
 });
 
 describe("keyboard", () => {

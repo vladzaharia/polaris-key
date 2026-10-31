@@ -1739,6 +1739,7 @@
     "linkPairing.waiting": "상대방의 확인을 기다리는 중",
     "linkPairing.linkedTitle": "연결됨",
     "linkPairing.linkedBody": "이제 코드 없이 연결할 수 있습니다.",
+    "linkPairing.linkedWith": "{device}와(과) 연결됨.",
     "linkPairing.failedTitle": "연결하지 못했습니다",
     "linkPairing.failedDeclined": "누군가 거절했습니다. 연결된 것이 없습니다.",
     "linkPairing.failedTimeout": "두 사람이 확인하기 전에 시간이 끝났습니다. 연결된 것이 없습니다.",

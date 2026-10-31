@@ -1450,12 +1450,21 @@
           ]
         },
         "confirm": {
-          "copy": ["linkPairing.waiting", "common.cancel"]
+          "copy": [
+            "linkPairing.waiting",
+            "a11y.linkCode",
+            "linkPairing.reported",
+            "linkPairing.reportedUnnamed",
+            "linkPairing.shares",
+            "linkPairing.sharesNone",
+            "common.cancel"
+          ]
         },
         "linked": {
           "copy": [
             "linkPairing.linkedTitle",
             "linkPairing.linkedBody",
+            "linkPairing.linkedWith",
             "linkPairing.shares",
             "linkPairing.sharesNone",
             "common.done"

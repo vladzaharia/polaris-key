@@ -1739,6 +1739,7 @@
     "linkPairing.waiting": "正在等待对方确认",
     "linkPairing.linkedTitle": "已建立链接",
     "linkPairing.linkedBody": "现在无需验证码即可连接。",
+    "linkPairing.linkedWith": "已与{device}建立链接。",
     "linkPairing.failedTitle": "无法建立链接",
     "linkPairing.failedDeclined": "有人拒绝了。未建立任何链接。",
     "linkPairing.failedTimeout": "双方确认前已超时。未建立任何链接。",

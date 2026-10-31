@@ -60,9 +60,18 @@ export function linkPairingView(
         focus: "heading",
       });
     case "confirm":
+      // This person confirmed; the other may still be comparing against this screen, so the code, the
+      // reported line and the categories stay until the pairing completes or fails.
       return makeView(ctx, "LinkPairing", {
         state: "confirm",
-        copy: ["linkPairing.waiting", "common.cancel"],
+        copy: [
+          "linkPairing.waiting",
+          p.code && "a11y.linkCode",
+          device ? "linkPairing.reported" : "linkPairing.reportedUnnamed",
+          none ? "linkPairing.sharesNone" : "linkPairing.shares",
+          "common.cancel",
+        ],
+        args: { device, code: p.code },
         focus: "heading",
       });
     case "linked":
@@ -70,10 +79,11 @@ export function linkPairingView(
         state: "linked",
         copy: [
           "linkPairing.linkedTitle",
-          "linkPairing.linkedBody",
+          device ? "linkPairing.linkedWith" : "linkPairing.linkedBody",
           none ? "linkPairing.sharesNone" : "linkPairing.shares",
           "common.done",
         ],
+        args: { device },
         primary: "common.done",
         focus: "heading",
       });
@@ -87,7 +97,8 @@ export function linkPairingView(
           "common.tryAgain",
           "common.done",
         ],
-        primary: "common.tryAgain",
+        // "full" cannot succeed until a pairing is removed: Done leads, Try again stays available.
+        primary: reason === "full" ? "common.done" : "common.tryAgain",
         tone: reason === "closed" ? "danger" : "neutral",
         errorSlot: reason === "closed" ? "screen" : null,
         focus: "heading",
@@ -128,6 +139,21 @@ export type TransferOfferState =
   | "failed"
   | "hidden";
 
+/** A name for a heading: at most [limit] characters, the middle elided so the extension stays. */
+export function shortName(name: string, limit = 40): string {
+  const chars = [...name];
+  if (chars.length <= limit) return name;
+  const keep = limit - 1;
+  const tail = Math.ceil(keep / 2);
+  return `${chars.slice(0, keep - tail).join("")}…${chars.slice(chars.length - tail).join("")}`;
+}
+
+/** A category id as words when the app gave it no label: "photos" → "Photos", "tax-forms" → "Tax forms". */
+export function categoryFallback(id: string): string {
+  const words = id.replace(/-+/g, " ").trim();
+  return words === "" ? id : words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 /** The prompt for something a contact offers, and what follows Accept. */
 export function transferOfferView(
   ctx: Context,
@@ -135,7 +161,8 @@ export function transferOfferView(
   const t = ctx.input.transferOffer;
   if (!ctx.on("connect") || !t) return hiddenView(ctx, "TransferOffer");
   const device = t.device?.trim() ? t.device : undefined;
-  const args = { device, name: t.name };
+  // The title carries a shortened name; the kit shows the whole one on its own row.
+  const args = { device, name: shortName(t.name) };
   switch (t.step) {
     case "receiving":
       return makeView(ctx, "TransferOffer", {

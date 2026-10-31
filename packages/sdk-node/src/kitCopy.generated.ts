@@ -1155,7 +1155,7 @@ export const KIT_COPY: Readonly<
     "linkPairing.openBody":
       "Ask them to open this on their device. Stay close, on the same network.",
     "linkPairing.searching": "Looking for nearby devices…",
-    "linkPairing.codeTitle": "Compare the Code",
+    "linkPairing.codeTitle": "Compare the code",
     "linkPairing.codeBody": "Both screens must show this code.",
     "linkPairing.reported": "Reported by the device: {device}",
     "linkPairing.reportedUnnamed": "The device gave no name",
@@ -1163,10 +1163,11 @@ export const KIT_COPY: Readonly<
     "linkPairing.sharesNone": "Nothing is shared yet.",
     "linkPairing.confirm": "Codes match",
     "linkPairing.decline": "Not a match",
-    "linkPairing.waiting": "Waiting for Them to Confirm",
+    "linkPairing.waiting": "Waiting for them to confirm",
     "linkPairing.linkedTitle": "Paired",
     "linkPairing.linkedBody": "You can now connect without a code.",
-    "linkPairing.failedTitle": "Couldn’t Pair",
+    "linkPairing.linkedWith": "Paired with {device}.",
+    "linkPairing.failedTitle": "Couldn’t pair",
     "linkPairing.failedDeclined": "Someone said no. Nothing was paired.",
     "linkPairing.failedTimeout":
       "Time ran out before you both confirmed. Nothing was paired.",
@@ -3127,6 +3128,7 @@ export const KIT_COPY: Readonly<
     "linkPairing.waiting": "Warten auf die Bestätigung der anderen Person",
     "linkPairing.linkedTitle": "Verknüpft",
     "linkPairing.linkedBody": "Ihr könnt euch jetzt ohne Code verbinden.",
+    "linkPairing.linkedWith": "Verknüpft mit {device}.",
     "linkPairing.failedTitle": "Verknüpfen nicht möglich",
     "linkPairing.failedDeclined":
       "Jemand hat abgelehnt. Es wurde nichts verknüpft.",
@@ -5096,6 +5098,7 @@ export const KIT_COPY: Readonly<
     "linkPairing.waiting": "En attente de leur confirmation",
     "linkPairing.linkedTitle": "Associé",
     "linkPairing.linkedBody": "Vous pouvez désormais vous connecter sans code.",
+    "linkPairing.linkedWith": "Associé à {device}.",
     "linkPairing.failedTitle": "Association impossible",
     "linkPairing.failedDeclined": "Quelqu’un a refusé. Rien n’a été associé.",
     "linkPairing.failedTimeout":
@@ -7054,6 +7057,7 @@ export const KIT_COPY: Readonly<
     "linkPairing.waiting": "Esperando su confirmación",
     "linkPairing.linkedTitle": "Vinculado",
     "linkPairing.linkedBody": "Ahora podéis conectaros sin código.",
+    "linkPairing.linkedWith": "Vinculado con {device}.",
     "linkPairing.failedTitle": "No se pudo vincular",
     "linkPairing.failedDeclined": "Alguien dijo que no. No se vinculó nada.",
     "linkPairing.failedTimeout":
@@ -9002,6 +9006,7 @@ export const KIT_COPY: Readonly<
     "linkPairing.waiting": "Aguardando a confirmação da outra pessoa",
     "linkPairing.linkedTitle": "Vinculado",
     "linkPairing.linkedBody": "Agora vocês podem se conectar sem código.",
+    "linkPairing.linkedWith": "Vinculado a {device}.",
     "linkPairing.failedTitle": "Não foi possível vincular",
     "linkPairing.failedDeclined": "Alguém recusou. Nada foi vinculado.",
     "linkPairing.failedTimeout":
@@ -10928,6 +10933,7 @@ export const KIT_COPY: Readonly<
     "linkPairing.waiting": "In attesa della loro conferma",
     "linkPairing.linkedTitle": "Collegato",
     "linkPairing.linkedBody": "Ora potete collegarvi senza codice.",
+    "linkPairing.linkedWith": "Collegato con {device}.",
     "linkPairing.failedTitle": "Impossibile collegare",
     "linkPairing.failedDeclined":
       "Qualcuno ha rifiutato. Non è stato collegato nulla.",
@@ -12889,6 +12895,7 @@ export const KIT_COPY: Readonly<
     "linkPairing.waiting": "相手の確認を待っています",
     "linkPairing.linkedTitle": "リンクしました",
     "linkPairing.linkedBody": "今後はコードなしで接続できます。",
+    "linkPairing.linkedWith": "{device}とリンクしました。",
     "linkPairing.failedTitle": "リンクできませんでした",
     "linkPairing.failedDeclined":
       "どちらかが拒否しました。何もリンクされていません。",
@@ -14797,6 +14804,7 @@ export const KIT_COPY: Readonly<
     "linkPairing.waiting": "상대방의 확인을 기다리는 중",
     "linkPairing.linkedTitle": "연결됨",
     "linkPairing.linkedBody": "이제 코드 없이 연결할 수 있습니다.",
+    "linkPairing.linkedWith": "{device}와(과) 연결됨.",
     "linkPairing.failedTitle": "연결하지 못했습니다",
     "linkPairing.failedDeclined": "누군가 거절했습니다. 연결된 것이 없습니다.",
     "linkPairing.failedTimeout":
@@ -16588,6 +16596,7 @@ export const KIT_COPY: Readonly<
     "linkPairing.waiting": "正在等待对方确认",
     "linkPairing.linkedTitle": "已建立链接",
     "linkPairing.linkedBody": "现在无需验证码即可连接。",
+    "linkPairing.linkedWith": "已与{device}建立链接。",
     "linkPairing.failedTitle": "无法建立链接",
     "linkPairing.failedDeclined": "有人拒绝了。未建立任何链接。",
     "linkPairing.failedTimeout": "双方确认前已超时。未建立任何链接。",

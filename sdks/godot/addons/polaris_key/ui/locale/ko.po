@@ -5673,7 +5673,7 @@ msgstr "상대방도 자신의 기기에서 이 화면을 열어 주세요. 가�
 msgid "linkPairing.searching"
 msgstr "근처 기기를 찾는 중…"
 
-#. Compare the Code
+#. Compare the code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
 msgstr "코드 비교"
@@ -5723,7 +5723,7 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr "일치하지 않음"
 
-#. Waiting for Them to Confirm
+#. Waiting for them to confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
 msgstr "상대방의 확인을 기다리는 중"
@@ -5738,7 +5738,12 @@ msgstr "연결됨"
 msgid "linkPairing.linkedBody"
 msgstr "이제 코드 없이 연결할 수 있습니다."
 
-#. Couldn’t Pair
+#. Paired with {device}.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label.
+msgid "linkPairing.linkedWith"
+msgstr "{device}와(과) 연결됨."
+
+#. Couldn’t pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
 msgstr "연결하지 못했습니다"

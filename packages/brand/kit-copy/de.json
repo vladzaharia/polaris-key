@@ -1739,6 +1739,7 @@
     "linkPairing.waiting": "Warten auf die Bestätigung der anderen Person",
     "linkPairing.linkedTitle": "Verknüpft",
     "linkPairing.linkedBody": "Ihr könnt euch jetzt ohne Code verbinden.",
+    "linkPairing.linkedWith": "Verknüpft mit {device}.",
     "linkPairing.failedTitle": "Verknüpfen nicht möglich",
     "linkPairing.failedDeclined": "Jemand hat abgelehnt. Es wurde nichts verknüpft.",
     "linkPairing.failedTimeout": "Die Zeit ist abgelaufen, bevor ihr beide bestätigt habt. Es wurde nichts verknüpft.",

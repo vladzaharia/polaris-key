@@ -971,6 +971,7 @@
   "linkPairing.waiting": "相手の確認を待っています",
   "linkPairing.linkedTitle": "リンクしました",
   "linkPairing.linkedBody": "今後はコードなしで接続できます。",
+  "linkPairing.linkedWith": "{device}とリンクしました。",
   "linkPairing.failedTitle": "リンクできませんでした",
   "linkPairing.failedDeclined": "どちらかが拒否しました。何もリンクされていません。",
   "linkPairing.failedTimeout": "二人が確認する前に時間切れになりました。何もリンクされていません。",

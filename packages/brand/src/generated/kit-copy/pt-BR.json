@@ -971,6 +971,7 @@
   "linkPairing.waiting": "Aguardando a confirmação da outra pessoa",
   "linkPairing.linkedTitle": "Vinculado",
   "linkPairing.linkedBody": "Agora vocês podem se conectar sem código.",
+  "linkPairing.linkedWith": "Vinculado a {device}.",
   "linkPairing.failedTitle": "Não foi possível vincular",
   "linkPairing.failedDeclined": "Alguém recusou. Nada foi vinculado.",
   "linkPairing.failedTimeout": "O tempo acabou antes de vocês dois confirmarem. Nada foi vinculado.",

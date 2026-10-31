@@ -5686,10 +5686,10 @@ msgstr "Ask them to open this on their device. Stay close, on the same network."
 msgid "linkPairing.searching"
 msgstr "Looking for nearby devices…"
 
-#. Compare the Code
+#. Compare the code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
-msgstr "Compare the Code"
+msgstr "Compare the code"
 
 #. Both screens must show this code.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms.
@@ -5736,10 +5736,10 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr "Not a Match"
 
-#. Waiting for Them to Confirm
+#. Waiting for them to confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
-msgstr "Waiting for Them to Confirm"
+msgstr "Waiting for them to confirm"
 
 #. Paired
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
@@ -5751,10 +5751,15 @@ msgstr "Paired"
 msgid "linkPairing.linkedBody"
 msgstr "You can now connect without a code."
 
-#. Couldn’t Pair
+#. Paired with {device}.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label.
+msgid "linkPairing.linkedWith"
+msgstr "Paired with {device}."
+
+#. Couldn’t pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
-msgstr "Couldn’t Pair"
+msgstr "Couldn’t pair"
 
 #. Someone said no. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.

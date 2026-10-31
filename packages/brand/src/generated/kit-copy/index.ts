@@ -985,6 +985,7 @@ export type KitCopyKey =
   | "linkPairing.waiting"
   | "linkPairing.linkedTitle"
   | "linkPairing.linkedBody"
+  | "linkPairing.linkedWith"
   | "linkPairing.failedTitle"
   | "linkPairing.failedDeclined"
   | "linkPairing.failedTimeout"
