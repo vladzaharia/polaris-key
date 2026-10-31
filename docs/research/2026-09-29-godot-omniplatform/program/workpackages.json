@@ -18939,7 +18939,7 @@
       "estimateWeeks": [0.6, 0.8],
       "deps": ["CC-05", "CC-07", "CC-26"],
       "planMode": false,
-      "gates": ["all-sdks", "corpus-runner", "security-review"],
+      "gates": ["plan-mode", "all-sdks", "corpus-runner", "security-review"],
       "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
@@ -19726,6 +19726,27 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-sync.md §5, §7", "plans/CC-01.md §4"],
       "brief": "wp/U-45-security-review-sdk-keys.md",
+      "status": "todo"
+    },
+    {
+      "id": "U-46",
+      "title": "collection(): records beyond saves in every SDK",
+      "phase": "U",
+      "stage": "U3 collections",
+      "lane": "sdk",
+      "role": "pkey-sdk-porter",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["U-09", "U-22", "U-23"],
+      "planMode": true,
+      "gates": ["plan-mode", "all-sdks", "corpus-runner", "security-review"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "plans/C-26.md (lead plan, 2026-10-31)",
+        "plans/CC-01-cloud-sync.md §2.7"
+      ],
+      "brief": "wp/U-46-collection-records-every-sdk.md",
       "status": "todo"
     }
   ]
