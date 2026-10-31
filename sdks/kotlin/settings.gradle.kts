@@ -21,6 +21,8 @@
 //     :ui           the Compose UI kit (P6-11)
 //     :billing      polaris-key-billing: Play Billing purchases and restores as licence flags
 //                   (SP-K05); sees :sdk, never :platform or :android
+//     :games        polaris-key-games, Play Games Services v2 sign-in (I-45.5): the server auth code as
+//                   the `pgs` platform identity of autoSignIn; sees :identity, never :sdk or :platform
 //     :godot        the Godot Android plugin (v2) binding :platform, kept with the Godot SDK in
 //                   sdks/godot/native/android (singleton PolarisKeyAndroid)
 //   Build-only:
@@ -98,6 +100,8 @@ if (!jvmOnly && androidSdk) {
     include(":sample-compose-android")
     project(":sample-compose-android").projectDir = file("../../examples/ui/compose-android")
     include(":billing")
+    // Play Games Services v2 sign-in (I-45.5): opt-in, Android-only.
+    include(":games")
     include(":docs-snippets-android")
     // The Compose Desktop blocks of the docs (tagged desktop): JVM, over :ui's desktop target.
     include(":docs-snippets-desktop")

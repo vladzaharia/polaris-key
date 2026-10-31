@@ -164,7 +164,7 @@ internal suspend fun IdentityClient.runProviderSignIn(): AutoSignInResult {
             is ExchangeNonceResult.Issued -> n.nonce
             is ExchangeNonceResult.Ended -> return unavailable(n.outcome)
         }
-        val audience = core.discoveryDocument()?.identity?.exchange?.googleServerClientId
+        val audience = audienceFor(provider.kind)
         val subject = try {
             provider.providerSheet(nonce.value, audience)
         } catch (e: CancellationException) {
@@ -215,7 +215,7 @@ private suspend fun IdentityClient.attempt(provider: PlatformIdentityProvider, s
             is ExchangeNonceResult.Issued -> n.nonce
             is ExchangeNonceResult.Ended -> return unavailable(n.outcome)
         }
-        val audience = core.discoveryDocument()?.identity?.exchange?.googleServerClientId
+        val audience = audienceFor(provider.kind)
         val subject = try {
             if (silent) provider.silent(nonce.value, audience) else provider.sheet(nonce.value, audience)
         } catch (e: CancellationException) {
@@ -277,4 +277,10 @@ private suspend fun IdentityClient.signOutAfterRevocation(provider: PlatformIden
         // signOut() cleans up the installed provider; the one passed in the options is the one that reported it.
         if (provider !== platformProvider.get()) safeCleanup(provider)
     }
+}
+
+/** The client id the provider's token is issued for: Google's audience, or the Play Games server client id. */
+private suspend fun IdentityClient.audienceFor(kind: ExchangeKind): String? {
+    val exchange = core.discoveryDocument()?.identity?.exchange
+    return if (kind == ExchangeKind.pgs) exchange?.pgsServerClientId else exchange?.googleServerClientId
 }

@@ -9,7 +9,7 @@
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay
-// @pkey-feature identity.exchange sync.keyring sync.settings
+// @pkey-feature identity.exchange identity.pgs sync.keyring sync.settings
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -431,7 +431,7 @@ object KotlinReplay {
                 val before = store.getToken()
                 val kind = ExchangeKind.entries.first { it.wire == args["kind"].stringValue }
                 // A step that dials nothing (the product offers no exchange) carries no token; the SDK never reads it.
-                val subject = args["subjectToken"].stringValue ?: "not-a-token"
+                val subject = (if (kind == ExchangeKind.pgs) args["serverAuthCode"].stringValue else args["subjectToken"].stringValue) ?: "not-a-token"
                 try {
                     val outcome = args["nonce"].stringValue?.let { client.identity.exchange(kind, subject, ExchangeNonce(it)) }
                         ?: client.identity.exchangeWithFreshNonce(kind, subject)
@@ -1289,6 +1289,8 @@ class TranscriptTest : ConformanceSuite() {
             // I-45.3: the platform-token exchange.
             "discovery-identity-exchange", "exchange-silent", "exchange-confirm", "exchange-choose", "exchange-no-link",
             "exchange-errors", "exchange-disabled", "exchange-gate-off", "exchange-gate-off-stale",
+            // I-45.5: Play Games' server auth code.
+            "exchange-pgs-silent", "exchange-pgs-no-link", "exchange-pgs-errors",
         )
     }
 }
