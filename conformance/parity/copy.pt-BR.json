@@ -78,12 +78,12 @@
       "message": "Não foi possível configurar este dispositivo para a sincronização. Atualize o app e tente de novo."
     },
     "device_keys_required": {
-      "title": "Dispositivo não vinculado",
-      "message": "Este dispositivo não foi configurado para se vincular aos seus outros. Atualize o app e tente novamente."
+      "title": "Dispositivo não configurado para conectar",
+      "message": "Este dispositivo não foi configurado para se conectar aos seus outros. Atualize o app e tente novamente."
     },
     "ring_too_large": {
       "title": "Dispositivos demais",
-      "message": "Esta conta tem mais dispositivos vinculados do que é possível conectar. Remova um e tente novamente."
+      "message": "Esta conta tem mais dispositivos do que é possível conectar. Remova um e tente novamente."
     },
     "relay_disabled": {
       "title": "Conexão remota desativada",
@@ -94,7 +94,7 @@
       "message": "A conexão remota está em pausa por enquanto. Tente novamente mais tarde."
     },
     "relay_quota_exceeded": {
-      "title": "Limite remoto atingido",
+      "title": "Limite de conexão remota atingido",
       "message": "O limite de conexão remota acabou. Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando."
     },
     "relay_ticket_invalid": {
@@ -295,7 +295,7 @@
     },
     "encryption_mismatch": {
       "title": "Criptografia incompatível",
-      "message": "O app e o serviço de sincronização não concordam sobre a criptografia. Atualize o app e tente de novo."
+      "message": "O app e o Polaris Locker não concordam sobre a criptografia. Atualize o app e tente de novo."
     },
     "upload_expired": {
       "title": "Envio expirado",
@@ -590,7 +590,7 @@
       "message": "Não foi possível salvar neste dispositivo. Verifique o armazenamento e tente novamente."
     },
     "connect-unavailable": {
-      "title": "Conexão indisponível",
+      "title": "Dispositivos próximos indisponíveis",
       "message": "A conexão com dispositivos próximos não está disponível para este app neste dispositivo."
     },
     "peer-cert-invalid": {

@@ -5864,50 +5864,50 @@ msgstr "Appareil non configuré"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez."
 
-#. Device not linked
+#. Device not set up to connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.title"
-msgstr "Appareil non lié"
+msgstr "Appareil non configuré pour se connecter"
 
-#. This device has not been set up to link with your others. Update the app and try again.
+#. This device has not been set up to connect with your others. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez."
+msgstr "Cet appareil n'a pas été configuré pour se connecter à vos autres appareils. Mettez à jour l'app et réessayez."
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.title"
 msgstr "Trop d'appareils"
 
-#. This account has more linked devices than can be connected. Remove one and try again.
+#. This account has more devices than can be connected. Remove one and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.message"
-msgstr "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez."
+msgstr "Ce compte compte plus d'appareils que l'on ne peut en connecter. Retirez-en un et réessayez."
 
-#. Remote connect is off
+#. Remote connection is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.title"
 msgstr "Connexion à distance désactivée"
 
-#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Remote connection is off for this app. Your devices connect only on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.message"
 msgstr "La connexion à distance est désactivée pour cette app. Vos appareils se connectent uniquement sur le même réseau."
 
-#. Remote connect paused
+#. Remote connection paused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.title"
 msgstr "Connexion à distance en pause"
 
-#. Remote connect is paused for now. Try again later.
+#. Remote connection is paused for now. Try again later.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.message"
 msgstr "La connexion à distance est en pause pour le moment. Réessayez plus tard."
 
-#. Remote limit reached
+#. Remote connection limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.title"
-msgstr "Limite à distance atteinte"
+msgstr "Limite de connexion à distance atteinte"
 
 #. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6409,10 +6409,10 @@ msgstr "La synchronisation est en pause un instant. Vos modifications sont conse
 msgid "core.codes.encryption_mismatch.title"
 msgstr "Chiffrement incompatible"
 
-#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. This app and Polaris Locker don't agree on encryption. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
-msgstr "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez."
+msgstr "L’app et Polaris Locker ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez."
 
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7144,12 +7144,12 @@ msgstr "Problème de stockage"
 msgid "core.codes.store-failed.message"
 msgstr "Enregistrement impossible sur cet appareil. Vérifiez le stockage et réessayez."
 
-#. Connect unavailable
+#. Nearby devices unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.title"
-msgstr "Connexion indisponible"
+msgstr "Appareils à proximité indisponibles"
 
-#. Nearby connection isn't available for this app on this device.
+#. Nearby devices aren't available for this app on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
 msgstr "La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil."

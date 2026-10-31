@@ -5838,50 +5838,50 @@ msgstr "设备未设置"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "无法为同步设置此设备。请更新应用后重试。"
 
-#. Device not linked
+#. Device not set up to connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.title"
-msgstr "设备未关联"
+msgstr "设备未设置连接"
 
-#. This device has not been set up to link with your others. Update the app and try again.
+#. This device has not been set up to connect with your others. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "此设备尚未设置为与你的其他设备关联。请更新应用后重试。"
+msgstr "此设备尚未设置为与你的其他设备连接。请更新应用后重试。"
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.title"
 msgstr "设备过多"
 
-#. This account has more linked devices than can be connected. Remove one and try again.
+#. This account has more devices than can be connected. Remove one and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.message"
-msgstr "此账户关联的设备超出了可连接的数量。请移除一台后重试。"
+msgstr "此账户的设备超出了可连接的数量。请移除一台后重试。"
 
-#. Remote connect is off
+#. Remote connection is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.title"
 msgstr "远程连接已关闭"
 
-#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Remote connection is off for this app. Your devices connect only on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.message"
 msgstr "此应用已关闭远程连接。你的设备仅能在同一网络下连接。"
 
-#. Remote connect paused
+#. Remote connection paused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.title"
 msgstr "远程连接已暂停"
 
-#. Remote connect is paused for now. Try again later.
+#. Remote connection is paused for now. Try again later.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.message"
 msgstr "远程连接暂时暂停。请稍后重试。"
 
-#. Remote limit reached
+#. Remote connection limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.title"
-msgstr "已达远程用量上限"
+msgstr "已达远程连接用量上限"
 
 #. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6383,10 +6383,10 @@ msgstr "同步暂时暂停。你的更改会保留，稍后同步。"
 msgid "core.codes.encryption_mismatch.title"
 msgstr "加密不一致"
 
-#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. This app and Polaris Locker don't agree on encryption. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
-msgstr "应用与同步服务的加密设置不一致。请更新应用后重试。"
+msgstr "应用与 Polaris Locker 的加密设置不一致。请更新应用后重试。"
 
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7118,12 +7118,12 @@ msgstr "存储出现问题"
 msgid "core.codes.store-failed.message"
 msgstr "无法保存到此设备。请检查存储空间后重试。"
 
-#. Connect unavailable
+#. Nearby devices unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.title"
-msgstr "无法连接"
+msgstr "无法使用附近的设备"
 
-#. Nearby connection isn't available for this app on this device.
+#. Nearby devices aren't available for this app on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
 msgstr "此设备上的此应用无法连接附近的设备。"

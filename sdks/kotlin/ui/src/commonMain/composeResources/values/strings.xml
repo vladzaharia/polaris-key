@@ -2205,23 +2205,23 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_invalid_message">This device could not be set up for sync. Update the app and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_title">Device not linked</string>
+    <string name="core_codes_device_keys_required_title">Device not set up to connect</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">This device has not been set up to link with your others. Update the app and try again.</string>
+    <string name="core_codes_device_keys_required_message">This device has not been set up to connect with your others. Update the app and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">Too many devices</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_ring_too_large_message">This account has more linked devices than can be connected. Remove one and try again.</string>
+    <string name="core_codes_ring_too_large_message">This account has more devices than can be connected. Remove one and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_disabled_title">Remote connect is off</string>
+    <string name="core_codes_relay_disabled_title">Remote connection is off</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_disabled_message">Remote connect is off for this app. Your devices connect only on the same network.</string>
+    <string name="core_codes_relay_disabled_message">Remote connection is off for this app. Your devices connect only on the same network.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_paused_title">Remote connect paused</string>
+    <string name="core_codes_relay_paused_title">Remote connection paused</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_paused_message">Remote connect is paused for now. Try again later.</string>
+    <string name="core_codes_relay_paused_message">Remote connection is paused for now. Try again later.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_title">Remote limit reached</string>
+    <string name="core_codes_relay_quota_exceeded_title">Remote connection limit reached</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_quota_exceeded_message">The remote connection limit is used up. It resets soon. Devices on the same network still connect.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2423,7 +2423,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_title">Encryption mismatch</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_encryption_mismatch_message">This app and the sync service don't agree on encryption. Update the app and try again.</string>
+    <string name="core_codes_encryption_mismatch_message">This app and Polaris Locker don't agree on encryption. Update the app and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_upload_expired_title">Upload expired</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2717,9 +2717,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_message">Couldn't save on this device. Check storage and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_title">Connect unavailable</string>
+    <string name="core_codes_connect_unavailable_title">Nearby devices unavailable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_message">Nearby connection isn't available for this app on this device.</string>
+    <string name="core_codes_connect_unavailable_message">Nearby devices aren't available for this app on this device.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_title">Device not verified</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

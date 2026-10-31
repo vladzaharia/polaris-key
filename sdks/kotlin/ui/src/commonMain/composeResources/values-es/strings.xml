@@ -2218,13 +2218,13 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_invalid_message">No se pudo configurar este dispositivo para la sincronización. Actualiza la app e inténtalo de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_title">Dispositivo no vinculado</string>
+    <string name="core_codes_device_keys_required_title">Dispositivo no configurado para conectarse</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">Este dispositivo no se ha configurado para vincularse con los demás. Actualiza la app e inténtalo de nuevo.</string>
+    <string name="core_codes_device_keys_required_message">Este dispositivo no se ha configurado para conectarse con los demás. Actualiza la app e inténtalo de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">Demasiados dispositivos</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_ring_too_large_message">Esta cuenta tiene más dispositivos vinculados de los que se pueden conectar. Quita uno e inténtalo de nuevo.</string>
+    <string name="core_codes_ring_too_large_message">Esta cuenta tiene más dispositivos de los que se pueden conectar. Quita uno e inténtalo de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_disabled_title">Conexión remota desactivada</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2234,7 +2234,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_paused_message">La conexión remota está en pausa por ahora. Inténtalo más tarde.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_title">Límite remoto alcanzado</string>
+    <string name="core_codes_relay_quota_exceeded_title">Límite de conexión remota alcanzado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_quota_exceeded_message">Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2436,7 +2436,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_title">Cifrado incompatible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_encryption_mismatch_message">La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo.</string>
+    <string name="core_codes_encryption_mismatch_message">La app y Polaris Locker no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_upload_expired_title">Subida caducada</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2730,7 +2730,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_message">No se pudo guardar en este dispositivo. Comprueba el almacenamiento e inténtalo de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_title">Conexión no disponible</string>
+    <string name="core_codes_connect_unavailable_title">Dispositivos cercanos no disponibles</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_connect_unavailable_message">La conexión con dispositivos cercanos no está disponible para esta app en este dispositivo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

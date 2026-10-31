@@ -285,7 +285,8 @@ const CLDR_ORDER = ["zero", "one", "two", "few", "many", "other"] as const;
 
 /** English values must not use these (S-19 and AGENTS rule 4: license, device, tier). */
 /** LOCKER-FEATURE-NAMES §3: developer feature names never show to a user (kit copy, core copy). */
-const DEV_NAMES = /Cloud Sync|Cloud Connect|Direct Transfer/;
+const DEV_NAMES =
+  /Cloud Sync|Cloud Connect|Direct Transfer|Connect unavailable|Remote connect\b/;
 /**
  * LOCKER-FEATURE-NAMES §2 rule 1 (D-5): English only, these keys are Title Case so a list of labels
  * never mixes cases. Other locales keep their own capitalization and get no such check.

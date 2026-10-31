@@ -2192,13 +2192,13 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_invalid_message">このデバイスを同期用に設定できませんでした。アプリを更新して、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_title">デバイスがリンクされていません</string>
+    <string name="core_codes_device_keys_required_title">デバイスを接続する設定が済んでいません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">このデバイスは、ほかのデバイスとリンクする設定が済んでいません。アプリを更新して、もう一度お試しください。</string>
+    <string name="core_codes_device_keys_required_message">このデバイスは、ほかのデバイスと接続する設定が済んでいません。アプリを更新して、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">デバイスが多すぎます</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_ring_too_large_message">このアカウントのリンク済みデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。</string>
+    <string name="core_codes_ring_too_large_message">このアカウントのデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_disabled_title">リモート接続はオフです</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2410,7 +2410,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_title">暗号化が一致しません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_encryption_mismatch_message">アプリと同期サービスで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。</string>
+    <string name="core_codes_encryption_mismatch_message">アプリとPolaris Lockerで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_upload_expired_title">アップロードの期限切れ</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2704,7 +2704,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_message">このデバイスに保存できませんでした。ストレージを確認して、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_title">接続できません</string>
+    <string name="core_codes_connect_unavailable_title">近くのデバイスは利用できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_connect_unavailable_message">このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

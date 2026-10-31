@@ -5838,12 +5838,12 @@ msgstr "기기를 설정하지 못했어요"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요."
 
-#. Device not linked
+#. Device not set up to connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.title"
-msgstr "기기가 연결되지 않음"
+msgstr "기기를 연결하도록 설정되지 않음"
 
-#. This device has not been set up to link with your others. Update the app and try again.
+#. This device has not been set up to connect with your others. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
 msgstr "이 기기는 다른 기기와 연결하도록 설정되지 않았습니다. 앱을 업데이트한 후 다시 시도하세요."
@@ -5853,32 +5853,32 @@ msgstr "이 기기는 다른 기기와 연결하도록 설정되지 않았습니
 msgid "core.codes.ring_too_large.title"
 msgstr "기기가 너무 많음"
 
-#. This account has more linked devices than can be connected. Remove one and try again.
+#. This account has more devices than can be connected. Remove one and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.message"
 msgstr "이 계정에 연결된 기기가 연결 가능한 수보다 많습니다. 하나를 제거한 후 다시 시도하세요."
 
-#. Remote connect is off
+#. Remote connection is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.title"
 msgstr "원격 연결 꺼짐"
 
-#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Remote connection is off for this app. Your devices connect only on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.message"
 msgstr "이 앱은 원격 연결이 꺼져 있습니다. 기기는 같은 네트워크에서만 연결됩니다."
 
-#. Remote connect paused
+#. Remote connection paused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.title"
 msgstr "원격 연결 일시 중지"
 
-#. Remote connect is paused for now. Try again later.
+#. Remote connection is paused for now. Try again later.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.message"
 msgstr "원격 연결이 잠시 중지되었습니다. 나중에 다시 시도하세요."
 
-#. Remote limit reached
+#. Remote connection limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.title"
 msgstr "원격 연결 한도 도달"
@@ -6383,10 +6383,10 @@ msgstr "동기화가 잠시 일시 중지되었습니다. 변경 사항은 보�
 msgid "core.codes.encryption_mismatch.title"
 msgstr "암호화 불일치"
 
-#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. This app and Polaris Locker don't agree on encryption. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
-msgstr "앱과 동기화 서비스의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요."
+msgstr "앱과 Polaris Locker의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요."
 
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7118,12 +7118,12 @@ msgstr "저장소 문제"
 msgid "core.codes.store-failed.message"
 msgstr "이 기기에 저장하지 못했어요. 저장 공간을 확인하고 다시 시도하세요."
 
-#. Connect unavailable
+#. Nearby devices unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.title"
-msgstr "연결할 수 없음"
+msgstr "근처 기기를 사용할 수 없음"
 
-#. Nearby connection isn't available for this app on this device.
+#. Nearby devices aren't available for this app on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
 msgstr "이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다."

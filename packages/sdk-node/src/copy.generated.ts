@@ -101,26 +101,26 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
       "This device could not be set up for sync. Update the app and try again.",
   },
   device_keys_required: {
-    title: "Device not linked",
+    title: "Device not set up to connect",
     message:
-      "This device has not been set up to link with your others. Update the app and try again.",
+      "This device has not been set up to connect with your others. Update the app and try again.",
   },
   ring_too_large: {
     title: "Too many devices",
     message:
-      "This account has more linked devices than can be connected. Remove one and try again.",
+      "This account has more devices than can be connected. Remove one and try again.",
   },
   relay_disabled: {
-    title: "Remote connect is off",
+    title: "Remote connection is off",
     message:
-      "Remote connect is off for this app. Your devices connect only on the same network.",
+      "Remote connection is off for this app. Your devices connect only on the same network.",
   },
   relay_paused: {
-    title: "Remote connect paused",
-    message: "Remote connect is paused for now. Try again later.",
+    title: "Remote connection paused",
+    message: "Remote connection is paused for now. Try again later.",
   },
   relay_quota_exceeded: {
-    title: "Remote limit reached",
+    title: "Remote connection limit reached",
     message:
       "The remote connection limit is used up. It resets soon. Devices on the same network still connect.",
   },
@@ -352,7 +352,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   encryption_mismatch: {
     title: "Encryption mismatch",
     message:
-      "This app and the sync service don't agree on encryption. Update the app and try again.",
+      "This app and Polaris Locker don't agree on encryption. Update the app and try again.",
   },
   upload_expired: {
     title: "Upload expired",
@@ -667,8 +667,8 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message: "Couldn't save on this device. Check storage and try again.",
   },
   "connect-unavailable": {
-    title: "Connect unavailable",
-    message: "Nearby connection isn't available for this app on this device.",
+    title: "Nearby devices unavailable",
+    message: "Nearby devices aren't available for this app on this device.",
   },
   "peer-cert-invalid": {
     title: "Device not verified",

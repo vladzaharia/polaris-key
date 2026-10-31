@@ -1202,19 +1202,19 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Device not set up",
     "core.codes.device_keys_invalid.message":
       "This device could not be set up for sync. Update the app and try again.",
-    "core.codes.device_keys_required.title": "Device not linked",
+    "core.codes.device_keys_required.title": "Device not set up to connect",
     "core.codes.device_keys_required.message":
-      "This device has not been set up to link with your others. Update the app and try again.",
+      "This device has not been set up to connect with your others. Update the app and try again.",
     "core.codes.ring_too_large.title": "Too many devices",
     "core.codes.ring_too_large.message":
-      "This account has more linked devices than can be connected. Remove one and try again.",
-    "core.codes.relay_disabled.title": "Remote connect is off",
+      "This account has more devices than can be connected. Remove one and try again.",
+    "core.codes.relay_disabled.title": "Remote connection is off",
     "core.codes.relay_disabled.message":
-      "Remote connect is off for this app. Your devices connect only on the same network.",
-    "core.codes.relay_paused.title": "Remote connect paused",
+      "Remote connection is off for this app. Your devices connect only on the same network.",
+    "core.codes.relay_paused.title": "Remote connection paused",
     "core.codes.relay_paused.message":
-      "Remote connect is paused for now. Try again later.",
-    "core.codes.relay_quota_exceeded.title": "Remote limit reached",
+      "Remote connection is paused for now. Try again later.",
+    "core.codes.relay_quota_exceeded.title": "Remote connection limit reached",
     "core.codes.relay_quota_exceeded.message":
       "The remote connection limit is used up. It resets soon. Devices on the same network still connect.",
     "core.codes.relay_ticket_invalid.title": "Connection expired",
@@ -1360,7 +1360,7 @@ export const KIT_COPY: Readonly<
       "Syncing is paused for a moment. Your changes are kept and will sync later.",
     "core.codes.encryption_mismatch.title": "Encryption mismatch",
     "core.codes.encryption_mismatch.message":
-      "This app and the sync service don't agree on encryption. Update the app and try again.",
+      "This app and Polaris Locker don't agree on encryption. Update the app and try again.",
     "core.codes.upload_expired.title": "Upload expired",
     "core.codes.upload_expired.message":
       "This upload took too long and was cancelled. Try again.",
@@ -1571,9 +1571,9 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Storage problem",
     "core.codes.store-failed.message":
       "Couldn't save on this device. Check storage and try again.",
-    "core.codes.connect-unavailable.title": "Connect unavailable",
+    "core.codes.connect-unavailable.title": "Nearby devices unavailable",
     "core.codes.connect-unavailable.message":
-      "Nearby connection isn't available for this app on this device.",
+      "Nearby devices aren't available for this app on this device.",
     "core.codes.peer-cert-invalid.title": "Device not verified",
     "core.codes.peer-cert-invalid.message":
       "This device couldn't be verified. Try again.",
@@ -3097,19 +3097,21 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Gerät nicht eingerichtet",
     "core.codes.device_keys_invalid.message":
       "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut.",
-    "core.codes.device_keys_required.title": "Gerät nicht verknüpft",
+    "core.codes.device_keys_required.title":
+      "Gerät nicht zum Verbinden eingerichtet",
     "core.codes.device_keys_required.message":
-      "Dieses Gerät wurde nicht zum Verknüpfen mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut.",
+      "Dieses Gerät wurde nicht zum Verbinden mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut.",
     "core.codes.ring_too_large.title": "Zu viele Geräte",
     "core.codes.ring_too_large.message":
-      "Dieses Konto hat mehr verknüpfte Geräte, als verbunden werden können. Entferne eines und versuche es erneut.",
+      "Dieses Konto hat mehr Geräte, als verbunden werden können. Entferne eines und versuche es erneut.",
     "core.codes.relay_disabled.title": "Fernverbindung aus",
     "core.codes.relay_disabled.message":
       "Die Fernverbindung ist für diese App ausgeschaltet. Deine Geräte verbinden sich nur im selben Netzwerk.",
     "core.codes.relay_paused.title": "Fernverbindung pausiert",
     "core.codes.relay_paused.message":
       "Die Fernverbindung ist vorübergehend pausiert. Versuche es später erneut.",
-    "core.codes.relay_quota_exceeded.title": "Fernlimit erreicht",
+    "core.codes.relay_quota_exceeded.title":
+      "Limit für Fernverbindungen erreicht",
     "core.codes.relay_quota_exceeded.message":
       "Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.",
     "core.codes.relay_ticket_invalid.title": "Verbindung abgelaufen",
@@ -3264,7 +3266,7 @@ export const KIT_COPY: Readonly<
       "Die Synchronisierung ist kurz pausiert. Ihre Änderungen bleiben erhalten und werden später synchronisiert.",
     "core.codes.encryption_mismatch.title": "Verschlüsselung passt nicht",
     "core.codes.encryption_mismatch.message":
-      "App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut.",
+      "App und Polaris Locker sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut.",
     "core.codes.upload_expired.title": "Upload abgelaufen",
     "core.codes.upload_expired.message":
       "Der Upload hat zu lange gedauert und wurde abgebrochen. Versuchen Sie es erneut.",
@@ -3486,7 +3488,8 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Speicherproblem",
     "core.codes.store-failed.message":
       "Auf diesem Gerät konnte nichts gespeichert werden. Prüfen Sie den Speicher und versuchen Sie es erneut.",
-    "core.codes.connect-unavailable.title": "Verbindung nicht verfügbar",
+    "core.codes.connect-unavailable.title":
+      "Geräte in der Nähe nicht verfügbar",
     "core.codes.connect-unavailable.message":
       "Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar.",
     "core.codes.peer-cert-invalid.title": "Gerät nicht bestätigt",
@@ -4998,19 +5001,21 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Appareil non configuré",
     "core.codes.device_keys_invalid.message":
       "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez.",
-    "core.codes.device_keys_required.title": "Appareil non lié",
+    "core.codes.device_keys_required.title":
+      "Appareil non configuré pour se connecter",
     "core.codes.device_keys_required.message":
-      "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez.",
+      "Cet appareil n'a pas été configuré pour se connecter à vos autres appareils. Mettez à jour l'app et réessayez.",
     "core.codes.ring_too_large.title": "Trop d'appareils",
     "core.codes.ring_too_large.message":
-      "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez.",
+      "Ce compte compte plus d'appareils que l'on ne peut en connecter. Retirez-en un et réessayez.",
     "core.codes.relay_disabled.title": "Connexion à distance désactivée",
     "core.codes.relay_disabled.message":
       "La connexion à distance est désactivée pour cette app. Vos appareils se connectent uniquement sur le même réseau.",
     "core.codes.relay_paused.title": "Connexion à distance en pause",
     "core.codes.relay_paused.message":
       "La connexion à distance est en pause pour le moment. Réessayez plus tard.",
-    "core.codes.relay_quota_exceeded.title": "Limite à distance atteinte",
+    "core.codes.relay_quota_exceeded.title":
+      "Limite de connexion à distance atteinte",
     "core.codes.relay_quota_exceeded.message":
       "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.",
     "core.codes.relay_ticket_invalid.title": "Connexion expirée",
@@ -5166,7 +5171,7 @@ export const KIT_COPY: Readonly<
       "La synchronisation est en pause un instant. Vos modifications sont conservées et seront synchronisées plus tard.",
     "core.codes.encryption_mismatch.title": "Chiffrement incompatible",
     "core.codes.encryption_mismatch.message":
-      "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.",
+      "L’app et Polaris Locker ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.",
     "core.codes.upload_expired.title": "Envoi expiré",
     "core.codes.upload_expired.message":
       "L’envoi a pris trop de temps et a été annulé. Réessayez.",
@@ -5388,7 +5393,8 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Problème de stockage",
     "core.codes.store-failed.message":
       "Enregistrement impossible sur cet appareil. Vérifiez le stockage et réessayez.",
-    "core.codes.connect-unavailable.title": "Connexion indisponible",
+    "core.codes.connect-unavailable.title":
+      "Appareils à proximité indisponibles",
     "core.codes.connect-unavailable.message":
       "La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil.",
     "core.codes.peer-cert-invalid.title": "Appareil non vérifié",
@@ -6885,19 +6891,21 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Dispositivo no configurado",
     "core.codes.device_keys_invalid.message":
       "No se pudo configurar este dispositivo para la sincronización. Actualiza la app e inténtalo de nuevo.",
-    "core.codes.device_keys_required.title": "Dispositivo no vinculado",
+    "core.codes.device_keys_required.title":
+      "Dispositivo no configurado para conectarse",
     "core.codes.device_keys_required.message":
-      "Este dispositivo no se ha configurado para vincularse con los demás. Actualiza la app e inténtalo de nuevo.",
+      "Este dispositivo no se ha configurado para conectarse con los demás. Actualiza la app e inténtalo de nuevo.",
     "core.codes.ring_too_large.title": "Demasiados dispositivos",
     "core.codes.ring_too_large.message":
-      "Esta cuenta tiene más dispositivos vinculados de los que se pueden conectar. Quita uno e inténtalo de nuevo.",
+      "Esta cuenta tiene más dispositivos de los que se pueden conectar. Quita uno e inténtalo de nuevo.",
     "core.codes.relay_disabled.title": "Conexión remota desactivada",
     "core.codes.relay_disabled.message":
       "La conexión remota está desactivada para esta app. Tus dispositivos se conectan solo en la misma red.",
     "core.codes.relay_paused.title": "Conexión remota en pausa",
     "core.codes.relay_paused.message":
       "La conexión remota está en pausa por ahora. Inténtalo más tarde.",
-    "core.codes.relay_quota_exceeded.title": "Límite remoto alcanzado",
+    "core.codes.relay_quota_exceeded.title":
+      "Límite de conexión remota alcanzado",
     "core.codes.relay_quota_exceeded.message":
       "Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose.",
     "core.codes.relay_ticket_invalid.title": "Conexión caducada",
@@ -7056,7 +7064,7 @@ export const KIT_COPY: Readonly<
       "La sincronización está en pausa un momento. Tus cambios se conservan y se sincronizarán más tarde.",
     "core.codes.encryption_mismatch.title": "Cifrado incompatible",
     "core.codes.encryption_mismatch.message":
-      "La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo.",
+      "La app y Polaris Locker no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo.",
     "core.codes.upload_expired.title": "Subida caducada",
     "core.codes.upload_expired.message":
       "La subida tardó demasiado y se canceló. Inténtalo de nuevo.",
@@ -7279,7 +7287,8 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Problema de almacenamiento",
     "core.codes.store-failed.message":
       "No se pudo guardar en este dispositivo. Comprueba el almacenamiento e inténtalo de nuevo.",
-    "core.codes.connect-unavailable.title": "Conexión no disponible",
+    "core.codes.connect-unavailable.title":
+      "Dispositivos cercanos no disponibles",
     "core.codes.connect-unavailable.message":
       "La conexión con dispositivos cercanos no está disponible para esta app en este dispositivo.",
     "core.codes.peer-cert-invalid.title": "Dispositivo no verificado",
@@ -8760,19 +8769,21 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Dispositivo não configurado",
     "core.codes.device_keys_invalid.message":
       "Não foi possível configurar este dispositivo para a sincronização. Atualize o app e tente de novo.",
-    "core.codes.device_keys_required.title": "Dispositivo não vinculado",
+    "core.codes.device_keys_required.title":
+      "Dispositivo não configurado para conectar",
     "core.codes.device_keys_required.message":
-      "Este dispositivo não foi configurado para se vincular aos seus outros. Atualize o app e tente novamente.",
+      "Este dispositivo não foi configurado para se conectar aos seus outros. Atualize o app e tente novamente.",
     "core.codes.ring_too_large.title": "Dispositivos demais",
     "core.codes.ring_too_large.message":
-      "Esta conta tem mais dispositivos vinculados do que é possível conectar. Remova um e tente novamente.",
+      "Esta conta tem mais dispositivos do que é possível conectar. Remova um e tente novamente.",
     "core.codes.relay_disabled.title": "Conexão remota desativada",
     "core.codes.relay_disabled.message":
       "A conexão remota está desativada para este app. Seus dispositivos se conectam apenas na mesma rede.",
     "core.codes.relay_paused.title": "Conexão remota em pausa",
     "core.codes.relay_paused.message":
       "A conexão remota está em pausa por enquanto. Tente novamente mais tarde.",
-    "core.codes.relay_quota_exceeded.title": "Limite remoto atingido",
+    "core.codes.relay_quota_exceeded.title":
+      "Limite de conexão remota atingido",
     "core.codes.relay_quota_exceeded.message":
       "O limite de conexão remota acabou. Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando.",
     "core.codes.relay_ticket_invalid.title": "Conexão expirada",
@@ -8922,7 +8933,7 @@ export const KIT_COPY: Readonly<
       "A sincronização está pausada por um momento. Suas alterações são mantidas e serão sincronizadas depois.",
     "core.codes.encryption_mismatch.title": "Criptografia incompatível",
     "core.codes.encryption_mismatch.message":
-      "O app e o serviço de sincronização não concordam sobre a criptografia. Atualize o app e tente de novo.",
+      "O app e o Polaris Locker não concordam sobre a criptografia. Atualize o app e tente de novo.",
     "core.codes.upload_expired.title": "Envio expirado",
     "core.codes.upload_expired.message":
       "O envio demorou demais e foi cancelado. Tente de novo.",
@@ -9138,7 +9149,8 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Erro de armazenamento",
     "core.codes.store-failed.message":
       "Não foi possível salvar neste dispositivo. Verifique o armazenamento e tente novamente.",
-    "core.codes.connect-unavailable.title": "Conexão indisponível",
+    "core.codes.connect-unavailable.title":
+      "Dispositivos próximos indisponíveis",
     "core.codes.connect-unavailable.message":
       "A conexão com dispositivos próximos não está disponível para este app neste dispositivo.",
     "core.codes.peer-cert-invalid.title": "Dispositivo não verificado",
@@ -10620,19 +10632,21 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Dispositivo non configurato",
     "core.codes.device_keys_invalid.message":
       "Non è stato possibile configurare questo dispositivo per la sincronizzazione. Aggiorna l’app e riprova.",
-    "core.codes.device_keys_required.title": "Dispositivo non collegato",
+    "core.codes.device_keys_required.title":
+      "Dispositivo non configurato per connettersi",
     "core.codes.device_keys_required.message":
-      "Questo dispositivo non è stato configurato per collegarsi agli altri. Aggiorna l'app e riprova.",
+      "Questo dispositivo non è stato configurato per connettersi agli altri. Aggiorna l'app e riprova.",
     "core.codes.ring_too_large.title": "Troppi dispositivi",
     "core.codes.ring_too_large.message":
-      "Questo account ha più dispositivi collegati di quanti se ne possano connettere. Rimuovine uno e riprova.",
+      "Questo account ha più dispositivi di quanti se ne possano connettere. Rimuovine uno e riprova.",
     "core.codes.relay_disabled.title": "Connessione remota disattivata",
     "core.codes.relay_disabled.message":
       "La connessione remota è disattivata per questa app. I tuoi dispositivi si connettono solo sulla stessa rete.",
     "core.codes.relay_paused.title": "Connessione remota in pausa",
     "core.codes.relay_paused.message":
       "La connessione remota è in pausa per ora. Riprova più tardi.",
-    "core.codes.relay_quota_exceeded.title": "Limite remoto raggiunto",
+    "core.codes.relay_quota_exceeded.title":
+      "Limite di connessione remota raggiunto",
     "core.codes.relay_quota_exceeded.message":
       "Il limite della connessione remota è esaurito. Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque.",
     "core.codes.relay_ticket_invalid.title": "Connessione scaduta",
@@ -10788,7 +10802,7 @@ export const KIT_COPY: Readonly<
       "La sincronizzazione è in pausa per un momento. Le tue modifiche restano salvate e verranno sincronizzate più tardi.",
     "core.codes.encryption_mismatch.title": "Crittografia non compatibile",
     "core.codes.encryption_mismatch.message":
-      "L’app e il servizio di sincronizzazione non concordano sulla crittografia. Aggiorna l’app e riprova.",
+      "L’app e Polaris Locker non concordano sulla crittografia. Aggiorna l’app e riprova.",
     "core.codes.upload_expired.title": "Caricamento scaduto",
     "core.codes.upload_expired.message":
       "Il caricamento ha richiesto troppo tempo ed è stato annullato. Riprova.",
@@ -11008,7 +11022,8 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Problema di archiviazione",
     "core.codes.store-failed.message":
       "Impossibile salvare su questo dispositivo. Controlla lo spazio di archiviazione e riprova.",
-    "core.codes.connect-unavailable.title": "Connessione non disponibile",
+    "core.codes.connect-unavailable.title":
+      "Dispositivi nelle vicinanze non disponibili",
     "core.codes.connect-unavailable.message":
       "La connessione ai dispositivi vicini non è disponibile per questa app su questo dispositivo.",
     "core.codes.peer-cert-invalid.title": "Dispositivo non verificato",
@@ -12509,12 +12524,13 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "デバイスを設定できません",
     "core.codes.device_keys_invalid.message":
       "このデバイスを同期用に設定できませんでした。アプリを更新して、もう一度お試しください。",
-    "core.codes.device_keys_required.title": "デバイスがリンクされていません",
+    "core.codes.device_keys_required.title":
+      "デバイスを接続する設定が済んでいません",
     "core.codes.device_keys_required.message":
-      "このデバイスは、ほかのデバイスとリンクする設定が済んでいません。アプリを更新して、もう一度お試しください。",
+      "このデバイスは、ほかのデバイスと接続する設定が済んでいません。アプリを更新して、もう一度お試しください。",
     "core.codes.ring_too_large.title": "デバイスが多すぎます",
     "core.codes.ring_too_large.message":
-      "このアカウントのリンク済みデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。",
+      "このアカウントのデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。",
     "core.codes.relay_disabled.title": "リモート接続はオフです",
     "core.codes.relay_disabled.message":
       "このアプリではリモート接続がオフです。デバイスは同じネットワーク上でのみ接続されます。",
@@ -12674,7 +12690,7 @@ export const KIT_COPY: Readonly<
       "同期は少しの間一時停止されています。変更は保持され、後で同期されます。",
     "core.codes.encryption_mismatch.title": "暗号化が一致しません",
     "core.codes.encryption_mismatch.message":
-      "アプリと同期サービスで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。",
+      "アプリとPolaris Lockerで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。",
     "core.codes.upload_expired.title": "アップロードの期限切れ",
     "core.codes.upload_expired.message":
       "アップロードに時間がかかりすぎたため、キャンセルされました。もう一度お試しください。",
@@ -12899,7 +12915,7 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "保存の問題",
     "core.codes.store-failed.message":
       "このデバイスに保存できませんでした。ストレージを確認して、もう一度お試しください。",
-    "core.codes.connect-unavailable.title": "接続できません",
+    "core.codes.connect-unavailable.title": "近くのデバイスは利用できません",
     "core.codes.connect-unavailable.message":
       "このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。",
     "core.codes.peer-cert-invalid.title": "デバイスを確認できません",
@@ -14343,7 +14359,7 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "기기를 설정하지 못했어요",
     "core.codes.device_keys_invalid.message":
       "이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요.",
-    "core.codes.device_keys_required.title": "기기가 연결되지 않음",
+    "core.codes.device_keys_required.title": "기기를 연결하도록 설정되지 않음",
     "core.codes.device_keys_required.message":
       "이 기기는 다른 기기와 연결하도록 설정되지 않았습니다. 앱을 업데이트한 후 다시 시도하세요.",
     "core.codes.ring_too_large.title": "기기가 너무 많음",
@@ -14502,7 +14518,7 @@ export const KIT_COPY: Readonly<
       "동기화가 잠시 일시 중지되었습니다. 변경 사항은 보관되며 나중에 동기화됩니다.",
     "core.codes.encryption_mismatch.title": "암호화 불일치",
     "core.codes.encryption_mismatch.message":
-      "앱과 동기화 서비스의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요.",
+      "앱과 Polaris Locker의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요.",
     "core.codes.upload_expired.title": "업로드 만료",
     "core.codes.upload_expired.message":
       "업로드가 너무 오래 걸려 취소되었습니다. 다시 시도하세요.",
@@ -14716,7 +14732,7 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "저장소 문제",
     "core.codes.store-failed.message":
       "이 기기에 저장하지 못했어요. 저장 공간을 확인하고 다시 시도하세요.",
-    "core.codes.connect-unavailable.title": "연결할 수 없음",
+    "core.codes.connect-unavailable.title": "근처 기기를 사용할 수 없음",
     "core.codes.connect-unavailable.message":
       "이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다.",
     "core.codes.peer-cert-invalid.title": "기기를 확인할 수 없음",
@@ -16062,18 +16078,18 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "设备未设置",
     "core.codes.device_keys_invalid.message":
       "无法为同步设置此设备。请更新应用后重试。",
-    "core.codes.device_keys_required.title": "设备未关联",
+    "core.codes.device_keys_required.title": "设备未设置连接",
     "core.codes.device_keys_required.message":
-      "此设备尚未设置为与你的其他设备关联。请更新应用后重试。",
+      "此设备尚未设置为与你的其他设备连接。请更新应用后重试。",
     "core.codes.ring_too_large.title": "设备过多",
     "core.codes.ring_too_large.message":
-      "此账户关联的设备超出了可连接的数量。请移除一台后重试。",
+      "此账户的设备超出了可连接的数量。请移除一台后重试。",
     "core.codes.relay_disabled.title": "远程连接已关闭",
     "core.codes.relay_disabled.message":
       "此应用已关闭远程连接。你的设备仅能在同一网络下连接。",
     "core.codes.relay_paused.title": "远程连接已暂停",
     "core.codes.relay_paused.message": "远程连接暂时暂停。请稍后重试。",
-    "core.codes.relay_quota_exceeded.title": "已达远程用量上限",
+    "core.codes.relay_quota_exceeded.title": "已达远程连接用量上限",
     "core.codes.relay_quota_exceeded.message":
       "远程连接用量已用完，即将重置。同一网络下的设备仍可连接。",
     "core.codes.relay_ticket_invalid.title": "连接已过期",
@@ -16208,7 +16224,7 @@ export const KIT_COPY: Readonly<
       "同步暂时暂停。你的更改会保留，稍后同步。",
     "core.codes.encryption_mismatch.title": "加密不一致",
     "core.codes.encryption_mismatch.message":
-      "应用与同步服务的加密设置不一致。请更新应用后重试。",
+      "应用与 Polaris Locker 的加密设置不一致。请更新应用后重试。",
     "core.codes.upload_expired.title": "上传已过期",
     "core.codes.upload_expired.message": "上传耗时过长，已取消。请重试。",
     "core.codes.upload_incomplete.title": "上传不完整",
@@ -16397,7 +16413,7 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "存储出现问题",
     "core.codes.store-failed.message":
       "无法保存到此设备。请检查存储空间后重试。",
-    "core.codes.connect-unavailable.title": "无法连接",
+    "core.codes.connect-unavailable.title": "无法使用附近的设备",
     "core.codes.connect-unavailable.message":
       "此设备上的此应用无法连接附近的设备。",
     "core.codes.peer-cert-invalid.title": "无法验证设备",

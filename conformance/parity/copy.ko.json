@@ -78,7 +78,7 @@
       "message": "이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요."
     },
     "device_keys_required": {
-      "title": "기기가 연결되지 않음",
+      "title": "기기를 연결하도록 설정되지 않음",
       "message": "이 기기는 다른 기기와 연결하도록 설정되지 않았습니다. 앱을 업데이트한 후 다시 시도하세요."
     },
     "ring_too_large": {
@@ -295,7 +295,7 @@
     },
     "encryption_mismatch": {
       "title": "암호화 불일치",
-      "message": "앱과 동기화 서비스의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요."
+      "message": "앱과 Polaris Locker의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요."
     },
     "upload_expired": {
       "title": "업로드 만료",
@@ -590,7 +590,7 @@
       "message": "이 기기에 저장하지 못했어요. 저장 공간을 확인하고 다시 시도하세요."
     },
     "connect-unavailable": {
-      "title": "연결할 수 없음",
+      "title": "근처 기기를 사용할 수 없음",
       "message": "이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다."
     },
     "peer-cert-invalid": {

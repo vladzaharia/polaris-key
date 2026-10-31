@@ -248,12 +248,14 @@ describe("the checks refuse", () => {
       en(s, "common.close").note = "Direct Transfer lives here.";
       s.packs.de!.messages["common.back"] = "Cloud Connect";
       s.core.en!.fallback.message = "Cloud Connect failed ({code}).";
+      s.core.de!.codes["relay_paused"]!.title = "Remote connect paused";
     });
     expect(errors.filter((e) => e.includes("developer"))).toEqual([
       `en common.cancel: "Cloud Sync" is a developer name; users see a plain label (LOCKER-FEATURE-NAMES §1)`,
       `en common.close: the note names a developer feature (Direct Transfer); say what it does`,
       `de common.back: "Cloud Connect" is a developer name`,
       `core en core.fallback.message: "Cloud Connect" is a developer name`,
+      `core de core.codes.relay_paused.title: "Remote connect" is a developer name`,
     ]);
   });
 

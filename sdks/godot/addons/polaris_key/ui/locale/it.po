@@ -5864,50 +5864,50 @@ msgstr "Dispositivo non configurato"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "Non è stato possibile configurare questo dispositivo per la sincronizzazione. Aggiorna l’app e riprova."
 
-#. Device not linked
+#. Device not set up to connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.title"
-msgstr "Dispositivo non collegato"
+msgstr "Dispositivo non configurato per connettersi"
 
-#. This device has not been set up to link with your others. Update the app and try again.
+#. This device has not been set up to connect with your others. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "Questo dispositivo non è stato configurato per collegarsi agli altri. Aggiorna l'app e riprova."
+msgstr "Questo dispositivo non è stato configurato per connettersi agli altri. Aggiorna l'app e riprova."
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.title"
 msgstr "Troppi dispositivi"
 
-#. This account has more linked devices than can be connected. Remove one and try again.
+#. This account has more devices than can be connected. Remove one and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.message"
-msgstr "Questo account ha più dispositivi collegati di quanti se ne possano connettere. Rimuovine uno e riprova."
+msgstr "Questo account ha più dispositivi di quanti se ne possano connettere. Rimuovine uno e riprova."
 
-#. Remote connect is off
+#. Remote connection is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.title"
 msgstr "Connessione remota disattivata"
 
-#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Remote connection is off for this app. Your devices connect only on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.message"
 msgstr "La connessione remota è disattivata per questa app. I tuoi dispositivi si connettono solo sulla stessa rete."
 
-#. Remote connect paused
+#. Remote connection paused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.title"
 msgstr "Connessione remota in pausa"
 
-#. Remote connect is paused for now. Try again later.
+#. Remote connection is paused for now. Try again later.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.message"
 msgstr "La connessione remota è in pausa per ora. Riprova più tardi."
 
-#. Remote limit reached
+#. Remote connection limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.title"
-msgstr "Limite remoto raggiunto"
+msgstr "Limite di connessione remota raggiunto"
 
 #. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6409,10 +6409,10 @@ msgstr "La sincronizzazione è in pausa per un momento. Le tue modifiche restano
 msgid "core.codes.encryption_mismatch.title"
 msgstr "Crittografia non compatibile"
 
-#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. This app and Polaris Locker don't agree on encryption. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
-msgstr "L’app e il servizio di sincronizzazione non concordano sulla crittografia. Aggiorna l’app e riprova."
+msgstr "L’app e Polaris Locker non concordano sulla crittografia. Aggiorna l’app e riprova."
 
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7144,12 +7144,12 @@ msgstr "Problema di archiviazione"
 msgid "core.codes.store-failed.message"
 msgstr "Impossibile salvare su questo dispositivo. Controlla lo spazio di archiviazione e riprova."
 
-#. Connect unavailable
+#. Nearby devices unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.title"
-msgstr "Connessione non disponibile"
+msgstr "Dispositivi nelle vicinanze non disponibili"
 
-#. Nearby connection isn't available for this app on this device.
+#. Nearby devices aren't available for this app on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
 msgstr "La connessione ai dispositivi vicini non è disponibile per questa app su questo dispositivo."

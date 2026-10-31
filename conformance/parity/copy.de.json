@@ -78,12 +78,12 @@
       "message": "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut."
     },
     "device_keys_required": {
-      "title": "Gerät nicht verknüpft",
-      "message": "Dieses Gerät wurde nicht zum Verknüpfen mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut."
+      "title": "Gerät nicht zum Verbinden eingerichtet",
+      "message": "Dieses Gerät wurde nicht zum Verbinden mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut."
     },
     "ring_too_large": {
       "title": "Zu viele Geräte",
-      "message": "Dieses Konto hat mehr verknüpfte Geräte, als verbunden werden können. Entferne eines und versuche es erneut."
+      "message": "Dieses Konto hat mehr Geräte, als verbunden werden können. Entferne eines und versuche es erneut."
     },
     "relay_disabled": {
       "title": "Fernverbindung aus",
@@ -94,7 +94,7 @@
       "message": "Die Fernverbindung ist vorübergehend pausiert. Versuche es später erneut."
     },
     "relay_quota_exceeded": {
-      "title": "Fernlimit erreicht",
+      "title": "Limit für Fernverbindungen erreicht",
       "message": "Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin."
     },
     "relay_ticket_invalid": {
@@ -295,7 +295,7 @@
     },
     "encryption_mismatch": {
       "title": "Verschlüsselung passt nicht",
-      "message": "App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut."
+      "message": "App und Polaris Locker sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut."
     },
     "upload_expired": {
       "title": "Upload abgelaufen",
@@ -590,7 +590,7 @@
       "message": "Auf diesem Gerät konnte nichts gespeichert werden. Prüfen Sie den Speicher und versuchen Sie es erneut."
     },
     "connect-unavailable": {
-      "title": "Verbindung nicht verfügbar",
+      "title": "Geräte in der Nähe nicht verfügbar",
       "message": "Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar."
     },
     "peer-cert-invalid": {
