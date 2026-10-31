@@ -189,7 +189,7 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
     }
 
     /** Why [req] does not satisfy [item]; empty when it does. */
-    private fun problems(item: JsonObject, method: String, headers: Map<String, String>, body: String?): List<String> {
+    private fun problems(item: JsonObject, method: String, headers: Map<String, String>, body: String?, raw: ByteArray? = null): List<String> {
         val out = ArrayList<String>()
         val expected = item["request"]!!.obj
         for ((name, template) in expected["headers"]!!.obj) {
@@ -203,6 +203,12 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
         }
         for (name in expected["requiredHeaders"]!!.arrayValue!!) {
             if (headers[name.stringValue!!.lowercase()] == null) out += "required header ${name.stringValue}: missing"
+        }
+        // A binary request (U-10 A3): the recording holds the bytes as `bodyBase64`, and they are compared as bytes.
+        val expectedBytes = expected["bodyBase64"].stringValue?.let { java.util.Base64.getDecoder().decode(it) }
+        if (expectedBytes != null) {
+            if (raw == null || !raw.contentEquals(expectedBytes)) out += "body: the ${raw?.size ?: 0} bytes sent are not the ${expectedBytes.size} bytes recorded"
+            return out
         }
         val hasBody = body != null && body.isNotEmpty()
         val expectedBody = expected["body"]
@@ -435,7 +441,7 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
             return@withLock PolarisResponse(599, "replay: no matching exchange".toByteArray())
         }
         for ((i, item) in candidates) {
-            if (problems(item, method, headers, body).isNotEmpty()) continue
+            if (problems(item, method, headers, body, request.body).isNotEmpty()) continue
             served[i] = true
             capture(item)
             val response = item["response"]!!.obj
@@ -443,14 +449,15 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
             val b = response["body"]
             val text = if (b is JsonPrimitive && b.isString) b.content else b.toString()
             val nullBody = status in setOf(101, 204, 205, 304)
+            val binary = response["bodyBase64"].stringValue?.let { java.util.Base64.getDecoder().decode(it) }
             return@withLock PolarisResponse(
                 status,
-                if (nullBody) ByteArray(0) else text.toByteArray(Charsets.UTF_8),
+                if (nullBody) ByteArray(0) else binary ?: text.toByteArray(Charsets.UTF_8),
                 response["headers"]!!.obj.mapValues { it.value.stringValue!! },
             )
         }
         val first = candidates.first().value
-        failures += "request $label does not match the recording:\n    " + problems(first, method, headers, body).joinToString("\n    ")
+        failures += "request $label does not match the recording:\n    " + problems(first, method, headers, body, request.body).joinToString("\n    ")
         PolarisResponse(599, "replay: no matching exchange".toByteArray())
     }
 }
@@ -466,12 +473,18 @@ class HeaderTap(private val inner: PolarisTransport) : PolarisTransport {
     var lastHeaders: Map<String, String> = emptyMap()
         private set
 
+    /** The status of the last answer (0 before one). */
+    @Volatile
+    var lastStatus: Int = 0
+        private set
+
     /** The ETag the next pull sends as If-None-Match; empty sends none. */
     @Volatile
     var ifNoneMatch: String = ""
 
     override suspend fun send(request: PolarisRequest): PolarisResponse {
         lastHeaders = emptyMap()
+        lastStatus = 0
         val sent = if (request.method == "GET" && ifNoneMatch.isNotEmpty()) {
             request.copy(headers = request.headers + ("if-none-match" to ifNoneMatch))
         } else {
@@ -479,6 +492,7 @@ class HeaderTap(private val inner: PolarisTransport) : PolarisTransport {
         }
         val r = inner.send(sent)
         lastHeaders = r.headers.mapKeys { it.key.lowercase() }
+        lastStatus = r.status
         return r
     }
 }
@@ -605,6 +619,12 @@ object CloudSyncReplay {
         out["empty"] = JsonPrimitive(b["empty"].boolValue == true)
         val names = (b["changes"].arrayValue ?: JsonArray(emptyList())).mapNotNull { it.objectValue?.get("setting").stringValue }
         out["settings"] = JsonArray(names.sortedWith { x, y -> compareUtf16(x, y) }.map { JsonPrimitive(it) })
+        // A record deleted on the server (`tombstones`), as `collection/id`.
+        out["deletedRecords"] = JsonArray(
+            (b["tombstones"].arrayValue ?: JsonArray(emptyList())).mapNotNull { t ->
+                t.objectValue?.get("record").arrayValue?.takeIf { it.size == 2 }?.let { "${it[0].stringValue}/${it[1].stringValue}" }
+            }.sortedWith { x, y -> compareUtf16(x, y) }.map { JsonPrimitive(it) },
+        )
         b["quota"].objectValue?.let { q ->
             q["bytes"]?.takeIf { number(it) }?.let { out["quotaBytes"] = it }
             q["files"].boolValue?.let { out["files"] = JsonPrimitive(it) }

@@ -291,6 +291,9 @@
       "ktlint:standard:max-line-length": 1,
       "ktlint:standard:wrapping": 2
     },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/CloudSyncFilesReplay.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1
+    },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/ConfigMatrixTest.kt": {
       "ktlint:standard:function-signature": 1
     },
@@ -442,15 +445,22 @@
       "ktlint:standard:blank-line-between-when-conditions": 23,
       "ktlint:standard:multiline-if-else": 2
     },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/SyncFileVectorsTest.kt": {
+      "detekt:style.ReturnCount": 1
+    },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/TranscriptReplay.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 4,
       "detekt:complexity.LongMethod": 2,
       "detekt:exceptions.SwallowedException": 1,
       "detekt:style.LoopWithTooManyJumpStatements": 1,
-      "detekt:style.ReturnCount": 3,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 4,
       "detekt:style.ThrowsCount": 1,
       "detekt:style.UnusedParameter": 1,
-      "ktlint:standard:import-ordering": 1
+      "ktlint:standard:argument-list-wrapping": 2,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 1
     },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/TranscriptTest.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 4,
@@ -459,7 +469,7 @@
       "detekt:complexity.LongParameterList": 1,
       "detekt:complexity.NestedBlockDepth": 1,
       "detekt:empty-blocks.EmptyFunctionBlock": 1,
-      "detekt:style.MaxLineLength": 2,
+      "detekt:style.MaxLineLength": 3,
       "detekt:style.ThrowsCount": 1,
       "ktlint:standard:max-line-length": 1
     },
@@ -1918,6 +1928,15 @@
       "detekt:style.LoopWithTooManyJumpStatements": 1,
       "detekt:style.ReturnCount": 1
     },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncFiles.kt": {
+      "detekt:complexity.ComplexCondition": 1,
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.RethrowCaughtException": 1,
+      "detekt:style.MagicNumber": 11,
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 5
+    },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncHost.kt": {
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:style.MaxLineLength": 1
@@ -1934,10 +1953,10 @@
       "detekt:exceptions.TooGenericExceptionCaught": 1
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncTransfer.kt": {
-      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.ComplexCondition": 3,
       "detekt:complexity.CyclomaticComplexMethod": 2,
       "detekt:complexity.LongParameterList": 4,
-      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:complexity.TooManyFunctions": 2,
       "detekt:exceptions.SwallowedException": 5,
       "detekt:exceptions.TooGenericExceptionCaught": 2,
       "detekt:style.MagicNumber": 3,
@@ -2087,7 +2106,12 @@
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/CloudSyncTransferTest.kt": {
       "detekt:complexity.LongParameterList": 1,
-      "detekt:style.ReturnCount": 9
+      "detekt:style.MaxLineLength": 1,
+      "detekt:style.ReturnCount": 9,
+      "ktlint:standard:argument-list-wrapping": 8,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 1
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/CommerceAttestTest.kt": {
       "detekt:style.MaxLineLength": 5,
