@@ -3804,7 +3804,337 @@
       "id": "cloudSync.saves",
       "kind": "property",
       "feature": "sync.saves",
-      "reserved": "U-22",
+      "sdks": {
+        "node": {
+          "planned": "U-22"
+        },
+        "python": {
+          "planned": "U-22"
+        },
+        "react": {
+          "planned": "U-22",
+          "shape": "hook",
+          "reason": "a hook returns a render value; its handle carries the verbs"
+        },
+        "swift": {
+          "planned": "U-23"
+        },
+        "kotlin": {
+          "planned": "U-23"
+        },
+        "godot": {
+          "planned": "U-23"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.saves.list",
+      "kind": "method",
+      "feature": "sync.saves",
+      "sdks": {
+        "node": {
+          "planned": "U-22"
+        },
+        "python": {
+          "planned": "U-22"
+        },
+        "react": {
+          "planned": "U-22",
+          "shape": "hook",
+          "reason": "the hook carries the method"
+        },
+        "swift": {
+          "planned": "U-23"
+        },
+        "kotlin": {
+          "planned": "U-23"
+        },
+        "godot": {
+          "planned": "U-23"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.saves.read",
+      "kind": "method",
+      "feature": "sync.saves",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "U-22"
+        },
+        "python": {
+          "planned": "U-22"
+        },
+        "react": {
+          "planned": "U-22",
+          "shape": "hook",
+          "reason": "the hook carries the method"
+        },
+        "swift": {
+          "planned": "U-23"
+        },
+        "kotlin": {
+          "planned": "U-23"
+        },
+        "godot": {
+          "planned": "U-23"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.saves.write",
+      "kind": "method",
+      "feature": "sync.saves",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "metadata",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "U-22"
+        },
+        "python": {
+          "planned": "U-22"
+        },
+        "react": {
+          "planned": "U-22",
+          "shape": "hook",
+          "reason": "the hook carries the method"
+        },
+        "swift": {
+          "planned": "U-23"
+        },
+        "kotlin": {
+          "planned": "U-23"
+        },
+        "godot": {
+          "planned": "U-23"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.saves.delete",
+      "kind": "method",
+      "feature": "sync.saves",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "U-22"
+        },
+        "python": {
+          "planned": "U-22"
+        },
+        "react": {
+          "planned": "U-22",
+          "shape": "hook",
+          "reason": "the hook carries the method"
+        },
+        "swift": {
+          "planned": "U-23"
+        },
+        "kotlin": {
+          "planned": "U-23"
+        },
+        "godot": {
+          "planned": "U-23"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.saves.revisions",
+      "kind": "method",
+      "feature": "sync.saves",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "U-22"
+        },
+        "python": {
+          "planned": "U-22"
+        },
+        "react": {
+          "planned": "U-22",
+          "shape": "hook",
+          "reason": "the hook carries the method"
+        },
+        "swift": {
+          "planned": "U-23"
+        },
+        "kotlin": {
+          "planned": "U-23"
+        },
+        "godot": {
+          "planned": "U-23"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.transfers",
+      "kind": "method",
+      "feature": "sync.files",
+      "sdks": {
+        "node": {
+          "planned": "U-22"
+        },
+        "python": {
+          "planned": "U-22"
+        },
+        "react": {
+          "planned": "U-22",
+          "shape": "hook",
+          "reason": "a hook returns the render value: the transfers in flight"
+        },
+        "swift": {
+          "planned": "U-23"
+        },
+        "kotlin": {
+          "planned": "U-23"
+        },
+        "godot": {
+          "planned": "U-23"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.transfer.pause",
+      "kind": "method",
+      "feature": "sync.files",
+      "sdks": {
+        "node": {
+          "planned": "U-22"
+        },
+        "python": {
+          "planned": "U-22"
+        },
+        "react": {
+          "planned": "U-22",
+          "shape": "hook",
+          "reason": "the hook carries the method"
+        },
+        "swift": {
+          "planned": "U-23"
+        },
+        "kotlin": {
+          "planned": "U-23"
+        },
+        "godot": {
+          "planned": "U-23"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.transfer.resume",
+      "kind": "method",
+      "feature": "sync.files",
+      "sdks": {
+        "node": {
+          "planned": "U-22"
+        },
+        "python": {
+          "planned": "U-22"
+        },
+        "react": {
+          "planned": "U-22",
+          "shape": "hook",
+          "reason": "the hook carries the method"
+        },
+        "swift": {
+          "planned": "U-23"
+        },
+        "kotlin": {
+          "planned": "U-23"
+        },
+        "godot": {
+          "planned": "U-23"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.transfer.cancel",
+      "kind": "method",
+      "feature": "sync.files",
+      "sdks": {
+        "node": {
+          "planned": "U-22"
+        },
+        "python": {
+          "planned": "U-22"
+        },
+        "react": {
+          "planned": "U-22",
+          "shape": "hook",
+          "reason": "the hook carries the method"
+        },
+        "swift": {
+          "planned": "U-23"
+        },
+        "kotlin": {
+          "planned": "U-23"
+        },
+        "godot": {
+          "planned": "U-23"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.transferEvent",
+      "kind": "stream",
+      "feature": "sync.files",
+      "enum": "transferEvent",
+      "sdks": {
+        "node": {
+          "planned": "U-22"
+        },
+        "python": {
+          "planned": "U-22"
+        },
+        "react": {
+          "planned": "U-22",
+          "shape": "hook",
+          "reason": "the hook re-renders on each transfer event, so no event listener is exposed"
+        },
+        "swift": {
+          "planned": "U-23"
+        },
+        "kotlin": {
+          "planned": "U-23"
+        },
+        "godot": {
+          "planned": "U-23"
+        }
+      },
       "layer": "client"
     },
     {

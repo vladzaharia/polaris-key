@@ -146,6 +146,7 @@ public enum ErrorCode {
     public static let syncLocked = "sync-locked"
     public static let recoveryCodeInvalid = "recovery-code-invalid"
     public static let syncEncryptionPinned = "sync-encryption-pinned"
+    public static let syncFileInvalid = "sync-file-invalid"
     public static let invalidOptions = "invalid-options"
     public static let invalidArgument = "invalid-argument"
     public static let invokeNotAllowed = "invoke-not-allowed"
@@ -360,6 +361,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "sync-locked",
     "recovery-code-invalid",
     "sync-encryption-pinned",
+    "sync-file-invalid",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -574,6 +576,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "sync-locked": "client",
     "recovery-code-invalid": "client",
     "sync-encryption-pinned": "client",
+    "sync-file-invalid": "client",
     "invalid-options": "client",
     "invalid-argument": "client",
     "invoke-not-allowed": "client",
@@ -1461,6 +1464,20 @@ public let EVENT_KIND_VALUES: [String] = [
     "packs",
     "store",
     "cloudSync",
+]
+
+/// The variants of a Cloud Sync file transfer event, on the client's `events` stream under the `cloudSync` kind (U-22, U-23), in camelCase in every SDK: `transferProgress` (bytes done and total), `transferDone`, `transferFailed` (a code; a cancelled transfer is a state, not a failure).
+public enum TransferEvent {
+    public static let transferprogress = "transferProgress"
+    public static let transferdone = "transferDone"
+    public static let transferfailed = "transferFailed"
+}
+
+/// Every `TransferEvent` value, in source order.
+public let TRANSFER_EVENT_VALUES: [String] = [
+    "transferProgress",
+    "transferDone",
+    "transferFailed",
 ]
 
 /// The `X-PKey-*` request header names (wire contract v3 §5).

@@ -1229,6 +1229,8 @@
   "core.codes.recovery-code-invalid.message": "復旧コードが正しくありません。確認してもう一度お試しください。",
   "core.codes.sync-encryption-pinned.title": "暗号化が必要です",
   "core.codes.sync-encryption-pinned.message": "このアプリには暗号化された同期が必要ですが、現在は利用できません。同期はオフのままです。",
+  "core.codes.sync-file-invalid.title": "ファイルを開けません",
+  "core.codes.sync-file-invalid.message": "同期したファイルが検証に通らなかったため、使用しませんでした。もう一度お試しください。",
   "core.codes.invalid-options.title": "アプリが設定されていません",
   "core.codes.invalid-options.message": "アプリのライセンス設定が正しくありません。開発者に問い合わせてください。",
   "core.codes.invalid-argument.title": "リクエストを受け付けられません",

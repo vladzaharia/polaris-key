@@ -2690,6 +2690,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_encryption_pinned_message">Cette app exige une synchronisation chiffrée, indisponible pour le moment. La synchronisation reste désactivée.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_title">Fichier non ouvert</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_message">Le fichier synchronisé n'a pas passé la vérification et n'a pas été utilisé. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App non configurée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur.</string>

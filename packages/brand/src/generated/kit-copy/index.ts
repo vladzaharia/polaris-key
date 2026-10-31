@@ -1243,6 +1243,8 @@ export type KitCopyKey =
   | "core.codes.recovery-code-invalid.message"
   | "core.codes.sync-encryption-pinned.title"
   | "core.codes.sync-encryption-pinned.message"
+  | "core.codes.sync-file-invalid.title"
+  | "core.codes.sync-file-invalid.message"
   | "core.codes.invalid-options.title"
   | "core.codes.invalid-options.message"
   | "core.codes.invalid-argument.title"

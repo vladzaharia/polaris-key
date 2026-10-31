@@ -7018,6 +7018,16 @@ msgstr "需要加密"
 msgid "core.codes.sync-encryption-pinned.message"
 msgstr "此应用需要加密同步，但目前不可用。同步将保持关闭。"
 
+#. File not opened
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.title"
+msgstr "无法打开文件"
+
+#. The synced file failed its check, so it wasn't used. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.message"
+msgstr "同步的文件未通过校验，因此未使用。请重试。"
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

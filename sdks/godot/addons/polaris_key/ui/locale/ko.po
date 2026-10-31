@@ -7018,6 +7018,16 @@ msgstr "암호화 필요"
 msgid "core.codes.sync-encryption-pinned.message"
 msgstr "이 앱은 암호화된 동기화가 필요하지만 지금은 사용할 수 없습니다. 동기화는 꺼진 상태로 유지됩니다."
 
+#. File not opened
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.title"
+msgstr "파일을 열 수 없음"
+
+#. The synced file failed its check, so it wasn't used. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.message"
+msgstr "동기화된 파일이 검사를 통과하지 못해 사용하지 않았습니다. 다시 시도하세요."
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

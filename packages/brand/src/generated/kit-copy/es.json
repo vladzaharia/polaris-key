@@ -1229,6 +1229,8 @@
   "core.codes.recovery-code-invalid.message": "Ese código de recuperación no es correcto. Compruébalo e inténtalo de nuevo.",
   "core.codes.sync-encryption-pinned.title": "Cifrado obligatorio",
   "core.codes.sync-encryption-pinned.message": "Esta app necesita sincronización cifrada, que ahora no está disponible. La sincronización sigue desactivada.",
+  "core.codes.sync-file-invalid.title": "Archivo no abierto",
+  "core.codes.sync-file-invalid.message": "El archivo sincronizado no superó la comprobación y no se usó. Inténtalo de nuevo.",
   "core.codes.invalid-options.title": "App no configurada",
   "core.codes.invalid-options.message": "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador.",
   "core.codes.invalid-argument.title": "Solicitud no aceptada",

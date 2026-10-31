@@ -1542,6 +1542,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-encryption-pinned.title": "Encryption required",
     "core.codes.sync-encryption-pinned.message":
       "This app needs encrypted sync, which isn't available right now. Sync stays off.",
+    "core.codes.sync-file-invalid.title": "File not opened",
+    "core.codes.sync-file-invalid.message":
+      "The synced file failed its check, so it wasn't used. Try again.",
     "core.codes.invalid-options.title": "App not set up",
     "core.codes.invalid-options.message":
       "The app's licensing isn't set up correctly. Contact the developer.",
@@ -3466,6 +3469,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-encryption-pinned.title": "Verschlüsselung erforderlich",
     "core.codes.sync-encryption-pinned.message":
       "Diese App braucht verschlüsselten Sync, der gerade nicht verfügbar ist. Der Sync bleibt aus.",
+    "core.codes.sync-file-invalid.title": "Datei nicht geöffnet",
+    "core.codes.sync-file-invalid.message":
+      "Die synchronisierte Datei hat die Prüfung nicht bestanden und wurde nicht verwendet. Versuchen Sie es erneut.",
     "core.codes.invalid-options.title": "App nicht eingerichtet",
     "core.codes.invalid-options.message":
       "Die Lizenzierung der App ist nicht korrekt eingerichtet. Wenden Sie sich an den Entwickler.",
@@ -5376,6 +5382,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-encryption-pinned.title": "Chiffrement requis",
     "core.codes.sync-encryption-pinned.message":
       "Cette app exige une synchronisation chiffrée, indisponible pour le moment. La synchronisation reste désactivée.",
+    "core.codes.sync-file-invalid.title": "Fichier non ouvert",
+    "core.codes.sync-file-invalid.message":
+      "Le fichier synchronisé n'a pas passé la vérification et n'a pas été utilisé. Réessayez.",
     "core.codes.invalid-options.title": "App non configurée",
     "core.codes.invalid-options.message":
       "La gestion des licences de l’app n’est pas correctement configurée. Contactez le développeur.",
@@ -7277,6 +7286,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-encryption-pinned.title": "Cifrado obligatorio",
     "core.codes.sync-encryption-pinned.message":
       "Esta app necesita sincronización cifrada, que ahora no está disponible. La sincronización sigue desactivada.",
+    "core.codes.sync-file-invalid.title": "Archivo no abierto",
+    "core.codes.sync-file-invalid.message":
+      "El archivo sincronizado no superó la comprobación y no se usó. Inténtalo de nuevo.",
     "core.codes.invalid-options.title": "App no configurada",
     "core.codes.invalid-options.message":
       "El sistema de licencias de la app no está configurado correctamente. Contacta con el desarrollador.",
@@ -9145,6 +9157,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-encryption-pinned.title": "Criptografia obrigatória",
     "core.codes.sync-encryption-pinned.message":
       "Este app exige sincronização criptografada, que não está disponível agora. A sincronização continua desativada.",
+    "core.codes.sync-file-invalid.title": "Arquivo não aberto",
+    "core.codes.sync-file-invalid.message":
+      "O arquivo sincronizado não passou na verificação e não foi usado. Tente novamente.",
     "core.codes.invalid-options.title": "App não configurado",
     "core.codes.invalid-options.message":
       "O licenciamento do app não está configurado corretamente. Contate o desenvolvedor.",
@@ -11024,6 +11039,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-encryption-pinned.title": "Crittografia obbligatoria",
     "core.codes.sync-encryption-pinned.message":
       "Questa app richiede la sincronizzazione crittografata, al momento non disponibile. La sincronizzazione resta disattivata.",
+    "core.codes.sync-file-invalid.title": "File non aperto",
+    "core.codes.sync-file-invalid.message":
+      "Il file sincronizzato non ha superato il controllo e non è stato usato. Riprova.",
     "core.codes.invalid-options.title": "App non configurata",
     "core.codes.invalid-options.message":
       "La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore.",
@@ -12924,6 +12942,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-encryption-pinned.title": "暗号化が必要です",
     "core.codes.sync-encryption-pinned.message":
       "このアプリには暗号化された同期が必要ですが、現在は利用できません。同期はオフのままです。",
+    "core.codes.sync-file-invalid.title": "ファイルを開けません",
+    "core.codes.sync-file-invalid.message":
+      "同期したファイルが検証に通らなかったため、使用しませんでした。もう一度お試しください。",
     "core.codes.invalid-options.title": "アプリが設定されていません",
     "core.codes.invalid-options.message":
       "アプリのライセンス設定が正しくありません。開発者に問い合わせてください。",
@@ -14750,6 +14771,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-encryption-pinned.title": "암호화 필요",
     "core.codes.sync-encryption-pinned.message":
       "이 앱은 암호화된 동기화가 필요하지만 지금은 사용할 수 없습니다. 동기화는 꺼진 상태로 유지됩니다.",
+    "core.codes.sync-file-invalid.title": "파일을 열 수 없음",
+    "core.codes.sync-file-invalid.message":
+      "동기화된 파일이 검사를 통과하지 못해 사용하지 않았습니다. 다시 시도하세요.",
     "core.codes.invalid-options.title": "앱이 설정되지 않음",
     "core.codes.invalid-options.message":
       "앱의 라이선스 설정이 올바르지 않아요. 개발자에게 문의하세요.",
@@ -16443,6 +16467,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sync-encryption-pinned.title": "需要加密",
     "core.codes.sync-encryption-pinned.message":
       "此应用需要加密同步，但目前不可用。同步将保持关闭。",
+    "core.codes.sync-file-invalid.title": "无法打开文件",
+    "core.codes.sync-file-invalid.message":
+      "同步的文件未通过校验，因此未使用。请重试。",
     "core.codes.invalid-options.title": "应用未设置",
     "core.codes.invalid-options.message":
       "应用的许可功能未正确设置。请联系开发者。",

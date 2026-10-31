@@ -2690,6 +2690,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_encryption_pinned_message">Questa app richiede la sincronizzazione crittografata, al momento non disponibile. La sincronizzazione resta disattivata.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_title">File non aperto</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_message">Il file sincronizzato non ha superato il controllo e non è stato usato. Riprova.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App non configurata</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_message">La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore.</string>

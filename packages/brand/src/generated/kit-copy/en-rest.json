@@ -802,6 +802,8 @@
   "core.codes.recovery-code-invalid.message": "That recovery code isn't right. Check it and try again.",
   "core.codes.sync-encryption-pinned.title": "Encryption required",
   "core.codes.sync-encryption-pinned.message": "This app needs encrypted sync, which isn't available right now. Sync stays off.",
+  "core.codes.sync-file-invalid.title": "File not opened",
+  "core.codes.sync-file-invalid.message": "The synced file failed its check, so it wasn't used. Try again.",
   "core.codes.invalid-options.title": "App not set up",
   "core.codes.invalid-options.message": "The app's licensing isn't set up correctly. Contact the developer.",
   "core.codes.invalid-argument.title": "Request not accepted",

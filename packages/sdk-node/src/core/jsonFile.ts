@@ -26,15 +26,18 @@ export function readJsonSync<T>(path: string, fallback: T): T {
   }
 }
 
-/** Write `value` atomically, creating the directory (0700) when needed. The temporary file is
+/** Write `data` atomically, creating the directory (0700) when needed. The temporary file is
  *  created exclusively (`wx`, so a planted symlink or file is refused), flushed to disk, then
  *  renamed over `path`. */
-export async function writeJson(path: string, value: unknown): Promise<void> {
+export async function writeFileAtomic(
+  path: string,
+  data: string | Uint8Array,
+): Promise<void> {
   await mkdir(dirname(path), { recursive: true, mode: 0o700 });
   const tmp = `${path}.${randomBytes(12).toString("hex")}.tmp`;
   const f = await open(tmp, "wx", 0o600);
   try {
-    await f.writeFile(JSON.stringify(value));
+    await f.writeFile(data);
     await f.sync();
   } catch (e) {
     await f.close().catch(() => undefined);
@@ -43,6 +46,11 @@ export async function writeJson(path: string, value: unknown): Promise<void> {
   }
   await f.close();
   await rename(tmp, path);
+}
+
+/** Write `value` as JSON, atomically (`writeFileAtomic`). */
+export function writeJson(path: string, value: unknown): Promise<void> {
+  return writeFileAtomic(path, JSON.stringify(value));
 }
 
 /** Remove `path`; a missing file is fine and so is a failure (the caller has nothing to retry). */

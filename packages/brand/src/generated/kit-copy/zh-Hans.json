@@ -1229,6 +1229,8 @@
   "core.codes.recovery-code-invalid.message": "恢复码不正确。请检查后重试。",
   "core.codes.sync-encryption-pinned.title": "需要加密",
   "core.codes.sync-encryption-pinned.message": "此应用需要加密同步，但目前不可用。同步将保持关闭。",
+  "core.codes.sync-file-invalid.title": "无法打开文件",
+  "core.codes.sync-file-invalid.message": "同步的文件未通过校验，因此未使用。请重试。",
   "core.codes.invalid-options.title": "应用未设置",
   "core.codes.invalid-options.message": "应用的许可功能未正确设置。请联系开发者。",
   "core.codes.invalid-argument.title": "请求未被接受",

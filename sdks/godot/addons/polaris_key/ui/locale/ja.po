@@ -7018,6 +7018,16 @@ msgstr "暗号化が必要です"
 msgid "core.codes.sync-encryption-pinned.message"
 msgstr "このアプリには暗号化された同期が必要ですが、現在は利用できません。同期はオフのままです。"
 
+#. File not opened
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.title"
+msgstr "ファイルを開けません"
+
+#. The synced file failed its check, so it wasn't used. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.message"
+msgstr "同期したファイルが検証に通らなかったため、使用しませんでした。もう一度お試しください。"
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"

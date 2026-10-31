@@ -7044,6 +7044,16 @@ msgstr "Chiffrement requis"
 msgid "core.codes.sync-encryption-pinned.message"
 msgstr "Cette app exige une synchronisation chiffrée, indisponible pour le moment. La synchronisation reste désactivée."
 
+#. File not opened
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.title"
+msgstr "Fichier non ouvert"
+
+#. The synced file failed its check, so it wasn't used. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.message"
+msgstr "Le fichier synchronisé n'a pas passé la vérification et n'a pas été utilisé. Réessayez."
+
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid-options.title"
