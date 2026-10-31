@@ -9,17 +9,19 @@
 //    becomes Delete it here too (its own button, danger), Keep both goes, and the screen has its own
 //    title and lede;
 //  - a choice is applied once: while it runs no control is offered, and `kept` names the choice that
-//    was made, never another, and never after a failure.
+//    was made as its title, never another, and never after a failure;
+//  - a failed choice offers Try again, Choose again and Cancel, none filled; Newer (U-22.UX2) is
+//    information the app gives, shown on `choose` only and never with one copy.
 package im.plrs.key.ui
 
 import kotlinx.serialization.json.JsonNull
 
-/** The strings of `kept`, by the choice made (`deleted` when the other copy was gone). */
+/** The result titles of `kept`, by the choice made (`deleted` when the other copy was gone). */
 private val KEPT_KEYS: Map<String, String> = mapOf(
-    "local" to "saveConflict.keptLocal",
-    "remote" to "saveConflict.keptRemote",
-    "both" to "saveConflict.keptBoth",
-    "deleted" to "saveConflict.keptDeleted",
+    "local" to "saveConflict.keptLocalTitle",
+    "remote" to "saveConflict.keptRemoteTitle",
+    "both" to "saveConflict.keptBothTitle",
+    "deleted" to "saveConflict.keptDeletedTitle",
 )
 
 internal fun saveConflictScreen(inputs: KitInputs): KitScreen {
@@ -29,16 +31,20 @@ internal fun saveConflictScreen(inputs: KitInputs): KitScreen {
     val gone = conflict["remote"] is JsonNull
     val local = conflict.obj("local")
     val remote = conflict.obj("remote")
+    // The situation's own title: one copy and a deletion is never "two versions".
+    val situation = if (gone) "saveConflict.deletedTitle" else "saveConflict.title"
     return when (conflict.string("step")) {
         // Nothing to press while it runs: the choice cannot be made twice.
         "keeping" -> screen(
             KitComponent.saveConflict,
             "keeping",
-            listOf(context.line("saveConflict.title"), context.line("saveConflict.keeping")),
+            listOf(context.line(situation), context.line("saveConflict.keeping"), context.line("a11y.busy")),
         )
 
         "kept" -> {
-            val keep = conflict.string("keep") ?: "local"
+            // With one copy there is no "both": it reads as the local choice.
+            val asked = conflict.string("keep") ?: "local"
+            val keep = if (gone && asked == "both") "local" else asked
             val key = KEPT_KEYS.getValue(
                 if (keep == "remote" && gone) {
                     "deleted"
@@ -51,18 +57,24 @@ internal fun saveConflictScreen(inputs: KitInputs): KitScreen {
             screen(
                 KitComponent.saveConflict,
                 "kept",
-                listOf(context.line("saveConflict.title"), context.line(key), context.line("common.done")),
+                listOfNotNull(
+                    context.line(key),
+                    if (keep == "both") context.line("saveConflict.keptCopy") else null,
+                    context.line("common.done"),
+                ),
             )
         }
 
-        // Both copies are as they were: Try again repeats the choice, Cancel leaves the conflict.
+        // Both copies are as they were: Try again repeats the choice, Choose again returns to the
+        // choices (the host sets the step), Cancel leaves the conflict. No control is filled.
         "failed" -> screen(
             KitComponent.saveConflict,
             "failed",
             listOf(
-                context.line("saveConflict.title"),
-                context.line("saveConflict.failed"),
+                context.line(situation),
+                context.line(if (gone) "saveConflict.failedDeleted" else "saveConflict.failed"),
                 context.line("common.tryAgain"),
+                context.line("saveConflict.chooseAgain"),
                 context.line("common.cancel"),
             ),
         )
@@ -74,6 +86,7 @@ internal fun saveConflictScreen(inputs: KitInputs): KitScreen {
             val device = remote.string("device")?.takeIf(String::isNotEmpty)
             val localWhen = local.string("when")
             val remoteWhen = remote.string("when")
+            val newer = conflict.string("newer")
             screen(
                 KitComponent.saveConflict,
                 "choose",
@@ -95,6 +108,9 @@ internal fun saveConflictScreen(inputs: KitInputs): KitScreen {
                     } else {
                         null
                     },
+                    // Newer only tags a card; it never chooses, fills or focuses anything.
+                    if (!gone && newer == "local") context.line("saveConflict.newerThis") else null,
+                    if (!gone && newer == "remote") context.line("saveConflict.newerOther") else null,
                     context.line("saveConflict.keepThis"),
                     context.line(if (gone) "saveConflict.acceptDelete" else "saveConflict.keepOther"),
                     if (!gone) context.line("saveConflict.keepBoth") else null,

@@ -35,8 +35,12 @@ class PolarisSaveConflictStateTest {
         }
     }
 
-    private fun TestScope.state(fake: Fake, remote: PolarisSaveVersion? = this@PolarisSaveConflictStateTest.remote, both: Boolean = true) =
-        PolarisSaveConflictState(local, remote, both, fake, backgroundScope)
+    private fun TestScope.state(
+        fake: Fake,
+        remote: PolarisSaveVersion? = this@PolarisSaveConflictStateTest.remote,
+        both: Boolean = true,
+        newer: PolarisSaveNewer? = null,
+    ) = PolarisSaveConflictState(local, remote, both, fake, backgroundScope, newer)
 
     @Test
     fun nothingIsAppliedUntilThePersonChoosesAndTheScreenTakesNoDefault() = runTest {
@@ -67,7 +71,7 @@ class PolarisSaveConflictStateTest {
         runCurrent()
         assertEquals(listOf(PolarisSaveKeep.Local), fake.applied)
         assertEquals(PolarisSaveConflictUi.Kept(PolarisSaveKeep.Local), state.ui.value)
-        assertTrue(state.kitScreen()!!.shows("saveConflict.keptLocal"))
+        assertTrue(state.kitScreen()!!.shows("saveConflict.keptLocalTitle"))
         // A kept result is closed by Done, and a later choice or Cancel changes nothing.
         state.keep(PolarisSaveKeep.Both)
         state.cancel()
@@ -87,7 +91,7 @@ class PolarisSaveConflictStateTest {
         assertEquals(PolarisSaveConflictUi.Failed(PolarisSaveKeep.Remote), state.ui.value)
         val failed = state.kitScreen()!!
         assertEquals("failed", failed.state)
-        assertFalse(failed.shows("saveConflict.keptRemote"))
+        assertFalse(failed.shows("saveConflict.keptRemoteTitle"))
         state.retry()
         runCurrent()
         assertEquals(listOf(PolarisSaveKeep.Remote, PolarisSaveKeep.Remote), fake.applied)
@@ -115,7 +119,7 @@ class PolarisSaveConflictStateTest {
         val state = state(fake, remote = null)
         state.keep(PolarisSaveKeep.Remote)
         runCurrent()
-        assertTrue(state.kitScreen()!!.shows("saveConflict.keptDeleted"))
+        assertTrue(state.kitScreen()!!.shows("saveConflict.keptDeletedTitle"))
     }
 
     @Test
@@ -126,5 +130,52 @@ class PolarisSaveConflictStateTest {
         assertEquals(PolarisSaveConflictUi.Cancelled, state.ui.value)
         assertTrue(fake.applied.isEmpty())
         assertNull(state.kitScreen())
+    }
+
+    @Test
+    fun chooseAgainReturnsToTheChoicesWithTheSameVersionsAndAppliesNothing() = runTest {
+        val fake = Fake()
+        fake.failures = 1
+        val state = state(fake, newer = PolarisSaveNewer.Remote)
+        state.keep(PolarisSaveKeep.Local)
+        runCurrent()
+        val failed = state.kitScreen()!!
+        assertEquals(listOf("cancel", "choose-again", "retry"), failed.actions.map(KitAction::id))
+        state.chooseAgain()
+        assertEquals(PolarisSaveConflictUi.Choose, state.ui.value)
+        assertEquals(listOf(PolarisSaveKeep.Local), fake.applied)
+        val choose = state.kitScreen()!!
+        assertEquals("choose", choose.state)
+        assertTrue(choose.shows("saveConflict.savedThis"))
+        assertTrue(choose.shows("saveConflict.newerOther"))
+        // Choose again is only for a failed choice.
+        state.chooseAgain()
+        assertEquals(PolarisSaveConflictUi.Choose, state.ui.value)
+    }
+
+    @Test
+    fun newerTagsACardButNeverChoosesAndNeverAppearsWithOneCopy() = runTest {
+        val tagged = state(Fake(), newer = PolarisSaveNewer.Local).kitScreen()!!
+        assertTrue(tagged.shows("saveConflict.newerThis"))
+        assertFalse(tagged.shows("saveConflict.newerOther"))
+        val plain = state(Fake()).kitScreen()!!
+        assertEquals(plain.actions, tagged.actions)
+        val gone = state(Fake(), remote = null, newer = PolarisSaveNewer.Local).kitScreen()!!
+        assertFalse(gone.shows("saveConflict.newerThis"))
+        assertFalse(gone.shows("saveConflict.newerOther"))
+    }
+
+    @Test
+    fun theDeletedVariantKeepsItsTitleAndFailedHasItsOwnLine() = runTest {
+        val fake = Fake()
+        fake.failures = 1
+        val state = state(fake, remote = null)
+        state.keep(PolarisSaveKeep.Remote)
+        runCurrent()
+        val failed = state.kitScreen()!!
+        assertTrue(failed.shows("saveConflict.deletedTitle"))
+        assertTrue(failed.shows("saveConflict.failedDeleted"))
+        assertFalse(failed.shows("saveConflict.title"))
+        assertFalse(failed.shows("saveConflict.failed"))
     }
 }

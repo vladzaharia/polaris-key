@@ -76,6 +76,7 @@ public enum class KitAction(public val id: String) {
     keepLocal("keep-local"),
     keepRemote("keep-remote"),
     keepBoth("keep-both"),
+    chooseAgain("choose-again"),
     ;
 
     public companion object {
@@ -108,6 +109,7 @@ public enum class KitAction(public val id: String) {
             "saveConflict.keepOther" to keepRemote,
             "saveConflict.acceptDelete" to keepRemote,
             "saveConflict.keepBoth" to keepBoth,
+            "saveConflict.chooseAgain" to chooseAgain,
         )
 
         /** The action taken by a control with [copyKey], when the catalog assigns one. */
