@@ -93,14 +93,14 @@ public fun PolarisSaveConflict(
     )
     // A short landscape window: the copies and the choices are two panes, both from the top (the scaffold's
     // second pane scrolls on its own, nothing is docked). Everywhere else, and at large text, one column.
-    val fontScale = LocalDensity.current.fontScale
+    val textScale = LocalDensity.current.fontScale
     PolarisScaffold(
         modifier.then(back),
         anchor = PolarisAnchor.Top,
         contentAlign = TextAlign.Start,
-        paneActions = { window -> if (screen.state == "choose" && inPanes(window, fontScale)) ({ Choices(lines, onKeep, onCancel) }) else null },
+        paneActions = { window -> if (screen.state == "choose" && inPanes(window, textScale)) ({ Choices(lines, onKeep, onCancel) }) else null },
     ) {
-        val panes = screen.state == "choose" && inPanes(polarisWindow, fontScale)
+        val panes = screen.state == "choose" && inPanes(polarisWindow, textScale)
         PolarisProductHeader()
         if (screen.state == "kept") {
             // The result is the news: the success mark (decorative) above its title.

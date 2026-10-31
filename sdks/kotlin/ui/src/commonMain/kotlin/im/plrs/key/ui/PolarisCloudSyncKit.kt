@@ -33,6 +33,9 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
+/** The strip's glyph box. */
+private val StripGlyph = 20.dp
+
 /**
  * The Cloud Sync row and its screens, bound to [host]. With a flow in front only the screens draw; otherwise
  * the row, when Cloud Sync has something to say. [onSignIn] opens the app's own sign-in; null hides the button.
@@ -121,7 +124,7 @@ public fun PolarisCloudSyncTransfer(
                     lines.text("common.tryAgain").orEmpty(),
                     onRetry,
                     // Its label lines up with the status text (the glyph and its gap, less the button's own padding).
-                    Modifier.padding(start = PolarisSpace.controls + 8.dp),
+                    Modifier.padding(start = PolarisSpace.controls + PolarisSpace.tight),
                 )
             }
         }
@@ -139,7 +142,7 @@ private fun TransferLine(glyph: ImageVector, tint: Color, label: String, figures
             glyph,
             contentDescription = null,
             tint = tint,
-            modifier = Modifier.padding(top = ((line - 20.dp) / 2).coerceAtLeast(0.dp)).size(20.dp),
+            modifier = Modifier.padding(top = ((line - StripGlyph) / 2).coerceAtLeast(0.dp)).size(StripGlyph),
         )
         Spacer(Modifier.width(PolarisSpace.controls))
         // Only the label is a live region: a state change is announced once, byte updates are not.

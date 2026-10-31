@@ -22,6 +22,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
+/** The Newer tag's vertical inset: tighter than the first rhythm step. */
+private val NewerTagVertical = 2.dp
+
 /** One copy of the save: whose it is, the Newer tag when named, and when it was saved. */
 @Composable
 internal fun SaveCard(who: String, whenText: String?, newer: String?, modifier: Modifier, compact: Boolean = false) {
@@ -43,7 +46,7 @@ internal fun SaveCard(who: String, whenText: String?, newer: String?, modifier: 
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 ) {
-                    Text(newer, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+                    Text(newer, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = PolarisSpace.tight, vertical = NewerTagVertical))
                 }
             }
             if (whenText != null) {
