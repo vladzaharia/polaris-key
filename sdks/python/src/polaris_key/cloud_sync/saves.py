@@ -122,7 +122,12 @@ class SaveRecords:
     def get(self, id: str) -> Optional[Obj]:  # pragma: no cover - interface
         raise NotImplementedError
 
-    def set(self, id: str, value: Obj, base_version: Any) -> Obj:  # pragma: no cover - interface
+    def set(
+        self, id: str, value: Obj, base_version: Any, cancel: Optional[threading.Event] = None
+    ) -> Obj:  # pragma: no cover - interface
+        """``cancel`` is set when the caller cancels the write (a pause does not set it): stop waiting and
+        raise an ``aborted`` :class:`TransferError`. There is no timeout: cancel, a sign-out drop and the
+        host's retries end a wait."""
         raise NotImplementedError
 
     def delete(self, id: str, base_version: int) -> Obj:  # pragma: no cover - interface
@@ -185,7 +190,7 @@ class MachineRecords(SaveRecords):
             row = next((r for r in rows if r["id"] == wire), None)
         return None if row is None else self._record(row, id)
 
-    def _wait(self, call: Callable[[Any], Obj], id: str) -> Obj:
+    def _wait(self, call: Callable[[Any], Obj], id: str, cancel: Optional[threading.Event] = None) -> Obj:
         self._host.catch_up()
         waiter = _Waiter()
         with self._host.locked() as m:
@@ -194,7 +199,14 @@ class MachineRecords(SaveRecords):
                 return {"ok": False, "reason": "rejected", "code": started.get("error", "rejected")}
             with self._lock:
                 self._waiting[started["mutationId"]] = waiter
-        self._host.touch()
+        # The pump may block on the network; the cancel check below must not wait for it.
+        pump = threading.Thread(target=self._host.touch, daemon=True)
+        pump.start()
+        while not waiter.done(0.1):
+            if cancel is not None and cancel.is_set():
+                with self._lock:
+                    self._waiting.pop(started["mutationId"], None)
+                raise TransferError("aborted")
         o = waiter.wait()
         status = o["status"]
         if status == "ok":
@@ -211,8 +223,8 @@ class MachineRecords(SaveRecords):
             return {"ok": False, "reason": "rejected", "code": o["code"]}
         return {"ok": False, "reason": "rejected", "code": "signed-out"}
 
-    def set(self, id: str, value: Obj, base_version: Any) -> Obj:
-        return self._wait(lambda m: m.put_at(SAVES_COLLECTION, id, value, base_version), id)
+    def set(self, id: str, value: Obj, base_version: Any, cancel: Optional[threading.Event] = None) -> Obj:
+        return self._wait(lambda m: m.put_at(SAVES_COLLECTION, id, value, base_version), id, cancel)
 
     def delete(self, id: str, base_version: int) -> Obj:
         return self._wait(lambda m: m.remove_at(SAVES_COLLECTION, id, base_version), id)
@@ -226,6 +238,9 @@ class _Waiter:
     def settle(self, o: Obj) -> None:
         self._outcome = o
         self._event.set()
+
+    def done(self, timeout: float) -> bool:
+        return self._event.wait(timeout)
 
     def wait(self) -> Obj:
         self._event.wait()
@@ -292,8 +307,10 @@ class SaveTransfer:
         release: Callable[[], None],
         *,
         settled: Optional[Obj] = None,
+        hard_cancel: Optional[threading.Event] = None,
     ) -> None:
         self.id = id
+        self._hard_cancel = hard_cancel
         self.progress = progress
         self._attempt = attempt
         self._release = release
@@ -350,6 +367,8 @@ class SaveTransfer:
                 return
             self._wanted = "cancel"
             self._cancel.set()
+            if self._hard_cancel is not None:
+                self._hard_cancel.set()
             self._cond.notify_all()
         self.wait()
 
@@ -641,6 +660,7 @@ class SavesClient:
         transfer_id = self._new_transfer_id(id)
         progress: Obj = {"done": 0, "total": source.size}
         sealed: List[Obj] = []
+        hard = threading.Event()
 
         def attempt(cancel: threading.Event) -> Obj:
             check = self._precheck(id, source, metadata)
@@ -721,7 +741,7 @@ class SavesClient:
                     "size": file["size"],
                     "format": file["format"],
                 }
-            result = self._records.set(target_id, value, file["version"])
+            result = self._records.set(target_id, value, file["version"], hard)
             if result["ok"]:
                 out: Obj = {"state": "done", "id": id, "version": result["version"], "file": file}
                 if target_id != id:
@@ -734,7 +754,9 @@ class SavesClient:
                 )
             return {"state": "failed", "error": SavesError("rejected", result["code"])}
 
-        return SaveTransfer(transfer_id, progress, attempt, lambda: self._engine.cancel(transfer_id))
+        return SaveTransfer(
+            transfer_id, progress, attempt, lambda: self._engine.cancel(transfer_id), hard_cancel=hard
+        )
 
     def _precheck(self, id: str, source: RangedSource, metadata: Obj) -> Optional[SavesError]:
         if not isinstance(id, str) or not _KEY.match(id):
@@ -869,7 +891,8 @@ class SavesApi:
         on_progress: Optional[Callable[[int, int], None]] = None,
     ) -> SaveTransfer:
         """Write a save. Returns a handle at once; ``handle.wait()`` settles on done, cancelled, failed or
-        conflict. The handle is in :meth:`transfers` until then."""
+        conflict. The handle is in :meth:`transfers` until then. The wait for the metadata write has no
+        timeout: ``cancel()``, a sign-out (the write is dropped) and the host's retries end it."""
         client = self._client()
         return self._track(
             client.write(

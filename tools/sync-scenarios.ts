@@ -3927,6 +3927,8 @@ const recF = (
   version,
   ...(file ? { file } : {}),
 });
+/** A blinded record id (`x:` and 43 base64url characters), as an E2E file-only row carries. */
+const BLINDED = `x:${"A".repeat(43)}`;
 const ticketed = (m: Obj, ticket: number): Obj => ({ ...m, ticket });
 const del = (
   id: number,
@@ -4014,7 +4016,7 @@ function fileRecordCases(): Scenario[] {
           serverNow: T0,
           cursor: 9,
           changes: [
-            recF("progress", "slot", undefined, 8, F2),
+            recF("progress", BLINDED, undefined, 8, F2),
             recF("progress", "plain", { level: 1 }, 9, F1),
           ],
         }),
@@ -4022,8 +4024,58 @@ function fileRecordCases(): Scenario[] {
         { changes: [{ seq: 8 }, { seq: 9 }] },
       ),
       assert({
-        ...rowsAre([rowOf("slot", null, 8, F2)]),
-        records: { "progress/slot": val(null, "cloud") },
+        ...rowsAre([rowOf(BLINDED, null, 8, F2)]),
+        records: { [`progress/${BLINDED}`]: val(null, "cloud") },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "file-only-row-invalid-is-bad",
+    description:
+      "A record change the host could not open (a garbage ct) is unreadable even when it names a file: the pointer is not taken and the row is not listed.",
+    rules: rule,
+    init: init({ encryption: "e2e" }),
+    steps: [
+      assert({ requests: [pullReq(0, C1)], status: st("syncing", 0) }),
+      respond(
+        e2eBody({
+          serverNow: T0,
+          cursor: 9,
+          changes: [recF("progress", BLINDED, undefined, 8, F2)],
+        }),
+        200,
+        { changes: [{ invalid: true }] },
+      ),
+      assert({
+        ...rowsAre([]),
+        records: { [`progress/${BLINDED}`]: null },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "file-only-row-e2e-plain-id-is-not-a-save",
+    description:
+      "In end-to-end mode a file-only row under a plain (unblinded) id is not a save: it is unreadable, like any plaintext row at or above encryptionSince.",
+    rules: rule,
+    init: init({ encryption: "e2e" }),
+    steps: [
+      assert({ requests: [pullReq(0, C1)], status: st("syncing", 0) }),
+      respond(
+        e2eBody({
+          serverNow: T0,
+          cursor: 9,
+          changes: [recF("progress", "slot1", undefined, 8, F2)],
+        }),
+        200,
+        { changes: [{ seq: 8 }] },
+      ),
+      assert({
+        ...rowsAre([]),
+        records: { "progress/slot1": null },
         status: st("idle", 0),
       }),
     ],
@@ -4138,14 +4190,14 @@ function fileRecordCases(): Scenario[] {
       local("put", ["progress", "main", { level: 4 }], { ok: true }),
       local("putAt", ["progress", "main", { level: 5 }, 7], {
         ok: true,
-        mutationId: 2,
+        mutationId: 1,
       }),
       local("put", ["progress", "main", { level: 6 }], { ok: true }),
       assert({
         journal: {
           [ALICE]: partition(C1, 3, 9, [
             put(1, "progress", "main", { level: 6 }, 7),
-            ticketed(put(2, "progress", "main", { level: 5 }, 7), 2),
+            ticketed(put(2, "progress", "main", { level: 5 }, 7), 1),
           ]),
         },
       }),
@@ -4170,7 +4222,7 @@ function fileRecordCases(): Scenario[] {
       assert({
         outcomes: [
           {
-            mutationId: 2,
+            mutationId: 1,
             status: "conflict",
             server: { value: { level: 6 }, version: 8, file: null },
           },
@@ -4360,6 +4412,89 @@ function fileRecordCases(): Scenario[] {
       assert({
         outcomes: [outOk(1, 8)],
         ...rowsAre([rowOf("main", { level: 4 }, 8, null)]),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-ticket-survives-renumbering",
+    description:
+      "A client_mismatch renumbers pending mutations from 1; tickets are a separate counter, so a ticket stays what putAt returned and a new one never collides with a pending one.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9),
+      local("putAt", ["progress", "a", { n: 1 }, "*"], {
+        ok: true,
+        mutationId: 1,
+      }),
+      assert({
+        requests: [pushReq(C1, 9, [put(1, "progress", "a", { n: 1 }, "*")])],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 1,
+          results: [ok(1, 10)],
+          changes: [recF("progress", "a", { n: 1 }, 10)],
+        }),
+      ),
+      local("putAt", ["progress", "b", { n: 2 }, "*"], {
+        ok: true,
+        mutationId: 2,
+      }),
+      assert({
+        outcomes: [outOk(1, 10)],
+        requests: [pushReq(C1, 10, [put(2, "progress", "b", { n: 2 }, "*")])],
+      }),
+      respond(
+        errorBody("client_mismatch", "clientId belongs to another device."),
+        409,
+      ),
+      local("putAt", ["progress", "c", { n: 3 }, "*"], {
+        ok: true,
+        mutationId: 3,
+      }),
+      assert({
+        requests: [pushReq(C2, 10, [put(1, "progress", "b", { n: 2 }, "*")])],
+        journal: {
+          [ALICE]: partition(C2, 3, 10, [
+            ticketed(put(1, "progress", "b", { n: 2 }, "*"), 2),
+            ticketed(put(2, "progress", "c", { n: 3 }, "*"), 3),
+          ]),
+        },
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 11,
+          lastMutationId: 1,
+          results: [ok(1, 11)],
+          changes: [recF("progress", "b", { n: 2 }, 11)],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(2, 11)],
+        requests: [pushReq(C2, 11, [put(2, "progress", "c", { n: 3 }, "*")])],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 12,
+          lastMutationId: 2,
+          results: [ok(2, 12)],
+          changes: [recF("progress", "c", { n: 3 }, 12)],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(3, 12)],
+        ...rowsAre([
+          rowOf("a", { n: 1 }, 10, null),
+          rowOf("b", { n: 2 }, 11, null),
+          rowOf("c", { n: 3 }, 12, null),
+        ]),
+        status: st("idle", 0),
       }),
     ],
   });

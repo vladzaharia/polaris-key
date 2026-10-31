@@ -73,7 +73,7 @@ func _shape(t: PKeyTestContext, corpus: Dictionary) -> void:
 	var family_names := {}
 	for sc: Dictionary in family["scenarios"]:
 		family_names[sc["name"]] = true
-	t.check("fileRecordCases is declared (13 cases, skipped by name until its port)", family["scenarios"].size() == 13 and family_names.size() == 13)
+	t.check("fileRecordCases is declared (16 cases, skipped by name until its port)", family["scenarios"].size() == 16 and family_names.size() == 16)
 	t.check("every step and call is known", unknown == 0, str(unknown))
 	t.check("the corpus has scenarios, rules and setting cases", corpus["scenarios"].size() > 0 and corpus["rules"].size() > 0 and corpus["settingCases"].size() > 0)
 

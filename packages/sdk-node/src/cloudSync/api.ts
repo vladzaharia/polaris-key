@@ -236,18 +236,20 @@ export class CloudSyncApi {
    *  tried whatever the other did; a failure is logged and never thrown. */
   async #forget(): Promise<void> {
     this.#forgot = true;
-    const ring = this.#d.keyring.forget().catch(() => {
-      // The root is already gone (`forget` locks first); only the pin file failed to go.
-      this.#d.log?.("cloud sync: the key ring pin could not be removed");
-    });
+    // The root leaves memory first, synchronously (a save codec stops with it); the pin goes last.
+    this.#d.keyring.lock();
     // `purge` waits for an in-flight pump, so it runs after the events batch that asked for it.
     const data = this.#d.host.purge().catch(() => {
       this.#d.log?.("cloud sync: the synced data could not be deleted");
     });
-    const saves = (this.#d.purgeSaves?.() ?? Promise.resolve()).catch(() => {
+    // The save transfers (journal, chunk cache, running writes) go before the ring is forgotten.
+    await (this.#d.purgeSaves?.() ?? Promise.resolve()).catch(() => {
       this.#d.log?.("cloud sync: the save transfers could not be deleted");
     });
-    await Promise.all([ring, data, saves]);
+    const ring = this.#d.keyring.forget().catch(() => {
+      this.#d.log?.("cloud sync: the key ring pin could not be removed");
+    });
+    await Promise.all([ring, data]);
   }
 
   // ── The config client's port ─────────────────────────────────────────────────────────────

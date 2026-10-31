@@ -22,6 +22,7 @@ import {
   SavesClient,
   SavesError,
   TransferEngine,
+  TransferError,
   chunkCacheBudget,
   isBlindedName,
   serverFileCodec,
@@ -151,6 +152,7 @@ export class MachineRecords implements SaveRecords {
 
   async #wait(
     call: () => { ok: true; mutationId: number } | { ok: false; error: string },
+    cancel?: AbortSignal,
   ): Promise<SaveSetResult> {
     this.#host.catchUp();
     let settle: (o: RecordOutcome) => void = () => undefined;
@@ -160,7 +162,16 @@ export class MachineRecords implements SaveRecords {
       return { ok: false, reason: "rejected", code: started.error };
     this.#waiting.set(started.mutationId, settle);
     void this.#host.touch();
-    const o = await outcome;
+    // No timeout: a cancel, a sign-out drop or the host's retries end the wait.
+    const aborted = new Promise<never>((_, reject) => {
+      const stop = (): void => {
+        this.#waiting.delete(started.mutationId);
+        reject(new TransferError("aborted"));
+      };
+      if (cancel?.aborted) stop();
+      else cancel?.addEventListener("abort", stop, { once: true });
+    });
+    const o = await Promise.race([outcome, aborted]);
     switch (o.status) {
       case "ok":
         return { ok: true, version: o.version };
@@ -189,9 +200,11 @@ export class MachineRecords implements SaveRecords {
     id: string,
     value: Meta,
     baseVersion: number | "*",
+    cancel?: AbortSignal,
   ): Promise<SaveSetResult> {
-    const r = await this.#wait(() =>
-      this.#host.machine.putAt(SAVES_COLLECTION, id, value, baseVersion),
+    const r = await this.#wait(
+      () => this.#host.machine.putAt(SAVES_COLLECTION, id, value, baseVersion),
+      cancel,
     );
     return r.ok === false && r.reason === "conflict" && r.server !== null
       ? { ...r, server: { ...r.server, id } }
@@ -283,7 +296,8 @@ export class SavesApi {
 
   /**
    * Write a save. Resolves with a handle at once; `done` settles on done, cancelled, failed or
-   * conflict. The handle is in `transfers()` until then.
+   * conflict. The handle is in `transfers()` until then. The wait for the metadata write has no
+   * timeout: `cancel()`, a sign-out (the write is dropped) and the host's retries end it.
    */
   async write(
     id: string,

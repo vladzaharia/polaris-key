@@ -352,6 +352,14 @@ class CloudSyncApi:
                     return
 
     def _forget_ring(self) -> None:
+        """The root leaves memory now (a save codec stops with it); the pin goes in :meth:`_purge`,
+        after the save transfers."""
+        try:
+            self._keyring.lock()
+        except Exception:  # noqa: BLE001
+            self._log("cloud sync: the key ring could not be locked")
+
+    def _forget_pin(self) -> None:
         try:
             self._keyring.forget()
         except Exception:  # noqa: BLE001
@@ -365,6 +373,8 @@ class CloudSyncApi:
                 self._purge_saves()
             except Exception:  # noqa: BLE001
                 self._log("cloud sync: the save transfers could not be deleted")
+        # The save transfers are gone before the ring is forgotten.
+        self._forget_pin()
         try:
             self._host.purge()
         except Exception:  # noqa: BLE001

@@ -9,7 +9,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TransferEvent } from "../src/constants.generated.js";
 import {
   PRODUCT,
@@ -329,6 +329,47 @@ describe("cloudSync.saves", () => {
     ).cloudSyncApi.beforeSignOut();
     expect(dirs()).toEqual([]);
     expect(existsSync(stateDir)).toBe(true);
+    client.close();
+  });
+
+  it("cancel() settles a write that waits for its metadata outcome", async () => {
+    const { w } = savesWorld();
+    const inner = w.fetch;
+    let pushed = false;
+    // The push never answers: the write waits on its outcome.
+    w.fetch = (async (input: string | URL, init?: RequestInit) => {
+      if (!new URL(String(input)).pathname.endsWith("/sync/ops"))
+        return inner(input, init);
+      pushed = true;
+      return new Promise<Response>(() => undefined);
+    }) as typeof fetch;
+    const { client } = await signedIn(w);
+    const t = await client.cloudSync.saves.write("slot-1", bytes(100), {});
+    await vi.waitFor(() => expect(pushed).toBe(true));
+    await t.cancel();
+    expect(await t.done).toEqual({ state: "cancelled" });
+    expect(client.cloudSync.transfers()).toEqual([]);
+  });
+
+  it("purges the save transfers before the ring is forgotten", async () => {
+    const { w } = savesWorld();
+    const { client, stateDir } = await signedIn(w);
+    const t = await client.cloudSync.saves.write("slot-1", bytes(100), {});
+    await t.done;
+    const seen: boolean[] = [];
+    const forget = client.keyring.forget.bind(client.keyring);
+    client.keyring.forget = async () => {
+      seen.push(
+        !readdirSync(stateDir, { recursive: true }).some((p) =>
+          String(p).endsWith("cloud-sync-transfers"),
+        ),
+      );
+      return forget();
+    };
+    await (
+      client as unknown as { cloudSyncApi: { beforeSignOut(): Promise<void> } }
+    ).cloudSyncApi.beforeSignOut();
+    expect(seen).toEqual([true]);
     client.close();
   });
 });

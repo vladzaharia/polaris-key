@@ -73,7 +73,7 @@ class SyncScenariosTest : ConformanceSuite() {
         // until the Kotlin port of the machine's records, putAt, removeAt and onOutcome lands.
         val family = corpus["fileRecordCases"] as JsonObject
         val names = family["scenarios"].arrayValue!!.map { (it as JsonObject)["name"].stringValue!! }
-        assertEquals("the family has 13 cases; port them with the records binding", 13, names.size)
+        assertEquals("the family has 16 cases; port them with the records binding", 16, names.size)
         assertEquals(names.size, names.toSet().size)
     }
 

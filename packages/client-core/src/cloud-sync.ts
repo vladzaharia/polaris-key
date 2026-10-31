@@ -46,6 +46,7 @@
 // Nothing here touches licence state. No module reachable from `gate.ts`, `store.ts` or
 // `verify.ts` imports this one (`test/cloudSyncIsolation.test.ts`, T5).
 
+import { isBlindedName } from "./sync/blind.js";
 import {
   SYNC_CLIENT_ID_PATTERN as PROTOCOL_SYNC_CLIENT_ID_PATTERN,
   SYNC_DEBOUNCE_MS as PROTOCOL_SYNC_DEBOUNCE_MS,
@@ -269,6 +270,9 @@ interface Partition {
   signedOutAt: number | null;
   /** The last `quota.bytes − usage.bytes` a 200 carried; a larger one re-sends quota-parked ops. */
   headroom: number | null;
+  /** The last ticket `putAt` / `removeAt` handed out; separate from `nextMutationId`, so a
+   *  renumbering never makes a new ticket equal a pending one. */
+  nextTicket?: number;
   /** E2E: the store sequence from which every row is sealed. Only ever lowered (the least of
    *  every value served), and never above `sealedFloor`. */
   encryptionSince?: number;
@@ -988,9 +992,11 @@ export class CloudSyncMachine {
       ...body,
       baseVersion,
     });
-    op.ticket = op.mutationId;
+    const ticket = p.nextTicket ?? 1;
+    p.nextTicket = ticket + 1;
+    op.ticket = ticket;
     this.kick();
-    return { ok: true, mutationId: op.mutationId };
+    return { ok: true, mutationId: ticket };
   }
 
   private emitOutcome(op: JournalOp, o: OutcomeBody): void {
@@ -1946,10 +1952,15 @@ export class CloudSyncMachine {
             ? `r:${recordKey(String(c.record[0]), String(c.record[1]))}`
             : "";
       // A record with a file and no value carries nothing to judge (§13.4): a good row, null value.
+      // Only when nothing was sealed (no `ct`, host verdict not invalid) and, in E2E mode, only
+      // under a blinded id: a plain id there is not a save the host could have placed.
       const fileOnly =
         c.value === undefined &&
+        c.ct === undefined &&
+        opened.changes?.[i]?.invalid !== true &&
         Array.isArray(c.record) &&
-        fileOf(c.file) !== undefined;
+        fileOf(c.file) !== undefined &&
+        (!this.requiresE2e() || isBlindedName(String(c.record[1])));
       const bad = fileOnly
         ? {}
         : this.rowBad(p, latchKey, c.version, opened.changes?.[i], req.cursor);
@@ -2038,7 +2049,11 @@ export class CloudSyncMachine {
     cursor: number,
   ): Versioned {
     const version = server.version as number;
-    const fileOnly = server.value === undefined && fileOf(server.file);
+    const fileOnly =
+      server.value === undefined &&
+      server.ct === undefined &&
+      open?.invalid !== true &&
+      fileOf(server.file) !== undefined;
     return {
       value: clone(server.value ?? null),
       version,

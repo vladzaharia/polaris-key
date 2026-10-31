@@ -15363,7 +15363,10 @@
                 },
                 "changes": [
                   {
-                    "record": ["progress", "slot"],
+                    "record": [
+                      "progress",
+                      "x:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                    ],
                     "version": 8,
                     "file": {
                       "version": 7,
@@ -15396,7 +15399,7 @@
               "rows": {
                 "progress": [
                   {
-                    "id": "slot",
+                    "id": "x:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
                     "value": null,
                     "version": 8,
                     "file": {
@@ -15409,8 +15412,294 @@
                 ]
               },
               "records": {
-                "progress/slot": { "value": null, "from": "cloud" }
+                "progress/x:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA": {
+                  "value": null,
+                  "from": "cloud"
+                }
               },
+              "status": { "state": "idle", "pending": 0 }
+            }
+          }
+        ],
+        "wp": "U-22.5"
+      },
+      {
+        "name": "file-only-row-invalid-is-bad",
+        "description": "A record change the host could not open (a garbage ct) is unreadable even when it names a file: the pointer is not taken and the row is not listed.",
+        "rules": ["push-2-conflict-new-mutation"],
+        "init": {
+          "catalog": {
+            "settings": [
+              {
+                "key": "audio.music.volume",
+                "route": "synced",
+                "scope": "user",
+                "policy": "lastWrite",
+                "schema": { "type": "number", "minimum": 0, "maximum": 1 }
+              },
+              {
+                "key": "graphics.quality",
+                "route": "synced",
+                "scope": "user",
+                "policy": "lastWrite",
+                "schema": {
+                  "type": "string",
+                  "enum": ["low", "medium", "high"]
+                }
+              },
+              {
+                "key": "input.bindings",
+                "route": "synced",
+                "scope": "user",
+                "policy": "merge",
+                "schema": { "type": "object" }
+              },
+              {
+                "key": "stats.bestScore",
+                "route": "synced",
+                "scope": "user",
+                "policy": "max",
+                "schema": { "type": "integer", "minimum": 0 }
+              },
+              {
+                "key": "ui.theme",
+                "route": "synced",
+                "scope": "user",
+                "policy": "lastWrite",
+                "schema": { "type": "string" }
+              }
+            ],
+            "collections": [
+              {
+                "name": "progress",
+                "policy": "revision",
+                "resolve": "keepLocal"
+              },
+              { "name": "unlocks", "policy": "union" }
+            ]
+          },
+          "document": {
+            "values": {
+              "audio.music.volume": 0.8,
+              "graphics.quality": "medium",
+              "input.bindings": { "jump": "space", "crouch": "ctrl" },
+              "stats.bestScore": 0,
+              "ui.theme": "dark"
+            },
+            "locked": ["ui.theme"]
+          },
+          "journal": null,
+          "clock": { "now": 1760000000000, "offsetMs": 0, "contacted": true },
+          "subject": "sub_alice",
+          "network": "online",
+          "licence": {
+            "state": "valid",
+            "lastSyncUnauthorized": false,
+            "documents": ["license", "config"]
+          },
+          "clientIds": ["c_000000000000000client1", "c_000000000000000client2"],
+          "options": { "onSignOut": "clear" },
+          "legacyLocal": null,
+          "encryption": "e2e",
+          "hasRoot": true
+        },
+        "steps": [
+          {
+            "assert": {
+              "requests": [
+                {
+                  "method": "GET",
+                  "path": "/demo/sync?cursor=0&clientId=c_000000000000000client1"
+                }
+              ],
+              "status": { "state": "syncing", "pending": 0 }
+            }
+          },
+          {
+            "respond": {
+              "status": 200,
+              "body": {
+                "subject": "sub_alice",
+                "serverNow": 1760000000000,
+                "cursor": 9,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": [
+                      "progress",
+                      "x:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+                    ],
+                    "version": 8,
+                    "file": {
+                      "version": 7,
+                      "size": 90000,
+                      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                      "format": "chunks"
+                    }
+                  }
+                ],
+                "tombstones": [],
+                "encryption": "e2e",
+                "encryptionSince": 0
+              },
+              "opened": { "changes": [{ "invalid": true }] }
+            }
+          },
+          {
+            "assert": {
+              "rows": { "progress": [] },
+              "records": {
+                "progress/x:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA": null
+              },
+              "status": { "state": "idle", "pending": 0 }
+            }
+          }
+        ],
+        "wp": "U-22.5"
+      },
+      {
+        "name": "file-only-row-e2e-plain-id-is-not-a-save",
+        "description": "In end-to-end mode a file-only row under a plain (unblinded) id is not a save: it is unreadable, like any plaintext row at or above encryptionSince.",
+        "rules": ["push-2-conflict-new-mutation"],
+        "init": {
+          "catalog": {
+            "settings": [
+              {
+                "key": "audio.music.volume",
+                "route": "synced",
+                "scope": "user",
+                "policy": "lastWrite",
+                "schema": { "type": "number", "minimum": 0, "maximum": 1 }
+              },
+              {
+                "key": "graphics.quality",
+                "route": "synced",
+                "scope": "user",
+                "policy": "lastWrite",
+                "schema": {
+                  "type": "string",
+                  "enum": ["low", "medium", "high"]
+                }
+              },
+              {
+                "key": "input.bindings",
+                "route": "synced",
+                "scope": "user",
+                "policy": "merge",
+                "schema": { "type": "object" }
+              },
+              {
+                "key": "stats.bestScore",
+                "route": "synced",
+                "scope": "user",
+                "policy": "max",
+                "schema": { "type": "integer", "minimum": 0 }
+              },
+              {
+                "key": "ui.theme",
+                "route": "synced",
+                "scope": "user",
+                "policy": "lastWrite",
+                "schema": { "type": "string" }
+              }
+            ],
+            "collections": [
+              {
+                "name": "progress",
+                "policy": "revision",
+                "resolve": "keepLocal"
+              },
+              { "name": "unlocks", "policy": "union" }
+            ]
+          },
+          "document": {
+            "values": {
+              "audio.music.volume": 0.8,
+              "graphics.quality": "medium",
+              "input.bindings": { "jump": "space", "crouch": "ctrl" },
+              "stats.bestScore": 0,
+              "ui.theme": "dark"
+            },
+            "locked": ["ui.theme"]
+          },
+          "journal": null,
+          "clock": { "now": 1760000000000, "offsetMs": 0, "contacted": true },
+          "subject": "sub_alice",
+          "network": "online",
+          "licence": {
+            "state": "valid",
+            "lastSyncUnauthorized": false,
+            "documents": ["license", "config"]
+          },
+          "clientIds": ["c_000000000000000client1", "c_000000000000000client2"],
+          "options": { "onSignOut": "clear" },
+          "legacyLocal": null,
+          "encryption": "e2e",
+          "hasRoot": true
+        },
+        "steps": [
+          {
+            "assert": {
+              "requests": [
+                {
+                  "method": "GET",
+                  "path": "/demo/sync?cursor=0&clientId=c_000000000000000client1"
+                }
+              ],
+              "status": { "state": "syncing", "pending": 0 }
+            }
+          },
+          {
+            "respond": {
+              "status": 200,
+              "body": {
+                "subject": "sub_alice",
+                "serverNow": 1760000000000,
+                "cursor": 9,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["progress", "slot1"],
+                    "version": 8,
+                    "file": {
+                      "version": 7,
+                      "size": 90000,
+                      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                      "format": "chunks"
+                    }
+                  }
+                ],
+                "tombstones": [],
+                "encryption": "e2e",
+                "encryptionSince": 0
+              },
+              "opened": { "changes": [{ "seq": 8 }] }
+            }
+          },
+          {
+            "assert": {
+              "rows": { "progress": [] },
+              "records": { "progress/slot1": null },
               "status": { "state": "idle", "pending": 0 }
             }
           }
@@ -16141,7 +16430,7 @@
             "local": {
               "call": "putAt",
               "args": ["progress", "main", { "level": 5 }, 7],
-              "expect": { "ok": true, "mutationId": 2 }
+              "expect": { "ok": true, "mutationId": 1 }
             }
           },
           {
@@ -16172,7 +16461,7 @@
                       "op": "set",
                       "value": { "level": 5 },
                       "baseVersion": 7,
-                      "ticket": 2
+                      "ticket": 1
                     }
                   ]
                 }
@@ -16252,7 +16541,7 @@
             "assert": {
               "outcomes": [
                 {
-                  "mutationId": 2,
+                  "mutationId": 1,
                   "status": "conflict",
                   "server": {
                     "value": { "level": 6 },
@@ -17356,6 +17645,397 @@
                   }
                 ]
               }
+            }
+          }
+        ],
+        "wp": "U-22.5"
+      },
+      {
+        "name": "put-at-ticket-survives-renumbering",
+        "description": "A client_mismatch renumbers pending mutations from 1; tickets are a separate counter, so a ticket stays what putAt returned and a new one never collides with a pending one.",
+        "rules": ["push-2-conflict-new-mutation"],
+        "init": {
+          "catalog": {
+            "settings": [
+              {
+                "key": "audio.music.volume",
+                "route": "synced",
+                "scope": "user",
+                "policy": "lastWrite",
+                "schema": { "type": "number", "minimum": 0, "maximum": 1 }
+              },
+              {
+                "key": "graphics.quality",
+                "route": "synced",
+                "scope": "user",
+                "policy": "lastWrite",
+                "schema": {
+                  "type": "string",
+                  "enum": ["low", "medium", "high"]
+                }
+              },
+              {
+                "key": "input.bindings",
+                "route": "synced",
+                "scope": "user",
+                "policy": "merge",
+                "schema": { "type": "object" }
+              },
+              {
+                "key": "stats.bestScore",
+                "route": "synced",
+                "scope": "user",
+                "policy": "max",
+                "schema": { "type": "integer", "minimum": 0 }
+              },
+              {
+                "key": "ui.theme",
+                "route": "synced",
+                "scope": "user",
+                "policy": "lastWrite",
+                "schema": { "type": "string" }
+              }
+            ],
+            "collections": [
+              {
+                "name": "progress",
+                "policy": "revision",
+                "resolve": "keepLocal"
+              },
+              { "name": "unlocks", "policy": "union" }
+            ]
+          },
+          "document": {
+            "values": {
+              "audio.music.volume": 0.8,
+              "graphics.quality": "medium",
+              "input.bindings": { "jump": "space", "crouch": "ctrl" },
+              "stats.bestScore": 0,
+              "ui.theme": "dark"
+            },
+            "locked": ["ui.theme"]
+          },
+          "journal": null,
+          "clock": { "now": 1760000000000, "offsetMs": 0, "contacted": true },
+          "subject": "sub_alice",
+          "network": "online",
+          "licence": {
+            "state": "valid",
+            "lastSyncUnauthorized": false,
+            "documents": ["license", "config"]
+          },
+          "clientIds": ["c_000000000000000client1", "c_000000000000000client2"],
+          "options": { "onSignOut": "clear" },
+          "legacyLocal": null,
+          "encryption": "server",
+          "hasRoot": true
+        },
+        "steps": [
+          {
+            "assert": {
+              "requests": [
+                {
+                  "method": "GET",
+                  "path": "/demo/sync?cursor=0&clientId=c_000000000000000client1"
+                }
+              ],
+              "status": { "state": "syncing", "pending": 0 }
+            }
+          },
+          {
+            "respond": {
+              "status": 200,
+              "body": {
+                "subject": "sub_alice",
+                "serverNow": 1760000000000,
+                "cursor": 9,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [],
+                "tombstones": []
+              }
+            }
+          },
+          {
+            "local": {
+              "call": "putAt",
+              "args": ["progress", "a", { "n": 1 }, "*"],
+              "expect": { "ok": true, "mutationId": 1 }
+            }
+          },
+          {
+            "assert": {
+              "requests": [
+                {
+                  "method": "POST",
+                  "path": "/demo/sync/ops",
+                  "body": {
+                    "clientId": "c_000000000000000client1",
+                    "cursor": 9,
+                    "atomic": false,
+                    "mutations": [
+                      {
+                        "mutationId": 1,
+                        "target": { "record": ["progress", "a"] },
+                        "op": "set",
+                        "value": { "n": 1 },
+                        "baseVersion": "*"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "respond": {
+              "status": 200,
+              "body": {
+                "subject": "sub_alice",
+                "serverNow": 1760000000000,
+                "cursor": 10,
+                "more": false,
+                "lastMutationId": 1,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["progress", "a"],
+                    "value": { "n": 1 },
+                    "version": 10
+                  }
+                ],
+                "tombstones": [],
+                "results": [{ "mutationId": 1, "status": "ok", "version": 10 }]
+              }
+            }
+          },
+          {
+            "local": {
+              "call": "putAt",
+              "args": ["progress", "b", { "n": 2 }, "*"],
+              "expect": { "ok": true, "mutationId": 2 }
+            }
+          },
+          {
+            "assert": {
+              "outcomes": [{ "mutationId": 1, "status": "ok", "version": 10 }],
+              "requests": [
+                {
+                  "method": "POST",
+                  "path": "/demo/sync/ops",
+                  "body": {
+                    "clientId": "c_000000000000000client1",
+                    "cursor": 10,
+                    "atomic": false,
+                    "mutations": [
+                      {
+                        "mutationId": 2,
+                        "target": { "record": ["progress", "b"] },
+                        "op": "set",
+                        "value": { "n": 2 },
+                        "baseVersion": "*"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "respond": {
+              "status": 409,
+              "body": {
+                "error": {
+                  "code": "client_mismatch",
+                  "message": "clientId belongs to another device."
+                }
+              }
+            }
+          },
+          {
+            "local": {
+              "call": "putAt",
+              "args": ["progress", "c", { "n": 3 }, "*"],
+              "expect": { "ok": true, "mutationId": 3 }
+            }
+          },
+          {
+            "assert": {
+              "requests": [
+                {
+                  "method": "POST",
+                  "path": "/demo/sync/ops",
+                  "body": {
+                    "clientId": "c_000000000000000client2",
+                    "cursor": 10,
+                    "atomic": false,
+                    "mutations": [
+                      {
+                        "mutationId": 1,
+                        "target": { "record": ["progress", "b"] },
+                        "op": "set",
+                        "value": { "n": 2 },
+                        "baseVersion": "*"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "journal": {
+                "sub_alice": {
+                  "clientId": "c_000000000000000client2",
+                  "nextMutationId": 3,
+                  "cursor": 10,
+                  "pending": [
+                    {
+                      "mutationId": 1,
+                      "target": { "record": ["progress", "b"] },
+                      "op": "set",
+                      "value": { "n": 2 },
+                      "baseVersion": "*",
+                      "ticket": 2
+                    },
+                    {
+                      "mutationId": 2,
+                      "target": { "record": ["progress", "c"] },
+                      "op": "set",
+                      "value": { "n": 3 },
+                      "baseVersion": "*",
+                      "ticket": 3
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "respond": {
+              "status": 200,
+              "body": {
+                "subject": "sub_alice",
+                "serverNow": 1760000000000,
+                "cursor": 11,
+                "more": false,
+                "lastMutationId": 1,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["progress", "b"],
+                    "value": { "n": 2 },
+                    "version": 11
+                  }
+                ],
+                "tombstones": [],
+                "results": [{ "mutationId": 1, "status": "ok", "version": 11 }]
+              }
+            }
+          },
+          {
+            "assert": {
+              "outcomes": [{ "mutationId": 2, "status": "ok", "version": 11 }],
+              "requests": [
+                {
+                  "method": "POST",
+                  "path": "/demo/sync/ops",
+                  "body": {
+                    "clientId": "c_000000000000000client2",
+                    "cursor": 11,
+                    "atomic": false,
+                    "mutations": [
+                      {
+                        "mutationId": 2,
+                        "target": { "record": ["progress", "c"] },
+                        "op": "set",
+                        "value": { "n": 3 },
+                        "baseVersion": "*"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "respond": {
+              "status": 200,
+              "body": {
+                "subject": "sub_alice",
+                "serverNow": 1760000000000,
+                "cursor": 12,
+                "more": false,
+                "lastMutationId": 2,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["progress", "c"],
+                    "value": { "n": 3 },
+                    "version": 12
+                  }
+                ],
+                "tombstones": [],
+                "results": [{ "mutationId": 2, "status": "ok", "version": 12 }]
+              }
+            }
+          },
+          {
+            "assert": {
+              "outcomes": [{ "mutationId": 3, "status": "ok", "version": 12 }],
+              "rows": {
+                "progress": [
+                  {
+                    "id": "a",
+                    "value": { "n": 1 },
+                    "version": 10,
+                    "file": null
+                  },
+                  {
+                    "id": "b",
+                    "value": { "n": 2 },
+                    "version": 11,
+                    "file": null
+                  },
+                  {
+                    "id": "c",
+                    "value": { "n": 3 },
+                    "version": 12,
+                    "file": null
+                  }
+                ]
+              },
+              "status": { "state": "idle", "pending": 0 }
             }
           }
         ],

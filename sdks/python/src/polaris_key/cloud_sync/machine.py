@@ -40,6 +40,7 @@ from ..constants_generated import (
     SYNC_SIGNOUT_FLUSH_MS,
     ErrorCode,
 )
+from ..core.sync_crypto import is_blinded_name
 
 #: The client code for the pin (``conformance/parity/errors.json``).
 SYNC_ENCRYPTION_PINNED: str = ErrorCode.SYNC_ENCRYPTION_PINNED
@@ -613,9 +614,11 @@ class CloudSyncMachine:
         op = self._enqueue(
             p, {"target": {"record": [collection, record_id]}, **body, "baseVersion": base_version}
         )
-        op["ticket"] = op["mutationId"]
+        ticket = p.get("nextTicket", 1)
+        p["nextTicket"] = ticket + 1
+        op["ticket"] = ticket
         self._kick()
-        return {"ok": True, "mutationId": op["mutationId"]}
+        return {"ok": True, "mutationId": ticket}
 
     def _emit_outcome(self, op: Obj, outcome: Obj) -> None:
         if "ticket" not in op or self._outcome is None:
@@ -1442,8 +1445,16 @@ class CloudSyncMachine:
             else:
                 latch_key = ""
             # A record with a file and no value carries nothing to judge: a good row, null value.
+            # Only when nothing was sealed (no ``ct``, host verdict not invalid) and, in E2E mode, only
+            # under a blinded id: a plain id there is not a save the host could have placed.
             file_only = (
-                "value" not in c and isinstance(c.get("record"), list) and _file_of(c.get("file")) is not None
+                "value" not in c
+                and "ct" not in c
+                and (open_row or {}).get("invalid") is not True
+                and isinstance(c.get("record"), list)
+                and len(c["record"]) == 2
+                and _file_of(c.get("file")) is not None
+                and (not self._requires_e2e() or is_blinded_name(str(c["record"][1])))
             )
             bad = {} if file_only else self._row_bad(p, latch_key, c["version"], open_row, req["cursor"])
             if isinstance(c.get("setting"), str):
@@ -1511,7 +1522,12 @@ class CloudSyncMachine:
         """A conflict's ``server`` copy as a held row. ``cursor`` is the one the push request carried, so
         guard (b) judges the copy exactly as it judges a pulled row."""
         version = server["version"]
-        file_only = "value" not in server and _file_of(server.get("file")) is not None
+        file_only = (
+            "value" not in server
+            and "ct" not in server
+            and (open_row or {}).get("invalid") is not True
+            and _file_of(server.get("file")) is not None
+        )
         bad = {} if file_only else self._row_bad(p, latch_key, version, open_row, cursor)
         return {"value": _clone(server.get("value")), "version": version, **_file_mark(server.get("file")), **bad}
 

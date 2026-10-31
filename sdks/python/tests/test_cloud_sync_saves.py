@@ -12,10 +12,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
 from pathlib import Path
 from typing import Any, Dict, List
 
 import httpx
+import pytest
 from helpers import PRODUCT, TOKEN, make_client
 from test_cloud_sync_host import SUBJECT, World
 
@@ -229,4 +231,65 @@ def test_the_transfer_journal_goes_with_the_person(tmp_path: Path) -> None:
     assert "cloud-sync-transfers" in dirs()
     c._cloud_sync_api.before_sign_out()
     assert dirs() == []
+    c.close()
+
+
+def test_cancel_settles_a_write_that_waits_for_its_metadata_outcome(tmp_path: Path) -> None:
+    w = SavesWorld()
+    gate = threading.Event()
+    pushed = threading.Event()
+    push = w.push
+
+    def hang(body: Dict[str, Any]) -> Dict[str, Any]:
+        pushed.set()
+        gate.wait(10)
+        return push(body)
+
+    w.push = hang
+    c = signed_in(w, tmp_path)
+    t = c.cloud_sync.saves.write("slot-1", data(100), {})
+    assert pushed.wait(10)
+    t.cancel()
+    assert t.wait(10) == {"state": "cancelled"}
+    assert c.cloud_sync.transfers() == []
+    gate.set()
+    c.close()
+
+
+def test_a_file_codec_refuses_once_the_ring_is_locked(tmp_path: Path) -> None:
+    from test_cloud_sync_host import Rig
+
+    r = Rig(World(), tmp_path, keys=True)
+    r.client.keyring.create()
+    codec = r.client.keyring.file_codec("saves")
+    plain = b"abc"
+    cid = codec.chunk_id(plain)
+    assert len(codec.seal_chunk(cid, plain)) > 3
+    r.client.keyring.lock()
+    for call in (
+        lambda: codec.seal_chunk(cid, plain),
+        lambda: codec.chunk_id(plain),
+        lambda: codec.seal_manifest(plain),
+        lambda: next(iter(codec.seal_stream([plain]))),
+    ):
+        with pytest.raises(Exception) as e:
+            call()
+        assert getattr(e.value, "code", "") == "sync-locked"
+    r.client.close()
+
+
+def test_the_save_transfers_are_purged_before_the_ring_is_forgotten(tmp_path: Path) -> None:
+    w = SavesWorld()
+    c = signed_in(w, tmp_path)
+    c.cloud_sync.saves.write("slot-1", data(100), {}).wait(10)
+    seen: List[bool] = []
+    forget = c.keyring.forget
+
+    def spy() -> None:
+        seen.append(not any(p.name == "cloud-sync-transfers" for p in tmp_path.rglob("*")))
+        forget()
+
+    c.keyring.forget = spy  # type: ignore[method-assign]
+    c._cloud_sync_api.before_sign_out()
+    assert seen and all(seen)
     c.close()
