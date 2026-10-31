@@ -299,14 +299,16 @@ export function useSdkGate(
   const identityOn = state.capabilities?.identity.enabled === true;
   // The checking screen waits for the ladder only where the build has one to run.
   const holds = autoOn && adapter?.supports(AUTOSIGNIN).supported === true;
+  // Due on the first render that could start it, so the checking screen is never preceded by a
+  // frame of Welcome.
+  const autoDue =
+    autoOn &&
+    !autoStarted.current &&
+    state.phase !== "loading" &&
+    state.status === "needs-activation" &&
+    identityOn;
   useEffect(() => {
-    if (!autoOn || !adapter || autoStarted.current) return;
-    if (
-      state.phase === "loading" ||
-      state.status !== "needs-activation" ||
-      !identityOn
-    )
-      return;
+    if (!autoOn || !adapter || !autoDue) return;
     autoStarted.current = true;
     setAuto({ pending: true, seed: null });
     // The ladder and its mapping load now, with the run, not with the page.
@@ -318,7 +320,7 @@ export function useSdkGate(
         setAuto({ pending: false, seed });
         if (open) setStep("signin");
       });
-  }, [autoOn, adapter, state.phase, state.status, identityOn]);
+  }, [autoOn, adapter, autoDue]);
   // An identity failure ends the hand-off (the Welcome step shows it).
   const identityError = state.error.identity;
   useEffect(() => {
@@ -749,7 +751,7 @@ export function useSdkGate(
     adapter: ctx.adapter,
     // While automatic sign-in is out the gate keeps its checking screen, never a flash of Welcome.
     input:
-      auto.pending && holds
+      (auto.pending || autoDue) && holds
         ? { ...shown, gate: { checking: true, cached: false } }
         : shown,
     step,
