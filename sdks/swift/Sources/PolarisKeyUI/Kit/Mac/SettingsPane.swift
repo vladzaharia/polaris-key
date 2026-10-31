@@ -454,55 +454,55 @@
             strings.string("signin.signout.releasedMac", ["tier": .text(tier ?? "")])
         }
     }
-#endif
 
-/// The release-channel control of the Settings pane: a pop-up button (press, or Space from the
-/// keyboard) listing the channels; the current one is ticked.
-private struct ChannelChooser: View {
-    let current: String
-    let options: [String]
-    let style: KitResolvedStyle
-    let label: String
-    let select: (String) -> Void
-    @State private var open = false
+    /// The release-channel control of the Settings pane: a pop-up button (press, or Space from the
+    /// keyboard) listing the channels; the current one is ticked.
+    private struct ChannelChooser: View {
+        let current: String
+        let options: [String]
+        let style: KitResolvedStyle
+        let label: String
+        let select: (String) -> Void
+        @State private var open = false
 
-    var body: some View {
-        Button {
-            open.toggle()
-        } label: {
-            HStack(spacing: style.space(.xxs)) {
-                Text(AccountAndLicenseSection.channelName(current))
-                Image(systemName: "chevron.up.chevron.down").imageScale(.small)
-                    .accessibilityHidden(true)
-            }
-            .foregroundStyle(style.palette.textStrong)
-        }
-        .buttonStyle(.bordered)
-        .accessibilityLabel(label)
-        .accessibilityValue(AccountAndLicenseSection.channelName(current))
-        .popover(isPresented: $open, arrowEdge: .bottom) {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(options, id: \.self) { option in
-                    Button {
-                        select(option)
-                        open = false
-                    } label: {
-                        HStack(spacing: style.space(.xs)) {
-                            Image(systemName: "checkmark").opacity(option == current ? 1 : 0)
-                                .accessibilityHidden(true)
-                            Text(AccountAndLicenseSection.channelName(option))
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.vertical, style.space(.xs))
-                        .padding(.horizontal, style.space(.sm))
-                        .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(option == current ? .isSelected : [])
+        var body: some View {
+            Button {
+                open.toggle()
+            } label: {
+                HStack(spacing: style.space(.xxs)) {
+                    Text(AccountAndLicenseSection.channelName(current))
+                    Image(systemName: "chevron.up.chevron.down").imageScale(.small)
+                        .accessibilityHidden(true)
                 }
+                .foregroundStyle(style.palette.textStrong)
             }
-            .padding(.vertical, style.space(.xxs))
-            .frame(minWidth: 160)
+            .buttonStyle(.bordered)
+            .accessibilityLabel(label)
+            .accessibilityValue(AccountAndLicenseSection.channelName(current))
+            .popover(isPresented: $open, arrowEdge: .bottom) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(options, id: \.self) { option in
+                        Button {
+                            select(option)
+                            open = false
+                        } label: {
+                            HStack(spacing: style.space(.xs)) {
+                                Image(systemName: "checkmark").opacity(option == current ? 1 : 0)
+                                    .accessibilityHidden(true)
+                                Text(AccountAndLicenseSection.channelName(option))
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.vertical, style.space(.xs))
+                            .padding(.horizontal, style.space(.sm))
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(option == current ? .isSelected : [])
+                    }
+                }
+                .padding(.vertical, style.space(.xxs))
+                .frame(minWidth: 160)
+            }
         }
     }
-}
+#endif
