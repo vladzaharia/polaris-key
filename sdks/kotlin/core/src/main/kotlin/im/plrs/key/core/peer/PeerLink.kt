@@ -35,7 +35,7 @@ import java.io.IOException
 public const val HANDSHAKE_FRAME_MAX: Int = 16_384
 
 /** Bytes a link may hold unsent before it closes `peer_busy` (a peer that never reads). */
-public const val LINK_WRITE_CAP: Long = 8L * 1024 * 1024
+public const val LINK_WRITE_CAP: Long = 4L * 1024 * 1024
 
 /** Seconds from accept (or connect) to an admitted channel. */
 public const val HANDSHAKE_SECONDS: Double = 30.0

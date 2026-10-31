@@ -536,6 +536,38 @@ class ConnectRelayTest {
     }
 
     @Test
+    fun inboundEnvelopesPastTheWaitingByteBoundCloseTheSocket() = runBlocking {
+        val closed = java.util.concurrent.atomic.AtomicInteger(0)
+        val flood = MockWebServer()
+        val listener = object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                // About 12 MB, sent while the reader takes none of it.
+                val chunk = ByteString.of(*ByteArray(60_000))
+                repeat(200) { if (!webSocket.send(chunk)) return }
+            }
+
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                closed.set(code)
+                webSocket.close(1000, null)
+            }
+        }
+        flood.enqueue(MockResponse().addHeader("Sec-WebSocket-Protocol", "pkey-relay.1").withWebSocketUpgrade(listener))
+        flood.start()
+        try {
+            val ws = okHttpOpener(allowPlainLoopback = true, openSeconds = 5.0)(wsUrl(flood), listOf("pkey-relay.1", ticket))
+            until { closed.get() != 0 }
+            assertEquals(1013, closed.get())
+            try {
+                while (true) ws.receive()
+            } catch (e: SocketClosed) {
+                assertEquals(1013, e.code)
+            }
+        } finally {
+            quiet(flood)
+        }
+    }
+
+    @Test
     fun theDefaultOpenerRefusesAnOversizeMessageAnUnreachableHostAndPlainText() = runBlocking {
         val big = MockWebServer()
         val listener = object : WebSocketListener() {

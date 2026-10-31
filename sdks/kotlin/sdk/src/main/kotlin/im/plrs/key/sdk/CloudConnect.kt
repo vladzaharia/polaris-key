@@ -42,6 +42,7 @@ import im.plrs.key.core.PeerTrustResult
 import im.plrs.key.core.ProductDiscoveryDocument
 import im.plrs.key.core.RuntimeFamily
 import im.plrs.key.core.ServiceSlug
+import im.plrs.key.core.peer.PeerCloseCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -219,7 +220,7 @@ public class CloudConnect internal constructor(
         relayReason = null
         val reason = if (!o.relay) "host" else relayWanted(core.discoveryDocument())
         val relayOn = reason == null
-        val src = lanSource(connect, now = now, floored = floored, applyTrust = { applyPeerTrust(it) })
+        val src = watch(lanSource(connect, now = now, floored = floored, applyTrust = { applyPeerTrust(it) }))
         try {
             if (!o.lan) {
                 lanReason = "host"
@@ -461,6 +462,44 @@ public class CloudConnect internal constructor(
         }
     }
 
+    /** A roster this device stores, pushed or fetched, is checked against every open session. */
+    internal fun watch(source: LanSource): LanSource {
+        val adopt = source.adoptRing
+        val refresh = source.refresh
+        return LanSource(
+            load = source.load,
+            now = source.now,
+            refresh = refresh?.let { f ->
+                {
+                    f()
+                    rosterStored()
+                }
+            },
+            adoptRing = adopt?.let { f ->
+                { jws ->
+                    val r = f(jws)
+                    if (r is RingAdoption.Stored) rosterStored()
+                    r
+                }
+            },
+            applyTrust = source.applyTrust,
+            floored = source.floored,
+            mono = source.mono,
+        )
+    }
+
+    /**
+     * Admits every open session again against the roster now held: a session with a device the roster no
+     * longer lists ends `peer_revoked`. A roster that only adds devices keeps them all.
+     */
+    internal suspend fun rosterStored() {
+        val listed = connect.current()?.devices?.map { it.deviceId }?.toSet() ?: return
+        val open = synchronized(lock) { sessions.toList() }
+        for (s in open) {
+            if (s.peerDeviceId !in listed) s.closeRevoked()
+        }
+    }
+
     private fun track(s: ConnectSession): ConnectSession {
         synchronized(lock) { sessions += s }
         s.onClose { synchronized(lock) { sessions -= s } }
@@ -473,5 +512,14 @@ public class CloudConnect internal constructor(
         val r = core.acceptPeer(jws)
         if (r.applied) core.persistPeerTrust(jws)
         return r
+    }
+}
+
+/** Closes [this] with `peer_revoked`: the roster no longer lists the peer. */
+internal suspend fun ConnectSession.closeRevoked() {
+    try {
+        link.close(PeerCloseCode.peer_revoked)
+    } catch (ignored: IllegalStateException) {
+        // the transport is already gone: the session is over
     }
 }

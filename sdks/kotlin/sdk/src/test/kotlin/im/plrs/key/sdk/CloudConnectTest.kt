@@ -106,18 +106,20 @@ class CloudConnectTest {
         var connectFragment = """{"enabled":true,"relay":true,"endpoints":{"identity":"x","devices":"y","ticket":"$ticketUrl"}}"""
         val tickets = AtomicInteger()
 
-        fun ring(): String = signer.sign(
+        fun ring(): String = ringAt(1, listOf(a, b))
+
+        fun ringAt(epoch: Int, keep: List<Device>): String = this@CloudConnectTest.signer.sign(
             "pkey-ring+jws",
             JsonObject(
                 mapOf(
                     "iss" to JsonPrimitive("key.plrs.im"),
                     "aud" to JsonPrimitive("djdl"),
                     "sub" to JsonPrimitive(sub),
-                    "epoch" to jsonInt(1),
+                    "epoch" to jsonInt(epoch.toLong()),
                     "issuedAt" to jsonInt(now),
                     "expiresAt" to jsonInt(now + 604_800),
                     "devices" to JsonArray(
-                        listOf(a, b).sortedBy { it.id }.map {
+                        keep.sortedBy { it.id }.map {
                             JsonObject(
                                 mapOf(
                                     "deviceId" to JsonPrimitive(it.id),
@@ -365,6 +367,27 @@ class CloudConnectTest {
         assertEquals("peer_bye", s.closed!!.code)
         assertTrue(s.closed!!.byPeer)
         assertTrue(ca.cloudConnect.status().running)
+        assertTrue(cb.cloudConnect.status().running)
+    }
+
+    @Test
+    fun storedRosterClosesSessionsWithDroppedDevice() = runBlocking {
+        val w = World()
+        val (ca, cb) = both(w)
+        cb.cloudConnect.onChannel { }
+        until { ca.cloudConnect.peers().any { it.deviceId == idB && it.lan } }
+        val s = ca.cloudConnect.open(idB)
+        val src = ca.cloudConnect.watch(lanSource(ca.connect, now = { now }))
+        val adopt = src.adoptRing!!
+        fun roster(epoch: Int, vararg keep: Device): String = w.ringAt(epoch, keep.toList())
+        // A roster that only adds devices keeps the session.
+        assertTrue(adopt(roster(2, w.a, w.b)) is RingAdoption.Stored)
+        Thread.sleep(200)
+        assertNull(s.closed)
+        // A roster that drops the peer ends it.
+        assertTrue(adopt(roster(3, w.a)) is RingAdoption.Stored)
+        until { s.closed != null }
+        assertEquals("peer_revoked", s.closed!!.code)
         assertTrue(cb.cloudConnect.status().running)
     }
 

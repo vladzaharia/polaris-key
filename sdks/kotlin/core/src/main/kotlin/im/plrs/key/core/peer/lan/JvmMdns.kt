@@ -469,7 +469,7 @@ public class JvmMdns(
                 else -> Unit
             }
         }
-        for ((inst, e) in b.seen) report(b, inst, e, ups, downs)
+        for ((inst, e) in b.seen) report(b, inst, e, now, ups, downs)
     }
 
     /** An SRV record is believed with a port from 1024 to 65535 and the instance's own host name as its target. */
@@ -477,10 +477,10 @@ public class JvmMdns(
         srv != null && srv.port in MIN_PORT..MAX_PORT && foldName(srv.target) == hostOf(inst)
 
     /** Report an instance whose port, TXT and host name are known: up with its addresses, or down when every address was withdrawn. */
-    private fun report(b: Browse, inst: String, e: Entry, ups: MutableList<MdnsFound>, downs: MutableList<String>) {
+    private fun report(b: Browse, inst: String, e: Entry, now: Double, ups: MutableList<MdnsFound>, downs: MutableList<String>) {
         val port = e.port
         val txt = e.txt
-        val ips = e.target?.let { b.book.hosts(it) }
+        val ips = e.target?.let { b.book.hosts(it, now) }
         if (port == null || txt == null || ips == null) return
         if (ips.isEmpty()) {
             // The peer cannot be dialled until an address is learned again.

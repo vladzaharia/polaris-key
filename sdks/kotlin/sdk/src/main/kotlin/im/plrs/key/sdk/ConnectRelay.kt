@@ -104,6 +104,10 @@ private const val LIMIT_PAUSED = 4
 /** Bytes a socket may hold unsent before it is closed (R-6P S5). */
 internal const val RELAY_WRITE_CAP: Long = 8L * 1024 * 1024
 
+/** Inbound envelope bytes that may wait for the handler; past it the socket is closed [CLOSE_OVERLOAD]. */
+internal const val RELAY_PENDING_CAP: Long = 8L * 1024 * 1024
+private const val CLOSE_OVERLOAD = 1013
+
 /** Throws [RelayException] (`mode_not_allowed`) for a mode the relay must never carry. */
 internal fun assertRelayMode(mode: String): String {
     if (mode != "a") throw RelayException(RelayErrorReason.mode_not_allowed, "Mode $mode never crosses the relay; it is LAN only.")
@@ -170,9 +174,26 @@ internal class RelayOptions(
 
 private class OkSocket(private val ws: WebSocket) : RelaySocket {
     val incoming = Channel<RelayFrame>(Channel.UNLIMITED)
+    private val pending = java.util.concurrent.atomic.AtomicLong(0)
+
+    /** Counts [n] inbound bytes as waiting; false when that would pass [RELAY_PENDING_CAP]. */
+    fun admit(n: Int): Boolean {
+        while (true) {
+            val have = pending.get()
+            if (have + n > RELAY_PENDING_CAP) return false
+            if (pending.compareAndSet(have, have + n)) return true
+        }
+    }
 
     @Volatile
     var endCode: Int? = null
+
+    /** Past the waiting bound: the socket is closed and what waits is dropped. */
+    fun overload() {
+        endCode = CLOSE_OVERLOAD
+        ws.close(CLOSE_OVERLOAD, null)
+        incoming.cancel()
+    }
 
     override suspend fun send(data: ByteArray) {
         if (ws.queueSize() + data.size > RELAY_WRITE_CAP || !ws.send(data.toByteString())) {
@@ -184,7 +205,10 @@ private class OkSocket(private val ws: WebSocket) : RelaySocket {
 
     override suspend fun receive(): RelayFrame {
         val f = incoming.receiveCatching().getOrNull()
-        if (f != null) return f
+        if (f != null) {
+            if (f is RelayFrame.Binary) pending.addAndGet(-f.bytes.size.toLong())
+            return f
+        }
         throw SocketClosed(endCode)
     }
 
@@ -259,7 +283,8 @@ internal fun okHttpOpener(client: OkHttpClient? = null, openSeconds: Double = 15
                         s.incoming.close()
                         return
                     }
-                    s.incoming.trySend(RelayFrame.Binary(bytes.toByteArray()))
+                    // Envelopes wait for the handler, but only so many bytes of them.
+                    if (s.admit(bytes.size)) s.incoming.trySend(RelayFrame.Binary(bytes.toByteArray())) else s.overload()
                 }
 
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -880,7 +905,29 @@ internal class RelayService(
         sendEnv(RelayMessage.Send(peer, session, noise))
     }
 
-    internal fun hasRoom(n: Int): Boolean = outbox?.roomFor(n) == true
+    internal fun hasRoom(n: Int): Boolean = synchronized(reserveLock) { roomLocked(n) }
+
+    private val reserveLock = Any()
+    private var reserved = 0L
+
+    private fun roomLocked(n: Int): Boolean {
+        val total = (n + reserved).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        return outbox?.roomFor(total) == true
+    }
+
+    /**
+     * Holds [n] bytes of queue room at check time, so sends that overlap cannot pass on the same room. False
+     * when the queue has no room for it. [release] gives it back once the record is in the queue.
+     */
+    internal fun reserve(n: Int): Boolean = synchronized(reserveLock) {
+        val fits = roomLocked(n)
+        if (fits) reserved += n
+        fits
+    }
+
+    internal fun release(n: Int) {
+        synchronized(reserveLock) { reserved = (reserved - n).coerceAtLeast(0) }
+    }
 
     // -- identity and documents --------------------------------------------------------------------
 
@@ -1013,12 +1060,19 @@ internal class RelayLink(
 
     override suspend fun sendRecord(type: Int, body: ByteArray) {
         // Refuse before the channel encrypts: a message dropped after encryption would break the stream.
-        if (!svc.hasRoom(body.size + OVERHEAD * (body.size / CHUNK + 1))) {
+        // The room is held from the check until the record is queued (the channel's output is synchronous),
+        // so two sends that overlap cannot both pass on the same room.
+        val need = body.size + OVERHEAD * (body.size / CHUNK + 1)
+        if (!svc.reserve(need)) {
             // D-9: a full send queue ends this session `peer_busy`; the host sees the close, not an error.
             channel.close(PeerCloseCode.peer_busy)
             return
         }
-        channel.sendRecord(type, body)
+        try {
+            channel.sendRecord(type, body)
+        } finally {
+            svc.release(need)
+        }
     }
 
     override suspend fun close(code: PeerCloseCode) {
