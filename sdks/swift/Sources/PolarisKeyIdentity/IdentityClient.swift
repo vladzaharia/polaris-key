@@ -47,6 +47,10 @@ public struct SignInPrompt: Sendable, Equatable {
     /// The label the sign-in page shows (WIRE-CONTRACT-V4 §12.7.1): the Worker's echo, else (an
     /// older Worker) the label sent; `nil` when there is none.
     public let deviceName: String?
+    /// The start asked `licenseChoice: app` and the Worker's discovery allowed it (§12.6): a `choose`
+    /// poll answer is then expected. Never set by a caller; a `choose` for a prompt without it is
+    /// refused, as a redirect's is.
+    var choiceApp: Bool = false
 
     public init(
         deviceCode: String, userCode: String, verificationUri: String,
@@ -136,6 +140,10 @@ public enum SignInPoll: Sendable, Equatable {
     /// show it ("Is this you?") and the player can accept it. `attachable` is
     /// true when this device holds an anonymous enrolled licence the account could take over.
     case confirm(identity: SignInIdentity, attachable: Bool)
+    /// Only after a start with `licenseChoice: .app` (UK-42.22, §12.10): the person approved the code
+    /// and a licence choice is due. Nothing is bound and no token is stored; the flow is spent. Run
+    /// `identity.choice` with the grant, as for a redirect's `.chooseLicense`.
+    case choose(PendingSignIn)
     /// Signed in: the device token is stored and the post-acquisition sync has run.
     case ready(SignInReady)
     /// The code expired (or the server no longer knows it). Start again.
@@ -152,6 +160,8 @@ enum SignInResult: Sendable, Equatable {
     case ready(SignInReady)
     /// Only with `confirmIdentity`: the flow is held at the signed-in identity.
     case confirm(identity: SignInIdentity, attachable: Bool)
+    /// A licence choice is due (`licenseChoice: .app`): the pending sign-in grant.
+    case choose(PendingSignIn)
     case expired
     case error(message: String, code: String? = nil)
 
@@ -304,9 +314,29 @@ public final class IdentityClient: Sendable {
     ///
     /// No bearer is sent even when the device holds a token: a sign-in asks for the IDENTITY's
     /// credential, and the server binds the flow to this device by its id.
-    func startDeviceCode(deviceName: String? = nil) async throws -> SignInPrompt {
+    ///
+    /// UK-42.22 (§12.10.1): `options` carries the hints (`loginHint`, `nameHint`, `purpose`, sent
+    /// whenever set, an older Worker ignores them) and `licenseChoice`. `licenseChoice: app` is sent
+    /// only when discovery carries `deviceChoice` and all four `choice*` routes (§12.6); else the card
+    /// chooses, exactly as before.
+    func startDeviceCode(deviceName: String? = nil, options: SignInOptions? = nil) async throws
+        -> SignInPrompt
+    {
         try await core.requireService(.identity, feature: Feature.identityDevicecode)
         var body: [String: String] = ["deviceId": await core.deviceId]
+        var choiceApp = false
+        if let options {
+            if let v = options.loginHint, !v.isEmpty { body["loginHint"] = v }
+            if let v = options.nameHint, !v.isEmpty { body["nameHint"] = v }
+            if let v = options.purpose { body["purpose"] = v.rawValue }
+            if options.licenseChoice == .app {
+                if await core.discoveryDocument == nil { await core.discover() }
+                if await core.discoveryDocument?.identity?.deviceChoiceAvailable == true {
+                    body["licenseChoice"] = "app"
+                    choiceApp = true
+                }
+            }
+        }
         // §12.7.1: the per-call name, else `CoreOptions.deviceName`, else the platform default,
         // normalised exactly as the Worker will store it. `""` sends none.
         let label = await core.deviceLabel(deviceName)
@@ -332,12 +362,14 @@ public final class IdentityClient: Sendable {
                 code: "bad_response",
                 message: "device sign-in start answered without a complete prompt.")
         }
-        return SignInPrompt(
+        var prompt = SignInPrompt(
             deviceCode: b.deviceCode, userCode: b.userCode, verificationUri: b.verificationUri,
             verificationUriComplete: b.verificationUriComplete, expiresIn: expiresIn,
             interval: interval, expiresAt: await core.now() + expiresIn,
             // The echo is what the page shows; an older Worker sends none, so show what was sent.
             deviceName: b.echoed ? b.deviceName : label)
+        prompt.choiceApp = choiceApp
+        return prompt
     }
 
     /// Poll once. On `.ready` the token is stored and the post-acquisition sync has completed
@@ -400,6 +432,18 @@ public final class IdentityClient: Sendable {
         case "confirm":
             return .confirm(
                 identity: body?.identity ?? SignInIdentity(), attachable: body?.attachable ?? false)
+        case "choose":
+            // Only a start with `licenseChoice: app` makes the Worker answer this (§12.10).
+            guard prompt.choiceApp, let grant = body?.grant, !grant.isEmpty,
+                let choices = body?.choices, let view = LicenseChoiceView.read(choices)
+            else {
+                return .error(message: "device sign-in asked for a licence choice it did not request.")
+            }
+            let lifetime = wholeSeconds(body?.expiresIn) ?? 0
+            return .choose(
+                PendingSignIn(
+                    grant: grant, expiresIn: lifetime, expiresAt: await core.now() + lifetime,
+                    view: view))
         case "ready":
             guard let token = body?.token, !token.isEmpty else {
                 return .error(message: "ready without a token.")
@@ -466,6 +510,8 @@ public final class IdentityClient: Sendable {
                 return .ready(ready)
             case .confirm(let identity, let attachable):
                 return .confirm(identity: identity, attachable: attachable)
+            case .choose(let pending):
+                return .choose(pending)
             case .expired:
                 return .expired
             case .error(let message, let code):
@@ -542,6 +588,10 @@ private struct PollBody: Decodable {
     let attached: String?
     let attachable: Bool?
     let subject: String?
+    /// `choose` (UK-42.22): the pending sign-in grant, its lifetime and the choice view.
+    let grant: String?
+    let expiresIn: Double?
+    let choices: JSONValue?
 }
 
 private struct FlatError: Decodable { let error: String }

@@ -443,11 +443,21 @@ actor ReplayServer {
                 "accountPortal": .string("\(transcript.baseUrl)/#/p/\(transcript.product)"),
             ]
             if usesRedirect { accountEndpoints.merge(redirectEndpoints) { a, _ in a } }
-            let identity: JSONValue = .object([
+            // The device-code choice (identity.devicecode.choice) publishes `deviceChoice` and
+            // the four grant routes beside the account endpoints (§12.6).
+            let deviceChoice = transcript.steps.contains {
+                $0.action == "beginSignIn" && $0.args["licenseChoice"]?.stringValue == "app"
+            }
+            if deviceChoice && !usesRedirect {
+                accountEndpoints.merge(redirectEndpoints) { a, _ in a }
+            }
+            var identityFields: [String: JSONValue] = [
                 "enabled": .bool(true), "configured": .bool(true), "account": .bool(true),
                 "issuer": .string(usesRedirect ? issuer : "\(base)/identity"),
                 "endpoints": .object(accountEndpoints),
-            ])
+            ]
+            if deviceChoice { identityFields["deviceChoice"] = .bool(true) }
+            let identity: JSONValue = .object(identityFields)
             return try? JSONEncoder().encode(
                 JSONValue.object([
                     "product": .string(transcript.product),
