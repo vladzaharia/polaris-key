@@ -1027,7 +1027,7 @@ key ring's files.
 A save is a metadata record and one file, written in that order so a save is never torn: the file
 goes up first, then the metadata. `PolarisKey.cloud_sync.saves` needs the Sync service and a signed-in
 person; with end-to-end encryption (the default) the file and the metadata are sealed with the
-[key ring](#key-ring-polariskeykeyring) and the Worker holds ciphertext. A locked ring fails every call
+[key ring](#key-ring-polariskeykeyring) and the Worker holds ciphertext. A locked ring, or a ring whose root was replaced while a call ran, fails the call
 with `sync-locked`.
 
 ```gdscript
