@@ -149,7 +149,8 @@ func _gdscript(t: PKeyTestContext) -> void:
 	t.check("lanes: the GDScript lane passes its own known answers", g.known_answers_ok() and g.available() and g.lane_name() == "gdscript")
 	PKeyPeerCrypto.reset_for_tests()
 	var a := PKeyPeerCrypto.for_platform()
-	t.check("lanes: with no native adapter in the build the port is GDScript", a.lane_name() == "gdscript")
+	var native := PKeyAppleCrypto.create()
+	t.check("lanes: the port is GDScript unless a native adapter is built in and passes", a.lane_name() == ("gdscript" if native == null else "apple"))
 	t.check("lanes: for_platform answers the one chosen lane", PKeyPeerCrypto.for_platform() == a)
 	PKeyPeerCrypto.reset_for_tests()
 

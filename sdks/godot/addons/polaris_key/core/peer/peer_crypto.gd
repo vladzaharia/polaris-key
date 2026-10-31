@@ -17,8 +17,9 @@ const MAX_AEAD_BYTES := 65535
 
 
 ## Native adapters, in preference order. Each script extends PKeyPeerCrypto and has
-## `static func lane() -> PKeyPeerCrypto`, which answers an adapter or null when its native side is
-## absent (CC-14b.3 Apple, .6 Windows, .8 Android). A script that is not in the build is skipped.
+## `static func lane()` or `static func create()` (called without arguments), which answers an
+## adapter or null when its native side is absent (CC-14b.3 Apple, .6 Windows (planned path),
+## .8 Android). A script that is not in the build is skipped.
 ## Tests replace the list through `select()`.
 const NATIVE_LANE_SCRIPTS: Array[String] = [
 	"res://addons/polaris_key/native/pkey_apple_crypto.gd",
@@ -68,8 +69,12 @@ static func _native_lanes() -> Array:
 		if not ResourceLoader.exists(path):
 			continue
 		var script = load(path)
-		if script is GDScript and script.has_method("lane"):
+		if not (script is GDScript):
+			continue
+		if script.has_method("lane"):
 			out.append(script.lane())
+		elif script.has_method("create"):
+			out.append(script.create())
 	return out
 
 

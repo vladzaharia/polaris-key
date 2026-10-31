@@ -69,8 +69,11 @@ final class HostBinaryTests: XCTestCase {
 
     func testSelftestOpsExistOnlyWhenSwitchedOn() {
         let sink = PlatformEventSink()
-        XCTAssertTrue(PlatformBinaryOps.system(sink: sink, environment: [:]).isEmpty)
-        XCTAssertTrue(PlatformBinaryOps.system(sink: sink, environment: ["PKEY_APPLE_SELFTEST": "0"]).isEmpty)
+        for env in [[:], ["PKEY_APPLE_SELFTEST": "0"]] as [[String: String]] {
+            let ops = PlatformBinaryOps.system(sink: sink, environment: env)
+            XCTAssertNil(ops["selftest_echo"])
+            XCTAssertNil(ops["selftest_event"])
+        }
         let h = PlatformHost(
             services: .system(), sink: sink,
             binaryOps: PlatformBinaryOps.system(sink: sink, environment: ["PKEY_APPLE_SELFTEST": "1"]))
