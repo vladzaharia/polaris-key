@@ -124,6 +124,16 @@ export class BearerDeviceCodeSession implements DeviceCodeSignInSession {
       this.#hooks.onStopped();
       return { kind: "expired" };
     }
+    if (done.status === "choose") {
+      // No token: the person's choice is the app's next step (as a redirect `choose`).
+      this.#hooks.onStopped();
+      return {
+        kind: "choose",
+        grant: done.grant,
+        expiresIn: done.expiresIn,
+        choices: done.choices,
+      };
+    }
     const error = new PolarisError(
       done.code ?? ErrorCode.signInFailed,
       done.message,

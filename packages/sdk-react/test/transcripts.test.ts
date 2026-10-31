@@ -8,7 +8,7 @@
 // @pkey-feature ui.boot release.fetch release.distribution
 // @pkey-feature core.presentation identity.keyentry identity.account identity.attach
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints
-// @pkey-feature sync.keyring identity.exchange identity.link identity.keyreturn
+// @pkey-feature sync.keyring identity.exchange identity.link identity.keyreturn identity.devicecode.choice
 //
 // `cloudSyncPull` / `cloudSyncPush` (U-20.4, sync.settings, WIRE-CONTRACT-V4 section 13.3, 13.4, V5 13.10):
 // the request goes through the browser host's own transport (`sendSync`, over `session.ringRequest`:
@@ -170,7 +170,11 @@ import { ErrorCode } from "../src/constants.generated.js";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { projectState } from "../src/core/adapter.js";
 import { accountEndpointsOf } from "../src/core/account.js";
-import { choiceEndpointsOf, type LicenseChoice } from "../src/core/choice.js";
+import {
+  choiceEndpointsOf,
+  deviceChoiceOf,
+  type LicenseChoice,
+} from "../src/core/choice.js";
 import {
   redirectEndpointsOf,
   type RedirectEndpoints,
@@ -251,6 +255,14 @@ function redirectIssuer(t: Transcript): string {
 function usesRedirect(t: Transcript): boolean {
   return t.steps.some(
     (s) => s.action === "browser" || s.action === "redirectComplete",
+  );
+}
+
+/** Does this transcript start a device-code sign-in that asks `licenseChoice: "app"`? (UK-42.22:
+ *  discovery then carries `deviceChoice`, the SDK's gate for sending the member.) */
+function asksDeviceChoice(t: Transcript): boolean {
+  return t.steps.some(
+    (s) => s.action === "beginSignIn" && s.args.licenseChoice === "app",
   );
 }
 
@@ -711,7 +723,8 @@ async function replay(t: Transcript): Promise<void> {
   let slices: UpdateSlices = structuredClone(initialUpdate?.cache ?? {});
   let belief: ServicesMap = t.initial.services
     ? servicesFromList(t.initial.services as never)
-    : t.steps.some((s) => s.action === "attach") && usesRedirect(t)
+    : t.steps.some((s) => s.action === "attach") &&
+        (usesRedirect(t) || asksDeviceChoice(t))
       ? servicesFromList(["license", "config", "identity"] as never)
       : usesRedirect(t)
         ? servicesFromList(["identity"] as never)
@@ -791,6 +804,11 @@ async function replay(t: Transcript): Promise<void> {
         redirectEndpointsOf(discovered as Record<string, unknown> | null) ??
         standardRedirect(t),
       redirectEntropy: () => entropy,
+      // identity.devicecode.choice: the last discovery's `deviceChoice`, else the standard one.
+      deviceChoice: () =>
+        discovered === null
+          ? asksDeviceChoice(t)
+          : deviceChoiceOf(discovered as Record<string, unknown>),
       // identity.choice: the last discovery's `choice*` endpoints, else the Worker's standard ones.
       choiceEndpoints: () =>
         choiceEndpointsOf(discovered as Record<string, unknown> | null) ?? {
@@ -821,7 +839,7 @@ async function replay(t: Transcript): Promise<void> {
   // The sign-in's acquisition sync (trust, documents, report) is pinned by the sync transcripts,
   // so a transcript that signs in (redirect steps) over a product with License on skips it.
   const quiet = (s: BearerSession): BearerSession => {
-    if (usesRedirect(t))
+    if (usesRedirect(t) || asksDeviceChoice(t))
       (
         s as unknown as { syncAfterSignIn: () => Promise<void> }
       ).syncAfterSignIn = async () => undefined;
@@ -1023,10 +1041,20 @@ async function replay(t: Transcript): Promise<void> {
         break;
       case "beginSignIn": {
         const name = step.args.deviceName;
+        const hint = (k: string) =>
+          typeof step.args[k] === "string" ? { [k]: step.args[k] } : {};
         try {
-          prompt = await session.beginSignIn(
-            typeof name === "string" ? { deviceName: name } : {},
-          );
+          prompt = await session.beginSignIn({
+            ...(typeof name === "string" ? { deviceName: name } : {}),
+            ...hint("loginHint"),
+            ...hint("nameHint"),
+            ...(step.args.purpose === "signin" || step.args.purpose === "attach"
+              ? { purpose: step.args.purpose }
+              : {}),
+            ...(step.args.licenseChoice === "app"
+              ? { licenseChoice: "app" as const }
+              : {}),
+          });
         } catch (e) {
           // identity.toggle: Identity off is the typed `service-unavailable`, before or after
           // the Worker's 404.
@@ -1598,8 +1626,8 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // and `session.linkAccept`; the Node runner also replays them with a reference client.
     // connect.identity is CC-06.4's connect-identity* transcripts, replayed here (CC-09.1).
     // identity.keyreturn is LK-SKIP's redirect-web-key-return* transcripts: replayed here (.6b).
-    // identity.devicecode.choice is UK-42.22's device start members and choose poll answer (planned).
-    const plannedHere: string[] = ["identity.devicecode.choice"];
+    // identity.devicecode.choice is UK-42.22.5's holders-add-to-account-device, replayed here.
+    const plannedHere: string[] = [];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];

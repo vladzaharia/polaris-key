@@ -109,6 +109,17 @@ export function choiceEndpointsOf(
   return identityEndpointsOf(discovery, CHOICE_KEYS);
 }
 
+/** Does the identity fragment carry `deviceChoice: true` (UK-42.22, §12.6)? */
+export function deviceChoiceOf(
+  discovery: Record<string, unknown> | null | undefined,
+): boolean {
+  const services = discovery?.services as
+    | Record<string, Record<string, unknown> | undefined>
+    | undefined;
+  const identity = services?.identity;
+  return identity?.enabled === true && identity.deviceChoice === true;
+}
+
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
