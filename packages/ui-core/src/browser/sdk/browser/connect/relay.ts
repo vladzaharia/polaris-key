@@ -223,6 +223,7 @@ class RelayLink {
           e.hello as PeerHello,
           this.role,
           this.cb.budget,
+          e.remoteStatic,
         );
         this.cb.onEstablished(this.#session);
         this.#settle.resolve(this.#session);

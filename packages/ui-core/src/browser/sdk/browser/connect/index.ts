@@ -26,6 +26,11 @@ import type { ConnectSession } from "./session.js";
 import { setSignOutStop } from "./signout.js";
 import { LanError } from "./errors.js";
 import type { Unsupported } from "@polaris-key/client-core";
+import type {
+  OfferHandler,
+  TransferClient,
+  TransferEvent,
+} from "./xferTypes.js";
 
 export type {
   ConnectDevice,
@@ -146,6 +151,20 @@ export type {
   SessionMessage,
   SessionPath,
 } from "./session.js";
+export { TransferError } from "./xferTypes.js";
+export type {
+  FileSinkHandle,
+  IncomingOffer,
+  OfferDecision,
+  OfferHandler,
+  SendOptions,
+  SentTransfer,
+  TransferClient,
+  TransferEvent,
+  TransferPeer,
+  TransferSource,
+  XferReason,
+} from "./xferTypes.js";
 
 /** `adapter.cloudConnect`: Cloud Connect over the relay, the only path a page has. */
 export interface CloudConnectClient {
@@ -171,6 +190,8 @@ export interface CloudConnectClient {
   status(): CloudConnectStatus;
   /** Called when the relay's state or the online devices change (what a UI re-renders on). */
   onChange(fn: () => void): () => void;
+  /** Direct Transfer over the relay (CC-20.4, mode `a`): `send`, `onOffer`, `onResult`, `cancel`. */
+  readonly transfer: TransferClient;
 }
 
 /** A cookie page or a host without sockets: every verb that needs the relay is the typed N/A. */
@@ -187,8 +208,22 @@ export function unsupportedCloudConnect(
   const no = (): never => {
     throw new UnsupportedError(unsupported, ErrorCode.connectUnavailable);
   };
+  const noTransfer = (): never => {
+    throw new UnsupportedError(
+      { ...unsupported, feature: Feature.connectTransfer },
+      ErrorCode.connectUnavailable,
+    );
+  };
   return {
     unsupported,
+    transfer: {
+      send: async () => noTransfer(),
+      onOffer: () => () => undefined,
+      onResult: () => () => undefined,
+      cancel: () => false,
+      maxSize: null,
+      purge: async () => undefined,
+    },
     onChange: () => () => undefined,
     start: async () => no(),
     stop: async () => undefined,
@@ -210,30 +245,90 @@ export function unsupportedCloudConnect(
 
 /** The lean facade. The relay, the Noise session code and the wire codec load on `start()`; a
  *  page that never starts Connect pays only for this file. */
-export function createCloudConnect(connect: ConnectClient): CloudConnectClient {
+export function createCloudConnect(
+  connect: ConnectClient,
+  /** The IndexedDB database that keeps partial transfers; none keeps no partials. */
+  transferStore: string | null = null,
+): CloudConnectClient {
   const channel = new Set<(s: ConnectSession) => void>();
   const notice = new Set<(n: ConnectNotice) => void>();
   const change = new Set<() => void>();
   let engine: CloudConnect | null = null;
   let loading: Promise<CloudConnect> | null = null;
+  // What the host decides lives here, so it can be set before anything loads.
+  let handler: OfferHandler | null = null;
+  let maxSize: number | null = null;
+  const results = new Set<(e: TransferEvent) => void>();
   const load = (): Promise<CloudConnect> =>
-    (loading ??= import("./cloud.js").then(
-      (m) =>
-        (engine = new m.CloudConnect(connect, {
-          channel: (s) => {
-            for (const f of [...channel]) f(s);
-            return channel.size > 0;
+    (loading ??= import("./cloud.js").then(async (m) => {
+      const store =
+        transferStore === null
+          ? null
+          : new (await import("./xferStore.js")).XferStore(transferStore);
+      return (engine = new m.CloudConnect(connect, {
+        transfer: {
+          store: store !== null && store.available ? store : null,
+          handler: () => handler,
+          maxSize: () => maxSize,
+          emit: (e) => {
+            for (const f of [...results]) {
+              try {
+                f(e);
+              } catch {
+                // The host's bug is the host's.
+              }
+            }
           },
-          notice: (n) => {
-            for (const f of [...notice]) f(n);
-          },
-          change: () => {
-            for (const f of [...change]) f();
-          },
-        })),
-    ));
+        },
+        channel: (s) => {
+          for (const f of [...channel]) f(s);
+          return channel.size > 0;
+        },
+        notice: (n) => {
+          for (const f of [...notice]) f(n);
+        },
+        change: () => {
+          for (const f of [...change]) f();
+        },
+      }));
+    }));
+  const transfer: TransferClient = {
+    send: async (peer, source, opts) => {
+      const e = await load();
+      if (e.status().relay === "elsewhere")
+        throw new LanError(
+          "elsewhere",
+          "Another tab of this app holds the relay.",
+        );
+      return e.transfer.send(peer, source, opts);
+    },
+    onOffer: (h) => {
+      handler = h;
+      return () => {
+        if (handler === h) handler = null;
+      };
+    },
+    onResult: (fn) => {
+      results.add(fn);
+      return () => results.delete(fn);
+    },
+    cancel: (id) => engine?.transfer.cancel(id) ?? false,
+    get maxSize() {
+      return maxSize;
+    },
+    set maxSize(n) {
+      maxSize = n;
+    },
+    purge: async () => {
+      if (engine !== null) return engine.transfer.purge();
+      // Nothing loaded: look for the database without opening one.
+      if (transferStore !== null)
+        await (await import("./xferStore.js")).purgeXferStore(transferStore);
+    },
+  };
   const client: CloudConnectClient = {
     unsupported: null,
+    transfer,
     onChange: (fn) => {
       change.add(fn);
       return () => change.delete(fn);
@@ -271,6 +366,8 @@ export function createCloudConnect(connect: ConnectClient): CloudConnectClient {
   // Never loaded means never started: nothing to stop at sign-out.
   setSignOutStop(client, async () => {
     if (loading !== null) await (await loading).stopForSignOut();
+    // The bytes of a half-received transfer are the peer's: they go with the session.
+    await transfer.purge().catch(() => undefined);
   });
   return client;
 }

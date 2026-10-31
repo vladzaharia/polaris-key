@@ -2150,7 +2150,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "connect.transfer": { status: "planned", service: "connect", na: [] },
+  "connect.transfer": { status: "implemented", service: "connect", na: [] },
   "connect.app": { status: "implemented", service: "connect", na: [] },
   "devices.fingerprint": {
     status: "na",
@@ -2426,4 +2426,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "2ce3c3ca82e2cad446b94fe39ebda3749db8b2ca76d187f61eefa1cde51dc27e";
+  "1cf3df6012511bd55c62885e8991ae016b85ea06acbdfb75c502183dda143f4f";
