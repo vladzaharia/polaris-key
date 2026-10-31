@@ -29,7 +29,7 @@ import {
   type GateStep,
 } from "@polaris-key/ui-core/browser";
 
-import { resolveAddIn, type AddIn } from "@polaris-key/ui-core";
+import { addInOf, type AddIn } from "@polaris-key/ui-core";
 import { PolarisContext } from "../react/context.js";
 import { useAdapterState } from "../react/hooks.js";
 import type {
@@ -128,6 +128,32 @@ export function useSdkGate(
   const addFlow = useRef<AddFlow | null>(null);
   const addToken = useRef(0);
   const [addState, redrawAdd] = useReducer((n: number) => n + 1, 0);
+  /** Where Add your name and email goes: the host's `addIn`, else read once from discovery (null
+   *  until known; the press then shows busy instead of acting on a guess). */
+  const [channel, setChannel] = useState<AddIn | null>(opts.addIn ?? null);
+  const [addBusy, setAddBusy] = useState(false);
+  const channelRef = useRef<AddIn | null>(opts.addIn ?? null);
+  const readChannel = useCallback(async (): Promise<AddIn> => {
+    if (channelRef.current) return channelRef.current;
+    let d: Record<string, unknown> | null = null;
+    try {
+      d = (await adapter?.discovery()) ?? null;
+    } catch {
+      d = null;
+    }
+    if (d) {
+      channelRef.current = addInOf(d);
+      setChannel(channelRef.current);
+    }
+    return channelRef.current ?? "portal";
+  }, [adapter]);
+  useEffect(() => {
+    if (
+      !channelRef.current &&
+      adapter?.snapshot().capabilities.identity.enabled
+    )
+      void readChannel();
+  }, [adapter, readChannel]);
   // The sign-in a holder flow runs in this page: one at a time.
   const session = useRef<SignInSessionHandle | null>(null);
   const owning = useRef(false);
@@ -425,15 +451,20 @@ export function useSdkGate(
   /** Add your name and email: AddToAccount when discovery carries `deviceChoice` (or the host
    *  says `app`); otherwise the portal, which is also where Identity off goes. The holder flows
    *  load now, not with the gate. */
-  const addIn = opts.addIn;
   const addToAccount = useCallback(() => {
     if (!adapter) return;
     const token = ++addToken.current;
     void (async () => {
-      if (
-        !adapter.snapshot().capabilities.identity.enabled ||
-        (await resolveAddIn(addIn, adapter)) === "portal"
-      ) {
+      let where: AddIn = "portal";
+      if (adapter.snapshot().capabilities.identity.enabled) {
+        if (channelRef.current) where = channelRef.current;
+        else {
+          setAddBusy(true);
+          where = await readChannel();
+          if (alive.current) setAddBusy(false);
+        }
+      }
+      if (where === "portal") {
         if (token === addToken.current && alive.current)
           openPortal(heldKey.current ?? undefined);
         return;
@@ -451,7 +482,7 @@ export function useSdkGate(
       holding.current = true;
       enter("add", "activate.recommend.action");
     })();
-  }, [adapter, addIn, openPortal, dropAdd, enter]);
+  }, [adapter, openPortal, dropAdd, enter, readChannel]);
 
   /** "Sign in to that account" on a license-owned refusal: sign in in this page and complete with
    *  the key just entered (D17). One sign-in at a time: a second press while one is live does
@@ -460,7 +491,7 @@ export function useSdkGate(
     if (!adapter || owning.current || session.current) return;
     const k = key.trim();
     owning.current = true;
-    void resolveAddIn(addIn, adapter)
+    void readChannel()
       .then((where) => {
         if (where === "portal") {
           // The portal signs in to that account and adds the key.
@@ -480,7 +511,7 @@ export function useSdkGate(
         if (r === "fallback") signIn();
         else if (r === "signedIn") finish();
       });
-  }, [adapter, key, signIn, finish, openPortal, addIn]);
+  }, [adapter, key, signIn, finish, openPortal, readChannel]);
 
   const act = useCallback(
     (k: string) => {
@@ -523,10 +554,14 @@ export function useSdkGate(
         case "signin.key.signIn":
         case "signin.again":
         case "signin.handoff.again":
+        case "activate.attach.reopen":
         case "signInHandoff.newCode":
           // AddToAccount while busy: bring the browser tab back, inside the press; the sign-in
           // keeps running.
-          if (step === "add" && k === "signin.handoff.again") {
+          if (
+            step === "add" &&
+            (k === "signin.handoff.again" || k === "activate.attach.reopen")
+          ) {
             void Promise.resolve(session.current?.reopen()).catch(() => {});
             return;
           }
@@ -725,6 +760,11 @@ export function useSdkGate(
               dismissed,
               deviceKind: "device",
               ...(returned.current ? { returned: true } : {}),
+              ...(channel === "portal" ? { addIn: "portal" as const } : {}),
+              ...(addBusy ? { addBusy: true } : {}),
+              ...(addFlow.current?.model.input().deviceCode
+                ? { deviceCode: addFlow.current.model.input().deviceCode! }
+                : {}),
               ...(addFlow.current
                 ? {
                     addToAccount: {
@@ -752,6 +792,8 @@ export function useSdkGate(
       signInFailed,
       opts.locale,
       addState,
+      channel,
+      addBusy,
     ],
   );
   if (!ctx || !input) return null;

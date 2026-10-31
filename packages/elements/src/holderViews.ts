@@ -8,7 +8,14 @@
 import { html, nothing, type TemplateResult } from "lit";
 import { ifDefined } from "lit/directives/if-defined.js";
 
-import { button, lead, text, GLYPHS, type RenderCtx } from "./render.js";
+import {
+  button,
+  codeDisplay,
+  lead,
+  text,
+  GLYPHS,
+  type RenderCtx,
+} from "./render.js";
 
 type Out = TemplateResult | typeof nothing;
 const shown = (c: RenderCtx, k: string): boolean => c.view.copy.includes(k);
@@ -62,10 +69,16 @@ function recommendation(c: RenderCtx): Out {
         )}
       </ul>
       ${shown(c, "activate.recommend.action")
-        ? button(c, "activate.recommend.action", "secondary")
-        : // Identity off: it opens polaris.locker, so the label and the glyph say so.
+        ? button(c, "activate.recommend.action", "secondary", {
+            busy: c.input.activateDone?.addBusy === true,
+          })
+        : // Identity off, or the web gate adds in Polaris Locker's page: it opens polaris.locker,
+          // so the label and the glyph say so.
           shown(c, "signin.key.addInLocker")
-          ? button(c, "signin.key.addInLocker", "secondary", { external: true })
+          ? button(c, "signin.key.addInLocker", "secondary", {
+              external: true,
+              busy: c.input.activateDone?.addBusy === true,
+            })
           : nothing}
     </section>
     ${shown(c, "activate.recommend.skip")
@@ -134,6 +147,15 @@ function field(
  *  leave only in that `pk-action` (element.ts, `act`). */
 function form(c: RenderCtx): Out {
   const { state } = c.view;
+  // Waiting for the person to confirm the email in Polaris Locker: the code they check there, in
+  // place of the form (it would only be greyed).
+  if (state === "waiting")
+    return html`<div class="holder-wait" data-part="wait" role="status">
+      ${codeDisplay(c)}
+      <p class="body" data-key="activate.attach.waitCheck">
+        ${text(c, "activate.attach.waitCheck")}
+      </p>
+    </div>`;
   if (!["form", "invalid", "busy", "failed"].includes(state)) return nothing;
   const bad = state === "invalid" ? c.view.copy : [];
   const locked = state === "busy";

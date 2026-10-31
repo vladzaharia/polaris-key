@@ -89,6 +89,10 @@ interface FakeOptions {
   deviceChoice?: boolean;
   /** The sign-in's wait holds here until released, then answers signed in. */
   hold?: Promise<void>;
+  /** The device code the sign-in shows (AddToAccount's waiting view). */
+  userCode?: string;
+  /** Discovery answers only after this resolves (a slow boot). */
+  discoveryHold?: Promise<void>;
 }
 
 /** A client double: just the calls the gate makes, recording what they were given. */
@@ -143,20 +147,23 @@ function fakeClient(o: FakeOptions = {}) {
         },
       });
     },
-    discovery: async () => ({
-      services: {
-        identity: {
-          enabled: true,
-          ...(o.deviceChoice ? { deviceChoice: true } : {}),
+    discovery: async () => {
+      await o.discoveryHold;
+      return {
+        services: {
+          identity: {
+            enabled: true,
+            ...(o.deviceChoice ? { deviceChoice: true } : {}),
+          },
         },
-      },
-      core: {
-        portal: o.portal ?? {
-          enabled: true,
-          activate: "https://polaris.locker/activate?product=acme",
+        core: {
+          portal: o.portal ?? {
+            enabled: true,
+            activate: "https://polaris.locker/activate?product=acme",
+          },
         },
-      },
-    }),
+      };
+    },
     attach: async (opts: { confirm: boolean }) => {
       if (!opts.confirm) {
         calls.push(["preview", opts]);
@@ -180,6 +187,8 @@ function fakeClient(o: FakeOptions = {}) {
         return {
           channel: "device-code",
           interval: 0,
+          userCode: o.userCode,
+          verificationUri: "https://polaris.locker/device",
           reopen: async () => {
             calls.push(["reopen", null]);
             return true;
@@ -353,6 +362,67 @@ describe("GateDriver: a key with no account", () => {
     await until(() => d.snapshot().step === "add");
     expect(opened.length).toBe(0);
     d.detach();
+  });
+
+  it("reads the Add channel once at attach: a known channel acts in the press, an unknown one shows busy", async () => {
+    let release!: () => void;
+    const discoveryHold = new Promise<void>((r) => (release = r));
+    const g = fakeClient({ deviceChoice: true, discoveryHold });
+    const d = new GateDriver(g.client, { product: "acme" });
+    d.attach();
+    d.act("welcome.useKey");
+    d.edit("key", KEY);
+    d.act("activate.submit");
+    await until(() => d.snapshot().step === "done");
+    // Discovery has not answered: the press waits, and the action says so.
+    d.act("activate.recommend.action");
+    expect(d.snapshot().input.activateDone?.addBusy).toBe(true);
+    expect(d.snapshot().step).toBe("done");
+    release();
+    await until(() => d.snapshot().step === "add");
+    expect(d.snapshot().input.activateDone?.addBusy).toBeUndefined();
+    // Back on Done with the channel known: the press acts in the same turn.
+    d.act("common.cancel");
+    expect(d.snapshot().step).toBe("done");
+    d.act("activate.recommend.action");
+    expect(d.snapshot().step).toBe("add");
+    d.detach();
+  });
+
+  it("marks the portal channel on Done once discovery has no deviceChoice", async () => {
+    const g = fakeClient({});
+    const d = new GateDriver(g.client, { product: "acme" });
+    d.attach();
+    d.act("welcome.useKey");
+    d.edit("key", KEY);
+    d.act("activate.submit");
+    await until(() => d.snapshot().step === "done");
+    await until(() => d.snapshot().input.activateDone?.addIn === "portal");
+    const v = activateDoneView(contextOf(d.snapshot().input));
+    expect(v.copy).toContain("signin.key.addInLocker");
+    expect(v.copy).not.toContain("activate.recommend.action");
+    d.detach();
+  });
+
+  it("shows the device code while the person finishes in Polaris Locker", async () => {
+    let release!: () => void;
+    const hold = new Promise<void>((r) => (release = r));
+    const g = gate({ hold, userCode: "WDJB-MJHT" });
+    await activate(g);
+    await addAndContinue(g);
+    await until(
+      () => g.d.snapshot().input.deviceCode?.userCode === "WDJB-MJHT",
+    );
+    const v = addToAccountView(contextOf(g.d.snapshot().input));
+    expect(v.state).toBe("waiting");
+    expect(v.copy).toContain("activate.attach.waitTitle");
+    expect(v.copy).not.toContain("signin.email.label");
+    g.d.act("activate.attach.reopen");
+    expect(g.calls).toContainEqual(["reopen", null]);
+    release();
+    await until(() => g.d.snapshot().input.addToAccount?.step === "added");
+    expect(g.d.snapshot().input.deviceCode).toBeUndefined();
+    g.d.detach();
   });
 
   it("by default (no deviceChoice in discovery) Add and Sign in to that account open the portal with the key as a fragment", async () => {

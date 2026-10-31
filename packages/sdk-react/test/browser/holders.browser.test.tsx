@@ -39,15 +39,44 @@ const ROWS = m.holders.filter(
       r.expect.component === "AddToAccount") &&
     r.expect.state !== "hidden",
 );
+// States the matrix does not pin: the waiting view (a device code to check in Polaris Locker) and
+// Done whose Add opens Polaris Locker's page (the portal channel).
+const BUSY = ROWS.find(
+  (r) => r.expect.component === "AddToAccount" && r.expect.state === "busy",
+)!;
+const READY = ROWS.find(
+  (r) => r.expect.component === "ActivateDone" && r.expect.state === "ready",
+)!;
+const EXTRA: Row[] = [
+  {
+    name: "AddToAccount/waiting",
+    input: {
+      ...BUSY.input,
+      deviceCode: { phase: "waiting", userCode: "WDJB-MJHT" },
+    },
+    expect: { component: "AddToAccount", state: "waiting" },
+  },
+  {
+    name: "ActivateDone/ready: Add opens Polaris Locker",
+    input: {
+      ...READY.input,
+      activateDone: { ...READY.input.activateDone, addIn: "portal" },
+    },
+    expect: { component: "ActivateDone", state: "ready" },
+  },
+];
 // One row per state; the services-off variants stay with the jsdom suite.
-const SCENES = ROWS.filter(
-  (r, i) =>
-    ROWS.findIndex(
-      (o) =>
-        o.expect.component === r.expect.component &&
-        o.expect.state === r.expect.state,
-    ) === i,
-);
+const SCENES = [
+  ...ROWS.filter(
+    (r, i) =>
+      ROWS.findIndex(
+        (o) =>
+          o.expect.component === r.expect.component &&
+          o.expect.state === r.expect.state,
+      ) === i,
+  ),
+  ...EXTRA,
+];
 const SIZES = [
   { label: "390x844", width: 390, height: 844, rootPx: 16 },
   { label: "844x390", width: 844, height: 390, rootPx: 16 },
@@ -144,7 +173,7 @@ describe("the holder screens at the §7.1 rows", () => {
             size.label !== "1440x900"
           )
             continue;
-          const id = `${row.expect.component}.${row.expect.state}`;
+          const id = `${row.expect.component}.${row.expect.state}${EXTRA.includes(row) && row.expect.state === "ready" ? "-portal" : ""}`;
           it(`${id} ${size.label} ${scheme} ${preset}`, async () => {
             await page.viewport(size.width, size.height);
             const kit = await mount(row, scheme, size.rootPx, preset);
@@ -182,6 +211,32 @@ describe("the holder screens at the §7.1 rows", () => {
               );
           });
         }
+});
+
+describe("AddToAccount.waiting keeps its title and code in view", () => {
+  const waiting = EXTRA[0]!;
+  for (const size of [
+    { label: "640x360", width: 640, height: 360, rootPx: 16 },
+    { label: "390x844@200", width: 390, height: 844, rootPx: 32 },
+    { label: "390x844", width: 390, height: 844, rootPx: 16 },
+  ])
+    it(size.label, async () => {
+      await page.viewport(size.width, size.height);
+      const kit = await mount(waiting, "dark", size.rootPx);
+      const h1 = kit.querySelector("h1")!;
+      const code = kit.querySelector<HTMLElement>(".code")!;
+      expect(h1.textContent).toBe("Finish in Polaris Locker");
+      expect(code.textContent).toBe("WDJB-MJHT");
+      expect(h1.getBoundingClientRect().top).toBeGreaterThanOrEqual(-0.5);
+      expect(code.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+        innerHeight + 0.5,
+      );
+      // The form is gone: nothing greyed behind a Working… that could scroll out of view.
+      expect(kit.querySelector("input")).toBeNull();
+      expect(code.getBoundingClientRect().width).toBeLessThanOrEqual(
+        size.width,
+      );
+    });
 });
 
 describe("text scales with the root font", () => {

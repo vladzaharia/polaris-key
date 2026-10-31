@@ -40,6 +40,27 @@ describe("maskEmail", () => {
   });
 });
 
+describe("ActivateDone Add channel", () => {
+  it("says it opens Polaris Locker when the channel is the portal, Identity on", () => {
+    const v = done({
+      activateDone: { ...base.activateDone!, addIn: "portal" },
+    });
+    expect(v.copy).toEqual(
+      expect.arrayContaining(["signin.key.addInLocker", "a11y.externalLink"]),
+    );
+    expect(v.copy).not.toContain("activate.recommend.action");
+  });
+  it("keeps Add your name and email for the app channel or an unknown one", () => {
+    for (const addIn of [undefined, "app" as const]) {
+      const v = done({
+        activateDone: { ...base.activateDone!, ...(addIn ? { addIn } : {}) },
+      });
+      expect(v.copy).toContain("activate.recommend.action");
+      expect(v.copy).not.toContain("signin.key.addInLocker");
+    }
+  });
+});
+
 describe("recommendReasons", () => {
   it("names Cloud Sync only when the product has it", () => {
     expect(recommendReasons({ identity: true, sync: true })).toEqual([
@@ -124,7 +145,7 @@ describe("AddToAccount", () => {
       errorSlot: "signin.email.label",
     });
   });
-  it("busy keeps Continue and Cancel and offers the browser again", () => {
+  it("busy with no code keeps Continue and Cancel and offers the browser again", () => {
     const v = add({ step: "busy" });
     expect(v.decisions.primary).toBe("common.continue");
     expect(v.copy).toEqual(
@@ -137,6 +158,33 @@ describe("AddToAccount", () => {
     );
     expect(v.actions).toContain("open-browser");
     expect(v.decisions.focus).toBeNull();
+  });
+  it("busy with the device code is a waiting view: title, the code to check, no form", () => {
+    const v = add(
+      { step: "busy" },
+      { deviceCode: { phase: "waiting", userCode: "WDJB-MJHT" } },
+    );
+    expect(v.state).toBe("waiting");
+    expect(v.copy).toEqual(
+      expect.arrayContaining([
+        "activate.attach.waitTitle",
+        "part.code.label",
+        "a11y.code",
+        "a11y.copyCode",
+        "activate.attach.waitCheck",
+        "activate.attach.reopen",
+        "common.cancel",
+      ]),
+    );
+    for (const hidden of [
+      "activate.attach.name",
+      "signin.email.label",
+      "activate.attach.fine",
+      "common.continue",
+      "common.working",
+    ])
+      expect(v.copy).not.toContain(hidden);
+    expect(v.decisions.focus).toBe("heading");
   });
   it("email-bound with no known email leaves the sentence out", () => {
     const v = add({ step: "email-bound" });

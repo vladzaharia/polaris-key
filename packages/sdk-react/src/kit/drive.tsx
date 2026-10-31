@@ -333,6 +333,7 @@ function AddInAccount(props: {
               void m.tryAgain();
               return;
             case "signin.handoff.again":
+            case "activate.attach.reopen":
               void m.reopen();
               return;
             case "common.cancel":
