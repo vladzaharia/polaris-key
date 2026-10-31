@@ -9,9 +9,7 @@ import { Feature } from "../../constants.generated.js";
 import { UnsupportedError } from "../../core/caps.js";
 import type { BearerSession } from "../bearer/session.js";
 import type { CloudSyncClient } from "../../core/cloudSync.js";
-import type { SavesOptions } from "./saves.js";
 import type { LocalConfigEngine } from "../../core/localConfig.js";
-import { lazySaves } from "../../core/cloudSync.js";
 import { BrowserCloudSyncApi, clientOf, importMarker } from "./api.js";
 import { filesDbName, purgeFilesStore } from "./filesPurge.js";
 import { BrowserCloudSyncHost, type CloudSyncHostOptions } from "./host.js";
@@ -102,7 +100,7 @@ export async function createBrowserCloudSync(
       stateLock: `pkey-sync-state:${dbName}`,
       channel: broadcastChannel(dbName),
       ...(page ? { page } : {}),
-      // The saves journal and chunk cache go with the record (D-9).
+      // The file journal and chunk cache go with the record (D-9).
       onPurge: () => purgeFilesStore(filesDbName(dbName)),
     },
     {
@@ -121,36 +119,5 @@ export async function createBrowserCloudSync(
     marker: importMarker(`${dbName}:imported`),
     signInOrigin: new URL(o.base).origin,
   });
-  const catalog = o.cloudSyncOptions?.catalog ?? o.catalogOption;
-  const saves = lazySaves(async () => {
-    const m = await import("./saves.js");
-    return m.createBrowserSaves({
-      product: o.product,
-      dbName,
-      request: (path, init) => bearer.ringRequest(path, init),
-      fileFetch: (path, init) => bearer.fileFetch(path, init),
-      encryption: () => host.machine.encryptionMode(),
-      ring: o.keyring,
-      locks,
-      options: savesOptions(o.cloudSyncOptions?.saves, catalog),
-    });
-  });
-  return clientOf(api, host, saves);
-}
-
-/** What the app said about its saves, else the compiled catalog's `saves` collection, else the template's. */
-export function savesOptions(
-  given: SavesOptions | undefined,
-  catalog: ProductCatalog | undefined,
-): SavesOptions {
-  const c = catalog?.cloudSync?.collections?.find((x) => x.name === "saves");
-  const delta = given?.delta ?? c?.files?.delta;
-  const maxBytes = given?.maxBytes ?? c?.files?.maxBytes;
-  return {
-    ...(delta !== undefined ? { delta } : {}),
-    ...(maxBytes !== undefined ? { maxBytes } : {}),
-    ...(given?.saveFormatVersion !== undefined
-      ? { saveFormatVersion: given.saveFormatVersion }
-      : {}),
-  };
+  return clientOf(api, host);
 }

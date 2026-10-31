@@ -353,11 +353,9 @@ export class BrowserCloudSyncApi {
 export function clientOf(
   api: BrowserCloudSyncApi,
   host: BrowserCloudSyncHost,
-  saves: CloudSyncClient["saves"],
 ): CloudSyncClient {
   return {
     unsupported: null,
-    saves,
     host: async () => host,
     status: () => api.status(),
     flush: () => api.flush(),

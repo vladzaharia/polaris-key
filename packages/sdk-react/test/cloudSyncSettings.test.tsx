@@ -599,11 +599,7 @@ describe("the lazy client", () => {
   it("forwards status changes from the loaded client", async () => {
     const w = new World();
     const t = await tab(w, new Browser(), { current: SUBJECT });
-    const client = clientOf(
-      t.api,
-      t.host,
-      unsupportedCloudSync("runtime", "test").saves,
-    );
+    const client = clientOf(t.api, t.host);
     const lazy = lazyCloudSync({
       enabled: () => true,
       dbName: "x",
@@ -624,11 +620,7 @@ describe("useSetting and useCloudSync", () => {
     const w = new World();
     const b = new Browser();
     const t = await tab(w, b, { current: SUBJECT });
-    const client = clientOf(
-      t.api,
-      t.host,
-      unsupportedCloudSync("runtime", "test").saves,
-    );
+    const client = clientOf(t.api, t.host);
     const adapter = {
       cloudSync: client,
       config: t.config,
