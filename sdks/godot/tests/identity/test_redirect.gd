@@ -230,6 +230,8 @@ func _session(t: PKeyTestContext) -> void:
 	var cases := [
 		["invalid_grant", B.json(400, {"error": "invalid_grant"}), &"invalid_grant", -1],
 		["rate_limited with Retry-After", {"status": 429, "headers": {"Content-Type": "application/json", "Retry-After": "7"}, "body": "{\"error\":\"rate_limited\"}"}, &"rate_limited", 7],
+		["exchange answers rate_limited with retryAfter (body, capped)", {"status": 429, "headers": {"Content-Type": "application/json"}, "body": "{\"error\":\"rate_limited\",\"retryAfter\":1e30}"}, &"rate_limited", 3600],
+		["exchange answers rate_limited with retryAfter (header, capped)", {"status": 429, "headers": {"Content-Type": "application/json", "Retry-After": "999999"}, "body": "{\"error\":\"rate_limited\"}"}, &"rate_limited", 3600],
 		["a 502", {"status": 502, "body": "bad gateway"}, PKeyErrors.SERVER_ERROR, -1],
 		["a choose answer (no choice yet)", B.json(200, {"status": "choose", "grant": GRANT, "expiresIn": 300, "choices": {}}), PKeyErrors.INVALID_RESPONSE, -1],
 		["a 200 without a token", B.json(200, {"scope": "x"}), PKeyErrors.INVALID_RESPONSE, -1],

@@ -306,7 +306,7 @@ static func parse_token_answer(status: int, body: Variant) -> Dictionary:
 		var out := {"kind": "refused", "error": error, "status": status}
 		var retry = b.get("retryAfter")
 		if PKeyClaims.is_number(retry) and not is_nan(float(retry)) and not is_inf(float(retry)) and float(retry) > 0.0:
-			out["retry_after_seconds"] = int(ceil(float(retry)))
+			out["retry_after_seconds"] = int(minf(ceilf(float(retry)), 3600.0))
 		return out
 	if not (body is Dictionary):
 		return {"kind": "malformed"}

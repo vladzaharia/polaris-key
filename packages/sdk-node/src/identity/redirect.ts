@@ -161,7 +161,7 @@ export class RedirectSession {
         const retryAfterSeconds =
           answer.retryAfterSeconds ??
           (retry !== null && /^\d+$/.test(retry.trim())
-            ? Number(retry)
+            ? Math.min(Number(retry), 3600)
             : undefined);
         throw new PolarisError(
           answer.status >= 500 ? ErrorCode.serverError : answer.error,

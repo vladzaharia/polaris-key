@@ -375,7 +375,7 @@ export function parseTokenAnswer(status: number, body: unknown): TokenAnswer {
       error,
       status,
       ...(typeof retry === "number" && Number.isFinite(retry) && retry > 0
-        ? { retryAfterSeconds: Math.ceil(retry) }
+        ? { retryAfterSeconds: Math.min(Math.ceil(retry), 3600) }
         : {}),
     };
   }

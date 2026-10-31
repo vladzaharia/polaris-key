@@ -446,6 +446,24 @@ def test_a_refusal_keeps_the_token_and_carries_retry_after() -> None:
     assert c.core.store.get_token() == "pkeyt_old"
 
 
+@pytest.mark.parametrize(
+    "response,want",
+    [
+        (httpx.Response(429, json={"error": "rate_limited", "retryAfter": 10**400}), 3600),
+        (httpx.Response(429, json={"error": "rate_limited", "retryAfter": 2.2}), 3),
+        (httpx.Response(429, json={"error": "rate_limited"}, headers={"retry-after": "999999"}), 3600),
+    ],
+)
+def test_exchange_answers_rate_limited_with_retry_after(response: httpx.Response, want: int) -> None:
+    w = FormWorker(disc(), token=response)
+    c = make(w)
+    s = c.identity.sign_in.start(channel="redirect", redirect_uri=CB)
+    with pytest.raises(SignInError) as e:
+        s.complete(callback())
+    assert (e.value.code, e.value.retry_after_seconds, e.value.status) == ("rate_limited", want, 429)
+    assert c.core.store.get_token() is None
+
+
 def test_invalid_grant_is_raised_under_its_own_code_and_a_5xx_is_server_error() -> None:
     w = FormWorker(disc(), token=httpx.Response(400, json={"error": "invalid_grant"}))
     c = make(w, token="pkeyt_old")

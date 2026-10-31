@@ -248,6 +248,31 @@ describe("redirect sign-in", () => {
     });
   });
 
+  it("exchange answers rate_limited with retryAfter", async () => {
+    // The token endpoint is the exchange's route too: body seconds, the header as the fallback,
+    // both capped at 3600; the token is never stored and the code is never invalid_grant.
+    for (const [res, want] of [
+      [() => json({ error: "rate_limited", retryAfter: 1e9 }, 429), 3600],
+      [() => json({ error: "rate_limited", retryAfter: 2.2 }, 429), 3],
+      [
+        () =>
+          new Response(JSON.stringify({ error: "rate_limited" }), {
+            status: 429,
+            headers: { "retry-after": "999999" },
+          }),
+        3600,
+      ],
+    ] as const) {
+      const env = setup({ token: res });
+      const { s, cb } = await begin(env);
+      await expect(s.complete(cb("code=C"))).rejects.toMatchObject({
+        code: "rate_limited",
+        retryAfterSeconds: want,
+      });
+      expect(await env.store.getToken()).toBeNull();
+    }
+  });
+
   it("cancel() ends the session without a request", async () => {
     const env = setup({});
     const { s, cb } = await begin(env);

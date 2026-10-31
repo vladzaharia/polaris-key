@@ -266,11 +266,11 @@ static func _refusal(status: int, r: PKeyResult, body: Variant) -> PKeyChoiceRes
 	var out := PKeyChoiceResult.refused(StringName(code if code is String and code != "" else "http_%d" % status), status)
 	var retry = b.get("retryAfter")
 	if PKeyClaims.is_number(retry) and not is_nan(float(retry)) and not is_inf(float(retry)) and float(retry) > 0.0:
-		out.retry_after_seconds = int(ceil(float(retry)))
+		out.retry_after_seconds = int(minf(ceilf(float(retry)), 3600.0))
 	else:
 		var header = r.detail["headers"].get("retry-after") if r.detail["headers"] is Dictionary else null
 		if header is String and (header as String).strip_edges().is_valid_int() and int((header as String).strip_edges()) > 0:
-			out.retry_after_seconds = int((header as String).strip_edges())
+			out.retry_after_seconds = mini(int((header as String).strip_edges()), 3600)
 	var view = b.get("view")
 	if view is Dictionary and view.get("state") is String and view.get("choices") is Array:
 		out.view = view
