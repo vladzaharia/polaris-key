@@ -60,7 +60,10 @@ function mountGate(submit: () => BridgeActivation) {
   const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
 
   const view = render(
-    <PolarisKeyProvider config={{ productSlug: "acme", adapter }}>
+    <PolarisKeyProvider
+      config={{ productSlug: "acme", adapter }}
+      autoSignIn={false}
+    >
       <PolarisKeyGate theme={{ product: { name: "Acme Studio" } }}>
         <div data-testid="app">APP</div>
       </PolarisKeyGate>
@@ -92,7 +95,10 @@ async function welcome(setup: (b: ReturnType<typeof makeFakeBridge>) => void) {
   setup(bridge);
   const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
   const { container } = render(
-    <PolarisKeyProvider config={{ productSlug: "acme", adapter }}>
+    <PolarisKeyProvider
+      config={{ productSlug: "acme", adapter }}
+      autoSignIn={false}
+    >
       <PolarisKeyGate theme={{ product: { name: "Acme Studio" } }} />
     </PolarisKeyProvider>,
   );

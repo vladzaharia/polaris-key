@@ -53,7 +53,10 @@ function mount(
   if (over.never) bridge.pollSignIn = () => new Promise(() => {});
   const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
   const view = render(
-    <PolarisKeyProvider config={{ productSlug: "acme", adapter }}>
+    <PolarisKeyProvider
+      config={{ productSlug: "acme", adapter }}
+      autoSignIn={false}
+    >
       <PolarisKeyGate
         returnUrl={over.returnUrl}
         theme={{ product: { name: "Acme Studio" } }}
