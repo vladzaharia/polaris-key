@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
+import { SYNC_CHUNK_PLAN_MAX_IDS } from "@polaris-key/protocol/sync";
 import { D1Db } from "../../../db/d1.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -37,6 +38,7 @@ import {
 import {
   fileAbort,
   fileBegin,
+  fileChunkPlan,
   fileFinalizeCommit,
   fileFinalizeEnd,
   fileFinalizePrepare,
@@ -363,6 +365,7 @@ export class CloudSyncDO implements DurableObject {
       case "pull":
         return this.pull(op);
       case "fileBegin":
+      case "fileChunkPlan":
       case "fileStatus":
       case "fileAbort":
       case "filePrepare":
@@ -423,6 +426,7 @@ export class CloudSyncDO implements DurableObject {
       {
         op:
           | "fileBegin"
+          | "fileChunkPlan"
           | "fileStatus"
           | "fileAbort"
           | "filePrepare"
@@ -450,7 +454,11 @@ export class CloudSyncDO implements DurableObject {
         !Number.isSafeInteger(r.size) ||
         r.size < 0 ||
         typeof r.sha256 !== "string" ||
-        !(op.mode === "single" || op.mode === "multipart") ||
+        !(
+          op.mode === "single" ||
+          op.mode === "multipart" ||
+          op.mode === "chunks"
+        ) ||
         !isFileLimits(op.limits) ||
         typeof op.maxRecords !== "number"
       )
@@ -458,6 +466,25 @@ export class CloudSyncDO implements DurableObject {
       const out = await fileBegin(host, op);
       // The new session expires in 24 hours: the alarm owes a date for it.
       if (out.status === 200) await this.scheduleAlarm();
+      return reply(out.body, out.status);
+    }
+    if (op.op === "fileChunkPlan") {
+      if (
+        !Array.isArray(op.chunks) ||
+        op.chunks.length < 1 ||
+        op.chunks.length > SYNC_CHUNK_PLAN_MAX_IDS ||
+        !op.chunks.every(
+          (c) =>
+            Array.isArray(c) &&
+            c.length === 2 &&
+            typeof c[0] === "string" &&
+            typeof c[1] === "number",
+        ) ||
+        typeof op.maxBytes !== "number" ||
+        !isFileLimits(op.limits)
+      )
+        return reply({ error: "bad_request" }, 400);
+      const out = await fileChunkPlan(host, op);
       return reply(out.body, out.status);
     }
     if (op.op === "filePart") {

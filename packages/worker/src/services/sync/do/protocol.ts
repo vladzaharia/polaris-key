@@ -13,10 +13,12 @@ import type {
   FileRevision,
   FinalizeResponse,
   PushRequest,
+  SyncChunkRef,
   SyncFileFormat,
   SyncUploadMode,
   UploadStatus,
 } from "@polaris-key/protocol/sync";
+import type { PlanOutcome } from "../engine/chunks.js";
 import type { PullOutcome } from "../engine/pull.js";
 import type { BeginRefusal, FileLimits } from "../engine/files.js";
 import type {
@@ -85,7 +87,7 @@ export type CloudSyncOp =
       collection: string;
       recordId: string;
       request: BeginFileRequest;
-      mode: Extract<SyncUploadMode, "single" | "multipart">;
+      mode: SyncUploadMode;
       partBytes?: number;
       /** The matched declaration's `maxRecords`. */
       maxRecords: number;
@@ -161,6 +163,21 @@ export type CloudSyncOp =
       collection: string;
       recordId: string;
       uploadId: string;
+      serverNow: number;
+    })
+  /**
+   * The plan call of a `chunks` upload (U-37.2): which of the named chunks the collection stores
+   * and which it lacks. It pins every named chunk to the upload and reserves the bytes of those no
+   * file references. `maxBytes` is the declaration's `files.maxBytes`.
+   */
+  | (DoPin & {
+      op: "fileChunkPlan";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      chunks: SyncChunkRef[];
+      maxBytes: number;
+      limits: FileLimits;
       serverNow: number;
     })
   /**
@@ -275,6 +292,7 @@ export type CloudSyncReply =
   | { op: "push"; outcome: PushOutcome; meter?: OpMeter }
   | { op: "pull"; outcome: PullOutcome; meter?: OpMeter }
   | { op: "fileBegin"; outcome: FileBeginOutcome }
+  | { op: "fileChunkPlan"; outcome: ChunkPlanOutcome }
   | { op: "fileStatus"; outcome: FileStatusOutcome }
   | { op: "fileAbort"; outcome: FileAbortOutcome }
   | { op: "filePrepare"; outcome: FilePrepareOutcome }
@@ -299,6 +317,15 @@ export type FileBeginOutcome =
       expiresAt: number;
     }
   | BeginRefusal;
+
+/**
+ * The plan call's answer. `mismatch`: the session is not in `chunks` mode. A refusal changes
+ * nothing. Not written as `error: "<code>"` outside `PlanRefusal`, which the registry scan reads.
+ */
+export type ChunkPlanOutcome =
+  | PlanOutcome
+  | { ok: false; error: "not_found" | "upload_expired" }
+  | { ok: false; mismatch: true };
 
 /** `404` for a session that is not this record's, is unknown or ended; `410` once it expired. */
 export type FileStatusOutcome =

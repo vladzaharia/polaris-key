@@ -30,7 +30,7 @@ import type {
   SyncStore,
   UploadRow,
 } from "./types.js";
-import { accountRecord, fileUsage } from "./usage.js";
+import { accountRecord, fileUsage, moveReserved } from "./usage.js";
 
 // ── The transfer plan (§13.8.1) ──────────────────────────────────────────────────────────────
 
@@ -95,8 +95,8 @@ export interface BeginInput {
   collection: string;
   recordId: string;
   request: BeginFileRequest;
-  /** `single` or `multipart` (the chunks mode is U-37). */
-  mode: Extract<SyncUploadMode, "single" | "multipart">;
+  /** `single`, `multipart` or `chunks` (U-37: the manifest goes up as a `single` object). */
+  mode: SyncUploadMode;
   partBytes: number | null;
   /** The matched declaration's `maxRecords`: a `begin` that would create a record counts against it. */
   maxRecords: number;
@@ -191,12 +191,7 @@ export function commitBegin(store: SyncStore, upload: UploadRow): void {
   moveReserved(store, upload.reservedBytes);
 }
 
-/** Adds `delta` (may be negative) to the reservation, never below zero. */
-export function moveReserved(store: SyncStore, delta: number): void {
-  const usage = store.getUsage();
-  const next = Math.max(0, fileUsage(usage).reservedBytes + delta);
-  store.setUsage({ ...usage, reservedBytes: next });
-}
+export { moveReserved };
 
 /**
  * Ends a session without a file: releases its reservation exactly once (`reservedBytes` goes to 0
@@ -206,6 +201,8 @@ export function moveReserved(store: SyncStore, delta: number): void {
 export function releaseUpload(store: SyncStore, upload: UploadRow): UploadRow {
   if (upload.state === "done") return upload;
   if (upload.reservedBytes > 0) moveReserved(store, -upload.reservedBytes);
+  // The chunks the upload named are no longer pinned: the collector may take the unreferenced ones.
+  store.deleteUploadChunks(upload.uploadId);
   const ended: UploadRow = { ...upload, state: "aborted", reservedBytes: 0 };
   store.putUpload(ended);
   return ended;

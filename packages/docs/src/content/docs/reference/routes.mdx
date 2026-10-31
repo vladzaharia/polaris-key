@@ -441,6 +441,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/sync/files/{collection}/{id}/begin` | sync | Begin a file upload for a record |
 | POST | `/{product}/sync/files/{collection}/{id}/finalize` | sync | Finish a file upload |
 | GET | `/{product}/sync/files/{collection}/{id}/revisions` | sync | The kept versions of a record's file |
+| POST | `/{product}/sync/files/{collection}/{id}/upload/{uploadId}/chunks` | sync | Plan the chunks of a delta file |
 | PUT | `/{product}/sync/files/{collection}/{id}/upload/{uploadId}/parts/{n}` | sync | Upload one part of a multipart file |
 | GET | `/{product}/sync/files/{collection}/{id}/upload/{uploadId}` | sync | The resume answer of a file upload |
 | PUT | `/{product}/sync/files/{collection}/{id}/upload/{uploadId}` | sync | Upload a whole file (mode single) |

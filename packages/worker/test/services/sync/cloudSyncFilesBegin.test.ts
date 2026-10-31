@@ -236,14 +236,19 @@ describe("POST …/begin", () => {
     ]);
   });
 
-  it("the chunks format is not served yet: 400 bad_request, with or without files.delta", async () => {
+  it("the chunks format needs files.delta (400 bad_request) and a manifest-sized body (413 over, 400 under)", async () => {
     const w = await filesWorld();
-    for (const c of ["delta", "saves"])
-      expect(
-        await refused(w, c, "x", beginBody(2 * MIB, { format: "chunks" })),
-      ).toEqual([400, "bad_request"]);
+    expect(
+      await refused(w, "big", "x", beginBody(2000, { format: "chunks" })),
+    ).toEqual([400, "bad_request"]);
     // Refused by the Worker: no object was even made.
     expect(w.ns.instances.size).toBe(0);
+    expect(
+      await refused(w, "delta", "x", beginBody(2 * MIB, { format: "chunks" })),
+    ).toEqual([413, "file_too_large"]);
+    expect(
+      await refused(w, "delta", "x", beginBody(100, { format: "chunks" })),
+    ).toEqual([400, "bad_request"]);
   });
 
   it("a body that is not a begin is 400, and one over its cap is 413", async () => {

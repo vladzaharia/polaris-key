@@ -18,6 +18,7 @@ import {
   handleUploadStatus,
 } from "./handlers/files.js";
 import { handleFinalize } from "./handlers/fileFinalize.js";
+import { handleChunkPlan } from "./handlers/fileChunks.js";
 import { handleFileGet, handleFileRevisions } from "./handlers/fileGet.js";
 import { handlePartPut, handleUploadPut } from "./handlers/fileUpload.js";
 import { handlePull } from "./handlers/pull.js";
@@ -79,6 +80,19 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
     cors: true,
     params: FILE_PARAMS,
     handler: (ctx, match) => handlePartPut(ctx, match),
+  },
+  // U-37.2: the plan call of a `chunks` upload.
+  {
+    path: "files/:collection/:id/upload/:uploadId/chunks",
+    methods: ["POST"],
+    auth: { kind: "device" },
+    cors: true,
+    params: {
+      collection: FILE_PARAMS.collection,
+      id: FILE_PARAMS.id,
+      uploadId: FILE_PARAMS.uploadId,
+    },
+    handler: (ctx, match) => handleChunkPlan(ctx, match),
   },
   // U-10.7: the commit of an upload.
   {

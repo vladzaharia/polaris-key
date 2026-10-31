@@ -95,8 +95,9 @@ async function session(
     return out.error === "upload_expired"
       ? wireError(410, "upload_expired")
       : notFound();
-  // The route against the session's mode: a part belongs to a multipart session, the whole to a single one.
-  if ((part === null) !== (out.mode === "single"))
+  // The route against the session's mode: a part belongs to a multipart session, the whole to a
+  // single one, and a `chunks` session's manifest goes up as a single object (§13.8.1).
+  if ((part === null) === (out.mode === "multipart"))
     return wireError(400, "upload_mismatch");
   return { prep: out, call: { ...call, caller: prepared.caller } };
 }

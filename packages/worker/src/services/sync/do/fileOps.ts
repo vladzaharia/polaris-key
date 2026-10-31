@@ -14,6 +14,7 @@
 
 import { SYNC_MAX_OPEN_UPLOADS } from "@polaris-key/protocol/sync";
 import type { UploadStatus } from "@polaris-key/protocol/sync";
+import { missingChunks, planChunks } from "../engine/chunks.js";
 import {
   checkBegin,
   commitBegin,
@@ -27,6 +28,7 @@ import {
 import { markDirty } from "./directory.js";
 import type { SyncStore, UploadRow } from "../engine/types.js";
 import type {
+  ChunkPlanOutcome,
   CloudSyncError,
   CloudSyncOp,
   CloudSyncReply,
@@ -242,9 +244,10 @@ function statusOf(host: FileHost, u: UploadRow): UploadStatus {
     size: u.size,
     ...(u.partBytes !== null ? { partBytes: u.partBytes } : {}),
     // A single `PUT` is part 1, so a client that lost the answer can see whether it landed.
-    ...(u.mode === "multipart" || u.mode === "single"
-      ? { received: parts }
-      : {}),
+    // A `chunks` upload's manifest is its part 1, and its resume answer lists the chunks it lacks.
+    ...(u.mode === "chunks"
+      ? { received: parts, missing: missingChunks(host.store, u.uploadId) }
+      : { received: parts }),
     expiresAt: u.expiresAt,
   };
 }
@@ -310,6 +313,32 @@ export function fileAbort(
       if (!(await discard(host, op, u))) return refuse("unavailable", 503);
     return ok({ op: "fileAbort", outcome: { ok: true } });
   });
+}
+
+/**
+ * The plan call of a `chunks` upload (U-37.2). The session must be open and in `chunks` mode; the
+ * answer and the pins are `engine/chunks.ts`'s, applied in one transaction.
+ */
+export async function fileChunkPlan(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "fileChunkPlan" }>,
+): Promise<FileReply> {
+  const s = await liveSession(host, op, true);
+  const answer = (outcome: ChunkPlanOutcome) =>
+    ok({ op: "fileChunkPlan", outcome });
+  if ("error" in s) return answer({ ok: false, error: s.error });
+  if (s.u.mode !== "chunks") return answer({ ok: false, mismatch: true });
+  const upload = s.u;
+  return answer(
+    host.store.transaction(() =>
+      planChunks(host.store, {
+        upload,
+        chunks: op.chunks,
+        maxBytes: op.maxBytes,
+        limits: op.limits,
+      }),
+    ),
+  );
 }
 
 /**
