@@ -319,6 +319,46 @@ final class ConnectRelayTicketTests: XCTestCase {
         XCTAssertEqual(fetches, 1, "nothing was fetched for it")
     }
 
+    func testADeviceThatLeavesTheRosterLosesItsTransferPartials() async throws {
+        // Direct Transfer keeps partial files per peer key; a roster that drops the device deletes them.
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("pkey-roster-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let c = try await client()
+        let keys = try await port.ensure()
+        await serve(keys, epoch: 1, others: [other, third], disc: [randomKey(), randomKey()])
+        _ = await c.connect.identity(refresh: true)
+        let cloud = CloudConnect(connect: c.connect, transferDirectory: dir)
+        _ = cloud
+        let store = XferStore(directory: dir)
+        func plant(_ agree: String) throws -> Data {
+            let key = try XCTUnwrap(Base64URL.decodeStrict(agree))
+            let sha = String(repeating: "ab", count: 32)
+            let id = Base64URL.encode(Data(repeating: 7, count: 16))
+            let meta = XferPartial(
+                ref: xferPartialPath(key: key, id: id, sha256: sha), id: id, sha256: sha, size: 10, chunk: 5,
+                bytes: 0, writtenAt: 0)
+            let t = store.begin(peer: key)
+            store.reserve(meta.ref, declared: 10, written: 0, token: t)
+            try store.create(meta, token: t)
+            store.close(t)
+            return key
+        }
+        let gone = try plant(third.agreeKey)
+        let stays = try plant(other.agreeKey)
+        XCTAssertEqual(store.partials(key: gone, mono: 0).count, 1)
+        let r = await c.connect.adoptRing(pushed(keys, epoch: 2, others: [other]))
+        XCTAssertTrue(r.stored)
+        XCTAssertEqual(store.partials(key: gone, mono: 0).count, 0, "the device left the roster")
+        XCTAssertEqual(store.partials(key: stays, mono: 0).count, 1)
+        // A fetched roster does the same: the device rejoins, then leaves again.
+        let rejoin = await c.connect.adoptRing(pushed(keys, epoch: 3, others: [other, third]))
+        XCTAssertTrue(rejoin.stored)
+        let again = try plant(third.agreeKey)
+        await serve(keys, epoch: 4, others: [other], disc: [randomKey()])
+        _ = await c.connect.identity(refresh: true)
+        XCTAssertEqual(store.partials(key: again, mono: 0).count, 0)
+    }
+
     func testAStaleForeignOrUnverifiedRosterIsRefusedAndNothingChanges() async throws {
         let c = try await client()
         let keys = try await port.ensure()

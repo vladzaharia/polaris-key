@@ -779,13 +779,23 @@ public struct XferMachine {
         let m = parts.first { $0.id == t.id && $0.sha256 == t.sha }
         var offset = 0
         var hash = SHA256()
+        var resume = false
+        var want = 0
         if let m, resumable(size: t.size, chunk: t.chunk, m) {
             let read = min(m.reread ?? m.bytes, m.bytes)
-            let want = min(read / t.chunk * t.chunk, t.size)
-            if let rehash = o.rehash, want > 0, let h = rehash(m.ref, want) {
-                offset = want
-                hash = h
+            want = min(read / t.chunk * t.chunk, t.size)
+            if let rehash = o.rehash, want > 0 {
+                // A partial that cannot be re-read (gone, short, held elsewhere) is not resumed: start afresh.
+                if let h = rehash(m.ref, want) {
+                    offset = want
+                    hash = h
+                    resume = true
+                }
+            } else {
+                resume = true
             }
+        }
+        if let m, resume {
             t.partial = m.ref
             eff(.truncate(m.ref, to: offset))
             if let i = parts.firstIndex(where: { $0.ref == m.ref }) {

@@ -12,7 +12,7 @@ import CryptoKit
 import Foundation
 
 public struct XferStoreError: Error, Sendable, Equatable {
-    public enum Kind: Sendable, Equatable { case io, exists, badPath, quota, purged }
+    public enum Kind: Sendable, Equatable { case io, exists, badPath, quota, purged, notOwner }
     public let kind: Kind
     public init(_ kind: Kind) { self.kind = kind }
 }
@@ -31,7 +31,7 @@ public final class XferStore: @unchecked Sendable {
     }
 
     /// What the store may hold in all (kept and live partial files together), by default.
-    public static let defaultQuotaBytes = 16 * 1024 * 1024 * 1024
+    public static let defaultQuotaBytes = 4 * 1024 * 1024 * 1024
     /// What the volume keeps free beyond the store, by default.
     public static let defaultDiskReserveBytes = 256 * 1024 * 1024
 
@@ -40,8 +40,11 @@ public final class XferStore: @unchecked Sendable {
     private var handles: [String: FileHandle] = [:]
     /// Refs a live transfer holds, in any session of this process, with the size it declared and the bytes it has
     /// written. The bytes still to come are reserved: they are taken off what a new offer may ask for.
-    private var live: [String: (declared: Int, written: Int)] = [:]
+    private var live: [String: (owner: Int, declared: Int, written: Int)] = [:]
     private var generation = 0
+    private var peerGeneration: [String: Int] = [:]
+    private var nextOwner = 0
+    private var closedOwners: Set<Int> = []
     private let freeBytes: @Sendable () -> Int?
     private let quota: Int?
     private let diskReserve: Int
@@ -59,12 +62,49 @@ public final class XferStore: @unchecked Sendable {
         self.diskReserve = diskReserve
     }
 
-    /// Changes whenever the store is purged. An effect that was queued before the purge carries the old value and
-    /// is refused, so a late write never recreates what was deleted.
+    /// What one session holds the store with: an owner, and the purge generations it began under. Every effect
+    /// carries it. A partial a session claimed is that session's alone until it ends; after a purge (of everything,
+    /// or of the peer) or after the session closed, its late effects are refused.
+    public struct Token: Sendable {
+        let owner: Int
+        let epoch: Int
+        let peer: Data
+        let peerEpoch: Int
+    }
+
+    /// Changes whenever the whole store is purged.
     public var epoch: Int { lock.withLock { generation } }
 
-    private func check(_ epoch: Int?) throws {
-        if let epoch, epoch != generation { throw XferStoreError(.purged) }
+    /// A token for a new session with the peer whose static key this is.
+    public func begin(peer: Data) -> Token {
+        lock.lock()
+        defer { lock.unlock() }
+        nextOwner += 1
+        return Token(owner: nextOwner, epoch: generation, peer: peer, peerEpoch: peerGeneration[peerHex(peer)] ?? 0)
+    }
+
+    /// The session ended: its claims go, and anything it still has queued is dropped.
+    public func close(_ t: Token) {
+        lock.lock()
+        defer { lock.unlock() }
+        closedOwners.insert(t.owner)
+        for (ref, l) in live where l.owner == t.owner {
+            try? handles.removeValue(forKey: ref)?.close()
+            live[ref] = nil
+        }
+    }
+
+    private func check(_ t: Token) throws {
+        if t.epoch != generation || t.peerEpoch != (peerGeneration[peerHex(t.peer)] ?? 0) {
+            throw XferStoreError(.purged)
+        }
+        if closedOwners.contains(t.owner) { throw XferStoreError(.notOwner) }
+    }
+
+    /// A partial no other session holds.
+    private func mayTouch(_ ref: String, _ t: Token) -> Bool {
+        guard let l = live[ref] else { return true }
+        return l.owner == t.owner
     }
 
     private static func volumeFree(_ dir: URL) -> Int? {
@@ -114,8 +154,7 @@ public final class XferStore: @unchecked Sendable {
     // Only a derived name reaches a path: 64 lowercase hex characters.
     private func file(_ ref: String) throws -> URL {
         let u = Array(ref.utf8)
-        guard u.count == 64 || ref.hasPrefix("n"), !ref.isEmpty,
-            u.allSatisfy({ ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x61 && $0 <= 0x7a) })
+        guard u.count == 64, u.allSatisfy({ ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x61 && $0 <= 0x66) })
         else { throw XferStoreError(.badPath) }
         return dir.appendingPathComponent(ref, isDirectory: false)
     }
@@ -164,9 +203,13 @@ public final class XferStore: @unchecked Sendable {
         return try? JSONDecoder().decode(Meta.self, from: d)
     }
 
-    /// A hasher fed with the first `offset` bytes of a partial. The bytes are read from the file.
-    /// nil when the file is gone or holds fewer bytes than it was said to: the resume then starts at 0.
-    public func rehash(ref: String, offset: Int) -> SHA256? {
+    /// A hasher fed with the first `offset` bytes of a partial, read and claimed in one locked step so nothing else
+    /// changes the file between the hash and the resume. nil when the file is gone, holds fewer bytes than it was
+    /// said to, or another session holds it: the resume then starts at 0.
+    public func rehash(ref: String, offset: Int, token t: Token) -> SHA256? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard (try? check(t)) != nil, mayTouch(ref, t) else { return nil }
         var h = SHA256()
         guard offset > 0 else { return h }
         guard let u = try? file(ref), let fh = try? FileHandle(forReadingFrom: u) else { return nil }
@@ -177,38 +220,39 @@ public final class XferStore: @unchecked Sendable {
             h.update(data: d)
             left -= d.count
         }
+        live[ref] = (t.owner, live[ref]?.declared ?? 0, live[ref]?.written ?? 0)
         return h
     }
 
     // MARK: Effects
 
     /// A live transfer takes `ref`: `declared` bytes are reserved, `written` of them are on disk. Called as soon as
-    /// the machine accepts, before the file work is done, so an offer that arrives next sees the reservation.
-    public func reserve(_ ref: String, declared: Int, written: Int) {
+    /// the machine accepts, before the file work is done, so an offer that arrives next sees the reservation. A
+    /// partial another session holds is not taken: the effects that follow are refused.
+    public func reserve(_ ref: String, declared: Int, written: Int, token t: Token) {
         lock.lock()
         defer { lock.unlock() }
-        live[ref] = (declared, written)
+        guard (try? check(t)) != nil, mayTouch(ref, t) else { return }
+        live[ref] = (t.owner, declared, written)
     }
 
-    /// The transfer ended (delivered, cancelled, closed): the reservation and the hold are released.
-    public func release(_ ref: String) {
+    /// The transfer ended (delivered, cancelled, closed): the reservation and the hold are released, if they are
+    /// this session's.
+    public func release(_ ref: String, token t: Token) {
         lock.lock()
         defer { lock.unlock() }
-        live[ref] = nil
+        if live[ref]?.owner == t.owner { live[ref] = nil }
     }
 
     /// True while a live transfer holds `ref`.
     public func isHeld(_ ref: String) -> Bool { lock.withLock { live[ref] != nil } }
 
-    public func create(_ meta: XferPartial, peer key: Data, epoch: Int? = nil) throws {
+    public func create(_ meta: XferPartial, token t: Token) throws {
         lock.lock()
         defer { lock.unlock() }
-        try check(epoch)
+        try check(t)
+        guard mayTouch(meta.ref, t) else { throw XferStoreError(.notOwner) }
         try ensureDir()
-        try createLocked(meta, key)
-    }
-
-    private func createLocked(_ meta: XferPartial, _ key: Data) throws {
         let f = try file(meta.ref)
         let held = live[meta.ref]
         removeLocked(meta.ref)
@@ -216,7 +260,7 @@ public final class XferStore: @unchecked Sendable {
         let fd = open(f.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
         guard fd >= 0 else { throw XferStoreError(.io) }
         handles[meta.ref] = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
-        let m = Meta(peer: peerHex(key), id: meta.id, sha256: meta.sha256, size: meta.size, chunk: meta.chunk)
+        let m = Meta(peer: peerHex(t.peer), id: meta.id, sha256: meta.sha256, size: meta.size, chunk: meta.chunk)
         let side = try sidecar(meta.ref)
         let sfd = open(side.path, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW, 0o600)
         guard sfd >= 0 else { throw XferStoreError(.io) }
@@ -235,52 +279,44 @@ public final class XferStore: @unchecked Sendable {
         return h
     }
 
-    /// Cut a partial to `offset`. A partial that is gone (another session finished or removed it) is made again,
-    /// empty, from `meta`: the resume starts over.
-    public func truncate(
-        _ ref: String, to offset: Int, meta: XferPartial? = nil, peer key: Data? = nil, epoch: Int? = nil
-    )
-        throws
-    {
+    /// Cut a partial to `offset`. Never makes the file: one that is gone fails, and the session ends.
+    public func truncate(_ ref: String, to offset: Int, token t: Token) throws {
         lock.lock()
         defer { lock.unlock() }
-        try check(epoch)
-        if let h = try? handle(ref) {
-            try h.truncate(atOffset: UInt64(offset))
-            return
-        }
-        guard let meta, let key else { throw XferStoreError(.io) }
-        try ensureDir()
-        try createLocked(meta, key)
+        try check(t)
+        guard live[ref]?.owner == t.owner else { throw XferStoreError(.notOwner) }
+        try handle(ref).truncate(atOffset: UInt64(offset))
     }
 
-    public func write(_ ref: String, offset: Int, data: Data, epoch: Int? = nil) throws {
+    public func write(_ ref: String, offset: Int, data: Data, token t: Token) throws {
         lock.lock()
         defer { lock.unlock() }
-        try check(epoch)
-        if let l = live[ref] {
-            // Never past the size the transfer declared: that is the space reserved for it.
-            guard offset + data.count <= l.declared else { throw XferStoreError(.quota) }
-        } else if let q = quota, onDiskLocked() + data.count > q {
-            throw XferStoreError(.quota)
-        }
+        try check(t)
+        guard let l = live[ref], l.owner == t.owner else { throw XferStoreError(.notOwner) }
+        // Never past the size the transfer declared: that is the space reserved for it.
+        guard offset + data.count <= l.declared else { throw XferStoreError(.quota) }
         let h = try handle(ref)
         try h.seek(toOffset: UInt64(offset))
         try h.write(contentsOf: data)
-        if let l = live[ref] { live[ref] = (l.declared, max(l.written, offset + data.count)) }
+        live[ref] = (l.owner, l.declared, max(l.written, offset + data.count))
     }
 
     /// Release the open handle of a kept partial.
-    public func keep(_ ref: String) {
+    public func keep(_ ref: String, token t: Token) {
         lock.lock()
         defer { lock.unlock() }
-        try? handles.removeValue(forKey: ref)?.close()
+        if mayTouch(ref, t) { try? handles.removeValue(forKey: ref)?.close() }
     }
 
-    public func remove(_ ref: String) {
+    /// Delete a partial. Another session's claimed partial stays.
+    public func remove(_ ref: String, token t: Token) {
         lock.lock()
         defer { lock.unlock() }
+        guard mayTouch(ref, t) else { return }
+        // A discard that is followed by a create keeps the claim the create will use.
+        let mine = live[ref]
         removeLocked(ref)
+        live[ref] = mine
     }
 
     private func removeLocked(_ ref: String) {
@@ -293,10 +329,11 @@ public final class XferStore: @unchecked Sendable {
     /// Deliver a verified partial to `destination`, which must not exist. A hard link when the destination is on
     /// the same volume, else a copy through a temporary file beside it, then a link: never an overwrite, and the
     /// destination never holds a part of the content.
-    public func deliver(_ ref: String, to destination: URL, epoch: Int? = nil) throws {
+    public func deliver(_ ref: String, to destination: URL, token t: Token) throws {
         lock.lock()
         defer { lock.unlock() }
-        try check(epoch)
+        try check(t)
+        guard mayTouch(ref, t) else { throw XferStoreError(.notOwner) }
         try? handles.removeValue(forKey: ref)?.close()
         let src = try file(ref)
         if link(src.path, destination.path) == 0 {
@@ -329,7 +366,7 @@ public final class XferStore: @unchecked Sendable {
     public func deliverEmpty(to destination: URL) throws {
         let fd = open(destination.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
         guard fd >= 0 else { throw XferStoreError(errno == EEXIST ? .exists : .io) }
-        close(fd)
+        _ = Darwin.close(fd)
     }
 
     /// A new owner-only file in the store's directory for a stream that is spooled before it is offered.
@@ -340,7 +377,7 @@ public final class XferStore: @unchecked Sendable {
         let u = dir.appendingPathComponent("spool-" + UUID().uuidString.lowercased(), isDirectory: false)
         let fd = open(u.path, O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0o600)
         guard fd >= 0 else { throw XferStoreError(.io) }
-        close(fd)
+        _ = Darwin.close(fd)
         return u
     }
 
@@ -350,11 +387,13 @@ public final class XferStore: @unchecked Sendable {
     public func purge(key: Data) {
         lock.lock()
         defer { lock.unlock() }
+        peerGeneration[peerHex(key), default: 0] += 1
         guard let names = try? fm.contentsOfDirectory(atPath: dir.path) else { return }
         for n in names where n.hasSuffix(".json") {
             let ref = String(n.dropLast(5))
             if readMeta(ref)?.peer == peerHex(key) { removeLocked(ref) }
         }
+
     }
 
     /// Delete everything the store holds (sign-out or forget).

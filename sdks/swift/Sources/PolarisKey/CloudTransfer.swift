@@ -497,8 +497,8 @@ public final class CloudTransfer: Sendable {
         let store = self.store
         let mono = self.mono
         let state = self.state
-        // Effects queued before a purge carry this and are refused after it.
-        let epoch = store.epoch
+        // This session's claim on the store: effects queued before a purge, or after the session closed, are refused.
+        let token = store.begin(peer: key)
         let contact = session.contact
         let peerInfo = TransferPeerInfo(
             label: contact != nil ? contact?.label : session.hello.label,
@@ -509,7 +509,7 @@ public final class CloudTransfer: Sendable {
             handler: { _ in state.with { $0.handler != nil } ? .ask : .decline },
             categories: contact?.categories ?? [], peerKey: key,
             partials: store.partials(key: key, mono: mono()),
-            rehash: { ref, offset in store.rehash(ref: ref, offset: offset) })
+            rehash: { ref, offset in store.rehash(ref: ref, offset: offset, token: token) })
         let ports = XferEndpointPorts(
             send: { [weak a] type, body in
                 guard let a else { throw XferStoreError(.io) }
@@ -520,8 +520,8 @@ public final class CloudTransfer: Sendable {
                 guard let r = a?.sender(id)?.reader else { throw XferStoreError(.io) }
                 return try r.read(offset, length)
             },
-            apply: { [weak a] op in try Self.apply(op, store: store, key: key, epoch: epoch, adopted: a) },
-            account: { op in Self.account(op, store: store) })
+            apply: { [weak a] op in try Self.apply(op, store: store, token: token, adopted: a) },
+            account: { op in Self.account(op, store: store, token: token) })
         let events = XferEvents(
             ask: { [weak self, weak a] ask in
                 guard let self, let a else { return }
@@ -551,6 +551,13 @@ public final class CloudTransfer: Sendable {
         session.onClose { [weak a, weak self] _ in
             guard let a else { return }
             a.endpoint.closed()
+            // What the session still has queued is performed first (a delivery that was verified); then its claims
+            // go and anything later is refused.
+            let ep = a.endpoint
+            Task {
+                await ep?.idle()
+                store.close(token)
+            }
             for t in a.allAsks() { t.cancel() }
             self?.forget(session)
         }
@@ -564,40 +571,40 @@ public final class CloudTransfer: Sendable {
 
     /// Called as the machine decides, before the file work: reserve what an accepted transfer will take, release
     /// it when the transfer ends.
-    private static func account(_ op: XferOp, store: XferStore) {
+    private static func account(_ op: XferOp, store: XferStore, token: XferStore.Token) {
         switch op.effect {
         case .create(let ref):
-            if let m = op.meta { store.reserve(ref, declared: m.size, written: 0) }
+            if let m = op.meta { store.reserve(ref, declared: m.size, written: 0, token: token) }
         case .truncate(let ref, let to):
-            if let m = op.meta { store.reserve(ref, declared: m.size, written: to) }
+            if let m = op.meta { store.reserve(ref, declared: m.size, written: to, token: token) }
         case .keep(let ref), .discard(let ref), .delete(let ref), .finalize(let ref):
-            store.release(ref)
+            store.release(ref, token: token)
         case .write, .evict:
             break
         }
     }
 
     private static func apply(
-        _ op: XferOp, store: XferStore, key: Data, epoch: Int, adopted: TransferAdopted?
+        _ op: XferOp, store: XferStore, token: XferStore.Token, adopted: TransferAdopted?
     ) throws {
         switch op.effect {
         case .create:
             guard let meta = op.meta else { throw XferStoreError(.io) }
-            try store.create(meta, peer: key, epoch: epoch)
+            try store.create(meta, token: token)
         case .truncate(let ref, let to):
-            try store.truncate(ref, to: to, meta: op.meta, peer: key, epoch: epoch)
+            try store.truncate(ref, to: to, token: token)
         case .write(let ref, let offset, let data):
-            try store.write(ref, offset: offset, data: data, epoch: epoch)
+            try store.write(ref, offset: offset, data: data, token: token)
         case .keep(let ref):
-            store.keep(ref)
+            store.keep(ref, token: token)
         case .evict(let ref):
             // A partial a live transfer holds is never another peer's to remove.
-            if !store.isHeld(ref) { store.remove(ref) }
+            if !store.isHeld(ref) { store.remove(ref, token: token) }
         case .discard(let ref), .delete(let ref):
-            store.remove(ref)
+            store.remove(ref, token: token)
         case .finalize(let ref):
             guard let id = op.id, let to = adopted?.dest(id) else { throw XferStoreError(.io) }
-            try store.deliver(ref, to: to, epoch: epoch)
+            try store.deliver(ref, to: to, token: token)
             adopted?.markDelivered(id)
         }
     }

@@ -226,6 +226,14 @@ private func isStoreName(_ n: String) -> Bool {
     return u.count == 64 && u.allSatisfy { ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x61 && $0 <= 0x66) }
 }
 
+extension XferStore {
+    /// Claim and create, as an accepted transfer does.
+    fileprivate func make(_ meta: XferPartial, _ t: Token) throws {
+        reserve(meta.ref, declared: meta.size, written: 0, token: t)
+        try create(meta, token: t)
+    }
+}
+
 final class TransferTests: XCTestCase {
     private func accept(_ t: CloudTransfer, to url: URL, seen: LockedValue<[TransferOffer]>? = nil) {
         t.onOffer { o in
@@ -523,6 +531,7 @@ final class TransferTests: XCTestCase {
         let key = Data(repeating: 7, count: 32)
         let dirB = tempDir().appendingPathComponent("xfer")
         let store = XferStore(directory: dirB)
+        let tk = store.begin(peer: key)
         let id = Base64URL.encode(Data(repeating: 9, count: 16))
         let data = content(50_000)
         let sha = xferHex(
@@ -565,9 +574,9 @@ final class TransferTests: XCTestCase {
                     apply: { op in
                         switch op.effect {
                         case .create:
-                            try store.create(op.meta!, peer: key)
-                        case .write(let ref, let off, let d): try store.write(ref, offset: off, data: d)
-                        case .delete(let ref): store.remove(ref)
+                            try store.make(op.meta!, tk)
+                        case .write(let ref, let off, let d): try store.write(ref, offset: off, data: d, token: tk)
+                        case .delete(let ref): store.remove(ref, token: tk)
                         case .finalize: XCTFail("delivered a mismatch")
                         default: break
                         }
@@ -620,11 +629,12 @@ final class TransferTests: XCTestCase {
         let id = Base64URL.encode(Data(repeating: 1, count: 16))
         let ref = xferPartialPath(key: key, id: id, sha256: sha)
         let ref2 = xferPartialPath(key: other, id: id, sha256: sha)
-        try store.create(
-            XferPartial(ref: ref, id: id, sha256: sha, size: 10, chunk: 5, bytes: 0, writtenAt: 0), peer: key)
-        try store.create(
-            XferPartial(ref: ref2, id: id, sha256: sha, size: 10, chunk: 5, bytes: 0, writtenAt: 0), peer: other)
-        try store.write(ref, offset: 0, data: Data([1, 2, 3, 4, 5]))
+        let tk = store.begin(peer: key)
+        try store.make(XferPartial(ref: ref, id: id, sha256: sha, size: 10, chunk: 5, bytes: 0, writtenAt: 0), tk)
+        try store.make(
+            XferPartial(ref: ref2, id: id, sha256: sha, size: 10, chunk: 5, bytes: 0, writtenAt: 0),
+            store.begin(peer: other))
+        try store.write(ref, offset: 0, data: Data([1, 2, 3, 4, 5]), token: tk)
         XCTAssertEqual(xferFiles(dir).filter(isStoreName).count, 4)
         let mode = { (u: URL) in
             (try! FileManager.default.attributesOfItem(atPath: u.path)[.posixPermissions] as! NSNumber).intValue
@@ -646,7 +656,7 @@ final class TransferTests: XCTestCase {
     func testAStoreRefusesANameThatIsNotDerived() throws {
         let store = XferStore(directory: tempDir().appendingPathComponent("xfer"))
         let bad = XferPartial(ref: "../escape", id: "x", sha256: "y", size: 1, chunk: 1, bytes: 0, writtenAt: 0)
-        XCTAssertThrowsError(try store.create(bad, peer: Data(count: 32)))
+        XCTAssertThrowsError(try store.make(bad, store.begin(peer: Data(count: 32))))
     }
 
     func testDeliveryNeverOverwrites() throws {
@@ -656,15 +666,15 @@ final class TransferTests: XCTestCase {
         let sha = String(repeating: "cd", count: 32)
         let id = Base64URL.encode(Data(repeating: 2, count: 16))
         let ref = xferPartialPath(key: key, id: id, sha256: sha)
-        try store.create(
-            XferPartial(ref: ref, id: id, sha256: sha, size: 3, chunk: 3, bytes: 0, writtenAt: 0), peer: key)
-        try store.write(ref, offset: 0, data: Data([9, 9, 9]))
+        let tk = store.begin(peer: key)
+        try store.make(XferPartial(ref: ref, id: id, sha256: sha, size: 3, chunk: 3, bytes: 0, writtenAt: 0), tk)
+        try store.write(ref, offset: 0, data: Data([9, 9, 9]), token: tk)
         let dest = tempDir().appendingPathComponent("x")
         try Data("old".utf8).write(to: dest)
-        XCTAssertThrowsError(try store.deliver(ref, to: dest))
+        XCTAssertThrowsError(try store.deliver(ref, to: dest, token: tk))
         XCTAssertEqual(try Data(contentsOf: dest), Data("old".utf8))
         try FileManager.default.removeItem(at: dest)
-        try store.deliver(ref, to: dest)
+        try store.deliver(ref, to: dest, token: tk)
         XCTAssertEqual(try Data(contentsOf: dest), Data([9, 9, 9]))
     }
 
@@ -793,18 +803,18 @@ final class TransferTests: XCTestCase {
         let id = Base64URL.encode(Data(repeating: 3, count: 16))
         let ref = xferPartialPath(key: key, id: id, sha256: sha)
         let meta = XferPartial(ref: ref, id: id, sha256: sha, size: 10, chunk: 5, bytes: 0, writtenAt: 0)
-        try store.create(meta, peer: key)
-        store.reserve(ref, declared: 10, written: 0)
-        try store.write(ref, offset: 0, data: Data(count: 10))
-        XCTAssertThrowsError(try store.write(ref, offset: 5, data: Data(count: 6))) {
+        let tk = store.begin(peer: key)
+        try store.make(meta, tk)
+        try store.write(ref, offset: 0, data: Data(count: 10), token: tk)
+        XCTAssertThrowsError(try store.write(ref, offset: 5, data: Data(count: 6), token: tk)) {
             XCTAssertEqual(($0 as? XferStoreError)?.kind, .quota)
         }
-        // Without a reservation the quota itself bounds a write.
-        store.release(ref)
-        XCTAssertThrowsError(try store.write(ref, offset: 0, data: Data(count: 1000)))
+        // Without a reservation there is no claim, so no write.
+        store.release(ref, token: tk)
+        XCTAssertThrowsError(try store.write(ref, offset: 0, data: Data(count: 1000), token: tk))
         // What a new offer may ask for: the quota less what is on disk and what live transfers still owe.
         XCTAssertEqual(store.free, 990)
-        store.reserve(ref, declared: 500, written: 10)
+        store.reserve(ref, declared: 500, written: 10, token: tk)
         XCTAssertEqual(store.free, 500)
     }
 
@@ -816,15 +826,15 @@ final class TransferTests: XCTestCase {
         let id = Base64URL.encode(Data(repeating: 4, count: 16))
         let ref = xferPartialPath(key: key, id: id, sha256: sha)
         let meta = XferPartial(ref: ref, id: id, sha256: sha, size: 10, chunk: 5, bytes: 0, writtenAt: 0)
-        let epoch = store.epoch
-        try store.create(meta, peer: key, epoch: epoch)
+        let old = store.begin(peer: key)
+        try store.make(meta, old)
         store.purgeAll()
-        XCTAssertThrowsError(try store.create(meta, peer: key, epoch: epoch))
-        XCTAssertThrowsError(try store.write(ref, offset: 0, data: Data([1]), epoch: epoch))
-        XCTAssertThrowsError(try store.truncate(ref, to: 0, meta: meta, peer: key, epoch: epoch))
+        XCTAssertThrowsError(try store.create(meta, token: old))
+        XCTAssertThrowsError(try store.write(ref, offset: 0, data: Data([1]), token: old))
+        XCTAssertThrowsError(try store.truncate(ref, to: 0, token: old))
         XCTAssertFalse(FileManager.default.fileExists(atPath: dir.path))
-        // A new epoch works again.
-        XCTAssertNoThrow(try store.create(meta, peer: key, epoch: store.epoch))
+        // A new session works again.
+        XCTAssertNoThrow(try store.make(meta, store.begin(peer: key)))
     }
 
     func testAPurgeInTheMiddleOfATransferLeavesNoStoreBehind() async throws {
@@ -849,12 +859,12 @@ final class TransferTests: XCTestCase {
         let sha = String(repeating: "34", count: 32)
         let id = Base64URL.encode(Data(repeating: 5, count: 16))
         let ref = xferPartialPath(key: key, id: id, sha256: sha)
-        XCTAssertNil(store.rehash(ref: ref, offset: 10))
-        try store.create(
-            XferPartial(ref: ref, id: id, sha256: sha, size: 20, chunk: 10, bytes: 0, writtenAt: 0), peer: key)
-        try store.write(ref, offset: 0, data: Data(count: 5))
-        XCTAssertNil(store.rehash(ref: ref, offset: 10))
-        XCTAssertNotNil(store.rehash(ref: ref, offset: 5))
+        let tk = store.begin(peer: key)
+        XCTAssertNil(store.rehash(ref: ref, offset: 10, token: tk))
+        try store.make(XferPartial(ref: ref, id: id, sha256: sha, size: 20, chunk: 10, bytes: 0, writtenAt: 0), tk)
+        try store.write(ref, offset: 0, data: Data(count: 5), token: tk)
+        XCTAssertNil(store.rehash(ref: ref, offset: 10, token: tk))
+        XCTAssertNotNil(store.rehash(ref: ref, offset: 5, token: tk))
     }
 
     func testEvictionNeverTouchesAPartialALiveTransferHolds() {
@@ -881,6 +891,77 @@ final class TransferTests: XCTestCase {
         out = some.receive(100, type: XferType.offer, body: Data(offer.utf8))
         XCTAssertEqual(out.partial, [.evict("p7"), .create("new")])
         _ = all
+    }
+
+    // MARK: Ownership
+
+    private func ownedFixture() throws -> (XferStore, Data, XferPartial, URL) {
+        let dir = tempDir().appendingPathComponent("xfer")
+        let store = XferStore(directory: dir)
+        let key = Data(repeating: 9, count: 32)
+        let sha = String(repeating: "56", count: 32)
+        let id = Base64URL.encode(Data(repeating: 6, count: 16))
+        let ref = xferPartialPath(key: key, id: id, sha256: sha)
+        return (store, key, XferPartial(ref: ref, id: id, sha256: sha, size: 10, chunk: 5, bytes: 0, writtenAt: 0), dir)
+    }
+
+    func testASecondSessionOfThePeerCannotTouchTheFirstOnesPartial() throws {
+        let (store, key, meta, dir) = try ownedFixture()
+        let a = store.begin(peer: key)
+        let b = store.begin(peer: key)
+        try store.make(meta, a)
+        try store.write(meta.ref, offset: 0, data: Data([1, 2, 3]), token: a)
+        // B can neither take it over, write it, cut it, remove it nor deliver it; its release changes nothing.
+        store.reserve(meta.ref, declared: 10, written: 0, token: b)
+        XCTAssertNil(store.rehash(ref: meta.ref, offset: 3, token: b))
+        XCTAssertThrowsError(try store.create(meta, token: b))
+        XCTAssertThrowsError(try store.write(meta.ref, offset: 3, data: Data([4]), token: b))
+        XCTAssertThrowsError(try store.truncate(meta.ref, to: 0, token: b))
+        XCTAssertThrowsError(try store.deliver(meta.ref, to: tempDir().appendingPathComponent("x"), token: b))
+        store.remove(meta.ref, token: b)
+        store.release(meta.ref, token: b)
+        XCTAssertTrue(store.isHeld(meta.ref))
+        XCTAssertEqual(try Data(contentsOf: dir.appendingPathComponent(meta.ref)), Data([1, 2, 3]))
+        try store.write(meta.ref, offset: 3, data: Data([4]), token: a)
+        // Once A has ended, B may take the partial over, and A's late effects are dropped.
+        store.close(a)
+        XCTAssertThrowsError(try store.write(meta.ref, offset: 4, data: Data([5]), token: a))
+        XCTAssertNotNil(store.rehash(ref: meta.ref, offset: 4, token: b))
+        XCTAssertTrue(store.isHeld(meta.ref))
+        store.keep(meta.ref, token: a)
+        store.reserve(meta.ref, declared: 10, written: 4, token: b)
+        XCTAssertNoThrow(try store.write(meta.ref, offset: 4, data: Data([5]), token: b))
+    }
+
+    func testAPeerPurgeRefusesWhatThatPeersSessionsHaveQueuedAndTruncateNeverRecreates() throws {
+        let (store, key, meta, dir) = try ownedFixture()
+        let other = Data(repeating: 1, count: 32)
+        let a = store.begin(peer: key)
+        let o = store.begin(peer: other)
+        try store.make(meta, a)
+        store.purge(key: key)
+        XCTAssertThrowsError(try store.create(meta, token: a))
+        XCTAssertThrowsError(try store.write(meta.ref, offset: 0, data: Data([1]), token: a))
+        XCTAssertThrowsError(try store.truncate(meta.ref, to: 0, token: a))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dir.appendingPathComponent(meta.ref).path))
+        // Another peer's session is not affected, and a new session of the purged peer works.
+        XCTAssertNoThrow(
+            try store.make(
+                XferPartial(
+                    ref: String(repeating: "a", count: 64), id: meta.id, sha256: meta.sha256, size: 10, chunk: 5,
+                    bytes: 0, writtenAt: 0), o))
+        let fresh = store.begin(peer: key)
+        XCTAssertNoThrow(try store.make(meta, fresh))
+        // A partial that is gone is not made again by a cut.
+        store.remove(meta.ref, token: fresh)
+        store.reserve(meta.ref, declared: 10, written: 0, token: fresh)
+        XCTAssertThrowsError(try store.truncate(meta.ref, to: 0, token: fresh))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dir.appendingPathComponent(meta.ref).path))
+    }
+
+    func testTheDefaultQuotaIsFourGiB() {
+        XCTAssertEqual(XferStore.defaultQuotaBytes, 4 * 1024 * 1024 * 1024)
+        XCTAssertEqual(XferStore.defaultDiskReserveBytes, 256 * 1024 * 1024)
     }
 
     // MARK: Session wiring
