@@ -20,6 +20,10 @@ import { customerOrigin } from "../../../core/hosts.js";
 import { syncAccountLicenseLinks } from "../portal/repo.js";
 import { sendNotice } from "../../../core/notify/send.js";
 import { licenseFromDeveloperNotice } from "../../../core/notify/templates.js";
+import {
+  shownAppName,
+  shownDeveloperName,
+} from "../../../core/accounts/reservedDisplayNames.js";
 
 export async function sendLibraryNotices(
   env: Env,
@@ -48,9 +52,14 @@ export async function sendLibraryNotices(
       );
       if (!row) continue;
       // Core's read of the presented developer name; the product name stands in when none.
-      const developerName = await productDeveloperName(env, db, slug, args.now);
+      const developerName = await shownDeveloperName(
+        env,
+        db,
+        slug,
+        await productDeveloperName(env, db, slug, args.now),
+      );
       const message = licenseFromDeveloperNotice({
-        productName: row.name,
+        productName: await shownAppName(env, db, slug, row.name),
         productSlug: slug,
         developerName,
         origin: args.origin,

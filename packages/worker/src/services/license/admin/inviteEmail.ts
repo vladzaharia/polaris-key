@@ -85,9 +85,9 @@ export async function emailLicenseInvitation(
   if (blocked) return { invite: "failed", reason: blocked };
   const { env, db, product, now } = ctx;
   try {
-    const { origin, signInUrl, downloadUrl } = await emailLinks(ctx);
+    const { origin, signInUrl, downloadUrl, appName } = await emailLinks(ctx);
     const message = licenseInvitationEmail({
-      productName: product.name,
+      productName: appName,
       holderName: license.name,
       address: to,
       signInUrl,
@@ -103,7 +103,7 @@ export async function emailLicenseInvitation(
         sender: {
           kind: "passthrough",
           product: product.slug,
-          displayName: product.name,
+          displayName: appName,
         },
         to,
         ...message,

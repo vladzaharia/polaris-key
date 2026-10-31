@@ -332,6 +332,32 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
   });
 
   it.each([
+    ["a reserved name", "Steam"],
+    ["a Hangul filler", "Tide\u3164"],
+    ["a bidi override", "Tide\u202e"],
+  ])(
+    "names an app whose name fails the display rules by its slug (%s)",
+    async (_n, name) => {
+      await db.run("UPDATE products SET name = ? WHERE slug = ?", name, SLUG);
+      const res = await authorize({ client_id: "other" });
+      expect(res.status).toBe(401);
+      const html = await res.text();
+      expect(html).toContain(`<strong><bdi>${SLUG}</bdi></strong>`);
+      expect(html).not.toContain(name);
+    },
+  );
+
+  it("names an app whose name passes by that name", async () => {
+    await db.run(
+      "UPDATE products SET name = ? WHERE slug = ?",
+      "Tide Bikes",
+      SLUG,
+    );
+    const html = await (await authorize({ client_id: "other" })).text();
+    expect(html).toContain("<strong><bdi>Tide Bikes</bdi></strong>");
+  });
+
+  it.each([
     [
       "an unlisted origin",
       { redirect_uri: "https://evil.example/auth/callback" },

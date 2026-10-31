@@ -20,6 +20,7 @@ import { type Product } from "../../../core/products.js";
 import { errorResponse } from "../../../core/errors.js";
 import { clientNetwork } from "../../../core/rateLimit.js";
 import { getLicense } from "../../../core/licensing/store.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 import {
   createBrowserSession,
   type BrowserSessionSubject,
@@ -342,7 +343,7 @@ export async function handleAuthCallback(
       // A person in a browser gets a page, never raw JSON.
       return signInRefusalPage(
         "You can't sign in here",
-        `<p>${escapeHtml(identity.name || identity.email || "This account")} doesn't have access to ${escapeHtml(product.name)}. On ${escapeHtml(deviceLabelOf(flow))}, start again and sign in with another account.</p>`,
+        `<p>${escapeHtml(identity.name || identity.email || "This account")} doesn't have access to ${escapeHtml(await shownAppName(env, db, product.slug, product.name))}. On ${escapeHtml(deviceLabelOf(flow))}, start again and sign in with another account.</p>`,
       );
     }
     // I-37: the verified identity is stored and the flow STOPS. Nothing is activated, shown to

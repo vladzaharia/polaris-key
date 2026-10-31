@@ -48,6 +48,7 @@ import {
 import { type LicenseRow } from "../../../core/repo.js";
 import { getLicense, setLicenseHolder } from "../../../core/licensing/store.js";
 import { getProduct } from "../../../core/products/store.js";
+import { shownProductRow } from "../../../core/accounts/reservedDisplayNames.js";
 import {
   b64urlDecodeBinary,
   b64urlEncodeBinary,
@@ -945,7 +946,11 @@ export async function relinkLicense(
     return { ok: false, reason: "target_unavailable" };
 
   // The notices go out first: "a notice to both accounts before the change takes effect".
-  const productRow = await getProduct(db, args.product);
+  const productRow = await shownProductRow(
+    ctx.env,
+    db,
+    await getProduct(db, args.product),
+  );
   const fromAccount = await getAccountRow(db, args.from.accountId);
   let noticesSent = 0;
   noticesSent += await sendSecurityNotice(
@@ -1059,7 +1064,11 @@ export async function undoRelink(
   const holder = holderOf(r);
   if (holder) return undoHolderMove(ctx, r, holder, reason, args.actor);
 
-  const productRow = await getProduct(db, args.product);
+  const productRow = await shownProductRow(
+    ctx.env,
+    db,
+    await getProduct(db, args.product),
+  );
   let noticesSent = 0;
   for (const accountId of [r.to_account_id, r.from_account_id]) {
     if (!accountId) continue;
@@ -1318,7 +1327,11 @@ export async function makeLicenseFloating(
   const fromSubject = await subjectOfAccount(db, owner, args.product);
 
   // The notice goes out first: "a notice before the change takes effect".
-  const productRow = await getProduct(db, args.product);
+  const productRow = await shownProductRow(
+    ctx.env,
+    db,
+    await getProduct(db, args.product),
+  );
   const noticesSent = await noticeLeavingSide(
     ctx,
     owner,
@@ -1445,7 +1458,11 @@ export async function reassignLicenseHolder(
   const from: HolderFacts = { name: license.name ?? null, email: current };
   const fromSubject = await subjectOfAccount(db, owner, args.product);
 
-  const productRow = await getProduct(db, args.product);
+  const productRow = await shownProductRow(
+    ctx.env,
+    db,
+    await getProduct(db, args.product),
+  );
   let noticesSent = await noticeLeavingSide(ctx, owner, current, (inAccount) =>
     licenseReassignedAwayNotice({
       productName: productRow?.name,
@@ -1531,7 +1548,11 @@ async function undoHolderMove(
   const license = await getLicense(db, r.product, r.license_id);
   if (!license) return { ok: false, reason: "undo_unavailable" };
   const owner = license.account_id ?? null;
-  const productRow = await getProduct(db, r.product);
+  const productRow = await shownProductRow(
+    ctx.env,
+    db,
+    await getProduct(db, r.product),
+  );
   const notice = (): NoticeMessage =>
     licenseRelinkUndoneNotice({
       productName: productRow?.name,

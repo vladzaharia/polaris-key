@@ -130,6 +130,28 @@ describe("the generic product settings routes", () => {
     }
   });
 
+  it("never stores a name the display rule refuses through the generic route", async () => {
+    // DISPLAY-NAME-INVISIBLE B1: core.name has no writer here, so a bidi name is turned away and
+    // the stored name is untouched (`writeSetting` holds the same rule, settings-write.test.ts).
+    const before = await db.first<{ name: string }>(
+      "SELECT name FROM products WHERE slug = 'acme'",
+    );
+    for (const value of ["Acme\u202E", "Steam"]) {
+      const patch = await call("PATCH", KEY("core.name"), {
+        value,
+        expectedVersion: 0,
+        reason: "a reason",
+      });
+      expect(patch.status, value).toBe(409);
+      expect(patch.json.reason, value).toBe("no_writer");
+    }
+    expect(
+      await db.first<{ name: string }>(
+        "SELECT name FROM products WHERE slug = 'acme'",
+      ),
+    ).toEqual(before);
+  });
+
   it("asks a critical key's adapter, not the caller, for its audit action", async () => {
     const res = await call("PATCH", KEY("update.metadataAccess"), {
       value: "licensed",

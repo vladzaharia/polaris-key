@@ -189,6 +189,7 @@ import { consoleOrigin } from "../../../core/hosts.js";
 import { AdminBodyError, readBody } from "../../../core/http/body.js";
 import { bestRow } from "../../../core/http/routes.js";
 import { handleStorefrontName, storefrontView } from "./storefrontName.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 
 export function portalJson(
   body: unknown,
@@ -1782,7 +1783,7 @@ async function handleEmailDownload(
     db,
     account?.primary_email ?? session.email,
     downloadLinkEmail({
-      productName: productRow.name,
+      productName: await shownAppName(env, db, product, productRow.name),
       productSlug: product,
       platform,
       origin: new URL(req.url).origin,

@@ -631,6 +631,45 @@ describe("forgery: each is refused generically and writes nothing", () => {
   });
 });
 
+describe("the name the device pages draw the app by (DISPLAY-NAME-INVISIBLE D-8)", () => {
+  const confirmPage = async (): Promise<string> => {
+    const started = await startFlow();
+    const res = await handleAuthDeviceEntry(
+      req(`${ORIGIN}/djdl/identity/auth/device?user_code=${started.userCode}`),
+      env,
+      product,
+      { db },
+    );
+    expect(res.status).toBe(200);
+    return res.text();
+  };
+
+  it.each([
+    ["a reserved name", "Google Play"],
+    ["a Hangul filler", "Acme\u3164"],
+    ["a bidi override", "Acme\u202e"],
+  ])("a product named with %s is shown by its slug", async (_what, name) => {
+    await db.run("UPDATE products SET name = ? WHERE slug = ?", name, "djdl");
+    product = (await loadProduct(env, db, "djdl"))!;
+    const html = await confirmPage();
+    expect(html).toContain("Polaris Locker signs you in for");
+    expect(html).toContain("signs you in for \u2068djdl\u2069");
+    expect(html).not.toContain(name);
+  });
+
+  it("a name that passes is shown", async () => {
+    await db.run(
+      "UPDATE products SET name = ? WHERE slug = ?",
+      "Acme Arcade",
+      "djdl",
+    );
+    product = (await loadProduct(env, db, "djdl"))!;
+    expect(await confirmPage()).toContain(
+      "signs you in for \u2068Acme Arcade\u2069",
+    );
+  });
+});
+
 describe("races: exactly one outcome", () => {
   // Disabled as flaky (owner 2026-10-23): approve-vs-approve race is order-dependent and fails intermittently. Re-enable once the race outcome is made deterministic.
   it.skip("approve against approve", async () => {

@@ -1137,6 +1137,25 @@ describe("the library notice at an address's first verification (LX-27c.3)", () 
     expect(notices[0]!.text + notices[0]!.html).not.toContain("pkey_");
   });
 
+  it.each([
+    ["a reserved name", "Steam"],
+    ["a Hangul filler", "Mossgarden\u3164"],
+  ])(
+    "names a product with %s by its slug (DISPLAY-NAME-INVISIBLE)",
+    async (_what, name) => {
+      await db.run("UPDATE products SET name = ? WHERE slug = ?", name, SLUG);
+      await create({ email: "nia@example.com" });
+      const nia = await account("nia.old@example.com");
+      mail = [];
+      expect((await link(nia.id, "nia@example.com")).ok).toBe(true);
+      const notice = mail.find((m) =>
+        m.subject.endsWith("is in your Polaris Locker library"),
+      )!;
+      expect(notice.subject).toBe(`${SLUG} is in your Polaris Locker library`);
+      expect(notice.text + notice.html).not.toContain(name);
+    },
+  );
+
   it("sends nothing for an invited license, nor for an address that is not verified", async () => {
     const invited = await create({ email: "inv@example.com" });
     await db.run(

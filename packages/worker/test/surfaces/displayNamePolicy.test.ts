@@ -27,7 +27,10 @@ import {
 import {
   displayCheckOptions,
   displayNameOptions,
+  shownAppName,
+  shownDeveloperName,
 } from "../../src/core/accounts/reservedDisplayNames.js";
+import { appForPage } from "../../src/core/brandPage.js";
 import { clientRecordFor } from "../../src/services/identity/passthrough/client.js";
 import { withDefaultHead } from "../githubHead.js";
 import { TEST_RSA_PKCS8 } from "../releaseFixtures.js";
@@ -349,5 +352,61 @@ describe("creating a product from documents", () => {
     const refused = await create("Zephyr Launcher");
     expect(refused).toMatchObject({ ok: false, status: 422 });
     expect(JSON.stringify(refused)).toContain("reserved platform or store");
+  });
+});
+
+describe("the name an end-user screen shows (DISPLAY-NAME-INVISIBLE D-8)", () => {
+  it.each([
+    ["a reserved name", "Steam"],
+    ["a Hangul filler", "Acme\u3164"],
+    ["a name of only a filler", "\u3164"],
+    ["a soft hyphen", "Ste\u00adam"],
+    ["a bidi override", "Acme\u202e"],
+    ["a tag inside a reserved term", "Ste\u{E0061}am"],
+  ])("%s is shown as the slug, in both modes", async (_what, name) => {
+    for (const mode of ["error", "warn"]) {
+      env.IDENTITY_RESERVED_DISPLAY_NAMES = mode;
+      expect(await shownAppName(env, db, ACME, name)).toBe(ACME);
+      expect(await shownDeveloperName(env, db, ACME, name)).toBeNull();
+    }
+  });
+
+  it("keeps a name that passes, an emoji sequence included", async () => {
+    expect(await shownAppName(env, db, ACME, "Acme Arcade")).toBe(
+      "Acme Arcade",
+    );
+    expect(await shownAppName(env, db, ACME, "\u{1F3AE}\uFE0F Arcade")).toBe(
+      "\u{1F3AE}\uFE0F Arcade",
+    );
+    expect(await shownDeveloperName(env, db, ACME, "Acme Inc.")).toBe(
+      "Acme Inc.",
+    );
+    expect(await shownDeveloperName(env, db, ACME, null)).toBeNull();
+  });
+
+  it("an approval clears reserved, never invalid; the system product keeps its name", async () => {
+    await approve(ACME);
+    expect(await shownAppName(env, db, ACME, "Steam Deck Companion")).toBe(
+      "Steam Deck Companion",
+    );
+    expect(await shownAppName(env, db, ACME, "Steam\u3164")).toBe(ACME);
+    expect(await shownAppName(env, db, "polaris-key", "Polaris Key")).toBe(
+      "Polaris Key",
+    );
+    expect(await shownAppName(env, db, "polaris-key", "Polaris\u3164")).toBe(
+      "polaris-key",
+    );
+  });
+
+  it("appForPage returns the checked name", async () => {
+    for (const [name, shown] of [
+      ["Steam", ACME],
+      ["Acme\u3164", ACME],
+      ["Acme Arcade", "Acme Arcade"],
+    ] as const) {
+      await db.run("UPDATE products SET name = ? WHERE slug = ?", name, ACME);
+      const product = (await loadProductPublic(db, ACME))!;
+      expect((await appForPage({ product, env, db })).name).toBe(shown);
+    }
   });
 });

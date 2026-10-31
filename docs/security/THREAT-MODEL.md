@@ -4932,7 +4932,7 @@ is no new privilege level and no outbound call.
 - **`IDENTITY_RESERVED_DISPLAY_NAMES` (PX-W13, `identity.reservedDisplayNames`) is a validation
   severity too.** `warn` (the default) or `error` decides only whether a product or listing name
   that uses a platform or store name (`reserved_display_name`) is accepted with a warning or
-  refused at link, resync, the deploy hook and console listing edits. A hostile session that sets
+  refused at link, resync, the deploy hook, console listing edits and the console rename. A hostile session that sets
   `warn` gains nothing on the sign-in card: the card's render-time check shows such a name as the
   product slug in the neutral frame in both modes (see "Passthrough request metadata"). Setting
   `error` can only make a product's next resync fail; it is confirmed (L1) and audited.
@@ -10598,16 +10598,42 @@ user code. WIRE-CONTRACT-V4 §12.7 is the normative form; plans/PX-W13.md §6 is
 closes S-16 §5.4 items 13 and 14 (app impersonation on the card, and spoofed device names).
 
 - **Spoofed app names.** `@polaris-key/manifest`'s `checkDisplayName` refuses `product.name`,
-  `listing.name` and `listing.developerName` text that holds a control, zero-width or bidi code
-  point or starts or ends with whitespace (`invalid_display_text`, always an error), and reports
+  `listing.name` and `listing.developerName` text that holds a control, format, invisible or bidi
+  code point (the refused set `DISPLAY_NAME_REFUSED`, Unicode 16.0: soft hyphen, Hangul fillers,
+  U+2800, line and paragraph separators, the joiners), starts with a variation selector or tag
+  (`DISPLAY_NAME_KEPT`, valid only after another code point), or starts or ends with whitespace
+  (`invalid_display_text`, always an error), and reports
   a name that contains a reserved term (`reserved_display_name`). The terms are Polaris Key,
   plrs, Apple, App Store, Google, Google Play, Steam, Valve, Epic Games, Microsoft, Xbox,
-  PlayStation, Nintendo and itch.io. A name is compared as a skeleton: NFKD with marks dropped,
-  lowercased, Cyrillic and Greek look-alikes and `0`, `1`, `rn`, `vv` folded, split on anything
+  PlayStation, Nintendo and itch.io. A name is compared as a skeleton: refused and kept code
+  points deleted first (so `Ste<tag>am` and `Steam<VS16>` still read `steam`), NFKD with marks
+  dropped, lowercased, Cyrillic and Greek look-alikes and `0`, `1`, `rn`, `vv` folded, split on anything
   that is not a letter or digit, and matched as whole words or as a multi-word term written as one
-  word. The same function runs at ingest (link, resync, deploy hook), on console listing edits,
-  and again when the card renders. A failing app name renders as the product slug with
-  `nameVerified: false`, and a failing developer name is dropped. The render-time check also
+  word. The same function runs at ingest (link, resync, deploy hook), on console listing edits
+  and renames (the console rename, and `writeSetting` for `core.name`: the unchanged stored name
+  is not judged again), and again where an end user is shown the name before they consent. A
+  failing app name renders as the product slug (the sign-in card also sets `nameVerified:
+false`), and a failing developer name is dropped. The surfaces that check at render time, through
+  `shownAppName` and `shownDeveloperName` (`core/accounts/reservedDisplayNames.ts`), are the
+  sign-in card (`passthrough/client.ts`) and its gate view (the sign-in terms step,
+  `card/gate.ts`), `appForPage` (the authorize and refusal pages, the device-code entry,
+  confirmation, approval, denial and signed-in pages), the licence chooser's passport and body,
+  the callback's "no access" page, the consent card's licence anchor, the Polaris Locker
+  presentation (`presentationOf`: the key-claim preview and confirmation, Discover offers, library
+  tiles and the product page) and every end-user email (the subject,
+  the body and the "<App> via Polaris Locker" sender: licence and admin key mail, invitations, the
+  library, device-approval and sign-in-method notices, key mail from the keyring). A page
+  that cannot reach the database draws the slug, never `product.name`. The sign-in card's client
+  record is the one `presentationOf` caller that reads the stored name (it needs it to set `nameVerified`). Residuals,
+  where the stored name is printed as written: the signed-in person's own account views
+  (the licence list, releases, the product page's downloads, feeds and tokens in the Locker, and
+  the data export, which print the stored name after consent), developer-authored metadata outside the Polaris frame (updater feed titles, the
+  distribution feeds and download page, the discovery document's `name`), and operator-facing
+  console mail and alerts (invitation and binding mail, creator grants, alert destinations). A
+  legacy name stored before the rule stays in these until it is renamed (the read-only scan,
+  `tools/scan-display-names.ts`, lists them); a new name with an invalid code point cannot be stored, nor, once
+  `identity.reservedDisplayNames` is `error`, a reserved one (`warn`, the default, stores it and
+  the covered surfaces show the slug). A Revert to the manifest is judged like a rename. The render-time check also
   covers names written before the rule existed and names accepted in `warn` mode. The system
   product `polaris-key` is exempt from the reserved check, never from the text check. Residual:
   the confusable map is a heuristic. A look-alike outside it ("Stéäm" with an unlisted
