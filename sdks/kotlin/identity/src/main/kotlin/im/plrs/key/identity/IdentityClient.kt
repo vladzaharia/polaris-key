@@ -22,6 +22,7 @@
 
 package im.plrs.key.identity
 
+import im.plrs.key.core.BoundedPlatformBackupStore
 import im.plrs.key.core.CoreContext
 import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.ErrorCode
@@ -140,7 +141,9 @@ public class IdentityClient(
     internal val beforeSignOut = java.util.concurrent.CopyOnWriteArrayList<BeforeSignOutHook>()
     internal val platformProvider = java.util.concurrent.atomic.AtomicReference<PlatformIdentityProvider?>(null)
     private val revokeRestore: BeforeSignOutHook = { restoreSignOut() }
-    private val account = IdentityAccount(core, opener, { beforeSignOut.toList() + revokeRestore }, onSubject, onSignedOut) { markSignedOut() }
+    private val account =
+        IdentityAccount(core, opener, { beforeSignOut.toList() + revokeRestore }, onSubject, onSignedOut) { markSignedOut() }
+            .also { it.restoreStep = { restoreSignOut() } }
 
     @Volatile
     private var deviceKeys: DeviceKeyPort? = deviceKeys
@@ -156,6 +159,9 @@ public class IdentityClient(
     public fun installPlatformIdentity(provider: PlatformIdentityProvider?) {
         platformProvider.set(provider)
     }
+
+    /** The bound on each platform backup call; tests shorten it before `installPlatformBackup`. */
+    internal var backupBoundMillis: Long = BoundedPlatformBackupStore.DEFAULT_BOUND_MILLIS
 
     internal val backupStore = java.util.concurrent.atomic.AtomicReference<PlatformBackupStore?>(null)
 
@@ -179,7 +185,7 @@ public class IdentityClient(
      */
     @JvmOverloads
     public fun installPlatformBackup(store: PlatformBackupStore?, restore: Boolean = true) {
-        backupStore.set(store)
+        backupStore.set(BoundedPlatformBackupStore.of(store, backupBoundMillis))
         restoreInstalled.set(restore)
         restoreOn.set(restore)
     }

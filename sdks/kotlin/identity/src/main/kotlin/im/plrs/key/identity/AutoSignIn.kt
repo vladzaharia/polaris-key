@@ -208,6 +208,7 @@ internal suspend fun IdentityClient.runProviderSignIn(): AutoSignInResult {
 /** Called by `signOut()` once the Worker accepted it (the restore key was revoked before the Worker was asked). */
 internal suspend fun IdentityClient.markSignedOut() {
     core.setExplicitSignOut(true)
+    restoreAfterSignOut()
     platformProvider.get()?.let { safeCleanup(it) }
 }
 
@@ -286,7 +287,7 @@ private fun unavailable(outcome: ExchangeOutcome): AutoSignInResult =
 private suspend fun IdentityClient.signOutAfterRevocation(provider: PlatformIdentityProvider) {
     if (core.token() == null) {
         core.setExplicitSignOut(true)
-        // No bearer to revoke with: the item goes and the queued flag is dropped (the key is inert; other revocations reach it).
+        // No bearer to revoke with: the item goes and the revocation stays queued until a sign-in provides a bearer.
         restoreSignOut()
         safeCleanup(provider)
     } else {

@@ -69,4 +69,36 @@ class PlatformBackupStoreTest {
     fun foundNeverPrintsItsBytes() {
         assertEquals("Found(3 bytes)", PlatformBackupRead.Found(byteArrayOf(7, 8, 9)).toString())
     }
+
+    private object Silent : PlatformBackupStore {
+        override suspend fun get(key: String): PlatformBackupRead = kotlinx.coroutines.awaitCancellation()
+
+        override suspend fun set(key: String, bytes: ByteArray): PlatformBackupWrite = kotlinx.coroutines.awaitCancellation()
+
+        override suspend fun delete(key: String): PlatformBackupWrite = kotlinx.coroutines.awaitCancellation()
+
+        override suspend fun cloudBackup(): Boolean = kotlinx.coroutines.awaitCancellation()
+    }
+
+    @Test
+    fun aBoundedStoreAnswersUnavailableWhenTheInnerOneNeverAnswers() = runBlocking {
+        val bounded = BoundedPlatformBackupStore(Silent, 100)
+        val key = PlatformBackupStore.syncKey("tidewater")
+        assertEquals(PlatformBackupRead.Unavailable(PlatformBackupStore.REASON_FAILED), bounded.get(key))
+        assertEquals(PlatformBackupWrite.Unavailable(PlatformBackupStore.REASON_FAILED), bounded.set(key, ByteArray(1)))
+        assertEquals(PlatformBackupWrite.Unavailable(PlatformBackupStore.REASON_FAILED), bounded.delete(key))
+        assertFalse(bounded.cloudBackup())
+    }
+
+    @Test
+    fun aBoundedStorePassesAnsweringCallsThroughAndIsNotWrappedTwice() = runBlocking {
+        val inner = InMemoryPlatformBackupStore(cloud = true)
+        val bounded = BoundedPlatformBackupStore(inner, 5_000)
+        val key = PlatformBackupStore.syncKey("tidewater")
+        assertEquals(PlatformBackupWrite.Done(true), bounded.set(key, ByteArray(2)))
+        assertEquals(2, (bounded.get(key) as PlatformBackupRead.Found).bytes.size)
+        assertTrue(bounded.cloudBackup())
+        assertTrue(BoundedPlatformBackupStore.of(bounded) === bounded)
+        assertEquals(null, BoundedPlatformBackupStore.of(null))
+    }
 }

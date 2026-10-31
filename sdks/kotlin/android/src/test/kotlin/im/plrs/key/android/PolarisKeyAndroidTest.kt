@@ -16,6 +16,7 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -40,6 +41,15 @@ class PolarisKeyAndroidTest {
         core = CoreOptions(productSlug = "diceroll", version = "1.0.0", pinnedKeys = signer.trust, store = store),
         update = UpdateClientOptions(pinnedReleaseKeys = releaseSigner.trust),
     )
+
+    @Test
+    fun theRestoreStateLivesUnderNoBackupFilesDir() {
+        // The restore facts (checked-at, the queued revocation) sit in the Keystore store's state directory, which the
+        // OS never backs up; the platform backup carries the item alone.
+        val dir = AndroidKeystoreStore(ctx, "diceroll").stateDirectory
+        assertEquals(File(ctx.noBackupFilesDir, "pkey/diceroll").canonicalPath, dir.canonicalPath)
+        assertFalse(dir.canonicalPath.startsWith(ctx.filesDir.canonicalPath + File.separator))
+    }
 
     @Test
     fun clientGetsTheAndroidEdges() {

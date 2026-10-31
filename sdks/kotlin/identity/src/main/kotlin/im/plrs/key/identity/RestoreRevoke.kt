@@ -39,7 +39,8 @@ internal suspend fun IdentityClient.sendQueuedDelete() {
     if (!core.restoreDeletePending()) return
     val sent = quietly(false) {
         when {
-            core.token() == null -> true
+            // No bearer: the flag stays until a sign-in provides one (the first enrolment sends it before it enrols).
+            core.token() == null -> false
 
             else -> {
                 discoverIfNeeded()
@@ -63,6 +64,12 @@ internal suspend fun IdentityClient.restoreSignOut() {
         core.setRestoreDeletePending(true)
         sendQueuedDelete()
     }
+}
+
+/** Called once the Worker accepted a sign-out: a check that wrote an item meanwhile does not leave it behind. */
+internal suspend fun IdentityClient.restoreAfterSignOut() {
+    val store = backupStore.get() ?: return
+    restoreLock.withLock { deleteItem(store) }
 }
 
 /** The developer turned restore off: this app's item goes, and so does the key at the Worker. Idle when there is nothing to remove. */

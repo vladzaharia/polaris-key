@@ -152,8 +152,18 @@ internal class IdentityAccount(
         return if (subject == null) SubjectResult.None else SubjectResult.Subject(subject)
     }
 
+    /** The restore step alone (the item goes, the revocation is sent or queued), for a sign-out that cannot load discovery. */
+    var restoreStep: suspend () -> Unit = {}
+
     suspend fun signOut(): SignOutResult {
-        val url = fragment()?.takeIf { it.account }?.signout ?: return SignOutResult.Unavailable
+        val identity = fragment()
+        if (core.discoveryDocument() == null) {
+            // Offline before discovery loaded: the restore step still runs (the revocation is queued for the next launch), then the error.
+            core.bumpSignOutGeneration()
+            restoreStep()
+            throw PolarisException(ErrorCode.networkError, "sign-out could not reach the Worker (discovery is not loaded).")
+        }
+        val url = identity?.takeIf { it.account }?.signout ?: return SignOutResult.Unavailable
         // A ladder already running must not store a token after this point.
         core.bumpSignOutGeneration()
         // Nothing may be lost to a sign-out: each hook finishes, or throws and the sign-out stops. The last hook is the

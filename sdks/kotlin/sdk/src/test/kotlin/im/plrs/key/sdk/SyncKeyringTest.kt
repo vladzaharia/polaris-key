@@ -30,6 +30,7 @@ import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.TestSigner
 import im.plrs.key.core.testing.path
 import im.plrs.key.license.LicenseClientOptions
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -385,5 +386,106 @@ class SyncKeyringTest {
         val read = backup.get(syncKey)
         assertFalse(read.toString().contains(entry(backup)!!["root"].stringValue!!))
         assertEquals("SyncBackupRecord(redacted)", SyncBackupRecord.parse((read as PlatformBackupRead.Found).bytes).toString())
+    }
+
+    /** A store whose writes can be made to fail the way a transient OS error does. */
+    private class FlakyStore(val inner: InMemoryPlatformBackupStore = InMemoryPlatformBackupStore(cloud = true)) : PlatformBackupStore by inner {
+        var failSets = false
+
+        override suspend fun set(key: String, bytes: ByteArray): PlatformBackupWrite =
+            if (failSets) PlatformBackupWrite.Unavailable(PlatformBackupStore.REASON_FAILED) else inner.set(key, bytes)
+    }
+
+    @Test
+    fun aFailedWriteKeepsTheEntryOfTheSameRing() = runBlocking {
+        val worker = Worker()
+        val flaky = FlakyStore()
+        val keys = newKeys()
+        rig(worker, keys, InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(flaky, alice)).keyring.create()
+        val before = entry(flaky).toString()
+        // The same device with its root storage gone opens through its wrap and re-saves; the write fails.
+        flaky.failSets = true
+        val again = rig(worker, keys, InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(flaky, alice))
+        assertTrue(again.keyring.unlock() is SyncUnlockResult.Unlocked)
+        assertEquals(before, entry(flaky).toString())
+    }
+
+    @Test
+    fun aFailedWriteForANewRingRemovesTheEntryOfTheOldOne() = runBlocking {
+        val flaky = FlakyStore()
+        rig(Worker(), newKeys(), InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(flaky, alice)).keyring.create()
+        flaky.failSets = true
+        val fresh = rig(Worker().also { it.ring = null }, newKeys(), InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(flaky, alice))
+        fresh.keyring.reset()
+        assertNull(entry(flaky))
+    }
+
+    @Test
+    fun aSecondPersonDoesNotReplaceTheFirstPersonsEntry() = runBlocking {
+        val backup = InMemoryPlatformBackupStore(cloud = true)
+        rig(Worker(), newKeys(), InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(backup, alice)).keyring.create()
+        val before = entry(backup).toString()
+        val second = rig(Worker().also { it.ring = null }, newKeys(), InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(backup, bob))
+        assertTrue(second.keyring.create().ringId.isNotEmpty())
+        assertEquals(before, entry(backup).toString())
+        assertEquals(alice, entry(backup)!!["subject"].stringValue)
+    }
+
+    @Test
+    fun removeBackupDeletesEvenWhenKeyBackupIsOff() = runBlocking {
+        val backup = InMemoryPlatformBackupStore(cloud = true)
+        rig(Worker(), newKeys(), InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(backup, alice)).keyring.create()
+        assertNotNull(entry(backup))
+        val off = rig(Worker(), newKeys(), InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(backup, alice, enabled = false))
+        assertTrue(off.keyring.removeBackup())
+        assertNull(entry(backup))
+        // With no store at all there is nothing to delete.
+        assertTrue(rig(Worker(), newKeys(), InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(null, alice)).keyring.removeBackup())
+    }
+
+    @Test
+    fun aResetRemovesTheOldItemWhenBackupIsOff() = runBlocking {
+        val backup = InMemoryPlatformBackupStore(cloud = true)
+        rig(Worker(), newKeys(), InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(backup, alice)).keyring.create()
+        assertNotNull(entry(backup))
+        val off =
+            rig(Worker().also { it.ring = null }, newKeys(), InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(backup, alice, enabled = false))
+        off.keyring.reset()
+        assertNull(entry(backup))
+    }
+
+    /** A platform backup whose read never answers; [asked] opens once a read is waiting. */
+    private class HangingBackup : PlatformBackupStore {
+        val asked = kotlinx.coroutines.CompletableDeferred<Unit>()
+
+        override suspend fun get(key: String): PlatformBackupRead {
+            asked.complete(Unit)
+            kotlinx.coroutines.awaitCancellation()
+        }
+
+        override suspend fun set(key: String, bytes: ByteArray): PlatformBackupWrite = kotlinx.coroutines.awaitCancellation()
+
+        override suspend fun delete(key: String): PlatformBackupWrite = kotlinx.coroutines.awaitCancellation()
+
+        override suspend fun cloudBackup(): Boolean = kotlinx.coroutines.awaitCancellation()
+    }
+
+    @Test
+    fun signOutCompletesWhileAnUnlockWaitsOnTheBackup() = runBlocking {
+        val worker = Worker()
+        val keys = newKeys()
+        rig(worker, newKeys(), InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(InMemoryPlatformBackupStore(), alice)).keyring.create()
+        worker.wrap = null
+        val device = rig(worker, keys, InMemoryDeviceKeyStorage(), tmp.newFolder(), Backup(null, alice))
+        val hang = HangingBackup()
+        val ring = SyncKeyring(device.client.core, KeyringOptions(keys = keys, rootStorage = InMemoryDeviceKeyStorage(), backup = hang), 300)
+        val unlock = async(kotlinx.coroutines.Dispatchers.Default) { ring.unlock() }
+        hang.asked.await()
+        // Sign-out's hook: forget() waits for the ring's lock inside NonCancellable, so it cannot be cut off from outside.
+        kotlinx.coroutines.withTimeout(10_000) {
+            kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) { ring.forget() }
+        }
+        // The unlock itself ended too: the backup is an unavailable store, the device falls through to the code.
+        assertEquals(SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap), kotlinx.coroutines.withTimeout(10_000) { unlock.await() })
     }
 }

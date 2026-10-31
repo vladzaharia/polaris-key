@@ -50,11 +50,15 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 /** The Cloud Sync key ring: `client.keyring`. Every verb is serialised. */
-public class SyncKeyring internal constructor(private val core: CoreContext, options: KeyringOptions = KeyringOptions()) {
+public class SyncKeyring internal constructor(
+    private val core: CoreContext,
+    options: KeyringOptions = KeyringOptions(),
+    backupBoundMillis: Long = im.plrs.key.core.BoundedPlatformBackupStore.DEFAULT_BOUND_MILLIS,
+) {
     private val gate = Mutex()
     private val memory = RingMemory()
     private val vault = RingVault(core, options)
-    private val backup = RingBackup(core, options)
+    private val backup = RingBackup(core, options, backupBoundMillis)
     private val wire = RingWire(core)
     private var port: DeviceKeyPort? = options.keys
     private var ring: SyncKeyringRing? = null
@@ -114,7 +118,7 @@ public class SyncKeyring internal constructor(private val core: CoreContext, opt
 
     /**
      * Deletes the platform backup of the root. Call it from "Start over" and account deletion, never
-     * from a sign-out (R-11); [reset] replaces the entry itself. False when the OS refused the delete.
+     * from a sign-out (R-11); [reset] replaces the entry itself. It deletes whatever the opt-out (`keyBackup`). False when the OS refused the delete.
      */
     public suspend fun removeBackup(): Boolean = gate.withLock { backup.remove() }
 
@@ -427,6 +431,7 @@ public class SyncKeyring internal constructor(private val core: CoreContext, opt
         if (code != null) body["recovery"] = obj("ct" to str(Base64Url.encode(SyncRecovery.wrap(code, ref, root))))
         wire.send("POST", path, JsonObject(body))
         hold(HeldRoot(ringId, epoch, kid, root), store = true)
+        backup.dropOldWhenOff()
         ring = null
         return SyncCreatedRing(ringId, epoch, hex(kid), code?.let { SyncRecovery.encode(it) })
     }

@@ -17,6 +17,7 @@
 package im.plrs.key.sdk
 
 import im.plrs.key.core.Base64Url
+import im.plrs.key.core.BoundedPlatformBackupStore
 import im.plrs.key.core.CoreContext
 import im.plrs.key.core.JsonText
 import im.plrs.key.core.PlatformBackupRead
@@ -42,6 +43,8 @@ internal class SyncBackupRecord(val subject: String, val ringId: String, val epo
         "root" to str(root),
     ).toString().toByteArray(Charsets.UTF_8)
 
+    fun isRing(ringId: String, epoch: Int): Boolean = this.ringId == ringId && this.epoch == epoch
+
     /** Whether this entry is for [subject] and the ring the Worker serves. */
     fun isFor(subject: String, ring: SyncRingPin): Boolean =
         this.subject == subject && ringId == ring.ringId && epoch == ring.epoch && kid == ring.rootKid
@@ -63,29 +66,46 @@ internal class SyncBackupRecord(val subject: String, val ringId: String, val epo
 }
 
 /** The key ring's side of the platform backup. With no store (the default, and every JVM desktop) each call does nothing. */
-internal class RingBackup(private val core: CoreContext, options: KeyringOptions) {
-    private val store: PlatformBackupStore? = options.backup?.takeIf { options.keyBackup }
+internal class RingBackup(
+    private val core: CoreContext,
+    options: KeyringOptions,
+    boundMillis: Long = BoundedPlatformBackupStore.DEFAULT_BOUND_MILLIS,
+) {
+    // Every call is bounded: a store that does not answer never holds the ring's lock, so never a sign-out either.
+    private val host: PlatformBackupStore? = BoundedPlatformBackupStore.of(options.backup, boundMillis)
+
+    // Writing and reading stop with the developer's opt-out; removing does not (Reset, Start over, account deletion).
+    private val store: PlatformBackupStore? = host?.takeIf { options.keyBackup }
 
     private fun key(): String = PlatformBackupStore.syncKey(core.product)
 
+    private suspend fun entry(s: PlatformBackupStore): SyncBackupRecord? =
+        (s.get(key()) as? PlatformBackupRead.Found)?.let { SyncBackupRecord.parse(it.bytes) }
+
     /**
-     * Writes [h] for the signed-in person, replacing any earlier entry. A refused write removes the old
-     * entry: it names a ring that no longer stands.
+     * Writes [h] for the signed-in person, replacing an earlier entry of theirs. It leaves another person's entry
+     * alone (one entry per product, so a second person on the account has no backup). A write that fails removes the
+     * person's own entry only when it names another ring or epoch: that entry names a ring that no longer stands.
      */
     suspend fun save(h: HeldRoot) {
         val s = store ?: return
         val subject = core.storedSubject() ?: return
+        write(s, subject, h, entry(s))
+    }
+
+    private suspend fun write(s: PlatformBackupStore, subject: String, h: HeldRoot, current: SyncBackupRecord?) {
+        if (current != null && current.subject != subject) return
         val record = SyncBackupRecord(subject, h.ringId, h.epoch, hex(h.kid), Base64Url.encode(h.root))
-        if (s.set(key(), record.encode()) !is PlatformBackupWrite.Done) s.delete(key())
+        val written = s.set(key(), record.encode()) is PlatformBackupWrite.Done
+        if (!written && current != null && !current.isRing(h.ringId, h.epoch)) s.delete(key())
     }
 
     /** Writes [h] unless the entry already holds this ring for this person: a device that held the root before the backup existed. */
     suspend fun ensure(h: HeldRoot) {
         val s = store ?: return
         val subject = core.storedSubject() ?: return
-        val read = s.get(key())
-        val current = (read as? PlatformBackupRead.Found)?.let { SyncBackupRecord.parse(it.bytes) }
-        if (current == null || !current.isFor(subject, SyncRingPin(h.ringId, h.epoch, hex(h.kid)))) save(h)
+        val current = entry(s)
+        if (current == null || !current.isFor(subject, SyncRingPin(h.ringId, h.epoch, hex(h.kid)))) write(s, subject, h, current)
     }
 
     /**
@@ -100,9 +120,14 @@ internal class RingBackup(private val core: CoreContext, options: KeyringOptions
         return root?.takeIf { SyncCrypto.equalBytes(SyncKeys.deriveKid(it), kid) }
     }
 
-    /** Deletes the entry. False when it could not be (no store counts as nothing to delete: true). */
+    /** Deletes the entry, whatever the opt-out. False when it could not be (no store at all counts as nothing to delete: true). */
     suspend fun remove(): Boolean {
-        val s = store ?: return true
+        val s = host ?: return true
         return s.delete(key()) is PlatformBackupWrite.Done
+    }
+
+    /** A new ring replaced the old: with the backup off, the old entry (an earlier build wrote it) goes too. Best effort. */
+    suspend fun dropOldWhenOff() {
+        if (store == null) host?.delete(key())
     }
 }

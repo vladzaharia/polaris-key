@@ -20,6 +20,7 @@ import org.robolectric.RobolectricTestRunner
  * [BlockStoreBackup] over a fake Block Store client: D-5 (cloud only when end-to-end encrypted), the
  * key and size guards, the status-code mapping and the redaction of the bytes.
  */
+@Suppress("TooManyFunctions")
 @RunWith(RobolectricTestRunner::class)
 class BlockStoreBackupTest {
     private class Stored(val bytes: ByteArray, val cloud: Boolean)
@@ -162,5 +163,27 @@ class BlockStoreBackupTest {
         assertEquals(PlatformBackupRead.Unavailable("failed"), get())
         fake.failure = IllegalStateException("provider text that must not surface")
         assertEquals(PlatformBackupWrite.Unavailable("failed"), set())
+    }
+
+    @Test
+    fun aCancelledBlockStoreTaskAnswersUnavailable() {
+        val cancel = com.google.android.gms.tasks.CancellationTokenSource()
+        val source = com.google.android.gms.tasks.TaskCompletionSource<Int>(cancel.token)
+        var answer: Result<Unit>? = null
+        runTask<Int, Unit>({ answer = it }, { _ -> Unit }) { source.task }
+        assertEquals(null, answer)
+        cancel.cancel()
+        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle()
+        assertTrue("a cancelled task answers", answer!!.isFailure)
+        // The answer maps to the failed reason, like any other failure.
+        val failure = answer!!.exceptionOrNull()!!
+        var out: PlatformBackupRead? = null
+        val cancelling = BlockStoreBackup(
+            object : BlockStoreBackend by fake {
+                override fun retrieve(key: String, callback: (Result<ByteArray?>) -> Unit) = callback(Result.failure(failure))
+            },
+        )
+        cancelling.get(key) { out = it }
+        assertEquals(PlatformBackupRead.Unavailable(PlatformBackup.REASON_FAILED), out)
     }
 }

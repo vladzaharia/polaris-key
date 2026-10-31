@@ -27,37 +27,41 @@ internal interface BlockStoreBackend {
     fun delete(key: String, callback: (Result<Unit>) -> Unit)
 }
 
+// Blockstore.getClient and the Task calls can throw anything on a device with a broken Play services.
+@Suppress("TooGenericExceptionCaught")
+internal fun <T, R> runTask(callback: (Result<R>) -> Unit, map: (T) -> R, task: () -> Task<T>) {
+    val t = try {
+        task()
+    } catch (e: Exception) {
+        callback(Result.failure(e))
+        return
+    }
+    t.addOnSuccessListener { callback(Result.success(map(it))) }
+    t.addOnFailureListener { callback(Result.failure(it)) }
+    // A cancelled Task calls neither listener above: it answers as a failure, so a caller is never left waiting.
+    t.addOnCanceledListener { callback(Result.failure(java.util.concurrent.CancellationException("The Block Store task was cancelled."))) }
+}
+
 internal class BlockStoreClientBackend(private val context: Context) : BlockStoreBackend {
     // Created on first use, so a device with no Play services fails inside a call (answered as
     // Unavailable), never while the SDK is built.
     private fun client(): BlockstoreClient = Blockstore.getClient(context)
 
-    // Blockstore.getClient and the Task calls can throw anything on a device with a broken Play services.
-    @Suppress("TooGenericExceptionCaught")
-    private fun <T, R> run(callback: (Result<R>) -> Unit, map: (T) -> R, task: () -> Task<T>) {
-        val t = try {
-            task()
-        } catch (e: Exception) {
-            callback(Result.failure(e))
-            return
-        }
-        t.addOnSuccessListener { callback(Result.success(map(it))) }
-        t.addOnFailureListener { callback(Result.failure(it)) }
-    }
-
     override fun endToEndEncrypted(callback: (Result<Boolean>) -> Unit): Unit =
-        run(callback, { it == true }) { client().isEndToEndEncryptionAvailable() }
+        runTask(callback, { it == true }) { client().isEndToEndEncryptionAvailable() }
 
-    override fun store(key: String, bytes: ByteArray, cloud: Boolean, callback: (Result<Unit>) -> Unit): Unit = run(callback, { _: Int -> Unit }) {
+    override fun store(key: String, bytes: ByteArray, cloud: Boolean, callback: (Result<Unit>) -> Unit): Unit = runTask(callback, { _: Int ->
+        Unit
+    }) {
         client().storeBytes(StoreBytesData.Builder().setKey(key).setBytes(bytes).setShouldBackupToCloud(cloud).build())
     }
 
     override fun retrieve(key: String, callback: (Result<ByteArray?>) -> Unit): Unit =
-        run(callback, { r: com.google.android.gms.auth.blockstore.RetrieveBytesResponse -> r.blockstoreDataMap[key]?.bytes }) {
+        runTask(callback, { r: com.google.android.gms.auth.blockstore.RetrieveBytesResponse -> r.blockstoreDataMap[key]?.bytes }) {
             client().retrieveBytes(RetrieveBytesRequest.Builder().setKeys(listOf(key)).build())
         }
 
-    override fun delete(key: String, callback: (Result<Unit>) -> Unit): Unit = run(callback, { _: Boolean -> Unit }) {
+    override fun delete(key: String, callback: (Result<Unit>) -> Unit): Unit = runTask(callback, { _: Boolean -> Unit }) {
         client().deleteBytes(DeleteBytesRequest.Builder().setKeys(listOf(key)).build())
     }
 }

@@ -1,5 +1,7 @@
 package im.plrs.key.core
 
+import kotlinx.coroutines.withTimeoutOrNull
+
 /**
  * What a read of the platform backup answered. Exactly one of four; [Unavailable] and [Refused] are
  * typed answers, never a missing method or a quiet empty result.
@@ -133,4 +135,35 @@ public class InMemoryPlatformBackupStore(private val cloud: Boolean = false) : P
     }
 
     override suspend fun cloudBackup(): Boolean = cloud
+}
+
+/**
+ * [inner] with a bound on every call: one that does not answer within [boundMillis] counts as an unavailable store
+ * (`failed`; [cloudBackup] false), so a store that never answers cannot hold a sign-out, a launch or the key ring's
+ * lock. A write is "not written" and a delete leaves at most an item whose key the revocation takes away. A [set]
+ * asks the end-to-end question first and is bounded end to end.
+ */
+public class BoundedPlatformBackupStore @JvmOverloads constructor(
+    private val inner: PlatformBackupStore,
+    private val boundMillis: Long = DEFAULT_BOUND_MILLIS,
+) : PlatformBackupStore {
+    override suspend fun get(key: String): PlatformBackupRead =
+        withTimeoutOrNull(boundMillis) { inner.get(key) } ?: PlatformBackupRead.Unavailable(PlatformBackupStore.REASON_FAILED)
+
+    override suspend fun set(key: String, bytes: ByteArray): PlatformBackupWrite =
+        withTimeoutOrNull(boundMillis) { inner.set(key, bytes) } ?: PlatformBackupWrite.Unavailable(PlatformBackupStore.REASON_FAILED)
+
+    override suspend fun delete(key: String): PlatformBackupWrite =
+        withTimeoutOrNull(boundMillis) { inner.delete(key) } ?: PlatformBackupWrite.Unavailable(PlatformBackupStore.REASON_FAILED)
+
+    override suspend fun cloudBackup(): Boolean = withTimeoutOrNull(boundMillis) { inner.cloudBackup() } ?: false
+
+    public companion object {
+        /** About five seconds per call. */
+        public const val DEFAULT_BOUND_MILLIS: Long = 5_000
+
+        /** [store] bounded, or itself when it already is (or null). */
+        public fun of(store: PlatformBackupStore?, boundMillis: Long = DEFAULT_BOUND_MILLIS): PlatformBackupStore? =
+            if (store == null || store is BoundedPlatformBackupStore) store else BoundedPlatformBackupStore(store, boundMillis)
+    }
 }

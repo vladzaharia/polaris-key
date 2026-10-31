@@ -159,6 +159,8 @@ class AutoSignInTest {
         runBlocking { core.start() }
         if (provenance != null) runBlocking { core.setToken("pkeyt_old", TokenSource.signin, provenance = provenance) }
         val client = IdentityClient(core, deviceKeys = DeviceKeyStore(DurableMem()))
+        // A short bound, so a store that never answers is cut off quickly (the in-memory ones answer at once).
+        client.backupBoundMillis = 500
         if (backup != null) client.installPlatformBackup(backup)
         return World(client, transport, store, core)
     }
@@ -603,6 +605,9 @@ class AutoSignInTest {
         var discoveryOffline = false
         var enrolFails = false
 
+        /** Runs while the Worker handles `signout`: another call that lands in the middle of the sign-out. */
+        var duringSignOut: (() -> Unit)? = null
+
         /** When set, `POST restore` says it started, then waits to be released. */
         var enrolStarted: java.util.concurrent.CountDownLatch? = null
         var enrolRelease: java.util.concurrent.CountDownLatch? = null
@@ -614,6 +619,7 @@ class AutoSignInTest {
 
                 r.path == "/djdl/identity/signout" -> {
                     log += "signout"
+                    duringSignOut?.invoke()
                     if (signOutOffline) throw java.io.IOException("offline")
                     respond(signOutStatus, """{"released":false}""")
                 }
@@ -1134,5 +1140,109 @@ class AutoSignInTest {
         } finally {
             dir.deleteRecursively()
         }
+    }
+
+    /** A platform backup that never answers (a Block Store task that stalls). */
+    private class HangingStore : PlatformBackupStore {
+        override suspend fun get(key: String): PlatformBackupRead = kotlinx.coroutines.awaitCancellation()
+
+        override suspend fun set(key: String, bytes: ByteArray): PlatformBackupWrite = kotlinx.coroutines.awaitCancellation()
+
+        override suspend fun delete(key: String): PlatformBackupWrite = kotlinx.coroutines.awaitCancellation()
+
+        override suspend fun cloudBackup(): Boolean = kotlinx.coroutines.awaitCancellation()
+    }
+
+    private suspend fun <T> within(block: suspend () -> T): T = kotlinx.coroutines.withTimeout(15_000) { block() }
+
+    @Test
+    fun signOutCompletesWhenTheBackupNeverAnswers() = runBlocking {
+        val r = Restore()
+        val w = restoreWorld(r, HangingStore(), withLicense = true)
+        val out = within { w.client.signOut() }
+        assertTrue(out is SignOutResult.SignedOut)
+        // The revocation still went out, ahead of the Worker's own sign-out.
+        assertEquals(listOf("delete", "signout"), r.log)
+    }
+
+    @Test
+    fun autoSignInFallsToRung3WhenTheBackupReadNeverAnswers() = runBlocking {
+        val r = Restore().apply { grantBody = tokenOk }
+        val w = restoreWorld(r, HangingStore())
+        val result = within { w.client.autoSignIn(AutoSignInOptions(provider = FakeProvider())) }
+        assertTrue("$result", result is AutoSignInResult.SignedIn)
+        assertFalse(r.log.contains("grant"))
+    }
+
+    @Test
+    fun aLaunchWithRestoreOffCompletesWhenTheBackupNeverAnswers() = runBlocking {
+        val r = Restore()
+        val w = restoreWorld(r, HangingStore(), withLicense = true)
+        val result = within { w.client.autoSignIn(AutoSignInOptions(provider = FakeProvider(silentToken = null), restore = false)) }
+        assertTrue("$result", result is AutoSignInResult.SignedIn)
+    }
+
+    @Test
+    fun anOfflineSignOutDeletesTheItemAndQueuesTheDelete() = runBlocking {
+        val r = Restore().apply { discoveryOffline = true }
+        val backup = InMemoryPlatformBackupStore()
+        backup.set(restoreKey, item(rid1, rsecret1))
+        val w = restoreWorld(r, backup, withLicense = true)
+        val e = org.junit.Assert.assertThrows(im.plrs.key.core.PolarisException::class.java) { runBlocking { w.client.signOut() } }
+        assertEquals(ErrorCode.networkError, e.code)
+        assertNull(readItem(backup))
+        assertTrue(w.core.restoreDeletePending())
+        assertTrue(r.log.isEmpty())
+        // The next launch, with discovery up, sends the DELETE first.
+        r.discoveryOffline = false
+        w.client.autoSignIn()
+        assertEquals("delete", r.log.first())
+        assertFalse(w.core.restoreDeletePending())
+    }
+
+    @Test
+    fun anEnrolmentDuringSignOutLeavesNoItemAfterIt() = runBlocking {
+        val r = Restore().apply { enrolBody = enrolled(rid2, rsecret2) }
+        val backup = InMemoryPlatformBackupStore()
+        val w = restoreWorld(r, backup, withLicense = true)
+        // A check lands while the Worker handles the sign-out, after the client's own revocation.
+        r.duringSignOut = { runBlocking { w.client.enrolRestoreIfDue(force = true) } }
+        w.client.signOut()
+        assertTrue("an enrolment ran in the middle: ${r.log}", r.log.any { it.startsWith("enrol:") })
+        assertNull(readItem(backup))
+    }
+
+    @Test
+    fun aRevokedCredentialWithNoBearerQueuesTheDelete() = runBlocking {
+        val r = Restore().apply { enrolBody = enrolled(rid2, rsecret2) }
+        val backup = InMemoryPlatformBackupStore()
+        backup.set(restoreKey, item(rid1, rsecret1))
+        val w = restoreWorld(r, backup, withLicense = true)
+        w.store.clearToken()
+        val fresh = CoreContext(
+            CoreOptions(
+                productSlug = "djdl",
+                version = "1.0.0",
+                pinnedKeys = signer.trust,
+                trustRefresh = false,
+                store = w.store,
+                transport = w.transport,
+                clock = { 1_700_000_000L },
+            ),
+        )
+        fresh.start()
+        val client = IdentityClient(fresh, deviceKeys = DeviceKeyStore(DurableMem()))
+        client.installPlatformBackup(backup)
+        client.installPlatformIdentity(FakeProvider(revoked = true))
+        client.autoSignIn()
+        assertNull(readItem(backup))
+        assertTrue("the revocation waits for a bearer", fresh.restoreDeletePending())
+        assertTrue(r.log.none { it == "delete" })
+        // The first sign-in provides a bearer: the queued DELETE goes before the enrolment.
+        fresh.setToken("pkeyt_new", TokenSource.signin, provenance = TokenProvenance.signin)
+        fresh.setExplicitSignOut(false)
+        client.enrolRestoreIfDue(force = true)
+        assertEquals("delete", r.log.first())
+        assertFalse(fresh.restoreDeletePending())
     }
 }
