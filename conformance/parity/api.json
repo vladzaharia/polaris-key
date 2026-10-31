@@ -538,6 +538,11 @@
       {
         "ns": "presentation",
         "file": "sdks/godot/addons/polaris_key/core/presentation.gd"
+      },
+      {
+        "ns": "cloudConnect",
+        "type": "PKeyCloudConnect",
+        "file": "sdks/godot/addons/polaris_key/services/cloud_connect.gd"
       }
     ]
   },
@@ -2572,6 +2577,11 @@
     {
       "sdk": "swift",
       "path": "client.cloudSync",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "godot",
+      "path": "client.cloudConnect",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     }
   ],
@@ -6973,9 +6983,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "CC-14"
-        }
+        "godot": {}
       },
       "layer": "client",
       "args": [
@@ -6999,9 +7007,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "CC-14"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -7019,9 +7025,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "CC-14"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -7039,9 +7043,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "CC-14"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -7059,9 +7061,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "CC-14"
-        }
+        "godot": {}
       },
       "layer": "client",
       "args": [
@@ -7086,7 +7086,9 @@
         "swift": {},
         "kotlin": {},
         "godot": {
-          "planned": "CC-14"
+          "spelling": "channel",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         }
       },
       "layer": "client",
@@ -7123,7 +7125,8 @@
         "kotlin": {
           "sdkOnly": true,
           "reason": "Node-first helper; Kotlin carries it too"
-        }
+        },
+        "godot": {}
       },
       "layer": "client"
     },
@@ -7153,7 +7156,8 @@
         "kotlin": {
           "sdkOnly": true,
           "reason": "Node-first helper; Kotlin carries it too"
-        }
+        },
+        "godot": {}
       },
       "layer": "client"
     },
@@ -7183,6 +7187,11 @@
         "kotlin": {
           "sdkOnly": true,
           "reason": "Node-first helper; Kotlin carries it too"
+        },
+        "godot": {
+          "spelling": "notice",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         }
       },
       "layer": "client"

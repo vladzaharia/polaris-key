@@ -54,9 +54,10 @@ const ANCHOR := "machineUuid"
 
 ## Rule 1: the one Windows CIM call, byte for byte what fingerprint.json's `windowsCimCommand`
 ## pins. One line with no double quotes, pure-ASCII output. `program` is resolved by
-## `windows_powershell_path`. `stdin: null` holds because `OS.execute` gives the child no stdin
-## handle; `timeoutMs` bounds how long `collect` waits for the capture, since `OS.execute` cannot
-## be timed out.
+## `windows_powershell_path`. `PKeyHostIo.run` bounds every command with its own limit (30 s on
+## Windows, then the child is killed), so `timeoutMs` is not what ends a hung capture here; the child
+## has a stdin pipe that stays open, which `-NonInteractive -Command` does not read (to be confirmed
+## on the Windows runner, CC-14 follow-up).
 const WINDOWS_CIM_COMMAND := {
 	"program": "powershell.exe",
 	"args": [

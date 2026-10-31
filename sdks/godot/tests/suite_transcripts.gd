@@ -10,6 +10,7 @@ extends RefCounted
 # @pkey-feature sync.keyring sync.settings
 # @pkey-feature identity.exchange identity.gamecenter identity.pgs
 # @pkey-feature sync.files sync.files.delta sync.saves
+# @pkey-feature connect.identity connect.relay
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -58,6 +59,13 @@ extends RefCounted
 # identity fragment; a recorded discovery is rebased onto the loopback server. Its `confirm` is
 # completed by `choiceComplete` with the consent the recording's request carries. Each exchange
 # step reports `tokenHeld` for that step alone: whether it stored a token.
+# `connectIdentity` and `connectDevices` (CC-14.1b, `connect.identity`) are PolarisKey.connect_client.identity(refresh)
+# and list_devices() over a memory state record (PKeyOptions.connect_state) and the fixture device keys of
+# `args.keyLabel` (format.ts: the Ed25519 seed is SHA-256(label), the agreement key is SHA-256(label +
+# ":agree") with the top bit of its last byte clear). A step whose label differs from the one before
+# rotates the keys. `connectIdentity` reports `epoch`, `devices` (the roster's ids), `deviceId` and
+# `discKeys` (1, or 2 while the previous K_disc is held); a refusal is `result: "refused"` with its
+# `code`, and Connect off for the product is `unavailable`.
 #
 # `discover` reports the result's `kind` as `result` and PolarisKey.presentation() as
 # `presentation` (core.presentation: the normalised member, or null when there is none), so
@@ -137,9 +145,12 @@ static func replay(tr: Dictionary) -> Array:
 	var journal = tr["initial"].get("updateJournal")
 	if journal is Array:
 		opts.store_root = PKeyTestFixtures.scratch_dir("transcript-journal")
+	if tr["steps"].any(func(st): return String(st["action"]).begins_with("connect")):
+		# Connect's record rests in memory: nothing of a replay survives it.
+		opts.connect_state = PKeyConnectState.new(tr["product"], "user://pkey", true)
 	if tr["steps"].any(func(st): return String(st["action"]).begins_with("keyring")):
 		# The key ring's own device keys and vault: scratch files and memory, nothing in the keychain.
-		opts.device_keys = PKeyDeviceKeyStore.new(tr["product"], PKeyTestFixtures.scratch_dir("transcript-ring-keys"), false, false)
+		opts.device_keys = PKeyDeviceKeyStore.for_tests(tr["product"], PKeyTestFixtures.scratch_dir("transcript-ring-keys"))
 		opts.ring_vault = PKeySyncRingVault.new(tr["product"], "user://pkey", true)
 	var exchange_keys: PKeyFixtureDeviceKeys = null
 	for st in tr["steps"]:
@@ -155,6 +166,7 @@ static func replay(tr: Dictionary) -> Array:
 		sdk.set_meta("pkey_sync_codec", await _fixture_codec(tr))
 	sdk.set_meta("pkey_sync_mem", {"etag": "", "retry_after": null, "next_id": 1})
 	sdk.set_meta("pkey_platform", String(tr["initial"].get("platform", "")))
+	sdk.set_meta("pkey_transcript_base", String(tr["baseUrl"]))
 	var presentation_dir := PKeyTestFixtures.scratch_dir("transcript-presentation")
 	sdk.presentation_source.cache_dir = presentation_dir
 	var fails: Array = []
@@ -261,6 +273,10 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			out["tokenHeld"] = store.token != ""
 		"fetchSchema":
 			out["catalog"] = await sdk.config.fetch_schema()
+		"relayTicket":
+			await _relay_ticket(sdk, out)
+		"connectIdentity", "connectDevices":
+			await _connect_step(sdk, step, out)
 		"mintToken":
 			var r: PKeyMintResult = await sdk.config.mint_token(step["args"]["recipeId"])
 			out["result"] = "ok" if r.ok else String(r.code)
@@ -474,6 +490,65 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 
 ## `releaseFetch`: the step's target as a release record, fetched into a fresh directory (see the
 ## header). The whole payload a step fetched is kept on the SDK node for a later `partial` seed.
+## `connect.relay_ticket()` (CC-14.4, `connect.relay`). A refusal reads as `result: "refused"` with
+## the status, the code and, where the Worker answers them, `retryAfter` and `scope`. The relay URL
+## is checked against the recorded host, not the loopback server's.
+static func _relay_ticket(sdk: Node, out: Dictionary) -> void:
+	var state := PKeyConnectState.new(sdk.core.product, "user://pkey", true)
+	var client := PKeyConnectClient.new(sdk.core, state)
+	client.home_url = String(sdk.get_meta("pkey_transcript_base", ""))
+	var r: PKeyResult = await client.relay_ticket()
+	if r.ok:
+		var grant: PKeyConnectClient.Grant = r.detail
+		out["result"] = "ok"
+		out["protocol"] = grant.protocol
+		out["url"] = grant.url
+		out["expiresIn"] = grant.expires_at - int(sdk.core.clock.now())
+		return
+	out["result"] = "refused"
+	out["code"] = String(r.code)
+	if r.detail is Dictionary:
+		var d: Dictionary = r.detail
+		out["status"] = d.get("status")
+		if d.has("retry_after_seconds"):
+			out["retryAfter"] = d["retry_after_seconds"]
+		if d.has("scope"):
+			out["scope"] = d["scope"]
+
+
+## `connect.identity()` and `connect.list_devices()` (CC-14.1b, `connect.identity`); see the header.
+static func _connect_step(sdk: Node, step: Dictionary, out: Dictionary) -> void:
+	# `connect` is also a method of Node: read the client by name so the call stays dynamic.
+	var client: PKeyConnectClient = sdk.get("connect_client")
+	var label := String(step["args"]["keyLabel"])
+	if sdk.get_meta("pkey_connect_label", "") != label:
+		# A different label is a different key pair: the next call registers it.
+		client.use_device_keys(FixtureKeys.new(label))
+		sdk.set_meta("pkey_connect_label", label)
+	var identity: bool = step["action"] == "connectIdentity"
+	var r: PKeyResult
+	if identity:
+		r = await client.identity(PKeyClaims.is_true(step["args"].get("refresh")))
+	else:
+		r = await client.list_devices()
+	if not r.ok:
+		out["result"] = "unavailable" if r.code == PKeyConstants.ErrorCode.CONNECT_UNAVAILABLE else "refused"
+		out["code"] = String(r.code)
+		return
+	out["result"] = "ok"
+	if not identity:
+		out["devices"] = (r.detail as Array).map(func(d: Dictionary) -> Dictionary: return {
+			"deviceId": d["device_id"], "label": d["label"], "platform": d["platform"],
+			"lastSeen": d["last_seen"], "self": d["self"],
+		})
+		return
+	var keys: Variant = client.discovery_keys()
+	out["epoch"] = r.detail["epoch"]
+	out["devices"] = (r.detail["devices"] as Array).map(func(d: Dictionary) -> String: return d["device_id"])
+	out["deviceId"] = r.detail["device_id"]
+	out["discKeys"] = 2 if keys != null and keys["previous"] != null else 1
+
+
 static func _release_fetch(sdk: Node, a: Dictionary) -> Dictionary:
 	var record := {
 		"schemaVersion": 1, "aud": sdk.core.product, "deliverable": "app", "kind": "app",
@@ -1028,7 +1103,7 @@ const SYNC_HLC := "018bcfe56418:0000"
 
 ## The host codec over a ring made for this replay (a root of its own).
 static func _fixture_codec(tr: Dictionary) -> PKeySyncHostCodec:
-	var keys := PKeyDeviceKeyStore.new(tr["product"], PKeyTestFixtures.scratch_dir("transcript-sync-keys"), false, false)
+	var keys := PKeyDeviceKeyStore.for_tests(tr["product"], PKeyTestFixtures.scratch_dir("transcript-sync-keys"))
 	var vault := PKeySyncRingVault.new(tr["product"], "user://pkey", true)
 	var ring := PKeySyncRing.new(tr["product"], "dev_replay", func(_m: String, _p: String, _b: Variant) -> PKeyResult: return PKeyResult.success({"status": 201, "body": PackedByteArray()}), keys, vault)
 	await ring.create(false)
@@ -1343,7 +1418,7 @@ static func _keyring(sdk: Node, step: Dictionary, out: Dictionary) -> void:
 				out["ringId"] = step["expect"].get("ringId", r.detail["ring_id"]) if well else r.detail["ring_id"]
 				out["epoch"] = r.detail["epoch"]
 		"keyringWrap":
-			var fresh := PKeyDeviceKeyStore.new("djdl", PKeyTestFixtures.scratch_dir("transcript-ring-peer"), false, false).ensure()
+			var fresh := PKeyDeviceKeyStore.for_tests("djdl", PKeyTestFixtures.scratch_dir("transcript-ring-peer")).ensure()
 			r = await k.wrap_to(String(args.get("deviceId", "")), fresh.detail["agree_key"])
 		"keyringUnwrap":
 			r = await k.remove_wrap(String(args.get("deviceId", "")))
@@ -1375,3 +1450,40 @@ static func _report_activation(out: Dictionary, r: PKeyActivationResult) -> void
 		out["keyEntries"] = r.key_entries
 	if r.kind == PKeyActivationResult.KIND_LICENSE_OWNED:
 		out["signInUrl"] = r.sign_in_url
+
+
+## The fixture device keys of a label (format.ts, `connectIdentity`) as a key port: the Ed25519 seed is
+## SHA-256(label), the agreement key's 32 bytes are SHA-256(label + ":agree") with the top bit of the
+## last byte clear. The agreement key has no private half here (identity needs none), so `dh` answers
+## null. Test-only; the SDK ships no label-derived keys.
+class FixtureKeys extends RefCounted:
+	var _seed := PackedByteArray()
+	var _sign_pub := PackedByteArray()
+	var _agree_pub := PackedByteArray()
+
+	func _init(label: String) -> void:
+		_seed = _sha256(label.to_utf8_buffer())
+		_sign_pub = PKeyCurve25519.ed25519_public(_seed)
+		_agree_pub = _sha256((label + ":agree").to_utf8_buffer())
+		_agree_pub[31] = _agree_pub[31] & 0x7f
+
+	func ensure() -> PKeyResult:
+		return public_keys()
+
+	func public_keys() -> PKeyResult:
+		return PKeyResult.success({"sign_key": PKeyB64Url.encode(_sign_pub), "agree_key": PKeyB64Url.encode(_agree_pub), "generation": 1})
+
+	func sign(msg: PackedByteArray) -> PKeyResult:
+		return PKeyResult.success(PKeyCurve25519.ed25519_sign(_seed, _sign_pub, msg))
+
+	func dh(_peer_public: PackedByteArray) -> PKeyResult:
+		return PKeyResult.success(null)
+
+	func persistence() -> String:
+		return "durable"
+
+	static func _sha256(bytes: PackedByteArray) -> PackedByteArray:
+		var ctx := HashingContext.new()
+		ctx.start(HashingContext.HASH_SHA256)
+		ctx.update(bytes)
+		return ctx.finish()

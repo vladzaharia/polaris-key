@@ -75,7 +75,15 @@ signal in_play_changed(playing: bool)
 const BOOT_SCENE := "res://addons/polaris_key/ui/boot/pkey_boot.tscn"
 
 var core: PKeyCore = null
+## The Cloud Connect API (services/cloud_connect.gd): `start`, `stop`, `peers`, `devices`, `open`,
+## `refresh_peers`, `status` and the signals `channel` and `notice`. Null until configure(). (Not `connect`:
+## that is Object's.) Sign-out runs its `stop()` and then forgets the Connect state (G18).
+var cloud_connect: PKeyCloudConnect = null
+## The Cloud Connect identity client (services/connect/client.gd) under it: `identity()`, `list_devices()`,
+## `current()`, `discovery_keys()` and `leave()`. Null until configure().
+var connect_client: PKeyConnectClient = null
 var _ring_hook_added := false
+var _connect_hook_added := false
 ## The device principal's surface (services/devices.gd); null until configure().
 var devices: PKeyDevices = null
 ## The Cloud Sync key ring (core/sync/ring.gd): create, unlock, wrap_to, recovery, adopt, forget, and the
@@ -185,18 +193,20 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	devices = PKeyDevices.new(core)
 	devices.install(core)
 	devices.on_wiped = _emit_state
+	devices.before_release = _before_release
 	core.attest_hook = devices.attest
 	license = PKeyLicense.new(core, devices)
 	license.install(core)
 	license.on_acquired = _on_license_acquired
 	license.on_changed = _on_license_wiped
+	license.before_release = _before_release
 	entitlements.attach(license)
 	commerce.attach(core, entitlements)
 	commerce.on_claimed = func() -> void: await sync(true)
 	distribution.attach(core)
 	backend.attach(core, func(force: bool) -> PKeySyncResult: return await sync(force), opts.backend_origins)
 	identity.bind(core, self)
-	_build_keyring(opts)
+	_build_connect(opts, _build_keyring(opts))
 	_build_cloud_sync(opts)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	identity.on_change = _on_identity_change
@@ -207,7 +217,8 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 
 ## The key ring over this Core: the options' device keys and vault, else the product's own under
 ## `store_root`. Sign-out forgets the root and the pin (one hook, registered once, reads the current ring).
-func _build_keyring(opts: PKeyOptions) -> void:
+## Answers the device keys, which Cloud Connect shares.
+func _build_keyring(opts: PKeyOptions) -> Object:
 	# The ring's files stay out of OS backups: Android's no-backup directory when the plugin is present.
 	var sensitive_root := PKeyBackupExclusion.root(opts.store_root)
 	# One device key store: the ring and the identity exchange sign with the same keys.
@@ -218,6 +229,41 @@ func _build_keyring(opts: PKeyOptions) -> void:
 	if not _ring_hook_added:
 		_ring_hook_added = true
 		identity.add_before_sign_out(_forget_ring)
+	return keys
+
+
+## Cloud Connect over this Core: the same device keys as the key ring, and the state record under
+## the sensitive root (or the options' own).
+func _build_connect(opts: PKeyOptions, keys: Object) -> void:
+	var state := opts.connect_state
+	if state == null:
+		state = PKeyConnectState.new(core.product, PKeyBackupExclusion.root(opts.store_root))
+	if cloud_connect != null:
+		cloud_connect.stop()
+	connect_client = PKeyConnectClient.new(core, state, keys)
+	connect_client.devices = devices
+	connect_client.allow_ephemeral_keys = opts.allow_ephemeral_keys
+	cloud_connect = PKeyCloudConnect.new(core, connect_client)
+	if not _connect_hook_added:
+		_connect_hook_added = true
+		identity.add_before_sign_out(_stop_connect)
+
+
+## Sign-out (G18): Cloud Connect stops, then its state record is forgotten; a record that cannot be
+## removed stops the sign-out. One hook, registered once, reads the current facade.
+func _stop_connect() -> Variant:
+	if cloud_connect == null:
+		return null
+	return cloud_connect._sign_out_step()
+
+
+## Deactivation (this device's seat released): Cloud Connect stops and forgets its state, then the
+## key ring forgets (Cloud Sync's chain), before the request. A step that fails stops the call.
+func _before_release() -> Variant:
+	var c: Variant = await _stop_connect()
+	if c is PKeyResult and not c.ok:
+		return c
+	return await _forget_ring()
 
 
 ## The sign-out chain (A-3): Cloud Sync flushes, signs the machine out, forgets the ring, purges, in

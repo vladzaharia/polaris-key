@@ -1528,14 +1528,14 @@ static func capabilities() -> Dictionary:
 		"sync.e2e.recovery": {"status": "planned", "service": "sync", "na": []},
 		"sync.transfer.background": {"status": "planned", "service": "sync", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"sync.e2e": {"status": "implemented", "service": "sync", "na": []},
-		"connect.identity": {"status": "planned", "service": "connect", "na": []},
-		"connect.noise": {"status": "planned", "service": "connect", "na": []},
-		"connect.protocol": {"status": "planned", "service": "connect", "na": []},
+		"connect.identity": {"status": "implemented", "service": "connect", "na": []},
+		"connect.noise": {"status": "implemented", "service": "connect", "na": []},
+		"connect.protocol": {"status": "implemented", "service": "connect", "na": []},
 		"connect.lan": {"status": "planned", "service": "connect", "na": []},
-		"connect.relay": {"status": "planned", "service": "connect", "na": []},
+		"connect.relay": {"status": "implemented", "service": "connect", "na": []},
 		"connect.links": {"status": "planned", "service": "connect", "na": []},
 		"connect.transfer": {"status": "planned", "service": "connect", "na": []},
-		"connect.app": {"status": "planned", "service": "connect", "na": []},
+		"connect.app": {"status": "implemented", "service": "connect", "na": []},
 		"devices.fingerprint": {"status": "implemented", "service": "core", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"devices.facts": {"status": "implemented", "service": "core", "na": []},
 		"devices.register": {"status": "implemented", "service": "core", "na": []},
@@ -1629,4 +1629,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "2e23ed91b233343467b75cd9216f2f6100eb342e58fc369a1e016ed9ae7e14cf"
+const CAPABILITY_DIGEST := "af069bde0d71cdd743dd5d3bb31a2caba853187a23489dd9972aeb66f934c093"
