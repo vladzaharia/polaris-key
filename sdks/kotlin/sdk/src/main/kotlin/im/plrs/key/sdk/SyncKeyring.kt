@@ -77,6 +77,15 @@ public class SyncKeyring internal constructor(
     /** Feeds the machine: it is told now, and on every unlock and lock. Returns a detach function. */
     public fun attach(listener: SyncRootListener): () -> Unit = memory.attach(listener)
 
+    /**
+     * The file codec of [collection] over the root held now. It reads the ring on every call and on every stream piece,
+     * and refuses with `sync-locked` once the ring locks or lets go of this root. Refuses with `sync-locked` while locked.
+     */
+    internal fun fileCodec(collection: String): FileCodec {
+        val held = need()
+        return GuardedFileCodec(E2eFileCodec(held.root, collection)) { memory.held === held }
+    }
+
     /** Whether this device holds a root right now. */
     public val unlocked: Boolean get() = memory.held != null
 

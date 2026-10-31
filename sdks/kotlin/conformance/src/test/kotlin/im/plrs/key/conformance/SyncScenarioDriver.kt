@@ -28,6 +28,7 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
     private val licence: JsonElement? = init["licence"]
     private lateinit var opts: CloudSyncOptions
     private lateinit var machine: CloudSyncMachine
+    private val outcomes = mutableListOf<JsonElement>()
 
     private fun obj(v: JsonElement?): JsonObject = v as JsonObject
 
@@ -51,6 +52,7 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
     fun run() {
         opts = options()
         machine = CloudSyncMachine(opts)
+        machine.onOutcome { outcomes.add(it.toJson()) }
         (init["legacyLocal"] as? JsonObject)?.let { check(machine.importLocal(it) == CallResult.Ok) { "$name: import" } }
         sc["steps"].arrayValue!!.forEachIndexed { i, step ->
             val (kind, raw) = (step as JsonObject).entries.single()
@@ -62,14 +64,26 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
     private fun step(kind: String, raw: JsonObject, where: String) {
         when (kind) {
             "local" -> local(raw, where)
+
             "respond" -> respond(raw)
+
             "advance" -> machine.advance(raw["ms"].longValue!!)
+
             "network" -> machine.setNetwork(raw["state"].stringValue!!)
+
             "root" -> machine.setRoot(raw["has"].boolValue == true)
+
             "signIn" -> machine.signIn(raw["subject"].stringValue!!)
+
             "signOut" -> machine.signOut(raw["discardUnsynced"].boolValue == true)
-            "relaunch" -> machine = CloudSyncMachine.relaunch(machine, opts, raw["journal"].stringValue == "lost")
+
+            "relaunch" -> {
+                machine = CloudSyncMachine.relaunch(machine, opts, raw["journal"].stringValue == "lost")
+                machine.onOutcome { outcomes.add(it.toJson()) }
+            }
+
             "assert" -> assertions(raw, where)
+
             else -> fail("$where: the machine slice that ports `$kind` has not landed")
         }
     }
@@ -89,21 +103,33 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
 
     private fun local(raw: JsonObject, where: String) {
         val args = raw["args"].arrayValue ?: JsonArray(emptyList())
-        val result = when (val call = raw["call"].stringValue) {
-            "set" -> machine.set(args[0].stringValue!!, args[1])
-            "clear" -> machine.clear(args[0].stringValue!!)
-            "put" -> machine.put(args[0].stringValue!!, args[1].stringValue!!, args[2])
-            "add" -> machine.add(args[0].stringValue!!, args[1].stringValue!!, args[2])
-            "remove" -> machine.remove(args[0].stringValue!!, args[1].stringValue!!, args[2])
-            "flush" -> machine.flush()
-            "refresh" -> machine.refresh()
-            else -> fail("$where: the machine slice that ports `$call` has not landed").let { CallResult.Ok }
+        val result: JsonElement = when (val call = raw["call"].stringValue) {
+            "set" -> machine.set(args[0].stringValue!!, args[1]).toJson()
+            "clear" -> machine.clear(args[0].stringValue!!).toJson()
+            "put" -> machine.put(args[0].stringValue!!, args[1].stringValue!!, args[2]).toJson()
+            "add" -> machine.add(args[0].stringValue!!, args[1].stringValue!!, args[2]).toJson()
+            "remove" -> machine.remove(args[0].stringValue!!, args[1].stringValue!!, args[2]).toJson()
+            "putAt" -> machine.putAt(args[0].stringValue!!, args[1].stringValue!!, args[2], args[3]).toJson()
+            "removeAt" -> machine.removeAt(args[0].stringValue!!, args[1].stringValue!!, args[2]).toJson()
+            "flush" -> machine.flush().toJson()
+            "refresh" -> machine.refresh().toJson()
+            else -> fail("$where: the machine slice that ports `$call` has not landed").let { JsonNull }
         }
-        raw["expect"]?.let { assertTrue("$where: expect", SyncJson.jsonEqual(it, result.toJson())) }
+        raw["expect"]?.let { assertTrue("$where: expect", SyncJson.jsonEqual(it, result)) }
     }
 
     private fun same(where: String, what: String, want: JsonElement?, got: JsonElement) =
         assertTrue("$where: $what\nwant $want\ngot  $got", SyncJson.jsonEqual(want, got))
+
+    /** The `fileRecordCases` family's asserts: the outcomes since the last assert, and a collection's cloud rows. */
+    private fun fileRecordAssertions(raw: JsonObject, where: String) {
+        val drained = JsonArray(outcomes.toList())
+        outcomes.clear()
+        raw["outcomes"]?.let { same(where, "outcomes", it, drained) }
+        (raw["rows"] as? JsonObject)?.forEach { (collection, want) ->
+            same(where, "rows.$collection", want, JsonArray(machine.records(collection).map { it.toJson() }))
+        }
+    }
 
     private fun assertions(raw: JsonObject, where: String) {
         val requests = JsonArray(machine.takeRequests())
@@ -116,6 +142,7 @@ class SyncScenarioDriver(private val product: String, private val sc: JsonObject
             val (collection, id) = k.split("/", limit = 2)
             same(where, "records.$k", want, machine.record(collection, id)?.toJson() ?: JsonNull)
         }
+        fileRecordAssertions(raw, where)
         raw["journal"]?.let { same(where, "journal", it, machine.journal()) }
         raw["status"]?.let { same(where, "status", it, machine.status().toJson()) }
         if (raw.containsKey("encryptionSince")) {

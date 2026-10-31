@@ -31,7 +31,6 @@ import im.plrs.key.core.SYNC_MANIFEST_MAX_STORED_BYTES
 import im.plrs.key.core.SYNC_MAX_PARTS
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
-import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import java.util.Base64
@@ -55,6 +54,18 @@ private const val STATUS_PARTIAL = 206
 private const val FIRST_3XX = 300
 private const val LAST_3XX = 399
 private const val FIRST_ERROR = 400
+private const val STATUS_BAD_REQUEST = 400
+private const val STATUS_UNAUTHORIZED = 401
+private const val STATUS_FORBIDDEN = 403
+private const val STATUS_NOT_FOUND = 404
+private const val STATUS_RATE_LIMITED = 429
+private const val STATUS_SERVER_ERROR = 500
+private const val STATUS_UNAVAILABLE = 503
+
+/** A `?version=` is at most nine digits, so below this. */
+private const val VERSION_LIMIT = 1_000_000_000
+private const val HEX_RADIX = 16
+private const val HEX_PAIR = 2
 
 private val KEY = Regex(SYNC_KEY_PATTERN)
 private val CHUNK_ID = Regex(SYNC_CHUNK_ID_PATTERN)
@@ -79,7 +90,7 @@ public fun isFilesPath(product: String, pathAndQuery: String): Boolean {
             "$rec/(?:begin|finalize|revisions)",
             rec,
             upload,
-            "$upload/parts/[0-9]{1,4}",
+            "$upload/parts/[1-9][0-9]{0,3}",
             "$upload/chunks",
             "$upload/chunks/$HEX64_PART",
             "$base/chunks/$HEX64_PART",
@@ -97,13 +108,13 @@ internal fun parseRetryAfter(header: String?): Double? {
 }
 
 private fun statusCode(status: Int): String = when {
-    status == 401 -> ErrorCode.unauthorized
-    status == 403 -> ErrorCode.forbidden
-    status == 404 -> ErrorCode.notFound
-    status == 429 -> ErrorCode.rateLimited
-    status == 400 -> ErrorCode.badRequest
-    status == 503 -> ErrorCode.unavailable
-    status >= 500 -> ErrorCode.serverError
+    status == STATUS_UNAUTHORIZED -> ErrorCode.unauthorized
+    status == STATUS_FORBIDDEN -> ErrorCode.forbidden
+    status == STATUS_NOT_FOUND -> ErrorCode.notFound
+    status == STATUS_RATE_LIMITED -> ErrorCode.rateLimited
+    status == STATUS_BAD_REQUEST -> ErrorCode.badRequest
+    status == STATUS_UNAVAILABLE -> ErrorCode.unavailable
+    status >= STATUS_SERVER_ERROR -> ErrorCode.serverError
     else -> ErrorCode.badResponse
 }
 
@@ -149,10 +160,10 @@ public class HttpFileTransport(private val core: CoreContext, private val bound:
     private suspend fun exchange(method: String, path: String, sent: Sent = Sent(), cap: Int = FILES_JSON_MAX_BYTES): Pair<Int, PolarisResponseView> {
         if (!isFilesPath(core.product, path)) refusedToSend("route")
         val token = core.token()
-        if (token.isNullOrEmpty()) return 401 to PolarisResponseView(ByteArray(0), emptyMap())
+        if (token.isNullOrEmpty()) return STATUS_UNAUTHORIZED to PolarisResponseView(ByteArray(0), emptyMap())
         val expected = bound()
         val now = core.storedSubject()
-        if (expected != null && now != null && now != expected) return 401 to PolarisResponseView(ByteArray(0), emptyMap())
+        if (expected != null && now != null && now != expected) return STATUS_UNAUTHORIZED to PolarisResponseView(ByteArray(0), emptyMap())
         val headers = linkedMapOf("authorization" to "Bearer $token", "accept" to "application/octet-stream, application/json")
         var body: ByteArray? = null
         if (sent.json != null) {
@@ -163,7 +174,7 @@ public class HttpFileTransport(private val core: CoreContext, private val bound:
             if (sha == null || !HEX64.matches(sha)) refusedToSend("digest")
             headers["content-type"] = "application/octet-stream"
             headers["content-digest"] =
-                "sha-256=:" + Base64.getEncoder().encodeToString(sha!!.chunked(2).map { it.toInt(16).toByte() }.toByteArray()) + ":"
+                "sha-256=:" + Base64.getEncoder().encodeToString(sha!!.chunked(HEX_PAIR).map { it.toInt(HEX_RADIX).toByte() }.toByteArray()) + ":"
             body = sent.body
         }
         sent.range?.let { headers["range"] = "bytes=${it.first}-${it.second - 1}" }
@@ -176,14 +187,11 @@ public class HttpFileTransport(private val core: CoreContext, private val bound:
             headers = core.headers(headers),
             body = body,
             timeoutSeconds = timeout,
-            maxBodyBytes = cap + 1,
+            // An error body is read to its own cap, whatever the success body is bounded to (a ranged GET asks for few bytes).
+            maxBodyBytes = maxOf(cap, FILES_ERROR_MAX_BYTES) + 1,
             followRedirects = false,
         )
-        val res = try {
-            core.transport.send(wire)
-        } catch (e: CancellationException) {
-            throw e
-        }
+        val res = core.transport.send(wire)
         if (res.status in FIRST_3XX..LAST_3XX) return res.status to PolarisResponseView(ByteArray(0), emptyMap(), redirect = true)
         return res.status to PolarisResponseView(res.body, res.headers.mapKeys { it.key.lowercase() })
     }
@@ -265,7 +273,7 @@ public class HttpFileTransport(private val core: CoreContext, private val bound:
         val range = query.range
         if (range != null && !(range.first >= 0 && range.second > range.first)) refusedToSend("range")
         val version = query.version
-        if (version != null && (version < 0 || version >= 1_000_000_000)) refusedToSend("version")
+        if (version != null && (version < 0 || version >= VERSION_LIMIT)) refusedToSend("version")
         val path = record(target) + (version?.let { "?version=$it" } ?: "")
         // The body is bounded by the range asked, even for a 200: a server that ignores `Range` and sends more is refused.
         val cap = if (range != null) range.second - range.first else FILES_MANIFEST_MAX_BYTES

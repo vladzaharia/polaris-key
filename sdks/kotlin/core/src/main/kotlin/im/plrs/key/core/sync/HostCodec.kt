@@ -57,6 +57,12 @@ public interface SyncCodecPort {
 public class SyncOpenedPull(public val body: JsonElement, public val opened: OpenedBody)
 
 public object HostCodec {
+    /**
+     * The record id as it goes on the wire: `blind("record", collection, id)` in end-to-end mode ([codec] given), the id itself in
+     * server mode ([codec] null). The file routes name a record by this id before any push has sealed it.
+     */
+    public fun wireId(codec: SyncCodecPort?, collection: String, id: String): String = codec?.blind(SyncBlind.Kind.Record, collection, id) ?: id
+
     /** The collection every setting is sealed under. */
     public const val SETTINGS_COLLECTION: String = "\$settings"
 

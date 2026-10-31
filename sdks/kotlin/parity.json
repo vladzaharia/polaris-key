@@ -562,8 +562,8 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "note": "client.cloudSync.saves (CloudSyncSaves.kt, suspend): list, read, write, delete, revisions and resolve, a port of client-core's SavesClient bound to the machine's records (:core rows keep the file pointer; putAt and removeAt at an exact version with tickets, one outcome each, onOutcome: the fileRecordCases family of sync-scenarios.json, replayed in full by :conformance) and the file transport, journal and chunk cache under one FileTransferEngine (max Retry-After 3600 s). The `saves` revision collection comes from the catalog's cloudSync.collections. A write runs on its own coroutine: its handle has pause, resume, cancel and await (cancel also ends the wait for the metadata outcome, which has no timeout); client.cloudSync.transfers() lists the writes in flight; transferProgress, transferDone and transferFailed arrive as cloudSync events. The ring's file codec stops with sync-locked once the ring locks; sign-out locks the ring, purges the save transfers (journal, chunk cache, running and waiting writes), then removes the pin. CloudSyncSavesTest, CloudSyncSavesClientTest, SyncScenariosTest; the cloudsync-files-single transcript replays through the transport."
     },
     "sync.keyring": {
       "status": "implemented",

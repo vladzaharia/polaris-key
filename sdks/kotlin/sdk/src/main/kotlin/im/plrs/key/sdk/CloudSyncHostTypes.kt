@@ -18,6 +18,9 @@ public class CloudSyncHostOptions {
 
     /** Renames the app declares (old name to current name). Never taken from a served body. */
     public var aliases: Map<String, String> = emptyMap()
+
+    /** The newest save `formatVersion` this build reads (D-11); a save above it reads as `NewerFormat`. Null turns the check off. */
+    public var saveFormatVersion: Int? = null
 }
 
 /** What the host needs from the client; each is a function so the host holds no stale copy. */

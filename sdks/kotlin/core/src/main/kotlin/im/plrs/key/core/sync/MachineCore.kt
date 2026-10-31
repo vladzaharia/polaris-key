@@ -66,6 +66,7 @@ internal class MachineCore(val opts: CloudSyncOptions, var s: MachineState) {
     var paused: Boolean = false
     val outbox: MutableList<JsonObject> = mutableListOf()
     val events: MutableList<SyncEvent> = mutableListOf()
+    var outcome: ((RecordOutcome) -> Unit)? = null
 
     /** The app requires E2E, or this device has accepted it before: the pin cannot be undone. */
     fun requiresE2e(): Boolean = appEncryption == "e2e" || s.e2eSeen

@@ -363,6 +363,14 @@ class HostCodecRecordsTest {
         assertEquals(listOf<OpenedRow?>(INVALID), pull(served(swapped, "slot-2"), c = vCodec).opened.changes)
     }
 
+    @Test
+    fun wireIdBlindsARecordInE2eModeAndIsTheIdInServerMode() {
+        assertEquals("slot-1", HostCodec.wireId(null, SAVES, "slot-1"))
+        val wire = HostCodec.wireId(codec, SAVES, "slot-1")
+        assertEquals(bl(SyncBlind.Kind.Record, SAVES, "slot-1"), wire)
+        assertTrue(SyncBlind.isBlindedName(wire))
+    }
+
     private fun repoRoot(): java.io.File = System.getProperty("pkey.repoRoot")?.let { java.io.File(it) } ?: java.io.File("../..").canonicalFile
 
     private fun unhex(h: String) = ByteArray(h.length / 2) { h.substring(it * 2, it * 2 + 2).toInt(16).toByte() }

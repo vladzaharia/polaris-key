@@ -11,7 +11,7 @@
 
 package im.plrs.key.sdk
 
-import im.plrs.key.core.SYNC_CDC_MAX_BYTES
+import im.plrs.key.core.SYNC_CHUNK_MAX_STORED_BYTES
 import im.plrs.key.core.sync.SyncCrypto
 import java.io.File
 
@@ -19,9 +19,6 @@ public const val CLOUD_SYNC_CHUNKS_DIR: String = "cloud-sync-chunks"
 
 /** The least a cache is allowed to hold (D-9). */
 public const val CHUNK_CACHE_MIN_BYTES: Long = 256L * 1024 * 1024
-
-/** The most one stored chunk object is (D-5: 1 MiB plus 30). */
-public const val SERVER_CHUNK_MAX_STORED_BYTES: Int = SYNC_CDC_MAX_BYTES + 30
 
 private val CACHE_ID = Regex("[0-9a-f]{64}")
 
@@ -105,7 +102,7 @@ public class FileChunkCache(public val dir: File, private val maxBytes: Long = C
                 if (f.name.endsWith(".tmp")) f.delete()
                 continue
             }
-            if (!f.isFile || f.length() > SERVER_CHUNK_MAX_STORED_BYTES) {
+            if (!f.isFile || f.length() > SYNC_CHUNK_MAX_STORED_BYTES) {
                 f.delete()
                 continue
             }
@@ -143,7 +140,7 @@ public class FileChunkCache(public val dir: File, private val maxBytes: Long = C
         checkId(id)
         load()
         drop(id)
-        if (obj.size > maxBytes || obj.size > SERVER_CHUNK_MAX_STORED_BYTES) return
+        if (obj.size > maxBytes || obj.size > SYNC_CHUNK_MAX_STORED_BYTES) return
         cloudSyncWriteAtomic(path(id), obj)
         val idx = load()
         idx[id] = obj.size

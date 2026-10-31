@@ -9,7 +9,8 @@ internal class MachineRecordPuts(private val p: MachineParts) {
     private val core get() = p.core
 
     fun revision(part: SyncPartition, rk: String, target: OpTarget.Record, value: JsonElement) {
-        val queued = part.pending.firstOrNull { p.records.isRecord(it, rk) }
+        // An exact write (`putAt`) is never coalesced into, and a `put` never edits it.
+        val queued = part.pending.firstOrNull { p.records.isRecord(it, rk) && it.ticket == null }
         when {
             p.records.inFlightTouches(rk) -> part.held[rk] = value
 

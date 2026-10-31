@@ -21,6 +21,8 @@ import im.plrs.key.sdk.CloudSyncClient
 import im.plrs.key.sdk.CloudSyncHostOptions
 import im.plrs.key.sdk.CommerceClient
 import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.sdk.SaveTransfer
+import im.plrs.key.sdk.SavesClient
 import im.plrs.key.sdk.boot
 import im.plrs.key.sdk.bootHost
 import im.plrs.key.update.UpdateClient
@@ -70,6 +72,17 @@ internal suspend fun apiSurface() {
     CloudSyncClient::flush  // cloudSync.flush
     CloudSyncHostOptions::encryption  // cloudSync.encryption
     PolarisKeyClient::events  // cloudSync.event
+    CloudSyncClient::saves  // cloudSync.saves
+    SavesClient::list  // cloudSync.saves.list
+    SavesClient::read  // cloudSync.saves.read
+    SavesClient::write  // cloudSync.saves.write
+    SavesClient::delete  // cloudSync.saves.delete
+    SavesClient::revisions  // cloudSync.saves.revisions
+    CloudSyncClient::transfers  // cloudSync.transfers
+    SaveTransfer::pause  // cloudSync.transfer.pause
+    SaveTransfer::resume  // cloudSync.transfer.resume
+    SaveTransfer::cancel  // cloudSync.transfer.cancel
+    PolarisKeyClient::events  // cloudSync.transferEvent
     PolarisKeyClient::discover  // client.discover
     PolarisKeyClient::presentation  // client.presentation
     PolarisKeyClient::presentationIcon  // client.presentationIcon
