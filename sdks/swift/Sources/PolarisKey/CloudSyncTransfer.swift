@@ -481,7 +481,7 @@ public final class FileTransferEngine: Sendable {
         func take(_ chunks: [Data]) throws {
             for c in chunks {
                 if records.count >= SYNC_MAX_CHUNKS_PER_FILE { throw TransferError(.rejected, code: "file_too_large") }
-                records.append(SyncManifest.Record(id: req.codec.chunkId(c), plainLen: c.count))
+                records.append(SyncManifest.Record(id: try req.codec.chunkId(c), plainLen: c.count))
                 offsets.append(at)
                 at += c.count
             }
@@ -942,7 +942,7 @@ private final class ChunkedRun: UploadPass, @unchecked Sendable {
         let codec = req.codec
         let plain = try req.source.read(start, start + rec.plainLen)
         // The file may have changed since it was cut: what is sent must still be the chunk named.
-        guard plain.count == rec.plainLen, codec.chunkId(plain) == rec.id else { throw TransferError(.sourceMismatch) }
+        guard plain.count == rec.plainLen, try codec.chunkId(plain) == rec.id else { throw TransferError(.sourceMismatch) }
         let object = try codec.sealChunk(id: rec.id, plain: plain)
         let digest = sha256Hex(object)
         let up = uploadId
@@ -1016,7 +1016,7 @@ private final class DownloadRun: @unchecked Sendable {
     private func whole() async throws {
         guard let plainSize = req.codec.plainSize(req.size) else { throw TransferError.invalid("size") }
         total = plainSize
-        let opener = req.codec.makeOpener()
+        let opener = try req.codec.makeOpener()
         var digest = SHA256()
         var etag: String?
         var at = 0
@@ -1061,8 +1061,9 @@ private final class DownloadRun: @unchecked Sendable {
         if body.status != 200 { throw TransferError(.badReply, detail: "status") }
         if stored.count > manifestMax { throw TransferError.invalid("manifest-size") }
         if sha256Hex(stored) != req.sha256 { throw TransferError.invalid("sha256") }
-        guard case .ok(let plainManifest) = codec.openManifest(stored) else {
-            if case .invalid(let r) = codec.openManifest(stored) { throw TransferError.invalid("manifest-" + r) }
+        let openedManifest = try codec.openManifest(stored)
+        guard case .ok(let plainManifest) = openedManifest else {
+            if case .invalid(let r) = openedManifest { throw TransferError.invalid("manifest-" + r) }
             throw TransferError.invalid("manifest")
         }
         let manifest: SyncManifest.Manifest
@@ -1100,7 +1101,7 @@ private final class DownloadRun: @unchecked Sendable {
         let id = rec.id.map { String(format: "%02x", $0) }.joined()
         if let cache = req.cache {
             if let held = try? cache.get(id) {
-                if case .ok(let plain) = codec.openChunk(id: rec.id, object: held), plain.count == rec.plainLen {
+                if case .ok(let plain) = try codec.openChunk(id: rec.id, object: held), plain.count == rec.plainLen {
                     return plain
                 }
                 try? cache.delete(id)  // damage costs a fetch
@@ -1110,7 +1111,7 @@ private final class DownloadRun: @unchecked Sendable {
             try await engine.call(hold) { try await engine.transport.getChunk(collection: req.collection, chunkId: id) }
         )
         if object.count > SYNC_CHUNK_MAX_STORED_BYTES { throw TransferError.invalid("chunk-size") }
-        switch codec.openChunk(id: rec.id, object: object) {
+        switch try codec.openChunk(id: rec.id, object: object) {
         case .invalid(let r): throw TransferError.invalid("chunk-" + r)
         case .ok(let plain):
             if plain.count != rec.plainLen { throw TransferError.invalid("chunk-length") }

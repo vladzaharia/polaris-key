@@ -49,11 +49,17 @@ public struct CloudSyncOptions: Sendable {
     public var catalog: JSONValue?
     /// Renames the app declares (old name to current name). Never taken from a served body.
     public var aliases: [String: String]
+    /// `cloudSync.saves`: the app's `saves` collection settings (all optional).
+    public var saves: SavesOptions
 
-    public init(encryption: SyncEncryption = .e2e, catalog: JSONValue? = nil, aliases: [String: String] = [:]) {
+    public init(
+        encryption: SyncEncryption = .e2e, catalog: JSONValue? = nil, aliases: [String: String] = [:],
+        saves: SavesOptions = SavesOptions()
+    ) {
         self.encryption = encryption
         self.catalog = catalog
         self.aliases = aliases
+        self.saves = saves
     }
 }
 
@@ -215,6 +221,13 @@ public actor CloudSyncHost {
     private var purgeWaiters: [CheckedContinuation<Void, Never>] = []
     private var listeners: [(id: Int, fn: @Sendable ([SyncEvent]) -> Void)] = []
     private var nextListener = 0
+    /// The listener for `putAt` / `removeAt` outcomes; survives a rebuild of the machine.
+    private var outcomeListener: (@Sendable (Int, SyncRecordOutcome) -> Void)?
+    /// The person whose chunk cache a purge removes: the last one the machine was signed in as.
+    private var person: String?
+
+    /// The `saves` collection `cloudSync.saves` writes to: a `revision` collection the machine holds.
+    static let savesDecl = SyncCollectionDecl(name: savesCollection, policy: "revision", resolve: "keepServer")
 
     private static let emptyCatalog: JSONValue = .object(["schemaVersion": .int(0), "entries": .array([])])
 
@@ -237,6 +250,42 @@ public actor CloudSyncHost {
     }
 
     public func removeListener(_ id: Int) { listeners.removeAll { $0.id == id } }
+
+    /// The one listener for the machine's `putAt` / `removeAt` outcomes (kept across rebuilds). It must not
+    /// call back into the host.
+    public func onOutcome(_ fn: (@Sendable (Int, SyncRecordOutcome) -> Void)?) {
+        outcomeListener = fn
+        machine?.onOutcome(fn)
+    }
+
+    /// The readable cloud rows of a collection (empty while signed out).
+    func records(_ collection: String) -> [SyncRecordRow] { machine?.records(collection) ?? [] }
+
+    /// `onTicket` runs in this turn, right after the machine hands the ticket out and before anything can
+    /// settle it, so a caller can be waiting on the ticket before its outcome exists.
+    func putAt(
+        _ collection: String, _ id: String, _ value: JSONValue, base: SyncBase,
+        onTicket: (@Sendable (Int) -> Void)? = nil
+    ) -> SyncTicketResult {
+        guard let m = machine else { return .failed("signed-out") }
+        let r = m.putAt(collection, id, value, baseVersion: base)
+        if case .ticket(let t) = r { onTicket?(t) }
+        return r
+    }
+
+    func removeAt(
+        _ collection: String, _ id: String, base: SyncBase, onTicket: (@Sendable (Int) -> Void)? = nil
+    ) -> SyncTicketResult {
+        guard let m = machine else { return .failed("signed-out") }
+        let r = m.removeAt(collection, id, baseVersion: base)
+        if case .ticket(let t) = r { onTicket?(t) }
+        return r
+    }
+
+    /// The id a record goes by on the wire (see `HostCodec.wireId`).
+    func wireId(_ collection: String, _ id: String) throws -> String {
+        try HostCodec.wireId(machine?.encryptionMode == .e2e ? deps.codec : nil, collection, id)
+    }
 
     // MARK: start
 
@@ -325,13 +374,15 @@ public actor CloudSyncHost {
         routes = Self.routesOf(catalog)
         documentJSON = Self.dump(document)
         var o = SyncMachineOptions(
-            product: deps.product, catalog: SyncMachineCatalog(settings: routes), document: document,
+            product: deps.product, catalog: SyncMachineCatalog(settings: routes, collections: [Self.savesDecl]), document: document,
             now: deps.clock(), newClientId: { "c_" + Base64URL.encode(SyncCrypto.random(16)) })
         o.encryption = options.encryption
         o.hasRoot = deps.keyringUnlocked()
         o.discovery = advertised
         let m = try CloudSyncMachine(o, persisted: snapshot)
         machine = m
+        m.onOutcome(outcomeListener)
+        if let who = m.subject { person = who }
         generation += 1
         let f = RootFeed(wake: { [weak self] in Task { await self?.touch() } })
         feed = f
@@ -374,7 +425,9 @@ public actor CloudSyncHost {
         if purging > 0 { await withCheckedContinuation { purgeWaiters.append($0) } }
         guard let m = machine else { return .failed("not-started") }
         purged = false
-        return try m.signIn(subject)
+        let result = try m.signIn(subject)
+        person = subject
+        return result
     }
 
     @discardableResult
@@ -712,11 +765,11 @@ public actor CloudSyncHost {
         var failure: (any Error)?
         do { try file.remove() } catch { failure = error }
         // The person's transfer journal and chunk cache leave with them (D-9).
-        for dir in [cloudSyncTransfersDirName, cloudSyncChunksDirName] {
-            let url = deps.stateDir.appendingPathComponent(dir, isDirectory: true)
-            if FileManager.default.fileExists(atPath: url.path) {
-                do { try FileManager.default.removeItem(at: url) } catch { failure = failure ?? error }
-            }
+        // The journal goes whole; of the chunk cache only this person's directory goes, never the root.
+        var doomed = [deps.stateDir.appendingPathComponent(cloudSyncTransfersDirName, isDirectory: true)]
+        if let person { doomed.append(chunkCachePersonDirectory(stateDir: deps.stateDir, subject: person)) }
+        for url in doomed where FileManager.default.fileExists(atPath: url.path) {
+            do { try FileManager.default.removeItem(at: url) } catch { failure = failure ?? error }
         }
         openKeys = []
         timer?.cancel()
