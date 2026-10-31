@@ -762,6 +762,7 @@ class PeerSession:
             self._phase = "closed"
             self._transport_due = None
             self._cert_expires = None
+            self._settle()  # a peer's CLOSE ends the handshake: free its limiter slot (R-6K N5)
             self._wipe()
             known = isinstance(code, str) and code in _KNOWN_CLOSE
             self._event(Closed(code if isinstance(code, str) and known else ErrorCode.PEER_BAD_FRAME, True))
