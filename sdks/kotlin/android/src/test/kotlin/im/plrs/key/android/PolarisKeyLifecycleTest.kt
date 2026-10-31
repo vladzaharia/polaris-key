@@ -5,6 +5,7 @@ import android.app.Activity
 import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.InMemoryStore
 import im.plrs.key.core.ServiceSlug
+import im.plrs.key.core.sync.SyncState
 import im.plrs.key.core.testing.ScriptedTransport
 import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.TestSigner
@@ -159,9 +160,13 @@ class PolarisKeyLifecycleCloudSyncTest {
             // done (Idle, nothing waiting). Until then `config.set` quietly takes the local-only path (no machine
             // owns the key yet) and there is nothing for the last stop to push, which is what a slow runner showed.
             val end = System.currentTimeMillis() + 8_000
-            while (client.cloudSync.status().let { it.state != im.plrs.key.core.sync.SyncState.Idle || it.pending != 0 } && System.currentTimeMillis() < end) Thread.sleep(20)
+            suspend fun settled(): Boolean {
+                val s = client.cloudSync.status()
+                return s.state == SyncState.Idle && s.pending == 0
+            }
+            while (!settled() && System.currentTimeMillis() < end) Thread.sleep(20)
             val ready = client.cloudSync.status()
-            assertEquals("the machine is signed in and idle before the edit: $ready", im.plrs.key.core.sync.SyncState.Idle, ready.state)
+            assertEquals("the machine is signed in and idle before the edit: $ready", SyncState.Idle, ready.state)
             client.config.set("audio.volume", kotlinx.serialization.json.JsonPrimitive(0.3))
             val edited = client.cloudSync.status()
             assertEquals("the machine took the edit (not the local-only path): $edited", 1, edited.pending)
