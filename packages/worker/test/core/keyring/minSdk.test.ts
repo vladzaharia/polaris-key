@@ -20,6 +20,7 @@ import { setDeviceSubject } from "../../../src/core/accounts/accountSubjects.js"
 import { signIn } from "../../../src/services/identity/accounts/signIn.js";
 import { handleActivate } from "../../../src/services/license/activation.js";
 import { upsertDeviceKeys } from "../../../src/core/devices/keys.js";
+import { invalidatePlatformSettings } from "../../../src/core/platformSettings.js";
 import { belowMinimum } from "../../../src/core/keyring/minSdk.js";
 import type { Db } from "../../../src/db/types.js";
 import type { Env } from "../../../src/platform/env.js";
@@ -102,7 +103,12 @@ async function world(sync = true): Promise<World> {
 
 const MIN_KEY = (sdk: string) => `cloudSync.minSdk.${sdk}`;
 
-async function setMin(db: Db, sdk: string, value: string): Promise<void> {
+async function setMin(
+  w: World | { db: Db; env: Env },
+  sdk: string,
+  value: string,
+): Promise<void> {
+  const { db, env } = w;
   await db.run(
     `INSERT OR REPLACE INTO platform_settings (key, value_json, version, updated_at, updated_by)
      VALUES (?, ?, 1, ?, 'test')`,
@@ -110,6 +116,8 @@ async function setMin(db: Db, sdk: string, value: string): Promise<void> {
     JSON.stringify(value),
     NOW,
   );
+  // The activations before this write already read the settings; drop that snapshot.
+  invalidatePlatformSettings(env, db);
 }
 
 const ROUTES: [string, string][] = [
@@ -159,7 +167,7 @@ describe("the key ring minimum SDK build (D-39b)", () => {
   let w: World;
   beforeEach(async () => {
     w = await world();
-    await setMin(w.db, "swift", "0.10.0");
+    await setMin(w, "swift", "0.10.0");
   });
 
   it("a key-ring read from an SDK below its minimum answers version_blocked", async () => {
@@ -207,12 +215,12 @@ describe("the key ring minimum SDK build (D-39b)", () => {
 
   it("a server-mode product keeps the 404", async () => {
     const off = await world(false);
-    await setMin(off.db, "swift", "0.10.0");
+    await setMin(off, "swift", "0.10.0");
     expect((await call(off, "GET", "", ["swift", "0.9.0"])).status).toBe(404);
   });
 
   it("each SDK has its own minimum", async () => {
-    await setMin(w.db, "kotlin", "1.2.0");
+    await setMin(w, "kotlin", "1.2.0");
     expect((await call(w, "GET", "", ["kotlin", "1.1.9"])).status).toBe(403);
     expect((await call(w, "GET", "", ["kotlin", "1.2.0"])).status).toBe(200);
     expect((await call(w, "GET", "", ["godot", "0.0.1"])).status).toBe(200);
