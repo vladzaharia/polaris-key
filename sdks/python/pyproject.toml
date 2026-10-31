@@ -54,7 +54,7 @@ connect = [
   "websockets==17.2; python_version >= '3.11'",
 ]
 # pyte: the terminal emulator the terminal kit's responsive tests draw into (tests/cli/pyterm.py).
-dev = ["pytest>=7", "click>=8", "typer>=0.9", "rich>=13", "textual>=0.80", "pyte>=0.8", "mypy==1.19.1", "ruff==0.16.10",
+dev = ["pytest>=7", "click>=8", "typer>=0.9", "rich>=13", "textual>=0.80", "pyte>=0.8", "mypy==2.4.0", "ruff==0.16.10",
   "fastapi>=0.100", "flask>=2.2", "django>=4.2", "djangorestframework>=3.14", "requests>=2.28",
   "uvicorn>=0.23"]
 
