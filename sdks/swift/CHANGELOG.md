@@ -6,6 +6,8 @@ deprecated aliases).
 
 ## Unreleased
 
+- **File transfer engine (U-23.S4).** `FileTransferEngine` (uploads in `single`, `multipart` and `chunks` modes, whole and chunked downloads) over a `FileTransport` port, with `JournalStore` (`MemoryJournal`, `FileJournal`: a file named by the SHA-256 of the transfer id, 0600, out of backup, resumes after a kill), `ChunkCache` (`MemoryChunkCache`, `FileChunkCache`: hex ids only, LRU, out of backup), and the `E2eFileCodec` / `ServerFileCodec` (codec 1 chunks decode through the vendored libzstd). Up to four parts or chunks in flight; a failed check is `TransferError.fileInvalid`, `polarisError.code == sync-file-invalid`. Not wired to HTTP yet (U-23.S5).
+
 - **Synced-file primitives (U-23.S1).** `SyncCdc` (the `fastcdc-2016-nc1` chunker, streaming), `SyncChunks` (chunk ids and `pkey-sync-chunk/1` objects, both codecs; a codec 1 object needs the caller's `ZstdDecode`) and `SyncManifest` (`pkey-sync-chunks/1`) in `PolarisKeyCore`, proven by the `cdcCases`, `cdcEditCases`, `deltaCases`, `chunkCases` and `manifestCases` vector sections.
 
 - **Synced-file primitives II (U-23.S2).** `SyncFileStream` (`pkey-sync-file/1`: the header, segment sizes, the streaming `Sealer` and `Opener`, `sealFile` / `openFile`, the ranged `openRange` that reads only the segments in range, and `Reassembly` for the manifest's size and SHA-256) and `SyncTransferPlan` (`single`, `multipart`, `chunks` and `too_large`, with `partRange`), proven by the `fileStreamCases` and `transferPlanCases` vector sections.

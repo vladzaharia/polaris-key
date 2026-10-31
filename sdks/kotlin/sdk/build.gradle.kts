@@ -32,6 +32,8 @@ dependencies {
     testImplementation(testFixtures(project(":core")))
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    // The zstd backend the file transfer engine's codec 1 chunks decode through (:packs holds it compileOnly).
+    testImplementation(libs.zstd.jni)
     testImplementation(libs.okhttp.mockwebserver)
 }
 
