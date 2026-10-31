@@ -1044,6 +1044,11 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 		var d: PKeySaveConflict = st["view"]
 		await _frames(4)
 		var db := _buttons(d)
+		# Two panes: each version card is level with the choice it maps to, and carries no outline.
+		var lc := d.find_child("Local", true, false) as Control
+		var rc := d.find_child("Remote", true, false) as Control
+		t.check("saves (%s): the cards line up with their choices" % scheme, d.two_pane_fits() and absf(lc.global_position.y - (db["KeepThis"] as Control).global_position.y) <= 4.0 and absf(rc.global_position.y - (db["KeepOther"] as Control).global_position.y) <= 4.0, "%s %s / %s %s" % [lc.global_position.y, rc.global_position.y, (db["KeepThis"] as Control).global_position.y, (db["KeepOther"] as Control).global_position.y])
+		t.check("saves (%s): the cards are tints, not outlined controls" % scheme, ((lc as PanelContainer).get_theme_stylebox(&"panel") as StyleBoxFlat).border_width_left == 0)
 		var del := db["KeepOther"] as Button
 		var keep := db["KeepThis"] as Button
 		var dbox := del.get_theme_stylebox(&"normal") as StyleBoxFlat
@@ -1058,6 +1063,10 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	# Keeping offers nothing; kept names the choice and Done; failed focuses Cancel and Try again repeats.
 	var keeping: PKeySaveConflict = _sc.save_conflict("keeping")
 	await _frames(3)
+	var live := 0
+	for n in keeping.find_children("*", "Label", true, false):
+		live += 1 if int(n.get("accessibility_live")) != 0 else 0
+	t.check("saves: keeping has exactly one live label, its status", live == 1 and int(keeping._status.get("accessibility_live")) == 1, str(live))
 	var kb := _buttons(keeping)
 	t.check("saves: while a choice is applied nothing is offered", kb.is_empty() and keeping._initial_focus() == null)
 	await _tree().create_timer(0.4).timeout
@@ -1140,7 +1149,15 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	var strip: PKeyCloudSyncStatus = _sc.cloud_sync("transferring")
 	await _frames(3)
 	var st := strip.find_child("Status", true, false) as Label
-	t.check("strip: transferring says Syncing saves before its figures", st.text == "Syncing saves… · 38 MB of 61 MB" and strip._bar.visible and not strip._bar.indeterminate and is_equal_approx(strip._bar.value, 0.62), st.text)
+	var figs := strip.find_child("Figures", true, false) as Label
+	t.check("strip: transferring says Syncing saves before its figures", st.text == "Syncing saves…" and figs.text == "38 MB of 61 MB" and strip._bar.visible and not strip._bar.indeterminate and is_equal_approx(strip._bar.value, 0.62), st.text)
+	# One announcement per state change: the label is live, the figures are not, so a byte update is silent.
+	t.check("strip: only the label is live", int(st.get("accessibility_live")) == 1 and int(figs.get("accessibility_live")) == 0)
+	var said := st.text
+	strip.transfer_size = "39 MB"
+	strip.refresh_view()
+	await _frames(2)
+	t.check("strip: a byte update changes the figures and leaves the live label alone", st.text == said and figs.text == "39 MB of 61 MB", figs.text)
 	t.check("strip: the bar has real width", strip._bar.size.x > 20.0, str(strip._bar.size))
 	t.check("strip: transferring is never Synced, though the last sync time is known", not st.text.contains("Synced") and strip.sync_time != "" and not strip._action.visible)
 	_free(strip)

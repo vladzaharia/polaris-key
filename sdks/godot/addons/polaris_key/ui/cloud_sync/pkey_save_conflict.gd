@@ -132,8 +132,9 @@ func _build() -> void:
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var right := vbox(_cols, "Right", "PKeyStack")
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_lede = label(left, "Lede", "PKeyMuted")
+	right.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	# The lede sits under the title, so both columns start level and a card lines up with its choice.
+	_lede = label(head, "Lede", "PKeyMuted")
 	_cards = columns(left, "Cards")
 	_local_card = _save_card(_cards, "Local")
 	_local_who = _local_card.get_node("Words/Head/Who")
@@ -147,6 +148,9 @@ func _build() -> void:
 	_status_row = st["row"]
 	_status_glyph = st["glyph"]
 	_status = st["label"]
+	# The one live line: keeping, the failure and where the other went are each announced once.
+	if "accessibility_live" in _status:
+		_status.set("accessibility_live", 1)
 	# The busy bar sits with the status line: the actions column is empty while a choice is applied.
 	loading_bar(left)
 	# One column in reading order: the choices, Keep both's reason right under it, then Cancel.
@@ -212,6 +216,7 @@ func _arrange(m: Dictionary) -> void:
 	# The two copies sit side by side while the column holds both, else stacked.
 	# The copies stack, in the same order as the choices they map to.
 	set_columns(_cards, false)
+	_pitch_cards(two)
 	_cols.get_child(0).size_flags_stretch_ratio = 1.0
 	super(m)
 	_fit_choices()
@@ -230,6 +235,22 @@ func _apply_width(width: float) -> void:
 
 
 ## The success colour of the running scheme.
+## The versions are tints, not controls (no outline). In two panes each card is as tall as the
+## choice beside it and the gap is the choices' gap, so a card lines up with the way it maps to.
+func _pitch_cards(two: bool) -> void:
+	for card in [_local_card, _remote_card]:
+		var base := (card as PanelContainer).get_theme_stylebox(&"panel")
+		if base is StyleBoxFlat:
+			var flat := (base as StyleBoxFlat).duplicate() as StyleBoxFlat
+			flat.set_border_width_all(0)
+			(card as PanelContainer).add_theme_stylebox_override(&"panel", flat)
+		(card as Control).custom_minimum_size.y = _keep_local.get_combined_minimum_size().y if two else 0.0
+	if two:
+		_cards.add_theme_constant_override(&"separation", _actions.get_theme_constant(&"separation"))
+	else:
+		_cards.remove_theme_constant_override(&"separation")
+
+
 func _success_colour() -> Color:
 	return PKeyBrand.Dark.SUCCESS if PKeyUiTheme.is_dark(self) else PKeyBrand.Light.SUCCESS
 
@@ -299,7 +320,7 @@ func _reveal_focus() -> void:
 		if is_focusable(c):
 			first = c
 			break
-	if String(model.get("state", "")) != "choose" or (_moved and f != null and f != first):
+	if not String(model.get("state", "")) in ["choose", "failed"] or (_moved and f != null and f != first):
 		super()
 		return
 	for sc in _scrolls:
