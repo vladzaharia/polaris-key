@@ -74,7 +74,7 @@ export function RequestHeader({
       developer={m.developer}
       where={m.where}
       code={m.code}
-      attach={view.purpose === "attach" && m.variant === "app"}
+      attach={view.purpose === "attach"}
     />
   );
 }
