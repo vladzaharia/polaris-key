@@ -573,6 +573,8 @@ const GODOT_SCRIPT: Record<string, string> = {
   identity: `"res://addons/polaris_key/services/identity.gd"`,
   PKeySignInNamespace: `"res://addons/polaris_key/services/identity/sign_in_namespace.gd"`,
   PKeySignInSession: `"res://addons/polaris_key/services/identity/sign_in_session.gd"`,
+  PKeySaves: `"res://addons/polaris_key/services/cloud_sync/saves.gd"`,
+  PKeyTransfer: `"res://addons/polaris_key/services/cloud_sync/transfer_handle.gd"`,
   devices: `"res://addons/polaris_key/services/devices.gd"`,
   release: `"res://addons/polaris_key/services/release.gd"`,
   distribution: `"res://addons/polaris_key/services/distribution.gd"`,

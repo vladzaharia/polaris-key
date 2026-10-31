@@ -47,7 +47,7 @@
       "gdlint:class-definitions-order": 1
     },
     "sdks/godot/addons/polaris_key/core/options.gd": {
-      "gdlint:class-definitions-order": 30,
+      "gdlint:class-definitions-order": 33,
       "gdlint:max-line-length": 1
     },
     "sdks/godot/addons/polaris_key/core/presentation.gd": {
@@ -232,6 +232,14 @@
     },
     "sdks/godot/addons/polaris_key/services/cloud_sync/host.gd": {
       "gdlint:class-definitions-order": 2,
+      "gdlint:max-public-methods": 1,
+      "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/services/cloud_sync/saves.gd": {
+      "gdlint:class-definitions-order": 4,
+      "gdlint:max-returns": 3
+    },
+    "sdks/godot/addons/polaris_key/services/cloud_sync/saves_records.gd": {
       "gdlint:max-returns": 1
     },
     "sdks/godot/addons/polaris_key/services/cloud_sync/state.gd": {
@@ -241,7 +249,11 @@
       "gdlint:max-returns": 6
     },
     "sdks/godot/addons/polaris_key/services/cloud_sync/transfer_codec.gd": {
+      "gdlint:class-definitions-order": 2,
       "gdlint:max-returns": 1
+    },
+    "sdks/godot/addons/polaris_key/services/cloud_sync/transfer_handle.gd": {
+      "gdlint:class-definitions-order": 1
     },
     "sdks/godot/addons/polaris_key/services/commerce.gd": {
       "gdlint:class-definitions-order": 3,
@@ -655,6 +667,12 @@
     },
     "sdks/godot/tests/suite_cloud_sync_host.gd": {
       "gdlint:max-line-length": 8
+    },
+    "sdks/godot/tests/suite_cloud_sync_saves.gd": {
+      "gdlint:class-definitions-order": 1,
+      "gdlint:max-file-lines": 1,
+      "gdlint:max-line-length": 25,
+      "gdlint:max-returns": 1
     },
     "sdks/godot/tests/suite_cloud_sync_settings.gd": {
       "gdlint:class-definitions-order": 1,

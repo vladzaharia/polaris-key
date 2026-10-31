@@ -1,0 +1,1173 @@
+extends RefCounted
+# @pkey-feature sync.saves
+# Cloud Sync saves (U-22.5, U-23): PolarisKey.cloud_sync.saves over the records binding and the file transport.
+#
+#   * PKeySaves (saves.gd) against an in-memory Worker for the file routes and a records port: write, read,
+#     list, the E2E `$file` binding, the format check (D-11), conflicts and resolve, delete, pause, resume and
+#     cancel, the 16-slot cap, events;
+#   * the guarded file codec: once the ring locks, every method and every piece refuses (sync-locked);
+#   * the records binding (saves_records.gd) over a real host and a loopback Worker: the machine's rows, put_at
+#     and remove_at with their one outcome (ok, conflict, rejected, dropped), a cancel, drop_all, and the
+#     host passing `recordKeys` to the codec on every pull;
+#   * the typed `unsupported` refusal on iOS and Android, and the sign-out order: lock, purge the saves, then
+#     remove the pin.
+# The machine's own rules (tickets, file-only rows, outcomes) are fileRecordCases in suite_sync_scenarios.
+
+const Transfer := preload("res://addons/polaris_key/services/cloud_sync/transfer.gd")
+const Journal := preload("res://addons/polaris_key/services/cloud_sync/journal.gd")
+const Codec := preload("res://addons/polaris_key/services/cloud_sync/transfer_codec.gd")
+const Host := preload("res://addons/polaris_key/services/cloud_sync/host.gd")
+const CodecPort := preload("res://addons/polaris_key/services/cloud_sync/codec_port.gd")
+const SavesRecords := preload("res://addons/polaris_key/services/cloud_sync/saves_records.gd")
+const CloudSync := preload("res://addons/polaris_key/services/cloud_sync.gd")
+
+const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
+
+const PRODUCT := "diceroll"
+const MIB := 1048576
+
+
+## The Worker's file routes for any number of records, behind the transport port the engine calls.
+class FakeFiles:
+	extends RefCounted
+	var records := {}  # wire id -> {version, revs: [{version, size, sha256, format, data}], value, file}
+	var uploads := {}
+	var chunks := {}
+	var seq := 0
+	var calls: Array[String] = []
+	var aborted: Array[String] = []
+	var puts: Array[PackedByteArray] = []
+	## Awaited before a GET lands.
+	var before_get := Callable()
+	## Awaited before a PUT lands (a coroutine): a window to pause or lock in.
+	var before_put := Callable()
+
+	func rec(wire: String) -> Dictionary:
+		if not records.has(wire):
+			records[wire] = {"version": 0, "revs": [], "value": null, "file": null}
+		return records[wire]
+
+	func begin(target: Dictionary, r: Dictionary) -> Dictionary:
+		calls.append("begin")
+		var cur: int = records[target["record"]]["version"] if records.has(target["record"]) else 0
+		var base: Variant = r.get("baseVersion")
+		if base != null and not ((base is String and base == "*" and cur == 0) or (not (base is String) and int(base) == cur)):
+			return Transfer.reply_fail(409, "revision_conflict", -1.0, {"server": {"version": cur}})
+		seq += 1
+		var id := "up%d" % seq
+		var mode := "chunks" if r["format"] == "chunks" else "single"
+		uploads[id] = {"record": target["record"], "size": r["size"], "sha256": r["sha256"], "format": r["format"], "mode": mode, "body": null}
+		return Transfer.reply_ok({"uploadId": id, "mode": mode, "expiresAt": 1760086400000})
+
+	func status(_t: Dictionary, upload_id: String) -> Dictionary:
+		if not uploads.has(upload_id):
+			return Transfer.reply_fail(410, "upload_expired")
+		return Transfer.reply_ok({"received": [1] if uploads[upload_id]["body"] != null else []})
+
+	func put_single(_t: Dictionary, upload_id: String, body: PackedByteArray, digest: String) -> Dictionary:
+		calls.append("put")
+		if before_put.is_valid():
+			await before_put.call()
+		if not uploads.has(upload_id):
+			return Transfer.reply_fail(410, "upload_expired")
+		if PKeySyncHkdf.sha256(body).hex_encode() != digest:
+			return Transfer.reply_fail(400, "upload_mismatch")
+		uploads[upload_id]["body"] = body
+		puts.append(body)
+		return Transfer.reply_ok()
+
+	func put_part(_a, _b, _c, _d, _e) -> Dictionary:
+		return Transfer.reply_fail(400, "unused")
+
+	func abort(_t: Dictionary, upload_id: String) -> Dictionary:
+		calls.append("abort")
+		aborted.append(upload_id)
+		uploads.erase(upload_id)
+		return Transfer.reply_ok()
+
+	func plan_chunks(_t: Dictionary, upload_id: String, request: Dictionary) -> Dictionary:
+		if not uploads.has(upload_id):
+			return Transfer.reply_fail(410, "upload_expired")
+		var missing := []
+		var present := []
+		for e in request["chunks"]:
+			if chunks.has(e[0]):
+				present.append([e[0], e[1]])
+			else:
+				missing.append(e[0])
+		return Transfer.reply_ok({"missing": missing, "present": present})
+
+	func put_chunk(_t: Dictionary, upload_id: String, chunk_id: String, body: PackedByteArray, digest: String) -> Dictionary:
+		if not uploads.has(upload_id):
+			return Transfer.reply_fail(410, "upload_expired")
+		if PKeySyncHkdf.sha256(body).hex_encode() != digest:
+			return Transfer.reply_fail(400, "upload_mismatch")
+		chunks[chunk_id] = body
+		return Transfer.reply_ok()
+
+	func finalize(_t: Dictionary, request: Dictionary) -> Dictionary:
+		calls.append("finalize")
+		var u: Variant = uploads.get(request["uploadId"])
+		if u == null:
+			return Transfer.reply_fail(410, "upload_expired")
+		if u["body"] == null:
+			return Transfer.reply_fail(409, "upload_incomplete", -1.0, {"missing": []})
+		var data: PackedByteArray = u["body"]
+		if PKeySyncHkdf.sha256(data).hex_encode() != u["sha256"]:
+			return Transfer.reply_fail(400, "upload_mismatch")
+		var r := rec(u["record"])
+		r["version"] += 1
+		var entry := {"version": r["version"], "size": u["size"], "sha256": u["sha256"], "format": u["format"], "data": data}
+		r["revs"].push_front(entry)
+		r["file"] = {"version": entry["version"], "size": entry["size"], "sha256": entry["sha256"], "format": entry["format"]}
+		uploads.erase(request["uploadId"])
+		return Transfer.reply_ok({"version": entry["version"], "size": entry["size"], "sha256": entry["sha256"], "format": entry["format"]})
+
+	func get_file(target: Dictionary, query: Dictionary) -> Dictionary:
+		calls.append("get_file")
+		if before_get.is_valid():
+			await before_get.call()
+		var r: Variant = records.get(target["record"])
+		if r == null or r["revs"].is_empty():
+			return Transfer.reply_fail(404, "not_found")
+		var data: PackedByteArray = r["revs"][0]["data"]
+		if query.get("version") != null:
+			for e in r["revs"]:
+				if e["version"] == int(query["version"]):
+					data = e["data"]
+		var rng: Variant = query.get("range")
+		if rng is Array:
+			var end := mini(data.size(), rng[1])
+			return Transfer.reply_ok({"status": 206, "data": data.slice(rng[0], end), "etag": "\"e\"", "content_range": [rng[0], end, data.size()]})
+		return Transfer.reply_ok({"status": 200, "data": data, "etag": "\"e\"", "content_range": null})
+
+	func get_chunk(_collection: String, chunk_id: String) -> Dictionary:
+		if not chunks.has(chunk_id):
+			return Transfer.reply_fail(404, "not_found")
+		return Transfer.reply_ok(chunks[chunk_id])
+
+	func revisions(target: Dictionary) -> Dictionary:
+		calls.append("revisions")
+		var r: Variant = records.get(target["record"])
+		if r == null:
+			return Transfer.reply_fail(404, "not_found")
+		var out := []
+		for e in r["revs"]:
+			out.append({"version": e["version"], "size": e["size"], "sha256": e["sha256"], "format": e["format"]})
+		return Transfer.reply_ok({"revisions": out})
+
+
+## The records port over the same store: a record's version is its file's, and a metadata `set` bumps it.
+class FakeRecords:
+	extends RefCounted
+	var files: FakeFiles
+	var e2e_mode := false
+	var ring: RefCounted = null
+	## Awaited before a set is judged (a coroutine): a window for another writer.
+	var before_set := Callable()
+	## id -> wire id, for the plaintext ids this port has seen
+	var wires := {}
+	var dropped := 0
+	## Holds a set until `release` or a cancel (a coroutine wait).
+	var hold_set := false
+	var release_set := false
+	var set_calls := 0
+	var rejected_code := ""
+
+	func _init(f: FakeFiles) -> void:
+		files = f
+
+	func e2e() -> bool:
+		return e2e_mode
+
+	func wire_id(id: String) -> String:
+		if not e2e_mode:
+			return id
+		if ring.locked:
+			return ""
+		var w := PKeySyncBlind.blind(ring.root, "record", "saves", id)
+		wires[w] = id
+		return w
+
+	func _row(wire: String, r: Dictionary) -> Dictionary:
+		return {"id": wires.get(wire, wire), "version": r["version"], "value": (r["value"] as Dictionary).duplicate(true) if r["value"] != null else {}, "file": r["file"]}
+
+	func list() -> Array:
+		var out := []
+		for w: String in files.records:
+			if files.records[w]["value"] != null:
+				out.append(_row(w, files.records[w]))
+		return out
+
+	func get_record(id: String) -> Variant:
+		var w := wire_id(id) if not ring.locked else id
+		if not files.records.has(w) or files.records[w]["value"] == null:
+			return null
+		return _row(w, files.records[w])
+
+	func set_record(id: String, value: Dictionary, base_version: Variant, cancel: Variant = null) -> Dictionary:
+		set_calls += 1
+		var tree := Engine.get_main_loop() as SceneTree
+		while hold_set and not release_set:
+			if cancel != null and cancel.cancelled:
+				return {"ok": false, "reason": "aborted"}
+			await tree.process_frame
+		if before_set.is_valid():
+			await before_set.call()
+		if rejected_code != "":
+			return {"ok": false, "reason": "rejected", "code": rejected_code}
+		var w := wire_id(id)
+		var r = files.rec(w)
+		if int(base_version) != r["version"]:
+			return {"ok": false, "reason": "conflict", "server": _row(w, r) if r["value"] != null else null}
+		r["version"] += 1
+		r["value"] = value.duplicate(true)
+		return {"ok": true, "version": r["version"]}
+
+	func delete_record(id: String, base_version: int) -> Dictionary:
+		var w := wire_id(id)
+		var r: Variant = files.records.get(w)
+		if r == null:
+			return {"ok": false, "reason": "rejected", "code": "not_found"}
+		if base_version != r["version"]:
+			return {"ok": false, "reason": "conflict", "server": _row(w, r)}
+		files.records.erase(w)
+		return {"ok": true, "version": base_version + 1}
+
+	func drop_all() -> void:
+		dropped += 1
+
+
+## A ring: a root and a lock flag.
+class Ring:
+	extends RefCounted
+	var root := Crypto.new().generate_random_bytes(32)
+	var locked := false
+
+
+func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
+	_guarded(t)
+	_root_replaced(t)
+	await _server_mode(t)
+	await _e2e(t)
+	await _format_and_binding(t)
+	await _conflicts(t)
+	await _delete(t)
+	await _pause_cancel(t)
+	await _stale_off_thread(t)
+	await _locked(t)
+	await _chunked(t)
+	await _unsupported(t)
+	await _purge_order(t)
+	await _records_binding(t)
+	await _host_record_keys(t)
+	await _through_the_sdk(t)
+	await _off_thread(t)
+	await PKeyTestFixtures.frames(10)
+	return true
+
+
+# ── rigs ────────────────────────────────────────────────────────────────────────────────────────
+
+func _noise(n: int) -> PackedByteArray:
+	return Crypto.new().generate_random_bytes(n)
+
+
+## A saves rig: the files, the records, the ring, the events, and PKeySaves over them.
+func _rig(e2e_mode: bool, over := {}) -> Dictionary:
+	var files := FakeFiles.new()
+	var records := FakeRecords.new(files)
+	var ring := Ring.new()
+	records.e2e_mode = e2e_mode
+	records.ring = ring
+	var journal := Journal.Memory.new()
+	var engine := Transfer.new(files, journal)
+	engine.sleep = func(_s: float) -> void: await (Engine.get_main_loop() as SceneTree).process_frame
+	var events: Array = []
+	var deps := {
+		"records": records,
+		"engine": engine,
+		"file_codec": func() -> Variant:
+			if ring.locked:
+				return null
+			if not e2e_mode:
+				return Codec.Server.new()
+			return Codec.Guarded.new(Codec.E2e.new(ring.root, "saves"), func() -> bool: return ring.locked),
+		"cache": func() -> Variant: return null,
+		"delta": false,
+		"emit": func(e: Dictionary) -> void: events.append(e),
+		"supported": func() -> bool: return true,
+	}
+	deps.merge(over, true)
+	var saves := PKeySaves.new(deps)
+	return {"files": files, "records": records, "ring": ring, "journal": journal, "engine": engine, "events": events, "saves": saves}
+
+
+func _types(events: Array) -> Array:
+	var out := []
+	for e: Dictionary in events:
+		out.append(e["type"])
+	return out
+
+
+func _write(rig: Dictionary, id: String, data: PackedByteArray, meta := {}, opts := {}) -> Dictionary:
+	var h: PKeyTransfer = rig["saves"].write(id, data, meta, opts)
+	return await h.wait()
+
+
+# ── the guarded codec ───────────────────────────────────────────────────────────────────────────
+
+func _guarded(t: PKeyTestContext) -> void:
+	var ring := Ring.new()
+	var g := Codec.Guarded.new(Codec.E2e.new(ring.root, "saves"), func() -> bool: return ring.locked)
+	var plain := _noise(1000)
+	var id := g.chunk_id(plain)
+	var obj := g.seal_chunk(id, plain)
+	var whole := g.seal_whole(plain)
+	t.check("guarded: while the ring is held it seals and opens", not id.is_empty() and not obj.is_empty() and g.open_chunk(id, obj)["ok"] and g.open_whole(whole)["ok"] and not g.tripped)
+	ring.locked = true
+	var refused: Array = [g.chunk_id(plain).is_empty(), g.seal_chunk(id, plain).is_empty(), g.seal_manifest(plain).is_empty(), g.seal_whole(plain).is_empty()]
+	t.check("guarded: once the ring locks, every seal and id answers nothing", not refused.has(false), str(refused))
+	t.check("guarded: once the ring locks, every open refuses", g.open_chunk(id, obj) == {"ok": false, "reason": "locked"} and g.open_whole(whole) == {"ok": false, "reason": "locked"} and g.open_manifest(whole) == {"ok": false, "reason": "locked"})
+	t.check("guarded: sizes are refused too, and the lock is remembered", g.stored_size(10) == -1 and g.plain_size(10) == -1 and g.tripped and g.locked())
+	ring.locked = false
+	t.check("guarded: a ring that unlocks again does not revive a codec that saw the lock (a new codec is made per operation)", g.chunk_id(plain).is_empty())
+	var s := Codec.Guarded.new(Codec.E2e.new(ring.root, "saves"), func() -> bool: return ring.locked)
+	t.check("guarded: its text hides the key", not str(s).contains(Marshalls.raw_to_base64(ring.root)))
+
+
+## A real ring's root replaced under a codec made for the old one (an accepted, adopted or recovered root,
+## with no lock in between): the codec fails closed, like a lock.
+func _root_replaced(t: PKeyTestContext) -> void:
+	var down := func(_m: String, _p: String, _b: Variant) -> PKeyResult: return PKeyResult.failure(&"network-error", "down")
+	var ring := PKeySyncRing.new(PRODUCT, "dev_a", down, null, PKeySyncRingVault.new(PRODUCT, "user://pkey", true))
+	var port := PKeySyncHostCodec.new(ring)
+	var root_a := _noise(32)
+	var root_b := _noise(32)
+	var ring_id := "rg_" + "A".repeat(22)
+	ring._memory.set_held(PKeySyncRing._Held.new(ring_id, 1, PKeySyncHkdf.derive_kid(root_a), root_a), [])
+	var codec = Codec.e2e_for(port, "saves")
+	var plain := _noise(500)
+	var id: PackedByteArray = codec.chunk_id(plain)
+	var sealed: PackedByteArray = codec.seal_whole(plain)
+	t.check("replaced root: while the root is the one it was made for, the codec works", codec != null and not id.is_empty() and not sealed.is_empty() and codec.open_whole(sealed)["ok"] and not codec.tripped)
+	var gen := port.root_generation()
+	ring._memory.set_held(PKeySyncRing._Held.new(ring_id, 2, PKeySyncHkdf.derive_kid(root_b), root_b))
+	t.check("replaced root: every replacement moves the generation", port.root_generation() == gen + 1 and not port.locked())
+	var refused := [codec.chunk_id(plain).is_empty(), codec.seal_chunk(id, plain).is_empty(), codec.seal_manifest(plain).is_empty(), codec.seal_whole(plain).is_empty()]
+	t.check("replaced root: the old codec seals nothing (no lock was taken)", not refused.has(false), str(refused))
+	t.check("replaced root: it opens nothing, and the cause is the lock the saves layer reports", codec.open_whole(sealed) == {"ok": false, "reason": "locked"} and codec.open_chunk(id, sealed) == {"ok": false, "reason": "locked"} and codec.tripped)
+	var fresh = Codec.e2e_for(port, "saves")
+	t.check("replaced root: a codec made now is for the new root and works", fresh != null and not fresh.seal_whole(plain).is_empty() and not fresh.tripped)
+	ring.lock()
+	t.check("replaced root: a lock still stales it, and a locked ring makes no codec", fresh.seal_whole(plain).is_empty() and fresh.tripped and Codec.e2e_for(port, "saves") == null)
+
+
+# ── server mode ─────────────────────────────────────────────────────────────────────────────────
+
+func _server_mode(t: PKeyTestContext) -> void:
+	var rig = _rig(false)
+	var saves: PKeySaves = rig["saves"]
+	var data := _noise(5000)
+	var out = await _write(rig, "slot1", data, {"playtime": 12, "chapter": "one"})
+	t.check("write: done with the version the metadata set answered", out["state"] == "done" and out["id"] == "slot1" and out["version"] == 2, str(out))
+	t.check("write: the Worker holds the plaintext file in server mode", rig["files"].puts.size() == 1 and rig["files"].puts[0] == data)
+	var listed = await saves.list()
+	t.check("list: the save with its metadata and file", listed.ok and listed.detail.size() == 1 and listed.detail[0]["id"] == "slot1" and listed.detail[0]["metadata"] == {"playtime": 12, "chapter": "one"} and listed.detail[0]["file"]["size"] == 5000 and not listed.detail[0]["newer_format"], str(listed.detail))
+	var read = await saves.read("slot1")
+	t.check("read: the bytes and the metadata", read.ok and read.detail["bytes"] == data and read.detail["metadata"]["chapter"] == "one" and read.detail["file"]["format"] == "whole", str(read.detail.get("file")))
+	var types := _types(rig["events"])
+	t.check("events: progress then done for the write, progress then done for the read", types.has("transferProgress") and types.count("transferDone") == 2 and not types.has("transferFailed"), str(types))
+	var ids := []
+	for e: Dictionary in rig["events"]:
+		ids.append(e["id"])
+	t.check("events: the write's id is saves:<id>, the read's saves:read:<id>", ids.has("saves:slot1") and ids.has("saves:read:slot1"))
+	t.check("transfers: empty once settled", saves.transfers().is_empty())
+	var again = await _write(rig, "slot1", _noise(300), {"playtime": 13})
+	t.check("write: a rewrite uses the record's version and keeps one slot", again["state"] == "done" and (await saves.list()).detail.size() == 1 and again["version"] == 4, str(again))
+	var missing = await saves.read("nope")
+	t.check("read: a save that does not exist is not-found", not missing.ok and missing.detail["reason"] == "not-found")
+	var bad = await _write(rig, "bad id!", data)
+	t.check("write: an id that is not a key is invalid-save", bad["state"] == "failed" and bad["error"]["code"] == "invalid-save")
+	var reserved = await _write(rig, "r1", data, {"$file": {}})
+	t.check("write: the reserved $file key is refused", reserved["state"] == "failed" and reserved["error"]["code"] == "invalid-save" and reserved["error"]["detail"] == "reserved-key")
+	var tiny = await _write(rig, "r1", PackedByteArray([1, 2, 3]), {}, {})
+	t.check("write: a tiny save is fine", tiny["state"] == "done")
+	var capped = _rig(false, {"max_bytes": 100})
+	var over = await _write(capped, "r1", _noise(101))
+	t.check("write: over max_bytes is too-large, nothing sent", over["state"] == "failed" and over["error"]["code"] == "too-large" and capped["files"].calls.is_empty())
+	var empty = await _write(capped, "r1", PackedByteArray())
+	t.check("write: an empty save is invalid-save", empty["state"] == "failed" and empty["error"]["code"] == "invalid-save")
+	var failed_events := _types(capped["events"])
+	t.check("events: a failed write is transferFailed with its code", failed_events == ["transferFailed", "transferFailed"] and capped["events"][0]["code"] == "too-large", str(capped["events"]))
+	# the 16-slot cap
+	var full = _rig(false)
+	for i in 16:
+		await _write(full, "s%d" % i, _noise(10))
+	var seventeenth = await _write(full, "s16", _noise(10))
+	t.check("write: a 17th save is slots-full", seventeenth["state"] == "failed" and seventeenth["error"]["code"] == "slots-full")
+	var existing = await _write(full, "s3", _noise(10))
+	t.check("write: an existing save of 16 is still writable", existing["state"] == "done")
+
+
+# ── end-to-end mode ─────────────────────────────────────────────────────────────────────────────
+
+func _e2e(t: PKeyTestContext) -> void:
+	var rig = _rig(true)
+	var saves: PKeySaves = rig["saves"]
+	var marker := "MARKER-plaintext-9f3a".to_utf8_buffer()
+	var data := marker + _noise(2000)
+	var out = await _write(rig, "slot1", data, {"progress": 0.5})
+	t.check("e2e write: done", out["state"] == "done", str(out))
+	var stored: PackedByteArray = rig["files"].puts[0]
+	var sealed_ok := stored != data and stored.size() == PKeySyncFileStream.sealed_size(data.size())
+	var leaks := false
+	for i in range(0, stored.size() - marker.size()):
+		if stored.slice(i, i + marker.size()) == marker:
+			leaks = true
+			break
+	t.check("e2e write: the Worker holds ciphertext of the sealed size, not the plaintext", sealed_ok and not leaks)
+	var wire = rig["records"].wire_id("slot1")
+	var value: Dictionary = rig["files"].records[wire]["value"]
+	t.check("e2e write: the metadata carries the $file binding of the stored file", value.has("$file") and value["$file"]["sha256"] == rig["files"].records[wire]["file"]["sha256"] and value["$file"]["size"] == stored.size() and value["$file"]["format"] == "whole", str(value))
+	t.check("e2e write: the id travels blinded", wire.begins_with("x:") and not rig["files"].records.has("slot1"))
+	var listed = await saves.list()
+	t.check("e2e list: the metadata without the binding, the file pointer", listed.ok and listed.detail[0]["metadata"] == {"progress": 0.5} and listed.detail[0]["file"] != null, str(listed.detail))
+	var read = await saves.read("slot1")
+	t.check("e2e read: the plaintext back", read.ok and read.detail["bytes"] == data)
+	# a Worker that swaps the files of two slots is caught by the binding
+	await _write(rig, "slot2", _noise(500), {"n": 2})
+	var w1 = rig["records"].wire_id("slot1")
+	var w2 = rig["records"].wire_id("slot2")
+	var swap: Variant = rig["files"].records[w1]["revs"]
+	rig["files"].records[w1]["revs"] = rig["files"].records[w2]["revs"]
+	rig["files"].records[w1]["file"] = rig["files"].records[w2]["file"]
+	var swapped = await saves.read("slot1")
+	t.check("e2e read: a file swapped under another slot's metadata is sync-file-invalid", not swapped.ok and swapped.code == PKeyConstants.ErrorCode.SYNC_FILE_INVALID, str(swapped.detail))
+	var swapped_list = await saves.list()
+	var s1: Dictionary = {}
+	for s: Dictionary in swapped_list.detail:
+		if s["id"] == "slot1":
+			s1 = s
+	t.check("e2e list: the swapped file is not shown as the save's", s1.get("file") == null)
+	rig["files"].records[w1]["revs"] = swap
+	# a malformed binding is not an absent one
+	rig["files"].records[w1]["value"]["$file"] = {"sha256": "nothex", "size": 5, "format": "whole"}
+	var malformed = await saves.read("slot1")
+	t.check("e2e read: a malformed binding is sync-file-invalid, not a save with no file", not malformed.ok and malformed.code == PKeyConstants.ErrorCode.SYNC_FILE_INVALID)
+	rig["files"].records[w1]["value"].erase("$file")
+	var none = await saves.read("slot1")
+	t.check("e2e read: no binding means no file, whatever the Worker attaches", none.ok and none.detail["file"] == null and none.detail["bytes"].is_empty())
+	# an older revision named by the binding is found in the kept revisions
+	var rig2 = _rig(true)
+	await _write(rig2, "a", _noise(100), {"v": 1})
+	var wa = rig2["records"].wire_id("a")
+	var first_binding: Dictionary = rig2["files"].records[wa]["value"]["$file"]
+	var first_bytes: PackedByteArray = rig2["files"].records[wa]["revs"][0]["data"]
+	await _write(rig2, "a", _noise(120), {"v": 2})
+	rig2["files"].records[wa]["value"]["$file"] = first_binding
+	var older = await rig2["saves"].read("a")
+	t.check("e2e read: the revision the binding names is read even when it is not the newest", older.ok and older.detail["bytes"].size() == 100 and rig2["files"].calls.has("revisions") and first_bytes.size() == PKeySyncFileStream.sealed_size(100), str(older.detail.get("reason")))
+	var revs = await rig2["saves"].revisions("a")
+	t.check("revisions: newest first", revs.ok and revs.detail.size() == 2 and revs.detail[0]["version"] > revs.detail[1]["version"])
+	var nope = await rig2["saves"].revisions("zzz")
+	t.check("revisions: a save the Worker does not know is not-found", not nope.ok and nope.detail["reason"] == "not-found")
+
+
+func _format_and_binding(t: PKeyTestContext) -> void:
+	var rig = _rig(false, {"format_version": 2})
+	await _write(rig, "old", _noise(50), {"formatVersion": 1})
+	await _write(rig, "new", _noise(50), {"formatVersion": 3})
+	await _write(rig, "none", _noise(50), {})
+	var listed = await rig["saves"].list()
+	var flags := {}
+	for s: Dictionary in listed.detail:
+		flags[s["id"]] = s["newer_format"]
+	t.check("format: only a save above the app's version is newer_format", flags == {"old": false, "new": true, "none": false}, str(flags))
+	var r = await rig["saves"].read("new")
+	t.check("format: read refuses a newer save with its versions, and downloads nothing", not r.ok and r.detail["reason"] == "newer-format" and r.detail["format_version"] == 3 and r.detail["supported"] == 2 and not rig["files"].calls.has("get_file"), str(r.detail))
+	var ok = await rig["saves"].read("old")
+	t.check("format: an older save reads", ok.ok)
+	var off = _rig(false)
+	await _write(off, "new", _noise(50), {"formatVersion": 99})
+	t.check("format: with no app version the check is off", (await off["saves"].read("new")).ok)
+
+
+# ── conflicts and resolve ───────────────────────────────────────────────────────────────────────
+
+func _conflicts(t: PKeyTestContext) -> void:
+	var rig = _rig(false)
+	var saves: PKeySaves = rig["saves"]
+	await _write(rig, "slot1", _noise(100), {"who": "a"})
+	# another device wrote since: this device's explicit base is stale
+	var stale = await _write(rig, "slot1", _noise(100), {"who": "b"}, {"base_version": 1})
+	t.check("conflict: a stale base_version is a conflict outcome, not an error", stale["state"] == "conflict", str(stale))
+	var c: Dictionary = stale["conflict"]
+	t.check("conflict: the local metadata, the server's copy, the slots", c["id"] == "slot1" and c["local"]["metadata"] == {"who": "b"} and c["remote"]["metadata"] == {"who": "a"} and c["server_version"] == 2 and c["both_available"], str(c))
+	var types := _types(rig["events"])
+	t.check("conflict: the transfer ends with transferDone state conflict", types.back() == "transferDone" and rig["events"].back()["state"] == "conflict")
+	var calls_before: int = rig["files"].calls.size()
+	var kept: Dictionary = await saves.resolve(c, "remote", _noise(100)).wait()
+	t.check("resolve remote: writes nothing, keeps the server's copy", kept["state"] == "done" and kept["kept"] == "remote" and kept["version"] == 2 and rig["files"].calls.size() == calls_before and rig["files"].records[rig["records"].wire_id("slot1")]["version"] == 2)
+	var local: Dictionary = await saves.resolve(c, "local", _noise(100)).wait()
+	t.check("resolve local: writes on top of the server's version", local["state"] == "done" and (await saves.read("slot1")).detail["metadata"] == {"who": "b"}, str(local))
+	var both: Dictionary = await saves.resolve(c, "both", _noise(100)).wait()
+	t.check("resolve both: a new save under <id>.copy", both["state"] == "done" and both["copy_id"] == "slot1.copy" and (await saves.list()).detail.size() == 2, str(both))
+	var both2: Dictionary = await saves.resolve(c, "both", _noise(100)).wait()
+	t.check("resolve both again: the next free copy id", both2["copy_id"] == "slot1.copy2")
+	var bad: Dictionary = await saves.resolve(c, "sideways", _noise(100)).wait()
+	t.check("resolve: a keep that is not one is invalid-save", bad["state"] == "failed" and bad["error"]["code"] == "invalid-save")
+	c["both_available"] = false
+	var none: Dictionary = await saves.resolve(c, "both", _noise(100)).wait()
+	t.check("resolve both with no free slot is slots-full", none["state"] == "failed" and none["error"]["code"] == "slots-full")
+	# a conflict from the metadata set (not the file begin)
+	var raced = _rig(false)
+	await _write(raced, "s", _noise(30), {"n": 1})
+	# bump the record's version behind the metadata set: finalize lands, then the set sees a newer record
+	raced["records"].before_set = func() -> void:
+		raced["files"].records[raced["records"].wire_id("s")]["version"] += 5
+	var race: Dictionary = await _write(raced, "s", _noise(30), {"n": 2})
+	t.check("conflict: a metadata set that finds a newer record is a conflict with the server's copy", race["state"] == "conflict" and race["conflict"]["remote"] != null, str(race))
+	# a rejected set
+	var rej = _rig(false)
+	rej["records"].rejected_code = "quota_exceeded"
+	var denied = await _write(rej, "s", _noise(30))
+	t.check("rejected: the code travels, no conflict", denied["state"] == "failed" and denied["error"]["code"] == "rejected" and denied["error"]["detail"] == "quota_exceeded", str(denied))
+
+
+func _delete(t: PKeyTestContext) -> void:
+	var rig = _rig(false)
+	var saves: PKeySaves = rig["saves"]
+	await _write(rig, "slot1", _noise(50))
+	var stale = await saves.delete("slot1", 1)
+	t.check("delete: a stale base is a conflict with the server's copy", not stale.ok and stale.detail["reason"] == "conflict" and stale.detail["server"]["id"] == "slot1", str(stale.detail))
+	var gone = await saves.delete("nope")
+	t.check("delete: a save that does not exist is rejected not_found", not gone.ok and gone.detail["reason"] == "rejected" and gone.detail["wire_code"] == "not_found")
+	var ok = await saves.delete("slot1")
+	t.check("delete: with no base, the current version", ok.ok and (await saves.list()).detail.is_empty(), str(ok.detail))
+	var bad = await saves.delete("bad id!")
+	t.check("delete: an id that is not a key is invalid", not bad.ok and bad.code == PKeyConstants.ErrorCode.INVALID_ARGUMENT)
+
+
+# ── pause, resume, cancel ───────────────────────────────────────────────────────────────────────
+
+func _pause_cancel(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	# cancel while the metadata write waits: the waiting write settles as cancelled
+	var rig = _rig(false)
+	rig["records"].hold_set = true
+	var h: PKeyTransfer = rig["saves"].write("slot1", _noise(100), {})
+	var waited := 0
+	while rig["records"].set_calls == 0 and waited < 600:
+		await tree.process_frame
+		waited += 1
+	t.check("cancel: the write reached the metadata set and waits", rig["records"].set_calls == 1 and h.outcome == null and rig["saves"].transfers().size() == 1, str(h.state))
+	await h.cancel()
+	t.check("cancel: the waiting write settles as cancelled, not failed", h.outcome != null and h.outcome["state"] == "cancelled" and h.state == "cancelled")
+	t.check("cancel: transferDone with state cancelled, no transferFailed", _types(rig["events"]).has("transferDone") and rig["events"].back()["state"] == "cancelled" and not _types(rig["events"]).has("transferFailed"))
+	t.check("cancel: the handle leaves transfers()", rig["saves"].transfers().is_empty())
+
+	# pause between steps, resume carries on
+	var rig2 = _rig(false)
+	var gate := [false]
+	rig2["files"].before_put = func() -> void:
+		while not gate[0]:
+			await tree.process_frame
+	var p: PKeyTransfer = rig2["saves"].write("slot1", _noise(100), {"k": 1})
+	var spins := 0
+	while not rig2["files"].calls.has("put") and spins < 600:
+		await tree.process_frame
+		spins += 1
+	p.pause()
+	gate[0] = true
+	spins = 0
+	while p.state != "paused" and spins < 600:
+		await tree.process_frame
+		spins += 1
+	t.check("pause: the transfer is paused and still listed", p.state == "paused" and rig2["saves"].transfers().size() == 1 and p.outcome == null, str(p.state))
+	p.resume()
+	var out = await p.wait()
+	t.check("resume: the write carries on to done", out["state"] == "done" and (await rig2["saves"].list()).detail.size() == 1, str(out))
+
+	# cancel in the engine's hands releases the upload
+	var rig3 = _rig(false)
+	var gate3 := [false]
+	rig3["files"].before_put = func() -> void:
+		while not gate3[0]:
+			await tree.process_frame
+	var c: PKeyTransfer = rig3["saves"].write("slot1", _noise(100), {})
+	spins = 0
+	while not rig3["files"].calls.has("put") and spins < 600:
+		await tree.process_frame
+		spins += 1
+	var done := [false]
+	var cancelling := func() -> void:
+		await c.cancel()
+		done[0] = true
+	cancelling.call()
+	gate3[0] = true
+	spins = 0
+	while not done[0] and spins < 600:
+		await tree.process_frame
+		spins += 1
+	t.check("cancel mid-upload: cancelled, the Worker's upload is released", c.outcome != null and c.outcome["state"] == "cancelled" and rig3["files"].aborted.size() == 1, str(c.outcome))
+
+
+# ── cancel is terminal; a result computed off-thread under an old root is thrown away ───────────
+
+func _stale_off_thread(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var gate := [false]
+	# cancel, then pause: cancel still settles
+	var rig = _rig(false)
+	rig["files"].before_put = func() -> void:
+		while not gate[0]:
+			await tree.process_frame
+	var h: PKeyTransfer = rig["saves"].write("a", _noise(100), {})
+	var spins := 0
+	while not rig["files"].calls.has("put") and spins < 600:
+		await tree.process_frame
+		spins += 1
+	var done := [false]
+	var cancelling := func() -> void:
+		await h.cancel()
+		done[0] = true
+	cancelling.call()
+	h.pause()
+	h.resume()
+	gate[0] = true
+	spins = 0
+	while not done[0] and spins < 600:
+		await tree.process_frame
+		spins += 1
+	t.check("cancel then pause: the cancel settles", done[0] and h.outcome["state"] == "cancelled", str(h.outcome))
+
+	# cancel a paused transfer, then resume in the same frame: still cancelled
+	var rig2 = _rig(false)
+	var gate2 := [false]
+	rig2["files"].before_put = func() -> void:
+		while not gate2[0]:
+			await tree.process_frame
+	var p: PKeyTransfer = rig2["saves"].write("a", _noise(100), {})
+	spins = 0
+	while not rig2["files"].calls.has("put") and spins < 600:
+		await tree.process_frame
+		spins += 1
+	p.pause()
+	gate2[0] = true
+	spins = 0
+	while p.state != "paused" and spins < 600:
+		await tree.process_frame
+		spins += 1
+	var done2 := [false]
+	var cancelling2 := func() -> void:
+		await p.cancel()
+		done2[0] = true
+	cancelling2.call()
+	p.resume()
+	spins = 0
+	while not done2[0] and spins < 600:
+		await tree.process_frame
+		spins += 1
+	t.check("cancel of a paused transfer, then resume: cancelled", done2[0] and p.outcome["state"] == "cancelled", str(p.state))
+
+	# purge with a paused transfer returns
+	var rig3 = _rig(false)
+	var gate3 := [false]
+	rig3["files"].before_put = func() -> void:
+		while not gate3[0]:
+			await tree.process_frame
+	var q: PKeyTransfer = rig3["saves"].write("a", _noise(100), {})
+	spins = 0
+	while not rig3["files"].calls.has("put") and spins < 600:
+		await tree.process_frame
+		spins += 1
+	q.pause()
+	gate3[0] = true
+	spins = 0
+	while q.state != "paused" and spins < 600:
+		await tree.process_frame
+		spins += 1
+	await rig3["saves"].purge()
+	t.check("purge with a paused transfer returns and the transfer is cancelled", q.outcome != null and q.outcome["state"] == "cancelled" and rig3["saves"].transfers().is_empty())
+
+	# a seal queued before a lock is discarded
+	var ring := Ring.new()
+	var g := Codec.Guarded.new(Codec.E2e.new(ring.root, "saves"), func() -> bool: return ring.locked)
+	var plain := _noise(200 * 1024)
+	var out := [null]
+	var sealing := func() -> void:
+		out[0] = await Transfer.codec_off(g, "seal_whole", [plain], plain.size(), PackedByteArray())
+	sealing.call()
+	ring.locked = true
+	spins = 0
+	while out[0] == null and spins < 2000:
+		await tree.process_frame
+		spins += 1
+	t.check("seal started before a lock: the result is thrown away and the codec says why", out[0] != null and out[0].is_empty() and g.tripped)
+	var ring2 := Ring.new()
+	var g2 := Codec.Guarded.new(Codec.E2e.new(ring2.root, "saves"), func() -> bool: return ring2.locked)
+	var sealed: PackedByteArray = g2.seal_whole(plain)
+	var res := [null]
+	var opening := func() -> void:
+		res[0] = await Transfer.codec_off(g2, "open_whole", [sealed], sealed.size(), {"ok": false, "reason": "locked"})
+	opening.call()
+	ring2.locked = true
+	spins = 0
+	while res[0] == null and spins < 2000:
+		await tree.process_frame
+		spins += 1
+	t.check("open started before a lock: nothing is handed on", res[0] == {"ok": false, "reason": "locked"})
+	# the sealed cache is keyed by the root generation
+	t.check("sealed cache: a different generation is not reused", PKeySaves.sealed_gen_of([PackedByteArray([1]), 3]) == 3 and PKeySaves.sealed_gen_of([null]) == null)
+
+
+# ── locked ──────────────────────────────────────────────────────────────────────────────────────
+
+func _locked(t: PKeyTestContext) -> void:
+	var rig = _rig(true)
+	await _write(rig, "slot1", _noise(200), {"a": 1})
+	rig["ring"].locked = true
+	var listed = await rig["saves"].list()
+	t.check("locked: list is sync-locked", not listed.ok and listed.code == PKeyConstants.ErrorCode.SYNC_LOCKED)
+	var read = await rig["saves"].read("slot1")
+	t.check("locked: read is sync-locked", not read.ok and read.code == PKeyConstants.ErrorCode.SYNC_LOCKED)
+	var w = await _write(rig, "slot2", _noise(50))
+	t.check("locked: a write is failed sync-locked, nothing sent", w["state"] == "failed" and w["error"]["code"] == "sync-locked" and rig["files"].puts.size() == 1, str(w))
+	var d = await rig["saves"].delete("slot1", 2)
+	t.check("locked: delete is sync-locked", not d.ok and d.code == PKeyConstants.ErrorCode.SYNC_LOCKED)
+
+	# the ring locks in the middle of a transfer: nothing more is sealed or sent, and the error is sync-locked
+	var mid = _rig(true)
+	var inner: Callable = mid["saves"]._d["file_codec"]
+	mid["saves"]._d["file_codec"] = func() -> Variant:
+		var c: Variant = inner.call()
+		mid["ring"].locked = true
+		return c
+	var out = await _write(mid, "slot1", _noise(300))
+	t.check("locked mid-transfer: the write fails sync-locked, nothing is uploaded and the metadata is never set", out["state"] == "failed" and out["error"]["code"] == "sync-locked" and mid["records"].set_calls == 0 and mid["files"].calls.is_empty(), str(out))
+	# the seal itself: a ring that locks after the codec was made gives nothing to upload
+	var sealing = _rig(true)
+	var guarded = sealing["saves"]._d["file_codec"].call()
+	sealing["ring"].locked = true
+	var nothing: PackedByteArray = await sealing["saves"]._seal(guarded, _noise(100))
+	t.check("locked: a whole-file seal after the lock is empty and the codec says why", nothing.is_empty() and guarded.tripped)
+
+	# a read whose ring locks while the file is fetched
+	var rd = _rig(true)
+	await _write(rd, "slot1", _noise(300))
+	rd["files"].before_get = func() -> void:
+		rd["ring"].locked = true
+	var during = await rd["saves"].read("slot1")
+	t.check("locked mid-read: the open refuses and the read is sync-locked, not a file error", not during.ok and during.code == PKeyConstants.ErrorCode.SYNC_LOCKED, str(during.detail))
+	var failed := _types(rd["events"])
+	t.check("locked mid-read: transferFailed carries sync-locked", failed.has("transferFailed") and rd["events"].back()["code"] == "sync-locked", str(rd["events"].back()))
+
+
+# ── delta files ─────────────────────────────────────────────────────────────────────────────────
+
+func _chunked(t: PKeyTestContext) -> void:
+	var rig = _rig(false, {"delta": true})
+	var data := _noise(MIB + 300000)
+	var out = await _write(rig, "big", data, {"chapter": "x"})
+	t.check("delta: a save over 1 MiB is sent as chunks", out["state"] == "done" and out["file"]["format"] == "chunks", str(out))
+	var r = await rig["saves"].read("big")
+	t.check("delta: it reads back byte for byte", r.ok and r.detail["bytes"] == data and r.detail["file"]["format"] == "chunks")
+
+
+# ── unsupported platforms ───────────────────────────────────────────────────────────────────────
+
+func _unsupported(t: PKeyTestContext) -> void:
+	var rig = _rig(false, {"supported": func() -> bool: return false})
+	var saves: PKeySaves = rig["saves"]
+	var results: Array = [await saves.list(), await saves.read("a"), await saves.revisions("a"), await saves.delete("a")]
+	var all := true
+	for r: PKeyResult in results:
+		all = all and not r.ok and r.code == &"unsupported"
+	t.check("unsupported: list, read, revisions and delete answer the typed unsupported refusal", all, str(results[0].detail))
+	var u: PKeyResult = results[0]
+	t.check("unsupported: it names sync.saves and the runtime reason", str(u.detail).contains("sync.saves") and str(u.detail).contains("runtime"), str(u.detail))
+	var h: PKeyTransfer = saves.write("a", _noise(10), {})
+	t.check("unsupported: a write is over at once, failed unsupported, nothing sent", h.outcome != null and h.outcome["state"] == "failed" and h.outcome["error"]["code"] == "unsupported" and rig["files"].calls.is_empty())
+	var res: PKeyTransfer = saves.resolve({"id": "a", "local": {"metadata": {}, "size": 1}, "remote": null, "server_version": 1, "both_available": true}, "local", _noise(10))
+	t.check("unsupported: resolve local too", res.outcome != null and res.outcome["error"]["code"] == "unsupported")
+	t.check("unsupported: it is a state of the runtime, not of a call", PKeySaves.runtime_supported() == not (OS.has_feature("ios") or OS.has_feature("android")))
+	var na: Array = PKeyConstants.capabilities()["sync.saves"]["na"]
+	t.check("unsupported: the capability table says N/A on iOS and Android for sync.saves", na.any(func(n: Dictionary) -> bool: return n["runtime"] == "ios") and na.any(func(n: Dictionary) -> bool: return n["runtime"] == "android"), str(na))
+
+
+# ── sign-out: lock, purge the saves, then remove the pin ────────────────────────────────────────
+
+class OrderRing:
+	extends RefCounted
+	var log: Array
+	var locked := false
+
+	func _init(p_log: Array) -> void:
+		log = p_log
+
+	func lock() -> void:
+		locked = true
+		log.append("lock")
+
+	func forget() -> PKeyResult:
+		log.append("forget")
+		return PKeyResult.success()
+
+
+func _purge_order(t: PKeyTestContext) -> void:
+	var dir := PKeyTestFixtures.scratch_dir("saves_purge")
+	var log: Array = []
+	var rig = _rig(false)
+	var tree := Engine.get_main_loop() as SceneTree
+	# a write waiting on the metadata set, a journal record, and a chunk-cache tree for two people
+	rig["records"].hold_set = true
+	var h: PKeyTransfer = rig["saves"].write("slot1", _noise(100), {})
+	var spins := 0
+	while rig["records"].set_calls == 0 and spins < 600:
+		await tree.process_frame
+		spins += 1
+	var cache_root := dir.path_join(PKeyChunkCache.DIR_NAME)
+	DirAccess.make_dir_recursive_absolute(cache_root.path_join("aaa").path_join("bbb"))
+	var f := FileAccess.open(cache_root.path_join("aaa").path_join("bbb").path_join("x"), FileAccess.WRITE)
+	f.store_string("x")
+	f.close()
+	var journal := Journal.Files.new(dir)
+	journal.put("saves:other", {"id": "saves:other"})
+	rig["saves"]._d["purge_files"] = func() -> void:
+		log.append("purge-files")
+		journal.clear()
+		CloudSync._remove_tree(cache_root)
+	var api := CloudSync.new()
+	api.saves = rig["saves"]
+	api._keyring = OrderRing.new(log)
+	await api._forget()
+	t.check("forget: lock the ring, then purge the saves, then remove the pin", log == ["lock", "purge-files", "forget"], str(log))
+	t.check("forget: the waiting write is settled as dropped and the transfer cancelled", rig["records"].dropped == 1 and h.outcome != null and h.outcome["state"] == "cancelled" and rig["saves"].transfers().is_empty(), str(h.outcome))
+	t.check("forget: the chunk cache tree is gone (every person's)", not DirAccess.dir_exists_absolute(cache_root))
+	t.check("forget: the transfer journal is empty", journal.get_record("saves:other") == null)
+	PKeyTestFixtures.remove_tree(dir)
+
+
+# ── the records binding over a real host ────────────────────────────────────────────────────────
+
+## A codec with a root, no encryption, and a record of what it was asked.
+class SpyCodec:
+	extends CodecPort
+	var pulls: Array = []
+
+	func locked() -> bool:
+		return false
+
+	func attach(_l: Callable) -> Callable:
+		return func() -> void: pass
+
+	func seal_push(body: Dictionary, _routes: Array) -> Dictionary:
+		return {"ok": true, "body": body}
+
+	func open_pull(body: Dictionary, _m: Variant, _a: Variant, _k: Array, record_keys: Array = []) -> Dictionary:
+		pulls.append(record_keys.duplicate(true))
+		var rows: Array = []
+		for c in body.get("changes", []):
+			rows.append({"sealed": false, "seq": c.get("version")} if c.has("record") else {"sealed": true})
+		return {"ok": true, "body": body, "opened": {"changes": rows}}
+
+
+func _make_host(tag: String, handler: Callable, codec: Object = null, encryption := "server") -> Dictionary:
+	var server := PKeyTestFixtures.new_server(handler)
+	var dir := PKeyTestFixtures.scratch_dir("saves_host_" + tag)
+	var host: Node = Host.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(host)
+	var clock := [1760000000000]
+	var deps := {
+		"product": PRODUCT,
+		"state_dir": dir,
+		"sealer": PKeyFakeSealer.new(),
+		"token": func() -> String: return "pkeyt_secret",
+		"session_subject": func() -> Variant: return null,
+		"headers": func(x: Dictionary) -> Dictionary: return x,
+		"url": func(path: String) -> String: return server.base_url() + path,
+		"discovery": func() -> Variant: return null,
+		"fetch_schema": func() -> Variant: return null,
+		"document": func() -> Dictionary: return {"values": {}, "locked": []},
+		"clock": func() -> int: return clock[0],
+	}
+	if codec != null:
+		deps["codec"] = codec
+	host.configure(deps, {"encryption": encryption, "catalog": {"schemaVersion": 1, "entries": []}})
+	return {"host": host, "server": server, "dir": dir}
+
+
+func _free_host(c: Dictionary) -> void:
+	c["host"].close()
+	c["host"].queue_free()
+	c["server"].stop()
+	PKeyTestFixtures.remove_tree(c["dir"])
+
+
+const POINTER := {"version": 3, "size": 5, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "format": "whole"}
+
+
+func _records_binding(t: PKeyTestContext) -> void:
+	# The Worker: slot1 at version 3 with a file, a push answers per mutation.
+	var state := {"slot1": 3}
+	var pushes: Array = []
+	var handler := func(req: Dictionary) -> Dictionary:
+		if req["method"] == "GET":
+			return {"status": 200, "body": JSON.stringify({"cursor": 1, "changes": [{"record": ["saves", "slot1"], "version": 3, "value": {"chapter": "one"}, "file": POINTER}, {"record": ["saves", "filesonly"], "version": 1, "file": POINTER}], "tombstones": [], "serverNow": 1760000000000})}
+		var body: Dictionary = JSON.parse_string(req["body"].get_string_from_utf8())
+		pushes.append(body)
+		var results := []
+		for m: Dictionary in body["mutations"]:
+			var id: String = m["target"]["record"][1]
+			var base: Variant = m.get("baseVersion")
+			var create_only: bool = base is String and base == "*"
+			var stale: bool = (create_only and state.has(id)) or (not create_only and (not state.has(id) or int(base) != state[id]))
+			if id == "deny":
+				results.append({"mutationId": m["mutationId"], "status": "rejected", "code": "quota_exceeded"})
+			elif stale:
+				results.append({"mutationId": m["mutationId"], "status": "conflict", "server": {"version": state.get(id, 9), "value": {"chapter": "theirs"}, "file": POINTER}})
+			elif m["op"] == "delete":
+				state.erase(id)
+				results.append({"mutationId": m["mutationId"], "status": "ok", "version": int(base) + 1})
+			else:
+				state[id] = (0 if create_only else int(base)) + 1
+				results.append({"mutationId": m["mutationId"], "status": "ok", "version": state[id]})
+		return {"status": 200, "body": JSON.stringify({"results": results, "cursor": 2, "serverNow": 1760000000000})}
+	var c = _make_host("records", handler)
+	var host: Node = c["host"]
+	await host.start()
+	host.sign_in("sub_a")
+	host.touch()
+	await host.idle()
+	var records := SavesRecords.new(host, func(_c: String, id: String) -> String: return id)
+	var rows: Array = records.list()
+	var ids := []
+	for r: Dictionary in rows:
+		ids.append(r["id"])
+	t.check("records: the machine's rows, by id, a file-only row with an empty value", ids == ["filesonly", "slot1"] and rows[0]["value"] == {} and rows[0]["file"]["version"] == 3 and rows[1]["value"] == {"chapter": "one"} and rows[1]["file"]["format"] == "whole", str(rows))
+	t.check("records: get finds one, or null", records.get_record("slot1")["version"] == 3 and records.get_record("zzz") == null)
+	t.check("records: wire_id is the id in server mode", records.wire_id("slot1") == "slot1" and not records.e2e())
+	var ok: Dictionary = await records.set_record("slot1", {"chapter": "two"}, 3)
+	t.check("records: a write at the exact version is ok with the version the Worker answered", ok == {"ok": true, "version": 4}, str(ok))
+	var sent: Dictionary = pushes.back()["mutations"][0]
+	t.check("records: it went as an exact set, with no journal-only member", sent["op"] == "set" and sent["baseVersion"] == 3 and not sent.has("ticket"), str(sent))
+	t.check("records: the machine's row is the acknowledged one, its file kept", host.machine().records("saves")[1]["version"] == 4 and host.machine().records("saves")[1]["file"]["version"] == 3)
+	var stale: Dictionary = await records.set_record("slot1", {"chapter": "three"}, 3)
+	t.check("records: a stale base is a conflict with the server's copy", not stale["ok"] and stale["reason"] == "conflict" and stale["server"]["id"] == "slot1" and stale["server"]["value"] == {"chapter": "theirs"} and stale["server"]["file"]["version"] == 3, str(stale))
+	var denied: Dictionary = await records.set_record("deny", {"a": 1}, "*")
+	t.check("records: a rejection carries its code", denied == {"ok": false, "reason": "rejected", "code": "quota_exceeded"}, str(denied))
+	var created: Dictionary = await records.set_record("fresh", {"a": 1}, "*")
+	t.check("records: create-only with * creates", created["ok"] and created["version"] == 1)
+	var gone: Dictionary = await records.delete_record("fresh", 1)
+	t.check("records: remove_at deletes at the exact version and the row goes", gone["ok"] and records.get_record("fresh") == null, str(gone))
+
+	# a cancel ends the wait; the late answer is ignored
+	var held := [true]
+	c["server"].handler = func(req: Dictionary) -> Dictionary:
+		if req["method"] == "POST" and held[0]:
+			return {"hang": true}
+		return handler.call(req)
+	var cancel := Transfer.Cancel.new()
+	var waiting_result := [null]
+	var runner := func() -> void:
+		waiting_result[0] = await records.set_record("slot9", {"a": 1}, "*", cancel)
+	runner.call()
+	var spins := 0
+	while pushes.size() < 3 and spins < 600:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		spins += 1
+	cancel.cancelled = true
+	spins = 0
+	while waiting_result[0] == null and spins < 600:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		spins += 1
+	t.check("records: a cancel ends the wait as aborted", waiting_result[0] == {"ok": false, "reason": "aborted"}, str(waiting_result[0]))
+	# a sign-out drops a write that is waiting
+	var dropped_result := [null]
+	var runner2 := func() -> void:
+		dropped_result[0] = await records.set_record("slot8", {"a": 1}, "*")
+	runner2.call()
+	spins = 0
+	while host.machine().status()["pending"] < 1 and spins < 600:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		spins += 1
+	host.machine().sign_out(true)
+	host.deliver_events()
+	spins = 0
+	while dropped_result[0] == null and spins < 600:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		spins += 1
+	t.check("records: a sign-out settles a waiting write as rejected signed-out", dropped_result[0] == {"ok": false, "reason": "rejected", "code": "signed-out"}, str(dropped_result[0]))
+	t.check("records: signed out, the rows are empty", records.list().is_empty())
+	var signed_out: Dictionary = await records.set_record("a", {}, "*")
+	t.check("records: a write while signed out is rejected signed-out", signed_out == {"ok": false, "reason": "rejected", "code": "signed-out"}, str(signed_out))
+	# drop_all settles whatever waits
+	host.sign_in("sub_a")
+	var dropped_all := [null]
+	var runner3 := func() -> void:
+		dropped_all[0] = await records.set_record("slot7", {"a": 1}, "*")
+	runner3.call()
+	await (Engine.get_main_loop() as SceneTree).process_frame
+	records.drop_all()
+	spins = 0
+	while dropped_all[0] == null and spins < 600:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		spins += 1
+	t.check("records: drop_all settles a waiting write as dropped", dropped_all[0] == {"ok": false, "reason": "rejected", "code": "signed-out"}, str(dropped_all[0]))
+	held[0] = false
+	_free_host(c)
+
+
+func _host_record_keys(t: PKeyTestContext) -> void:
+	var codec := SpyCodec.new()
+	var handler := func(req: Dictionary) -> Dictionary:
+		return {"status": 200, "body": JSON.stringify({"encryption": "e2e", "cursor": 1, "changes": [{"record": ["saves", "x:blindedid"], "version": 1, "file": POINTER}], "tombstones": [], "serverNow": 1760000000000})}
+	var c = _make_host("keys", handler, codec, "e2e")
+	var host: Node = c["host"]
+	await host.start()
+	host.sign_in("sub_a")
+	host.touch()
+	await host.idle()
+	var m: Variant = host.machine()
+	m.set_network("offline")
+	m.set_network("online")
+	host.touch()
+	await host.idle()
+	t.check("host: every pull is opened with the records the machine holds", codec.pulls.size() >= 2 and codec.pulls[0] == [] and codec.pulls[codec.pulls.size() - 1] == [["saves", "x:blindedid"]], str(codec.pulls))
+	t.check("host: the saves collection is declared to the machine", m.put_at("saves", "a", {}, "*")["ok"] and not m.put_at("other", "a", {}, "*")["ok"] and m.put_at("other", "a", {}, "*")["error"] == "collection-unknown")
+	_free_host(c)
+
+
+# ── the whole stack: PolarisKey.cloud_sync.saves over a loopback Worker ─────────────────────────
+
+## One record's file and metadata, served by a Worker that speaks the sync and the file routes.
+class Worker:
+	extends RefCounted
+	var version := 0
+	var value: Variant = null
+	var file: Variant = null
+	var data := PackedByteArray()
+	var upload := {}
+	var paths: Array = []
+
+	func handle(req: Dictionary) -> Dictionary:
+		var path: String = req["path"]
+		paths.append("%s %s" % [req["method"], path])
+		var base := "/diceroll/sync/files/saves/slot1"
+		if path.begins_with("/diceroll/sync?"):
+			var changes := []
+			if version > 0:
+				changes.append({"record": ["saves", "slot1"], "version": version, "value": value, "file": file})
+			return {"status": 200, "body": JSON.stringify({"cursor": version + 1, "changes": changes, "tombstones": [], "serverNow": 1760000000000})}
+		if path == "/diceroll/sync/ops":
+			var body: Dictionary = JSON.parse_string(req["body"].get_string_from_utf8())
+			var results := []
+			for m: Dictionary in body["mutations"]:
+				if int(m["baseVersion"]) != version:
+					results.append({"mutationId": m["mutationId"], "status": "conflict", "server": {"version": version, "value": value, "file": file}})
+				else:
+					version += 1
+					value = m.get("value")
+					results.append({"mutationId": m["mutationId"], "status": "ok", "version": version})
+			return {"status": 200, "body": JSON.stringify({"results": results, "cursor": version + 1, "serverNow": 1760000000000})}
+		if path == base + "/begin":
+			var b: Dictionary = JSON.parse_string(req["body"].get_string_from_utf8())
+			var want: Variant = b.get("baseVersion")
+			if (want is String and version != 0) or (not (want is String) and int(want) != version):
+				return {"status": 409, "headers": {"content-type": "application/json"}, "body": JSON.stringify({"error": {"code": "revision_conflict"}, "server": {"version": version}})}
+			upload = {"size": b["size"], "sha256": b["sha256"], "format": b["format"]}
+			return {"status": 200, "headers": {"content-type": "application/json"}, "body": JSON.stringify({"uploadId": "up1", "mode": "single", "expiresAt": 1760086400000})}
+		if path == base + "/upload/up1":
+			data = req["body"]
+			return {"status": 204}
+		if path == base + "/finalize":
+			version += 1
+			file = {"version": version, "size": upload["size"], "sha256": upload["sha256"], "format": upload["format"]}
+			return {"status": 200, "headers": {"content-type": "application/json"}, "body": JSON.stringify(file)}
+		if path.begins_with(base) and req["method"] == "GET":
+			var rng: String = req["headers"].get("range", "")
+			var from := 0
+			var to := data.size()
+			if rng.begins_with("bytes="):
+				var parts := rng.substr(6).split("-")
+				from = int(parts[0])
+				to = mini(data.size(), int(parts[1]) + 1)
+			return {"status": 206, "headers": {"content-range": "bytes %d-%d/%d" % [from, to - 1, data.size()], "etag": "\"e\""}, "body": data.slice(from, to)}
+		return {"status": 404}
+
+
+func _through_the_sdk(t: PKeyTestContext) -> void:
+	var worker := Worker.new()
+	var server := PKeyTestFixtures.new_server(worker.handle)
+	var dir := PKeyTestFixtures.scratch_dir("saves_sdk")
+	var o := PKeyOptions.new()
+	o.product_slug = PRODUCT
+	o.version = "1.0.0"
+	o.base_url = server.base_url()
+	o.store = PKeyMemoryStore.new("", "pkeyt_cached")
+	o.expected_services = PackedStringArray(["license", "config", "sync"])
+	o.build_stamp_path = ""
+	o.persist_settings = false
+	o.store_root = dir
+	o.cloud_sync_encryption = "server"
+	o.cloud_sync_saves_delta = false
+	o.cloud_sync_save_format_version = 2
+	var sdk = PKeyTestFixtures.new_sdk()
+	var events: Array = []
+	sdk.event.connect(func(kind: String, data: Dictionary) -> void:
+		if kind == "cloudSync":
+			events.append(data))
+	t.check("sdk: configure keeps the saves options", sdk.configure(o).ok)
+	await sdk.start()
+	var saves: PKeySaves = sdk.cloud_sync.saves
+	t.check("sdk: cloud_sync.saves is a PKeySaves and transfers() starts empty", saves != null and sdk.cloud_sync.transfers().is_empty())
+	sdk.core.cache.set_subject("ps_a")
+	sdk.cloud_sync.on_identity("signedIn", "ps_a", "")
+	await sdk.cloud_sync._drain()
+	await sdk.cloud_sync.host.idle()
+	var data := _noise(3000)
+	var h: PKeyTransfer = saves.write("slot1", data, {"chapter": "two", "formatVersion": 1})
+	t.check("sdk: the handle is listed while it runs", sdk.cloud_sync.transfers().size() == 1 and sdk.cloud_sync.transfers()[0] == h or h.outcome != null)
+	var out := await h.wait()
+	t.check("sdk: the write is done at the record version the Worker answered", out["state"] == "done" and out["version"] == 2 and Types.json_equal(worker.value, {"chapter": "two", "formatVersion": 1}) and worker.data == data, "%s | %s | %s" % [str(out), str(worker.value), worker.data == data])
+	# The acknowledged row has no file pointer until the next pull names it (it keeps only the prior row's).
+	var before_pull = await saves.list()
+	t.check("sdk: the acknowledged row is listed at once, its file named by the next pull", before_pull.ok and before_pull.detail.size() == 1 and before_pull.detail[0]["file"] == null)
+	var machine = sdk.cloud_sync.host.machine()
+	machine.set_network("offline")
+	machine.set_network("online")
+	sdk.cloud_sync.host.touch()
+	await sdk.cloud_sync.host.idle()
+	var listed = await saves.list()
+	t.check("sdk: list shows the save from the machine's rows", listed.ok and listed.detail.size() == 1 and listed.detail[0]["metadata"]["chapter"] == "two" and listed.detail[0]["file"] != null and listed.detail[0]["file"]["size"] == 3000 and not listed.detail[0]["newer_format"], "%s | %s | %s" % [str(listed.detail), str(sdk.cloud_sync.host.machine().records("saves")), str(worker.paths)])
+	var read = await saves.read("slot1")
+	t.check("sdk: read downloads through the file transport", read.ok and read.detail["bytes"] == data, str(read.detail.get("reason")))
+	var stale = await saves.write("slot1", _noise(10), {"chapter": "stale"}, {"base_version": 1}).wait()
+	t.check("sdk: a stale base is a conflict outcome with the server's copy", stale["state"] == "conflict" and stale["conflict"]["remote"]["metadata"]["chapter"] == "two", str(stale))
+	var types := _types(events)
+	t.check("sdk: the transfer events reach the cloudSync stream", types.has("transferProgress") and types.has("transferDone") and events.back()["state"] == "conflict", str(types))
+	t.check("sdk: every file request stayed on the product's file routes", worker.paths.all(func(p: String) -> bool: return p.contains("/diceroll/sync") or p == "GET /diceroll/config/schema"), str(worker.paths))
+	t.check("sdk: no timeout, no leftover transfer", sdk.cloud_sync.transfers().is_empty())
+	sdk.cloud_sync.close()
+	sdk.queue_free()
+	server.stop()
+	PKeyTestFixtures.remove_tree(dir)
+
+
+# ── off the main thread ─────────────────────────────────────────────────────────────────────────
+
+func _off_thread(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var before := Engine.get_process_frames()
+	var ring := Ring.new()
+	var codec := Codec.Guarded.new(Codec.E2e.new(ring.root, "saves"), func() -> bool: return ring.locked)
+	var plain := _noise(512 * 1024)
+	var sealed: PackedByteArray = await Transfer.off_thread(func() -> PackedByteArray: return codec.seal_whole(plain), plain.size())
+	var frames := Engine.get_process_frames() - before
+	t.check("off_thread: a large seal runs while the game keeps drawing frames", frames > 1 and not sealed.is_empty(), "%d frames" % frames)
+	var opened: Dictionary = await Transfer.off_thread(func() -> Dictionary: return codec.open_whole(sealed), sealed.size())
+	t.check("off_thread: the open is the same bytes back", opened["ok"] and opened["plain"] == plain)
+	var small: PackedByteArray = await Transfer.off_thread(func() -> PackedByteArray: return PackedByteArray([1]), 10)
+	t.check("off_thread: a small job runs inline", small == PackedByteArray([1]))
+	await tree.process_frame

@@ -82,8 +82,12 @@ class _Memory extends RefCounted:
 	var held: _Held = null
 	var others: Array = []
 	var listeners: Array[Callable] = []
+	## Bumped every time the held root is set, replaced or dropped. A file codec made for one root asks it
+	## again before each use and fails closed (sync-locked) once it is not the one it was made at.
+	var generation := 0
 
 	func set_held(h: _Held, p_others: Variant = null) -> void:
+		generation += 1
 		held = h
 		if p_others != null:
 			others = p_others
@@ -131,6 +135,18 @@ class Codec extends RefCounted:
 		if _m.held == null:
 			return ""
 		return PKeySyncBlind.blind(_m.held.root, kind, ctx, name)
+
+	## Counts every change of the held root (a lock, an unlock, an accepted or adopted or recovered root).
+	func generation() -> int:
+		return _m.generation
+
+	## Hands the current root to `fn` (a Callable(root) -> Variant) and answers what it returns; null while
+	## locked. The file codec is built this way: the root stays inside objects the caller drops with the
+	## operation, and each of them asks `locked()` again before it uses it.
+	func with_root(fn: Callable) -> Variant:
+		if _m.held == null:
+			return null
+		return fn.call(_m.held.root)
 
 	func _try(envelope: PackedByteArray, attempt: Callable) -> Dictionary:
 		if _m.held == null:

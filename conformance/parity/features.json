@@ -704,7 +704,18 @@
           "wp": "U-10"
         }
       ],
-      "allowedNa": []
+      "allowedNa": [
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "Godot's GDScript AES-GCM lane seals about a MiB a second; the native lane (CC-14b) lifts it."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "Godot's GDScript AES-GCM lane seals about a MiB a second; the native lane (CC-14b) lifts it."
+        }
+      ]
     },
     {
       "id": "sync.keyring",
