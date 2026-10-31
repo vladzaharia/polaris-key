@@ -157,3 +157,79 @@ def test_a_corrupt_index_is_dropped_not_trusted(tmp_path: Path) -> None:
     assert s.partials(KEY) == []
     lst: List[Any] = os.listdir(d)
     assert "index.json" in lst
+
+
+def _usage(monkeypatch: pytest.MonkeyPatch, free: int) -> None:
+    import shutil
+    from collections import namedtuple
+
+    U = namedtuple("U", "total used free")
+    monkeypatch.setattr(shutil, "disk_usage", lambda p: U(10**12, 0, free))
+
+
+def test_accepted_sizes_are_reserved_and_released(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from polaris_key.connect.transfer_store import FREE_RESERVE_BYTES, StoreRefused
+
+    _usage(monkeypatch, FREE_RESERVE_BYTES + 150)
+    s = _make(tmp_path, Clock())
+    a, b = object(), object()
+    ra = xfer_partial_path(KEY, ID, SHA)
+    rb = xfer_partial_path(OTHER, ID, SHA)
+    assert s.free() == 150
+    s.apply(KEY, {"create": ra}, META, owner=a)  # promises 100
+    assert s.free() == 50
+    with pytest.raises(StoreRefused):  # four offers that each passed the offer-time check cannot all fit
+        s.apply(OTHER, {"create": rb}, META, owner=b)
+    # a write past the promised size is refused; writes inside it lower the promise
+    with pytest.raises(StoreRefused):
+        s.apply(KEY, {"write": ra, "offset": 0, "data": b"x" * 101}, owner=a)
+    s.apply(KEY, {"write": ra, "offset": 0, "data": b"x" * 60}, owner=a)
+    assert s.free() == 110
+    s.apply(KEY, {"keep": ra}, owner=a)  # the partial stays, the rest of the promise goes
+    assert s.free() == 150
+    s.apply(OTHER, {"create": rb}, META, owner=b)
+
+
+def test_a_session_cannot_touch_the_partial_another_holds(tmp_path: Path) -> None:
+    from polaris_key.connect.transfer_store import StoreRefused
+
+    s = _make(tmp_path, Clock())
+    a, b = object(), object()
+    ref = xfer_partial_path(KEY, ID, SHA)
+    s.apply(KEY, {"create": ref}, META, owner=a)
+    assert s.partials(KEY)[0]["held"] is True
+    s.apply(KEY, {"evict": ref}, owner=b)  # not b's: ignored
+    s.apply(KEY, {"delete": ref}, owner=b)
+    assert (tmp_path / "transfers" / ref).exists()
+    with pytest.raises(StoreRefused):
+        s.apply(KEY, {"write": ref, "offset": 0, "data": b"x"}, owner=b)
+    with pytest.raises(OSError):
+        s.rehash(ref, 0, b)
+    s.release_owner(a)
+    assert "held" not in s.partials(KEY)[0]
+
+
+def test_rehash_of_a_missing_or_short_partial_raises(tmp_path: Path) -> None:
+    s = _make(tmp_path, Clock())
+    ref = _filled(s, b"x" * 10)
+    with pytest.raises(OSError):
+        s.rehash(ref, 50)
+    os.unlink(tmp_path / "transfers" / ref)
+    with pytest.raises(OSError):
+        s.rehash(ref, 5)
+
+
+def test_no_late_effect_recreates_what_a_purge_removed(tmp_path: Path) -> None:
+    from polaris_key.connect.transfer_store import StoreRefused
+
+    s = _make(tmp_path, Clock())
+    e = s.epoch(KEY)
+    ref = xfer_partial_path(KEY, ID, SHA)
+    s.purge(KEY)
+    with pytest.raises(StoreRefused):
+        s.apply(KEY, {"create": ref}, META, epoch=e)
+    e2 = s.epoch(KEY)
+    s.purge()
+    with pytest.raises(StoreRefused):
+        s.apply(KEY, {"create": ref}, META, epoch=e2)
+    s.apply(KEY, {"create": ref}, META, epoch=s.epoch(KEY))  # a session that starts afterwards is fine

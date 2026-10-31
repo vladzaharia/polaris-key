@@ -141,10 +141,24 @@ class XferEndpoint:
             self._machine_thread = threading.get_ident()
             try:
                 out = fn(self._now())
+            except Exception as err:  # noqa: BLE001 - a host port threw inside the machine: end this session only
+                self._machine_thread = None
+                self._abort(err)
+                out = None
             finally:
                 self._machine_thread = None
-            self._enqueue(out, None)
+            if out is not None:
+                self._enqueue(out, None)
         self._drain()
+
+    def _abort(self, err: BaseException) -> None:
+        """A port failed under the machine: tell the host, close the session, keep the partials."""
+        self._failed = True
+        self._queue.append((_ERROR_MARK, err))  # type: ignore[arg-type]
+        self._queue.append((_CLOSE_MARK, "peer_bye"))
+        self._queue.append((self.machine.abandon(self._now()), None))
+        self._dead = True
+        self._disarm()
 
     def _enqueue(self, out: XferOut, offered: Optional[str]) -> None:
         self._queue.append((out, offered))
@@ -174,6 +188,9 @@ class XferEndpoint:
             raise
 
     def _run(self, out: XferOut, offered: Optional[str]) -> None:
+        if out is _ERROR_MARK:
+            self._safe(self._ev.error, offered)  # type: ignore[arg-type]
+            return
         if out is _CLOSE_MARK:
             try:
                 self._close(str(offered))
@@ -284,6 +301,7 @@ class XferEndpoint:
 
 
 _CLOSE_MARK = XferOut()
+_ERROR_MARK = XferOut()
 
 
 def _thread_timer(fn: Callable[[], None], seconds: float) -> Callable[[], None]:

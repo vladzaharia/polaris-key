@@ -438,3 +438,34 @@ def test_arguments_are_checked(world: Any) -> None:
     with pytest.raises(TypeError):
         a.hub.send(a.session, 12)  # type: ignore[arg-type]
     assert hashlib.sha256  # silence the unused import in minimal builds
+
+
+def test_a_resume_whose_file_vanished_starts_over(world: Any) -> None:
+    a, b, clock, tmp, devs = world
+    dest = tmp / "out" / "v.bin"
+    _take(b, dest)
+    data = _content(200_000)
+    h = a.hub.send(a.session, data, chunk=1000)
+    go(a, b, limit=30)
+    a.side.s.close()
+    go(a, b)
+    a2, b2, _ = connect(tmp / "a", tmp / "b", clock, devs)  # lists the kept partial
+    parts = [n for n in os.listdir(tmp / "b" / "transfers") if n != "index.json"]
+    assert len(parts) == 1
+    os.unlink(tmp / "b" / "transfers" / parts[0])  # another session finished or cancelled it
+    _take(b2, dest)
+    h2 = a2.hub.send(a2.session, data, chunk=1000, id=h.id)
+    go(a2, b2)
+    assert h2.wait(0).outcome == "delivered" and dest.read_bytes() == data
+    assert not b2.closed
+
+
+def test_purging_a_peer_stops_a_queued_create(world: Any) -> None:
+    a, b, _, tmp, devs = world
+    _take(b, tmp / "out" / "q.bin")
+    h = a.hub.send(a.session, _content(10_000), chunk=1000)
+    b.hub.forget_peer(devs[0].pub)  # the sender's key leaves the roster before the accept is applied
+    go(a, b)
+    assert h.wait(0).outcome != "delivered"
+    assert not (tmp / "out" / "q.bin").exists()
+    assert not os.path.isdir(tmp / "b" / "transfers") or os.listdir(tmp / "b" / "transfers") == ["index.json"]

@@ -283,6 +283,7 @@ class _Wire:
         self.ref_id: Dict[str, str] = {}
         self.delivered_to: Dict[str, str] = {}
         self.failed_ids: Set[str] = set()
+        self.epoch = 0
         self.lock = threading.Lock()
 
 
@@ -313,7 +314,6 @@ class Transfer:
         self._wires: Dict[int, _Wire] = {}
         self._store: Optional[PartialStore] = None
         self._store_dir: Optional[str] = None
-        self._held: Set[str] = set()
 
     def __repr__(self) -> str:
         return "<Transfer sessions=%d>" % len(self._wires)
@@ -427,7 +427,6 @@ class Transfer:
             store = self._get_store(create=False)
             if store is not None:
                 store.purge()
-            self._held.clear()
 
     def forget_peer(self, peer_key: bytes) -> None:
         """Delete the kept partials of one peer key (a removed link)."""
@@ -474,7 +473,8 @@ class Transfer:
         partials: List[Json] = []
         if store is not None:
             try:
-                partials = store.partials(peer_key, self._held)
+                partials = store.partials(peer_key)
+                wire.epoch = store.epoch(peer_key)
             except OSError:
                 partials = []
         for p in partials:
@@ -488,7 +488,7 @@ class Transfer:
             categories=session.contact.categories if session.contact is not None else (),
             free=store.free if store is not None else None,
             partials=partials,
-            rehash=store.rehash if store is not None else None,
+            rehash=(lambda ref, off: store.rehash(ref, off, wire)) if store is not None else None,
             new_ref=new_ref,
         )
         ep = XferEndpoint(
@@ -512,6 +512,9 @@ class Transfer:
             self._wires.pop(id(wire.session), None)
         if wire.endpoint is not None:
             wire.endpoint.closed()
+        store = self._get_store(create=False)
+        if store is not None:
+            store.release_owner(wire)
         for r in list(wire.sources.values()):
             r.close()
         wire.sources.clear()
@@ -626,15 +629,14 @@ class Transfer:
                 wire.failed_ids.add(id_)
                 raise
             wire.delivered_to[id_] = a.dest
-            self._held.discard(ref)
             return
-        store.apply(wire.peer_key, eff, wire.ref_meta.get(eff.get("create", "")) if "create" in eff else None)
-        if "create" in eff or "truncate" in eff:
-            self._held.add(eff.get("create") or eff["truncate"])
-        else:
-            for k in ("keep", "delete", "discard", "evict"):
-                if k in eff:
-                    self._held.discard(eff[k])
+        store.apply(
+            wire.peer_key,
+            eff,
+            wire.ref_meta.get(eff["create"]) if "create" in eff else None,
+            owner=wire,
+            epoch=wire.epoch,
+        )
 
     # -- the machine's events -----------------------------------------------------------------------
 

@@ -727,12 +727,19 @@ class XferMachine:
         m = next((p for p in self._parts if p["id"] == t.id and p["sha256"] == t.sha), None)
         offset = 0
         h = hashlib.sha256()
-        if m is not None and self._resumable({"size": t.size, "chunk": t.chunk}, m):
+        resume = m is not None and self._resumable({"size": t.size, "chunk": t.chunk}, m)
+        if resume:
+            assert m is not None
             read = min(m.get("reread", m["bytes"]), m["bytes"])
             want = min((read // t.chunk) * t.chunk, t.size)
             if self._rehash is not None and want > 0:
-                offset = want
-                h = self._rehash(m["ref"], offset)
+                try:
+                    h = self._rehash(m["ref"], want)
+                    offset = want
+                except Exception:  # noqa: BLE001 - the kept file is gone or short: start over, never fail
+                    resume = False
+        if resume:
+            assert m is not None
             t.partial = m["ref"]
             self._eff({"truncate": m["ref"], "to": offset})
             m["bytes"] = offset
@@ -744,8 +751,10 @@ class XferMachine:
                 self._parts = [p for p in self._parts if p is not m]
             if t.size > 0:
                 if len(self._parts) >= XFER_MAX_PARTIALS_PER_PEER:
-                    oldest = self._parts[0]
-                    for p in self._parts:
+                    # The oldest partial no live transfer holds; a held one only when all are.
+                    pool = [p for p in self._parts if not p.get("held")] or self._parts
+                    oldest = pool[0]
+                    for p in pool:
                         if p["writtenAt"] < oldest["writtenAt"]:
                             oldest = p
                     self._eff({"evict": oldest["ref"]})

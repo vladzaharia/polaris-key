@@ -158,11 +158,18 @@ class CloudConnect:
         self._contact_relay: Optional["ContactRelay"] = None
         self._links = CloudLinks(self, connect)
         self._transfer = Transfer(state_dir, self._open_for_transfer, links=self._link_ids)
+        leave = getattr(connect, "on_roster_leave", None)
+        if leave is not None:
+            leave(self._forget_left)
 
     @property
     def transfer(self) -> Transfer:
         """Direct Transfer (CC-20): ``send``, ``on_offer``, ``on_result``."""
         return self._transfer
+
+    def _forget_left(self, keys: List[bytes]) -> None:
+        for k in keys:
+            self._transfer.forget_peer(k)
 
     def _link_ids(self) -> List[str]:
         return [c.id for c in self._links.list()]
