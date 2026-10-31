@@ -14,7 +14,15 @@ const View := preload("res://addons/polaris_key/ui/model/view.gd")
 
 # ── CloudSyncStatus ──────────────────────────────────────────────────────────────────────────
 #
-# States: synced, syncing, offline, conflict, error, locked, ring-changed, hidden.
+# States: synced, syncing, offline, conflict, error, locked, ring-changed, transferring, waiting,
+# transfer-failed, hidden.
+
+## What a waiting transfer names, by its reason (default: the network).
+const WAITING := {
+	"network": "cloudSync.waitingNetwork",
+	"battery": "cloudSync.waitingBattery",
+	"background": "cloudSync.waitingBackground",
+}
 
 
 ## A small Cloud Sync status. It never implies universal backup.
@@ -40,6 +48,35 @@ static func cloud_sync_status_view(ctx: RefCounted) -> Dictionary:
 			"copy": ["cloudSync.ringChanged", "common.review"],
 			"primary": "common.review",
 			"tone": "neutral",
+			"focus": null,
+		})
+	# A pending transfer is never reported as synced, whatever `lastSynced` holds (UI-KITS Must not).
+	if _eq(state, "transferring"):
+		var t := _dict(sync.get("transfer"))
+		var known := t.get("size") != null and t.get("total") != null
+		return View.make(ctx, "CloudSyncStatus", {
+			"state": "transferring",
+			"copy": ["cloudSync.transferring", "cloudSync.transferProgress" if known else ""],
+			"args": {"size": t.get("size"), "total": t.get("total")} if known else {},
+			"tone": null,
+			"focus": null,
+		})
+	if _eq(state, "waiting"):
+		var why = sync.get("reason")
+		return View.make(ctx, "CloudSyncStatus", {
+			"state": "waiting",
+			"copy": [WAITING.get(why if why != null else "network", "")],
+			"tone": "neutral",
+			"focus": null,
+		})
+	# The transfer failed: Try again repeats it; the status never reads as an error of the account.
+	if _eq(state, "transfer-failed"):
+		return View.make(ctx, "CloudSyncStatus", {
+			"state": "transfer-failed",
+			"copy": ["cloudSync.transferFailed", "common.tryAgain"],
+			# A small status: Try again stays secondary, so it never competes with the host's primary.
+			"primary": null,
+			"tone": "danger",
 			"focus": null,
 		})
 	var error := _eq(state, "error")

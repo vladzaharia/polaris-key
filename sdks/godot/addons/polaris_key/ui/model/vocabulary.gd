@@ -20,7 +20,7 @@ const HIDDEN := "hidden"
 
 ## The actions a view offers, named by what they do (`vocabulary.actions`).
 const ACTIONS := ["open-card", "open-browser", "replace-in-browser", "open-manage-url", "start-sign-in", "copy-link", "retry", "cancel",
-	"unlock", "start-over", "confirm-start-over", "accept-ring-change", "use-recovery-code", "copy-code"]
+	"unlock", "start-over", "confirm-start-over", "accept-ring-change", "use-recovery-code", "copy-code", "keep-local", "keep-remote", "keep-both"]
 
 ## Which controls perform each action, by their label's copy key (`vocabulary.actionKeys`).
 const ACTION_KEYS := {
@@ -38,6 +38,9 @@ const ACTION_KEYS := {
 	"accept-ring-change": ["ringChange.accept"],
 	"use-recovery-code": ["ringChange.useCode"],
 	"copy-code": ["recoveryCode.copy"],
+	"keep-local": ["saveConflict.keepThis"],
+	"keep-remote": ["saveConflict.keepOther", "saveConflict.acceptDelete"],
+	"keep-both": ["saveConflict.keepBoth"],
 }
 
 ## The opt-in services (tools/services.json) and what each requires (ST-38's closure rule).

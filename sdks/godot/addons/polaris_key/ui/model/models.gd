@@ -42,6 +42,7 @@ const MODELS := {
 	"UnlockSync": ["cloud_sync.gd", "unlock_sync_view"],
 	"RecoveryCode": ["cloud_sync.gd", "recovery_code_view"],
 	"RingChange": ["cloud_sync.gd", "ring_change_view"],
+	"SaveConflict": ["save_conflict.gd", "save_conflict_view"],
 	"About": ["settings.gd", "about_view"],
 	"ChannelPicker": ["settings.gd", "channel_picker_view"],
 }
