@@ -401,7 +401,8 @@ extension PolarisKeyPreviewState {
     private static func auto(
         _ step: KitAutoSignInStep, provider: String = "Google", email: String? = nil,
         reach: KitLinkReach? = nil, license: String? = nil, also: Bool? = nil, code: String? = nil,
-        manageUrl: String? = nil, seat: (name: String, position: Int, limit: Int)? = nil
+        manageUrl: String? = nil, seat: (name: String, position: Int, limit: Int)? = nil,
+        kind: String? = nil
     ) -> KitInputs {
         base {
             $0.signIn = sign()
@@ -409,7 +410,7 @@ extension PolarisKeyPreviewState {
             $0.autoSignIn = KitAutoSignIn(
                 step: step, email: email, reach: reach, license: license, alsoGets: also, code: code,
                 licenseName: seat?.name, position: seat?.position, limit: seat?.limit,
-                manageUrl: manageUrl)
+                manageUrl: manageUrl, kind: kind)
         }
     }
 
@@ -420,7 +421,7 @@ extension PolarisKeyPreviewState {
             .signIn, "confirm", variant: "apple",
             auto(
                 .confirm, provider: "Apple", license: "existing", also: true,
-                seat: (name: "Pro", position: 2, limit: 3))),
+                seat: (name: "Pro", position: 2, limit: 3), kind: "apple")),
         .init(.signIn, "link-offer", variant: "global", auto(.linkOffer, reach: .global)),
         .init(.signIn, "link-offer", auto(.linkOffer, reach: .developer)),
         .init(.signIn, "link-done", auto(.linkDone)),

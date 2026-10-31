@@ -59,6 +59,24 @@ final class AutoSignInConsentTests: XCTestCase {
         XCTAssertNotNil(screen.line("signin.consent.licenseLine"))
     }
 
+    func testTheConfirmLineFollowsTheExchangeKind() {
+        for (kind, key) in [
+            ("apple", "signin.auto.confirm.asApple"),
+            ("gamecenter", "signin.auto.confirm.asGameCenter"),
+            ("pgs", "signin.auto.confirm.asPlayGames"),
+        ] {
+            let screen = confirm(KitAutoSignIn(step: .confirm, license: "existing", kind: kind))
+            XCTAssertNotNil(screen.line(key), kind)
+        }
+        let none = confirm(KitAutoSignIn(step: .confirm, license: "existing"))
+        for key in [
+            "signin.auto.confirm.asApple", "signin.auto.confirm.asGameCenter",
+            "signin.auto.confirm.asPlayGames", "signin.auto.confirm.as",
+        ] {
+            XCTAssertNil(none.line(key), key)
+        }
+    }
+
     func testTheAppleConfirmFixtureCarriesALicenseLineAndConsentLines() throws {
         let preview = try XCTUnwrap(
             PolarisKeyPreviewState.all.first { $0.id == "SignIn.confirm.apple" })
