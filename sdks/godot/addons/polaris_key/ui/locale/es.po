@@ -5684,7 +5684,7 @@ msgstr "Escribe tu clave de licencia."
 msgid "signin.code.missing"
 msgstr "¿No te llegó el código?"
 
-#. Link with someone nearby
+#. Pair with Someone Nearby
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
 msgid "linkPairing.title"
 msgstr "Vincular con alguien cercano"
@@ -5699,7 +5699,7 @@ msgstr "Pídele que abra esto en su dispositivo. Estad cerca, en la misma red."
 msgid "linkPairing.searching"
 msgstr "Buscando dispositivos cercanos…"
 
-#. Compare the code
+#. Compare the Code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
 msgstr "Compara el código"
@@ -5749,12 +5749,12 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr "No coinciden"
 
-#. Waiting for them to confirm
+#. Waiting for Them to Confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
 msgstr "Esperando su confirmación"
 
-#. Linked
+#. Paired
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
 msgid "linkPairing.linkedTitle"
 msgstr "Vinculado"
@@ -5764,27 +5764,27 @@ msgstr "Vinculado"
 msgid "linkPairing.linkedBody"
 msgstr "Ahora podéis conectaros sin código."
 
-#. Couldn’t link
+#. Couldn’t Pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
 msgstr "No se pudo vincular"
 
-#. Someone said no. Nothing was linked.
+#. Someone said no. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
 msgid "linkPairing.failedDeclined"
 msgstr "Alguien dijo que no. No se vinculó nada."
 
-#. Time ran out before you both confirmed. Nothing was linked.
+#. Time ran out before you both confirmed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
 msgid "linkPairing.failedTimeout"
 msgstr "Se acabó el tiempo antes de que confirmarais los dos. No se vinculó nada."
 
-#. One of you has no room for another link. Remove one, then try again.
+#. One of you has no room for another pairing. Remove one, then try again.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
 msgid "linkPairing.failedFull"
 msgstr "Uno de vosotros no tiene espacio para otro vínculo. Quita uno y vuelve a intentarlo."
 
-#. The connection closed. Nothing was linked.
+#. The connection closed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
 msgid "linkPairing.failedClosed"
 msgstr "Se cerró la conexión. No se vinculó nada."
@@ -5799,7 +5799,7 @@ msgstr "Código de vinculación {code}"
 msgid "transferOffer.ask"
 msgstr "{device} quiere enviarte {name}"
 
-#. A contact wants to send you {name}
+#. A paired device wants to send you {name}
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
 msgid "transferOffer.askUnnamed"
 msgstr "Un contacto quiere enviarte {name}"
@@ -6069,12 +6069,12 @@ msgstr "Límite remoto alcanzado"
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose."
 
-#. Linking is off
+#. Pairing is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.title"
 msgstr "Vincular está desactivado"
 
-#. Linking with other people is off for this app. Your own devices still connect.
+#. Pairing with other people is off for this app. Your own devices still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.message"
 msgstr "Vincular con otras personas está desactivado en esta app. Tus propios dispositivos siguen conectándose."

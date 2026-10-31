@@ -127,7 +127,7 @@ describe("<LinkPairing>", () => {
     expect(document.activeElement?.tagName).not.toBe("BUTTON");
   });
 
-  it("Codes match confirms, waits, and ends on Linked", async () => {
+  it("Codes match confirms, waits, and ends on Paired", async () => {
     const f = fake();
     const onLinked = vi.fn();
     const onClose = vi.fn();
@@ -135,13 +135,13 @@ describe("<LinkPairing>", () => {
     act(() => f.seen.o!.onCode(f.offer()));
     fireEvent.click(screen.getByRole("button", { name: "Codes match" }));
     await waitFor(() =>
-      expect(screen.getByText("Waiting for them to confirm")).toBeTruthy(),
+      expect(screen.getByText("Waiting for Them to Confirm")).toBeTruthy(),
     );
     expect(f.log).toContain("confirm");
     act(() =>
       f.seen.o!.onLinked({ label: "Maya's laptop", categories: ["contacts"] }),
     );
-    await waitFor(() => expect(screen.getByText("Linked")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Paired")).toBeTruthy());
     expect(onLinked).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "Done" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
@@ -177,7 +177,7 @@ describe("<LinkPairing>", () => {
     await waitFor(() =>
       expect(
         screen.getByText(
-          "One of you has no room for another link. Remove one, then try again.",
+          "One of you has no room for another pairing. Remove one, then try again.",
         ),
       ).toBeTruthy(),
     );
@@ -200,7 +200,7 @@ describe("<LinkPairing>", () => {
     });
     render(<LinkPairing driver={driver} {...ui()} />);
     await waitFor(() =>
-      expect(screen.getByText("Linking is off")).toBeTruthy(),
+      expect(screen.getByText("Pairing is off")).toBeTruthy(),
     );
     expect(screen.queryByRole("button", { name: "Codes match" })).toBeNull();
   });
@@ -267,13 +267,13 @@ describe("<TransferOffer>", () => {
     expect(log).toEqual(["decline"]);
   });
 
-  it("a contact with no label is a contact", () => {
+  it("a contact with no label is a paired device", () => {
     const { d } = driverOf();
     render(<TransferOffer driver={d} name="a.txt" />);
     expect(
       document.querySelector('[data-key="transferOffer.askUnnamed"]')
         ?.textContent,
-    ).toBe("A contact wants to send you a.txt");
+    ).toBe("A paired device wants to send you a.txt");
   });
 });
 

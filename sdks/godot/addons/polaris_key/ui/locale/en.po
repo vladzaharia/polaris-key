@@ -5671,10 +5671,10 @@ msgstr "Enter your license key."
 msgid "signin.code.missing"
 msgstr "Didn't get a code?"
 
-#. Link with someone nearby
+#. Pair with Someone Nearby
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
 msgid "linkPairing.title"
-msgstr "Link with someone nearby"
+msgstr "Pair with Someone Nearby"
 
 #. Ask them to open this on their device. Stay close, on the same network.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Both people open this on their own device.
@@ -5686,10 +5686,10 @@ msgstr "Ask them to open this on their device. Stay close, on the same network."
 msgid "linkPairing.searching"
 msgstr "Looking for nearby devices…"
 
-#. Compare the code
+#. Compare the Code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
-msgstr "Compare the code"
+msgstr "Compare the Code"
 
 #. Both screens must show this code.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms.
@@ -5736,45 +5736,45 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr "Not a Match"
 
-#. Waiting for them to confirm
+#. Waiting for Them to Confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
-msgstr "Waiting for them to confirm"
+msgstr "Waiting for Them to Confirm"
 
-#. Linked
+#. Paired
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
 msgid "linkPairing.linkedTitle"
-msgstr "Linked"
+msgstr "Paired"
 
 #. You can now connect without a code.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made.
 msgid "linkPairing.linkedBody"
 msgstr "You can now connect without a code."
 
-#. Couldn’t link
+#. Couldn’t Pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
-msgstr "Couldn’t link"
+msgstr "Couldn’t Pair"
 
-#. Someone said no. Nothing was linked.
+#. Someone said no. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
 msgid "linkPairing.failedDeclined"
-msgstr "Someone said no. Nothing was linked."
+msgstr "Someone said no. Nothing was paired."
 
-#. Time ran out before you both confirmed. Nothing was linked.
+#. Time ran out before you both confirmed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
 msgid "linkPairing.failedTimeout"
-msgstr "Time ran out before you both confirmed. Nothing was linked."
+msgstr "Time ran out before you both confirmed. Nothing was paired."
 
-#. One of you has no room for another link. Remove one, then try again.
+#. One of you has no room for another pairing. Remove one, then try again.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
 msgid "linkPairing.failedFull"
-msgstr "One of you has no room for another link. Remove one, then try again."
+msgstr "One of you has no room for another pairing. Remove one, then try again."
 
-#. The connection closed. Nothing was linked.
+#. The connection closed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
 msgid "linkPairing.failedClosed"
-msgstr "The connection closed. Nothing was linked."
+msgstr "The connection closed. Nothing was paired."
 
 #. Pairing code {code}
 #. Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit.
@@ -5786,10 +5786,10 @@ msgstr "Pairing code {code}"
 msgid "transferOffer.ask"
 msgstr "{device} wants to send you {name}"
 
-#. A contact wants to send you {name}
+#. A paired device wants to send you {name}
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
 msgid "transferOffer.askUnnamed"
-msgstr "A contact wants to send you {name}"
+msgstr "A paired device wants to send you {name}"
 
 #. Only accept what you expect.
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title.
@@ -6056,15 +6056,15 @@ msgstr "Remote limit reached"
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "The remote connection limit is used up. It resets soon. Devices on the same network still connect."
 
-#. Linking is off
+#. Pairing is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.title"
-msgstr "Linking is off"
+msgstr "Pairing is off"
 
-#. Linking with other people is off for this app. Your own devices still connect.
+#. Pairing with other people is off for this app. Your own devices still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.message"
-msgstr "Linking with other people is off for this app. Your own devices still connect."
+msgstr "Pairing with other people is off for this app. Your own devices still connect."
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).

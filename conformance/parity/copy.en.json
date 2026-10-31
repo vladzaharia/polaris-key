@@ -97,8 +97,8 @@
       "message": "The remote connection limit is used up. It resets soon. Devices on the same network still connect."
     },
     "connect_links_disabled": {
-      "title": "Linking is off",
-      "message": "Linking with other people is off for this app. Your own devices still connect."
+      "title": "Pairing is off",
+      "message": "Pairing with other people is off for this app. Your own devices still connect."
     },
     "relay_ticket_invalid": {
       "title": "Connection expired",

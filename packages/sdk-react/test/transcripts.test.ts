@@ -1581,7 +1581,10 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     // identity.nearby is N/A (runtime) here: a browser tab has no mode v handshake and the
     // renderer holds no device key (I-40.8); the Node runner replays the nearby-* transcripts.
-    const naHere = ["ui.cli.portal", "identity.nearby"];
+    // connect.links is N/A (runtime) here too (CC-19.9): the contact store and the pairing sockets
+    // are the host's; the Node and Python runners replay the connect-links-* and
+    // connect-relay-ticket-contact transcripts.
+    const naHere = ["ui.cli.portal", "identity.nearby", "connect.links"];
     const expected = TRANSCRIPTS.filter(
       (t) =>
         !t.features.some((f) => plannedHere.includes(f) || naHere.includes(f)),

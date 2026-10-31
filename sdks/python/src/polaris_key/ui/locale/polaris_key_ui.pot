@@ -5675,7 +5675,7 @@ msgstr ""
 msgid "signin.code.missing"
 msgstr ""
 
-#. Link with someone nearby
+#. Pair with Someone Nearby
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
 msgid "linkPairing.title"
 msgstr ""
@@ -5690,7 +5690,7 @@ msgstr ""
 msgid "linkPairing.searching"
 msgstr ""
 
-#. Compare the code
+#. Compare the Code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
 msgstr ""
@@ -5740,12 +5740,12 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr ""
 
-#. Waiting for them to confirm
+#. Waiting for Them to Confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
 msgstr ""
 
-#. Linked
+#. Paired
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
 msgid "linkPairing.linkedTitle"
 msgstr ""
@@ -5755,27 +5755,27 @@ msgstr ""
 msgid "linkPairing.linkedBody"
 msgstr ""
 
-#. Couldn’t link
+#. Couldn’t Pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
 msgstr ""
 
-#. Someone said no. Nothing was linked.
+#. Someone said no. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
 msgid "linkPairing.failedDeclined"
 msgstr ""
 
-#. Time ran out before you both confirmed. Nothing was linked.
+#. Time ran out before you both confirmed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
 msgid "linkPairing.failedTimeout"
 msgstr ""
 
-#. One of you has no room for another link. Remove one, then try again.
+#. One of you has no room for another pairing. Remove one, then try again.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
 msgid "linkPairing.failedFull"
 msgstr ""
 
-#. The connection closed. Nothing was linked.
+#. The connection closed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
 msgid "linkPairing.failedClosed"
 msgstr ""
@@ -5790,7 +5790,7 @@ msgstr ""
 msgid "transferOffer.ask"
 msgstr ""
 
-#. A contact wants to send you {name}
+#. A paired device wants to send you {name}
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
 msgid "transferOffer.askUnnamed"
 msgstr ""
@@ -6060,12 +6060,12 @@ msgstr ""
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr ""
 
-#. Linking is off
+#. Pairing is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.title"
 msgstr ""
 
-#. Linking with other people is off for this app. Your own devices still connect.
+#. Pairing with other people is off for this app. Your own devices still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.message"
 msgstr ""

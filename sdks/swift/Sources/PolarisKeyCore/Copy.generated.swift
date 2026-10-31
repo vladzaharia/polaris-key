@@ -47,7 +47,7 @@ public let COPY_CODES: [String: CopyEntry] = [
     "relay_disabled": CopyEntry(title: "Remote connect is off", message: "Remote connect is off for this app. Your devices connect only on the same network."),
     "relay_paused": CopyEntry(title: "Remote connect paused", message: "Remote connect is paused for now. Try again later."),
     "relay_quota_exceeded": CopyEntry(title: "Remote limit reached", message: "The remote connection limit is used up. It resets soon. Devices on the same network still connect."),
-    "connect_links_disabled": CopyEntry(title: "Linking is off", message: "Linking with other people is off for this app. Your own devices still connect."),
+    "connect_links_disabled": CopyEntry(title: "Pairing is off", message: "Pairing with other people is off for this app. Your own devices still connect."),
     "relay_ticket_invalid": CopyEntry(title: "Connection expired", message: "The connection request expired. Try again."),
     "device_limit": CopyEntry(title: "Device limit reached", message: "This license is already on all its devices. Replace a device to use it here."),
     "key_entry_limit": CopyEntry(title: "No key entries left", message: "This key has no entries left. Add it to your account and sign in instead."),

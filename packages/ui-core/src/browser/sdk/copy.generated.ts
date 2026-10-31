@@ -125,9 +125,9 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
       "The remote connection limit is used up. It resets soon. Devices on the same network still connect.",
   },
   connect_links_disabled: {
-    title: "Linking is off",
+    title: "Pairing is off",
     message:
-      "Linking with other people is off for this app. Your own devices still connect.",
+      "Pairing with other people is off for this app. Your own devices still connect.",
   },
   relay_ticket_invalid: {
     title: "Connection expired",

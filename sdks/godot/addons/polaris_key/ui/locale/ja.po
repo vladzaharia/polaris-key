@@ -5658,7 +5658,7 @@ msgstr "ライセンスキーを入力してください。"
 msgid "signin.code.missing"
 msgstr "コードが届きませんか？"
 
-#. Link with someone nearby
+#. Pair with Someone Nearby
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
 msgid "linkPairing.title"
 msgstr "近くの人とリンク"
@@ -5673,7 +5673,7 @@ msgstr "相手にもこの画面を開いてもらってください。近くで
 msgid "linkPairing.searching"
 msgstr "近くのデバイスを検索中…"
 
-#. Compare the code
+#. Compare the Code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
 msgstr "コードを比べる"
@@ -5723,12 +5723,12 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr "一致しない"
 
-#. Waiting for them to confirm
+#. Waiting for Them to Confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
 msgstr "相手の確認を待っています"
 
-#. Linked
+#. Paired
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
 msgid "linkPairing.linkedTitle"
 msgstr "リンクしました"
@@ -5738,27 +5738,27 @@ msgstr "リンクしました"
 msgid "linkPairing.linkedBody"
 msgstr "今後はコードなしで接続できます。"
 
-#. Couldn’t link
+#. Couldn’t Pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
 msgstr "リンクできませんでした"
 
-#. Someone said no. Nothing was linked.
+#. Someone said no. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
 msgid "linkPairing.failedDeclined"
 msgstr "どちらかが拒否しました。何もリンクされていません。"
 
-#. Time ran out before you both confirmed. Nothing was linked.
+#. Time ran out before you both confirmed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
 msgid "linkPairing.failedTimeout"
 msgstr "二人が確認する前に時間切れになりました。何もリンクされていません。"
 
-#. One of you has no room for another link. Remove one, then try again.
+#. One of you has no room for another pairing. Remove one, then try again.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
 msgid "linkPairing.failedFull"
 msgstr "どちらかがこれ以上リンクを追加できません。1つ削除してからもう一度お試しください。"
 
-#. The connection closed. Nothing was linked.
+#. The connection closed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
 msgid "linkPairing.failedClosed"
 msgstr "接続が閉じられました。何もリンクされていません。"
@@ -5773,7 +5773,7 @@ msgstr "リンクコード {code}"
 msgid "transferOffer.ask"
 msgstr "{device}が{name}を送信しようとしています"
 
-#. A contact wants to send you {name}
+#. A paired device wants to send you {name}
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
 msgid "transferOffer.askUnnamed"
 msgstr "連絡先が{name}を送信しようとしています"
@@ -6043,12 +6043,12 @@ msgstr "リモート接続の上限に達しました"
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "リモート接続の上限を使い切りました。まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。"
 
-#. Linking is off
+#. Pairing is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.title"
 msgstr "リンクはオフです"
 
-#. Linking with other people is off for this app. Your own devices still connect.
+#. Pairing with other people is off for this app. Your own devices still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.message"
 msgstr "このアプリでは他の人とのリンクがオフです。自分のデバイス同士は引き続き接続できます。"

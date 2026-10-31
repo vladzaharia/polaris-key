@@ -5684,7 +5684,7 @@ msgstr "Digite sua chave de licença."
 msgid "signin.code.missing"
 msgstr "Não recebeu o código?"
 
-#. Link with someone nearby
+#. Pair with Someone Nearby
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
 msgid "linkPairing.title"
 msgstr "Vincular com alguém por perto"
@@ -5699,7 +5699,7 @@ msgstr "Peça que a outra pessoa abra isto no dispositivo dela. Fiquem perto, na
 msgid "linkPairing.searching"
 msgstr "Procurando dispositivos por perto…"
 
-#. Compare the code
+#. Compare the Code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
 msgstr "Compare o código"
@@ -5749,12 +5749,12 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr "Não coincidem"
 
-#. Waiting for them to confirm
+#. Waiting for Them to Confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
 msgstr "Aguardando a confirmação da outra pessoa"
 
-#. Linked
+#. Paired
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
 msgid "linkPairing.linkedTitle"
 msgstr "Vinculado"
@@ -5764,27 +5764,27 @@ msgstr "Vinculado"
 msgid "linkPairing.linkedBody"
 msgstr "Agora vocês podem se conectar sem código."
 
-#. Couldn’t link
+#. Couldn’t Pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
 msgstr "Não foi possível vincular"
 
-#. Someone said no. Nothing was linked.
+#. Someone said no. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
 msgid "linkPairing.failedDeclined"
 msgstr "Alguém recusou. Nada foi vinculado."
 
-#. Time ran out before you both confirmed. Nothing was linked.
+#. Time ran out before you both confirmed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
 msgid "linkPairing.failedTimeout"
 msgstr "O tempo acabou antes de vocês dois confirmarem. Nada foi vinculado."
 
-#. One of you has no room for another link. Remove one, then try again.
+#. One of you has no room for another pairing. Remove one, then try again.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
 msgid "linkPairing.failedFull"
 msgstr "Um de vocês não tem espaço para mais um vínculo. Remova um e tente de novo."
 
-#. The connection closed. Nothing was linked.
+#. The connection closed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
 msgid "linkPairing.failedClosed"
 msgstr "A conexão foi encerrada. Nada foi vinculado."
@@ -5799,7 +5799,7 @@ msgstr "Código de vinculação {code}"
 msgid "transferOffer.ask"
 msgstr "{device} quer enviar {name} para você"
 
-#. A contact wants to send you {name}
+#. A paired device wants to send you {name}
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
 msgid "transferOffer.askUnnamed"
 msgstr "Um contato quer enviar {name} para você"
@@ -6069,12 +6069,12 @@ msgstr "Limite remoto atingido"
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "O limite de conexão remota acabou. Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando."
 
-#. Linking is off
+#. Pairing is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.title"
 msgstr "Vínculo desativado"
 
-#. Linking with other people is off for this app. Your own devices still connect.
+#. Pairing with other people is off for this app. Your own devices still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.message"
 msgstr "O vínculo com outras pessoas está desativado neste app. Seus próprios dispositivos continuam se conectando."

@@ -45,7 +45,7 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "relay_disabled" to CopyEntry("Remote connect is off", "Remote connect is off for this app. Your devices connect only on the same network."),
     "relay_paused" to CopyEntry("Remote connect paused", "Remote connect is paused for now. Try again later."),
     "relay_quota_exceeded" to CopyEntry("Remote limit reached", "The remote connection limit is used up. It resets soon. Devices on the same network still connect."),
-    "connect_links_disabled" to CopyEntry("Linking is off", "Linking with other people is off for this app. Your own devices still connect."),
+    "connect_links_disabled" to CopyEntry("Pairing is off", "Pairing with other people is off for this app. Your own devices still connect."),
     "relay_ticket_invalid" to CopyEntry("Connection expired", "The connection request expired. Try again."),
     "device_limit" to CopyEntry("Device limit reached", "This license is already on all its devices. Replace a device to use it here."),
     "key_entry_limit" to CopyEntry("No key entries left", "This key has no entries left. Add it to your account and sign in instead."),

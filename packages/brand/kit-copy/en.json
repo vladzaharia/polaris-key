@@ -8639,7 +8639,7 @@
       "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
     },
     "linkPairing.title": {
-      "value": "Link with someone nearby",
+      "value": "Pair with Someone Nearby",
       "role": "title",
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device."
     },
@@ -8654,7 +8654,7 @@
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code."
     },
     "linkPairing.codeTitle": {
-      "value": "Compare the code",
+      "value": "Compare the Code",
       "role": "title",
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare."
     },
@@ -8694,12 +8694,12 @@
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Declines: the session closes and nothing is stored."
     },
     "linkPairing.waiting": {
-      "value": "Waiting for them to confirm",
+      "value": "Waiting for Them to Confirm",
       "role": "title",
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet."
     },
     "linkPairing.linkedTitle": {
-      "value": "Linked",
+      "value": "Paired",
       "role": "title",
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices."
     },
@@ -8709,27 +8709,27 @@
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made."
     },
     "linkPairing.failedTitle": {
-      "value": "Couldn’t link",
+      "value": "Couldn’t Pair",
       "role": "title",
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link."
     },
     "linkPairing.failedDeclined": {
-      "value": "Someone said no. Nothing was linked.",
+      "value": "Someone said no. Nothing was paired.",
       "role": "body",
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code."
     },
     "linkPairing.failedTimeout": {
-      "value": "Time ran out before you both confirmed. Nothing was linked.",
+      "value": "Time ran out before you both confirmed. Nothing was paired.",
       "role": "body",
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first."
     },
     "linkPairing.failedFull": {
-      "value": "One of you has no room for another link. Remove one, then try again.",
+      "value": "One of you has no room for another pairing. Remove one, then try again.",
       "role": "body",
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links."
     },
     "linkPairing.failedClosed": {
-      "value": "The connection closed. Nothing was linked.",
+      "value": "The connection closed. Nothing was paired.",
       "role": "body",
       "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended."
     },
@@ -8744,7 +8744,7 @@
       "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose."
     },
     "transferOffer.askUnnamed": {
-      "value": "A contact wants to send you {name}",
+      "value": "A paired device wants to send you {name}",
       "role": "title",
       "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends."
     },

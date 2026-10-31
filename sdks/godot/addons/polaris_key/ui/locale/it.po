@@ -5684,7 +5684,7 @@ msgstr "Inserisci la tua chiave di licenza."
 msgid "signin.code.missing"
 msgstr "Non hai ricevuto il codice?"
 
-#. Link with someone nearby
+#. Pair with Someone Nearby
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
 msgid "linkPairing.title"
 msgstr "Collega con una persona vicina"
@@ -5699,7 +5699,7 @@ msgstr "Chiedi all’altra persona di aprire questa schermata sul suo dispositiv
 msgid "linkPairing.searching"
 msgstr "Ricerca di dispositivi vicini…"
 
-#. Compare the code
+#. Compare the Code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
 msgstr "Confronta il codice"
@@ -5749,12 +5749,12 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr "Non corrispondono"
 
-#. Waiting for them to confirm
+#. Waiting for Them to Confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
 msgstr "In attesa della loro conferma"
 
-#. Linked
+#. Paired
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
 msgid "linkPairing.linkedTitle"
 msgstr "Collegato"
@@ -5764,27 +5764,27 @@ msgstr "Collegato"
 msgid "linkPairing.linkedBody"
 msgstr "Ora potete collegarvi senza codice."
 
-#. Couldn’t link
+#. Couldn’t Pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
 msgstr "Impossibile collegare"
 
-#. Someone said no. Nothing was linked.
+#. Someone said no. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
 msgid "linkPairing.failedDeclined"
 msgstr "Qualcuno ha rifiutato. Non è stato collegato nulla."
 
-#. Time ran out before you both confirmed. Nothing was linked.
+#. Time ran out before you both confirmed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
 msgid "linkPairing.failedTimeout"
 msgstr "Il tempo è scaduto prima che confermaste entrambi. Non è stato collegato nulla."
 
-#. One of you has no room for another link. Remove one, then try again.
+#. One of you has no room for another pairing. Remove one, then try again.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
 msgid "linkPairing.failedFull"
 msgstr "Uno di voi non ha spazio per un altro collegamento. Rimuovetene uno e riprovate."
 
-#. The connection closed. Nothing was linked.
+#. The connection closed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
 msgid "linkPairing.failedClosed"
 msgstr "La connessione si è chiusa. Non è stato collegato nulla."
@@ -5799,7 +5799,7 @@ msgstr "Codice di collegamento {code}"
 msgid "transferOffer.ask"
 msgstr "{device} vuole inviarti {name}"
 
-#. A contact wants to send you {name}
+#. A paired device wants to send you {name}
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
 msgid "transferOffer.askUnnamed"
 msgstr "Un contatto vuole inviarti {name}"
@@ -6069,12 +6069,12 @@ msgstr "Limite remoto raggiunto"
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "Il limite della connessione remota è esaurito. Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque."
 
-#. Linking is off
+#. Pairing is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.title"
 msgstr "Collegamento disattivato"
 
-#. Linking with other people is off for this app. Your own devices still connect.
+#. Pairing with other people is off for this app. Your own devices still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.message"
 msgstr "Il collegamento con altre persone è disattivato per questa app. I tuoi dispositivi si collegano ancora."

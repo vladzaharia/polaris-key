@@ -5671,7 +5671,7 @@ msgstr "Geben Sie Ihren Lizenzschlüssel ein."
 msgid "signin.code.missing"
 msgstr "Keinen Code erhalten?"
 
-#. Link with someone nearby
+#. Pair with Someone Nearby
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
 msgid "linkPairing.title"
 msgstr "Mit jemandem in der Nähe verknüpfen"
@@ -5686,7 +5686,7 @@ msgstr "Bitte die andere Person, dies auf ihrem Gerät zu öffnen. Bleibt in der
 msgid "linkPairing.searching"
 msgstr "Suche nach Geräten in der Nähe…"
 
-#. Compare the code
+#. Compare the Code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
 msgstr "Code vergleichen"
@@ -5736,12 +5736,12 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr "Stimmt nicht überein"
 
-#. Waiting for them to confirm
+#. Waiting for Them to Confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
 msgstr "Warten auf die Bestätigung der anderen Person"
 
-#. Linked
+#. Paired
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
 msgid "linkPairing.linkedTitle"
 msgstr "Verknüpft"
@@ -5751,27 +5751,27 @@ msgstr "Verknüpft"
 msgid "linkPairing.linkedBody"
 msgstr "Ihr könnt euch jetzt ohne Code verbinden."
 
-#. Couldn’t link
+#. Couldn’t Pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
 msgstr "Verknüpfen nicht möglich"
 
-#. Someone said no. Nothing was linked.
+#. Someone said no. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
 msgid "linkPairing.failedDeclined"
 msgstr "Jemand hat abgelehnt. Es wurde nichts verknüpft."
 
-#. Time ran out before you both confirmed. Nothing was linked.
+#. Time ran out before you both confirmed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
 msgid "linkPairing.failedTimeout"
 msgstr "Die Zeit ist abgelaufen, bevor ihr beide bestätigt habt. Es wurde nichts verknüpft."
 
-#. One of you has no room for another link. Remove one, then try again.
+#. One of you has no room for another pairing. Remove one, then try again.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
 msgid "linkPairing.failedFull"
 msgstr "Bei einem von euch ist kein Platz für eine weitere Verknüpfung. Entfernt eine und versucht es erneut."
 
-#. The connection closed. Nothing was linked.
+#. The connection closed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
 msgid "linkPairing.failedClosed"
 msgstr "Die Verbindung wurde getrennt. Es wurde nichts verknüpft."
@@ -5786,7 +5786,7 @@ msgstr "Kopplungscode {code}"
 msgid "transferOffer.ask"
 msgstr "{device} möchte dir {name} senden"
 
-#. A contact wants to send you {name}
+#. A paired device wants to send you {name}
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
 msgid "transferOffer.askUnnamed"
 msgstr "Ein Kontakt möchte dir {name} senden"
@@ -6056,12 +6056,12 @@ msgstr "Fernlimit erreicht"
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin."
 
-#. Linking is off
+#. Pairing is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.title"
 msgstr "Verknüpfung aus"
 
-#. Linking with other people is off for this app. Your own devices still connect.
+#. Pairing with other people is off for this app. Your own devices still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.message"
 msgstr "Das Verknüpfen mit anderen Personen ist für diese App ausgeschaltet. Deine eigenen Geräte verbinden sich weiterhin."

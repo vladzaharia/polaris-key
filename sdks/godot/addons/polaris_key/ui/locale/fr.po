@@ -5684,7 +5684,7 @@ msgstr "Saisissez votre clé de licence."
 msgid "signin.code.missing"
 msgstr "Pas de code reçu ?"
 
-#. Link with someone nearby
+#. Pair with Someone Nearby
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
 msgid "linkPairing.title"
 msgstr "Associer avec une personne proche"
@@ -5699,7 +5699,7 @@ msgstr "Demandez à l’autre personne d’ouvrir ceci sur son appareil. Restez 
 msgid "linkPairing.searching"
 msgstr "Recherche d’appareils proches…"
 
-#. Compare the code
+#. Compare the Code
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
 msgid "linkPairing.codeTitle"
 msgstr "Comparez le code"
@@ -5749,12 +5749,12 @@ msgctxt "macos"
 msgid "linkPairing.decline"
 msgstr "Ne correspondent pas"
 
-#. Waiting for them to confirm
+#. Waiting for Them to Confirm
 #. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
 msgid "linkPairing.waiting"
 msgstr "En attente de leur confirmation"
 
-#. Linked
+#. Paired
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
 msgid "linkPairing.linkedTitle"
 msgstr "Associé"
@@ -5764,27 +5764,27 @@ msgstr "Associé"
 msgid "linkPairing.linkedBody"
 msgstr "Vous pouvez désormais vous connecter sans code."
 
-#. Couldn’t link
+#. Couldn’t Pair
 #. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
 msgid "linkPairing.failedTitle"
 msgstr "Association impossible"
 
-#. Someone said no. Nothing was linked.
+#. Someone said no. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
 msgid "linkPairing.failedDeclined"
 msgstr "Quelqu’un a refusé. Rien n’a été associé."
 
-#. Time ran out before you both confirmed. Nothing was linked.
+#. Time ran out before you both confirmed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
 msgid "linkPairing.failedTimeout"
 msgstr "Le temps est écoulé avant votre confirmation à tous les deux. Rien n’a été associé."
 
-#. One of you has no room for another link. Remove one, then try again.
+#. One of you has no room for another pairing. Remove one, then try again.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
 msgid "linkPairing.failedFull"
 msgstr "L’un de vous ne peut plus ajouter d’association. Supprimez-en une, puis réessayez."
 
-#. The connection closed. Nothing was linked.
+#. The connection closed. Nothing was paired.
 #. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
 msgid "linkPairing.failedClosed"
 msgstr "La connexion s’est fermée. Rien n’a été associé."
@@ -5799,7 +5799,7 @@ msgstr "Code d’association {code}"
 msgid "transferOffer.ask"
 msgstr "{device} veut vous envoyer {name}"
 
-#. A contact wants to send you {name}
+#. A paired device wants to send you {name}
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
 msgid "transferOffer.askUnnamed"
 msgstr "Un contact veut vous envoyer {name}"
@@ -6069,12 +6069,12 @@ msgstr "Limite à distance atteinte"
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
 
-#. Linking is off
+#. Pairing is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.title"
 msgstr "Liaison désactivée"
 
-#. Linking with other people is off for this app. Your own devices still connect.
+#. Pairing with other people is off for this app. Your own devices still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect_links_disabled.message"
 msgstr "La liaison avec d'autres personnes est désactivée pour cette app. Tes propres appareils se connectent toujours."
