@@ -422,6 +422,17 @@ extension PolarisKeyPreviewState {
             auto(
                 .confirm, provider: "Apple", license: "existing", also: true,
                 seat: (name: "Pro", position: 2, limit: 3), kind: "apple")),
+        .init(
+            .signIn, "confirm", variant: "gamecenter",
+            auto(
+                .confirm, provider: "Game Center", license: "existing", also: true,
+                seat: (name: "Pro", position: 2, limit: 3), kind: "gamecenter")),
+        // No email and no known exchange: the title stands alone, the group gap below it.
+        .init(
+            .signIn, "confirm", variant: "no-account",
+            auto(
+                .confirm, license: "existing", also: true,
+                seat: (name: "Pro", position: 2, limit: 3))),
         .init(.signIn, "link-offer", variant: "global", auto(.linkOffer, reach: .global)),
         .init(.signIn, "link-offer", auto(.linkOffer, reach: .developer)),
         .init(.signIn, "link-done", auto(.linkDone)),
