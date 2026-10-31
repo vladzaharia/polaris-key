@@ -33,6 +33,7 @@ jobs:
       python: ${{ steps.scope.outputs.python }}
       swift: ${{ steps.scope.outputs.swift }}
       swift-floor: ${{ steps.scope.outputs.swift-floor }}
+      swift-linux: ${{ steps.scope.outputs.swift-linux }}
       swiftui-mac: ${{ steps.scope.outputs.swiftui-mac }}
       compose-desktop: ${{ steps.scope.outputs.compose-desktop }}
       kotlin: ${{ steps.scope.outputs.kotlin }}
@@ -804,6 +805,31 @@ jobs:
         with:
           name: apple-hosted-logs
           path: sdks/swift/PlatformHostTests/build/logs/
+
+  # The Swift SDK on Linux (FoundationNetworking). The Apple jobs cannot exercise the Linux
+  # redirect path: Foundation there has no per-request redirect hook, so Transport and BackendClient
+  # go through `DelegatedExchange`. This builds the package in the official Swift image and runs the
+  # redirect, transport and backend tests, including LinuxRedirectTests (a real localhost 302 to a
+  # second port that must never see the bearer). Advisory (`continue-on-error`, not in ci-ok) until
+  # it has been green once; the run that proves it removes both. Needs the DelegatedExchange change
+  # (wp/SWIFT-HARDEN) to have merged: until then the filter still matches the older tests. Image:
+  # swift 6.2.3 on Ubuntu 24.04, pinned by index digest (tag last pushed 2026-02-17).
+  swift-linux:
+    name: Swift SDK, Linux
+    needs: changes
+    if: needs.changes.outputs.swift-linux == 'true'
+    # Non-blocking until it has been green once; then drop this and add the job to ci-ok.
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    container:
+      image: swift:6.2.3-noble@sha256:6dd90eb2359663a2cde8f03e9951f488b23134b3b8fce20e9dcb6cada75dd803
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: swift build
+        run: swift build --package-path sdks/swift
+      - name: swift test (redirect, transport, backend)
+        run: swift test --package-path sdks/swift --filter 'DelegatedExchange|RedirectPolicy|RedirectSession|Transport|Backend|LinuxRedirect'
 
   # UK-08.8: the SwiftUI kit's macOS render suite (examples/ui/swiftui/UITests/KitRenderMacTests.swift:
   # `run.sh --mac`, XCUITest with the accessibility audit and the layout assertions on every render).
