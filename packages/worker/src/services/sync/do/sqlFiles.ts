@@ -190,6 +190,26 @@ export class FileTables {
       .map(toFile);
   }
 
+  withStatus(status: FileStatus, limit: number): StoredFile[] {
+    return this.q
+      .all<FileRow>(
+        `SELECT ${FILE_COLUMNS} FROM files WHERE status = ?
+           ORDER BY version, collection, record_id LIMIT ?`,
+        status,
+        limit,
+      )
+      .map(toFile);
+  }
+
+  keyInUse(objectKey: string): boolean {
+    return (
+      this.q.all(
+        `SELECT 1 AS x FROM files WHERE object_key = ? AND status <> 'dead' LIMIT 1`,
+        objectKey,
+      ).length > 0
+    );
+  }
+
   // ---- uploads -------------------------------------------------------------------------------
 
   upload(uploadId: string): UploadRow | undefined {
@@ -263,6 +283,19 @@ export class FileTables {
         nowMs,
         limit,
       )
+      .map(toUpload);
+  }
+
+  nextExpiry(): number | undefined {
+    const r = this.q.all<{ at: number | null } & Row>(
+      `SELECT MIN(expires_at) AS at FROM uploads`,
+    )[0];
+    return r?.at ?? undefined;
+  }
+
+  allUploads(): UploadRow[] {
+    return this.q
+      .all<UploadDbRow>(`SELECT * FROM uploads ORDER BY created_at, upload_id`)
       .map(toUpload);
   }
 

@@ -97,6 +97,9 @@ const OLD_CORS_SERVICE_PATHS = [
   "sync/files/{collection}/{id}/upload/{uploadId}",
   "sync/files/{collection}/{id}/upload/{uploadId}/parts/{n}",
   "sync/files/{collection}/{id}/finalize",
+  // U-10.8: the stored file and its kept versions, read with the same bearer.
+  "sync/files/{collection}/{id}",
+  "sync/files/{collection}/{id}/revisions",
   // CC-06.1: the Cloud Connect roster and the linked-devices list (device bearer, never ambient).
   "connect/identity",
   "connect/relay/ticket",

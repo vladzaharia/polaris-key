@@ -1,0 +1,12 @@
+-- U-10.11 (plans/U-10-U-11a-slices.md §2.7, D-10): the Cloud Sync directory keeps a person's file
+-- bytes. `bytes` holds every kind together (a person's files and their kept revisions included),
+-- `files` counts the live files and `revision_bytes` the kept older versions; the Usage page and
+-- the product aggregate need the live files' bytes on their own, so files are told apart from
+-- settings and records without waking an object. The object writes it with the rest of the row
+-- after a write or an absorb. Rows written before this migration read 0 until the person's next
+-- flush.
+-- Numbered 0151 at the A3 pass-2 merge (main holds 0149 and 0150).
+-- Owned by `sync` (TABLE_OWNERS: sync_directory already is). Expand-only: a Worker built before
+-- this migration never names the column. Rollback:
+-- scripts/rollback/0151_sync_directory_file_bytes.down.sql.
+ALTER TABLE sync_directory ADD COLUMN file_bytes INTEGER NOT NULL DEFAULT 0;

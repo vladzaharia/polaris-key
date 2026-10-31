@@ -292,7 +292,7 @@ describe("export", () => {
 });
 
 describe("size", () => {
-  it("is the directory's bytes plus revisions, else the object's own total, else 0", async () => {
+  it("is the directory's bytes (revisions are inside it), else the object's own total, else 0", async () => {
     const { env, db } = world();
     const ctx = { db, env: env as never, now: 1 };
     await populate(env, P, "a");
@@ -300,7 +300,7 @@ describe("size", () => {
     await putDir(db, P, "a");
     expect(
       (await subjectDataSize(ctx, { product: P, subject: "a" })).total,
-    ).toBe(120);
+    ).toBe(100);
     const unflushed = (await subjectDataSize(ctx, { product: P, subject: "b" }))
       .total;
     const usage = await callCloudSync<"usage">(

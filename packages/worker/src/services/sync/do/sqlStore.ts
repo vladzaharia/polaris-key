@@ -40,6 +40,7 @@ import {
 import { inspectTables, type InspectTables } from "./sqlInspect.js";
 import type {
   ClientRecord,
+  FileStatus,
   MemberCell,
   ParkedRecord,
   RemovedField,
@@ -640,6 +641,16 @@ export class SqlStore implements SyncStore {
     return this.fileTables.all();
   }
 
+  filesWithStatus(status: FileStatus, limit: number): StoredFile[] {
+    if (!this.hasSchema()) return [];
+    return this.fileTables.withStatus(status, limit);
+  }
+
+  fileKeyInUse(objectKey: string): boolean {
+    if (!this.hasSchema()) return false;
+    return this.fileTables.keyInUse(objectKey);
+  }
+
   getUpload(uploadId: string): UploadRow | undefined {
     if (!this.hasSchema()) return undefined;
     return this.fileTables.upload(uploadId);
@@ -658,6 +669,16 @@ export class SqlStore implements SyncStore {
   openUploads(nowMs: number): UploadRow[] {
     if (!this.hasSchema()) return [];
     return this.fileTables.open(nowMs);
+  }
+
+  nextUploadExpiry(): number | undefined {
+    if (!this.hasSchema()) return undefined;
+    return this.fileTables.nextExpiry();
+  }
+
+  allUploads(): UploadRow[] {
+    if (!this.hasSchema()) return [];
+    return this.fileTables.allUploads();
   }
 
   expiredUploads(nowMs: number, limit: number): UploadRow[] {

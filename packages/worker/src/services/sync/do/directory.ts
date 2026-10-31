@@ -16,6 +16,7 @@
 
 import type { DbStatement } from "../../../db/types.js";
 import type { StoreUsage } from "../engine/types.js";
+import { fileUsage } from "../engine/usage.js";
 import type { SqlStore } from "./sqlStore.js";
 
 /** At most one flush per window after the first. */
@@ -158,7 +159,7 @@ const LIVE = `EXISTS (SELECT 1 FROM products WHERE slug = ? AND status <> 'delet
 
 /**
  * The D1 batch for a dirty object: the day's counters, then one directory upsert. The counters
- * are the object's own (`bytes`, `settings`, `records`, `record_bytes`); quota, tier, platform and activity are the last
+ * are the object's own (`bytes`, `settings`, `records`, `record_bytes`, `files`, `file_bytes`, `revision_bytes`); quota, tier, platform and activity are the last
  * write's snapshot, and an object that was only absorbed into (no write of its own) keeps what
  * the directory already has for them.
  *
@@ -191,6 +192,7 @@ export function buildFlush(
   }
   const { t, daily } = pending;
   const snap = readJson<DirectorySnapshot>(store, SNAPSHOT);
+  const file = fileUsage(usage);
   const statements: DbStatement[] = [];
   for (const [day, [syncs, conflicts]] of Object.entries(daily)) {
     if (syncs === 0 && conflicts === 0) continue;
@@ -217,13 +219,15 @@ export function buildFlush(
   if (snap) {
     statements.push({
       sql: `INSERT INTO sync_directory
-              (product, subject, bytes, settings, records, record_bytes, files, revision_bytes,
-               quota_bytes, tier_id, platform, last_active_at, updated_at)
-            SELECT ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?, ?, ?
+              (product, subject, bytes, settings, records, record_bytes, files, file_bytes,
+               revision_bytes, quota_bytes, tier_id, platform, last_active_at, updated_at)
+            SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             WHERE ${LIVE}
             ON CONFLICT (product, subject) DO UPDATE SET
               bytes = excluded.bytes, settings = excluded.settings,
               records = excluded.records, record_bytes = excluded.record_bytes,
+              files = excluded.files, file_bytes = excluded.file_bytes,
+              revision_bytes = excluded.revision_bytes,
               quota_bytes = excluded.quota_bytes, tier_id = excluded.tier_id,
               platform = excluded.platform,
               last_active_at = MAX(sync_directory.last_active_at, excluded.last_active_at),
@@ -235,6 +239,9 @@ export function buildFlush(
         usage.settings,
         usage.records,
         usage.recordBytes,
+        file.files,
+        file.fileBytes,
+        file.revisionBytes,
         snap.quotaBytes,
         snap.tierId,
         snap.platform,
@@ -246,13 +253,15 @@ export function buildFlush(
   } else {
     statements.push({
       sql: `INSERT INTO sync_directory
-              (product, subject, bytes, settings, records, record_bytes, files, revision_bytes,
-               quota_bytes, tier_id, platform, last_active_at, updated_at)
-            SELECT ?, ?, ?, ?, ?, ?, 0, 0, 0, NULL, NULL, ?, ?
+              (product, subject, bytes, settings, records, record_bytes, files, file_bytes,
+               revision_bytes, quota_bytes, tier_id, platform, last_active_at, updated_at)
+            SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, ?, ?
             WHERE ${LIVE}
             ON CONFLICT (product, subject) DO UPDATE SET
               bytes = excluded.bytes, settings = excluded.settings,
               records = excluded.records, record_bytes = excluded.record_bytes,
+              files = excluded.files, file_bytes = excluded.file_bytes,
+              revision_bytes = excluded.revision_bytes,
               updated_at = excluded.updated_at`,
       params: [
         pin.product,
@@ -261,6 +270,9 @@ export function buildFlush(
         usage.settings,
         usage.records,
         usage.recordBytes,
+        file.files,
+        file.fileBytes,
+        file.revisionBytes,
         t,
         t,
         pin.product,

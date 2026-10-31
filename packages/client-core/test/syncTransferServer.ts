@@ -60,7 +60,7 @@ export class FakeServer implements FileTransport {
   etag = '"e1"';
   /** The version `finalize` answers; a records layer bumps its own. */
   nextVersion = (): number => this.files.length + 1;
-  expiresAt = Math.floor(Date.now() / 1000) + 86_400;
+  expiresAt = Date.now() + 86_400_000;
 
   begin = async (
     _t: FileTarget,

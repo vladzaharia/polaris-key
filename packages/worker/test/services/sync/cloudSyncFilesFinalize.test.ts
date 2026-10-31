@@ -281,8 +281,7 @@ describe("POST …/finalize: a multipart upload", () => {
     expect(out).toMatchObject({ size: 20 * MIB, format: "whole" });
     expect(out.sha256).toBe(await sha256Hex(FILE));
     expect(w.r2.openUploads()).toBe(0);
-    const stored = (await w.r2.get(keyOf(w, up.uploadId))) as R2ObjectBody;
-    expect(await sha256Hex(new Uint8Array(await stored.arrayBuffer()))).toBe(
+    expect(await sha256Hex(w.r2.raw(keyOf(w, up.uploadId)) as Uint8Array)).toBe(
       out.sha256,
     );
     expect(usageOf(w)).toMatchObject({ files: 1, file_bytes: 20 * MIB });

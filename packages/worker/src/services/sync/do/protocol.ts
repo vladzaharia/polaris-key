@@ -10,8 +10,10 @@
 import type { RecordJoin } from "../engine/absorbRecords.js";
 import type {
   BeginFileRequest,
+  FileRevision,
   FinalizeResponse,
   PushRequest,
+  SyncFileFormat,
   SyncUploadMode,
   UploadStatus,
 } from "@polaris-key/protocol/sync";
@@ -26,6 +28,7 @@ import type {
   PushOutcome,
   SetElement,
   SettingPolicy,
+  StoredFile,
   StoredRecord,
   StoredSetting,
   StoreUsage,
@@ -141,6 +144,8 @@ export type CloudSyncOp =
       clientId: string;
       /** The matched declaration's `maxRecords`. */
       maxRecords: number;
+      /** The matched declaration's `files.keepRevisions`. */
+      keepRevisions: number;
       serverNow: number;
     })
   | (DoPin & {
@@ -158,13 +163,35 @@ export type CloudSyncOp =
       uploadId: string;
       serverNow: number;
     })
+  /**
+   * The file a download streams (U-10.8): the record's live one, or the kept `version` (live or a
+   * revision). The object answers the R2 key, the size and the hash from its own rows, and, for a
+   * server-mode file under SSE-C, the key to open it with; the path never names a key.
+   */
+  | (DoPin & {
+      op: "fileResolve";
+      collection: string;
+      recordId: string;
+      version?: number;
+    })
+  /** The kept older versions of a record's file, newest first (U-10.8). */
+  | (DoPin & {
+      op: "fileRevisions";
+      collection: string;
+      recordId: string;
+    })
   | (DoPin & { op: "usage" })
   /**
    * The console's read-only summary of what the object holds (U-11a.1). Names, counts and bytes
    * only: no value, no record id and no file name ever leaves the object through it.
    */
   | (DoPin & { op: "inspect" })
-  | (DoPin & { op: "exportAll" })
+  /**
+   * Everything the object holds. `forMerge` (an account merge's export, `subjectStore.ts`) also
+   * carries what the survivor needs to keep the files opening: the files' R2 keys, the SSE-C keys
+   * they reference and the subjects already absorbed. A person's own export carries none of it.
+   */
+  | (DoPin & { op: "exportAll"; forMerge?: boolean })
   /**
    * The survivor of an account merge takes in the absorbed subject's export (U-05.8). Only the
    * store's `merge` hook sends it (`do/client.ts` `absorbCloudSync`); the pin names the SURVIVOR,
@@ -208,6 +235,16 @@ export type ExportedParked = Omit<ParkedRecord, "fields" | "elements"> & {
   elements?: [string, SetElement][];
 };
 
+/**
+ * A file row in an export. A person's own export carries the pointer only; a merge's also the R2
+ * key, the key id and the writer, which the survivor keeps (`forMerge`).
+ */
+export type ExportedFile = Omit<
+  StoredFile,
+  "objectKey" | "ssecKid" | "clientId"
+> &
+  Partial<Pick<StoredFile, "objectKey" | "ssecKid" | "clientId">>;
+
 export interface ExportDocument {
   product: string;
   subject: string;
@@ -224,6 +261,12 @@ export interface ExportDocument {
   records?: ExportedRecord[];
   /** Copies earlier account merges parked (D3). Absent when there are none. */
   parked?: ExportedParked[];
+  /** Live files, kept revisions and parked copies' files, in (collection, record, version) order. Absent when there are none (U-10). */
+  files?: ExportedFile[];
+  /** `forMerge` only: the `[kid, hex key]` pairs the files reference (SSE-C, D-8). */
+  ssecKeys?: [string, string][];
+  /** `forMerge` only: subjects earlier merges folded into this object, whose R2 prefixes hold its files. */
+  absorbedFrom?: string[];
   clients: { clientId: string; deviceId: string; lastMutationId: number }[];
 }
 
@@ -268,6 +311,8 @@ export type CloudSyncReply =
   | { op: "fileStatus"; outcome: FileStatusOutcome }
   | { op: "fileAbort"; outcome: FileAbortOutcome }
   | { op: "filePrepare"; outcome: FilePrepareOutcome }
+  | { op: "fileResolve"; outcome: FileResolveOutcome }
+  | { op: "fileRevisions"; outcome: FileRevisionsOutcome }
   | { op: "filePart"; outcome: FileAbortOutcome }
   | { op: "fileFinalizePrepare"; outcome: FinalizePrepareOutcome }
   | { op: "fileFinalizeCommit"; outcome: FinalizeCommitOutcome }
@@ -316,6 +361,8 @@ export type FilePrepareOutcome =
       partBytes: number | null;
       parts: number;
       multipartId: string | null;
+      /** The hex SSE-C key to store the bytes under (server mode, D-8); absent when the file is not sealed by it. */
+      ssecKey?: string;
     }
   | { ok: false; error: "not_found" | "upload_expired" };
 
@@ -333,6 +380,8 @@ export type FinalizePrepareOutcome =
         size: number;
         sha256: string;
         mode: SyncUploadMode;
+        /** The hex SSE-C key the object is stored under, when it is. */
+        ssecKey?: string;
       };
     }
   | { ok: false; busy: true }
@@ -345,6 +394,26 @@ export type FinalizeCommitOutcome =
   | { ok: false; error: "not_found" }
   | { ok: false; error: "revision_conflict"; version: number }
   | { ok: false; error: "quota_exceeded"; scope: "collection" };
+
+/**
+ * What a download streams. `ssecKey` is the hex of the 32-byte SSE-C key the object is stored
+ * under (server mode, D-8); it travels from the object to the Worker and nowhere else.
+ */
+export type FileResolveOutcome =
+  | {
+      ok: true;
+      file: {
+        key: string;
+        version: number;
+        size: number;
+        sha256: string;
+        format: SyncFileFormat;
+        ssecKey?: string;
+      };
+    }
+  | { ok: false; error: "not_found" };
+
+export type FileRevisionsOutcome = { ok: true; revisions: FileRevision[] };
 
 export type FileAbortOutcome = { ok: true } | { ok: false; error: "not_found" };
 

@@ -35,11 +35,13 @@
 import { CLOUD_SYNC_DEFAULTS } from "@polaris-key/catalog";
 import type {
   MutationResult,
+  SyncFilePointer,
   SyncJson,
   SyncMutation,
   SyncOp,
   SyncServerCopy,
 } from "@polaris-key/protocol/sync";
+import { dropRecordFiles, livePointer } from "./fileRows.js";
 import { compareStamps } from "./hlc.js";
 import {
   liveRecordValue,
@@ -84,11 +86,20 @@ const isPlainObject = (v: SyncJson): v is { [k: string]: SyncJson } =>
 /**
  * The server's copy of a record, as a `conflict` carries it. A deleted record answers
  * `value: null`; a record the store holds no row for answers version 0. A sealed record answers
- * `ct` in place of `value` (§13.10).
+ * `ct` in place of `value` (§13.10). A record with a file carries its pointer (`file`, U-10); one
+ * that has a file and no value carries neither `value` nor `ct` (§13.4).
  */
-export function recordCopy(row: StoredRecord | undefined): SyncServerCopy {
+export function recordCopy(
+  row: StoredRecord | undefined,
+  file?: SyncFilePointer,
+): SyncServerCopy {
   if (!row) return { value: null, version: 0 };
   const base = { version: row.version, editedHlc: row.stamp.hlc };
+  if (file !== undefined) {
+    if (!row.deleted && row.kind === "value" && row.value === null)
+      return { ...base, file };
+    return { ...recordCopy(row), file };
+  }
   if (row.sealed && !row.deleted) {
     if (row.kind === "value" && typeof row.value === "string")
       return { ct: row.value, ...base };
@@ -108,12 +119,18 @@ const reject = (
 ): MutationResult => ({ mutationId: m.mutationId, status: "rejected", code });
 
 const conflict = (
+  store: SyncStore,
   m: SyncMutation,
   row: StoredRecord | undefined,
 ): MutationResult => ({
   mutationId: m.mutationId,
   status: "conflict",
-  server: recordCopy(row),
+  server: recordCopy(
+    row,
+    row && !row.deleted
+      ? livePointer(store, row.collection, row.id)
+      : undefined,
+  ),
 });
 
 /** A compare-and-swap mismatch: `"*"` against a live record, a number against any other version. */
@@ -176,7 +193,11 @@ function commit(
   opts.onSeq?.(next.version);
   store.putRecord(next);
   accountRecord(store, prev, next);
-  if (next.deleted) forgetTombstones(store, next.collection, route.maxRecords);
+  if (next.deleted) {
+    // A delete also removes the record's file and every kept revision (GF4, §13.8.1).
+    if (prev && !prev.deleted) dropRecordFiles(store, next.collection, next.id);
+    forgetTombstones(store, next.collection, route.maxRecords);
+  }
   return { mutationId: m.mutationId, status: "ok", version: next.version };
 }
 
@@ -237,12 +258,12 @@ function applyDelete(
   const bv = m.baseVersion;
   const byClock = route.policy === "max" || route.policy === "min";
   if (!byClock && bv !== undefined) {
-    if (casMismatch(prev, bv)) return conflict(m, prev);
+    if (casMismatch(prev, bv)) return conflict(store, m, prev);
   } else if (
     (byClock || route.policy === "lastWrite") &&
     compareStamps(stamp, prev.stamp) < 0
   )
-    return conflict(m, prev);
+    return conflict(store, m, prev);
   // Already deleted: nothing changes, and the tombstone keeps the clock it has.
   if (prev.deleted)
     return { mutationId: m.mutationId, status: "ok", version: prev.version };
@@ -300,7 +321,7 @@ export function applyRecordMutation(
         ? planFields(route, m, prev, stamp)
         : planSet(route, m, prev, stamp);
     if (plan.kind === "reject") return reject(m, plan.code);
-    if (plan.kind === "conflict") return conflict(m, prev);
+    if (plan.kind === "conflict") return conflict(store, m, prev);
     if (plan.kind === "noop")
       return {
         mutationId: m.mutationId,
@@ -331,7 +352,7 @@ export function applyRecordMutation(
   let stampOut = stamp;
   if (byField && route.sealed && bv !== undefined) {
     // The E2E register: decided by `baseVersion` alone, never by value (§13.3).
-    if (casMismatch(prev, bv)) return conflict(m, prev);
+    if (casMismatch(prev, bv)) return conflict(store, m, prev);
     if (prev && compareStamps(prev.stamp, stamp) > 0) stampOut = prev.stamp;
   } else if (byField) {
     const field = route.conflictField;
@@ -346,11 +367,12 @@ export function applyRecordMutation(
     if (before !== undefined && after !== undefined && before !== after) {
       // The better value wins whatever its clock; the worse loses whatever its clock.
       const beats = route.policy === "max" ? after > before : after < before;
-      if (!beats) return conflict(m, prev);
-    } else if (stale) return conflict(m, prev);
+      if (!beats) return conflict(store, m, prev);
+    } else if (stale) return conflict(store, m, prev);
   } else if (bv !== undefined) {
-    if (casMismatch(prev, bv)) return conflict(m, prev);
-  } else if (route.policy === "lastWrite" && stale) return conflict(m, prev);
+    if (casMismatch(prev, bv)) return conflict(store, m, prev);
+  } else if (route.policy === "lastWrite" && stale)
+    return conflict(store, m, prev);
 
   const kid = route.sealed ? envelopeKid(value as string) : undefined;
   return commit(store, ctx, route, m, prev, {

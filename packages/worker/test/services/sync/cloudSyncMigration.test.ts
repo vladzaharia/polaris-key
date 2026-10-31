@@ -330,7 +330,7 @@ describe("sync.cloudSync subject store", () => {
     await put(db, "a", { bytes: 10, settings: 1, rev: 3, at: 1 });
     await put(db, "b", { bytes: 99, settings: 1, at: 1 });
     const store = subjectStores().find(([n]) => n === CLOUD_SYNC_STORE)![1];
-    expect(await store.size!(ctx, { product: "acme", subject: "a" })).toBe(13);
+    expect(await store.size!(ctx, { product: "acme", subject: "a" })).toBe(10);
     expect(
       (await store.export!(ctx, { product: "acme", subject: "a" })) as any,
     ).toMatchObject({

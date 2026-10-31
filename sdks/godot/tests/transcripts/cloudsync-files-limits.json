@@ -1,0 +1,75 @@
+{
+  "transcriptVersion": 1,
+  "id": "cloudsync-files-limits",
+  "description": "The transfer limiter (§13.8.2): a device is allowed 30 file transfers an hour (a begin or a whole-file GET); the 31st begin answers 429 rate_limited with Retry-After and creates no session. Earlier transfers are spent outside the recording.",
+  "features": ["sync.files"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_NAIaBffqyqkOvKxL9ZgAkOm1KOGcEDFYObDq60vW04A",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "cloudSyncFile",
+      "note": "The 31st transfer of the hour.",
+      "args": { "op": "begin", "collection": "docs", "id": "l1", "size": 1000 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/files/docs/l1/begin",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "size": 1000,
+                  "sha256": "5097e7d587352f5097062ae679f37bda5802d9f875aba14c8cb4d1a188ada179",
+                  "format": "whole",
+                  "enc": "none"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 429,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json",
+                "retry-after": "2800"
+              },
+              "body": { "error": { "code": "rate_limited" } }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 429,
+        "code": "rate_limited",
+        "retryAfter": 2800
+      }
+    }
+  ]
+}

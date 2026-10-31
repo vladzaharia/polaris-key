@@ -18,6 +18,7 @@ import {
   checkBegin,
   commitBegin,
   commitFinalize,
+  FILE_SSEC,
   FINALIZE_LEASE_MS,
   fileObjectKey,
   finalizeLease,
@@ -35,6 +36,8 @@ import type {
   FinalizePrepareOutcome,
 } from "./protocol.js";
 import type { FinalizeResponse } from "@polaris-key/protocol/sync";
+import { hexEncode } from "../../../platform/bytes.js";
+import { randomToken } from "../../../platform/random.js";
 import type { SqlStore } from "./sqlStore.js";
 
 /** What an operation hands back to `fetch`: a body in the object's protocol and a status. */
@@ -59,6 +62,9 @@ const refuse = (code: CloudSyncError["error"], status: number): FileReply => ({
   body: { error: code },
   status,
 });
+
+/** `meta` flag: this object has had an upload or a file, so its R2 prefix may hold objects. */
+export const FILES_USED = "files_used";
 
 /** The first write: makes the schema and pins the pair, in one transaction. */
 function pinned(host: FileHost, pin: DoPin): void {
@@ -101,7 +107,7 @@ async function dropObjects(
  * session whose R2 cleanup failed stays as it is, reserved, and is tried again; so the quota never
  * goes back to a person while bytes of theirs may still sit in the bucket.
  */
-async function discard(
+export async function discard(
   host: FileHost,
   pin: DoPin,
   u: UploadRow,
@@ -110,6 +116,39 @@ async function discard(
   if (!(await dropObjects(host, pin, u))) return false;
   host.store.transaction(() => releaseUpload(host.store, u));
   return true;
+}
+
+// ── SSE-C (D-8) ──────────────────────────────────────────────────────────────────────────────
+
+/** `meta` key naming the person's current SSE-C key (`ssec_keys.kid`). */
+const SSEC_KID = "ssec_kid";
+
+/** Whether an upload of this `enc` is stored under the person's SSE-C key. */
+const sealed = (enc: UploadRow["enc"]): boolean => FILE_SSEC && enc === "none";
+
+/**
+ * The person's SSE-C key id, made on first use: a random 256-bit key kept in `ssec_keys` and shredded
+ * with the person's data (`deleteAll`). One key per person; every server-mode file of theirs
+ * references it by `files.ssec_kid`, so an absorb carries the keys its files need.
+ */
+function ensureSsecKey(host: FileHost): string {
+  const have = host.store.getMeta(SSEC_KID);
+  if (have !== undefined && host.store.getSsecKey(have)) return have;
+  const kid = `sk_${randomToken(12)}`;
+  const key = crypto.getRandomValues(new Uint8Array(32));
+  host.store.transaction(() => {
+    host.store.putSsecKey(kid, key);
+    host.store.setMeta(SSEC_KID, kid);
+  });
+  return kid;
+}
+
+/** The hex of the key an upload of this `enc` is stored under, or undefined when it takes none. */
+function ssecKeyOf(host: FileHost, enc: UploadRow["enc"]): string | undefined {
+  if (!sealed(enc)) return undefined;
+  const kid = host.store.getMeta(SSEC_KID);
+  const key = kid === undefined ? undefined : host.store.getSsecKey(kid);
+  return key ? hexEncode(key) : undefined;
 }
 
 /** Collects expired sessions (a few at a time): finished or ended ones are just forgotten. */
@@ -149,18 +188,25 @@ export function fileBegin(
     });
     if (!out.ok) return ok({ op: "fileBegin", outcome: out });
     const upload: UploadRow = { ...out.upload };
+    if (sealed(upload.enc)) ensureSsecKey(host);
     if (upload.mode === "multipart") {
       if (!host.bucket) return refuse("unavailable", 503);
       try {
+        const ssecKey = ssecKeyOf(host, upload.enc);
         const created = await host.bucket.createMultipartUpload(
           fileObjectKey(op, upload.uploadId),
+          ssecKey !== undefined ? { ssecKey } : undefined,
         );
         upload.multipartId = created.uploadId;
       } catch {
         return refuse("unavailable", 503);
       }
     }
-    host.store.transaction(() => commitBegin(host.store, upload));
+    host.store.transaction(() => {
+      commitBegin(host.store, upload);
+      // An erasure and a merge's delete look in R2 only for a person who ever used it.
+      host.store.setMeta(FILES_USED, "1");
+    });
     return ok({
       op: "fileBegin",
       outcome: {
@@ -291,6 +337,9 @@ export async function filePrepare(
               ? Math.ceil(s.u.size / s.u.partBytes)
               : 1,
           multipartId: s.u.multipartId,
+          ...(ssecKeyOf(host, s.u.enc) !== undefined
+            ? { ssecKey: ssecKeyOf(host, s.u.enc) as string }
+            : {}),
         };
   return ok({ op: "filePrepare", outcome });
 }
@@ -323,6 +372,71 @@ export function filePart(
       });
   });
   return ok({ op: "filePart", outcome: { ok: true } });
+}
+
+// ── download and revisions (U-10.8) ──────────────────────────────────────────────────────────
+
+/**
+ * The file a download streams: the record's live one, or the kept `version` (live or a revision).
+ * A parked file belongs to no live record, and a dead one is waiting to be collected: neither is
+ * served. The key comes from the row, never from the request.
+ */
+export function fileResolve(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "fileResolve" }>,
+): FileReply {
+  host.store.prepare(false);
+  const row =
+    op.version === undefined
+      ? host.store.liveFile(op.collection, op.recordId)
+      : host.store.getFile(op.collection, op.recordId, op.version);
+  if (!row || (row.status !== "live" && row.status !== "revision"))
+    return ok({
+      op: "fileResolve",
+      outcome: { ok: false, error: "not_found" },
+    });
+  const ssec =
+    row.ssecKid !== undefined ? host.store.getSsecKey(row.ssecKid) : undefined;
+  // A file under a key the object no longer holds cannot be opened: it is gone, not unreadable.
+  if (row.ssecKid !== undefined && !ssec)
+    return ok({
+      op: "fileResolve",
+      outcome: { ok: false, error: "not_found" },
+    });
+  return ok({
+    op: "fileResolve",
+    outcome: {
+      ok: true,
+      file: {
+        key: row.objectKey,
+        version: row.version,
+        size: row.size,
+        sha256: row.sha256,
+        format: row.format,
+        ...(ssec ? { ssecKey: hexEncode(ssec) } : {}),
+      },
+    },
+  });
+}
+
+/** The kept older versions of a record's file, newest first. The live file is not one of them. */
+export function fileRevisions(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "fileRevisions" }>,
+): FileReply {
+  host.store.prepare(false);
+  const revisions = host.store
+    .filesOf(op.collection, op.recordId)
+    .filter((f) => f.status === "revision")
+    .sort((a, b) => b.version - a.version)
+    .map((f) => ({
+      version: f.version,
+      size: f.size,
+      sha256: f.sha256,
+      format: f.format,
+      createdAt: f.createdAt,
+    }));
+  return ok({ op: "fileRevisions", outcome: { ok: true, revisions } });
 }
 
 // ── finalize (U-10.7) ────────────────────────────────────────────────────────────────────────
@@ -432,6 +546,9 @@ export function fileFinalizePrepare(
         size: u.size,
         sha256: u.sha256,
         mode: u.mode,
+        ...(ssecKeyOf(host, u.enc) !== undefined
+          ? { ssecKey: ssecKeyOf(host, u.enc) as string }
+          : {}),
       },
     });
   });
@@ -471,6 +588,10 @@ export function fileFinalizeCommit(
         objectKey: fileObjectKey(op, u.uploadId),
         clientId: op.clientId,
         maxRecords: op.maxRecords,
+        keepRevisions: op.keepRevisions,
+        ...(sealed(u.enc) && host.store.getMeta(SSEC_KID) !== undefined
+          ? { ssecKid: host.store.getMeta(SSEC_KID) as string }
+          : {}),
         nowMs: op.serverNow,
       });
       if (committed.ok) markDirty(host.store);

@@ -21,6 +21,7 @@ import {
   type FinalizeResponse,
   type SyncUploadMode,
 } from "@polaris-key/protocol/sync";
+import { pruneRevisions } from "./fileRows.js";
 import { formatHlc } from "./hlc.js";
 import { casMismatch } from "./records.js";
 import type {
@@ -62,6 +63,15 @@ export function syncTransferPlan(size: number, delta: boolean): TransferPlan {
   );
   return { mode: "multipart", partBytes, parts: Math.ceil(size / partBytes) };
 }
+
+/**
+ * Whether server-mode files (`enc: "none"`) are stored under a per-person SSE-C key (D-8): `true`
+ * until the staging probe (`scripts/probe/r2-ssec.mjs`, U-10.W) says R2 refuses `ssecKey` on the
+ * paths a file takes, when the plan's fallback (sealing the stream as `pkey-sync-file/1`) replaces
+ * it. Neither changes the wire. End-to-end files (`enc: "e2e"`) are ciphertext already and never
+ * take it.
+ */
+export const FILE_SSEC = true;
 
 /** The R2 key of an upload's object. Only ever built here, from the pin and a session id. */
 export const fileObjectKey = (
@@ -246,6 +256,10 @@ export interface FinalizeInput {
   /** The write's clock owner: a clientId-shaped name derived from the device (the file routes carry none). */
   clientId: string;
   maxRecords: number;
+  /** The matched declaration's `files.keepRevisions`: the older versions the record keeps. */
+  keepRevisions: number;
+  /** The key id of the SSE-C key the object is stored under (`ssec_keys`), when it is. */
+  ssecKid?: string;
   nowMs: number;
 }
 
@@ -258,7 +272,8 @@ export type FinalizeCommit =
  * The commit of a verified upload: a record write (GF2). It re-checks `begin`'s `baseVersion`
  * against the record as it is now (GF3: any write in between is a conflict), takes the next store
  * sequence as the record's `version` and the file's, makes the stored file the live one (the
- * previous live file stays as a revision), charges its bytes and releases the reservation. A
+ * previous live file stays as a revision, and revisions past `keepRevisions` are retired), charges
+ * its bytes and releases the reservation. A
  * create-only `finalize` of a missing record makes a record with no value. The session becomes
  * `done` and keeps the answer, so a repeat of `finalize` replays it and charges nothing.
  *
@@ -309,11 +324,19 @@ export function commitFinalize(
     size: upload.size,
     sha256: upload.sha256,
     status: "live",
+    ...(input.ssecKid !== undefined ? { ssecKid: input.ssecKid } : {}),
     createdAt: input.nowMs,
     clientId: input.clientId,
   };
   store.putFile(file);
   accountFile(store, before, file, upload.reservedBytes);
+  // The older versions beyond `keepRevisions` die with this write; the alarm frees their bytes.
+  pruneRevisions(
+    store,
+    upload.collection,
+    upload.recordId,
+    input.keepRevisions,
+  );
 
   const result: FinalizeResponse = {
     version,

@@ -152,6 +152,8 @@ export async function handleUploadPut(
     const put = await bucket.put(prep.key, body, {
       sha256: prep.sha256,
       onlyIf: new Headers({ "If-None-Match": "*" }),
+      // A server-mode file is stored under the person's key (SSE-C, D-8).
+      ...(prep.ssecKey !== undefined ? { ssecKey: prep.ssecKey } : {}),
     });
     if (put !== null) etag = put.etag;
     else {
@@ -210,7 +212,11 @@ export async function handlePartPut(
     const hashed = hashBody(req.body as ReadableStream<Uint8Array>);
     const uploaded = await bucket
       .resumeMultipartUpload(prep.key, prep.multipartId as string)
-      .uploadPart(n, fixedLength(hashed.stream, expected));
+      .uploadPart(
+        n,
+        fixedLength(hashed.stream, expected),
+        prep.ssecKey !== undefined ? { ssecKey: prep.ssecKey } : undefined,
+      );
     if ((await hashed.digest) !== digest) {
       await forget();
       return wireError(400, "upload_mismatch");

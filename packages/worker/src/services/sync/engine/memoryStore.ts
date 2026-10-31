@@ -7,6 +7,7 @@ import type { SyncScope } from "@polaris-key/protocol/sync";
 import { compareRemoved, recordsDump, settingId } from "./store.js";
 import type {
   ClientRecord,
+  FileStatus,
   ParkedRecord,
   RemovedField,
   StoredFile,
@@ -450,6 +451,19 @@ export class MemoryStore implements SyncStore {
       .map(([, f]) => ({ ...f }));
   }
 
+  filesWithStatus(status: FileStatus, limit: number): StoredFile[] {
+    return this.allFiles()
+      .filter((f) => f.status === status)
+      .sort((a, b) => a.version - b.version)
+      .slice(0, limit);
+  }
+
+  fileKeyInUse(objectKey: string): boolean {
+    for (const f of this.files.values())
+      if (f.objectKey === objectKey && f.status !== "dead") return true;
+    return false;
+  }
+
   getUpload(uploadId: string): UploadRow | undefined {
     const u = this.uploads.get(uploadId);
     return u ? { ...u } : undefined;
@@ -477,6 +491,17 @@ export class MemoryStore implements SyncStore {
           a.createdAt - b.createdAt || (a.uploadId < b.uploadId ? -1 : 1),
       )
       .map((u) => ({ ...u }));
+  }
+
+  nextUploadExpiry(): number | undefined {
+    let min: number | undefined;
+    for (const u of this.uploads.values())
+      if (min === undefined || u.expiresAt < min) min = u.expiresAt;
+    return min;
+  }
+
+  allUploads(): UploadRow[] {
+    return [...this.uploads.values()].map((u) => ({ ...u }));
   }
 
   expiredUploads(nowMs: number, limit: number): UploadRow[] {

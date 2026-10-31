@@ -4,8 +4,17 @@
  * whose catalog declares the collections below. Server mode (`enc: "none"`), the launch gate on.
  */
 import { createHash } from "node:crypto";
+import type {
+  BeginFileResponse,
+  FinalizeResponse,
+} from "@polaris-key/protocol/sync";
+import { expect } from "vitest";
 import { dispatch } from "../../../src/dispatch.js";
 import { invalidatePlatformSettings } from "../../../src/core/platformSettings.js";
+import { setDeviceSubject } from "../../../src/core/accounts/accountSubjects.js";
+import { rateLimitOk } from "../../../src/core/rateLimit.js";
+import { signIn } from "../../../src/services/identity/accounts/signIn.js";
+import { syncLimiterShard } from "../../../src/services/sync/limits.js";
 import { NOW } from "../../seed.js";
 import { R2Mock } from "../../r2Mock.js";
 import {
@@ -56,6 +65,11 @@ export async function filesWorld(
   const w = await world({
     catalog: opts.catalog ?? FILES_CATALOG,
     files: r2,
+  });
+  // The alarm writes the directory to D1: a stub that takes the batch (the directory has its own tests).
+  (w.ns as unknown as { opts: { db?: unknown } }).opts.db = () => ({
+    batch: async () => undefined,
+    batchChanges: async (s: unknown[]) => s.map(() => 1),
   });
   return Object.assign(w, { r2 });
 }
@@ -249,3 +263,56 @@ export function uploadRow(
 /** The `error.code` of a nested wire error body. */
 export const errorCode = async (res: Response): Promise<string> =>
   ((await res.json()) as { error: { code: string } }).error.code;
+
+/** A file stored on a record through the routes: begin, a single `PUT`, finalize. */
+export async function stored(
+  w: FilesWorld,
+  collection: string,
+  id: string,
+  bytes: Uint8Array,
+  over: Partial<BeginBody> = {},
+): Promise<FinalizeResponse> {
+  const res = await begin(w, collection, id, beginBody(bytes, over));
+  expect(res.status).toBe(200);
+  const up = (await res.json()) as BeginFileResponse;
+  expect(
+    (await putBytes(w, uploadPath(collection, id, up.uploadId), bytes)).status,
+  ).toBe(204);
+  const done = await finalize(w, collection, id, up.uploadId);
+  expect(done.status).toBe(200);
+  return (await done.json()) as FinalizeResponse;
+}
+
+/** The world's device now belongs to another person (Bob); the first person's data stays put. */
+export async function becomeBob(w: Pick<World, "db" | "env">): Promise<void> {
+  const r = await signIn(
+    w.db,
+    { issuerKey: "email", subject: "bob@example.com", kind: "email" },
+    NOW,
+    { unfenced: true, product: { slug: SLUG } },
+  );
+  if (r.status !== "signed_in") throw new Error(r.status);
+  expect(
+    await setDeviceSubject(w.env, w.db, SLUG, "dev-attack-1", r.subject!),
+  ).toBe(true);
+}
+
+/** Spends `spend` of a device's allowance in a limiter bucket of `limit` per `windowSec`, at `NOW`. */
+export async function spendLimit(
+  w: Pick<World, "env" | "subject">,
+  bucket: "syncFilesDevice" | "syncParts",
+  spend: number,
+  limit: number,
+  windowSec: number,
+): Promise<void> {
+  const shard = syncLimiterShard(SLUG, w.subject);
+  for (let i = 0; i < spend; i++)
+    expect(
+      await rateLimitOk(
+        w.env,
+        shard,
+        { bucket, id: "dev-attack-1", limit, windowSec },
+        NOW,
+      ),
+    ).toBe(true);
+}
