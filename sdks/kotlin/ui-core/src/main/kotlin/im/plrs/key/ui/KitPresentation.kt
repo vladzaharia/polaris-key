@@ -48,6 +48,7 @@ public enum class KitComponent(public val id: String) {
     unlockSync("UnlockSync"),
     recoveryCode("RecoveryCode"),
     ringChange("RingChange"),
+    saveConflict("SaveConflict"),
     ;
 
     public companion object {
@@ -72,6 +73,9 @@ public enum class KitAction(public val id: String) {
     acceptRingChange("accept-ring-change"),
     useRecoveryCode("use-recovery-code"),
     copyCode("copy-code"),
+    keepLocal("keep-local"),
+    keepRemote("keep-remote"),
+    keepBoth("keep-both"),
     ;
 
     public companion object {
@@ -100,6 +104,10 @@ public enum class KitAction(public val id: String) {
             "ringChange.accept" to acceptRingChange,
             "ringChange.useCode" to useRecoveryCode,
             "recoveryCode.copy" to copyCode,
+            "saveConflict.keepThis" to keepLocal,
+            "saveConflict.keepOther" to keepRemote,
+            "saveConflict.acceptDelete" to keepRemote,
+            "saveConflict.keepBoth" to keepBoth,
         )
 
         /** The action taken by a control with [copyKey], when the catalog assigns one. */
@@ -141,6 +149,8 @@ public data class KitScreen(
     public val state: String,
     public val copy: List<CopyLine>,
     public val actions: List<KitAction>,
+    /** Controls drawn but not available (Keep both with every save slot in use); never in [actions]. */
+    public val disabledActions: List<KitAction> = emptyList(),
 ) {
     /** The catalog keys in stable comparison order. */
     public val copyKeys: List<String>
@@ -383,6 +393,7 @@ public object KitStates {
         KitComponent.unlockSync -> unlockSyncScreen(inputs)
         KitComponent.recoveryCode -> recoveryCodeScreen(inputs)
         KitComponent.ringChange -> ringChangeScreen(inputs)
+        KitComponent.saveConflict -> saveConflictScreen(inputs)
     }
 }
 
@@ -441,12 +452,14 @@ internal fun screen(
     state: String,
     lines: List<CopyLine> = emptyList(),
     extraActions: List<KitAction> = emptyList(),
+    disabled: List<KitAction> = emptyList(),
 ): KitScreen {
     if (state == "hidden") return KitScreen(component, state, emptyList(), emptyList())
     val actions = (lines.mapNotNull { KitAction.forCopyKey(it.key) } + extraActions)
         .distinct()
+        .filterNot { it in disabled }
         .sortedBy(KitAction::id)
-    return KitScreen(component, state, lines, actions)
+    return KitScreen(component, state, lines, actions, disabled)
 }
 
 internal fun hidden(component: KitComponent): KitScreen = screen(component, "hidden")
