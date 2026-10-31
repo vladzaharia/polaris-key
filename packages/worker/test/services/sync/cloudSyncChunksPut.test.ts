@@ -394,10 +394,8 @@ const planOf = (w: FilesWorld, uploadId: string, chunks: TestChunk[]) =>
   );
 
 describe("the chunk routes under a limiter that cannot be read (D-22)", () => {
-  // Lands with part B of the F3 fix round (`rateLimitCheck`: writes refuse 503 when the limiter is
-  // unreadable). Until that is on the branch the limiter fails open, so this case is skipped:
-  // enable it when B merges.
-  it.skip("the plan and a chunk PUT refuse with 503 when the limiter cannot be read, with no object or R2 call, and a chunk GET proceeds", async () => {
+  // `rateLimitCheck`: a file call that writes refuses 503 when the limiter is unreadable.
+  it("the plan and a chunk PUT refuse with 503 when the limiter cannot be read, with no object or R2 call, and a chunk GET proceeds", async () => {
     const w = await filesWorld();
     const held = chunkOf(1);
     await writeChunked(w, "delta", "old", manifestOf(1), [held]);
