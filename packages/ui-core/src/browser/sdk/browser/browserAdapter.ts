@@ -212,7 +212,11 @@ import {
   completeRedirect,
   type SettleHooks,
 } from "./bearer/signInSessions.js";
-import { choiceEndpointsOf, type ChoiceNamespace } from "../core/choice.js";
+import {
+  choiceEndpointsOf,
+  deviceChoiceOf,
+  type ChoiceNamespace,
+} from "../core/choice.js";
 import {
   callbackState,
   redirectEndpointsOf,
@@ -786,6 +790,7 @@ export class BrowserAdapter implements PolarisAdapter {
         identityEndpoints: () => accountEndpointsOf(this.discovery_),
         redirectEndpoints: () => redirectEndpointsOf(this.discovery_),
         choiceEndpoints: () => choiceEndpointsOf(this.discovery_),
+        deviceChoice: () => deviceChoiceOf(this.discovery_),
         exchangeEndpoints: () => exchangeDiscoveryOf(this.discovery_),
         ...(opts.fingerprint ? { fingerprint: opts.fingerprint } : {}),
         ...(opts.deviceName !== undefined

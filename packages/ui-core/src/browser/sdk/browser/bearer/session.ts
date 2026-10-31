@@ -215,6 +215,14 @@ export type SignInPoll =
    *  signed-in identity the server named, when it did (§3.12). */
   | { status: "ready"; identity?: { name?: string; email?: string } }
   | { status: "expired" }
+  /** A start that asked `licenseChoice: "app"` is answered with a grant instead of a token; no
+   *  token was stored and the flow is spent (UK-42.22, §12.10.1). Hand `grant` to `choice.*`. */
+  | {
+      status: "choose";
+      grant: string;
+      expiresIn: number;
+      choices: Record<string, unknown>;
+    }
   /** `code` is `sign-in-denied` when the Worker answered `error` + `access_denied` (a person
    *  refused), and `sign-in-failed` for a bare `error` (it failed after approval). */
   | {
@@ -353,6 +361,10 @@ export interface BearerSessionOptions {
   /** The `choice*` endpoints discovery named (`identity.endpoints`). A choice call whose endpoint
    *  is absent answers the typed unavailable and dials nothing; the default answers none. */
   choiceEndpoints?: () => ChoiceEndpoints | null;
+  /** Whether discovery carries `identity.deviceChoice` (UK-42.22, §12.6). A device-code start
+   *  sends `licenseChoice: "app"` only when this and all four `choice*` endpoints hold; the
+   *  default answers false. */
+  deviceChoice?: () => boolean;
   /** The platform sign-in discovery named (`identity.exchange`, `nonce`, `token`). An exchange
    *  with none answers `unavailable` and dials nothing; the default answers none. */
   exchangeEndpoints?: () => ExchangeDiscovery | null;
@@ -2129,8 +2141,14 @@ export class BearerSession {
     if (opts.scope !== undefined)
       body.scope =
         typeof opts.scope === "string" ? opts.scope : opts.scope.join(" ");
-    if (opts.licenseChoice !== undefined)
-      body.licenseChoice = opts.licenseChoice;
+    // §12.10.1 / §12.6: the app's own licence choice only when this Worker serves it; an older
+    // one would leave the card choosing, and an unreleased SDK that sent it would meet `choose`.
+    if (
+      opts.licenseChoice === "app" &&
+      this.choiceAvailable &&
+      this.opts.deviceChoice?.() === true
+    )
+      body.licenseChoice = "app";
     const res = await this.postJson("identity/auth/device/start", body);
     // A 404 means the Worker serves no sign-in for this product (Identity off before discovery
     // said so): the typed N/A, as in Node.
@@ -2188,6 +2206,9 @@ export class BearerSession {
       token?: unknown;
       identity?: unknown;
       reason?: unknown;
+      grant?: unknown;
+      expiresIn?: unknown;
+      choices?: unknown;
     };
     if (res.status === 429)
       return {
@@ -2218,6 +2239,24 @@ export class BearerSession {
               message: "device sign-in failed.",
               code: ErrorCode.signInFailed,
             };
+      case "choose": {
+        // UK-42.22: a start that asked `licenseChoice: "app"`. A grant, no token; the flow is spent.
+        const choices = b.choices;
+        if (
+          !isString(b.grant) ||
+          !isSeconds(b.expiresIn) ||
+          typeof choices !== "object" ||
+          choices === null ||
+          Array.isArray(choices)
+        )
+          return { status: "error", message: "choose without a grant." };
+        return {
+          status: "choose",
+          grant: b.grant,
+          expiresIn: Math.ceil(b.expiresIn),
+          choices: choices as Record<string, unknown>,
+        };
+      }
       case "ready": {
         if (!isString(b.token))
           return { status: "error", message: "ready without a token." };

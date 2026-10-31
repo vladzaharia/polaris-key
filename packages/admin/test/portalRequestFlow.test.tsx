@@ -324,6 +324,25 @@ describe("the request's hints and purpose (UK-42.14)", () => {
     expect(document.body.textContent).not.toMatch(/wants you to sign in/);
   });
 
+  it("a device attach request drops Have a license key? and Sign in with another device", async () => {
+    out({
+      ...VIEW,
+      purpose: "attach",
+      client: { ...VIEW.client, kind: "device" },
+    });
+    renderPortal();
+    await screen.findByRole("textbox", { name: "Email" });
+    expect(screen.queryByText("Have a license key?")).toBeNull();
+    expect(screen.queryByText("Sign in with another device")).toBeNull();
+  });
+
+  it("a web or native request keeps them", async () => {
+    out({ ...VIEW, purpose: "attach" });
+    renderPortal();
+    await screen.findByRole("textbox", { name: "Email" });
+    expect(screen.queryByText("Sign in with another device")).not.toBeNull();
+  });
+
   const finish = async (newAccount: boolean) => {
     window.history.replaceState(
       null,
@@ -358,6 +377,26 @@ describe("the request's hints and purpose (UK-42.14)", () => {
     const field = await finish(true);
     expect(field.placeholder).toBe("Ada Lovelace");
     expect(field.value).not.toBe("Ada Lovelace");
+  });
+
+  // The hint is also offered as the first "Use a name from" chip, labelled with the app: tapping it
+  // fills the field, and nothing is sent unread.
+  it("FinishStep offers nameHint as the first Use a name from chip, unselected until tapped", async () => {
+    await finish(true);
+    const chip = await screen.findByRole("button", {
+      name: "Diceroll · Ada Lovelace",
+    });
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+    const chips = screen
+      .getAllByRole("button")
+      .filter((b) => b.hasAttribute("aria-pressed"));
+    expect(chips[0]).toBe(chip);
+    await userEvent.click(chip);
+    const field = screen.getByRole("textbox", {
+      name: /name/i,
+    }) as HTMLInputElement;
+    expect(field.value).toBe("Ada Lovelace");
+    expect(chip.getAttribute("aria-pressed")).toBe("true");
   });
 
   it("an existing account's finish step ignores nameHint", async () => {

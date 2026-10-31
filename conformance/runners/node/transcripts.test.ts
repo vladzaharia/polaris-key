@@ -10,7 +10,7 @@
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints identity.account
-// @pkey-feature identity.attach identity.choice identity.keyreturn
+// @pkey-feature identity.attach identity.choice identity.keyreturn identity.devicecode.choice
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
@@ -218,6 +218,14 @@ function usesAccount(t: Transcript): boolean {
   );
 }
 
+/** Does this transcript start a device-code sign-in that asks `licenseChoice: "app"`? (UK-42.22:
+ *  discovery must then carry `deviceChoice`, which is the SDK's gate for sending the member.) */
+function asksDeviceChoice(t: Transcript): boolean {
+  return t.steps.some(
+    (s) => s.action === "beginSignIn" && s.args.licenseChoice === "app",
+  );
+}
+
 /** The Worker's standard discovery document, for a transcript that loads none itself. */
 function standardDiscovery(t: Transcript): string {
   const base = `${t.baseUrl}/${t.product}`;
@@ -231,11 +239,12 @@ function standardDiscovery(t: Transcript): string {
       ...(usesAccount(t)
         ? { license: { enabled: true }, config: { enabled: true } }
         : {}),
-      ...(usesRedirect(t) || usesAccount(t)
+      ...(usesRedirect(t) || usesAccount(t) || asksDeviceChoice(t)
         ? {
             identity: {
               enabled: true,
               configured: true,
+              ...(asksDeviceChoice(t) ? { deviceChoice: true } : {}),
               issuer: redirectIssuer(t),
               account: true,
               endpoints: {
@@ -845,11 +854,21 @@ async function act(
     case "beginSignIn": {
       // D-6: the recorded action names map onto the session (`signIn.start`, `wait`).
       const name = step.args.deviceName;
+      const hint = (k: string) =>
+        typeof step.args[k] === "string" ? { [k]: step.args[k] } : {};
       let p: DeviceCodeSession;
       try {
         p = await client.identity.signIn.start({
           channel: "device-code",
           ...(typeof name === "string" ? { deviceName: name } : {}),
+          ...hint("loginHint"),
+          ...hint("nameHint"),
+          ...(step.args.purpose === "signin" || step.args.purpose === "attach"
+            ? { purpose: step.args.purpose }
+            : {}),
+          ...(step.args.licenseChoice === "app"
+            ? { licenseChoice: "app" as const }
+            : {}),
         });
       } catch (e) {
         if (!(e instanceof PolarisError)) throw e;
@@ -1363,7 +1382,7 @@ async function replay(t: Transcript): Promise<void> {
       : {}),
   });
   client.devices.fingerprint = () => FINGERPRINT;
-  if (usesRedirect(t))
+  if (usesRedirect(t) || asksDeviceChoice(t))
     // The redirect recordings pin the token exchange alone. The acquisition sync a sign-in
     // raises (trust fetch, documents, report) is pinned by the sync transcripts, so it is not
     // replayed here.

@@ -11,7 +11,7 @@ import { withManageKey, withManageReturn } from "@polaris-key/client-core";
 import { parsePortal, portalLink } from "@polaris-key/client-core/portal";
 import { CUSTOMER_ORIGIN_DEFAULT, ISSUER } from "@polaris-key/protocol/core";
 
-import { WEB_ADD_IN, type AddIn } from "../addIn.js";
+import { addInOf, type AddIn } from "../addIn.js";
 import type { ReleaseNoteInput, UiInput } from "../input.js";
 import { BrowserAdapter } from "./sdk/browser/browserAdapter.js";
 import {
@@ -197,7 +197,7 @@ export interface GateDriverOptions {
   /** The device kind already worded ("computer", "browser"): the lines of ActivateDone and
    *  AddToAccount that name this device. Defaults to "device". */
   deviceKind?: string;
-  /** Where Add your name and email, and "Sign in to that account", go. Defaults to `WEB_ADD_IN`. */
+  /** Where Add your name and email, and "Sign in to that account", go. Absent, it follows discovery's `deviceChoice` (`app`), else `portal`. */
   addIn?: AddIn;
 }
 
@@ -245,6 +245,12 @@ export async function startPageSignIn(
 export function handleOf(flow: DeviceCodeSignInSession): SignInSessionHandle {
   return {
     browserOpened: true,
+    // The code the person checks against the one Polaris Locker shows (AddToAccount's waiting view).
+    deviceCode: {
+      phase: "waiting",
+      userCode: flow.userCode,
+      verificationUri: flow.verificationUri,
+    },
     wait: async (): Promise<SignInWait> => {
       const r = await flow.wait({ once: true });
       switch (r.kind) {
@@ -330,6 +336,10 @@ export class GateDriver {
   private owning = false;
   /** Where AddToAccount opened from: ActivateDone, or a screen of the app (the settings row). */
   private addFrom: GateStep = "home";
+  /** Where Add your name and email goes: the host's `addIn`, else read once from discovery. Null
+   *  until known; the press then waits (busy) instead of acting on a guess. */
+  private channel: AddIn | null;
+  private addBusy = false;
   /** Done was reached by cancelling AddToAccount: focus returns to Add your name and email. */
   private returned = false;
 
@@ -338,6 +348,24 @@ export class GateDriver {
     options: GateDriverOptions = {},
   ) {
     this.options = { ...options };
+    this.channel = options.addIn ?? null;
+  }
+
+  /** Read the Add channel from discovery, once, so the press acts at once. A discovery that does
+   *  not answer is not remembered: the press tries again and reads `portal` if it still fails. */
+  private async readChannel(): Promise<AddIn> {
+    if (this.channel) return this.channel;
+    let d: Record<string, unknown> | null = null;
+    try {
+      d = await this.adapter.discovery();
+    } catch {
+      d = null;
+    }
+    if (d) {
+      this.channel = addInOf(d);
+      this.changed();
+    }
+    return this.channel ?? "portal";
   }
 
   /** The locale the grace date reads in (it can change after construction). */
@@ -378,6 +406,11 @@ export class GateDriver {
       dismissed: this.dismissed,
       deviceKind: this.options.deviceKind ?? "device",
       ...(this.returned ? { returned: true } : {}),
+      ...(this.channel === "portal" ? { addIn: "portal" as const } : {}),
+      ...(this.addBusy ? { addBusy: true } : {}),
+      ...(this.addModel?.input().deviceCode
+        ? { deviceCode: this.addModel.input().deviceCode! }
+        : {}),
       ...(this.addModel
         ? {
             addToAccount: {
@@ -435,6 +468,8 @@ export class GateDriver {
       this.changed();
     });
     (this.adapter as { start?: () => void }).start?.();
+    if (!this.channel && this.adapter.snapshot().capabilities.identity.enabled)
+      void this.readChannel();
     if (typeof window !== "undefined") {
       window.addEventListener("popstate", this.onPop);
       window.addEventListener("focus", this.onBack);
@@ -687,10 +722,25 @@ export class GateDriver {
 
   /** Add your name and email: with Identity on, AddToAccount; with it off, the portal. */
   private addToAccount(): void {
-    if (
-      (this.options.addIn ?? WEB_ADD_IN) === "portal" ||
-      !this.adapter.snapshot().capabilities.identity.enabled
-    ) {
+    void this.addToAccountNow();
+  }
+
+  private async addToAccountNow(): Promise<void> {
+    if (!this.adapter.snapshot().capabilities.identity.enabled) {
+      void this.openPortal();
+      return;
+    }
+    if (this.addBusy) return;
+    let where = this.channel;
+    if (!where) {
+      // The channel is not known yet: the action shows busy until it is.
+      this.addBusy = true;
+      this.changed();
+      where = await this.readChannel();
+      this.addBusy = false;
+      this.changed();
+    }
+    if (where === "portal") {
       void this.openPortal();
       return;
     }
@@ -758,15 +808,16 @@ export class GateDriver {
    *  page cannot run the sign-in itself (a cookie page), the gate's own sign-in runs as before. */
   private ownedSignIn(): void {
     const key = this.key.trim();
-    if ((this.options.addIn ?? WEB_ADD_IN) === "portal") {
-      // The portal signs in to that account and adds the key (the in-page device code cannot).
-      void this.openPortal(key || undefined);
-      return;
-    }
     // One sign-in at a time: a second press while one is live does nothing.
     if (this.owning || this.addSession) return;
     this.owning = true;
     void (async () => {
+      if ((await this.readChannel()) === "portal") {
+        // The portal signs in to that account and adds the key.
+        this.owning = false;
+        void this.openPortal(key || undefined);
+        return;
+      }
       let p: SignInPrimitives;
       let h: SignInSessionHandle;
       try {
@@ -828,10 +879,14 @@ export class GateDriver {
       case "welcome.signIn":
       case "signin.again":
       case "signin.handoff.again":
+      case "activate.attach.reopen":
       case "signInHandoff.newCode":
         // AddToAccount while busy: bring the browser tab back (inside the press, so a popup
         // blocker lets it through); the sign-in keeps running.
-        if (this.step === "add" && key === "signin.handoff.again") {
+        if (
+          this.step === "add" &&
+          (key === "signin.handoff.again" || key === "activate.attach.reopen")
+        ) {
           void Promise.resolve(this.addSession?.reopen()).catch(() => {});
           return;
         }

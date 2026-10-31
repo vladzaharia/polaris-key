@@ -113,6 +113,14 @@ files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerpr
 straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
 
+## HTTP transcripts
+
+`conformance/transcripts/` holds the recorded conversations (see [Add a corpus case](/docs/contribute/corpus-cases/#http-transcripts)). One row for the device-code channel:
+
+| Transcript                      | Proves                                                                                                                                                                                                                                                | Features                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `holders-add-to-account-device` | Add a floating license to an account over the device-code channel: the start carries the hints, `purpose: "attach"` and `licenseChoice: "app"`, the poll answers `choose` with a grant, then `keep` and `attach` put the same license in the account. | `identity.devicecode.choice`, `identity.attach` |
+
 ## Swift reads the checkout
 
 The Swift tests read `conformance/corpus/v2/` (and `conformance/transcripts/`) in place.

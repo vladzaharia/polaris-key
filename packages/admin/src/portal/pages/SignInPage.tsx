@@ -574,6 +574,7 @@ export function SignInPage({
         <FinishStep
           onTitle={setFinishTitle}
           nameHint={request.data?.nameHint}
+          appName={request.data?.client.appName}
           onLeave={() => {
             window.history.replaceState(null, "", "/");
             go({ kind: "methods" }, "back");
@@ -648,6 +649,10 @@ export function SignInPage({
           onDevice={() => go({ kind: "device" })}
           onHint={(email, last) => go({ kind: "hint", email, last })}
           other={other ? { email: other.email } : undefined}
+          attachDevice={
+            request.data?.purpose === "attach" &&
+            request.data.client.kind === "device"
+          }
         />
       )}
     </AuthCard>
@@ -787,7 +792,11 @@ function MethodsStep({
   onDevice,
   onHint,
   other,
+  attachDevice = false,
 }: {
+  /** A device-code attach request: the person already holds a key and is on the other device, so
+   *  neither "Have a license key?" nor "Sign in with another device" helps. */
+  attachDevice?: boolean;
   /** The join's second sign-in: its own title, and no way out to a key or a device. */
   other?: { email?: string };
   caps: PortalCapabilities;
@@ -1043,7 +1052,7 @@ function MethodsStep({
           ) : null}
         </div>
       ) : null}
-      {!other && (carried || caps.modules.claim || magic) ? (
+      {!other && !attachDevice && (carried || caps.modules.claim || magic) ? (
         <QuietLinks stacked>
           {carried ? (
             <QuietLink

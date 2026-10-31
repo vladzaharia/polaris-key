@@ -88,6 +88,7 @@ export function activateDoneView(
       primary: "signin.done.start",
     });
   }
+  const portal = !ctx.on("identity") || done.addIn === "portal";
   return makeView(ctx, "ActivateDone", {
     state: "ready",
     copy: [
@@ -96,18 +97,21 @@ export function activateDoneView(
       "activate.recommend.title",
       "activate.recommend.badge",
       ...reasonsOf(ctx),
-      // With Identity off the action opens polaris.locker, so it says that (an external link).
-      ctx.on("identity")
-        ? "activate.recommend.action"
-        : "signin.key.addInLocker",
-      !ctx.on("identity") && "a11y.externalLink",
+      // With Identity off, or when the web gate adds in Polaris Locker's page (discovery without
+      // `deviceChoice`), the action opens polaris.locker, so it says that (an external link).
+      portal ? "signin.key.addInLocker" : "activate.recommend.action",
+      portal && "a11y.externalLink",
       "activate.recommend.skip",
       "signin.done.start",
     ],
     args,
     primary: "signin.done.start",
     ...(done.returned && ctx.on("identity")
-      ? { focus: "activate.recommend.action" }
+      ? {
+          focus: portal
+            ? "signin.key.addInLocker"
+            : "activate.recommend.action",
+        }
       : {}),
   });
 }
@@ -118,6 +122,7 @@ export type AddToAccountState =
   | "form"
   | "invalid"
   | "busy"
+  | "waiting"
   | "added"
   | "owned"
   | "email-bound"
@@ -184,7 +189,26 @@ export function addToAccountView(
         focus: bad[0] === NAME ? nameFocus : bad[0],
       });
     }
-    case "busy":
+    case "busy": {
+      // The person confirms the email in Polaris Locker: the form gives way to `waiting`, the code
+      // they check there (the title and the code stay in view at any window). With no code to
+      // show (a channel that has none), the form stays greyed behind Working.
+      const code = ctx.input.deviceCode?.userCode;
+      if (code)
+        return makeView(ctx, "AddToAccount", {
+          state: "waiting",
+          copy: [
+            "activate.attach.waitTitle",
+            "part.code.label",
+            "a11y.code",
+            "a11y.copyCode",
+            "activate.attach.waitCheck",
+            "activate.attach.reopen",
+            "common.cancel",
+          ],
+          args,
+          focus: "heading",
+        });
       return makeView(ctx, "AddToAccount", {
         state: "busy",
         // The person is in the browser, which can take minutes: Continue stays (busy), Open the
@@ -199,6 +223,7 @@ export function addToAccountView(
         primary: "common.continue",
         focus: null,
       });
+    }
     case "added": {
       // From Settings the app is already running: the screen closes with Done.
       const closing = a.fromSettings ? "common.done" : "signin.done.start";

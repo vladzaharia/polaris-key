@@ -49,6 +49,7 @@ import {
   actions,
   button,
   callout,
+  codeDisplay,
   links,
   plain,
   text,
@@ -90,6 +91,7 @@ const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
     // The form's title is the action that opened it ("Add your name and email").
     titles: [
       "activate.recommend.action",
+      "activate.attach.waitTitle",
       "activate.owned.title",
       "activate.otherEmail.title",
       "activate.otherAccount.title",
@@ -100,6 +102,11 @@ const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
       "signin.email.label",
       "activate.attach.nameRequired",
       "signin.handoff.again",
+      "activate.attach.reopen",
+      "activate.attach.waitCheck",
+      "part.code.label",
+      "a11y.code",
+      "a11y.copyCode",
       "common.done",
       "signin.email.invalid",
       "activate.attach.lede",
@@ -495,8 +502,13 @@ function Recommendation(props: { c: KitCtx }): ReactNode {
       </ul>
       {has("signin.key.addInLocker")
         ? // Identity off: it opens polaris.locker, so the label and the glyph say so.
-          button(c, "signin.key.addInLocker", "secondary", { external: true })
-        : button(c, "activate.recommend.action", "secondary")}
+          button(c, "signin.key.addInLocker", "secondary", {
+            external: true,
+            busy: c.input.activateDone?.addBusy === true,
+          })
+        : button(c, "activate.recommend.action", "secondary", {
+            busy: c.input.activateDone?.addBusy === true,
+          })}
     </section>
   );
 }
@@ -704,6 +716,25 @@ function AddBody(props: {
     );
   const busy = s === "busy";
   const failed = s === "failed";
+  // Waiting for the person to confirm the email in Polaris Locker: the code they check there, in
+  // place of the form (it would only be greyed).
+  if (s === "waiting")
+    return (
+      <>
+        <div className="holder-wait" data-part="wait" role="status">
+          {codeDisplay(c)}
+          <p className="body" data-key="activate.attach.waitCheck">
+            {text(c, "activate.attach.waitCheck")}
+          </p>
+        </div>
+        {reopen ? (
+          <div className="actions" data-part="actions" data-layout="stack">
+            {button(c, "activate.attach.reopen", "secondary")}
+          </div>
+        ) : null}
+        {links(c, ["common.cancel"])}
+      </>
+    );
   const go = () => {
     if (!busy) c.act(failed ? "common.tryAgain" : "common.continue");
   };
@@ -793,6 +824,7 @@ export function AddToAccount(props: AddToAccountProps): ReactNode {
             onStart?.();
             return;
           case "signin.handoff.again":
+          case "activate.attach.reopen":
             onReopen?.();
             return;
           case "signin.key.ownedSignIn":

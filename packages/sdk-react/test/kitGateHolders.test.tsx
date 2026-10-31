@@ -37,8 +37,12 @@ interface FakeOptions {
   waits?: Array<Record<string, unknown>>;
   attach?: Array<Record<string, unknown>>;
   portal?: Record<string, unknown>;
+  /** Discovery's `identity.deviceChoice` (UK-42.22): with no host `addIn`, Add follows it. */
+  deviceChoice?: boolean;
   hold?: Promise<void>;
   status?: string;
+  /** The device code the sign-in shows (AddToAccount's waiting view). */
+  userCode?: string;
 }
 
 /** A client double: the calls the gate makes, recording what they were given. */
@@ -98,6 +102,12 @@ function fake(o: FakeOptions = {}) {
       return { keyEntries: null };
     },
     discovery: async () => ({
+      services: {
+        identity: {
+          enabled: true,
+          ...(o.deviceChoice ? { deviceChoice: true } : {}),
+        },
+      },
       core: {
         portal: o.portal ?? {
           enabled: true,
@@ -128,7 +138,12 @@ function fake(o: FakeOptions = {}) {
         return {
           channel: "device-code",
           interval: 0,
-          reopen: async () => true,
+          userCode: o.userCode,
+          verificationUri: "https://polaris.locker/device",
+          reopen: async () => {
+            calls.push(["reopen", null]);
+            return true;
+          },
           cancel: () => {
             calls.push(["cancel", null]);
           },
@@ -350,6 +365,30 @@ describe("<PolarisKeyGate>: a key with no account", () => {
     ]);
   });
 
+  it("by default with deviceChoice in discovery Add runs the in-page form, not the portal", async () => {
+    const m = mount({ deviceChoice: true }, undefined, "default");
+    await m.activate();
+    await m.press("activate.recommend.action");
+    await waitFor(() =>
+      expect(
+        m.container.querySelector('input[data-field="email"]'),
+      ).not.toBeNull(),
+    );
+    expect(m.opened).toHaveLength(0);
+  });
+
+  it("by default without deviceChoice Done says Add opens Polaris Locker (label and glyph), known before the press", async () => {
+    const m = mount({}, undefined, "default");
+    await m.activate();
+    await waitFor(() => expect(m.btn("signin.key.addInLocker")).not.toBeNull());
+    expect(
+      m.btn("signin.key.addInLocker")!.querySelector("svg"),
+    ).not.toBeNull();
+    expect(m.btn("activate.recommend.action")).toBeNull();
+    await m.press("signin.key.addInLocker");
+    await waitFor(() => expect(m.opened).toHaveLength(1));
+  });
+
   it("with Identity off opens the portal with the key as a fragment, and adds no account", async () => {
     const m = mount({ identity: false });
     await m.portal();
@@ -418,7 +457,8 @@ describe("<PolarisKeyGate>: a key with no account", () => {
     await waitFor(() =>
       expect(m.calls.some(([n]) => n === "signIn.start")).toBe(true),
     );
-    // Busy keeps Continue (aria-disabled), offers the browser again, and Cancel is the way out.
+    // With no code to show, busy keeps Continue (aria-disabled), offers the browser again, and
+    // Cancel is the way out.
     await waitFor(() => expect(m.btn("signin.handoff.again")).not.toBeNull());
     expect(m.btn("common.continue")?.getAttribute("aria-disabled")).toBe(
       "true",
@@ -428,6 +468,31 @@ describe("<PolarisKeyGate>: a key with no account", () => {
     release();
     await new Promise((r) => setTimeout(r, 30));
     expect(m.calls.some(([n]) => n === "attach")).toBe(false);
+  });
+
+  it("shows the device code in place of the form while the person finishes in Polaris Locker", async () => {
+    let release!: () => void;
+    const hold = new Promise<void>((r) => (release = r));
+    const m = mount({ hold, userCode: "WDJB-MJHT" });
+    await m.addFilled();
+    await waitFor(() =>
+      expect(
+        m.container.querySelector('[data-key="activate.attach.waitTitle"]'),
+      ).not.toBeNull(),
+    );
+    expect(m.container.querySelector(".code")?.textContent).toBe("WDJB-MJHT");
+    expect(
+      m.container.querySelector('[data-key="activate.attach.waitCheck"]'),
+    ).not.toBeNull();
+    // The form is gone, so Working… can never scroll out of view behind it.
+    expect(m.container.querySelector('input[data-field="email"]')).toBeNull();
+    expect(m.btn("common.continue")).toBeNull();
+    expect(m.btn("activate.attach.reopen")).not.toBeNull();
+    expect(m.btn("common.cancel")).not.toBeNull();
+    fireEvent.click(m.btn("activate.attach.reopen")!);
+    await waitFor(() => expect(m.calls).toContainEqual(["reopen", null]));
+    release();
+    await waitFor(() => expect(added(m.container)).not.toBeNull());
   });
 
   it("Try again after a failed attach lets the previous sign-in go", async () => {

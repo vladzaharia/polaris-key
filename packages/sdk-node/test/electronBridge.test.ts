@@ -276,6 +276,24 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
   async function startCapture() {
     const sent = { count: 0, last: null as Record<string, unknown> | null };
     const { bridge } = await setup({
+      // UK-42.22.6: the SDK sends licenseChoice only when discovery serves deviceChoice.
+      "GET /djdl/.well-known/polaris.json": () =>
+        json({
+          product: "djdl",
+          services: {
+            identity: {
+              enabled: true,
+              configured: true,
+              deviceChoice: true,
+              endpoints: {
+                choiceLicenses: "https://k.test/djdl/identity/choice/licenses",
+                choiceDevices: "https://k.test/djdl/identity/choice/devices",
+                choiceComplete: "https://k.test/djdl/identity/choice/complete",
+                choiceCancel: "https://k.test/djdl/identity/choice/cancel",
+              },
+            },
+          },
+        }),
       "POST /djdl/identity/auth/device/start": (req) => {
         sent.count++;
         sent.last = JSON.parse(req.body!) as Record<string, unknown>;

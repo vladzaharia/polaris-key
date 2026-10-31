@@ -541,10 +541,17 @@ export const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
     ],
     // Start using is a quiet line unless it is the view's primary (added): the license keeps
     // working, so it never competes with the fix (frame 46).
-    links: ["signin.handoff.again", "common.cancel", "signin.done.start"],
-    // The form's heading is the action it came from ("Add your name and email").
+    links: [
+      "signin.handoff.again",
+      "activate.attach.reopen",
+      "common.cancel",
+      "signin.done.start",
+    ],
+    // The form's heading is the action it came from ("Add your name and email"); while the person
+    // confirms the email in Polaris Locker it is "Finish in Polaris Locker".
     titles: [
       "activate.recommend.action",
+      "activate.attach.waitTitle",
       "activate.attach.done",
       "activate.otherAccount.title",
     ],
@@ -556,6 +563,10 @@ export const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
       "activate.attach.nameRequired",
       "signin.email.invalid",
       "activate.attach.fine",
+      "activate.attach.waitCheck",
+      "part.code.label",
+      "a11y.code",
+      "a11y.copyCode",
     ],
   },
 };

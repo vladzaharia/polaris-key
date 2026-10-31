@@ -222,6 +222,7 @@ export class IdentityClient {
             ctx: this.ctx,
             tokens: this.tokens,
             discovery: this.discovery,
+            loadDiscovery: this.loadDiscovery,
             onAcquired: this.onAcquired,
             storeIdentity: (who) => this.storeIdentity(who),
             fetchSubject: () => this.account.fetchSubject(),

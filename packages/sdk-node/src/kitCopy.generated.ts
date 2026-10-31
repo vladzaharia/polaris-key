@@ -182,9 +182,12 @@ export const KIT_COPY: Readonly<
     "activate.recommend.skip":
       "Or continue without an account. {product} works the same.",
     "activate.recommend.portal": "Keep your license safe in Polaris Locker",
+    "activate.attach.waitTitle": "Finish in Polaris Locker",
+    "activate.attach.waitCheck": "Check it matches in Polaris Locker.",
+    "activate.attach.reopen": "Open Polaris Locker again",
     "activate.attach.lede": "Your license and its devices stay as they are.",
     "activate.attach.fine":
-      "We send a code to this email in your browser. {product} never sees it.",
+      "Polaris Locker sends a code to this email. {product} never sees it.",
     "activate.attach.done": "{product} is in your account",
     "activate.attach.syncOn":
       "Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too.",
@@ -637,6 +640,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} becomes device {position} of {limit}",
     "signin.consent.replaces": "{license} · replaces {device}",
+    "signin.consent.licenseKept": "{app}'s license is added to your account.",
     "signin.consent.licenseInApp": "You'll choose a license in {app}.",
     "signin.consent.change": "Change",
     "signin.consent.continue": "Continue to {app}",
@@ -1108,6 +1112,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.confirmedBy": "Confirmed by {provider}",
     "signin.gate.confirmedByCode": "Confirmed by code",
     "signin.gate.nameFrom": "Use a name from",
+    "signin.gate.nameFromApp": "{app} · {name}",
     "signin.gate.nameHint": "Shown in Polaris Locker and in emails.",
     "signin.gate.picture": "Picture",
     "signin.gate.pictureInitialsTile": "Initials",
@@ -2035,9 +2040,13 @@ export const KIT_COPY: Readonly<
       "Oder ohne Konto fortfahren. {product} funktioniert genauso.",
     "activate.recommend.portal":
       "Ihre Lizenz sicher in Polaris Locker aufbewahren",
+    "activate.attach.waitTitle": "In Polaris Locker abschließen",
+    "activate.attach.waitCheck":
+      "Prüfen Sie in Polaris Locker, ob der Code übereinstimmt.",
+    "activate.attach.reopen": "Polaris Locker erneut öffnen",
     "activate.attach.lede": "Ihre Lizenz und ihre Geräte bleiben unverändert.",
     "activate.attach.fine":
-      "Wir senden einen Code an diese E-Mail in Ihrem Browser. {product} sieht ihn nie.",
+      "Polaris Locker sendet einen Code an diese E-Mail. {product} sieht ihn nie.",
     "activate.attach.done": "{product} ist in Ihrem Konto",
     "activate.attach.syncOn":
       "Die Synchronisierung ist für dieses {deviceKind} aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren.",
@@ -2527,6 +2536,8 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · für {device} (Gerät {position} von {limit})",
     "signin.consent.replaces": "{license} · ersetzt {device}",
+    "signin.consent.licenseKept":
+      "Die Lizenz von {app} wird Ihrem Konto hinzugefügt.",
     "signin.consent.licenseInApp": "Sie wählen die Lizenz in {app}.",
     "signin.consent.change": "Ändern",
     "signin.consent.continue": "Weiter zu {app}",
@@ -3044,6 +3055,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.confirmedBy": "Bestätigt von {provider}",
     "signin.gate.confirmedByCode": "Per Code bestätigt",
     "signin.gate.nameFrom": "Namen übernehmen von",
+    "signin.gate.nameFromApp": "{app} · {name}",
     "signin.gate.nameHint": "Wird in Polaris Locker und in E-Mails angezeigt.",
     "signin.gate.picture": "Bild",
     "signin.gate.pictureInitialsTile": "Initialen",
@@ -4008,10 +4020,14 @@ export const KIT_COPY: Readonly<
       "Ou continuez sans compte. {product} fonctionne de la même façon.",
     "activate.recommend.portal":
       "Gardez votre licence en sécurité dans Polaris Locker",
+    "activate.attach.waitTitle": "Terminez dans Polaris Locker",
+    "activate.attach.waitCheck":
+      "Vérifiez dans Polaris Locker que le code correspond.",
+    "activate.attach.reopen": "Rouvrir Polaris Locker",
     "activate.attach.lede":
       "Votre licence et ses appareils restent tels quels.",
     "activate.attach.fine":
-      "Nous envoyons un code à cet e-mail dans votre navigateur. {product} ne le voit jamais.",
+      "Polaris Locker envoie un code à cet e-mail. {product} ne le voit jamais.",
     "activate.attach.done": "{product} est dans votre compte",
     "activate.attach.syncOn":
       "La synchronisation est activée sur cet {deviceKind}. Connectez-vous sur vos autres appareils pour les synchroniser aussi.",
@@ -4493,6 +4509,8 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} devient l’appareil {position} sur {limit}",
     "signin.consent.replaces": "{license} · remplace {device}",
+    "signin.consent.licenseKept":
+      "La licence de {app} est ajoutée à votre compte.",
     "signin.consent.licenseInApp": "Vous choisirez une licence dans {app}.",
     "signin.consent.change": "Modifier",
     "signin.consent.continue": "Continuer vers {app}",
@@ -5001,6 +5019,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.confirmedBy": "Confirmé par {provider}",
     "signin.gate.confirmedByCode": "Confirmé par code",
     "signin.gate.nameFrom": "Utiliser un nom de",
+    "signin.gate.nameFromApp": "{app} · {name}",
     "signin.gate.nameHint": "Affiché dans Polaris Locker et dans les e-mails.",
     "signin.gate.picture": "Photo",
     "signin.gate.pictureInitialsTile": "Initiales",
@@ -5963,10 +5982,14 @@ export const KIT_COPY: Readonly<
     "activate.recommend.skip":
       "O continúa sin cuenta. {product} funciona igual.",
     "activate.recommend.portal": "Guarda tu licencia a salvo en Polaris Locker",
+    "activate.attach.waitTitle": "Termina en Polaris Locker",
+    "activate.attach.waitCheck":
+      "Comprueba en Polaris Locker que el código coincide.",
+    "activate.attach.reopen": "Volver a abrir Polaris Locker",
     "activate.attach.lede":
       "Tu licencia y sus dispositivos se quedan como están.",
     "activate.attach.fine":
-      "Enviamos un código a este correo en tu navegador. {product} nunca lo ve.",
+      "Polaris Locker envía un código a este correo. {product} nunca lo ve.",
     "activate.attach.done": "{product} está en tu cuenta",
     "activate.attach.syncOn":
       "La sincronización está activada en este {deviceKind}. Inicia sesión en tus otros dispositivos para sincronizarlos también.",
@@ -6441,6 +6464,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} pasa a ser el dispositivo {position} de {limit}",
     "signin.consent.replaces": "{license} · reemplaza a {device}",
+    "signin.consent.licenseKept": "La licencia de {app} se añade a tu cuenta.",
     "signin.consent.licenseInApp": "Elegirás una licencia en {app}.",
     "signin.consent.change": "Cambiar",
     "signin.consent.continue": "Continuar en {app}",
@@ -6947,6 +6971,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.confirmedBy": "Confirmado por {provider}",
     "signin.gate.confirmedByCode": "Confirmado con código",
     "signin.gate.nameFrom": "Usar un nombre de",
+    "signin.gate.nameFromApp": "{app} · {name}",
     "signin.gate.nameHint": "Se muestra en Polaris Locker y en los correos.",
     "signin.gate.picture": "Imagen",
     "signin.gate.pictureInitialsTile": "Iniciales",
@@ -7910,10 +7935,14 @@ export const KIT_COPY: Readonly<
       "Ou continue sem conta. {product} funciona do mesmo jeito.",
     "activate.recommend.portal":
       "Guarde sua licença com segurança no Polaris Locker",
+    "activate.attach.waitTitle": "Conclua no Polaris Locker",
+    "activate.attach.waitCheck":
+      "Confira no Polaris Locker se o código é igual.",
+    "activate.attach.reopen": "Abrir o Polaris Locker de novo",
     "activate.attach.lede":
       "Sua licença e os dispositivos dela continuam como estão.",
     "activate.attach.fine":
-      "Enviamos um código para este e-mail no navegador. {product} nunca o vê.",
+      "O Polaris Locker envia um código para este e-mail. {product} nunca o vê.",
     "activate.attach.done": "{product} está na sua conta",
     "activate.attach.syncOn":
       "A sincronização está ativada neste {deviceKind}. Entre nos seus outros dispositivos para sincronizá-los também.",
@@ -8390,6 +8419,8 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} será o dispositivo {position} de {limit}",
     "signin.consent.replaces": "{license} · substitui {device}",
+    "signin.consent.licenseKept":
+      "A licença de {app} será adicionada à sua conta.",
     "signin.consent.licenseInApp": "Você vai escolher uma licença em {app}.",
     "signin.consent.change": "Alterar",
     "signin.consent.continue": "Continuar para {app}",
@@ -8882,6 +8913,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.confirmedBy": "Confirmado por {provider}",
     "signin.gate.confirmedByCode": "Confirmado por código",
     "signin.gate.nameFrom": "Usar um nome de",
+    "signin.gate.nameFromApp": "{app} · {name}",
     "signin.gate.nameHint": "Aparece no Polaris Locker e nos e-mails.",
     "signin.gate.picture": "Imagem",
     "signin.gate.pictureInitialsTile": "Iniciais",
@@ -9818,10 +9850,14 @@ export const KIT_COPY: Readonly<
     "activate.recommend.skip":
       "Oppure continua senza account. {product} funziona allo stesso modo.",
     "activate.recommend.portal": "Tieni la licenza al sicuro in Polaris Locker",
+    "activate.attach.waitTitle": "Completa in Polaris Locker",
+    "activate.attach.waitCheck":
+      "Verifica in Polaris Locker che il codice corrisponda.",
+    "activate.attach.reopen": "Apri di nuovo Polaris Locker",
     "activate.attach.lede":
       "La licenza e i suoi dispositivi restano come sono.",
     "activate.attach.fine":
-      "Inviamo un codice a questa e-mail nel browser. {product} non lo vede mai.",
+      "Polaris Locker invia un codice a questa e-mail. {product} non lo vede mai.",
     "activate.attach.done": "{product} è nel tuo account",
     "activate.attach.syncOn":
       "La sincronizzazione è attiva su questo {deviceKind}. Accedi sugli altri dispositivi per sincronizzare anche quelli.",
@@ -10294,6 +10330,8 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} diventa il dispositivo {position} di {limit}",
     "signin.consent.replaces": "{license} · sostituisce {device}",
+    "signin.consent.licenseKept":
+      "La licenza di {app} viene aggiunta al tuo account.",
     "signin.consent.licenseInApp": "Sceglierai una licenza in {app}.",
     "signin.consent.change": "Cambia",
     "signin.consent.continue": "Continua su {app}",
@@ -10792,6 +10830,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.confirmedBy": "Confermata da {provider}",
     "signin.gate.confirmedByCode": "Confermata con codice",
     "signin.gate.nameFrom": "Usa un nome da",
+    "signin.gate.nameFromApp": "{app} · {name}",
     "signin.gate.nameHint": "Mostrato in Polaris Locker e nelle email.",
     "signin.gate.picture": "Immagine",
     "signin.gate.pictureInitialsTile": "Iniziali",
@@ -11745,10 +11784,14 @@ export const KIT_COPY: Readonly<
     "activate.recommend.skip":
       "またはアカウントなしで続ける。{product}は同じように使えます。",
     "activate.recommend.portal": "ライセンスを Polaris Locker で安全に保管",
+    "activate.attach.waitTitle": "Polaris Lockerで完了してください",
+    "activate.attach.waitCheck":
+      "Polaris Lockerに表示されたコードと一致することを確認してください。",
+    "activate.attach.reopen": "Polaris Lockerをもう一度開く",
     "activate.attach.lede":
       "ライセンスとそのデバイスはそのままです。メールアドレスはブラウザーでコードを入力して確認します。",
     "activate.attach.fine":
-      "ブラウザーでこのメールアドレスにコードを送ります。{product}にはコードは見えません。",
+      "Polaris Lockerがこのメールアドレスにコードを送ります。{product}にはコードは見えません。",
     "activate.attach.done": "{product}がアカウントに入りました",
     "activate.attach.syncOn":
       "この{deviceKind}で同期がオンになりました。ほかのデバイスでもサインインすると同期されます。",
@@ -12224,6 +12267,8 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device}は{limit}台中{position}台目のデバイスになります",
     "signin.consent.replaces": "{license} · {device}を置き換え",
+    "signin.consent.licenseKept":
+      "{app}のライセンスがアカウントに追加されます。",
     "signin.consent.licenseInApp": "ライセンスは{app}で選択します。",
     "signin.consent.change": "変更",
     "signin.consent.continue": "{app}に進む",
@@ -12733,6 +12778,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.confirmedBy": "{provider}で確認済み",
     "signin.gate.confirmedByCode": "コードで確認済み",
     "signin.gate.nameFrom": "次の名前を使う",
+    "signin.gate.nameFromApp": "{app} · {name}",
     "signin.gate.nameHint": "Polaris Lockerとメールに表示されます。",
     "signin.gate.picture": "画像",
     "signin.gate.pictureInitialsTile": "イニシャル",
@@ -13688,9 +13734,13 @@ export const KIT_COPY: Readonly<
       "또는 계정 없이 계속하세요. {product}은(는) 똑같이 작동합니다.",
     "activate.recommend.portal":
       "라이선스를 Polaris Locker에 안전하게 보관하세요",
+    "activate.attach.waitTitle": "Polaris Locker에서 완료하세요",
+    "activate.attach.waitCheck":
+      "Polaris Locker의 코드와 일치하는지 확인하세요.",
+    "activate.attach.reopen": "Polaris Locker 다시 열기",
     "activate.attach.lede": "라이선스와 기기는 그대로입니다.",
     "activate.attach.fine":
-      "브라우저에서 이 이메일로 코드를 보냅니다. {product}은(는) 코드를 보지 못합니다.",
+      "Polaris Locker에서 이 이메일로 코드를 보냅니다. {product}은(는) 코드를 보지 못합니다.",
     "activate.attach.done": "{product}이(가) 계정에 있습니다",
     "activate.attach.syncOn":
       "이 {deviceKind}에서 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다.",
@@ -14146,6 +14196,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device}: {limit}대 중 {position}번째 기기",
     "signin.consent.replaces": "{license} · {device} 교체",
+    "signin.consent.licenseKept": "{app}의 라이선스가 내 계정에 추가됩니다.",
     "signin.consent.licenseInApp": "라이선스는 {app}에서 선택해요.",
     "signin.consent.change": "변경",
     "signin.consent.continue": "{app}에서 계속",
@@ -14624,6 +14675,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.confirmedBy": "{provider}에서 확인됨",
     "signin.gate.confirmedByCode": "코드로 확인됨",
     "signin.gate.nameFrom": "다음에서 이름 사용",
+    "signin.gate.nameFromApp": "{app} · {name}",
     "signin.gate.nameHint": "Polaris Locker와 이메일에 표시돼요.",
     "signin.gate.picture": "사진",
     "signin.gate.pictureInitialsTile": "이니셜",
@@ -15537,10 +15589,13 @@ export const KIT_COPY: Readonly<
     "activate.recommend.skip":
       "或不使用账户继续。{product}的使用方式完全相同。",
     "activate.recommend.portal": "将许可证安全保存在 Polaris Locker",
+    "activate.attach.waitTitle": "在 Polaris Locker 中完成",
+    "activate.attach.waitCheck": "请在 Polaris Locker 中确认代码一致。",
+    "activate.attach.reopen": "再次打开 Polaris Locker",
     "activate.attach.lede":
       "你的许可证及其设备保持不变。你将在浏览器中用验证码确认电子邮件。",
     "activate.attach.fine":
-      "我们会在浏览器中向这个电子邮件发送验证码。{product}看不到它。",
+      "Polaris Locker 会向这个电子邮件发送验证码。{product}看不到它。",
     "activate.attach.done": "{product}已在你的账户中",
     "activate.attach.syncOn":
       "这台{deviceKind}已开启同步。在其他设备上登录即可一并同步。",
@@ -15958,6 +16013,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device}将成为第{position}台设备（共{limit}台）",
     "signin.consent.replaces": "{license} · 替换{device}",
+    "signin.consent.licenseKept": "{app}的许可证将添加到你的账户。",
     "signin.consent.licenseInApp": "你将在{app}中选择许可证。",
     "signin.consent.change": "更改",
     "signin.consent.continue": "继续使用{app}",
@@ -16402,6 +16458,7 @@ export const KIT_COPY: Readonly<
     "signin.gate.confirmedBy": "已由{provider}确认",
     "signin.gate.confirmedByCode": "已通过验证码确认",
     "signin.gate.nameFrom": "使用以下来源的名称",
+    "signin.gate.nameFromApp": "{app} · {name}",
     "signin.gate.nameHint": "显示在 Polaris Locker 和电子邮件中。",
     "signin.gate.picture": "头像",
     "signin.gate.pictureInitialsTile": "首字母",
@@ -17115,6 +17172,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "activate.submit": { macos: "Activate License" },
   "common.activateLicense": { macos: "Activate a License" },
   "activate.recommend.action": { macos: "Add Your Name and Email" },
+  "activate.attach.reopen": { macos: "Open Polaris Locker Again" },
   "activate.waitingSignIn": { macos: "Sign In as {maskedEmail}" },
   "activate.otherEmail.verify": { macos: "Verify That Email" },
   "account.removeKey": { macos: "Remove License from This Device" },

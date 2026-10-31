@@ -252,6 +252,15 @@ describe("consent line", () => {
     );
     expect(licenseParts({ kind: "none" }, ctx)).toBeNull();
   });
+  it("says the app's license is added to the account when it keeps its own (add to account)", () => {
+    expect(licenseParts({ kind: "app" }, ctx)?.title).toBe(
+      "You'll choose a license in Diceroll.",
+    );
+    expect(licenseParts({ kind: "app" }, { ...ctx, attach: true })).toEqual({
+      title: "Diceroll's license is added to your account.",
+      meta: null,
+    });
+  });
 });
 
 describe("addresses", () => {

@@ -324,10 +324,17 @@
     <string name="activate_recommend_skip">或不使用账户继续。%1$s的使用方式完全相同。</string>
     <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
     <string name="activate_recommend_portal">将许可证安全保存在 Polaris Locker</string>
+    <!-- AddToAccount, waiting: the title while the person confirms the email in Polaris Locker (a device code is shown). -->
+    <string name="activate_attach_waitTitle">在 Polaris Locker 中完成</string>
+    <!-- AddToAccount, waiting: under the sign-in code; the person checks it against the code Polaris Locker shows. -->
+    <string name="activate_attach_waitCheck">请在 Polaris Locker 中确认代码一致。</string>
+    <!-- AddToAccount, waiting: brings the Polaris Locker tab back. -->
+    <string name="activate_attach_reopen">再次打开 Polaris Locker</string>
+    <string name="activate_attach_reopen__macos">再次打开 Polaris Locker</string>
     <!-- AddToAccount: under the title, above the fields. -->
     <string name="activate_attach_lede">你的许可证及其设备保持不变。你将在浏览器中用验证码确认电子邮件。</string>
     <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
-    <string name="activate_attach_fine">我们会在浏览器中向这个电子邮件发送验证码。%1$s看不到它。</string>
+    <string name="activate_attach_fine">Polaris Locker 会向这个电子邮件发送验证码。%1$s看不到它。</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$s已在你的账户中</string>
     <!-- AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
@@ -1196,6 +1203,8 @@
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s将成为第%4$s台设备（共%5$s台）</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · 替换%2$s</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the app keeps the license it holds and attaches it to the account (add to account). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_licenseKept">%1$s的许可证将添加到你的账户。</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_consent_licenseInApp">你将在%1$s中选择许可证。</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
@@ -2046,6 +2055,8 @@
     <string name="signin_gate_confirmedByCode">已通过验证码确认</string>
     <!-- Finish step: label above the screen-name suggestion chips. -->
     <string name="signin_gate_nameFrom">使用以下来源的名称</string>
+    <!-- A "Use a name from" chip that offers the name the app passed along. Arguments: {app} = the requesting app's name; {name} = the name the app suggested (neither translated). Arguments: 1=app, 2=name. -->
+    <string name="signin_gate_nameFromApp">%1$s · %2$s</string>
     <!-- Finish step: under the screen name. Polaris Locker is never translated. -->
     <string name="signin_gate_nameHint">显示在 Polaris Locker 和电子邮件中。</string>
     <!-- Finish step: the picture group label. -->
