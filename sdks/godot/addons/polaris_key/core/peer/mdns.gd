@@ -584,7 +584,7 @@ func _publish(b: Browser) -> void:
 		var e: Seen = b.seen[instance]
 		if e.port < 0 or e.txt == null:
 			continue
-		var hosts: Array = b.book.hosts(e.target) if e.target != "" else []
+		var hosts: Array = b.book.hosts(e.target, _now()) if e.target != "" else []
 		if hosts.is_empty():
 			# Every address was withdrawn: the peer cannot be dialled until one is learned again.
 			if e.up != "":
@@ -631,6 +631,7 @@ func _sweep(b: Browser, now: float) -> void:
 			b.seen.erase(k)
 			_down(b, k, e)
 	b.book.expire(now)
+	_publish(b)
 
 
 func _browser_timers(b: Browser, now: float) -> void:
@@ -872,16 +873,42 @@ class AddressBook extends RefCounted:
 			e = {"ips": [], "at": now}
 		else:
 			_m.erase(name)
+			_lapse(e, now)
 		if not (e["ips"] as Array).has(address) and (e["ips"] as Array).size() < PKeyMdns.MAX_ADDRESSES:
 			(e["ips"] as Array).append(address)
+		if (e["ips"] as Array).has(address):
+			_stamp(e)[address] = now
 		e["at"] = now
 		_m[name] = e  # most recently refreshed last
 
 
-	## The addresses held for `name`, first seen first.
-	func hosts(name: String) -> Array:
+	## The addresses held for `name`, first seen first. With `now`, an address not seen for
+	## ENTRY_TTL_SECONDS is left out, whatever the name's own refreshes.
+	func hosts(name: String, now := -1.0) -> Array:
 		var e: Dictionary = _m.get(PKeyMdns.fold_name(name), {})
-		return (e["ips"] as Array).duplicate() if not e.is_empty() else []
+		if e.is_empty():
+			return []
+		var out: Array = (e["ips"] as Array).duplicate()
+		if now >= 0.0:
+			var seen := _stamp(e)
+			out = out.filter(func(a: String) -> bool: return now - float(seen.get(a, e["at"])) <= PKeyMdns.ENTRY_TTL_SECONDS)
+		return out
+
+
+	## The time each address of an entry was last seen (an address with none was seen with the entry).
+	func _stamp(e: Dictionary) -> Dictionary:
+		if not e.has("seen"):
+			e["seen"] = {}
+		return e["seen"]
+
+
+	## Forget the entry's addresses not seen for ENTRY_TTL_SECONDS, so they free their places.
+	func _lapse(e: Dictionary, now: float) -> void:
+		var seen := _stamp(e)
+		e["ips"] = (e["ips"] as Array).filter(func(a: String) -> bool: return now - float(seen.get(a, e["at"])) <= PKeyMdns.ENTRY_TTL_SECONDS)
+		for a: String in seen.keys():
+			if not (e["ips"] as Array).has(a):
+				seen.erase(a)
 
 
 	## Seed the table (a conformance row's `prior`).

@@ -138,6 +138,11 @@ func close(code: StringName = PKeyPeerSession.PEER_BYE) -> void:
 	session.close(code)
 
 
+## Judge the peer against a newly stored roster (see PKeyPeerSession.recheck).
+func recheck(ring_jws: String) -> void:
+	session.recheck(ring_jws)
+
+
 ## Drop the pipe now, with no goodbye (the sign-out bound's force path).
 func destroy() -> void:
 	_destroyed = true

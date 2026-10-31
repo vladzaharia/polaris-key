@@ -3,7 +3,7 @@ class_name PKeyPeerTcpPipe
 extends PKeyPeerPipe
 ## A `PKeyPeerPipe` over a `StreamPeerTCP` (CC-14.10a), non-blocking both ways. Reads take at most
 ## 64 KiB a poll, and none while a chunk is still waiting unread (so a paused link leaves the rest in
-## the kernel and the peer's window closes); writes go to a queue of at most 16 MiB that `poll`
+## the kernel and the peer's window closes); writes go to a queue of at most 4 MiB (a peer that does not read then ends the session `peer_busy`) that `poll`
 ## flushes with partial puts, so a slow peer never blocks a frame. `close` lets the queue drain, for at most a second, so the CLOSE
 ## record that names a session's end reaches the peer before the socket drops.
 ##
@@ -11,7 +11,7 @@ extends PKeyPeerPipe
 ## `is_open` and takes writes, which wait in the queue.
 
 const READ_CHUNK := 65536
-const MAX_OUT := 16 * 1024 * 1024
+const MAX_OUT := 4 * 1024 * 1024
 const LINGER_MS := 1000
 
 var _peer: StreamPeerTCP

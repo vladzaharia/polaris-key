@@ -728,6 +728,15 @@ func _on_ring(body: PackedByteArray) -> StringName:
 	return &""
 
 
+## The host stored a newer roster: judge the peer's certificate against it again, as the handshake does, and
+## close `peer_revoked` when the roster no longer lists the peer with the keys it holds (mode a).
+func recheck(ring_jws: String) -> void:
+	if _phase == &"closed" or _account.is_empty() or _peer_cert_jws == "":
+		return
+	if not _admit(_peer_cert_jws, ring_jws, _peer_remote)["admit"]:
+		close(PEER_REVOKED)
+
+
 # -- the short authentication code (modes v and p) ----------------------------------------------
 
 func _commit_sas() -> StringName:

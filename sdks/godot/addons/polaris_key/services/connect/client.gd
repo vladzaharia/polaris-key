@@ -51,6 +51,8 @@ var home_url := ""
 var allow_ephemeral_keys := false
 ## The device surface that registers the keys; null makes one over the same Core.
 var devices: PKeyDevices = null
+## Called after a roster was stored (a pushed one, or an identity fetch). Cloud Connect sets it.
+var on_stored: Callable
 
 var _locked := false
 var _core_ref: WeakRef
@@ -297,6 +299,7 @@ func _store_answer(answer: Dictionary, mine: Dictionary, before: PKeyConnectStat
 	var stored := hold(accepted.detail["rec"])
 	if not stored.ok:
 		return stored
+	_announce_stored()
 	return PKeyResult.success(accepted.detail["view"])
 
 
@@ -581,7 +584,13 @@ func adopt_ring(jws: String) -> Dictionary:
 	next.stored_at = _now()
 	if not _state.write(next).ok:
 		return {"stored": false, "reason": "store_failed"}
+	_announce_stored()
 	return {"stored": true, "epoch": int(ring["epoch"])}
+
+
+func _announce_stored() -> void:
+	if on_stored.is_valid():
+		on_stored.call()
 
 
 ## The identity fetch's rules for a pushed roster: {ring, prior} (prior: the verified held roster or

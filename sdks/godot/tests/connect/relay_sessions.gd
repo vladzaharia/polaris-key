@@ -101,6 +101,7 @@ func run(t: PKeyTestContext) -> void:
 	await _closed_between(t)
 	await _pipe_budget(t)
 	await _queue_cap(t)
+	await _queue_room(t)
 	await _stop(t)
 	await _frames(30)
 
@@ -629,6 +630,32 @@ func _pipe_budget(t: PKeyTestContext) -> void:
 	b.svc.stop()
 	await _frames(5)
 	t.check("budget: and returns it when the service stops", shared.used == 0, str(shared.used))
+
+
+## The room check and the queueing are one synchronous step: of two back-to-back sends that cannot both fit, the
+## second is refused before it is encrypted, and the peer reads peer_busy (never a gap that fails to open).
+func _queue_room(t: PKeyTestContext) -> void:
+	var rig := await _pair_up()
+	var a: Peer = rig["a"]
+	var b: Peer = rig["b"]
+	var dialled := await a.svc.dial(ID_B)
+	if not t.check("room: a session is open", dialled.ok):
+		return
+	var sa: PKeyConnectSession = dialled.detail
+	await _until(func() -> bool: return b.sessions.size() == 1)
+	var sb: PKeyConnectSession = b.sessions[0]
+	a.svc._pacer = PKeyConnectPacer.new(0.001, 0.0, Callable(rig["clock"], "mono"))
+	a.svc._outbox.max_bytes = a.svc._outbox.queued() + 1400
+	var chunk := _filled(3, 1000)
+	var first := sa.send(chunk)
+	var second := sa.send(chunk)
+	t.check("room: the first send is queued and the second is refused", first.ok and not second.ok and sa.is_closed(), "%s %s" % [first, second])
+	a.svc._pacer = PKeyConnectPacer.new(180.0, 360.0, Callable(rig["clock"], "mono"))
+	await _until(func() -> bool: return sb.is_closed())
+	t.check("room: the peer closes peer_busy", sb.closed_info() == {"code": &"peer_busy", "by_peer": true}, str(sb.closed_info()))
+	a.svc.stop()
+	b.svc.stop()
+	await _frames(3)
 
 
 func _queue_cap(t: PKeyTestContext) -> void:
