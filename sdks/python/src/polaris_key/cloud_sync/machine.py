@@ -1395,7 +1395,7 @@ class CloudSyncMachine:
         self._emit_changes(before, overrides, "remote")
 
     def _row_bad(
-        self, p: Obj, latch_key: str, version: Any, open_row: Optional[Obj], cursor: Optional[int] = None
+        self, p: Obj, latch_key: str, version: Any, open_row: Optional[Obj], cursor: int
     ) -> Obj:
         """E2E ``encryptionSince``: only the host's open result counts. A row it opened from a ``ct`` is
         good (and lowers the clamp); one it could not open is bad; a plaintext row is legacy data only
@@ -1417,7 +1417,7 @@ class CloudSyncMachine:
             return {"bad": True}
         # Guard (b): legacy only if the request's cursor was still below the boundary.
         since = p.get("encryptionSince")
-        if cursor is not None and (since is None or cursor >= since):
+        if since is None or cursor >= since:
             return {"bad": True}
         return {"plain": seq}
 

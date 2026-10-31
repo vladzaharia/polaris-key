@@ -265,7 +265,7 @@ extension CloudSyncMachine {
     /// (and lowers the clamp); one it could not open is bad; a plaintext row is legacy data only while
     /// its host-mapped `seq` stays below the partition's `encryptionSince`, judged on every read. A
     /// plaintext row with no `seq` is bad at once. Server mode reads every row as it always did.
-    func rowBad(_ name: String, _ latchKey: String, _ version: Int, _ open: SyncOpenedRow?, cursor: Int? = nil)
+    func rowBad(_ name: String, _ latchKey: String, _ version: Int, _ open: SyncOpenedRow?, cursor: Int)
         -> (bad: Bool, plain: Int?)
     {
         if !requiresE2E { return (false, nil) }
@@ -279,7 +279,7 @@ extension CloudSyncMachine {
         if latchKey != "" && s.partitions[name]!.sealedKeys.contains(latchKey) { return (true, nil) }
         // Guard (b): legacy only if the request's cursor was still below the boundary.
         let since = s.partitions[name]!.encryptionSince
-        if let cursor, since == nil || cursor >= since! { return (true, nil) }
+        if since == nil || cursor >= since! { return (true, nil) }
         return (false, seq)
     }
 

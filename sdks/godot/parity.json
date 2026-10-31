@@ -690,8 +690,8 @@
       ]
     },
     "sync.e2e": {
-      "status": "planned",
-      "wp": "U-21"
+      "status": "implemented",
+      "note": "Settings seal and open through core/sync/cloud_sync_machine.gd in E2E mode (PKeyOptions.cloud_sync_encryption, e2e by default; app code only, never read from the Worker) over the key ring; guard (b) judges a conflict's server copy against the push's own cursor (X-1, the cursor is required). tests/suite_sync_scenarios.gd replays every e2e scenario with no skip list and tests/suite_sync_vectors.gd the vectors; the web lane uses GDScript AES-GCM, so there is no exception."
     },
     "connect.identity": {
       "status": "planned",

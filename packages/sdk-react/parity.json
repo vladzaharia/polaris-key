@@ -535,8 +535,8 @@
       "note": "SP-16: bearer mode's GET /<p>/commerce/binding and POST .../claim (browserAdapter's commerceBinding() and commerceClaim(store, payload), synced after an ok claim), cross-origin under the product's web.origins now that the Worker's CORS_SERVICE_PATHS covers both routes; commerce-claim replays through the bearer engine. Desktop: the Node Electron v4 host answers invoke(\"commerce\", \"binding\" | \"claim\") over client.commerce, synchronising and pushing fresh state after an ok claim. A v3 host receives the typed version N/A. Store purchase UI and restore are the UI kits' (UK-*)."
     },
     "sync.scenarios": {
-      "status": "planned",
-      "wp": "U-20"
+      "status": "implemented",
+      "note": "conformance/runners/browser/syncScenarios.browser.test.ts drives every sync-scenarios.json scenario (the count equals the corpus's) and settingCases in a real engine through client-core's cloud-sync machine, which the browser host runs; conformance/runners/node/syncScenarios.test.ts is the same driver on Node."
     },
     "sync.settings": {
       "status": "implemented",
@@ -576,8 +576,8 @@
       "reason": "runtime"
     },
     "sync.e2e": {
-      "status": "planned",
-      "wp": "U-20"
+      "status": "implemented",
+      "note": "The browser host seals and opens every synced value through client-core's sync crypto over WebCrypto (encryption defaults to e2e; the cloudSync.encryption adapter option is app code only, never read from the Worker) and the page's key ring. syncScenarios.browser.test.ts replays every e2e scenario, e2e-conflict-plaintext-copy-refused included; syncVectors.browser.test.ts the vectors; test/cloudSyncHost.test.ts the host."
     },
     "connect.identity": {
       "status": "implemented",

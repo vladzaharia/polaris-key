@@ -1,4 +1,5 @@
 // @pkey-feature sync.scenarios
+// @pkey-feature sync.e2e
 // @pkey-feature sync.settings
 // @pkey-feature config.sync
 //

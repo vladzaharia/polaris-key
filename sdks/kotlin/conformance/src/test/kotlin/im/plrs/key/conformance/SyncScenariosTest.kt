@@ -1,5 +1,6 @@
 // @pkey-feature sync.scenarios
 // @pkey-feature sync.settings config.sync
+// @pkey-feature sync.e2e
 //
 // The Kotlin runner for conformance/corpus/v2/sync-scenarios.json (read in place), mirroring the
 // Python test_sync_scenarios.py. `settingCases` runs in full and every scenario replays (the skip list
