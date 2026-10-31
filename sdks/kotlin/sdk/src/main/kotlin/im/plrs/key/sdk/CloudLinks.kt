@@ -72,6 +72,14 @@ public class CloudLinks internal constructor(private val connect: ConnectClient)
     private val onLinkFns = CopyOnWriteArrayList<(ConnectSession) -> Unit>()
     private val pairings = HashSet<LinkPairHandle>()
 
+    /** Called with each contact session the SDK holds (Direct Transfer binds to it). */
+    @Volatile
+    internal var onSession: (ConnectSession) -> Unit = {}
+
+    /** Called with the agreeKey of each link that was deleted (Direct Transfer purges its partial files). */
+    @Volatile
+    internal var onRemoved: (String) -> Unit = {}
+
     override fun toString(): String = "CloudLinks"
 
     /**
@@ -93,12 +101,18 @@ public class CloudLinks internal constructor(private val connect: ConnectClient)
      */
     public suspend fun remove(id: String): Boolean {
         var found = false
+        val gone = ArrayList<String>()
         connect.updateContacts { rows, _ ->
             val next = rows.filter { contactId(it.agreeKey) != id }
             found = next.size != rows.size
+            gone.clear()
+            gone += rows.filter { contactId(it.agreeKey) == id }.map { it.agreeKey }
             if (found) next else null
         }
-        if (found) reconcile()
+        if (found) {
+            for (k in gone) onRemoved(k)
+            reconcile()
+        }
         return found
     }
 
@@ -260,6 +274,7 @@ public class CloudLinks internal constructor(private val connect: ConnectClient)
     private fun track(s: ConnectSession): ConnectSession {
         synchronized(lock) { sessions += s }
         s.onClose { synchronized(lock) { sessions -= s } }
+        onSession(s)
         return s
     }
 

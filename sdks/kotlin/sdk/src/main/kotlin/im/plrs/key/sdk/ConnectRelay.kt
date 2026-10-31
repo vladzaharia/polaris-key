@@ -1033,6 +1033,18 @@ internal class RelayLink(
         channel.sendRecord(type, body)
     }
 
+    override fun attachXfer(onRecord: (Int, ByteArray) -> Unit): suspend (Int, ByteArray) -> Unit {
+        val write = channel.attachXfer(onRecord)
+        return { type, body ->
+            // The same refusal as sendRecord: a message dropped after encryption would break the stream.
+            if (!svc.hasRoom(body.size + OVERHEAD * (body.size / CHUNK + 1))) {
+                channel.close(PeerCloseCode.peer_busy)
+            } else {
+                write(type, body)
+            }
+        }
+    }
+
     override suspend fun close(code: PeerCloseCode) {
         channel.close(code)
     }

@@ -285,6 +285,7 @@ public class PeerChannel(
     private var peerCertJws = ""
     private var peerRemote: ByteArray? = null
     private var pending: Pending? = null
+    private var xfer: ((Int, ByteArray) -> Unit)? = null
 
     init {
         require((mode == PeerMode.a) == (account != null)) { "account context" }
@@ -392,11 +393,28 @@ public class PeerChannel(
     /** Send one message of the host's, split into records. Only once the session is open. */
     public suspend fun sendRecord(type: Int, body: ByteArray): Unit = lock.withLock {
         check(phase == "open") { "session not open" }
-        require(type !in OWNED && !(type == RecordType.CONFIRM && mode == PeerMode.p) && !(type == RecordType.CONTACT && xchg != null)) {
+        require(type !in OWNED && !isXferType(type) && !(type == RecordType.CONFIRM && mode == PeerMode.p) && !(type == RecordType.CONTACT && xchg != null)) {
             "record owned by the session"
         }
         require(body.size <= maxSend) { "message too large" }
         emit(type, body)
+    }
+
+    /**
+     * The transfer port (section 15.11): the one reader and writer of the six transfer record types. Records of
+     * those types reach [onRecord] instead of the host's `Record` event, and [sendRecord] refuses them. Only once
+     * the session is open with `xfer/1` among its capabilities, and once. Returns the writer.
+     */
+    public fun attachXfer(onRecord: (Int, ByteArray) -> Unit): suspend (Int, ByteArray) -> Unit {
+        check(phase == "open" && xfer == null && XFER_CAP in caps) { "transfers are not available on this session" }
+        xfer = onRecord
+        return { type, body ->
+            lock.withLock {
+                check(phase == "open" && isXferType(type)) { "session not open" }
+                require(body.size <= maxSend) { "message too large" }
+                emit(type, body)
+            }
+        }
     }
 
     /**
@@ -698,6 +716,7 @@ public class PeerChannel(
                 if (v is VouchVerdict.Closed) throw Fail(v.close.name)
             }
             caps = capsIntersection(caps, peerCaps)
+            asm.xferAllowed = XFER_CAP in caps
             pending = null
             hash = hs!!.handshakeHash
             val acctMode = mode == PeerMode.a
@@ -750,7 +769,13 @@ public class PeerChannel(
 
             RecordType.SAS_COMMIT, RecordType.SAS_NONCE, RecordType.SAS_REVEAL -> onSas(type, body)
 
-            else -> hostRecord(type, body)
+            else -> if (isXferType(type)) {
+                // Direct Transfer: the capability was checked by the assembler; no port attached means the host
+                // listed the capability without a transfer layer behind it.
+                (xfer ?: throw Fail(PeerCloseCode.peer_not_allowed.name))(type, body)
+            } else {
+                hostRecord(type, body)
+            }
         }
     }
 
