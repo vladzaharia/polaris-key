@@ -12,6 +12,11 @@ import type {
   SyncStatus,
 } from "@polaris-key/client-core/cloud-sync";
 import type { BrowserCloudSyncHost } from "../browser/cloudSync/host.js";
+import type {
+  BrowserTransfer,
+  SavesApi,
+  TransferEvent,
+} from "../browser/cloudSync/saves.js";
 import { Feature } from "../constants.generated.js";
 import { UnsupportedError } from "./caps.js";
 
@@ -32,6 +37,12 @@ export interface CloudSyncClient {
   /** Loads the host, restores the journal and joins the writer election. Idempotent. Throws the
    *  typed `UnsupportedError` where it cannot run (no Web Locks; a product without Sync). */
   host(): Promise<BrowserCloudSyncHost>;
+  /**
+   * Saves (`sync.saves`, `sync.files`): records of the `saves` collection with one file each.
+   * Loaded on the first call, so a page that never saves pays nothing for the transfer engine.
+   * Where Cloud Sync cannot run, every verb throws the typed unsupported.
+   */
+  readonly saves: SavesApi;
   /** The machine's status; `local` before the host has loaded. */
   status(): SyncStatus;
   /** Send what is waiting now (bounded) and save the journal. */
@@ -58,6 +69,114 @@ export interface CloudSyncClient {
   beforeSignOut(): Promise<void>;
 }
 
+/**
+ * A `SavesApi` whose real one loads on the first call. `write` and `resolve` answer a handle at
+ * once, as the real ones do; it settles when the real transfer does. A listener added before the
+ * load is joined to the real one when it arrives.
+ */
+export function lazySaves(load: () => Promise<SavesApi>): SavesApi {
+  let real: SavesApi | null = null;
+  let loading: Promise<SavesApi> | null = null;
+  const listeners = new Set<(e: TransferEvent) => void>();
+  const ready = (): Promise<SavesApi> =>
+    (loading ??= load().then(
+      (r) => (r.onTransfer((e) => listeners.forEach((l) => l(e))), (real = r)),
+      (err) => ((loading = null), Promise.reject(err)),
+    ));
+  const handle = (
+    saveId: string,
+    start: (api: SavesApi) => BrowserTransfer,
+  ): BrowserTransfer => {
+    let inner: BrowserTransfer | null = null;
+    let early: "pause" | "cancel" | null = null;
+    const done = ready().then(
+      (api) => {
+        inner = start(api);
+        if (early === "pause") inner.pause();
+        if (early === "cancel") void inner.cancel();
+        return inner.done;
+      },
+      // The host could not load (no Web Locks, say): the transfer failed, with the cause kept.
+      (err) => ({
+        state: "failed" as const,
+        error: Object.assign(new Error("saves: transfer-failed"), {
+          name: "SavesError",
+          code: "transfer-failed",
+          detail: "unavailable",
+          cause: err,
+        }) as never,
+      }),
+    );
+    return {
+      id: `saves:${saveId}`,
+      saveId,
+      get state() {
+        return inner?.state ?? "running";
+      },
+      get progress() {
+        return inner?.progress ?? { done: 0, total: 0 };
+      },
+      pause: () => (inner ? inner.pause() : void (early = "pause")),
+      resume: () => (inner ? inner.resume() : void (early = null)),
+      cancel: async () => {
+        if (inner) await inner.cancel();
+        else early = "cancel";
+        await done;
+      },
+      done,
+    };
+  };
+  return {
+    list: async () => (await ready()).list(),
+    read: async (id, opts) => (await ready()).read(id, opts),
+    write: (id, bytes, metadata, opts) =>
+      handle(id, (api) => api.write(id, bytes, metadata, opts)),
+    resolve: (conflict, keep, bytes, opts) =>
+      handle(conflict.id, (api) => api.resolve(conflict, keep, bytes, opts)),
+    delete: async (id, base) => (await ready()).delete(id, base),
+    revisions: async (id) => (await ready()).revisions(id),
+    transfers: () => real?.transfers() ?? [],
+    onTransfer: (l) => (listeners.add(l), () => listeners.delete(l)),
+  };
+}
+
+/** `live`, unless `dead()` answers a refusing one: a product that does not run Sync is checked on every call. */
+function gated(live: SavesApi, dead: () => SavesApi | null): SavesApi {
+  const pick = (): SavesApi => dead() ?? live;
+  return {
+    list: () => pick().list(),
+    read: (id, opts) => pick().read(id, opts),
+    write: (id, bytes, metadata, opts) =>
+      pick().write(id, bytes, metadata, opts),
+    resolve: (c, keep, bytes, opts) => pick().resolve(c, keep, bytes, opts),
+    delete: (id, base) => pick().delete(id, base),
+    revisions: (id) => pick().revisions(id),
+    transfers: () => live.transfers(),
+    onTransfer: (l) => live.onTransfer(l),
+  };
+}
+
+/** A `SavesApi` that refuses every verb with `reason`. */
+function unsupportedSaves(unsupported: Unsupported): SavesApi {
+  const refuse = (): never => {
+    throw new UnsupportedError({ ...unsupported, feature: Feature.syncSaves });
+  };
+  const reject = (): Promise<never> =>
+    Promise.reject(
+      new UnsupportedError({ ...unsupported, feature: Feature.syncSaves }),
+    );
+  return {
+    list: reject,
+    read: reject,
+    write: refuse,
+    resolve: refuse,
+    delete: reject,
+    revisions: reject,
+    transfers: () => [],
+    onTransfer: () => () => undefined,
+  };
+}
+
 /** A client for a transport that cannot run Cloud Sync: every verb throws the typed unsupported. */
 export function unsupportedCloudSync(
   reason: Unsupported["reason"],
@@ -74,6 +193,7 @@ export function unsupportedCloudSync(
   };
   return {
     unsupported,
+    saves: unsupportedSaves(unsupported),
     host: () => Promise.reject(new UnsupportedError(unsupported)),
     status: refuse,
     flush: () => Promise.reject(new UnsupportedError(unsupported)),
@@ -128,6 +248,10 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
       ? { signInOrigin: src.signInOrigin }
       : {}),
     host: async () => (await ready()).host(),
+    saves: gated(
+      lazySaves(async () => (await ready()).saves),
+      () => (src.enabled() ? null : off().saves),
+    ),
     status: () =>
       !src.enabled()
         ? off().status()

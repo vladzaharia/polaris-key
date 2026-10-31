@@ -33,7 +33,7 @@ import {
   type SyncWrap,
 } from "@polaris-key/client-core/sync";
 import type { DeviceKeyPort } from "@polaris-key/client-core";
-import type { HostCodec } from "@polaris-key/client-core/sync";
+import type { FileCodec, HostCodec } from "@polaris-key/client-core/sync";
 import {
   ERROR_CODE_VALUES,
   ErrorCode,
@@ -289,6 +289,17 @@ export class RingEngine implements KeyringClient {
     return this.held ? (this.#codec ??= ringCodec(this)) : null;
   }
   #codec: HostCodec | null = null;
+
+  /** The file codec for `collection` (U-22.6), over the vault's handle; null while no root is held. */
+  async fileCodec(collection: string): Promise<FileCodec | null> {
+    const keys = this.held ? await this.ringKeys() : null;
+    if (keys === null) return null;
+    // Loaded here, not at the top: the ring chunk stays small for a page that never moves a file.
+    const { e2eFileCodec } = await import("@polaris-key/client-core/sync");
+    return keys.withRoot(async (port, root) =>
+      e2eFileCodec(port, root, collection),
+    );
+  }
 
   /** The derived keys the sealing codec takes, or null while this device holds no root. */
   async ringKeys(): Promise<RingKeys | null> {

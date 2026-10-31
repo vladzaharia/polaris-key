@@ -81,6 +81,8 @@ export interface CloudSyncHostOptions {
   catalog?: ProductCatalog;
   /** Renames the app declares (old name to current name). Never taken from a served body. */
   aliases?: Readonly<Record<string, string>>;
+  /** What the app says about its saves (`cloudSync.saves`); each falls back to the catalog's `saves` collection. */
+  saves?: import("./saves.js").SavesOptions;
 }
 
 /** The Web Locks the host runs under. */
@@ -120,6 +122,8 @@ export interface BrowserSyncHostDeps {
   channel: TabChannel;
   /** Diagnostics; never given a value or a secret. */
   log?: (message: string) => void;
+  /** Run by `purge()` after the record is gone: the saves journal and chunk cache go with it. */
+  onPurge?: () => Promise<void>;
   /** Test seams: the clock, and the page events (`pagehide`, `pageshow`). */
   clock?: { now: () => number };
   page?: {
@@ -1020,6 +1024,9 @@ export class BrowserCloudSyncHost {
     try {
       await this.#withStateLock(() => removeSyncState(this.#deps.store));
     } finally {
+      await this.#deps.onPurge?.().catch(() => {
+        this.#deps.log?.("cloud sync: the saves state could not be deleted");
+      });
       this.#deps.channel.post({ t: "purge" });
       this.#noteStatus();
     }
