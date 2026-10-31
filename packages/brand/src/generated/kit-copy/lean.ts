@@ -151,6 +151,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "saveConflict.keepOther": { macos: "Keep the Other Version" },
   "saveConflict.acceptDelete": { macos: "Delete It Here Too" },
   "saveConflict.keepBoth": { macos: "Keep Both" },
+  "saveConflict.chooseAgain": { macos: "Choose Again" },
   "about.support": { macos: "Get Help" },
   "about.licenses": { macos: "Open-Source Licenses" },
   "about.copyDiagnostics": { macos: "Copy Diagnostics" },

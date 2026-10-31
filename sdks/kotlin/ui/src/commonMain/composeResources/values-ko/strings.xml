@@ -883,14 +883,25 @@
     <string name="saveConflict_bothFull">저장 슬롯이 모두 사용 중이에요. 둘 다 유지하려면 저장 데이터를 하나 삭제하세요.</string>
     <!-- SaveConflict: the choice is being applied. -->
     <string name="saveConflict_keeping">선택을 적용하는 중…</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptLocal">이 기기의 저장 데이터를 유지했어요.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptRemote">다른 저장 데이터를 유지했어요.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptBoth">둘 다 유지했어요. 다른 쪽은 사본으로 저장됐어요.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptDeleted">저장 데이터를 삭제했어요.</string>
+    <!-- SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerThis">최신</string>
+    <!-- SaveConflict: tag on the other card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerOther">최신</string>
+    <!-- SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied. -->
+    <string name="saveConflict_chooseAgain">다시 선택</string>
+    <string name="saveConflict_chooseAgain__macos">다시 선택</string>
+    <!-- SaveConflict: the choice failed after the other copy was deleted; only this device's save exists. -->
+    <string name="saveConflict_failedDeleted">선택을 적용하지 못했어요. 저장 데이터는 그대로예요.</string>
+    <!-- SaveConflict: result title after Keep this device's version. -->
+    <string name="saveConflict_keptLocalTitle">이 기기의 버전을 유지했어요</string>
+    <!-- SaveConflict: result title after Keep the other version. -->
+    <string name="saveConflict_keptRemoteTitle">다른 버전을 유지했어요</string>
+    <!-- SaveConflict: result title after Keep both. -->
+    <string name="saveConflict_keptBothTitle">두 버전을 모두 유지했어요</string>
+    <!-- SaveConflict: under Kept both versions, where the other version went. -->
+    <string name="saveConflict_keptCopy">다른 버전은 사본으로 저장돼요.</string>
+    <!-- SaveConflict: result title after Delete it here too. -->
+    <string name="saveConflict_keptDeletedTitle">저장 데이터를 삭제했어요</string>
     <!-- SaveConflict: applying the choice failed; Try again repeats it. -->
     <string name="saveConflict_failed">선택을 적용하지 못했어요. 두 저장 데이터는 그대로예요.</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

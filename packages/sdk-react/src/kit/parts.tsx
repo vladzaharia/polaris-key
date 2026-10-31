@@ -970,7 +970,14 @@ export function a11yOnly(c: KitCtx): ReactNode {
     <span
       key={k}
       className="visually-hidden"
-      role={k === "a11y.busy" ? "status" : "timer"}
+      // SaveConflict's "Keeping your choice…" is its one live announcement.
+      role={
+        k === "a11y.busy"
+          ? c.view.component === "SaveConflict"
+            ? undefined
+            : "status"
+          : "timer"
+      }
       data-key={k}
     >
       {text(c, k)}

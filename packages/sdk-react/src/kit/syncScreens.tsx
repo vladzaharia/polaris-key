@@ -323,6 +323,9 @@ export interface SaveConflictProps extends SyncScreenProps {
   ) => Uint8Array | RangedSource | Promise<Uint8Array | RangedSource>;
   /** A choice was made (the host applies it and moves `input.saveConflict.step` on). */
   onKeep?: (keep: SaveKeep) => void;
+  /** Choose again, after a choice failed: the host sets the step back to `choose`. Nothing is
+   *  applied. */
+  onChooseAgain?: () => void;
   /** Try again, after a choice failed. */
   onRetry?: () => void;
   /** Cancel (or Escape): the conflict stays as it was. */
@@ -343,7 +346,8 @@ const KEEPS: Readonly<Record<string, SaveKeep>> = {
  *  the first conflict `adapter.cloudSync.saves` holds and settles it with `resolve` (the local
  *  copy's bytes come from `bytes`). With no conflict it draws nothing. */
 export function SaveConflict(props: SaveConflictProps): ReactNode {
-  const { onKeep, onRetry, onCancel, onDone, bytes, ...rest } = props;
+  const { onKeep, onRetry, onChooseAgain, onCancel, onDone, bytes, ...rest } =
+    props;
   const bound = useBoundConflict(rest.input, bytes);
   return (
     <SaveConflict_
@@ -358,6 +362,9 @@ export function SaveConflict(props: SaveConflictProps): ReactNode {
         } else if (a.key === "common.tryAgain") {
           onRetry?.();
           if (bound.input) bound.onRetry();
+        } else if (a.key === "saveConflict.chooseAgain") {
+          onChooseAgain?.();
+          if (bound.input) bound.onChooseAgain();
         } else if (a.key === "common.cancel") {
           onCancel?.();
           if (bound.input) bound.onCancel();

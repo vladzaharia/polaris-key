@@ -105,6 +105,7 @@ export interface BoundConflict {
   input: UiInput | undefined;
   onKeep: (keep: SaveKeep) => void;
   onRetry: () => void;
+  onChooseAgain: () => void;
   onCancel: () => void;
   onDone: () => void;
 }
@@ -174,6 +175,10 @@ export function useBoundConflict(
     input,
     onKeep: (k) => void run(k),
     onRetry: () => keep && void run(keep),
+    onChooseAgain: () => {
+      setStep("choose");
+      setKeep(undefined);
+    },
     onCancel: reset,
     onDone: reset,
   };

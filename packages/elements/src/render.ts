@@ -898,7 +898,11 @@ export function a11yOnly(c: RenderCtx): TemplateResult | typeof nothing {
     (k) =>
       html`<span
         class="visually-hidden"
-        role=${k === "a11y.busy" ? "status" : "timer"}
+        role=${k === "a11y.busy"
+          ? c.view.component === "SaveConflict"
+            ? nothing
+            : "status"
+          : "timer"}
         data-key=${k}
         >${text(c, k)}</span
       >`,
