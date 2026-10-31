@@ -352,4 +352,24 @@ class PeerLinkTest {
             s.cancel()
         }
     }
+
+    @Test
+    fun theWriteCapIsFourMiBAndAPeerThatNeverReadsPastItClosesPeerBusy() = bounded {
+        assertEquals(4L * 1024 * 1024, LINK_WRITE_CAP)
+        val s = scope()
+        try {
+            val p = connected(s)
+            p.pa.stall = true
+            val body = ByteArray(1 shl 20)
+            // About 5 MiB held for the writer: past 4 MiB and under the old 8 MiB bound.
+            repeat(6) {
+                try {
+                    p.a.sendRecord(0x0100, body)
+                } catch (ignored: IllegalStateException) { /* already closing */ }
+            }
+            assertEquals(SessionEvent.Closed("peer_busy", false), p.sa.closed.await())
+        } finally {
+            s.cancel()
+        }
+    }
 }

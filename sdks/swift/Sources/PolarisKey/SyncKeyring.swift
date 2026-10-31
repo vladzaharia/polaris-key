@@ -318,6 +318,8 @@ public struct SyncKeyringOptions: Sendable {
         case custom(any SyncRootBackupPort)
     }
     public var backup: Backup = .platform
+    /// Where removal looks when `backup` is `.off` (tests give a store; nil: the platform backup).
+    var removalPort: (any SyncRootBackupPort)?
     /// The signed-in subject, for the backup's account name. Nil: no backup is read or written.
     /// `client.keyring` and `configureKeyring(_:)` fill it from the identity client.
     public var subject: (@Sendable () -> String?)?
@@ -464,6 +466,19 @@ public actor SyncKeyring: CustomReflectable {
         return (port, subject)
     }
 
+    /// Where removal looks. With the opt-out on, the platform item an earlier build wrote is still
+    /// removed: the option stops writing and reading, not removing.
+    private func removalTarget() -> (port: any SyncRootBackupPort, subject: String)? {
+        if let t = backupTarget() { return t }
+        guard case .off = options.backup, let subject = options.subject?(), !subject.isEmpty else { return nil }
+        if let p = options.removalPort { return (p, subject) }
+        #if canImport(Security)
+            return (PlatformSyncRootBackup(product: core.product, accessGroup: options.accessGroup), subject)
+        #else
+            return nil
+        #endif
+    }
+
     /// The backed-up root, when it is for `ring` and still derives its own `kid`. Anything wrong
     /// with the item (absent, unreadable, another ring) is a miss.
     private func backedUpRoot(matching ring: SyncRingPin) -> HeldRoot? {
@@ -498,7 +513,7 @@ public actor SyncKeyring: CustomReflectable {
     /// the account goes). Nothing to remove without a signed-in subject. A store that cannot delete
     /// throws, so the caller can say so. Sign-out never calls this (R-11).
     public func deleteBackup() async throws {
-        guard let t = backupTarget() else { return }
+        guard let t = removalTarget() else { return }
         var failure: Error?
         for id in await knownRingIds() {
             do { try t.port.remove(subject: t.subject, ringId: id) } catch { failure = failure ?? error }
@@ -868,7 +883,7 @@ public actor SyncKeyring: CustomReflectable {
         try await send("POST", path, body)
         // Start over: the old ring's backup item goes (the server keeps `previous` for 30 days, and
         // this client keeps the old root in memory for `adopt`). A create has no old ring to remove.
-        if path != "devices/keyring", let t = backupTarget() {
+        if path != "devices/keyring", let t = removalTarget() {
             for old in before where old != ringId { try? t.port.remove(subject: t.subject, ringId: old) }
         }
         try await hold(HeldRoot(ringId: ringId, epoch: epoch, kid: kid, root: root), store: true, gen: gen)

@@ -214,6 +214,36 @@ final class ConnectSessionTests: XCTestCase {
         XCTAssertGreaterThan(stall.closeCalls.current, 0, "a stuck writer's pipe is closed at once on peer_busy")
     }
 
+    func testAPeerThatNeverReadsIsClosedAtFourMiB() async throws {
+        XCTAssertEqual(peerLinkWriteMaxBytes, 4 * 1024 * 1024)
+        let (pa, pb) = MemPipe.pair()
+        let stall = StallPipe(pa)
+        let k = rnd()
+        let A = Dev(idA, signByte: 1)
+        let B = Dev(idB, signByte: 2)
+        let ha = ConnectSessionHandlers(role: "initiator")
+        let hb = ConnectSessionHandlers(role: "responder")
+        let la = try await PeerLink.make(pipe: stall, options: options(.initiator, A, [k]), handlers: ha.handlers)
+        let lb = try await PeerLink.make(pipe: pb, options: options(.responder, B, [k]), handlers: hb.handlers)
+        ha.attach(la)
+        hb.attach(lb)
+        Task { await la.run() }
+        Task { await lb.run() }
+        await la.start()
+        async let sa = ha.opened(la)
+        async let sb = hb.opened(lb)
+        let (a, _) = try await (sa, sb)
+        stall.stalled.set(true)
+        // About 4.8 MB: past 4 MiB, under the old 8 MiB bound.
+        let chunk = Data(repeating: 1, count: 60_000)
+        for _ in 0..<80 {
+            if a.closed != nil { break }
+            try? await a.send(chunk)
+        }
+        for _ in 0..<200 where a.closed == nil { try? await Task.sleep(nanoseconds: 10_000_000) }
+        XCTAssertEqual(a.closed?.code, "peer_busy")
+    }
+
     /// N11: a link that ends for another reason closes a pipe whose writer is stuck after a short grace.
     func testALinkThatEndsClosesAPipeWhoseWriterIsStuck() async throws {
         let (pa, pb) = MemPipe.pair()

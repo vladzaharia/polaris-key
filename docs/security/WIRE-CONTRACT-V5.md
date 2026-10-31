@@ -2711,6 +2711,8 @@ On by default, with a developer opt-out, a device keeps `R` in a synchronizable 
 
 A sign-out keeps the root backup item: deleting a synchronizable keychain item deletes it on every device of that Apple ID. Only Reset encryption, Start over or account deletion removes it. A platform without a backup API (web, Node, Python, JVM desktop) relies on the recovery code and nearby approval.
 
+The developer opt-out stops the client writing and reading the item. It does not remove an item an earlier build wrote; the account-deletion call (`deleteBackup()`, `removeBackup()`) does, whatever the option.
+
 The silent-restore key (§12.11.8) is a separate item, service `pkey-restore:<product>` (Android: `pkey-restore-<product>`). A sign-out deletes it and never touches the root item.
 
 #### 13.11.6 Rotation

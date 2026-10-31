@@ -240,7 +240,7 @@ final class SyncKeyringTests: XCTestCase {
 
     private func device(
         _ name: String, server: any PolarisTransport, backup: SyncKeyringOptions.Backup = .off,
-        subject: String? = nil
+        subject: String? = nil, removalPort: (any SyncRootBackupPort)? = nil
     ) async throws -> Device {
         let store = InMemoryStore(productSlug: "djdl", deviceId: "dev_\(name)")
         await store.setToken("pkeyt_\(name)")
@@ -251,9 +251,9 @@ final class SyncKeyringTests: XCTestCase {
         try await core.start()
         let keys = try DeviceKeyStore.inMemory(productSlug: "djdl")
         let roots = RingRootStore.inMemory()
-        let keyring = SyncKeyring(
-            core: core,
-            options: SyncKeyringOptions(keys: keys, rootStore: roots, backup: backup, subject: { subject }))
+        var opts = SyncKeyringOptions(keys: keys, rootStore: roots, backup: backup, subject: { subject })
+        opts.removalPort = removalPort
+        let keyring = SyncKeyring(core: core, options: opts)
         return Device(keyring: keyring, core: core, roots: roots, store: store, keys: keys, name: name)
     }
 
@@ -889,6 +889,32 @@ final class SyncKeyringTests: XCTestCase {
         _ = try await a.keyring.unlock()
         try await a.keyring.deleteBackup()
         XCTAssertEqual(icloud.keys, [])
+    }
+
+    func testDeleteBackupDeletesEvenWhenBackupIsOff() async throws {
+        let icloud = FakeICloud()
+        let server = RingServer()
+        let earlier = try await device("a", server: server, backup: .custom(icloud), subject: subjectA)
+        _ = try await earlier.keyring.create()
+        XCTAssertEqual(icloud.keys.count, 1)
+        let off = try await device(
+            "b", server: server, backup: .off, subject: subjectA, removalPort: icloud)
+        _ = try await off.keyring.unlock()
+        try await off.keyring.deleteBackup()
+        XCTAssertEqual(icloud.keys, [])
+    }
+
+    func testAResetRemovesTheOldItemWhenBackupIsOff() async throws {
+        let icloud = FakeICloud()
+        let server = RingServer()
+        let earlier = try await device("a", server: server, backup: .custom(icloud), subject: subjectA)
+        let first = try await earlier.keyring.create()
+        XCTAssertEqual(icloud.keys, ["\(subjectA):\(first.ringId)"])
+        let off = try await device(
+            "b", server: server, backup: .off, subject: subjectA, removalPort: icloud)
+        _ = try await off.keyring.unlock()
+        _ = try await off.keyring.reset()
+        XCTAssertEqual(icloud.keys, [], "the opted-out build writes nothing and removes the old item")
     }
 
     func testARecoveryWritesTheBackupToo() async throws {

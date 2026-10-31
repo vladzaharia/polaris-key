@@ -12,7 +12,9 @@
 //   - names fold by ASCII (`A` to `Z` only) and are held in lower case;
 //   - a name keeps at most [MDNS_MAX_ADDRS] addresses, of any family, in first-seen order; a repeat is
 //     not a second address. The table holds at most [MDNS_MAX_INSTANCES] names and, when full, drops
-//     the expired and then the least recently refreshed.
+//     the expired and then the least recently refreshed;
+//   - an address not seen for [MDNS_ENTRY_TTL_SECONDS] lapses and frees its place, whether or not the
+//     name itself was refreshed since.
 // The source-subnet check of RFC 6762 section 11 happens before a record reaches this class.
 
 package im.plrs.key.core.peer.lan
@@ -24,6 +26,7 @@ public data class MdnsAddress(val name: String, val address: String)
 public class MdnsAddressBook(private val maxNames: Int = MDNS_MAX_INSTANCES) {
     private class Names(var at: Double) {
         val ips = ArrayList<String>()
+        val seen = HashMap<String, Double>()
     }
 
     private val names = LinkedHashMap<String, Names>()
@@ -57,6 +60,7 @@ public class MdnsAddressBook(private val maxNames: Int = MDNS_MAX_INSTANCES) {
     private fun withdraw(name: String, address: String) {
         val e = names[name] ?: return
         e.ips.remove(address)
+        e.seen.remove(address)
         if (e.ips.isEmpty()) names.remove(name)
     }
 
@@ -65,18 +69,34 @@ public class MdnsAddressBook(private val maxNames: Int = MDNS_MAX_INSTANCES) {
         if (held == null && !admit()) return
         if (held == null && names.size >= maxNames) trim(now)
         val e = held ?: Names(now)
+        lapse(e, now)
         if (address !in e.ips && e.ips.size < MDNS_MAX_ADDRS) e.ips += address
+        if (address in e.ips) e.seen[address] = now
         e.at = now
         names[name] = e // most recently refreshed last
     }
 
-    /** The addresses held for [name], first seen first. */
-    public fun hosts(name: String): List<String> = names[foldName(name)]?.ips?.toList().orEmpty()
+    /** Drops the addresses of [e] not seen for [MDNS_ENTRY_TTL_SECONDS]. */
+    private fun lapse(e: Names, now: Double) {
+        e.ips.removeAll { a ->
+            (now - (e.seen[a] ?: e.at) > MDNS_ENTRY_TTL_SECONDS).also { if (it) e.seen.remove(a) }
+        }
+    }
+
+    /**
+     * The addresses held for [name], first seen first. With [now], an address not seen for
+     * [MDNS_ENTRY_TTL_SECONDS] is left out.
+     */
+    public fun hosts(name: String, now: Double? = null): List<String> {
+        val e = names[foldName(name)]
+        return e?.ips?.filter { now == null || now - (e.seen[it] ?: e.at) <= MDNS_ENTRY_TTL_SECONDS }.orEmpty()
+    }
 
     /** Seed the table (a conformance row's `prior`). */
     public fun hold(name: String, address: String, now: Double = 0.0) {
         val e = names.getOrPut(foldName(name)) { Names(now) }
         e.ips += address
+        e.seen[address] = now
     }
 
     /** The table as entries, grouped by name, each name first seen first. */
@@ -85,6 +105,8 @@ public class MdnsAddressBook(private val maxNames: Int = MDNS_MAX_INSTANCES) {
     /** Drop the names not refreshed for [MDNS_ENTRY_TTL_SECONDS]. */
     public fun expire(now: Double) {
         names.entries.removeAll { now - it.value.at > MDNS_ENTRY_TTL_SECONDS }
+        names.values.forEach { lapse(it, now) }
+        names.entries.removeAll { it.value.ips.isEmpty() }
     }
 
     /** Drop expired entries, then the least recently refreshed while the table is full. */

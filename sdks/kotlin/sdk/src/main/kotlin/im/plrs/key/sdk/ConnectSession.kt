@@ -97,7 +97,7 @@ private val sharedBudget = QueueBudget()
  * call: they must not call back into the session on that stack.
  */
 public class ConnectSession internal constructor(
-    private val link: PeerLinkPort,
+    internal val link: PeerLinkPort,
     public val peerDeviceId: String,
     caps: List<String>,
     public val hello: PeerHello,
