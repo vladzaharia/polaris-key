@@ -337,3 +337,28 @@ describe("DELETE /api/me/devices/<product>/<deviceId>", () => {
     expect(last).toBe(429);
   });
 });
+
+describe("the badge on a licence's devices", () => {
+  it("shows restored on the caller's licence device and never on another account's", async () => {
+    const c = await ctx();
+    const { ada, eve } = await twoAccounts(c);
+    const { licenseId } = await seedLicenseWithKey(c.db, "djdl");
+    await c.db.run(
+      "UPDATE licenses SET account_id = ? WHERE product = 'djdl' AND id = ?",
+      ada.accountId,
+      licenseId,
+    );
+    await device(c, "djdl", "lic-dev", "sub-ada", { license: licenseId });
+    await origin(c, "lic-dev", "sub-ada");
+    const path = `/api/licenses/djdl/${licenseId}`;
+    const mine = await call(c, ada, "GET", path, false);
+    const detail = (await mine.json()) as {
+      devices: Array<{ deviceId: string; restored: boolean }>;
+    };
+    expect(detail.devices).toEqual([
+      expect.objectContaining({ deviceId: "lic-dev", restored: true }),
+    ]);
+    // Another account cannot read the licence at all.
+    expect((await call(c, eve, "GET", path, false)).status).toBe(404);
+  });
+});

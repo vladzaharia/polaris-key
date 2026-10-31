@@ -61,6 +61,7 @@ export const ACCOUNT_SECTIONS = [
   "packages",
   "products",
   "sessions",
+  "devices",
   "appearance",
   "data",
 ] as const;

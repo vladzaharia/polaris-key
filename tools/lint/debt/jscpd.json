@@ -554,9 +554,6 @@
     "packages/admin/src/portal/components/product/BuildDetails.tsx": {
       "jscpd:duplicate": 1
     },
-    "packages/admin/src/portal/components/product/DevicesCard.tsx": {
-      "jscpd:duplicate": 1
-    },
     "packages/admin/src/portal/components/product/FileHash.tsx": {
       "jscpd:duplicate": 1
     },
@@ -567,9 +564,6 @@
       "jscpd:duplicate": 2
     },
     "packages/admin/src/portal/model/library.ts": {
-      "jscpd:duplicate": 1
-    },
-    "packages/admin/src/portal/pages/FreeDevicePage.tsx": {
       "jscpd:duplicate": 1
     },
     "packages/admin/src/portal/pages/SignInPage.tsx": {

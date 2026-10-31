@@ -78,6 +78,7 @@ import {
   listPortalLicenses,
   listLicenselessDevices,
   listVisibleDevices,
+  restoredDeviceIds,
   listVisibleKeys,
   portalAuthCapabilities,
   portalAudit,
@@ -168,6 +169,7 @@ import {
   handleDeviceLoginPoll,
   handleDeviceLoginStart,
 } from "./deviceLogin.js";
+import { existingSubjectFor } from "../../../core/accounts/accountSubjects.js";
 import {
   freeAccountDevice,
   type FreeDeviceResult,
@@ -312,9 +314,21 @@ async function shapeLicenseDetail(
   row: PortalLicenseRow,
   now: number,
   hooksFor: PortalHooksFor | undefined,
+  accountId: string,
 ): Promise<Record<string, unknown>> {
   const keys = await listVisibleKeys(db, row.product, row.id);
   const devices = await listVisibleDevices(db, row.product, row.id);
+  // Read under the caller's own subject: another account's marks never show.
+  const subject = await existingSubjectFor(db, accountId, row.product);
+  const restored = subject
+    ? await restoredDeviceIds(
+        db,
+        row.product,
+        subject,
+        devices.map((d) => d.device_id),
+        now,
+      )
+    : new Set<string>();
   return {
     ...(await shapeLicenseSummaryWithStore(db, row, now, hooksFor)),
     keys: keys.map((key) => ({
@@ -336,6 +350,7 @@ async function shapeLicenseDetail(
       sdkName: device.sdk_name,
       sdkVersion: device.sdk_version,
       ua: device.ua,
+      restored: restored.has(device.device_id),
     })),
   };
 }
@@ -1096,7 +1111,7 @@ async function handleLicenses(
   const settings = await getPortalProductSettings(db, product);
   if (settings.portal_enabled !== 1) return notFound();
   return portalJson({
-    ...(await shapeLicenseDetail(db, row, now, hooksFor)),
+    ...(await shapeLicenseDetail(db, row, now, hooksFor, session.accountId)),
     // PX-W5 (G7): whether "Get a new key" is offered for this licence — the product's opt-in.
     canGetNewKey: settings.key_reissue_enabled === 1 && row.status === "active",
   });

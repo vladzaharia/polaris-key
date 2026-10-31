@@ -8,6 +8,7 @@ import {
   type PortalMe,
   type PortalMethods,
   type PortalSession,
+  type PortalAccountDevice,
 } from "./api.js";
 
 /**
@@ -39,6 +40,7 @@ export const qk = {
   profile: () => ["portal", "profile"] as const,
   methods: () => ["portal", "methods"] as const,
   sessions: () => ["portal", "sessions"] as const,
+  accountDevices: () => ["portal", "accountDevices"] as const,
   link: () => ["portal", "link"] as const,
   // The app card's reads (PX-14a): under the request's handle, so a new request never shows the
   // last one's answer.
@@ -245,6 +247,14 @@ export const pq = {
       queryKey: qk.sessions(),
       queryFn: (): Promise<PortalSession[] | null> =>
         orNull(async () => (await portalApi.sessions()).sessions),
+    }),
+
+  /** Devices of the account that hold no licence, or `null` on a Worker without the route. */
+  accountDevices: () =>
+    queryOptions({
+      queryKey: qk.accountDevices(),
+      queryFn: (): Promise<PortalAccountDevice[] | null> =>
+        orNull(async () => (await portalApi.accountDevices()).devices),
     }),
 
   /** The app asking (works before sign-in: the binder cookie, not a session). */

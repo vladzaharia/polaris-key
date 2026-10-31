@@ -2,15 +2,12 @@ import { ErrorState } from "../../../ui/ErrorState.js";
 import { devicesText } from "../../../lib/vocab/license.js";
 import * as React from "react";
 import { flushSync } from "react-dom";
-import { Glasses, Laptop, Monitor, Smartphone, Tv, Watch } from "lucide-react";
-import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { Keep } from "../Keep.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
 import {
   CountUp,
-  Expand,
   reducedMotion,
   viewTransition,
   viewTransitionsSupported,
@@ -19,12 +16,13 @@ import { formatRelative } from "../../../lib/format.js";
 import { PORTAL_FMT } from "../../date.js";
 import type { PortalDevice, PortalLicenseDetail } from "../../api.js";
 import { useRemoveDevice } from "../../data.js";
+import { deviceOsName, isSignInLicense } from "../../model/library.js";
+import { focusPageHeading } from "../../router.js";
 import {
-  deviceFamily,
-  deviceOsName,
-  isSignInLicense,
-} from "../../model/library.js";
-import { focusPageHeading, scrollBehavior } from "../../router.js";
+  DeviceRowHead,
+  RemovePanel,
+  useRemoveConfirm,
+} from "./DeviceRowParts.js";
 import { SeatMeter } from "../SeatMeter.js";
 import { SectionCard } from "./Card.js";
 import { t } from "../../../lib/copy.js";
@@ -282,27 +280,6 @@ function deviceName(d: PortalDevice): string {
   return d.label?.trim() || t("devices.unnamed");
 }
 
-function DeviceGlyph({
-  platform,
-}: {
-  platform: string | null;
-}): React.ReactElement {
-  const k = deviceFamily(platform);
-  const Icon =
-    k === "ios" || k === "android"
-      ? Smartphone
-      : k === "macos"
-        ? Laptop
-        : k === "tvos"
-          ? Tv
-          : k === "visionos"
-            ? Glasses
-            : k === "watchos"
-              ? Watch
-              : Monitor;
-  return <Icon aria-hidden className="size-5" />;
-}
-
 export function DeviceRow({
   device,
   detail,
@@ -335,9 +312,8 @@ export function DeviceRow({
    */
   gone?: boolean;
 }): React.ReactElement {
-  const [confirming, setConfirming] = React.useState(false);
-  const headingRef = React.useRef<HTMLHeadingElement>(null);
-  const removeRef = React.useRef<HTMLButtonElement>(null);
+  const { confirming, setConfirming, headingRef, removeRef, keep } =
+    useRemoveConfirm();
   const rowRef = React.useRef<HTMLLIElement>(null);
   const remove = useRemoveDevice(detail.product, detail.id);
   const name = deviceName(device);
@@ -349,153 +325,84 @@ export function DeviceRow({
     when: formatRelative(device.lastSeen * 1000, Date.now(), PORTAL_FMT),
   });
   const panelId = `remove-${device.deviceId}`;
-  // Keep it, or Escape anywhere in the panel: close it and put focus back on the row's Remove.
-  const keep = (): void => {
-    setConfirming(false);
-    requestAnimationFrame(() => removeRef.current?.focus());
-  };
 
   return (
     // A size container: in a narrow card (the side column at 1024 px, a phone) Remove goes under
     // the meta line; from 20 rem of content (the side column at 1180 px and up) it ends the row (B-089), so the name has the row's full width.
     <li ref={rowRef} className="py-3 @container">
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 @[20rem]:grid-cols-[auto_minmax(0,1fr)_auto] @[20rem]:items-center">
-        <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
-          <DeviceGlyph platform={device.platform} />
-        </span>
-        <div className="min-w-0">
-          {/* Wraps, never cut short: two machines often differ only at the end of the name. */}
-          {/* The line follows the page's start edge; `bdi` shapes the name in its own direction. */}
-          <p
-            data-device-name=""
-            className="break-words text-start font-medium text-fg-strong"
-          >
-            <bdi>{name}</bdi>
-          </p>
-          {meta ? <p className="text-sm text-fg-muted">{meta}</p> : null}
-          <p className="text-sm text-fg-muted first-letter:uppercase">{seen}</p>
-        </div>
-        {confirming ? null : (
-          <Button
-            ref={removeRef}
-            variant="quiet"
-            size="md"
-            // In a very narrow card (320 px, or text at 200 %), under the icon and name too, so the
-            // button has the row's whole width (WCAG 1.4.10). In px: a rem query scales with the text.
-            className="col-start-2 h-10 justify-self-start @max-[280px]:col-span-2 @max-[280px]:col-start-1 @[20rem]:col-start-3 @[20rem]:row-start-1"
-            aria-label={t("locker.freeDevice.removeName", { device: name })}
-            aria-expanded={false}
-            aria-controls={panelId}
-            onClick={() => {
-              if (!gone) setConfirming(true);
-            }}
-          >
-            {t("devices.remove")}
-          </Button>
-        )}
-      </div>
-      {/* The confirm opens in place (the expand pattern, S-23 §6.1): focus goes to its heading
-          as soon as it shows, and once it has opened the region is brought into view. */}
-      <Expand
+      <DeviceRowHead
+        platform={device.platform}
+        name={name}
+        restored={device.restored === true}
+        meta={meta}
+        seen={seen}
+        confirming={confirming}
+        removeRef={removeRef}
+        panelId={panelId}
+        onRemove={() => {
+          if (!gone) setConfirming(true);
+        }}
+      />
+      <RemovePanel
         id={panelId}
         open={confirming}
-        onOpen={() => headingRef.current?.focus({ preventScroll: true })}
-        onOpened={(region) =>
-          region.scrollIntoView?.({
-            block: "nearest",
-            behavior: scrollBehavior(),
-          })
-        }
-      >
-        {/* A size container: under 22rem the two buttons stack full width, Remove last (§8's
-            sheet buttons). */}
-        <div
-          className="pt-3"
-          onKeyDown={(e) => {
-            if (e.key !== "Escape") return;
-            e.stopPropagation();
-            keep();
-          }}
-        >
-          <div className="space-y-3 rounded-lg border border-danger-border bg-danger-subtle p-4 @container">
-            <h3
-              ref={headingRef}
-              tabIndex={-1}
-              className="font-medium text-fg-strong outline-none"
-            >
-              {t("locker.devices.removeAsk", { name })}
-            </h3>
-            <ul className="list-disc space-y-1 ps-5 text-sm text-fg">
-              <li>
-                {showCount
-                  ? t("locker.devices.seatFreeCount", {
-                      detail: devicesText(inUse - 1, seatLimit),
-                    })
-                  : t("locker.devices.seatFree")}
-              </li>
-              <li>
-                {isSignInLicense(detail)
-                  ? t("locker.devices.nextSignIn", { product: productName })
-                  : t("locker.devices.nextActivate", { product: productName })}
-              </li>
-              {emailConfigured ? (
-                <li>{t("locker.devices.emailConfirm")}</li>
-              ) : null}
-            </ul>
-            {remove.error ? (
-              <p role="alert" className="text-sm text-danger">
-                {t("devices.removeFailed", { device: name })}
-              </p>
+        name={name}
+        headingRef={headingRef}
+        consequences={
+          <>
+            <li>
+              {showCount
+                ? t("locker.devices.seatFreeCount", {
+                    detail: devicesText(inUse - 1, seatLimit),
+                  })
+                : t("locker.devices.seatFree")}
+            </li>
+            <li>
+              {isSignInLicense(detail)
+                ? t("locker.devices.nextSignIn", { product: productName })
+                : t("locker.devices.nextActivate", { product: productName })}
+            </li>
+            {emailConfigured ? (
+              <li>{t("locker.devices.emailConfirm")}</li>
             ) : null}
-            <div className="flex flex-col gap-2 @[22rem]:flex-row @[22rem]:justify-end">
-              <Button variant="outline" onClick={keep}>
-                {t("locker.methods.keepIt")}
-              </Button>
-              {/* "Remove": the heading above already names the device; the name stays in the
-                  accessible name. */}
-              <Button
-                variant="danger"
-                aria-label={t("locker.freeDevice.removeName", { device: name })}
-                loading={remove.isPending}
-                onClick={() => {
-                  if (gone) return;
-                  // The row leaves with the removal; find the card's heading while it is here
-                  // (the page's `h1` is far off screen, up the page, from a long list).
-                  const heading = cardHeading(rowRef.current);
-                  remove.mutate(device.deviceId, {
-                    onSuccess: () => {
-                      // Said once, with the count as it is when the removal lands (S-23 §6.5: a
-                      // freed seat is counted in text), never as it was at the click.
-                      const left = seatsLeftAfter(device.deviceId);
-                      toast.success(t("locker.methods.removed", { name }), {
-                        description: t("locker.devices.removedFree", {
-                          product: productName,
-                        }),
-                      });
-                      announce(
-                        showCount
-                          ? t("locker.devices.removedCount", {
-                              name,
-                              detail: devicesText(left, seatLimit),
-                            })
-                          : t("locker.devices.removedPlain", { name }),
-                      );
-                      // Focus never falls to `body` (FLOWS.md P-7): it goes to the Devices
-                      // heading, without scrolling away from the list, which closes up where
-                      // the person is looking.
-                      focusPageHeading(() =>
-                        heading?.isConnected ? heading : pageHeading(null),
-                      );
-                    },
-                  });
-                }}
-              >
-                {t("devices.remove")}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </Expand>
+          </>
+        }
+        error={Boolean(remove.error)}
+        removing={remove.isPending}
+        onKeep={keep}
+        onRemove={() => {
+          if (gone) return;
+          // The row leaves with the removal; find the card's heading while it is here
+          // (the page's `h1` is far off screen, up the page, from a long list).
+          const heading = cardHeading(rowRef.current);
+          remove.mutate(device.deviceId, {
+            onSuccess: () => {
+              // Said once, with the count as it is when the removal lands (S-23 §6.5: a
+              // freed seat is counted in text), never as it was at the click.
+              const left = seatsLeftAfter(device.deviceId);
+              toast.success(t("locker.methods.removed", { name }), {
+                description: t("locker.devices.removedFree", {
+                  product: productName,
+                }),
+              });
+              announce(
+                showCount
+                  ? t("locker.devices.removedCount", {
+                      name,
+                      detail: devicesText(left, seatLimit),
+                    })
+                  : t("locker.devices.removedPlain", { name }),
+              );
+              // Focus never falls to `body` (FLOWS.md P-7): it goes to the Devices
+              // heading, without scrolling away from the list, which closes up where
+              // the person is looking.
+              focusPageHeading(() =>
+                heading?.isConnected ? heading : pageHeading(null),
+              );
+            },
+          });
+        }}
+      />
     </li>
   );
 }

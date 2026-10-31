@@ -5628,6 +5628,26 @@
       "role": "label",
       "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
     },
+    "locker.account.devices": {
+      "value": "Devices",
+      "role": "label",
+      "note": "Account page: the licence-less devices section (DEVICE-REMOVAL)."
+    },
+    "locker.devices.subtitle": {
+      "value": "Devices signed in without a license. Licensed ones are on their product's page.",
+      "role": "hint",
+      "note": "Account page: the licence-less devices section (DEVICE-REMOVAL)."
+    },
+    "locker.devices.restored": {
+      "value": "Signed in from backup",
+      "role": "label",
+      "note": "Account page and product Devices: a device that signed in from a backup key (DEVICE-REMOVAL)."
+    },
+    "locker.devices.removeRestoredAll": {
+      "value": "Backup sign-in for {product} stops working on all your devices.",
+      "role": "hint",
+      "note": "Account page: the consequence of removing a device that signed in from backup. Arguments: {product} = the product's name."
+    },
     "locker.appearance.title": {
       "value": "Appearance",
       "role": "title",

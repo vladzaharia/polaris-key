@@ -49,6 +49,28 @@ export interface PendingState {
   wp: string[];
 }
 
+/** Two devices that hold no license: one signed in from the device backup, one with a long name. */
+const ACCOUNT_DEVICES = [
+  {
+    product: "quill",
+    productName: "Quill",
+    deviceId: "dev_restored",
+    label: "Pixel 9",
+    platform: "android",
+    lastSeen: FIXTURE_NOW - 3600,
+    restored: true,
+  },
+  {
+    product: "quill",
+    productName: "Quill",
+    deviceId: "dev_long",
+    label: "Living room Apple TV with a very long name that has to wrap",
+    platform: "tvos",
+    lastSeen: FIXTURE_NOW - 3 * 86400,
+    restored: false,
+  },
+];
+
 const LINK_ACCOUNT = (role: "started" | "other") => ({
   role,
   current: role === "other",
@@ -1520,6 +1542,36 @@ export const SHIPPED: ShippedState[] = [
       await p.reload();
       await p
         .getByRole("region", { name: "Add another way to sign in" })
+        .waitFor();
+    },
+  },
+  {
+    // DEVICE-REMOVAL: devices that hold no license, one signed in from the device backup.
+    section: "4.11",
+    id: "account-devices",
+    title: "Account: Devices without a license, one signed in from backup",
+    scenario: "three",
+    path: "/#/account/devices",
+    routes: { "GET /api/me/devices": { body: { devices: ACCOUNT_DEVICES } } },
+    ready: async (p) => {
+      await p.getByRole("region", { name: "Devices" }).waitFor();
+      await p.getByText("Signed in from backup").waitFor();
+    },
+  },
+  {
+    section: "4.11",
+    id: "account-devices-remove",
+    title: "Account: Devices, removing the device that signed in from backup",
+    scenario: "three",
+    path: "/#/account/devices",
+    routes: { "GET /api/me/devices": { body: { devices: ACCOUNT_DEVICES } } },
+    ready: async (p) => {
+      const region = p.getByRole("region", { name: "Devices" });
+      await region.getByRole("button", { name: /Remove Pixel 9/ }).click();
+      await region
+        .getByText(
+          "Backup sign-in for Quill stops working on all your devices.",
+        )
         .waitFor();
     },
   },
