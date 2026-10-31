@@ -79,6 +79,56 @@ describe("NODE-OVERFLOW: a refused host send does not advance the keys", () => {
   });
 });
 
+describe("relay: concurrent host sends are refused before encryption", () => {
+  it("three unawaited sends against a small cap end peer_busy for the peer", async () => {
+    const { a, b, room } = await world();
+    let ms = 0;
+    const pace = new RelayPacer(180, 360, () => ms);
+    let inn: ConnectSession | null = null;
+    a.cloudConnect.onChannel((s) => (inn = s));
+    await a.cloudConnect.start(viaRelay(room));
+    await b.cloudConnect.start(
+      viaRelay(room, { outbox: { pacer: pace, maxBytes: 4096 } }),
+    );
+    await until(() => b.cloudConnect.peers().some((p) => p.deviceId === A));
+    const link = await b.cloudConnect.open(A);
+    await until(() => inn !== null);
+    while (pace.tryTake() === 0);
+    // Nothing is awaited between the sends: each checks before any of them has queued.
+    await Promise.all(
+      [1, 2, 3].map(() =>
+        link.send(new Uint8Array(1500)).catch(() => undefined),
+      ),
+    );
+    expect(link.closed?.code).toBe("peer_busy");
+    ms = 5_000;
+    await until(() => (inn as unknown as ConnectSession).closed !== null);
+    expect((inn as unknown as ConnectSession).closed).toEqual({
+      code: "peer_busy",
+      byPeer: true,
+    });
+  });
+
+  it("two sessions sending at once share one reservation", async () => {
+    const { a, b, room } = await world();
+    const pace = new RelayPacer(180, 360, () => 0);
+    await a.cloudConnect.start(viaRelay(room));
+    await b.cloudConnect.start(
+      viaRelay(room, { outbox: { pacer: pace, maxBytes: 4096 } }),
+    );
+    await until(() => b.cloudConnect.peers().some((p) => p.deviceId === A));
+    const one = await b.cloudConnect.open(A);
+    const two = await b.cloudConnect.open(A);
+    while (pace.tryTake() === 0);
+    await Promise.all([
+      one.send(new Uint8Array(1500)).catch(() => undefined),
+      one.send(new Uint8Array(1500)).catch(() => undefined),
+      two.send(new Uint8Array(1500)).catch(() => undefined),
+    ]);
+    expect([one.closed?.code, two.closed?.code]).toContain("peer_busy");
+  });
+});
+
 describe("D-12: Connect stops before sign-out, within a bound", () => {
   it("a stop that a host callback holds is force-cancelled at the bound", async () => {
     const { a, b, room } = await world();

@@ -126,10 +126,12 @@ export interface ChannelLink {
   /** Stop (true) or resume (false) reading from the transport, where it can. */
   pause?(on: boolean): void;
   /**
-   * A link with a bounded send queue: true when a send of `bytes` is refused, the link having ended
-   * `peer_busy` before anything was encrypted (so the keys do not advance for a dropped message).
+   * A link with a bounded send queue: reserve room for a host send of `bytes` before anything is
+   * encrypted. Null when it is refused, the link having ended `peer_busy` (so the keys do not
+   * advance for a dropped message); otherwise a function that releases the reservation once the
+   * send has settled. Reserving at check time means unawaited sends cannot all pass together.
    */
-  refuses?(bytes: number): boolean;
+  hold?(bytes: number): (() => void) | null;
 }
 
 /** Which path a session took (WIRE-CONTRACT-V5 §15.7: the relay is the fallback). */
@@ -177,7 +179,8 @@ export class ConnectSession {
       throw new LanError("bad_type", "Application types are 0x0100 to 0x7FFF.");
     if (this.#closed !== null)
       throw new LanError("closed", "The session is closed.");
-    if (this.#link.refuses?.(body.length) === true) return;
+    const release = this.#link.hold?.(body.length);
+    if (release === null) return;
     try {
       await this.#link.channel.sendRecord(type, body);
     } catch (e) {
@@ -187,14 +190,19 @@ export class ConnectSession {
           "The message is larger than the peer accepts.",
         );
       throw new LanError("closed", "The session is closed.", { cause: e });
+    } finally {
+      release?.();
     }
   }
 
   /** Send a record of any type the session does not own (a peer document, a later transfer
    *  type). The channel refuses HELLO, CLOSE, REKEY and SAS records. @internal */
   sendRecord(type: number, body: Uint8Array): Promise<void> {
-    if (this.#link.refuses?.(body.length) === true) return Promise.resolve();
-    return this.#link.channel.sendRecord(type, body);
+    const release = this.#link.hold?.(body.length);
+    if (release === null) return Promise.resolve();
+    const sent = this.#link.channel.sendRecord(type, body);
+    if (release === undefined) return sent;
+    return sent.finally(release);
   }
 
   /** The next message; rejects when the session closes with none waiting. */
