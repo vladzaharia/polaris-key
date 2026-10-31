@@ -245,3 +245,13 @@ export class Copy {
     return out;
   }
 }
+
+/** A line whose first words are marked `**like this**` in the catalog (the reasons to keep a
+ *  license in an account), split into runs. A renderer draws the `strong` runs bold; none shows the
+ *  markers. One parser for every web surface: the kits and the portal. */
+export function leadParts(s: string): { text: string; strong: boolean }[] {
+  return s
+    .split("**")
+    .map((text, i) => ({ text, strong: i % 2 === 1 }))
+    .filter((p) => p.text !== "");
+}

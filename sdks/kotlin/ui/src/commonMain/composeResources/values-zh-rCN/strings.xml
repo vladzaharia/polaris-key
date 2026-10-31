@@ -324,7 +324,7 @@
     <string name="activate_recommend_skip">或不使用账户继续。%1$s的使用方式完全相同。</string>
     <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
     <string name="activate_recommend_portal">将许可证安全保存在 Polaris Locker</string>
-    <!-- AddToAccount: under the name and email fields. -->
+    <!-- AddToAccount: under the title, above the fields. -->
     <string name="activate_attach_lede">你的许可证及其设备保持不变。你将在浏览器中用验证码确认电子邮件。</string>
     <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_fine">我们会在浏览器中向这个电子邮件发送验证码。%1$s看不到它。</string>
@@ -334,6 +334,14 @@
     <string name="activate_attach_syncOn">这台%1$s已开启云同步。在其他设备上登录即可一并同步。</string>
     <!-- AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form. -->
     <string name="activate_attach_failed">无法添加此许可证。请稍后重试。</string>
+    <!-- AddToAccount: the name field. The title is Add your name and email, so the label is one word. -->
+    <string name="activate_attach_name">姓名</string>
+    <!-- AddToAccount: shown under the name field when it is empty. -->
+    <string name="activate_attach_nameRequired">请输入你的姓名。</string>
+    <!-- AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere. -->
+    <string name="activate_otherAccount_title">你登录的是另一个账户</string>
+    <!-- AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated). Arguments: 1=email, 2=maskedEmail. -->
+    <string name="activate_otherAccount_body">你登录的是 %1$s，而不是 %2$s。没有添加任何内容。</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
     <string name="activate_waiting">这个许可证已发送到 %1$s。用该电子邮件登录，即可保存到你的账户。</string>
     <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->
@@ -352,6 +360,9 @@
     <string name="activate_otherEmail_verify__macos">验证该电子邮件</string>
     <!-- AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email. -->
     <string name="account_notInAccount">不在账户中</string>
+    <!-- AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device. -->
+    <string name="account_removeKey">从此设备移除许可证</string>
+    <string name="account_removeKey__macos">从此设备移除许可证</string>
     <!-- The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="signin_attach_header">将%1$s添加到你的账户</string>
     <!-- License key step: under Continue without an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->

@@ -360,13 +360,14 @@ const KIT_CSS = String.raw`
   margin-block: calc(-1 * var(--pk-space-2));
   background: var(--pk-surface-raised);
 }
-/* The docked bar's opaque ground spans the whole window, so content scrolling under it is hidden
-   edge to edge, never sliced at the bar's own width (the stage clips it to the window). */
+/* The docked bar's opaque ground spans the card edge to edge, so content scrolling under it is
+   hidden, never sliced at the bar's own width. It stops at the card: past it the page's own ground
+   shows, so a wide short window paints no band across the page. */
 .pk-root[data-shape="short"] .stage[data-kind="screen"] .card > .actions::before {
   content: "";
   position: absolute;
   inset-block: 0;
-  inset-inline: -100vw;
+  inset-inline: calc(-1 * var(--pk-space-5));
   z-index: -1;
   background: var(--pk-surface-raised);
 }

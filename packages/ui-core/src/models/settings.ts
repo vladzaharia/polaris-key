@@ -53,9 +53,14 @@ export function accountView(
         license && "account.tier",
         license && !floating && "account.keyOnly",
         floating && "account.notInAccount",
-        floating && "activate.recommend.action",
+        floating &&
+          (ctx.on("identity")
+            ? "activate.recommend.action"
+            : "signin.key.addInLocker"),
+        floating && !ctx.on("identity") && "a11y.externalLink",
         update && "account.updates",
-        "common.signOut",
+        // A holder who never signed in has nothing to sign out of: the exit forgets the key.
+        holder ? "account.removeKey" : "common.signOut",
       ],
       args: { ...args, tier: account?.tier },
     });

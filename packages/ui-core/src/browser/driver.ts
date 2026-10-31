@@ -35,7 +35,7 @@ import type {
   SignInWait,
 } from "../signInModel.js";
 import { gateInput, isHolderStep, type GateStep } from "./input.js";
-import { openLink, safeLink } from "./links.js";
+import { armTab, disarmTab, openArmed, openLink, safeLink } from "./links.js";
 
 /** What `<pk-gate config>` takes: the product, and the few transport choices a page makes. */
 export interface GateConfig {
@@ -210,6 +210,31 @@ export function openManage(
   if (safe) openLink(safe);
 }
 
+/** The device-code sign-in a holder flow runs in this page (the hints and the app's license
+ *  choice), its page opened in the tab the press armed (a popup blocker lets that through) or a
+ *  new one. A start that fails closes the armed tab. */
+export async function startPageSignIn(
+  adapter: PolarisAdapter,
+  o: Parameters<SignInPrimitives["start"]>[0],
+): Promise<SignInSessionHandle> {
+  const flow = await adapter.signIn
+    .start({
+      channel: "device-code",
+      ...(o.licenseChoice === "app" ? { licenseChoice: "app" as const } : {}),
+      ...(o.hints?.loginHint ? { loginHint: o.hints.loginHint } : {}),
+      ...(o.hints?.nameHint ? { nameHint: o.hints.nameHint } : {}),
+      ...(o.hints?.purpose ? { purpose: o.hints.purpose } : {}),
+    })
+    .catch((e: unknown) => {
+      disarmTab();
+      throw e;
+    });
+  const url = flow.verificationUriComplete ?? flow.verificationUri;
+  if (url) void openArmed(url);
+  else void flow.reopen();
+  return handleOf(flow);
+}
+
 /** The session handle a device-code sign-in runs as, in this page's memory: the form's `wait()`
  *  answers, one poll at a time (the SDK's own interval between them). */
 export function handleOf(flow: DeviceCodeSignInSession): SignInSessionHandle {
@@ -297,6 +322,8 @@ export class GateDriver {
   private owning = false;
   /** Where AddToAccount opened from: ActivateDone, or a screen of the app (the settings row). */
   private addFrom: GateStep = "home";
+  /** Done was reached by cancelling AddToAccount: focus returns to Add your name and email. */
+  private returned = false;
 
   constructor(
     readonly adapter: PolarisAdapter,
@@ -342,8 +369,14 @@ export class GateDriver {
       secondsLeft: this.secondsLeft,
       dismissed: this.dismissed,
       deviceKind: this.options.deviceKind ?? "device",
+      ...(this.returned ? { returned: true } : {}),
       ...(this.addModel
-        ? { addToAccount: this.addModel.input().addToAccount }
+        ? {
+            addToAccount: {
+              ...this.addModel.input().addToAccount!,
+              ...(this.addFrom !== "done" ? { fromSettings: true } : {}),
+            },
+          }
         : {}),
       ...(this.options.locale !== undefined
         ? { locale: this.options.locale }
@@ -521,6 +554,7 @@ export class GateDriver {
 
   private enter(next: GateStep, from: string): void {
     this.opener = from;
+    this.returned = false;
     this.step = next;
     if (typeof history !== "undefined" && !this.pushed) {
       try {
@@ -659,6 +693,7 @@ export class GateDriver {
 
   /** Leave AddToAccount: its sign-in is cancelled, so approving it later attaches nothing. */
   private dropAdd(): void {
+    disarmTab();
     this.addUnsub?.();
     this.addUnsub = null;
     const m = this.addModel;
@@ -694,17 +729,7 @@ export class GateDriver {
         () => false,
       ),
       start: async (o) => {
-        const flow = await this.adapter.signIn.start({
-          channel: "device-code",
-          ...(o.licenseChoice === "app"
-            ? { licenseChoice: "app" as const }
-            : {}),
-          ...(o.hints?.loginHint ? { loginHint: o.hints.loginHint } : {}),
-          ...(o.hints?.nameHint ? { nameHint: o.hints.nameHint } : {}),
-          ...(o.hints?.purpose ? { purpose: o.hints.purpose } : {}),
-        });
-        void flow.reopen();
-        const h = handleOf(flow);
+        const h = await startPageSignIn(this.adapter, o);
         this.addSession = h;
         return h;
       },
@@ -788,6 +813,12 @@ export class GateDriver {
       case "signin.again":
       case "signin.handoff.again":
       case "signInHandoff.newCode":
+        // AddToAccount while busy: bring the browser tab back (inside the press, so a popup
+        // blocker lets it through); the sign-in keeps running.
+        if (this.step === "add" && key === "signin.handoff.again") {
+          void Promise.resolve(this.addSession?.reopen()).catch(() => {});
+          return;
+        }
         this.handle?.cancel?.();
         this.signIn();
         return;
@@ -844,12 +875,18 @@ export class GateDriver {
         }
         this.ownedSignIn();
         return;
+      case "signin.key.addInLocker":
+        // ActivateDone with Identity off: the same press as Add your name and email.
+        if (this.step !== "done") return;
+        this.addToAccount();
+        return;
       case "activate.recommend.action":
         // ActivateDone's card, and AccountAndLicense's "Not in an account" row.
         this.addToAccount();
         return;
       case "activate.recommend.skip":
       case "signin.done.start":
+      case "common.done":
         this.finish();
         return;
       case "activate.waitingSignIn":
@@ -857,7 +894,11 @@ export class GateDriver {
         this.signIn();
         return;
       case "common.continue":
-        if (this.step === "add") void this.addModel?.submit();
+        if (this.step === "add") {
+          // Open the tab inside the press; the sign-in navigates it once it has an address.
+          if (this.addModel?.willOpenBrowser) armTab();
+          void this.addModel?.submit();
+        }
         return;
       case "activate.otherEmail.verify":
       case "signin.auto.confirm.other":
@@ -893,10 +934,19 @@ export class GateDriver {
       }
       case "common.cancel":
       case "common.back":
+        // Done and Added are success screens: Escape and Back are Start using (or Done).
+        if (
+          this.step === "done" ||
+          (this.step === "add" && this.addModel?.snapshot.step === "added")
+        ) {
+          this.finish();
+          return;
+        }
         if (this.step === "add" && this.addFrom === "done") {
           // AddToAccount's Cancel goes back to ActivateDone, the key still held.
           this.dropAdd();
           this.step = "done";
+          this.returned = true;
           this.changed();
           return;
         }
@@ -904,6 +954,7 @@ export class GateDriver {
         return;
       case "common.tryAgain":
         if (this.step === "add") {
+          if (this.addModel?.willOpenBrowser) armTab();
           void this.addModel?.tryAgain();
           return;
         }
@@ -913,6 +964,7 @@ export class GateDriver {
         void this.adapter.refresh({ force: true }).catch(() => undefined);
         return;
       case "common.signOut":
+      case "account.removeKey":
         void this.adapter.signOut().catch(() => undefined);
         return;
     }

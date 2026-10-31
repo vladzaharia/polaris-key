@@ -1189,13 +1189,18 @@ Done says "<Product> is ready" and shows a quiet **Keep <Product> in your accoun
 Recommended, listing only the reasons the product has (Cloud Sync only when it is on; getting the
 license back; moving it to a new device yourself), with **Add your name and email** as its
 secondary and **Start using <Product>** as the primary. **Add your name and email**
-(`AddToAccount`, frame 43) collects both natively and hands them to the card as sign-in hints
-(SIGN-IN.md §6.6); after the code, the kit keeps the device on its license and attaches it (frame
-44). The key-ownership states (waiting, in an account, owned with refusals on, sent to another email)
+(`AddToAccount`, frame 43) collects both natively and sends them as sign-in hints (`loginHint`,
+`nameHint`, `purpose: "attach"`; SIGN-IN.md §6.6): the card opens with the email filled in and sends
+no code by itself. While the browser works the form shows Working with **Open browser again** and
+**Cancel**; after the code the kit keeps the device on its license, previews the attach and then
+attaches it (frame 44). With Identity off the offer is **Add it in Polaris Locker**, which opens
+the portal; opened from Settings, the added state closes with **Done**, and Escape on Done and on
+added is the primary. The account pane's row reads "Not in an account · Add your name and email",
+and its exit for a holder who never signed in is **Remove license from this device**. The key-ownership states (waiting, in an account, owned with refusals on, sent to another email)
 are SIGN-IN.md §3.9's. Every skip reads **Continue without an account**. Three layers as always:
 drop-in inside `SignIn` and the gate, styled `ActivateDone` / `AddToAccount`, headless
-`useActivateDone` / `ActivateDoneModel`. Packages UK-42 (ui-core, elements, React) and UK-43 (native
-kits).
+`useActivateDone` / `useAddToAccount` over `AddToAccountModel`. The web kits (ui-core, elements,
+React) ship them (UK-42; docs under Components); the native kits are UK-43.
 
 #### SignIn and SignInHandoff
 

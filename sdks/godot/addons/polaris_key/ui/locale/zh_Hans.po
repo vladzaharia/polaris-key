@@ -886,8 +886,8 @@ msgstr "或不使用账户继续。{product}的使用方式完全相同。"
 msgid "activate.recommend.portal"
 msgstr "将许可证安全保存在 Polaris Locker"
 
-#. Your license and its devices stay as they are. You'll confirm the email with a code in your browser.
-#. AddToAccount: under the name and email fields.
+#. Your license and its devices stay as they are.
+#. AddToAccount: under the title, above the fields.
 msgid "activate.attach.lede"
 msgstr "你的许可证及其设备保持不变。你将在浏览器中用验证码确认电子邮件。"
 
@@ -910,6 +910,26 @@ msgstr "这台{deviceKind}已开启云同步。在其他设备上登录即可一
 #. AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form.
 msgid "activate.attach.failed"
 msgstr "无法添加此许可证。请稍后重试。"
+
+#. Name
+#. AddToAccount: the name field. The title is Add your name and email, so the label is one word.
+msgid "activate.attach.name"
+msgstr "姓名"
+
+#. Enter your name.
+#. AddToAccount: shown under the name field when it is empty.
+msgid "activate.attach.nameRequired"
+msgstr "请输入你的姓名。"
+
+#. You signed in with a different account
+#. AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere.
+msgid "activate.otherAccount.title"
+msgstr "你登录的是另一个账户"
+
+#. You signed in as {email}, not {maskedEmail}. Nothing was added.
+#. AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated).
+msgid "activate.otherAccount.body"
+msgstr "你登录的是 {email}，而不是 {maskedEmail}。没有添加任何内容。"
 
 #. This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.
 #. ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated).
@@ -960,6 +980,16 @@ msgstr "验证该电子邮件"
 #. AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email.
 msgid "account.notInAccount"
 msgstr "不在账户中"
+
+#. Remove license from this device
+#. AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device.
+msgid "account.removeKey"
+msgstr "从此设备移除许可证"
+
+#. macos: Remove License from This Device
+msgctxt "macos"
+msgid "account.removeKey"
+msgstr "从此设备移除许可证"
 
 #. Add {product} to your account
 #. The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated).

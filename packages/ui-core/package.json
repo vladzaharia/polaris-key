@@ -40,6 +40,10 @@
       "types": "./dist/browser/index.d.ts",
       "default": "./dist/browser/index.js"
     },
+    "./browser/reveal": {
+      "types": "./dist/browser/reveal.d.ts",
+      "default": "./dist/browser/reveal.js"
+    },
     "./browser/sdk/*.js": {
       "types": "./dist/browser/sdk/*.d.ts",
       "default": "./dist/browser/sdk/*.js"

@@ -16,6 +16,10 @@ import KitStatus from "../../../../../components/ui/KitStatus.astro";
 
 License key entry with a live verdict: the field names the product and tier once the key parses, catches cut-short keys, takes a paste, and submits on Return. It is a step of the sign-in form and also ships on its own for a key-only product.
 
+When the key activates, the license is floating: it has devices and a term, and no account. The web
+kits go on to [ActivateDone](/docs/build/ui/components/activate-done/), which recommends adding a
+name and email once; [AddToAccount](/docs/build/ui/components/add-to-account/) does it.
+
 ## States and copy
 
 <ComponentStates component="Activate" />

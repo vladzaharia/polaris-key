@@ -272,6 +272,80 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
     });
   });
 
+  /** A bridge whose device start records the body it was sent. */
+  async function startCapture() {
+    const sent = { count: 0, last: null as Record<string, unknown> | null };
+    const { bridge } = await setup({
+      "POST /djdl/identity/auth/device/start": (req) => {
+        sent.count++;
+        sent.last = JSON.parse(req.body!) as Record<string, unknown>;
+        return json(START);
+      },
+    });
+    return { bridge, sent };
+  }
+
+  // @pkey-feature identity.signin.hints identity.attach
+  it("carries the sign-in hints, purpose and licenseChoice to the device start (UK-42.17)", async () => {
+    const { bridge, sent } = await startCapture();
+    await bridge.beginSignIn({
+      loginHint: "ada@example.com",
+      nameHint: "Ada Lovelace",
+      purpose: "attach",
+      licenseChoice: "app",
+    });
+    expect(sent.last).toMatchObject({
+      loginHint: "ada@example.com",
+      nameHint: "Ada Lovelace",
+      purpose: "attach",
+      licenseChoice: "app",
+    });
+    // "card" is the Worker's default: nothing is sent.
+    await bridge.beginSignIn({ licenseChoice: "card" });
+    expect(sent.last).not.toHaveProperty("licenseChoice");
+  });
+
+  // @pkey-feature identity.signin.hints identity.attach
+  it("an attach sign-in never hangs when the Worker answers choose: the poll ends in error (UK-42.18)", async () => {
+    // The device-code channel has no choice step (the card in the browser holds it), so a
+    // `choose` answer is not one the Worker gives; if one ever came, the poll must end, not wait.
+    const { bridge } = await setup({
+      "POST /djdl/identity/auth/device/start": () => json(START),
+      "POST /djdl/identity/auth/device/poll": () =>
+        json({ status: "choose", grant: "sg_never_shown", choices: {} }),
+    });
+    const begin = await bridge.beginSignIn({
+      purpose: "attach",
+      licenseChoice: "app",
+      loginHint: "ada@example.com",
+    });
+    const r = await bridge.pollSignIn(begin.flowId);
+    expect(r.kind).toBe("error");
+    expect(JSON.stringify(r)).not.toContain("sg_never_shown");
+    expect(await bridge.pollSignIn(begin.flowId)).toEqual({ kind: "expired" });
+  });
+
+  it("refuses a malformed sign-in bag before any request, and drops unknown members", async () => {
+    const { bridge, sent } = await startCapture();
+    for (const bad of [
+      { loginHint: 7 },
+      { loginHint: "a".repeat(255) },
+      { nameHint: "x".repeat(201) },
+      { nameHint: "line\nbreak" },
+      { purpose: "signin" },
+      { purpose: "admin" },
+      { licenseChoice: "other" },
+    ])
+      await expect(bridge.beginSignIn(bad as never)).rejects.toMatchObject({
+        code: "invalid-argument",
+      });
+    expect(sent.count).toBe(0);
+    await bridge.beginSignIn({ scope: "admin", channel: "redirect" } as never);
+    expect(sent.count).toBe(1);
+    expect(sent.last).not.toHaveProperty("scope");
+    expect(sent.last).not.toHaveProperty("channel");
+  });
+
   it("returns v4 activation kinds without folding them into error", async () => {
     const answers = [
       json({ error: { code: "fingerprint_required" } }, 403),

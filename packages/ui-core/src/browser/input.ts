@@ -109,6 +109,8 @@ export function gateInput(
     dismissed?: unknown;
     /** The device kind already worded ("computer", "browser"), for the lines that name it. */
     deviceKind?: string;
+    /** On `done`: the person just cancelled AddToAccount, so focus goes to its opener. */
+    returned?: boolean;
     /** AddToAccount's step, while the gate is on `add`. */
     addToAccount?: AddToAccountInput;
   },
@@ -176,9 +178,10 @@ export function gateInput(
   const holder = holderOf(state);
   if (holder) input.licenseHolder = holder;
   if (extra.step === "done" || extra.step === "add")
-    input.activateDone = extra.deviceKind
-      ? { deviceKind: extra.deviceKind }
-      : {};
+    input.activateDone = {
+      ...(extra.deviceKind ? { deviceKind: extra.deviceKind } : {}),
+      ...(extra.step === "done" && extra.returned ? { returned: true } : {}),
+    };
   if (extra.step === "add" && extra.addToAccount)
     input.addToAccount = extra.addToAccount;
   const h = extra.handle;

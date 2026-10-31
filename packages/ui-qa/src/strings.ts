@@ -61,7 +61,9 @@ export function loadCatalog(root: string): CatalogMessage[] {
   const out: CatalogMessage[] = Object.entries(kit.messages).map(
     ([key, m]) => ({
       key,
-      value: m.value,
+      // A reason's bold lead is marked `**like this**`; the screen draws it bold, so the text a
+      // person reads has no markers.
+      value: m.value.replaceAll("**", ""),
       role: m.role,
       variants: m.variants ?? {},
     }),

@@ -949,7 +949,7 @@ Recommended, listing only the reasons the product has: **Cloud Sync** (when it i
 license back**, **Move it to a new device** yourself. Its secondary is **Add your name and email**;
 the primary stays **Start using <Product>**, with "Or continue without an account. <Product> works
 the same." **Add your name and email** morphs the body into Name and Email (native fields), **Continue
-in browser** with the provider row: the app starts a plain sign-in (the SDKs send no hints, §6.6), the card asks for the email and the
+in browser** with the provider row: the app starts a sign-in with the typed email and name as hints (§6.6), the card opens with them filled in and asks for the
 code (credentials stay on the card, D17), and
 when the code is redeemed the kit completes `{kind: "keep"}` and calls attach (I-09), with no
 license list. The body then reads "<Product> is in your account" with the person row and "Cloud
@@ -1737,19 +1737,25 @@ keys (`conformance/parity/copy.en.json`) for refusal codes instead of duplicatin
 | `activate.recommend.action`          | Add your name and email                                                                                                                                                                       |
 | `activate.recommend.skip`            | Or continue without an account. {product} works the same.                                                                                                                                     |
 | `activate.recommend.portal`          | Keep your license safe in Polaris Locker                                                                                                                                                      |
-| `activate.attach.lede`               | Your license and its devices stay as they are. You'll confirm the email with a code in your browser.                                                                                          |
+| `activate.attach.lede`               | Your license and its devices stay as they are.                                                                                                                                                |
 | `activate.attach.fine`               | We send a code to this email in your browser. {product} never sees it.                                                                                                                        |
 | `activate.attach.done`               | {product} is in your account                                                                                                                                                                  |
 | `activate.attach.syncOn`             | Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.                                                                                                       |
+| `activate.attach.name`               | Name                                                                                                                                                                                          |
+| `activate.attach.nameRequired`       | Enter your name.                                                                                                                                                                              |
+| `activate.attach.failed`             | Couldn't add this license. Try again in a moment.                                                                                                                                             |
 | `activate.waiting`                   | This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.                                                                                                   |
 | `activate.waitingSignIn`             | Sign in as {maskedEmail}                                                                                                                                                                      |
 | `account.notInAccount`               | Not in an account                                                                                                                                                                             |
+| `account.removeKey`                  | Remove license from this device                                                                                                                                                               |
 | `activate.inAccount`                 | This license is in a Polaris Locker account. Sign in to turn on Cloud Sync here.                                                                                                              |
 | `activate.owned.title`               | This license is in a Polaris Locker account                                                                                                                                                   |
 | `activate.owned.lede`                | Sign in with the email it was sent to. {product} starts on this {deviceKind} as soon as you do.                                                                                               |
 | `activate.otherEmail.title`          | This license was sent to another email                                                                                                                                                        |
 | `activate.otherEmail.body`           | It was sent to {maskedEmail}. Sign in with that email, or add it to this account and verify it.                                                                                               |
 | `activate.otherEmail.verify`         | Verify that email                                                                                                                                                                             |
+| `activate.otherAccount.title`        | You signed in with a different account                                                                                                                                                        |
+| `activate.otherAccount.body`         | You signed in as {email}, not {maskedEmail}. Nothing was added.                                                                                                                               |
 | `signin.attach.header`               | Add {product} to your account                                                                                                                                                                 |
 | `signin.return.yours`                | {product} is yours                                                                                                                                                                            |
 | `signin.return.signedIn`             | You're signed in to {app}                                                                                                                                                                     |
@@ -1979,15 +1985,17 @@ flow record that I-07 and PX-W13 already keep.
 
 ### 6.6 Sign-in hints
 
-`loginHint` and `nameHint` are dropped from the SDKs. The two packages that would have carried
-them are closed: PX-W18 (merged into I-08) and UK-44 (the `signIn.start({loginHint, nameHint,
-purpose})` members in six SDKs). I-08 keeps only the optional wire parameters `login_hint`,
-`name_hint` and `purpose: "signin" | "attach"` on `authorize`, and `loginHint`, `nameHint` and
-`purpose` on `auth/device/start`: a hint prefills the card (an email opens CodeStep, a name
-prefills FinishStep for a new account) and never verifies anything; invalid hints are ignored. No
-kit or SDK sends them, so the **Add your name and email** step (§3.17, step 4) starts a plain
-sign-in and the card asks for the email. No signed document or activation response changes:
-`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2.
+`loginHint`, `nameHint` and `purpose` are sent by the kits for one step: **Add your name and email**
+(§3.17, step 4). The kit starts the sign-in with `loginHint` set to the typed email, `nameHint` to
+the typed name and `purpose: "attach"`, and `license_choice=app`. On the wire these are the optional
+`login_hint`, `name_hint` and `purpose: "signin" | "attach"` on `authorize`, and `loginHint`,
+`nameHint` and `purpose` on `auth/device/start` (I-08, I-10a). A hint prefills the card and verifies
+nothing: an email is shown in the email field and never sent a code by itself, a name prefills
+FinishStep for a new account only, `purpose: "attach"` words the header ("Add {product} to your
+account"), and an invalid hint is ignored. No other flow sends hints; a plain sign-in sends none.
+After the code the kit completes `{kind: "keep"}` with the device token, previews with
+`attach {confirm: false}` and then attaches, so the same `licenseId` gains a `subject`. No signed
+document or activation response changes.
 
 ## 7. Decisions
 

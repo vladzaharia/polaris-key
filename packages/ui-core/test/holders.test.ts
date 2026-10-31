@@ -108,7 +108,7 @@ describe("ActivateDone", () => {
 
 describe("AddToAccount", () => {
   it("form focuses Name, or the heading under a coarse pointer", () => {
-    expect(add({ step: "form" }).decisions.focus).toBe("signin.gate.name");
+    expect(add({ step: "form" }).decisions.focus).toBe("activate.attach.name");
     const phone = add(
       { step: "form" },
       { platform: { os: "ios", formFactor: "iphone" } },
@@ -118,16 +118,68 @@ describe("AddToAccount", () => {
   it("invalid says which field and sits the message under it", () => {
     const v = add({ step: "invalid", field: "email" });
     expect(v.copy).toContain("signin.email.invalid");
-    expect(v.copy).not.toContain("signin.gate.nameRequired");
+    expect(v.copy).not.toContain("activate.attach.nameRequired");
     expect(v.decisions).toMatchObject({
       tone: "danger",
       errorSlot: "signin.email.label",
     });
   });
-  it("busy has no control", () => {
+  it("busy keeps Continue and Cancel and offers the browser again", () => {
     const v = add({ step: "busy" });
-    expect(v.decisions.primary).toBeNull();
-    expect(v.copy).toContain("common.working");
+    expect(v.decisions.primary).toBe("common.continue");
+    expect(v.copy).toEqual(
+      expect.arrayContaining([
+        "common.continue",
+        "common.cancel",
+        "common.working",
+        "signin.handoff.again",
+      ]),
+    );
+    expect(v.actions).toContain("open-browser");
+    expect(v.decisions.focus).toBeNull();
+  });
+  it("email-bound with no known email leaves the sentence out", () => {
+    const v = add({ step: "email-bound" });
+    expect(v.copy).toContain("activate.otherEmail.title");
+    expect(v.copy).not.toContain("activate.otherEmail.body");
+    // No "Verify that email" without an email to name: Use another account leads.
+    expect(v.copy).not.toContain("activate.otherEmail.verify");
+    expect(v.decisions.primary).toBe("signin.auto.confirm.other");
+    const named = add(
+      { step: "email-bound" },
+      { licenseHolder: { email: "alex@example.com" } },
+    );
+    expect(named.copy).toContain("activate.otherEmail.body");
+    expect(named.copy).toContain("activate.otherEmail.verify");
+    expect(named.decisions.primary).toBe("activate.otherEmail.verify");
+  });
+  it("other-account names both emails masked, and never an empty one", () => {
+    const v = add({
+      step: "other-account",
+      typedEmail: "m•••@example.com",
+      signedEmail: "j•••@example.com",
+    });
+    expect(v.state).toBe("other-account");
+    expect(v.copy).toContain("activate.otherAccount.body");
+    expect(v.args).toMatchObject({
+      maskedEmail: "m•••@example.com",
+      email: "j•••@example.com",
+    });
+    expect(v.decisions.primary).toBe("common.tryAgain");
+    // The provider shared no email: the sentence that names it is left out.
+    const none = add({ step: "other-account", typedEmail: "m•••@example.com" });
+    expect(none.copy).not.toContain("activate.otherAccount.body");
+    expect(none.copy).toContain("activate.otherAccount.title");
+  });
+  it("a holder email too short to mask counts as no holder", () => {
+    const v = done({ licenseHolder: { email: "@example.com" } });
+    expect(v.state).toBe("ready");
+  });
+  it("Identity off: the action opens polaris.locker and says so", () => {
+    const v = done({ services: servicesWithout("identity") });
+    expect(v.copy).toContain("signin.key.addInLocker");
+    expect(v.copy).toContain("a11y.externalLink");
+    expect(v.copy).not.toContain("activate.recommend.action");
   });
   it("added names Cloud Sync only when the product has it", () => {
     expect(add({ step: "added", deviceKind: "computer" }).copy).toContain(

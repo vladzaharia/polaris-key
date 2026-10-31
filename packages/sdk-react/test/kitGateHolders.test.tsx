@@ -221,7 +221,14 @@ function mount(
   /** Done, then Add with Identity off: the portal opens. */
   const portal = async () => {
     await activate();
-    await press("activate.recommend.action");
+    // Identity off: the action opens polaris.locker, so it says so and draws the external glyph.
+    // With Identity on and the web switch at "portal" it is the same Add your name and email.
+    const locker = btn("signin.key.addInLocker");
+    if (locker) expect(locker.querySelector("svg")).not.toBeNull();
+    else expect(btn("activate.recommend.action")).not.toBeNull();
+    await press(
+      locker ? "signin.key.addInLocker" : "activate.recommend.action",
+    );
     await waitFor(() => expect(opened).toHaveLength(1));
   };
   return {
@@ -328,6 +335,10 @@ describe("<PolarisKeyGate>: a key with no account", () => {
       expect(m.btn("activate.recommend.action")).not.toBeNull(),
     );
     expect(m.app()).toBeNull();
+    // Focus returns to the control that opened it (DL9).
+    await waitFor(() =>
+      expect(document.activeElement).toBe(m.btn("activate.recommend.action")),
+    );
   });
 
   it("by default (the web switch) Add opens the portal, never the device-code form", async () => {
@@ -382,9 +393,17 @@ describe("<PolarisKeyGate>: a key with no account", () => {
       waits: [{ kind: "signedIn", identity: { email: "other@example.com" } }],
     });
     await m.addFilled();
-    await waitFor(() =>
-      expect(m.btn("activate.otherEmail.verify")).not.toBeNull(),
+    // Its own step, naming both emails masked: never the email-bound sentence with an empty email.
+    await waitFor(() => expect(m.btn("common.tryAgain")).not.toBeNull());
+    expect(
+      m.container.querySelector('[data-key="activate.otherAccount.title"]'),
+    ).not.toBeNull();
+    const body = m.container.querySelector(
+      '[data-key="activate.otherAccount.body"]',
     );
+    expect(body?.textContent).toContain("o•••@example.com");
+    expect(body?.textContent).not.toContain("other@example.com");
+    expect(m.btn("activate.otherEmail.verify")).toBeNull();
     expect(m.calls).toContainEqual(["preview", { confirm: false }]);
     expect(m.calls.some(([n]) => n === "attach")).toBe(false);
   });
@@ -394,8 +413,15 @@ describe("<PolarisKeyGate>: a key with no account", () => {
     const hold = new Promise<void>((r) => (release = r));
     const m = mount({ hold });
     await m.addFilled();
+    // The blank tab was opened synchronously by the press, before any request answered.
+    expect(m.opened[0]).toBe("about:blank");
     await waitFor(() =>
       expect(m.calls.some(([n]) => n === "signIn.start")).toBe(true),
+    );
+    // Busy keeps Continue (aria-disabled), offers the browser again, and Cancel is the way out.
+    await waitFor(() => expect(m.btn("signin.handoff.again")).not.toBeNull());
+    expect(m.btn("common.continue")?.getAttribute("aria-disabled")).toBe(
+      "true",
     );
     await m.press("common.cancel");
     await waitFor(() => expect(m.calls).toContainEqual(["cancel", null]));

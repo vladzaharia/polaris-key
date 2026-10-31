@@ -124,6 +124,8 @@
   "activate.submit": "Activate license",
   "common.activateLicense": "Activate a license",
   "activate.busy": "Activating…",
+  "activate.otherAccount.title": "You signed in with a different account",
+  "activate.otherAccount.body": "You signed in as {email}, not {maskedEmail}. Nothing was added.",
   "deviceLimit.title": "Replace a device",
   "deviceLimit.heading": "Your license is on {used} of {limit, plural, one {# device} other {# devices}}",
   "deviceLimit.lede": "To use it on {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}, replace one. You can add it back later.",

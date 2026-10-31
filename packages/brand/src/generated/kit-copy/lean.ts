@@ -107,6 +107,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "activate.recommend.action": { macos: "Add Your Name and Email" },
   "activate.waitingSignIn": { macos: "Sign In as {maskedEmail}" },
   "activate.otherEmail.verify": { macos: "Verify That Email" },
+  "account.removeKey": { macos: "Remove License from This Device" },
   "offlineActivation.copyCode": { macos: "Copy Code" },
   "offlineActivation.loadFile": { macos: "Load File…" },
   "offlineActivation.submit": { macos: "Activate from File" },

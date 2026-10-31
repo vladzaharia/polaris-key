@@ -466,7 +466,7 @@ describe("GateDriver: a key with no account", () => {
     await activate(g);
     addAndContinue(g);
     await until(
-      () => g.d.snapshot().input.addToAccount?.step === "email-bound",
+      () => g.d.snapshot().input.addToAccount?.step === "other-account",
     );
     expect(g.calls).toContainEqual(["preview", { confirm: false }]);
     expect(g.calls.some(([n]) => n === "attach")).toBe(false);

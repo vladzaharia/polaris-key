@@ -1987,7 +1987,12 @@ function accountRows(c: RenderCtx): TemplateResult | typeof nothing {
         t("account.notInAccount"),
         keys.has("activate.recommend.action")
           ? button(c, "activate.recommend.action", "secondary")
-          : nothing,
+          : keys.has("signin.key.addInLocker")
+            ? // Identity off: the same press opens polaris.locker, and the label says so.
+              button(c, "signin.key.addInLocker", "secondary", {
+                external: true,
+              })
+            : nothing,
       ),
     );
   if (keys.has("account.devices")) {

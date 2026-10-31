@@ -18,7 +18,6 @@ export const HOLDER_CSS = `
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--pk-space-2);
 }
 .holder-head .title {
@@ -59,6 +58,9 @@ export const HOLDER_CSS = `
 }
 .holder-skip {
   margin: 0;
+  color: var(--pk-text-muted);
+  font-size: var(--pk-kit-type-meta-size);
+  line-height: var(--pk-kit-type-meta-line-height);
 }
 .holder-form {
   display: grid;

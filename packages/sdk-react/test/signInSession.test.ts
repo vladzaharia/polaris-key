@@ -499,7 +499,7 @@ describe("desktop: device code over the bridge, no new verb", () => {
     });
   });
 
-  it("the redirect and hints the bridge does not carry are typed unsupported, never dropped", async () => {
+  it("the redirect and the scope are typed unsupported; the hints ride the bag and are validated", async () => {
     const { adapter, calls } = await desktop();
     await expect(
       adapter.signIn.start({ channel: "redirect", redirectUri: REDIRECT }),
@@ -512,12 +512,44 @@ describe("desktop: device code over the bridge, no new verb", () => {
       name: "UnsupportedError",
     });
     await expect(
-      adapter.signIn.start({ channel: "device-code", loginHint: "a@b.co" }),
+      adapter.signIn.start({
+        channel: "device-code",
+        scope: "openid",
+      } as never),
     ).rejects.toMatchObject({
       name: "UnsupportedError",
       feature: "identity.signin.hints",
     });
+    await expect(
+      adapter.signIn.start({
+        channel: "device-code",
+        loginHint: "a".repeat(255),
+      }),
+    ).rejects.toMatchObject({ message: "loginHint is too long or not text." });
+    await expect(
+      adapter.signIn.start({
+        channel: "device-code",
+        licenseChoice: "x",
+      } as never),
+    ).rejects.toMatchObject({
+      message: 'licenseChoice must be "app" or "card".',
+    });
     expect(calls).toEqual([]);
+    await adapter.signIn.start({
+      channel: "device-code",
+      loginHint: "a@b.co",
+      nameHint: "Ada",
+      purpose: "attach",
+      licenseChoice: "app",
+    });
+    expect(calls).toEqual([
+      `begin ${JSON.stringify({
+        loginHint: "a@b.co",
+        nameHint: "Ada",
+        purpose: "attach",
+        licenseChoice: "app",
+      })}`,
+    ]);
   });
 
   it("identity off is service-unavailable before anything crosses the bridge", async () => {
