@@ -176,17 +176,30 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
     private let options: SavesOptions
     private let journal: FileJournal
     private let engine: FileTransferEngine
+    private let background: CloudSyncBackground?
     private let state = LockedValue<(records: MachineRecords?, host: CloudSyncHost?, subject: String?)>(
         (nil, nil, nil))
 
-    init(core: CoreContext, api: CloudSyncApi, keyring: @escaping @Sendable () -> SyncKeyring, options: SavesOptions) {
+    init(
+        core: CoreContext, api: CloudSyncApi, keyring: @escaping @Sendable () -> SyncKeyring, options: SavesOptions,
+        backgroundTokens: BackgroundTokens? = nil
+    ) {
         self.core = core
         self.api = api
         self.keyring = keyring
         self.options = options
-        journal = FileJournal(stateDir: core.dirs.state)
+        let journal = FileJournal(stateDir: core.dirs.state)
+        self.journal = journal
+        var bulk: CloudSyncBackground?
+        #if canImport(Darwin)
+            if let backgroundTokens {
+                bulk = CloudSyncBackground(
+                    product: core.product, stateDir: core.dirs.state, journal: journal, tokens: backgroundTokens)
+            }
+        #endif
+        background = bulk
         engine = FileTransferEngine(
-            transport: CloudSyncFileTransport(core: core), journal: journal,
+            transport: CloudSyncFileTransport(core: core, bulk: bulk), journal: journal,
             maxRetryAfterSeconds: savesMaxRetryAfterSeconds)
     }
 
@@ -203,6 +216,11 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
 
     func savesContext() async throws -> SavesContext {
         try await core.requireService(.sync, feature: Feature.syncSaves)
+        if let background {
+            // A person is signed in and the ring is open: tasks may enqueue; reconcile once per context.
+            background.open()
+            Task { await background.reconcile() }
+        }
         guard let host = await api.startedHost() else { throw SavesError(.rejected, detail: "sync-not-started") }
         let recs = records(host)
         await recs.bind()
@@ -225,7 +243,11 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
 
     func dropWaiting() { state.current.records?.dropAll() }
 
+    /// Lock, sign-out and forget: cancel every background task and delete the spool before anything else.
+    func closeBackground() async { await background?.close() }
+
     func purgeFiles() async {
+        await background?.close()
         journal.clear()
         // Only the signed-in person's cache (the last one a context used), never another's.
         let subject = state.with { s -> String? in

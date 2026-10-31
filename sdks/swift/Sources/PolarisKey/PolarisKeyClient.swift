@@ -317,6 +317,7 @@ public actor PolarisKeyClient {
         let ring: @Sendable () -> SyncKeyring = { PolarisKeyClient.keyring(core: core, attachments: attachments) }
         let syncOptions = options.cloudSync
         let savesBox = LockedValue<SavesClient?>(nil)
+        let savesEnvBox = LockedValue<LiveSavesEnvironment?>(nil)
         let api = CloudSyncApi(
             core: core, config: config,
             host: {
@@ -328,12 +329,30 @@ public actor PolarisKeyClient {
             },
             account: { identityClient.account }, emit: { hub.emit(.cloudSync($0)) },
             forgetRing: { try await ring().forget() },
-            lockRing: { await ring().lock() },
+            // The ring locks only after the background tasks are cancelled: nothing sealed under the root
+            // goes out once it is locked.
+            lockRing: {
+                await savesEnvBox.current?.closeBackground()
+                await ring().lock()
+            },
             purgeSaves: { await savesBox.current?.purge() },
             recovery: { try await ring().setRecoveryCode() })
         self.cloudSyncApi = api
+        // The bearer of a background task is read when the task is made; a 401 re-acquires once.
+        let fingerprintOn = options.license.fingerprint
+        let backgroundTokens: BackgroundTokens? =
+            syncOptions.backgroundTransfers
+            ? BackgroundTokens(
+                current: { await core.token },
+                refresh: {
+                    await core.reacquireOutsideSync(
+                        PolarisKeyClient.reacquire(core: core, fingerprintEnabled: fingerprintOn))
+                }) : nil
+        let savesEnv = LiveSavesEnvironment(
+            core: core, api: api, keyring: ring, options: syncOptions.saves, backgroundTokens: backgroundTokens)
+        savesEnvBox.set(savesEnv)
         let saves = SavesClient(
-            env: LiveSavesEnvironment(core: core, api: api, keyring: ring, options: syncOptions.saves),
+            env: savesEnv,
             options: syncOptions.saves, emit: { hub.emit(.cloudSync($0)) })
         savesBox.set(saves)
         self.cloudSync = CloudSyncClient(api: api, saves: saves)

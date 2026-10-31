@@ -51,11 +51,16 @@ public struct CloudSyncOptions: Sendable {
     public var aliases: [String: String]
     /// `cloudSync.saves`: the app's `saves` collection settings (all optional).
     public var saves: SavesOptions
+    /// Carry the bulk bodies of a save transfer on a background `URLSession` (`pkey.sync.<product>`), so it
+    /// goes on while the app is suspended (U-41). Apple platforms only; off by default. The app delegate then
+    /// calls `PolarisKey.handleBackgroundEvents(identifier:completion:)`.
+    public var backgroundTransfers: Bool
 
     public init(
         encryption: SyncEncryption = .e2e, catalog: JSONValue? = nil, aliases: [String: String] = [:],
-        saves: SavesOptions = SavesOptions()
+        saves: SavesOptions = SavesOptions(), backgroundTransfers: Bool = false
     ) {
+        self.backgroundTransfers = backgroundTransfers
         self.encryption = encryption
         self.catalog = catalog
         self.aliases = aliases
