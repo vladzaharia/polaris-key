@@ -218,6 +218,24 @@ final class ConnectRelayTicketTests: XCTestCase {
             ConnectClient.retryAfterSeconds("Fri, 15 Jan 2027 08:01:30 GMT", now: at.addingTimeInterval(1e7)), 0)
     }
 
+    func testRetryAfterIsCappedBeforeConversion() {
+        let cap = connectRelayMaxRetryAfterSeconds
+        for digits in [19, 20, 400] {
+            XCTAssertEqual(ConnectClient.retryAfterSeconds(String(repeating: "9", count: digits)), cap)
+        }
+        XCTAssertEqual(ConnectClient.retryAfterSeconds("99999999999999999999.5"), cap)
+        XCTAssertEqual(ConnectClient.retryAfterSeconds("3601"), cap)
+        XCTAssertEqual(ConnectClient.retryAfterSeconds("3600"), 3600)
+        XCTAssertEqual(ConnectClient.retryAfterSeconds("0"), 0)
+        XCTAssertEqual(ConnectClient.retryAfterSeconds("300"), 300)
+        let at = Date(timeIntervalSince1970: 1_800_000_000)
+        XCTAssertEqual(ConnectClient.retryAfterSeconds("Fri, 31 Dec 9999 23:59:59 GMT", now: at), cap)
+        XCTAssertEqual(ConnectClient.retryAfterSeconds("Fri, 31 Dec 9999 23:59:59 GMT", now: .distantPast), cap)
+        XCTAssertNil(ConnectClient.retryAfterSeconds("-5"))
+        XCTAssertNil(ConnectClient.retryAfterSeconds("1e999"))
+        XCTAssertNil(ConnectClient.retryAfterSeconds("garbage"))
+    }
+
     func testNoTokenRefusesBeforeAnyRequest() async throws {
         let c = try await client(token: false)
         let r = await c.connect.relayTicket()

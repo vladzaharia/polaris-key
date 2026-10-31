@@ -6,6 +6,8 @@ deprecated aliases).
 
 ## Unreleased
 
+- **Relay `Retry-After` is capped before conversion.** Retry-After values from the relay are capped at one hour before they are converted to whole seconds; an unreadable value reads as absent.
+
 - **Synced-file primitives (U-23.S1).** `SyncCdc` (the `fastcdc-2016-nc1` chunker, streaming), `SyncChunks` (chunk ids and `pkey-sync-chunk/1` objects, both codecs; a codec 1 object needs the caller's `ZstdDecode`) and `SyncManifest` (`pkey-sync-chunks/1`) in `PolarisKeyCore`, proven by the `cdcCases`, `cdcEditCases`, `deltaCases`, `chunkCases` and `manifestCases` vector sections.
 
 - **Synced-file primitives II (U-23.S2).** `SyncFileStream` (`pkey-sync-file/1`: the header, segment sizes, the streaming `Sealer` and `Opener`, `sealFile` / `openFile`, the ranged `openRange` that reads only the segments in range, and `Reassembly` for the manifest's size and SHA-256) and `SyncTransferPlan` (`single`, `multipart`, `chunks` and `too_large`, with `partRange`), proven by the `fileStreamCases` and `transferPlanCases` vector sections.

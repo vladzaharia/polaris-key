@@ -24,6 +24,7 @@ Rules this module keeps:
 
 from __future__ import annotations
 
+import math
 import os
 import re
 import threading
@@ -203,18 +204,30 @@ class PeerSource:
         raise TypeError("a peer source cannot be pickled")
 
 
+#: The most a ``Retry-After`` may ask a client to wait.
+RELAY_MAX_RETRY_AFTER_S = 3600
+
+
+def _cap_seconds(value: float) -> Optional[int]:
+    """Whole seconds, never negative and never above the relay's cap; the clamp comes before ``int``.
+    A NaN reads as absent; infinity clamps to the cap."""
+    if math.isnan(value):
+        return None
+    return int(math.ceil(min(max(value, 0.0), RELAY_MAX_RETRY_AFTER_S)))
+
+
 def _retry_after_seconds(header: Optional[str]) -> Optional[int]:
     """Whole seconds from a ``Retry-After`` header: delay-seconds or an HTTP date, never negative."""
     text = (header or "").strip()
     if not text:
         return None
     if re.fullmatch(r"[0-9]+(\.[0-9]+)?", text):
-        return int(-(-float(text) // 1))
+        return _cap_seconds(float(text))
     try:
         at = parsedate_to_datetime(text).timestamp()
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError, OSError):
         return None
-    return max(0, int(-(-(at - time.time()) // 1)))
+    return _cap_seconds(at - time.time())
 
 
 def _malformed(reason: str) -> PolarisError:
