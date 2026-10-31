@@ -80,6 +80,13 @@ public fun androidSyncRootStorage(
     "pkey-sync-root/1/$productSlug".toByteArray(Charsets.UTF_8),
 )
 
-/** These client options with the Cloud Sync root in [androidSyncRootStorage], unless the host chose a storage. */
-internal fun PolarisKeyClientOptions.withAndroidKeyring(context: Context, productSlug: String): PolarisKeyClientOptions =
-    copy(keyring = keyring.copy(rootStorage = keyring.rootStorage ?: androidSyncRootStorage(context, productSlug)))
+/**
+ * These client options with the Cloud Sync root in [androidSyncRootStorage], unless the host chose a storage.
+ * [scope] is the store namespace, so the root's file and alias sit beside the pin and the token store.
+ */
+internal fun PolarisKeyClientOptions.withAndroidKeyring(
+    context: Context,
+    scope: String,
+    keys: KeyProvider = AndroidKeyStoreProvider(context),
+): PolarisKeyClientOptions =
+    copy(keyring = keyring.copy(rootStorage = keyring.rootStorage ?: androidSyncRootStorage(context, scope, keys)))
