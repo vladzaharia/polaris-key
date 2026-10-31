@@ -440,6 +440,35 @@ describe("the machine's edges", () => {
     expect(m.partials().map((p) => p.ref)).toEqual([ref]);
   });
 
+  it("a resume whose re-read fails starts afresh at 0 instead of throwing", () => {
+    const p: XferPartial = {
+      ref: "p",
+      id: idOf(4),
+      sha256: sha,
+      size: 4,
+      chunk: 2,
+      bytes: 2,
+      writtenAt: 0,
+    };
+    const m = mk({
+      partials: [p],
+      rehash: () => {
+        throw new Error("gone");
+      },
+    });
+    m.receive(
+      1,
+      XFER.OFFER,
+      xferOfferBody({ id: idOf(4), size: 4, sha256: sha, chunk: 2 }),
+    );
+    const out = m.consent(2, idOf(4), "accept");
+    expect(out.send).toEqual([{ t: "ACCEPT", id: idOf(4), offset: 0 }]);
+    expect(out.partial.map((e) => Object.keys(e)[0])).toEqual([
+      "discard",
+      "create",
+    ]);
+  });
+
   it("starts a new session with the partials, none held", () => {
     const p: XferPartial = {
       ref: "p",

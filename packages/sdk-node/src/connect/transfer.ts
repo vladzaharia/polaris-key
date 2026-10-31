@@ -169,7 +169,16 @@ interface Wire {
   inc: Map<string, Incoming>;
   asking: Set<string>;
   owned: Set<string>;
+  /** The store's generation when the session was taken in. */
+  gen: number;
+  seq: number;
+  /** Set when the peer's link or device went: no partial may be made for it any more. */
+  dead: boolean;
+  /** Reservation tokens this wire holds, by transfer id. */
+  tokens: Map<string, string>;
 }
+
+let wireSeq = 0;
 
 const clock = (): number => performance.now() / 1000;
 
@@ -199,6 +208,11 @@ export class CloudTransfer {
   }
   get maxSize(): number | null {
     return this.#maxSize;
+  }
+
+  /** The most bytes partial files may take together (default 4 GiB). */
+  set quotaBytes(bytes: number) {
+    this.deps.store?.setQuota(bytes);
   }
 
   /**
@@ -240,6 +254,10 @@ export class CloudTransfer {
 
   /** Remove the partials kept for one peer key (a deleted link). @internal */
   async purgePeer(peerKey: Uint8Array): Promise<void> {
+    // Sessions of that peer make no more partials (a late `create` would bring one back).
+    const hex = Buffer.from(peerKey).toString("hex");
+    for (const w of this.#open)
+      if (Buffer.from(w.peerKey).toString("hex") === hex) w.dead = true;
     await this.deps.store?.purgePeer(peerKey);
   }
 
@@ -367,12 +385,13 @@ export class CloudTransfer {
   async #build(session: ConnectSession, port: XferPort): Promise<Wire> {
     const store = this.deps.store;
     const listed = store === null ? [] : await store.list(port.peerKey);
+    store?.startSweeper();
     const tick = this.timing?.now ?? clock;
     const now = tick();
     let wire!: Wire;
     const heldElsewhere = (ref: string): boolean => {
       const w = this.#live.get(ref);
-      return w !== undefined && w !== wire;
+      return w !== undefined && w !== wire && w.session.closed === null;
     };
     const partials: XferPartial[] = listed.map(({ age, ...p }) => ({
       ...p,
@@ -404,8 +423,17 @@ export class CloudTransfer {
         partials,
         ...(store !== null
           ? {
-              rehash: (ref: string, offset: number) =>
-                store.rehash(ref, offset),
+              // The partial is claimed before it is read, so no other session can change the
+              // bytes between the re-read and the truncate. A failure is a fresh start.
+              rehash: (ref: string, offset: number) => {
+                this.#claim(wire, ref);
+                try {
+                  return store.rehash(ref, offset);
+                } catch (e) {
+                  this.#release(wire, ref);
+                  throw e;
+                }
+              },
             }
           : {}),
       },
@@ -422,7 +450,7 @@ export class CloudTransfer {
       now: tick,
       ...(this.timing !== null ? { timer: this.timing.timer } : {}),
       events: {
-        ask: (a) => void this.#ask(wire, a),
+        ask: (a) => void this.#ask(wire, a).catch(() => this.#abort(wire)),
         withdraw: (id) => wire.asking.delete(id),
         result: (r) => void this.#result(wire, r),
         refused: (id) => {
@@ -446,13 +474,19 @@ export class CloudTransfer {
       inc: new Map(),
       asking: new Set(),
       owned: new Set(),
+      gen: store?.generation ?? 0,
+      seq: ++wireSeq,
+      dead: false,
+      tokens: new Map(),
     };
     this.#open.add(wire);
     session.onClose(() => {
       ep.closed();
       void ep.idle().then(() => {
         this.#open.delete(wire);
-        for (const ref of wire.owned) this.#release(wire, ref);
+        for (const ref of [...wire.owned]) this.#release(wire, ref);
+        for (const t of wire.tokens.values()) this.deps.store?.release(t);
+        wire.tokens.clear();
       });
     });
     port.bind((type, body) => guard(() => ep.receive(type, body)));
@@ -466,8 +500,10 @@ export class CloudTransfer {
 
   #claim(wire: Wire, ref: string): void {
     const w = this.#live.get(ref);
-    if (w !== undefined && w !== wire)
+    // A session that has closed only has its `keep` left to do: its partial may be taken over.
+    if (w !== undefined && w !== wire && w.session.closed === null)
       throw new TransferStoreError("a live transfer holds that partial");
+    if (w !== undefined && w !== wire) w.owned.delete(ref);
     this.#live.set(ref, wire);
     wire.owned.add(ref);
   }
@@ -477,20 +513,38 @@ export class CloudTransfer {
     if (store === null) throw new TransferStoreError("no store");
     const mine = (ref: string): boolean => {
       const w = this.#live.get(ref);
-      return w === undefined || w === wire;
+      return w === undefined || w === wire || w.session.closed !== null;
     };
-    if ("write" in e) return store.write(e.write, e.offset, e.data);
+    // After a purge (sign-out, a deleted link) a session that was already running makes nothing.
+    const live = (): void => {
+      if (wire.dead || wire.gen !== store.generation)
+        throw new TransferStoreError("the store was purged");
+    };
+    if ("write" in e) {
+      live();
+      return store.write(e.write, e.offset, e.data);
+    }
     if ("create" in e) {
+      live();
       const p = wire.ep.machine.partials().find((x) => x.ref === e.create);
       if (p === undefined) throw new TransferStoreError("unknown partial");
       this.#claim(wire, e.create);
+      const tok = wire.tokens.get(p.id);
+      if (tok !== undefined) store.bind(tok, e.create);
       return store.create(e.create, wire.peerKey, p);
     }
     if ("truncate" in e) {
+      live();
       this.#claim(wire, e.truncate);
+      const id = wire.ep.machine
+        .partials()
+        .find((x) => x.ref === e.truncate)?.id;
+      const tok = id === undefined ? undefined : wire.tokens.get(id);
+      if (tok !== undefined) store.bind(tok, e.truncate);
       return store.truncate(e.truncate, e.to);
     }
     if ("keep" in e) {
+      if (!mine(e.keep)) return;
       this.#release(wire, e.keep);
       return store.keep(e.keep);
     }
@@ -547,12 +601,45 @@ export class CloudTransfer {
       to = null;
     }
     if (!wire.asking.delete(a.id)) return; // withdrawn while the person decided
-    if (to === null) return wire.ep.consent(a.id, "decline");
-    wire.inc.set(a.id, { size: a.size, to, done: false });
-    wire.ep.consent(a.id, "accept");
+    this.#consent(wire, a.id, to === null ? "decline" : "accept", to, a.size);
+  }
+
+  /** Answer the machine; a throw inside it ends the session (the partials stay), never the process. */
+  #consent(
+    wire: Wire,
+    id: string,
+    answer: "accept" | "decline",
+    to: DeliverTo | null,
+    size: number,
+  ): void {
+    const store = this.deps.store;
+    const token = `${wire.seq}:${id}`;
+    try {
+      if (answer === "accept" && to !== null) {
+        wire.inc.set(id, { size, to, done: false });
+        // The bytes are promised from now on: the next offer sees them as taken.
+        if (store !== null) {
+          store.reserve(token, size);
+          wire.tokens.set(id, token);
+        }
+      }
+      wire.ep.consent(id, answer);
+    } catch {
+      this.#abort(wire);
+    }
+  }
+
+  #abort(wire: Wire): void {
+    wire.session.close("peer_bye").catch(() => undefined);
+    wire.ep.closed();
   }
 
   async #result(wire: Wire, r: XferResult): Promise<void> {
+    const tok = wire.tokens.get(r.id);
+    if (tok !== undefined) {
+      this.deps.store?.release(tok);
+      wire.tokens.delete(r.id);
+    }
     const out = wire.out.get(r.id);
     if (out !== undefined) {
       if (r.outcome === "delivered") out.resolve();
