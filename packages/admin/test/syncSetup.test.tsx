@@ -309,6 +309,9 @@ describe("Cloud Sync → Setup", () => {
       within(tabs).getByRole("link", { name: "Data" }).getAttribute("href"),
     ).toContain("sync/data");
     expect(screen.getByRole("button", { name: "Pause writes…" })).toBeTruthy();
+    expect(
+      screen.getByText("People see it as Sync Across Devices."),
+    ).toBeTruthy();
     expect(screen.queryByText(/paused for every product/)).toBeNull();
     expect((await axe(container)).violations).toEqual([]);
   });
