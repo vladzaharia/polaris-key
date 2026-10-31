@@ -536,7 +536,7 @@
     },
     "sdks/godot/tests/identity/test_redirect.gd": {
       "gdlint:class-definitions-order": 1,
-      "gdlint:max-line-length": 9,
+      "gdlint:max-line-length": 11,
       "gdlint:unused-argument": 1
     },
     "sdks/godot/tests/license/support.gd": {

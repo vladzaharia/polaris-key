@@ -195,6 +195,20 @@ func _refusals(t: PKeyTestContext) -> void:
 	bed.tokens = [{"status": 429, "headers": {"Content-Type": "application/json", "Retry-After": "9"}, "body": "{\"error\":\"rate_limited\"}"}]
 	var rl: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
 	t.check("exchange: rate_limited carries retry_after_seconds", rl.code == &"rate_limited" and rl.retry_after_seconds == 9, str(rl))
+	bed.tokens = [{"status": 429, "headers": {"Content-Type": "application/json", "Retry-After": "999999"}, "body": "{\"error\":\"rate_limited\"}"}]
+	var rh: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
+	t.check(
+		"exchange: a Retry-After header is capped at 3600 s",
+		rh.code == &"rate_limited" and rh.retry_after_seconds == 3600 and bed.sdk.core.tokens.current() == "",
+		str(rh),
+	)
+	bed.tokens = [B.json(429, {"error": "rate_limited", "retryAfter": 86400})]
+	var rb: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
+	t.check(
+		"exchange: a body retryAfter is capped at 3600 s, a refusal and no token",
+		rb.kind == PKeyExchangeResult.KIND_REFUSED and rb.code == &"rate_limited" and rb.retry_after_seconds == 3600 and bed.sdk.core.tokens.current() == "",
+		str(rb),
+	)
 	bed.tokens = [B.json(409, {"error": {"code": "license_choice_required"}, "view": VIEW})]
 	var lc: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, NONCE)
 	t.check("exchange: a nested code and the fresh view are read", lc.code == &"license_choice_required" and lc.view.has("choices"), str(lc))
@@ -218,7 +232,7 @@ func _refusals(t: PKeyTestContext) -> void:
 	var shape: PKeyExchangeResult = await bed.sdk.identity.exchange.exchange("google", PLATFORM_TOKEN, "short")
 	t.check(
 		"exchange: an empty token or a malformed nonce is invalid-argument, unsent",
-		empty.code == &"invalid-argument" and shape.code == &"invalid-argument" and bed.token_requests.size() == 8,
+		empty.code == &"invalid-argument" and shape.code == &"invalid-argument" and bed.token_requests.size() == 10,
 		str(bed.token_requests.size()))
 	bed.free_all()
 
