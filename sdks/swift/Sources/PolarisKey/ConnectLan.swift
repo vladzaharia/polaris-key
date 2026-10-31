@@ -380,7 +380,7 @@ import PolarisKeyPlatform
         public var timer: ConnectPeerDocs.Timer?
 
         public init(
-            caps: [String] = ["app/1"], label: String? = nil, advertise: Bool = true, browse: Bool = true,
+            caps: [String] = ["app/1", xferCap], label: String? = nil, advertise: Bool = true, browse: Bool = true,
             allowLoopback: Bool = false, peerToPeer: Bool = false, network: (any ConnectLanNetwork)? = nil,
             maxSessions: Int = connectLanMaxSessions, rekeyMessages: Int? = nil, rekeySeconds: TimeInterval? = nil,
             handshakeSeconds: TimeInterval = PeerLink.handshakeSeconds, timer: ConnectPeerDocs.Timer? = nil

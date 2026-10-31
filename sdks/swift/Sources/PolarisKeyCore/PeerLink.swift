@@ -310,6 +310,13 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
 
     public func sendRecord(type: Int, body: Data) async throws { try await channel.sendRecord(type: type, body: body) }
 
+    /// The transfer port (§15.11): see `PeerChannel.attachXfer`.
+    public func attachXfer(_ onRecord: @escaping @Sendable (Int, Data) -> Void) async throws {
+        try await channel.attachXfer(onRecord)
+    }
+
+    public func sendXfer(type: Int, body: Data) async throws { try await channel.sendXfer(type: type, body: body) }
+
     /// End the session with a code (a CLOSE record when the transport exists).
     public func close(_ code: PeerCloseCode = .peerBye) async { await channel.close(code) }
 

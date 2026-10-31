@@ -196,6 +196,9 @@ public actor ConnectClient {
     public nonisolated let identityChanges = ConnectIdentityEpoch()
     /// Fires when the contacts change or the discovery `interAccount` answer may have.
     nonisolated let contactChanges = ConnectSignal()
+    /// Called with the `agreeKey` of every device a newly stored roster no longer lists (Direct Transfer deletes
+    /// the partial files of a device that left, §15.11).
+    nonisolated let rosterDeparted = LockedValue<(@Sendable ([String]) -> Void)?>(nil)
 
     public init(core: CoreContext, options: ConnectOptions = ConnectOptions(), accessGroup: String? = nil) {
         self.core = core
@@ -592,6 +595,10 @@ public actor ConnectClient {
             contacts: held.contacts)
         do { try store.save(next) } catch { return refuse("store_failed") }
         identityChanges.bump()
+        if let prior = heldRing {
+            let gone = Set(prior.devices.map(\.agreeKey)).subtracting(ring.devices.map(\.agreeKey))
+            if !gone.isEmpty { rosterDeparted.current?(Array(gone)) }
+        }
         return RingAdoption(stored: true, epoch: ring.epoch, reason: nil)
     }
 
@@ -794,6 +801,10 @@ public actor ConnectClient {
             return .error(code: "store-failed", message: "The identity could not be stored.")
         }
         identityChanges.bump()
+        if let held, case .ok(let was) = PeerDocs.verifyRing(held.ring, trust: trust, expectedAud: core.product) {
+            let gone = Set(was.devices.map(\.agreeKey)).subtracting(ring.devices.map(\.agreeKey))
+            if !gone.isEmpty { rosterDeparted.current?(Array(gone)) }
+        }
         return .ready(
             ConnectIdentity(
                 subject: ring.sub, deviceId: deviceId, ring: ring, certificate: cert, ringJws: body.ring,

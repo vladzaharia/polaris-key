@@ -611,7 +611,12 @@ final class PeerSessionTests: XCTestCase {
     }
 
     // The session answers or consumes these itself; the assembler rows cover them.
-    private static let internalTypes: Set<Int> = [0x0002, 0x0003, 0x0004, 0x0005, 0x80FE, 0x80FF, 0x8001]
+    // The six xfer types belong to the transfer port once the session lists `xfer/1` (§15.11): without the
+    // capability they close `peer_not_allowed`. The assembler rows above keep their pre-capability reading, and
+    // PeerXferTests / TransferTests cover the session.
+    private static let internalTypes: Set<Int> = [
+        0x0002, 0x0003, 0x0004, 0x0005, 0x80FE, 0x80FF, 0x8001, 0x0020, 0x0021, 0x0022, 0x0023, 0x0024, 0x0025,
+    ]
 
     func testModeARowsThroughARealSession() async throws {
         var ran = 0

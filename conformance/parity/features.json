@@ -1010,7 +1010,10 @@
       "service": "connect",
       "proof": [
         {
-          "kind": "unit"
+          "kind": "corpus",
+          "file": "peer-matrix.json",
+          "family": "xfer",
+          "wp": "CC-20"
         }
       ],
       "allowedNa": []

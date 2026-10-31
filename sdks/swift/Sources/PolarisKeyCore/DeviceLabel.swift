@@ -52,14 +52,14 @@ private func mapAndStrip(_ raw: String.UnicodeScalarView) -> [Unicode.Scalar] {
 }
 
 /// Steps 3 to 5.
-private func collapseAndCut(_ scalars: [Unicode.Scalar]) -> String? {
+private func collapseAndCut(_ scalars: [Unicode.Scalar], max: Int? = DEVICE_LABEL_MAX_CODEPOINTS) -> String? {
     var kept: [Unicode.Scalar] = []
     for s in scalars {
         if s == " " && (kept.isEmpty || kept.last == " ") { continue }
         kept.append(s)
     }
     while kept.last == " " { kept.removeLast() }
-    var cut = Array(kept.prefix(DEVICE_LABEL_MAX_CODEPOINTS))
+    var cut = max.map { Array(kept.prefix($0)) } ?? kept
     while cut.last == " " { cut.removeLast() }
     if cut.isEmpty { return nil }
     var out = String.UnicodeScalarView()
@@ -80,6 +80,15 @@ public func cleanDisplayLabel(_ raw: String?) -> String? {
     var view = String.UnicodeScalarView()
     view.append(contentsOf: mapAndStrip(raw.unicodeScalars))
     return collapseAndCut(Array(String(view).precomposedStringWithCanonicalMapping.unicodeScalars))
+}
+
+/// §15.11: a transfer's `name` as shown. Cleaned as a HELLO label (steps 1 and 2, NFC, then steps 3 and 5)
+/// without the 64 code point cut. `nil` when nothing is left. Display data only; never a path.
+public func cleanDisplayName(_ raw: String?) -> String? {
+    guard let raw else { return nil }
+    var view = String.UnicodeScalarView()
+    view.append(contentsOf: mapAndStrip(raw.unicodeScalars))
+    return collapseAndCut(Array(String(view).precomposedStringWithCanonicalMapping.unicodeScalars), max: nil)
 }
 
 /// The platform's own name for this device: on macOS the computer name

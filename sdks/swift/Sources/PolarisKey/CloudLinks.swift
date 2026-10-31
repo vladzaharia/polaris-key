@@ -44,6 +44,13 @@ import PolarisKeyCore
 
         init(connect: ConnectClient) { core = LinksCore(connect: connect) }
 
+        /// For the transfer service: every session a link opens or receives, and the `agreeKey` of a link that was
+        /// removed.
+        func hook(adopt: @escaping @Sendable (ConnectSession) -> Void, removed: @escaping @Sendable (String) -> Void) {
+            core.hooks.adopt.set(adopt)
+            core.hooks.removed.set(removed)
+        }
+
         /// The cached discovery answer `services.connect.interAccount`: true only while the product's setting,
         /// `launch.connectLinks` and the service are on (§15.9). False before discovery.
         public func interAccount() async -> Bool { await core.connect.interAccount() }
@@ -121,9 +128,15 @@ import PolarisKeyCore
         func fire(_ s: ConnectSession) { for f in state.with({ $0.fns.map(\.1) }) { f(s) } }
     }
 
+    final class LinkHooks: Sendable {
+        let adopt = LockedValue<(@Sendable (ConnectSession) -> Void)?>(nil)
+        let removed = LockedValue<(@Sendable (String) -> Void)?>(nil)
+    }
+
     actor LinksCore {
         nonisolated let connect: ConnectClient
         nonisolated let listeners = LinkListeners()
+        nonisolated let hooks = LinkHooks()
         private var lan: ConnectLanService?
         private var relay: ConnectContactRelay?
         private var lanAttempt = cloudConnectLanAttemptSeconds
@@ -197,6 +210,7 @@ import PolarisKeyCore
         private func track(_ s: ConnectSession) {
             let id = ObjectIdentifier(s)
             sessions[id] = s
+            hooks.adopt.current?(s)
             s.onClose { [weak self] _ in
                 guard let self else { return }
                 Task { await self.untrack(id) }
@@ -222,12 +236,17 @@ import PolarisKeyCore
 
         func remove(_ id: String) async -> Bool {
             var found = false
+            var gone: [String] = []
             _ = try? await connect.updateContacts { rows, _ in
                 let next = rows.filter { ConnectContacts.id($0.agreeKey) != id }
                 found = next.count != rows.count
+                gone = rows.filter { ConnectContacts.id($0.agreeKey) == id }.map(\.agreeKey)
                 return found ? next : nil
             }
-            if found { await reconcile() }
+            if found {
+                await reconcile()
+                for k in gone { hooks.removed.current?(k) }
+            }
             return found
         }
 

@@ -235,7 +235,8 @@ public struct ConnectRelayOptions: Sendable {
     public init(
         opener: ConnectRelayOpener? = nil, sleep: (@Sendable (TimeInterval) async throws -> Void)? = nil,
         random: (@Sendable () -> Double)? = nil, clock: (@Sendable () -> TimeInterval)? = nil,
-        caps: [String] = ["app/1"], label: String? = nil, backoffBase: TimeInterval = 1, backoffMax: TimeInterval = 60,
+        caps: [String] = ["app/1", xferCap], label: String? = nil, backoffBase: TimeInterval = 1,
+        backoffMax: TimeInterval = 60,
         backoffMin: TimeInterval = 0.5, stableSeconds: TimeInterval = 30, pingSeconds: TimeInterval = 25,
         openSeconds: TimeInterval = 15, maxSessions: Int = 64, maxPendingPerPeer: Int = 4,
         handshakeSeconds: TimeInterval = 30, pacer: (@Sendable () -> ConnectPacer)? = nil, rekeyMessages: Int? = nil,
@@ -1073,6 +1074,18 @@ struct RelayLinkFacade: ConnectSessionLink {
             return
         }
         try await link.sendRecord(type: type, body: body)
+    }
+
+    func attachXfer(_ onRecord: @escaping @Sendable (Int, Data) -> Void) async throws {
+        try await link.attachXfer(onRecord)
+    }
+
+    func sendXfer(type: Int, body: Data) async throws {
+        guard await svc.hasRoom(body.count + 128 * (body.count / 60000 + 1)) else {
+            await link.close(.peerBusy)
+            return
+        }
+        try await link.sendXfer(type: type, body: body)
     }
 
     func close(_ code: PeerCloseCode) async { await link.close(code) }
