@@ -52,10 +52,10 @@ var _ctx: Callable
 
 
 static func _static_init() -> void:
-	_key_re = RegEx.create_from_string(PKeyConstants.SYNC_KEY_PATTERN)
-	_chunk_re = RegEx.create_from_string(PKeyConstants.SYNC_CHUNK_ID_PATTERN)
-	_range_re = RegEx.create_from_string("^bytes ([0-9]{1,15})-([0-9]{1,15})/([0-9]{1,15})$")
-	_digits_re = RegEx.create_from_string("^[0-9]+$")
+	_key_re = RegEx.create_from_string(PKeyChannel.anchored(PKeyConstants.SYNC_KEY_PATTERN))
+	_chunk_re = RegEx.create_from_string(PKeyChannel.anchored(PKeyConstants.SYNC_CHUNK_ID_PATTERN))
+	_range_re = RegEx.create_from_string("\\Abytes ([0-9]{1,15})-([0-9]{1,15})/([0-9]{1,15})\\z")
+	_digits_re = RegEx.create_from_string("\\A[0-9]+\\z")
 
 
 ## A PKeyTransport for the file routes: no redirects, the body limit of the largest range.
@@ -108,7 +108,7 @@ static func is_files_path(product: String, path_and_query: String) -> bool:
 		var upload := rec + "/upload/" + seg
 		_shapes = []
 		for shape in [rec + "/(?:begin|finalize|revisions)", rec, upload, upload + "/parts/[0-9]{1,4}", upload + "/chunks", upload + "/chunks/" + hex, base + "/chunks/" + hex]:
-			_shapes.append(RegEx.create_from_string("^" + shape + "$"))
+			_shapes.append(RegEx.create_from_string("\\A" + shape + "\\z"))
 		_shape_product = product
 	var matched := false
 	var is_record := false
@@ -123,7 +123,7 @@ static func is_files_path(product: String, path_and_query: String) -> bool:
 		return true
 	if not is_record:
 		return false
-	var rx := RegEx.create_from_string("^version=[0-9]{1,9}$")
+	var rx := RegEx.create_from_string("\\Aversion=[0-9]{1,9}\\z")
 	return rx.search(query) != null
 
 
@@ -203,6 +203,9 @@ func _exchange(method: String, path: String, sent: Dictionary = {}, expect_bytes
 		# A local-only client dials nothing and says so; it is a refusal, not a network failure to retry.
 		if r.code == PKeyErrors.LOCAL_ONLY:
 			return {"reply": Transfer.reply_fail(400, "local_only")}
+		# An answer longer than the cap is not retried: another try meets the same body.
+		if r.code == PKeyErrors.RESPONSE_TOO_LARGE:
+			return {"reply": Transfer.reply_fail(200, PKeyConstants.ErrorCode.BAD_RESPONSE)}
 		return {"reply": Transfer.reply_fail(0, "network")}
 	var detail: Dictionary = r.detail
 	var status: int = detail["status"]

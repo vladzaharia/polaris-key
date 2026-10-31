@@ -1494,7 +1494,7 @@ static func capabilities() -> Dictionary:
 		"sync.files": {"status": "implemented", "service": "sync", "na": [{"runtime": "ios", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}]},
 		"sync.files.delta": {"status": "implemented", "service": "sync", "na": [{"runtime": "ios", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}]},
 		"sync.e2e.recovery": {"status": "planned", "service": "sync", "na": []},
-		"sync.transfer.background": {"status": "planned", "service": "sync", "na": [{"runtime": "web", "reason": "runtime"}]},
+		"sync.transfer.background": {"status": "planned", "service": "sync", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"sync.e2e": {"status": "implemented", "service": "sync", "na": []},
 		"connect.identity": {"status": "planned", "service": "connect", "na": []},
 		"connect.noise": {"status": "planned", "service": "connect", "na": []},
@@ -1593,4 +1593,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "d5449e49033a13d95c7d43e21c0f5b1ef3c937e86cc53d78cbfc5a28919a94a8"
+const CAPABILITY_DIGEST := "6eb6160f370306efdada83ed6c9ab5339a986ab63d442d461878b75ff280096d"

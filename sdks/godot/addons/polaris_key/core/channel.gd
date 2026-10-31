@@ -29,15 +29,15 @@ static var _pr_build_re: RegEx
 
 
 static func _static_init() -> void:
-	_name_re = RegEx.create_from_string(_anchored(PKeyConstants.CHANNEL_NAME_PATTERN))
-	_pr_re = RegEx.create_from_string(_anchored(PKeyConstants.PR_CHANNEL_PATTERN))
+	_name_re = RegEx.create_from_string(anchored(PKeyConstants.CHANNEL_NAME_PATTERN))
+	_pr_re = RegEx.create_from_string(anchored(PKeyConstants.PR_CHANNEL_PATTERN))
 	_pr_n_re = RegEx.create_from_string("\\Apr-[0-9]+\\z")
 	_pr_build_re = RegEx.create_from_string("\\A0\\.0\\.0-pr-?([0-9]+)")
 
 
 ## A JS `^…$` pattern as PCRE `\A…\z`: PCRE's `$` also matches before a trailing newline, so
 ## "beta\n" would pass a literal port.
-static func _anchored(js: String) -> String:
+static func anchored(js: String) -> String:
 	var p := js
 	if p.begins_with("^"):
 		p = "\\A" + p.substr(1)

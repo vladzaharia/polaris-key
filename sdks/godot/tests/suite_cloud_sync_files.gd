@@ -39,7 +39,9 @@ func _paths(t: PKeyTestContext) -> void:
 			"/diceroll/sync/files/saves/slot1?version=x", "/diceroll/sync/files/saves/slot1?version=1&a=b", "/other/sync/files/saves/slot1/begin",
 			"/diceroll/sync/files/saves/slot1/upload/up/chunks/" + "A".repeat(64), "/diceroll/sync/files/saves/slot1/upload/up/chunks/" + "a".repeat(63),
 			"/diceroll/sync/files/saves/slot1/upload/up/parts/12345", "/diceroll/sync/files/saves/slot 1/begin", "/diceroll/sync/ops",
-			"/diceroll/sync/files/saves/slot1/upload/up/parts/x", "//diceroll/sync/files/saves/slot1", "/diceroll/sync/files/saves/slot1/extra/segments/here/now"]:
+			"/diceroll/sync/files/saves/slot1/upload/up/parts/x", "//diceroll/sync/files/saves/slot1", "/diceroll/sync/files/saves/slot1/extra/segments/here/now",
+			"/diceroll/sync/files/saves/slot1\n", "/diceroll/sync/files/saves/slot1\r", "/diceroll/sync/files/saves/slot1/begin\n", "/diceroll/sync/files/saves/slot1?version=1\n",
+			"/diceroll/sync/files/saves/chunks/" + "a".repeat(64) + "\n", "/diceroll/sync/files/saves/slot1/upload/up_1\n", "/diceroll/sync/files/saves/slot1/upload/up_1/parts/1\n"]:
 		t.check("the allow-list refuses %s" % bad, not FilesTransport.is_files_path(PRODUCT, bad))
 	t.check("Retry-After: seconds are read", FilesTransport.retry_after_seconds("7") == 7.0)
 	t.check("Retry-After: an absurd number is capped before it is an integer", FilesTransport.retry_after_seconds("99999999999999999999") == 3600.0

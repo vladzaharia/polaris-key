@@ -853,6 +853,21 @@
       ],
       "allowedNa": [
         {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "A desktop process runs until it exits; the journal resumes at the next launch."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "A desktop process runs until it exits; the journal resumes at the next launch."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "A desktop process runs until it exits; the journal resumes at the next launch."
+        },
+        {
           "runtime": "web",
           "reason": "runtime",
           "why": "A page has no background transfer that outlives it."

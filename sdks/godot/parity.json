@@ -704,6 +704,18 @@
       "wp": "U-41",
       "except": [
         {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
+        {
           "runtime": "web",
           "reason": "runtime"
         }
