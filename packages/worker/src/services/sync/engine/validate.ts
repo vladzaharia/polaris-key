@@ -12,6 +12,7 @@ import {
   type SyncMutation,
   type SyncOp,
 } from "@polaris-key/protocol/sync";
+import { MAX_JSON_DEPTH } from "@polaris-key/protocol/core";
 import { isClientId, isHlc } from "./hlc.js";
 
 const KEY_RE = new RegExp(SYNC_KEY_PATTERN);
@@ -87,12 +88,27 @@ function mutationProblem(m: unknown): string | null {
   return null;
 }
 
+/** Whether a decoded JSON value nests deeper than `MAX_JSON_DEPTH` (the top level is level 1). */
+function tooDeep(root: unknown): boolean {
+  const stack: [unknown, number][] = [[root, 1]];
+  while (stack.length > 0) {
+    const [v, depth] = stack.pop() as [unknown, number];
+    if (typeof v !== "object" || v === null) continue;
+    if (depth > MAX_JSON_DEPTH) return true;
+    for (const child of Array.isArray(v) ? v : Object.values(v))
+      if (typeof child === "object" && child !== null)
+        stack.push([child, depth + 1]);
+  }
+  return false;
+}
+
 /**
  * Checks a decoded push body. Mutation ids must strictly increase inside the batch (rule 4), and
  * there are at most `SYNC_MAX_MUTATIONS` of them.
  */
 export function validatePush(body: unknown): ShapeResult {
   if (!isObject(body)) return fail("body");
+  if (tooDeep(body)) return fail("too_deep");
   if (!isClientId(body.clientId)) return fail("client_id");
   if (
     typeof body.cursor !== "number" ||

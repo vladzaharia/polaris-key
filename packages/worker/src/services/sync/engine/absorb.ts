@@ -220,11 +220,12 @@ function joinSettings(
     const [key, scope, family] = keyOf(incoming);
     const since = store.getEncryptionSince();
     const sealed = incomingSealed(incoming, input.encryptionSince);
+    const prev = store.getSetting(key, scope, family);
     if (!incoming.deleted && !sealed && since !== undefined) {
-      skipped++;
+      // A retry: the survivor already holds this very row, so nothing is left out.
+      if (!(prev && sameRow(prev, incoming))) skipped++;
       continue;
     }
-    const prev = store.getSetting(key, scope, family);
     const policy = input.policies?.get(key);
     const legacy =
       since !== undefined && prev && !prev.deleted && prev.version < since;

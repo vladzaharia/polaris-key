@@ -71,6 +71,27 @@ export function inspectTables(all: All, hasSchema: boolean): InspectTables {
       c.lastWriteAt = Number.isFinite(ms) ? ms : null;
     }
   }
+  // The cells of `merge` records and the elements of `union` records: their bytes are the live
+  // entries' (a removed cell holds none).
+  for (const [table, cols, size] of [
+    [
+      "record_fields",
+      ["collection", "field", "value_json", "removed"],
+      "length(CAST(field AS BLOB)) + length(CAST(value_json AS BLOB))",
+    ],
+    [
+      "set_elements",
+      ["collection", "element_key", "element_json"],
+      "length(CAST(element_key AS BLOB)) + length(CAST(element_json AS BLOB))",
+    ],
+  ] as const) {
+    if (!has(table, ...cols)) continue;
+    const live = table === "record_fields" ? "WHERE removed = 0" : "";
+    for (const r of all<{ collection: string; b: number | null }>(
+      `SELECT collection, SUM(${size}) AS b FROM ${table} ${live} GROUP BY collection`,
+    ))
+      entry(r.collection).bytes += Number(r.b ?? 0);
+  }
   if (has("files", "collection", "size", "status")) {
     for (const r of all<{
       collection: string;
