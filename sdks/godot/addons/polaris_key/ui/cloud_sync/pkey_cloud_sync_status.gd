@@ -98,9 +98,10 @@ func _build() -> void:
 	# label, not live, so an update to them is not.
 	if "accessibility_live" in _text:
 		_text.set("accessibility_live", 1)
-	_figures = label(row, "Figures", "PKeyMuted")
-	_figures.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_figures.size_flags_horizontal = Control.SIZE_SHRINK_END
+	# Under the words, not beside them: a figure beside a narrow strip would squeeze the status line.
+	_figures = label(_card, "Figures", "PKeyMuted")
+	_figures.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_figures.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# The counted fraction of a transfer: on its own row, the whole width of the strip.
 	_bar = ProgressBar.new()
 	_bar.name = "Progress"
