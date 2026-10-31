@@ -60,6 +60,7 @@ describe(`${MATRIX_FILE}: the version`, () => {
     for (const family of [
       ...Object.keys(FAMILIES),
       "cloudSync",
+      "connect",
       "theme",
       "i18n",
     ])
@@ -72,6 +73,8 @@ for (const [family, feature] of Object.entries({
   // U-42.0: the Cloud Sync screens. Only ui-core runs it for now: Swift, Kotlin, Godot and
   // Python name the families they implement, and learn this one with U-42.3 to U-42.5.
   cloudSync: "ui.settings",
+  // CC-19.9: the inter-account screens, also only ui-core's until the native kits take them.
+  connect: "ui.settings",
 })) {
   const rows = matrix[family] as Row[];
   describe(`${MATRIX_FILE} ${family} (${feature})`, () => {
@@ -318,7 +321,7 @@ function unfilled(view: View): Record<string, string[]> {
 }
 
 describe(`${MATRIX_FILE} no raw placeholder`, () => {
-  const rows = [...Object.keys(FAMILIES), "cloudSync"].flatMap(
+  const rows = [...Object.keys(FAMILIES), "cloudSync", "connect"].flatMap(
     (family) => matrix[family] as Row[],
   );
   const seen: Record<string, Record<string, string[]>> = {};

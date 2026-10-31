@@ -7,6 +7,7 @@
 // a control, every `title` key a heading, and the view's primary is the one filled control (DL4).
 
 import { kitComponent } from "../src/kit/kitComponent.js";
+import { LinkPairing, TransferOffer } from "../src/kit/connect.js";
 import { readFileSync } from "node:fs";
 import type { ReactNode } from "react";
 import { join } from "node:path";
@@ -96,6 +97,7 @@ const FAMILIES = [
   "settings",
   "paywall",
   "cloudSync",
+  "connect",
 ] as const;
 const en = new Copy({ tables: { en: KIT_COPY_EN } });
 
@@ -157,6 +159,9 @@ const COMPONENTS = {
   UnlockSync: kitComponent("UnlockSync"),
   RecoveryCode: kitComponent("RecoveryCode"),
   RingChange: kitComponent("RingChange"),
+  // The inter-account screens (CC-19.9) load on demand: the matrix draws the part they load.
+  LinkPairing,
+  TransferOffer,
 } as unknown as Record<
   string,
   ((p: Kit.KitProps & { children?: ReactNode }) => ReactNode) | undefined

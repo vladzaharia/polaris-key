@@ -46,6 +46,14 @@ export type ComponentName = (typeof COMPONENTS)[number];
 export type SyncScreenName = "UnlockSync" | "RecoveryCode" | "RingChange";
 
 /**
+ * The inter-account screens (ui-matrix.json `connect` family, CC-19.9): pairing two people's devices
+ * once and the prompt for a transfer a contact offers. Like the holders' screens they are not in
+ * `COMPONENTS` yet, so no kit's per-component table has to grow before its own package does;
+ * `viewOf` answers them.
+ */
+export type ConnectScreenName = "LinkPairing" | "TransferOffer";
+
+/**
  * The two screens activation without an account adds (ui-matrix.json `holders` family, UK-42): the
  * Done step after a key, and Add your name and email. Like the Cloud Sync screens they are not in
  * `COMPONENTS` yet, so no kit's per-component table has to grow before its own package does;
@@ -54,7 +62,7 @@ export type SyncScreenName = "UnlockSync" | "RecoveryCode" | "RingChange";
 export type HolderScreenName = "ActivateDone" | "AddToAccount";
 
 /** Anything a view can be of (a Cloud Sync or holder screen is a component). */
-export type ScreenName = ComponentName | HolderScreenName;
+export type ScreenName = ComponentName | HolderScreenName | ConnectScreenName;
 
 /** The reserved state of a component its service turns off: the drop-in renders nothing and a
  *  styled part renders empty (plans/UK-02b.md §4.3). */

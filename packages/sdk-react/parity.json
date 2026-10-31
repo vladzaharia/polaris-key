@@ -454,7 +454,8 @@
       "note": "adapter.boot() and useBoot(): client-core's stage machine over discovery, the keyless registration of a fresh install on an open product, the sync (trust, documents, report), the reacquire per core.registration, the gate, the update decision and the page's packs; on desktop-bridge the host's client.boot() over bridge v4 (SP-12)."
     },
     "ui.kit": {
-      "status": "implemented"
+      "status": "implemented",
+      "note": "CC-19.9: <LinkPairing> and <TransferOffer> (lazy) with their hooks over ui-core's LinkPairingModel and TransferOfferModel; kitMatrix runs the ui-matrix connect family and kitConnect.test.tsx the driven behaviour (Chromium scenes in test/browser/connect.browser.test.tsx)."
     },
     "ui.kit.manage": {
       "status": "implemented",
@@ -611,11 +612,12 @@
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
       "reason": "runtime",
-      "note": "A browser or renderer has no sockets; the relay is its only path, and the host's Node SDK does the rest."
+      "note": "A browser or renderer has no sockets; the relay is its only path, and the host's Node SDK does the rest. CC-19.9: <LinkPairing> and useLinkPairing draw the pairing window over a driver (linkPairingDriver(client.cloudConnect.links) of the host's Node SDK, or any LinkPairingDriver); the sockets and the contact store stay the host's."
     },
     "connect.transfer": {
       "status": "planned",
-      "wp": "CC-20"
+      "wp": "CC-20",
+      "note": "CC-20 builds the transfer. CC-19.9: <TransferOffer> and useTransferOffer ship the D-8 consent prompt over a TransferOfferDriver."
     },
     "connect.app": {
       "status": "implemented",
