@@ -35,6 +35,8 @@ import PackageDescription
 //                   PolarisKeyPlatform, so the Godot natives link it alone.      (deps none)
 //   PolarisKeyGameCenterSignIn the ladder provider over it (deps Identity, GameCenter); opt-in, so the
 //                   umbrella links no GameKit.
+//   PolarisKeyGameCenterC the Godot Game Center extension's C surface (`pkgc_*`, I-48.6a): a native-host opt-in,
+//                   so a Godot build links GameKit only for a game that asks.  (deps GameCenter, Platform)
 //   PolarisKeyPlatformC the C surface over it (`pkp_call`, `pkp_free`,
 //                   `pkp_set_event_callback`), linked by native hosts only, so a Swift
 //                   consumer of PolarisKeyPlatform exports no `pkp_*` symbols.  (deps Platform)
@@ -173,6 +175,13 @@ let package = Package(
             dependencies: ["PolarisKeyIdentity", "PolarisKeyGameCenter"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        // The Godot Game Center extension's C surface (I-48.6a): a separate native-host opt-in, so the
+        // Godot Apple plugin links GameKit only when a game asks for Game Center.
+        .target(
+            name: "PolarisKeyGameCenterC",
+            dependencies: ["PolarisKeyGameCenter", "PolarisKeyPlatform"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
         .target(
             name: "PolarisKeyPlatformC",
             dependencies: ["PolarisKeyPlatform"],
@@ -282,7 +291,7 @@ let package = Package(
         // tests run in the hosted XCTest project under PlatformHostTests/ instead.
         .testTarget(
             name: "PolarisKeyPlatformTests",
-            dependencies: ["PolarisKeyPlatform", "PolarisKeyPlatformC", "PolarisKeyGameCenter"],
+            dependencies: ["PolarisKeyPlatform", "PolarisKeyPlatformC", "PolarisKeyGameCenter", "PolarisKeyGameCenterC"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
     ]
