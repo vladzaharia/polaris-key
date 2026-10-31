@@ -234,8 +234,9 @@ func _sign_out_chain(t: PKeyTestContext) -> void:
 	log.clear()
 	# The identity client's hook list holds the chain (it replaced the ring's standalone forget).
 	var hooks: Array = sdk.identity._before_sign_out
-	t.check("chain: the identity client runs one pre-sign-out hook and it is Cloud Sync's", hooks.size() == 1)
-	await hooks[0].call()
+	var chain := hooks.filter(func(h: Callable) -> bool: return h.get_method() == "_forget_ring")
+	t.check("chain: the identity client runs one pre-sign-out hook that is Cloud Sync's", chain.size() == 1)
+	await chain[0].call()
 	t.check("chain: flush first (the edit is pushed), then the ring forgets", log == ["push", "ring.forget"], str(log))
 	t.check("chain: the state file still existed when the ring forgot, and is gone after the purge", ring.file_seen_at_forget and not FileAccess.file_exists(state_path))
 	t.check("chain: the machine is signed out and empty", sdk.cloud_sync.host.machine().subject() == null and sdk.cloud_sync.status().detail["state"] == "local")

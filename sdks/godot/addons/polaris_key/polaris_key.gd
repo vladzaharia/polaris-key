@@ -193,11 +193,13 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	devices = PKeyDevices.new(core)
 	devices.install(core)
 	devices.on_wiped = _emit_state
+	devices.before_release = _before_release
 	core.attest_hook = devices.attest
 	license = PKeyLicense.new(core, devices)
 	license.install(core)
 	license.on_acquired = _on_license_acquired
 	license.on_changed = _on_license_wiped
+	license.before_release = _before_release
 	entitlements.attach(license)
 	commerce.attach(core, entitlements)
 	commerce.on_claimed = func() -> void: await sync(true)
@@ -251,6 +253,15 @@ func _stop_connect() -> Variant:
 	if cloud_connect == null:
 		return null
 	return cloud_connect._sign_out_step()
+
+
+## Deactivation (this device's seat released): Cloud Connect stops and forgets its state, then the
+## key ring forgets (Cloud Sync's chain), before the request. A step that fails stops the call.
+func _before_release() -> Variant:
+	var c: Variant = await _stop_connect()
+	if c is PKeyResult and not c.ok:
+		return c
+	return await _forget_ring()
 
 
 ## The sign-out chain (A-3): Cloud Sync flushes, signs the machine out, forgets the ring, purges, in

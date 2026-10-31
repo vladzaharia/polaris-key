@@ -7,6 +7,7 @@ extends RefCounted
 # before any request; nothing prints key material. The `keyring-*` transcripts replay is U-40.7.
 
 const PRODUCT := "demo"
+const TOKEN := "pkeyt_DEACTIVATEDEACTIVATEDEACTIVATEDEACTIVA00"
 
 
 ## A Worker that answers the key ring routes. `client(device_id)` is the requester one device uses.
@@ -89,6 +90,24 @@ class NoPinVault extends PKeySyncRingVault:
 		return PKeyResult.failure(PKeyDeviceKeyStore.STORE_FAULT, "no pin")
 
 
+## A file vault whose removals of one named file fail (a root that cannot be deleted).
+class StuckVault extends PKeySyncRingVault:
+	var stuck := ""
+	var removed: Array = []
+
+	func _remove(path: String) -> int:
+		if stuck != "" and path.get_file() == stuck:
+			return ERR_FILE_NO_PERMISSION
+		removed.append(path.get_file())
+		return super(path)
+
+
+## A Connect state whose record cannot be removed.
+class StuckConnectState extends PKeyConnectState:
+	func clear() -> PKeyResult:
+		return PKeyResult.failure(PKeyDeviceKeyStore.STORE_FAULT, "stuck")
+
+
 var _n := 0
 
 
@@ -96,11 +115,14 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _lifecycle(t)
 	await _devices(t)
 	await _ring_changed(t)
+	await _stored_root_is_the_pin(t)
 	await _recovery(t)
 	await _guards(t)
 	await _adopt(t)
 	_vault_files(t)
+	_clear_order(t)
 	await _facade(t)
+	await _deactivation(t)
 	return true
 
 
@@ -477,6 +499,18 @@ func _vault_files(t: PKeyTestContext) -> void:
 	t.check("vault: a lost platform key is unreadable, not empty", not gone.ok and gone.code == PKeyDeviceKeyStore.KEYS_UNREADABLE)
 	sealer.fault_seal = true
 	t.check("vault: a sealer fault is a store fault", sv.write_root("rg_" + "A".repeat(22), 3, kid, secret).code == PKeyDeviceKeyStore.STORE_FAULT)
+	# B2: a sealed root whose sealer is missing waits for it; it is never rewritten as an engine file.
+	var lane_root := _dir("lane")
+	var lane := PKeySyncRingVault.new(PRODUCT, lane_root, false, true, PKeyFakeSealer.new("keystore"))
+	lane.write_root("rg_" + "A".repeat(22), 3, kid, secret)
+	var lane_file := lane_root.path_join(PRODUCT).path_join("sync-root")
+	var lane_before := FileAccess.get_file_as_bytes(lane_file)
+	var bare := PKeySyncRingVault.new(PRODUCT, lane_root, false, true, null)
+	bare.sealer = null
+	bare.unique_id = "unit-test-machine"
+	var bare_read := bare.read_root()
+	var bare_write := bare.write_root("rg_" + "A".repeat(22), 4, kid, secret)
+	t.check("vault: a sealed root whose sealer is missing is unsupported and is not rewritten", not bare_read.ok and bare_read.code == &"unsupported" and not bare_write.ok and bare_write.code == &"unsupported" and FileAccess.get_file_as_bytes(lane_file) == lane_before, "%s %s" % [bare_read, bare_write])
 	_vault_plain_refused(t, kid, secret)
 	t.check("vault: a root outside user:// is kept in memory", PKeySyncRingVault.new(PRODUCT, "/tmp/x", false, false).persistence() == "memory")
 	t.check("vault: clear leaves the platform key (the device keys share it)", not sealer.calls.has("destroy") and sv.clear().ok and not sealer.calls.has("destroy"))
@@ -563,10 +597,176 @@ func _facade(t: PKeyTestContext) -> void:
 	vault.write_pin({"ring_id": "rg_" + "A".repeat(22), "epoch": 1, "root_kid": kid.hex_encode()})
 	vault.write_root("rg_" + "A".repeat(22), 1, kid, root)
 	t.check("facade: a stored root is taken back offline", (await ring.status()).detail["unlocked"])
-	t.check("facade: the sign-out hook is registered once, even after a second configure", sdk.identity._before_sign_out.size() == 1)
+	t.check("facade: the key ring forget hook is registered once", _hook_count(sdk, "_forget_ring") == 1 and _hook_count(sdk, "_stop_connect") == 1)
 	sdk.configure(opts)
-	t.check("facade: and still once after a second configure", sdk.identity._before_sign_out.size() == 1 and sdk.keyring != null)
+	t.check("facade: and each hook still once after a second configure", _hook_count(sdk, "_forget_ring") == 1 and _hook_count(sdk, "_stop_connect") == 1 and sdk.keyring != null)
 	for hook in sdk.identity._before_sign_out:
 		await hook.call()
 	t.check("facade: sign-out forgets the root and the pin", not sdk.keyring.unlocked() and vault.read_pin().detail == null and vault.read_root().detail == null)
 	sdk.queue_free()
+
+
+static func _hook_count(sdk: Node, method: String) -> int:
+	var n := 0
+	for hook: Callable in sdk.identity._before_sign_out:
+		if hook.get_method() == method:
+			n += 1
+	return n
+
+
+# ── A stored root is the pin (K1-D1) ─────────────────────────────────────────────────────
+
+func _stored_root_is_the_pin(t: PKeyTestContext) -> void:
+	var w := FakeWorker.new()
+	var root := _dir("pinroot")
+	var keys := PKeyDeviceKeyStore.for_tests(PRODUCT, root)
+	var vault := PKeySyncRingVault.for_tests(PRODUCT, root)
+	var ring := PKeySyncRing.new(PRODUCT, "dev_a", w.client("dev_a"), keys, vault)
+	await ring.create(false)
+	var r1: Dictionary = vault.read_root().detail
+	var dir := root.path_join(PRODUCT)
+	var root_file := dir.path_join("sync-root")
+	var pin_file := dir.path_join("sync-ring-pin.json")
+	var snap := FileAccess.get_file_as_bytes(root_file)
+	# The Worker now serves another ring that has a wrap for this device.
+	await ring.reset(false)
+	var served: Dictionary = w.ring.duplicate(true)
+	_put(root_file, snap)
+	DirAccess.remove_absolute(pin_file)
+	var lost := PKeySyncRing.new(PRODUCT, "dev_a", w.client("dev_a"), keys, vault)
+	var u := await lost.unlock()
+	var want := {"ring_id": r1["ring_id"], "epoch": r1["epoch"], "root_kid": r1["kid"]}
+	t.check("stored root is the pin: a lost pin with a stored root of another ring answers ring-changed", u.ok and u.detail["kind"] == "ring-changed" and u.detail["pinned"] == want and u.detail["served"]["ring_id"] == served["ringId"], str(u.detail))
+	t.check("stored root is the pin: nothing was written or opened", FileAccess.get_file_as_bytes(root_file) == snap and not FileAccess.file_exists(pin_file) and not lost.unlocked())
+	# The person confirms the served ring: only then is the stored root replaced.
+	var acc := await lost.accept_ring_change(u.detail["served"])
+	t.check("stored root is the pin: only a confirmed accept replaces it", acc.ok and acc.detail["kind"] == "unlocked" and vault.read_root().detail["ring_id"] == served["ringId"] and vault.read_pin().detail["ring_id"] == served["ringId"], str(acc))
+	# A stored root that matches the served ring is held and pinned again.
+	DirAccess.remove_absolute(pin_file)
+	var again := PKeySyncRing.new(PRODUCT, "dev_a", w.client("dev_a"), keys, vault)
+	var m := await again.unlock()
+	t.check("stored root is the pin: a matching stored root is held and re-pinned", m.ok and m.detail["kind"] == "unlocked" and again.unlocked() and vault.read_pin().detail != null and vault.read_pin().detail["ring_id"] == served["ringId"], str(m.detail))
+	# An unreadable root with no pin is not absent.
+	var f := FileAccess.open(root_file, FileAccess.WRITE)
+	f.store_string("damaged")
+	f.close()
+	DirAccess.remove_absolute(pin_file)
+	var damaged := FileAccess.get_file_as_bytes(root_file)
+	var bad := PKeySyncRing.new(PRODUCT, "dev_a", w.client("dev_a"), keys, vault)
+	# A plain-file test vault reads any bytes as a record: its parse is what fails.
+	var un := await bad.unlock()
+	t.check("stored root is the pin: an unreadable stored root is not absent", not un.ok and un.code == PKeyDeviceKeyStore.KEYS_UNREADABLE and FileAccess.get_file_as_bytes(root_file) == damaged and not FileAccess.file_exists(pin_file), str(un))
+	var served_pin := {"ring_id": served["ringId"], "epoch": int(served["epoch"]), "root_kid": served["rootKid"]}
+	var acc2 := await bad.accept_ring_change(served_pin)
+	t.check("stored root is the pin: a confirmed accept still works over an unreadable root", acc2.ok and acc2.detail["kind"] == "unlocked", str(acc2))
+	_put(root_file, damaged)
+	var fg := await bad.forget()
+	t.check("stored root is the pin: forget still works over an unreadable root", fg.ok and not FileAccess.file_exists(root_file), str(fg))
+	# An unreadable pin is not absent.
+	var w2 := FakeWorker.new()
+	var d2 := _device(w2, "dev_b", _dir("pinbad"))
+	await (d2["ring"] as PKeySyncRing).create(false)
+	var v2: PKeySyncRingVault = d2["vault"]
+	var root2 := FileAccess.get_file_as_bytes(v2.dir.path_join("sync-root"))
+	var pf := FileAccess.open(v2.dir.path_join("sync-ring-pin.json"), FileAccess.WRITE)
+	pf.store_string("{")
+	pf.close()
+	var up := await _restart(d2).unlock()
+	t.check("stored root is the pin: an unreadable pin is not absent", not up.ok and up.code == PKeyDeviceKeyStore.KEYS_UNREADABLE and FileAccess.get_file_as_bytes(v2.dir.path_join("sync-root")) == root2, str(up))
+
+
+static func _put(path: String, bytes: PackedByteArray) -> void:
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_buffer(bytes)
+	f.close()
+
+
+# ── clear() removes the root before the pin ──────────────────────────────────────────────
+
+func _clear_order(t: PKeyTestContext) -> void:
+	var kid := PKeySyncHkdf.derive_kid(PackedByteArray([9]))
+	var secret := Crypto.new().generate_random_bytes(32)
+	var rid := "rg_" + "B".repeat(22)
+	var pin := {"ring_id": rid, "epoch": 1, "root_kid": kid.hex_encode()}
+	var v := StuckVault.new(PRODUCT, _dir("clearorder"), false, false)
+	v._plain_ok = true
+	v.write_pin(pin)
+	v.write_root(rid, 1, kid, secret)
+	t.check("clear order: clear removes the root before the pin", v.clear().ok and v.removed.find("sync-root") >= 0 and v.removed.find("sync-root") < v.removed.find("sync-ring-pin.json"), str(v.removed))
+	v.write_pin(pin)
+	v.write_root(rid, 1, kid, secret)
+	v.stuck = "sync-root"
+	var res := v.clear()
+	v.stuck = ""
+	t.check("clear order: clear keeps the pin when the root cannot be removed", not res.ok and v.read_pin().detail == pin and v.read_root().detail != null, str(res))
+
+
+# ── Deactivation forgets the key ring and the Connect state before the seat is released ──
+
+## Facade fixture over a loopback Worker that answers both release requests; the vault, the
+## device keys and the Connect state are the test's own.
+func _release_sdk(h: PKeyLicenseTestSupport, vault: PKeySyncRingVault, state: PKeyConnectState) -> Dictionary:
+	var store := PKeyMemoryStore.new(h.F["device_id"], TOKEN)
+	var tweak := func(opts: PKeyOptions) -> void:
+		opts.device_keys = PKeyDeviceKeyStore.for_tests(h.F["product"], _dir("rel-keys"))
+		opts.ring_vault = vault
+		opts.connect_state = state
+	var sdk: Node = await h.sdk(store, PackedStringArray(), tweak)
+	var secret := Crypto.new().generate_random_bytes(32)
+	var kid := PKeySyncHkdf.derive_kid(secret)
+	var rid := "rg_" + "C".repeat(22)
+	vault.write_pin({"ring_id": rid, "epoch": 1, "root_kid": kid.hex_encode()})
+	vault.write_root(rid, 1, kid, secret)
+	var rec := PKeyConnectState.Record.new()
+	rec.product = h.F["product"]
+	rec.device_id = h.F["device_id"]
+	rec.disc_keys.append("A".repeat(43))
+	state.write(rec)
+	await sdk.keyring.status()
+	return {"sdk": sdk, "store": store}
+
+
+func _deactivation(t: PKeyTestContext) -> void:
+	var h := PKeyLicenseTestSupport.new()
+	if not t.check("deactivation: fixtures present", h.ready()):
+		return
+	h.plan = {"/license/deauthorize": [PKeyLicenseTestSupport.json(200, {"ok": true})], "/devices/" + String(h.F["device_id"]): [PKeyLicenseTestSupport.json(200, {"ok": true})]}
+	for verb in ["license.deactivate", "devices.deauthorize"]:
+		h.server.requests.clear()
+		var vault := PKeySyncRingVault.new(PRODUCT, "user://pkey", true)
+		var state := PKeyConnectState.new(PRODUCT, "user://pkey", true)
+		var fx := await _release_sdk(h, vault, state)
+		var sdk: Node = fx["sdk"]
+		t.check("deactivation (%s): a ring and a Connect record are held first" % verb, sdk.keyring.unlocked() and state.read().detail != null and vault.read_root().detail != null, "%s %s %s" % [sdk.keyring.unlocked(), state.read(), vault.read_root().ok])
+		var r: PKeyResult = await _release(sdk, verb)
+		t.check("deactivation (%s): forgets the key ring and the Connect state" % verb, r.ok and not sdk.keyring.unlocked() and vault.read_pin().detail == null and vault.read_root().detail == null and state.read().detail == null, str(r))
+		t.check("deactivation (%s): the credential is released after that" % verb, h.server.requests.any(func(q: Dictionary) -> bool: return q["method"] in ["POST", "DELETE"]) and not sdk.core.tokens.has_token())
+		sdk.queue_free()
+		# The root cannot be removed: nothing is sent and the token stays.
+		h.server.requests.clear()
+		var stuck := StuckVault.new(PRODUCT, _dir("rel-stuck"), false, false)
+		stuck._plain_ok = true
+		stuck.stuck = "sync-root"
+		var fx2 := await _release_sdk(h, stuck, PKeyConnectState.new(PRODUCT, "user://pkey", true))
+		var sdk2: Node = fx2["sdk"]
+		var r2: PKeyResult = await _release(sdk2, verb)
+		t.check("deactivation (%s): stops when the root cannot be removed" % verb, not r2.ok and r2.code == PKeyDeviceKeyStore.STORE_FAULT and sdk2.core.tokens.has_token() and fx2["store"].token == TOKEN and _release_requests(h).is_empty(), str(r2))
+		sdk2.queue_free()
+		# The Connect state cannot be removed: same.
+		h.server.requests.clear()
+		var fx3 := await _release_sdk(h, PKeySyncRingVault.new(PRODUCT, "user://pkey", true), StuckConnectState.new(PRODUCT, "user://pkey", true))
+		var sdk3: Node = fx3["sdk"]
+		var r3: PKeyResult = await _release(sdk3, verb)
+		t.check("deactivation (%s): stops when the Connect state cannot be removed" % verb, not r3.ok and r3.code == PKeyDeviceKeyStore.STORE_FAULT and sdk3.core.tokens.has_token() and _release_requests(h).is_empty(), str(r3))
+		sdk3.queue_free()
+	h.free_server()
+
+
+static func _release(sdk: Node, verb: String) -> PKeyResult:
+	if verb == "license.deactivate":
+		return await sdk.license.deactivate()
+	return await sdk.devices.deauthorize()
+
+
+static func _release_requests(h: PKeyLicenseTestSupport) -> Array:
+	return h.server.requests.filter(func(q: Dictionary) -> bool: return q["method"] in ["POST", "DELETE"] and (String(q["path"]).ends_with("/license/deauthorize") or String(q["path"]).contains("/devices/")))
