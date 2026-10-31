@@ -427,3 +427,40 @@ describe("export and absorb carry files", () => {
 });
 
 void filesPath;
+
+describe("an object whose product is gone", () => {
+  it("an object that finds its product deleted removes its stored files before its rows, and keeps the rows while R2 fails", async () => {
+    clock(NOW * 1000);
+    const w = await filesWorld();
+    // The directory flush finds the product gone (its last statement changes no row).
+    (w.ns as unknown as { opts: { db?: unknown } }).opts.db = () => ({
+      batch: async () => undefined,
+      batchChanges: async (s: unknown[]) =>
+        s.map((_, i) => (i === s.length - 1 ? 0 : 1)),
+    });
+    await stored(w, "saves", "a", bytesOf(10));
+    expect(w.r2.keys()).toHaveLength(1);
+    clock(NOW * 1000 + 16 * 60_000);
+    const realDelete = w.r2.delete.bind(w.r2);
+    w.r2.delete = () => Promise.reject(new Error("r2 down"));
+    await alarm(w);
+    // R2 failed: the rows (and the retry alarm) stay, and the bytes are still there.
+    const inst = w.ns.instances.get(name(w))!;
+    expect(rows(w, "SELECT 1 FROM files")).toHaveLength(1);
+    expect(w.r2.keys()).toHaveLength(1);
+    expect(inst.storage.alarm).not.toBeNull();
+    // R2 recovers: the files go first, then the object's own storage.
+    w.r2.delete = realDelete;
+    clock(NOW * 1000 + 18 * 60_000);
+    await alarm(w);
+    expect(w.r2.keys()).toEqual([]);
+    expect(inst.storage.alarm).toBeNull();
+    expect(
+      inst.storage.sql.db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+        )
+        .all(),
+    ).toEqual([]);
+  });
+});

@@ -60,6 +60,8 @@ import {
   absorbedFrom,
   collectFileGarbage,
   eraseFileObjects,
+  GC_NO_STORE_RETRY_MS,
+  GC_RETRY_MS,
   hasCollectableChunks,
   noteAbsorbed,
   releaseForMerge,
@@ -259,6 +261,15 @@ export class CloudSyncDO implements DurableObject {
         await this.withTimeout(handle.batch(flush.statements));
       }
       if (!live) {
+        // The product is gone: the person's stored files leave R2 first (keys, objects, sweep), as
+        // in an erasure. A failure keeps the rows and sets the retry date directly: the object is
+        // still dirty, so `scheduleAlarm` would answer "now" and spin.
+        if (!(await eraseFileObjects(this.fileHost(), pin))) {
+          await this.ctx.storage.setAlarm(
+            nowMs + (this.bucket() ? GC_RETRY_MS : GC_NO_STORE_RETRY_MS),
+          );
+          return;
+        }
         await this.eraseSelf();
         return;
       }
