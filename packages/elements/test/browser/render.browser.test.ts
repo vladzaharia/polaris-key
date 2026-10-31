@@ -590,6 +590,16 @@ describe("the save screens", () => {
             ).toBeGreaterThanOrEqual(prev.bottom - 1);
           prev = r;
         }
+        // Short landscape: two panes, the cards left of the choices, all in the first viewport.
+        const card = root
+          .querySelector("[data-side=remote]")!
+          .getBoundingClientRect();
+        if (size.label === "844x390" || size.label === "640x360") {
+          expect(card.right, "cards left of the choices").toBeLessThanOrEqual(
+            at(keys[0]!)!.left + 1,
+          );
+          expect(at("common.cancel")!.bottom).toBeLessThanOrEqual(size.height);
+        }
         // The two choices share a column: the other never moves under the "this device" card.
         expect(
           Math.abs(at(keys[0]!)!.left - at(keys[1]!)!.left),
