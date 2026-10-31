@@ -50,6 +50,15 @@ def test_a_binding_without_a_uuid_is_bad_response() -> None:
     c.close()
 
 
+@pytest.mark.parametrize("tail", ["\n", "\r"])
+def test_a_binding_with_a_trailing_control_character_is_bad_response(tail) -> None:
+    c = _client(lambda r: httpx.Response(200, json={"bindingId": BINDING + tail}))
+    with pytest.raises(PolarisError) as e:
+        c.commerce.binding()
+    assert e.value.code == "bad_response"
+    c.close()
+
+
 def test_claim_steam_posts_the_ticket_and_syncs() -> None:
     bodies = []
 

@@ -6,7 +6,9 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from polaris_key.cloud_sync.machine import _ABSENT, CloudSyncMachine, apply_setting_op, relaunch
+import pytest
+
+from polaris_key.cloud_sync.machine import _ABSENT, CloudSyncMachine, apply_setting_op, parse_hlc, relaunch
 
 
 def _machine(subject: Any = "sub_alice") -> Any:
@@ -68,3 +70,18 @@ def test_a_null_cloud_value_is_a_value() -> None:
         }
     )
     assert m.get("open.key") == {"value": None, "from": "cloud"}
+
+
+@pytest.mark.parametrize("tail", ["\n", "\r"])
+def test_an_hlc_with_a_trailing_control_character_is_refused(tail: str) -> None:
+    assert parse_hlc("0000000000ab:0001") == (0xAB, 1)
+    with pytest.raises(ValueError):
+        parse_hlc("0000000000ab:0001" + tail)
+
+
+@pytest.mark.parametrize("tail", ["\n", "\r"])
+def test_a_client_id_with_a_trailing_control_character_is_refused(tail: str) -> None:
+    opts, _ = _machine()
+    opts["newClientId"] = lambda: "c_000000000000000client9" + tail
+    with pytest.raises(ValueError):
+        CloudSyncMachine(opts)

@@ -49,14 +49,14 @@ UPDATE_EVENTS = (
 )
 
 # The Worker's patterns (core/updateHealth.ts); an entry that fails one is never recorded.
-_EVENT_ID = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
-_DELIVERABLE = re.compile(r"^(?=.{1,64}$)[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$")
-_RELEASE = re.compile(r"^[A-Za-z0-9._+@:/-]{1,128}$")
-_CHANNEL = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
-_PACK_SET = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
-_CODE = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
+_EVENT_ID = re.compile(r"^[A-Za-z0-9._:-]{1,64}\Z")
+_DELIVERABLE = re.compile(r"^(?=.{1,64}\Z)[a-z][a-z0-9-]*(\.[a-z0-9-]+)*\Z")
+_RELEASE = re.compile(r"^[A-Za-z0-9._+@:/-]{1,128}\Z")
+_CHANNEL = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}\Z")
+_PACK_SET = re.compile(r"^[A-Za-z0-9._:-]{1,128}\Z")
+_CODE = re.compile(r"^[A-Za-z0-9._:-]{1,64}\Z")
 #: OUTLET_ID_PATTERN (@polaris-key/protocol/distribution).
-_OUTLET = re.compile(r"^[a-z][a-z0-9-]{0,63}$")
+_OUTLET = re.compile(r"^[a-z][a-z0-9-]{0,63}\Z")
 
 
 class UpdateJournal:

@@ -23,8 +23,8 @@ __all__ = [
 
 KEY_SECRET_LENGTH = 22
 _KEY_PREFIX = "pkey_"
-_KEY_SHAPE = re.compile(r"^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]*)$")
-_PREFIX_SHAPE = re.compile(r"^pkey_[a-z0-9-]*$")
+_KEY_SHAPE = re.compile(r"^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]*)\Z")
+_PREFIX_SHAPE = re.compile(r"^pkey_[a-z0-9-]*\Z")
 _FIELD = "part.keyField.label"
 _SUBMIT = "activate.submit"
 # The results that mean the input itself is wrong (DL7): a key the service does not know, or a check

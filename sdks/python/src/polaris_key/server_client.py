@@ -36,7 +36,7 @@ from .devices.store import InMemoryStore
 __all__ = ["server_client", "resolve_server_device_id"]
 
 #: The server-side device id shape: 32 base64url characters.
-_DEVICE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{32}$")
+_DEVICE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{32}\Z")
 
 
 def _bad(message: str) -> PolarisError:
