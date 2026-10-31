@@ -189,11 +189,27 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions {
                 + Double((sized + CloudSyncFileBounds.minBytesPerSecond - 1) / CloudSyncFileBounds.minBytesPerSecond)
             : 0
         let res: PolarisResponse
+        let request = PolarisRequest(
+            url: url, method: method, headers: h, body: body, timeoutSeconds: deadline,
+            maxBodyBytes: cap + 1, followRedirects: false)
         do {
-            res = try await transport.send(
-                PolarisRequest(
-                    url: url, method: method, headers: h, body: body, timeoutSeconds: deadline,
-                    maxBodyBytes: cap + 1, followRedirects: false))
+            if sent.range != nil {
+                // A ranged GET streams: its answer is held to the range asked, and an error body to the
+                // error cap, whatever the server sends.
+                let streamed = try await transport.stream(request)
+                let limit = (200..<300).contains(streamed.status) ? cap + 1 : CloudSyncFileBounds.errorMaxBytes
+                var data = Data()
+                for try await piece in streamed.body {
+                    data.append(piece)
+                    if data.count >= limit {
+                        data = data.prefix(limit)
+                        break
+                    }
+                }
+                res = PolarisResponse(status: streamed.status, body: data, headers: streamed.headers)
+            } else {
+                res = try await transport.send(request)
+            }
         } catch let e as PolarisError where e.code == ErrorCode.localOnly {
             // Local-only is a refusal to dial, not a network failure: nothing is retried.
             throw TransferError(.rejected, code: e.code)
@@ -374,7 +390,13 @@ public struct CloudSyncFileTransport: FileTransport, FileRevisions {
     }
 
     public func getFile(_ target: FileTarget, query: FileQuery) async throws -> FileReply<FileBody> {
-        if let r = query.range, !(r.lowerBound >= 0 && r.upperBound > r.lowerBound) { throw bad("range") }
+        // A range is at most one download piece: an unbounded one would size a buffer without limit.
+        if let r = query.range,
+            !(r.lowerBound >= 0 && r.upperBound > r.lowerBound && r.upperBound - r.lowerBound <= downloadRangeBytes
+                && r.upperBound <= 1 << 52)
+        {
+            throw bad("range")
+        }
         if let v = query.version, !(v >= 0 && v < 1_000_000_000) { throw bad("version") }
         let path = "\(try record(target))\(query.version.map { "?version=\($0)" } ?? "")"
         // The body is bounded by the range asked, even for a 200 (a server that ignores `Range` and sends

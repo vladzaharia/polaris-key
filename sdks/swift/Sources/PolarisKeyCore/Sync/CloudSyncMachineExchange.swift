@@ -225,8 +225,17 @@ extension CloudSyncMachine {
                     rec[0].stringValue ?? rec[0].description, rec[1].stringValue ?? rec[1].description)
                 latchKey = "r:" + recordKey!
             }
-            let bad = rowBad(name, latchKey, version, openRow, cursor: req.cursor)
-            let row = SyncRow(value: c["value"] ?? .null, version: version, bad: bad.bad, plain: bad.plain)
+            // A record with a file and no value carries nothing to judge: a good row, null value. Only
+            // when nothing was sealed (no `ct`, host verdict not invalid) and, in E2E mode, only under a
+            // blinded id: a plain id there is not a save the host could have placed.
+            let file = SyncFilePointer(json: c["file"])
+            let fileOnly =
+                c["value"] == nil && c["ct"] == nil && openRow?.invalid != true && file != nil
+                && (c["record"]?.arrayValue?.count == 2)
+                && (!requiresE2E || SyncBlind.isBlindedName(c["record"]?.arrayValue?[1].stringValue ?? ""))
+            let bad = fileOnly ? (bad: false, plain: nil) : rowBad(name, latchKey, version, openRow, cursor: req.cursor)
+            var row = SyncRow(value: c["value"] ?? .null, version: version, bad: bad.bad, plain: bad.plain)
+            if recordKey != nil { row.file = file }
             if let k = settingKey {
                 s.partitions[name]!.settings[k] = row
                 dropParkedByRemote(name, k, c["editedHlc"]?.stringValue)
@@ -290,8 +299,10 @@ extension CloudSyncMachine {
         _ name: String, _ latchKey: String, _ server: [String: JSONValue], _ version: Int, _ open: SyncOpenedRow?,
         cursor: Int
     ) -> SyncRow {
-        let bad = rowBad(name, latchKey, version, open, cursor: cursor)
-        return SyncRow(value: server["value"] ?? .null, version: version, bad: bad.bad, plain: bad.plain)
+        let file = SyncFilePointer(json: server["file"])
+        let fileOnly = server["value"] == nil && server["ct"] == nil && open?.invalid != true && file != nil
+        let bad = fileOnly ? (bad: false, plain: nil) : rowBad(name, latchKey, version, open, cursor: cursor)
+        return SyncRow(value: server["value"] ?? .null, version: version, bad: bad.bad, plain: bad.plain, file: file)
     }
 
     /// Take a served boundary: the least ever served, held at or below the sealed floor.
@@ -398,29 +409,42 @@ extension CloudSyncMachine {
         if status == "ok", let version = wholeInt(r["version"]) {
             noteSealed(name, version, "r:\(rk)")
             let prior = s.partitions[name]!.records[rk]
-            if let value = syncApplyRecordOp(prior?.value, op) {
-                s.partitions[name]!.records[rk] = SyncRow(value: value, version: version)
+            if op.op == .delete {
+                s.partitions[name]!.records.removeValue(forKey: rk)
+            } else if let value = syncApplyRecordOp(prior?.value, op) {
+                s.partitions[name]!.records[rk] = SyncRow(value: value, version: version, file: prior?.file)
             }
             if s.partitions[name]!.held[rk] != nil { (rebaseOn, hasRebase) = (version, true) }
+            emitOutcome(op, .ok(version: version))
         } else if status == "conflict", case .object(let server)? = r["server"] {
             if let sv = wholeInt(server["version"]) {
                 let sbad = copyRow(name, "r:\(rk)", server, sv, openedConflict, cursor: cursor)
                 s.partitions[name]!.records[rk] = sbad
+                emitOutcome(
+                    op,
+                    .conflict(
+                        server: decidable(sbad)
+                            ? SyncRecordCopy(value: sbad.value, version: sbad.version, file: sbad.file) : nil))
                 // The resolution is a NEW mutation on the server's version; N is never resent. Only
                 // `revision` resolves on the device; every other policy took the server's copy.
                 if s.partitions[name]!.held[rk] != nil {
                     (rebaseOn, hasRebase) = (sv, true)
-                } else if let decl, op.op == .set, decidable(sbad), clientDecides(decl.policy),
+                } else if op.ticket == nil, let decl, op.op == .set, decidable(sbad), clientDecides(decl.policy),
                     better(decl.policy, compared(op.value, decl.field), compared(server["value"], decl.field))
                 {
                     // E2E max/min record: the better value is re-pushed on the server's version.
                     (rebaseOn, hasRebase, rebaseValue) = (sv, true, op.value)
-                } else if let decl, decl.policy == "revision", decl.resolve == "keepLocal", op.op == .set {
+                } else if op.ticket == nil, let decl, decl.policy == "revision", decl.resolve == "keepLocal",
+                    op.op == .set
+                {
                     (rebaseOn, hasRebase, rebaseValue) = (sv, true, op.value)
                 }
             }
         } else {
-            if status == "rejected" { events.append(.rejected(mutationId: op.mutationId, code: jsString(r, "code"))) }
+            if status == "rejected" {
+                events.append(.rejected(mutationId: op.mutationId, code: jsString(r, "code")))
+                emitOutcome(op, .rejected(code: jsString(r, "code")))
+            }
             if s.partitions[name]!.held[rk] != nil {
                 hasRebase = true
                 if let row = s.partitions[name]!.records[rk] { rebaseOn = row.version } else { rebaseAny = true }

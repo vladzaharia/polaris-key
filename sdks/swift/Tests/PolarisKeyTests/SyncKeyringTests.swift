@@ -713,4 +713,57 @@ final class SyncKeyringTests: XCTestCase {
         let gone = await a.store.readRecord("sync-ring-pin")
         XCTAssertNil(gone)
     }
+
+    // MARK: the file codec (sync.saves)
+
+    private func lockedCode(_ body: () throws -> Void) -> String? {
+        do { try body() } catch { return (error as? PolarisError)?.code }
+        return nil
+    }
+
+    func testTheFileCodecSealsWithTheRingAndRefusesEveryCallOnceLocked() async throws {
+        let a = try await device("a", server: RingServer())
+        XCTAssertEqual(lockedCode { _ = try a.keyring.fileCodec(collection: "saves") }, ErrorCode.syncLocked)
+        _ = try await a.keyring.create()
+        let codec = try a.keyring.fileCodec(collection: "saves")
+        XCTAssertEqual(codec.enc, "e2e")
+        let sealed = try codec.sealWhole(Data("a save".utf8))
+        let opener = try codec.makeOpener()
+        let first = try opener.push(sealed.prefix(10))
+        XCTAssertTrue(first.isEmpty)
+        let id = try codec.chunkId(Data("chunk".utf8))
+        let object = try codec.sealChunk(id: id, plain: Data("chunk".utf8))
+        let manifest = try codec.sealManifest(Data("m".utf8))
+        XCTAssertEqual(try codec.openChunk(id: id, object: object), .ok(Data("chunk".utf8)))
+        XCTAssertEqual(try codec.openManifest(manifest), .ok(Data("m".utf8)))
+
+        await a.keyring.lock()
+        let results = [
+            lockedCode { _ = try codec.sealWhole(Data("x".utf8)) },
+            lockedCode { _ = try codec.chunkId(Data("x".utf8)) },
+            lockedCode { _ = try codec.sealChunk(id: id, plain: Data("x".utf8)) },
+            lockedCode { _ = try codec.openChunk(id: id, object: object) },
+            lockedCode { _ = try codec.sealManifest(Data("x".utf8)) },
+            lockedCode { _ = try codec.openManifest(manifest) },
+            lockedCode { _ = try codec.makeOpener() },
+            // A stream that was open when the ring locked stops at its next piece.
+            lockedCode { _ = try opener.push(sealed.dropFirst(10)) },
+            lockedCode { _ = try opener.finish() },
+            lockedCode { _ = try a.keyring.fileCodec(collection: "saves") },
+        ]
+        XCTAssertEqual(results, Array(repeating: ErrorCode.syncLocked, count: results.count))
+        // The sizes are public arithmetic, not a use of the key.
+        XCTAssertEqual(codec.plainSize(codec.storedSize(100)), 100)
+        XCTAssertEqual(Mirror(reflecting: codec).children.count, 0, "the codec shows no key")
+    }
+
+    func testReplacingTheRootWhileHeldMakesTheOldFileCodecRefuse() async throws {
+        let a = try await device("a", server: RingServer())
+        _ = try await a.keyring.create()
+        let old = try a.keyring.fileCodec(collection: "saves")
+        _ = try old.sealWhole(Data("x".utf8))
+        _ = try await a.keyring.reset()
+        XCTAssertEqual(lockedCode { _ = try old.sealWhole(Data("x".utf8)) }, ErrorCode.syncLocked)
+        XCTAssertNil(lockedCode { _ = try a.keyring.fileCodec(collection: "saves").sealWhole(Data("x".utf8)) })
+    }
 }
