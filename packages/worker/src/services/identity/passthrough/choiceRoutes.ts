@@ -322,9 +322,13 @@ export async function handleChoice(
     return invalidGrant();
 
   const metadata = deviceMetadata(req);
-  const label = normalizeDeviceLabel(
-    typeof body.deviceName === "string" ? body.deviceName : undefined,
-  );
+  // The label the sign-in carried comes first (the one the approval page showed); the body's
+  // names the device only when the grant has none. Cleaned again at use.
+  const label =
+    normalizeDeviceLabel(taken.label) ??
+    normalizeDeviceLabel(
+      typeof body.deviceName === "string" ? body.deviceName : undefined,
+    );
   // The device's own token, when it presents one: the proof `keep` needs.
   const presented = bearer(req);
   const heldRes = presented

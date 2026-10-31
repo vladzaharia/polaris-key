@@ -133,6 +133,7 @@ export async function settleAppMode(
         ...(facts.keys ? { keys: facts.keys } : {}),
         ...(facts.fresh ? { fresh: true as const } : {}),
         ...(facts.via ? { via: facts.via } : {}),
+        ...(device.label ? { label: device.label } : {}),
       },
       now,
     );

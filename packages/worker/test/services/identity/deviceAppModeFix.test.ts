@@ -34,6 +34,7 @@ import {
 import {
   CHOICE,
   noGrantWorld,
+  seedFullLicense,
   pollDevice,
   signedIn as shared,
   VERIFIED,
@@ -90,6 +91,16 @@ const complete = (w: World, grant: string, choice: unknown, headers = {}) =>
     { ...asDevice, ...headers },
   );
 
+/** A licence to enter by key, and a device grant waiting for it. */
+async function pendingKeyGrant(
+  w: World,
+): Promise<{ grant: string; key: string; licenseId: string }> {
+  const { key, licenseId } = await seedLicense(w);
+  const { started } = await signedIn(w);
+  const { grant } = await choose(w, started);
+  return { grant, key, licenseId };
+}
+
 const notices = (sent: Mail[]): Mail[] =>
   sent.filter((m) => / signed in on /.test(m.subject));
 
@@ -135,9 +146,7 @@ describe("the new-device security notice on an app-mode device-code bind (R1-07)
     pinned("uk-42-22f-notice", async () => {
       const w = await noGrantWorld();
       const sent = mailbox(w);
-      const { key } = await seedLicense(w);
-      const { started } = await signedIn(w);
-      const { grant } = await choose(w, started);
+      const { grant, key } = await pendingKeyGrant(w);
       expect(notices(sent)).toHaveLength(0);
       const res = await complete(w, grant, { kind: "key", key });
       expect(res.status).toBe(200);
@@ -178,11 +187,10 @@ describe("a device grant (§12.5.1 rule 5)", () => {
       });
       expect(res.status).toBe(409);
       const body = (await res.json()) as {
-        error: { code: string; view?: { choices: { replace: unknown }[] } };
+        error: { code: string };
+        view?: { choices: { replace: unknown }[] };
       };
       expect(body.error.code).toBe("license_choice_required");
-      for (const c of body.error.view?.choices ?? [])
-        expect(c.replace).toBeNull();
       // Nothing was bound, and the grant is still good.
       const bound = await w.db.first<{ n: number }>(
         "SELECT COUNT(*) AS n FROM devices WHERE product = ? AND device_id = ?",
@@ -200,12 +208,80 @@ describe("a device grant (§12.5.1 rule 5)", () => {
       expect(view.status).toBe(200);
     }));
 
+  it("a device grant's 409 view withholds Replace on a full licence", () =>
+    pinned("uk-42-22f-grant", async () => {
+      const w = await noGrantWorld();
+      const { started } = await signedIn(w);
+      await seedFullLicense(w);
+      const { grant } = await choose(w, started);
+      const res = await complete(w, grant, {
+        kind: "license",
+        licenseId: "lic_full",
+        replaceDeviceId: "other-device",
+      });
+      expect(res.status).toBe(409);
+      const body = (await res.json()) as {
+        view: { choices: { id: string; replace: unknown }[] };
+      };
+      // The loop must run: an empty list would pass whatever the view offered.
+      expect(body.view.choices.length).toBeGreaterThan(0);
+      for (const c of body.view.choices) expect(c.replace).toBeNull();
+    }));
+
+  it("the bind notice names the device the approval page showed", () =>
+    pinned("uk-42-22f-grant", async () => {
+      const w = await noGrantWorld();
+      const sent = mailbox(w);
+      const { grant, key } = await pendingKeyGrant(w);
+      const res = await complete(w, grant, { kind: "key", key });
+      expect(res.status).toBe(200);
+      const got = notices(sent);
+      expect(got.length).toBeGreaterThan(0);
+      for (const m of got)
+        expect(m.subject).toBe("djdl signed in on Living room TV");
+      const row = await w.db.first<{ label: string | null }>(
+        "SELECT label FROM devices WHERE product = ? AND device_id = ?",
+        PRODUCT,
+        DEVICE,
+      );
+      expect(row?.label).toBe("Living room TV");
+    }));
+
+  it("keep over a renamed device keeps the row's label, and the notice names the page's", () =>
+    pinned("uk-42-22f-grant", async () => {
+      const w = await noGrantWorld();
+      const sent = mailbox(w);
+      const { key } = await seedLicense(w);
+      const token = await activated(w, key);
+      await w.db.run(
+        "UPDATE devices SET label = 'Renamed' WHERE product = ? AND device_id = ?",
+        PRODUCT,
+        DEVICE,
+      );
+      const { started } = await signedIn(w);
+      const { grant } = await choose(w, started);
+      const res = await complete(
+        w,
+        grant,
+        { kind: "keep" },
+        { authorization: `Bearer ${token}` },
+      );
+      expect(res.status).toBe(200);
+      for (const m of notices(sent))
+        expect(m.subject).toBe("djdl signed in on Living room TV");
+      expect(notices(sent).length).toBeGreaterThan(0);
+      const row = await w.db.first<{ label: string | null }>(
+        "SELECT label FROM devices WHERE product = ? AND device_id = ?",
+        PRODUCT,
+        DEVICE,
+      );
+      expect(row?.label).toBe("Renamed");
+    }));
+
   it("binds a licence key the person enters, as the account's subject", () =>
     pinned("uk-42-22f-grant", async () => {
       const w = await noGrantWorld();
-      const { key, licenseId } = await seedLicense(w);
-      const { started } = await signedIn(w);
-      const { grant } = await choose(w, started);
+      const { grant, key, licenseId } = await pendingKeyGrant(w);
       const res = await complete(w, grant, { kind: "key", key });
       expect(res.status).toBe(200);
       const out = (await res.json()) as {
