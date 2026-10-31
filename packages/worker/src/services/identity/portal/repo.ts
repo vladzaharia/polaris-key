@@ -237,8 +237,8 @@ export async function recordLinkGroups(
  * A link is keyed by (issuer, subject), not by the connection that wrote it. On the console IdP's
  * own issuer the console's root rule reads `groups_json` and `asserted_at`, so ONLY the console
  * sign-in (`recordLinkGroups`, the IdP's own groups claim) may write them there: a connection's
- * claim map is operator-editable and may name any claim. On such a link this writes `claims_json`
- * alone and leaves the groups, `asserted_at` and the connection id untouched. Elsewhere the facts
+ * claim map is operator-editable and may name any claim. On such a link this writes nothing: the
+ * console's access rules read the claims there too. Elsewhere the facts
  * carry the asserting connection's id, and a rule reads them only for that connection.
  */
 export async function recordLinkAssertion(
@@ -261,7 +261,7 @@ export async function recordLinkAssertion(
   // The console's root rule reads the groups and `asserted_at` of the link on the console IdP's own
   // issuer, whichever connection wrote them, so on that link only the console sign-in
   // (`recordLinkGroups`) writes the groups, `asserted_at` and the connection id: a connection's
-  // assertion there writes the claims alone. On any other issuer the root rule reads nothing, and
+  // assertion there writes nothing. On any other issuer the root rule reads nothing, and
   // the facts are bound to the asserting connection by `asserted_connection_id` (ST-32.3), which
   // is how an operator connection on a listed host gets its own groups and claims read.
   const consoleIssuer = adminOidcConfig(env)?.issuer;
@@ -270,11 +270,10 @@ export async function recordLinkAssertion(
     (consoleIssuer !== undefined &&
       link.issuer_key === portalIdentityIssuerKey(consoleIssuer))
   ) {
-    await db.run(
-      "UPDATE account_links SET claims_json = ? WHERE id = ?",
-      assertion.claims ? JSON.stringify(assertion.claims) : null,
-      linkId,
-    );
+    // Nor the claims: the `console-idp` access rules read `claims_json` on this link (ST-32.3),
+    // and `asserted_connection_id` still names the console sign-in, so another connection's
+    // claims written here would be read as the console's. That connection's own rules never read
+    // this link (its id is not the asserting one), so it loses nothing.
     return;
   }
   // `asserted_at` and the connection id are set at every sign-in through a connection, even one

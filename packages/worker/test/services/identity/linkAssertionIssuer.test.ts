@@ -175,7 +175,8 @@ describe("a connection sign-in on an issuer that may sign operators in", () => {
     const r = (await row(w))!;
     expect(r.groups_json).toBeNull();
     expect(r.asserted_at).toBeNull();
-    expect(r.claims_json).toBe(JSON.stringify({ department: "ops" }));
+    // Nor claims: the console's access rules read them on this link as the console sign-in's.
+    expect(r.claims_json).toBeNull();
     expect(roots(w, r, NOW + 1)).toBe(false);
   });
 
@@ -242,7 +243,7 @@ describe("a console issuer configured with a double trailing slash", () => {
     const r = (await row(w))!;
     expect(r.groups_json).toBeNull();
     expect(r.asserted_at).toBeNull();
-    expect(r.claims_json).toBe(JSON.stringify({ department: "ops" }));
+    expect(r.claims_json).toBeNull();
   });
 });
 
