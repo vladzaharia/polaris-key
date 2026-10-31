@@ -73,7 +73,7 @@ static func parse(value: Variant, expected_product: String) -> Dictionary:
 ## The Identity fragment's account members (WIRE-CONTRACT-V4 §12.6) from a parsed discovery
 ## manifest, or {} while the product's Identity service is off or the document has none:
 ## {account: bool, issuer, key_entry_limit (int, or -1 when absent), attach, subject, signout,
-## account_portal ("" when absent), endpoints: every string endpoint as served}. A client uses an
+## account_portal ("" when absent), device_choice (the `deviceChoice` boolean, UK-42.22), endpoints: every string endpoint as served}. A client uses an
 ## endpoint only when it is here and never builds one.
 static func identity_from(manifest: Variant) -> Dictionary:
 	if not (manifest is Dictionary) or not (manifest.get("services") is Dictionary):
@@ -89,6 +89,7 @@ static func identity_from(manifest: Variant) -> Dictionary:
 	var limit = fragment.get("keyEntryLimit")
 	return {
 		"account": PKeyClaims.is_true(fragment.get("account")),
+		"device_choice": PKeyClaims.is_true(fragment.get("deviceChoice")),
 		"issuer": fragment["issuer"] if _nonempty(fragment.get("issuer")) else "",
 		"key_entry_limit": int(limit) if PKeyClaims.is_number(limit) else -1,
 		"attach": endpoints.get("attach", ""),

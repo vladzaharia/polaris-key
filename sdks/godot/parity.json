@@ -204,9 +204,8 @@
       "note": "I-10b.6: sign_in.start({channel = \"redirect\", license_choice = \"app\"}) settles complete() as the license_choice outcome (a grant, the choices) when discovery names the choice endpoints; PolarisKey.identity.choice.licenses / devices / complete / cancel (PKeyIdentityChoice) dial only those endpoints, send no bearer (but complete with keep sends the device's own token, which the Worker reads as held), return the Worker's refusals as PKeyChoiceResult values (retry_after_seconds, manage_url, sign_in_url, key_entries, the fresh view) and never print the grant. choice.primitives() are the Callables the sign-in form (ui/model/sign_in_session.gd) drives."
     },
     "identity.devicecode.choice": {
-      "status": "planned",
-      "wp": "UK-42",
-      "note": "UK-42.22 (SDK slice .11): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+      "status": "implemented",
+      "note": "UK-42.22.11: sign_in.start({login_hint, name_hint, purpose, license_choice = \"app\"}) sends loginHint, nameHint, purpose and licenseChoice on the device start; licenseChoice only when discovery's identity fragment has deviceChoice and the four choice endpoints (PKeyDiscovery.identity_from device_choice), and an older Worker is sent none. A poll answering choose settles wait() as the license_choice outcome (grant, choices; nothing stored, identity.choice.* finishes it); a choose after a start that did not ask is invalid-response. holders-add-to-account-device replayed."
     },
     "identity.signin.hints": {
       "status": "implemented"

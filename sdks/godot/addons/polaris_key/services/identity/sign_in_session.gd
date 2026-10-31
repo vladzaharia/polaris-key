@@ -75,6 +75,9 @@ var expires_at := 0.0
 ## (`choose`, then `accept()`), which also offers attaching this device's anonymous licence. Set
 ## by `sign_in.start({confirm_identity = true})`.
 var confirm_identity := false
+## True when the start sent `licenseChoice: "app"` (discovery's `deviceChoice` gate passed): the
+## poll may then answer `choose`, which `wait()` settles as the `license_choice` outcome.
+var license_choice := false
 ## The label the sign-in page shows (WIRE-CONTRACT-V4 §12.7.1): the Worker's echo, else (an older
 ## Worker) the label sent; "" when there is none. Show it under the code.
 var device_name := ""
@@ -257,6 +260,8 @@ func _loop() -> PKeySignInOutcome:
 				_resends = 0
 				_held = true
 				return PKeySignInOutcome.choose(p["identity"], p["attachable"])
+			"license-choice":
+				return PKeySignInOutcome.license_choice(p["grant"], p["expires_in"], p["choices"])
 			"ready":
 				return PKeySignInOutcome.signed_in(p["identity"], p["attached"], p["stored"], p["sync"], p.get("subject", ""))
 			"timeout":
