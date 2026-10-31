@@ -38,6 +38,7 @@ export const COMPONENT_FAMILIES = [
   "settings",
   "paywall",
   "cloudSync",
+  "saveConflict",
   "holders",
 ] as const;
 

@@ -453,3 +453,88 @@ describe("pk-ring-change: failed and busy", () => {
     ).toBe("true");
   });
 });
+
+describe("pk-save-conflict (U-22.K2)", () => {
+  const THIS = { when: "today, 14:02" };
+  const OTHER = { when: "yesterday, 21:40", device: "Maya's Steam Deck" };
+  const choose = (extra: Record<string, unknown> = {}) => ({
+    saveConflict: {
+      step: "choose" as const,
+      local: THIS,
+      remote: OTHER,
+      bothAvailable: true,
+      ...extra,
+    },
+  });
+
+  it("draws both copies and the three choices, none filled, and reports the pick", async () => {
+    const el = await mount("SaveConflict", choose());
+    expect(
+      el.shadowRoot!.querySelectorAll("[data-part=save-card]"),
+    ).toHaveLength(2);
+    expect(q(el, '[data-variant="primary"]')).toBeNull();
+    const seen = actions(el);
+    (q(el, 'button[data-key="saveConflict.keepBoth"]') as HTMLElement).click();
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatchObject({
+      key: "saveConflict.keepBoth",
+      action: "keep-both",
+    });
+  });
+
+  it("keeps Keep both on screen, unavailable and described, while every slot is in use", async () => {
+    const el = await mount("SaveConflict", choose({ bothAvailable: false }));
+    const both = q(
+      el,
+      'button[data-key="saveConflict.keepBoth"]',
+    ) as HTMLElement;
+    expect(both.getAttribute("aria-disabled")).toBe("true");
+    expect(
+      q(el, `#${both.getAttribute("aria-describedby")}`)?.getAttribute(
+        "data-key",
+      ),
+    ).toBe("saveConflict.bothFull");
+    const seen = actions(el);
+    both.click();
+    expect(seen).toEqual([]);
+  });
+
+  it("gives a deleted copy its own button", async () => {
+    const el = await mount("SaveConflict", choose({ remote: null }));
+    expect(q(el, 'button[data-key="saveConflict.keepOther"]')).toBeNull();
+    expect(q(el, 'button[data-key="saveConflict.keepBoth"]')).toBeNull();
+    expect(
+      q(el, 'button[data-key="saveConflict.acceptDelete"]'),
+    ).not.toBeNull();
+  });
+
+  it("offers no control while a choice is applied", async () => {
+    const el = await mount("SaveConflict", {
+      saveConflict: { step: "keeping", keep: "local" },
+    });
+    expect(el.shadowRoot!.querySelectorAll("button")).toHaveLength(0);
+  });
+});
+
+describe("pk-cloud-sync-status transfers (U-22.K2)", () => {
+  it("draws a counted bar, or an indeterminate one, and never says Synced", async () => {
+    const counted = await mount("CloudSyncStatus", {
+      cloudSync: {
+        state: "transferring",
+        lastSynced: "2 min ago",
+        transfer: { size: "38 MB", total: "61 MB", fraction: 0.62 },
+      },
+    });
+    expect(
+      q(counted, '[role="progressbar"]')?.getAttribute("aria-valuenow"),
+    ).toBe("62");
+    expect(counted.shadowRoot!.textContent).toContain("38 MB of 61 MB");
+    expect(counted.shadowRoot!.textContent).not.toMatch(/synced/i);
+    const unknown = await mount("CloudSyncStatus", {
+      cloudSync: { state: "transferring" },
+    });
+    const bar = q(unknown, '[role="progressbar"]')!;
+    expect(bar.hasAttribute("aria-valuenow")).toBe(false);
+    expect(bar.hasAttribute("data-indeterminate")).toBe(true);
+  });
+});

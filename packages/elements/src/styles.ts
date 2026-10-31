@@ -1400,6 +1400,10 @@ bdi {
   gap: var(--pk-space-2) var(--pk-space-3);
   color: var(--pk-text-muted);
 }
+/* The bar takes its own row under the label: a flex item with no inline size is 0 px wide. */
+.inline-status .progress {
+  flex: 1 0 100%;
+}
 
 /* ── Dialog (DL2): over the scrim, a bottom sheet under 35rem ────────────────────────────── */
 dialog {

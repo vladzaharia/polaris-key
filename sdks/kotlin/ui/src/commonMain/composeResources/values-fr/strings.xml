@@ -827,6 +827,64 @@
     <!-- RingChange: confirm a changed sync key (U-42). Opens UnlockSync. -->
     <string name="ringChange_useCode">Utiliser le code de récupération</string>
     <string name="ringChange_useCode__macos">Utiliser le code de récupération</string>
+    <!-- CloudSyncStatus: a small sync status. Saves are uploading or downloading; never shown with Synced. -->
+    <string name="cloudSync_transferring">Synchronisation des sauvegardes…</string>
+    <!-- CloudSyncStatus: how much of the transfer is done. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
+    <string name="cloudSync_transferProgress">%1$s sur %2$s</string>
+    <!-- CloudSyncStatus: a small sync status. A transfer is paused until the network is back. -->
+    <string name="cloudSync_waitingNetwork">En attente de connexion</string>
+    <!-- CloudSyncStatus: a small sync status. A transfer is paused until the device is charging or has enough battery. -->
+    <string name="cloudSync_waitingBattery">En attente de courant</string>
+    <!-- CloudSyncStatus: a small sync status. The system paused a transfer while the app is in the background. -->
+    <string name="cloudSync_waitingBackground">En pause jusqu’à l’ouverture de l’app</string>
+    <!-- CloudSyncStatus: a small sync status. A transfer failed; Try again sits beside it. -->
+    <string name="cloudSync_transferFailed">Impossible de synchroniser vos sauvegardes.</string>
+    <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
+    <string name="saveConflict_title">Deux versions de cette sauvegarde</string>
+    <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
+    <string name="saveConflict_lede">Choisissez celle à garder. Rien n’est supprimé avant.</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedTitle">Cette sauvegarde a été supprimée ailleurs</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedLede">Gardez-la sur cet appareil ou supprimez-la ici aussi.</string>
+    <!-- SaveConflict: heading of the card for the copy on this device. -->
+    <string name="saveConflict_thisDevice">Version sur cet appareil</string>
+    <!-- SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”). Arguments: 1=when. -->
+    <string name="saveConflict_savedThis">Enregistrée %1$s</string>
+    <!-- SaveConflict: when the other copy was saved. Arguments: {when} = a time already formatted by the platform (“yesterday, 21:40”). Arguments: 1=when. -->
+    <string name="saveConflict_savedOther">Enregistrée %1$s</string>
+    <!-- SaveConflict: heading of the card for the copy on another device. Arguments: {device} = the device's name, someone's own text. Arguments: 1=device. -->
+    <string name="saveConflict_otherDevice">Version sur %1$s</string>
+    <!-- SaveConflict: heading of the card for the other copy when the device is not known. -->
+    <string name="saveConflict_otherUnknown">Version sur un autre appareil</string>
+    <!-- SaveConflict: the other copy no longer exists; there is nothing to compare. -->
+    <string name="saveConflict_deletedElsewhere">Supprimée sur un autre appareil</string>
+    <!-- SaveConflict: keep the copy on this device and replace the other. -->
+    <string name="saveConflict_keepThis">Garder la version de cet appareil</string>
+    <string name="saveConflict_keepThis__macos">Garder la version de cet appareil</string>
+    <!-- SaveConflict: keep the other copy and replace the one on this device. -->
+    <string name="saveConflict_keepOther">Garder l’autre version</string>
+    <string name="saveConflict_keepOther__macos">Garder l’autre version</string>
+    <!-- SaveConflict: the other copy was deleted; remove the one on this device as well. -->
+    <string name="saveConflict_acceptDelete">La supprimer ici aussi</string>
+    <string name="saveConflict_acceptDelete__macos">La supprimer ici aussi</string>
+    <!-- SaveConflict: keep both; the other copy is saved under a new name. Disabled while every save slot is in use. -->
+    <string name="saveConflict_keepBoth">Garder les deux</string>
+    <string name="saveConflict_keepBoth__macos">Garder les deux</string>
+    <!-- SaveConflict: why Keep both is disabled. Shown beside the disabled control. -->
+    <string name="saveConflict_bothFull">Tous les emplacements sont utilisés. Supprimez une sauvegarde pour garder les deux.</string>
+    <!-- SaveConflict: the choice is being applied. -->
+    <string name="saveConflict_keeping">Application de votre choix…</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptLocal">Sauvegarde de cet appareil conservée.</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptRemote">Autre sauvegarde conservée.</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptBoth">Les deux sont conservées. L’autre est enregistrée en copie.</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptDeleted">La sauvegarde est supprimée.</string>
+    <!-- SaveConflict: applying the choice failed; Try again repeats it. -->
+    <string name="saveConflict_failed">Impossible d’appliquer votre choix. Les deux sauvegardes sont inchangées.</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="about_title">À propos de %1$s</string>
     <!-- About: product and build information. The bare section label in a navigation list; the product name is not repeated. -->

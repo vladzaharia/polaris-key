@@ -1812,6 +1812,141 @@
       "role": "button",
       "note": "RingChange: confirm a changed sync key (U-42). Opens UnlockSync."
     },
+    "cloudSync.transferring": {
+      "value": "Syncing saves…",
+      "role": "label",
+      "note": "CloudSyncStatus: a small sync status. Saves are uploading or downloading; never shown with Synced."
+    },
+    "cloudSync.transferProgress": {
+      "value": "{size} of {total}",
+      "role": "label",
+      "note": "CloudSyncStatus: how much of the transfer is done. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”)."
+    },
+    "cloudSync.waitingNetwork": {
+      "value": "Waiting for a connection",
+      "role": "label",
+      "note": "CloudSyncStatus: a small sync status. A transfer is paused until the network is back."
+    },
+    "cloudSync.waitingBattery": {
+      "value": "Waiting for power",
+      "role": "label",
+      "note": "CloudSyncStatus: a small sync status. A transfer is paused until the device is charging or has enough battery."
+    },
+    "cloudSync.waitingBackground": {
+      "value": "Paused until you open the app",
+      "role": "label",
+      "note": "CloudSyncStatus: a small sync status. The system paused a transfer while the app is in the background."
+    },
+    "cloudSync.transferFailed": {
+      "value": "Couldn't sync your saves.",
+      "role": "body",
+      "note": "CloudSyncStatus: a small sync status. A transfer failed; Try again sits beside it."
+    },
+    "saveConflict.title": {
+      "value": "Two versions of this save",
+      "role": "title",
+      "note": "SaveConflict: the same save changed on two devices; the person picks one."
+    },
+    "saveConflict.lede": {
+      "value": "Choose the one to keep. Nothing is deleted until you do.",
+      "role": "body",
+      "note": "SaveConflict: the same save changed on two devices; the person picks one."
+    },
+    "saveConflict.deletedTitle": {
+      "value": "This save was deleted elsewhere",
+      "role": "title",
+      "note": "SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too."
+    },
+    "saveConflict.deletedLede": {
+      "value": "Keep it on this device, or delete it here too.",
+      "role": "body",
+      "note": "SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too."
+    },
+    "saveConflict.thisDevice": {
+      "value": "Version on this device",
+      "role": "label",
+      "note": "SaveConflict: heading of the card for the copy on this device."
+    },
+    "saveConflict.savedThis": {
+      "value": "Saved {when}",
+      "role": "label",
+      "note": "SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”)."
+    },
+    "saveConflict.savedOther": {
+      "value": "Saved {when}",
+      "role": "label",
+      "note": "SaveConflict: when the other copy was saved. Arguments: {when} = a time already formatted by the platform (“yesterday, 21:40”)."
+    },
+    "saveConflict.otherDevice": {
+      "value": "Version on {device}",
+      "role": "label",
+      "note": "SaveConflict: heading of the card for the copy on another device. Arguments: {device} = the device's name, someone's own text."
+    },
+    "saveConflict.otherUnknown": {
+      "value": "Version on another device",
+      "role": "label",
+      "note": "SaveConflict: heading of the card for the other copy when the device is not known."
+    },
+    "saveConflict.deletedElsewhere": {
+      "value": "Deleted on another device",
+      "role": "label",
+      "note": "SaveConflict: the other copy no longer exists; there is nothing to compare."
+    },
+    "saveConflict.keepThis": {
+      "value": "Keep this device's version",
+      "role": "button",
+      "note": "SaveConflict: keep the copy on this device and replace the other."
+    },
+    "saveConflict.keepOther": {
+      "value": "Keep the other version",
+      "role": "button",
+      "note": "SaveConflict: keep the other copy and replace the one on this device."
+    },
+    "saveConflict.acceptDelete": {
+      "value": "Delete it here too",
+      "role": "button",
+      "note": "SaveConflict: the other copy was deleted; remove the one on this device as well."
+    },
+    "saveConflict.keepBoth": {
+      "value": "Keep both",
+      "role": "button",
+      "note": "SaveConflict: keep both; the other copy is saved under a new name. Disabled while every save slot is in use."
+    },
+    "saveConflict.bothFull": {
+      "value": "All save slots are in use. Delete a save to keep both.",
+      "role": "body",
+      "note": "SaveConflict: why Keep both is disabled. Shown beside the disabled control."
+    },
+    "saveConflict.keeping": {
+      "value": "Keeping your choice…",
+      "role": "label",
+      "note": "SaveConflict: the choice is being applied."
+    },
+    "saveConflict.keptLocal": {
+      "value": "Kept this device's save.",
+      "role": "body",
+      "note": "SaveConflict: the choice was applied."
+    },
+    "saveConflict.keptRemote": {
+      "value": "Kept the other save.",
+      "role": "body",
+      "note": "SaveConflict: the choice was applied."
+    },
+    "saveConflict.keptBoth": {
+      "value": "Kept both. The other is saved as a copy.",
+      "role": "body",
+      "note": "SaveConflict: the choice was applied."
+    },
+    "saveConflict.keptDeleted": {
+      "value": "The save is deleted.",
+      "role": "body",
+      "note": "SaveConflict: the choice was applied."
+    },
+    "saveConflict.failed": {
+      "value": "Couldn't keep your choice. Both saves are unchanged.",
+      "role": "body",
+      "note": "SaveConflict: applying the choice failed; Try again repeats it."
+    },
     "about.title": {
       "value": "About {product}",
       "role": "windowTitle",

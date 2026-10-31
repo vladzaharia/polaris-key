@@ -1250,6 +1250,19 @@
         },
         "ring-changed": {
           "copy": ["cloudSync.ringChanged", "common.review"]
+        },
+        "transferring": {
+          "copy": ["cloudSync.transferring", "cloudSync.transferProgress"]
+        },
+        "waiting": {
+          "copy": [
+            "cloudSync.waitingNetwork",
+            "cloudSync.waitingBattery",
+            "cloudSync.waitingBackground"
+          ]
+        },
+        "transfer-failed": {
+          "copy": ["cloudSync.transferFailed", "common.tryAgain"]
         }
       }
     },
@@ -1367,6 +1380,53 @@
             "ringChange.failed",
             "ringChange.accept",
             "ringChange.useCode",
+            "common.cancel"
+          ]
+        }
+      }
+    },
+    "SaveConflict": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "choose": {
+          "copy": [
+            "saveConflict.title",
+            "saveConflict.lede",
+            "saveConflict.deletedTitle",
+            "saveConflict.deletedLede",
+            "saveConflict.thisDevice",
+            "saveConflict.savedThis",
+            "saveConflict.savedOther",
+            "saveConflict.otherDevice",
+            "saveConflict.otherUnknown",
+            "saveConflict.deletedElsewhere",
+            "saveConflict.keepThis",
+            "saveConflict.keepOther",
+            "saveConflict.acceptDelete",
+            "saveConflict.keepBoth",
+            "saveConflict.bothFull",
+            "common.cancel"
+          ]
+        },
+        "keeping": {
+          "copy": ["saveConflict.title", "saveConflict.keeping"]
+        },
+        "kept": {
+          "copy": [
+            "saveConflict.title",
+            "saveConflict.keptLocal",
+            "saveConflict.keptRemote",
+            "saveConflict.keptBoth",
+            "saveConflict.keptDeleted",
+            "common.done"
+          ]
+        },
+        "failed": {
+          "copy": [
+            "saveConflict.title",
+            "saveConflict.failed",
+            "common.tryAgain",
             "common.cancel"
           ]
         }

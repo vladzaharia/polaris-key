@@ -62,6 +62,12 @@
 // license is floating until it is added to an account; the kit tells by the holder's email
 // (`licenseHolder`). Like `cloudSync` it sits outside COMPONENT_FAMILIES, so only ui-core runs it
 // until UK-43; its rows also count toward the state coverage of the must components they name.
+// The `saveConflict` family (U-22.K0, additive within version 7): the save screens. SaveConflict
+// (choose, keeping, kept, failed: the same save changed on two devices and the person picks one;
+// Keep both is disabled with its reason while every save slot is in use) and CloudSyncStatus's
+// transfer states (transferring, waiting, transfer-failed: never Synced while a transfer is
+// pending). Like `holders` it sits outside COMPONENT_FAMILIES, so only ui-core runs it until the
+// native kits learn it with U-23 K.3 to K.5.
 // Version 7 (I-46.1, automatic sign-in): the `autoSignIn` and `nearbyApproval` input members; the
 // SignIn states confirm, link-offer, link-done, link-conflict, nearby-prompt, nearby-wait and
 // nearby-done (and, from KFA-0, device-limit: a device limit with no license rows, a row that keeps
@@ -147,6 +153,7 @@ export interface UiMatrix {
   settings: Row[];
   paywall: Row[];
   cloudSync: Row[];
+  saveConflict: Row[];
   holders: Row[];
   theme: ThemeRow[];
   i18n: I18nRow[];
@@ -282,6 +289,12 @@ export const ACTIONS: Readonly<Record<string, string>> = {
   "use-recovery-code":
     "Open the recovery code screen from the ring confirmation.",
   "copy-code": "Copy the recovery code to the clipboard.",
+  "keep-local":
+    "Resolve a save conflict by keeping the copy on this device (Keep this device's).",
+  "keep-remote":
+    "Resolve a save conflict by keeping the other copy, or accepting its deletion (Keep the other, Delete it here too).",
+  "keep-both":
+    "Resolve a save conflict by keeping both: the other copy is saved under a new name (Keep both).",
 };
 
 /** The copy keys whose control is each action (UI-KITS §4.1: copy matches controls). */
@@ -295,6 +308,10 @@ export const ACTION_KEYS: Readonly<Record<string, readonly string[]>> = {
   "accept-ring-change": ["ringChange.accept"],
   "use-recovery-code": ["ringChange.useCode"],
   "copy-code": ["recoveryCode.copy"],
+  // The save conflict's choices (U-22.K0).
+  "keep-local": ["saveConflict.keepThis"],
+  "keep-remote": ["saveConflict.keepOther", "saveConflict.acceptDelete"],
+  "keep-both": ["saveConflict.keepBoth"],
   "start-sign-in": [
     "signin.key.signIn",
     "signin.key.ownedSignIn",
@@ -711,7 +728,9 @@ const INPUTS: Record<string, string> = {
   toast: "{kind}: the toast being shown.",
   error: "{code}: a core.codes code the step failed with.",
   cloudSync:
-    "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed, signedIn?, canReview?, lastSynced?}. `ring-changed` always offers Review: the kit owns the confirmation.",
+    "CloudSyncStatus's state: {state: synced | syncing | offline | conflict | error | locked | ring-changed | transferring | waiting | transfer-failed, signedIn?, canReview?, lastSynced?, transfer?: {size?, total?, fraction?}, reason?: network | battery | background}. `ring-changed` always offers Review: the kit owns the confirmation. `transferring` shows `transfer.size` of `transfer.total` (display-ready sizes) when both are given, and a bar that is determinate only with `transfer.fraction` (counted bytes, 0 to 1); `waiting` names its `reason` (default network); `transfer-failed` offers Try again. While a transfer is pending the status never says Synced, whatever `lastSynced` holds.",
+  saveConflict:
+    "SaveConflict: {step: choose | keeping | kept | failed, local?: {when?}, remote?: {when?, device?} | null, bothAvailable?, keep?: local | remote | both}. `remote: null` means the other copy was deleted: Keep the other becomes Delete it here too and Keep both is not offered. `bothAvailable` is true only with a free slot of the 16; absent or false draws Keep both disabled, with its reason. `keep` is the choice being applied (keeping), applied (kept) or that failed; kept needs it. `when` and `device` are display-ready.",
   licenseHolder:
     "Who holds the license a key just activated: {email?}. No email (or an empty one): floating, held by the key alone. An email: the license was sent to it and no account holds it yet (waiting); screens mask it. Absent: the holder is not known and AccountAndLicense draws what it drew before.",
   activateDone:
@@ -775,11 +794,15 @@ interface Draft extends Row {
   isDefault?: true;
   /** Actions with no copy key of their own (`replace-in-browser`). */
   extraActions?: string[];
+  /** Actions of a control the row draws disabled: its label is copy, but it is not offered. */
+  dropActions?: string[];
 }
 
 interface Opts {
   default?: true;
   actions?: string[];
+  /** Actions of a control the row draws disabled (see Draft.dropActions). */
+  dropActions?: string[];
   mustNot?: Omit<MustNot, "invariant"> & { invariant?: string };
 }
 
@@ -818,6 +841,7 @@ function authoring(S: UiMatrixSources) {
     };
     if (o.default) d.isDefault = true;
     if (o.actions) d.extraActions = o.actions;
+    if (o.dropActions) d.dropActions = o.dropActions;
     if (o.mustNot)
       d.mustNot = {
         ...o.mustNot,
@@ -3757,7 +3781,9 @@ export function actionsFor(
 
 function finish(d: Draft): Row {
   const copy = [...d.expect.copy].sort();
-  const actions = actionsFor(copy, d.extraActions);
+  const actions = actionsFor(copy, d.extraActions).filter(
+    (x) => !d.dropActions?.includes(x),
+  );
   const out: Row = {
     name: d.name,
     input: d.input,
@@ -4184,6 +4210,218 @@ function cloudSyncFamily(a: A): Draft[] {
       "RingChange/hidden: Cloud Sync off",
       { ringChange: { served: SERVED } },
       "RingChange",
+    ),
+  ];
+}
+
+// ── saveConflict (U-22.K0) ──────────────────────────────────────────────────────────────────
+
+function saveConflictFamily(a: A): Draft[] {
+  const { row, but, off } = a;
+  const SYNC_OFF = off("sync");
+  const inv = (invariant: string, m: Omit<MustNot, "invariant">) => ({
+    mustNot: { invariant, ...m },
+  });
+  const KEPT = [
+    "saveConflict.keptLocal",
+    "saveConflict.keptRemote",
+    "saveConflict.keptBoth",
+    "saveConflict.keptDeleted",
+  ];
+  const THIS = { when: "today, 14:02" };
+  const OTHER = { when: "yesterday, 21:40", device: "Maya's Steam Deck" };
+  const SC = (step: string, extra: Obj = {}): Obj => ({
+    saveConflict: { step, local: THIS, remote: OTHER, ...extra },
+  });
+  const CS = (state: string, extra: Obj = {}): Obj => ({
+    cloudSync: { state, ...extra },
+  });
+  const KEPT_NAMES: Record<string, string> = {
+    "saveConflict.keptLocal": "this device's copy",
+    "saveConflict.keptRemote": "the other copy",
+    "saveConflict.keptBoth": "both copies",
+    "saveConflict.keptDeleted": "the deletion",
+  };
+  const keptOthers = (own: string) => KEPT.filter((k) => k !== own);
+  const choose = (name: string, input: Obj, drop: string[], o: Opts = {}) =>
+    row(
+      name,
+      input,
+      "SaveConflict",
+      "choose",
+      but("SaveConflict", "choose", ...drop),
+      o,
+    );
+  const NEVER_PENDING =
+    "A pending transfer is never reported as synced, whatever the last sync time was.";
+  const d = (
+    name: string,
+    input: Obj,
+    state: string,
+    copy: string[] | "all",
+    o: Opts = {},
+  ): Draft => row(name, input, "CloudSyncStatus", state, copy, o);
+  return [
+    d(
+      "CloudSyncStatus/transferring: saves are syncing",
+      CS("transferring"),
+      "transferring",
+      ["cloudSync.transferring"],
+    ),
+    d(
+      "CloudSyncStatus/transferring: how much is done, and never Synced",
+      CS("transferring", {
+        lastSynced: "2 min ago",
+        transfer: { size: "38 MB", total: "61 MB", fraction: 0.62 },
+      }),
+      "transferring",
+      "all",
+      inv(NEVER_PENDING, { copy: ["cloudSync.synced"] }),
+    ),
+    d(
+      "CloudSyncStatus/waiting: for a connection, and never Synced",
+      CS("waiting", { lastSynced: "2 min ago" }),
+      "waiting",
+      ["cloudSync.waitingNetwork"],
+      inv(NEVER_PENDING, { copy: ["cloudSync.synced"] }),
+    ),
+    d(
+      "CloudSyncStatus/waiting: for power",
+      CS("waiting", { reason: "battery" }),
+      "waiting",
+      ["cloudSync.waitingBattery"],
+    ),
+    d(
+      "CloudSyncStatus/waiting: until the app opens",
+      CS("waiting", { reason: "background" }),
+      "waiting",
+      ["cloudSync.waitingBackground"],
+    ),
+    d(
+      "CloudSyncStatus/transfer-failed: Try again, and never Synced",
+      CS("transfer-failed", { lastSynced: "2 min ago" }),
+      "transfer-failed",
+      "all",
+      inv(NEVER_PENDING, { copy: ["cloudSync.synced"] }),
+    ),
+
+    choose(
+      "SaveConflict/choose: the two copies and the three choices",
+      SC("choose", { bothAvailable: true }),
+      [
+        "saveConflict.deletedTitle",
+        "saveConflict.deletedLede",
+        "saveConflict.otherUnknown",
+        "saveConflict.deletedElsewhere",
+        "saveConflict.acceptDelete",
+        "saveConflict.bothFull",
+      ],
+      inv("A save is never discarded without a choice.", {
+        states: ["keeping", "kept"],
+      }),
+    ),
+    choose(
+      "SaveConflict/choose: the other device is not known",
+      SC("choose", { remote: { when: OTHER.when }, bothAvailable: true }),
+      [
+        "saveConflict.deletedTitle",
+        "saveConflict.deletedLede",
+        "saveConflict.otherDevice",
+        "saveConflict.deletedElsewhere",
+        "saveConflict.acceptDelete",
+        "saveConflict.bothFull",
+      ],
+    ),
+    choose(
+      "SaveConflict/choose: Keep both is disabled while every slot is in use",
+      SC("choose", { bothAvailable: false }),
+      [
+        "saveConflict.deletedTitle",
+        "saveConflict.deletedLede",
+        "saveConflict.otherUnknown",
+        "saveConflict.deletedElsewhere",
+        "saveConflict.acceptDelete",
+      ],
+      {
+        dropActions: ["keep-both"],
+        mustNot: {
+          invariant:
+            "Keep both is disabled, with its reason, while all 16 save slots are in use; it never overwrites a slot.",
+          actions: ["keep-both"],
+        },
+      },
+    ),
+    choose(
+      "SaveConflict/choose: the other copy was deleted",
+      SC("choose", { remote: null, bothAvailable: true }),
+      [
+        "saveConflict.title",
+        "saveConflict.lede",
+        "saveConflict.otherDevice",
+        "saveConflict.otherUnknown",
+        "saveConflict.savedOther",
+        "saveConflict.keepOther",
+        "saveConflict.keepBoth",
+        "saveConflict.bothFull",
+      ],
+      inv(
+        "A deletion is accepted only by its own button, never as Keep the other, Keep both has nothing to keep, and the screen never says two versions.",
+        {
+          copy: [
+            "saveConflict.keepOther",
+            "saveConflict.keepBoth",
+            "saveConflict.title",
+          ],
+          actions: ["keep-both"],
+        },
+      ),
+    ),
+    row(
+      "SaveConflict/keeping: the choice is being applied",
+      SC("keeping", { keep: "local" }),
+      "SaveConflict",
+      "keeping",
+      "all",
+      inv("A choice is applied once: no control is offered while it runs.", {
+        actions: ["keep-both", "keep-local", "keep-remote"],
+      }),
+    ),
+    ...(
+      [
+        ["local", "saveConflict.keptLocal", {}],
+        ["remote", "saveConflict.keptRemote", {}],
+        ["both", "saveConflict.keptBoth", {}],
+        ["remote", "saveConflict.keptDeleted", { remote: null }],
+      ] as [string, string, Obj][]
+    ).map(([keep, key, extra]) =>
+      row(
+        `SaveConflict/kept: ${KEPT_NAMES[key]!}`,
+        SC("kept", { keep, ...extra }),
+        "SaveConflict",
+        "kept",
+        ["saveConflict.title", key, "common.done"],
+        inv("Kept names the choice that was made, and no other.", {
+          copy: keptOthers(key),
+        }),
+      ),
+    ),
+    row(
+      "SaveConflict/failed: both saves are unchanged",
+      SC("failed", { keep: "local" }),
+      "SaveConflict",
+      "failed",
+      "all",
+      inv("A failed choice never says kept; both copies stay as they were.", {
+        states: ["kept"],
+        copy: KEPT,
+      }),
+    ),
+    row(
+      "SaveConflict/hidden: Cloud Sync off",
+      { services: SYNC_OFF, ...SC("choose", { bothAvailable: true }) },
+      "SaveConflict",
+      "hidden",
+      [],
     ),
   ];
 }
@@ -5771,6 +6009,101 @@ function checkCloudSync(doc: UiMatrix, S: UiMatrixSources): string[] {
   return errors;
 }
 
+/** The saveConflict family's states beyond SaveConflict's own: CloudSyncStatus's transfer states. */
+const SAVE_STATES: Record<string, readonly string[]> = {
+  CloudSyncStatus: ["transferring", "waiting", "transfer-failed"],
+  SaveConflict: ["choose", "keeping", "kept", "failed"],
+};
+
+/** The saveConflict family: components, states, copy and actions, and every listed key shown. */
+function checkSaveConflict(doc: UiMatrix, S: UiMatrixSources): string[] {
+  const errors: string[] = [];
+  const rows = doc.saveConflict;
+  if (!Array.isArray(rows) || rows.length === 0)
+    return ["saveConflict: the family is empty"];
+  const allSlugs = S.services.map((s) => s.slug);
+  const names = new Set<string>();
+  const shown = new Map<string, Set<string>>();
+  for (const r of rows) {
+    const where = `saveConflict "${r.name}"`;
+    if (!names.has(r.name)) names.add(r.name);
+    else errors.push(`${where}: duplicate name`);
+    const { component, state, copy } = r.expect;
+    const actions = r.expect.actions ?? [];
+    if (!(component in SAVE_STATES)) {
+      errors.push(`${where}: ${component} is not a saveConflict component`);
+      continue;
+    }
+    const services = (r.input.services as string[] | undefined) ?? allSlugs;
+    for (const s of S.services)
+      if (services.includes(s.slug))
+        for (const req of s.requires)
+          if (!services.includes(req))
+            errors.push(
+              `${where}: services is not closed (${s.slug} needs ${req})`,
+            );
+    if ([...copy].sort().join() !== copy.join())
+      errors.push(`${where}: copy is not sorted`);
+    // A control drawn disabled is copy but not an action: it must be named by mustNot.
+    const derived = actionsFor(copy);
+    for (const x of derived)
+      if (!actions.includes(x) && !(r.mustNot?.actions ?? []).includes(x))
+        errors.push(`${where}: control ${x} is neither offered nor forbidden`);
+    for (const x of actions) {
+      if (!derived.includes(x))
+        errors.push(`${where}: action ${x} is not a control the copy shows`);
+      if (!(x in ACTIONS))
+        errors.push(`${where}: action ${x} is not in the vocabulary`);
+    }
+    if (state === "hidden") {
+      if (services.includes("sync") || copy.length > 0)
+        errors.push(`${where}: hidden shows no copy and needs Cloud Sync off`);
+      continue;
+    }
+    if (!SAVE_STATES[component]!.includes(state)) {
+      errors.push(`${where}: ${component}.${state} is not a save state`);
+      continue;
+    }
+    const listed = stateList(S, component, state, where, errors);
+    if (!listed) continue;
+    for (const k of copy)
+      if (!listed.includes(k))
+        errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
+    const m = r.mustNot;
+    if (m) {
+      if ((m.states ?? []).includes(state))
+        errors.push(`${where}: expects the state it forbids`);
+      for (const k of m.copy ?? [])
+        if (copy.includes(k)) errors.push(`${where}: expects ${k} it forbids`);
+      for (const x of m.actions ?? [])
+        if (actions.includes(x))
+          errors.push(`${where}: offers ${x} it forbids`);
+    }
+    const set = shown.get(`${component}.${state}`) ?? new Set<string>();
+    for (const k of copy) set.add(k);
+    shown.set(`${component}.${state}`, set);
+  }
+  for (const [c, states] of Object.entries(SAVE_STATES))
+    for (const st of states) {
+      const union = shown.get(`${c}.${st}`);
+      if (!union) {
+        errors.push(`saveConflict: no row for ${c}.${st}`);
+        continue;
+      }
+      for (const k of S.components[c]?.states[st]?.copy ?? [])
+        if (!union.has(k))
+          errors.push(`saveConflict: no row shows ${k} in ${c}.${st}`);
+    }
+  if (
+    !rows.some(
+      (r) =>
+        r.expect.component === "SaveConflict" && r.expect.state === "hidden",
+    )
+  )
+    errors.push("saveConflict: no hidden row for SaveConflict");
+  return errors;
+}
+
 /** The holders family's components. */
 export const HOLDERS_COMPONENTS = [
   "ActivateDone",
@@ -6482,6 +6815,7 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
   walk(doc, "ui-matrix.json");
   errors.push(...checkCli(doc.cli, S));
   errors.push(...checkCloudSync(doc, S));
+  errors.push(...checkSaveConflict(doc, S));
   errors.push(...checkHolders(doc, S));
   return errors;
 }
@@ -6619,6 +6953,7 @@ export function buildUiMatrix(
     },
     ...out,
     cloudSync: cloudSyncFamily(a).map(finish),
+    saveConflict: saveConflictFamily(a).map(finish),
     holders: holdersFamily(a).map(finish),
     theme: themeRows(),
     i18n: i18nRows(S),

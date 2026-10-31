@@ -485,6 +485,8 @@ export function button(
     disabled?: boolean;
     /** The control leaves the app (a Replace that runs in the browser): the new-window glyph. */
     external?: boolean;
+    /** The id of the text that says why a disabled control is unavailable. */
+    describedBy?: string;
   } = {},
 ): TemplateResult {
   const device =
@@ -537,6 +539,7 @@ export function button(
       extra.busy || extra.disabled ? "true" : undefined,
     )}
     aria-label=${ifDefined(extra.label)}
+    aria-describedby=${ifDefined(extra.describedBy)}
     @click=${() => {
       if (!extra.busy && !extra.disabled) c.act(key, extra.detail);
     }}
@@ -598,9 +601,14 @@ export function seatMeter(
   </div>`;
 }
 
-/** ProgressBar: determinate only for counted bytes (DL7). */
-export function progressBar(c: RenderCtx, fraction: number): TemplateResult {
-  const pct = Math.round(Math.max(0, Math.min(1, fraction)) * 100);
+/** ProgressBar: determinate only for counted bytes (DL7); no `fraction` (the size is unknown)
+ *  draws the indeterminate bar: no value, no percentage. */
+export function progressBar(
+  c: RenderCtx,
+  fraction: number | undefined,
+): TemplateResult {
+  const indeterminate = fraction === undefined;
+  const pct = Math.round(Math.max(0, Math.min(1, fraction ?? 0)) * 100);
   // Named by a11y.progress, else by the state's own line (paused, queued).
   const own = c.view.copy.find(
     (k) => !k.startsWith("a11y.") && !k.startsWith("common."),
@@ -620,15 +628,17 @@ export function progressBar(c: RenderCtx, fraction: number): TemplateResult {
     role="progressbar"
     aria-valuemin="0"
     aria-valuemax="100"
-    aria-valuenow=${pct}
+    aria-valuenow=${ifDefined(indeterminate ? undefined : pct)}
     aria-label=${ifDefined(label)}
     data-key=${ifDefined(named ? "a11y.progress" : undefined)}
-    ${ref((el) =>
-      (el as HTMLElement | undefined)?.style.setProperty(
-        "--pk-fraction",
-        String(pct / 100),
-      ),
-    )}
+    ?data-indeterminate=${indeterminate}
+    ${ref((el) => {
+      if (!indeterminate)
+        (el as HTMLElement | undefined)?.style.setProperty(
+          "--pk-fraction",
+          String(pct / 100),
+        );
+    })}
   >
     <span></span>
   </div>`;

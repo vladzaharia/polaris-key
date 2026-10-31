@@ -2231,6 +2231,161 @@ msgctxt "macos"
 msgid "ringChange.useCode"
 msgstr ""
 
+#. Syncing saves…
+#. CloudSyncStatus: a small sync status. Saves are uploading or downloading; never shown with Synced.
+msgid "cloudSync.transferring"
+msgstr ""
+
+#. {size} of {total}
+#. CloudSyncStatus: how much of the transfer is done. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
+msgid "cloudSync.transferProgress"
+msgstr ""
+
+#. Waiting for a connection
+#. CloudSyncStatus: a small sync status. A transfer is paused until the network is back.
+msgid "cloudSync.waitingNetwork"
+msgstr ""
+
+#. Waiting for power
+#. CloudSyncStatus: a small sync status. A transfer is paused until the device is charging or has enough battery.
+msgid "cloudSync.waitingBattery"
+msgstr ""
+
+#. Paused until you open the app
+#. CloudSyncStatus: a small sync status. The system paused a transfer while the app is in the background.
+msgid "cloudSync.waitingBackground"
+msgstr ""
+
+#. Couldn't sync your saves.
+#. CloudSyncStatus: a small sync status. A transfer failed; Try again sits beside it.
+msgid "cloudSync.transferFailed"
+msgstr ""
+
+#. Two versions of this save
+#. SaveConflict: the same save changed on two devices; the person picks one.
+msgid "saveConflict.title"
+msgstr ""
+
+#. Choose the one to keep. Nothing is deleted until you do.
+#. SaveConflict: the same save changed on two devices; the person picks one.
+msgid "saveConflict.lede"
+msgstr ""
+
+#. This save was deleted elsewhere
+#. SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too.
+msgid "saveConflict.deletedTitle"
+msgstr ""
+
+#. Keep it on this device, or delete it here too.
+#. SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too.
+msgid "saveConflict.deletedLede"
+msgstr ""
+
+#. Version on this device
+#. SaveConflict: heading of the card for the copy on this device.
+msgid "saveConflict.thisDevice"
+msgstr ""
+
+#. Saved {when}
+#. SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”).
+msgid "saveConflict.savedThis"
+msgstr ""
+
+#. Saved {when}
+#. SaveConflict: when the other copy was saved. Arguments: {when} = a time already formatted by the platform (“yesterday, 21:40”).
+msgid "saveConflict.savedOther"
+msgstr ""
+
+#. Version on {device}
+#. SaveConflict: heading of the card for the copy on another device. Arguments: {device} = the device's name, someone's own text.
+msgid "saveConflict.otherDevice"
+msgstr ""
+
+#. Version on another device
+#. SaveConflict: heading of the card for the other copy when the device is not known.
+msgid "saveConflict.otherUnknown"
+msgstr ""
+
+#. Deleted on another device
+#. SaveConflict: the other copy no longer exists; there is nothing to compare.
+msgid "saveConflict.deletedElsewhere"
+msgstr ""
+
+#. Keep this device's version
+#. SaveConflict: keep the copy on this device and replace the other.
+msgid "saveConflict.keepThis"
+msgstr ""
+
+#. macos: Keep This Device's Version
+msgctxt "macos"
+msgid "saveConflict.keepThis"
+msgstr ""
+
+#. Keep the other version
+#. SaveConflict: keep the other copy and replace the one on this device.
+msgid "saveConflict.keepOther"
+msgstr ""
+
+#. macos: Keep the Other Version
+msgctxt "macos"
+msgid "saveConflict.keepOther"
+msgstr ""
+
+#. Delete it here too
+#. SaveConflict: the other copy was deleted; remove the one on this device as well.
+msgid "saveConflict.acceptDelete"
+msgstr ""
+
+#. macos: Delete It Here Too
+msgctxt "macos"
+msgid "saveConflict.acceptDelete"
+msgstr ""
+
+#. Keep both
+#. SaveConflict: keep both; the other copy is saved under a new name. Disabled while every save slot is in use.
+msgid "saveConflict.keepBoth"
+msgstr ""
+
+#. macos: Keep Both
+msgctxt "macos"
+msgid "saveConflict.keepBoth"
+msgstr ""
+
+#. All save slots are in use. Delete a save to keep both.
+#. SaveConflict: why Keep both is disabled. Shown beside the disabled control.
+msgid "saveConflict.bothFull"
+msgstr ""
+
+#. Keeping your choice…
+#. SaveConflict: the choice is being applied.
+msgid "saveConflict.keeping"
+msgstr ""
+
+#. Kept this device's save.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptLocal"
+msgstr ""
+
+#. Kept the other save.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptRemote"
+msgstr ""
+
+#. Kept both. The other is saved as a copy.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptBoth"
+msgstr ""
+
+#. The save is deleted.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptDeleted"
+msgstr ""
+
+#. Couldn't keep your choice. Both saves are unchanged.
+#. SaveConflict: applying the choice failed; Try again repeats it.
+msgid "saveConflict.failed"
+msgstr ""
+
 #. About {product}
 #. About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "about.title"

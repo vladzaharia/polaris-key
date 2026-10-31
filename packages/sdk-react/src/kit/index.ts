@@ -20,6 +20,8 @@ import type { ActivateDoneProps, AddToAccountProps } from "./holders.js";
 import type {
   RecoveryCodeProps,
   RingChangeProps,
+  SaveConflictProps,
+  SaveKeep,
   UnlockSyncProps,
 } from "./syncScreens.js";
 
@@ -89,6 +91,8 @@ export { CloudSyncStatus } from "./statusDrive.js";
 export const UnlockSync = syncScreen<UnlockSyncProps>("UnlockSync");
 export const RecoveryCode = syncScreen<RecoveryCodeProps>("RecoveryCode");
 export const RingChange = syncScreen<RingChangeProps>("RingChange");
+export const SaveConflict = syncScreen<SaveConflictProps>("SaveConflict");
+export type { SaveKeep };
 // Activation without an account (UK-42): the Done step after a license key, and Add your name and
 // email. They load on demand; the hooks are the headless half and load nothing.
 export const ActivateDone = holderScreen<ActivateDoneProps>("ActivateDone");

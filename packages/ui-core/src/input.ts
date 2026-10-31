@@ -484,12 +484,31 @@ export interface UiInput {
       | "conflict"
       | "error"
       | "locked"
-      | "ring-changed";
+      | "ring-changed"
+      | "transferring"
+      | "waiting"
+      | "transfer-failed";
     signedIn?: boolean;
     /** The host handles Review for a conflict; without it the line stands alone. */
     canReview?: boolean;
     /** When it last synced, relative ("2 min ago"). */
     lastSynced?: string;
+    /** While `transferring`: display-ready sizes, both or neither ("38 MB", "61 MB"), and the
+     *  counted fraction (0 to 1) that fills the bar; without it the bar is indeterminate. */
+    transfer?: { size?: string; total?: string; fraction?: number };
+    /** While `waiting`: what the transfer waits for (default network). */
+    reason?: "network" | "battery" | "background";
+  };
+  /** SaveConflict (U-22.K): the same save changed on two devices. `remote: null` means the other
+   *  copy was deleted. `bothAvailable` is true only with a free slot of the 16. `keep` is the
+   *  choice being applied (keeping), applied (kept) or that failed. `when` and `device` are
+   *  display-ready. */
+  saveConflict?: {
+    step: "choose" | "keeping" | "kept" | "failed";
+    local?: { when?: string };
+    remote?: { when?: string; device?: string } | null;
+    bothAvailable?: boolean;
+    keep?: "local" | "remote" | "both";
   };
   /** UnlockSync's step (U-42). `nearby` says the host could unlock from a nearby device:
    *  v0.10.0 never offers it, because NearbyApproval does not ship. */
