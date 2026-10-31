@@ -173,7 +173,7 @@ private fun autoSignInScreen(context: KitContext, auto: JsonObject): KitScreen {
             step(
                 "confirm",
                 "signin.auto.confirm.title",
-                if (auto.string("email") != null) "signin.auto.confirm.as" else "signin.auto.confirm.asApple",
+                confirmAccountLine(auto),
                 "signin.consent.license".takeIf { license != null },
                 "signin.consent.newLicense".takeIf { license == "new" },
                 "signin.consent.licenseLine".takeIf { license == "existing" },
@@ -555,4 +555,15 @@ private fun replaceTarget(inputs: KitInputs): String? {
         devices.firstOrNull { it.boolean("leastRecent") == true }
             ?: devices.minByOrNull { it.integer("lastSeen") ?: Int.MAX_VALUE }
         )?.string("label")
+}
+
+/** The confirm step's account line: the email when shared, else the exchange kind's wording, else none. */
+private fun confirmAccountLine(auto: JsonObject): String? = when {
+    auto.string("email") != null -> "signin.auto.confirm.as"
+    else -> when (auto.string("kind")) {
+        "gamecenter" -> "signin.auto.confirm.asGameCenter"
+        "pgs" -> "signin.auto.confirm.asPlayGames"
+        "apple" -> "signin.auto.confirm.asApple"
+        else -> null
+    }
 }

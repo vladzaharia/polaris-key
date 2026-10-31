@@ -277,6 +277,8 @@ public fun ExchangeConsentView.toKitInputs(device: String? = null): KitInputs {
     val auto = buildMap<String, kotlinx.serialization.json.JsonElement> {
         put("step", JsonPrimitive("confirm"))
         asEmail?.let { put("email", JsonPrimitive(it)) }
+        // The exchange that made the grant (ExchangeKind.wire, or Game Center's): names the provider when no email.
+        asProvider?.takeIf { it in EXCHANGE_KINDS }?.let { put("kind", JsonPrimitive(it)) }
         put("license", JsonPrimitive(if (anchor != null) "existing" else "new"))
         put("alsoGets", JsonPrimitive(firstTime || changed))
         if (anchor != null) {
@@ -360,6 +362,8 @@ public fun deviceLimitInputs(manageUrl: String?, provider: Boolean = false): Kit
         )
     },
 )
+
+private val EXCHANGE_KINDS = setOf("apple", "google", "gamecenter", "pgs")
 
 private fun providerName(wire: String): String = when (wire) {
     "google" -> "Google"
