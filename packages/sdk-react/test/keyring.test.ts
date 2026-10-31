@@ -999,6 +999,26 @@ describe("the root store faults", () => {
     expect(bytes.every((b) => b === 0)).toBe(true);
   });
 
+  it("forget keeps the pin when the root's delete did not run (open() rejected once)", async () => {
+    const t = await setup("t-fault-open-once");
+    let calls = 0;
+    const flaky = {
+      open: (n: string, v?: number) => {
+        calls += 1;
+        if (calls === 1) throw new Error("blocked");
+        return t.idb.open(n, v);
+      },
+    } as unknown as IDBFactory;
+    const r = device(t.server, A, {
+      keys: t.victim.keys,
+      vault: indexedDbRootVault("t-fault-open-once", flaky),
+    });
+    await r.engine.forget();
+    const check = indexedDbRootVault("t-fault-open-once", t.idb);
+    expect(await check.get()).not.toBeNull();
+    expect(await check.getPin()).not.toBeNull();
+  });
+
   it("ring-changed zeroes the session bytes and wrapTo then refuses", async () => {
     const server = new FakeRingServer();
     const a = device(server, A);

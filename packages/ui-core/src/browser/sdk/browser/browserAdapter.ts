@@ -1412,10 +1412,20 @@ export class BrowserAdapter implements PolarisAdapter {
         // With the account endpoints the server releases the device; without them (a key-only
         // product) sign-out is the device deauthorization it always was.
         if (accountEndpointsOf(this.discovery_)?.signout) {
-          const r = await this.bearer.signOut();
-          this.applyBearer({ busy: noBusy(), error: noErrors() });
-          return { ...r, ...warn };
+          // The key ring is forgotten last among the pre-sign-out hooks (after Cloud Sync's
+          // flush) and before the request: a failed forget stops the sign-out with the token kept.
+          void this.cloudSync; // registers Cloud Sync's hook first
+          const off = this.bearer.onBeforeSignOut(() => this.forgetRing());
+          try {
+            const r = await this.bearer.signOut();
+            this.applyBearer({ busy: noBusy(), error: noErrors() });
+            return { ...r, ...warn };
+          } finally {
+            off();
+          }
         }
+        // The key ring goes before the request (a failed forget sends none and keeps the token).
+        await this.forgetRing();
         await this.bearer.deactivate();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
         return { released: true, ...warn };
@@ -1426,8 +1436,6 @@ export class BrowserAdapter implements PolarisAdapter {
             ? e
             : new PolarisError("sign-out-failed", (e as Error).message),
         );
-      } finally {
-        await this.forgetRing();
       }
     }
     try {
@@ -1616,8 +1624,8 @@ export class BrowserAdapter implements PolarisAdapter {
     if (current?.id === deviceId) {
       // This device's own seat: the deauthorization `signOut()` makes for a key-only product.
       if (this.bearer) {
-        await this.bearer.deactivate();
         await this.forgetRing();
+        await this.bearer.deactivate();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
       } else await this.signOut();
       return;

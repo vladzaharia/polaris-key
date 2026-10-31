@@ -64,8 +64,9 @@ export interface RootVault {
   persistence(): RingPersistence;
   get(): Promise<StoredRoot | null>;
   put(rec: StoredRoot): Promise<void>;
-  /** Drops the root only; the pin stays (a lock is not a sign-out). */
-  clear(): Promise<void>;
+  /** Drops the root only; the pin stays (a lock is not a sign-out). Answers `false` when its
+   *  durable delete did not run (the store could not be opened), so a caller keeps the pin with it. */
+  clear(): Promise<boolean | void>;
   /** The pin, kept beside the root (the same store, the same durability). */
   getPin(): Promise<RingPin | null>;
   putPin(pin: RingPin): Promise<void>;
@@ -174,20 +175,22 @@ export function indexedDbRootVault(
       throw storeFailed("read the stored value");
     }
   };
-  /** Deletes `key`. Silent only when no database can be opened; a failed delete throws. */
-  const remove = async (key: string): Promise<void> => {
-    if (idb === undefined) return;
+  /** Deletes `key`. Silent only when no database can be opened (then `false`); a failed delete
+   *  throws. */
+  const remove = async (key: string): Promise<boolean> => {
+    if (idb === undefined) return true;
     let d: IDBDatabase;
     try {
       d = await open();
     } catch {
-      return; // nothing in the store is reachable: root and pin stay together
+      return false; // nothing in the store is reachable: root and pin stay together
     }
     try {
       await inTx(d, "readwrite", (st) => st.delete(key));
     } catch {
       throw storeFailed("remove the stored value");
     }
+    return true;
   };
   return {
     persistence: () => (degraded ? "memory" : "durable"),
@@ -238,7 +241,7 @@ export function indexedDbRootVault(
     },
     async clear() {
       await mem.clear();
-      await remove(RECORD);
+      return remove(RECORD);
     },
     async getPin() {
       if (degraded) return mem.getPin();

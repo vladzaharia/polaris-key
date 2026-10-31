@@ -951,19 +951,25 @@ export class RingEngine implements KeyringClient {
   }
 
   async lock(): Promise<void> {
+    await this.dropRoot();
+  }
+
+  /** `false` when the durable delete did not run. */
+  private async dropRoot(): Promise<boolean> {
     this.dropSession();
     this.dropPrevious();
     this.recoveryBlob = null;
     // Held state goes before the durable delete, which can now throw.
     await this.memory.clear();
     this.setHeld(false);
-    await this.o.vault.clear();
+    return (await this.o.vault.clear()) !== false;
   }
 
   async forget(): Promise<void> {
     // The root first, the pin last: when the root cannot be removed this throws with the pin kept.
-    await this.lock();
-    await this.o.vault.clearPin();
+    const rootGone = await this.dropRoot();
+    // A root whose durable delete did not run keeps its pin (they stay together).
+    if (rootGone) await this.o.vault.clearPin();
     await this.memory.clearPin();
   }
 }
