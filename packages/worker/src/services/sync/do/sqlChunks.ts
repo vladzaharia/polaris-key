@@ -99,11 +99,14 @@ export class ChunkTables {
       .map(toChunk);
   }
 
-  unreferenced(limit: number): StoredChunk[] {
+  collectable(limit: number): StoredChunk[] {
     return this.q
       .all<ChunkDbRow>(
-        `SELECT ${CHUNK_COLUMNS} FROM chunks WHERE refs = 0
-           ORDER BY unref_at, collection, chunk_id LIMIT ?`,
+        `SELECT ${CHUNK_COLUMNS} FROM chunks c WHERE c.refs = 0
+           AND NOT EXISTS (
+             SELECT 1 FROM upload_chunks uc JOIN uploads u ON u.upload_id = uc.upload_id
+              WHERE uc.chunk_id = c.chunk_id AND u.collection = c.collection)
+           ORDER BY c.unref_at, c.collection, c.chunk_id LIMIT ?`,
         limit,
       )
       .map(toChunk);

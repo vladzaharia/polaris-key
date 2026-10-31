@@ -21,8 +21,33 @@
  * is refused for quota or `keepRevisions` (L8); the next `finalize` prunes.
  */
 
+import { refFileChunks } from "./chunks.js";
 import { moveFileUsage } from "./fileRows.js";
-import type { FileStatus, StoredFile, SyncStore } from "./types.js";
+import type {
+  FileStatus,
+  StoredChunk,
+  StoredFile,
+  SyncStore,
+} from "./types.js";
+
+/**
+ * The chunks of an absorbed store (U-37): its chunk rows, with their R2 keys (the bytes do not
+ * move), and the chunk ids each of its file versions names.
+ */
+export interface ChunkImport {
+  /** By `chunkRowKey(collection, chunkId)`. */
+  chunks: ReadonlyMap<string, StoredChunk>;
+  /** By `fileRefKey(collection, recordId, version)`, the version being the absorbed store's. */
+  names: ReadonlyMap<string, readonly string[]>;
+}
+
+export const chunkRowKey = (collection: string, chunkId: string): string =>
+  `${collection}\u0000${chunkId}`;
+export const fileRefKey = (
+  collection: string,
+  recordId: string,
+  version: number,
+): string => `${collection}\u0000${recordId}\u0000${version}`;
 
 /** What became of a record in the join, for its incoming files (see the file comment). */
 export type FileMode = "wins" | "behind" | "parked" | "dead";
@@ -63,6 +88,7 @@ export function importRecordFiles(
   incoming: readonly StoredFile[],
   keys: ReadonlyMap<string, Uint8Array>,
   canMove = true,
+  chunkImport?: ChunkImport,
 ): boolean {
   const have = new Set(
     store.filesOf(collection, recordId).map((f) => f.objectKey),
@@ -96,7 +122,17 @@ export function importRecordFiles(
       }
       installedLive = true;
     }
-    store.putFile({ ...f, status, version: store.nextSeq() });
+    const version = store.nextSeq();
+    store.putFile({ ...f, status, version });
+    if (f.format === "chunks" && chunkImport)
+      takeChunks(
+        store,
+        chunkImport,
+        f,
+        { ...f, version },
+        status !== "dead",
+        keys,
+      );
     if (status === "live")
       moveFileUsage(store, { files: 1, fileBytes: f.size });
     else if (status !== "dead") moveFileUsage(store, { revisionBytes: f.size });
@@ -112,4 +148,40 @@ export function importRecordFiles(
     if (r && !r.deleted) store.putRecord({ ...r, version: store.nextSeq() });
   }
   return changed;
+}
+
+/**
+ * A file the survivor took in names chunks whose bytes stay under the absorbed subject's prefix.
+ * Each chunk gets a row here if the survivor has none (a duplicate keeps the survivor's own object;
+ * the other is swept with the absorbed prefix at an erasure). A file that is not dead takes a
+ * reference on each chunk; a dead one takes none, so its chunks have no reference and the
+ * collector deletes them by the key the row names.
+ */
+function takeChunks(
+  store: SyncStore,
+  imp: ChunkImport,
+  from: StoredFile,
+  as: StoredFile,
+  reference: boolean,
+  keys: ReadonlyMap<string, Uint8Array>,
+): void {
+  const ids = imp.names.get(
+    fileRefKey(from.collection, from.recordId, from.version),
+  );
+  if (!ids) return;
+  const named: string[] = [];
+  for (const id of ids) {
+    const incoming = imp.chunks.get(chunkRowKey(from.collection, id));
+    if (!incoming) continue;
+    if (!store.getChunk(from.collection, id)) {
+      store.putChunk({ ...incoming, refs: 0, unrefAt: 0 });
+      if (incoming.ssecKid !== undefined) {
+        const key = keys.get(incoming.ssecKid);
+        if (key && !store.getSsecKey(incoming.ssecKid))
+          store.putSsecKey(incoming.ssecKid, key);
+      }
+    }
+    named.push(id);
+  }
+  if (reference) refFileChunks(store, as, named);
 }

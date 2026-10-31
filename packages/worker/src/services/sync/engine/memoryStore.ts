@@ -596,9 +596,9 @@ export class MemoryStore implements SyncStore {
       );
   }
 
-  unreferencedChunks(limit: number): StoredChunk[] {
+  collectableChunks(limit: number): StoredChunk[] {
     return this.allChunks()
-      .filter((c) => c.refs === 0)
+      .filter((c) => c.refs === 0 && !this.chunkPinned(c.collection, c.chunkId))
       .sort((a, b) => a.unrefAt - b.unrefAt)
       .slice(0, limit);
   }

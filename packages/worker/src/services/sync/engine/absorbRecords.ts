@@ -29,6 +29,7 @@ import type { SyncJson } from "@polaris-key/protocol/sync";
 import {
   importRecordFiles,
   recordKey,
+  type ChunkImport,
   type FileMode,
   type FilesByRecord,
 } from "./absorbFiles.js";
@@ -68,6 +69,8 @@ export interface AbsorbRecordsInput {
   files?: FilesByRecord;
   /** The SSE-C keys the incoming files reference. */
   ssecKeys?: ReadonlyMap<string, Uint8Array>;
+  /** The chunks the incoming files name (U-37). */
+  chunkImport?: ChunkImport;
 }
 
 export interface AbsorbRecordsOutcome {
@@ -521,6 +524,7 @@ export function absorbRecords(
           incoming,
           input.ssecKeys ?? new Map(),
           !legacy,
+          input.chunkImport,
         )
       )
         rows++;

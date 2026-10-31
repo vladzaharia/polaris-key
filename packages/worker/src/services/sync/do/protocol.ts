@@ -30,6 +30,8 @@ import type {
   PushOutcome,
   SetElement,
   SettingPolicy,
+  FileChunkRef,
+  StoredChunk,
   StoredFile,
   StoredRecord,
   StoredSetting,
@@ -281,6 +283,16 @@ export type ExportedFile = Omit<
 > &
   Partial<Pick<StoredFile, "objectKey" | "ssecKid" | "clientId">>;
 
+/**
+ * A chunk row in an export (U-37). A person's own export carries the count of references and the
+ * size; a merge's also the R2 key and the key id, which the survivor keeps (`forMerge`).
+ */
+export type ExportedChunk = Pick<
+  StoredChunk,
+  "collection" | "chunkId" | "storedBytes"
+> &
+  Partial<Pick<StoredChunk, "refs" | "objectKey" | "ssecKid">>;
+
 export interface ExportDocument {
   product: string;
   subject: string;
@@ -299,6 +311,10 @@ export interface ExportDocument {
   parked?: ExportedParked[];
   /** Live files, kept revisions and parked copies' files, in (collection, record, version) order. Absent when there are none (U-10). */
   files?: ExportedFile[];
+  /** The chunks some file references (U-37), in (collection, chunk id) order. Absent when there are none. */
+  chunks?: ExportedChunk[];
+  /** `forMerge` only: which chunks each exported file names, by the file's version in this store. */
+  fileChunks?: FileChunkRef[];
   /** `forMerge` only: the `[kid, hex key]` pairs the files reference (SSE-C, D-8). */
   ssecKeys?: [string, string][];
   /** `forMerge` only: subjects earlier merges folded into this object, whose R2 prefixes hold its files. */

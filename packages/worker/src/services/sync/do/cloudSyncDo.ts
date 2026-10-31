@@ -18,11 +18,13 @@ import type {
   CloudSyncOp,
   CloudSyncReply,
   ExportDocument,
+  ExportedChunk,
   ExportedFile,
   ExportedRecord,
   WireMigrations,
 } from "./protocol.js";
 import {
+  chunkImportOf,
   parseExportDocument,
   parsePolicies,
   parseRecordPolicies,
@@ -56,6 +58,7 @@ import {
   absorbedFrom,
   collectFileGarbage,
   eraseFileObjects,
+  hasCollectableChunks,
   noteAbsorbed,
   releaseForMerge,
 } from "./fileGc.js";
@@ -312,6 +315,7 @@ export class CloudSyncDO implements DurableObject {
   private gcDueAt(nowMs: number, retryAt?: number): number | null {
     if (retryAt !== undefined) return retryAt;
     if (this.store.filesWithStatus("dead", 1).length > 0) return nowMs;
+    if (hasCollectableChunks(this.store)) return nowMs;
     const expiry = this.store.nextUploadExpiry();
     return expiry === undefined ? null : Math.max(nowMs, expiry);
   }
@@ -513,6 +517,8 @@ export class CloudSyncDO implements DurableObject {
         op.op === "chunkPrepare"
           ? await chunkPrepare(host, op)
           : chunkStored(host, op);
+      // A chunk stored for a session that closed has no pin: the alarm owes its collection.
+      if (op.op === "chunkStored") await this.scheduleAlarm();
       return reply(out.body, out.status);
     }
     if (op.op === "filePart") {
@@ -777,6 +783,7 @@ export class CloudSyncDO implements DurableObject {
             parked: parsed.parked,
             files: parsed.files,
             ssecKeys: parsed.ssecKeys,
+            chunkImport: chunkImportOf(parsed),
             fromSubject: doc.subject,
             ...(parsed.encryptionSince !== undefined
               ? { encryptionSince: parsed.encryptionSince }
@@ -865,14 +872,30 @@ export class CloudSyncDO implements DurableObject {
    */
   private exportFiles(
     forMerge: boolean,
-  ): Pick<ExportDocument, "files" | "ssecKeys" | "absorbedFrom"> {
+  ): Pick<
+    ExportDocument,
+    "files" | "chunks" | "fileChunks" | "ssecKeys" | "absorbedFrom"
+  > {
     const rows = this.store.allFiles().filter((f) => f.status !== "dead");
     const files = rows.map((f): ExportedFile => {
       const { objectKey, ssecKid, clientId, ...pointer } = f;
       return forMerge ? f : pointer;
     });
+    // The chunks some file references (a chunk with none does not move: it is collected). A
+    // person's own export counts them; a merge's also carries the R2 keys and which file names which.
+    const chunkRows = this.store.allChunks().filter((c) => c.refs > 0);
+    const chunks = chunkRows.map((c): ExportedChunk => {
+      const { objectKey, ssecKid, unrefAt, ...pointer } = c;
+      void unrefAt;
+      return forMerge
+        ? { ...pointer, objectKey, ...(ssecKid ? { ssecKid } : {}) }
+        : pointer;
+    });
     const kids = [
-      ...new Set(rows.flatMap((f) => (f.ssecKid ? [f.ssecKid] : []))),
+      ...new Set([
+        ...rows.flatMap((f) => (f.ssecKid ? [f.ssecKid] : [])),
+        ...chunkRows.flatMap((c) => (c.ssecKid ? [c.ssecKid] : [])),
+      ]),
     ];
     const ssecKeys: [string, string][] = [];
     for (const kid of kids) {
@@ -880,8 +903,11 @@ export class CloudSyncDO implements DurableObject {
       if (key) ssecKeys.push([kid, hexEncode(key)]);
     }
     const from = forMerge ? absorbedFrom(this.fileHost()) : [];
+    const fileChunks = forMerge ? this.store.allFileChunks() : [];
     return {
       ...(files.length > 0 ? { files } : {}),
+      ...(chunks.length > 0 ? { chunks } : {}),
+      ...(fileChunks.length > 0 ? { fileChunks } : {}),
       ...(forMerge && ssecKeys.length > 0 ? { ssecKeys } : {}),
       ...(forMerge && from.length > 0 ? { absorbedFrom: from } : {}),
     };

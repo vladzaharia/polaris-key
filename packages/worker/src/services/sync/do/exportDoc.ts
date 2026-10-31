@@ -4,14 +4,24 @@
  * input is: a malformed one is refused whole, before any write.
  */
 
-import { SYNC_KEY_PATTERN, type SyncJson } from "@polaris-key/protocol/sync";
+import {
+  SYNC_CHUNK_MAX_STORED_BYTES,
+  SYNC_KEY_PATTERN,
+  type SyncJson,
+} from "@polaris-key/protocol/sync";
 import { hexDecode } from "../../../platform/bytes.js";
 import { isClientId, isHlc } from "../engine/hlc.js";
 import type { RecordJoin } from "../engine/absorbRecords.js";
+import {
+  chunkRowKey,
+  fileRefKey,
+  type ChunkImport,
+} from "../engine/absorbFiles.js";
 import { MAX_ELEMENT_TAGS } from "../engine/recordSets.js";
 import type {
   ClientRecord,
   FieldCell,
+  FileChunkRef,
   MemberCell,
   ParkedRecord,
   RecordKind,
@@ -19,6 +29,7 @@ import type {
   SetElement,
   SettingPolicy,
   Stamp,
+  StoredChunk,
   StoredFile,
   StoredRecord,
   StoredSetting,
@@ -313,6 +324,69 @@ function fileOf(v: unknown, product: string): StoredFile | null {
   };
 }
 
+/**
+ * A chunk row of a merge export. The key must be the grammar the Worker writes
+ * (`u/<product>/<subject>/c/<collection>/<chunkId>`) for this very collection and id: the
+ * survivor reads and deletes by it, so nothing else is accepted.
+ */
+function chunkOf(v: unknown, product: string): StoredChunk | null {
+  if (!isObject(v)) return null;
+  const safe = product.replace(/[^a-z0-9-]/g, "");
+  if (
+    typeof v.collection !== "string" ||
+    !KEY_RE.test(v.collection) ||
+    typeof v.chunkId !== "string" ||
+    !SHA256_RE.test(v.chunkId) ||
+    typeof v.objectKey !== "string" ||
+    !Number.isSafeInteger(v.storedBytes) ||
+    (v.storedBytes as number) < 1 ||
+    (v.storedBytes as number) > SYNC_CHUNK_MAX_STORED_BYTES ||
+    (v.ssecKid !== undefined &&
+      !(typeof v.ssecKid === "string" && SSEC_KID_RE.test(v.ssecKid)))
+  )
+    return null;
+  const head = `u/${safe}/`;
+  const tail = `/c/${v.collection}/${v.chunkId}`;
+  if (
+    !v.objectKey.startsWith(head) ||
+    !v.objectKey.endsWith(tail) ||
+    !SUBJECT_RE.test(
+      v.objectKey.slice(head.length, v.objectKey.length - tail.length),
+    )
+  )
+    return null;
+  return {
+    collection: v.collection,
+    chunkId: v.chunkId,
+    objectKey: v.objectKey,
+    storedBytes: v.storedBytes as number,
+    refs: 0,
+    unrefAt: 0,
+    ...(v.ssecKid !== undefined ? { ssecKid: v.ssecKid as string } : {}),
+  };
+}
+
+function fileChunkOf(v: unknown): FileChunkRef | null {
+  if (!isObject(v)) return null;
+  if (
+    typeof v.collection !== "string" ||
+    !KEY_RE.test(v.collection) ||
+    typeof v.recordId !== "string" ||
+    !KEY_RE.test(v.recordId) ||
+    !Number.isSafeInteger(v.version) ||
+    (v.version as number) < 1 ||
+    typeof v.chunkId !== "string" ||
+    !SHA256_RE.test(v.chunkId)
+  )
+    return null;
+  return {
+    collection: v.collection,
+    recordId: v.recordId,
+    version: v.version as number,
+    chunkId: v.chunkId,
+  };
+}
+
 const objectKeyOf = (product: string): RegExp =>
   new RegExp(
     `^u/${product.replace(/[^a-z0-9-]/g, "")}/[A-Za-z0-9_-]{1,256}/o/up_[A-Za-z0-9_-]{22}$`,
@@ -329,6 +403,10 @@ export interface ParsedExport {
   encryptionSince?: number;
   /** The absorbed store's live files, revisions and parked files (U-10); an older export has none. */
   files: StoredFile[];
+  /** The chunks the exported files reference, with their R2 keys (U-37); an older export has none. */
+  chunks: StoredChunk[];
+  /** Which chunks each exported file names, by the file's version in the absorbed store. */
+  fileChunks: FileChunkRef[];
   /** The SSE-C keys the files reference, by key id. */
   ssecKeys: Map<string, Uint8Array>;
   /** Subjects the absorbed object had already folded in, whose R2 prefixes hold files now the survivor's. */
@@ -365,16 +443,41 @@ export function parseExportDocument(doc: unknown): ParsedExport | null {
       (into as unknown[]).push(row);
     }
   }
+  const product = typeof doc.product === "string" ? doc.product : "";
   const files: StoredFile[] = [];
   if (doc.files !== undefined) {
     if (!Array.isArray(doc.files)) return null;
-    const product = typeof doc.product === "string" ? doc.product : "";
     for (const raw of doc.files) {
       const f = fileOf(raw, product);
       if (!f) return null;
       files.push(f);
     }
   }
+  const chunks: StoredChunk[] = [];
+  const fileChunks: FileChunkRef[] = [];
+  for (const [raw, parse, into] of [
+    [doc.chunks, (v: unknown) => chunkOf(v, product), chunks],
+    [doc.fileChunks, fileChunkOf, fileChunks],
+  ] as const) {
+    if (raw === undefined) continue;
+    if (!Array.isArray(raw)) return null;
+    for (const item of raw) {
+      const row = parse(item);
+      if (!row) return null;
+      (into as unknown[]).push(row);
+    }
+  }
+  // Every chunk a file names is in the document, and names a file the document holds.
+  const have = new Set(chunks.map((c) => `${c.collection}\u0000${c.chunkId}`));
+  const fileKeys = new Set(
+    files.map((f) => `${f.collection}\u0000${f.recordId}\u0000${f.version}`),
+  );
+  for (const r of fileChunks)
+    if (
+      !have.has(`${r.collection}\u0000${r.chunkId}`) ||
+      !fileKeys.has(`${r.collection}\u0000${r.recordId}\u0000${r.version}`)
+    )
+      return null;
   const ssecKeys = new Map<string, Uint8Array>();
   if (doc.ssecKeys !== undefined) {
     if (!Array.isArray(doc.ssecKeys)) return null;
@@ -394,6 +497,8 @@ export function parseExportDocument(doc: unknown): ParsedExport | null {
   }
   // Every key a file names is in the document: a file the survivor could not open is refused.
   for (const f of files) if (f.ssecKid && !ssecKeys.has(f.ssecKid)) return null;
+  for (const c of chunks)
+    if (c.ssecKid && !ssecKeys.has(c.ssecKid)) return null;
   const absorbedFrom: string[] = [];
   if (doc.absorbedFrom !== undefined) {
     if (
@@ -428,10 +533,28 @@ export function parseExportDocument(doc: unknown): ParsedExport | null {
     records,
     parked,
     files,
+    chunks,
+    fileChunks,
     ssecKeys,
     absorbedFrom,
     clients,
     ...(since !== undefined ? { encryptionSince: since as number } : {}),
+  };
+}
+
+/** The chunks of a parsed export as the engine's absorb takes them, or `undefined` when it has none. */
+export function chunkImportOf(p: ParsedExport): ChunkImport | undefined {
+  if (p.chunks.length === 0) return undefined;
+  const names = new Map<string, string[]>();
+  for (const r of p.fileChunks) {
+    const key = fileRefKey(r.collection, r.recordId, r.version);
+    names.set(key, [...(names.get(key) ?? []), r.chunkId]);
+  }
+  return {
+    chunks: new Map(
+      p.chunks.map((c) => [chunkRowKey(c.collection, c.chunkId), c]),
+    ),
+    names,
   };
 }
 

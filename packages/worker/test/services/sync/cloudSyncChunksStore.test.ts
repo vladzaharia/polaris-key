@@ -76,12 +76,12 @@ describe.each(Object.entries(makers))("chunk methods: %s store", (_n, make) => {
     s.putChunk(chunk("saves", 2, { unrefAt: 30 }));
     s.putChunk(chunk("saves", 3, { unrefAt: 10 }));
     s.putChunk(chunk("saves", 4, { unrefAt: 20 }));
-    expect(s.unreferencedChunks(10).map((c) => c.chunkId)).toEqual([
+    expect(s.collectableChunks(10).map((c) => c.chunkId)).toEqual([
       ID(3),
       ID(4),
       ID(2),
     ]);
-    expect(s.unreferencedChunks(2)).toHaveLength(2);
+    expect(s.collectableChunks(2)).toHaveLength(2);
   });
 
   it("keeps the chunk ids of a file version apart from its neighbours", () => {

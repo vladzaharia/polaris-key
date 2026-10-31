@@ -753,9 +753,9 @@ export class SqlStore implements SyncStore {
     return this.chunkTables.all();
   }
 
-  unreferencedChunks(limit: number): StoredChunk[] {
+  collectableChunks(limit: number): StoredChunk[] {
     if (!this.hasSchema()) return [];
-    return this.chunkTables.unreferenced(limit);
+    return this.chunkTables.collectable(limit);
   }
 
   chunkPinned(collection: string, chunkId: string): boolean {

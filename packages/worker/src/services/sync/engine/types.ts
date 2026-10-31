@@ -450,8 +450,11 @@ export interface SyncStore {
   deleteChunk(collection: string, chunkId: string): void;
   /** Every chunk row, in (collection, chunkId) order. */
   allChunks(): StoredChunk[];
-  /** Chunks with `refs` 0, oldest `unrefAt` first, at most `limit` (the alarm's work list). */
-  unreferencedChunks(limit: number): StoredChunk[];
+  /**
+   * Chunks the collector may delete: `refs` 0 and no upload pins them (D-7), oldest `unrefAt`
+   * first, at most `limit` (the alarm's work list).
+   */
+  collectableChunks(limit: number): StoredChunk[];
   /** Whether an upload (any state) has named this chunk in its collection and not yet let go of it. */
   chunkPinned(collection: string, chunkId: string): boolean;
   /** The distinct chunk ids a stored file names, in id order. */

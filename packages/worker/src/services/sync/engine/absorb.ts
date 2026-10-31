@@ -29,7 +29,11 @@
 
 import type { SyncJson } from "@polaris-key/protocol/sync";
 import { compareStamps } from "./hlc.js";
-import { groupFiles, importRecordFiles } from "./absorbFiles.js";
+import {
+  groupFiles,
+  importRecordFiles,
+  type ChunkImport,
+} from "./absorbFiles.js";
 import {
   absorbRecords,
   isSealedRecord,
@@ -65,6 +69,8 @@ export interface AbsorbInput {
   /** The absorbed person's files (live, kept revisions, parked copies'), with the SSE-C keys they reference (U-10.10). */
   files?: readonly StoredFile[];
   ssecKeys?: ReadonlyMap<string, Uint8Array>;
+  /** The chunks those files name (U-37). */
+  chunkImport?: ChunkImport;
   /** The absorbed subject: the owner of a record copy this absorb parks. */
   fromSubject?: string;
   /** The declaration of a concrete record collection, where the caller knows it. */
@@ -265,6 +271,7 @@ export function absorbSettings(
     now: input.now ?? Math.floor(Date.now() / 1000),
     files: grouped.byRecord,
     ssecKeys,
+    ...(input.chunkImport ? { chunkImport: input.chunkImport } : {}),
     ...(input.recordPolicies ? { recordPolicies: input.recordPolicies } : {}),
   };
 
@@ -327,6 +334,8 @@ export function absorbSettings(
           first.recordId,
           rows_,
           ssecKeys,
+          true,
+          input.chunkImport,
         )
       )
         rows++;
