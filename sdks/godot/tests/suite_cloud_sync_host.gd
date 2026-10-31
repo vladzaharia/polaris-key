@@ -36,7 +36,7 @@ class OpenCodec:
 	func seal_push(body: Dictionary, _routes: Array) -> Dictionary:
 		return {"ok": true, "body": body}
 
-	func open_pull(body: Dictionary, _m: Variant, _a: Variant, _k: Array) -> Dictionary:
+	func open_pull(body: Dictionary, _m: Variant, _a: Variant, _k: Array, _rk: Array = []) -> Dictionary:
 		var rows: Array = []
 		for c in body.get("changes", []):
 			rows.append({"sealed": sealed_rows and not String(c.get("setting", "")).begins_with("plain.")})

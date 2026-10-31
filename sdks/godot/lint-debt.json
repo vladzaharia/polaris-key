@@ -237,6 +237,12 @@
     "sdks/godot/addons/polaris_key/services/cloud_sync/state.gd": {
       "gdlint:max-returns": 2
     },
+    "sdks/godot/addons/polaris_key/services/cloud_sync/transfer.gd": {
+      "gdlint:max-returns": 6
+    },
+    "sdks/godot/addons/polaris_key/services/cloud_sync/transfer_codec.gd": {
+      "gdlint:max-returns": 1
+    },
     "sdks/godot/addons/polaris_key/services/commerce.gd": {
       "gdlint:class-definitions-order": 3,
       "gdlint:max-line-length": 4,
