@@ -1117,7 +1117,9 @@ export class DesktopAdapter implements PolarisAdapter {
     if (!this.bridge.invoke || !this.speaksV4()) return null;
     try {
       const d = await this.bridge.invoke("core", "discovery");
-      return d && typeof d === "object" ? (d as Record<string, unknown>) : null;
+      return d && typeof d === "object"
+        ? withoutDeviceChoice(d as Record<string, unknown>)
+        : null;
     } catch {
       return null;
     }
@@ -1472,6 +1474,18 @@ export function bridgeActivationOutcome(
         ? classifyRefused(r.code, undefined, r.message)
         : { kind: "error", code: "server", message: r.message };
   }
+}
+
+/** The desktop bridge cannot run the device-code license choice yet (UK-42.22.7 rides bridge v5),
+ *  so the host's discovery reads without `identity.deviceChoice`: Add goes to the portal there. */
+function withoutDeviceChoice(
+  d: Record<string, unknown>,
+): Record<string, unknown> {
+  const services = d.services as Record<string, unknown> | undefined;
+  const identity = services?.identity as Record<string, unknown> | undefined;
+  if (!identity || !("deviceChoice" in identity)) return d;
+  const { deviceChoice: _drop, ...rest } = identity;
+  return { ...d, services: { ...services, identity: rest } };
 }
 
 function classifyRefused(

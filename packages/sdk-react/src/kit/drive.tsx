@@ -15,7 +15,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { WEB_ADD_IN, type AddIn, type UiInput } from "@polaris-key/ui-core";
+import { resolveAddIn, type AddIn, type UiInput } from "@polaris-key/ui-core";
 import { focusClear } from "@polaris-key/ui-core/browser/reveal";
 import type { JSONValue } from "@polaris-key/protocol/core";
 import type { ProductCatalog } from "@polaris-key/catalog";
@@ -365,7 +365,7 @@ function OpenedAccount(props: {
   addIn?: AddIn;
 }): ReactNode {
   const { adapter } = props;
-  const addIn = props.addIn ?? WEB_ADD_IN;
+  const addIn = props.addIn;
   const sdk = useSdk();
   const state = useAdapterState(adapter);
   const [used, setUsed] = useState<number | null>(null);
@@ -451,25 +451,31 @@ function OpenedAccount(props: {
           a.key === "activate.recommend.action" ||
           a.key === "signin.key.addInLocker"
         ) {
-          // Add your name and email: the product's page (WEB_ADD_IN), or AddToAccount here when
-          // switched to "app" (no key is held in this pane, so none is sent).
-          if (addIn === "app" && caps.identity.enabled) setAdding(true);
-          else
-            void import("./holderGate.js")
-              .then((m) =>
-                m.portalTarget(adapter, {
-                  ...(sdk?.baseUrl !== undefined
-                    ? { baseUrl: sdk.baseUrl }
-                    : {}),
-                  ...(sdk?.productSlug !== undefined
-                    ? { product: sdk.productSlug }
-                    : {}),
-                }),
-              )
-              .then((t) => {
-                if (t) openManage(t.url);
-              })
-              .catch(() => undefined);
+          // Add your name and email: AddToAccount here when discovery carries `deviceChoice` (or
+          // the host says "app"), else the product's page (no key is held in this pane, so none
+          // is sent).
+          void resolveAddIn(addIn, adapter)
+            .then((where) => {
+              if (where === "app" && caps.identity.enabled) {
+                setAdding(true);
+                return;
+              }
+              return import("./holderGate.js")
+                .then((m) =>
+                  m.portalTarget(adapter, {
+                    ...(sdk?.baseUrl !== undefined
+                      ? { baseUrl: sdk.baseUrl }
+                      : {}),
+                    ...(sdk?.productSlug !== undefined
+                      ? { product: sdk.productSlug }
+                      : {}),
+                  }),
+                )
+                .then((t) => {
+                  if (t) openManage(t.url);
+                });
+            })
+            .catch(() => undefined);
         }
       }}
     />
@@ -481,7 +487,7 @@ export function DrivenSettings(
     adapter: PolarisAdapter;
     version?: string;
     onCheckUpdates?: () => void;
-    /** Where Add your name and email goes; defaults to the web switch (`WEB_ADD_IN`). */
+    /** Where Add your name and email goes; absent, it follows discovery's `deviceChoice`. */
     addIn?: AddIn;
   },
 ): ReactNode {

@@ -795,7 +795,7 @@ export interface PolarisKeyGateProps extends KitProps {
   /** The app's own address, added to the device-limit link as `return=` (PX-W8). */
   returnUrl?: string;
   /** Where Add your name and email, and Sign in to that account, go: the Polaris Locker portal
-   *  (the web default, `WEB_ADD_IN`) or the in-page form. */
+   *  or the in-page form (absent: `app` when discovery has `deviceChoice`). */
   addIn?: AddIn;
   /** Draws the in-app sign-in form for automatic sign-in's steps. `gate.tsx` supplies it, so the
    *  form loads on demand from the module that already loads the host's menu views. */

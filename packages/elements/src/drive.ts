@@ -91,7 +91,7 @@ export function gateScreen(view: View, step: GateStep): ScreenName | null {
 /** Test and embedding seams: a client built elsewhere, or the fetch / navigation it uses. */
 export interface GateSeams extends BrowserClientSeams {
   client?: PolarisAdapter;
-  /** Where Add your name and email goes; absent, the web switch (`WEB_ADD_IN`: the portal). */
+  /** Where Add your name and email goes; absent, `app` when discovery has `deviceChoice`, else the portal. */
   addIn?: AddIn;
 }
 

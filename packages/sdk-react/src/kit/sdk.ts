@@ -29,7 +29,7 @@ import {
   type GateStep,
 } from "@polaris-key/ui-core/browser";
 
-import { WEB_ADD_IN, type AddIn } from "@polaris-key/ui-core";
+import { resolveAddIn, type AddIn } from "@polaris-key/ui-core";
 import { PolarisContext } from "../react/context.js";
 import { useAdapterState } from "../react/hooks.js";
 import type {
@@ -422,30 +422,35 @@ export function useSdkGate(
     [adapter, ctx, opts.returnUrl],
   );
 
-  /** Add your name and email: the portal (WEB_ADD_IN, or Identity off); otherwise AddToAccount.
-   *  The holder flows load now, not with the gate. */
-  const addIn = opts.addIn ?? WEB_ADD_IN;
+  /** Add your name and email: AddToAccount when discovery carries `deviceChoice` (or the host
+   *  says `app`); otherwise the portal, which is also where Identity off goes. The holder flows
+   *  load now, not with the gate. */
+  const addIn = opts.addIn;
   const addToAccount = useCallback(() => {
     if (!adapter) return;
-    if (
-      addIn === "portal" ||
-      !adapter.snapshot().capabilities.identity.enabled
-    ) {
-      openPortal(heldKey.current ?? undefined);
-      return;
-    }
-    if (stepRef.current === "add") return;
-    dropAdd();
-    addFrom.current = stepRef.current;
     const token = ++addToken.current;
-    void import("./holderGate.js").then((m) => {
+    void (async () => {
+      if (
+        !adapter.snapshot().capabilities.identity.enabled ||
+        (await resolveAddIn(addIn, adapter)) === "portal"
+      ) {
+        if (token === addToken.current && alive.current)
+          openPortal(heldKey.current ?? undefined);
+        return;
+      }
       if (token !== addToken.current || !alive.current) return;
+      if (stepRef.current === "add") return;
+      dropAdd();
+      addFrom.current = stepRef.current;
+      const t2 = ++addToken.current;
+      const m = await import("./holderGate.js");
+      if (t2 !== addToken.current || !alive.current) return;
       addFlow.current = m.createAddFlow(adapter, session, "device", () =>
         redrawAdd(),
       );
       holding.current = true;
       enter("add", "activate.recommend.action");
-    });
+    })();
   }, [adapter, addIn, openPortal, dropAdd, enter]);
 
   /** "Sign in to that account" on a license-owned refusal: sign in in this page and complete with
@@ -454,16 +459,22 @@ export function useSdkGate(
   const ownedSignIn = useCallback(() => {
     if (!adapter || owning.current || session.current) return;
     const k = key.trim();
-    if (addIn === "portal") {
-      // The portal signs in to that account and adds the key.
-      openPortal(k || undefined);
-      return;
-    }
     owning.current = true;
-    void import("./holderGate.js")
-      .then((m) => m.ownedSignIn(adapter, session, k))
+    void resolveAddIn(addIn, adapter)
+      .then((where) => {
+        if (where === "portal") {
+          // The portal signs in to that account and adds the key.
+          owning.current = false;
+          if (alive.current) openPortal(k || undefined);
+          return "portal" as const;
+        }
+        return import("./holderGate.js").then((m) =>
+          m.ownedSignIn(adapter, session, k),
+        );
+      })
       .catch(() => "fallback" as const)
       .then((r) => {
+        if (r === "portal") return;
         owning.current = false;
         if (!alive.current) return;
         if (r === "fallback") signIn();

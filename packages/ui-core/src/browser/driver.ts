@@ -11,7 +11,7 @@ import { withManageKey, withManageReturn } from "@polaris-key/client-core";
 import { parsePortal, portalLink } from "@polaris-key/client-core/portal";
 import { CUSTOMER_ORIGIN_DEFAULT, ISSUER } from "@polaris-key/protocol/core";
 
-import { WEB_ADD_IN, type AddIn } from "../addIn.js";
+import { resolveAddIn, type AddIn } from "../addIn.js";
 import type { ReleaseNoteInput, UiInput } from "../input.js";
 import { BrowserAdapter } from "./sdk/browser/browserAdapter.js";
 import {
@@ -197,7 +197,7 @@ export interface GateDriverOptions {
   /** The device kind already worded ("computer", "browser"): the lines of ActivateDone and
    *  AddToAccount that name this device. Defaults to "device". */
   deviceKind?: string;
-  /** Where Add your name and email, and "Sign in to that account", go. Defaults to `WEB_ADD_IN`. */
+  /** Where Add your name and email, and "Sign in to that account", go. Absent, it follows discovery's `deviceChoice` (`app`), else `portal`. */
   addIn?: AddIn;
 }
 
@@ -687,9 +687,13 @@ export class GateDriver {
 
   /** Add your name and email: with Identity on, AddToAccount; with it off, the portal. */
   private addToAccount(): void {
+    void this.addToAccountNow();
+  }
+
+  private async addToAccountNow(): Promise<void> {
     if (
-      (this.options.addIn ?? WEB_ADD_IN) === "portal" ||
-      !this.adapter.snapshot().capabilities.identity.enabled
+      !this.adapter.snapshot().capabilities.identity.enabled ||
+      (await resolveAddIn(this.options.addIn, this.adapter)) === "portal"
     ) {
       void this.openPortal();
       return;
@@ -758,15 +762,16 @@ export class GateDriver {
    *  page cannot run the sign-in itself (a cookie page), the gate's own sign-in runs as before. */
   private ownedSignIn(): void {
     const key = this.key.trim();
-    if ((this.options.addIn ?? WEB_ADD_IN) === "portal") {
-      // The portal signs in to that account and adds the key (the in-page device code cannot).
-      void this.openPortal(key || undefined);
-      return;
-    }
     // One sign-in at a time: a second press while one is live does nothing.
     if (this.owning || this.addSession) return;
     this.owning = true;
     void (async () => {
+      if ((await resolveAddIn(this.options.addIn, this.adapter)) === "portal") {
+        // The portal signs in to that account and adds the key.
+        this.owning = false;
+        void this.openPortal(key || undefined);
+        return;
+      }
       let p: SignInPrimitives;
       let h: SignInSessionHandle;
       try {

@@ -37,6 +37,8 @@ interface FakeOptions {
   waits?: Array<Record<string, unknown>>;
   attach?: Array<Record<string, unknown>>;
   portal?: Record<string, unknown>;
+  /** Discovery's `identity.deviceChoice` (UK-42.22): with no host `addIn`, Add follows it. */
+  deviceChoice?: boolean;
   hold?: Promise<void>;
   status?: string;
 }
@@ -98,6 +100,12 @@ function fake(o: FakeOptions = {}) {
       return { keyEntries: null };
     },
     discovery: async () => ({
+      services: {
+        identity: {
+          enabled: true,
+          ...(o.deviceChoice ? { deviceChoice: true } : {}),
+        },
+      },
       core: {
         portal: o.portal ?? {
           enabled: true,
@@ -348,6 +356,18 @@ describe("<PolarisKeyGate>: a key with no account", () => {
       true,
       true,
     ]);
+  });
+
+  it("by default with deviceChoice in discovery Add runs the in-page form, not the portal", async () => {
+    const m = mount({ deviceChoice: true }, undefined, "default");
+    await m.activate();
+    await m.press("activate.recommend.action");
+    await waitFor(() =>
+      expect(
+        m.container.querySelector('input[data-field="email"]'),
+      ).not.toBeNull(),
+    );
+    expect(m.opened).toHaveLength(0);
   });
 
   it("with Identity off opens the portal with the key as a fragment, and adds no account", async () => {

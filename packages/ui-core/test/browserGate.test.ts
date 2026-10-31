@@ -85,6 +85,8 @@ interface FakeOptions {
   attach?: Array<Record<string, unknown>>;
   activateFails?: boolean;
   portal?: Record<string, unknown>;
+  /** Discovery's `identity.deviceChoice` (UK-42.22): the Add channel follows it. */
+  deviceChoice?: boolean;
   /** The sign-in's wait holds here until released, then answers signed in. */
   hold?: Promise<void>;
 }
@@ -142,6 +144,12 @@ function fakeClient(o: FakeOptions = {}) {
       });
     },
     discovery: async () => ({
+      services: {
+        identity: {
+          enabled: true,
+          ...(o.deviceChoice ? { deviceChoice: true } : {}),
+        },
+      },
       core: {
         portal: o.portal ?? {
           enabled: true,
@@ -240,8 +248,9 @@ describe("GateDriver: a key with no account", () => {
     await until(() => g.d.snapshot().step === "done");
   }
 
-  function addAndContinue(g: ReturnType<typeof gate>) {
+  async function addAndContinue(g: ReturnType<typeof gate>) {
     g.d.act("activate.recommend.action");
+    await until(() => g.d.snapshot().step === "add");
     g.d.edit("name", "Ada");
     g.d.edit("email", "ada@example.com");
     g.d.act("common.continue");
@@ -292,7 +301,7 @@ describe("GateDriver: a key with no account", () => {
     });
     await activate(g);
     g.d.act("activate.recommend.action");
-    expect(g.d.snapshot().step).toBe("add");
+    await until(() => g.d.snapshot().step === "add");
     expect(addToAccountView(contextOf(g.d.snapshot().input)).state).toBe(
       "form",
     );
@@ -325,14 +334,28 @@ describe("GateDriver: a key with no account", () => {
       attach: [{ kind: "refused", code: "license_owned", status: 409 }],
     });
     await activate(g);
-    addAndContinue(g);
+    await addAndContinue(g);
     await until(() => g.d.snapshot().input.addToAccount?.step === "owned");
     g.d.act("common.cancel");
     expect(g.d.snapshot().step).toBe("done");
     g.d.detach();
   });
 
-  it("by default (the web switch) Add and Sign in to that account open the portal with the key as a fragment", async () => {
+  it("with no host setting, Add follows discovery: deviceChoice opens AddToAccount in the page", async () => {
+    const g = fakeClient({ deviceChoice: true });
+    const d = new GateDriver(g.client, { product: "acme" });
+    d.attach();
+    d.act("welcome.useKey");
+    d.edit("key", KEY);
+    d.act("activate.submit");
+    await until(() => d.snapshot().step === "done");
+    d.act("activate.recommend.action");
+    await until(() => d.snapshot().step === "add");
+    expect(opened.length).toBe(0);
+    d.detach();
+  });
+
+  it("by default (no deviceChoice in discovery) Add and Sign in to that account open the portal with the key as a fragment", async () => {
     const g = gate({ addIn: undefined });
     const d = new GateDriver(g.client, { product: "acme" });
     d.attach();
@@ -402,7 +425,7 @@ describe("GateDriver: a key with no account", () => {
     });
     expect(g.d.snapshot().input.licenseHolder).toEqual({ email: "" });
     g.d.act("activate.recommend.action");
-    expect(g.d.snapshot().step).toBe("add");
+    await until(() => g.d.snapshot().step === "add");
     g.d.act("common.cancel");
     expect(g.d.snapshot().step).toBe("home");
     // An account on this device is never floating.
@@ -423,9 +446,10 @@ describe("GateDriver: a key with no account", () => {
     const hold = new Promise<void>((r) => (release = r));
     const g = gate({ hold });
     await activate(g);
-    addAndContinue(g);
+    await addAndContinue(g);
     await until(() => g.calls.some(([n]) => n === "signIn.start"));
     g.d.act("common.cancel");
+    await until(() => g.calls.some(([n]) => n === "cancel"));
     expect(g.calls).toContainEqual(["cancel", null]);
     release();
     await tick();
@@ -469,7 +493,7 @@ describe("GateDriver: a key with no account", () => {
       waits: [{ kind: "signedIn", identity: { email: "other@example.com" } }],
     });
     await activate(g);
-    addAndContinue(g);
+    await addAndContinue(g);
     await until(
       () => g.d.snapshot().input.addToAccount?.step === "other-account",
     );
