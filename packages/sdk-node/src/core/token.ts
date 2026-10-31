@@ -238,8 +238,9 @@ export class TokenManager {
     this.tokenSource = null;
     this.fromSignIn = false;
     this.heldUnconfirmed = false;
-    await this.marks?.stored(false);
+    // The token goes before its mark, so a crash leaves the mark over no token, never a bare one.
     await this.store.clearToken();
+    await this.marks?.stored(false);
   }
 
   /** Re-arm the single-attempt budget. Called once at the top of each `sync()`. */

@@ -100,6 +100,9 @@ export interface NearbySessionDeps {
   /** The person confirmed the account: the token becomes a sign-in, the subject is stored and the
    *  `signedIn` event is raised (Sync and Connect start only now). */
   confirm: (subject: string) => Promise<void>;
+  /** Whether the held token is still `token`, the one this session's poll stored. A later
+   *  sign-in made another way replaces it, and this session then leaves it alone. */
+  holds: (token: string) => boolean;
   /** Drop the unconfirmed sign-in locally, whatever the Worker answered: the token, its mark and
    *  the stored identity. */
   dropLocal: () => Promise<void>;
@@ -138,6 +141,7 @@ export class NearbySignInSession {
   #signedIn = false;
   #confirmed = false;
   #ended = false;
+  #token: string | null = null;
   #subject: string | null = null;
   #deadline: ReturnType<typeof setTimeout> | null = null;
   #discarding: Promise<void> = Promise.resolve();
@@ -281,6 +285,13 @@ export class NearbySignInSession {
       await this.#req.declineAccount().catch(() => undefined);
       await this.#closeLan();
       if (!this.#signedIn) return;
+      const own = this.#token !== null && this.#deps.holds(this.#token);
+      this.#token = null;
+      if (!own) {
+        // Another sign-in holds the device now: this session ends without touching it.
+        this.#signedIn = false;
+        return;
+      }
       await this.#deps.signOut().catch(() => undefined);
       await this.#deps.dropLocal().catch(() => undefined);
       this.#signedIn = false;
@@ -328,6 +339,7 @@ export class NearbySignInSession {
         // answer discards it at once; nothing is handed to the caller (D-21).
         this.#signedIn = true;
         this.#subject = p.subject;
+        this.#token = p.token;
         if (this.#cancelled) {
           await this.#discard();
           return { kind: "cancelled" };
@@ -482,6 +494,15 @@ export class NearbySignInSession {
         "Nothing to confirm: the device is not signed in.",
       );
     if (this.#confirmed) return;
+    if (this.#token === null || !this.#deps.holds(this.#token)) {
+      // A later sign-in replaced this one's token: nothing of it is written, nothing signed out.
+      this.#halt();
+      void this.#discard();
+      throw new PolarisError(
+        ErrorCode.signInFailed,
+        "The sign-in ended before it was confirmed.",
+      );
+    }
     this.#confirmed = true;
     if (this.#deadline !== null) clearTimeout(this.#deadline);
     this.#deadline = null;

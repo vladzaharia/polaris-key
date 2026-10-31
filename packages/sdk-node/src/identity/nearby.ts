@@ -83,6 +83,9 @@ export type NearbyPoll =
   | { kind: "unavailable" }
   | {
       kind: "ready";
+      /** The access token the poll stored, so the session can tell its own sign-in from a later
+       *  one. Never handed to the caller. */
+      token: string;
       subject: string;
       scope: string;
       licenseId: string | null;
@@ -409,6 +412,7 @@ export class NearbyRoutes {
     await this.#d.onAcquired();
     return {
       kind: "ready",
+      token: t.accessToken,
       subject: t.subject,
       scope: t.scope,
       licenseId: text(t.license?.id) ?? this.#d.licenseId(),

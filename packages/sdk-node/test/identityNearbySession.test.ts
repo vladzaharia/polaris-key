@@ -22,6 +22,7 @@ import {
   type NearbySignInOptions,
   type NearbySignInSession,
 } from "../src/identity/nearbySession.js";
+import { TokenManager } from "../src/core/token.js";
 import type { CoreContext } from "../src/core/context.js";
 import { identityDiscovery, json } from "./parityFixtures.js";
 import { until } from "./lanFixtures.js";
@@ -103,7 +104,10 @@ function sessionOn(
   const id = client.identity as unknown as {
     ctx: CoreContext;
     nearbyRoutes: NearbyRoutes;
-    nearbySessionHooks: Pick<NearbySessionDeps, "confirm" | "dropLocal">;
+    nearbySessionHooks: Pick<
+      NearbySessionDeps,
+      "confirm" | "dropLocal" | "holds"
+    >;
   };
   return startNearbySignIn(
     {
@@ -725,5 +729,87 @@ describe("nearby sign-in: the unconfirmed sign-in ends cleanly (D-21)", () => {
     expect(await readStoredSubject(stateDir(d.client))).toBeNull();
     expect(seen).toEqual(["signedOut"]);
     expect(d.seen.some((s) => /\/sync\b/.test(s.path))).toBe(false);
+  });
+});
+
+describe("nearby sign-in: the session acts only on its own token (C4-N2, C4-N4, C4-N5)", () => {
+  it("nearby sign-in: the deadline leaves a later sign-in made another way alone", async () => {
+    const w = await world(ready);
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      await w.session.wait();
+      await (
+        w.client as unknown as {
+          tokens: {
+            set: (t: string, s: string) => Promise<void>;
+          };
+        }
+      ).tokens.set("pkeyt_other", "signin");
+      await vi.advanceTimersByTimeAsync(301_000);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(w.session.ended).toBe(true);
+    expect(w.signOut).not.toHaveBeenCalled();
+    expect(w.client.hasToken).toBe(true);
+    expect(tokensOf(w.client).signedIn).toBe(true);
+  });
+
+  it("nearby sign-in: a confirm after a later sign-in fails and writes no subject and no event", async () => {
+    const w = await world(ready);
+    const events: string[] = [];
+    w.client.events.on("identity", (e) => events.push(e.kind));
+    await w.session.wait();
+    await (
+      w.client as unknown as {
+        tokens: { set: (t: string, s: string) => Promise<void> };
+      }
+    ).tokens.set("pkeyt_other", "signin");
+    await expect(w.session.confirmAccount()).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
+    expect(await readStoredSubject(stateDir(w.client))).toBeNull();
+    expect(events).toEqual([]);
+    expect(w.signOut).not.toHaveBeenCalled();
+    expect(w.client.hasToken).toBe(true);
+  });
+
+  it("nearby sign-in: Cloud Connect's signed-in check is false while unconfirmed and true after confirm", async () => {
+    const w = await world(ready);
+    await w.session.wait();
+    const approve = (): Promise<{ stop: () => Promise<void> }> =>
+      w.client.cloudConnect.nearby.onRequest(() => undefined, {
+        prompt: true,
+      });
+    await expect(approve()).rejects.toMatchObject({
+      code: "account_required",
+    });
+    await w.session.confirmAccount();
+    await (await approve()).stop();
+  });
+
+  it("token store: clearing removes the token before the unconfirmed mark", async () => {
+    const order: string[] = [];
+    const store = {
+      getToken: async () => "t",
+      setToken: async () => undefined,
+      clearToken: async () => {
+        order.push("token");
+      },
+    };
+    const tm = new TokenManager(
+      {} as never,
+      store as never,
+      (async () => false) as never,
+    );
+    tm.setMarks({
+      stored: async () => {
+        order.push("mark");
+      },
+      loaded: async () => false,
+      loadedUnconfirmed: async () => false,
+    } as never);
+    await tm.clear();
+    expect(order).toEqual(["token", "mark"]);
   });
 });
