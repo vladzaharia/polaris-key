@@ -349,7 +349,20 @@ func _sign_out_rules(t: PKeyTestContext) -> void:
 	bed.sdk.core.cache.set_explicit_sign_out(true)
 	bed.tokens = [B.json(200, X.TOKEN_OK)]
 	var explicit = await bed.sdk.identity.auto_sign_in({"explicit": true})
-	t.check("flag: opts.explicit lowers the flag before the ladder", explicit.kind == PKeyAutoSignInResult.KIND_SIGNED_IN and not bed.sdk.core.cache.explicit_sign_out, str(explicit))
+	t.check("flag: opts.explicit runs past the flag and lowers it once a token is stored", explicit.kind == PKeyAutoSignInResult.KIND_SIGNED_IN and not bed.sdk.core.cache.explicit_sign_out, str(explicit))
+	bed.free_all()
+	# A dismissed explicit sheet leaves the flag set; the next boot's ladder stays quiet (B1).
+	bed = await _bed(["google"])
+	var g2b := Fake.new("google", [])
+	g2b.sheet_answer = {"cancelled": true}
+	bed.sdk.identity.install_platform_provider(g2b)
+	bed.sdk.core.cache.set_explicit_sign_out(true)
+	var dismissed = await bed.sdk.identity.auto_sign_in({"explicit": true, "row": "google"})
+	t.check("flag: a dismissed explicit sheet leaves the flag set",
+		dismissed.kind == PKeyAutoSignInResult.KIND_NEEDS_SIGN_IN and bed.sdk.core.cache.explicit_sign_out and bed.sdk.core.cache.record()["explicitSignOut"] == true, str(dismissed))
+	var again_boot = await bed.sdk.identity.auto_sign_in({"prompt": "optional"})
+	t.check("flag: the next boot does not sign in silently",
+		again_boot.reason == PKeyAutoSignInResult.REASON_SIGNED_OUT and not bed.sdk.core.tokens.has_token() and bed.sdk.core.cache.explicit_sign_out)
 	bed.free_all()
 	# released: false leaves the token; it is no longer a sign-in.
 	bed = await _signed_in_bed()

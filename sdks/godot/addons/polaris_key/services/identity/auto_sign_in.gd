@@ -26,8 +26,8 @@ extends RefCounted
 ##
 ## `opts`: prompt ("never", the default, or "optional"), kinds (an Array of exchange kinds to try),
 ## providers (use these instead of the installed ones), license_choice ("app", the default, or "card"),
-## device_name, explicit (true: the person pressed a sign-in button, so the sign-out flag is lowered
-## first).
+## device_name, explicit (true: the person pressed a sign-in button. The sign-out flag does not stop the
+## run, and it is lowered only when a token is stored: a dismissed sheet leaves it set).
 ##
 ## Providers (PKeyPlatformIdentityProvider) come from `identity.install_platform_provider()`. The
 ## ladder tries the kinds discovery publishes, that a provider is installed for and `opts.kinds` allows,
@@ -38,7 +38,7 @@ extends RefCounted
 ##    `explicit_sign_out` (the cache record, fails closed) and runs each provider's
 ##    `sign_out_cleanup()`. While the flag is set rungs 3 and 4 do not run. Only a sign-in the person
 ##    started (redirect, device code, `choice.complete`, `exchange` called from the sign-in form,
-##    `opts.explicit`) lowers it; the ladder's own exchange never does.
+##    a stored `opts.explicit` run) lowers it; the ladder's own exchange never does.
 ##  - The ladder captures the generation when it starts. The check and the token store happen with no
 ##    await between them (PKeyTokenManager.set_token_unless_signed_out), so a sign-out during the
 ##    platform prompt or the exchange makes it store nothing and answer `needs_sign_in(signed_out)`.
@@ -76,14 +76,12 @@ func run(opts := {}) -> PKeyAutoSignInResult:
 	var core := identity._core() if identity != null else null
 	if core == null or not core.started:
 		return PKeyAutoSignInResult.unavailable(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
-	if opts.get("explicit") == true:
-		core.cache.set_explicit_sign_out(false)
 	var installed := _installed(identity, opts)
 	await check_revoked(installed)
 	var generation := core.tokens.sign_out_generation
 	if opts.get("row") is String:
 		return await _row(core, installed, opts, generation)
-	var early = await _quiet_result(core, installed)
+	var early = await _quiet_result(core, installed, opts.get("explicit") == true)
 	if early != null:
 		return early
 	var plan := await _plan(core, installed, opts, generation)
@@ -111,14 +109,14 @@ func _row(core: PKeyCore, installed: Array, opts: Dictionary, generation: int) -
 
 
 ## Rungs 1 and 2, and the cases with no platform identity: the answer, or null to go on. A coroutine.
-func _quiet_result(core: PKeyCore, installed: Array) -> Variant:
+func _quiet_result(core: PKeyCore, installed: Array, explicit := false) -> Variant:
 	# Rung 1: a token the device holds as a sign-in, with a licence.
 	if core.tokens.has_token() and core.tokens.origin() == PKeyTokenManager.ORIGIN_SIGN_IN and core.cache.license != null:
 		var doc = core.cache.license["doc"]
 		var lic: String = doc["licenseId"] if doc is Dictionary and doc.get("licenseId") is String else ""
 		return await _with_sync_key(PKeyAutoSignInResult.signed_in("stored", core.cache.subject, lic))
 	# Signed out on purpose: rungs 3 and 4 stay quiet.
-	if core.cache.explicit_sign_out:
+	if core.cache.explicit_sign_out and not explicit:
 		return PKeyAutoSignInResult.needs_sign_in(PKeyAutoSignInResult.REASON_SIGNED_OUT)
 	# No platform identity here (Linux, Windows, or nothing installed): the regular form is next.
 	if installed.is_empty():
@@ -219,10 +217,14 @@ func _attempt(p: Object, mode: String, ctx: Dictionary) -> Dictionary:
 		# cancelled, unavailable or malformed: nothing to exchange
 		return {"shown": shown, "cancelled": answer is Dictionary and answer.get("cancelled") == true}
 	# A sign-out while the platform was prompting wins.
-	if core.tokens.sign_out_generation != ctx["generation"] or core.cache.explicit_sign_out:
+	# (An explicit run is the person's own: the flag is theirs to lower, once a token is stored.)
+	var explicit: bool = opts.get("explicit") == true
+	if core.tokens.sign_out_generation != ctx["generation"] or (core.cache.explicit_sign_out and not explicit):
 		return {"result": PKeyAutoSignInResult.needs_sign_in(PKeyAutoSignInResult.REASON_SIGNED_OUT, "", kind), "shown": shown}
 	var info := {"user_id": answer["user_id"]} if answer.get("user_id") is String and answer["user_id"] != "" else {}
-	var x_opts := {"license_choice": opts.get("license_choice", "app"), "ladder_generation": ctx["generation"]}
+	var x_opts := {"license_choice": opts.get("license_choice", "app")}
+	if not explicit:
+		x_opts["ladder_generation"] = ctx["generation"]
 	if opts.get("device_name") is String:
 		x_opts["device_name"] = opts["device_name"]
 	var r := await identity.exchange.exchange(kind, answer["token"], nonce.nonce, x_opts)
