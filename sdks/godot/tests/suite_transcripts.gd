@@ -1,6 +1,6 @@
 extends RefCounted
 # @pkey-feature identity.account identity.attach identity.toggle core.discover core.presentation core.sync core.cache config.schema config.mint devices.register devices.report
-# @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode identity.devicelabel
+# @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode identity.devicecode.choice identity.devicelabel
 # @pkey-feature release.changelog release.download update.feed release.record update.decide
 # @pkey-feature commerce.receipt
 # @pkey-feature packs.apply.chunk
@@ -121,10 +121,11 @@ static func replay(tr: Dictionary) -> Array:
 	var opts := PKeyTestFixtures.options(server.base_url(), store, clock, tr["product"], tr["trust"], tr["initial"]["version"])
 	# `cloudsync-cors` has `browser` steps too, but they are plain requests, not a redirect sign-in.
 	var redirects: bool = tr["id"] != "cloudsync-cors" and tr["steps"].any(func(st): return st["action"] in ["browser", "redirectComplete"])
+	var device_choice: bool = tr["steps"].any(func(st): return st["action"] == "beginSignIn" and st["args"].get("licenseChoice") == "app")
 	if tr["initial"].get("services") is Array:
 		opts.expected_services = PackedStringArray(tr["initial"]["services"])
-	elif redirects:
-		# The redirect conversations ride a product that runs Identity (their discovery names it).
+	elif redirects or device_choice:
+		# The redirect conversations (and the device start that asks for the app's choice) ride a product that runs Identity (their discovery names it).
 		opts.expected_services = PackedStringArray(["license", "config", "identity"])
 	# PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
 	opts.send_device_name = tr["initial"].get("deviceName") is String
@@ -173,7 +174,7 @@ static func replay(tr: Dictionary) -> Array:
 		if exchange_keys != null:
 			# The exchange recordings hold the token route, not the sync a sign-in triggers after it.
 			sdk.identity.redirect_acquisition_sync = false
-		if redirects:
+		if redirects or device_choice:
 			# The recordings hold the token exchange, not the sync a sign-in triggers after it.
 			sdk.identity.redirect_acquisition_sync = false
 			sdk.set_meta("pkey_replay", {"tr": tr, "engine": engine, "base": server.base_url()})
@@ -186,6 +187,9 @@ static func replay(tr: Dictionary) -> Array:
 			if step["action"] in ["subject", "signOut", "attach"] and sdk.core.discovery_manifest == null:
 				# identity.account: the account endpoints at the Worker's standard paths, on the loopback server.
 				sdk.core.discovery_manifest = _standard_identity_discovery(server.base_url(), tr["product"])
+			if step["action"] == "beginSignIn" and step["args"].get("licenseChoice") == "app" and sdk.core.discovery_manifest == null:
+				# The transcript ran no discovery: Identity with the account and choice endpoints and `deviceChoice`.
+				sdk.core.discovery_manifest = _redirect_discovery(server.base_url(), tr)
 			if step["action"] in ["browser", "redirectComplete"] and sdk.core.discovery_manifest == null:
 				sdk.core.discovery_manifest = _redirect_discovery(server.base_url(), tr)
 			if step["action"] in ["exchange", "choiceComplete"] and exchange_keys != null:
@@ -359,7 +363,13 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			out.merge(await _choice_step(sdk.identity.choice, step), true)
 		# The recorded action names stay (plans/I-10-slices.md D-6); they drive the session.
 		"beginSignIn":
-			var prompt: PKeySignInSession = await sdk.identity.sign_in.start({"device_name": String(step["args"].get("deviceName", ""))})
+			var start_opts := {"device_name": String(step["args"].get("deviceName", ""))}
+			for pair in [["loginHint", "login_hint"], ["nameHint", "name_hint"], ["purpose", "purpose"]]:
+				if step["args"].get(pair[0]) is String:
+					start_opts[pair[1]] = step["args"][pair[0]]
+			if step["args"].get("licenseChoice") == "app":
+				start_opts["license_choice"] = "app"
+			var prompt: PKeySignInSession = await sdk.identity.sign_in.start(start_opts)
 			sdk.set_meta("pkey_prompt", prompt)
 			if prompt.ok:
 				out["prompt"] = {
@@ -760,6 +770,8 @@ static func _redirect_discovery(base: String, tr: Dictionary) -> Dictionary:
 		"choiceComplete": root + "/choice/complete", "choiceCancel": root + "/choice/cancel",
 	}
 	var identity := {"enabled": true, "configured": true, "issuer": issuer, "endpoints": endpoints}
+	if tr["steps"].any(func(st): return st["action"] == "beginSignIn" and st["args"].get("licenseChoice") == "app"):
+		identity["deviceChoice"] = true
 	var services := {"identity": identity}
 	# A transcript that attaches after a redirect sign-in (holders-add-to-account) also runs
 	# Licence and Config, and names the account endpoints beside the redirect ones.
@@ -790,6 +802,8 @@ static func _rebased(manifest: Dictionary, from: String, to: String) -> Dictiona
 ## client's expiry are both `expired`, and its `error` state is `error`.
 static func _sign_in_status(status: String) -> String:
 	match status:
+		"license-choice":
+			return "choose"
 		"timeout", "expired":
 			return "expired"
 		"denied":
