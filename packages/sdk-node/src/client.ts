@@ -101,6 +101,7 @@ import { PortalStore } from "./core/portal.js";
 import type { ParsedPortal } from "@polaris-key/client-core/portal";
 import {
   discoverProduct,
+  identityFragmentFrom,
   type DiscoverProductResult,
   type ProductDiscoveryDocument,
   type ServicesMap,
@@ -353,7 +354,19 @@ export class PolarisKeyClient {
         ...opts.connect,
       },
     );
-    this.cloudConnect = new CloudConnect(this.connect);
+    this.cloudConnect = new CloudConnect(this.connect, {
+      slug: this.product,
+      now: () => this.core.now(),
+      requireIdentity: () =>
+        this.core.requireService("identity", Feature.identityNearby),
+      identity: async (fresh) => {
+        if (fresh || this.discoveryDoc === null)
+          await this.discover().catch(() => undefined);
+        return identityFragmentFrom(this.discoveryDoc);
+      },
+      signedIn: async () => (await this.identity.current()) !== null,
+      signer: () => this.connect.nearbySigner(),
+    });
     this.cloudSyncHost = new CloudSyncHost(
       {
         ctx: this.core,
@@ -468,6 +481,10 @@ export class PolarisKeyClient {
     this.update.packs.on((p) => this.events.safeEmit("packs", p));
     this.update.onUpdateAvailable = (check) =>
       this.events.safeEmit("updateAvailable", check);
+    this.license.beforeRelease = async () => {
+      await this.cloudConnect.stopForSignOut();
+      await this.connect.leave();
+    };
     this.license.onDeactivated = async () => {
       await this.keyring.forget();
       await this.identity.forget();
@@ -964,6 +981,7 @@ export class PolarisKeyClient {
   /** Stop the refresh timers and Cloud Connect. Safe to call more than once. */
   close(): void {
     void this.cloudConnect.stop().catch(() => undefined);
+    void this.cloudConnect.nearby.stopAll().catch(() => undefined);
     void this.cloudSyncHost.close().catch(() => undefined);
     if (this.refreshTimer !== null) {
       clearTimeout(this.refreshTimer);

@@ -273,9 +273,24 @@ class PeerLinkTest {
                 b.opened.await()
                 fail("must be refused")
             } catch (e: LinkRefused) {
-                assertEquals(HANDSHAKE_FAILED, e.closeCode)
+                assertEquals("peer_timeout", e.closeCode)
             }
             seen.ended.await()
+        } finally {
+            s.cancel()
+        }
+    }
+
+    @Test
+    fun aZeroLengthFrameInAnEstablishedLinkClosesBadFrameAndThePeerIsTold() = bounded {
+        val s = scope()
+        try {
+            val p = connected(s)
+            p.pa.write(byteArrayOf(0, 0)) // what B's link reads: a frame of length zero (V5 15.6)
+            assertEquals(SessionEvent.Closed("peer_bad_frame", false), p.sb.closed.await())
+            assertEquals(SessionEvent.Closed("peer_bad_frame", true), p.sa.closed.await())
+            p.sa.ended.await()
+            p.sb.ended.await()
         } finally {
             s.cancel()
         }
@@ -333,6 +348,26 @@ class PeerLinkTest {
             val end = System.nanoTime() + 2_000_000_000L
             while (!p.pa.stalledWriteReturned && System.nanoTime() < end) delay(10)
             assertTrue(p.pa.stalledWriteReturned)
+        } finally {
+            s.cancel()
+        }
+    }
+
+    @Test
+    fun theWriteCapIsFourMiBAndAPeerThatNeverReadsPastItClosesPeerBusy() = bounded {
+        assertEquals(4L * 1024 * 1024, LINK_WRITE_CAP)
+        val s = scope()
+        try {
+            val p = connected(s)
+            p.pa.stall = true
+            val body = ByteArray(1 shl 20)
+            // About 5 MiB held for the writer: past 4 MiB and under the old 8 MiB bound.
+            repeat(6) {
+                try {
+                    p.a.sendRecord(0x0100, body)
+                } catch (ignored: IllegalStateException) { /* already closing */ }
+            }
+            assertEquals(SessionEvent.Closed("peer_busy", false), p.sa.closed.await())
         } finally {
             s.cancel()
         }

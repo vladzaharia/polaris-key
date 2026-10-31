@@ -8,6 +8,9 @@ import Foundation
 public let peerMaxMessageBytes = 1_048_576
 /// A Noise message is at most 65,535 bytes; 16 are the tag and 3 the record header.
 public let peerMaxRecordBody = 65535 - 16 - 3
+/// An open MORE chain in modes v and p (§15.6.1): their messages are a `HELLO`, the SAS records, a
+/// `VOUCH_REQ` and the held Sync records, all far under this, and the peer is not yet verified.
+public let peerMaxVPChainBytes = 16_384
 /// Records in one MORE chain: a full 1 MiB message in the smallest records, plus one.
 public let peerMaxChainRecords = (peerMaxMessageBytes + peerMaxRecordBody - 1) / peerMaxRecordBody + 1
 
@@ -154,6 +157,7 @@ public struct PeerRecordAssembler: Sendable {
         // count is what bounds the work.
         let size = (open?.size ?? 0) + r.body.count
         if size > peerMaxMessageBytes { return .close(.peerBadFrame) }
+        if more || open != nil, mode == .v || mode == .p, size > peerMaxVPChainBytes { return .close(.peerBadFrame) }
         var parts = open?.parts ?? []
         if parts.count >= peerMaxChainRecords { return .close(.peerBadFrame) }
         parts.append(r.body)

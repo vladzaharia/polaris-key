@@ -21,7 +21,7 @@ only corpus. `corpusVersion 2`,
 `stageMatrixVersion 3`, `headersVersion 2`,
 `configMatrixVersion 1`,
 `updateMatrixVersion 1`, `outletMatrixVersion 1`,
-`planMatrixVersion 2`, `deviceLabelVersion 1`,
+`planMatrixVersion 2`, `deviceLabelVersion 2`,
 `presentationMatrixVersion 1`, `portalMatrixVersion 1`, `uiMatrixVersion 8`,
 `backendMatrixVersion 1`,
 `contentCorpusVersion 2`, `syncScenariosVersion 4`.
@@ -90,9 +90,9 @@ WIRE-CONTRACT-V4 §11.4: `plan` (request weight 16384), `selectVariant` and `pla
 
 WIRE-CONTRACT-V4 §11.5, client behaviour beside the contract: the journal, the debounce, the HLC and pre-contact re-stamping, conflict rebase, one outstanding compare-and-swap per record, the per-subject partitions, the first-sign-in move, sign-out with pending operations, principal changes, `account_required` and a `/sync` 401, each scenario a run of SDK calls, clock moves and scripted server answers. Literal data (`tools/sync-scenarios.ts`), not computed by an implementation; `@polaris-key/client-core/cloud-sync` is checked against it like every SDK, by the Node runner `conformance/runners/node/syncScenarios.test.ts`.
 
-## Device labels (`device-label.json`): 25 cases
+## Device labels (`device-label.json`): 47 cases and 11 HELLO cases
 
-WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the one normalisation of the device label every SDK sends as `deviceName` and the Worker stores. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped.
+WIRE-CONTRACT-V5 §12.7.1 (PX-W13, DEVICE-LABEL-STRIP): the one normalisation of the device label every SDK sends as `deviceName` and the Worker stores, with the two code point tables (`ranges.space`, `ranges.strip`) every SDK asserts equal to its own. `helloCases` is the same cleaner with NFC after step 2, for a peer's HELLO `label` and `app` (§15.6). Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped.
 
 ## Product presentation (`presentation-matrix.json`): 131 parse, 32 size-choice and 6 verification cases
 

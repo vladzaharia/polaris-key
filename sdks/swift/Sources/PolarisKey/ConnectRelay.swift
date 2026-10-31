@@ -715,7 +715,20 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
         return Int(truncatingIfNeeded: h)
     }
 
-    func hasRoom(_ n: Int) -> Bool { outbox?.roomFor(n) ?? false }
+    func hasRoom(_ n: Int) -> Bool { outbox?.roomFor(n + reserved) ?? false }
+
+    /// Send-queue room held for records that are encrypted but not yet in the queue.
+    private var reserved = 0
+
+    /// Holds `n` bytes of queue room at check time, so two sends that overlap cannot both pass on the
+    /// same room. False when the queue has no room for it.
+    func reserve(_ n: Int) -> Bool {
+        guard hasRoom(n) else { return false }
+        reserved += n
+        return true
+    }
+
+    func release(_ n: Int) { reserved = max(0, reserved - n) }
 
     /// False when the envelope is refused (the caller closes 1002).
     private func handle(_ data: Data) async -> Bool {
@@ -878,7 +891,8 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
             let link = try await PeerLink.make(
                 pipe: pipe, options: opts, handlers: h.handlers, handshakeSeconds: o.handshakeSeconds)
             entry.link = link
-            h.attach(RelayLinkFacade(link: link, svc: self))
+            h.attach(RelayLinkFacade(link: link, svc: self, pipe: pipe))
+            link.onWriteDrained { [weak pipe] in pipe?.releaseReserved() }
             pipe.onOverflow = { link.closeSoon(.peerBusy) }
             Task { await link.run() }
             if role == .initiator { await link.start() }
@@ -969,6 +983,8 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
         var svc: ConnectRelayService?
         var peer = Data()
         var session: UInt32 = 0
+        /// Queue room the service holds for this session's encrypted-but-unqueued records.
+        var reserved = 0
     }
     private let state = LockedValue(State())
     private let budget: ConnectQueueBudget
@@ -1012,8 +1028,20 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
         }
     }
 
+    func addReserved(_ n: Int) { state.with { $0.reserved += n } }
+
+    /// Gives the service back the room held for this session's records.
+    func releaseReserved() {
+        let (svc, n) = state.with { s -> (ConnectRelayService?, Int) in
+            defer { s.reserved = 0 }
+            return (s.svc, s.reserved)
+        }
+        if let svc, n > 0 { Task { await svc.release(n) } }
+    }
+
     /// The socket is gone or the room dropped the peer: the link sees the end of the stream.
     func lose() {
+        releaseReserved()
         let w = state.with { s -> CheckedContinuation<Data?, Never>? in
             s.closed = true
             budget.release(s.bytes)
@@ -1055,14 +1083,20 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
 struct RelayLinkFacade: ConnectSessionLink {
     let link: PeerLink
     let svc: ConnectRelayService
+    let pipe: RelayPipe
 
     func sendRecord(type: Int, body: Data) async throws {
         // Refuse before the engine encrypts: a message dropped after encryption would break the stream.
-        guard await svc.hasRoom(body.count + 128 * (body.count / 60000 + 1)) else {
+        // The room is held from here until the writer has queued the record, so overlapping sends cannot
+        // pass on the same room.
+        let need = body.count + 128 * (body.count / 60000 + 1)
+        guard await svc.reserve(need) else {
             // D-9: a full send queue ends this session `peer_busy`; the host sees the close, not an error.
             await link.close(.peerBusy)
             return
         }
+        pipe.addReserved(need)
+        defer { if link.writeBacklog == 0 { pipe.releaseReserved() } }
         try await link.sendRecord(type: type, body: body)
     }
 

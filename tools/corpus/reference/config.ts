@@ -56,12 +56,15 @@ class RefRefused extends Error {}
  * descending into it, compares member names as JS strings (scalar comparison once lone
  * surrogates are refused) and never normalizes them, refuses a member name holding U+0000,
  * accepts noncharacters, and judges each number token from its digits before reading it with
- * `Number`.
+ * `Number`. `nonInteger`, when given, collects the names of top-level members that are numbers
+ * written with a fraction or an exponent part (`1.0`, `1e0`).
  */
 export function refParseStrict(
   text: string,
+  nonInteger?: Set<string>,
 ): { ok: true; value: Json } | { ok: false } {
   let i = 0;
+  let lastToken = "";
   const refuse = (): never => {
     throw new RefRefused();
   };
@@ -131,6 +134,7 @@ export function refParseStrict(
     const token = m![0];
     i += token.length;
     if (!refNumberInRange(token)) refuse();
+    lastToken = token;
     return Number(token);
   };
   const value = (depth: number): Json => {
@@ -176,8 +180,16 @@ export function refParseStrict(
         ws();
         if (text[i] !== ":") refuse();
         i++;
+        const member = value(depth + 1);
+        // A top-level number written with a fraction or an exponent part is not a wire integer.
+        if (
+          depth === 0 &&
+          typeof member === "number" &&
+          /[.eE]/.test(lastToken)
+        )
+          nonInteger?.add(name);
         Object.defineProperty(obj, name, {
-          value: value(depth + 1),
+          value: member,
           enumerable: true,
           writable: true,
           configurable: true,

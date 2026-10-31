@@ -98,13 +98,26 @@ class MdnsPacketTest {
     }
 
     @Test
-    fun unknownTypesClassesAndAaaaAreSkipped() {
-        val raw = header(an = 4) +
-            rr(name(host), 28, ByteArray(16)) +
+    fun unknownTypesAndClassesAreSkipped() {
+        val raw = header(an = 3) +
             rr(name(host), 99, "xyz".toByteArray()) +
             rr(name(host), 1, aTen1, cls = 3) +
             rr(name(host), 1, aTen1, cls = 0x8001)
         assertEquals(listOf(MdnsRecord(host, MdnsType.A, 120, MdnsData.Address("10.0.0.1"))), parseMdnsPacket(raw).answers)
+    }
+
+    @Test
+    fun anAaaaRecordIsSixteenBytesAndReadsAsRfc5952Text() {
+        val fe80 = intArrayOf(0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0x01, 0xc2, 0x03, 0xff, 0xfe, 0x04, 0x05, 0xa6).map { it.toByte() }.toByteArray()
+        val got = parseMdnsPacket(header(an = 1) + rr(name(host), 28, fe80)).answers
+        assertEquals(listOf(MdnsRecord(host, MdnsType.AAAA, 120, MdnsData.Address("fe80::1c2:3ff:fe04:5a6"))), got)
+        // Another length is not an address.
+        assertEquals("bad_rdata", reason(header(an = 1) + rr(name(host), 28, ByteArray(4))))
+        assertEquals("bad_rdata", reason(header(an = 1) + rr(name(host), 28, ByteArray(17))))
+        // It builds back to the same bytes, and the cache-flush bit is set like an A record's.
+        val built = buildMdnsResponse(got)
+        assertEquals(got, parseMdnsPacket(built).answers)
+        org.junit.Assert.assertArrayEquals(header(an = 1) + rr(name(host), 28, fe80, cls = 0x8001), built)
     }
 
     @Test
@@ -207,6 +220,9 @@ class MdnsPacketTest {
     fun buildersRefuseOutOfBoundsInput() {
         refused { buildMdnsQuery(listOf(MdnsQuestion("a".repeat(64) + ".local", MdnsType.PTR))) }
         refused { buildMdnsResponse(listOf(MdnsRecord(host, MdnsType.A, 1, MdnsData.Address("300.1.1.1")))) }
+        refused { buildMdnsResponse(listOf(MdnsRecord(host, MdnsType.AAAA, 1, MdnsData.Address("10.0.0.1")))) }
+        refused { buildMdnsResponse(listOf(MdnsRecord(host, MdnsType.AAAA, 1, MdnsData.Address("fe80::1%en0")))) }
+        refused { buildMdnsResponse(listOf(MdnsRecord(host, MdnsType.A, 1, MdnsData.Address("fe80::1")))) }
         refused { buildMdnsResponse(listOf(MdnsRecord(fqdn, MdnsType.TXT, 1, MdnsData.Txt(List(9) { "x" })))) }
         refused { buildMdnsResponse(listOf(MdnsRecord(fqdn, MdnsType.TXT, 1, MdnsData.Txt(listOf("x".repeat(256)))))) }
         refused { buildMdnsResponse(List(65) { MdnsRecord(host, MdnsType.A, 1, MdnsData.Address("10.0.0.1")) }) }

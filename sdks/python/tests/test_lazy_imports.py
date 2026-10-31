@@ -95,3 +95,14 @@ def test_the_lazy_table_matches_the_type_checking_imports() -> None:
     """What type checkers see is exactly what the runtime resolves."""
     lazy = {(module, attr, bound) for bound, (module, attr) in polaris_key._LAZY.items()}
     assert lazy == _type_checking_imports()
+
+
+def test_the_nearby_core_loads_without_the_connect_package() -> None:
+    """The mode v approver and requester sit in core/, which never imports upward (I-47)."""
+    out = subprocess.run(
+        [sys.executable, "-c", "import sys, polaris_key.core.peer_nearby\nprint('\\n'.join(sys.modules))"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.split()
+    assert [m for m in out if m == "polaris_key.connect" or m.startswith("polaris_key.connect.")] == []

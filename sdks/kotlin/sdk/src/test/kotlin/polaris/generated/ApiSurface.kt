@@ -17,6 +17,7 @@ import im.plrs.key.release.DistributionClient
 import im.plrs.key.release.ReleaseClient
 import im.plrs.key.sdk.BackendClient
 import im.plrs.key.sdk.CloudConnect
+import im.plrs.key.sdk.CloudNearby
 import im.plrs.key.sdk.CloudSyncClient
 import im.plrs.key.sdk.CloudSyncHostOptions
 import im.plrs.key.sdk.CommerceClient
@@ -187,4 +188,6 @@ internal suspend fun apiSurface() {
     CloudConnect::refreshPeers  // cloudConnect.refreshPeers
     CloudConnect::status  // cloudConnect.status
     CloudConnect::onNotice  // cloudConnect.onNotice
+    CloudNearby::request  // cloudConnect.nearby.request
+    CloudNearby::onRequest  // cloudConnect.nearby.onRequest
 }

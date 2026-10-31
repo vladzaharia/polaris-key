@@ -178,6 +178,7 @@ const sameDevices = (a: Ring["devices"], b: Ring["devices"]): boolean =>
 
 export class ConnectClient {
   readonly #serial = serialQueue();
+  readonly #onRoster = new Set<(ring: Ring) => void>();
   #storage: NodeDeviceKeyStorage | null = null;
   #port: DeviceKeyPort | null;
   readonly #allowEphemeral: boolean;
@@ -212,6 +213,16 @@ export class ConnectClient {
    */
   identity(opts: { refresh?: boolean } = {}): Promise<ConnectIdentity> {
     return this.#serial(() => this.#identity(opts.refresh === true));
+  }
+
+  /**
+   * D's device keys (made when none exist) and its `X-PKey-Device` value, for the vouch of nearby
+   * approval (CC-15). Needs no sign-in, no roster and no Connect. @internal
+   */
+  async nearbySigner(): Promise<{ port: DeviceKeyPort; deviceId: string }> {
+    const port = await this.#usePort();
+    await this.#ensureKeys(port);
+    return { port, deviceId: this.ctx.deviceId };
   }
 
   /** The held identity as it stands, verified again now; null when none is held, it does not
@@ -499,8 +510,25 @@ export class ConnectClient {
       } catch (e) {
         throw this.#storeError(e);
       }
+      this.#rosterStored(ring);
       return { stored: true, epoch: ring.epoch };
     });
+  }
+
+  /** Called with each roster this device stores, from a peer's push or an identity fetch. */
+  onRoster(fn: (ring: Ring) => void): () => void {
+    this.#onRoster.add(fn);
+    return () => this.#onRoster.delete(fn);
+  }
+
+  #rosterStored(ring: Ring): void {
+    for (const f of [...this.#onRoster]) {
+      try {
+        f(ring);
+      } catch {
+        // a listener's fault is not this device's
+      }
+    }
   }
 
   /** Forget the held roster, certificate and K_disc (sign-out, leaving the person's devices).
@@ -566,6 +594,7 @@ export class ConnectClient {
     } catch (e) {
       throw this.#storeError(e);
     }
+    this.#rosterStored(record.ring);
     return record.view;
   }
 
@@ -577,7 +606,7 @@ export class ConnectClient {
     heldOk: { ring: Ring | null; cert: PeerCert | null } | null,
     held: ConnectStateRecord | null,
     now: number,
-  ): Promise<{ rec: ConnectStateRecord; view: ConnectIdentity }> {
+  ): Promise<{ rec: ConnectStateRecord; view: ConnectIdentity; ring: Ring }> {
     const trust = this.deps.trust();
     const expectedAud = this.ctx.product;
     const r = await verifyRing(a.ring, { trust, expectedAud });
@@ -641,7 +670,7 @@ export class ConnectClient {
       registered: { signKey: mine.signKey, agreeKey: mine.agreeKey },
       storedAt: now,
     };
-    return { rec, view: this.#view(rec, ring, cert) };
+    return { rec, view: this.#view(rec, ring, cert), ring };
   }
 
   /** Whether the held identity can be used as it is. */

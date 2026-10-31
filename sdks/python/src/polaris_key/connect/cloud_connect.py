@@ -8,7 +8,9 @@ over the identity client, the LAN service, the relay and the sessions they open.
 - ``devices()``: the person's devices as the Worker lists them (display data);
 - ``open(device_id)``: a session to one device, LAN first, the relay after a bounded LAN attempt;
 - ``on_channel(fn)``: sessions other devices opened to this one, on either path;
-- ``stop()``: close the sessions, the relay and the LAN service.
+- ``stop()``: close the sessions, the relay and the LAN service;
+- ``nearby``: approval of a device with no sign-in by a signed-in device nearby (mode ``v``, CC-15):
+  ``nearby.request()`` on the new device, ``nearby.on_request()`` on the approver.
 
 The services run on the Connect loop (D-3), one private asyncio loop on a daemon thread; every method here
 is a plain blocking call from the host's thread, and ``AsyncClient`` mirrors them as coroutines. Callbacks
@@ -36,9 +38,11 @@ import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional
 
+from ..core.b64url import b64url_encode
 from .client import ConnectClient, ConnectDevice
 from .errors import LanError, RelayError
 from .loop import connect_loop
+from .nearby import CloudNearby, NearbyDeps
 
 if TYPE_CHECKING:  # the transports import asyncio and sockets: only when Connect starts
     from .channel import ConnectNotice
@@ -109,7 +113,9 @@ class CloudConnect:
         *,
         apply_trust: Optional[Callable[[str], Any]] = None,
         now: Optional[Callable[[], int]] = None,
+        nearby: Optional[NearbyDeps] = None,
     ) -> None:
+        self._nearby = CloudNearby(nearby)
         self._now = now
         self._connect = connect
         self._discovery = discovery
@@ -129,6 +135,8 @@ class CloudConnect:
         self._unsub: List[Callable[[], None]] = []
         self._sessions: set = set()  # type: ignore[type-arg]
         self._gate: Any = None
+        # A roster this device stores re-admits every open session (§15.6).
+        connect.on_roster(self._readmit)
 
     def __repr__(self) -> str:
         return "<CloudConnect running=%s>" % self._running
@@ -164,6 +172,12 @@ class CloudConnect:
         return self._gate
 
     # -- the API ------------------------------------------------------------------------------------
+
+    @property
+    def nearby(self) -> CloudNearby:
+        """Nearby approval (CC-15): ``request()`` on the new device, ``on_request()`` on the approver. Gated
+        by the Identity service's discovery, never by Connect: it works with Connect off."""
+        return self._nearby
 
     def status(self) -> CloudConnectStatus:
         relay = self._relay
@@ -421,10 +435,31 @@ class CloudConnect:
             except Exception:
                 pass
 
+    def _readmit(self, ring: Any) -> None:
+        """Admit each open session again against a roster this device has just stored: a peer the roster no
+        longer lists with the key the session was admitted under is closed ``peer_revoked``. A roster that
+        only adds devices keeps every session. Never blocks: the closes run on the Connect loop."""
+        sessions = list(self._sessions)
+        gone = []
+        for s in sessions:
+            key = b64url_encode(s.peer_static) if s.peer_static is not None else None
+            if not any(d.device_id == s.peer_device_id and (key is None or d.agree_key == key) for d in ring.devices):
+                gone.append(s)
+        if gone:
+            self._loop.call_soon(_revoke, gone)
+
     def _track(self, s: "ConnectSession") -> "ConnectSession":
         self._sessions.add(s)
         s.on_close(lambda _c: self._sessions.discard(s))
         return s
+
+
+def _revoke(sessions: List["ConnectSession"]) -> None:
+    for s in sessions:
+        try:
+            s.revoke()
+        except Exception:
+            pass
 
 
 def _close_late(f: Any) -> None:

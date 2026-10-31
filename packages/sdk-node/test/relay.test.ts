@@ -194,6 +194,20 @@ describe("sessions over the relay", () => {
     });
   });
 
+  it("a peer that never answers ends the session with peer_timeout at the handshake deadline", async () => {
+    const { a, b, room } = await world();
+    await a.cloudConnect.start(relayOnly(room));
+    await b.cloudConnect.start(relayOnly(room, { handshakeMs: 80 }));
+    await until(() => b.cloudConnect.peers().some((p) => p.deviceId === A));
+    // A's socket stops hearing the room, so B's first message is never answered.
+    for (const s of room.sockets.filter((x) => x.device === A))
+      s.deliver = () => undefined;
+    await expect(b.cloudConnect.open(A)).rejects.toMatchObject({
+      name: "RelayError",
+      closeCode: "peer_timeout",
+    });
+  });
+
   it("ignores a first message from a device that is not on the roster", async () => {
     const { a, room, worker } = await world();
     let got = 0;
@@ -264,7 +278,7 @@ describe("LAN first, then the relay", () => {
     const name = await accountInstance(keys.current, advertEpoch(T0), B);
     net.inject({
       instance: name,
-      host: "127.0.0.1",
+      hosts: ["127.0.0.1"],
       port: 9,
       txt: ["v=1", "m=a"],
     });
@@ -407,6 +421,48 @@ describe("reconnect and the typed stops", () => {
     const before = room.received.length;
     for (const s of room.sockets) s.deliver(Uint8Array.of(0x99, 1, 2, 3));
     await until(() => room.everOpened[0]!.closeCode === 1002);
+    expect(room.received.length).toBe(before);
+  });
+});
+
+describe("inbound envelopes", () => {
+  it("relay: inbound envelopes past the pending-byte cap close the socket", async () => {
+    const { a, room } = await world();
+    const r = svc(a, room, new ManualTimer(), { maxPendingBytes: 150 });
+    await r.ready();
+    const sock = room.sockets[0]!;
+    const frame = (): { data: ArrayBuffer } => ({
+      data: new Uint8Array(100).fill(0x99).buffer,
+    });
+    // Two envelopes in one turn: the first waits for the handler, the second would pass the cap.
+    sock.onmessage?.(frame());
+    sock.onmessage?.(frame());
+    await until(() => sock.closeCode !== null);
+    expect(sock.closeCode).toBe(1013);
+  });
+
+  it("relay: a refused envelope closes the socket under the WebSocket close-code rule", async () => {
+    const { a, room } = await world();
+    // A socket that only closes with 1000 or 3000 to 4999 and throws on any other code.
+    const strict = (url: string, protocols: string[]) => {
+      const s = room.webSocket(url, protocols);
+      const close = s.close.bind(s);
+      s.close = (code?: number) => {
+        if (
+          code !== undefined &&
+          code !== 1000 &&
+          !(code >= 3000 && code <= 4999)
+        )
+          throw new Error("invalid close code");
+        close(code);
+      };
+      return s;
+    };
+    const r = svc(a, room, new ManualTimer(), { webSocket: strict });
+    await r.ready();
+    const before = room.received.length;
+    for (const s of room.sockets) s.deliver(Uint8Array.of(0x99, 1, 2, 3));
+    await until(() => room.everOpened[0]!.closeCode === 1000);
     expect(room.received.length).toBe(before);
   });
 });

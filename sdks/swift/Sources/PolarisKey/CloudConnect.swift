@@ -128,13 +128,19 @@ import PolarisKeyCore
                 running: false, lan: "off", lanError: nil, relay: "off", relayError: nil, relayReason: nil))
         private let queue = DispatchQueue(label: "im.plrs.key.cloud-connect.callbacks")
 
+        /// Nearby approval (CC-15): `request(_:)` on the new device, `onRequest(_:options:)` on the approver. It
+        /// is gated by the Identity service's discovery, never by Connect, and works with Connect off.
+        public nonisolated let nearby: CloudNearby
+
         /// `discovery` returns the loaded discovery document; `applyTrust` verifies, applies and persists a trust
         /// manifest a peer pushed (`CoreContext.applyPeerTrust`); `now` is epoch seconds.
         public init(
             connect: ConnectClient, discovery: @escaping @Sendable () async -> ProductDiscoveryDocument? = { nil },
             applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil,
-            now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970) }
+            now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970) },
+            nearby: NearbyDeps? = nil
         ) {
+            self.nearby = CloudNearby(nearby, deliver: { [queue] f in queue.async(execute: f) })
             let channel = channelListeners
             let notices = noticeListeners
             let box = statusBox
@@ -170,6 +176,20 @@ import PolarisKeyCore
         /// closed by then is force-cancelled (listener, browser and relay socket, no graceful close) and its
         /// discovery key is dropped, so a sign-out is never held up by Connect.
         public func stop() async { await core.stop(timeout: cloudConnectStopSeconds) }
+
+        /// The sign-out step: Connect stops (bounded), then the nearby adverts and requests, before the device
+        /// leaves Connect (G18). Never throws and never waits past 15 s a step.
+        func stopForSignOut(bound: TimeInterval = cloudConnectStopSeconds) async {
+            await core.stop(timeout: bound)
+            await stopNearby(bound: bound)
+        }
+
+        /// Stop every nearby advert and close every request, for at most `bound` seconds: past it, every socket and
+        /// listener is dropped at once (no goodbye). Also what `PolarisKeyClient.close()` runs.
+        func stopNearby(bound: TimeInterval = cloudConnectStopSeconds) async {
+            let nearby = nearby
+            if !(await connectBounded(bound) { await nearby.stopAll() }) { nearby.forceStop() }
+        }
 
         /// The person's other devices that can be reached now, with the paths each has.
         public func peers() async -> [CloudPeer] { await core.peers() }
@@ -313,7 +333,7 @@ import PolarisKeyCore
             let reason = o.relay ? cloudConnectRelayWanted(await discovery()) : "host"
             guard gen == generation else { throw CancellationError() }
             let relayOn = reason == nil
-            let src = ConnectLanSource.client(connect, now: now, applyTrust: applyTrust)
+            let src = watch(ConnectLanSource.client(connect, now: now, applyTrust: applyTrust))
             if o.lan {
                 do {
                     let svc = try await ConnectLanService.start(src, options: o.lanOptions)
@@ -467,6 +487,35 @@ import PolarisKeyCore
         }
 
         private func untrack(_ id: ObjectIdentifier) { sessions[id] = nil }
+
+        /// A roster this device stores, pushed or fetched, is checked against every open session.
+        func watch(_ source: ConnectLanSource) -> ConnectLanSource {
+            var src = source
+            if let adopt = src.adoptRing {
+                src.adoptRing = { [weak self] jws in
+                    let r = await adopt(jws)
+                    if r.stored, let self { await self.rosterStored() }
+                    return r
+                }
+            }
+            if let refresh = src.refresh {
+                src.refresh = { [weak self] in
+                    try await refresh()
+                    if let self { await self.rosterStored() }
+                }
+            }
+            return src
+        }
+
+        /// Admits every open session again against the roster now held: a session with a device the
+        /// roster no longer lists ends `peer_revoked`. A roster that only adds devices keeps them all.
+        func rosterStored() async {
+            guard let held = await connect.held() else { return }
+            let listed = Set(held.ring.devices.map(\.deviceId))
+            for s in Array(sessions.values) where !listed.contains(s.peerDeviceId) {
+                await s.closeRevoked()
+            }
+        }
 
         func open(_ deviceId: String, relay relayOpt: Bool, lanAttempt attempt: TimeInterval?) async throws
             -> ConnectSession

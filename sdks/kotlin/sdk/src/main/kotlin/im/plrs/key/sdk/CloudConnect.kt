@@ -9,6 +9,9 @@
 //   open(id)         a session to one device: LAN first, the relay after a bounded LAN attempt
 //   onChannel(fn)    sessions other devices opened to this one, on either path
 //   stop()           close the sessions, the relay and the LAN service
+//   nearby           approval of a device with no sign-in by a signed-in device nearby (mode v, CC-15):
+//                    `request()` on the new device, `onRequest()` on the approver; gated by Identity discovery,
+//                    not by Connect, so it works with Connect off
 //
 // Rules this file keeps:
 //  - the order is LAN, then relay. The LAN attempt is bounded (`lanAttemptSeconds`, default 4); when it
@@ -22,7 +25,8 @@
 //  - a failure on one path is never swallowed: when no path works the last typed error is thrown
 //    ([LanException] or [RelayException]);
 //  - `stop()` waits a bounded time (R-6P S6): a host callback that blocks does not hold sign-out;
-//  - sign-out stops Connect before the credential goes (G18); a stop that times out is swallowed there;
+//  - sign-out stops Connect before the credential goes (G18); a stop that times out is swallowed there. Then the
+//    nearby adverts and requests stop (same bound), before the device leaves Connect;
 //  - a trust manifest a peer pushed is applied only when trust refresh is on, then persisted.
 //
 // Threads: `start`, `stop`, `open`, `devices` and `refreshPeers` are suspend calls and run on the caller's
@@ -38,6 +42,7 @@ import im.plrs.key.core.PeerTrustResult
 import im.plrs.key.core.ProductDiscoveryDocument
 import im.plrs.key.core.RuntimeFamily
 import im.plrs.key.core.ServiceSlug
+import im.plrs.key.core.peer.PeerCloseCode
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -125,6 +130,9 @@ public class CloudConnect internal constructor(
     private val floored: () -> Long = { core.flooredNow() },
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    /** Nearby approval (CC-15): `request()` on the new device, `onRequest()` on the approver. */
+    public val nearby: CloudNearby = CloudNearby(connect, core, now)
     private val gate = Mutex()
     private val lock = Any()
 
@@ -212,7 +220,7 @@ public class CloudConnect internal constructor(
         relayReason = null
         val reason = if (!o.relay) "host" else relayWanted(core.discoveryDocument())
         val relayOn = reason == null
-        val src = lanSource(connect, now = now, floored = floored, applyTrust = { applyPeerTrust(it) })
+        val src = watch(lanSource(connect, now = now, floored = floored, applyTrust = { applyPeerTrust(it) }))
         try {
             if (!o.lan) {
                 lanReason = "host"
@@ -319,15 +327,18 @@ public class CloudConnect internal constructor(
         } catch (e: Exception) {
             // sign-out goes on; the credential must not outlive the user's decision
         }
+        // Then the nearby adverts and sessions (after Connect, before the device leaves it), under the same bound.
+        if (withTimeoutOrNull(stopMillis) { nearby.stopAll() } == null) nearby.forceStop()
     }
 
     /** The client's `close()`: tear down in the background, then release the facade's scope. */
     internal fun shutdown() {
-        if (!touched) {
-            scope.cancel()
-            return
-        }
-        scope.launch { gate.withLock { teardown() } }.invokeOnCompletion { scope.cancel() }
+        val nearbyStop = scope.launch { if (withTimeoutOrNull(stopMillis) { nearby.stopAll() } == null) nearby.forceStop() }
+        val teardown = if (touched) scope.launch { gate.withLock { teardown() } } else null
+        scope.launch {
+            nearbyStop.join()
+            teardown?.join()
+        }.invokeOnCompletion { scope.cancel() }
     }
 
     /** The person's other devices that can be reached now, with the paths each has. */
@@ -451,6 +462,44 @@ public class CloudConnect internal constructor(
         }
     }
 
+    /** A roster this device stores, pushed or fetched, is checked against every open session. */
+    internal fun watch(source: LanSource): LanSource {
+        val adopt = source.adoptRing
+        val refresh = source.refresh
+        return LanSource(
+            load = source.load,
+            now = source.now,
+            refresh = refresh?.let { f ->
+                {
+                    f()
+                    rosterStored()
+                }
+            },
+            adoptRing = adopt?.let { f ->
+                { jws ->
+                    val r = f(jws)
+                    if (r is RingAdoption.Stored) rosterStored()
+                    r
+                }
+            },
+            applyTrust = source.applyTrust,
+            floored = source.floored,
+            mono = source.mono,
+        )
+    }
+
+    /**
+     * Admits every open session again against the roster now held: a session with a device the roster no
+     * longer lists ends `peer_revoked`. A roster that only adds devices keeps them all.
+     */
+    internal suspend fun rosterStored() {
+        val listed = connect.current()?.devices?.map { it.deviceId }?.toSet() ?: return
+        val open = synchronized(lock) { sessions.toList() }
+        for (s in open) {
+            if (s.peerDeviceId !in listed) s.closeRevoked()
+        }
+    }
+
     private fun track(s: ConnectSession): ConnectSession {
         synchronized(lock) { sessions += s }
         s.onClose { synchronized(lock) { sessions -= s } }
@@ -463,5 +512,14 @@ public class CloudConnect internal constructor(
         val r = core.acceptPeer(jws)
         if (r.applied) core.persistPeerTrust(jws)
         return r
+    }
+}
+
+/** Closes [this] with `peer_revoked`: the roster no longer lists the peer. */
+internal suspend fun ConnectSession.closeRevoked() {
+    try {
+        link.close(PeerCloseCode.peer_revoked)
+    } catch (ignored: IllegalStateException) {
+        // the transport is already gone: the session is over
     }
 }

@@ -19,7 +19,7 @@ private let sub = "ps_AbCdEfGhIjKlMnOpQrStUv"
 private final class Link: ConnectSessionLink, @unchecked Sendable {
     let log = LockedValue<[String]>([])
     func sendRecord(type: Int, body: Data) async throws {}
-    func close(_ code: PeerCloseCode) async { log.with { $0.append("close") } }
+    func close(_ code: PeerCloseCode) async { log.with { $0.append(code == .peerBye ? "close" : "close:\(code.rawValue)") } }
     func closeSoon(_ code: PeerCloseCode) { log.with { $0.append("close") } }
     func pause(_ on: Bool) {}
 }
@@ -259,6 +259,41 @@ final class CloudConnectTests: XCTestCase {
         XCTAssertEqual(got.current, [otherId])
         XCTAssertEqual(l2.log.current, [])
         off()
+        await c.cloudConnect.stop()
+    }
+
+    // MARK: a stored roster re-admits the open sessions
+
+    private func roster(epoch: Int, keepsOther: Bool) async throws -> String {
+        let keys = try await port.ensure()
+        let k = { Base64URL.encode(Curve25519.KeyAgreement.PrivateKey().publicKey.rawRepresentation) }
+        var devs = [#"{"deviceId":"\#(selfId)","signKey":"\#(keys.signKey)","agreeKey":"\#(keys.agreeKey)"}"#]
+        if keepsOther { devs.append(#"{"deviceId":"\#(otherId)","signKey":"\#(k())","agreeKey":"\#(k())"}"#) }
+        return signer.sign(
+            payloadJSON:
+                #"{"iss":"key.plrs.im","aud":"djdl","sub":"\#(sub)","epoch":\#(epoch),"issuedAt":\#(now),"expiresAt":\#(now + 604_800),"devices":[\#(devs.joined(separator: ","))]}"#,
+            typ: JwsTyp.ring.rawValue)
+    }
+
+    func testStoredRosterClosesSessionsWithDroppedDevice() async throws {
+        let c = try await client()
+        try await serve()
+        try await c.cloudConnect.start(options: lanOnly)
+        _ = c.cloudConnect.onChannel { _ in }
+        guard case .ready = await c.connect.identity() else { return XCTFail("identity") }
+        let src = await c.cloudConnect.core.watch(ConnectLanSource.client(c.connect, now: { Int(Date().timeIntervalSince1970) }))
+        let adopt = try XCTUnwrap(src.adoptRing)
+        let link = Link()
+        await c.cloudConnect.deliverInbound(session(link))
+        // A roster that only adds devices keeps the session.
+        let keeps = await adopt(try await roster(epoch: 6, keepsOther: true))
+        XCTAssertTrue(keeps.stored)
+        try await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(link.log.current, [])
+        // A roster that drops the peer ends it.
+        let drops = await adopt(try await roster(epoch: 7, keepsOther: false))
+        XCTAssertTrue(drops.stored)
+        XCTAssertEqual(link.log.current, ["close:peer_revoked"])
         await c.cloudConnect.stop()
     }
 

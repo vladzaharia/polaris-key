@@ -1376,6 +1376,9 @@
     "packages/client-core/test/delegation.test.ts": {
       "jscpd:duplicate": 13
     },
+    "packages/client-core/test/deviceLabel.test.ts": {
+      "jscpd:duplicate": 4
+    },
     "packages/client-core/test/hostCodec.test.ts": {
       "jscpd:duplicate": 4
     },
@@ -1566,10 +1569,10 @@
       "jscpd:duplicate": 4
     },
     "packages/sdk-node/src/connect/channel.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 8
     },
     "packages/sdk-node/src/connect/client.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 17
     },
     "packages/sdk-node/src/connect/cloudConnect.ts": {
       "jscpd:duplicate": 3
@@ -1578,7 +1581,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/connect/relay.ts": {
-      "jscpd:duplicate": 24
+      "jscpd:duplicate": 26
     },
     "packages/sdk-node/src/connect/session.ts": {
       "jscpd:duplicate": 5
@@ -1756,6 +1759,18 @@
     },
     "packages/sdk-node/test/connect.test.ts": {
       "jscpd:duplicate": 15
+    },
+    "packages/sdk-node/test/connect/nearbyApprover.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/connectCustody.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/connectHardening.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/connectPacing.test.ts": {
+      "jscpd:duplicate": 5
     },
     "packages/sdk-node/test/copy.test.ts": {
       "jscpd:duplicate": 1
@@ -2180,6 +2195,9 @@
     "packages/shared-manifest/src/descriptor.ts": {
       "jscpd:duplicate": 6
     },
+    "packages/shared-manifest/src/displayName.ts": {
+      "jscpd:duplicate": 3
+    },
     "packages/shared-manifest/src/distribution.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -2214,7 +2232,7 @@
       "jscpd:duplicate": 1
     },
     "packages/shared-protocol/src/identity.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 6
     },
     "packages/shared-protocol/src/packs.ts": {
       "jscpd:duplicate": 2
@@ -2274,10 +2292,10 @@
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/connect/channel.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 8
     },
     "packages/ui-core/src/browser/sdk/browser/connect/client.ts": {
-      "jscpd:duplicate": 17
+      "jscpd:duplicate": 18
     },
     "packages/ui-core/src/browser/sdk/browser/connect/cloud.ts": {
       "jscpd:duplicate": 3
@@ -2292,7 +2310,7 @@
       "jscpd:duplicate": 2
     },
     "packages/ui-core/src/browser/sdk/browser/connect/relay.ts": {
-      "jscpd:duplicate": 22
+      "jscpd:duplicate": 24
     },
     "packages/ui-core/src/browser/sdk/browser/connect/session.ts": {
       "jscpd:duplicate": 5
@@ -4643,6 +4661,9 @@
     "tools/corpus/delegation.ts": {
       "jscpd:duplicate": 1
     },
+    "tools/corpus/device-label.ts": {
+      "jscpd:duplicate": 9
+    },
     "tools/corpus/gate.ts": {
       "jscpd:duplicate": 9
     },
@@ -4713,7 +4734,7 @@
       "jscpd:duplicate": 1
     },
     "tools/gen-api-surface.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 8
     },
     "tools/gen-channels.ts": {
       "jscpd:duplicate": 7
@@ -4727,6 +4748,9 @@
     "tools/gen-generators-doc.ts": {
       "jscpd:duplicate": 2
     },
+    "tools/gen-godot-nfc.ts": {
+      "jscpd:duplicate": 6
+    },
     "tools/gen-mirrors.ts": {
       "jscpd:duplicate": 1
     },
@@ -4734,7 +4758,7 @@
       "jscpd:duplicate": 2
     },
     "tools/gen-roles-matrix.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "tools/gen-sdk-constants.test.ts": {
       "jscpd:duplicate": 2

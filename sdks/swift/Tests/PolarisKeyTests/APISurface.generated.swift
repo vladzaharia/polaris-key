@@ -172,4 +172,6 @@ func apiSurface() async {
     _ = CloudConnect.refreshPeers  // cloudConnect.refreshPeers
     _ = CloudConnect.status  // cloudConnect.status
     _ = CloudConnect.onNotice  // cloudConnect.onNotice
+    _ = CloudNearby.request  // cloudConnect.nearby.request
+    _ = CloudNearby.onRequest  // cloudConnect.nearby.onRequest
 }

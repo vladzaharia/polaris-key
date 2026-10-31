@@ -9,15 +9,25 @@ Rules this module keeps:
   is renewed at every 15-minute epoch boundary and when K_disc changes, and uses only the newest key (G4);
 - a browse hit is kept only if it matches a roster device (never this one) under the current or previous
   epoch and either delivered key; everything else is dropped, and a name that did not match is not
-  worked out twice;
+  worked out twice. The mDNS adapter is given the same names up front (``accept``), so a name no roster
+  device can announce never takes a place in its tables;
 - the listener starts a handshake only when this device holds a verified identity. The handshake
   (XXpsk0) and admission (certificate, roster, expiry, revocation) run in the session engine; a failed
   tag closes the socket without a word (G2);
-- sockets that have not been admitted are bounded: at most 32 in total and 4 per source address, each
-  living at most 30 seconds, handshake frames at most 16 KiB (G7);
-- the device dials only RFC 1918 IPv4 addresses (loopback only when the caller opts in, for tests), and
-  checks the connected address as well as the advertised one (G6); the certificate's device must be the
-  one dialled, or the session closes ``wrong_peer`` (G8);
+- sockets that have not been admitted are bounded: at most 32 in total, 4 per source address and 16 per
+  group (a link, an IPv4 /24 or an IPv6 /64), each living at most 30 seconds, handshake frames at most
+  16 KiB (G7). A socket whose identity read hangs gives its slot back at the 30 second deadline;
+- an address is allowed by ``lan_verdict`` (§15.4.1; RFC 1918, fe80::/10, a ULA or on-link global address;
+  loopback only when the caller opts in, for tests). An accepted socket is judged on its own peer and local
+  address before it takes a slot and before any byte is read, and one that fails is closed at once; a dialled
+  address is judged as text before a socket exists and on the connected socket before its first byte (G6).
+  The certificate's device must be the one dialled, or the session closes ``wrong_peer`` (G8);
+- one TCP port serves both families: a dual-stack ``::`` listener (``IPV6_V6ONLY`` off), falling back to
+  ``0.0.0.0``. The listener can be reached from beyond the LAN, so a connection whose source fails the
+  verdict is closed in ``connection_made`` before the transport reads: no slot, no read, no byte written.
+  A device with several learned addresses dials them in a race (:mod:`.dial`), and when the handshake with
+  the winner fails it races the addresses that are left; a handshake that completes with another device
+  ends the dial as ``wrong_peer``;
 - the device's X25519 private key never leaves the key port (G1): the session is given the
   :class:`~polaris_key.connect.client.PeerSource` static-key handle, whose ``dh`` calls the port.
 """
@@ -25,33 +35,43 @@ Rules this module keeps:
 from __future__ import annotations
 
 import asyncio
+import socket
 import time
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Dict, List, NamedTuple, Optional, Sequence, Set, Tuple
 
 from ..core.peer_advert import ADVERT_EPOCH_SECONDS, BrowseHit, account_instance, advert_epoch, browse_table, parse_txt
+from ..core.peer_dial import dial_race
+from ..core.peer_lan_gate import Admitted, GatedProtocol, admit_transport, listen_socket
+from ..core.peer_lan_judge import PendingLimiter, text_verdict
 from ..core.peer_link import SocketLink
-from ..core.peer_mdns import MdnsAdapter, MdnsAdvert, MdnsFound, MdnsHandle, MulticastDnsAdapter, is_lan_address
+from ..core.peer_mdns import MdnsAdapter, MdnsAdvert, MdnsFound, MdnsHandle, MulticastDnsAdapter
 from .channel import ConnectNotice, PeerDocs, PeerDocsSource, channel_base
 from .client import ConnectClient, PeerSource
 from .errors import LanError
 from .session import ConnectSession, session_handlers, wait_opened
 
 __all__ = [
+    "Admitted",
+    "GatedProtocol",
     "LanOptions",
     "LanPeer",
     "LanService",
     "LanSource",
     "MAX_PENDING",
     "MAX_PENDING_PER_ADDRESS",
+    "MAX_PENDING_PER_64",
     "MAX_SESSIONS",
     "MAX_SESSIONS_PER_PEER",
+    "admit_transport",
     "lan_source",
+    "listen_socket",
 ]
 
-#: Unauthenticated sockets at once, and per source address (G7).
+#: Unauthenticated sockets at once, per source address and per group (G7, §15.4.1).
 MAX_PENDING = 32
 MAX_PENDING_PER_ADDRESS = 4
+MAX_PENDING_PER_64 = 16
 #: Open sessions at once.
 MAX_SESSIONS = 64
 #: Open sessions with one device at once (the relay's ``max_pending_per_peer`` counts the same way).
@@ -98,10 +118,12 @@ def lan_source(
 class LanOptions:
     """``mdns`` is the discovery adapter (default :class:`MulticastDnsAdapter`, with ``interfaces`` as
     the ``lan.interfaces`` override). ``port`` 0 picks a random port each listen (§15.4).
-    ``allow_loopback`` accepts and dials 127.0.0.0/8: for tests and same-host use only."""
+    ``allow_loopback`` accepts and dials 127.0.0.0/8 and ``::1``: for tests and same-host use only, and not
+    public API. ``host`` is where to listen: by default ``::`` (both families on one port), or ``0.0.0.0``
+    where IPv6 is unavailable."""
 
     mdns: Optional[MdnsAdapter] = None
-    host: str = "0.0.0.0"
+    host: Optional[str] = None
     port: int = 0
     caps: Sequence[str] = ("app/1",)
     label: Optional[str] = None
@@ -111,6 +133,7 @@ class LanOptions:
     interfaces: Optional[Sequence[str]] = None
     max_pending: int = MAX_PENDING
     max_pending_per_address: int = MAX_PENDING_PER_ADDRESS
+    max_pending_per_64: int = MAX_PENDING_PER_64
     max_sessions: int = MAX_SESSIONS
     max_sessions_per_peer: int = MAX_SESSIONS_PER_PEER
     rekey_messages: Optional[int] = None
@@ -129,8 +152,7 @@ class LanPeer(NamedTuple):
     alt_hosts: Tuple[str, ...] = ()
 
 
-def _bare(addr: str) -> str:
-    return addr[7:] if addr.startswith("::ffff:") else addr
+_GatedProtocol = GatedProtocol
 
 
 class LanService:
@@ -151,8 +173,13 @@ class LanService:
         self._peers: Dict[str, Tuple[LanPeer, str]] = {}
         self._miss: Dict[str, int] = {}
         self._tab: Optional[Tuple[Tuple[int, Tuple[bytes, ...], Tuple[str, ...]], Dict[str, BrowseHit]]] = None
+        #: The last identity read, kept when ``_id`` is dropped: the roster filter works from it (``_accepts``).
+        self._known: Optional[PeerSource] = None
+        self._names: Optional[Tuple[PeerSource, int, "frozenset[str]"]] = None
         self._pending: Set[Any] = set()
-        self._per_address: Dict[str, int] = {}
+        self._limit = PendingLimiter(o.max_pending, o.max_pending_per_address, o.max_pending_per_64)
+        #: Accepted transports that hold a slot and have not reached ``_accept`` yet.
+        self._slots: Dict[Any, Callable[[], None]] = {}
         self._links: Set[SocketLink] = set()
         self._sessions: Set[ConnectSession] = set()
         self._tasks: Set["asyncio.Future[Any]"] = set()
@@ -222,8 +249,7 @@ class LanService:
         if self._cancel_epoch is not None:
             self._cancel_epoch()
             self._cancel_epoch = None
-        for w in list(self._pending):
-            self._abort(w)
+        self._abort_unadmitted()
         for t in list(self._tasks):
             t.cancel()
         for s in list(self._sessions):
@@ -254,8 +280,7 @@ class LanService:
         if self._cancel_epoch is not None:
             self._cancel_epoch()
             self._cancel_epoch = None
-        for w in list(self._pending):
-            self._abort(w)
+        self._abort_unadmitted()
         for t in list(self._tasks):
             t.cancel()
         for s in list(self._sessions):
@@ -273,6 +298,12 @@ class LanService:
             if h is not None:
                 asyncio.ensure_future(self._stop_handle(h))
         self._adv = self._browse = None
+
+    def _abort_unadmitted(self) -> None:
+        for w in list(self._pending):
+            self._abort(w)
+        for t in list(self._slots):
+            self._abort(t)
 
     @staticmethod
     async def _stop_handle(h: Any) -> None:
@@ -303,7 +334,9 @@ class LanService:
     # -- dial -------------------------------------------------------------------------------------
 
     def _dialable(self, host: str) -> bool:
-        return is_lan_address(host, self._o.allow_loopback)
+        # The address text is judged before a socket exists (§15.4.1); the address itself stands in for
+        # "some local address in the same /64" until the connected socket is judged.
+        return text_verdict(host, self._o.allow_loopback)
 
     async def connect(self, target: Any) -> ConnectSession:
         """Dial a discovered device (a device id, or a :class:`LanPeer`) and run the handshake. Raises
@@ -316,22 +349,23 @@ class LanService:
             peer: Optional[LanPeer] = known[0] if known is not None else None
         else:
             want, peer = target.device_id, target
-        if peer is None or not self._dialable(peer.host):
+        hosts: List[str] = []
+        if peer is not None:
+            for h in (peer.host,) + tuple(peer.alt_hosts):
+                if h not in hosts and self._dialable(h):
+                    hosts.append(h)
+        if peer is None or not hosts:
             raise LanError("unknown_peer", "That device was not found on this network.")
         ident = await self._identity(False)
-        # A neighbour can answer first with its own address (S4): fall through the list on a refused
-        # connect or a failed handshake, so the real device is still reached.
-        hosts = [peer.host] + [h for h in peer.alt_hosts if h != peer.host and self._dialable(h)]
+        # A neighbour can answer first with its own address (S4): when the winner of the race fails the
+        # handshake, the race runs again over the addresses left, so the real device is still reached.
         err: Optional[LanError] = None
         session: Any = None
-        for host in hosts:
-            try:
-                session = await self._connect_one(peer._replace(host=host), ident)
-                break
-            except LanError as e:
-                if e.reason not in ("connect_failed", "handshake_failed"):
-                    raise
-                err = e
+        while hosts and session is None:
+            session, err, failed = await self._connect_one(hosts, peer.port, ident, peer.device_id)
+            if failed is None:
+                break  # nothing connected: there is no address left to try
+            hosts = [h for h in hosts if h != failed]
         if session is None:
             assert err is not None
             raise err
@@ -340,34 +374,45 @@ class LanService:
             raise LanError("wrong_peer", "The device that answered is not the one that advertised.")
         return session
 
-    async def _connect_one(self, peer: LanPeer, ident: PeerSource) -> Any:
-        reader, writer = await self._dial(peer)
-        link = self._link(reader, writer, ident, "initiator", expect=peer.device_id)
+    async def _connect_one(
+        self, hosts: List[str], port: int, ident: PeerSource, expect: str
+    ) -> Tuple[Any, Optional[LanError], Optional[str]]:
+        """Race the addresses, then handshake with the winner: ``(session, None, None)``, or
+        ``(None, error, host)`` for a winner whose handshake failed, or ``(None, error, None)`` when no
+        address connected. ``wrong_peer`` and other reasons are raised."""
+        try:
+            reader, writer, host = await self._dial(hosts, port)
+        except LanError as e:
+            return None, e, None
+        link = self._link(reader, writer, ident, "initiator", expect=expect)
         task = self._spawn(link.run())
         link.start()
         try:
-            return await wait_opened(link, self._o.handshake_seconds + 5)
-        except LanError:
+            return await wait_opened(link, self._o.handshake_seconds + 5), None, None
+        except LanError as e:
             if link.wrong_peer:
                 raise LanError("wrong_peer", "The device that answered is not the one that advertised.") from None
-            raise
-        except Exception as e:
+            if e.reason not in ("connect_failed", "handshake_failed"):
+                raise
+            self._abort(writer)  # the failed socket closes before the next race
+            return None, e, host
+        except Exception:
             task.cancel()
-            raise LanError("handshake_failed", "The handshake failed.") from e
-
-    async def _dial(self, peer: LanPeer) -> Tuple[Any, Any]:
-        try:
-            reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(peer.host, peer.port), self._o.dial_seconds
-            )
-        except (OSError, asyncio.TimeoutError) as e:
-            raise LanError("connect_failed", "The device did not answer.") from e
-        # The address that actually answered must be a LAN one too (G6).
-        at = writer.get_extra_info("peername")
-        if not at or not self._dialable(_bare(str(at[0]))):
             self._abort(writer)
-            raise LanError("connect_failed", "The device did not answer.")
-        return reader, writer
+            return None, LanError("handshake_failed", "The handshake failed."), host
+
+    async def _dial(self, hosts: List[str], port: int) -> Tuple[Any, Any, str]:
+        """Race the addresses (dial.py); the winner was judged as text and on its own addresses."""
+        try:
+            sock, host = await dial_race(hosts, port, self._o.allow_loopback, timeout=self._o.dial_seconds)
+        except OSError as e:
+            raise LanError("connect_failed", "The device did not answer.") from e
+        try:
+            reader, writer = await asyncio.open_connection(sock=sock)
+        except OSError as e:
+            sock.close()
+            raise LanError("connect_failed", "The device did not answer.") from e
+        return reader, writer, host
 
     # -- identity ---------------------------------------------------------------------------------
 
@@ -382,6 +427,7 @@ class LanService:
         ):
             return held[1]
         v: PeerSource = await self._loop.run_in_executor(None, self._src.load)
+        self._known = v
         if held is not None and held[1].ring_epoch != v.ring_epoch:
             self._miss.clear()
         self._id = (now, v)
@@ -466,51 +512,65 @@ class LanService:
 
     # -- TCP --------------------------------------------------------------------------------------
 
+    def _listen_socket(self) -> "socket.socket":
+        return listen_socket(self._o.host, self._o.port)
+
     async def _listen(self) -> None:
-        self._server = await asyncio.start_server(self._accept, self._o.host, self._o.port)
-        self._port = int(self._server.sockets[0].getsockname()[1])
+        sock = self._listen_socket()
+        # One socket passed as ``sock=``: ``start_server`` given a host binds a random port per family.
+        try:
+            self._server = await self._loop.create_server(self._protocol, sock=sock)
+        except BaseException:
+            sock.close()
+            raise
+        self._port = int(sock.getsockname()[1])
+
+    def _protocol(self) -> "asyncio.StreamReaderProtocol":
+        reader = asyncio.StreamReader(loop=self._loop)
+        return GatedProtocol(reader, self._accept, self._gate, self._loop)
 
     @staticmethod
     def _abort(writer: Any) -> None:
         try:
-            t = writer.transport
+            t = getattr(writer, "transport", writer)
             t.abort()
         except Exception:
             pass
 
+    def _gate(self, transport: Any) -> bool:
+        """An accepted socket is judged first, on its own addresses, before a slot and before any byte is
+        read: a source off the LAN is closed at once and costs nothing (§15.4.1)."""
+        admitted = admit_transport(
+            transport,
+            self._limit,
+            self._o.allow_loopback,
+            refuse=self._stopped or len(self._sessions) >= self._o.max_sessions,
+        )
+        if admitted is None:
+            return False
+        self._slots[transport] = admitted.release
+        return True
+
     async def _accept(self, reader: Any, writer: Any) -> None:
-        at = writer.get_extra_info("peername")
-        addr = str(at[0]) if at else ""
-        o = self._o
-        per = self._per_address.get(addr, 0)
-        if (
-            self._stopped
-            or len(self._pending) >= o.max_pending
-            or per >= o.max_pending_per_address
-            or len(self._sessions) >= o.max_sessions
-            or not self._dialable(_bare(addr))
-        ):
+        release = self._slots.pop(writer.transport, None)
+        if release is None:  # not admitted by the gate: cannot happen, and closes if it does
             return self._abort(writer)
         self._pending.add(writer)
-        self._per_address[addr] = per + 1
         # An unauthenticated socket lives for the handshake window and no longer.
-        deadline = self._loop.call_later(o.handshake_seconds, self._abort, writer)
+        deadline = self._loop.call_later(self._o.handshake_seconds, self._abort, writer)
 
         def done(*_a: Any) -> None:
             deadline.cancel()
             if writer not in self._pending:
                 return
             self._pending.discard(writer)
-            n = self._per_address.get(addr, 1) - 1
-            if n <= 0:
-                self._per_address.pop(addr, None)
-            else:
-                self._per_address[addr] = n
+            release()
 
         link: Optional[SocketLink] = None
         try:
-            # The identity is read before the first byte is handled; the socket buffers meanwhile.
-            ident = await self._identity(False)
+            # The identity is read before the first byte is handled; the socket buffers meanwhile. The
+            # read is cancelled at the handshake deadline, so a hung ``load`` cannot hold the slot.
+            ident = await asyncio.wait_for(self._identity(False), self._o.handshake_seconds)
             if self._stopped:
                 return self._abort(writer)
             link = self._link(reader, writer, ident, "responder")
@@ -563,7 +623,22 @@ class LanService:
         return h.cancel
 
     async def _start_browse(self) -> None:
-        self._browse = await self._mdns.browse(self._found_later, self._gone)
+        self._browse = await self._mdns.browse(self._found_later, self._gone, self._accepts)
+
+    def _accepts(self, instance: str) -> bool:
+        """The adapter's roster filter: may this instance name enter its tables? Only a name a roster
+        device (never this one) can announce, under the current or previous epoch and either delivered key.
+        The names are worked out once per (epoch, keys, roster) (``_table``)."""
+        ident = self._known
+        if ident is None:
+            return False
+        epoch = advert_epoch(self._src.now())
+        held = self._names
+        if held is None or held[0] is not ident or held[1] != epoch:
+            keys = [ident.keys.current] + ([ident.keys.previous] if ident.keys.previous else [])
+            names = frozenset(self._table(keys, [d for d in ident.roster if d != ident.device_id]))
+            held = self._names = (ident, epoch, names)
+        return instance in held[2]
 
     def _found_later(self, f: MdnsFound) -> None:
         self._spawn(self._quiet(self._found(f)))
@@ -585,7 +660,9 @@ class LanService:
         return self._tab[1]
 
     async def _found(self, f: MdnsFound) -> None:
-        if self._stopped or not self._dialable(f.host):
+        # Keep the addresses that could be dialled; the connected socket is judged again.
+        hosts = [h for h in (f.hosts or (f.host,)) if self._dialable(h)]
+        if self._stopped or not hosts:
             return
         txt = parse_txt(f.txt)
         if not txt["ok"] or txt["mode"] != "a":
@@ -601,7 +678,7 @@ class LanService:
                 del self._miss[next(iter(self._miss))]
             self._miss[f.instance] = self._src.now()
             return
-        peer = LanPeer(hit.device_id, f.host, f.port, tuple(f.hosts))
+        peer = LanPeer(hit.device_id, hosts[0], f.port, tuple(hosts[1:]))
         self._peers[hit.device_id] = (peer, f.instance)
         for fn in list(self._on_peer):
             try:

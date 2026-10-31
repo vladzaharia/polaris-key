@@ -165,6 +165,17 @@ public object ErrorCode {
     public const val connectUnavailable: String = "connect-unavailable"
     public const val peerCertInvalid: String = "peer-cert-invalid"
     public const val nearbyPermissionDenied: String = "nearby-permission-denied"
+    public const val nearbyUnsupported: String = "nearby-unsupported"
+    public const val peerHandshakeFailed: String = "peer-handshake-failed"
+    public const val peerClosed: String = "peer-closed"
+    public const val peerRevoked: String = "peer_revoked"
+    public const val peerExpired: String = "peer_expired"
+    public const val peerBadFrame: String = "peer_bad_frame"
+    public const val peerUnknownCritical: String = "peer_unknown_critical"
+    public const val peerNotAllowed: String = "peer_not_allowed"
+    public const val peerBusy: String = "peer_busy"
+    public const val peerTimeout: String = "peer_timeout"
+    public const val peerBye: String = "peer_bye"
     public const val platformError: String = "platform-error"
     public const val noToken: String = "no-token"
     public const val mintUnavailable: String = "mint-unavailable"
@@ -380,6 +391,17 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "connect-unavailable",
     "peer-cert-invalid",
     "nearby-permission-denied",
+    "nearby-unsupported",
+    "peer-handshake-failed",
+    "peer-closed",
+    "peer_revoked",
+    "peer_expired",
+    "peer_bad_frame",
+    "peer_unknown_critical",
+    "peer_not_allowed",
+    "peer_busy",
+    "peer_timeout",
+    "peer_bye",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -595,6 +617,17 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "connect-unavailable" to "client",
     "peer-cert-invalid" to "client",
     "nearby-permission-denied" to "client",
+    "nearby-unsupported" to "client",
+    "peer-handshake-failed" to "client",
+    "peer-closed" to "client",
+    "peer_revoked" to "peer",
+    "peer_expired" to "peer",
+    "peer_bad_frame" to "peer",
+    "peer_unknown_critical" to "peer",
+    "peer_not_allowed" to "peer",
+    "peer_busy" to "peer",
+    "peer_timeout" to "peer",
+    "peer_bye" to "peer",
     "platform-error" to "client",
     "no-token" to "client",
     "mint-unavailable" to "client",
@@ -734,6 +767,7 @@ public object Feature {
     public const val identityAutosignin: String = "identity.autosignin"
     public const val identityRestore: String = "identity.restore"
     public const val identityLink: String = "identity.link"
+    public const val identityNearby: String = "identity.nearby"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
     public const val releaseRecord: String = "release.record"
@@ -878,6 +912,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.autosignin",
     "identity.restore",
     "identity.link",
+    "identity.nearby",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1578,7 +1613,7 @@ public const val PLAN_MATRIX_VERSION: Int = 2
 public const val SYNC_SCENARIOS_VERSION: Int = 4
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
-public const val DEVICE_LABEL_VERSION: Int = 1
+public const val DEVICE_LABEL_VERSION: Int = 2
 
 /** `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json. */
 public const val PRESENTATION_MATRIX_VERSION: Int = 1
@@ -2062,6 +2097,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.autosignin" to CapabilityRow("implemented", "identity", listOf()),
     "identity.restore" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.link" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
+    "identity.nearby" to CapabilityRow("planned", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -2129,4 +2165,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "420c85ec601d5081fe82e658a205ee5b41975d216474cef2ec765f4c365f763a"
+public const val CAPABILITY_DIGEST: String = "4e20297ee08d4e84a2954b32261005d035999d4af89f03c5fa7b1b00c40dc639"

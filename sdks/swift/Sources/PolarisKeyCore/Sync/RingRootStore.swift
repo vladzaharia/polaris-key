@@ -1,8 +1,8 @@
 // Where a device keeps the Cloud Sync root between launches (D-8): one Keychain item (service
 // `pkey:<product>`, account `sync-root`, `AfterFirstUnlockThisDeviceOnly`, never synchronizable),
 // beside the Connect record. The ring pin (`{ringId, epoch, rootKid}`, no secret) is not here: it
-// lives in the Core store (`SyncRingPin`). An iCloud Keychain backup of the root is a later slice
-// (U-39.5) with its own item.
+// lives in the Core store (`SyncRingPin`). The iCloud Keychain backup of the root is its own item
+// in `PlatformBackupStore` (U-39.5), written by `SyncKeyring`.
 
 import Foundation
 

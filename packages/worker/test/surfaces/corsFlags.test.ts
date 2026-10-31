@@ -89,6 +89,11 @@ const OLD_CORS_SERVICE_PATHS = [
   "identity/signout",
   // I-49.5: enrol and revoke a silent-restore key. Device bearer only (never ambient).
   "identity/restore",
+  // I-40.4, I-40.5, I-40.7: nearby approval. Start and poll carry a device proof, approve the device
+  // bearer and a proof; none rides an ambient credential.
+  "identity/nearby/start",
+  "identity/nearby/approve",
+  "identity/nearby/poll",
   // U-05.12, U-05.13: the Cloud Sync pull and push (device bearer, never ambient).
   "sync",
   "sync/ops",

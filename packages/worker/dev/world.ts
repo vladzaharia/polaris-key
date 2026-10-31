@@ -146,6 +146,7 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
     LAUNCH_RELAY: "on",
     LAUNCH_IDENTITY_RESTORE: "on",
     LAUNCH_GAME_SIGN_IN: "on",
+    LAUNCH_IDENTITY_NEARBY: "on",
   } as unknown as Env;
 
   const releasePair = await generateEd25519();

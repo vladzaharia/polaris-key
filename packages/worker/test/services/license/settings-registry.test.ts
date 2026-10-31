@@ -205,6 +205,7 @@ describe("the settings registry (ST-03)", () => {
       ["LAUNCH_RELAY", "launch.relay"],
       ["LAUNCH_IDENTITY_RESTORE", "launch.identityRestore"],
       ["LAUNCH_GAME_SIGN_IN", "launch.gameSignIn"],
+      ["LAUNCH_IDENTITY_NEARBY", "launch.identityNearby"],
       ["LICENSING_RESERVED_NAMES", "licensing.reservedNames"],
       // PX-W13: the reserved display-name severity, an ordered enum like LX-05's.
       ["IDENTITY_RESERVED_DISPLAY_NAMES", "identity.reservedDisplayNames"],

@@ -15,16 +15,23 @@ from .client import (
 )
 from .cloud_connect import CloudConnect, CloudConnectStatus, CloudPeer
 from .errors import LanError, RelayError
+from .nearby import ApproveAnswerInput, CloudNearby, NearbyApproval, NearbyApproverHandle, NearbyDeps, NearbyRequest
 
 __all__ = [
+    "ApproveAnswerInput",
     "CloudConnect",
     "CloudConnectStatus",
+    "CloudNearby",
     "CloudPeer",
     "ConnectClient",
     "ConnectDevice",
     "ConnectIdentity",
     "DiscoveryKeys",
     "LanError",
+    "NearbyApproval",
+    "NearbyApproverHandle",
+    "NearbyDeps",
+    "NearbyRequest",
     "PREV_DISC_KEY_SECONDS",
     "PeerSource",
     "RelayError",

@@ -18,6 +18,8 @@ import im.plrs.key.core.peer.payload1
 import im.plrs.key.core.peer.peerNoiseProtocol
 import im.plrs.key.core.peer.peerPrologue
 import im.plrs.key.core.peer.peerPsk
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -384,5 +386,30 @@ class ConnectRelaySessionTest {
         assertEquals("peer_busy", closes.first().code)
         assertEquals(false, closes.first().byPeer)
         assertTrue(RecordType.PING > 0)
+    }
+
+    @Test
+    fun roomHeldAtCheckTimeIsNotHandedOutTwice() = runBlocking {
+        val n = Net()
+        val sa = n.service(n.world.a)
+        val made = ArrayList<Pacer>()
+        val sb = n.service(n.world.b, pacer = { Pacer(rate = 0.0001, burst = 60.0).also { made += it } }, outboxBytes = 4096)
+        n.inbound(sa)
+        val out = sb.dial(n.world.idA)
+        while (made.last().tryTake() == 0.0) { /* spend what is left */ }
+        // Checks that overlap are counted against one another: a few fit, then none, until one is released.
+        var held = 0
+        while (sb.reserve(1500) && held < 10) held++
+        assertTrue("held=$held", held in 1..2)
+        assertFalse(sb.reserve(1500))
+        sb.release(1500)
+        assertTrue(sb.reserve(1500))
+        // Sends that run at once end the session `peer_busy` once the room is gone, and none is half-sent.
+        val closes = CopyOnWriteArrayList<SessionClosed>()
+        out.onClose { closes += it }
+        val jobs = List(3) { async(Dispatchers.Default) { runCatching { out.send(ByteArray(1500)) } } }
+        jobs.forEach { it.await() }
+        until { closes.isNotEmpty() }
+        assertEquals("peer_busy", closes.first().code)
     }
 }
