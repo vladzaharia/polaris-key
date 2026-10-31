@@ -740,6 +740,7 @@ func _apply_auto(result: PKeyAutoSignInResult) -> void:
 			var consent: Dictionary = result.pending.get("consent", {}) if result.pending.get("consent") is Dictionary else {}
 			var shown := PKeyGateController.consent_step(consent)
 			auto_step.email = shown["email"]
+			auto_step.exchange_kind = shown["kind"]
 			auto_step.license_line = shown["license_line"]
 			auto_step.anchor = shown["anchor"]
 			auto_step.also_gets = shown["also_gets"]
