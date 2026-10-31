@@ -718,7 +718,8 @@
     },
     "sdks/godot/tests/suite_sync_vectors.gd": {
       "gdlint:class-definitions-order": 3,
-      "gdlint:max-line-length": 7
+      "gdlint:max-line-length": 7,
+      "gdlint:max-returns": 1
     },
     "sdks/godot/tests/suite_transcripts.gd": {
       "gdlint:class-definitions-order": 8,

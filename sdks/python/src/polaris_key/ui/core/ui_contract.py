@@ -63,6 +63,7 @@ COMPONENTS: Tuple[str, ...] = (
     "About",
     "ChannelPicker",
     "Toast",
+    "SaveConflict",
 )
 
 # A component whose required service is off renders nothing in the drop-in and an empty styled part.
@@ -83,6 +84,9 @@ ACTIONS: Tuple[str, ...] = (
     "accept-ring-change",
     "use-recovery-code",
     "copy-code",
+    "keep-local",
+    "keep-remote",
+    "keep-both",
 )
 
 # The controls whose catalog keys perform an action.  Views derive actions from their copy so a
@@ -118,6 +122,9 @@ ACTION_KEYS: Mapping[str, Tuple[str, ...]] = {
     "accept-ring-change": ("ringChange.accept",),
     "use-recovery-code": ("ringChange.useCode",),
     "copy-code": ("recoveryCode.copy",),
+    "keep-local": ("saveConflict.keepThis",),
+    "keep-remote": ("saveConflict.keepOther", "saveConflict.acceptDelete"),
+    "keep-both": ("saveConflict.keepBoth",),
 }
 
 # The product services and their transitive dependency rule.  This deliberately mirrors

@@ -441,6 +441,9 @@
       "ktlint:standard:blank-line-between-when-conditions": 23,
       "ktlint:standard:multiline-if-else": 2
     },
+    "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/SyncFileVectorsTest.kt": {
+      "detekt:style.ReturnCount": 1
+    },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/TranscriptReplay.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 4,
       "detekt:complexity.LongMethod": 2,
