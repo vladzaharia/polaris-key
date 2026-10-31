@@ -148,6 +148,16 @@ vi.spyOn(console, "warn").mockImplementation((m: unknown) => {
 });
 afterEach(cleanup);
 
+// "License for this device" labels a licence line: with none drawn (its seat is missing), it goes too.
+function labelGone(copy: string[], key: string): boolean {
+  if (key !== "signin.consent.license") return false;
+  const values = copy.filter(
+    (k) =>
+      k === "signin.consent.newLicense" || k === "signin.consent.licenseLine",
+  );
+  return values.every((k) => dropped.has(k));
+}
+
 // NearbyApproval is not a public export (UXR-kits-v7 B4): the matrix draws the internal component.
 // The Cloud Sync screens' public exports load on demand (U-42.2): the matrix draws the plain part
 // they load, which draws at once.
@@ -217,7 +227,8 @@ for (const family of FAMILIES) {
         )
         .join(" ");
       for (const key of view.copy) {
-        if (LEFT_OUT.has(key) || dropped.has(key)) continue;
+        if (LEFT_OUT.has(key) || dropped.has(key) || labelGone(view.copy, key))
+          continue;
         // The request QR encodes the request code: with none to encode, nothing is drawn.
         if (key === "a11y.qrRequest" && !input.offline?.requestCode) continue;
         // An available update offers Update now and Later; Restart when ready queues the restart

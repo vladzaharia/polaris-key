@@ -77,6 +77,16 @@ afterEach(() => {
 });
 void warn;
 
+// "License for this device" labels a licence line: with none drawn (its seat is missing), it goes too.
+function labelGone(copy: string[], key: string): boolean {
+  if (key !== "signin.consent.license") return false;
+  const values = copy.filter(
+    (k) =>
+      k === "signin.consent.newLicense" || k === "signin.consent.licenseLine",
+  );
+  return values.every((k) => dropped.has(k));
+}
+
 async function draw(row: Row): Promise<PkElement> {
   const tag = TAGS[row.expect.component as ComponentName];
   const el = document.createElement(tag) as PkElement;
@@ -141,7 +151,7 @@ for (const family of COMPONENT_FAMILIES) {
           expect(root.querySelector(`[data-key="${key}"]`)).toBeNull();
           continue;
         }
-        if (dropped.has(key)) {
+        if (dropped.has(key) || labelGone(view.copy, key)) {
           expect(root.querySelector(`[data-key="${key}"]`)).toBeNull();
           continue;
         }

@@ -1062,8 +1062,11 @@ the quiet exit. A kit does not choose a different primary label.
 the only primary) and **Use another account** (`signin.auto.confirm.other`, quiet). Escape, and the
 gate's own back, are the way out. The hierarchy, top to bottom:
 
-1. The h1 is "Continue to {app}", with **"as {email}"** (or "with your Apple Account" when the
-   provider shared none) as its subtitle, directly under it.
+1. The h1 is "Continue to {app}", with one subtitle directly under it: **"as {email}"**; else by the
+   exchange kind **"with Game Center"**, **"with Google Play Games"** or **"with your Apple
+   Account"**; else no subtitle, and the h1 stands alone with the same group gap below it. A kit
+   takes the subtitle from the model's single `signin.auto.confirm.as*` key by prefix, never a
+   fixed key list.
 2. **Overline labels** group the body: "License for this device", then (first sign-in or a changed
    consent) "{app} will also get". A label is small, muted and uppercase-free; it names its group
    and is never a second heading.

@@ -90,6 +90,23 @@ describe("automatic sign-in in the gate", () => {
     });
   });
 
+  it("an anchor without a seat draws no 'License for this device' label over nothing", async () => {
+    const seatless = JSON.parse(JSON.stringify(CONSENT)) as {
+      items: { kind: string; anchor?: { seat?: unknown } }[];
+    };
+    for (const i of seatless.items) if (i.anchor) delete i.anchor.seat;
+    const m = mount({
+      kind: "confirm",
+      grant: "sg_s",
+      expiresIn: 300,
+      consent: seatless as never,
+    });
+    await shows(m, "signin.auto.confirm.primary");
+    expect(
+      m.container.querySelector('[data-key="signin.consent.license"]'),
+    ).toBeNull();
+  });
+
   it("a first-time account's confirm names the tier the new license is created at", async () => {
     const noAnchor = {
       ...(CONSENT as unknown as { items: { kind: string }[] }),

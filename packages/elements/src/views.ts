@@ -432,8 +432,13 @@ function consentBody(c: RenderCtx, keys: string[]): TemplateResult {
       : nothing;
   };
   if (sub) used.add(sub);
+  // A label draws only with a value: a licence line dropped for a missing argument takes it along.
+  const hasLicense =
+    has("signin.consent.newLicense") || has("signin.consent.licenseLine");
   const license = [
-    label("signin.consent.license"),
+    hasLicense
+      ? label("signin.consent.license")
+      : (used.add("signin.consent.license"), nothing),
     line("signin.consent.newLicense", "consent-line"),
     line("signin.consent.licenseLine", "consent-line"),
   ];
