@@ -293,6 +293,7 @@ const LOADING: Record<string, readonly string[]> = {
   EntitlementGate: ["loading"],
   SignInHandoff: ["starting", "finishing"],
   SignIn: ["finishing"],
+  SaveConflict: ["keeping"],
 };
 
 function isLoading(view: View): boolean {
@@ -719,6 +720,11 @@ function statusGlyph(view: View): ReactNode {
         ? GLYPHS.warning()
         : GLYPHS.info();
   if (view.component === "GraceBanner") return GLYPHS.offline();
+  if (view.component === "CloudSyncStatus" && s === "waiting")
+    // A connection is the offline glyph; power or the app being closed is information.
+    return view.copy.includes("cloudSync.waitingNetwork")
+      ? GLYPHS.offline()
+      : GLYPHS.info();
   if (view.component === "CloudSyncStatus")
     return view.decisions.tone === "neutral"
       ? GLYPHS.info()
@@ -760,17 +766,25 @@ function strip(c: KitCtx, layout: Layout, kind: "banner" | "toast"): ReactNode {
   const p = place(c, layout);
   const lines = [...p.titles, ...p.body, ...p.meta];
   const role = c.view.decisions.tone === "danger" ? "alert" : "status";
+  // A transfer's label is the live region, so a state change is announced once and byte updates
+  // are not.
+  const labelLive = c.view.component === "CloudSyncStatus";
   return (
     <div
       className={kind}
       data-part={kind}
       data-status={statusOf(c.view)}
-      role={role}
+      role={labelLive ? undefined : role}
     >
       {statusGlyph(c.view)}
       <div className="texts">
         {lines.map((k, i) => (
-          <span key={k} className={i === 0 ? "label" : "meta"} data-key={k}>
+          <span
+            key={k}
+            className={i === 0 ? "label" : "meta"}
+            data-key={k}
+            role={labelLive && i === 0 ? role : undefined}
+          >
             {text(c, k)}
           </span>
         ))}
@@ -807,14 +821,19 @@ function inline(c: KitCtx, layout: Layout): ReactNode {
       className="inline-status"
       data-part="status"
       data-status={statusOf(c.view)}
-      role="status"
+      role={c.view.component === "CloudSyncStatus" ? undefined : "status"}
     >
       {statusGlyph(c.view)}
-      {lines.map((k) => (
+      {lines.map((k, i) => (
         <span
           key={k}
           className={p.titles.includes(k) ? "label" : undefined}
           data-key={k}
+          role={
+            c.view.component === "CloudSyncStatus" && i === 0
+              ? "status"
+              : undefined
+          }
         >
           {text(c, k)}
         </span>

@@ -313,6 +313,9 @@ export type SaveKeep = "local" | "remote" | "both";
 export interface SaveConflictProps extends SyncScreenProps {
   /** A choice was made (the host applies it and moves `input.saveConflict.step` on). */
   onKeep?: (keep: SaveKeep) => void;
+  /** Choose again, after a choice failed: the host sets the step back to `choose`. Nothing is
+   *  applied. */
+  onChooseAgain?: () => void;
   /** Try again, after a choice failed. */
   onRetry?: () => void;
   /** Cancel (or Escape): the conflict stays as it was. */
@@ -332,7 +335,7 @@ const KEEPS: Readonly<Record<string, SaveKeep>> = {
  *  `input.saveConflict`; the binding to the saves client follows U-22.7. With no conflict in the
  *  input it draws nothing. */
 export function SaveConflict(props: SaveConflictProps): ReactNode {
-  const { onKeep, onRetry, onCancel, onDone, ...rest } = props;
+  const { onKeep, onRetry, onChooseAgain, onCancel, onDone, ...rest } = props;
   return (
     <SaveConflict_
       {...rest}
@@ -341,6 +344,7 @@ export function SaveConflict(props: SaveConflictProps): ReactNode {
         const keep = KEEPS[a.key];
         if (keep) onKeep?.(keep);
         else if (a.key === "common.tryAgain") onRetry?.();
+        else if (a.key === "saveConflict.chooseAgain") onChooseAgain?.();
         else if (a.key === "common.cancel") onCancel?.();
         else if (a.key === "common.done") onDone?.();
       }}

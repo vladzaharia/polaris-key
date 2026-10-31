@@ -215,6 +215,71 @@ describe("SaveConflict", () => {
     expect(cancel).toHaveBeenCalledOnce();
   });
 
+  it("tags the newer card, and the busy state has one live region", () => {
+    const { container } = render(
+      <SaveConflict
+        input={{
+          saveConflict: {
+            step: "choose",
+            local: THIS,
+            remote: OTHER,
+            newer: "remote",
+          },
+        }}
+      />,
+    );
+    const tags = [...container.querySelectorAll("[data-part=newer]")];
+    expect(tags).toHaveLength(1);
+    expect(tags[0]!.closest("[data-side]")?.getAttribute("data-side")).toBe(
+      "remote",
+    );
+    expect(container.querySelector('[data-variant="primary"]')).toBeNull();
+    cleanup();
+    const keeping = render(
+      <SaveConflict
+        input={{ saveConflict: { step: "keeping", keep: "local" } }}
+      />,
+    );
+    expect(keeping.container.querySelectorAll('[role="status"]')).toHaveLength(
+      1,
+    );
+    expect(
+      keeping.container.querySelector('[aria-busy="true"]'),
+    ).not.toBeNull();
+  });
+
+  it("shows the success mark and the result title on kept, and Escape is Done", () => {
+    const done = vi.fn();
+    const { container } = render(
+      <SaveConflict
+        input={{ saveConflict: { step: "kept", keep: "both" } }}
+        onDone={done}
+      />,
+    );
+    expect(container.querySelector(".success")).not.toBeNull();
+    expect(container.querySelector("h1,h2")?.textContent).toBe(
+      "Kept both versions",
+    );
+    fireEvent.keyDown(container.querySelector(".pk-root")!, { key: "Escape" });
+    expect(done).toHaveBeenCalledOnce();
+  });
+
+  it("offers Choose again on a failed choice, with no filled control", () => {
+    const again = vi.fn();
+    const { container } = render(
+      <SaveConflict
+        input={{
+          saveConflict: { step: "failed", keep: "remote", remote: null },
+        }}
+        onChooseAgain={again}
+      />,
+    );
+    expect(container.textContent).toContain("Your save is unchanged");
+    expect(container.querySelector('[data-variant="primary"]')).toBeNull();
+    fireEvent.click(button(container, "saveConflict.chooseAgain")!);
+    expect(again).toHaveBeenCalledOnce();
+  });
+
   it("draws nothing without a conflict, and is a public, lazily loaded export", () => {
     const { container } = render(<SaveConflict input={{}} />);
     expect(container.querySelector(".pk-root")).toBeNull();
@@ -235,6 +300,15 @@ describe("CloudSyncStatus transfers", () => {
     expect(bar.getAttribute("aria-valuenow")).toBe("62");
     expect(c.textContent).toContain("38 MB of 61 MB");
     expect(c.textContent).not.toMatch(/synced/i);
+  });
+  it("announces the label only, never the figures", () => {
+    const c = status({
+      state: "transferring",
+      transfer: { size: "38 MB", total: "61 MB", fraction: 0.62 },
+    });
+    const live = c.querySelectorAll('[role="status"]');
+    expect(live).toHaveLength(1);
+    expect(live[0]!.textContent).toBe("Syncing saves…");
   });
   it("draws an indeterminate bar when the bytes are not counted", () => {
     const c = status({ state: "transferring" });
