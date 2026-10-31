@@ -40,6 +40,7 @@ class FakeConnect:
         self.identity_calls = 0
         self.leaves = 0
         self.refreshed = 0
+        self.roster_listeners: List[Any] = []
 
     def identity(self, *, refresh: bool = False) -> Any:
         if self.fail_identity is not None:
@@ -63,6 +64,15 @@ class FakeConnect:
 
     def leave(self) -> None:
         self.leaves += 1
+
+    def on_roster(self, fn: Any) -> Any:
+        self.roster_listeners.append(fn)
+        return lambda: self.roster_listeners.remove(fn)
+
+    def store_roster(self, ring: Any) -> None:
+        """A roster this device stored."""
+        for f in list(self.roster_listeners):
+            f(ring)
 
 
 class Rig:
@@ -566,3 +576,80 @@ def test_signing_out_is_not_held_by_a_blocked_stop_and_a_stuck_session_close_is_
         sess.close()
     finally:
         c.close()
+
+
+# -- deactivation and a stored roster (the custody of Connect state) ---------------------------------
+
+
+def test_deactivation_leaves_cloud_connect() -> None:
+    from helpers import make_client
+    from test_client import _ok_routes
+
+    c = make_client(_ok_routes())
+    try:
+        c.license.activate_with_key("k")
+        order: List[str] = []
+        c.cloud_connect.stop = lambda: order.append("stop")  # type: ignore[method-assign]
+        c.connect.leave = lambda: order.append("leave")  # type: ignore[method-assign]
+        c.license.deactivate()
+        assert order == ["stop", "leave"]
+        assert c.core.store.get_token() is None
+    finally:
+        c.close()
+
+
+def test_deactivation_stops_when_connect_state_cannot_be_cleared() -> None:
+    from helpers import make_client
+    from test_client import _ok_routes
+
+    inner = _ok_routes()
+    seen: List[str] = []
+
+    def handler(request: Any) -> Any:
+        seen.append(request.url.path)
+        return inner(request)
+
+    c = make_client(handler)
+    try:
+        c.license.activate_with_key("k")
+        before = len(seen)
+
+        def broken() -> None:
+            raise PolarisError("store-failed", "cannot clear")
+
+        c.connect.leave = broken  # type: ignore[method-assign]
+        with pytest.raises(PolarisError):
+            c.license.deactivate()
+        assert c.core.store.get_token() is not None
+        assert not any(p.endswith("license/deauthorize") for p in seen[before:])
+    finally:
+        c.close()
+
+
+def _ring(*devices: Any) -> Any:
+    return SimpleNamespace(devices=list(devices))
+
+
+def test_stored_roster_closes_sessions_with_dropped_device() -> None:
+    from polaris_key.core.b64url import b64url_encode
+
+    with Rig() as r:
+        a, b = both(r)
+        got: List[Any] = []
+        a.on_channel(got.append)
+        until(lambda: any(p.device_id == ID_A and p.lan for p in b.peers()))
+        s = b.open(ID_A)
+        until(lambda: got)
+        mine = SimpleNamespace(device_id=ID_B, agree_key="x")
+        theirs = SimpleNamespace(device_id=ID_A, agree_key=b64url_encode(s.peer_static))
+        extra = SimpleNamespace(device_id="E" * 32, agree_key="y")
+        # A roster that only adds a device keeps the session.
+        b.fake.store_roster(_ring(mine, theirs, extra))  # type: ignore[attr-defined]
+        time.sleep(0.3)
+        assert s.closed is None
+        # A roster that drops the peer closes it.
+        b.fake.store_roster(_ring(mine, extra))  # type: ignore[attr-defined]
+        until(lambda: s.closed is not None)
+        assert s.closed.code == "peer_revoked" and s.closed.by_peer is False
+        until(lambda: got[0].closed is not None)
+        assert got[0].closed.code == "peer_revoked" and got[0].closed.by_peer is True

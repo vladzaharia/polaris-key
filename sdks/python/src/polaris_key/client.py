@@ -254,6 +254,8 @@ class PolarisKeyClient:
             # `client.license.deactivate()` raises the same one event `client.deactivate()` does.
             on_changed=lambda: self._license_changed(),
             on_deactivated=lambda: self._forget_identity_and_ring(),
+            # Deactivation leaves Cloud Connect first, and stops if the state cannot be removed.
+            before_release=lambda: self._leave_connect(),
         )
         #: ``client.entitlements`` (SP-35.20): a thin view over the licence gate above.
         self.entitlements = EntitlementsClient(self.license)
@@ -505,6 +507,10 @@ class PolarisKeyClient:
                 "store", reason=status.degraded.reason, detail=status.degraded.detail
             )
         self._start_timer()
+
+    def _leave_connect(self) -> None:
+        self._stop_cloud_connect()
+        self.connect.leave()
 
     def _forget_identity_and_ring(self) -> None:
         self.keyring.forget()
