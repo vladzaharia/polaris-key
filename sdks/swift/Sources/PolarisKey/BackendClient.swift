@@ -219,13 +219,32 @@ public final class BackendClient: Sendable {
         defer { session.finishTasksAndInvalidate() }
         let result: (Data, URLResponse)
         do {
-            result = try await session.data(for: req)
+            #if canImport(FoundationNetworking)
+                result = try await exchange(req, guardDelegate)
+            #else
+                if DelegatedExchange.forced {
+                    result = try await exchange(req, guardDelegate)
+                } else {
+                    result = try await session.data(for: req)
+                }
+            #endif
         } catch {
             if let refused = guardDelegate.refusal { throw refused }
             throw error
         }
         if let refused = guardDelegate.refusal { throw refused }
         return result
+    }
+
+    /// The Linux path (and the test seam): `session.data(for:)` there rides a completion-handler task
+    /// that follows redirects without asking the delegate, so the hop guard runs through
+    /// `DelegatedExchange`. A custom configuration is used; its session's own delegate is not.
+    private func exchange(_ req: URLRequest, _ guardDelegate: HopGuard) async throws -> (Data, URLResponse) {
+        try await DelegatedExchange.run(
+            req, configuration: seams.configuration(), limit: nil,
+            redirect: { s, t, r, n, c in
+                guardDelegate.urlSession(s, task: t, willPerformHTTPRedirection: r, newRequest: n, completionHandler: c)
+            })
     }
 
     private static func problemCode(_ response: URLResponse, _ body: Data) -> String? {

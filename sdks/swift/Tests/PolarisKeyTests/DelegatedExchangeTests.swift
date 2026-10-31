@@ -111,4 +111,29 @@ final class DelegatedExchangeTests: XCTestCase {
             request(), configuration: configuration(), policy: policy, limit: 1)
         XCTAssertEqual(data.count, 1)
     }
+
+    // The Linux path is the one that must use `DelegatedExchange`; on macOS the seam forces the
+    // same call sites onto it, so a site that stops using it fails here.
+    private func transport() -> URLSessionTransport {
+        URLSessionTransport(session: URLSession(configuration: configuration()))
+    }
+
+    func testTransportSendUsesTheExchange() async throws {
+        RedirectStubProtocol.reset([a: (200, nil)])
+        DelegatedExchange.forced = true
+        defer { DelegatedExchange.forced = false }
+        let res = try await transport().send(PolarisRequest(url: URL(string: a)!, method: "GET"))
+        XCTAssertEqual(res.status, 200)
+        XCTAssertEqual(DelegatedExchange.runs, 1)
+    }
+
+    func testTransportCappedSendUsesTheExchange() async throws {
+        RedirectStubProtocol.reset([a: (200, nil)])
+        DelegatedExchange.forced = true
+        defer { DelegatedExchange.forced = false }
+        let res = try await transport().send(
+            PolarisRequest(url: URL(string: a)!, method: "GET", maxBodyBytes: 1))
+        XCTAssertEqual(res.body.count, 1)
+        XCTAssertEqual(DelegatedExchange.runs, 1)
+    }
 }
