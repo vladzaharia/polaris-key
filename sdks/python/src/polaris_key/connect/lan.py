@@ -61,8 +61,8 @@ from ..core.peer_link import SocketLink
 from ..core.peer_mdns import MdnsAdapter, MdnsAdvert, MdnsFound, MdnsHandle, MulticastDnsAdapter
 from ..core.peer_session import ContactLink, HandshakeLimiter
 from .channel import ConnectNotice, PeerDocs, PeerDocsSource, channel_base, contact_channel
-from .contacts import ContactRef, LiveContact, ref_of, wipe_live
 from .client import ConnectClient, PeerSource
+from .contacts import ContactRef, LiveContact, ref_of, wipe_live
 from .errors import LanError
 from .session import ConnectSession, session_handlers, wait_opened
 
@@ -154,6 +154,9 @@ class LanOptions:
     host: Optional[str] = None
     port: int = 0
     caps: Sequence[str] = ("app/1",)
+    #: Direct Transfer (CC-20): called as ``xfer(link, session, established)`` when a session is established
+    #: with ``xfer/1`` on both sides. Set by ``cloud_connect.start``.
+    xfer: Any = None
     label: Optional[str] = None
     advertise: bool = True
     browse: bool = True
@@ -576,6 +579,7 @@ class LanService:
             on_ring_wanted=ring_wanted,
             on_ended=lambda: self._links.discard(link),
             contacts=refs,
+            xfer=o.xfer,
         )
         extra: Dict[str, Any] = {}
         if served:
@@ -808,7 +812,11 @@ class LanService:
 
         link: SocketLink
         handlers = session_handlers(
-            "initiator", on_established=established, on_ended=lambda: self._links.discard(link), contacts=[ref]
+            "initiator",
+            on_established=established,
+            on_ended=lambda: self._links.discard(link),
+            contacts=[ref],
+            xfer=o.xfer,
         )
         link = SocketLink(
             reader,

@@ -30,6 +30,7 @@ import threading
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional
 
 from ..constants_generated import ErrorCode, Feature, UnsupportedReason
+from ..core.b64url import b64url_decode
 from ..core.caps import Unsupported, UnsupportedError
 from .client import ConnectClient
 from .contacts import ContactInfo, contact_id, info_of
@@ -95,13 +96,21 @@ class CloudLinks:
         """Delete a link (and a re-pair waiting on it). Its secret is dropped from the record, and an open
         session with that contact is closed with ``peer_revoked``. False when ``id`` names no link."""
         found = [False]
+        gone: List[str] = []
 
         def fn(rows: List[Any], _now: int) -> Optional[List[Any]]:
             nxt = [r for r in rows if contact_id(r.agree_key) != id]
             found[0] = len(nxt) != len(rows)
+            gone[:] = [r.agree_key for r in rows if contact_id(r.agree_key) == id]
             return nxt if found[0] else None
 
         self._connect.update_contacts(fn)
+        for k in gone:
+            # The link's kept partial transfers go with it (§15.11).
+            try:
+                self._cloud.transfer.forget_peer(b64url_decode(k))
+            except Exception:
+                pass
         return found[0]
 
     def set_reachable(self, id: str, reachable: bool) -> bool:  # noqa: A002

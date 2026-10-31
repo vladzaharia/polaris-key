@@ -126,7 +126,7 @@ class Side:
             slug="djdl",
             static_key=dev.priv,
             account=acct,
-            caps=["app/1", "ring/1"],
+            caps=kw.pop("caps", ["app/1", "ring/1"]),
             hello={"platform": "test", "app": "demo"},
             send=self.out.append,
             on_event=self.events.append,
@@ -498,6 +498,8 @@ def _rows() -> List[Dict[str, Any]]:
         types = {int(r["type"], 16) for r in s["records"]}
         if types & _INTERNAL:
             continue  # the session answers or consumes these itself; the assembler rows cover them
+        if types & set(range(0x20, 0x26)):
+            continue  # Direct Transfer owns these in a session (§15.11): test_connect_xfer_session.py
         out.append(s)
     return out
 

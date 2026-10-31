@@ -39,7 +39,6 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 from ..constants_generated import ErrorCode
 from .b64url import b64url_decode, b64url_encode
-from .device_label import normalize_device_label
 from .jws import TrustSet
 from .peer_cert import PeerSession as CertSession
 from .peer_cert import admit_peer, replace_ring, ring_expired, verify_ring
@@ -88,6 +87,7 @@ from .peer_sas import (
     sas_value,
 )
 from .peer_vouch import VOUCH_CAP, VouchFlow
+from .peer_xfer import XFER_CAP, is_xfer_type
 
 __all__ = [
     "AccountContext",
@@ -444,6 +444,7 @@ class PeerSession:
         self._queued: List[Tuple[int, bytes]] = []
         self._tp: Optional[NoiseTransport] = None
         self._peer_caps: List[str] = []
+        self._xfer: Optional[Callable[[int, bytes], None]] = None
         self._peer_ring = 0
         self._sent = 0
         self._keyed_at = self._mono()
@@ -466,6 +467,11 @@ class PeerSession:
     @property
     def is_open(self) -> bool:
         return self._phase == "open"
+
+    @property
+    def own_max_message(self) -> int:
+        """This side's own HELLO ``maxMessage``."""
+        return int(self._hello.get("max_message", MAX_PEER_MESSAGE_BYTES))
 
     @property
     def closed(self) -> bool:
@@ -575,6 +581,7 @@ class PeerSession:
                 raise RuntimeError("session not open")
             if (
                 type_ in _OWNED
+                or is_xfer_type(type_)
                 or (type_ == RECORD["CONFIRM"] and self._mode == "p")
                 or (type_ == RECORD["CONTACT"] and self._xchg is not None)
             ):
@@ -582,6 +589,26 @@ class PeerSession:
             if len(body) > self._max_send:
                 raise ValueError("message too large")
             self._emit(type_, bytes(body))
+
+    def attach_xfer(self, on_record: Callable[[int, bytes], None]) -> Callable[[int, bytes], None]:
+        """The transfer port (§15.11): the one reader and writer of the six xfer record types. Records of
+        those types reach ``on_record`` instead of the host's ``Record`` event, and :meth:`send_record`
+        refuses them. Only once the session is open with ``xfer/1`` among its capabilities, and once.
+        Returns the writer, which takes one message (up to the peer's ``maxMessage``)."""
+        with self._lock:
+            if self._phase != "open" or self._xfer is not None or XFER_CAP not in self._caps:
+                raise RuntimeError("transfers are not available on this session")
+            self._xfer = on_record
+
+        def write(type_: int, body: bytes) -> None:
+            with self._lock:
+                if self._phase != "open" or not is_xfer_type(type_):
+                    raise RuntimeError("session not open")
+                if len(body) > self._max_send:
+                    raise ValueError("message too large")
+                self._emit(type_, bytes(body))
+
+        return write
 
     def start_sas(self) -> None:
         """Mode v, ``hold_sas`` initiator: the person chose this approver; send ``SAS_COMMIT`` now and
@@ -885,6 +912,7 @@ class PeerSession:
                 if not verdict.ok:
                     raise _Fail(str(verdict.close))
             self._caps = caps_intersection(self._caps, self._peer_caps)
+            self._asm.xfer_allowed = XFER_CAP in self._caps
             remote, device_id = self._pending
             self._pending = None
             assert self._hs is not None
@@ -960,6 +988,13 @@ class PeerSession:
             self._exchange_step(
                 {"event": "peer-confirm"} if type_ == RECORD["CONFIRM"] else {"event": "peer-contact", "body": body}
             )
+            return
+        if is_xfer_type(type_):
+            # Direct Transfer: the caps were checked at the assembler; no port attached means the host
+            # listed the capability without a transfer layer behind it.
+            if self._xfer is None:
+                raise _Fail(ErrorCode.PEER_NOT_ALLOWED)
+            self._xfer(type_, body)
             return
         # Everything else belongs to the host, and only once the code is settled.
         if self._phase == "sas-shown":

@@ -221,6 +221,10 @@ class RecordAssembler:
         self._open: Optional[Tuple[int, List[bytes], int]] = None  # type, parts, size
         #: Set once a non-critical unknown type opened a chain that is being dropped.
         self._dropping: Optional[int] = None
+        #: Set by the session once the capabilities are known (§15.11): whether ``xfer/1`` is in both
+        #: payloads. While None the xfer types read as any other. When set, an xfer record without the
+        #: capability is ``peer_not_allowed``, and one with MORE set is ``peer_bad_frame``.
+        self.xfer_allowed: Optional[bool] = None
 
     def push(self, r: PeerRecord) -> Assembled:
         if (r.flags & 0xFE) != 0:
@@ -243,6 +247,11 @@ class RecordAssembler:
             return _IGNORED
         if self._mode not in row.modes:
             return _bad(ErrorCode.PEER_NOT_ALLOWED)
+        if row.name == "XFER" and self.xfer_allowed is not None:
+            if not self.xfer_allowed:
+                return _bad(ErrorCode.PEER_NOT_ALLOWED)
+            if more:
+                return _bad(ErrorCode.PEER_BAD_FRAME)
         # An empty MORE record is accepted (corpus `more-empty-parts`), so the chain's record count
         # is what bounds the work.
         size = (self._open[2] if self._open else 0) + len(r.body)
