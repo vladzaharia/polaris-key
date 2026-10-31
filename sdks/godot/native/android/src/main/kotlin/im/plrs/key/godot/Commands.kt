@@ -78,7 +78,8 @@ abstract class FlavorCommands(protected val c: Commands) {
  * result arrives later as a queued event `{ev: "result", req, ok, …}`.
  *
  * Common ops: capabilities, install_source, ks_get / ks_set / ks_delete / ks_info, ks_seal / ks_open /
- * ks_destroy (the Godot device key store's sealer, CC-26.7), no_backup_dir, poll.
+ * ks_destroy (the Godot device key store's sealer, CC-26.7), no_backup_dir, poll, and the Google
+ * sign-in ops gid_silent / gid_sheet / gid_provider / gid_sign_out ([GoogleIdentityCommands], I-48.5a).
  * Unsolicited events: update_state, update_result, pack_state, install_status, resumed.
  *
  * Calls arrive on Godot's render thread (notes/S-10 §5); Play Core and activity work is posted to
@@ -89,11 +90,14 @@ class Commands(
     flavorFactory: ((Commands) -> FlavorCommands)? = null,
     /** The Keystore behind ks_seal / ks_open / ks_destroy (tests pass a fake: Robolectric has no AndroidKeyStore). */
     private val keyProvider: () -> KeyProvider = { AndroidKeyStoreProvider(host.appContext) },
+    /** The Credential Manager behind the `gid_*` ops (tests pass a fake). */
+    identity: GoogleIdentityCommands.Backend = GoogleIdentityCommands.Real,
 ) {
     val queue = EventQueue()
     private val nextReq = AtomicInteger(1)
     val worker: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "pkey-android-worker") }
     private val flavor: FlavorCommands = (flavorFactory ?: ::createFlavorCommands)(this)
+    private val googleId = GoogleIdentityCommands(this, identity)
 
     fun cmd(json: String): String = try {
         val q = JSONObject(json)
@@ -136,6 +140,7 @@ class Commands(
             s.destroy()
             JSONObject().put("ok", true)
         }
+        "gid_silent", "gid_sheet", "gid_provider", "gid_sign_out" -> googleId.handle(op, q)
         else -> when {
             op in flavor.ops -> flavor.handle(op, q)
             op in PLAY_OPS || op in DIRECT_OPS -> JSONObject()
@@ -160,6 +165,7 @@ class Commands(
             .put("assetPacks", false)
             .put("packageInstaller", false)
             .put("playIntegrity", false)
+            .put("googleId", googleId.available())
         flavor.capabilities(out)
         return out
     }
