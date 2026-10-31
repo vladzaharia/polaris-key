@@ -696,7 +696,7 @@ internal class LanService private constructor(
         override fun toString(): String = "ContactNames(${table.size})"
     }
 
-    private class ContactPeer(val id: String, val pending: Boolean, val instance: String, val host: String, val port: Int, val alternates: List<String>)
+    private class ContactPeer(val id: String, val pending: Boolean, val instance: String, val host: String, val port: Int, val alternates: List<String>, val socketFactory: SocketFactory? = null)
 
     private fun dropContacts() {
         val old = contacts
@@ -762,7 +762,7 @@ internal class LanService private constructor(
     private fun foundContact(f: MdnsFound, hosts: List<String>) {
         val hit = contactNames?.lookup(f.instance, src.now()) ?: return
         val c = contacts.firstOrNull { it.id == hit.first && it.pending == hit.second } ?: return
-        synchronized(lock) { contactPeers["${c.id}|${c.pending}"] = ContactPeer(c.id, c.pending, f.instance, hosts[0], f.port, hosts.drop(1)) }
+        synchronized(lock) { contactPeers["${c.id}|${c.pending}"] = ContactPeer(c.id, c.pending, f.instance, hosts[0], f.port, hosts.drop(1), f.socketFactory) }
     }
 
     /**
@@ -783,7 +783,7 @@ internal class LanService private constructor(
         var failure: LanException? = null
         var opened: ConnectSession? = null
         while (left.isNotEmpty() && opened == null) {
-            val (pipe, host) = dial(left, peer.port)
+            val (pipe, host) = dial(left, peer.port, peer.socketFactory)
             try {
                 opened = openContactOnce(pipe, ident, c)
             } catch (e: LanException) {

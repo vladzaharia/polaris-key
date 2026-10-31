@@ -411,7 +411,7 @@ internal class LinkPairing private constructor(private val src: PairSource, priv
                 scope.launch { closed(l, SessionClosed(c.code, c.byPeer)) }
             },
             onContact = { e -> scope.launch { store(l, e) } },
-            onSas = { e -> show(l, e.display) },
+            onSas = { _, e -> show(l, e.display) },
         )
         val link = PeerLink(pipe, scope, handlers, o.handshakeSeconds) { send, onEvent -> channel(l, role, send, onEvent) }
         l.link = link

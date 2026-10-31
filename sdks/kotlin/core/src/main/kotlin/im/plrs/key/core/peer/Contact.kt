@@ -92,7 +92,7 @@ private fun byteCompare(a: ByteArray, b: ByteArray): Int {
 }
 
 /** NFC, then the device-label cleaning (section 12.7.1): null when nothing is left. */
-private fun cleanLabel(raw: String): String? = normalizeDeviceLabel(Normalizer.normalize(raw, Normalizer.Form.NFC))
+private fun cleanContactLabel(raw: String): String? = normalizeDeviceLabel(Normalizer.normalize(raw, Normalizer.Form.NFC))
 
 /** Zero a secret this code or its caller owns. */
 public fun wipe(secret: ByteArray) {
@@ -138,7 +138,7 @@ public fun buildContact(agreeKey: String, label: String?, cats: List<String>): B
     require(usableKey(agreeKey)) { "agreeKey" }
     require(validCats(cats)) { "cats" }
     val sb = StringBuilder("{\"v\":1,\"agreeKey\":\"").append(agreeKey).append('"')
-    val clean = label?.let(::cleanLabel)
+    val clean = label?.let(::cleanContactLabel)
     if (clean != null) sb.append(",\"label\":").append(jsonQuoted(clean))
     sb.append(",\"cats\":[").append(cats.joinToString(",") { "\"$it\"" }).append("]}")
     val bytes = utf8(sb.toString())
@@ -165,7 +165,7 @@ public fun parseContact(body: ByteArray, own: String? = null): ContactVerdict {
     var label: String? = null
     if ("label" in o) {
         val raw = o["label"].stringValue ?: return ContactVerdict.No
-        label = cleanLabel(raw)
+        label = cleanContactLabel(raw)
     }
     return ContactVerdict.Ok(ContactBody(key!!, label, cats))
 }
