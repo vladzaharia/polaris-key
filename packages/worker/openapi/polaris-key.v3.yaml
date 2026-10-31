@@ -16569,6 +16569,87 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
   # ── The account's passkeys (I-16, PORTAL.md §4.26): the settings list, adding and removing.
   # Session-authenticated by the portal cookie; mutations need the `X-PKey-Portal-CSRF` header.
+  /api/me/devices:
+    get:
+      operationId: listAccountDevices
+      tags: [portal]
+      summary: The account's devices that hold no licence
+      description: >
+        The authorized devices of the account's products with the portal on that are bound to no
+        licence: an app that uses sign-in or Cloud Sync alone, or a device that signed in from
+        backup. Licence devices stay on the product pages. Newest seen first.
+      responses:
+        "200":
+          description: The devices.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [devices]
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          product,
+                          productName,
+                          deviceId,
+                          label,
+                          platform,
+                          lastSeen,
+                          restored,
+                        ]
+                      properties:
+                        product: { type: string }
+                        productName: { type: string }
+                        deviceId: { type: string }
+                        label: { type: [string, "null"] }
+                        platform: { type: [string, "null"] }
+                        lastSeen: { type: integer }
+                        restored:
+                          {
+                            type: boolean,
+                            description: "True while the device is marked as signed in from backup (at most 270 days).",
+                          }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/devices/{product}/{deviceId}:
+    delete:
+      operationId: removeAccountDevice
+      tags: [portal]
+      summary: Remove a device that holds no licence
+      description: >
+        Releases the device as the licence route does (the shared `portalDeviceDisconnect`
+        budget, the audit row, the security email) and, for a device that signed in from backup,
+        deletes all of the account's restore keys for the product. A device bound to a licence,
+        another account's device, an unknown one and a product with the portal off all answer
+        the same 404.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: deviceId, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Removed. }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Too many device removals (the shared `portalDeviceDisconnect` budget).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /api/me/passkeys:
     get:
       operationId: listAccountPasskeys

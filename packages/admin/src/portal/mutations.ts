@@ -200,6 +200,12 @@ export const PORTAL_MUTATIONS = {
       ...licenceViews(product),
     ],
   },
+  removeAccountDevice: {
+    label: "Remove a device that holds no license",
+    // A license's own devices never change here, but a restore key is gone, which the product
+    // pages do not show; only this list refreshes.
+    invalidates: () => [exact(qk.accountDevices())],
+  },
   claimDiscover: {
     label: "Add a Discover product to the library",
     invalidates: (product: string) => [
