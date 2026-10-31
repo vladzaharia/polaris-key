@@ -1045,11 +1045,8 @@
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 5,
       "detekt:exceptions.TooGenericExceptionCaught": 5,
-      "detekt:style.MaxLineLength": 1,
       "detekt:style.ReturnCount": 1,
-      "detekt:style.ThrowsCount": 1,
-      "ktlint:standard:class-signature": 6,
-      "ktlint:standard:max-line-length": 1
+      "detekt:style.ThrowsCount": 1
     },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/Base64UrlTest.kt": {
       "detekt:exceptions.SwallowedException": 1,
