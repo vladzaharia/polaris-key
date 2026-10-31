@@ -431,6 +431,12 @@ func _steps(t: PKeyTestContext) -> void:
 	step.exchange_kind = "apple"
 	await tree.process_frame
 	t.check("steps: no email, Apple is the provider line", _texts(step).has("with your Apple Account"), str(_texts(step)))
+	step.exchange_kind = "gamecenter"
+	await tree.process_frame
+	t.check("steps: no email, Game Center is the provider line", _texts(step).has("with Game Center"), str(_texts(step)))
+	step.exchange_kind = "pgs"
+	await tree.process_frame
+	t.check("steps: no email, Play Games is the provider line", _texts(step).has("with Google Play Games"), str(_texts(step)))
 	step.step = "device-limit"
 	step.manage_url = ""
 	await tree.process_frame
