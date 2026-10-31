@@ -286,7 +286,7 @@ export interface LicenseParts {
 
 export function licenseParts(
   chosen: Chosen,
-  ctx: { product: string; app: string; device: string },
+  ctx: { product: string; app: string; device: string; attach?: boolean },
 ): LicenseParts | null {
   const split = (full: string, title: string): LicenseParts => ({
     title,
@@ -300,8 +300,11 @@ export function licenseParts(
     case "none":
       return null;
     case "app":
+      // Add to account: the app keeps the license it holds and nobody chooses one.
       return {
-        title: t("signin.consent.licenseInApp", { app: ctx.app }),
+        title: ctx.attach
+          ? t("signin.consent.licenseKept", { app: ctx.app })
+          : t("signin.consent.licenseInApp", { app: ctx.app }),
         meta: null,
       };
     case "new":

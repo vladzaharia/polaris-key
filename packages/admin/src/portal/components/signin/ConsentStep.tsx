@@ -31,7 +31,10 @@ export function ConsentStep({
   onContinue,
   onDeny,
   onNotYou,
+  attach = false,
 }: {
+  /** The request adds the app's own license to the account (`purpose: attach`). */
+  attach?: boolean;
   view: AppConsentView;
   app: string;
   product: string;
@@ -45,7 +48,7 @@ export function ConsentStep({
   onDeny: () => void;
   onNotYou: () => void;
 }): React.ReactElement {
-  const line = licenseParts(chosen, { product, app, device });
+  const line = licenseParts(chosen, { product, app, device, attach });
   const lines = consentLines(view);
   return (
     <>
