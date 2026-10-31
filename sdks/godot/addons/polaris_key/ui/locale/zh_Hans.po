@@ -1782,7 +1782,7 @@ msgstr "离线 · 今天是使用{product}的最后一天"
 msgid "grace.deadline"
 msgstr "离线可用至{date}"
 
-#. Account and license
+#. Account and License
 #. AccountAndLicense: the settings pane for the license and account.
 msgid "account.title"
 msgstr "账户与许可证"
@@ -1817,12 +1817,12 @@ msgstr "跨设备同步"
 msgid "account.updates"
 msgstr "更新"
 
-#. Update automatically
+#. Update Automatically
 #. AccountAndLicense: the settings pane for the license and account. Switch label.
 msgid "account.autoUpdate"
 msgstr "自动更新"
 
-#. Release channel
+#. Release Channel
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.channel"
 msgstr "发布渠道"
@@ -1832,7 +1832,7 @@ msgstr "发布渠道"
 msgid "account.version"
 msgstr "版本{version}"
 
-#. Managed settings
+#. Managed Settings
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.managedSettings"
 msgstr "受管理的设置"
@@ -2077,7 +2077,7 @@ msgstr "解锁同步"
 msgid "cloudSync.ringChanged"
 msgstr "你的同步密钥已更改。"
 
-#. Unlock your synced data
+#. Unlock Your Synced Data
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
 msgid "unlockSync.title"
 msgstr "解锁已同步的数据"
@@ -2127,7 +2127,7 @@ msgstr "无法重新开始。请检查网络连接后重试。"
 msgid "unlockSync.noCode"
 msgstr "此账户没有恢复码。请在仍已登录且已解锁的设备上选择“新恢复码”。否则请重新开始。"
 
-#. Start over?
+#. Start Over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
 msgid "unlockSync.startOverTitle"
 msgstr "重新开始？"
@@ -2147,7 +2147,7 @@ msgctxt "macos"
 msgid "unlockSync.startOverConfirm"
 msgstr "重新开始"
 
-#. Save your recovery code
+#. Save Your Recovery Code
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
 msgid "recoveryCode.title"
 msgstr "保存你的恢复码"
@@ -2177,7 +2177,7 @@ msgstr "复制恢复码"
 msgid "recoveryCode.saved"
 msgstr "我已保存恢复码"
 
-#. Your sync key changed
+#. Your Sync Key Changed
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.title"
 msgstr "你的同步密钥已更改"

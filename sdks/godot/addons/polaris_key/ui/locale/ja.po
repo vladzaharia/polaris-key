@@ -1782,7 +1782,7 @@ msgstr "オフライン · {product}を使えるのは今日まで"
 msgid "grace.deadline"
 msgstr "{date}までオフラインで使えます"
 
-#. Account and license
+#. Account and License
 #. AccountAndLicense: the settings pane for the license and account.
 msgid "account.title"
 msgstr "アカウントとライセンス"
@@ -1817,12 +1817,12 @@ msgstr "デバイス間の同期"
 msgid "account.updates"
 msgstr "アップデート"
 
-#. Update automatically
+#. Update Automatically
 #. AccountAndLicense: the settings pane for the license and account. Switch label.
 msgid "account.autoUpdate"
 msgstr "自動的にアップデート"
 
-#. Release channel
+#. Release Channel
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.channel"
 msgstr "リリースチャンネル"
@@ -1832,7 +1832,7 @@ msgstr "リリースチャンネル"
 msgid "account.version"
 msgstr "バージョン{version}"
 
-#. Managed settings
+#. Managed Settings
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.managedSettings"
 msgstr "管理対象の設定"
@@ -2077,7 +2077,7 @@ msgstr "同期のロックを解除"
 msgid "cloudSync.ringChanged"
 msgstr "同期キーが変更されました。"
 
-#. Unlock your synced data
+#. Unlock Your Synced Data
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
 msgid "unlockSync.title"
 msgstr "同期したデータのロックを解除"
@@ -2127,7 +2127,7 @@ msgstr "やり直せませんでした。接続を確認して、もう一度お
 msgid "unlockSync.noCode"
 msgstr "このアカウントにはリカバリーコードがありません。サインインしたままロック解除されている端末で「新しいリカバリーコード」を選ぶか、そうでなければ最初からやり直してください。"
 
-#. Start over?
+#. Start Over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
 msgid "unlockSync.startOverTitle"
 msgstr "最初からやり直しますか？"
@@ -2147,7 +2147,7 @@ msgctxt "macos"
 msgid "unlockSync.startOverConfirm"
 msgstr "最初からやり直す"
 
-#. Save your recovery code
+#. Save Your Recovery Code
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
 msgid "recoveryCode.title"
 msgstr "リカバリーコードを保存"
@@ -2177,7 +2177,7 @@ msgstr "コードをコピー"
 msgid "recoveryCode.saved"
 msgstr "リカバリーコードを保存しました"
 
-#. Your sync key changed
+#. Your Sync Key Changed
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.title"
 msgstr "同期キーが変更されました"

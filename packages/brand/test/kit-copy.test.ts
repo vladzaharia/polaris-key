@@ -257,6 +257,25 @@ describe("the checks refuse", () => {
     ]);
   });
 
+  it("English that is not Title Case where a label or section title is", () => {
+    const errors = errorsAfter((s) => {
+      en(s, "account.cloudSync").value = "Sync across devices";
+      en(s, "ringChange.title").value = "Your sync key changed";
+    });
+    expect(errors).toContain(
+      `en account.cloudSync: a feature label or section title is Title Case in English ("Sync Across Devices")`,
+    );
+    expect(errors).toContain(
+      `en ringChange.title: a feature label or section title is Title Case in English ("Your Sync Key Changed")`,
+    );
+    // Other locales keep their own capitalization: no check on a pack.
+    expect(
+      errorsAfter((s) => {
+        s.packs.de!.messages["account.cloudSync"] = "synchronisierung";
+      }).filter((e) => e.includes("Title Case")),
+    ).toEqual([]);
+  });
+
   it("a control character, a tab and a %", () => {
     const errors = errorsAfter((s) => {
       s.packs.ko!.messages["common.cancel"] = "취소\t";

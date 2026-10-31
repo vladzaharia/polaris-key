@@ -184,7 +184,7 @@ def test_settings_rows_have_real_controls_and_provenance():
     lock = by["net.lockdown"]
     assert lock.control == "value" and lock.locked and lock.lock_label == "Locked" and "Fennick Studio" in lock.meta
     headings = [g.heading for g in spec.groups]
-    assert "From Harbor Audio" in plain(" ".join(headings)) and "Managed settings" in headings
+    assert "From Harbor Audio" in plain(" ".join(headings)) and "Managed Settings" in headings
     assert all("." not in plain(r.title) for r in by.values())  # never the dotted key (DL8)
 
 

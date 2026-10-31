@@ -1786,7 +1786,7 @@ msgstr ""
 msgid "grace.deadline"
 msgstr ""
 
-#. Account and license
+#. Account and License
 #. AccountAndLicense: the settings pane for the license and account.
 msgid "account.title"
 msgstr ""
@@ -1821,12 +1821,12 @@ msgstr ""
 msgid "account.updates"
 msgstr ""
 
-#. Update automatically
+#. Update Automatically
 #. AccountAndLicense: the settings pane for the license and account. Switch label.
 msgid "account.autoUpdate"
 msgstr ""
 
-#. Release channel
+#. Release Channel
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.channel"
 msgstr ""
@@ -1836,7 +1836,7 @@ msgstr ""
 msgid "account.version"
 msgstr ""
 
-#. Managed settings
+#. Managed Settings
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.managedSettings"
 msgstr ""
@@ -2081,7 +2081,7 @@ msgstr ""
 msgid "cloudSync.ringChanged"
 msgstr ""
 
-#. Unlock your synced data
+#. Unlock Your Synced Data
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
 msgid "unlockSync.title"
 msgstr ""
@@ -2131,7 +2131,7 @@ msgstr ""
 msgid "unlockSync.noCode"
 msgstr ""
 
-#. Start over?
+#. Start Over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
 msgid "unlockSync.startOverTitle"
 msgstr ""
@@ -2151,7 +2151,7 @@ msgctxt "macos"
 msgid "unlockSync.startOverConfirm"
 msgstr ""
 
-#. Save your recovery code
+#. Save Your Recovery Code
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
 msgid "recoveryCode.title"
 msgstr ""
@@ -2181,7 +2181,7 @@ msgstr ""
 msgid "recoveryCode.saved"
 msgstr ""
 
-#. Your sync key changed
+#. Your Sync Key Changed
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.title"
 msgstr ""

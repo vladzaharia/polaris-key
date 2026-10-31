@@ -1428,7 +1428,7 @@
       "note": "GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform."
     },
     "account.title": {
-      "value": "Account and license",
+      "value": "Account and License",
       "role": "title",
       "note": "AccountAndLicense: the settings pane for the license and account."
     },
@@ -1463,12 +1463,12 @@
       "note": "AccountAndLicense: the settings pane for the license and account. Group header."
     },
     "account.autoUpdate": {
-      "value": "Update automatically",
+      "value": "Update Automatically",
       "role": "label",
       "note": "AccountAndLicense: the settings pane for the license and account. Switch label."
     },
     "account.channel": {
-      "value": "Release channel",
+      "value": "Release Channel",
       "role": "label",
       "note": "AccountAndLicense: the settings pane for the license and account. Row label."
     },
@@ -1478,7 +1478,7 @@
       "note": "AccountAndLicense: the settings pane for the license and account. Arguments: {version} = a version string such as 2.4.1."
     },
     "account.managedSettings": {
-      "value": "Managed settings",
+      "value": "Managed Settings",
       "role": "label",
       "note": "AccountAndLicense: the settings pane for the license and account. Row label."
     },
@@ -1688,7 +1688,7 @@
       "note": "CloudSyncStatus: a small sync status. The synced data's key is not the one this device knew; Review sits beside it and opens RingChange."
     },
     "unlockSync.title": {
-      "value": "Unlock your synced data",
+      "value": "Unlock Your Synced Data",
       "role": "title",
       "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it."
     },
@@ -1733,7 +1733,7 @@
       "note": "UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on."
     },
     "unlockSync.startOverTitle": {
-      "value": "Start over?",
+      "value": "Start Over?",
       "role": "title",
       "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title."
     },
@@ -1748,7 +1748,7 @@
       "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's destructive action."
     },
     "recoveryCode.title": {
-      "value": "Save your recovery code",
+      "value": "Save Your Recovery Code",
       "role": "title",
       "note": "RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy."
     },
@@ -1773,7 +1773,7 @@
       "note": "RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done is hidden until it is checked."
     },
     "ringChange.title": {
-      "value": "Your sync key changed",
+      "value": "Your Sync Key Changed",
       "role": "title",
       "note": "RingChange: confirm a changed sync key (U-42)."
     },
@@ -5149,7 +5149,7 @@
       "note": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the title when the license's last covered version isn't the newest. Arguments: {version} = the newest version."
     },
     "getIt.heading": {
-      "value": "Get it",
+      "value": "Get It",
       "role": "title",
       "note": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The product page card's heading."
     },
@@ -6102,6 +6102,16 @@
       "value": "Your data",
       "role": "label",
       "note": "Account page; moved from the portal's components (P0-36)."
+    },
+    "locker.product.whatsNew": {
+      "value": "What's New",
+      "role": "label",
+      "note": "Product page: the section label in the page's nav (a feature-label list is Title Case; the update prompt keeps update.whatsNew in sentence case)."
+    },
+    "locker.product.yourData": {
+      "value": "Your Data",
+      "role": "label",
+      "note": "Product page: the section label in the page's nav and its card title (Title Case list; the Account page keeps locker.account.yourData in sentence case)."
     },
     "locker.account.menuLabel": {
       "value": "Account: {name}",

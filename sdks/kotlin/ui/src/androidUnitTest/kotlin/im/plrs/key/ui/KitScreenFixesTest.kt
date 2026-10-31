@@ -83,7 +83,7 @@ class KitScreenFixesTest {
     @Test
     fun theLoadingAccountDrawsNoTextBodyButAnAnnouncement() {
         matrix("accountAndLicense-loading") { PolarisKitScreen(it.screen, rows = it.rows) }
-        rule.onNodeWithText("Account and license").assertIsDisplayed()
+        rule.onNodeWithText("Account and License").assertIsDisplayed()
         rule.onNodeWithText("Loading…").assertDoesNotExist()
     }
 

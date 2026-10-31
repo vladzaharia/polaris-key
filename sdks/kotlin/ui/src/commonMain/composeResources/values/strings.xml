@@ -657,7 +657,7 @@
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
     <string name="grace_deadline">Works offline until %1$s</string>
     <!-- AccountAndLicense: the settings pane for the license and account. -->
-    <string name="account_title">Account and license</string>
+    <string name="account_title">Account and License</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="account_tier">%1$s license</string>
     <!-- AccountAndLicense: the settings pane for the license and account. The account signed in on this device. Arguments: {name} = the person's display name. Arguments: 1=name. -->
@@ -671,13 +671,13 @@
     <!-- AccountAndLicense: the settings pane for the license and account. Group header. -->
     <string name="account_updates">Updates</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Switch label. -->
-    <string name="account_autoUpdate">Update automatically</string>
+    <string name="account_autoUpdate">Update Automatically</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
-    <string name="account_channel">Release channel</string>
+    <string name="account_channel">Release Channel</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="account_version">Version %1$s</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
-    <string name="account_managedSettings">Managed settings</string>
+    <string name="account_managedSettings">Managed Settings</string>
     <!-- AccountAndLicense: the settings pane for the license and account. -->
     <string name="account_offline">Offline · showing the last saved details</string>
     <!-- Settings: settings delivered by the developer. -->
@@ -768,7 +768,7 @@
     <!-- CloudSyncStatus: a small sync status. The synced data's key is not the one this device knew; Review sits beside it and opens RingChange. -->
     <string name="cloudSync_ringChanged">Your sync key changed.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. -->
-    <string name="unlockSync_title">Unlock your synced data</string>
+    <string name="unlockSync_title">Unlock Your Synced Data</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. -->
     <string name="unlockSync_lede">Enter the recovery code you saved for your Polaris Locker account.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The field's label. The code is checked on the device before anything is sent. -->
@@ -787,14 +787,14 @@
     <!-- UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on. -->
     <string name="unlockSync_noCode">This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title. -->
-    <string name="unlockSync_startOverTitle">Start over?</string>
+    <string name="unlockSync_startOverTitle">Start Over?</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22). -->
     <string name="unlockSync_startOverWarning">Your current synced data will be lost. Start over only if you can't find your recovery code.</string>
     <!-- UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's destructive action. -->
     <string name="unlockSync_startOverConfirm">Start over</string>
     <string name="unlockSync_startOverConfirm__macos">Start Over</string>
     <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
-    <string name="recoveryCode_title">Save your recovery code</string>
+    <string name="recoveryCode_title">Save Your Recovery Code</string>
     <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. -->
     <string name="recoveryCode_lede">You'll need it to unlock your synced data on a new device. It's shown only once.</string>
     <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. Also shown by UnlockSync (T23): never entered on a web page, in an email or to a person. -->
@@ -805,7 +805,7 @@
     <!-- RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done is hidden until it is checked. -->
     <string name="recoveryCode_saved">I've saved my recovery code</string>
     <!-- RingChange: confirm a changed sync key (U-42). -->
-    <string name="ringChange_title">Your sync key changed</string>
+    <string name="ringChange_title">Your Sync Key Changed</string>
     <!-- RingChange: confirm a changed sync key (U-42). Arguments: {device} = the name of the device that set the key up (changed.by), as the kit shows device names. Arguments: 1=device. -->
     <string name="ringChange_body">%1$s set up a new key for your synced data.</string>
     <!-- RingChange: confirm a changed sync key (U-42). Used when no device is named. -->

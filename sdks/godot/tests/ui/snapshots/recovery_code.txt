@@ -1,7 +1,7 @@
 == show ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Save your recovery code"
+Card/Scroll/Body/Head/Title: Label "Save Your Recovery Code"
 Card/Scroll/Body/Columns/Left/Words/Lede: Label "You'll need it to unlock your synced data on a new device. It's shown only once."
 Card/Scroll/Body/Columns/Left/CodeField/Code/Group0: Label "AB3D"
 Card/Scroll/Body/Columns/Left/CodeField/Code/Group1: Label "9FGH"
@@ -17,7 +17,7 @@ Card/Scroll/Body/Columns/Right/Saved: CheckBox "I've saved my recovery code" [fo
 == saved ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Save your recovery code"
+Card/Scroll/Body/Head/Title: Label "Save Your Recovery Code"
 Card/Scroll/Body/Columns/Left/Words/Lede: Label "You'll need it to unlock your synced data on a new device. It's shown only once."
 Card/Scroll/Body/Columns/Left/CodeField/Code/Group0: Label "AB3D"
 Card/Scroll/Body/Columns/Left/CodeField/Code/Group1: Label "9FGH"

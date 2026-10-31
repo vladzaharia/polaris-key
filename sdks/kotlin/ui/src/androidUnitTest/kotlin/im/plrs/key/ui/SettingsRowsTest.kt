@@ -2,7 +2,7 @@
 // UI-KITS.md 4.3 AccountAndLicense and Settings: typed controls from the catalog (a switch for a
 // boolean), a locked setting is its value as text with the lock and "Set by <Developer>" and never a
 // dimmed switch, provenance is text, "Reset to default" appears for a change made on this device,
-// and the rows are grouped under "From <Developer>" and "Managed settings" headers, with no invented
+// and the rows are grouped under "From <Developer>" and "Managed Settings" headers, with no invented
 // "Configuration" or "License" header.
 
 package im.plrs.key.ui
@@ -93,7 +93,7 @@ class SettingsRowsTest {
     fun rowsAreGroupedByProvenanceUnderCatalogHeaders() {
         show()
         rule.onNodeWithText("From Harbor Audio").assertIsDisplayed()
-        rule.onNodeWithText("Managed settings").assertIsDisplayed()
+        rule.onNodeWithText("Managed Settings").assertIsDisplayed()
         rule.onNodeWithText("Configuration").assertDoesNotExist()
         rule.onNodeWithText("License").assertDoesNotExist()
     }
@@ -101,7 +101,7 @@ class SettingsRowsTest {
     @Test
     fun withNoDeveloperTheDefaultsStayWithTheRestAndThereIsNoFromHeader() {
         val groups = settingGroups(ui.entries, developer = null, locale = "en")
-        assertEquals(listOf("Managed settings", null), groups.map { it.title })
+        assertEquals(listOf("Managed Settings", null), groups.map { it.title })
         assertEquals(listOf("telemetry.enabled"), groups[0].entries.map { it.key })
         assertEquals(listOf("audio.volume", "hints.enabled", "server.region"), groups[1].entries.map { it.key })
     }
@@ -109,7 +109,7 @@ class SettingsRowsTest {
     @Test
     fun theGroupsPartitionTheRows() {
         val groups = settingGroups(ui.entries, developer = "Harbor Audio", locale = "en")
-        assertEquals(listOf("From Harbor Audio", "Managed settings", null), groups.map { it.title })
+        assertEquals(listOf("From Harbor Audio", "Managed Settings", null), groups.map { it.title })
         assertEquals(ui.entries.map { it.key }.sorted(), groups.flatMap { g -> g.entries.map { it.key } }.sorted())
     }
 }

@@ -1792,7 +1792,7 @@ msgstr "Hors ligne · dernier jour pour utiliser {product}"
 msgid "grace.deadline"
 msgstr "Utilisable hors ligne jusqu’au {date}"
 
-#. Account and license
+#. Account and License
 #. AccountAndLicense: the settings pane for the license and account.
 msgid "account.title"
 msgstr "Compte et licence"
@@ -1827,12 +1827,12 @@ msgstr "Synchronisation entre appareils"
 msgid "account.updates"
 msgstr "Mises à jour"
 
-#. Update automatically
+#. Update Automatically
 #. AccountAndLicense: the settings pane for the license and account. Switch label.
 msgid "account.autoUpdate"
 msgstr "Mettre à jour automatiquement"
 
-#. Release channel
+#. Release Channel
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.channel"
 msgstr "Canal de publication"
@@ -1842,7 +1842,7 @@ msgstr "Canal de publication"
 msgid "account.version"
 msgstr "Version {version}"
 
-#. Managed settings
+#. Managed Settings
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.managedSettings"
 msgstr "Paramètres gérés"
@@ -2087,7 +2087,7 @@ msgstr "Déverrouiller la synchronisation"
 msgid "cloudSync.ringChanged"
 msgstr "Votre clé de synchronisation a changé."
 
-#. Unlock your synced data
+#. Unlock Your Synced Data
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
 msgid "unlockSync.title"
 msgstr "Déverrouiller vos données synchronisées"
@@ -2137,7 +2137,7 @@ msgstr "Impossible de recommencer. Vérifiez votre connexion et réessayez."
 msgid "unlockSync.noCode"
 msgstr "Ce compte n’a pas de code de récupération. Sur un appareil encore connecté et déverrouillé, choisissez « Nouveau code de récupération ». Sinon, recommencez."
 
-#. Start over?
+#. Start Over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
 msgid "unlockSync.startOverTitle"
 msgstr "Tout recommencer ?"
@@ -2157,7 +2157,7 @@ msgctxt "macos"
 msgid "unlockSync.startOverConfirm"
 msgstr "Tout recommencer"
 
-#. Save your recovery code
+#. Save Your Recovery Code
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
 msgid "recoveryCode.title"
 msgstr "Enregistrez votre code de récupération"
@@ -2187,7 +2187,7 @@ msgstr "Copier le code"
 msgid "recoveryCode.saved"
 msgstr "J’ai enregistré mon code de récupération"
 
-#. Your sync key changed
+#. Your Sync Key Changed
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.title"
 msgstr "Votre clé de synchronisation a changé"

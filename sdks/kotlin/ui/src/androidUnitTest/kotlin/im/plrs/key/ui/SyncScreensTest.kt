@@ -70,7 +70,7 @@ class SyncScreensTest {
         val sent = mutableListOf<String>()
         var startedOver = 0
         show { PolarisUnlockSync(unlock("code"), onUnlock = { sent += it }, onStartOver = { startedOver++ }) }
-        rule.onNodeWithText("Unlock your synced data").assertIsDisplayed()
+        rule.onNodeWithText("Unlock Your Synced Data").assertIsDisplayed()
         rule.onNodeWithText("No one will ever ask for this code. Enter it only in the app.").assertIsDisplayed()
         rule.onNodeWithText("Unlock").assertIsNotEnabled()
         rule.onNode(hasSetTextAction()).performTextInput("AAAA-BBBB")
@@ -177,7 +177,7 @@ class SyncScreensTest {
         rule.onNodeWithText("Start over").performClick()
         assertEquals(0, confirmed)
         rule.mainClock.advanceTimeBy(600)
-        rule.onNodeWithText("Start over?").assertIsDisplayed()
+        rule.onNodeWithText("Start Over?").assertIsDisplayed()
         rule.onNodeWithText("Your current synced data will be lost. Start over only if you can't find your recovery code.").assertIsDisplayed()
         rule.onNodeWithText("Unlock").assertDoesNotExist()
         rule.onNodeWithText("Cancel").assertIsFocused()
@@ -238,7 +238,7 @@ class SyncScreensTest {
                 onUseCode = { code++ },
             )
         }
-        rule.onNodeWithText("Your sync key changed").assertIsDisplayed()
+        rule.onNodeWithText("Your Sync Key Changed").assertIsDisplayed()
         rule.onNodeWithText("Maya's MacBook set up a new key for your synced data.").assertIsDisplayed()
         rule.onNodeWithText("Use recovery code").performClick()
         rule.onNodeWithText("That was me").performClick()
@@ -414,7 +414,7 @@ class SyncScreensTest {
         rule.onNodeWithText("Sync is locked.").assertIsDisplayed()
         rule.onNodeWithText("Unlock sync").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Unlock your synced data").assertIsDisplayed()
+        rule.onNodeWithText("Unlock Your Synced Data").assertIsDisplayed()
         rule.onNodeWithText("Sync is locked.").assertDoesNotExist()
         source.status = SyncStatus(SyncState.Idle, 0)
         host.dismiss()

@@ -1218,6 +1218,8 @@
     "locker.discover.ended": "{developer} n’offre plus {product} à votre compte.",
     "locker.discover.addFailed": "Impossible d’ajouter {product}.",
     "locker.account.yourData": "Vos données",
+    "locker.product.whatsNew": "Nouveautés",
+    "locker.product.yourData": "Vos données",
     "locker.account.menuLabel": "Compte : {name}",
     "locker.sessions.subtitle": "Navigateurs connectés à ce compte. Les appareils qui utilisent une licence figurent sur la page de chaque produit.",
     "locker.sessions.signOutAll": "Se déconnecter partout",

@@ -1787,10 +1787,10 @@ msgstr "Offline · last day to use {product}"
 msgid "grace.deadline"
 msgstr "Works offline until {date}"
 
-#. Account and license
+#. Account and License
 #. AccountAndLicense: the settings pane for the license and account.
 msgid "account.title"
-msgstr "Account and license"
+msgstr "Account and License"
 
 #. {tier} license
 #. AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated).
@@ -1822,25 +1822,25 @@ msgstr "Sync Across Devices"
 msgid "account.updates"
 msgstr "Updates"
 
-#. Update automatically
+#. Update Automatically
 #. AccountAndLicense: the settings pane for the license and account. Switch label.
 msgid "account.autoUpdate"
-msgstr "Update automatically"
+msgstr "Update Automatically"
 
-#. Release channel
+#. Release Channel
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.channel"
-msgstr "Release channel"
+msgstr "Release Channel"
 
 #. Version {version}
 #. AccountAndLicense: the settings pane for the license and account. Arguments: {version} = a version string such as 2.4.1.
 msgid "account.version"
 msgstr "Version {version}"
 
-#. Managed settings
+#. Managed Settings
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.managedSettings"
-msgstr "Managed settings"
+msgstr "Managed Settings"
 
 #. Offline · showing the last saved details
 #. AccountAndLicense: the settings pane for the license and account.
@@ -2082,10 +2082,10 @@ msgstr "Unlock Sync"
 msgid "cloudSync.ringChanged"
 msgstr "Your sync key changed."
 
-#. Unlock your synced data
+#. Unlock Your Synced Data
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
 msgid "unlockSync.title"
-msgstr "Unlock your synced data"
+msgstr "Unlock Your Synced Data"
 
 #. Enter the recovery code you saved for your Polaris Locker account.
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
@@ -2132,10 +2132,10 @@ msgstr "Couldn't start over. Check your connection and try again."
 msgid "unlockSync.noCode"
 msgstr "This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over."
 
-#. Start over?
+#. Start Over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
 msgid "unlockSync.startOverTitle"
-msgstr "Start over?"
+msgstr "Start Over?"
 
 #. Your current synced data will be lost. Start over only if you can't find your recovery code.
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22).
@@ -2152,10 +2152,10 @@ msgctxt "macos"
 msgid "unlockSync.startOverConfirm"
 msgstr "Start Over"
 
-#. Save your recovery code
+#. Save Your Recovery Code
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
 msgid "recoveryCode.title"
-msgstr "Save your recovery code"
+msgstr "Save Your Recovery Code"
 
 #. You'll need it to unlock your synced data on a new device. It's shown only once.
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
@@ -2182,10 +2182,10 @@ msgstr "Copy Code"
 msgid "recoveryCode.saved"
 msgstr "I've saved my recovery code"
 
-#. Your sync key changed
+#. Your Sync Key Changed
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.title"
-msgstr "Your sync key changed"
+msgstr "Your Sync Key Changed"
 
 #. {device} set up a new key for your synced data.
 #. RingChange: confirm a changed sync key (U-42). Arguments: {device} = the name of the device that set the key up (changed.by), as the kit shows device names.

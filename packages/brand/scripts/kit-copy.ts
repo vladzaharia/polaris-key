@@ -286,6 +286,31 @@ const CLDR_ORDER = ["zero", "one", "two", "few", "many", "other"] as const;
 /** English values must not use these (S-19 and AGENTS rule 4: license, device, tier). */
 /** LOCKER-FEATURE-NAMES §3: developer feature names never show to a user (kit copy, core copy). */
 const DEV_NAMES = /Cloud Sync|Cloud Connect|Direct Transfer/;
+/**
+ * LOCKER-FEATURE-NAMES §2 rule 1 (D-5): English only, these keys are Title Case so a list of labels
+ * never mixes cases. Other locales keep their own capitalization and get no such check.
+ */
+const TITLE_CASE_KEYS: ReadonlySet<string> = new Set([
+  "account.title",
+  "account.cloudSync",
+  "account.autoUpdate",
+  "account.channel",
+  "account.managedSettings",
+  "getIt.heading",
+  "locker.product.whatsNew",
+  "locker.product.yourData",
+  "license.title",
+  "account.devices",
+  "account.updates",
+]);
+/** Feature components whose argument-free `title` keys are Title Case as well. */
+const TITLE_CASE_NAMESPACES: ReadonlySet<string> = new Set([
+  "unlockSync",
+  "recoveryCode",
+  "ringChange",
+  "saveConflict",
+  "linkPairing",
+]);
 const BANNED_EN = /\b(licences?|grants?|retry|machines?|plans?)\b/i;
 
 const KEY_PATTERN = /^[a-z][A-Za-z0-9]*(\.[a-z][A-Za-z0-9]*)+$/;
@@ -807,6 +832,16 @@ export function validateKitCopy(src: KitCopySources): string[] {
       );
     if (!msg.note.trim()) errors.push(`${where}: note is empty`);
     const texts: [string, string][] = [[where, msg.value]];
+    if (
+      (TITLE_CASE_KEYS.has(key) ||
+        (TITLE_CASE_NAMESPACES.has(ns) &&
+          msg.role === "title" &&
+          !msg.value.includes("{"))) &&
+      msg.value !== titleCase(msg.value)
+    )
+      errors.push(
+        `${where}: a feature label or section title is Title Case in English ("${titleCase(msg.value)}")`,
+      );
     if (DEV_NAMES.test(msg.note))
       errors.push(
         `${where}: the note names a developer feature (${DEV_NAMES.exec(msg.note)![0]}); say what it does`,

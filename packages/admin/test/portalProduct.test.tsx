@@ -152,7 +152,7 @@ describe("product page on today's data (PX-04)", () => {
         within(nav)
           .getAllByRole("link")
           .map((a) => a.textContent),
-      ).toEqual(["Get it", "License", "Devices 2", "What's new", "Your data"]);
+      ).toEqual(["Get It", "License", "Devices 2", "What's New", "Your Data"]);
     // The device count is a small neutral pill, and the link still reads as one name.
     for (const nav of navs) {
       const devicesLink = within(nav).getByRole("link", { name: "Devices 2" });
@@ -460,7 +460,7 @@ describe("product page on today's data (PX-04)", () => {
     mockFetch(routes());
     renderPortal();
     await page();
-    const get = screen.getByRole("region", { name: "Get it" });
+    const get = screen.getByRole("region", { name: "Get It" });
     // One table; the build for this Mac is its first row, marked "For your Mac".
     const first = within(get).getAllByRole("row")[1]!;
     expect(first.textContent).toContain("macOS · Universal");
@@ -560,7 +560,7 @@ describe("product page on today's data (PX-04)", () => {
     );
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get it" });
+    const get = await screen.findByRole("region", { name: "Get It" });
     await within(get).findByText(/Version 2.0 isn't included/);
     expect(get.textContent).toContain("Your license covers 1.8");
     expect(
@@ -1405,7 +1405,7 @@ describe("product page correctness (UX-04)", () => {
     );
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get it" });
+    const get = await screen.findByRole("region", { name: "Get It" });
     await within(get).findByText(/For your Windows PC/);
     expect(within(get).queryByText(/For your Mac/)).toBeNull();
     expect(within(get).getByText(/Windows · x64/)).toBeTruthy();
@@ -1448,7 +1448,7 @@ describe("product page correctness (UX-04)", () => {
     );
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get it" });
+    const get = await screen.findByRole("region", { name: "Get It" });
     const steam = await within(get).findByRole("link", {
       name: "Get it from Steam (opens in a new tab)",
     });
@@ -1786,27 +1786,27 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     await page();
     // At the top: no card has reached the reading line, so the first section.
     await scrollTo({ get: 500, license: 500, devices: 800, new: 1100 });
-    await waitFor(() => expect(marked()).toBe("Get it"));
+    await waitFor(() => expect(marked()).toBe("Get It"));
     // Get it and License (side by side) pass the line together: the later one in the order.
     await scrollTo({ get: 4, license: 4, devices: 304, new: 604 });
     await waitFor(() => expect(marked()).toBe("License"));
     await scrollTo({ get: -300, license: -300, devices: 0, new: 300 });
     await waitFor(() => expect(marked()).toBe("Devices 2"));
     await scrollTo({ get: -600, license: -600, devices: -300, new: 0 });
-    await waitFor(() => expect(marked()).toBe("What's new"));
+    await waitFor(() => expect(marked()).toBe("What's New"));
 
     // Picking Get it holds the mark, though License shares its top once it lands.
     const toc = screen.getByRole("navigation", { name: "On this page" });
-    await userEvent.click(within(toc).getByRole("link", { name: "Get it" }));
+    await userEvent.click(within(toc).getByRole("link", { name: "Get It" }));
     await scrollTo({ get: 0, license: 0, devices: 300, new: 600 });
     await new Promise((r) => setTimeout(r, 50));
-    expect(marked()).toBe("Get it");
+    expect(marked()).toBe("Get It");
     // Once the person scrolls by themselves, the reading line leads again.
     act(() => {
       window.dispatchEvent(new Event("wheel"));
     });
     await scrollTo({ get: -600, license: -600, devices: -300, new: 0 });
-    await waitFor(() => expect(marked()).toBe("What's new"));
+    await waitFor(() => expect(marked()).toBe("What's New"));
   });
 
   it("with no main-column card, the licence's cards are one column, not a column of air beside one", async () => {
@@ -1903,14 +1903,14 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     const card = await screen.findByRole("region", { name: "License" });
     await within(card).findByText(/^Ended /);
     expect(screen.queryByText("Not included")).toBeNull();
-    expect(screen.queryByRole("region", { name: "Get it" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Get It" })).toBeNull();
     // Neither the section nav nor the jump bar points at the card that is not there.
     for (const nav of ["On this page", "Sections"]) {
       const links = within(screen.getByRole("navigation", { name: nav }))
         .getAllByRole("link")
         .map((l) => l.textContent);
       expect(links).toContain("License");
-      expect(links).not.toContain("Get it");
+      expect(links).not.toContain("Get It");
     }
   });
 
@@ -1943,13 +1943,13 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     const card = await screen.findByRole("region", { name: "License" });
     await within(card).findByText(/^Ended /);
     expect(screen.queryByText(/Open this page on your computer/)).toBeNull();
-    expect(screen.queryByRole("region", { name: "Get it" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Get It" })).toBeNull();
     for (const nav of ["On this page", "Sections"])
       expect(
         within(screen.getByRole("navigation", { name: nav }))
           .getAllByRole("link")
           .map((l) => l.textContent),
-      ).not.toContain("Get it");
+      ).not.toContain("Get It");
     // The License card leads the main column, with What's new, not the rail.
     const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
     expect(card.parentElement!.parentElement).toBe(
@@ -2039,7 +2039,7 @@ describe("Get it: other ways to install (P0-48)", () => {
     mockFetch(routes({ "/api/products/nightfall/downloads": view("macos") }));
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get it" });
+    const get = await screen.findByRole("region", { name: "Get It" });
     const mac = await within(get).findByRole("list", {
       name: "Other ways to install on macOS",
     });
@@ -2112,7 +2112,7 @@ describe("Get it: other ways to install (P0-48)", () => {
     mockFetch(routes({ "/api/products/nightfall/downloads": view("ios") }));
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get it" });
+    const get = await screen.findByRole("region", { name: "Get It" });
     const lead = await within(get).findByRole("list", {
       name: "Install on this iPhone",
     });

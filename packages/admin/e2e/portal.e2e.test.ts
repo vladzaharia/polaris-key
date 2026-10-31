@@ -1456,12 +1456,12 @@ describe("product page, owner polish 2026-10-07", () => {
       await h1(o.page, "Nightfall");
       const links = o.page.getByRole("navigation", { name: nav });
       const order = [
-        "Get it",
+        "Get It",
         "License",
         "Devices 2",
-        "What's new",
+        "What's New",
         "Help",
-        "Your data",
+        "Your Data",
       ];
       expect(await links.getByRole("link").allTextContents()).toEqual(order);
       // The device count is a pill.
@@ -1491,7 +1491,7 @@ describe("product page, owner polish 2026-10-07", () => {
       expect(seen, JSON.stringify(seen)).toEqual(order);
 
       // A picked section holds once the scroll lands, though a card may share its top.
-      for (const pick of ["License", "Get it"]) {
+      for (const pick of ["License", "Get It"]) {
         await links.getByRole("link", { name: pick }).click();
         await o.page.waitForTimeout(300);
         expect(await marked(o.page, nav)).toBe(pick);

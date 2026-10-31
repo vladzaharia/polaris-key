@@ -269,6 +269,8 @@ export type PortalCopyKey =
   | "locker.discover.ended"
   | "locker.discover.addFailed"
   | "locker.account.yourData"
+  | "locker.product.whatsNew"
+  | "locker.product.yourData"
   | "locker.account.menuLabel"
   | "locker.sessions.subtitle"
   | "locker.sessions.signOutAll"

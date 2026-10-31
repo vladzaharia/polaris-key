@@ -1218,6 +1218,8 @@
     "locker.discover.ended": "{developer}は{product}をあなたのアカウントに提供しなくなりました。",
     "locker.discover.addFailed": "{product}を追加できませんでした。",
     "locker.account.yourData": "あなたのデータ",
+    "locker.product.whatsNew": "新機能",
+    "locker.product.yourData": "あなたのデータ",
     "locker.account.menuLabel": "アカウント: {name}",
     "locker.sessions.subtitle": "このアカウントにサインインしているブラウザです。ライセンスを使うデバイスは各製品のページにあります。",
     "locker.sessions.signOutAll": "すべての場所でサインアウト",
