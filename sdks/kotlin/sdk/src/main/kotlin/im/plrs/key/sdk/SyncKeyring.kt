@@ -158,10 +158,7 @@ public class SyncKeyring internal constructor(private val core: CoreContext, opt
     private suspend fun unlockSteps(accept: SyncRingPin?): SyncUnlockResult {
         val state = readState()
         val ring = state.ring ?: decided(SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoRing))
-        // An accept does not need the pin read; otherwise an unreadable pin is an error, not an absent one.
-        val pinned = if (accept == null) vault.pinChecked() else vault.pin()
-        // With no pin, the stored root's {ringId, epoch, kid} is the pin (an unreadable root is an error).
-        val anchor = pinned ?: if (accept == null) vault.loadChecked()?.let { SyncRingPin(it.ringId, it.epoch, it.kid) } else null
+        val anchor = anchorOf(accept)
         // An accept holds only for the ring the person was shown; a ring that moved since is reported again.
         val expected = accept ?: anchor
         val served = SyncRingPin(ring.ringId, ring.epoch, ring.rootKid)
@@ -182,6 +179,15 @@ public class SyncKeyring internal constructor(private val core: CoreContext, opt
         val root = openOwnWrap(ring, wrap, kid) ?: decided(UNUSABLE)
         hold(HeldRoot(ring.ringId, ring.epoch, kid, root), store = true)
         return unlocked
+    }
+
+    /**
+     * The ring this client already trusts: the pin or, with no pin, the stored root's {ringId, epoch, kid}. An unreadable
+     * pin or root is an error, not an absent one. A confirmed accept reads neither strictly, so it still works.
+     */
+    private suspend fun anchorOf(accept: SyncRingPin?): SyncRingPin? {
+        val checked = accept == null
+        return vault.pin(checked) ?: if (checked) vault.load(checked = true)?.let { SyncRingPin(it.ringId, it.epoch, it.kid) } else null
     }
 
     private suspend fun openOwnWrap(ring: SyncKeyringRing, wrap: SyncKeyringWrapInfo, kid: ByteArray): ByteArray? {

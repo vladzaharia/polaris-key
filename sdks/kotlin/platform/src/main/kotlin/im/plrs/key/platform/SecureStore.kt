@@ -269,10 +269,9 @@ public class SecureStore(
      * [SecureStoreException], so a glitch can never read as "key gone" nor lead to a new key.
      */
     private fun keyOrRetry(): SecretKey? {
-        keys.get(alias)?.let { return it }
-        keys.get(alias)?.let { return it }
-        if (keys.exists(alias)) throw SecureStoreException("keystore", "$alias is present but could not be loaded")
-        return null
+        val key = keys.get(alias) ?: keys.get(alias)
+        if (key == null && keys.exists(alias)) throw SecureStoreException("keystore", "$alias is present but could not be loaded")
+        return key
     }
 
     /** Moves the blobs aside instead of deleting them. */

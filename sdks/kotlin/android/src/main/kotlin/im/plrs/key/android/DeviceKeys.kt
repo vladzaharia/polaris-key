@@ -88,5 +88,4 @@ internal fun PolarisKeyClientOptions.withAndroidKeyring(
     context: Context,
     scope: String,
     keys: KeyProvider = AndroidKeyStoreProvider(context),
-): PolarisKeyClientOptions =
-    copy(keyring = keyring.copy(rootStorage = keyring.rootStorage ?: androidSyncRootStorage(context, scope, keys)))
+): PolarisKeyClientOptions = copy(keyring = keyring.copy(rootStorage = keyring.rootStorage ?: androidSyncRootStorage(context, scope, keys)))
