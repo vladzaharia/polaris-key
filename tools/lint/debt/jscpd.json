@@ -2351,6 +2351,9 @@
     "packages/worker/scripts/gen-settings.ts": {
       "jscpd:duplicate": 3
     },
+    "packages/worker/scripts/load/cloud-sync-one-do.mjs": {
+      "jscpd:duplicate": 3
+    },
     "packages/worker/scripts/registry-clients/clients/cargo.seed.ts": {
       "jscpd:duplicate": 5
     },
@@ -3251,6 +3254,9 @@
     "packages/worker/test/core/customerEmailHtml.test.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/worker/test/core/devices/keysRoute.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/worker/test/core/discoveryGolden.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -3342,6 +3348,9 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test/core/repo.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/ruleGrants.test.ts": {
       "jscpd:duplicate": 1
     },
     "packages/worker/test/core/services.test.ts": {
@@ -3597,7 +3606,7 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test/services/identity/exchange.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "packages/worker/test/services/identity/identityCardEmail.test.ts": {
       "jscpd:duplicate": 2
