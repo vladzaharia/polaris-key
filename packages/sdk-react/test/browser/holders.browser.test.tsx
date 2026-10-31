@@ -207,7 +207,7 @@ describe("motion", () => {
   it("the reason lines enter one after another, three at most, and the check draws once", async () => {
     await page.viewport(1440, 900);
     const kit = await mount(ready(), "light", 16, "polaris-key", false);
-    const lines = [...kit.querySelectorAll<HTMLElement>(".reasons li")];
+    const lines = [...kit.querySelectorAll<HTMLElement>(".holder-reasons li")];
     const running = lines.map((li) => li.getAnimations().length);
     expect(lines.length).toBeLessThanOrEqual(3);
     expect(
@@ -228,8 +228,12 @@ describe("motion", () => {
     await page.viewport(1440, 900);
     await commands.emulateMotion("reduce");
     const kit = await mount(ready(), "light", 16, "polaris-key", false);
-    expect(kit.querySelectorAll(".reasons li").length).toBeGreaterThan(0);
-    for (const el of kit.querySelectorAll(".reasons li, .success path, .card"))
+    expect(kit.querySelectorAll(".holder-reasons li").length).toBeGreaterThan(
+      0,
+    );
+    for (const el of kit.querySelectorAll(
+      ".holder-reasons li, .success path, .card",
+    ))
       expect(el.getAnimations(), el.className.toString()).toEqual([]);
   });
 });
