@@ -658,6 +658,13 @@ class GateFlow:
         """Every 200 ms: what the approvers do. None within 2 s hands over to the regular sign-in; one is
         chosen after 3 s; several are listed to pick from."""
         session = self.session
+        if session is not None and session.kind == "nearby" and session.phase == "done":
+            # The confirm screen leaves when the session ends (a deadline, a decline from elsewhere).
+            if session.nearby is None or getattr(session.nearby, "ended", False):
+                self._nearby_timer.stop()
+                session.phase = "expired"
+                self.redraw()
+            return
         if session is None or session.kind != "nearby" or session.nearby is None or session.phase not in ("looking", "pick"):
             self._nearby_timer.stop()
             return
@@ -716,6 +723,8 @@ class GateFlow:
         if session is not self.session:
             return
         self._nearby_timer.stop()
+        if error is None and getattr(result, "kind", None) == "signed_in":
+            self._nearby_timer.start()  # watch for the end of the session while the account is shown
         if error is not None:
             session.phase = "denied" if getattr(error, "code", None) == "sign-in-denied" else "failed"
         else:
@@ -741,11 +750,22 @@ class GateFlow:
             nearby, result = session.nearby, session.result
             self._run(
                 lambda: nearby.confirm_account() if nearby is not None else None,
-                lambda _r, _e: self._nearby_confirmed(session, result),
+                lambda _r, e: self._nearby_confirmed(session, result, e),
             )
 
-    def _nearby_confirmed(self, session: _Session, result: Any) -> None:
+    def _nearby_confirmed(self, session: _Session, result: Any, error: Optional[BaseException] = None) -> None:
         if session is not self.session:
+            return
+        if error is not None:
+            # The sign-in ended before the confirmation took (the deadline): never "signed in", and the
+            # host's callback is not called.
+            self._nearby_timer.stop()
+            session.phase = "expired"
+            try:
+                session.nearby.close()
+            except Exception:
+                pass
+            self.redraw()
             return
         self._stop_session()
         try:
@@ -894,6 +914,13 @@ class GateFlow:
             self._ticker.stop()
         self.redraw()
 
+    @staticmethod
+    def _cancel_quietly(nearby: Any) -> None:
+        try:
+            nearby.cancel()
+        except Exception:
+            pass
+
     def _stop_session(self) -> None:
         session, self.session = self.session, None
         self._generation += 1
@@ -902,11 +929,13 @@ class GateFlow:
         if session is not None:
             session.cancel.set()
             # A nearby attempt that is left closes its LAN side (a request nobody collects just lapses).
-            if session.kind == "nearby" and session.nearby is not None and session.phase != "done":
-                try:
-                    session.nearby.cancel()
-                except Exception:
-                    pass
+            if session.kind == "nearby" and session.nearby is not None:
+                # Leaving the confirm screen by any route is a cancel (after a confirmation it does
+                # nothing). The sign-out it may make is a network call, so it is off the GUI thread there.
+                if session.phase == "done":
+                    threading.Thread(target=self._cancel_quietly, args=(session.nearby,), daemon=True).start()
+                else:
+                    self._cancel_quietly(session.nearby)
 
     # ── threads ─────────────────────────────────────────────────────────────────────────────
     def _run(self, fn: Callable[[], Any], done: Callable[[Any, Optional[BaseException]], None]) -> None:

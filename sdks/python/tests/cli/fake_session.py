@@ -261,6 +261,9 @@ class WhenKeys:
         return None
 
     def read(self, timeout: Optional[float] = None) -> Optional[str]:
+        if self.eof:
+            # A kit that reads on after the end of its input would spin forever: fail instead.
+            raise AssertionError("read after the input ended")
         key = self._next()
         if key is not None:
             return key

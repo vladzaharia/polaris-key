@@ -170,6 +170,7 @@ class IdentityClient:
             sign_out=self.sign_out,
             confirm=self._confirm_nearby,
             drop_local=self._drop_nearby,
+            holds=lambda token: self._tokens.current == token,
         )
         return start_nearby_sign_in(deps, self._deps, **opts)
 

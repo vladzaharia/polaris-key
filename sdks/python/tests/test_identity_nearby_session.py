@@ -730,3 +730,54 @@ def test_cloud_sync_and_the_signed_in_event_wait_for_confirm_account(clock) -> N
     assert c2.identity._account.stored_subject() is None
     assert "signed_in" not in seen
     assert not [x for x in w2.calls if "/sync" in x["path"]]
+
+
+def test_a_confirm_that_wins_the_race_with_the_deadline_stands(clock, fake_timer: List[_FakeTimer]) -> None:
+    # The person's Enter lands between the deadline's check and its end: one decision under the lock.
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
+    c, fake, s = session(w)
+    assert s.wait().kind == "signed_in"
+    real_halt = s._halt
+    won: List[Any] = []
+
+    def halt_after_confirm() -> bool:
+        won.append(s.confirm_account())
+        return real_halt()
+
+    s._halt = halt_after_confirm  # type: ignore[method-assign]
+    fake_timer[-1].fire()
+    assert len(won) == 1 and not s.ended
+    assert _signouts(w) == [] and c._tokens.current is not None and c._tokens.unconfirmed is False
+
+
+def test_the_deadline_leaves_a_later_sign_in_made_another_way_alone(clock, fake_timer: List[_FakeTimer]) -> None:
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
+    c, fake, s = session(w)
+    assert s.wait().kind == "signed_in"
+    c._tokens.set("pkeyt_other_sign_in", "signin")
+    fake_timer[-1].fire()
+    assert s.ended
+    assert _signouts(w) == [] and c._tokens.current == "pkeyt_other_sign_in"
+
+
+def test_a_confirm_after_a_later_sign_in_fails_and_writes_nothing(clock) -> None:
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
+    c, fake, s = session(w)
+    events: List[Any] = []
+    c.events.subscribe(lambda e: events.append(e.get("change")), ["identity"])
+    assert s.wait().kind == "signed_in"
+    c._tokens.set("pkeyt_other_sign_in", "signin")
+    with pytest.raises(PolarisError):
+        s.confirm_account()
+    assert c.identity._account.stored_subject() is None and events == []
+    assert _signouts(w) == [] and c._tokens.current == "pkeyt_other_sign_in"
+
+
+def test_cloud_connect_does_not_count_an_unconfirmed_sign_in_as_signed_in(clock) -> None:
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
+    c, fake, s = session(w)
+    assert s.wait().kind == "signed_in"
+    signed_in = c.cloud_connect.nearby._deps.signed_in
+    assert signed_in() is False
+    s.confirm_account()
+    assert signed_in() is True

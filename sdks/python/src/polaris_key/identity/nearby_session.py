@@ -118,6 +118,9 @@ class NearbyDeps:
     #: Drop the unconfirmed sign-in locally whatever the Worker answered: the token, its mark and the
     #: stored identity.
     drop_local: Callable[[], Any]
+    #: Whether the held token is still the given one, the token this session's poll stored. A later
+    #: sign-in made another way replaces it, and this session then leaves it alone.
+    holds: Callable[[str], bool]
     #: ``client.keyring``, where the approver's ``KEYRING_WRAP`` is adopted (``None``: it is dropped).
     keyring: Optional[Callable[[], Any]] = None
     #: ``identity.sign_out``: a declined account signs the device out again (V5 §15.6.1 rule 12).
@@ -147,6 +150,7 @@ class NearbySignInSession:
         sign_out: Optional[Callable[[], Any]] = None,
         confirm: Callable[[str], Any],
         drop_local: Callable[[], Any],
+        holds: Callable[[str], bool],
     ) -> None:
         self.__started = started
         self._request = request
@@ -176,6 +180,8 @@ class NearbySignInSession:
         self._confirming = False
         self._confirm = confirm
         self._drop_local = drop_local
+        self._holds = holds
+        self._token: Optional[str] = None
         self._subject: Optional[str] = None
         self._ended = False
         self._on_end: List[Callable[[], None]] = []
@@ -263,16 +269,17 @@ class NearbySignInSession:
             pass
         return lambda: None
 
-    def _halt(self) -> None:
+    def _halt(self) -> bool:
         """The end of this sign-in: no further poll is honoured, the deadline stops, listeners hear of it
-        (once, and only while unconfirmed)."""
+        (once, and only while unconfirmed). Answers whether THIS call ended the sign-in: a confirmation
+        that began first wins, and one decision is taken under the lock."""
         self._cancelled.set()
         timer, self._deadline = self._deadline, None
         if timer is not None:
             timer.cancel()
         with self._lock:
             if self._ended or self._confirming:
-                return
+                return False
             self._ended = True
             listeners, self._on_end = self._on_end, []
         for fn in listeners:
@@ -280,6 +287,7 @@ class NearbySignInSession:
                 fn()
             except Exception:
                 pass
+        return True
 
     def _arm_deadline(self) -> None:
         """The confirm screen's deadline: ``expires_in`` seconds from the moment the poll answered, on a
@@ -290,10 +298,9 @@ class NearbySignInSession:
         timer.start()
 
     def _on_deadline(self) -> None:
-        if self._confirming:
-            return
-        self._halt()
-        self._discard()
+        # Discard only when this call ended the sign-in: a confirm that won the lock first stands.
+        if self._halt():
+            self._discard()
 
     def _discard(self) -> None:
         """The one end path for an unconfirmed sign-in; idempotent and serialized. The held wrap is
@@ -308,6 +315,11 @@ class NearbySignInSession:
                 pass
             self._close_lan()
             if not self._signed_in:
+                return
+            token, self._token = self._token, None
+            if token is None or not self._holds(token):
+                # Another sign-in holds the device now: this session ends without touching it.
+                self._signed_in = False
                 return
             if self._sign_out is not None:
                 try:
@@ -414,6 +426,7 @@ class NearbySignInSession:
                 # answer discards it at once; nothing is handed to the caller (D-21).
                 self._signed_in = True
                 self._subject = r.subject
+                self._token = r.token
                 if self._cancelled.is_set():
                     self._discard()
                     return SignInOutcome(kind=CANCELLED)
@@ -464,13 +477,23 @@ class NearbySignInSession:
         came over the channel: nothing is applied then, and the normal ``keyring.unlock()`` opens the
         server's copy later. Raises ``sign-in-failed`` before the poll has signed this device in: there is
         no account to confirm yet, and nothing is released."""
-        if self._ended:
-            raise PolarisError(ErrorCode.SIGN_IN_FAILED, "The sign-in ended before it was confirmed.")
-        if not self._signed_in or self._subject is None:
-            raise PolarisError(ErrorCode.SIGN_IN_FAILED, "Nothing to confirm: the device is not signed in.")
+        stale = False
         with self._lock:
+            # One decision under the lock: the end and the confirmation cannot both win.
+            if self._ended:
+                raise PolarisError(ErrorCode.SIGN_IN_FAILED, "The sign-in ended before it was confirmed.")
+            if not self._signed_in or self._subject is None:
+                raise PolarisError(ErrorCode.SIGN_IN_FAILED, "Nothing to confirm: the device is not signed in.")
+            if not self._confirming and (self._token is None or not self._holds(self._token)):
+                stale = True
             first = not self._confirming
-            self._confirming = True
+            if not stale:
+                self._confirming = True
+        if stale:
+            # A later sign-in replaced this one's token: nothing of it is written, nothing signed out.
+            if self._halt():
+                self._discard()
+            raise PolarisError(ErrorCode.SIGN_IN_FAILED, "The sign-in ended before it was confirmed.")
         timer, self._deadline = self._deadline, None
         if timer is not None:
             timer.cancel()
@@ -546,9 +569,9 @@ class NearbySignInSession:
     def close(self) -> None:
         """End the session: the LAN side closes (idempotent; a failure to close is not an error). After
         ``signed_in`` and before the confirmation this is an end like a decline: the device signs out."""
-        self._halt()
+        ended = self._halt()
         self._close_lan()
-        if self._signed_in and not self._confirming:
+        if ended and self._signed_in:
             self._discard()
 
     def _close_lan(self) -> None:
@@ -623,4 +646,5 @@ def start_nearby_sign_in(
         sign_out=nd.sign_out,
         confirm=nd.confirm,
         drop_local=nd.drop_local,
+        holds=nd.holds,
     )

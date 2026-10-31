@@ -139,6 +139,10 @@ class FakeNearbySession:
         self.declined = 0
         self.cancelled = False
         self.closed = False
+        #: The session ended unconfirmed (the 300 s deadline, a decline from elsewhere).
+        self.ended = False
+        #: ``confirm_account`` raises this (the deadline passed first).
+        self.confirm_error: Optional[BaseException] = None
         self.finish = threading.Event()
         self.result: Any = SignInOutcome(kind="signed_in", identity=SignedInIdentity("Ada", "ada@example.com"))
 
@@ -154,6 +158,8 @@ class FakeNearbySession:
         self.closed = True
 
     def confirm_account(self) -> None:
+        if self.confirm_error is not None:
+            raise self.confirm_error
         self.confirmed += 1
 
     def decline_account(self) -> None:
@@ -365,6 +371,47 @@ def test_not_you_drops_the_records_and_signs_out(rig):
     r.press("signin.nearby.notYou")
     pump(r.app, lambda: r.shown == "Welcome.default")
     assert (session.declined, session.confirmed) == (1, 0) and not r.gate.open
+
+
+def _at_the_confirm_screen(r: Any) -> Any:
+    r.press("welcome.signIn")
+    r.until("SignInHandoff.starting")
+    session = r.started()
+    session.approvers = [approver()]
+    r.tick()
+    r.tick(3.1)
+    pump(r.app, lambda: r.shown == "SignIn.nearby-wait")
+    session.finish.set()
+    r.until("SignIn.nearby-done")
+    return session
+
+
+def test_continue_after_the_deadline_shows_expired_and_never_reports_a_sign_in(rig):
+    r = rig()
+    session = _at_the_confirm_screen(r)
+    signed_in: List[Any] = []
+    r.gate.flow.on_signed_in = signed_in.append
+    session.confirm_error = PolarisError("sign-in-failed", "The sign-in ended before it was confirmed.")
+    r.press("common.continue")
+    pump(r.app, lambda: r.shown != "SignIn.nearby-done")
+    assert signed_in == [] and not r.gate.open and not r.opened
+    assert session.confirmed == 0 and r.shown != "Welcome.default"
+
+
+def test_the_confirm_screen_leaves_when_the_session_ends(rig):
+    r = rig()
+    session = _at_the_confirm_screen(r)
+    session.ended = True
+    r.tick()
+    assert r.shown != "SignIn.nearby-done" and not r.gate.open
+
+
+def test_leaving_the_confirm_screen_by_any_route_cancels_the_session(rig):
+    r = rig()
+    session = _at_the_confirm_screen(r)
+    r.gate.flow._stop_session()  # back, closing the window: every route ends in this
+    pump(r.app, lambda: session.cancelled)
+    assert session.confirmed == 0
 
 
 def test_a_refused_poll_is_the_sign_in_s_own_refusal(rig):

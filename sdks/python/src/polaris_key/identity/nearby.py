@@ -135,6 +135,9 @@ class NearbyPollResult:
     license_id: Optional[str] = None
     #: ``signed_in``: the name and e-mail of the account the token answer shows (display data), or ``None``.
     identity: Optional[SignedInIdentity] = None
+    #: ``signed_in``: the access token the poll stored, so the session can tell its own sign-in from a
+    #: later one. Never handed to the caller, and left out of the repr.
+    token: Optional[str] = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
@@ -461,6 +464,7 @@ class NearbyRoutes:
             scope=answer.scope,
             license_id=license_id,
             identity=identity,
+            token=answer.access_token,
         )
 
     # ── M: approve ──────────────────────────────────────────────────────────────────
