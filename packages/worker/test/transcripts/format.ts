@@ -228,6 +228,20 @@
 // body is held to its shape); U-06 may tighten both. The CORS exchanges of `cloudsync-cors` are
 // `browser` steps and record the `access-control-*` response headers they carry.
 //
+// cloudSyncChunk (U-37.6, WIRE-CONTRACT-V5 §13.8.1 to §13.8.3) — one delta-file call of the
+// `cloudsync-chunks*` transcripts, replayed only by an SDK that marks `sync.files.delta`
+// implemented. `args.op` is "begin" (format chunks; its `size` and `sha256` are the stored
+// manifest's) | "plan" | "putChunk" (`args.chunk`, the hex id) | "putManifest" (the single-mode PUT)
+// | "status" | "finalize" | "downloadManifest" (`args.version` for a kept one) | "getChunk"
+// (`args.chunk`) | "revisions", with `collection` (and `id` except for "getChunk"). One step is one
+// request; request paths carry the literal upload id the recording drew (the `uploadId` capture of
+// `begin`). A PUT's `Content-Digest` (RFC 9530) is asserted by value, its bytes by `bodyBase64`.
+// `expect`: `result` "ok" (with `status`) and, per op, `mode` (begin, status), `missing` (ids,
+// sorted) and `present` (`[id, storedBytes]`, sorted) for "plan", `size`, `received` and `missing`
+// (status), `version`, `size`, `sha256` and `format` (finalize), `size` and `sha256` of the bytes
+// (downloadManifest, getChunk), `versions` and `formats` (revisions); or "refused" with `status`
+// and `code`, plus `missing` (upload_incomplete: chunk ids, or [1] for the manifest).
+//
 // exchange (I-13.7, WIRE-CONTRACT-V5 §12.11.2, §12.11.3, `identity.exchange`) — the platform
 // sign-in as one SDK call: `POST …/identity/nonce` with the device's keys (unless `args.nonce`
 // holds one the client fetched earlier), the platform's ID token for that nonce, then the
@@ -419,6 +433,8 @@ export type Action =
   | "cloudSyncPull"
   /** U-05.16 (§13.3): the Cloud Sync push, `POST /<p>/sync/ops`. */
   | "cloudSyncPush"
+  /** U-37.6 (§13.8): one Cloud Sync delta-file call of the `cloudsync-chunks*` transcripts (`sync.files.delta`). */
+  | "cloudSyncChunk"
   /** I-13.7 (WIRE-CONTRACT-V5 §12.11.3): the native-token exchange, nonce then grant. */
   | "exchange"
   /** I-43.3 (WIRE-CONTRACT-V5 §12.11.4): `GET …/identity/link`, the link offer (`identity.link`). */
