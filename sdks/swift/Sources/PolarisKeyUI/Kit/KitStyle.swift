@@ -97,9 +97,9 @@ public struct KitResolvedStyle: Sendable, Equatable {
     /// opaque `raised` fill is the same on every run.
     var opaqueFloating: Bool {
         #if os(macOS)
-        return isNative && !dark
+            return isNative && !dark
         #else
-        return false
+            return false
         #endif
     }
 
