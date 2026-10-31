@@ -324,6 +324,39 @@ describe("the request's hints and purpose (UK-42.14)", () => {
     expect(document.body.textContent).not.toMatch(/wants you to sign in/);
   });
 
+  // UK-42.22.12: a device-code request carries the same hints; the card reads them as it does for
+  // `authorize`, and keeps the code panel (the person's check that they started it).
+  const DEVICE: SignInRequestView = {
+    ...VIEW,
+    client: { ...VIEW.client, kind: "device" },
+    deviceLabel: "Living room TV",
+    userCode: "WDJB-MJHT",
+  };
+
+  it("a device request with purpose attach: the attach header, the code panel, the prefilled email", async () => {
+    out({
+      ...DEVICE,
+      purpose: "attach",
+      licenseChoice: "app",
+      loginHint: "ada@example.com",
+    });
+    renderPortal();
+    const field = await screen.findByRole("textbox", { name: "Email" });
+    expect((field as HTMLInputElement).value).toBe("ada@example.com");
+    expect(screen.getByText("to your account", { exact: false })).toBeTruthy();
+    expect(screen.getByText("Diceroll", { selector: "strong" })).toBeTruthy();
+    expect(screen.getByText("WDJB-MJHT")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/wants you to sign in/);
+  });
+
+  it("a device request with purpose signin keeps the sign-in header", async () => {
+    out(DEVICE);
+    renderPortal();
+    await screen.findByRole("textbox", { name: "Email" });
+    expect(screen.getByText("WDJB-MJHT")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/to your account/);
+  });
+
   const finish = async (newAccount: boolean) => {
     window.history.replaceState(
       null,
@@ -368,6 +401,24 @@ describe("the request's hints and purpose (UK-42.14)", () => {
 });
 
 describe("LicenseChoiceStep (§3.6)", () => {
+  it("licenseChoice app (a device-code start): no licence step, the consent first", async () => {
+    flow(choices(), {
+      [REQUEST]: {
+        ...VIEW,
+        client: { ...VIEW.client, kind: "device" },
+        userCode: "WDJB-MJHT",
+        purpose: "attach",
+        licenseChoice: "app",
+      },
+    });
+    renderPortal();
+    await screen.findByText("Mara Fennick", { exact: false });
+    expect(screen.queryByText("Choose a license for this device")).toBeNull();
+    expect(fetchedRequests().some((r) => r === `GET ${REQUEST}/licenses`)).toBe(
+      false,
+    );
+  });
+
   it("lists the licences, preselects the server's pick and goes on to consent with it", async () => {
     flow(choices());
     renderPortal();

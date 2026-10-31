@@ -212,6 +212,17 @@ async function keyStep(
   await h1(p, heading);
 }
 
+/** The attach header and the prefilled email; with a code, the device-code panel too. */
+const attachReady =
+  (code?: string): ShippedState["ready"] =>
+  async (p) => {
+    await h1(p, "Sign in");
+    await p.getByText("to your account", { exact: false }).waitFor();
+    if (code) await p.getByText(code).waitFor();
+    const v = await p.getByRole("textbox", { name: "Email" }).inputValue();
+    if (v !== "mara@fennick.studio") throw new Error(`prefill: ${v}`);
+  };
+
 export const REQUEST_STATES: ShippedState[] = [
   {
     section: "3.1",
@@ -237,12 +248,7 @@ export const REQUEST_STATES: ShippedState[] = [
       purpose: "attach",
       loginHint: "mara@fennick.studio",
     }),
-    ready: async (p) => {
-      await h1(p, "Sign in");
-      await p.getByText("to your account", { exact: false }).waitFor();
-      const v = await p.getByRole("textbox", { name: "Email" }).inputValue();
-      if (v !== "mara@fennick.studio") throw new Error(`prefill: ${v}`);
-    },
+    ready: attachReady(),
   },
   {
     section: "3.1",
@@ -267,6 +273,22 @@ export const REQUEST_STATES: ShippedState[] = [
       await h1(p, "Sign in");
       await p.getByText("WDJB-MJHT").waitFor();
     },
+  },
+  {
+    section: "3.1",
+    id: "app-signin-device-attach",
+    title:
+      "App card, signed out, device code with purpose attach: the attach header, the code panel, the email prefilled",
+    scenario: "signedOut",
+    path: PATH,
+    routes: signedOutRoutes({
+      ...DEVICE_VIEW,
+      purpose: "attach",
+      licenseChoice: "app",
+      loginHint: "mara@fennick.studio",
+      nameHint: "Mara Fennick",
+    }),
+    ready: attachReady("WDJB-MJHT"),
   },
   {
     section: "3.1",
