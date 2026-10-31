@@ -19,8 +19,21 @@ export function focusClear(el: HTMLElement | null | undefined): void {
   if (!bar || bar.contains(el)) return;
   const clear = (): void => {
     el.style.scrollMarginBottom = `${bar.offsetHeight}px`;
+    // A screen taller than a short window keeps its title in the first viewport (DL1): a button
+    // or link may scroll the window only as far as the title's own top, less half a line so the
+    // screen's last settling (its rise-in) cannot push the title off. A field is typed into, so
+    // it always clears the bar (WCAG 2.4.11).
+    const heading = (el.getRootNode() as ParentNode).querySelector?.("h1");
+    const room = heading
+      ? heading.getBoundingClientRect().top -
+        parseFloat(getComputedStyle(heading).fontSize) / 2
+      : -1;
+    const { scrollX, scrollY } = window;
     // jsdom has no scrollIntoView.
     el.scrollIntoView?.({ block: "nearest" });
+    const field = /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
+    if (!field && room >= 0 && window.scrollY - scrollY > room)
+      window.scrollTo(scrollX, scrollY + room);
   };
   if (typeof ResizeObserver !== "function") return clear();
   el.style.scrollMarginBottom = `${bar.offsetHeight}px`;
