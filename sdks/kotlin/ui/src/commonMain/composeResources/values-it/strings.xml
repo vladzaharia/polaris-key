@@ -2145,6 +2145,66 @@
     <string name="signin_key_enterKey">Inserisci la tua chiave di licenza.</string>
     <!-- Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a). -->
     <string name="signin_code_missing">Non hai ricevuto il codice?</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device. -->
+    <string name="linkPairing_title">Collega con una persona vicina</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Both people open this on their own device. -->
+    <string name="linkPairing_openBody">Chiedi all’altra persona di aprire questa schermata sul suo dispositivo. Restate vicini, sulla stessa rete.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code. -->
+    <string name="linkPairing_searching">Ricerca di dispositivi vicini…</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare. -->
+    <string name="linkPairing_codeTitle">Confronta il codice</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms. -->
+    <string name="linkPairing_codeBody">Entrambi gli schermi devono mostrare questo codice.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Arguments: {device} = the label the other device sent. Nothing authenticates it: any device on the network can send any label, so the line says it is reported, not verified. Arguments: 1=device. -->
+    <string name="linkPairing_reported">Indicato dal dispositivo: %1$s</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Used when the other device sent no label. -->
+    <string name="linkPairing_reportedUnnamed">Il dispositivo non ha indicato un nome</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Heading above the data categories both people approve; always shown before the confirm button. -->
+    <string name="linkPairing_shares">Ognuno condivide</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Used when the app asks for no data categories. -->
+    <string name="linkPairing_sharesNone">Per ora non si condivide nulla.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Confirms the code matches. The link is made when the other person does the same. -->
+    <string name="linkPairing_confirm">I codici corrispondono</string>
+    <string name="linkPairing_confirm__macos">I codici corrispondono</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Declines: the session closes and nothing is stored. -->
+    <string name="linkPairing_decline">Non corrispondono</string>
+    <string name="linkPairing_decline__macos">Non corrispondono</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet. -->
+    <string name="linkPairing_waiting">In attesa della loro conferma</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices. -->
+    <string name="linkPairing_linkedTitle">Collegato</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made. -->
+    <string name="linkPairing_linkedBody">Ora potete collegarvi senza codice.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link. -->
+    <string name="linkPairing_failedTitle">Impossibile collegare</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code. -->
+    <string name="linkPairing_failedDeclined">Qualcuno ha rifiutato. Non è stato collegato nulla.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first. -->
+    <string name="linkPairing_failedTimeout">Il tempo è scaduto prima che confermaste entrambi. Non è stato collegato nulla.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links. -->
+    <string name="linkPairing_failedFull">Uno di voi non ha spazio per un altro collegamento. Rimuovetene uno e riprovate.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended. -->
+    <string name="linkPairing_failedClosed">La connessione si è chiusa. Non è stato collegato nulla.</string>
+    <!-- Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit. Arguments: 1=code. -->
+    <string name="a11y_linkCode">Codice di collegamento %1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose. Arguments: 1=device, 2=name. -->
+    <string name="transferOffer_ask">%1$s vuole inviarti %2$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends. Arguments: 1=name. -->
+    <string name="transferOffer_askUnnamed">Un contatto vuole inviarti %1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title. -->
+    <string name="transferOffer_askBody">Accetta solo ciò che ti aspetti.</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer. -->
+    <string name="transferOffer_accept">Accetta</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Declines the offer; nothing is received. -->
+    <string name="transferOffer_decline">Rifiuta</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what is being received. Arguments: 1=name. -->
+    <string name="transferOffer_receiving">Ricezione di %1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was received. Arguments: 1=name. -->
+    <string name="transferOffer_done">%1$s ricevuto</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was not received. Arguments: 1=name. -->
+    <string name="transferOffer_failed">Impossibile ricevere %1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title. -->
+    <string name="transferOffer_failedBody">Non è stato salvato nulla.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Si è verificato un problema</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->

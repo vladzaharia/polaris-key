@@ -5684,6 +5684,161 @@ msgstr "Saisissez votre clé de licence."
 msgid "signin.code.missing"
 msgstr "Pas de code reçu ?"
 
+#. Link with someone nearby
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
+msgid "linkPairing.title"
+msgstr "Associer avec une personne proche"
+
+#. Ask them to open this on their device. Stay close, on the same network.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Both people open this on their own device.
+msgid "linkPairing.openBody"
+msgstr "Demandez à l’autre personne d’ouvrir ceci sur son appareil. Restez proches, sur le même réseau."
+
+#. Looking for nearby devices…
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code.
+msgid "linkPairing.searching"
+msgstr "Recherche d’appareils proches…"
+
+#. Compare the code
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
+msgid "linkPairing.codeTitle"
+msgstr "Comparez le code"
+
+#. Both screens must show this code.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms.
+msgid "linkPairing.codeBody"
+msgstr "Les deux écrans doivent afficher ce code."
+
+#. Reported by the device: {device}
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Arguments: {device} = the label the other device sent. Nothing authenticates it: any device on the network can send any label, so the line says it is reported, not verified.
+msgid "linkPairing.reported"
+msgstr "Indiqué par l’appareil : {device}"
+
+#. The device gave no name
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Used when the other device sent no label.
+msgid "linkPairing.reportedUnnamed"
+msgstr "L’appareil n’a donné aucun nom"
+
+#. Each of you shares
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Heading above the data categories both people approve; always shown before the confirm button.
+msgid "linkPairing.shares"
+msgstr "Chacun partage"
+
+#. Nothing is shared yet.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Used when the app asks for no data categories.
+msgid "linkPairing.sharesNone"
+msgstr "Rien n’est partagé pour l’instant."
+
+#. Codes match
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Confirms the code matches. The link is made when the other person does the same.
+msgid "linkPairing.confirm"
+msgstr "Les codes correspondent"
+
+#. macos: Codes Match
+msgctxt "macos"
+msgid "linkPairing.confirm"
+msgstr "Les codes correspondent"
+
+#. Not a match
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Declines: the session closes and nothing is stored.
+msgid "linkPairing.decline"
+msgstr "Ne correspondent pas"
+
+#. macos: Not a Match
+msgctxt "macos"
+msgid "linkPairing.decline"
+msgstr "Ne correspondent pas"
+
+#. Waiting for them to confirm
+#. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
+msgid "linkPairing.waiting"
+msgstr "En attente de leur confirmation"
+
+#. Linked
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
+msgid "linkPairing.linkedTitle"
+msgstr "Associé"
+
+#. You can now connect without a code.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made.
+msgid "linkPairing.linkedBody"
+msgstr "Vous pouvez désormais vous connecter sans code."
+
+#. Couldn’t link
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
+msgid "linkPairing.failedTitle"
+msgstr "Association impossible"
+
+#. Someone said no. Nothing was linked.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
+msgid "linkPairing.failedDeclined"
+msgstr "Quelqu’un a refusé. Rien n’a été associé."
+
+#. Time ran out before you both confirmed. Nothing was linked.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
+msgid "linkPairing.failedTimeout"
+msgstr "Le temps est écoulé avant votre confirmation à tous les deux. Rien n’a été associé."
+
+#. One of you has no room for another link. Remove one, then try again.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
+msgid "linkPairing.failedFull"
+msgstr "L’un de vous ne peut plus ajouter d’association. Supprimez-en une, puis réessayez."
+
+#. The connection closed. Nothing was linked.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
+msgid "linkPairing.failedClosed"
+msgstr "La connexion s’est fermée. Rien n’a été associé."
+
+#. Pairing code {code}
+#. Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit.
+msgid "a11y.linkCode"
+msgstr "Code d’association {code}"
+
+#. {device} wants to send you {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose.
+msgid "transferOffer.ask"
+msgstr "{device} veut vous envoyer {name}"
+
+#. A contact wants to send you {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
+msgid "transferOffer.askUnnamed"
+msgstr "Un contact veut vous envoyer {name}"
+
+#. Only accept what you expect.
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title.
+msgid "transferOffer.askBody"
+msgstr "N’acceptez que ce que vous attendez."
+
+#. Accept
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer.
+msgid "transferOffer.accept"
+msgstr "Accepter"
+
+#. Decline
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Declines the offer; nothing is received.
+msgid "transferOffer.decline"
+msgstr "Refuser"
+
+#. Receiving {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what is being received.
+msgid "transferOffer.receiving"
+msgstr "Réception de {name}"
+
+#. Received {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was received.
+msgid "transferOffer.done"
+msgstr "{name} reçu"
+
+#. Couldn’t receive {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was not received.
+msgid "transferOffer.failed"
+msgstr "Impossible de recevoir {name}"
+
+#. Nothing was saved.
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title.
+msgid "transferOffer.failedBody"
+msgstr "Rien n’a été enregistré."
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"

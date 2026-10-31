@@ -110,6 +110,8 @@ export const KEY_NAMESPACES = [
   "unlockSync",
   "recoveryCode",
   "ringChange",
+  "linkPairing",
+  "transferOffer",
   "about",
   "channel",
   "toast",
@@ -189,6 +191,9 @@ export const COMPONENTS = [
   "UnlockSync",
   "RecoveryCode",
   "RingChange",
+  // Inter-account links and direct-transfer offers (CC-19.9): ui-core CONNECT_SCREENS.
+  "LinkPairing",
+  "TransferOffer",
   "About",
   "ChannelPicker",
   "Toast",

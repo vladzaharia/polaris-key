@@ -6,6 +6,7 @@ import { contextOf, type UiInput } from "../input.js";
 import type { View } from "../view.js";
 import type {
   ComponentName,
+  ConnectScreenName,
   HolderScreenName,
   ScreenName,
 } from "../vocabulary.js";
@@ -15,6 +16,7 @@ import {
   welcomeView,
 } from "./activate.js";
 import { cloudSyncStatusView, SYNC_MODELS } from "./cloudSync.js";
+import { CONNECT_MODELS } from "./connect.js";
 import { HOLDER_MODELS } from "./holders.js";
 import { deviceLimitView, devicesView } from "./devices.js";
 import {
@@ -76,19 +78,25 @@ export function viewOf(
   component: HolderScreenName,
   input: UiInput,
 ): View<HolderScreenName>;
+export function viewOf(
+  component: ConnectScreenName,
+  input: UiInput,
+): View<ConnectScreenName>;
 export function viewOf(component: ScreenName, input: UiInput): View<ScreenName>;
 export function viewOf(
-  component: ComponentName | HolderScreenName,
+  component: ComponentName | HolderScreenName | ConnectScreenName,
   input: UiInput,
 ): View<ScreenName> {
   const ctx = contextOf(input);
-  return component in MODELS
-    ? MODELS[component as ComponentName](ctx)
-    : HOLDER_MODELS[component as HolderScreenName](ctx);
+  if (component in MODELS) return MODELS[component as ComponentName](ctx);
+  if (component in CONNECT_MODELS)
+    return CONNECT_MODELS[component as ConnectScreenName](ctx);
+  return HOLDER_MODELS[component as HolderScreenName](ctx);
 }
 
 export * from "./activate.js";
 export * from "./cloudSync.js";
+export * from "./connect.js";
 export * from "./devices.js";
 export * from "./keyRefusal.js";
 export * from "./nearby.js";

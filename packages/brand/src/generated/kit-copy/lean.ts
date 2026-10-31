@@ -229,6 +229,8 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.join.again": { macos: "Sign In to {email} Again" },
   "signin.join.startAgain": { macos: "Start Again" },
   "signin.join.methodsLink": { macos: "Sign-In Methods" },
+  "linkPairing.confirm": { macos: "Codes Match" },
+  "linkPairing.decline": { macos: "Not a Match" },
 };
 
 /** Locales whose core.* strings are English until their core pack lands. */

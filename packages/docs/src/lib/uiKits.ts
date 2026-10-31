@@ -288,4 +288,8 @@ export const COMPONENTS_NOT_BUILT: readonly string[] = [
   // Activation without an account (UK-42.2); the web kits draw them with UK-42.7 to UK-42.10.
   "ActivateDone",
   "AddToAccount",
+  // Inter-account links and direct-transfer offers (CC-19.9); the React kit draws them first, the
+  // native kits follow with their own packages.
+  "LinkPairing",
+  "TransferOffer",
 ];

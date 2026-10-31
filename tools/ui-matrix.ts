@@ -62,6 +62,12 @@
 // license is floating until it is added to an account; the kit tells by the holder's email
 // (`licenseHolder`). Like `cloudSync` it sits outside COMPONENT_FAMILIES, so only ui-core runs it
 // until UK-43; its rows also count toward the state coverage of the must components they name.
+// The `connect` family (CC-19.9, additive within version 7): the inter-account screens, named by
+// `CONNECT_MODELS` in ui-core. LinkPairing (the window two people pair in: the code both compare,
+// the categories listed before the confirm button, the other device's label worded as reported,
+// the four ways a session ends without a link, links off for the product) and TransferOffer (D-8:
+// consent per transfer). Like `cloudSync` it sits outside COMPONENT_FAMILIES, so only ui-core runs
+// it; the native kits learn it with their own packages.
 // Version 7 (I-46.1, automatic sign-in): the `autoSignIn` and `nearbyApproval` input members; the
 // SignIn states confirm, link-offer, link-done, link-conflict, nearby-prompt, nearby-wait and
 // nearby-done (and, from KFA-0, device-limit: a device limit with no license rows, a row that keeps
@@ -148,6 +154,7 @@ export interface UiMatrix {
   paywall: Row[];
   cloudSync: Row[];
   holders: Row[];
+  connect: Row[];
   theme: ThemeRow[];
   i18n: I18nRow[];
   cli: CliFamily;
@@ -683,6 +690,10 @@ const INPUTS: Record<string, string> = {
     "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
   nearbyApproval:
     "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby, device?}. Absent: the account-menu entry.",
+  linkPairing:
+    "Pairing with someone nearby: {step: open | code | confirm | linked | failed | unavailable, device?, code?, categories?, reason?: declined | timeout | full | closed}. `device` is the label the other device reported: nothing authenticates it, so the screen words it as reported and, without one, says the device gave no name. `code` is drawn as served and compared by both people. `categories` (ids, at most 8) are listed before the confirm button; none says nothing is shared yet. `unavailable`: links are off for the product (the typed connect_links_disabled). Absent: LinkPairing is hidden.",
+  transferOffer:
+    "A contact's offer to send something (D-8, consent per transfer): {step: ask | receiving | done | failed, device?, name}. `device` is the contact's label and `name` what it offers, both text the other side chose. Absent: TransferOffer is hidden.",
   signIn:
     "The sign-in session: {presentation, replace, channel, outcome?, browserOpened?, redeeming?, event?, issuedNow?, raced?, grantExpired?}. outcome is session.wait()'s; issuedNow is true when this sign-in added or issued the license.",
   deviceCode:
@@ -745,6 +756,10 @@ const PRECEDENCE: Record<string, string> = {
     "`signIn.step` key-done (the ActivateDone body), attach (AddToAccount's, at its `addToAccount.step`) or added wins over every step except error and an automatic sign-in step.",
   "AccountAndLicense (holders)":
     "key-only with a `licenseHolder` that has no email (floating) draws Not in an account and Add your name and email instead of the key-only line; Identity off keeps it, Add opening the portal.",
+  LinkPairing:
+    "hidden (Connect off or no linkPairing), then the step: open, code (a device reached the code), confirm, linked, failed (its reason picks the line), unavailable.",
+  TransferOffer:
+    "hidden (Connect off or no transferOffer), then the step: ask, receiving, done, failed.",
   Paywall:
     "loading, purchasing (pending purchase), restore (pending restore), purchased, not-available, offers.",
 };
@@ -5699,6 +5714,201 @@ export function checkCli(
   return errors;
 }
 
+// ── connect (CC-19.9) ───────────────────────────────────────────────────────────────────────
+
+function connectFamily(a: A): Draft[] {
+  const { row, but, off } = a;
+  const LP = "LinkPairing";
+  const TO = "TransferOffer";
+  const NO_CONNECT = off("connect");
+  const CATS = ["contacts", "photos"];
+  const inv = (invariant: string, m: Omit<MustNot, "invariant">) => ({
+    mustNot: { invariant, ...m },
+  });
+  const pair = (step: string, extra: Obj = {}): Obj => ({
+    linkPairing: { step, ...extra },
+  });
+  const CODE = { code: "123 456" };
+  const BODIES = [
+    "linkPairing.failedDeclined",
+    "linkPairing.failedTimeout",
+    "linkPairing.failedFull",
+    "linkPairing.failedClosed",
+  ];
+  const failed = (reason: string, name: string): Draft =>
+    row(
+      `${LP}/failed: ${name}`,
+      pair("failed", { reason, categories: CATS }),
+      LP,
+      "failed",
+      but(
+        LP,
+        "failed",
+        ...BODIES.filter(
+          (k) =>
+            !k.endsWith(`.failed${reason[0]!.toUpperCase()}${reason.slice(1)}`),
+        ),
+      ),
+      inv("A session that ended without a link never says it linked.", {
+        copy: ["linkPairing.linkedTitle", "linkPairing.linkedBody"],
+        states: ["linked"],
+      }),
+    );
+  const offer = (step: string, labelled = true): Obj => ({
+    transferOffer: {
+      step,
+      name: "holiday.zip",
+      ...(labelled ? { device: "Maya's laptop" } : {}),
+    },
+  });
+  return [
+    row(
+      `${LP}/open: both people open it, nearby`,
+      pair("open", { categories: CATS }),
+      LP,
+      "open",
+      "all",
+    ),
+    row(
+      `${LP}/code: the code, the label as reported, the categories before the choice`,
+      pair("code", { ...CODE, device: "Maya's laptop", categories: CATS }),
+      LP,
+      "code",
+      but(LP, "code", "linkPairing.reportedUnnamed", "linkPairing.sharesNone"),
+      inv(
+        "A label the other device sent is reported by the device, never shown as who it is.",
+        {
+          copy: ["linkPairing.reportedUnnamed"],
+          states: ["linked"],
+        },
+      ),
+    ),
+    row(
+      `${LP}/code: the device gave no name`,
+      pair("code", { ...CODE, categories: CATS }),
+      LP,
+      "code",
+      but(LP, "code", "linkPairing.reported", "linkPairing.sharesNone"),
+      inv("A missing label is said to be missing; no name is made up.", {
+        copy: ["linkPairing.reported"],
+      }),
+    ),
+    row(
+      `${LP}/code: the app asks for no categories`,
+      pair("code", { ...CODE, device: "Maya's laptop", categories: [] }),
+      LP,
+      "code",
+      but(LP, "code", "linkPairing.reportedUnnamed", "linkPairing.shares"),
+      inv(
+        "With nothing to share the screen says so; it never lists a category.",
+        {
+          copy: ["linkPairing.shares"],
+        },
+      ),
+    ),
+    row(
+      `${LP}/confirm: waiting for the other person`,
+      pair("confirm", { ...CODE, categories: CATS }),
+      LP,
+      "confirm",
+      "all",
+      inv("Waiting never reads as linked.", {
+        states: ["linked"],
+        copy: ["linkPairing.linkedTitle"],
+      }),
+    ),
+    row(
+      `${LP}/linked: with what both approved`,
+      pair("linked", { device: "Maya's laptop", categories: CATS }),
+      LP,
+      "linked",
+      but(LP, "linked", "linkPairing.sharesNone"),
+    ),
+    row(
+      `${LP}/linked: nothing shared yet`,
+      pair("linked", { categories: [] }),
+      LP,
+      "linked",
+      but(LP, "linked", "linkPairing.shares"),
+    ),
+    failed("declined", "someone said no"),
+    failed("timeout", "the window or the exchange ran out"),
+    failed("full", "one device holds the most links"),
+    failed("closed", "the connection ended"),
+    row(
+      `${LP}/unavailable: links are off for the product`,
+      pair("unavailable"),
+      LP,
+      "unavailable",
+      "all",
+      inv("A product with links off never offers to pair.", {
+        copy: ["linkPairing.confirm", "linkPairing.title"],
+        states: ["open", "code"],
+      }),
+    ),
+    row(
+      `${LP}/hidden: Connect off`,
+      { services: NO_CONNECT, ...pair("open") },
+      LP,
+      "hidden",
+      [],
+    ),
+
+    row(
+      `${TO}/ask: the contact's label and the name it chose`,
+      offer("ask"),
+      TO,
+      "ask",
+      but(TO, "ask", "transferOffer.askUnnamed"),
+      inv("Nothing is received before the person presses Accept (D-8).", {
+        states: ["receiving", "done"],
+      }),
+    ),
+    row(
+      `${TO}/ask: the contact has no label`,
+      offer("ask", false),
+      TO,
+      "ask",
+      but(TO, "ask", "transferOffer.ask"),
+    ),
+    row(
+      `${TO}/receiving: Cancel stops it`,
+      offer("receiving"),
+      TO,
+      "receiving",
+      "all",
+    ),
+    row(
+      `${TO}/done: received`,
+      offer("done"),
+      TO,
+      "done",
+      "all",
+      inv("A finished transfer offers nothing more to accept.", {
+        copy: ["transferOffer.accept"],
+      }),
+    ),
+    row(
+      `${TO}/failed: nothing was saved`,
+      offer("failed"),
+      TO,
+      "failed",
+      "all",
+      inv("A failed transfer never says received.", {
+        copy: ["transferOffer.done"],
+        states: ["done"],
+      }),
+    ),
+    row(
+      `${TO}/hidden: Connect off`,
+      { services: NO_CONNECT, ...offer("ask") },
+      TO,
+      "hidden",
+      [],
+    ),
+  ];
+}
+
 // ── Checks (plans/UK-02b.md §4.7, UK-02 §4) ─────────────────────────────────────────────────
 
 const isObj = (v: unknown): v is Obj =>
@@ -5768,6 +5978,69 @@ function checkCloudSync(doc: UiMatrix, S: UiMatrixSources): string[] {
         (c !== "CloudSyncStatus" || ["locked", "ring-changed"].includes(st))
       )
         errors.push(`cloudSync: no row for ${c}.${st}`);
+  return errors;
+}
+
+/** The connect family's components. */
+export const CONNECT_FAMILY_COMPONENTS = [
+  "LinkPairing",
+  "TransferOffer",
+] as const;
+
+/** The connect family's structure: components, states, the keys each lists, and every key shown. */
+function checkConnect(doc: UiMatrix, S: UiMatrixSources): string[] {
+  const errors: string[] = [];
+  const rows = doc.connect;
+  if (!Array.isArray(rows) || rows.length === 0)
+    return ["connect: the family is empty"];
+  const names = new Set<string>();
+  const shown = new Map<string, Set<string>>();
+  for (const r of rows) {
+    const where = `connect "${r.name}"`;
+    if (names.has(r.name)) errors.push(`${where}: duplicate name`);
+    names.add(r.name);
+    const { component, state, copy } = r.expect;
+    if (!(CONNECT_FAMILY_COMPONENTS as readonly string[]).includes(component)) {
+      errors.push(`${where}: ${component} is not a connect component`);
+      continue;
+    }
+    const services = r.input.services as string[] | undefined;
+    if (state === "hidden") {
+      if (!services || services.includes("connect"))
+        errors.push(`${where}: hidden needs Connect off`);
+      if (copy.length > 0) errors.push(`${where}: hidden shows no copy`);
+      shown.set(`${component}.hidden`, new Set());
+      continue;
+    }
+    const listed = stateList(S, component, state, where, errors);
+    if (!listed) continue;
+    for (const k of copy)
+      if (!listed.includes(k))
+        errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
+    for (const k of r.mustNot?.copy ?? [])
+      if (copy.includes(k)) errors.push(`${where}: expects ${k} it forbids`);
+    if (r.mustNot?.states?.includes(state))
+      errors.push(`${where}: mustNot names its own state`);
+    const set = shown.get(`${component}.${state}`) ?? new Set<string>();
+    for (const k of copy) set.add(k);
+    shown.set(`${component}.${state}`, set);
+  }
+  for (const c of CONNECT_FAMILY_COMPONENTS) {
+    if (!shown.has(`${c}.hidden`))
+      errors.push(`connect: no hidden row for ${c}`);
+    for (const [st, { copy: list }] of Object.entries(
+      S.components[c]?.states ?? {},
+    )) {
+      const union = shown.get(`${c}.${st}`);
+      if (!union) {
+        errors.push(`connect: no row for ${c}.${st}`);
+        continue;
+      }
+      for (const k of list)
+        if (!union.has(k))
+          errors.push(`connect: no row shows ${k} in ${c}.${st}`);
+    }
+  }
   return errors;
 }
 
@@ -6483,6 +6756,7 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
   errors.push(...checkCli(doc.cli, S));
   errors.push(...checkCloudSync(doc, S));
   errors.push(...checkHolders(doc, S));
+  errors.push(...checkConnect(doc, S));
   return errors;
 }
 
@@ -6620,6 +6894,7 @@ export function buildUiMatrix(
     ...out,
     cloudSync: cloudSyncFamily(a).map(finish),
     holders: holdersFamily(a).map(finish),
+    connect: connectFamily(a).map(finish),
     theme: themeRows(),
     i18n: i18nRows(S),
     cli: cliFamily(),

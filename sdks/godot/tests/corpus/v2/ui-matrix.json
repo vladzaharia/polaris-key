@@ -68,6 +68,8 @@
       "provider": "The sign-in provider's name (Apple, Google, Steam), for the strings that name it: the link offer, the failed sign-in. Absent: Polaris Locker, the sign-in the generic row opens.",
       "autoSignIn": "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
       "nearbyApproval": "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby, device?}. Absent: the account-menu entry.",
+      "linkPairing": "Pairing with someone nearby: {step: open | code | confirm | linked | failed | unavailable, device?, code?, categories?, reason?: declined | timeout | full | closed}. `device` is the label the other device reported: nothing authenticates it, so the screen words it as reported and, without one, says the device gave no name. `code` is drawn as served and compared by both people. `categories` (ids, at most 8) are listed before the confirm button; none says nothing is shared yet. `unavailable`: links are off for the product (the typed connect_links_disabled). Absent: LinkPairing is hidden.",
+      "transferOffer": "A contact's offer to send something (D-8, consent per transfer): {step: ask | receiving | done | failed, device?, name}. `device` is the contact's label and `name` what it offers, both text the other side chose. Absent: TransferOffer is hidden.",
       "signIn": "The sign-in session: {presentation, replace, channel, outcome?, browserOpened?, redeeming?, event?, issuedNow?, raced?, grantExpired?}. outcome is session.wait()'s; issuedNow is true when this sign-in added or issued the license.",
       "deviceCode": "The device-code poll: {phase, secondsLeft?}. Present exactly on rows with signIn.channel device-code; it alone selects SignInHandoff's state.",
       "choices": "plans/I-04.md's LicenseChoiceView, field for field.",
@@ -123,6 +125,8 @@
       "AddToAccount": "hidden (Identity off), then the step: form, invalid, busy, added, owned, email-bound, failed.",
       "SignIn (holders)": "`signIn.step` key-done (the ActivateDone body), attach (AddToAccount's, at its `addToAccount.step`) or added wins over every step except error and an automatic sign-in step.",
       "AccountAndLicense (holders)": "key-only with a `licenseHolder` that has no email (floating) draws Not in an account and Add your name and email instead of the key-only line; Identity off keeps it, Add opening the portal.",
+      "LinkPairing": "hidden (Connect off or no linkPairing), then the step: open, code (a device reached the code), confirm, linked, failed (its reason picks the line), unavailable.",
+      "TransferOffer": "hidden (Connect off or no transferOffer), then the step: ask, receiving, done, failed.",
       "Paywall": "loading, purchasing (pending purchase), restore (pending restore), purchased, not-available, offers."
     },
     "services": [
@@ -13293,6 +13297,421 @@
           "common.signOut"
         ]
       }
+    }
+  ],
+  "connect": [
+    {
+      "name": "LinkPairing/open: both people open it, nearby",
+      "input": {
+        "linkPairing": { "step": "open", "categories": ["contacts", "photos"] }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "open",
+        "copy": [
+          "common.cancel",
+          "linkPairing.openBody",
+          "linkPairing.searching",
+          "linkPairing.title"
+        ],
+        "actions": ["cancel"]
+      }
+    },
+    {
+      "name": "LinkPairing/code: the code, the label as reported, the categories before the choice",
+      "input": {
+        "linkPairing": {
+          "step": "code",
+          "code": "123 456",
+          "device": "Maya's laptop",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "code",
+        "copy": [
+          "a11y.linkCode",
+          "linkPairing.codeBody",
+          "linkPairing.codeTitle",
+          "linkPairing.confirm",
+          "linkPairing.decline",
+          "linkPairing.reported",
+          "linkPairing.shares"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A label the other device sent is reported by the device, never shown as who it is.",
+        "states": ["linked"],
+        "copy": ["linkPairing.reportedUnnamed"]
+      }
+    },
+    {
+      "name": "LinkPairing/code: the device gave no name",
+      "input": {
+        "linkPairing": {
+          "step": "code",
+          "code": "123 456",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "code",
+        "copy": [
+          "a11y.linkCode",
+          "linkPairing.codeBody",
+          "linkPairing.codeTitle",
+          "linkPairing.confirm",
+          "linkPairing.decline",
+          "linkPairing.reportedUnnamed",
+          "linkPairing.shares"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A missing label is said to be missing; no name is made up.",
+        "copy": ["linkPairing.reported"]
+      }
+    },
+    {
+      "name": "LinkPairing/code: the app asks for no categories",
+      "input": {
+        "linkPairing": {
+          "step": "code",
+          "code": "123 456",
+          "device": "Maya's laptop",
+          "categories": []
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "code",
+        "copy": [
+          "a11y.linkCode",
+          "linkPairing.codeBody",
+          "linkPairing.codeTitle",
+          "linkPairing.confirm",
+          "linkPairing.decline",
+          "linkPairing.reported",
+          "linkPairing.sharesNone"
+        ]
+      },
+      "mustNot": {
+        "invariant": "With nothing to share the screen says so; it never lists a category.",
+        "copy": ["linkPairing.shares"]
+      }
+    },
+    {
+      "name": "LinkPairing/confirm: waiting for the other person",
+      "input": {
+        "linkPairing": {
+          "step": "confirm",
+          "code": "123 456",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "confirm",
+        "copy": ["common.cancel", "linkPairing.waiting"],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "Waiting never reads as linked.",
+        "states": ["linked"],
+        "copy": ["linkPairing.linkedTitle"]
+      }
+    },
+    {
+      "name": "LinkPairing/linked: with what both approved",
+      "input": {
+        "linkPairing": {
+          "step": "linked",
+          "device": "Maya's laptop",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "linked",
+        "copy": [
+          "common.done",
+          "linkPairing.linkedBody",
+          "linkPairing.linkedTitle",
+          "linkPairing.shares"
+        ]
+      }
+    },
+    {
+      "name": "LinkPairing/linked: nothing shared yet",
+      "input": { "linkPairing": { "step": "linked", "categories": [] } },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "linked",
+        "copy": [
+          "common.done",
+          "linkPairing.linkedBody",
+          "linkPairing.linkedTitle",
+          "linkPairing.sharesNone"
+        ]
+      }
+    },
+    {
+      "name": "LinkPairing/failed: someone said no",
+      "input": {
+        "linkPairing": {
+          "step": "failed",
+          "reason": "declined",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "failed",
+        "copy": [
+          "common.done",
+          "common.tryAgain",
+          "linkPairing.failedDeclined",
+          "linkPairing.failedTitle"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A session that ended without a link never says it linked.",
+        "states": ["linked"],
+        "copy": ["linkPairing.linkedBody", "linkPairing.linkedTitle"]
+      }
+    },
+    {
+      "name": "LinkPairing/failed: the window or the exchange ran out",
+      "input": {
+        "linkPairing": {
+          "step": "failed",
+          "reason": "timeout",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "failed",
+        "copy": [
+          "common.done",
+          "common.tryAgain",
+          "linkPairing.failedTimeout",
+          "linkPairing.failedTitle"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A session that ended without a link never says it linked.",
+        "states": ["linked"],
+        "copy": ["linkPairing.linkedBody", "linkPairing.linkedTitle"]
+      }
+    },
+    {
+      "name": "LinkPairing/failed: one device holds the most links",
+      "input": {
+        "linkPairing": {
+          "step": "failed",
+          "reason": "full",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "failed",
+        "copy": [
+          "common.done",
+          "common.tryAgain",
+          "linkPairing.failedFull",
+          "linkPairing.failedTitle"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A session that ended without a link never says it linked.",
+        "states": ["linked"],
+        "copy": ["linkPairing.linkedBody", "linkPairing.linkedTitle"]
+      }
+    },
+    {
+      "name": "LinkPairing/failed: the connection ended",
+      "input": {
+        "linkPairing": {
+          "step": "failed",
+          "reason": "closed",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "failed",
+        "copy": [
+          "common.done",
+          "common.tryAgain",
+          "linkPairing.failedClosed",
+          "linkPairing.failedTitle"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A session that ended without a link never says it linked.",
+        "states": ["linked"],
+        "copy": ["linkPairing.linkedBody", "linkPairing.linkedTitle"]
+      }
+    },
+    {
+      "name": "LinkPairing/unavailable: links are off for the product",
+      "input": { "linkPairing": { "step": "unavailable" } },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "unavailable",
+        "copy": [
+          "common.done",
+          "core.codes.connect_links_disabled.message",
+          "core.codes.connect_links_disabled.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A product with links off never offers to pair.",
+        "states": ["code", "open"],
+        "copy": ["linkPairing.confirm", "linkPairing.title"]
+      }
+    },
+    {
+      "name": "LinkPairing/hidden: Connect off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "sync",
+          "commerce"
+        ],
+        "linkPairing": { "step": "open" }
+      },
+      "expect": { "component": "LinkPairing", "state": "hidden", "copy": [] }
+    },
+    {
+      "name": "TransferOffer/ask: the contact's label and the name it chose",
+      "input": {
+        "transferOffer": {
+          "step": "ask",
+          "name": "holiday.zip",
+          "device": "Maya's laptop"
+        }
+      },
+      "expect": {
+        "component": "TransferOffer",
+        "state": "ask",
+        "copy": [
+          "transferOffer.accept",
+          "transferOffer.ask",
+          "transferOffer.askBody",
+          "transferOffer.decline"
+        ]
+      },
+      "mustNot": {
+        "invariant": "Nothing is received before the person presses Accept (D-8).",
+        "states": ["done", "receiving"]
+      }
+    },
+    {
+      "name": "TransferOffer/ask: the contact has no label",
+      "input": { "transferOffer": { "step": "ask", "name": "holiday.zip" } },
+      "expect": {
+        "component": "TransferOffer",
+        "state": "ask",
+        "copy": [
+          "transferOffer.accept",
+          "transferOffer.askBody",
+          "transferOffer.askUnnamed",
+          "transferOffer.decline"
+        ]
+      }
+    },
+    {
+      "name": "TransferOffer/receiving: Cancel stops it",
+      "input": {
+        "transferOffer": {
+          "step": "receiving",
+          "name": "holiday.zip",
+          "device": "Maya's laptop"
+        }
+      },
+      "expect": {
+        "component": "TransferOffer",
+        "state": "receiving",
+        "copy": ["common.cancel", "transferOffer.receiving"],
+        "actions": ["cancel"]
+      }
+    },
+    {
+      "name": "TransferOffer/done: received",
+      "input": {
+        "transferOffer": {
+          "step": "done",
+          "name": "holiday.zip",
+          "device": "Maya's laptop"
+        }
+      },
+      "expect": {
+        "component": "TransferOffer",
+        "state": "done",
+        "copy": ["common.done", "transferOffer.done"]
+      },
+      "mustNot": {
+        "invariant": "A finished transfer offers nothing more to accept.",
+        "copy": ["transferOffer.accept"]
+      }
+    },
+    {
+      "name": "TransferOffer/failed: nothing was saved",
+      "input": {
+        "transferOffer": {
+          "step": "failed",
+          "name": "holiday.zip",
+          "device": "Maya's laptop"
+        }
+      },
+      "expect": {
+        "component": "TransferOffer",
+        "state": "failed",
+        "copy": [
+          "common.done",
+          "transferOffer.failed",
+          "transferOffer.failedBody"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A failed transfer never says received.",
+        "states": ["done"],
+        "copy": ["transferOffer.done"]
+      }
+    },
+    {
+      "name": "TransferOffer/hidden: Connect off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "sync",
+          "commerce"
+        ],
+        "transferOffer": {
+          "step": "ask",
+          "name": "holiday.zip",
+          "device": "Maya's laptop"
+        }
+      },
+      "expect": { "component": "TransferOffer", "state": "hidden", "copy": [] }
     }
   ],
   "theme": [

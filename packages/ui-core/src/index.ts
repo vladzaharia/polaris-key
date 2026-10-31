@@ -34,5 +34,6 @@ export * from "./format.js";
 export * from "./models/index.js";
 export * from "./signInModel.js";
 export * from "./addToAccountModel.js";
+export * from "./linkPairingModel.js";
 export * from "./addIn.js";
 export * from "./viewModel.js";

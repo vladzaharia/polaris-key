@@ -251,6 +251,30 @@ export interface NearbyApprovalInput {
   device?: string;
 }
 
+/**
+ * Pairing with someone nearby (CC-19.9, `cloudConnect.links.pair`). `device` is the label the other
+ * device reported: nothing authenticates it, so the screen words it as reported. `code` is the
+ * pairing code both people compare, drawn as served. `categories` are the data categories this app
+ * asks both people to approve (ids, at most 8); the screen lists them before the confirm button.
+ * `reason` is how a session that reached the code ended without a link. `unavailable`: links are off
+ * for this product (the typed `connect_links_disabled`).
+ */
+export interface LinkPairingInput {
+  step: "open" | "code" | "confirm" | "linked" | "failed" | "unavailable";
+  device?: string;
+  code?: string;
+  categories?: readonly string[];
+  reason?: "declined" | "timeout" | "full" | "closed";
+}
+
+/** A contact's offer to send something (D-8): consent per transfer. `device` is the contact's
+ *  label, `name` what it offers, both text the other side chose. */
+export interface TransferOfferInput {
+  step: "ask" | "receiving" | "done" | "failed";
+  device?: string;
+  name: string;
+}
+
 export interface DeviceCodeInput {
   phase: DeviceCodePhase;
   secondsLeft?: number;
@@ -431,6 +455,10 @@ export interface UiInput {
   autoSignIn?: AutoSignInInput;
   /** Nearby approval on the device that is already signed in. */
   nearbyApproval?: NearbyApprovalInput;
+  /** Pairing with someone nearby; absent, LinkPairing is hidden. */
+  linkPairing?: LinkPairingInput;
+  /** A contact's offer to send something; absent, TransferOffer is hidden. */
+  transferOffer?: TransferOfferInput;
   choices?: LicenseChoiceView;
   replaceView?: ReplaceView;
   /** The row the person picked in LicenseChoice (a license id, `keep` or `create`). */

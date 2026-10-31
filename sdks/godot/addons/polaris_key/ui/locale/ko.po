@@ -5658,6 +5658,161 @@ msgstr "라이선스 키를 입력하세요."
 msgid "signin.code.missing"
 msgstr "코드를 받지 못하셨나요?"
 
+#. Link with someone nearby
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
+msgid "linkPairing.title"
+msgstr "근처 사람과 연결"
+
+#. Ask them to open this on their device. Stay close, on the same network.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Both people open this on their own device.
+msgid "linkPairing.openBody"
+msgstr "상대방도 자신의 기기에서 이 화면을 열어 주세요. 가까이에서 같은 네트워크에 연결하세요."
+
+#. Looking for nearby devices…
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code.
+msgid "linkPairing.searching"
+msgstr "근처 기기를 찾는 중…"
+
+#. Compare the code
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
+msgid "linkPairing.codeTitle"
+msgstr "코드 비교"
+
+#. Both screens must show this code.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms.
+msgid "linkPairing.codeBody"
+msgstr "두 화면에 이 코드가 똑같이 표시되어야 합니다."
+
+#. Reported by the device: {device}
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Arguments: {device} = the label the other device sent. Nothing authenticates it: any device on the network can send any label, so the line says it is reported, not verified.
+msgid "linkPairing.reported"
+msgstr "기기가 알린 이름: {device}"
+
+#. The device gave no name
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Used when the other device sent no label.
+msgid "linkPairing.reportedUnnamed"
+msgstr "기기가 이름을 알리지 않았습니다"
+
+#. Each of you shares
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Heading above the data categories both people approve; always shown before the confirm button.
+msgid "linkPairing.shares"
+msgstr "서로 공유하는 항목"
+
+#. Nothing is shared yet.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Used when the app asks for no data categories.
+msgid "linkPairing.sharesNone"
+msgstr "아직 공유되는 항목이 없습니다."
+
+#. Codes match
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Confirms the code matches. The link is made when the other person does the same.
+msgid "linkPairing.confirm"
+msgstr "코드가 일치함"
+
+#. macos: Codes Match
+msgctxt "macos"
+msgid "linkPairing.confirm"
+msgstr "코드가 일치함"
+
+#. Not a match
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Declines: the session closes and nothing is stored.
+msgid "linkPairing.decline"
+msgstr "일치하지 않음"
+
+#. macos: Not a Match
+msgctxt "macos"
+msgid "linkPairing.decline"
+msgstr "일치하지 않음"
+
+#. Waiting for them to confirm
+#. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
+msgid "linkPairing.waiting"
+msgstr "상대방의 확인을 기다리는 중"
+
+#. Linked
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
+msgid "linkPairing.linkedTitle"
+msgstr "연결됨"
+
+#. You can now connect without a code.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made.
+msgid "linkPairing.linkedBody"
+msgstr "이제 코드 없이 연결할 수 있습니다."
+
+#. Couldn’t link
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
+msgid "linkPairing.failedTitle"
+msgstr "연결하지 못했습니다"
+
+#. Someone said no. Nothing was linked.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
+msgid "linkPairing.failedDeclined"
+msgstr "누군가 거절했습니다. 연결된 것이 없습니다."
+
+#. Time ran out before you both confirmed. Nothing was linked.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
+msgid "linkPairing.failedTimeout"
+msgstr "두 사람이 확인하기 전에 시간이 끝났습니다. 연결된 것이 없습니다."
+
+#. One of you has no room for another link. Remove one, then try again.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
+msgid "linkPairing.failedFull"
+msgstr "한 사람이 더 이상 연결을 추가할 수 없습니다. 하나를 삭제한 뒤 다시 시도하세요."
+
+#. The connection closed. Nothing was linked.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
+msgid "linkPairing.failedClosed"
+msgstr "연결이 끊어졌습니다. 연결된 것이 없습니다."
+
+#. Pairing code {code}
+#. Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit.
+msgid "a11y.linkCode"
+msgstr "연결 코드 {code}"
+
+#. {device} wants to send you {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose.
+msgid "transferOffer.ask"
+msgstr "{device}에서 {name}을(를) 보내려고 합니다"
+
+#. A contact wants to send you {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
+msgid "transferOffer.askUnnamed"
+msgstr "연락처에서 {name}을(를) 보내려고 합니다"
+
+#. Only accept what you expect.
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title.
+msgid "transferOffer.askBody"
+msgstr "예상한 것만 수락하세요."
+
+#. Accept
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer.
+msgid "transferOffer.accept"
+msgstr "수락"
+
+#. Decline
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Declines the offer; nothing is received.
+msgid "transferOffer.decline"
+msgstr "거절"
+
+#. Receiving {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what is being received.
+msgid "transferOffer.receiving"
+msgstr "{name} 수신 중"
+
+#. Received {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was received.
+msgid "transferOffer.done"
+msgstr "{name}을(를) 받았습니다"
+
+#. Couldn’t receive {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was not received.
+msgid "transferOffer.failed"
+msgstr "{name}을(를) 받지 못했습니다"
+
+#. Nothing was saved.
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title.
+msgid "transferOffer.failedBody"
+msgstr "저장된 것이 없습니다."
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"
