@@ -181,6 +181,9 @@ let package = Package(
                 // Standalone and dependency-free: App Attest for `client.devices.attest()` and
                 // StoreKit 2 for `client.commerce.purchase(productID:)`.
                 "PolarisKeyPlatform",
+                // The zstd decoder behind the file transfer engine's codec 1 chunks (U-23.S4); the
+                // C target only, since PolarisKeyPacks depends on this umbrella.
+                "libzstd",
             ],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
