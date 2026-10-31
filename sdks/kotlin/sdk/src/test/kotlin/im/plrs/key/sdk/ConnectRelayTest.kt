@@ -285,7 +285,8 @@ class ConnectRelayTest {
         r.room.push(r.world.idA, RelayMessage.Limit(1))
         until { svc.status.error?.reason == RelayErrorReason.rate_limited }
         r.room.dropAll(4008)
-        until { svc.status.state == RelayState.backoff }
+        // wake() releases a sleep that is already registered: wait for it, or it is a no-op.
+        until { svc.status.state == RelayState.backoff && r.sleep.pending.isNotEmpty() }
         r.wake()
         svc.ready(5000)
         assertNull(svc.status.error) // the last LIMIT is cleared on reopen

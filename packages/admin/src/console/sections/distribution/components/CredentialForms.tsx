@@ -1,7 +1,6 @@
 /**
- * The credential forms (ST-12): the set / rotate drawer and the pin dialog. A value is sent once and
- * never read back, rendered or put in a URL; the pin changes the one store app a key may act on,
- * without its value (P5-02f).
+ * The credential set / rotate drawer (ST-12). A value is sent once and never read back, rendered or
+ * put in a URL. The pin dialog is `CredentialPin.tsx`.
  */
 
 import * as React from "react";
@@ -9,14 +8,12 @@ import {
   HttpError,
   type OutletCredentialInfo,
   type OutletCredentialKind,
-  type OutletCredentialsResponse,
   type PutOutletCredentialBody,
 } from "../../../../api.js";
 import { Button } from "../../../../ui/Button.js";
 import { Callout } from "../../../../ui/Callout.js";
 import { Checkbox } from "../../../../ui/Checkbox.js";
 import { ConfirmDialog } from "../../../../ui/ConfirmDialog.js";
-import { Dialog, DialogBody, DialogFooter } from "../../../../ui/Dialog.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../../ui/Drawer.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
@@ -34,7 +31,6 @@ import {
   enterThe,
   KIND,
   kindLabel,
-  pinField,
   sharedLine,
   type KindSpec,
 } from "../model/credentialKinds.js";
@@ -519,110 +515,5 @@ export function SetCredentialDrawer({
         }}
       />
     </Drawer>
-  );
-}
-
-export function PinDialog({
-  slug,
-  cred,
-  data,
-  onClose,
-}: {
-  slug: string;
-  cred: OutletCredentialInfo;
-  data: OutletCredentialsResponse | undefined;
-  onClose: () => void;
-}): React.ReactElement {
-  const field = pinField(data, cred.kind);
-  const spec = KIND.get(cred.kind)?.pin;
-  const [value, setValue] = React.useState(
-    field ? (cred.meta[field] ?? "") : "",
-  );
-  const [error, setError] = React.useState<string | undefined>();
-  const [failure, setFailure] = React.useState<unknown>(null);
-  const [busy, setBusy] = React.useState(false);
-  const label = spec?.label ?? data?.pins?.[cred.kind]?.label ?? "App id";
-  const submit = async (e: React.FormEvent): Promise<void> => {
-    e.preventDefault();
-    if (!value.trim()) {
-      setError(`Enter the ${label}.`);
-      return;
-    }
-    setBusy(true);
-    setFailure(null);
-    try {
-      await mutate("putOutletCredential", slug, cred.id, {
-        kind: cred.kind as OutletCredentialKind,
-        pin: value.trim(),
-      });
-      toast.success(`Pinned “${cred.id}” to ${value.trim()}`);
-      onClose();
-    } catch (err) {
-      setFailure(err);
-    } finally {
-      setBusy(false);
-    }
-  };
-  const copy = failure ? describe(failure) : null;
-  return (
-    <Dialog
-      open
-      onOpenChange={(o) => !o && !busy && onClose()}
-      dismissible={!busy}
-      title={`Pin “${cred.id}” to an app`}
-      description="The connector reads and acts on this app only, and stays off while .pkey/distribution names another. Check that this is the product's app: store release controls cannot be undone. The change is audited."
-    >
-      <form
-        noValidate
-        onSubmit={(e) => void submit(e)}
-        aria-label="Pin credential"
-      >
-        <DialogBody className="space-y-3">
-          <FormField<string>
-            name="pin"
-            label={label}
-            required
-            value={value}
-            onChange={(v) => {
-              setValue(v);
-              setError(undefined);
-            }}
-            error={error}
-            announceError
-          >
-            {(f) => (
-              <Input
-                id={f.id}
-                value={value}
-                mono
-                inputMode={spec?.inputMode ?? "text"}
-                autoComplete="off"
-                spellCheck={false}
-                onValueChange={(v) => {
-                  setValue(v);
-                  setError(undefined);
-                }}
-                aria-describedby={f["aria-describedby"]}
-                aria-invalid={f["aria-invalid"]}
-                aria-required
-              />
-            )}
-          </FormField>
-          {copy ? (
-            <Callout tone="danger" title={copy.title} live>
-              {copy.description}
-            </Callout>
-          ) : null}
-        </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" disabled={busy} onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" loading={busy}>
-            Pin
-          </Button>
-        </DialogFooter>
-      </form>
-    </Dialog>
   );
 }

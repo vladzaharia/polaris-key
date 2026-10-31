@@ -1,8 +1,8 @@
 /** Users → Data: a record's file as a browser download. */
 
 import * as React from "react";
-import { api } from "../../../../api.js";
 import { announce } from "../../../../ui/LiveRegion.js";
+import { downloadSyncFile } from "../data.js";
 import { needsSignIn } from "./SignInAgain.js";
 
 /** Saves `blob` as `name` through a temporary link (the response is a file, not a page). */
@@ -66,15 +66,14 @@ export function useFileDownload(slug: string, subject: string): DownloadState {
     setRefused(false);
     setFailed(null);
     announce("Download started");
-    api
-      .syncFileDownload(
-        slug,
-        subject,
-        r.collection,
-        r.id,
-        r.version,
-        (loaded, total) => setProgress({ loaded, total }),
-      )
+    downloadSyncFile(
+      slug,
+      subject,
+      r.collection,
+      r.id,
+      r.version,
+      (loaded, total) => setProgress({ loaded, total }),
+    )
       .then((blob) => {
         save(blob, fileName(r));
         announce(`Downloaded ${fileName(r)}`);
