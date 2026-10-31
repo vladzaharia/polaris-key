@@ -174,7 +174,7 @@ final class SyncScenariosTests: XCTestCase {
 
     func testFileRecordCasesAreDeclaredAndSkippedByName() throws {
         let names = try file().fileRecordCaseNames
-        XCTAssertEqual(names.count, 12, "the family has 12 cases; port them with the records binding")
+        XCTAssertEqual(names.count, 13, "the family has 13 cases; port them with the records binding")
         XCTAssertEqual(Set(names).count, names.count)
     }
 
