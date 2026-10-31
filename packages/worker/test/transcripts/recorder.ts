@@ -93,6 +93,15 @@ export interface ExchangeSpec {
    * fields as a form because the request says so. Exclusive with `body`.
    */
   form?: Record<string, string>;
+  /**
+   * Raw bytes actually sent (a Cloud Sync file `PUT`, U-10.3), with `contentType` (default
+   * `application/octet-stream`) asserted by value. Recorded as `bodyBase64` and asserted exact.
+   * Exclusive with `body` and `form`.
+   */
+  bytes?: Uint8Array;
+  contentType?: string;
+  /** Record the response as raw bytes (`bodyBase64`, `body: ""`), for a file `GET`. */
+  binaryResponse?: boolean;
   /** What a replaying SDK's body is held to. Required when `body` is set. */
   expectBody?: RequestBody;
   /** Response headers recorded in addition to `RECORDED_RESPONSE_HEADERS` (a CORS answer's
@@ -161,8 +170,15 @@ export class StepRecorder {
     }
     for (const [name, value] of Object.entries(spec.presentHeaders ?? {}))
       sent[name.toLowerCase()] = value;
-    let body: string | undefined;
-    if (spec.form !== undefined) {
+    let body: string | Uint8Array | undefined;
+    if (spec.bytes !== undefined) {
+      if (spec.body !== undefined || spec.form !== undefined)
+        throw new Error(`${spec.path}: bytes excludes body and form`);
+      const type = spec.contentType ?? "application/octet-stream";
+      sent["content-type"] = type;
+      asserted["content-type"] = type;
+      body = spec.bytes;
+    } else if (spec.form !== undefined) {
       if (spec.body !== undefined)
         throw new Error(`${spec.path}: body and form are exclusive`);
       if (!spec.expectBody)
@@ -207,7 +223,11 @@ export class StepRecorder {
       );
     }
 
-    const text = await res.text();
+    // A binary response is read once as bytes; everything else keeps the text path unchanged.
+    const bytes = spec.binaryResponse
+      ? new Uint8Array(await res.arrayBuffer())
+      : undefined;
+    const text = bytes !== undefined ? "" : await res.text();
     const headers: Record<string, string> = {};
     for (const name of RECORDED_RESPONSE_HEADERS) {
       const v = res.headers.get(name);
@@ -233,12 +253,21 @@ export class StepRecorder {
       path: spec.path,
       headers: asserted,
       requiredHeaders,
-      body: body !== undefined ? spec.expectBody! : null,
+      body:
+        body !== undefined && spec.bytes === undefined
+          ? spec.expectBody!
+          : null,
+      ...(spec.bytes !== undefined
+        ? { bodyBase64: Buffer.from(spec.bytes).toString("base64") }
+        : {}),
     };
     const response: RecordedResponse = {
       status: res.status,
       headers,
       body: responseBody,
+      ...(bytes !== undefined
+        ? { bodyBase64: Buffer.from(bytes).toString("base64") }
+        : {}),
     };
     const exchange: Exchange = { request, response };
     if (spec.capture) {
@@ -254,6 +283,11 @@ export class StepRecorder {
     }
     this.items.push(exchange);
 
+    if (bytes !== undefined)
+      return new Response(bytes.length > 0 ? bytes : null, {
+        status: res.status,
+        headers: res.headers,
+      });
     return new Response(text.length > 0 ? text : null, {
       status: res.status,
       headers: res.headers,

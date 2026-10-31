@@ -81,8 +81,12 @@ export class SqlStorageMock {
       return new CursorMock<T>([], [], 0, 0);
     }
     const stmt = this.db.prepare(query);
+    // The runtime takes an ArrayBuffer for a BLOB; better-sqlite3 takes a Buffer.
+    const bound = bindings.map((b) =>
+      b instanceof ArrayBuffer ? Buffer.from(b) : b,
+    );
     if (stmt.reader) {
-      const rows = stmt.all(...bindings) as T[];
+      const rows = stmt.all(...bound) as T[];
       this.rowsRead += rows.length;
       return new CursorMock<T>(
         rows,
@@ -91,7 +95,7 @@ export class SqlStorageMock {
         0,
       );
     }
-    const info = stmt.run(...bindings);
+    const info = stmt.run(...bound);
     this.rowsWritten += info.changes;
     return new CursorMock<T>([], [], 0, info.changes);
   }
@@ -165,7 +169,11 @@ export function freshSqlStore(): { store: SqlStore; storage: DoStorageMock } {
 }
 
 export class CloudSyncNamespaceMock {
-  constructor(private readonly opts: CloudSyncDoOptions = {}) {}
+  constructor(
+    private readonly opts: CloudSyncDoOptions = {},
+    /** The environment each object is built with (its `SYNC_FILES` is read on every call). */
+    private readonly env: Env = {} as Env,
+  ) {}
   readonly instances = new Map<
     string,
     { obj: CloudSyncDO; storage: DoStorageMock }
@@ -191,7 +199,7 @@ export class CloudSyncNamespaceMock {
             // namespace already runs one operation at a time per object.
             blockConcurrencyWhile: <T>(fn: () => Promise<T>) => fn(),
           } as unknown as DurableObjectState,
-          {} as Env,
+          this.env,
           this.opts,
         ),
       };
@@ -264,12 +272,37 @@ export function erasureLeftovers(
     meta: (
       db.prepare("SELECT key FROM meta ORDER BY key").all() as { key: string }[]
     ).map((r) => r.key),
-    rows: ["settings", "tombstones", "setting_members", "clients"].map(count),
+    rows: [
+      "settings",
+      "tombstones",
+      "setting_members",
+      "clients",
+      "records",
+      "record_fields",
+      "set_elements",
+      "parked_records",
+      "files",
+      "uploads",
+      "upload_parts",
+      "ssec_keys",
+    ].map(count),
   };
+}
+
+/** Row counts of the named tables of one object's database, in order. */
+export function rowCounts(storage: DoStorageMock, tables: string[]): number[] {
+  return tables.map(
+    (t) =>
+      (
+        storage.sql.db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as {
+          n: number;
+        }
+      ).n,
+  );
 }
 
 /** The leftovers of a freshly erased object. */
 export const ERASED_LEFTOVERS = {
   meta: ["erased_at", "product", "schema_version", "subject"],
-  rows: [0, 0, 0, 0],
+  rows: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
 };

@@ -5,7 +5,10 @@ import type { Env } from "../../../platform/env.js";
 import { absorbSettings } from "../engine/absorb.js";
 import { applyPull, collectTombstones } from "../engine/pull.js";
 import { applyPush } from "../engine/push.js";
+import type { FileLimits } from "../engine/files.js";
 import { validatePush } from "../engine/validate.js";
+import { parseHlc } from "../engine/hlc.js";
+import { rowCost } from "../engine/usage.js";
 import type {
   CatalogMigrations,
   PushLimits,
@@ -16,9 +19,14 @@ import type {
   CloudSyncOp,
   CloudSyncReply,
   ExportDocument,
+  ExportedRecord,
   WireMigrations,
 } from "./protocol.js";
-import { parseExportDocument, parsePolicies } from "./exportDoc.js";
+import {
+  parseExportDocument,
+  parsePolicies,
+  parseRecordPolicies,
+} from "./exportDoc.js";
 import {
   IDLE_RETENTION_SECONDS,
   ageMarks,
@@ -27,6 +35,18 @@ import {
   markDirty,
   recordWrite,
 } from "./directory.js";
+import {
+  fileAbort,
+  fileBegin,
+  fileFinalizeCommit,
+  fileFinalizeEnd,
+  fileFinalizePrepare,
+  filePart,
+  filePrepare,
+  fileStatus,
+  type FileHost,
+} from "./fileOps.js";
+import { fileStoreOf } from "./client.js";
 import { SCHEMA_VERSION, SqlStore } from "./sqlStore.js";
 import { knownPlatform } from "../../../core/devices/platformFamily.js";
 
@@ -49,6 +69,9 @@ import { knownPlatform } from "../../../core/devices/platformFamily.js";
 // 15 minutes. The same alarm expires idle client bindings and collects old tombstones. The alarm
 // runs under `blockConcurrencyWhile`, so a `deleteAll` cannot interleave with its D1 await; and
 // it returns at once for an object without a pin (nothing recreates a row after `deleteAll`).
+
+/** Records read per query by an export. */
+const EXPORT_PAGE = 500;
 
 const reply = (body: CloudSyncReply | CloudSyncError, status = 200): Response =>
   new Response(JSON.stringify(body), {
@@ -78,6 +101,16 @@ const isLimits = (v: unknown): v is PushLimits =>
     typeof (v as PushLimits).productOverCeiling === "boolean") &&
   ((v as PushLimits).usersAtCeiling === undefined ||
     typeof (v as PushLimits).usersAtCeiling === "boolean");
+
+const isFileLimits = (v: unknown): v is FileLimits =>
+  typeof v === "object" &&
+  v !== null &&
+  typeof (v as FileLimits).quotaBytes === "number" &&
+  Number.isFinite((v as FileLimits).quotaBytes) &&
+  ((v as FileLimits).productOverCeiling === undefined ||
+    typeof (v as FileLimits).productOverCeiling === "boolean") &&
+  ((v as FileLimits).usersAtCeiling === undefined ||
+    typeof (v as FileLimits).usersAtCeiling === "boolean");
 
 function migrationsOf(
   w: WireMigrations | undefined,
@@ -114,12 +147,15 @@ export class CloudSyncDO implements DurableObject {
   private readonly now: () => number;
   private readonly db: () => Pick<Db, "batch" | "batchChanges">;
   private readonly flushTimeoutMs: number;
+  /** The file store, when the Worker has one (`SYNC_FILES`); read per call, never cached. */
+  private readonly bucket: () => R2Bucket | undefined;
 
   constructor(
     private readonly ctx: DurableObjectState,
     env: Env,
     opts: CloudSyncDoOptions = {},
   ) {
+    this.bucket = () => fileStoreOf(env);
     this.now = opts.now ?? Date.now;
     this.store = new SqlStore(ctx.storage, () => Math.floor(this.now() / 1000));
     this.db = opts.db ?? (() => new D1Db(env.DB));
@@ -268,7 +304,12 @@ export class CloudSyncDO implements DurableObject {
     if (
       (this.store.getMeta("absorbed_into") !== undefined ||
         this.store.getMeta("erased_at") !== undefined) &&
-      (op.op === "push" || op.op === "absorb")
+      (op.op === "push" ||
+        op.op === "absorb" ||
+        op.op === "fileBegin" ||
+        op.op === "filePart" ||
+        op.op === "fileFinalizePrepare" ||
+        op.op === "fileFinalizeCommit")
     )
       return objectError("absorbed", 410);
 
@@ -277,6 +318,15 @@ export class CloudSyncDO implements DurableObject {
         return this.push(op);
       case "pull":
         return this.pull(op);
+      case "fileBegin":
+      case "fileStatus":
+      case "fileAbort":
+      case "filePrepare":
+      case "filePart":
+      case "fileFinalizePrepare":
+      case "fileFinalizeCommit":
+      case "fileFinalizeEnd":
+        return this.fileOp(op);
       case "usage": {
         this.migrateIfBehind();
         return reply({
@@ -286,6 +336,8 @@ export class CloudSyncDO implements DurableObject {
           empty: this.store.isEmpty(),
         });
       }
+      case "inspect":
+        return this.inspect();
       case "exportAll":
         return reply({
           op: "exportAll",
@@ -303,6 +355,82 @@ export class CloudSyncDO implements DurableObject {
       default:
         return reply({ error: "bad_request" }, 400);
     }
+  }
+
+  /** The file operations (`fileOps.ts`): their shape is checked here, their work is there. */
+  private async fileOp(
+    op: Extract<
+      CloudSyncOp,
+      {
+        op:
+          | "fileBegin"
+          | "fileStatus"
+          | "fileAbort"
+          | "filePrepare"
+          | "filePart"
+          | "fileFinalizePrepare"
+          | "fileFinalizeCommit"
+          | "fileFinalizeEnd";
+      }
+    >,
+  ): Promise<Response> {
+    const named =
+      isName(op.collection) &&
+      isName(op.recordId) &&
+      (op.op === "fileBegin"
+        ? isName(op.uploadId) && isName(op.deviceId)
+        : isName(op.uploadId)) &&
+      typeof op.serverNow === "number";
+    if (!named) return reply({ error: "bad_request" }, 400);
+    const host: FileHost = {
+      store: this.store,
+      ctx: this.ctx,
+      bucket: this.bucket(),
+    };
+    if (op.op === "fileBegin") {
+      const r = op.request;
+      if (
+        !r ||
+        typeof r.size !== "number" ||
+        !Number.isSafeInteger(r.size) ||
+        r.size < 0 ||
+        typeof r.sha256 !== "string" ||
+        !(op.mode === "single" || op.mode === "multipart") ||
+        !isFileLimits(op.limits) ||
+        typeof op.maxRecords !== "number"
+      )
+        return reply({ error: "bad_request" }, 400);
+      const out = await fileBegin(host, op);
+      return reply(out.body, out.status);
+    }
+    if (op.op === "filePart") {
+      if (
+        !Number.isSafeInteger(op.n) ||
+        op.n < 1 ||
+        (op.etag !== undefined && !isName(op.etag)) ||
+        (op.bytes !== undefined && !Number.isSafeInteger(op.bytes))
+      )
+        return reply({ error: "bad_request" }, 400);
+      const out = filePart(host, op);
+      return reply(out.body, out.status);
+    }
+    if (op.op === "fileFinalizeCommit" && !isName(op.clientId))
+      return reply({ error: "bad_request" }, 400);
+    const out =
+      op.op === "fileStatus"
+        ? await fileStatus(host, op)
+        : op.op === "filePrepare"
+          ? await filePrepare(host, op)
+          : op.op === "fileFinalizePrepare"
+            ? await fileFinalizePrepare(host, op)
+            : op.op === "fileFinalizeCommit"
+              ? await fileFinalizeCommit(host, op)
+              : op.op === "fileFinalizeEnd"
+                ? await fileFinalizeEnd(host, op)
+                : await fileAbort(host, op);
+    // A finalize moved the directory's numbers: a flush is due.
+    if (out.dirty) await this.scheduleFlush();
+    return reply(out.body, out.status);
   }
 
   /**
@@ -479,22 +607,30 @@ export class CloudSyncDO implements DurableObject {
     const doc = op.document;
     const parsed = parseExportDocument(doc);
     const policies = parsePolicies(op.policies);
+    const recordPolicies = parseRecordPolicies(op.recordPolicies);
     // The same product, and another person: an absorb of oneself would delete one's own data.
     if (
       !parsed ||
       policies === null ||
+      recordPolicies === null ||
       doc.product !== op.product ||
       doc.subject === op.subject ||
       !isName(doc.subject)
     )
       return reply({ error: "bad_request" }, 400);
-    if (parsed.settings.length === 0 && parsed.clients.length === 0)
+    if (
+      parsed.settings.length === 0 &&
+      parsed.records.length === 0 &&
+      parsed.parked.length === 0 &&
+      parsed.clients.length === 0
+    )
       return reply({
         op: "absorb",
         changed: 0,
         meter: this.store.takeMeter(),
       });
     let changed = 0;
+    let skipped = 0;
     try {
       this.ctx.storage.transactionSync(() => {
         this.store.prepare(true);
@@ -506,10 +642,19 @@ export class CloudSyncDO implements DurableObject {
           absorbSettings(this.store as SyncStore, {
             settings: parsed.settings,
             clients: parsed.clients,
+            records: parsed.records,
+            parked: parsed.parked,
+            fromSubject: doc.subject,
+            ...(parsed.encryptionSince !== undefined
+              ? { encryptionSince: parsed.encryptionSince }
+              : {}),
+            now: Math.floor(this.now() / 1000),
             ...(policies ? { policies } : {}),
+            ...(recordPolicies ? { recordPolicies } : {}),
           }),
         );
         changed = out.rows + out.clients;
+        skipped = out.skipped;
         if (changed > 0) markDirty(this.store);
       });
     } catch (e) {
@@ -518,7 +663,12 @@ export class CloudSyncDO implements DurableObject {
       throw e;
     }
     if (changed > 0) await this.scheduleFlush();
-    return reply({ op: "absorb", changed, meter: this.store.takeMeter() });
+    return reply({
+      op: "absorb",
+      changed,
+      ...(skipped > 0 ? { skipped } : {}),
+      meter: this.store.takeMeter(),
+    });
   }
 
   private pull(op: Extract<CloudSyncOp, { op: "pull" }>): Response {
@@ -541,6 +691,42 @@ export class CloudSyncDO implements DurableObject {
     return reply({ op: "pull", outcome, meter: this.store.takeMeter() });
   }
 
+  /**
+   * The console's read-only summary (U-11a.1): every live setting by name, size and age, the
+   * collections' counters and the open uploads. A value never leaves through it. Like the other
+   * reads it creates nothing; an absorbed or erased object answers empty.
+   */
+  private inspect(): Response {
+    const gone =
+      this.store.getMeta("absorbed_into") !== undefined ||
+      this.store.getMeta("erased_at") !== undefined;
+    this.migrateIfBehind();
+    const tables = gone
+      ? { collections: [], uploadsOpen: 0 }
+      : this.store.inspectTables();
+    return reply({
+      op: "inspect",
+      seq: this.store.currentSeq(),
+      empty: this.store.isEmpty(),
+      usage: this.store.getUsage(),
+      encryptionSince: gone ? null : (this.store.getEncryptionSince() ?? null),
+      settings: gone
+        ? []
+        : this.store
+            .settingsAfter(0)
+            .filter((r) => !r.deleted)
+            .map((r) => ({
+              key: r.key,
+              scope: r.scope,
+              ...(r.family !== undefined ? { family: r.family } : {}),
+              bytes: rowCost(r).bytes,
+              updatedAt: parseHlc(r.stamp.hlc)?.ms ?? 0,
+            })),
+      collections: tables.collections,
+      uploadsOpen: tables.uploadsOpen,
+    });
+  }
+
   private exportAll(op: {
     product: string;
     subject: string;
@@ -553,12 +739,43 @@ export class CloudSyncDO implements DurableObject {
       seq: this.store.currentSeq(),
       writes: this.store.writeCount(),
       watermark: this.store.getWatermark(),
+      ...(this.store.getEncryptionSince() !== undefined
+        ? { encryptionSince: this.store.getEncryptionSince() as number }
+        : {}),
       usage: this.store.getUsage(),
       settings: this.store.settingsAfter(0).map(({ members, ...row }) => ({
         ...row,
         ...(members ? { members: [...members] } : {}),
       })),
+      ...this.exportRecords(),
       clients: this.store.clients(),
+    };
+  }
+
+  /** The records and parked copies, as JSON, read a page at a time. Absent keys when there are none. */
+  private exportRecords(): Pick<ExportDocument, "records" | "parked"> {
+    const records: ExportedRecord[] = [];
+    for (let after = 0; ; ) {
+      const page = this.store.recordsPageAfter(after, EXPORT_PAGE);
+      for (const { fields, elements, ...row } of page)
+        records.push({
+          ...row,
+          ...(fields ? { fields: [...fields] } : {}),
+          ...(elements ? { elements: [...elements] } : {}),
+        });
+      if (page.length < EXPORT_PAGE) break;
+      after = page[page.length - 1]?.version ?? Number.MAX_SAFE_INTEGER;
+    }
+    const parked = this.store
+      .parkedRecords()
+      .map(({ fields, elements, ...row }) => ({
+        ...row,
+        ...(fields ? { fields: [...fields] } : {}),
+        ...(elements ? { elements: [...elements] } : {}),
+      }));
+    return {
+      ...(records.length > 0 ? { records } : {}),
+      ...(parked.length > 0 ? { parked } : {}),
     };
   }
 }

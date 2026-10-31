@@ -6375,6 +6375,16 @@ msgstr ""
 msgid "core.codes.collection_unknown.message"
 msgstr ""
 
+#. Not in your license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.title"
+msgstr ""
+
+#. Your license doesn't include this. Upgrade it, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.message"
+msgstr ""
+
 #. Storage full
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.quota_exceeded.title"
@@ -6403,6 +6413,26 @@ msgstr ""
 #. This app and the sync service don't agree on encryption. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
+msgstr ""
+
+#. Changed elsewhere
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.title"
+msgstr ""
+
+#. This was changed on another device. Refresh, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.message"
+msgstr ""
+
+#. Upload failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.title"
+msgstr ""
+
+#. The file didn't arrive intact. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.message"
 msgstr ""
 
 #. Upload expired
@@ -7003,6 +7033,16 @@ msgstr ""
 #. This app needs encrypted sync, which isn't available right now. Sync stays off.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sync-encryption-pinned.message"
+msgstr ""
+
+#. File not opened
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.title"
+msgstr ""
+
+#. The synced file failed its check, so it wasn't used. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.message"
 msgstr ""
 
 #. App not set up

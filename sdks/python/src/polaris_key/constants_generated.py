@@ -74,6 +74,8 @@ __all__ = [
     "SETTING_VISIBILITY_VALUES",
     "EventKind",
     "EVENT_KIND_VALUES",
+    "TransferEvent",
+    "TRANSFER_EVENT_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -288,9 +290,12 @@ class ErrorCode:
     OP_INVALID_FOR_POLICY: Final = "op_invalid_for_policy"
     SETTING_NOT_SYNCED: Final = "setting_not_synced"
     COLLECTION_UNKNOWN: Final = "collection_unknown"
+    ENTITLEMENT_REQUIRED: Final = "entitlement_required"
     QUOTA_EXCEEDED: Final = "quota_exceeded"
     WRITES_PAUSED: Final = "writes_paused"
     ENCRYPTION_MISMATCH: Final = "encryption_mismatch"
+    REVISION_CONFLICT: Final = "revision_conflict"
+    UPLOAD_MISMATCH: Final = "upload_mismatch"
     UPLOAD_EXPIRED: Final = "upload_expired"
     UPLOAD_INCOMPLETE: Final = "upload_incomplete"
     FILE_TOO_LARGE: Final = "file_too_large"
@@ -351,6 +356,7 @@ class ErrorCode:
     SYNC_LOCKED: Final = "sync-locked"
     RECOVERY_CODE_INVALID: Final = "recovery-code-invalid"
     SYNC_ENCRYPTION_PINNED: Final = "sync-encryption-pinned"
+    SYNC_FILE_INVALID: Final = "sync-file-invalid"
     INVALID_OPTIONS: Final = "invalid-options"
     INVALID_ARGUMENT: Final = "invalid-argument"
     INVOKE_NOT_ALLOWED: Final = "invoke-not-allowed"
@@ -499,9 +505,12 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "op_invalid_for_policy",
     "setting_not_synced",
     "collection_unknown",
+    "entitlement_required",
     "quota_exceeded",
     "writes_paused",
     "encryption_mismatch",
+    "revision_conflict",
+    "upload_mismatch",
     "upload_expired",
     "upload_incomplete",
     "file_too_large",
@@ -562,6 +571,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "sync-locked",
     "recovery-code-invalid",
     "sync-encryption-pinned",
+    "sync-file-invalid",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -712,9 +722,12 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "op_invalid_for_policy": "wire",
         "setting_not_synced": "wire",
         "collection_unknown": "wire",
+        "entitlement_required": "wire",
         "quota_exceeded": "wire",
         "writes_paused": "wire",
         "encryption_mismatch": "wire",
+        "revision_conflict": "wire",
+        "upload_mismatch": "wire",
         "upload_expired": "wire",
         "upload_incomplete": "wire",
         "file_too_large": "wire",
@@ -775,6 +788,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "sync-locked": "client",
         "recovery-code-invalid": "client",
         "sync-encryption-pinned": "client",
+        "sync-file-invalid": "client",
         "invalid-options": "client",
         "invalid-argument": "client",
         "invoke-not-allowed": "client",
@@ -1761,6 +1775,22 @@ EVENT_KIND_VALUES: Tuple[str, ...] = (
     "packs",
     "store",
     "cloudSync",
+)
+
+
+class TransferEvent:
+    """The variants of a Cloud Sync file transfer event, on the client's `events` stream under the `cloudSync` kind (U-22, U-23), in camelCase in every SDK: `transferProgress` (bytes done and total), `transferDone`, `transferFailed` (a code; a cancelled transfer is a state, not a failure)."""
+
+    TRANSFERPROGRESS: Final = "transferProgress"
+    TRANSFERDONE: Final = "transferDone"
+    TRANSFERFAILED: Final = "transferFailed"
+
+
+#: Every ``TransferEvent`` value, in source order.
+TRANSFER_EVENT_VALUES: Tuple[str, ...] = (
+    "transferProgress",
+    "transferDone",
+    "transferFailed",
 )
 
 

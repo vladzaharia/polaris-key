@@ -158,7 +158,7 @@ describe("sealPush", () => {
     expect(sealed).toBe(0);
   });
 
-  it("refuses a record mutation and a half-valid batch before returning anything", async () => {
+  it("refuses a record mutation of no record operation and a half-valid batch before returning anything", async () => {
     await expect(
       sealPush(
         push([
@@ -166,7 +166,8 @@ describe("sealPush", () => {
           {
             mutationId: 2,
             target: { record: ["slots", "a"] },
-            op: "set",
+            op: "setMember",
+            member: "m",
             value: 1,
           },
         ]),

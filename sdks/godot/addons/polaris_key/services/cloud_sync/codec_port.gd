@@ -10,11 +10,13 @@ extends RefCounted
 ##                                  detach Callable. The host feeds the machine at its next pump.
 ##   seal_push(body, routes)        `{ok: true, body}` (the sealed push body), or `{ok: false}`:
 ##                                  locked, or a mutation that cannot be sealed. Nothing is sent.
-##   open_pull(body, mutations, aliases, open_keys)
+##   open_pull(body, mutations, aliases, open_keys, record_keys = [])
 ##                                  `{ok: true, body, opened}`: the body with the served
 ##                                  `sealed`/`invalid`/`seq` stripped and the host's own opened
 ##                                  result (HC-2), or `{ok: false}` (locked since the request left,
 ##                                  or a repeated mutationId): the answer is dropped, the cursor stays.
+##                                  `record_keys` are the `[collection, id]` of the records the machine
+##                                  holds, so a record tombstone's blinded id maps back (U-23.G3).
 ##
 ## No value, root or key may appear in a log, error or event (H-11).
 
@@ -31,5 +33,5 @@ func seal_push(_body: Dictionary, _routes: Array) -> Dictionary:
 	return {"ok": false}
 
 
-func open_pull(_body: Dictionary, _mutations: Variant, _aliases: Variant, _open_keys: Array) -> Dictionary:
+func open_pull(_body: Dictionary, _mutations: Variant, _aliases: Variant, _open_keys: Array, _record_keys: Array = []) -> Dictionary:
 	return {"ok": false}

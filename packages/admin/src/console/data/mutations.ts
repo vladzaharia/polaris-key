@@ -690,7 +690,8 @@ export const MUTATIONS: MutationTable = {
   },
   deleteProductUserData: {
     label: "user data delete",
-    invalidates: (slug) => users(slug),
+    // Cloud Sync data is one of the stores it empties: the Data tab reads it afresh.
+    invalidates: (slug) => [...users(slug), prefix(qk.syncSubjects(slug))],
   },
   detachProductUserLicense: {
     label: "user license detach",

@@ -2426,6 +2426,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_collection_unknown_message">Esta colección no está disponible.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_title">No incluido en tu licencia</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_message">Tu licencia no incluye esto. Mejórala e inténtalo de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_title">Almacenamiento lleno</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_message">Tu almacenamiento sincronizado está lleno. Libera espacio e inténtalo de nuevo.</string>
@@ -2437,6 +2441,14 @@
     <string name="core_codes_encryption_mismatch_title">Cifrado incompatible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_message">La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_title">Cambiado en otro lugar</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_message">Esto se cambió en otro dispositivo. Actualice e inténtelo de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_title">Error al subir</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_message">El archivo no llegó completo. Inténtelo de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_upload_expired_title">Subida caducada</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2677,6 +2689,10 @@
     <string name="core_codes_sync_encryption_pinned_title">Cifrado obligatorio</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_encryption_pinned_message">Esta app necesita sincronización cifrada, que ahora no está disponible. La sincronización sigue desactivada.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_title">Archivo no abierto</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_message">El archivo sincronizado no superó la comprobación y no se usó. Inténtalo de nuevo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App no configurada</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

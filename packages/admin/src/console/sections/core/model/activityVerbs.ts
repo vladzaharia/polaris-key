@@ -54,6 +54,8 @@ const VERBS: Record<string, string> = {
   "user.license.relink.undo": "undid a relink of license",
   "user.license.make_floating": "unassigned (made floating) license",
   "user.license.reassign": "reassigned license",
+  // U-11a: the Data tab's read of one person's Cloud Sync data (D-13).
+  "sync.data.view": "viewed the Cloud Sync data of user",
   "device.deauthorize": "deauthorized device",
   "device.fingerprint.reset": "reset the hardware binding of device",
   "device.fingerprint.drift": "recorded a hardware change on device",
@@ -184,6 +186,7 @@ export const ACTION_GROUPS: { value: string; label: string }[] = [
   { value: "feed.", label: "Package feeds" },
   { value: "package.", label: "Package versions" },
   { value: "assets.", label: "Hosted assets" },
+  { value: "sync.", label: "Cloud Sync data" },
 ];
 
 /** The target kinds the filter offers (the audit's own `target_kind` values). */

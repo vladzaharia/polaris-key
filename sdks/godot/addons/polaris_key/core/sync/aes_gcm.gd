@@ -6,13 +6,18 @@ extends RefCounted
 ## keystream; the XOR and GHASH are GDScript. GHASH and the XOR are bitwise with arithmetic masks:
 ## no branch and no table index in them depends on the key, the data or the tag, and the tag
 ## compare ORs every byte. Only lengths steer control flow. The block cipher itself is the engine's
-## (mbedtls software AES), whose table lookups this file does not control. At most 64 KiB per call (a setting is at most 8 KiB); files stay
-## native-only. A 12-byte nonce, a 32-byte key and a 16-byte tag are the only shapes.
+## (mbedtls software AES), whose table lookups this file does not control. At most 1 MiB of message
+## per call (D-10: a `pkey-sync-file/1` segment and a chunk object are at most 1 MiB, so a file is
+## a run of calls; about 1.6 MB/s, see the timing check in suite_sync_vectors) and 64 KiB of AAD.
+## A 12-byte nonce, a 32-byte key and a 16-byte tag are the only shapes.
 
 const KEY_BYTES := 32
 const NONCE_BYTES := 12
 const TAG_BYTES := 16
-const MAX_BYTES := 65536
+## The most message bytes one call takes: one file segment (`SYNC_FILE_SEGMENT_BYTES`).
+const MAX_BYTES := 1048576
+## The most AAD bytes one call takes (a file header is 64, a chunk's 34).
+const MAX_AAD_BYTES := 65536
 
 ## GHASH reduction polynomial 0xE1 << 120, as the signed high word.
 const _R_HI := -0x1F00000000000000
@@ -24,7 +29,7 @@ const _M63 := 0x7FFFFFFFFFFFFFFF
 ## success is never empty, since the tag is 16 bytes. Test the result with `.is_empty()`.
 ## A nonce must never repeat under a key: draw it from `Crypto.generate_random_bytes(12)`.
 static func seal(key: PackedByteArray, nonce: PackedByteArray, plain: PackedByteArray, aad: PackedByteArray = PackedByteArray()) -> PackedByteArray:
-	if key.size() != KEY_BYTES or nonce.size() != NONCE_BYTES or plain.size() > MAX_BYTES or aad.size() > MAX_BYTES:
+	if key.size() != KEY_BYTES or nonce.size() != NONCE_BYTES or plain.size() > MAX_BYTES or aad.size() > MAX_AAD_BYTES:
 		return PackedByteArray()
 	var ks := _keystream(key, nonce, plain.size())
 	if ks.is_empty():
@@ -40,7 +45,7 @@ static func seal(key: PackedByteArray, nonce: PackedByteArray, plain: PackedByte
 ## EMPTY array, which is not a failure: always test `== null`, never truthiness or `is_empty()`. The
 ## tag is checked before any plaintext is produced.
 static func open(key: PackedByteArray, nonce: PackedByteArray, sealed: PackedByteArray, aad: PackedByteArray = PackedByteArray()) -> Variant:
-	if key.size() != KEY_BYTES or nonce.size() != NONCE_BYTES or aad.size() > MAX_BYTES:
+	if key.size() != KEY_BYTES or nonce.size() != NONCE_BYTES or aad.size() > MAX_AAD_BYTES:
 		return null
 	if sealed.size() < TAG_BYTES or sealed.size() - TAG_BYTES > MAX_BYTES:
 		return null

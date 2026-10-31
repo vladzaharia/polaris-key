@@ -40,11 +40,21 @@ import {
   knownPlatform,
   platformFamily,
 } from "../../../core/devices/platformFamily.js";
-import { launchGateOn } from "../../../core/settings/platformRead.js";
-import type { SyncEncryptionMode } from "@polaris-key/protocol/sync";
+import {
+  launchGateOn,
+  platformSetting,
+} from "../../../core/settings/platformRead.js";
+import { resolveProductSetting } from "../../../core/settings/resolve.js";
+import { CLOUD_SYNC_CEILINGS } from "@polaris-key/catalog";
+import type { ServiceContext } from "../../../core/registry.js";
+import {
+  SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS,
+  type SyncEncryptionMode,
+} from "@polaris-key/protocol/sync";
 import type { CatalogMigrations } from "../engine/types.js";
 import { resolveKey } from "../engine/migrations.js";
 import { CloudSyncDoError } from "../do/client.js";
+import { productIsPurging } from "../purgeFlag.js";
 
 export interface SyncCaller {
   device: DeviceRow;
@@ -114,10 +124,58 @@ export async function productStillLive(db: Db, slug: string): Promise<boolean> {
 
 export const productGone = (): Response => notFound();
 
+/**
+ * The device's Cloud Sync caller. Config and Identity on (`404` otherwise; the service table
+ * refuses that combination, so this is a second lock, not the first), then the bearer, the device
+ * header and the principal (`authenticateSync`).
+ */
+export async function syncCaller(
+  ctx: ServiceContext,
+): Promise<SyncCaller | Response> {
+  const { req, env, db, product, now } = ctx;
+  if (!product.services.config.enabled || !product.services.identity.enabled)
+    return notFound();
+  return authenticateSync(req, env, db, product, now);
+}
+
+/** `503 writes_paused` with `Retry-After` while the operator has paused Cloud Sync writes, else null. */
+export async function pausedRefusal(
+  env: Env,
+  db: Db,
+): Promise<Response | null> {
+  if ((await platformSetting(env, db, "cloudSync.writesPaused")) !== "on")
+    return null;
+  const res = wireError(503, ErrorCode.WritesPaused);
+  res.headers.set(
+    "retry-after",
+    String(SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS),
+  );
+  return res;
+}
+
+/**
+ * Read right before the object is called (SR-2): the product is still live and its objects are not
+ * being purged, else `404` (`503` when the purge flag cannot be read). A write must never create an
+ * object a deletion has erased.
+ */
+export async function liveRefusal(
+  env: Env,
+  db: Db,
+  slug: string,
+): Promise<Response | null> {
+  let purging: boolean;
+  try {
+    purging = await productIsPurging(env, slug);
+  } catch {
+    return retryable();
+  }
+  return purging || !(await productStillLive(db, slug)) ? productGone() : null;
+}
+
 /** A retryable answer for an object that could not serve the request right now. */
-export function retryable(): Response {
+export function retryable(afterSeconds = 5): Response {
   const res = wireError(503, "unavailable");
-  res.headers.set("retry-after", "5");
+  res.headers.set("retry-after", String(afterSeconds));
   return res;
 }
 
@@ -243,6 +301,27 @@ export function catalogEncryption(
   }
 }
 
+/**
+ * Whether the active catalog declares at least one collection (`cloudSync.collections`): the only
+ * condition under which discovery says `collections: true` (WIRE-CONTRACT-V5 §13.5). A catalog
+ * that cannot be read declares none.
+ */
+export function catalogDeclaresCollections(
+  loaded: { catalog_json: string } | null,
+): boolean {
+  if (!loaded) return false;
+  try {
+    const catalog: unknown = JSON.parse(loaded.catalog_json);
+    if (!isRecord(catalog)) return false;
+    const cs = catalog.cloudSync;
+    return (
+      isRecord(cs) && Array.isArray(cs.collections) && cs.collections.length > 0
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function syncMode(
   env: Env,
   db: Db,
@@ -254,4 +333,50 @@ export async function syncMode(
   const row = loaded === undefined ? await getActiveSchema(db, slug) : loaded;
   const mode = catalogEncryption(row);
   return { serve: mode, advertise: mode };
+}
+
+// ── The product's ceilings (U-05.14) ────────────────────────────────────────────────────────
+
+const CEILING_KEY = "cloudSync.ceiling.bytes";
+
+/**
+ * The product's ceilings, from the `sync_product_usage` aggregate (recomputed every 15 minutes
+ * by `scheduled.ts`): `bytes` against the setting, and `users` against the fixed users ceiling.
+ * `users` counts `sync_directory` rows, so a product with no aggregate row yet has neither.
+ */
+export async function overCeiling(
+  ctx: ServiceContext,
+): Promise<{ bytes: boolean; users: boolean }> {
+  const { db, env, product, now } = ctx;
+  let ceiling: number = CLOUD_SYNC_CEILINGS.perProduct.bytes;
+  if (ctx.settings) {
+    const r = await resolveProductSetting(
+      { env, db, registry: ctx.settings },
+      product.slug,
+      CEILING_KEY,
+      { now },
+    );
+    if (typeof r?.value === "number") ceiling = r.value;
+  }
+  const row = await db.first<{ bytes: number; users: number }>(
+    "SELECT bytes, users FROM sync_product_usage WHERE product = ?",
+    product.slug,
+  );
+  return {
+    bytes: (row?.bytes ?? 0) >= ceiling,
+    users: (row?.users ?? 0) >= CLOUD_SYNC_CEILINGS.perProduct.users,
+  };
+}
+
+// ── The file store and its launch gate (WIRE-CONTRACT-V5 §13.5, U-10) ───────────────────────
+
+/**
+ * Whether Cloud Sync files are served: the Worker has a file store (`SYNC_FILES`) AND the
+ * operator's launch gate `launch.syncFiles` is on. Otherwise every file route answers `404` and
+ * discovery says files are off. An upload already open when the gate goes off is not served, but
+ * the object still expires and collects it.
+ */
+export async function fileStoreOn(env: Env, db: Db): Promise<boolean> {
+  if (!env.SYNC_FILES) return false;
+  return launchGateOn(env, db, "launch.syncFiles");
 }

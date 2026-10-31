@@ -6358,6 +6358,16 @@ msgstr "未知的集合"
 msgid "core.codes.collection_unknown.message"
 msgstr "此集合不可用。"
 
+#. Not in your license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.title"
+msgstr "不在你的许可证内"
+
+#. Your license doesn't include this. Upgrade it, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.message"
+msgstr "你的许可证不包含此项。请升级后再试。"
+
 #. Storage full
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.quota_exceeded.title"
@@ -6387,6 +6397,26 @@ msgstr "加密不一致"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
 msgstr "应用与同步服务的加密设置不一致。请更新应用后重试。"
+
+#. Changed elsewhere
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.title"
+msgstr "已在别处更改"
+
+#. This was changed on another device. Refresh, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.message"
+msgstr "此内容已在另一台设备上更改。请刷新后重试。"
+
+#. Upload failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.title"
+msgstr "上传失败"
+
+#. The file didn't arrive intact. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.message"
+msgstr "文件未完整送达。请重试。"
 
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6987,6 +7017,16 @@ msgstr "需要加密"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sync-encryption-pinned.message"
 msgstr "此应用需要加密同步，但目前不可用。同步将保持关闭。"
+
+#. File not opened
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.title"
+msgstr "无法打开文件"
+
+#. The synced file failed its check, so it wasn't used. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.message"
+msgstr "同步的文件未通过校验，因此未使用。请重试。"
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

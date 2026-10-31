@@ -2413,6 +2413,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_collection_unknown_message">This collection isn't available.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_title">Not in your license</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_message">Your license doesn't include this. Upgrade it, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_title">Storage full</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_message">Your synced storage is full. Free some space, then try again.</string>
@@ -2424,6 +2428,14 @@
     <string name="core_codes_encryption_mismatch_title">Encryption mismatch</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_message">This app and the sync service don't agree on encryption. Update the app and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_title">Changed elsewhere</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_message">This was changed on another device. Refresh, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_title">Upload failed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_message">The file didn't arrive intact. Try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_upload_expired_title">Upload expired</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2664,6 +2676,10 @@
     <string name="core_codes_sync_encryption_pinned_title">Encryption required</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_encryption_pinned_message">This app needs encrypted sync, which isn't available right now. Sync stays off.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_title">File not opened</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_message">The synced file failed its check, so it wasn't used. Try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App not set up</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

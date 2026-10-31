@@ -80,9 +80,12 @@ public enum ErrorCode {
     public static let opInvalidForPolicy = "op_invalid_for_policy"
     public static let settingNotSynced = "setting_not_synced"
     public static let collectionUnknown = "collection_unknown"
+    public static let entitlementRequired = "entitlement_required"
     public static let quotaExceeded = "quota_exceeded"
     public static let writesPaused = "writes_paused"
     public static let encryptionMismatch = "encryption_mismatch"
+    public static let revisionConflict = "revision_conflict"
+    public static let uploadMismatch = "upload_mismatch"
     public static let uploadExpired = "upload_expired"
     public static let uploadIncomplete = "upload_incomplete"
     public static let fileTooLarge = "file_too_large"
@@ -143,6 +146,7 @@ public enum ErrorCode {
     public static let syncLocked = "sync-locked"
     public static let recoveryCodeInvalid = "recovery-code-invalid"
     public static let syncEncryptionPinned = "sync-encryption-pinned"
+    public static let syncFileInvalid = "sync-file-invalid"
     public static let invalidOptions = "invalid-options"
     public static let invalidArgument = "invalid-argument"
     public static let invokeNotAllowed = "invoke-not-allowed"
@@ -291,9 +295,12 @@ public let ERROR_CODE_VALUES: [String] = [
     "op_invalid_for_policy",
     "setting_not_synced",
     "collection_unknown",
+    "entitlement_required",
     "quota_exceeded",
     "writes_paused",
     "encryption_mismatch",
+    "revision_conflict",
+    "upload_mismatch",
     "upload_expired",
     "upload_incomplete",
     "file_too_large",
@@ -354,6 +361,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "sync-locked",
     "recovery-code-invalid",
     "sync-encryption-pinned",
+    "sync-file-invalid",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -502,9 +510,12 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "op_invalid_for_policy": "wire",
     "setting_not_synced": "wire",
     "collection_unknown": "wire",
+    "entitlement_required": "wire",
     "quota_exceeded": "wire",
     "writes_paused": "wire",
     "encryption_mismatch": "wire",
+    "revision_conflict": "wire",
+    "upload_mismatch": "wire",
     "upload_expired": "wire",
     "upload_incomplete": "wire",
     "file_too_large": "wire",
@@ -565,6 +576,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "sync-locked": "client",
     "recovery-code-invalid": "client",
     "sync-encryption-pinned": "client",
+    "sync-file-invalid": "client",
     "invalid-options": "client",
     "invalid-argument": "client",
     "invoke-not-allowed": "client",
@@ -1452,6 +1464,20 @@ public let EVENT_KIND_VALUES: [String] = [
     "packs",
     "store",
     "cloudSync",
+]
+
+/// The variants of a Cloud Sync file transfer event, on the client's `events` stream under the `cloudSync` kind (U-22, U-23), in camelCase in every SDK: `transferProgress` (bytes done and total), `transferDone`, `transferFailed` (a code; a cancelled transfer is a state, not a failure).
+public enum TransferEvent {
+    public static let transferprogress = "transferProgress"
+    public static let transferdone = "transferDone"
+    public static let transferfailed = "transferFailed"
+}
+
+/// Every `TransferEvent` value, in source order.
+public let TRANSFER_EVENT_VALUES: [String] = [
+    "transferProgress",
+    "transferDone",
+    "transferFailed",
 ]
 
 /// The `X-PKey-*` request header names (wire contract v3 §5).

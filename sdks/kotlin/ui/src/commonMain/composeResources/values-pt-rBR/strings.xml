@@ -2426,6 +2426,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_collection_unknown_message">Esta coleção não está disponível.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_title">Não incluído na sua licença</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_message">Sua licença não inclui isso. Faça o upgrade e tente de novo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_title">Armazenamento cheio</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_message">Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo.</string>
@@ -2437,6 +2441,14 @@
     <string name="core_codes_encryption_mismatch_title">Criptografia incompatível</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_message">O app e o serviço de sincronização não concordam sobre a criptografia. Atualize o app e tente de novo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_title">Alterado em outro lugar</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_message">Isso foi alterado em outro dispositivo. Atualize e tente novamente.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_title">Falha no envio</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_message">O arquivo não chegou íntegro. Tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_upload_expired_title">Envio expirado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2677,6 +2689,10 @@
     <string name="core_codes_sync_encryption_pinned_title">Criptografia obrigatória</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_encryption_pinned_message">Este app exige sincronização criptografada, que não está disponível agora. A sincronização continua desativada.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_title">Arquivo não aberto</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_message">O arquivo sincronizado não passou na verificação e não foi usado. Tente novamente.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">App não configurado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

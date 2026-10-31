@@ -141,6 +141,7 @@ export async function createWorld(opts: WorldOptions): Promise<World> {
     LAUNCH_IDENTITY_EXCHANGE: "on",
     LAUNCH_CONNECT: "on",
     LAUNCH_SYNC_E2E: "on",
+    LAUNCH_SYNC_FILES: "on",
     LAUNCH_RELAY: "on",
   } as unknown as Env;
 

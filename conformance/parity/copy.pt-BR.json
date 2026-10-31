@@ -285,6 +285,10 @@
       "title": "Coleção desconhecida",
       "message": "Esta coleção não está disponível."
     },
+    "entitlement_required": {
+      "title": "Não incluído na sua licença",
+      "message": "Sua licença não inclui isso. Faça o upgrade e tente de novo."
+    },
     "quota_exceeded": {
       "title": "Armazenamento cheio",
       "message": "Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo."
@@ -296,6 +300,14 @@
     "encryption_mismatch": {
       "title": "Criptografia incompatível",
       "message": "O app e o serviço de sincronização não concordam sobre a criptografia. Atualize o app e tente de novo."
+    },
+    "revision_conflict": {
+      "title": "Alterado em outro lugar",
+      "message": "Isso foi alterado em outro dispositivo. Atualize e tente novamente."
+    },
+    "upload_mismatch": {
+      "title": "Falha no envio",
+      "message": "O arquivo não chegou íntegro. Tente novamente."
     },
     "upload_expired": {
       "title": "Envio expirado",
@@ -536,6 +548,10 @@
     "sync-encryption-pinned": {
       "title": "Criptografia obrigatória",
       "message": "Este app exige sincronização criptografada, que não está disponível agora. A sincronização continua desativada."
+    },
+    "sync-file-invalid": {
+      "title": "Arquivo não aberto",
+      "message": "O arquivo sincronizado não passou na verificação e não foi usado. Tente novamente."
     },
     "invalid-options": {
       "title": "App não configurado",

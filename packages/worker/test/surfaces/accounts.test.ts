@@ -599,28 +599,52 @@ describe("merge with proof of both", () => {
     ]);
   });
 
-  describe("a scheduled deletion (I-11)", () => {
-    /** Two accounts, each holding a licence; B has asked to be deleted. */
-    async function twoAccounts() {
-      const w = await world();
-      await seedProduct(w.db, "acme");
-      await seedFloating(w.db, "acme", "lic-a");
-      await seedFloating(w.db, "acme", "lic-b");
-      const a = await signedIn(w.db, emailIdentity("a@example.com"));
-      const b = await signedIn(w.db, emailIdentity("b@example.com"));
-      for (const [who, licenseId] of [
-        [a, "lic-a"],
-        [b, "lic-b"],
-      ] as const) {
-        await attachLicense(w.ctx(), {
-          accountId: who.account.id,
-          product: "acme",
-          licenseId,
-          via: "key",
-        });
-      }
-      return { w, a, b };
+  /** Two accounts, each holding a licence. */
+  async function twoAccounts() {
+    const w = await world();
+    await seedProduct(w.db, "acme");
+    await seedFloating(w.db, "acme", "lic-a");
+    await seedFloating(w.db, "acme", "lic-b");
+    const a = await signedIn(w.db, emailIdentity("a@example.com"));
+    const b = await signedIn(w.db, emailIdentity("b@example.com"));
+    for (const [who, licenseId] of [
+      [a, "lic-a"],
+      [b, "lic-b"],
+    ] as const) {
+      await attachLicense(w.ctx(), {
+        accountId: who.account.id,
+        product: "acme",
+        licenseId,
+        via: "key",
+      });
     }
+    return { w, a, b };
+  }
+
+  it("writes the count of items a store left out to the merge's audit row", async () => {
+    const { w, a, b } = await twoAccounts();
+    registerSubjectStore("test-store", {
+      merge: async () => ({ skipped: 3 }),
+      delete: async () => {},
+    });
+    const r = await mergeAccounts(w.ctx(), {
+      survivor: { accountId: a.account.id, authenticatedAt: NOW },
+      absorbed: { accountId: b.account.id, authenticatedAt: NOW },
+    });
+    expect(r.ok).toBe(true);
+    const audit = await w.db.all<{ summary: string }>(
+      "SELECT summary FROM portal_audit WHERE account_id = ? AND action = 'account.merge'",
+      a.account.id,
+    );
+    expect(audit).toEqual([
+      {
+        summary:
+          "Joined another Polaris Locker account into this one (3 synced items not carried over)",
+      },
+    ]);
+  });
+
+  describe("a scheduled deletion (I-11)", () => {
     const proofs = (survivor: string, absorbed: string) => ({
       survivor: { accountId: survivor, authenticatedAt: NOW },
       absorbed: { accountId: absorbed, authenticatedAt: NOW },

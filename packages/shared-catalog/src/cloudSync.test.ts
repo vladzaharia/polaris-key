@@ -13,6 +13,7 @@ import {
   USER_SETTING_CONFLICTS,
   USER_SETTING_SYNC_SCOPES,
   cloudSyncEncryption,
+  matchCollection,
   resolveCollection,
   userSettingIssues,
 } from "./cloudSync.js";
@@ -346,5 +347,59 @@ describe("encryption and delta", () => {
         (r) => r.encryption,
       ),
     ).toEqual(["server", "server"]);
+  });
+
+  describe("matchCollection (V5 13.7, Matching)", () => {
+    const catalog = {
+      cloudSync: {
+        collections: [
+          { name: "saves.*", template: "saves" as const },
+          { name: "saves.cloud.*", maxRecords: 5 },
+          { name: "saves.cloud.pinned", maxRecords: 2 },
+          { name: "notes", conflict: "merge" as const },
+        ],
+      },
+    };
+
+    it("an exact name beats a pattern", () => {
+      expect(matchCollection(catalog, "saves.cloud.pinned")?.maxRecords).toBe(
+        2,
+      );
+      expect(matchCollection(catalog, "notes")?.conflict).toBe("merge");
+    });
+
+    it("among patterns the longest prefix wins, whatever the declaration order", () => {
+      expect(matchCollection(catalog, "saves.cloud.x")?.name).toBe(
+        "saves.cloud.*",
+      );
+      expect(matchCollection(catalog, "saves.local")?.name).toBe("saves.*");
+      const reversed = {
+        cloudSync: {
+          collections: [...catalog.cloudSync.collections].reverse(),
+        },
+      };
+      expect(matchCollection(reversed, "saves.cloud.x")?.name).toBe(
+        "saves.cloud.*",
+      );
+    });
+
+    it("a pattern needs its dot and a suffix; a plain name is never a prefix", () => {
+      expect(matchCollection(catalog, "saves")).toBeNull();
+      expect(matchCollection(catalog, "saves.")).toBeNull();
+      expect(matchCollection(catalog, "savesx")).toBeNull();
+      expect(matchCollection(catalog, "notes.more")).toBeNull();
+      expect(matchCollection(catalog, "other")).toBeNull();
+    });
+
+    it("a name that spells a pattern is not an exact match for it", () => {
+      expect(matchCollection(catalog, "saves.*")?.name).toBe("saves.*");
+    });
+
+    it("answers null for no catalog, no block or no collections", () => {
+      expect(matchCollection(null, "a")).toBeNull();
+      expect(matchCollection(undefined, "a")).toBeNull();
+      expect(matchCollection({}, "a")).toBeNull();
+      expect(matchCollection({ cloudSync: {} }, "a")).toBeNull();
+    });
   });
 });

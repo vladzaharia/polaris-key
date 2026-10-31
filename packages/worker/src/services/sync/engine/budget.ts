@@ -17,7 +17,7 @@ import {
   SYNC_MAX_SETTINGS,
   SYNC_MAX_SETTINGS_BYTES,
 } from "@polaris-key/protocol/sync";
-import { rowCost } from "./usage.js";
+import { fileUsage, rowCost } from "./usage.js";
 import type { PushLimits, StoredSetting, StoreUsage } from "./types.js";
 
 export type QuotaScope = "user" | "product";
@@ -39,7 +39,8 @@ export function admission(
   if (
     limits &&
     (limits.quotaBytes <= 0 ||
-      usage.bytes + Math.max(dBytes, 0) > limits.quotaBytes)
+      usage.bytes + fileUsage(usage).reservedBytes + Math.max(dBytes, 0) >
+        limits.quotaBytes)
   )
     return "user";
   if (dCount > 0 && usage.settings + dCount > SYNC_MAX_SETTINGS) return "user";

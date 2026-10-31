@@ -76,7 +76,9 @@ export default defineConfig(async () => {
           kvNamespaces: ["HOT"],
           // The blob store (P2-01): miniflare's local R2, so `test-workerd/blobs.test.ts`
           // exercises the real binding's checksum, range and conditional-put behaviour.
-          r2Buckets: ["BLOBS"],
+          // U-10.1: Cloud Sync's file store, so `test-workerd/syncFilesR2.test.ts` probes the real
+          // binding's streamed put, `DigestStream` parts and SSE-C (`ssecKey`).
+          r2Buckets: ["BLOBS", "SYNC_FILES"],
           // A-14: the lazy-delta queue and its dead-letter queue, producer bindings as in
           // wrangler.toml's environments, so `test-workerd/operations.test.ts` reads the real
           // `Queue.metrics()` of a producer-only binding to a queue with no consumer (the DLQ).

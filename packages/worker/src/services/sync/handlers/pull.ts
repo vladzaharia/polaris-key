@@ -32,7 +32,7 @@ import {
   type PullResponse,
 } from "@polaris-key/protocol/sync";
 import type { ServiceContext } from "../../../core/registry.js";
-import { ErrorCode, json, notFound, wireError } from "../../../core/errors.js";
+import { ErrorCode, json, wireError } from "../../../core/errors.js";
 import { syncAccess } from "../../../core/accounts/syncAccess.js";
 import { getDevice } from "../../../core/devices/store.js";
 import { callCloudSync } from "../do/client.js";
@@ -40,13 +40,13 @@ import type { PullOutcome } from "../engine/pull.js";
 import { OpTally } from "./meter.js";
 import {
   accountRequired,
-  authenticateSync,
   catalogView,
   isAbsorbed,
   objectFailure,
   productGone,
   productStillLive,
   retryable,
+  syncCaller,
   syncMode,
   type SyncCaller,
 } from "./common.js";
@@ -79,12 +79,8 @@ async function pullInner(
 ): Promise<Response> {
   const { req, env, db, product, now } = ctx;
   if (req.method !== "GET") return wireError(405, "method_not_allowed");
-  // §13.1: Config or Identity off is `404` whatever Cloud Sync's own flag says (the service
-  // table refuses that combination, so this is a second lock, not the first).
-  if (!product.services.config.enabled || !product.services.identity.enabled)
-    return notFound();
-
-  const caller = await authenticateSync(req, env, db, product, now);
+  // §13.1: Config or Identity off is `404` whatever Cloud Sync's own flag says.
+  const caller = await syncCaller(ctx);
   if (caller instanceof Response) return caller;
 
   const limited = await pullLimited(

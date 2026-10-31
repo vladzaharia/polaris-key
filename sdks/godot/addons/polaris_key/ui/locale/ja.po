@@ -6358,6 +6358,16 @@ msgstr "不明なコレクション"
 msgid "core.codes.collection_unknown.message"
 msgstr "このコレクションは利用できません。"
 
+#. Not in your license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.title"
+msgstr "ライセンスに含まれていません"
+
+#. Your license doesn't include this. Upgrade it, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.message"
+msgstr "お使いのライセンスには含まれていません。アップグレードしてから、もう一度お試しください。"
+
 #. Storage full
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.quota_exceeded.title"
@@ -6387,6 +6397,26 @@ msgstr "暗号化が一致しません"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
 msgstr "アプリと同期サービスで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。"
+
+#. Changed elsewhere
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.title"
+msgstr "他で変更されました"
+
+#. This was changed on another device. Refresh, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.message"
+msgstr "別のデバイスで変更されました。更新してから、もう一度お試しください。"
+
+#. Upload failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.title"
+msgstr "アップロードに失敗しました"
+
+#. The file didn't arrive intact. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.message"
+msgstr "ファイルが正しく届きませんでした。もう一度お試しください。"
 
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6987,6 +7017,16 @@ msgstr "暗号化が必要です"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sync-encryption-pinned.message"
 msgstr "このアプリには暗号化された同期が必要ですが、現在は利用できません。同期はオフのままです。"
+
+#. File not opened
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.title"
+msgstr "ファイルを開けません"
+
+#. The synced file failed its check, so it wasn't used. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.message"
+msgstr "同期したファイルが検証に通らなかったため、使用しませんでした。もう一度お試しください。"
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

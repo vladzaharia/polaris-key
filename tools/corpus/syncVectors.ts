@@ -29,6 +29,9 @@ import {
   refKNames,
   refKRec,
   refMemberName,
+  refOpenRecord,
+  refRecordName,
+  type RefRecordWire,
   refAdoptAad,
   refEncodeCode,
   refHpkeContext,
@@ -268,6 +271,13 @@ interface EnvelopeCase {
   aliases: string[];
   /** Present on a seal row: the plaintext the envelope was built from. */
   seal?: { saltHex: string; value: unknown };
+  /**
+   * Present on a record row (U-09): the blinded names the envelope arrived under. `name` stays
+   * the `k` the reader expects, so a runner that opens by `name` still gets every verdict; a
+   * runner for records opens without a name, splits `k`, recomputes the blinded forms and
+   * compares them (`ok` rows pass, a swapped row is `invalid` with reason `name`).
+   */
+  record?: RefRecordWire;
   envelopeHex: string;
   expect:
     | { result: "ok"; name: string; value: unknown }
@@ -283,7 +293,7 @@ function sealRow(
   name: string,
   value: unknown,
   saltLabel: string,
-  extra: { expectLen?: number } = {},
+  extra: { expectLen?: number; record?: RefRecordWire } = {},
 ): EnvelopeCase {
   const s = salt(saltLabel);
   const env = refSealValue(ROOT, collection, name, value, s);
@@ -301,6 +311,7 @@ function sealRow(
     name,
     aliases: [],
     seal: { saltHex: toHex(s), value },
+    ...(extra.record === undefined ? {} : { record: extra.record }),
     envelopeHex: toHex(env),
     expect: { result: "ok", name, value },
   };
@@ -318,7 +329,9 @@ function mutate(
   description: string,
   edit: (b: Uint8Array) => Uint8Array,
   reason: string,
-  over: Partial<Pick<EnvelopeCase, "name" | "aliases" | "collection">> = {},
+  over: Partial<
+    Pick<EnvelopeCase, "name" | "aliases" | "collection" | "record">
+  > = {},
 ): EnvelopeCase {
   const env = edit(new Uint8Array(fromHex(base.envelopeHex)));
   return {
@@ -328,6 +341,7 @@ function mutate(
     collection: over.collection ?? base.collection,
     name: over.name ?? base.name,
     aliases: over.aliases ?? [],
+    ...(over.record === undefined ? {} : { record: over.record }),
     envelopeHex: toHex(env),
     expect: { result: "invalid", reason },
   };
@@ -553,6 +567,7 @@ function buildEnvelopeCases(): EnvelopeCase[] {
       { name: "gold" },
     ),
   );
+  rows.push(...buildRecordEnvelopeCases());
   // Authentic envelopes whose plaintext breaks the P rules: sealed here with the reference's own
   // key schedule, so the failure is the padding or the JSON and not the tag.
   const padLess = new Uint8Array(64).fill(0x41);
@@ -603,26 +618,235 @@ function buildEnvelopeCases(): EnvelopeCase[] {
   for (const r of rows) {
     if (ids.has(r.id)) throw new Error(`syncVectors: duplicate id ${r.id}`);
     ids.add(r.id);
-    const got = refOpenValue(
-      fromHex(r.rootHex),
-      r.collection,
-      r.name,
-      r.aliases,
-      fromHex(r.envelopeHex),
-    );
     const want = r.expect;
-    const ok =
-      want.result === "ok"
-        ? got.ok &&
-          got.name === want.name &&
-          refCanonicalJson(got.value) === refCanonicalJson(want.value)
-        : !got.ok && got.reason === want.reason;
-    if (!ok)
-      throw new Error(
-        `syncVectors ${r.id}: reference reads ${JSON.stringify(got)}, row says ${JSON.stringify(want)}`,
-      );
+    // A record row is read both ways: by the name it expects, and by the recompute-and-compare
+    // rule over its blinded wire names (§13.10.4). Both must give the row's verdict.
+    const readings = [
+      refOpenValue(
+        fromHex(r.rootHex),
+        r.collection,
+        r.name,
+        r.aliases,
+        fromHex(r.envelopeHex),
+      ),
+      ...(r.record === undefined
+        ? []
+        : [
+            refOpenRecord(
+              fromHex(r.rootHex),
+              r.collection,
+              r.record,
+              fromHex(r.envelopeHex),
+            ),
+          ]),
+    ];
+    for (const got of readings) {
+      const ok =
+        want.result === "ok"
+          ? got.ok &&
+            got.name === want.name &&
+            refCanonicalJson(got.value) === refCanonicalJson(want.value)
+          : !got.ok && got.reason === want.reason;
+      if (!ok)
+        throw new Error(
+          `syncVectors ${r.id}: reference reads ${JSON.stringify(got)}, row says ${JSON.stringify(want)}`,
+        );
+    }
   }
   return rows;
+}
+
+/**
+ * The record names of G4 / D1 (§13.10.4, U-09): a value's `k` is the record id, a `merge` field's
+ * is `id ‖ U+0000 ‖ field`, a `union` element's is `id ‖ U+0000 ‖ canonicalJson(e)`. All records
+ * of a collection share `K_coll(c)`, so only `k` stops the server placing one record's envelope
+ * under another's blinded id, field or element. Each swapped row is authentic: the envelope is a
+ * real one for another name, so the only thing that refuses it is the recomputed blinded name.
+ */
+function buildRecordEnvelopeCases(): EnvelopeCase[] {
+  const C = "saves";
+  const kn = refKNames(ROOT);
+  const bl = (kind: "record" | "field" | "element", n: string): string =>
+    refBlind(kn, kind, C, n);
+  const valueWire = (id: string): RefRecordWire => ({
+    kind: "value",
+    id: bl("record", id),
+  });
+  const fieldWire = (id: string, field: string): RefRecordWire => ({
+    kind: "field",
+    id: bl("record", id),
+    name: bl("field", field),
+  });
+  const elementWire = (id: string, e: unknown): RefRecordWire => ({
+    kind: "element",
+    id: bl("record", id),
+    name: bl("element", refCanonicalJson(e)),
+  });
+  const swap = (
+    base: EnvelopeCase,
+    id: string,
+    description: string,
+    expectName: string,
+    record: RefRecordWire,
+  ): EnvelopeCase =>
+    mutate(base, id, description, (b) => b, "name", {
+      name: expectName,
+      record,
+    });
+
+  const value = sealRow(
+    "seal-record-value",
+    "A record's value: k is the record id ('slot-1').",
+    C,
+    "slot-1",
+    { hp: 10, gold: 3 },
+    "r1",
+    { record: valueWire("slot-1") },
+  );
+  const field = sealRow(
+    "seal-record-field",
+    "A merge record's field: k is the record id, U+0000, then the field name ('slot-1' and 'hp').",
+    C,
+    refRecordName("slot-1", "hp"),
+    10,
+    "r2",
+    { record: fieldWire("slot-1", "hp") },
+  );
+  // Written with unsorted keys on purpose: k holds the canonical JSON, whatever order e was built in.
+  const e1 = { tag: "a", id: 7 };
+  const e2 = "shield";
+  const element = sealRow(
+    "seal-record-element",
+    'A union record\'s element: k is the record id, U+0000, then canonicalJson(e) (here {"id":7,"tag":"a"}); v is the element.',
+    C,
+    refRecordName("slot-1", refCanonicalJson(e1)),
+    e1,
+    "r3",
+    { record: elementWire("slot-1", e1) },
+  );
+  const fieldSeven = sealRow(
+    "seal-record-field-seven",
+    "A merge record's field named '7' holding 7: k = 'slot-1' U+0000 '7', whose name part is also canonicalJson(v).",
+    C,
+    refRecordName("slot-1", "7"),
+    7,
+    "r4",
+    { record: fieldWire("slot-1", "7") },
+  );
+  // Sealed here only to be refused: the envelopes below are authentic, and each is read under
+  // wire names that agree with its k.
+  const elementShield = sealRow(
+    "seal-record-element-shield",
+    "An element cell whose k names 'shield' and whose v is 'sword'.",
+    C,
+    refRecordName("slot-1", refCanonicalJson(e2)),
+    "sword",
+    "r5",
+  );
+  // An element sealed by a writer that did not canonicalise: the name part of k is the text as
+  // the writer spelled it, keys unsorted.
+  const looseName = '{"tag":"a","id":7}';
+  const elementLoose = sealRow(
+    "seal-record-element-noncanonical",
+    "An element cell sealed under a k whose name part is not canonical JSON.",
+    C,
+    refRecordName("slot-1", looseName),
+    e1,
+    "r6",
+  );
+  return [
+    value,
+    swap(
+      value,
+      "record-value-swapped-id",
+      "The envelope of record 'slot-1' served under the blinded id of 'slot-2': authentic, but the id recomputed from k is not the one on the wire, so a server cannot place a value under another record.",
+      "slot-2",
+      valueWire("slot-2"),
+    ),
+    swap(
+      value,
+      "record-value-served-as-field",
+      "A record's value envelope (k = 'slot-1') served as the field 'hp' of that record: k holds no U+0000 to split, so it is refused.",
+      refRecordName("slot-1", "hp"),
+      fieldWire("slot-1", "hp"),
+    ),
+    field,
+    swap(
+      field,
+      "record-field-swapped-id",
+      "The field 'hp' of 'slot-1' served as the field 'hp' of 'slot-2': the field name is right, the record id is not.",
+      refRecordName("slot-2", "hp"),
+      fieldWire("slot-2", "hp"),
+    ),
+    swap(
+      field,
+      "record-field-swapped-field",
+      "The field 'hp' of 'slot-1' served as the field 'mp' of the same record: the id is right, the field is not, so a server cannot swap fields within a record.",
+      refRecordName("slot-1", "mp"),
+      fieldWire("slot-1", "mp"),
+    ),
+    swap(
+      field,
+      "record-field-served-as-value",
+      "A field envelope (k = 'slot-1' U+0000 'hp') served as the value of 'slot-1': the whole k is not the record id.",
+      "slot-1",
+      valueWire("slot-1"),
+    ),
+    element,
+    swap(
+      element,
+      "record-element-swapped-id",
+      "The element of 'slot-1' served under the blinded id of 'slot-2'.",
+      refRecordName("slot-2", refCanonicalJson(e1)),
+      elementWire("slot-2", e1),
+    ),
+    swap(
+      element,
+      "record-element-swapped-element",
+      "The element {id:7,tag:'a'} of 'slot-1' served as the blinded element 'shield' of the same record: a server cannot swap elements within a record.",
+      refRecordName("slot-1", refCanonicalJson(e2)),
+      elementWire("slot-1", e2),
+    ),
+    // The container fixes the kind (U-09 security review). `name` on these rows is the k the host
+    // expected at that wire position, so a reader that opens by name refuses them as well.
+    fieldSeven,
+    swap(
+      fieldSeven,
+      "record-field-served-as-element",
+      "The field cell '7' of 'slot-1' (k = 'slot-1' U+0000 '7', v = 7) served in the elements of that record: its k even names canonicalJson(v), but the wire name is a blinded field, not the blinded element '7', so the container's kind refuses it. The host expected the element 'shield' there.",
+      refRecordName("slot-1", refCanonicalJson(e2)),
+      { kind: "element", id: bl("record", "slot-1"), name: bl("field", "7") },
+    ),
+    swap(
+      element,
+      "record-element-served-as-field",
+      "The element cell of 'slot-1' served in the fields of that record: the wire name is a blinded element, not the blinded field with that text, so the container's kind refuses it. The host expected the field 'hp' there.",
+      refRecordName("slot-1", "hp"),
+      {
+        kind: "field",
+        id: bl("record", "slot-1"),
+        name: bl("element", refCanonicalJson(e1)),
+      },
+    ),
+    swap(
+      elementShield,
+      "record-element-value-not-name",
+      "An element cell whose k names 'shield' but whose v is 'sword', with the blinded element 'shield' on the wire: the blinded names agree, but canonicalJson(v) is not the name part of k, so it is refused. The host expected the element 'sword'.",
+      refRecordName("slot-1", refCanonicalJson("sword")),
+      elementWire("slot-1", e2),
+    ),
+    swap(
+      elementLoose,
+      "record-element-noncanonical-name",
+      'An element cell whose k carries the element as {"tag":"a","id":7}, not in canonical JSON, with the blinded form of that text on the wire: the blinded names agree, but canonicalJson(v) is not the name part of k, so it is refused. The host expected the canonical {"id":7,"tag":"a"}.',
+      refRecordName("slot-1", refCanonicalJson(e1)),
+      {
+        kind: "element",
+        id: bl("record", "slot-1"),
+        name: bl("element", '{"tag":"a","id":7}'),
+      },
+    ),
+  ];
 }
 
 /** Bytes padded to a multiple of 64 already (the caller included the marker): zero-extend only. */
@@ -2889,7 +3113,7 @@ export function buildSyncVectors(): unknown {
   return {
     syncVectorsVersion: 1,
     description:
-      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcEditCases: a base input (the cdcCases input forms), then edit applied to it (op insert | delete | overwrite at `at` for `length` bytes, the inserted or overwriting bytes being SHA-256(UTF-8 of `pkey-sync vector cdc-edit ` + label, u32be counter) blocks cut to length); a runner cuts both at avg and expects baseLens and editedLens, computes the E2E chunk ids under rootHex and collection (baseIdsHex, editedIdsHex), expects keptIndexes (edited chunks whose id the base has) and changedIndexes (the rest), and expects baseManifestHex and editedManifestHex to parse to those ids and lengths (plainSize and plainSha256 of the whole input; encoding the parsed manifest gives the same bytes). deltaCases: what a transfer moves: have is the set of ids the other side holds (a cdcEditCases side or an explicit list), want is the manifest to reach; moveIdsHex is the distinct ids of want absent from have, in first-appearance order, and moveBytes the sum of their plainLen. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes, 0x01 codec nonce(12) then the sealed body, the nonce being HMAC-SHA256(K_chunk, 0x01 codec body)[0:12]: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, nonce, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames); kind pair (one id sealed with codec 0 and codec 1: both objects open to plainHex and their nonces, bytes 2 to 14, differ)). fileStreamCases: pkey-sync-file/1 (header little-endian, nonce counter big-endian; the plaintext of a seal row is SHA-256(UTF-8 of `pkey-sync vector file ` + label, u32be counter) blocks cut to length; the salt is in the row). kind seal: seal that plaintext under rootHex and collection with saltHex and expect sealedSize, headerHex, sealedSha256Hex and plainSha256Hex (and sealedHex when present). kind sizes: plainToSealed pairs and sealedToPlain pairs (null: no stream has that size). kind open: take the sealed stream of the row named by base (a seal row), apply the mutate ops in order (truncate length; dropSegment index; swapSegments a b; appendSegment from; xor offset value; setHex offset hex; appendHex hex; segment i starts at 64 + i * (1 MiB + 16)), open it under openCollection (default collection) expecting the kid derived from the root unless expectKidHex is given, and expect ok with plainSha256Hex or a refusal; the reasons are shape, magic, version, flags, segmentSize, kid, size and auth in that order (auth covers truncation, reordering, a missing last flag and a tampered header). kind range: the same stored stream, open plaintext [start, end) through a reader that sees only offset and length; expect ok with length, sha256Hex and the exact reads (the header first, then one per segment overlapped, in order) or a refusal (range adds to the reasons). Only the segments read are authenticated; the stored size alone says which is last. manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. canonicalJsonCases: canonical JSON, the input of a blinded element name: a runner parses inputJson with every number an IEEE double (Python: parse_int=float), or builds the number named by special, canonicalises it and expects canonical, or a refusal (invalid) for a number that is not finite and a string or key with a lone surrogate. Numbers print per ECMAScript Number::toString. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
+      "Cloud Sync end-to-end encryption known answers (WIRE-CONTRACT-V5 section 13.10, section 13.8.1; plans/CC-01-cloud-sync.md section 2.4). A client table, inert to an SDK that has not implemented sync.e2e: a runner reads the named sections it implements. Every row is recomputed by the generator through an independent reference over node:crypto. hkdfCases: HKDF-SHA256 with the exact ikm, salt, info and length, anchored by RFC 5869 appendix A; the label field names the derivation and the info bytes are shown in hex because several labels end in a NUL. envelopeCases: pkey-sync-value/1; a runner opens envelopeHex under rootHex, collection, name and aliases and expects `expect`, and for rows with a `seal` member also seals value with that salt and expects the same bytes (canonical JSON with sorted keys, UTF-8, padded 0x80 then zeros to a multiple of 64, always at least one byte); the invalid reasons are shape, version, kid, auth, padding, json and name, in the order a reader checks them. blindCases: blind(kind, ctx, n). transferPlanCases: the upload mode, partBytes and part count from the stored size and the collection's files.delta. hpkeAnchor: the RFC 9180 vector for pkey-sync-wrap/1 (enc, shared_secret, key, base_nonce and ciphertext). wrapCases: pkey-sync-wrap/1; a runner unwraps wrap (kem as an integer, enc and ct in hex) for recipientPrivateHex under product, deviceId, ringId and epoch with kidHex as aad and expects expectRootHex (null is a refusal); a `seal` member also wraps rootHex to recipientPublicHex with the ephemeral private key and expects the same enc and ct, and infoHex is the exact HPKE info. recoveryCodeCases: kind code (codeHex encodes to text, text parses to codeHex), kind parse (input parses to expectCodeHex or null) and kind blob (recovery.ct under K_rec; the same open/seal rule, with seal giving rootHex and nonceHex). The text is 8 hyphenated groups of 4 Crockford base32 characters over the code and the first 4 bytes of its SHA-256. adoptCases: the adopt blob (0x01, nonce, AES-256-GCM under K_adopt of currentRootHex, aad = pkey-sync/1 adopt, fromRingId, u32be(epoch), kid); expectRootHex is the adopted root or null. cdcEditCases: a base input (the cdcCases input forms), then edit applied to it (op insert | delete | overwrite at `at` for `length` bytes, the inserted or overwriting bytes being SHA-256(UTF-8 of `pkey-sync vector cdc-edit ` + label, u32be counter) blocks cut to length); a runner cuts both at avg and expects baseLens and editedLens, computes the E2E chunk ids under rootHex and collection (baseIdsHex, editedIdsHex), expects keptIndexes (edited chunks whose id the base has) and changedIndexes (the rest), and expects baseManifestHex and editedManifestHex to parse to those ids and lengths (plainSize and plainSha256 of the whole input; encoding the parsed manifest gives the same bytes). deltaCases: what a transfer moves: have is the set of ids the other side holds (a cdcEditCases side or an explicit list), want is the manifest to reach; moveIdsHex is the distinct ids of want absent from have, in first-appearance order, and moveBytes the sum of their plainLen. cdcCases: fastcdc-2016-nc1 (xorshift32 gear table from seed 0x9e3779b9; the hash starts at 0 at offset min of each chunk): a runner builds the input (stream: SHA-256(UTF-8 of `pkey-sync vector cdc ` + label, u32be counter) blocks cut to length; byte: length copies of value), cuts it with avg (min = avg/4, max = avg*4) and expects the chunk lengths in lens. chunkCases: kind id (the E2E id is HMAC-SHA256(K_cid(collection), chunk) and the server id SHA-256(chunk), both lowercase hex) and kind object (pkey-sync-chunk/1 under the 32 raw id bytes, 0x01 codec nonce(12) then the sealed body, the nonce being HMAC-SHA256(K_chunk, 0x01 codec body)[0:12]: open and expect; a `seal` member also seals bodyHex with that codec and expects objectHex; the invalid reasons are shape, version, codec, auth, nonce, decode, size and id in the order a reader checks; the codec 1 frames here are raw-block zstd frames); kind pair (one id sealed with codec 0 and codec 1: both objects open to plainHex and their nonces, bytes 2 to 14, differ)). fileStreamCases: pkey-sync-file/1 (header little-endian, nonce counter big-endian; the plaintext of a seal row is SHA-256(UTF-8 of `pkey-sync vector file ` + label, u32be counter) blocks cut to length; the salt is in the row). kind seal: seal that plaintext under rootHex and collection with saltHex and expect sealedSize, headerHex, sealedSha256Hex and plainSha256Hex (and sealedHex when present). kind sizes: plainToSealed pairs and sealedToPlain pairs (null: no stream has that size). kind open: take the sealed stream of the row named by base (a seal row), apply the mutate ops in order (truncate length; dropSegment index; swapSegments a b; appendSegment from; xor offset value; setHex offset hex; appendHex hex; segment i starts at 64 + i * (1 MiB + 16)), open it under openCollection (default collection) expecting the kid derived from the root unless expectKidHex is given, and expect ok with plainSha256Hex or a refusal; the reasons are shape, magic, version, flags, segmentSize, kid, size and auth in that order (auth covers truncation, reordering, a missing last flag and a tampered header). kind range: the same stored stream, open plaintext [start, end) through a reader that sees only offset and length; expect ok with length, sha256Hex and the exact reads (the header first, then one per segment overlapped, in order) or a refusal (range adds to the reasons). Only the segments read are authenticated; the stored size alone says which is last. manifestCases: pkey-sync-chunks/1 parse (ok rows are also re-encoded to the same bytes); the invalid reasons are shape, magic, version, recordSize, flags, reserved, count, length, size, record, chunkLen and a final size for the sum, first violation wins. canonicalJsonCases: canonical JSON, the input of a blinded element name: a runner parses inputJson with every number an IEEE double (Python: parse_int=float), or builds the number named by special, canonicalises it and expects canonical, or a refusal (invalid) for a number that is not finite and a string or key with a lone surrogate. Numbers print per ECMAScript Number::toString. A row with a `record` member (U-09) names the blinded wire names the envelope arrived under: kind value (id), field (id and name) or element (id and name), all from blind() under the row's collection; its `name` is still the k the reader expects (the record id, id U+0000 field, or id U+0000 canonicalJson(element)), so a runner that opens by name reads every verdict, and a runner for records opens without a name, splits k at the first U+0000, recomputes blind(record, c, id) and blind(field or element, c, rest) and compares them with the wire names: any difference is invalid with reason name. The container fixes the kind (a fields entry is read as a field, an elements entry as an element), and an element's canonicalJson(v) must equal the name part of k. A row whose only refusal is one of those rules carries a `name` that differs from k, so a runner that opens by name refuses it too. Append-only: a new row or section keeps syncVectorsVersion; a changed row or rule bumps it.",
     constants: {
       envelopeOverheadBytes: REF_E2E_OVERHEAD,
       envelopeFixedBytes: REF_ENVELOPE_FIXED,

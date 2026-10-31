@@ -76,9 +76,12 @@ export const ErrorCode = {
   opInvalidForPolicy: "op_invalid_for_policy",
   settingNotSynced: "setting_not_synced",
   collectionUnknown: "collection_unknown",
+  entitlementRequired: "entitlement_required",
   quotaExceeded: "quota_exceeded",
   writesPaused: "writes_paused",
   encryptionMismatch: "encryption_mismatch",
+  revisionConflict: "revision_conflict",
+  uploadMismatch: "upload_mismatch",
   uploadExpired: "upload_expired",
   uploadIncomplete: "upload_incomplete",
   fileTooLarge: "file_too_large",
@@ -139,6 +142,7 @@ export const ErrorCode = {
   syncLocked: "sync-locked",
   recoveryCodeInvalid: "recovery-code-invalid",
   syncEncryptionPinned: "sync-encryption-pinned",
+  syncFileInvalid: "sync-file-invalid",
   invalidOptions: "invalid-options",
   invalidArgument: "invalid-argument",
   invokeNotAllowed: "invoke-not-allowed",
@@ -288,9 +292,12 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "op_invalid_for_policy",
   "setting_not_synced",
   "collection_unknown",
+  "entitlement_required",
   "quota_exceeded",
   "writes_paused",
   "encryption_mismatch",
+  "revision_conflict",
+  "upload_mismatch",
   "upload_expired",
   "upload_incomplete",
   "file_too_large",
@@ -351,6 +358,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "sync-locked",
   "recovery-code-invalid",
   "sync-encryption-pinned",
+  "sync-file-invalid",
   "invalid-options",
   "invalid-argument",
   "invoke-not-allowed",
@@ -502,9 +510,12 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   op_invalid_for_policy: "wire",
   setting_not_synced: "wire",
   collection_unknown: "wire",
+  entitlement_required: "wire",
   quota_exceeded: "wire",
   writes_paused: "wire",
   encryption_mismatch: "wire",
+  revision_conflict: "wire",
+  upload_mismatch: "wire",
   upload_expired: "wire",
   upload_incomplete: "wire",
   file_too_large: "wire",
@@ -565,6 +576,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "sync-locked": "client",
   "recovery-code-invalid": "client",
   "sync-encryption-pinned": "client",
+  "sync-file-invalid": "client",
   "invalid-options": "client",
   "invalid-argument": "client",
   "invoke-not-allowed": "client",
@@ -1520,6 +1532,21 @@ export const EVENT_KIND_VALUES: readonly EventKind[] = [
   "packs",
   "store",
   "cloudSync",
+];
+
+/** The variants of a Cloud Sync file transfer event, on the client's `events` stream under the `cloudSync` kind (U-22, U-23), in camelCase in every SDK: `transferProgress` (bytes done and total), `transferDone`, `transferFailed` (a code; a cancelled transfer is a state, not a failure). */
+export const TransferEvent = {
+  transferprogress: "transferProgress",
+  transferdone: "transferDone",
+  transferfailed: "transferFailed",
+} as const;
+export type TransferEvent = (typeof TransferEvent)[keyof typeof TransferEvent];
+
+/** Every `TransferEvent` value, in source order. */
+export const TRANSFER_EVENT_VALUES: readonly TransferEvent[] = [
+  "transferProgress",
+  "transferDone",
+  "transferFailed",
 ];
 
 /** The `X-PKey-*` request header names (wire contract v3 §5). */

@@ -6371,6 +6371,16 @@ msgstr "Unbekannte Sammlung"
 msgid "core.codes.collection_unknown.message"
 msgstr "Diese Sammlung ist nicht verfügbar."
 
+#. Not in your license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.title"
+msgstr "Nicht in Ihrer Lizenz"
+
+#. Your license doesn't include this. Upgrade it, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.message"
+msgstr "Ihre Lizenz enthält das nicht. Erweitern Sie sie und versuchen Sie es erneut."
+
 #. Storage full
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.quota_exceeded.title"
@@ -6400,6 +6410,26 @@ msgstr "Verschlüsselung passt nicht"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
 msgstr "App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut."
+
+#. Changed elsewhere
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.title"
+msgstr "Anderswo geändert"
+
+#. This was changed on another device. Refresh, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.message"
+msgstr "Das wurde auf einem anderen Gerät geändert. Aktualisieren Sie und versuchen Sie es erneut."
+
+#. Upload failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.title"
+msgstr "Upload fehlgeschlagen"
+
+#. The file didn't arrive intact. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.message"
+msgstr "Die Datei ist nicht unversehrt angekommen. Versuchen Sie es erneut."
 
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7000,6 +7030,16 @@ msgstr "Verschlüsselung erforderlich"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sync-encryption-pinned.message"
 msgstr "Diese App braucht verschlüsselten Sync, der gerade nicht verfügbar ist. Der Sync bleibt aus."
+
+#. File not opened
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.title"
+msgstr "Datei nicht geöffnet"
+
+#. The synced file failed its check, so it wasn't used. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.message"
+msgstr "Die synchronisierte Datei hat die Prüfung nicht bestanden und wurde nicht verwendet. Versuchen Sie es erneut."
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

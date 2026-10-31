@@ -14,6 +14,8 @@ import { SettingsMembersPage } from "./pages/SettingsMembers.js";
 import { UsersPage } from "./pages/Users.js";
 // U-03: fills the user record's account override slot (a side effect, before any record renders).
 import "./pages/accountOverridesSlot.js";
+// U-11a: fills the user record's Data tab slot.
+import "./pages/dataTabSlot.js";
 import type { SectionPageProps } from "../../pages/types.js";
 
 /** Core: Overview, Services, Devices (with the routed device drawer), Users (I-12), Presentation (HA-06),

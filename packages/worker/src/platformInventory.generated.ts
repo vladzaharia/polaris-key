@@ -49,6 +49,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: null,
   },
   {
+    name: "SYNC_FILES",
+    kind: "binding",
+    area: "stores",
+    optional: true,
+    editable: null,
+  },
+  {
     name: "UPDATE_HEALTH",
     kind: "binding",
     area: "jobs",
@@ -138,6 +145,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     area: "jobs",
     optional: true,
     editable: "LAUNCH_SYNC_E2E",
+  },
+  {
+    name: "LAUNCH_SYNC_FILES",
+    kind: "var",
+    area: "jobs",
+    optional: true,
+    editable: "LAUNCH_SYNC_FILES",
   },
   {
     name: "LAUNCH_RELAY",

@@ -6384,6 +6384,16 @@ msgstr "Raccolta sconosciuta"
 msgid "core.codes.collection_unknown.message"
 msgstr "Questa raccolta non è disponibile."
 
+#. Not in your license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.title"
+msgstr "Non incluso nella tua licenza"
+
+#. Your license doesn't include this. Upgrade it, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.message"
+msgstr "La tua licenza non lo include. Passa a un piano superiore e riprova."
+
 #. Storage full
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.quota_exceeded.title"
@@ -6413,6 +6423,26 @@ msgstr "Crittografia non compatibile"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
 msgstr "L’app e il servizio di sincronizzazione non concordano sulla crittografia. Aggiorna l’app e riprova."
+
+#. Changed elsewhere
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.title"
+msgstr "Modificato altrove"
+
+#. This was changed on another device. Refresh, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.message"
+msgstr "Questo elemento è stato modificato su un altro dispositivo. Aggiorna e riprova."
+
+#. Upload failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.title"
+msgstr "Caricamento non riuscito"
+
+#. The file didn't arrive intact. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.message"
+msgstr "Il file non è arrivato integro. Riprova."
 
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7013,6 +7043,16 @@ msgstr "Crittografia obbligatoria"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sync-encryption-pinned.message"
 msgstr "Questa app richiede la sincronizzazione crittografata, al momento non disponibile. La sincronizzazione resta disattivata."
+
+#. File not opened
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.title"
+msgstr "File non aperto"
+
+#. The synced file failed its check, so it wasn't used. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-file-invalid.message"
+msgstr "Il file sincronizzato non ha superato il controllo e non è stato usato. Riprova."
 
 #. App not set up
 #. Core copy (conformance/parity/copy.en.json, codes).

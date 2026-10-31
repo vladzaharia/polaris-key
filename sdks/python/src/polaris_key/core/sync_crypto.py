@@ -4,8 +4,8 @@ code and blob, and the adopt blob. Pure functions over ``cryptography``; no I/O,
 
 Mirrors ``packages/client-core/src/sync`` and is pinned by ``conformance/corpus/v2/sync-vectors.json``
 (``hkdfCases``, ``envelopeCases``, ``blindCases``, ``wrapCases``, ``hpkeAnchor``,
-``recoveryCodeCases``, ``adoptCases``). The chunker, chunk objects, file streams and manifests are
-not here.
+``recoveryCodeCases``, ``adoptCases``). The chunker, chunk objects and manifest are in
+:mod:`polaris_key.core.sync_files`; file streams are U-22.9.
 
 Rules this module keeps:
 
@@ -56,6 +56,10 @@ __all__ = [
     "derive_names_key",
     "derive_chunk_id_key",
     "derive_value_key",
+    "derive_file_key",
+    "derive_chunk_key",
+    "aes_gcm_seal",
+    "aes_gcm_open",
     "derive_recovery_key",
     "derive_adopt_key",
     "canonical_json",
@@ -183,6 +187,16 @@ def derive_value_key(coll_key: Bytes, salt: Bytes) -> bytes:
     return hkdf(coll_key, salt, b"pkey-sync/1 value")
 
 
+def derive_file_key(coll_key: Bytes, salt: Bytes) -> bytes:
+    """``K_file``: one per file version (``salt`` is the stream header's 32 bytes)."""
+    return hkdf(coll_key, salt, b"pkey-sync/1 file")
+
+
+def derive_chunk_key(coll_key: Bytes, chunk_id: Bytes) -> bytes:
+    """``K_chunk``: one per chunk id (its 32 raw bytes are the salt)."""
+    return hkdf(coll_key, chunk_id, b"pkey-sync/1 chunk")
+
+
 def derive_recovery_key(code: Bytes, ring_id: str) -> bytes:
     """``K_rec = HKDF(code16, ringId, "pkey-sync/1 recovery")``."""
     return hkdf(code, ring_id.encode("utf-8"), b"pkey-sync/1 recovery")
@@ -206,6 +220,16 @@ def _open(key: bytes, nonce: bytes, aad: bytes, sealed: bytes) -> Optional[bytes
         return AESGCM(key).decrypt(nonce, sealed, aad)
     except (InvalidTag, ValueError):
         return None
+
+
+def aes_gcm_seal(key: Bytes, nonce: Bytes, aad: Bytes, plain: Bytes) -> bytes:
+    """AES-256-GCM, 128-bit tag; the result is the ciphertext followed by the tag."""
+    return _seal(bytes(key), bytes(nonce), bytes(aad), bytes(plain))
+
+
+def aes_gcm_open(key: Bytes, nonce: Bytes, aad: Bytes, sealed: Bytes) -> Optional[bytes]:
+    """The plaintext, or ``None`` when authentication fails."""
+    return _open(bytes(key), bytes(nonce), bytes(aad), bytes(sealed))
 
 
 # ── Canonical JSON ────────────────────────────────────────────────────────────────────────────

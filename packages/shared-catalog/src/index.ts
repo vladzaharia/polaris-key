@@ -41,6 +41,7 @@ export {
   CLOUD_SYNC_THUMBNAIL_MAX_CHARS,
   CLOUD_SYNC_TEMPLATES,
   resolveCollection,
+  matchCollection,
   userSettingIssues,
   mergeMembersOverLimit,
   type ResolvedCollection,

@@ -82,9 +82,12 @@ public object ErrorCode {
     public const val opInvalidForPolicy: String = "op_invalid_for_policy"
     public const val settingNotSynced: String = "setting_not_synced"
     public const val collectionUnknown: String = "collection_unknown"
+    public const val entitlementRequired: String = "entitlement_required"
     public const val quotaExceeded: String = "quota_exceeded"
     public const val writesPaused: String = "writes_paused"
     public const val encryptionMismatch: String = "encryption_mismatch"
+    public const val revisionConflict: String = "revision_conflict"
+    public const val uploadMismatch: String = "upload_mismatch"
     public const val uploadExpired: String = "upload_expired"
     public const val uploadIncomplete: String = "upload_incomplete"
     public const val fileTooLarge: String = "file_too_large"
@@ -145,6 +148,7 @@ public object ErrorCode {
     public const val syncLocked: String = "sync-locked"
     public const val recoveryCodeInvalid: String = "recovery-code-invalid"
     public const val syncEncryptionPinned: String = "sync-encryption-pinned"
+    public const val syncFileInvalid: String = "sync-file-invalid"
     public const val invalidOptions: String = "invalid-options"
     public const val invalidArgument: String = "invalid-argument"
     public const val invokeNotAllowed: String = "invoke-not-allowed"
@@ -293,9 +297,12 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "op_invalid_for_policy",
     "setting_not_synced",
     "collection_unknown",
+    "entitlement_required",
     "quota_exceeded",
     "writes_paused",
     "encryption_mismatch",
+    "revision_conflict",
+    "upload_mismatch",
     "upload_expired",
     "upload_incomplete",
     "file_too_large",
@@ -356,6 +363,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "sync-locked",
     "recovery-code-invalid",
     "sync-encryption-pinned",
+    "sync-file-invalid",
     "invalid-options",
     "invalid-argument",
     "invoke-not-allowed",
@@ -504,9 +512,12 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "op_invalid_for_policy" to "wire",
     "setting_not_synced" to "wire",
     "collection_unknown" to "wire",
+    "entitlement_required" to "wire",
     "quota_exceeded" to "wire",
     "writes_paused" to "wire",
     "encryption_mismatch" to "wire",
+    "revision_conflict" to "wire",
+    "upload_mismatch" to "wire",
     "upload_expired" to "wire",
     "upload_incomplete" to "wire",
     "file_too_large" to "wire",
@@ -567,6 +578,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "sync-locked" to "client",
     "recovery-code-invalid" to "client",
     "sync-encryption-pinned" to "client",
+    "sync-file-invalid" to "client",
     "invalid-options" to "client",
     "invalid-argument" to "client",
     "invoke-not-allowed" to "client",
@@ -1492,6 +1504,20 @@ public val EVENT_KIND_VALUES: List<String> = listOf(
     "packs",
     "store",
     "cloudSync",
+)
+
+/** The variants of a Cloud Sync file transfer event, on the client's `events` stream under the `cloudSync` kind (U-22, U-23), in camelCase in every SDK: `transferProgress` (bytes done and total), `transferDone`, `transferFailed` (a code; a cancelled transfer is a state, not a failure). */
+public object TransferEvent {
+    public const val transferprogress: String = "transferProgress"
+    public const val transferdone: String = "transferDone"
+    public const val transferfailed: String = "transferFailed"
+}
+
+/** Every `TransferEvent` value, in source order. */
+public val TRANSFER_EVENT_VALUES: List<String> = listOf(
+    "transferProgress",
+    "transferDone",
+    "transferFailed",
 )
 
 /** The `X-PKey-*` request header names (wire contract v3 §5). */

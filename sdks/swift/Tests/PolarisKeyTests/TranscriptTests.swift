@@ -1000,9 +1000,9 @@ final class TranscriptTests: XCTestCase {
         // Printed so a run shows which conversations Swift is held to today.
         print("transcripts replayed by Swift: \(replayed.joined(separator: ", "))")
         XCTAssertFalse(replayed.isEmpty)
-        // The Cloud Sync conversations are required, not optional: a regression in the manifest or the
-        // replayer must not quietly drop them.
-        let cloud = try transcripts().filter { $0.id.hasPrefix("cloudsync-") }.map(\.id)
+        // The Cloud Sync settings conversations are required, not optional: a regression in the manifest or
+        // the replayer must not quietly drop them. The records conversations (`sync.records`) are planned.
+        let cloud = try transcripts().filter { $0.features.contains("sync.settings") }.map(\.id)
         XCTAssertFalse(cloud.isEmpty)
         for id in cloud { XCTAssertTrue(replayed.contains(id), "\(id) was not replayed") }
     }

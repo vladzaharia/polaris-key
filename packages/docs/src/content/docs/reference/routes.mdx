@@ -446,6 +446,12 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/release/publish/uploads` | release | Obtain an upload ticket and R2 temporary credentials (trusted publishing) |
 | GET | `/{product}/release/records/{sha256}` | release | A CI-signed release record, by its SHA-256 |
 | POST | `/{product}/release/releases/{releaseId}/yank` | release | Yank a release (CI) |
+| POST | `/{product}/sync/files/{collection}/{id}/begin` | sync | Begin a file upload for a record |
+| POST | `/{product}/sync/files/{collection}/{id}/finalize` | sync | Finish a file upload |
+| PUT | `/{product}/sync/files/{collection}/{id}/upload/{uploadId}/parts/{n}` | sync | Upload one part of a multipart file |
+| GET | `/{product}/sync/files/{collection}/{id}/upload/{uploadId}` | sync | The resume answer of a file upload |
+| PUT | `/{product}/sync/files/{collection}/{id}/upload/{uploadId}` | sync | Upload a whole file (mode single) |
+| DELETE | `/{product}/sync/files/{collection}/{id}/upload/{uploadId}` | sync | Abort a file upload |
 | POST | `/{product}/sync/ops` | sync | Push a batch of synced-setting mutations |
 | GET | `/{product}/sync` | sync | Pull the person's synced settings since a cursor |
 | GET | `/{product}/update/{channel}/{buildId}.AppImage.zsync` | update | The stable per-channel zsync control file of an AppImage build |

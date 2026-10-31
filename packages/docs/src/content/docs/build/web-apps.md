@@ -89,8 +89,8 @@ first. `OPTIONS` on a covered path always answers `204`. For a listed origin it 
 
 ```http
 Access-Control-Allow-Origin: https://play.tidewater.example
-Access-Control-Allow-Methods: GET, POST, PATCH, DELETE
-Access-Control-Allow-Headers: Authorization, Content-Type, Range, If-None-Match, If-Range, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch
+Access-Control-Allow-Methods: GET, POST, PATCH, PUT, DELETE
+Access-Control-Allow-Headers: Authorization, Content-Type, Range, If-None-Match, If-Range, Content-Digest, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch
 Access-Control-Max-Age: 600
 Vary: Origin
 ```

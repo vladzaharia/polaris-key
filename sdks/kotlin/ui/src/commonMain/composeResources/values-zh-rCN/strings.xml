@@ -2400,6 +2400,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_collection_unknown_message">此集合不可用。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_title">不在你的许可证内</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_message">你的许可证不包含此项。请升级后再试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_title">存储空间已满</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_message">你的同步存储空间已满。请释放一些空间后再试。</string>
@@ -2411,6 +2415,14 @@
     <string name="core_codes_encryption_mismatch_title">加密不一致</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_message">应用与同步服务的加密设置不一致。请更新应用后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_title">已在别处更改</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_message">此内容已在另一台设备上更改。请刷新后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_title">上传失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_message">文件未完整送达。请重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_upload_expired_title">上传已过期</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2651,6 +2663,10 @@
     <string name="core_codes_sync_encryption_pinned_title">需要加密</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sync_encryption_pinned_message">此应用需要加密同步，但目前不可用。同步将保持关闭。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_title">无法打开文件</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_file_invalid_message">同步的文件未通过校验，因此未使用。请重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_options_title">应用未设置</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

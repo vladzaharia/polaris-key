@@ -285,6 +285,10 @@
       "title": "Unbekannte Sammlung",
       "message": "Diese Sammlung ist nicht verfügbar."
     },
+    "entitlement_required": {
+      "title": "Nicht in Ihrer Lizenz",
+      "message": "Ihre Lizenz enthält das nicht. Erweitern Sie sie und versuchen Sie es erneut."
+    },
     "quota_exceeded": {
       "title": "Speicher voll",
       "message": "Ihr synchronisierter Speicher ist voll. Geben Sie Platz frei und versuchen Sie es erneut."
@@ -296,6 +300,14 @@
     "encryption_mismatch": {
       "title": "Verschlüsselung passt nicht",
       "message": "App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut."
+    },
+    "revision_conflict": {
+      "title": "Anderswo geändert",
+      "message": "Das wurde auf einem anderen Gerät geändert. Aktualisieren Sie und versuchen Sie es erneut."
+    },
+    "upload_mismatch": {
+      "title": "Upload fehlgeschlagen",
+      "message": "Die Datei ist nicht unversehrt angekommen. Versuchen Sie es erneut."
     },
     "upload_expired": {
       "title": "Upload abgelaufen",
@@ -536,6 +548,10 @@
     "sync-encryption-pinned": {
       "title": "Verschlüsselung erforderlich",
       "message": "Diese App braucht verschlüsselten Sync, der gerade nicht verfügbar ist. Der Sync bleibt aus."
+    },
+    "sync-file-invalid": {
+      "title": "Datei nicht geöffnet",
+      "message": "Die synchronisierte Datei hat die Prüfung nicht bestanden und wurde nicht verwendet. Versuchen Sie es erneut."
     },
     "invalid-options": {
       "title": "App nicht eingerichtet",

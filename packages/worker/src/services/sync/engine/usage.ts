@@ -11,7 +11,13 @@
 import type { SyncJson } from "@polaris-key/protocol/sync";
 import { budgetBytes } from "./sealed.js";
 import { liveMembers } from "./store.js";
-import type { StoredSetting, StoreUsage, SyncStore } from "./types.js";
+import type {
+  ParkedRecord,
+  StoredRecord,
+  StoredSetting,
+  StoreUsage,
+  SyncStore,
+} from "./types.js";
 
 const byteOrder = (a: string, b: string): number =>
   a < b ? -1 : a > b ? 1 : 0;
@@ -77,6 +83,33 @@ export function rowCost(row: StoredSetting | undefined): RowCost {
   };
 }
 
+/** The four file counters of a `StoreUsage`, with the absent ones as zero. */
+export function fileUsage(u: StoreUsage): {
+  files: number;
+  fileBytes: number;
+  revisionBytes: number;
+  reservedBytes: number;
+} {
+  return {
+    files: u.files ?? 0,
+    fileBytes: u.fileBytes ?? 0,
+    revisionBytes: u.revisionBytes ?? 0,
+    reservedBytes: u.reservedBytes ?? 0,
+  };
+}
+
+/** `u` without any file counter that is zero: the shape a store with no file has always had. */
+export function compactUsage(u: StoreUsage): StoreUsage {
+  const { files, fileBytes, revisionBytes, reservedBytes, ...rest } = u;
+  return {
+    ...rest,
+    ...(files ? { files } : {}),
+    ...(fileBytes ? { fileBytes } : {}),
+    ...(revisionBytes ? { revisionBytes } : {}),
+    ...(reservedBytes ? { reservedBytes } : {}),
+  };
+}
+
 /** Moves the store's totals by the change from `prev` to `next`. */
 export function account(
   store: SyncStore,
@@ -88,9 +121,86 @@ export function account(
   const u = store.getUsage();
   const move = (n: number, d: number) => Math.max(0, n + d);
   const out: StoreUsage = {
+    ...u,
     settings: move(u.settings, after.settings - before.settings),
     settingsBytes: move(u.settingsBytes, after.budget - before.budget),
     bytes: move(u.bytes, after.bytes - before.bytes),
   };
   store.setUsage(out);
+}
+
+export interface RecordCost {
+  /** 1 for a live record, else 0. */
+  records: number;
+  /** The stored bytes: what the quota charges. */
+  bytes: number;
+}
+
+/** What each live field or element of a record adds to its charge, in either mode (§13.3 Budget). */
+export const ENTRY_CHARGE = 45;
+
+/** What each tag of an element beyond its first adds: every tag is a stored row. */
+export const EXTRA_TAG_CHARGE = 8;
+
+/**
+ * What a record costs: the collection and id (a `prefix.*` collection's suffix is person-chosen,
+ * so it is charged too) plus its content as stored: the value's canonical JSON (the quoted `ct` in
+ * E2E mode), each live field's name and value, each element's value, 45 for every live field or
+ * element however small (an E2E entry's 45-character blinded name is that charge), and 8 for each
+ * tag of an element beyond its first. A tombstone or no row costs nothing.
+ */
+export function recordCost(row: StoredRecord | undefined): RecordCost {
+  if (!row || row.deleted) return { records: 0, bytes: 0 };
+  let bytes = utf8Length(row.collection) + utf8Length(row.id);
+  if (row.kind === "fields") {
+    for (const [name, cell] of row.fields ?? [])
+      if (!cell.removed)
+        bytes +=
+          utf8Length(name) +
+          valueBytes(cell.value) +
+          (cell.kid !== undefined ? 0 : ENTRY_CHARGE);
+  } else if (row.kind === "set") {
+    for (const el of row.elements?.values() ?? [])
+      if (el.tags.length > 0)
+        bytes +=
+          valueBytes(el.element) +
+          ENTRY_CHARGE +
+          EXTRA_TAG_CHARGE * (el.tags.length - 1);
+  } else bytes += valueBytes(row.value);
+  return { records: 1, bytes };
+}
+
+/** What a parked copy costs: its content as a live record of its shape would. */
+export const parkedCost = (p: ParkedRecord | undefined): number =>
+  p ? recordCost({ ...p, version: 0, deleted: false }).bytes : 0;
+
+/** Moves the store's quota total by the change from the parked copy `prev` to `next`. */
+export function accountParked(
+  store: SyncStore,
+  prev: ParkedRecord | undefined,
+  next: ParkedRecord | undefined,
+): void {
+  const u = store.getUsage();
+  store.setUsage({
+    ...u,
+    bytes: Math.max(0, u.bytes + parkedCost(next) - parkedCost(prev)),
+  });
+}
+
+/** Moves the store's totals by the change from `prev` to `next` (a record). */
+export function accountRecord(
+  store: SyncStore,
+  prev: StoredRecord | undefined,
+  next: StoredRecord,
+): void {
+  const before = recordCost(prev);
+  const after = recordCost(next);
+  const u = store.getUsage();
+  const move = (n: number, d: number) => Math.max(0, n + d);
+  store.setUsage({
+    ...u,
+    records: move(u.records, after.records - before.records),
+    recordBytes: move(u.recordBytes, after.bytes - before.bytes),
+    bytes: move(u.bytes, after.bytes - before.bytes),
+  });
 }

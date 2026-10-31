@@ -294,6 +294,12 @@ const FAIL_MODE: Record<string, FailMode> = {
   // The Cloud Sync pull, per device: the same reasoning as the push (a live device token, a cost
   // budget, nothing secret behind it).
   syncPull: "open",
+  // The Cloud Sync file routes (U-10): `begin` and whole-file `GET` per device an hour, parts,
+  // chunks, status and ranged reads per device a minute. The same reasoning as the push: a live
+  // device token and a principal, a cost budget, nothing secret behind it, and the person's
+  // object bounds the work.
+  syncFilesDevice: "open",
+  syncParts: "open",
 };
 
 function failModeFor(bucket: string): FailMode {

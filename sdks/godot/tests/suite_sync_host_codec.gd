@@ -1,7 +1,8 @@
 extends RefCounted
 # The Cloud Sync host codec (U-21.8; WIRE-CONTRACT-V5 section 13.10): what `seal_push` sends, what
 # `open_pull` proves, and that the machine only ever takes the host's own open result. Cases are
-# client-core's `hostCodec.test.ts` as Python and Swift port them (HostCodecTests). HC-1 to HC-6 each
+# client-core's `hostCodec.test.ts` as Python and Swift port them (HostCodecTests). From U-23.G3 the
+# record cases (scalar values, D-2; WIRE-CONTRACT-V5 section 13.10.4) are under `_records`. HC-1 to HC-6 each
 # name their test below, and each of those fails on the naive version of its rule (the comment says how).
 # Mutation-checked (U-21.8): without the locked check HC-6's three checks fail; with a conflict copy opened
 # against a default name instead of the mutation's own, 'a conflict with no mutations of the request reads as
@@ -15,6 +16,7 @@ const VOL := "audio.volume"
 const BIND := "input.bindings"
 const OPEN := "my.private.key"
 const PRODUCT := "diceroll"
+const SAVES := "saves"
 
 
 ## A codec over a fixture root with a switch for "locked" and a count of seals: the ring codec's
@@ -69,6 +71,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_hc3(t)
 	_hc4_pull(t)
 	_hc_misc(t)
+	_records(t)
 	await _into_the_machine(t)
 	return true
 
@@ -95,8 +98,8 @@ func _routes() -> Array:
 	return [{"key": VOL}, {"key": BIND}]
 
 
-func _pull(body: Dictionary, mutations: Variant = [], aliases: Variant = {}, open_keys: Array = [], codec: FixtureCodec = null) -> Dictionary:
-	return Codec.open_pull_with(body, codec if codec != null else _codec, mutations, aliases, open_keys)
+func _pull(body: Dictionary, mutations: Variant = [], aliases: Variant = {}, open_keys: Array = [], codec: FixtureCodec = null, record_keys: Array = []) -> Dictionary:
+	return Codec.open_pull_with(body, codec if codec != null else _codec, mutations, aliases, open_keys, record_keys)
 
 
 func _changes(r: Dictionary) -> Array:
@@ -167,10 +170,10 @@ func _hc6(t: PKeyTestContext) -> void:
 	t.check("HC-6: and seals nothing", c.seals == 0)
 	var o := Codec.open_pull_with({"changes": []}, c, [], {}, [])
 	t.check("HC-6: a locked codec opens nothing (sync-locked)", not o["ok"] and o["code"] == "sync-locked")
-	var record := {"mutationId": 2, "target": {"record": ["slots", "a"]}, "op": "set", "value": 1}
+	var record := {"mutationId": 2, "target": {"record": ["slots", "a"]}, "op": "setField", "field": "hp", "value": 1}
 	var unlocked := FixtureCodec.new(_root)
 	var half := Codec.seal_push_with(_push_body([_mset(1, VOL, 1), record]), unlocked, _routes())
-	t.check("HC-6: a record mutation is refused (invalid-options) and the valid one before it is not returned", not half["ok"] and half["code"] == "invalid-options" and not half.has("body"))
+	t.check("HC-6: a merge-record mutation is refused (invalid-options) and the valid one before it is not returned", not half["ok"] and half["code"] == "invalid-options" and not half.has("body"))
 	t.check("HC-6: a value canonical JSON refuses (NaN) is refused, nothing returned", not Codec.seal_push_with(_push_body([_mset(1, VOL, NAN)]), unlocked, _routes())["ok"])
 	t.check("HC-6: a mutation with a ct, field or element is refused", not Codec.seal_push_with(_push_body([{"mutationId": 1, "target": {"setting": VOL}, "op": "clear", "ct": "AAAA"}]), unlocked, _routes())["ok"])
 	t.check("HC-6: an unknown operation is refused", not Codec.seal_push_with(_push_body([{"mutationId": 1, "target": {"setting": VOL}, "op": "explode"}]), unlocked, _routes())["ok"])
@@ -337,6 +340,146 @@ func _hc_misc(t: PKeyTestContext) -> void:
 	t.check("port: locked before a root, and the listener is told", port.locked() and seen == [false])
 	t.check("port: a locked port refuses", not port.seal_push(_push_body([_mset(1, VOL, 1)]), _routes())["ok"])
 	detach.call()
+
+
+# ── records (U-23.G3): scalar values, WIRE-CONTRACT-V5 section 13.10.4 ───────────────────────────
+
+func _rec_ct(collection: String, id: Variant, value: Variant, root := PackedByteArray()) -> String:
+	return PKeyB64Url.encode(PKeySyncEnvelope.seal_value(root if not root.is_empty() else _root, collection, id, value))
+
+
+## The envelope name of a merge field (id, U+0000, field) as bytes: a String cannot hold the NUL.
+func _field_name(id: String, field: String) -> PackedByteArray:
+	var b := id.to_utf8_buffer()
+	b.append(0)
+	b.append_array(field.to_utf8_buffer())
+	return b
+
+
+func _mrec(mid: int, op: String, collection: String, id: String, value: Variant = null) -> Dictionary:
+	var m := {"mutationId": mid, "target": {"record": [collection, id]}, "op": op, "baseVersion": 3}
+	if op == "set":
+		m["value"] = value
+	return m
+
+
+func _records(t: PKeyTestContext) -> void:
+	# Push: a set seals under the collection with k = id and sends the id blinded; a delete only blinds.
+	var before := JSON.stringify(_push_body([_mrec(1, "set", SAVES, "slot-1", {"hp": 10}), _mrec(2, "delete", SAVES, "slot-2")]))
+	var body := _push_body([_mrec(1, "set", SAVES, "slot-1", {"hp": 10}), _mrec(2, "delete", SAVES, "slot-2")])
+	var r := Codec.seal_push_with(body, _codec, _routes())
+	t.check("records push: seals", r["ok"])
+	if not r["ok"]:
+		return
+	var ms: Array = r["body"]["mutations"]
+	var s_id := _bl("record", SAVES, "slot-1")
+	t.check("records push: a set sends the blinded id, keeps the collection and the baseVersion, and drops the value", ms[0]["target"]["record"] == [SAVES, s_id] and PKeySyncBlind.is_blinded_name(s_id) and ms[0]["baseVersion"] == 3 and not ms[0].has("value"))
+	var env: Variant = PKeyB64Url.decode_strict(ms[0]["ct"])
+	var ok1 := PKeySyncEnvelope.open_value(_root, SAVES, "slot-1", env)
+	t.check("records push: the ct opens under the collection and k = id, and under no other collection or id", ok1["ok"] and _same(ok1["value"], {"hp": 10}) and not PKeySyncEnvelope.open_value(_root, SAVES, "slot-2", env)["ok"] and not PKeySyncEnvelope.open_value(_root, "other", "slot-1", env)["ok"])
+	t.check("records push: a delete blinds the id and carries no ct", ms[1]["target"]["record"] == [SAVES, _bl("record", SAVES, "slot-2")] and not ms[1].has("ct") and not ms[1].has("value"))
+	t.check("records push: nothing in the clear leaves", not JSON.stringify(r["body"]).contains("slot-1") and not JSON.stringify(r["body"]).contains("slot-2") and not JSON.stringify(r["body"]).contains("\"hp\""))
+	t.check("records push: the input body is not changed", JSON.stringify(body) == before)
+	var mixed := Codec.seal_push_with(_push_body([_mset(1, VOL, 0.5), _mrec(2, "set", SAVES, "a", 1)]), _codec, _routes())
+	t.check("records push: a setting and a record seal in one batch", mixed["ok"] and mixed["body"]["mutations"][0]["target"]["setting"] == VOL and mixed["body"]["mutations"][1]["target"]["record"][1] == _bl("record", SAVES, "a"))
+	# Refused: merge and union operations, a value on a delete, a missing value, a ct, bad references.
+	var refused := {
+		"setField": {"mutationId": 1, "target": {"record": [SAVES, "a"]}, "op": "setField", "field": "hp", "value": 1},
+		"removeField": {"mutationId": 1, "target": {"record": [SAVES, "a"]}, "op": "removeField", "field": "hp"},
+		"add": {"mutationId": 1, "target": {"record": [SAVES, "a"]}, "op": "add", "element": "e", "value": 1},
+		"remove": {"mutationId": 1, "target": {"record": [SAVES, "a"]}, "op": "remove", "element": "e", "observedSeq": 1},
+		"clear": {"mutationId": 1, "target": {"record": [SAVES, "a"]}, "op": "clear"},
+		"delete with a value": {"mutationId": 1, "target": {"record": [SAVES, "a"]}, "op": "delete", "value": 1},
+		"set with no value": {"mutationId": 1, "target": {"record": [SAVES, "a"]}, "op": "set"},
+		"set with a ct": {"mutationId": 1, "target": {"record": [SAVES, "a"]}, "op": "set", "value": 1, "ct": "AAAA"},
+		"set with a field": {"mutationId": 1, "target": {"record": [SAVES, "a"]}, "op": "set", "value": 1, "field": "f"},
+		"set with a member": {"mutationId": 1, "target": {"record": [SAVES, "a"]}, "op": "set", "value": 1, "member": "m"},
+		"a one-element reference": {"mutationId": 1, "target": {"record": [SAVES]}, "op": "set", "value": 1},
+		"a non-string id": {"mutationId": 1, "target": {"record": [SAVES, 7]}, "op": "set", "value": 1},
+		"an id that is bytes": {"mutationId": 1, "target": {"record": [SAVES, PackedByteArray([97, 0, 98])]}, "op": "set", "value": 1},
+		"an empty id": {"mutationId": 1, "target": {"record": [SAVES, ""]}, "op": "set", "value": 1},
+		"an empty collection": {"mutationId": 1, "target": {"record": ["", "a"]}, "op": "set", "value": 1},
+		"the settings namespace": {"mutationId": 1, "target": {"record": [C, "a"]}, "op": "set", "value": 1},
+		"a value canonical JSON refuses": {"mutationId": 1, "target": {"record": [SAVES, "a"]}, "op": "set", "value": NAN},
+	}
+	for name in refused:
+		var f := Codec.seal_push_with(_push_body([refused[name]]), _codec, _routes())
+		t.check("records push: %s is refused with invalid-options" % name, not f["ok"] and f["code"] == "invalid-options" and not f.has("body"))
+	var lk := FixtureCodec.new(_root)
+	lk.is_locked = true
+	var lr := Codec.seal_push_with(_push_body([_mrec(1, "set", SAVES, "a", 1)]), lk, _routes())
+	t.check("records push: a locked codec refuses with sync-locked and seals nothing", not lr["ok"] and lr["code"] == "sync-locked" and lk.seals == 0)
+
+	# Pull: a sealed change opens to the plaintext id and value; the version is not taken as a seq.
+	var served := _bl("record", SAVES, "slot-1")
+	var pulled := _pull({"changes": [
+		{"record": [SAVES, served], "ct": _rec_ct(SAVES, "slot-1", {"hp": 10}), "version": 8, "editedHlc": "h", "value": "FORGED", "sealed": true, "seq": 1},
+		{"record": [SAVES, "legacy"], "value": {"hp": 1}, "version": 2}]})
+	t.check("records pull: a sealed change opens to the id and value, the ct, flags and the served value go", _same(_changes(pulled)[0], {"record": [SAVES, "slot-1"], "value": {"hp": 10}, "version": 8, "editedHlc": "h"}))
+	t.check("records pull: the rows are sealed, then a plaintext row's seq is its version", _rows(pulled)[0] == {"sealed": true} and _same(_rows(pulled)[1], {"seq": 2}))
+	# Hostile: every one reads as invalid with no value, no ct and the id left as served.
+	var good := _rec_ct(SAVES, "slot-1", 1)
+	var tampered: PackedByteArray = PKeyB64Url.decode_strict(good)
+	tampered[tampered.size() - 1] ^= 1
+	var nul_id := PackedByteArray([115, 0, 49])
+	var hostile := {
+		"another id (swapped)": {"record": [SAVES, _bl("record", SAVES, "slot-2")], "ct": good},
+		"another collection": {"record": ["other", served], "ct": good},
+		"the settings namespace": {"record": [C, served], "ct": good},
+		"an id that is not blinded": {"record": [SAVES, "slot-1"], "ct": good},
+		"another root": {"record": [SAVES, served], "ct": _rec_ct(SAVES, "slot-1", 1, _other_root)},
+		"a tampered ct": {"record": [SAVES, served], "ct": PKeyB64Url.encode(tampered)},
+		"a ct that is not canonical": {"record": [SAVES, served], "ct": good + "="},
+		"an empty ct": {"record": [SAVES, served], "ct": ""},
+		"a field envelope served as a value": {"record": [SAVES, served], "ct": PKeyB64Url.encode(PKeySyncEnvelope.seal_value(_root, SAVES, _field_name("slot-1", "hp"), 1))},
+		"an id holding NUL": {"record": [SAVES, PKeySyncBlind.blind(_root, "record", SAVES, "s")], "ct": PKeyB64Url.encode(PKeySyncEnvelope.seal_value(_root, SAVES, nul_id, 1))},
+		"sealed fields": {"record": [SAVES, served], "fields": [], "version": 1},
+		"sealed elements": {"record": [SAVES, served], "elements": [], "version": 1},
+		"a malformed reference": {"record": [SAVES], "ct": good},
+	}
+	for name in hostile:
+		var h: Dictionary = hostile[name].duplicate()
+		h["version"] = 4
+		h["value"] = "FORGED"
+		var hr := _pull({"changes": [h]})
+		var c0: Dictionary = _changes(hr)[0]
+		t.check("records pull: %s is invalid, with no value and no ct" % name, _rows(hr) == [{"invalid": true}] and not c0.has("value") and not c0.has("ct"))
+	var swapped := _pull({"changes": [{"record": [SAVES, _bl("record", SAVES, "slot-2")], "ct": good, "version": 4}]})
+	t.check("records pull: a swapped envelope leaves the served blinded id", _changes(swapped)[0]["record"][1] == _bl("record", SAVES, "slot-2"))
+	# Two records of one collection cannot trade values.
+	var two := _pull({"changes": [
+		{"record": [SAVES, _bl("record", SAVES, "slot-1")], "ct": _rec_ct(SAVES, "slot-1", "one"), "version": 1},
+		{"record": [SAVES, _bl("record", SAVES, "slot-2")], "ct": _rec_ct(SAVES, "slot-2", "two"), "version": 2}]})
+	t.check("records pull: each record keeps its own value", _changes(two)[0]["value"] == "one" and _changes(two)[1]["value"] == "two" and _changes(two)[1]["record"][1] == "slot-2")
+	# Round trip through the push.
+	var trip := Codec.seal_push_with(_push_body([_mrec(1, "set", SAVES, "slot-9", {"gold": 3})]), _codec, _routes())
+	var tm: Dictionary = trip["body"]["mutations"][0]
+	var back := _pull({"changes": [{"record": tm["target"]["record"], "ct": tm["ct"], "version": 5}]})
+	t.check("records: seal then open round-trips", _changes(back)[0]["record"] == [SAVES, "slot-9"] and _same(_changes(back)[0]["value"], {"gold": 3}) and _rows(back) == [{"sealed": true}])
+
+	# Tombstones map back only for records the machine holds.
+	var tb := _pull({"tombstones": [{"record": [SAVES, _bl("record", SAVES, "slot-1")], "editedHlc": "h"}, {"record": [SAVES, _bl("record", SAVES, "unknown")], "editedHlc": "h"}, {"record": ["other", _bl("record", SAVES, "slot-1")]}]}, [], {}, [], null, [[SAVES, "slot-1"], [SAVES, 3], [C, "x"]])
+	var tombs: Array = tb["body"]["tombstones"]
+	t.check("records tombstone: a held record maps back, an unknown or other-collection one stays blinded", tombs[0]["record"] == [SAVES, "slot-1"] and tombs[0]["editedHlc"] == "h" and tombs[1]["record"][1] == _bl("record", SAVES, "unknown") and tombs[2]["record"][0] == "other" and PKeySyncBlind.is_blinded_name(tombs[2]["record"][1]))
+
+	# Conflict copies open against the mutation's own record.
+	var ms2 := [_mrec(7, "set", SAVES, "slot-1", 1), _mrec(8, "set", SAVES, "slot-1", 1), _mrec(9, "delete", SAVES, "slot-3"), _mset(10, VOL, 1)]
+	var cr := _pull({"results": [
+		{"mutationId": 7, "status": "conflict", "server": {"ct": _rec_ct(SAVES, "slot-1", {"hp": 99}), "version": 40, "editedHlc": "h", "sealed": true}},
+		{"mutationId": 8, "status": "conflict", "server": {"ct": _rec_ct(SAVES, "slot-2", {"hp": 98}), "version": 41}},
+		{"mutationId": 9, "status": "conflict", "server": {"ct": _rec_ct(SAVES, "slot-3", "x"), "version": 42}},
+		{"mutationId": 10, "status": "conflict", "server": {"ct": _rec_ct(SAVES, "slot-1", 1), "version": 43}},
+		{"mutationId": 11, "status": "conflict", "server": {"ct": _rec_ct(SAVES, "slot-1", 1), "version": 44}},
+		{"mutationId": 12, "status": "conflict", "server": {"value": {"hp": 5}, "version": 3}}]}, ms2)
+	var cf: Dictionary = cr["opened"]["conflicts"]
+	t.check("records conflict: a copy opens under the mutation's own record id", _same(_results(cr)[0]["server"], {"value": {"hp": 99}, "version": 40, "editedHlc": "h"}) and cf[7] == {"sealed": true})
+	t.check("records conflict: another record's value is invalid (the name binds the record)", cf[8] == {"invalid": true} and not _results(cr)[1]["server"].has("value"))
+	t.check("records conflict: a delete's conflict opens under the deleted record", cf[9] == {"sealed": true} and _results(cr)[2]["server"]["value"] == "x")
+	t.check("records conflict: a setting mutation's copy is not opened as a record, and an unknown mutation reads as invalid", cf[10] == {"invalid": true} and cf[11] == {"invalid": true})
+	t.check("records conflict: a plaintext copy is legacy with its seq", _same(cf[12], {"seq": 3}))
+	var fcopy := _pull({"results": [{"mutationId": 7, "status": "conflict", "server": {"fields": [], "version": 3}}]}, ms2)
+	t.check("records conflict: a sealed fields copy is invalid", fcopy["opened"]["conflicts"][7] == {"invalid": true})
+	t.check("records: the locked codec opens nothing", not Codec.open_pull_with({"changes": []}, lk, [], {}, [], [])["ok"])
 
 
 # ── openPull into the machine, through the host ───────────────────────────────────────────────

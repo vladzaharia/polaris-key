@@ -12,7 +12,8 @@
  *            document could carry is `valueInvalid` too).
  *   local, locked, refused, or any non-`config` kind: `setting_not_synced`. The client never sends
  *            one; this is the backstop.
- *   record   a record target: `collection_unknown` until U-09 declares collections.
+ *   record   a record target (U-09): matched to the catalog's collections by `matchCollection` and
+ *            checked in the order of §13.3, see `classifyRecord`.
  *   dropped  a key the catalog's migrations dropped: classified `setting_not_synced`, but the
  *            engine answers `dropped: true` first and never reads it.
  *
@@ -26,6 +27,7 @@
  */
 
 import {
+  matchCollection,
   prepareSchema,
   representabilityIssue,
   settingRoute,
@@ -36,7 +38,9 @@ import {
 } from "@polaris-key/catalog";
 import {
   SYNC_E2E_OVERHEAD_BYTES,
+  SYNC_MAX_RECORD_BYTES,
   SYNC_MAX_SETTINGS_BYTES,
+  SYNC_MAX_UNION_ELEMENT_BYTES,
   SYNC_MAX_VALUE_BYTES,
   type SyncEncryptionMode,
   type SyncJson,
@@ -45,7 +49,7 @@ import {
 import { resolveKey } from "../engine/migrations.js";
 import { envelopeBytes, isBlinded } from "../engine/sealed.js";
 import type { CatalogMigrations, Classification } from "../engine/types.js";
-import { valueBytes } from "../engine/usage.js";
+import { utf8Length, valueBytes } from "../engine/usage.js";
 
 const NOT_SYNCED: Classification = {
   verdict: "reject",
@@ -58,6 +62,10 @@ const MISMATCH: Classification = {
 const COLLECTION_UNKNOWN: Classification = {
   verdict: "reject",
   code: "collection_unknown",
+};
+const ENTITLEMENT_REQUIRED: Classification = {
+  verdict: "reject",
+  code: "entitlement_required",
 };
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -94,9 +102,17 @@ function failsSchema(schema: unknown, value: unknown): boolean {
  * member; otherwise the schema says nothing about it.
  */
 function memberInvalid(entry: ConfigEntry, member: string, value: unknown) {
+  return propertyInvalid(entry.schema, member, value);
+}
+
+/** The same rule for a `merge` record's field, against the collection's schema. */
+function propertyInvalid(
+  schema: unknown,
+  member: string,
+  value: unknown,
+): boolean {
   const issue = representabilityIssue(value);
   if (issue) return true;
-  const schema: unknown = entry.schema;
   if (!isObject(schema)) return false;
   const props = schema.properties;
   if (isObject(props) && Object.hasOwn(props, member))
@@ -135,6 +151,139 @@ function sealedInvalid(m: SyncMutation, limit: number): boolean {
   return n === null || n - SYNC_E2E_OVERHEAD_BYTES > limit;
 }
 
+/** Whether an entitlement the catalog's `requires` names is granted (a flag set to `true`). */
+const granted = (
+  entitlements: Readonly<Record<string, unknown>>,
+  name: string,
+): boolean => Object.hasOwn(entitlements, name) && entitlements[name] === true;
+
+/** The members a `delete` must not carry (§13.3 check 4). */
+const DELETE_STRAYS = [
+  "value",
+  "ct",
+  "field",
+  "element",
+  "observedSeq",
+] as const;
+
+const isCount = (v: unknown): v is number =>
+  typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+
+/**
+ * A record mutation, against the first check that fails, in the order of §13.3. The object adds
+ * the checks that read stored state and check 5, the policy's operations.
+ *
+ *   1  no declaration matches the collection (`matchCollection`): `collection_unknown`
+ *   2  the declaration's `requires` is not granted: `entitlement_required` (a `delete` passes)
+ *   3  E2E: an id, field or element that is not blinded, or `value` where `ct` is expected, or the
+ *      reverse (a `delete` expects neither): `encryption_mismatch`
+ *   4  the request-only causes of `value_invalid`, collected into one flag (they share one code,
+ *      so their order among themselves is not observable)
+ */
+function classifyRecord(
+  m: SyncMutation,
+  catalog: Catalog | null,
+  e2e: boolean,
+  entitlements: Readonly<Record<string, unknown>>,
+): Classification {
+  const [collection, id] = (m.target as { record: [string, string] }).record;
+  const decl = matchCollection(catalog, collection);
+  if (decl === null) return COLLECTION_UNKNOWN;
+  if (m.op !== "delete" && decl.requires !== null) {
+    if (!granted(entitlements, decl.requires)) return ENTITLEMENT_REQUIRED;
+  }
+  if (e2e) {
+    if (!isBlinded(id)) return MISMATCH;
+    if (m.op !== "delete" && "value" in m) return MISMATCH;
+    if ((m.op === "setField" || m.op === "removeField") && !isBlinded(m.field))
+      return MISMATCH;
+    if ((m.op === "add" || m.op === "remove") && !isBlinded(m.element))
+      return MISMATCH;
+  } else if (m.op !== "delete" && "ct" in m) return MISMATCH;
+
+  let invalid = false;
+  // Any mode: the mutation's own members.
+  if (
+    m.baseVersion !== undefined &&
+    m.baseVersion !== "*" &&
+    !isCount(m.baseVersion)
+  )
+    invalid = true;
+  if (m.op === "delete") {
+    if (DELETE_STRAYS.some((k) => k in m)) invalid = true;
+    // An E2E max or min record's delete is decided by `editedHlc` alone (§13.3, the register).
+    if (
+      e2e &&
+      (decl.conflict === "max" || decl.conflict === "min") &&
+      m.baseVersion !== undefined
+    )
+      invalid = true;
+  }
+  if (m.op === "remove" && !isCount(m.observedSeq)) invalid = true;
+  // A field name is client text kept as a cell key, and a removal is never refused for quota, so
+  // the name is bounded as a merge setting's member is (SR-1 B1).
+  if (
+    !e2e &&
+    (m.op === "setField" || m.op === "removeField") &&
+    (typeof m.field !== "string" ||
+      m.field === "" ||
+      utf8Length(m.field) > SYNC_MAX_UNION_ELEMENT_BYTES)
+  )
+    invalid = true;
+  if (e2e) {
+    // A sealed entry: a well-shaped envelope, charged on `envelopeBytes - 113` (+ 45 for the
+    // blinded name of a field or element) against the record's 64 KiB.
+    if (m.op === "set" || m.op === "setField" || m.op === "add") {
+      const n = envelopeBytes(m.ct);
+      const name = m.op === "set" ? 0 : 45;
+      if (
+        n === null ||
+        Math.max(n - SYNC_E2E_OVERHEAD_BYTES, 0) + name > SYNC_MAX_RECORD_BYTES
+      )
+        invalid = true;
+    }
+  } else if (m.op === "set") {
+    if (
+      !("value" in m) ||
+      representabilityIssue(m.value) ||
+      valueBytes(m.value as SyncJson) > SYNC_MAX_RECORD_BYTES ||
+      (decl.schema !== null && failsSchema(decl.schema, m.value))
+    )
+      invalid = true;
+  } else if (m.op === "setField") {
+    if (
+      !("value" in m) ||
+      // The depth guard first: `valueBytes` recurses and would throw on a value nested too deep.
+      propertyInvalid(decl.schema, m.field as string, m.value) ||
+      valueBytes(m.value as SyncJson) > SYNC_MAX_RECORD_BYTES
+    )
+      invalid = true;
+  } else if (m.op === "add" || m.op === "remove") {
+    const el = m.element;
+    if (
+      !("element" in m) ||
+      representabilityIssue(el) ||
+      valueBytes(el as SyncJson) > SYNC_MAX_UNION_ELEMENT_BYTES
+    )
+      invalid = true;
+    else if (m.op === "add" && isObject(decl.schema)) {
+      const items = decl.schema.items;
+      if (isObject(items) && failsSchema(items, el)) invalid = true;
+    }
+  }
+  const field = decl.conflict === "max" || decl.conflict === "min";
+  return {
+    verdict: "record",
+    policy: decl.conflict,
+    maxRecords: decl.maxRecords,
+    ...(!e2e && field && decl.conflictField !== null
+      ? { conflictField: decl.conflictField }
+      : {}),
+    ...(invalid ? { valueInvalid: true } : {}),
+    ...(e2e ? { sealed: true } : {}),
+  };
+}
+
 /**
  * One classification per mutation, in order. `mode` is the mode the request is served in
  * (`common.ts` `syncMode`): in `e2e` a mutation carries `ct` and blinded names (§13.3, §13.10); in
@@ -145,11 +294,14 @@ export function classifyMutations(
   catalog: Catalog | null,
   migrations: CatalogMigrations,
   mode: SyncEncryptionMode = "server",
+  /** The anchor licence's entitlement values (`syncAccess`), for a collection's `requires`. */
+  entitlements: Readonly<Record<string, unknown>> = {},
 ): Classification[] {
   const declared = declaredKeys(catalog);
   const e2e = mode === "e2e";
   return mutations.map((m): Classification => {
-    if (!("setting" in m.target)) return COLLECTION_UNKNOWN;
+    if (!("setting" in m.target))
+      return classifyRecord(m, catalog, e2e, entitlements);
     // The wrong payload for the product's mode, before anything else is looked at.
     if (e2e ? "value" in m : "ct" in m) return MISMATCH;
     const resolved = resolveKey(m.target.setting, migrations);

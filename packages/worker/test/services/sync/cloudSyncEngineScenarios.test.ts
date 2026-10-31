@@ -266,6 +266,8 @@ describe("the engine reproduces sync-scenarios.json's scripted server answers", 
             store.setUsage({
               settings: usage.settings,
               settingsBytes: 0,
+              records: 0,
+              recordBytes: 0,
               bytes: usage.bytes,
             });
             const out = applyPush(store, {
