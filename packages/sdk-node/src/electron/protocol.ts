@@ -13,7 +13,7 @@
 // config change, and after any verb that changes state.
 
 /** The PolarisBridge protocol revision this host speaks (`@polaris-key/react`'s BRIDGE_VERSION). */
-export const POLARIS_BRIDGE_VERSION = 4;
+export const POLARIS_BRIDGE_VERSION = 5;
 
 /** The default channel prefix and `window` key. */
 export const DEFAULT_BRIDGE_CHANNEL = "polaris-key";
@@ -35,6 +35,26 @@ export const BRIDGE_METHODS = [
   "unsubscribe",
 ] as const;
 export type BridgeMethod = (typeof BRIDGE_METHODS)[number];
+
+/** v5 (I-47b): the automatic and nearby sign-in methods, each an `ipcMain.handle` channel
+ *  `<prefix>:<method>`. Declared here by the contract slice (I47B.0); the host registers them in
+ *  I47B.1, which folds this list into `BRIDGE_METHODS`. Until then a v5 host answers none of them
+ *  and the renderer sees them absent. Permits never cross IPC: the renderer holds only an `askId`
+ *  (128 random bits, single use, bound to the sender's `webContents.id`). */
+export const BRIDGE_V5_METHODS = [
+  "autoSignIn",
+  "nearbyStart",
+  "nearbyChoose",
+  "nearbyConfirm",
+  "nearbyDecline",
+  "nearbyCancel",
+  "approverStart",
+  "approverStop",
+  "approverPick",
+  "approverDeny",
+  "approverChoose",
+] as const;
+export type BridgeV5Method = (typeof BRIDGE_V5_METHODS)[number];
 
 /** The `invoke(service, method, args)` verbs a host answers by default: every one the React
  *  desktop adapter sends to a v4 host (`test/electronBridge.test.ts` enumerates the adapter's
@@ -90,7 +110,10 @@ export type BridgeEnvelope =
   | { ok: true; value: unknown }
   | { ok: false; code: string; message: string; detail?: string | null };
 
-export function channelOf(prefix: string, method: BridgeMethod): string {
+export function channelOf(
+  prefix: string,
+  method: BridgeMethod | BridgeV5Method,
+): string {
   return `${prefix}:${method}`;
 }
 

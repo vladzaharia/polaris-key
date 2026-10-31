@@ -115,11 +115,11 @@ async function setup(
   return { ...seeded, license, ipc, handle, bridge: typed };
 }
 
-describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
+describe("PolarisBridge v5 over IPC (SP-N10, SP-31)", () => {
   it("serves the gate state with the capability map", async () => {
     const { bridge } = await setup();
-    expect(POLARIS_BRIDGE_VERSION).toBe(4);
-    expect(bridge.version).toBe(4);
+    expect(POLARIS_BRIDGE_VERSION).toBe(5);
+    expect(bridge.version).toBe(5);
     const s = await bridge.getSyncState();
     expect(s.activation).toBe("token");
     expect((s.doc as { licenseId: string }).licenseId).toBe("lic_parity");
@@ -1107,13 +1107,13 @@ describe("PolarisBridge v4 verbs round-trip through the preload (SP-31)", () => 
     ).rejects.toMatchObject({ code: "invoke-not-allowed" });
   });
 
-  it("subscribe answers {version: 4}", async () => {
+  it("subscribe answers {version: 5}", async () => {
     const { ipc } = await setup();
     expect(
       await ipc.ipcRenderer.invoke(
         channelOf(DEFAULT_BRIDGE_CHANNEL, "subscribe"),
       ),
-    ).toEqual({ ok: true, value: { version: 4 } });
+    ).toEqual({ ok: true, value: { version: 5 } });
   });
 
   it("pollSignIn's ok carries the identity the host's poll knew", async () => {

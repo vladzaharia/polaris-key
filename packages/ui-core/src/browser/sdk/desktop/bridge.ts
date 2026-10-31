@@ -1,4 +1,4 @@
-// The desktop IPC contract, version 4. In an Electron/Tauri app the main/native process owns
+// The desktop IPC contract, version 5. In an Electron/Tauri app the main/native process owns
 // the real `@polaris-key/node` client (token + keyring + loopback OIDC) and exposes THIS object to the
 // renderer (default: `window.polarisKey`, via a contextBridge preload). The React desktop
 // adapter is a thin renderer-side proxy over these methods — all credential and filesystem
@@ -82,6 +82,8 @@ export interface BridgeState {
   presentation?: unknown;
   /** v4 (UK-06): the host's OS facts. Absent ⇒ an older host: the renderer keeps `web` chrome. */
   host?: BridgeHost;
+  /** v5 (I-47b): the nearby sign-in sessions, requester and approver. Absent ⇒ a v4 host. */
+  nearby?: BridgeNearbyState;
 }
 
 /** The result of a desktop OIDC begin — a verification URL/code to render while polling. */
@@ -226,7 +228,7 @@ export type BridgeActivation =
  * ── WHAT v4 ADDS (UK-06) ─────────────────────────────────────────────────────────────────────
  *
  * Four OPTIONAL members, so an older v4 host never sends them and an adapter that finds them
- * absent behaves as before. `BRIDGE_VERSION` stays 4. Declared by UK-06.1; the host
+ * absent behaves as before. Declared by UK-06.1; the host
  * (`@polaris-key/node/electron`) and the renderer use them in later UK-06 slices.
  *
  *   * `BridgeState.host` (`BridgeHost`): the OS facts the kit picks its desktop chrome from.
@@ -235,15 +237,131 @@ export type BridgeActivation =
  *   * `openExternal(url)` (UK-06.16): open an https link in the system browser; the host's
  *     `shell.openExternal` runs only behind its https check and its `allowSender` rule.
  *
+ * ── WHAT v5 ADDS (I-47b) ─────────────────────────────────────────────────────────────────────
+ *
+ * Automatic sign-in and nearby sign-in, as eleven OPTIONAL methods and one OPTIONAL state member,
+ * so a v4 host answers none of them: the renderer gates on `version >= 5` and, on an older host,
+ * reports `needsSignIn` for `autoSignIn` and nearby as unavailable.
+ *
+ *   * `autoSignIn(opts?)`: the host's `client.identity.autoSignIn()`.
+ *   * `nearbyStart` / `nearbyChoose` / `nearbyConfirm` / `nearbyDecline` / `nearbyCancel`: this
+ *     device asks a nearby, signed-in device to approve it (the requester, "D").
+ *   * `approverStart` / `approverStop` / `approverPick` / `approverDeny` / `approverChoose`: this
+ *     device approves another (the approver, "M"). It runs only while its screen is open, at most
+ *     one per host.
+ *   * `BridgeState.nearby`: the requester's and the approver's live state, pushed on `stateChanged`.
+ *
+ * Permits and secrets never cross IPC. The renderer sees an `askId` (opaque, single use, bound to
+ * the window that received it), the cleaned device label, the platform and the three codes; it
+ * never sees a request id, a key, a token or the key-ring wrap. `approverPick(askId, code)` makes
+ * the host call its own pick, so no approval exists without a fresh ask. Every method and every
+ * push passes the host's `allowSender` rule. Asks die on `approverStop`, sign-out and window close.
+ *
  * Reserved, not yet used by this package: pack verbs (`("packs", …)`), telemetry extras and the
  * `onPackProgress` push below are declared for a later revision; nothing here calls or
  * subscribes to them, and the Node host answers none of them.
  */
-export const BRIDGE_VERSION = 4;
+export const BRIDGE_VERSION = 5;
 
 /** The bridge revisions this package accepts: v3 hosts keep working with the v4 verbs refused
- *  typed; v4 hosts get everything. The v4 gate itself is `version >= BRIDGE_VERSION`. */
-export const BRIDGE_VERSIONS_ACCEPTED = [3, 4] as const;
+ *  typed; v4 hosts keep working with the v5 methods refused typed; v5 hosts get everything. The
+ *  v5 gate is `version >= BRIDGE_VERSION`; the v4 gate is `version >= 4`. */
+export const BRIDGE_VERSIONS_ACCEPTED = [3, 4, 5] as const;
+
+/** v5 (I-47b): the options `autoSignIn` takes; `@polaris-key/node`'s `AutoSignInOptions`. */
+export interface BridgeAutoSignInOptions {
+  prompt?: "none" | "optional";
+  licenseChoice?: "app" | "card";
+  deviceName?: string;
+}
+
+/** v5 (I-47b): how automatic sign-in ended; `@polaris-key/node`'s `AutoSignInResult`. A state
+ *  push follows a `signedIn`. */
+export type BridgeAutoSignInResult =
+  | {
+      kind: "signedIn";
+      via: "stored";
+      subject: string | null;
+      activation: { licenseId: string | null };
+    }
+  | { kind: "needsSignIn"; reason: "signed_out" | "no_credential" }
+  | { kind: "unavailable"; code: "product" };
+
+/** v5 (I-47b): a nearby approver the requester may pick. `id` is opaque to the renderer. */
+export interface BridgeNearbyApproverRef {
+  id: string;
+  /** The approver's name as it reports it (unverified). */
+  device: string | null;
+  platform: string;
+}
+
+/** v5 (I-47b): the requester's session ("D"), `BridgeState.nearby.requester`. */
+export interface BridgeNearbyRequester {
+  /** Opaque, single use; the argument of every `nearby*` call after `nearbyStart`. */
+  sessionId: string;
+  phase:
+    | "searching"
+    | "choose-approver"
+    | "waiting"
+    | "confirm-account"
+    | "done"
+    | "denied"
+    | "expired"
+    | "not-nearby"
+    | "unsupported"
+    | "device-limit"
+    | "rate-limited"
+    | "cancelled";
+  approvers: BridgeNearbyApproverRef[];
+  /** The code to read out on the approving device, once an approver is chosen. */
+  code?: string;
+  /** The account the person confirms (`confirm-account`): its email, when the provider shared one. */
+  email?: string;
+}
+
+/** v5 (I-47b): one session asking this device for approval, `BridgeState.nearby.approver.asks`.
+ *  The host holds the permit; the renderer holds only `askId`. */
+export interface BridgeNearbyAsk {
+  /** Opaque, single use, bound to the receiving window. */
+  askId: string;
+  /** The new device's name, as it reports it: show it as reported by the device. */
+  device: string | null;
+  platform: string;
+  /** The three codes in the order to show, each like `123 456`. */
+  codes: [string, string, string];
+}
+
+/** v5 (I-47b): the approver ("M"), `BridgeState.nearby.approver`. */
+export interface BridgeNearbyApproverState {
+  /** True while the host listens (between `approverStart` and `approverStop`). */
+  listening: boolean;
+  asks: BridgeNearbyAsk[];
+}
+
+/** v5 (I-47b): `BridgeState.nearby`. Absent ⇒ a v4 host. */
+export interface BridgeNearbyState {
+  requester?: BridgeNearbyRequester;
+  approver?: BridgeNearbyApproverState;
+}
+
+/** v5 (I-47b): how an approval pick or choice ended; `@polaris-key/node`'s `NearbyApprovalStep`
+ *  without its closures. `choose` carries the licences to offer, answered by `approverChoose`. */
+export type BridgeNearbyStep =
+  | { kind: "approved" }
+  | { kind: "not-nearby" }
+  | { kind: "mismatch" }
+  | { kind: "denied" }
+  | { kind: "expired" }
+  | { kind: "device-limit" }
+  | { kind: "account-required" }
+  | { kind: "rate-limited" }
+  | { kind: "choose"; choices: { licenseId: string; name: string }[] };
+
+/** v5 (I-47b): the licence the approver gives the new device, or a decline. */
+export type BridgeNearbyChoice =
+  | { kind: "license"; licenseId: string }
+  | { kind: "create" }
+  | { kind: "decline" };
 
 /** v4 (UK-06): the host's OS facts, `BridgeState.host`. `os` picks the desktop chrome. */
 export interface BridgeHost {
@@ -333,6 +451,34 @@ export interface PolarisBridge {
    *  host refuses any other scheme). Optional: the kit's links use it when it is present, and
    *  `window.open` otherwise. */
   openExternal?(url: string): Promise<boolean>;
+  /** v5 (I-47b): the host's `client.identity.autoSignIn()`. Optional: a v4 host omits it. */
+  autoSignIn?(opts?: BridgeAutoSignInOptions): Promise<BridgeAutoSignInResult>;
+  /** v5 (I-47b): ask a nearby device to approve this one; the session rides `BridgeState.nearby`. */
+  nearbyStart?(opts?: { deviceName?: string }): Promise<BridgeNearbyRequester>;
+  /** v5: choose the approver (`BridgeNearbyApproverRef.id`) to ask. */
+  nearbyChoose?(
+    sessionId: string,
+    approverId: string,
+  ): Promise<BridgeNearbyRequester>;
+  /** v5: the person confirms the account the sign-in is for. */
+  nearbyConfirm?(sessionId: string): Promise<BridgeNearbyRequester>;
+  /** v5: the person declines the account; the host signs the device out. */
+  nearbyDecline?(sessionId: string): Promise<BridgeNearbyRequester>;
+  /** v5: stop asking. */
+  nearbyCancel?(sessionId: string): Promise<void>;
+  /** v5: start approving (the approver screen opened); resolves to the approver's state. */
+  approverStart?(): Promise<BridgeNearbyApproverState>;
+  /** v5: stop approving (the screen closed); drops every open ask. */
+  approverStop?(): Promise<void>;
+  /** v5: the person tapped `code` for `askId`. An unknown, reused or foreign `askId` is refused. */
+  approverPick?(askId: string, code: string): Promise<BridgeNearbyStep>;
+  /** v5: "none of these match" for `askId`: nothing is approved. */
+  approverDeny?(askId: string): Promise<void>;
+  /** v5: the licence for the new device after a `choose` step, or a decline. */
+  approverChoose?(
+    askId: string,
+    choice: BridgeNearbyChoice,
+  ): Promise<BridgeNearbyStep>;
   /** Subscribe to pushed state changes; returns an unsubscribe. */
   on(event: "stateChanged", cb: (state: BridgeState) => void): () => void;
   /** v4 (UK-06): pushed update-install progress; returns an unsubscribe. Absent on a host that

@@ -133,7 +133,6 @@ import {
 } from "../core/services.js";
 import { classifyActivation } from "../core/activation.js";
 import {
-  BRIDGE_VERSION,
   resolveBridge,
   type BridgeActivation,
   type BridgeHost,
@@ -1383,7 +1382,7 @@ export class DesktopAdapter implements PolarisAdapter {
   /** True when the host reports bridge protocol v4 or later (an absent `version` is 1). A v3
    *  host's `invoke` may answer only the v3 verbs, so a v4 verb is never sent to it. */
   private speaksV4(): boolean {
-    return (this.bridge.version ?? 1) >= BRIDGE_VERSION;
+    return (this.bridge.version ?? 1) >= 4;
   }
 
   /** A bridge v4 `invoke` verb: refused with the typed version N/A before anything crosses the
