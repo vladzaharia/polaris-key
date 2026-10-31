@@ -890,15 +890,35 @@ msgstr "O continúa sin cuenta. {product} funciona igual."
 msgid "activate.recommend.portal"
 msgstr "Guarda tu licencia a salvo en Polaris Locker"
 
+#. Finish in Polaris Locker
+#. AddToAccount, waiting: the title while the person confirms the email in Polaris Locker (a device code is shown).
+msgid "activate.attach.waitTitle"
+msgstr "Termina en Polaris Locker"
+
+#. Check it matches in Polaris Locker.
+#. AddToAccount, waiting: under the sign-in code; the person checks it against the code Polaris Locker shows.
+msgid "activate.attach.waitCheck"
+msgstr "Comprueba en Polaris Locker que el código coincide."
+
+#. Open Polaris Locker again
+#. AddToAccount, waiting: brings the Polaris Locker tab back.
+msgid "activate.attach.reopen"
+msgstr "Volver a abrir Polaris Locker"
+
+#. macos: Open Polaris Locker Again
+msgctxt "macos"
+msgid "activate.attach.reopen"
+msgstr "Volver a abrir Polaris Locker"
+
 #. Your license and its devices stay as they are.
 #. AddToAccount: under the title, above the fields.
 msgid "activate.attach.lede"
 msgstr "Tu licencia y sus dispositivos se quedan como están."
 
-#. We send a code to this email in your browser. {product} never sees it.
+#. Polaris Locker sends a code to this email. {product} never sees it.
 #. AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated).
 msgid "activate.attach.fine"
-msgstr "Enviamos un código a este correo en tu navegador. {product} nunca lo ve."
+msgstr "Polaris Locker envía un código a este correo. {product} nunca lo ve."
 
 #. {product} is in your account
 #. AddToAccount: added. Arguments: {product} = the product's name (never translated).
@@ -3108,6 +3128,11 @@ msgstr "{license} · {term} · {device} pasa a ser el dispositivo {position} de 
 #. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”.
 msgid "signin.consent.replaces"
 msgstr "{license} · reemplaza a {device}"
+
+#. {app}'s license is added to your account.
+#. Consent step before returning to the app (SIGN-IN.md §3.8), when the app keeps the license it holds and attaches it to the account (add to account). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.consent.licenseKept"
+msgstr "La licencia de {app} se añade a tu cuenta."
 
 #. You'll choose a license in {app}.
 #. Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated).
@@ -5330,6 +5355,11 @@ msgstr "Confirmado con código"
 #. Finish step: label above the screen-name suggestion chips.
 msgid "signin.gate.nameFrom"
 msgstr "Usar un nombre de"
+
+#. {app} · {name}
+#. A "Use a name from" chip that offers the name the app passed along. Arguments: {app} = the requesting app's name; {name} = the name the app suggested (neither translated).
+msgid "signin.gate.nameFromApp"
+msgstr "{app} · {name}"
 
 #. Shown in Polaris Locker and in emails.
 #. Finish step: under the screen name. Polaris Locker is never translated.

@@ -649,6 +649,20 @@
             "common.cancel"
           ]
         },
+        "consent-kept": {
+          "copy": ["signin.consent.licenseKept"]
+        },
+        "waiting": {
+          "copy": [
+            "activate.attach.waitTitle",
+            "part.code.label",
+            "a11y.code",
+            "a11y.copyCode",
+            "activate.attach.waitCheck",
+            "activate.attach.reopen",
+            "common.cancel"
+          ]
+        },
         "added": {
           "copy": [
             "activate.attach.done",

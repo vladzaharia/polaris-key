@@ -328,10 +328,17 @@
     <string name="activate_recommend_skip">O continúa sin cuenta. %1$s funciona igual.</string>
     <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
     <string name="activate_recommend_portal">Guarda tu licencia a salvo en Polaris Locker</string>
+    <!-- AddToAccount, waiting: the title while the person confirms the email in Polaris Locker (a device code is shown). -->
+    <string name="activate_attach_waitTitle">Termina en Polaris Locker</string>
+    <!-- AddToAccount, waiting: under the sign-in code; the person checks it against the code Polaris Locker shows. -->
+    <string name="activate_attach_waitCheck">Comprueba en Polaris Locker que el código coincide.</string>
+    <!-- AddToAccount, waiting: brings the Polaris Locker tab back. -->
+    <string name="activate_attach_reopen">Volver a abrir Polaris Locker</string>
+    <string name="activate_attach_reopen__macos">Volver a abrir Polaris Locker</string>
     <!-- AddToAccount: under the title, above the fields. -->
     <string name="activate_attach_lede">Tu licencia y sus dispositivos se quedan como están.</string>
     <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
-    <string name="activate_attach_fine">Enviamos un código a este correo en tu navegador. %1$s nunca lo ve.</string>
+    <string name="activate_attach_fine">Polaris Locker envía un código a este correo. %1$s nunca lo ve.</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$s está en tu cuenta</string>
     <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
@@ -1154,6 +1161,8 @@
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s pasa a ser el dispositivo %4$s de %5$s</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · reemplaza a %2$s</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the app keeps the license it holds and attaches it to the account (add to account). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_licenseKept">La licencia de %1$s se añade a tu cuenta.</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_consent_licenseInApp">Elegirás una licencia en %1$s.</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
@@ -2006,6 +2015,8 @@
     <string name="signin_gate_confirmedByCode">Confirmado con código</string>
     <!-- Finish step: label above the screen-name suggestion chips. -->
     <string name="signin_gate_nameFrom">Usar un nombre de</string>
+    <!-- A "Use a name from" chip that offers the name the app passed along. Arguments: {app} = the requesting app's name; {name} = the name the app suggested (neither translated). Arguments: 1=app, 2=name. -->
+    <string name="signin_gate_nameFromApp">%1$s · %2$s</string>
     <!-- Finish step: under the screen name. Polaris Locker is never translated. -->
     <string name="signin_gate_nameHint">Se muestra en Polaris Locker y en los correos.</string>
     <!-- Finish step: the picture group label. -->
