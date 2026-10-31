@@ -108,6 +108,7 @@ const FR: CopyBundle = {
     op_invalid_for_policy: "Modification non autorisée",
     setting_not_synced: "Non synchronisé",
     collection_unknown: "Collection inconnue",
+    entitlement_required: "Non inclus dans votre licence",
     quota_exceeded: "Stockage plein",
     writes_paused: "Synchronisation en pause",
     unauthorized: "Non connecté",
@@ -164,6 +165,8 @@ const FR: CopyBundle = {
       "Cette modification n'est pas autorisée pour ce réglage.",
     setting_not_synced: "Ce réglage n'est pas synchronisé avec votre compte.",
     collection_unknown: "Cette collection n'est pas disponible.",
+    entitlement_required:
+      "Votre licence n'inclut pas cela. Mettez-la à niveau, puis réessayez.",
     quota_exceeded:
       "Votre stockage synchronisé est plein. Libérez de l'espace, puis réessayez.",
     writes_paused:
