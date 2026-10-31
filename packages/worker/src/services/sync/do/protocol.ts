@@ -410,7 +410,7 @@ export type FinalizePrepareOutcome =
     }
   | { ok: false; busy: true }
   | { ok: false; mismatch: true }
-  | { ok: false; missing: number[] }
+  | { ok: false; missing: (number | string)[] }
   | { ok: false; error: "not_found" | "upload_expired" };
 
 export type FinalizeCommitOutcome =

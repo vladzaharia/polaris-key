@@ -222,3 +222,77 @@ export function storeChunk(
   }
   return row;
 }
+
+// ── references (§13.8.3; the quota rule of §13.8.2) ──────────────────────────────────────────
+
+/**
+ * Moves the quota total and the files' byte counter by the stored size of a chunk. Chunk bytes are
+ * kept in `fileBytes` (and in `bytes`, the quota's measure), so the directory's breakdown stays
+ * whole: a chunk counts once however many files, revisions and parked copies name it.
+ */
+function chargeChunk(store: SyncStore, delta: number): void {
+  const u = store.getUsage();
+  const f = fileUsage(u);
+  store.setUsage({
+    ...u,
+    bytes: Math.max(0, u.bytes + delta),
+    fileBytes: Math.max(0, f.fileBytes + delta),
+  });
+}
+
+/** The identity of a stored file version. */
+export interface FileRef {
+  collection: string;
+  recordId: string;
+  version: number;
+}
+
+/**
+ * A stored file version names `chunkIds`: takes one reference on each. The first reference of a
+ * chunk charges its stored bytes (a chunk some file references already is charged). Every id must
+ * have a chunk row: a plan call pinned it, and nothing deletes a pinned chunk.
+ */
+export function refFileChunks(
+  store: SyncStore,
+  file: FileRef,
+  chunkIds: readonly string[],
+): void {
+  const ids = [...new Set(chunkIds)];
+  for (const id of ids) {
+    const c = store.getChunk(file.collection, id);
+    if (!c) throw new Error("chunk: a file names a chunk with no row");
+    if (c.refs === 0) chargeChunk(store, c.storedBytes);
+    store.putChunk({ ...c, refs: c.refs + 1, unrefAt: 0 });
+  }
+  store.putFileChunks(file.collection, file.recordId, file.version, ids);
+}
+
+/**
+ * A stored file version stops naming its chunks (it died: a revision pruned, a record deleted, a
+ * copy a merge left dead): drops one reference from each, never below zero, and gives a chunk's
+ * bytes back when its last reference goes. The rows go with it, so a repeat finds nothing to drop.
+ * Returns how many chunks ended up with no reference.
+ */
+export function unrefFileChunks(
+  store: SyncStore,
+  file: FileRef,
+  nowMs = 0,
+): number {
+  let freed = 0;
+  for (const id of store.fileChunkIds(
+    file.collection,
+    file.recordId,
+    file.version,
+  )) {
+    const c = store.getChunk(file.collection, id);
+    if (!c) continue;
+    const refs = Math.max(0, c.refs - 1);
+    if (c.refs > 0 && refs === 0) {
+      chargeChunk(store, -c.storedBytes);
+      freed++;
+    }
+    store.putChunk({ ...c, refs, unrefAt: refs === 0 ? nowMs : c.unrefAt });
+  }
+  store.deleteFileChunks(file.collection, file.recordId, file.version);
+  return freed;
+}

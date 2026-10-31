@@ -21,6 +21,7 @@ import {
   type FinalizeResponse,
   type SyncUploadMode,
 } from "@polaris-key/protocol/sync";
+import { refFileChunks } from "./chunks.js";
 import { pruneRevisions } from "./fileRows.js";
 import { formatHlc } from "./hlc.js";
 import { casMismatch } from "./records.js";
@@ -327,6 +328,17 @@ export function commitFinalize(
   };
   store.putFile(file);
   accountFile(store, before, file, upload.reservedBytes);
+  // A delta file names the chunks its upload planned: each gets a reference (and the first one
+  // charges the chunk), then the upload lets go of its pins. Before the prune below, so a chunk
+  // the new version shares with an older one is never released and charged again.
+  if (upload.mode === "chunks") {
+    refFileChunks(
+      store,
+      file,
+      store.uploadChunks(upload.uploadId).map((c) => c.chunkId),
+    );
+    store.deleteUploadChunks(upload.uploadId);
+  }
   // The older versions beyond `keepRevisions` die with this write; the alarm frees their bytes.
   pruneRevisions(
     store,

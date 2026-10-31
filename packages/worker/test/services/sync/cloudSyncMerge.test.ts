@@ -914,6 +914,7 @@ describe("absorb: isolation", () => {
       users(/do\/client\.js"/).filter((f) => f.startsWith("services/sync/")),
     ).toEqual([
       "services/sync/handlers/common.ts",
+      "services/sync/handlers/fileChunks.ts",
       "services/sync/handlers/fileFinalize.ts",
       "services/sync/handlers/fileGet.ts",
       "services/sync/handlers/fileUpload.ts",

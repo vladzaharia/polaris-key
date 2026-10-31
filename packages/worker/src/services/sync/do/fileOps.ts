@@ -655,6 +655,11 @@ export function fileFinalizePrepare(
       finalizeLease(u) + FINALIZE_LEASE_MS > op.serverNow
     )
       return answer({ ok: false, busy: true });
+    // A delta file: every chunk the plan named must be stored (the ids go back to be sent again),
+    // then the manifest, which is part 1.
+    const lost =
+      u.mode === "chunks" ? missingChunks(host.store, u.uploadId) : [];
+    if (lost.length > 0) return answer({ ok: false, missing: lost });
     const missing = missingParts(host, u);
     if (missing.length > 0) return answer({ ok: false, missing });
     const sealed = await sealObject(host, op, u);
