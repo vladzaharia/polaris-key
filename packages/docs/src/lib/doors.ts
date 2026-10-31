@@ -511,6 +511,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "operate/console/products",
           "operate/console/product-actions",
           "operate/console/users",
+          "operate/console/members",
           "operate/console/presentation",
           "operate/console/keys-and-secrets",
           "operate/console/activity",
