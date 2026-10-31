@@ -51,6 +51,12 @@ private struct SyncScenarioFile {
     let root: [String: JSONValue]
     var scenarios: [[String: JSONValue]] { (root["scenarios"]?.arrayValue ?? []).compactMap(\.objectValue) }
     var settingCases: [[String: JSONValue]] { (root["settingCases"]?.arrayValue ?? []).compactMap(\.objectValue) }
+    /// The records binding of cloudSync.saves (plans/U-22.5.md): a second family, skipped by name here
+    /// until the Swift port of the machine's `records`, `putAt`, `removeAt` and `onOutcome` lands.
+    var fileRecordCaseNames: [String] {
+        let family = root["fileRecordCases"]?.objectValue
+        return (family?["scenarios"]?.arrayValue ?? []).compactMap { $0.objectValue?["name"]?.stringValue }
+    }
 
     static func load() throws -> SyncScenarioFile {
         let v = try CorpusLocator.load(JSONValue.self, "sync-scenarios")
@@ -162,6 +168,14 @@ final class SyncScenariosTests: XCTestCase {
             XCTAssertTrue(jsonEqual(m.encryptionSince(), want), "\(at): encryptionSince")
         }
         if let want = o["licence"] { XCTAssertTrue(jsonEqual(licence, want), "\(at): licence") }
+    }
+
+    // MARK: - fileRecordCases (skipped by name until the records binding is ported)
+
+    func testFileRecordCasesAreDeclaredAndSkippedByName() throws {
+        let names = try file().fileRecordCaseNames
+        XCTAssertEqual(names.count, 16, "the family has 16 cases; port them with the records binding")
+        XCTAssertEqual(Set(names).count, names.count)
     }
 
     // MARK: - settingCases (in full)

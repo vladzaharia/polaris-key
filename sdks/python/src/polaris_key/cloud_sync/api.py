@@ -50,8 +50,14 @@ _FORGET_WAIT = 5.0
 class CloudSyncClient:
     """``client.cloud_sync``: the two verbs. A product without the Sync service gets the typed N/A."""
 
-    def __init__(self, api: "CloudSyncApi") -> None:
+    def __init__(self, api: "CloudSyncApi", saves: Any = None) -> None:
         self._api = api
+        #: The saves of the signed-in person (U-22.5): list, read, write, delete, revisions, resolve.
+        self.saves = saves
+
+    def transfers(self) -> List[Any]:
+        """The save writes in flight (each with ``pause``, ``resume``, ``cancel`` and ``wait``)."""
+        return self.saves.transfers() if self.saves is not None else []
 
     def status(self) -> Obj:
         """The machine's status (``state``, ``pending`` ...). ``local`` before Cloud Sync has started.
@@ -75,7 +81,12 @@ class CloudSyncApi:
         subject: Callable[[], Optional[str]],
         emit: Callable[[Obj], None],
         log: Optional[Callable[[str], None]] = None,
+        on_subject: Optional[Callable[[Optional[str]], None]] = None,
+        purge_saves: Optional[Callable[[], None]] = None,
     ) -> None:
+        self._on_subject = on_subject
+        #: Delete the person's save-transfer journal and chunk cache (U-22.5).
+        self._purge_saves = purge_saves
         self._ctx = ctx
         self._host = host
         self._keyring = keyring
@@ -136,6 +147,8 @@ class CloudSyncApi:
     def _subject(self, subject: Optional[str]) -> None:
         self._subject_value = subject
         self._host.bind_subject(subject)
+        if self._on_subject is not None:
+            self._on_subject(subject)
 
     def on_identity(self, change: str, subject: Optional[str] = None) -> None:
         """An ``identity`` event: queued, handled in order on the worker thread."""
@@ -339,6 +352,14 @@ class CloudSyncApi:
                     return
 
     def _forget_ring(self) -> None:
+        """The root leaves memory now (a save codec stops with it); the pin goes in :meth:`_purge`,
+        after the save transfers."""
+        try:
+            self._keyring.lock()
+        except Exception:  # noqa: BLE001
+            self._log("cloud sync: the key ring could not be locked")
+
+    def _forget_pin(self) -> None:
         try:
             self._keyring.forget()
         except Exception:  # noqa: BLE001
@@ -347,6 +368,13 @@ class CloudSyncApi:
 
     def _purge(self) -> None:
         self._tl.purging = True
+        if self._purge_saves is not None:
+            try:
+                self._purge_saves()
+            except Exception:  # noqa: BLE001
+                self._log("cloud sync: the save transfers could not be deleted")
+        # The save transfers are gone before the ring is forgotten.
+        self._forget_pin()
         try:
             self._host.purge()
         except Exception:  # noqa: BLE001

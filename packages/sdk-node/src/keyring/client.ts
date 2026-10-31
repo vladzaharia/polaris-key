@@ -21,6 +21,7 @@
 import { PolarisError, type DeviceKeyPort } from "@polaris-key/client-core";
 import {
   HPKE_KEM_X25519,
+  e2eFileCodec,
   RECOVERY_CODE_INVALID,
   SYNC_KID_BYTES,
   SYNC_ROOT_BYTES,
@@ -40,6 +41,7 @@ import {
   wrapRecovery,
   wrapRoot,
   type BlindKind,
+  type FileCodec,
   type OpenedValue,
   type SyncCryptoPort,
   type SyncJson,
@@ -255,6 +257,54 @@ export class KeyringClient {
     machine.setRoot(this.#held !== null);
     return () => {
       this.#listeners.delete(machine);
+    };
+  }
+
+  /**
+   * The file codec of a collection, sealing with the ring's current root. The root is not exposed:
+   * the codec reads the same array the ring zeroes on `lock()`, so it fails once the ring locks.
+   * Refuses with `sync-locked` while locked.
+   */
+  fileCodec(collection: string): FileCodec {
+    const held = this.#need();
+    const inner = e2eFileCodec(this.#crypto, held.root, collection);
+    // Every use re-checks that this root is still the ring's: once locked, nothing is sealed or
+    // opened (the zeroed buffer would otherwise derive a guessable key).
+    const live = (): void => {
+      if (this.#held !== held) throw locked();
+    };
+    const guard =
+      <A extends unknown[], R>(fn: (...a: A) => R) =>
+      (...a: A): R => {
+        try {
+          live();
+        } catch (e) {
+          return Promise.reject(e) as R;
+        }
+        return fn(...a);
+      };
+    const wrap = (
+      fn: (src: never) => AsyncGenerator<Uint8Array>,
+    ): ((src: never) => AsyncGenerator<Uint8Array>) =>
+      async function* (src) {
+        live();
+        for await (const piece of fn(src)) {
+          live();
+          yield piece;
+        }
+      };
+    return {
+      enc: inner.enc,
+      chunkId: guard(inner.chunkId),
+      chunkObjectBytes: inner.chunkObjectBytes,
+      sealChunk: guard(inner.sealChunk),
+      openChunk: guard(inner.openChunk),
+      storedSize: inner.storedSize,
+      plainSize: inner.plainSize,
+      sealManifest: guard(inner.sealManifest),
+      openManifest: guard(inner.openManifest),
+      sealStream: wrap(inner.sealStream) as FileCodec["sealStream"],
+      openStream: wrap(inner.openStream) as FileCodec["openStream"],
     };
   }
 

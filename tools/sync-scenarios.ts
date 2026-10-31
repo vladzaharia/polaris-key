@@ -3890,11 +3890,690 @@ function selfCheck(file: Obj): void {
   }
 }
 
+// ── file records (U-22.5; plans/U-22.5.md §2–§3) ────────────────────────────────────────────
+// The records binding of `cloudSync.saves`: rows keep the pull's `file` pointer, `records()` lists
+// a collection, `putAt` / `removeAt` write at an exact version and report one outcome each. A
+// separate family, so every case above is untouched. Steps and asserts are the ones above plus
+// `local` calls `putAt` and `removeAt`, and the asserts `rows` (a collection's cloud rows, as
+// `records(collection)` lists them) and `outcomes` (what `onOutcome` reported since the previous
+// assert, in order). The host codec's `wireId` is not a machine call and has no case here.
+
+const FILE_RECORD_CALLS = ["putAt", "removeAt"] as const;
+const FILE_RECORD_ASSERTS = ["rows", "outcomes"] as const;
+
+const F1: Obj = {
+  version: 6,
+  size: 1200,
+  sha256: "a".repeat(64),
+  format: "whole",
+};
+const F2: Obj = {
+  version: 7,
+  size: 90000,
+  sha256: "b".repeat(64),
+  format: "chunks",
+};
+
+/** A record change; `value` undefined is a file-only row (§13.4). */
+const recF = (
+  collection: string,
+  rid: string,
+  value: J | undefined,
+  version: number,
+  file?: Obj,
+): Obj => ({
+  record: [collection, rid],
+  ...(value === undefined ? {} : { value }),
+  version,
+  ...(file ? { file } : {}),
+});
+/** A blinded record id (`x:` and 43 base64url characters), as an E2E file-only row carries. */
+const BLINDED = `x:${"A".repeat(43)}`;
+const ticketed = (m: Obj, ticket: number): Obj => ({ ...m, ticket });
+const del = (
+  id: number,
+  collection: string,
+  rid: string,
+  base: number,
+): Obj => ({
+  mutationId: id,
+  target: { record: [collection, rid] },
+  op: "delete",
+  baseVersion: base,
+});
+const rowOf = (
+  id: string,
+  value: J,
+  version: number,
+  file: Obj | null,
+): Obj => ({
+  id,
+  value,
+  version,
+  file,
+});
+const rowsAre = (rows: Obj[]): Obj => ({ rows: { progress: rows } });
+const outOk = (id: number, version: number): Obj => ({
+  mutationId: id,
+  status: "ok",
+  version,
+});
+
+function fileRecordCases(): Scenario[] {
+  const s: Scenario[] = [];
+  const add = (sc: Omit<Scenario, "wp">): void => {
+    s.push({ ...sc, wp: "U-22.5" });
+  };
+  const rule = ["push-2-conflict-new-mutation"];
+  const e2eBody = (a: PullArgs): Obj => ({
+    ...pullBody(a),
+    encryption: "e2e",
+    encryptionSince: 0,
+  });
+
+  add({
+    name: "file-row-keeps-pointer",
+    description:
+      "A pulled record keeps its file pointer next to its value; records() lists it.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9, [recF("progress", "main", { level: 3 }, 7, F1)]),
+      assert({
+        ...rowsAre([rowOf("main", { level: 3 }, 7, F1)]),
+        records: { "progress/main": val({ level: 3 }, "cloud") },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "file-only-row-is-good",
+    description:
+      "A record with a file and no value is a good row with a null value (server mode).",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9, [recF("progress", "slot", undefined, 8, F2)]),
+      assert({
+        ...rowsAre([rowOf("slot", null, 8, F2)]),
+        records: { "progress/slot": val(null, "cloud") },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "file-only-row-e2e",
+    description:
+      "In end-to-end mode a file-only row carries nothing to judge and stays readable, while a plaintext row with a value at or above encryptionSince is still unreadable.",
+    rules: rule,
+    init: init({ encryption: "e2e" }),
+    steps: [
+      assert({ requests: [pullReq(0, C1)], status: st("syncing", 0) }),
+      respond(
+        e2eBody({
+          serverNow: T0,
+          cursor: 9,
+          changes: [
+            recF("progress", BLINDED, undefined, 8, F2),
+            recF("progress", "plain", { level: 1 }, 9, F1),
+          ],
+        }),
+        200,
+        { changes: [{ seq: 8 }, { seq: 9 }] },
+      ),
+      assert({
+        ...rowsAre([rowOf(BLINDED, null, 8, F2)]),
+        records: { [`progress/${BLINDED}`]: val(null, "cloud") },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "file-only-row-invalid-is-bad",
+    description:
+      "A record change the host could not open (a garbage ct) is unreadable even when it names a file: the pointer is not taken and the row is not listed.",
+    rules: rule,
+    init: init({ encryption: "e2e" }),
+    steps: [
+      assert({ requests: [pullReq(0, C1)], status: st("syncing", 0) }),
+      respond(
+        e2eBody({
+          serverNow: T0,
+          cursor: 9,
+          changes: [recF("progress", BLINDED, undefined, 8, F2)],
+        }),
+        200,
+        { changes: [{ invalid: true }] },
+      ),
+      assert({
+        ...rowsAre([]),
+        records: { [`progress/${BLINDED}`]: null },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "file-only-row-e2e-plain-id-is-not-a-save",
+    description:
+      "In end-to-end mode a file-only row under a plain (unblinded) id is not a save: it is unreadable, like any plaintext row at or above encryptionSince.",
+    rules: rule,
+    init: init({ encryption: "e2e" }),
+    steps: [
+      assert({ requests: [pullReq(0, C1)], status: st("syncing", 0) }),
+      respond(
+        e2eBody({
+          serverNow: T0,
+          cursor: 9,
+          changes: [recF("progress", "slot1", undefined, 8, F2)],
+        }),
+        200,
+        { changes: [{ seq: 8 }] },
+      ),
+      assert({
+        ...rowsAre([]),
+        records: { "progress/slot1": null },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "file-row-e2e-sealed",
+    description:
+      "A sealed record that has a file keeps the pointer beside the value the host opened.",
+    rules: rule,
+    init: init({ encryption: "e2e" }),
+    steps: [
+      assert({ requests: [pullReq(0, C1)], status: st("syncing", 0) }),
+      respond(
+        e2eBody({
+          serverNow: T0,
+          cursor: 9,
+          changes: [recF("progress", "main", { level: 3 }, 7, F1)],
+        }),
+        200,
+        { changes: [{ sealed: true }] },
+      ),
+      assert({
+        ...rowsAre([rowOf("main", { level: 3 }, 7, F1)]),
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-ok",
+    description:
+      "putAt pushes one set at exactly the version given; its acknowledgement is one ok outcome and the row moves to the new version, file kept.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9, [recF("progress", "main", { level: 3 }, 7, F1)]),
+      local("putAt", ["progress", "main", { level: 4 }, 7], {
+        ok: true,
+        mutationId: 1,
+      }),
+      assert({
+        requests: [
+          pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)]),
+        ],
+        journal: {
+          [ALICE]: partition(C1, 2, 9, [
+            ticketed(put(1, "progress", "main", { level: 4 }, 7), 1),
+          ]),
+        },
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 1,
+          results: [ok(1, 8)],
+          changes: [recF("progress", "main", { level: 4 }, 8, F1)],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(1, 8)],
+        ...rowsAre([rowOf("main", { level: 4 }, 8, F1)]),
+        journal: { [ALICE]: partition(C1, 2, 10, []) },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-create",
+    description: 'putAt at "*" creates a record that does not exist yet.',
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9),
+      local("putAt", ["progress", "fresh", { level: 1 }, "*"], {
+        ok: true,
+        mutationId: 1,
+      }),
+      assert({
+        requests: [
+          pushReq(C1, 9, [put(1, "progress", "fresh", { level: 1 }, "*")]),
+        ],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 1,
+          results: [ok(1, 10)],
+          changes: [recF("progress", "fresh", { level: 1 }, 10)],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(1, 10)],
+        ...rowsAre([rowOf("fresh", { level: 1 }, 10, null)]),
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-not-coalesced",
+    description:
+      "A putAt is its own mutation: a later put coalesces into the queued put, never into the putAt. When the server has moved on, the putAt reports a conflict with the server copy and is not rebased.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9, [recF("progress", "main", { level: 3 }, 7)]),
+      network("offline"),
+      local("put", ["progress", "main", { level: 4 }], { ok: true }),
+      local("putAt", ["progress", "main", { level: 5 }, 7], {
+        ok: true,
+        mutationId: 1,
+      }),
+      local("put", ["progress", "main", { level: 6 }], { ok: true }),
+      assert({
+        journal: {
+          [ALICE]: partition(C1, 3, 9, [
+            put(1, "progress", "main", { level: 6 }, 7),
+            ticketed(put(2, "progress", "main", { level: 5 }, 7), 1),
+          ]),
+        },
+      }),
+      network("online"),
+      assert({
+        requests: [
+          pushReq(C1, 9, [
+            put(1, "progress", "main", { level: 6 }, 7),
+            put(2, "progress", "main", { level: 5 }, 7),
+          ]),
+        ],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 2,
+          results: [ok(1, 8), conflict(2, { value: { level: 6 }, version: 8 })],
+          changes: [recF("progress", "main", { level: 6 }, 8)],
+        }),
+      ),
+      assert({
+        outcomes: [
+          {
+            mutationId: 1,
+            status: "conflict",
+            server: { value: { level: 6 }, version: 8, file: null },
+          },
+        ],
+        requests: [],
+        ...rowsAre([rowOf("main", { level: 6 }, 8, null)]),
+        journal: { [ALICE]: partition(C1, 3, 10, []) },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-conflict-not-rebased",
+    description:
+      "A stale putAt under a keep-local collection reports the server copy, file pointer included, and sends nothing more.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9, [recF("progress", "main", { level: 3 }, 7, F1)]),
+      local("putAt", ["progress", "main", { level: 4 }, 7], {
+        ok: true,
+        mutationId: 1,
+      }),
+      assert({
+        requests: [
+          pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)]),
+        ],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 1,
+          results: [conflict(1, { value: { level: 5 }, version: 8, file: F1 })],
+          changes: [recF("progress", "main", { level: 5 }, 8, F1)],
+        }),
+      ),
+      assert({
+        outcomes: [
+          {
+            mutationId: 1,
+            status: "conflict",
+            server: { value: { level: 5 }, version: 8, file: F1 },
+          },
+        ],
+        requests: [],
+        ...rowsAre([rowOf("main", { level: 5 }, 8, F1)]),
+        journal: { [ALICE]: partition(C1, 2, 10, []) },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-rejected",
+    description:
+      "A refused putAt reports one rejected outcome (and the rejected event); the row is unchanged.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9, [recF("progress", "main", { level: 3 }, 7, F1)]),
+      local("putAt", ["progress", "main", { level: 4 }, 7], {
+        ok: true,
+        mutationId: 1,
+      }),
+      assert({
+        requests: [
+          pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)]),
+        ],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 9,
+          lastMutationId: 1,
+          results: [rejected(1, "quota_exceeded")],
+        }),
+      ),
+      assert({
+        outcomes: [
+          { mutationId: 1, status: "rejected", code: "quota_exceeded" },
+        ],
+        events: [{ type: "rejected", mutationId: 1, code: "quota_exceeded" }],
+        ...rowsAre([rowOf("main", { level: 3 }, 7, F1)]),
+        journal: { [ALICE]: partition(C1, 2, 9, []) },
+      }),
+    ],
+  });
+
+  add({
+    name: "remove-at-ok",
+    description:
+      "removeAt pushes one delete at exactly the version given; the acknowledgement removes the row.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9, [recF("progress", "main", { level: 3 }, 7, F1)]),
+      local("removeAt", ["progress", "main", 7], { ok: true, mutationId: 1 }),
+      assert({
+        requests: [pushReq(C1, 9, [del(1, "progress", "main", 7)])],
+        records: { "progress/main": null },
+        journal: {
+          [ALICE]: partition(C1, 2, 9, [
+            ticketed(del(1, "progress", "main", 7), 1),
+          ]),
+        },
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 1,
+          results: [ok(1, 9)],
+          tombstones: [{ record: ["progress", "main"], version: 9 }],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(1, 9)],
+        ...rowsAre([]),
+        records: { "progress/main": null },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-dropped-on-sign-out",
+    description:
+      "A putAt still pending at sign-out is not kept: its caller is told it was dropped, and it is not counted as unsynced data.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9, [recF("progress", "main", { level: 3 }, 7)]),
+      network("offline"),
+      local("putAt", ["progress", "main", { level: 4 }, 7], {
+        ok: true,
+        mutationId: 1,
+      }),
+      signOut(),
+      assert({
+        outcomes: [{ mutationId: 1, status: "dropped" }],
+        events: [signedOut("signOut", 0)],
+        ...rowsAre([]),
+        journal: { [ALICE]: partition(C1, 2, 0, []) },
+        status: st("local", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-survives-relaunch",
+    description:
+      "A queued putAt is journalled with its id: after a relaunch it is sent unchanged and still reports its outcome under the id it returned.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9, [recF("progress", "main", { level: 3 }, 7)]),
+      network("offline"),
+      local("putAt", ["progress", "main", { level: 4 }, 7], {
+        ok: true,
+        mutationId: 1,
+      }),
+      { relaunch: {} },
+      assert({
+        journal: {
+          [ALICE]: partition(C1, 2, 9, [
+            ticketed(put(1, "progress", "main", { level: 4 }, 7), 1),
+          ]),
+        },
+      }),
+      network("online"),
+      assert({
+        requests: [
+          pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)]),
+        ],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 1,
+          results: [ok(1, 8)],
+          changes: [recF("progress", "main", { level: 4 }, 8)],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(1, 8)],
+        ...rowsAre([rowOf("main", { level: 4 }, 8, null)]),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-ticket-survives-renumbering",
+    description:
+      "A client_mismatch renumbers pending mutations from 1; tickets are a separate counter, so a ticket stays what putAt returned and a new one never collides with a pending one.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9),
+      local("putAt", ["progress", "a", { n: 1 }, "*"], {
+        ok: true,
+        mutationId: 1,
+      }),
+      assert({
+        requests: [pushReq(C1, 9, [put(1, "progress", "a", { n: 1 }, "*")])],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 1,
+          results: [ok(1, 10)],
+          changes: [recF("progress", "a", { n: 1 }, 10)],
+        }),
+      ),
+      local("putAt", ["progress", "b", { n: 2 }, "*"], {
+        ok: true,
+        mutationId: 2,
+      }),
+      assert({
+        outcomes: [outOk(1, 10)],
+        requests: [pushReq(C1, 10, [put(2, "progress", "b", { n: 2 }, "*")])],
+      }),
+      respond(
+        errorBody("client_mismatch", "clientId belongs to another device."),
+        409,
+      ),
+      local("putAt", ["progress", "c", { n: 3 }, "*"], {
+        ok: true,
+        mutationId: 3,
+      }),
+      assert({
+        requests: [pushReq(C2, 10, [put(1, "progress", "b", { n: 2 }, "*")])],
+        journal: {
+          [ALICE]: partition(C2, 3, 10, [
+            ticketed(put(1, "progress", "b", { n: 2 }, "*"), 2),
+            ticketed(put(2, "progress", "c", { n: 3 }, "*"), 3),
+          ]),
+        },
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 11,
+          lastMutationId: 1,
+          results: [ok(1, 11)],
+          changes: [recF("progress", "b", { n: 2 }, 11)],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(2, 11)],
+        requests: [pushReq(C2, 11, [put(2, "progress", "c", { n: 3 }, "*")])],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 12,
+          lastMutationId: 2,
+          results: [ok(2, 12)],
+          changes: [recF("progress", "c", { n: 3 }, 12)],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(3, 12)],
+        ...rowsAre([
+          rowOf("a", { n: 1 }, 10, null),
+          rowOf("b", { n: 2 }, 11, null),
+          rowOf("c", { n: 3 }, 12, null),
+        ]),
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-refused",
+    description:
+      "putAt and removeAt answer collection-unknown for a collection that is not a declared revision collection, and signed-out with no person.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9),
+      local("putAt", ["unlocks", "x", 1, "*"], {
+        ok: false,
+        error: "collection-unknown",
+      }),
+      local("putAt", ["nope", "x", 1, "*"], {
+        ok: false,
+        error: "collection-unknown",
+      }),
+      local("removeAt", ["unlocks", "x", 1], {
+        ok: false,
+        error: "collection-unknown",
+      }),
+      signOut(),
+      local("putAt", ["progress", "x", 1, "*"], {
+        ok: false,
+        error: "signed-out",
+      }),
+      assert({
+        requests: [],
+        outcomes: [],
+        journal: { [ALICE]: partition(C1, 1, 0, []) },
+        status: st("local", 0),
+      }),
+    ],
+  });
+
+  return s;
+}
+
+function checkFileRecordCases(cases: Scenario[]): void {
+  const fail = (m: string): never => {
+    throw new Error(`sync-scenarios fileRecordCases: ${m}`);
+  };
+  const names = new Set<string>();
+  for (const sc of cases) {
+    if (!NAME_RE.test(sc.name)) fail(`${sc.name}: name is not kebab-case`);
+    if (names.has(sc.name)) fail(`${sc.name}: duplicate name`);
+    names.add(sc.name);
+    if (!("assert" in sc.steps[sc.steps.length - 1]!))
+      fail(`${sc.name}: does not end with an assert`);
+    for (const step of sc.steps) {
+      const body = Object.values(step)[0];
+      if (!isObj(body)) fail(`${sc.name}: a step is not an object`);
+      if ("assert" in step)
+        for (const k of Object.keys(body as Obj))
+          if (
+            !(ASSERTS as readonly string[]).includes(k) &&
+            !(FILE_RECORD_ASSERTS as readonly string[]).includes(k)
+          )
+            fail(`${sc.name}: unknown assert ${k}`);
+      if (
+        "local" in step &&
+        !(CALLS as readonly string[]).includes(String((body as Obj).call)) &&
+        !(FILE_RECORD_CALLS as readonly string[]).includes(
+          String((body as Obj).call),
+        )
+      )
+        fail(`${sc.name}: unknown call`);
+    }
+  }
+}
+
 export function buildSyncScenarios(): Obj {
   const file: Obj = {
     syncScenariosVersion: SYNC_SCENARIOS_VERSION,
     description:
-      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Version 3 adds the end-to-end policy: `init.encryption` and `init.hasRoot`, the `root` step (the device gains or loses the ring's root), `respond.opened` (what the host codec found for each opened row; the fake transport itself speaks plaintext) and the `encryptionSince` assert. Literal data, not generated by an implementation.",
+      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Version 3 adds the end-to-end policy: `init.encryption` and `init.hasRoot`, the `root` step (the device gains or loses the ring's root), `respond.opened` (what the host codec found for each opened row; the fake transport itself speaks plaintext) and the `encryptionSince` assert. Literal data, not generated by an implementation. `fileRecordCases` (appended with the records binding of cloudSync.saves, plans/U-22.5.md) is a second family run by the same steps: its `calls` add `putAt` and `removeAt`, its `asserts` add `rows` (a collection's cloud rows, as `records(collection)` lists them) and `outcomes` (what `onOutcome` reported since the previous assert); its rows keep the pull's `file` pointer. A runner without the binding skips the family by name.",
     product: PRODUCT,
     constants: {
       debounceMs: 2000,
@@ -3910,7 +4589,13 @@ export function buildSyncScenarios(): Obj {
     rules: RULES,
     scenarios: scenarios() as unknown as J,
     settingCases: settingCases() as unknown as J,
+    fileRecordCases: {
+      calls: [...FILE_RECORD_CALLS],
+      asserts: [...FILE_RECORD_ASSERTS],
+      scenarios: fileRecordCases() as unknown as J,
+    },
   };
   selfCheck(file);
+  checkFileRecordCases(fileRecordCases());
   return file;
 }

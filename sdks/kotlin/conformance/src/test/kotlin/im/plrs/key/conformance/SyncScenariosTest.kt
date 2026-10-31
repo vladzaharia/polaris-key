@@ -68,6 +68,16 @@ class SyncScenariosTest : ConformanceSuite() {
     }
 
     @Test
+    fun fileRecordCasesAreDeclaredAndSkippedByName() {
+        // The records binding of cloudSync.saves (plans/U-22.5.md): a second family, skipped by name here
+        // until the Kotlin port of the machine's records, putAt, removeAt and onOutcome lands.
+        val family = corpus["fileRecordCases"] as JsonObject
+        val names = family["scenarios"].arrayValue!!.map { (it as JsonObject)["name"].stringValue!! }
+        assertEquals("the family has 16 cases; port them with the records binding", 16, names.size)
+        assertEquals(names.size, names.toSet().size)
+    }
+
+    @Test
     fun settingCasesRunInFull() {
         for (case in settingCases) {
             val name = case["name"].stringValue
