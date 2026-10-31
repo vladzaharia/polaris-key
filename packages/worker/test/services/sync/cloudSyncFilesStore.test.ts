@@ -234,7 +234,7 @@ describe.each(Object.entries(makers))(
   },
 );
 
-describe("SqlStore: schema v4", () => {
+describe("SqlStore: schema v4 and v5", () => {
   it("migrates a v3 object: rows kept, file tables made, no data written", () => {
     const storage = new DoStorageMock();
     for (const step of MIGRATIONS.slice(0, 3))
@@ -251,8 +251,8 @@ describe("SqlStore: schema v4", () => {
     );
     expect(store.schemaVersion()).toBe(3);
     store.prepare(false);
-    expect(store.schemaVersion()).toBe(4);
-    expect(SCHEMA_VERSION).toBe(4);
+    expect(store.schemaVersion()).toBe(SCHEMA_VERSION);
+    expect(SCHEMA_VERSION).toBe(5);
     expect(store.getRecord("saves", "s")?.value).toBe(5);
     expect(
       rowCounts(storage, ["files", "uploads", "upload_parts", "ssec_keys"]),

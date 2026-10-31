@@ -5,7 +5,7 @@
  */
 
 /** The schema version this build writes. A newer one in storage is refused, never rewritten. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /** Steps to reach each version; `MIGRATIONS[n - 1]` takes a store from version n - 1 to n. */
 export const MIGRATIONS: readonly (readonly string[])[] = [
@@ -93,6 +93,27 @@ export const MIGRATIONS: readonly (readonly string[])[] = [
        PRIMARY KEY (upload_id, n)) WITHOUT ROWID`,
     `CREATE TABLE IF NOT EXISTS ssec_keys (
        kid TEXT PRIMARY KEY, key BLOB NOT NULL) WITHOUT ROWID`,
+  ],
+  // v5 (U-37.1, plans/U-22-U-23-U-37-U-41-slices.md §3.1): delta files. `chunks` is one row per
+  // (collection, chunk id) with its reference count; `file_chunks` is which chunks a stored file
+  // version names; `upload_chunks` is what an open upload planned and pins. Nothing existing
+  // changes; an object with no delta file has empty tables.
+  [
+    `CREATE TABLE IF NOT EXISTS chunks (
+       collection TEXT NOT NULL, chunk_id TEXT NOT NULL, object_key TEXT NOT NULL,
+       stored_bytes INTEGER NOT NULL, refs INTEGER NOT NULL, unref_at INTEGER NOT NULL,
+       ssec_kid TEXT,
+       PRIMARY KEY (collection, chunk_id)) WITHOUT ROWID`,
+    `CREATE INDEX IF NOT EXISTS chunks_refs ON chunks (refs, unref_at)`,
+    `CREATE TABLE IF NOT EXISTS file_chunks (
+       collection TEXT NOT NULL, record_id TEXT NOT NULL, version INTEGER NOT NULL,
+       chunk_id TEXT NOT NULL,
+       PRIMARY KEY (collection, record_id, version, chunk_id)) WITHOUT ROWID`,
+    `CREATE TABLE IF NOT EXISTS upload_chunks (
+       upload_id TEXT NOT NULL, chunk_id TEXT NOT NULL, stored_bytes INTEGER NOT NULL,
+       have INTEGER NOT NULL, reserved INTEGER NOT NULL,
+       PRIMARY KEY (upload_id, chunk_id)) WITHOUT ROWID`,
+    `CREATE INDEX IF NOT EXISTS upload_chunks_chunk ON upload_chunks (chunk_id)`,
   ],
 ];
 
