@@ -141,7 +141,7 @@ extension PolarisKeyPreviewState {
     public static let all: [PolarisKeyPreviewState] =
         gate + welcome + signIn + nearby + activate + offlineActivation + deviceLimit + statusAndGrace + update
         + settings
-        + devicesAndPaywall + cloudSync
+        + devicesAndPaywall + cloudSync + saveConflict
 
     /// The previews of one component.
     public static func of(_ component: KitComponent) -> [PolarisKeyPreviewState] {
@@ -732,6 +732,19 @@ extension PolarisKeyPreviewState {
         .init(
             .cloudSyncStatus, "ring-changed",
             base { $0.cloudSync = KitCloudSync(state: .ringChanged) }),
+        .init(
+            .cloudSyncStatus, "transferring",
+            base {
+                $0.cloudSync = KitCloudSync(
+                    state: .transferring, lastSynced: "2 min ago",
+                    transfer: .init(size: "38 MB", total: "61 MB", fraction: 0.62))
+            }),
+        .init(
+            .cloudSyncStatus, "waiting",
+            base { $0.cloudSync = KitCloudSync(state: .waiting, lastSynced: "2 min ago") }),
+        .init(
+            .cloudSyncStatus, "transfer-failed",
+            base { $0.cloudSync = KitCloudSync(state: .transferFailed, lastSynced: "2 min ago") }),
         .init(.unlockSync, "code", base { $0.unlockSync = KitUnlockSync(step: .code) }),
         .init(.unlockSync, "invalid", base { $0.unlockSync = KitUnlockSync(step: .invalid) }),
         .init(.unlockSync, "working", base { $0.unlockSync = KitUnlockSync(step: .working) }),
@@ -761,6 +774,49 @@ extension PolarisKeyPreviewState {
                 $0.ringChange = KitRingChange(
                     by: "Maya's MacBook",
                     served: .init(ringId: "ring_9f3a", epoch: 2, rootKid: "kid_b21c"), failed: true)
+            }),
+    ]
+
+    private static let thisCopy = KitSaveConflict.Copy(when: "today, 14:02")
+    private static let otherCopy = KitSaveConflict.Copy(
+        when: "yesterday, 21:40", device: "Maya's Steam Deck")
+
+    static let saveConflict: [PolarisKeyPreviewState] = [
+        .init(
+            .saveConflict, "choose",
+            base {
+                $0.saveConflict = KitSaveConflict(
+                    step: .choose, local: thisCopy, remote: otherCopy, bothAvailable: true)
+            }),
+        .init(
+            .saveConflict, "choose", variant: "slots-full",
+            base {
+                $0.saveConflict = KitSaveConflict(
+                    step: .choose, local: thisCopy, remote: otherCopy, bothAvailable: false)
+            }),
+        .init(
+            .saveConflict, "choose", variant: "deleted",
+            base {
+                $0.saveConflict = KitSaveConflict(
+                    step: .choose, local: thisCopy, remoteDeleted: true, bothAvailable: true)
+            }),
+        .init(
+            .saveConflict, "keeping",
+            base {
+                $0.saveConflict = KitSaveConflict(
+                    step: .keeping, local: thisCopy, remote: otherCopy, keep: .local)
+            }),
+        .init(
+            .saveConflict, "kept",
+            base {
+                $0.saveConflict = KitSaveConflict(
+                    step: .kept, local: thisCopy, remote: otherCopy, keep: .local)
+            }),
+        .init(
+            .saveConflict, "failed",
+            base {
+                $0.saveConflict = KitSaveConflict(
+                    step: .failed, local: thisCopy, remote: otherCopy, keep: .local)
             }),
     ]
 }

@@ -966,6 +966,30 @@ public struct KitCloudSync: Sendable, Codable, Equatable, Hashable {
     public enum State: String, Sendable, Codable, CaseIterable {
         case synced, syncing, offline, conflict, error, locked
         case ringChanged = "ring-changed"
+        /// A save transfer is running. Never reads as synced.
+        case transferring
+        /// A transfer is paused for `reason`.
+        case waiting
+        case transferFailed = "transfer-failed"
+    }
+
+    /// Why a transfer waits (default: the network).
+    public enum Reason: String, Sendable, Codable, CaseIterable {
+        case network, battery, background
+    }
+
+    /// A running transfer: display-ready sizes, and a fraction (counted bytes, 0 to 1) only when
+    /// the bar may be determinate.
+    public struct Transfer: Sendable, Codable, Equatable, Hashable {
+        public var size: String?
+        public var total: String?
+        public var fraction: Double?
+
+        public init(size: String? = nil, total: String? = nil, fraction: Double? = nil) {
+            self.size = size
+            self.total = total
+            self.fraction = fraction
+        }
     }
 
     public var state: State
@@ -974,14 +998,93 @@ public struct KitCloudSync: Sendable, Codable, Equatable, Hashable {
     public var canReview: Bool?
     /// When it last synced, relative ("2 min ago").
     public var lastSynced: String?
+    public var transfer: Transfer?
+    public var reason: Reason?
 
     public init(
-        state: State, signedIn: Bool? = nil, canReview: Bool? = nil, lastSynced: String? = nil
+        state: State, signedIn: Bool? = nil, canReview: Bool? = nil, lastSynced: String? = nil,
+        transfer: Transfer? = nil, reason: Reason? = nil
     ) {
         self.state = state
         self.signedIn = signedIn
         self.canReview = canReview
         self.lastSynced = lastSynced
+        self.transfer = transfer
+        self.reason = reason
+    }
+}
+
+// MARK: - Save conflict
+
+/// SaveConflict (ui-matrix `saveConflict`): the same save changed on two devices. `remote` is nil
+/// with `remoteDeleted` true when the other copy was deleted (the matrix's `remote: null`); an
+/// absent `remote` is an other copy the host knows nothing about.
+public struct KitSaveConflict: Sendable, Codable, Equatable, Hashable {
+    public enum Step: String, Sendable, Codable, CaseIterable {
+        case choose, keeping, kept, failed
+    }
+
+    /// The copy kept (or being kept): this device's, the other, or both.
+    public enum Keep: String, Sendable, Codable, CaseIterable {
+        case local, remote, both
+    }
+
+    /// One copy: display-ready.
+    public struct Copy: Sendable, Codable, Equatable, Hashable {
+        public var when: String?
+        public var device: String?
+
+        public init(when: String? = nil, device: String? = nil) {
+            self.when = when
+            self.device = device
+        }
+    }
+
+    public var step: Step
+    public var local: Copy?
+    public var remote: Copy?
+    /// The other copy was deleted (`remote: null`): nothing to keep or copy.
+    public var remoteDeleted: Bool
+    /// A free slot of the 16 exists. Absent or false draws Keep both disabled, with its reason.
+    public var bothAvailable: Bool?
+    public var keep: Keep?
+
+    public init(
+        step: Step, local: Copy? = nil, remote: Copy? = nil, remoteDeleted: Bool = false,
+        bothAvailable: Bool? = nil, keep: Keep? = nil
+    ) {
+        self.step = step
+        self.local = local
+        self.remote = remote
+        self.remoteDeleted = remoteDeleted
+        self.bothAvailable = bothAvailable
+        self.keep = keep
+    }
+
+    private enum CodingKeys: String, CodingKey { case step, local, remote, bothAvailable, keep }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        step = try c.decode(Step.self, forKey: .step)
+        local = try c.decodeIfPresent(Copy.self, forKey: .local)
+        // `remote: null` is a deletion; an absent `remote` is not.
+        var deleted = false
+        if c.contains(.remote) { deleted = try c.decodeNil(forKey: .remote) }
+        remoteDeleted = deleted
+        remote = remoteDeleted ? nil : try c.decodeIfPresent(Copy.self, forKey: .remote)
+        bothAvailable = try c.decodeIfPresent(Bool.self, forKey: .bothAvailable)
+        keep = try c.decodeIfPresent(Keep.self, forKey: .keep)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(step, forKey: .step)
+        try c.encodeIfPresent(local, forKey: .local)
+        if remoteDeleted { try c.encodeNil(forKey: .remote) } else {
+            try c.encodeIfPresent(remote, forKey: .remote)
+        }
+        try c.encodeIfPresent(bothAvailable, forKey: .bothAvailable)
+        try c.encodeIfPresent(keep, forKey: .keep)
     }
 }
 
@@ -1089,6 +1192,7 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
     public var unlockSync: KitUnlockSync?
     public var recoveryCode: KitRecoveryCode?
     public var ringChange: KitRingChange?
+    public var saveConflict: KitSaveConflict?
 
     public init(
         integrator: KitIntegrator? = nil, presentation: KitPresentation? = nil,
@@ -1107,7 +1211,8 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         account: KitAccount? = nil, entitlement: KitEntitlement? = nil,
         offers: KitOffers? = nil, toast: KitToast? = nil, error: KitError? = nil,
         cloudSync: KitCloudSync? = nil, unlockSync: KitUnlockSync? = nil,
-        recoveryCode: KitRecoveryCode? = nil, ringChange: KitRingChange? = nil
+        recoveryCode: KitRecoveryCode? = nil, ringChange: KitRingChange? = nil,
+        saveConflict: KitSaveConflict? = nil
     ) {
         self.integrator = integrator
         self.presentation = presentation
@@ -1149,6 +1254,7 @@ public struct KitInputs: Sendable, Codable, Equatable, Hashable {
         self.unlockSync = unlockSync
         self.recoveryCode = recoveryCode
         self.ringChange = ringChange
+        self.saveConflict = saveConflict
     }
 
     /// Whether `service` is on (an absent list means all are).

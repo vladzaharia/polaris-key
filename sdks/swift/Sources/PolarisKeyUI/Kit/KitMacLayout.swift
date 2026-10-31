@@ -96,6 +96,7 @@
         let hero: Bool
         let header: Bool
         let tier: String?
+        var dockActions = true
         @ViewBuilder let heading: () -> Heading
         @ViewBuilder let content: () -> Content
         @ViewBuilder let actions: () -> Actions
@@ -166,7 +167,7 @@
             // At an accessibility text size the content outgrows the window: the actions stay
             // pinned under it, so the primary is always in the first viewport and the content (the
             // device list) is what scrolls. The text never shrinks.
-            let pinsActions = pinned || typeSize.isAccessibilitySize
+            let pinsActions = dockActions && (pinned || typeSize.isAccessibilitySize)
             return ScrollView {
                 VStack(alignment: .leading, spacing: style.space(.lg)) {
                     if header && !hero && !pinned {

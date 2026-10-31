@@ -429,29 +429,40 @@ public struct RingChangeView: View {
 
 // MARK: - CloudSyncStatus
 
-/// The status row for `locked` and `ring-changed`. Its button always draws: Unlock sync opens
-/// UnlockSync and Review opens RingChange, so the row is never a dead end.
+/// The status row. Its button always draws where there is one: Unlock sync opens UnlockSync, Review
+/// opens RingChange, and Try again repeats a failed transfer, so the row is never a dead end. The
+/// transfer states (`transferring`, `waiting`, `transfer-failed`) never read as synced: the label
+/// comes first, then the figures, and a running transfer draws a bar on its own row with real width
+/// at every size (determinate only with counted bytes).
 public struct CloudSyncStatusView: View {
     let screen: KitScreen<CloudSyncStatusState>
     let onUnlock: () -> Void
     let onReview: () -> Void
     let onSignIn: (() -> Void)?
+    let onRetry: (() -> Void)?
+    /// Counted bytes, 0 to 1, for a determinate bar; nil draws an indeterminate one.
+    let fraction: Double?
     @Environment(\.dynamicTypeSize) private var dynamicType
+    @Environment(\.polarisKeyStrings) private var strings
 
     public init(
         screen: KitScreen<CloudSyncStatusState>, onUnlock: @escaping () -> Void,
-        onReview: @escaping () -> Void, onSignIn: (() -> Void)? = nil
+        onReview: @escaping () -> Void, onSignIn: (() -> Void)? = nil,
+        onRetry: (() -> Void)? = nil, fraction: Double? = nil
     ) {
         self.screen = screen
         self.onUnlock = onUnlock
         self.onReview = onReview
         self.onSignIn = onSignIn
+        self.onRetry = onRetry
+        self.fraction = fraction
     }
 
     @MainActor public init(model: CloudSyncStatusModel) {
         self.init(
             screen: model.screen, onUnlock: model.onUnlock, onReview: model.onReview,
-            onSignIn: model.onSignIn)
+            onSignIn: model.onSignIn, onRetry: model.onRetry,
+            fraction: model.inputs.cloudSync?.transfer?.fraction)
     }
 
     public var body: some View {
@@ -463,24 +474,33 @@ public struct CloudSyncStatusView: View {
                 switch state {
                 case .locked: return screen.line("cloudSync.unlock").map { ($0, onUnlock) }
                 case .ringChanged: return screen.line("common.review").map { ($0, onReview) }
+                case .transferFailed:
+                    return onRetry.flatMap { run in screen.line("common.tryAgain").map { ($0, run) } }
+                case .transferring, .waiting: return nil
                 default: return screen.line("common.review").map { ($0, onReview) }
                 }
             }()
             kitStyle { style in
-                // One row at normal sizes; the button drops under the text at accessibility sizes.
-                let layout =
-                    dynamicType.isAccessibilitySize
-                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: style.space(.xs)))
-                    : AnyLayout(HStackLayout(alignment: .center, spacing: style.space(.sm)))
-                layout {
-                    text(style, state, line)
-                    if !dynamicType.isAccessibilitySize { Spacer(minLength: style.space(.xs)) }
-                    if let (label, run) = action {
-                        KitButton(line: label, kind: .quiet, fullWidth: false, compact: true, action: run)
+                VStack(alignment: .leading, spacing: style.space(.xs)) {
+                    // One row at normal sizes; the button drops under the text at accessibility sizes.
+                    let layout =
+                        dynamicType.isAccessibilitySize
+                        ? AnyLayout(VStackLayout(alignment: .leading, spacing: style.space(.xs)))
+                        : AnyLayout(HStackLayout(alignment: .center, spacing: style.space(.sm)))
+                    layout {
+                        text(style, state, line)
+                        if !dynamicType.isAccessibilitySize { Spacer(minLength: style.space(.xs)) }
+                        if let (label, run) = action {
+                            KitButton(
+                                line: label, kind: state == .transferFailed ? .secondary : .quiet,
+                                fullWidth: false, compact: true, action: run
+                            )
                             .frame(minHeight: 44)
+                        }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    if state == .transferring { bar(style, line) }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -490,16 +510,19 @@ public struct CloudSyncStatusView: View {
 
     private enum Tone { case neutral, warning, danger }
 
-    /// The glyph and tone per state, as ui-core assigns them: locked, ring-changed and signed-out are
-    /// neutral, an error is danger, a conflict is the one warning.
+    /// The glyph and tone per state, as ui-core assigns them: locked, ring-changed, waiting and
+    /// signed-out are neutral, an error and a failed transfer are danger, a conflict is the one
+    /// warning.
     private func glyph(_ state: CloudSyncStatusState, signedOut: Bool) -> (String, Tone) {
         switch state {
         case .locked: return ("lock.fill", .neutral)
         case .synced: return ("checkmark.circle", .neutral)
-        case .syncing: return ("arrow.triangle.2.circlepath", .neutral)
+        case .syncing, .transferring: return ("arrow.triangle.2.circlepath", .neutral)
         case .offline: return ("icloud.slash", .neutral)
+        case .waiting: return ("pause.circle", .neutral)
         case .ringChanged: return ("exclamationmark.triangle", .neutral)
         case .conflict: return ("exclamationmark.triangle", .warning)
+        case .transferFailed: return ("exclamationmark.circle", .danger)
         case .error: return signedOut ? ("person.crop.circle", .neutral) : ("exclamationmark.circle", .danger)
         }
     }
@@ -518,8 +541,33 @@ public struct CloudSyncStatusView: View {
             Image(systemName: name)
                 .foregroundStyle(color)
                 .accessibilityHidden(true)
-            KitText(line, .body)
+            // The label, then the figures: "Syncing saves… · 38 MB of 61 MB" reads in that order.
+            VStack(alignment: .leading, spacing: 2) {
+                KitText(line, .body)
+                if state == .transferring, let figures = screen.line("cloudSync.transferProgress") {
+                    KitText(figures, .meta, color: .muted)
+                }
+            }
         }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// The transfer bar, on its own row at the row's full width: determinate only for counted bytes
+    /// (never an invented percentage).
+    @ViewBuilder private func bar(_ style: KitResolvedStyle, _ label: CopyLine) -> some View {
+        let figures = screen.line("cloudSync.transferProgress").map { strings.string($0) } ?? ""
+        Group {
+            if let fraction {
+                ProgressView(value: max(0, min(1, fraction)))
+            } else {
+                ProgressView()
+                    .progressViewStyle(.linear)
+            }
+        }
+        .tint(style.palette.accentSolid)
+        .frame(maxWidth: .infinity)
+        .accessibilityLabel(Text(strings.string(label)))
+        .accessibilityValue(Text(figures))
     }
 }
 

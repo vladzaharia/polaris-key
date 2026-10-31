@@ -164,6 +164,9 @@ final class KitRenderTests: XCTestCase {
         "SignIn.confirm.apple", "LicenseChoice.all-full",
         // The Cloud Sync screens (U-42.3).
         "UnlockSync.code", "RecoveryCode.show", "RingChange.confirm", "CloudSyncStatus.locked",
+        // The save screens (K.3): the conflict, its two variants and the transfer status.
+        "SaveConflict.choose", "SaveConflict.choose.slots-full", "SaveConflict.choose.deleted",
+        "CloudSyncStatus.transferring",
     ]
 
     static let all = [
@@ -204,6 +207,9 @@ final class KitRenderTests: XCTestCase {
         "UnlockSync.invalid", "UnlockSync.working", "UnlockSync.failed", "UnlockSync.start-over",
         "RecoveryCode.show", "RecoveryCode.saved", "RingChange.confirm",
         "RingChange.confirm.nothing-served", "UnlockSync.no-code", "UnlockSync.start-over-failed", "RingChange.failed",
+        "CloudSyncStatus.transferring", "CloudSyncStatus.waiting", "CloudSyncStatus.transfer-failed",
+        "SaveConflict.choose", "SaveConflict.choose.slots-full", "SaveConflict.choose.deleted",
+        "SaveConflict.keeping", "SaveConflict.kept", "SaveConflict.failed",
     ]
 
     /// The states rendered again in a launch pack, for the catalog's i18n proof.
