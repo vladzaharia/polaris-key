@@ -936,6 +936,51 @@ store's `dh`. The root, the code and every key print as redacted.
   keeps a plain file for test suites. `wipe()` on a refused store deletes a plain `device-keys` file
   (and its salt and temporary siblings) an older build left behind, by name and without reading it.
 
+## Cloud Connect (`PolarisKey.cloud_connect`)
+
+Cloud Connect opens an encrypted session between a person's own devices: on the LAN when they share one,
+through the relay when they do not. The product turns it on (`launch.connect` is the operator's gate; while
+it is off `start()` fails `connect-unavailable`). The accessor is `cloud_connect`, never `connect`, which is
+Object's; the identity client under it is `PolarisKey.connect_client`.
+
+```gdscript
+func _ready() -> void:
+	PolarisKey.cloud_connect.channel.connect(_on_channel)  # without a listener, inbound sessions are closed
+	var started := await PolarisKey.cloud_connect.start()
+	if not started.ok:
+		print(started.code)
+		return
+	for peer in await PolarisKey.cloud_connect.refresh_peers():
+		print(peer["device_id"], peer["lan"], peer["relay"])
+
+func _on_channel(session: PKeyConnectSession) -> void:
+	session.message.connect(func(type, body): print(type, body.size()))
+
+func send_to(device_id: String) -> void:
+	var r := await PolarisKey.cloud_connect.open(device_id)
+	if r.ok:
+		(r.detail as PKeyConnectSession).send("hello".to_utf8_buffer())
+```
+
+- `start(options)` registers the device keys on first use, then brings up the LAN and the relay. Options:
+  `lan` and `relay` (`false` to turn one off, or a Dictionary of that service's options), `lan_attempt_seconds`
+  (default 4) and `label`. A LAN that cannot start is not fatal while the relay is on.
+- `open(device_id)` tries the LAN first when the device was seen there, then the relay. `session.path` says
+  which. Messages are application types 0x0100 to 0x7FFF.
+- `peers()` lists `{device_id, lan, relay}`; `refresh_peers()` asks the relay who is online now.
+  `devices()` is the Worker's list for display. `status()` is `{running, lan, lan_reason, lan_error, relay,
+relay_error, relay_reason}`.
+- The relay stays `off`, and no ticket is requested, when you pass `relay = false` or the product's discovery
+  turns the relay off or names no ticket endpoint (`relay_reason` says which).
+- Signing out stops Connect and forgets its state; a state that cannot be forgotten stops the sign-out.
+
+What runs where. The relay runs on every runtime, web included. The LAN runs on desktop and is `off` with
+`lan_reason` `unsupported` on mobile and web until the native lanes (CC-14b). Where the engine cannot bind
+port 5353 (macOS always) the LAN is `querier_only`: this device finds others, and others do not find it.
+Crypto is GDScript on every runtime (X25519 off the main thread, a few tens of milliseconds a handshake in the
+editor). The LAN check is the private block, not the subnet, because Godot lists no netmask. `connect.lan`
+stays planned in `parity.json` for these reasons.
+
 ## Cloud Sync settings (`PolarisKey.cloud_sync`)
 
 With Cloud Sync on and a person signed in, the

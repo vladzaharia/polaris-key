@@ -709,20 +709,21 @@
       "note": "PolarisKey.cloud_connect (PKeyConnectClient, services/connect/client.gd; state in state.gd, D-7): identity(refresh) makes and registers the device keys on first need (devices.register_keys, once more after one device_keys_required), fetches GET connect/identity, verifies the roster and this device's certificate against the effective set (PKeyPeerCert) and stores them as one record, user://pkey/<product>/connect.v1, sealed by the platform key where a lane exists (context pkey-connect/1 state/<product>, so another product's blob does not open), else the engine-encrypted file (obfuscation, not protection); a memory-only key store refuses unless allow_ephemeral_keys. A roster that is expired, stale, foreign or for other keys than this device's is never stored. K_disc is stored as delivered; the previous key is dropped when the roster lost a device and kept 24 hours otherwise. list_devices, current, discovery_keys, leave and adopt_ring (a roster a peer pushed; keys_stale) follow. tests/connect/cert.gd (peerCertCases, ringCases, peerAdmissionCases), tests/connect/identity.gd and the connect-identity* transcripts in suite_transcripts. No Godot web test lane: web runs the same code, untested."
     },
     "connect.noise": {
-      "status": "planned",
-      "wp": "CC-14"
+      "status": "implemented",
+      "note": "PKeyPeerNoise (core/peer/noise.gd) over PKeyPeerCrypto: XX and XXpsk0 for the three modes, the CipherState (nonce = 4 zero bytes then u64be; the 2^64-1 nonce written as eight 0xFF bytes) and rekey, low-order and all-zero DH refused (dh_zero), the static key's DH only through the key store (the private key never leaves it, G1). X25519 is PKeyCurve25519 and AES-256-GCM PKeySyncAesGcm (at most 64 KiB a call, enough for a 65,535-byte Noise message), GDScript on every runtime until CC-14b's native adapters; the ladders run off the main thread on a WorkerThreadPool task (at most two) and inline on web. tests/connect/noise.gd runs every noise-vectors.json section. No Godot web test lane: web runs the same code, untested."
     },
     "connect.protocol": {
-      "status": "planned",
-      "wp": "CC-14"
+      "status": "implemented",
+      "note": "Frames and FrameReader, records and RecordAssembler (chain at most 18, 1 MiB, critical and mode rules), relay envelopes, adverts, SAS, handshake payloads and the HELLO label rule, the peer session (mode a: admission against the held roster, HELLO first, CLOSE, PING, RING, REKEY, 30 s, peer_expired, the PSK trial; modes v and p with commit-reveal SAS and the HandshakeLimiter), PKeyPeerLink and PKeyPeerPump over the pipe port, ConnectSession and Channel (APP types 0x0100-0x7FFF only, byte caps G10, pushed RING and TRUST, G11 and G12), pushed trust through PKeyTrust.accept_peer. tests/connect/{bytes,codecs,session_a,session_sas,link,session,trust_accept_peer}.gd over peer-matrix.json. No Godot web test lane: web runs the same code, untested."
     },
     "connect.lan": {
       "status": "planned",
-      "wp": "CC-14"
+      "wp": "CC-14b",
+      "note": "Built and tested on desktop (PKeyMdns, PKeyConnectLan, PKeyLanAddress over every lanAddresses and mdnsAnswers row; tests/connect/{mdns,mdns_packet,lan_address,lan}.gd), and left planned until CC-14b: the native lanes make it work on mobile (the LAN is off there with reason unsupported) and in Apple's Bonjour on macOS. Querier-only: where port 5353 cannot be bound (macOS always, Godot sets no SO_REUSEPORT) the device finds others and others do not find it; it hears them through the unicast answers RFC 6762 section 6.7 owes a legacy query, so a peer whose responder answers only multicast cannot be heard, and status().lan says querier_only. A responder answers a legacy query by unicast only from a source port of 1024 or more, with every record at TTL 10, and ignores every datagram from outside the private blocks of its interfaces. Godot lists no netmask, so the on-link test is the private block (10/8, 172.16/12, 192.168/16), not the subnet: a host elsewhere in the block that can route UDP to port 5353 and knows a roster name can fill that name's four address slots (denial of discovery) or cost one blind connect, never a trusted address; a phone's mobile-data interfaces are dropped by name. PacketPeerUDP reports no destination, so a unicast response cannot be told from a multicast one. IPv4 sockets only: IPv6 peers are reached through the listener's dual-stack socket, learned from IPv4 and ULA records, and link-local addresses (they need a zone) are skipped. CC-14b.F flips it, except web (relay only)."
     },
     "connect.relay": {
-      "status": "planned",
-      "wp": "CC-14"
+      "status": "implemented",
+      "note": "PKeyConnectRelay (services/connect/relay.gd) over WebSocketPeer with TLSOptions.client(), wss only, the ticket as a second subprotocol, pkey-relay.1 required echoed back, one message of buffer in, four out, 1002 on a text frame or a bad envelope, the close codes of G15 (4001, 4003, 4008, 4009, backoff with jitter, unavailable after five attempts); mode-a sessions only (G16) over a PKeyPeerLink on a RelayPipe, the room's stamped from checked against the certificate (G8), MEMBERS and GONE, a pacer (180 a second, burst 360, LIMIT 1 halves it for 10 s, an 8 MiB queue that ends a session peer_busy) whose refused sends stay queued, all pipes under one 32 MiB budget (G10). PKeyConnectClient.relay_ticket (G13: the ticket matches the pattern, wss on the Worker's host, never in a str() or log). The relay stays off, and no ticket is asked for, when the host or discovery turns it off (G21). tests/connect/{client_relay,relay,relay_sessions,cloud_connect}.gd, the connect-relay-* transcripts, and a real WebSocketPeer against a local server for the close codes. No Godot web test lane: web runs the same code, untested. Web is relay-only."
     },
     "connect.links": {
       "status": "planned",
@@ -733,8 +734,8 @@
       "wp": "CC-20"
     },
     "connect.app": {
-      "status": "planned",
-      "wp": "CC-14"
+      "status": "implemented",
+      "note": "PolarisKey.cloud_connect (PKeyCloudConnect, services/cloud_connect.gd): start, stop, peers, refresh_peers, devices, open, status and the signals channel and notice (the accessor is cloud_connect, never connect, which is Object's; the identity client is connect_client). LAN first (a 4 s bound), then the relay; an inbound session nobody listens for is closed (G9); sign-out stops Connect, then forgets the state, and stops when it cannot (G18); gated by launch.connect through discovery. The LAN is off with reason unsupported on mobile and web until CC-14b. tests/connect/cloud_connect.gd and the api_surface suite. No Godot web test lane: web runs the same code, untested."
     },
     "server.license": {
       "status": "na",

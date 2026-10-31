@@ -8,7 +8,7 @@ extends RefCounted
 # @pkey-feature license.manage identity.keyentry identity.redirect.web identity.signin.hints identity.choice
 # @pkey-feature release.fetch
 # @pkey-feature sync.keyring sync.settings
-# @pkey-feature connect.identity
+# @pkey-feature connect.identity connect.relay
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
