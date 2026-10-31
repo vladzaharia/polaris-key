@@ -16,6 +16,8 @@ import {
   SYNC_ENVELOPE_PAD_BLOCK,
 } from "@polaris-key/protocol/sync";
 
+import { b64urlDecode, hexEncode } from "../../../platform/bytes.js";
+
 const BLINDED = new RegExp(SYNC_BLINDED_NAME_PATTERN);
 const ALPHABET =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
@@ -64,10 +66,8 @@ export function envelopeBytes(ct: unknown): number | null {
  */
 export function envelopeKid(ct: string): string | undefined {
   if (ct.length < 24) return undefined;
-  const bin = atob(ct.slice(0, 24).replace(/-/g, "+").replace(/_/g, "/"));
-  let out = "";
-  for (let i = 1; i <= 16; i++)
-    out += bin.charCodeAt(i).toString(16).padStart(2, "0");
+  const bytes = b64urlDecode(ct.slice(0, 24));
+  const out = hexEncode(bytes.subarray(1, 17));
   return out;
 }
 
