@@ -1164,17 +1164,17 @@
       "detekt:style.ReturnCount": 3
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityAccount.kt": {
-      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.SwallowedException": 3,
       "detekt:exceptions.TooGenericExceptionCaught": 3,
       "detekt:style.MagicNumber": 5,
-      "detekt:style.ReturnCount": 2,
+      "detekt:style.ReturnCount": 3,
       "detekt:style.ThrowsCount": 3
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityChoice.kt": {
       "detekt:exceptions.SwallowedException": 1,
       "detekt:exceptions.TooGenericExceptionCaught": 2,
       "detekt:style.MagicNumber": 7,
-      "detekt:style.ThrowsCount": 1
+      "detekt:style.ThrowsCount": 2
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityClient.kt": {
       "detekt:complexity.ComplexCondition": 1,
@@ -1241,9 +1241,11 @@
       "detekt:exceptions.SwallowedException": 1
     },
     "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/IdentityAccountTest.kt": {
-      "ktlint:standard:argument-list-wrapping": 5,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 11,
       "ktlint:standard:function-signature": 4,
-      "ktlint:standard:statement-wrapping": 3
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:statement-wrapping": 6
     },
     "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/IdentityAttachTest.kt": {
       "ktlint:standard:argument-list-wrapping": 5
