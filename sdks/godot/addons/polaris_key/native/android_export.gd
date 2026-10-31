@@ -37,6 +37,15 @@ const PLAY_DEPENDENCIES := [
 	"androidx.credentials:credentials-play-services-auth:1.6.0",
 	"com.google.android.libraries.identity.googleid:googleid:1.2.0",
 ]
+## Play Games Services v2 (I-48.7a; Q-3): added only by the opt-in `polaris_key/play_games` (env
+## PKEY_ANDROID_PLAY_GAMES), with the app id from `polaris_key/play_games_app_id` (PKEY_ANDROID_PLAY_GAMES_APP_ID).
+## The pin is libs.versions.toml's `playGames`; a test holds them together.
+const PLAY_GAMES_OPTION := "polaris_key/play_games"
+const PLAY_GAMES_ENV := "PKEY_ANDROID_PLAY_GAMES"
+const PLAY_GAMES_APP_ID_OPTION := "polaris_key/play_games_app_id"
+const PLAY_GAMES_APP_ID_ENV := "PKEY_ANDROID_PLAY_GAMES_APP_ID"
+const PLAY_GAMES_DEPENDENCY := "com.google.android.gms:play-services-games-v2:22.1.0"
+const PLAY_GAMES_APP_ID_META := "com.google.android.gms.games.APP_ID"
 ## The Credential Manager part of PLAY_DEPENDENCIES (I-48.5b: Google sign-in), by group.
 const CREDENTIAL_GROUPS := ["androidx.credentials", "com.google.android.libraries.identity.googleid"]
 ## credentials 1.6.0 declares minCompileSdk 35: Godot's Android build template compiles against 35
@@ -70,13 +79,45 @@ static func libraries(flavor: String) -> PackedStringArray:
 ## The Maven coordinates `flavor` needs: Play Core and Credential Manager for play, nothing for
 ## direct. `engine` is Engine.get_version_info() of the exporting editor ({} means a current one):
 ## below Godot 4.4 the Credential Manager libraries are left out.
-static func dependencies(flavor: String, engine := {}) -> PackedStringArray:
+static func dependencies(flavor: String, engine := {}, play_games := false) -> PackedStringArray:
 	if flavor != "play":
 		return PackedStringArray()
 	var out := PackedStringArray()
 	for d in PLAY_DEPENDENCIES:
 		if credentials_supported(engine) or not is_credential_dependency(d):
 			out.append(d)
+	if play_games:
+		out.append(PLAY_GAMES_DEPENDENCY)
+	return out
+
+
+## The Play Games app id from an option or env value: digits only ("" when it is anything else).
+static func play_games_app_id(raw: Variant) -> String:
+	var id := str(raw).strip_edges() if raw != null else ""
+	return id if id != "" and id.is_valid_int() and not id.begins_with("-") and not id.begins_with("+") else ""
+
+
+## The <application> children for `flavor`: the Play Games app id meta-data for an export that opted in
+## with a valid app id, nothing else. The value starts with a backslash and a space so that Android
+## keeps the digits a string (a bare number would be read as an integer, which Play Games rejects);
+## [U] confirm with a real Play Games app.
+static func application_elements(flavor: String, play_games: bool, app_id: String) -> String:
+	if flavor != "play" or not play_games or app_id == "":
+		return ""
+	return "    <meta-data android:name=\"%s\" android:value=\"\\ %s\" />\n" % [PLAY_GAMES_APP_ID_META, app_id]
+
+
+## Warnings for the Play Games opt-in ("" entries never appear).
+static func play_games_warnings(flavor: String, play_games: bool, app_id_raw: Variant) -> PackedStringArray:
+	var out := PackedStringArray()
+	var app_id := play_games_app_id(app_id_raw)
+	if play_games and flavor != "play":
+		out.append("%s is on but the flavour is %s: Play Games is a play-flavour feature, so nothing is added." % [PLAY_GAMES_OPTION, flavor if flavor != "" else "none"])
+	elif play_games and app_id == "":
+		var why := "%s is on but %s is not a number: Play Games needs the digits of the app id from the Play Console"
+		out.append("%s, so no meta-data is added and the sign-in will fail." % (why % [PLAY_GAMES_OPTION, PLAY_GAMES_APP_ID_OPTION]))
+	elif not play_games and app_id != "":
+		out.append("%s is set but %s is off: nothing is added." % [PLAY_GAMES_APP_ID_OPTION, PLAY_GAMES_OPTION])
 	return out
 
 

@@ -66,6 +66,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _play(t)
 	await _direct(t)
 	await load("res://tests/native/test_google.gd").new().run(t)
+	await load("res://tests/native/test_play_games.gd").new().run(t)
 	return true
 
 

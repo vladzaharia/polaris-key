@@ -259,7 +259,7 @@ class Commands(
     companion object {
         val PLAY_OPS = setOf(
             "iau_check", "iau_start", "iau_complete", "pad_state", "pad_fetch", "pad_location", "pad_remove", "pad_cancel", "pad_confirm",
-            "integrity_prepare", "integrity_token",
+            "integrity_prepare", "integrity_token", "pgs_code", "pgs_sign_in",
         )
         val DIRECT_OPS = setOf("pi_can_install", "pi_open_settings", "pi_verify", "pi_install", "pi_last", "pi_abandon_stale", "pi_constraints")
 

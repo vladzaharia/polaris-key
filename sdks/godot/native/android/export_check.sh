@@ -9,7 +9,8 @@
 #           classes and no Play Core, no androidx/credentials and no googleid
 #   play    AAB with one on-demand asset pack (`probeod`, a 2 MB data-only .pck), then a
 #           `bundletool build-apks --local-testing` set: no install permission, no session commit,
-#           no direct class, and androidx/credentials plus googleid packaged
+#           no direct class, and androidx/credentials plus googleid packaged; a second play AAB with
+#           polaris_key/play_games on carries the Play Games library and the APP_ID meta-data, the first none
 #
 # With DEVICE=<adb serial> it also runs the probe there (an emulator is enough; no Play Store, no
 # Play Console):
@@ -153,6 +154,7 @@ package/signed=true
 permissions/internet=true
 polaris_key/android_flavor="$flavor"
 polaris_key/outlet="$outlet"
+${PRESET_EXTRA:-}
 EOT
 }
 
@@ -224,6 +226,9 @@ check_apk() { # check_apk <apk> <flavor>
 export_one direct-v1 direct 1 0 im.plrs.key.probe.direct
 export_one direct-v2 direct 2 0 im.plrs.key.probe.direct
 export_one play-v1 play 1 1 im.plrs.key.probe.play
+# The Play Games opt-in (I-48.7a): the library and the APP_ID meta-data arrive only with the option on.
+PRESET_EXTRA=$'polaris_key/play_games=true\npolaris_key/play_games_app_id="123456789012"' \
+  export_one play-games play 1 1 im.plrs.key.probe.playgames
 # The direct flavour on a Play outlet is an export ERROR (Play forbids self-update).
 B="$OUT/proj/direct-on-play"
 project "$B" direct 1 0 im.plrs.key.probe.refused play
@@ -236,6 +241,27 @@ else
   fail "the direct-on-play export failed without the plugin's error"
 fi
 echo "── checks"
+aab_dex() { # aab_dex <aab> <regex> -> count of dexdump lines matching, over base/dex
+  local d="$OUT/aab_dex_$$" n=0 f
+  rm -rf "$d" && mkdir -p "$d"
+  unzip -q -o "$1" 'base/dex/*.dex' -d "$d"
+  for f in "$d"/base/dex/*.dex; do
+    n=$((n + $("$BT/dexdump" -d "$f" 2>/dev/null | grep -c -E "$2" || true)))
+  done
+  rm -rf "$d"
+  echo "$n"
+}
+aab_manifest_has() { # aab_manifest_has <aab> <text> -> yes|no (the AAB manifest is protobuf: its strings are still plain)
+  unzip -p "$1" base/manifest/AndroidManifest.xml 2>/dev/null | grep -aq "$2" && echo yes || echo no
+}
+if [ -f "$OUT/play-v1.aab" ] && [ -f "$OUT/play-games.aab" ]; then
+  [ "$(aab_dex "$OUT/play-v1.aab" "Class descriptor *: 'Lcom/google/android/gms/games/")" = 0 ] && ok "play: no Play Games library without the opt-in" || fail "play: Play Games library present without the opt-in"
+  [ "$(aab_manifest_has "$OUT/play-v1.aab" com.google.android.gms.games.APP_ID)" = no ] && ok "play: no Play Games APP_ID without the opt-in" || fail "play: APP_ID present without the opt-in"
+  [ "$(aab_dex "$OUT/play-games.aab" "Class descriptor *: 'Lcom/google/android/gms/games/PlayGames;'")" = 1 ] && ok "play-games: the Play Games library packaged" || fail "play-games: the Play Games library missing"
+  [ "$(aab_manifest_has "$OUT/play-games.aab" com.google.android.gms.games.APP_ID)" = yes ] && ok "play-games: the APP_ID meta-data is in the manifest" || fail "play-games: no APP_ID meta-data"
+  [ "$(aab_dex "$OUT/play-games.aab" "Class descriptor *: 'Landroidx/credentials/CredentialManager;'")" = 1 ] && ok "play-games: androidx/credentials packaged" || fail "play-games: androidx/credentials missing"
+  [ "$(aab_dex "$OUT/play-v1.aab" "Class descriptor *: 'Landroidx/credentials/CredentialManager;'")" = 1 ] && ok "play: androidx/credentials packaged" || fail "play: androidx/credentials missing"
+fi
 check_apk "$OUT/direct-v1.apk" direct
 if [ -n "${BUNDLETOOL:-}" ] && [ -f "$OUT/play-v1.aab" ]; then
   "$JAVA_HOME/bin/java" -jar "$BUNDLETOOL" build-apks --local-testing --overwrite --bundle "$OUT/play-v1.aab" \
