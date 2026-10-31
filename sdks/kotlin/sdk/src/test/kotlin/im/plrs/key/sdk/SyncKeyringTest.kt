@@ -55,8 +55,10 @@ class SyncKeyringTest {
         var wrap: JsonObject? = null
         var recoveryCt: String? = null
         var by: String = ""
+        val seen = mutableListOf<String>()
 
         fun handle(r: PolarisRequest): PolarisResponse {
+            seen += "${r.method} ${r.path}"
             val body = r.body?.let { JsonText.parseOrNull(it.toString(Charsets.UTF_8)).objectValue }
             return when {
                 r.path.endsWith("/devices/keyring") && r.method == "GET" -> respond(200, state())
@@ -106,7 +108,7 @@ class SyncKeyringTest {
     private fun rig(
         worker: Worker,
         keys: DeviceKeyPort,
-        rootStorage: DeviceKeyStorage,
+        rootStorage: DeviceKeyStorage?,
         dir: java.io.File,
         store: Store = FileStore("djdl", dir),
     ): Rig = runBlocking {
@@ -451,5 +453,91 @@ class SyncKeyringTest {
         r.keyring.forget()
         assertNull(r.keyring.pin())
         assertNull(roots.inner.get())
+    }
+
+    // -- Deactivation releases the key ring --------------------------------------------------------
+
+    @Test
+    fun deactivationForgetsTheKeyRing() = runBlocking {
+        for (viaRoster in listOf(false, true)) {
+            val worker = Worker()
+            val keys = newKeys()
+            val dir = tmp.newFolder()
+            val roots = InMemoryDeviceKeyStorage()
+            val r = rig(worker, keys, roots, dir)
+            r.keyring.create()
+            assertTrue(r.keyring.unlocked)
+            assertNotNull(roots.get())
+            assertTrue(java.io.File(dir, SYNC_PIN_FILE).exists())
+            if (viaRoster) r.client.deauthorizeDevice(r.client.core.deviceId()) else r.client.license.deactivate()
+            assertFalse(r.keyring.unlocked)
+            assertNull(roots.get())
+            assertFalse(java.io.File(dir, SYNC_PIN_FILE).exists())
+            val again = rig(worker, keys, roots, dir).keyring.status()
+            assertFalse(again.unlocked)
+            assertFalse(again.rootStored)
+            assertNull(again.pinned)
+        }
+    }
+
+    @Test
+    fun deactivationStopsWhenTheRootCannotBeRemoved() = runBlocking {
+        val worker = Worker()
+        val roots = FaultyRoots(InMemoryDeviceKeyStorage())
+        val dir = tmp.newFolder()
+        val r = rig(worker, newKeys(), roots, dir)
+        r.keyring.create()
+        worker.seen.clear()
+        roots.clearFault = StoreException("busy")
+        refusal(ErrorCode.storeFailed) { runBlocking { r.client.license.deactivate() } }
+        assertNotNull(r.client.core.token())
+        assertTrue("no request was sent: ${worker.seen}", worker.seen.isEmpty())
+        assertNotNull(r.keyring.pin())
+        // Once the root can be removed, a retry completes.
+        roots.clearFault = null
+        r.client.license.deactivate()
+        assertNull(r.client.core.token())
+        assertNull(roots.inner.get())
+    }
+
+    /** A root storage that counts writes and removals. */
+    private class WatchedRoots(val inner: InMemoryDeviceKeyStorage = InMemoryDeviceKeyStorage()) : DeviceKeyStorage by inner {
+        var writes = 0
+
+        override suspend fun put(bytes: ByteArray) {
+            writes++
+            inner.put(bytes)
+        }
+
+        override suspend fun putIfAbsent(bytes: ByteArray): Boolean {
+            writes++
+            return inner.putIfAbsent(bytes)
+        }
+
+        override suspend fun clear() {
+            writes++
+            inner.clear()
+        }
+
+        override suspend fun deleteRecord() {
+            writes++
+            inner.deleteRecord()
+        }
+    }
+
+    @Test
+    fun deactivationWithNoKeyRingStateLeavesItsStorageUntouched() = runBlocking {
+        val dir = tmp.newFolder()
+        val r = rig(Worker(), newKeys(), null, dir)
+        r.client.license.deactivate()
+        assertNull(r.client.core.token())
+        assertEquals(emptyList<String>(), dir.list()!!.filter { it.contains("sync") })
+        // A host root storage that holds nothing is not written or cleared either.
+        val watched = WatchedRoots()
+        val other = tmp.newFolder()
+        val w = rig(Worker(), newKeys(), watched, other)
+        w.client.license.deactivate()
+        assertEquals(0, watched.writes)
+        assertEquals(emptyList<String>(), other.list()!!.filter { it.contains("sync") })
     }
 }

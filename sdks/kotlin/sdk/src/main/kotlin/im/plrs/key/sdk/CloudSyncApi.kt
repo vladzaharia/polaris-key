@@ -147,6 +147,7 @@ internal class CloudSyncApi(
     private val account: suspend () -> String?,
     private val emit: (CloudSyncEvent) -> Unit,
     private val forgetRing: suspend () -> Unit,
+    private val ringHeld: suspend () -> Boolean = { true },
     private val recovery: suspend () -> String,
     private val cleanup: () -> Unit = {},
 ) {
@@ -389,6 +390,19 @@ internal class CloudSyncApi(
                 explicitForget = false
             }
         }
+    }
+
+    /**
+     * The device is being deactivated: the principal goes with the credential. Does nothing when no ring state is held and
+     * the machine never started, so a licence-only app never touches key ring storage. Otherwise the sign-out chain: bounded
+     * flush, the ring forgets (a failure stops the deactivation before any request), the data is purged.
+     */
+    suspend fun beforeRelease() {
+        val held = withContext(dispatcher) {
+            drain()
+            startedHost() != null || ringHeld()
+        }
+        if (held) beforeSignOut()
     }
 
     private suspend fun purge() {

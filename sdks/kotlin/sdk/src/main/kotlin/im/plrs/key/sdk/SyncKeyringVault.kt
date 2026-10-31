@@ -80,6 +80,22 @@ internal class RingVault(private val core: CoreContext, private val options: Key
         onFail(e)
     }
 
+    /**
+     * Whether a pin or a root may be held, without creating a directory, lock file or key where none exists.
+     * Unknown (a storage that cannot be read) counts as held, so the caller forgets rather than skips.
+     */
+    suspend fun mightHold(): Boolean {
+        if (memoryPin != null) return true
+        val dir: File? = core.store.stateDirectory
+        if (dir != null && File(dir, SYNC_PIN_FILE).exists()) return true
+        val custom = options.rootStorage
+        return when {
+            custom != null -> guarded({ true }) { custom.get() != null }
+            dir != null -> File(dir, SYNC_ROOT_FILE).exists()
+            else -> guarded({ true }) { roots().get() != null }
+        }
+    }
+
     private fun storeError(e: Exception): PolarisException =
         PolarisException(ErrorCode.storeFailed, "The key ring state could not be used: ${e.message}", cause = e)
 

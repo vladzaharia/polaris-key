@@ -107,6 +107,12 @@ public class SyncKeyring internal constructor(private val core: CoreContext, opt
         vault.clear()
     }
 
+    /**
+     * Whether any key ring state is held (a root in memory, a pin or a stored root), read without creating
+     * anything: a licence-only app has none, and its deactivation never touches this storage.
+     */
+    internal suspend fun holdsState(): Boolean = gate.withLock { memory.held != null || memory.others.isNotEmpty() || vault.mightHold() }
+
     /** The pinned ring, or null before this client first acquired a root. Only [forget] drops it. */
     public suspend fun pin(): SyncRingPin? = vault.pin()
 
