@@ -5,7 +5,7 @@
 | Phase       | U: Cloud Sync (S-17) (U3 collections)                                                                                                                                                                               |
 | Size        | 1.4–1.9 engineer-weeks                                                                                                                                                                                              |
 | Depends on  | [U-01](U-01-cloud-sync-plan.md), [U-09](U-09-collections-backend.md), [U-08](U-08-merge-prompt.md), [U-10](U-10-saves-backend.md), [U-37](U-37-delta-files-worker.md), [U-38](U-38-e2e-client-node-react-python.md) |
-| Unblocks    | [P0-51](P0-51-1-0-readiness-review.md), [U-15a](U-15a-docs-settings.md)                                                                                                                                             |
+| Unblocks | [P0-51](P0-51-1-0-readiness-review.md), [U-15a](U-15a-docs-settings.md), [U-46](U-46-collection-records-every-sdk.md) |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                |
 | Plan mode   | yes: executes the approved [`plans/U-01.md`](../plans/U-01.md) (no separate plan)                                                                                                                                   |
 | Gates       | plan mode; `errors.json` (rule 3), transcripts (rule 1), `gen constants --check`; all six SDKs (`parity:check`)                                                                                                     |

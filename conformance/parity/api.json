@@ -4207,14 +4207,317 @@
     {
       "id": "cloudSync.collection",
       "kind": "method",
-      "feature": "sync.saves",
-      "reserved": "U-23",
+      "feature": "sync.records",
       "args": [
         {
           "name": "name",
           "type": "string"
         }
       ],
+      "sdks": {
+        "node": {
+          "planned": "U-46"
+        },
+        "python": {
+          "planned": "U-46"
+        },
+        "react": {
+          "planned": "U-46",
+          "shape": "hook",
+          "reason": "useCollection(name) is the hook; it returns the handle"
+        },
+        "swift": {
+          "planned": "U-46"
+        },
+        "kotlin": {
+          "planned": "U-46"
+        },
+        "godot": {
+          "planned": "U-46"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.collection.get",
+      "kind": "method",
+      "feature": "sync.records",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "U-46"
+        },
+        "python": {
+          "planned": "U-46"
+        },
+        "react": {
+          "planned": "U-46",
+          "shape": "hook",
+          "reason": "the hook returns the record; its handle carries the verb"
+        },
+        "swift": {
+          "planned": "U-46"
+        },
+        "kotlin": {
+          "planned": "U-46"
+        },
+        "godot": {
+          "planned": "U-46"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.collection.ids",
+      "kind": "method",
+      "feature": "sync.records",
+      "sdks": {
+        "node": {
+          "planned": "U-46"
+        },
+        "python": {
+          "planned": "U-46"
+        },
+        "react": {
+          "planned": "U-46",
+          "shape": "hook",
+          "reason": "the hook returns the ids; its handle carries the verb"
+        },
+        "swift": {
+          "planned": "U-46"
+        },
+        "kotlin": {
+          "planned": "U-46"
+        },
+        "godot": {
+          "planned": "U-46"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.collection.put",
+      "kind": "method",
+      "feature": "sync.records",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "value",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "U-46"
+        },
+        "python": {
+          "planned": "U-46"
+        },
+        "react": {
+          "planned": "U-46",
+          "shape": "hook",
+          "reason": "the hook's handle carries the verb"
+        },
+        "swift": {
+          "planned": "U-46"
+        },
+        "kotlin": {
+          "planned": "U-46"
+        },
+        "godot": {
+          "planned": "U-46"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.collection.update",
+      "kind": "method",
+      "feature": "sync.records",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "changes",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "U-46"
+        },
+        "python": {
+          "planned": "U-46"
+        },
+        "react": {
+          "planned": "U-46",
+          "shape": "hook",
+          "reason": "the hook's handle carries the verb"
+        },
+        "swift": {
+          "planned": "U-46"
+        },
+        "kotlin": {
+          "planned": "U-46"
+        },
+        "godot": {
+          "planned": "U-46"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.collection.add",
+      "kind": "method",
+      "feature": "sync.records",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "element",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "U-46"
+        },
+        "python": {
+          "planned": "U-46"
+        },
+        "react": {
+          "planned": "U-46",
+          "shape": "hook",
+          "reason": "the hook's handle carries the verb"
+        },
+        "swift": {
+          "planned": "U-46"
+        },
+        "kotlin": {
+          "planned": "U-46"
+        },
+        "godot": {
+          "planned": "U-46"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.collection.remove",
+      "kind": "method",
+      "feature": "sync.records",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "element",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "U-46"
+        },
+        "python": {
+          "planned": "U-46"
+        },
+        "react": {
+          "planned": "U-46",
+          "shape": "hook",
+          "reason": "the hook's handle carries the verb"
+        },
+        "swift": {
+          "planned": "U-46"
+        },
+        "kotlin": {
+          "planned": "U-46"
+        },
+        "godot": {
+          "planned": "U-46"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.collection.delete",
+      "kind": "method",
+      "feature": "sync.records",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "U-46"
+        },
+        "python": {
+          "planned": "U-46"
+        },
+        "react": {
+          "planned": "U-46",
+          "shape": "hook",
+          "reason": "the hook's handle carries the verb"
+        },
+        "swift": {
+          "planned": "U-46"
+        },
+        "kotlin": {
+          "planned": "U-46"
+        },
+        "godot": {
+          "planned": "U-46"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudSync.collection.on",
+      "kind": "method",
+      "feature": "sync.records",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "U-46"
+        },
+        "python": {
+          "planned": "U-46"
+        },
+        "react": {
+          "planned": "U-46",
+          "shape": "hook",
+          "reason": "the hook re-renders on each change, so no event listener is exposed"
+        },
+        "swift": {
+          "planned": "U-46"
+        },
+        "kotlin": {
+          "planned": "U-46"
+        },
+        "godot": {
+          "planned": "U-46"
+        }
+      },
       "layer": "client"
     },
     {

@@ -728,11 +728,11 @@
       "proof": [
         {
           "kind": "transcript",
-          "wp": "U-09"
+          "wp": "U-46"
         }
       ],
       "allowedNa": [],
-      "note": "plans/CC-01-cloud-sync.md §2.7. The sync-records transcripts pin the routes; the merge policies share the sync.conflict vocabulary. v1 ships saves only (plans/U-22-U-23-U-37-U-41-slices.md D-2): the client-core host codec seals every record shape (value, field, element) and the native ports seal scalar values; `cloudSync.collection` stays reserved until an adopter declares a non-save collection, and its package owns this feature."
+      "note": "plans/CC-01-cloud-sync.md §2.7. The sync-records transcripts pin the routes; the merge policies share the sync.conflict vocabulary. v1 ships saves only (plans/U-22-U-23-U-37-U-41-slices.md D-2): the client-core host codec seals every record shape (value, field, element) and the native ports seal scalar values; U-46 (plans/C-26) owns `cloudSync.collection` and this feature in every SDK."
     },
     {
       "id": "sync.files",

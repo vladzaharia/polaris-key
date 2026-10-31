@@ -385,7 +385,7 @@ wait for the owner's go and are never listed by `--ready` (see `deferred` in wor
 
 ## U: Cloud Sync (S-17)
 
-51 work packages, 41.2–56.2 weeks for the required ones.
+52 work packages, 41.7–57 weeks for the required ones.
 
 | Id                                                               | Title                                                                                                                                                                                                                                                                           | Depends on                                                   | Role           | Weeks    | Status      |
 | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ | -------------- | -------- | ----------- |
@@ -440,6 +440,7 @@ wait for the owner's go and are never listed by `--ready` (see `deferred` in wor
 | [U-43](wp/U-43-security-review-e2e.md)                           | Security review: E2E crypto, key ring, recovery, downgrade                                                                                                                                                                                                                      | U-34, U-35, U-36, U-38                                       | implementer    | 0.4–0.6  | in-progress |
 | [U-44](wp/U-44-security-review-files.md)                         | Security review: files, multipart, delta, quotas, GC, CORS                                                                                                                                                                                                                      | U-10, U-37                                                   | implementer    | 0.4–0.5  | todo        |
 | [U-45](wp/U-45-security-review-sdk-keys.md)                      | Security review: SDK key storage, backup items, background transfer                                                                                                                                                                                                             | U-39, U-40, U-41                                             | implementer    | 0.3–0.4  | todo        |
+| [U-46](wp/U-46-collection-records-every-sdk.md) ⚑                | collection(): records beyond saves in every SDK                                                                                                                                                                                                                                 | U-09, U-22, U-23                                             | sdk-porter     | 0.5–0.8  | todo        |
 
 ## PX: Customer portal (docs/design/PORTAL.md)
 
@@ -1222,6 +1223,7 @@ Every ⚑ package needs an approved plan in [`plans/`](plans/) before implementa
 | [U-35](wp/U-35-machine-v3.md)                                    | `plans/CC-01.md` (shared with CC-01) | implementer    |
 | [U-36](wp/U-36-core-key-ring.md)                                 | `plans/CC-01.md` (shared with CC-01) | implementer    |
 | [U-37](wp/U-37-delta-files-worker.md)                            | `plans/CC-01.md` (shared with CC-01) | implementer    |
+| [U-46](wp/U-46-collection-records-every-sdk.md)                  | `plans/U-46.md`                      | sdk-porter     |
 
 ## Human inputs
 
