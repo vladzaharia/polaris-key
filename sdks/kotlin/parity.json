@@ -574,12 +574,12 @@
       "wp": "U-46"
     },
     "sync.files": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "note": "The file transport and engine in :sdk: HttpFileTransport (CloudSyncFiles.kt) over the product's /sync/files routes with a closed route list, no redirect followed, a Content-Digest on every PUT, answers read under a cap equal to what the call expects (a chunk at most SYNC_CHUNK_MAX_STORED_BYTES) and Retry-After read as plain digits (nine at most, capped at an hour), and FileTransferEngine (CloudSyncTransfer.kt) for single, multipart and chunked uploads and ranged, chunked downloads, with FileJournal and FileChunkCache. A finalize that answers 403 quota_exceeded releases the upload and surfaces the scope (TransferException.scope). The host wiring (journal and cache under the state directory, purged with the person) comes with client.cloudSync.saves. CloudSyncTransferTest, CloudSyncFilesTest and the cloudsync-files-* transcripts in TranscriptTest (one request per step through HttpFileTransport)."
     },
     "sync.files.delta": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "note": "The chunks mode in :sdk's FileTransferEngine and HttpFileTransport: content-defined chunks sealed per collection (E2E) or content-addressed (server mode), the plan, chunk and manifest PUTs, finalize with an upload_incomplete resend (a chunk reported present that the collector has taken is missing again), and chunked downloads through the chunk cache. CloudSyncTransferTest, SyncFileVectorsTest and the cloudsync-chunks* transcripts in TranscriptTest."
     },
     "sync.e2e.recovery": {
       "status": "planned",

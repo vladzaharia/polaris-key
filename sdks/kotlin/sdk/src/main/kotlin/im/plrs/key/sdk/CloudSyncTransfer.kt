@@ -89,6 +89,7 @@ private const val RETRYABLE_FROM = 500
 private const val HTTP_REQUEST_TIMEOUT = 408
 private const val HTTP_TOO_MANY = 429
 private const val HTTP_CONFLICT = 409
+private const val HTTP_FORBIDDEN = 403
 private const val HTTP_GONE = 410
 private const val HTTP_NOT_FOUND = 404
 private const val HTTP_BAD_REQUEST = 400
@@ -193,6 +194,9 @@ public interface FileTransport {
 
     /** `GET /<p>/sync/files/{collection}/chunks/{chunkId}`: the object's bytes. */
     public suspend fun getChunk(collection: String, chunkId: String): FileReply<ByteArray>
+
+    /** `GET …/{id}/revisions`: `{revisions: [{version, size, sha256, format, createdAt}]}`, newest first. */
+    public suspend fun revisions(target: FileTarget): FileReply<JsonObject>
 }
 
 // -- Errors ----------------------------------------------------------------------------------------------------
@@ -238,6 +242,8 @@ public class TransferException(
     public val serverVersion: Int? = null,
     /** On [Reason.FILE_INVALID]: the first check that failed. */
     public val detail: String? = null,
+    /** On a `quota_exceeded`: whose quota (`user`, `collection` or `product`). */
+    public val scope: String? = null,
 ) : Exception(
     "file transfer: ${reason.wire}" + (code?.let { " ($it)" } ?: "") + (detail?.let { " [$it]" } ?: ""),
 ) {
@@ -518,7 +524,7 @@ private fun refuseUpload(r: FileRefusal): Exception {
         return TransferException(Reason.CONFLICT, HTTP_CONFLICT, r.code, serverVersion = v)
     }
     if (r.status == HTTP_BAD_REQUEST && r.code == "upload_mismatch") return TransferException(Reason.MISMATCH, HTTP_BAD_REQUEST, r.code)
-    return TransferException(Reason.REJECTED, r.status, r.code)
+    return TransferException(Reason.REJECTED, r.status, r.code, scope = r.body.objectValue?.get("scope").stringValue)
 }
 
 private fun <T> FileReply<T>.orRefuse(): T = when (this) {
@@ -613,7 +619,7 @@ private open class UploadPass(val engine: FileTransferEngine, collection: String
                 again++
                 continue
             }
-            if (r.status == HTTP_CONFLICT || (r.status == HTTP_BAD_REQUEST && r.code == "upload_mismatch")) discard()
+            if (r.status == HTTP_CONFLICT || r.status == HTTP_FORBIDDEN || (r.status == HTTP_BAD_REQUEST && r.code == "upload_mismatch")) discard()
             throw refuseUpload(r)
         }
     }
