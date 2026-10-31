@@ -295,8 +295,13 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
         // A transcript that attaches after a redirect sign-in (holders-add-to-account) also runs Licence and Config
         // and names the account endpoints beside the redirect ones.
         val account = "identity.account" in transcript.features || "identity.attach" in transcript.features
-        if (transcript.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }) {
-            val choice = transcript.steps.any { it["action"].stringValue?.startsWith("choice") == true }
+        // identity.devicecode.choice: the device start asks `licenseChoice: app`, so discovery carries `deviceChoice`
+        // and the four grant routes (section 12.6), beside the account endpoints.
+        val deviceChoice = transcript.steps.any {
+            it["action"].stringValue == "beginSignIn" && it["args"].objectValue?.get("licenseChoice").stringValue == "app"
+        }
+        if (deviceChoice || transcript.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }) {
+            val choice = deviceChoice || transcript.steps.any { it["action"].stringValue?.startsWith("choice") == true }
             var issuer = "$base/identity"
             for (st in transcript.steps) {
                 if (st["action"].stringValue != "redirectComplete") continue
@@ -314,6 +319,7 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
                     "configured" to JsonPrimitive(true),
                     "issuer" to JsonPrimitive(issuer),
                     *(if (account) arrayOf("account" to JsonPrimitive(true)) else emptyArray()),
+                    *(if (deviceChoice) arrayOf("deviceChoice" to JsonPrimitive(true)) else emptyArray()),
                     "endpoints" to JsonObject(
                         buildMap {
                             put("authorize", JsonPrimitive("$base/identity/authorize"))

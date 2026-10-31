@@ -205,9 +205,8 @@
       "note": "I-10b.19: identity.choice.licenses/devices/complete/cancel over the endpoints discovery names (typed service-unavailable N/A otherwise), no bearer (but complete with keep sends the device's own token, which the Worker reads as held), the grant never in an error; a Worker refusal is ChoiceResult.Refused (retryAfterSeconds, manageUrl, signInUrl, keyEntries, the fresh view); Keep completes attachable. The three choice-* transcripts are replayed."
     },
     "identity.devicecode.choice": {
-      "status": "planned",
-      "wp": "UK-42",
-      "note": "UK-42.22 (SDK slice .10): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+      "status": "implemented",
+      "note": "UK-42.22.10: signIn.start(SignInOptions(licenseChoice = \"app\", ...)) sends loginHint, nameHint, purpose and licenseChoice on the device start (the hints always; licenseChoice app only when discovery carries deviceChoice and the four choice routes); a poll status choose settles session.wait() as SignInOutcome.Choose, the redirect's outcome, which identity.choice completes. A choose that was not asked for is a sign-in-failed. The holders-add-to-account-device transcript is replayed."
     },
     "identity.signin.hints": {
       "status": "implemented"

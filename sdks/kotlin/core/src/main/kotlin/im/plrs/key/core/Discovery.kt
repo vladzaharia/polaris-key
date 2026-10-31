@@ -73,7 +73,13 @@ public data class IdentityDiscovery(
     val endpoints: Map<String, String> = emptyMap(),
     /** `exchange`: present only when the product declares a platform kind (V5 section 12.11.6). */
     val exchange: IdentityExchangeDiscovery? = null,
+    /** `deviceChoice: true` (UK-42.22, section 12.6): the device-code poll may answer `choose`; served only with License on. */
+    val deviceChoice: Boolean = false,
 ) {
+    /** The device-code start may ask `licenseChoice: app`: `deviceChoice` and all four grant routes are published. */
+    val deviceChoiceAvailable: Boolean
+        get() = deviceChoice && listOf("choiceLicenses", "choiceDevices", "choiceComplete", "choiceCancel").all { !endpoints[it].isNullOrEmpty() }
+
     /** The authorize endpoint a redirect sign-in sends the browser to. */
     val authorize: String? get() = endpoints["authorize"]
 
@@ -131,6 +137,7 @@ public object Discovery {
             accountPortal = e["accountPortal"],
             endpoints = e,
             exchange = exchange(fragment.extras["exchange"].objectValue),
+            deviceChoice = fragment.extras["deviceChoice"].boolValue == true,
         )
     }
 
