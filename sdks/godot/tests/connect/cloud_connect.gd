@@ -65,6 +65,12 @@ class StubClient extends PKeyConnectClient:
 	var leave_fails := false
 	var identity_fails: PKeyResult = null
 	var device_id := ""
+	## The roster `current()` answers with ("" for no identity).
+	var held_ring := ""
+
+
+	func current() -> Variant:
+		return {"ring": held_ring} if held_ring != "" else null
 
 
 	func identity(_refresh := false) -> PKeyResult:
@@ -113,6 +119,7 @@ func run(t: PKeyTestContext) -> void:
 	await _relay_off(t)
 	await _lan_lanes(t)
 	await _relay_path(t)
+	await _roster_recheck(t)
 	await _lan_first(t)
 	await _sign_out(t)
 	await _frames(20)
@@ -337,6 +344,37 @@ func _relay_path(t: PKeyTestContext) -> void:
 	sa.closed.connect(func(_c: StringName, _p: bool) -> void: closed[0] += 1)
 	a.api.stop()
 	t.check("stop: the session is closed and the relay and LAN are gone", sa.is_closed() and closed[0] <= 1 and a.api.status()["relay"] == "off" and not a.api.status()["running"])
+	a.api.stop()
+	b.api.stop()
+	await _frames(5)
+
+
+## A newly stored roster is judged against every open session: one that drops the peer closes `peer_revoked`,
+## and one that only adds a device keeps it.
+func _roster_recheck(t: PKeyTestContext) -> void:
+	var core := _core()
+	core.discovery_manifest = _manifest({"enabled": true, "relay": true, "endpoints": {"ticket": "y"}})
+	var rig := await _relay_pair(core, null, null)
+	var a: Device = rig["a"]
+	var b: Device = rig["b"]
+	await _until(func() -> bool: return a.api.status()["relay"] == "open" and b.api.status()["relay"] == "open")
+	var r: PKeyResult = await a.api.open(ID_B)
+	if not t.check("roster: a session is open", r.ok, str(r)):
+		a.api.stop()
+		b.api.stop()
+		return
+	var sa: PKeyConnectSession = r.detail
+	await _until(func() -> bool: return b.inbound.size() == 1)
+	var sb: PKeyConnectSession = b.inbound[0]
+	a.client.held_ring = PKeyTestPeers.ring(3, [_pair["a"], _pair["b"]])
+	a.client.on_stored.call()
+	await _frames(10)
+	t.check("roster: a stored roster that keeps the peer keeps the session", not sa.is_closed() and not sb.is_closed())
+	a.client.held_ring = PKeyTestPeers.ring(4, [_pair["a"]])
+	a.client.on_stored.call()
+	await _until(func() -> bool: return sa.is_closed() and sb.is_closed())
+	t.check("roster: a stored roster that drops the peer closes the session peer_revoked", sa.closed_info() == {"code": &"peer_revoked", "by_peer": false}, str(sa.closed_info()))
+	t.check("roster: and the peer is told", sb.closed_info() == {"code": &"peer_revoked", "by_peer": true}, str(sb.closed_info()))
 	a.api.stop()
 	b.api.stop()
 	await _frames(5)

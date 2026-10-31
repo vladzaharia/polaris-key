@@ -116,6 +116,7 @@ func run(t: PKeyTestContext) -> void:
 	_names(t)
 	_interfaces(t)
 	_address_book(t)
+	_address_lapse(t)
 	_book_rows(t)
 	_limiter(t)
 	_advertise(t)
@@ -288,6 +289,25 @@ func _address_book(t: PKeyTestContext) -> void:
 	var seeded := PKeyMdns.AddressBook.new()
 	seeded.hold("P1-Z.local", "10.0.0.1")
 	t.check("book: hold seeds, table lists", seeded.table() == [{"name": "p1-z.local", "address": "10.0.0.1"}])
+
+
+## An address lapses five minutes after it was last seen, even while its name is refreshed.
+func _address_lapse(t: PKeyTestContext) -> void:
+	var life := PKeyMdns.ENTRY_TTL_SECONDS
+	var b := PKeyMdns.AddressBook.new()
+	for ip in ["10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4"]:
+		b.learn(_rec("p1-x.local", ip), ip, null, 0.0)
+	t.check("lapse: a place is held while its address is fresh", b.hosts("p1-x.local", life - 1.0).size() == 4)
+	t.check("lapse: and left out of hosts once it is older than five minutes", b.hosts("p1-x.local", life + 1.0).is_empty())
+	b.learn(_rec("p1-x.local", "10.0.0.9"), "10.0.0.9", null, life + 1.0)
+	t.check("lapse: a new address frees the places of lapsed ones", b.hosts("p1-x.local") == ["10.0.0.9"], str(b.hosts("p1-x.local")))
+	var kept := PKeyMdns.AddressBook.new()
+	for ip in ["10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4"]:
+		kept.learn(_rec("p1-x.local", ip), ip, null, 0.0)
+	kept.learn(_rec("p1-x.local", "10.0.0.1"), "10.0.0.1", null, 200.0)
+	t.check("lapse: a refresh of the name does not keep the others", kept.hosts("p1-x.local", life + 1.0) == ["10.0.0.1"], str(kept.hosts("p1-x.local", life + 1.0)))
+	kept.learn(_rec("p1-x.local", "10.0.0.7"), "10.0.0.7", null, life + 2.0)
+	t.check("lapse: a re-seen address stays and the lapsed places are free", kept.hosts("p1-x.local") == ["10.0.0.1", "10.0.0.7"], str(kept.hosts("p1-x.local")))
 
 
 ## The mDNS corpus rows through the adapter's book, as the codec's `learn` runs them.

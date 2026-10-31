@@ -35,6 +35,7 @@ func run(t: PKeyTestContext) -> void:
 	await _backpressure(t)
 	await _budget(t)
 	await _send_failure(t)
+	await _outbound_bound(t)
 	await _destroy(t)
 	await _small_things(t)
 
@@ -662,6 +663,27 @@ func _send_failure(t: PKeyTestContext) -> void:
 	for i in 3:
 		pump.poll_once()
 	t.check("send failure: once", ra.closed.size() == 1)
+
+
+## A TCP pipe queues at most 4 MiB of outbound bytes; the write past it is refused (the link then ends peer_busy).
+func _outbound_bound(t: PKeyTestContext) -> void:
+	var server := TCPServer.new()
+	if server.listen(0, "127.0.0.1") != OK:
+		t.check("outbound bound: a loopback listener opens", false)
+		return
+	# Never polled, so the dial stays connecting and its writes wait in the queue.
+	var pipe := PKeyPeerTcpPipe.dial("127.0.0.1", server.get_local_port())
+	if not t.check("outbound bound: a dial starts", pipe != null):
+		server.stop()
+		return
+	var piece := PackedByteArray()
+	piece.resize(1 << 20)
+	var taken := 0
+	while taken < 8 and pipe.write(piece):
+		taken += 1
+	t.check("outbound bound: the queue takes 4 MiB and no more (%d MiB)" % taken, PKeyPeerTcpPipe.MAX_OUT == 4 * 1024 * 1024 and taken == 4, str(taken))
+	pipe.abort()
+	server.stop()
 
 
 ## N3: destroy() runs the session's teardown: an approver's slot is released.

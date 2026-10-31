@@ -139,6 +139,12 @@ func close(code: StringName = PKeyPeerSession.PEER_BYE) -> void:
 		_link.close(code if code == PKeyPeerSession.PEER_BUSY else PKeyPeerSession.PEER_BYE)
 
 
+## A newer roster was stored: the session ends `peer_revoked` when it no longer lists the peer.
+func recheck(ring_jws: String) -> void:
+	if not _ended and _link != null and _link.has_method("recheck"):
+		_link.recheck(ring_jws)
+
+
 ## The link's call: one APP-range message arrived.
 func deliver(type: int, body: PackedByteArray) -> void:
 	if _ended:

@@ -923,7 +923,9 @@ class WsSocket extends Socket:
 
 	func close(code: int) -> void:
 		_closing_with = code
-		_ws.close(code, "")
+		# A browser socket takes only 1000 or 3000 to 4999, so a refusal closes it 1000 there.
+		var wire := 1000 if OS.has_feature("web") and code != 1000 and (code < 3000 or code > 4999) else code
+		_ws.close(wire, "")
 		# Let the close frame leave now: the socket may be dropped before its next poll.
 		_ws.poll()
 

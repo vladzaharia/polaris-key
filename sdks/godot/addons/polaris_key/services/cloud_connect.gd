@@ -76,6 +76,7 @@ func _init(core: PKeyCore, client: PKeyConnectClient, options := {}) -> void:
 		_tree = Engine.get_main_loop() as SceneTree
 	_mono = options.get("mono", Callable())
 	_has_feature = options.get("has_feature", Callable())
+	_client.on_stored = Callable(self, "_recheck_sessions")
 
 
 func _to_string() -> String:
@@ -352,6 +353,20 @@ func _track(session: PKeyConnectSession) -> PKeyResult:
 	_sessions[session.get_instance_id()] = session
 	session.closed.connect(_on_session_closed.bind(session.get_instance_id()))
 	return PKeyResult.success(session)
+
+
+## A roster was stored: every open session is judged against it again, and one with a device it no longer
+## lists closes `peer_revoked`.
+func _recheck_sessions() -> void:
+	var held: Variant = _client.current()
+	if not held is Dictionary:
+		return
+	var jws := str((held as Dictionary).get("ring", ""))
+	if jws == "":
+		return
+	for s: PKeyConnectSession in _sessions.values():
+		if is_instance_valid(s):
+			s.recheck(jws)
 
 
 func _on_session_closed(_code: StringName, _by_peer: bool, id: int) -> void:
