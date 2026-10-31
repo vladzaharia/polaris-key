@@ -238,10 +238,15 @@ export interface AddressRecord {
  * The addresses learned for each host name (§15.4 Addresses; the `mdnsAnswers` rows). The rule
  * is the whole of learning: a record counts only when its address equals the packet's source (an
  * IPv4-mapped source as its IPv4), whatever the address is; TTL 0 removes; names fold by ASCII;
- * four per name, first seen first. Bounded in names: the least recently refreshed is evicted.
+ * four per name, first seen first. Bounded in names: the least recently refreshed is evicted. An
+ * address not seen for `ENTRY_TTL_MS` lapses and frees its place, whether or not the name is
+ * refreshed by other addresses.
  */
 export class AddressBook {
-  readonly #m = new Map<string, { ips: string[]; at: number }>();
+  readonly #m = new Map<
+    string,
+    { ips: string[]; seen: Map<string, number>; at: number }
+  >();
   constructor(private readonly maxNames = MAX_INSTANCES) {}
 
   /**
@@ -266,30 +271,49 @@ export class AddressBook {
     if (r.ttl === 0) {
       if (e === undefined) return;
       e.ips = e.ips.filter((x) => x !== address);
+      e.seen.delete(address);
       if (e.ips.length === 0) this.#m.delete(name);
       return;
     }
     if (e === undefined) {
       if (!admit()) return;
       if (this.#m.size >= this.maxNames) this.trim(now);
-      e = { ips: [], at: now };
+      e = { ips: [], seen: new Map(), at: now };
     } else this.#m.delete(name);
+    this.#lapse(e, now);
     if (!e.ips.includes(address) && e.ips.length < MAX_ADDRS)
       e.ips.push(address);
+    if (e.ips.includes(address)) e.seen.set(address, now);
     e.at = now;
     this.#m.set(name, e); // most recently refreshed last
   }
 
-  /** The addresses held for `name`, first seen first. */
-  hosts(name: string): string[] {
-    return [...(this.#m.get(foldName(name))?.ips ?? [])];
+  /** Drop the addresses of `e` not seen for `ENTRY_TTL_MS`. */
+  #lapse(e: { ips: string[]; seen: Map<string, number> }, now: number): void {
+    e.ips = e.ips.filter((a) => now - (e.seen.get(a) ?? now) <= ENTRY_TTL_MS);
+    for (const a of [...e.seen.keys()])
+      if (!e.ips.includes(a)) e.seen.delete(a);
+  }
+
+  /** The addresses held for `name`, first seen first; with `now`, those unseen for 5 minutes are left out. */
+  hosts(name: string, now?: number): string[] {
+    const e = this.#m.get(foldName(name));
+    if (e === undefined) return [];
+    return e.ips.filter(
+      (a) => now === undefined || now - (e.seen.get(a) ?? now) <= ENTRY_TTL_MS,
+    );
   }
 
   /** Seed the table (a conformance row's `prior`). */
   hold(name: string, address: string, now = 0): void {
     const n = foldName(name);
-    const e = this.#m.get(n) ?? { ips: [], at: now };
+    const e = this.#m.get(n) ?? {
+      ips: [] as string[],
+      seen: new Map<string, number>(),
+      at: now,
+    };
     e.ips.push(address);
+    e.seen.set(address, now);
     this.#m.set(n, e);
   }
 
@@ -683,7 +707,8 @@ export class MulticastDnsAdapter implements MdnsAdapter {
         }
       }
       for (const [inst, e] of seen) {
-        const hosts = e.target === undefined ? [] : book.hosts(e.target);
+        const hosts =
+          e.target === undefined ? [] : book.hosts(e.target, Date.now());
         if (e.port === undefined || e.txt === undefined) continue;
         if (hosts.length === 0) {
           // Every address was withdrawn: the peer cannot be dialled until one is learned again.
