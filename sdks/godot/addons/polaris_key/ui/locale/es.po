@@ -3323,6 +3323,11 @@ msgstr "Inicia sesión con tu teléfono"
 msgid "signin.nearby.body"
 msgstr "Abre {app} en un teléfono u ordenador con la sesión iniciada y en esta red."
 
+#. Open {app} on {device}.
+#. Nearby sign-in, waiting, once a device is chosen: where to open the app. Arguments: {app} = the product's name from ProductIdentity (never translated); {device} = the other device's friendly name (never translated).
+msgid "signin.nearby.bodyOn"
+msgstr "Abre {app} en {device}."
+
 #. Tap this code there:
 #. Nearby sign-in, waiting: the line above the code the other device must tap.
 msgid "signin.nearby.match"
@@ -3363,10 +3368,10 @@ msgstr "A continuación, permite que {app} encuentre dispositivos en tu red para
 msgid "signin.nearby.ask"
 msgstr "¿Dejar que {device} inicie sesión?"
 
-#. Tap the code it shows.
+#. Choose the code it shows.
 #. Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated).
 msgid "signin.nearby.askBody"
-msgstr "Toca el código que muestra."
+msgstr "Elige el código que muestra."
 
 #. {device} is signed in
 #. Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated).
@@ -3743,20 +3748,30 @@ msgstr "c usar un código · Esc cancelar"
 msgid "signin.cli.nearbyLooking"
 msgstr "Buscando tus otros dispositivos…"
 
+#. Waiting…
+#. Terminal sign-in, nearby: shown beside the spinner while the code waits for a tap on the other device. Keep it to a word or two.
+msgid "signin.cli.nearbyWaiting"
+msgstr "Esperando…"
+
 #. Enter continue · Esc not now
 #. Terminal key hints under the offer to look for nearby devices (macOS asks for access to the local network after it). Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
 msgid "signin.cli.nearbyPromptKeys"
 msgstr "Enter continuar · Esc ahora no"
 
-#. 1-9 choose · c use a code instead · Esc cancel
-#. Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators.
+#. 1-{n} choose a device · c use a code instead · Esc cancel
+#. Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated).
 msgid "signin.cli.nearbyPickKeys"
-msgstr "1-9 elegir · c usar un código · Esc cancelar"
+msgstr "1-{n} elegir dispositivo · c usar un código · Esc cancelar"
 
-#. Enter continue · n not you?
-#. Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n signs out again. Keep each key first and the ' · ' separators.
+#. 1 choose this device · c use a code instead · Esc cancel
+#. Terminal key hints while one device nearby could approve the sign-in: 1 picks it. Keep each key first and the ' · ' separators.
+msgid "signin.cli.nearbyPickOneKeys"
+msgstr "1 elegir este dispositivo · c usar un código · Esc cancelar"
+
+#. Enter continue · n or Esc not you, sign out
+#. Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n or Esc signs out again. Keep each key first and the ' · ' separators.
 msgid "signin.cli.nearbyDoneKeys"
-msgstr "Enter continuar · n ¿no eres tú?"
+msgstr "Enter continuar · n o Esc no eres tú, cerrar sesión"
 
 #. Waiting for a device to ask…
 #. Terminal 'devices approve': shown beside the spinner while the computer waits for another device to ask to sign in.
@@ -3768,20 +3783,30 @@ msgstr "Esperando a que un dispositivo lo pida…"
 msgid "signin.cli.approveWaitKeys"
 msgstr "Esc detener"
 
-#. 1-3 choose a code · d deny · Esc cancel
-#. Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d denies. Keep each key first and the ' · ' separators.
+#. 1-3 choose a code · d or Esc deny
+#. Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d or Esc denies. Keep each key first and the ' · ' separators.
 msgid "signin.cli.approveKeys"
-msgstr "1-3 elegir código · d rechazar · Esc cancelar"
+msgstr "1-3 elegir código · d o Esc rechazar"
 
-#. Polaris Locker can't approve nearby sign-ins from this computer. Sign in with a code on the other device.
+#. Sign in with a code on the other device.
 #. Terminal 'devices approve': this computer cannot take part in nearby sign-in. 'Polaris Locker' is the end-user product name (never translated).
 msgid "signin.cli.approveUnsupported"
-msgstr "Polaris Locker no puede aprobar inicios de sesión cercanos desde este equipo. Inicia sesión con un código en el otro dispositivo."
+msgstr "Inicia sesión con un código en el otro dispositivo."
 
-#. 1-9 choose a license · Esc deny
-#. Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators.
+#. Can't approve from this computer
+#. Terminal 'devices approve': the title when this computer cannot take part in nearby sign-in; the next step follows (signin.cli.approveUnsupported).
+msgid "signin.cli.approveUnsupportedTitle"
+msgstr "No se puede aprobar desde este equipo"
+
+#. 1-{n} choose a license · Esc deny
+#. Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated).
 msgid "signin.cli.approveChooseKeys"
-msgstr "1-9 elegir licencia · Esc rechazar"
+msgstr "1-{n} elegir licencia · Esc rechazar"
+
+#. 1 choose the license · Esc deny
+#. Terminal key hints while 'devices approve' asks which license the new device gets and only one can be given: 1 picks it, Esc denies. Keep each key first and the ' · ' separators.
+msgid "signin.cli.approveChooseOneKeys"
+msgstr "1 elegir la licencia · Esc rechazar"
 
 #. No browser on this computer. Use a code instead:
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.

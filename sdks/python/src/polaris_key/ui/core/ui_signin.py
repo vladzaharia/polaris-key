@@ -263,10 +263,15 @@ def nearby_approval_view(ctx: Context) -> View:
             "neutral",
         )
     if step == "choose":
-        return outcome(
+        # One tap per license (the licenses are the host's choices, no "Use this license" step) and Deny
+        # as the one other control, as on the code prompt: leaving answers Deny (UXR-47).
+        return make_view(
+            ctx,
+            "NearbyApproval",
             "choose",
-            ["signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.choice.continue"],
-            "signin.choice.continue",
+            ["signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.approve.deny"],
+            args=args,
+            focus="heading",
         )
     if step == "account-required":
         return outcome(

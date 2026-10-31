@@ -3323,6 +3323,11 @@ msgstr "Se connecter avec le téléphone"
 msgid "signin.nearby.body"
 msgstr "Ouvrez {app} sur un téléphone ou un ordinateur connecté et sur ce réseau."
 
+#. Open {app} on {device}.
+#. Nearby sign-in, waiting, once a device is chosen: where to open the app. Arguments: {app} = the product's name from ProductIdentity (never translated); {device} = the other device's friendly name (never translated).
+msgid "signin.nearby.bodyOn"
+msgstr "Ouvrez {app} sur {device}."
+
 #. Tap this code there:
 #. Nearby sign-in, waiting: the line above the code the other device must tap.
 msgid "signin.nearby.match"
@@ -3363,10 +3368,10 @@ msgstr "Autorisez ensuite {app} à trouver les appareils de votre réseau, pour 
 msgid "signin.nearby.ask"
 msgstr "Laisser {device} se connecter ?"
 
-#. Tap the code it shows.
+#. Choose the code it shows.
 #. Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated).
 msgid "signin.nearby.askBody"
-msgstr "Touchez le code qu’il affiche."
+msgstr "Choisissez le code qu’il affiche."
 
 #. {device} is signed in
 #. Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated).
@@ -3743,20 +3748,30 @@ msgstr "c utiliser un code à la place · Échap annuler"
 msgid "signin.cli.nearbyLooking"
 msgstr "Recherche de vos autres appareils…"
 
+#. Waiting…
+#. Terminal sign-in, nearby: shown beside the spinner while the code waits for a tap on the other device. Keep it to a word or two.
+msgid "signin.cli.nearbyWaiting"
+msgstr "En attente…"
+
 #. Enter continue · Esc not now
 #. Terminal key hints under the offer to look for nearby devices (macOS asks for access to the local network after it). Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
 msgid "signin.cli.nearbyPromptKeys"
 msgstr "Entrée continuer · Échap pas maintenant"
 
-#. 1-9 choose · c use a code instead · Esc cancel
-#. Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators.
+#. 1-{n} choose a device · c use a code instead · Esc cancel
+#. Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated).
 msgid "signin.cli.nearbyPickKeys"
-msgstr "1-9 choisir · c utiliser un code à la place · Échap annuler"
+msgstr "1-{n} choisir un appareil · c utiliser un code · Échap annuler"
 
-#. Enter continue · n not you?
-#. Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n signs out again. Keep each key first and the ' · ' separators.
+#. 1 choose this device · c use a code instead · Esc cancel
+#. Terminal key hints while one device nearby could approve the sign-in: 1 picks it. Keep each key first and the ' · ' separators.
+msgid "signin.cli.nearbyPickOneKeys"
+msgstr "1 choisir cet appareil · c utiliser un code · Échap annuler"
+
+#. Enter continue · n or Esc not you, sign out
+#. Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n or Esc signs out again. Keep each key first and the ' · ' separators.
 msgid "signin.cli.nearbyDoneKeys"
-msgstr "Entrée continuer · n ce n'est pas vous ?"
+msgstr "Entrée continuer · n ou Échap ce n'est pas vous, déconnexion"
 
 #. Waiting for a device to ask…
 #. Terminal 'devices approve': shown beside the spinner while the computer waits for another device to ask to sign in.
@@ -3768,20 +3783,30 @@ msgstr "En attente de la demande d'un appareil…"
 msgid "signin.cli.approveWaitKeys"
 msgstr "Échap arrêter"
 
-#. 1-3 choose a code · d deny · Esc cancel
-#. Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d denies. Keep each key first and the ' · ' separators.
+#. 1-3 choose a code · d or Esc deny
+#. Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d or Esc denies. Keep each key first and the ' · ' separators.
 msgid "signin.cli.approveKeys"
-msgstr "1-3 choisir un code · d refuser · Échap annuler"
+msgstr "1-3 choisir un code · d ou Échap refuser"
 
-#. Polaris Locker can't approve nearby sign-ins from this computer. Sign in with a code on the other device.
+#. Sign in with a code on the other device.
 #. Terminal 'devices approve': this computer cannot take part in nearby sign-in. 'Polaris Locker' is the end-user product name (never translated).
 msgid "signin.cli.approveUnsupported"
-msgstr "Polaris Locker ne peut pas approuver les connexions à proximité depuis cet ordinateur. Connectez-vous avec un code sur l'autre appareil."
+msgstr "Connectez-vous avec un code sur l'autre appareil."
 
-#. 1-9 choose a license · Esc deny
-#. Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators.
+#. Can't approve from this computer
+#. Terminal 'devices approve': the title when this computer cannot take part in nearby sign-in; the next step follows (signin.cli.approveUnsupported).
+msgid "signin.cli.approveUnsupportedTitle"
+msgstr "Impossible d’approuver depuis cet ordinateur"
+
+#. 1-{n} choose a license · Esc deny
+#. Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated).
 msgid "signin.cli.approveChooseKeys"
-msgstr "1-9 choisir une licence · Échap refuser"
+msgstr "1-{n} choisir une licence · Échap refuser"
+
+#. 1 choose the license · Esc deny
+#. Terminal key hints while 'devices approve' asks which license the new device gets and only one can be given: 1 picks it, Esc denies. Keep each key first and the ' · ' separators.
+msgid "signin.cli.approveChooseOneKeys"
+msgstr "1 choisir la licence · Échap refuser"
 
 #. No browser on this computer. Use a code instead:
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.

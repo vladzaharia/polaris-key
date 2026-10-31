@@ -5464,7 +5464,7 @@
       }
     },
     {
-      "name": "NearbyApproval/ask: tap the code the other device shows",
+      "name": "NearbyApproval/ask: choose the code the other device shows",
       "input": {
         "nearbyApproval": { "step": "ask", "device": "Kitchen iPad" }
       },
@@ -5563,7 +5563,7 @@
       }
     },
     {
-      "name": "NearbyApproval/choose: the license is chosen here, never on the new device",
+      "name": "NearbyApproval/choose: one tap per license, Deny to leave; chosen here, never on the new device",
       "input": {
         "nearbyApproval": { "step": "choose", "device": "Kitchen iPad" }
       },
@@ -5571,7 +5571,7 @@
         "component": "NearbyApproval",
         "state": "choose",
         "copy": [
-          "signin.choice.continue",
+          "signin.approve.deny",
           "signin.nearby.chooseLede",
           "signin.nearby.chooseTitle"
         ]

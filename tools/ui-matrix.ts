@@ -72,6 +72,8 @@
 // The `cli` family gains `devices approve` (I-47.1, additive within version 7: Swift, Kotlin and
 // Godot do not run the family): an end-user verb, so the default mount and help rows list it, and
 // the `login` outcomes `sign-in-nearby` and `sign-in-nearby-handoff` and the `approve-*` outcomes.
+// NearbyApproval's `choose` state (I-47.U, UXR-47) has one control per license and Deny, as `ask`
+// has one per code and Deny: no "Use this license" step, and no primary.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -2409,7 +2411,7 @@ function signInFamily(a: A): Draft[] {
       { default: true },
     ),
     row(
-      "NearbyApproval/ask: tap the code the other device shows",
+      "NearbyApproval/ask: choose the code the other device shows",
       { nearbyApproval: { step: "ask", device: "Kitchen iPad" } },
       "NearbyApproval",
       "ask",
@@ -2459,7 +2461,7 @@ function signInFamily(a: A): Draft[] {
       "all",
     ),
     row(
-      "NearbyApproval/choose: the license is chosen here, never on the new device",
+      "NearbyApproval/choose: one tap per license, Deny to leave; chosen here, never on the new device",
       { nearbyApproval: { step: "choose", device: "Kitchen iPad" } },
       "NearbyApproval",
       "choose",

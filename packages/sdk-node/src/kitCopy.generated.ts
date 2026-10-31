@@ -649,6 +649,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.promptTitle": "Sign in with your phone",
     "signin.nearby.body":
       "Open {app} on a phone or computer that's signed in and on this network.",
+    "signin.nearby.bodyOn": "Open {app} on {device}.",
     "signin.nearby.match": "Tap this code there:",
     "signin.nearby.code": "Use a code instead",
     "signin.nearby.done": "Signed in as {email}",
@@ -656,7 +657,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.prePrompt":
       "Next, allow {app} to find devices on your network, so your phone can sign you in.",
     "signin.nearby.ask": "Let {device} sign in?",
-    "signin.nearby.askBody": "Tap the code it shows.",
+    "signin.nearby.askBody": "Choose the code it shows.",
     "signin.nearby.approved": "{device} is signed in",
     "signin.nearby.notNearby": "{device} isn't on this network",
     "signin.nearby.notNearbyBody":
@@ -731,16 +732,20 @@ export const KIT_COPY: Readonly<
     "signin.cli.keys": "Enter open again · c use a code · Esc cancel",
     "signin.cli.nearbyKey": "c use a code instead · Esc cancel",
     "signin.cli.nearbyLooking": "Looking for your other devices…",
+    "signin.cli.nearbyWaiting": "Waiting…",
     "signin.cli.nearbyPromptKeys": "Enter continue · Esc not now",
     "signin.cli.nearbyPickKeys":
-      "1-9 choose · c use a code instead · Esc cancel",
-    "signin.cli.nearbyDoneKeys": "Enter continue · n not you?",
+      "1-{n} choose a device · c use a code instead · Esc cancel",
+    "signin.cli.nearbyPickOneKeys":
+      "1 choose this device · c use a code instead · Esc cancel",
+    "signin.cli.nearbyDoneKeys": "Enter continue · n or Esc not you, sign out",
     "signin.cli.approveWaiting": "Waiting for a device to ask…",
     "signin.cli.approveWaitKeys": "Esc stop",
-    "signin.cli.approveKeys": "1-3 choose a code · d deny · Esc cancel",
-    "signin.cli.approveUnsupported":
-      "Polaris Locker can't approve nearby sign-ins from this computer. Sign in with a code on the other device.",
-    "signin.cli.approveChooseKeys": "1-9 choose a license · Esc deny",
+    "signin.cli.approveKeys": "1-3 choose a code · d or Esc deny",
+    "signin.cli.approveUnsupported": "Sign in with a code on the other device.",
+    "signin.cli.approveUnsupportedTitle": "Can't approve from this computer",
+    "signin.cli.approveChooseKeys": "1-{n} choose a license · Esc deny",
+    "signin.cli.approveChooseOneKeys": "1 choose the license · Esc deny",
     "signin.cli.headless": "No browser on this computer. Use a code instead:",
     "signin.cli.signedIn": "Signed in as {name} ({email})",
     "signin.cli.license":
@@ -2535,6 +2540,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.promptTitle": "Mit dem Telefon anmelden",
     "signin.nearby.body":
       "Öffnen Sie {app} auf einem Telefon oder Computer, der angemeldet und in diesem Netzwerk ist.",
+    "signin.nearby.bodyOn": "Öffnen Sie {app} auf {device}.",
     "signin.nearby.match": "Tippen Sie dort auf diesen Code:",
     "signin.nearby.code": "Stattdessen einen Code verwenden",
     "signin.nearby.done": "Angemeldet als {email}",
@@ -2542,7 +2548,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.prePrompt":
       "Erlauben Sie {app} als Nächstes, Geräte in Ihrem Netzwerk zu finden, damit Ihr Telefon Sie anmelden kann.",
     "signin.nearby.ask": "{device} die Anmeldung erlauben?",
-    "signin.nearby.askBody": "Tippen Sie auf den Code, den es anzeigt.",
+    "signin.nearby.askBody": "Wählen Sie den Code, den es anzeigt.",
     "signin.nearby.approved": "{device} ist angemeldet",
     "signin.nearby.notNearby": "{device} ist nicht in diesem Netzwerk",
     "signin.nearby.notNearbyBody":
@@ -2624,16 +2630,23 @@ export const KIT_COPY: Readonly<
     "signin.cli.keys": "Enter erneut öffnen · c Code verwenden · Esc abbrechen",
     "signin.cli.nearbyKey": "c stattdessen Code verwenden · Esc abbrechen",
     "signin.cli.nearbyLooking": "Suche nach Ihren anderen Geräten…",
+    "signin.cli.nearbyWaiting": "Warten…",
     "signin.cli.nearbyPromptKeys": "Enter weiter · Esc nicht jetzt",
     "signin.cli.nearbyPickKeys":
-      "1-9 wählen · c stattdessen Code verwenden · Esc abbrechen",
-    "signin.cli.nearbyDoneKeys": "Enter weiter · n nicht Sie?",
+      "1-{n} Gerät wählen · c stattdessen Code verwenden · Esc abbrechen",
+    "signin.cli.nearbyPickOneKeys":
+      "1 dieses Gerät wählen · c stattdessen Code verwenden · Esc abbrechen",
+    "signin.cli.nearbyDoneKeys":
+      "Enter weiter · n oder Esc nicht Sie, abmelden",
     "signin.cli.approveWaiting": "Warten auf ein Gerät, das anfragt…",
     "signin.cli.approveWaitKeys": "Esc beenden",
-    "signin.cli.approveKeys": "1-3 Code wählen · d ablehnen · Esc abbrechen",
+    "signin.cli.approveKeys": "1-3 Code wählen · d oder Esc ablehnen",
     "signin.cli.approveUnsupported":
-      "Polaris Locker kann Anmeldungen in der Nähe von diesem Computer aus nicht genehmigen. Melden Sie sich auf dem anderen Gerät mit einem Code an.",
-    "signin.cli.approveChooseKeys": "1-9 Lizenz wählen · Esc ablehnen",
+      "Melden Sie sich auf dem anderen Gerät mit einem Code an.",
+    "signin.cli.approveUnsupportedTitle":
+      "Genehmigen von diesem Computer aus nicht möglich",
+    "signin.cli.approveChooseKeys": "1-{n} Lizenz wählen · Esc ablehnen",
+    "signin.cli.approveChooseOneKeys": "1 Lizenz wählen · Esc ablehnen",
     "signin.cli.headless":
       "Kein Browser auf diesem Computer. Verwenden Sie stattdessen einen Code:",
     "signin.cli.signedIn": "Angemeldet als {name} ({email})",
@@ -4494,6 +4507,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.promptTitle": "Se connecter avec le téléphone",
     "signin.nearby.body":
       "Ouvrez {app} sur un téléphone ou un ordinateur connecté et sur ce réseau.",
+    "signin.nearby.bodyOn": "Ouvrez {app} sur {device}.",
     "signin.nearby.match": "Touchez ce code là-bas :",
     "signin.nearby.code": "Utiliser un code à la place",
     "signin.nearby.done": "Connecté en tant que {email}",
@@ -4501,7 +4515,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.prePrompt":
       "Autorisez ensuite {app} à trouver les appareils de votre réseau, pour que votre téléphone puisse vous connecter.",
     "signin.nearby.ask": "Laisser {device} se connecter ?",
-    "signin.nearby.askBody": "Touchez le code qu’il affiche.",
+    "signin.nearby.askBody": "Choisissez le code qu’il affiche.",
     "signin.nearby.approved": "{device} est connecté",
     "signin.nearby.notNearby": "{device} n’est pas sur ce réseau",
     "signin.nearby.notNearbyBody":
@@ -4580,16 +4594,23 @@ export const KIT_COPY: Readonly<
     "signin.cli.keys": "Entrée rouvrir · c utiliser un code · Échap annuler",
     "signin.cli.nearbyKey": "c utiliser un code à la place · Échap annuler",
     "signin.cli.nearbyLooking": "Recherche de vos autres appareils…",
+    "signin.cli.nearbyWaiting": "En attente…",
     "signin.cli.nearbyPromptKeys": "Entrée continuer · Échap pas maintenant",
     "signin.cli.nearbyPickKeys":
-      "1-9 choisir · c utiliser un code à la place · Échap annuler",
-    "signin.cli.nearbyDoneKeys": "Entrée continuer · n ce n'est pas vous ?",
+      "1-{n} choisir un appareil · c utiliser un code · Échap annuler",
+    "signin.cli.nearbyPickOneKeys":
+      "1 choisir cet appareil · c utiliser un code · Échap annuler",
+    "signin.cli.nearbyDoneKeys":
+      "Entrée continuer · n ou Échap ce n'est pas vous, déconnexion",
     "signin.cli.approveWaiting": "En attente de la demande d'un appareil…",
     "signin.cli.approveWaitKeys": "Échap arrêter",
-    "signin.cli.approveKeys": "1-3 choisir un code · d refuser · Échap annuler",
+    "signin.cli.approveKeys": "1-3 choisir un code · d ou Échap refuser",
     "signin.cli.approveUnsupported":
-      "Polaris Locker ne peut pas approuver les connexions à proximité depuis cet ordinateur. Connectez-vous avec un code sur l'autre appareil.",
-    "signin.cli.approveChooseKeys": "1-9 choisir une licence · Échap refuser",
+      "Connectez-vous avec un code sur l'autre appareil.",
+    "signin.cli.approveUnsupportedTitle":
+      "Impossible d’approuver depuis cet ordinateur",
+    "signin.cli.approveChooseKeys": "1-{n} choisir une licence · Échap refuser",
+    "signin.cli.approveChooseOneKeys": "1 choisir la licence · Échap refuser",
     "signin.cli.headless":
       "Aucun navigateur sur cet ordinateur. Utilisez plutôt un code :",
     "signin.cli.signedIn": "Connecté en tant que {name} ({email})",
@@ -6436,6 +6457,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.promptTitle": "Inicia sesión con tu teléfono",
     "signin.nearby.body":
       "Abre {app} en un teléfono u ordenador con la sesión iniciada y en esta red.",
+    "signin.nearby.bodyOn": "Abre {app} en {device}.",
     "signin.nearby.match": "Toca allí este código:",
     "signin.nearby.code": "Usar un código",
     "signin.nearby.done": "Sesión iniciada como {email}",
@@ -6443,7 +6465,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.prePrompt":
       "A continuación, permite que {app} encuentre dispositivos en tu red para que tu teléfono pueda iniciar tu sesión.",
     "signin.nearby.ask": "¿Dejar que {device} inicie sesión?",
-    "signin.nearby.askBody": "Toca el código que muestra.",
+    "signin.nearby.askBody": "Elige el código que muestra.",
     "signin.nearby.approved": "{device} ha iniciado sesión",
     "signin.nearby.notNearby": "{device} no está en esta red",
     "signin.nearby.notNearbyBody":
@@ -6521,15 +6543,23 @@ export const KIT_COPY: Readonly<
     "signin.cli.keys": "Intro abrir de nuevo · c usar un código · Esc cancelar",
     "signin.cli.nearbyKey": "c usar un código · Esc cancelar",
     "signin.cli.nearbyLooking": "Buscando tus otros dispositivos…",
+    "signin.cli.nearbyWaiting": "Esperando…",
     "signin.cli.nearbyPromptKeys": "Enter continuar · Esc ahora no",
-    "signin.cli.nearbyPickKeys": "1-9 elegir · c usar un código · Esc cancelar",
-    "signin.cli.nearbyDoneKeys": "Enter continuar · n ¿no eres tú?",
+    "signin.cli.nearbyPickKeys":
+      "1-{n} elegir dispositivo · c usar un código · Esc cancelar",
+    "signin.cli.nearbyPickOneKeys":
+      "1 elegir este dispositivo · c usar un código · Esc cancelar",
+    "signin.cli.nearbyDoneKeys":
+      "Enter continuar · n o Esc no eres tú, cerrar sesión",
     "signin.cli.approveWaiting": "Esperando a que un dispositivo lo pida…",
     "signin.cli.approveWaitKeys": "Esc detener",
-    "signin.cli.approveKeys": "1-3 elegir código · d rechazar · Esc cancelar",
+    "signin.cli.approveKeys": "1-3 elegir código · d o Esc rechazar",
     "signin.cli.approveUnsupported":
-      "Polaris Locker no puede aprobar inicios de sesión cercanos desde este equipo. Inicia sesión con un código en el otro dispositivo.",
-    "signin.cli.approveChooseKeys": "1-9 elegir licencia · Esc rechazar",
+      "Inicia sesión con un código en el otro dispositivo.",
+    "signin.cli.approveUnsupportedTitle":
+      "No se puede aprobar desde este equipo",
+    "signin.cli.approveChooseKeys": "1-{n} elegir licencia · Esc rechazar",
+    "signin.cli.approveChooseOneKeys": "1 elegir la licencia · Esc rechazar",
     "signin.cli.headless":
       "No hay navegador en esta computadora. Usa un código:",
     "signin.cli.signedIn": "Sesión iniciada como {name} ({email})",
@@ -8379,6 +8409,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.promptTitle": "Entre com o celular",
     "signin.nearby.body":
       "Abra {app} em um celular ou computador conectado e nesta rede.",
+    "signin.nearby.bodyOn": "Abra {app} em {device}.",
     "signin.nearby.match": "Toque neste código lá:",
     "signin.nearby.code": "Usar um código",
     "signin.nearby.done": "Conectado como {email}",
@@ -8386,7 +8417,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.prePrompt":
       "Em seguida, permita que {app} encontre dispositivos na sua rede para que seu celular possa fazer o login.",
     "signin.nearby.ask": "Deixar {device} entrar?",
-    "signin.nearby.askBody": "Toque no código que ele exibe.",
+    "signin.nearby.askBody": "Escolha o código que ele exibe.",
     "signin.nearby.approved": "{device} está conectado",
     "signin.nearby.notNearby": "{device} não está nesta rede",
     "signin.nearby.notNearbyBody":
@@ -8460,18 +8491,25 @@ export const KIT_COPY: Readonly<
     "signin.replace.opensBrowser": "Abre o Polaris Locker no navegador",
     "signin.cli.opening": "Abrindo o navegador…",
     "signin.cli.ifNotOpened": "Se não abrir, acesse {url}",
-    "signin.cli.keys": "Enter abre de novo · c usa um código · Esc cancela",
-    "signin.cli.nearbyKey": "c usa um código · Esc cancela",
+    "signin.cli.keys": "Enter abrir de novo · c usar um código · Esc cancelar",
+    "signin.cli.nearbyKey": "c usar um código · Esc cancelar",
     "signin.cli.nearbyLooking": "Procurando seus outros dispositivos…",
+    "signin.cli.nearbyWaiting": "Aguardando…",
     "signin.cli.nearbyPromptKeys": "Enter continuar · Esc agora não",
-    "signin.cli.nearbyPickKeys": "1-9 escolher · c usa um código · Esc cancela",
-    "signin.cli.nearbyDoneKeys": "Enter continuar · n não é você?",
+    "signin.cli.nearbyPickKeys":
+      "1-{n} escolher dispositivo · c usar um código · Esc cancelar",
+    "signin.cli.nearbyPickOneKeys":
+      "1 escolher este dispositivo · c usar um código · Esc cancelar",
+    "signin.cli.nearbyDoneKeys": "Enter continuar · n ou Esc não é você, sair",
     "signin.cli.approveWaiting": "Aguardando um dispositivo pedir…",
     "signin.cli.approveWaitKeys": "Esc parar",
-    "signin.cli.approveKeys": "1-3 escolher código · d negar · Esc cancelar",
+    "signin.cli.approveKeys": "1-3 escolher código · d ou Esc negar",
     "signin.cli.approveUnsupported":
-      "O Polaris Locker não pode aprovar entradas por proximidade neste computador. Entre com um código no outro dispositivo.",
-    "signin.cli.approveChooseKeys": "1-9 escolher licença · Esc negar",
+      "Entre com um código no outro dispositivo.",
+    "signin.cli.approveUnsupportedTitle":
+      "Não é possível aprovar neste computador",
+    "signin.cli.approveChooseKeys": "1-{n} escolher licença · Esc negar",
+    "signin.cli.approveChooseOneKeys": "1 escolher a licença · Esc negar",
     "signin.cli.headless": "Não há navegador neste computador. Use um código:",
     "signin.cli.signedIn": "Conectado como {name} ({email})",
     "signin.cli.license":
@@ -10274,6 +10312,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.promptTitle": "Accedi con il telefono",
     "signin.nearby.body":
       "Apri {app} su un telefono o computer con l’accesso effettuato e in questa rete.",
+    "signin.nearby.bodyOn": "Apri {app} su {device}.",
     "signin.nearby.match": "Tocca lì questo codice:",
     "signin.nearby.code": "Usa invece un codice",
     "signin.nearby.done": "Accesso eseguito come {email}",
@@ -10281,7 +10320,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.prePrompt":
       "Ora consenti a {app} di trovare i dispositivi della tua rete, così il telefono può farti accedere.",
     "signin.nearby.ask": "Lasciare accedere {device}?",
-    "signin.nearby.askBody": "Tocca il codice che mostra.",
+    "signin.nearby.askBody": "Scegli il codice che mostra.",
     "signin.nearby.approved": "{device} ha effettuato l’accesso",
     "signin.nearby.notNearby": "{device} non è in questa rete",
     "signin.nearby.notNearbyBody":
@@ -10358,16 +10397,22 @@ export const KIT_COPY: Readonly<
     "signin.cli.keys": "Invio riapri · c usa un codice · Esc annulla",
     "signin.cli.nearbyKey": "c usa invece un codice · Esc annulla",
     "signin.cli.nearbyLooking": "Cerco i tuoi altri dispositivi…",
+    "signin.cli.nearbyWaiting": "In attesa…",
     "signin.cli.nearbyPromptKeys": "Invio continua · Esc non ora",
     "signin.cli.nearbyPickKeys":
-      "1-9 scegli · c usa invece un codice · Esc annulla",
-    "signin.cli.nearbyDoneKeys": "Invio continua · n non sei tu?",
+      "1-{n} scegli un dispositivo · c usa invece un codice · Esc annulla",
+    "signin.cli.nearbyPickOneKeys":
+      "1 scegli questo dispositivo · c usa invece un codice · Esc annulla",
+    "signin.cli.nearbyDoneKeys": "Invio continua · n o Esc non sei tu, esci",
     "signin.cli.approveWaiting": "In attesa della richiesta di un dispositivo…",
     "signin.cli.approveWaitKeys": "Esc interrompi",
-    "signin.cli.approveKeys": "1-3 scegli un codice · d rifiuta · Esc annulla",
+    "signin.cli.approveKeys": "1-3 scegli un codice · d o Esc rifiuta",
     "signin.cli.approveUnsupported":
-      "Polaris Locker non può approvare gli accessi vicini da questo computer. Accedi con un codice sull'altro dispositivo.",
-    "signin.cli.approveChooseKeys": "1-9 scegli la licenza · Esc rifiuta",
+      "Accedi con un codice sull'altro dispositivo.",
+    "signin.cli.approveUnsupportedTitle":
+      "Impossibile approvare da questo computer",
+    "signin.cli.approveChooseKeys": "1-{n} scegli la licenza · Esc rifiuta",
+    "signin.cli.approveChooseOneKeys": "1 scegli la licenza · Esc rifiuta",
     "signin.cli.headless":
       "Nessun browser su questo computer. Usa invece un codice:",
     "signin.cli.signedIn": "Accesso effettuato come {name} ({email})",
@@ -12200,6 +12245,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.promptTitle": "スマートフォンでサインイン",
     "signin.nearby.body":
       "サインイン済みで、このネットワークにあるスマートフォンまたはパソコンで {app} を開いてください。",
+    "signin.nearby.bodyOn": "{device} で {app} を開いてください。",
     "signin.nearby.match": "そちらでこのコードをタップ：",
     "signin.nearby.code": "代わりにコードを使う",
     "signin.nearby.done": "{email} でサインインしました",
@@ -12207,7 +12253,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.prePrompt":
       "次に、{app} がネットワーク上のデバイスを見つけることを許可してください。スマートフォンからサインインできます。",
     "signin.nearby.ask": "{device} のサインインを許可しますか？",
-    "signin.nearby.askBody": "表示されているコードをタップしてください。",
+    "signin.nearby.askBody": "表示されているコードを選んでください。",
     "signin.nearby.approved": "{device} がサインインしました",
     "signin.nearby.notNearby": "{device} はこのネットワークにありません",
     "signin.nearby.notNearbyBody":
@@ -12287,16 +12333,23 @@ export const KIT_COPY: Readonly<
     "signin.cli.keys": "Enter もう一度開く · c コードを使う · Esc キャンセル",
     "signin.cli.nearbyKey": "c 代わりにコードを使う · Esc キャンセル",
     "signin.cli.nearbyLooking": "近くの別のデバイスを探しています…",
+    "signin.cli.nearbyWaiting": "待機中…",
     "signin.cli.nearbyPromptKeys": "Enter 続ける · Esc 今はしない",
     "signin.cli.nearbyPickKeys":
-      "1-9 選ぶ · c 代わりにコードを使う · Esc キャンセル",
-    "signin.cli.nearbyDoneKeys": "Enter 続ける · n 自分ではない場合",
+      "1-{n} デバイスを選ぶ · c 代わりにコードを使う · Esc キャンセル",
+    "signin.cli.nearbyPickOneKeys":
+      "1 このデバイスを選ぶ · c 代わりにコードを使う · Esc キャンセル",
+    "signin.cli.nearbyDoneKeys":
+      "Enter 続ける · n または Esc 自分ではない・サインアウト",
     "signin.cli.approveWaiting": "デバイスからの確認を待っています…",
     "signin.cli.approveWaitKeys": "Esc 停止",
-    "signin.cli.approveKeys": "1-3 コードを選ぶ · d 拒否 · Esc キャンセル",
+    "signin.cli.approveKeys": "1-3 コードを選ぶ · d または Esc 拒否",
     "signin.cli.approveUnsupported":
-      "このコンピュータでは、Polaris Locker は近くのサインインを承認できません。もう一方のデバイスでコードを使ってサインインしてください。",
-    "signin.cli.approveChooseKeys": "1-9 ライセンスを選ぶ · Esc 拒否",
+      "もう一方のデバイスでコードを使ってサインインしてください。",
+    "signin.cli.approveUnsupportedTitle":
+      "このコンピュータからは承認できません",
+    "signin.cli.approveChooseKeys": "1-{n} ライセンスを選ぶ · Esc 拒否",
+    "signin.cli.approveChooseOneKeys": "1 ライセンスを選ぶ · Esc 拒否",
     "signin.cli.headless":
       "このコンピュータにはブラウザがありません。代わりにコードを使用してください：",
     "signin.cli.signedIn": "{name}（{email}）としてサインインしました",
@@ -14120,6 +14173,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.promptTitle": "휴대폰으로 로그인",
     "signin.nearby.body":
       "로그인되어 있고 이 네트워크에 연결된 휴대폰이나 컴퓨터에서 {app}을(를) 여세요.",
+    "signin.nearby.bodyOn": "{device}에서 {app}을(를) 여세요.",
     "signin.nearby.match": "그쪽에서 이 코드를 탭하세요:",
     "signin.nearby.code": "코드로 대신하기",
     "signin.nearby.done": "{email} 계정으로 로그인됨",
@@ -14127,7 +14181,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.prePrompt":
       "다음 화면에서 {app}이 네트워크의 기기를 찾도록 허용하면 휴대폰으로 로그인할 수 있어요.",
     "signin.nearby.ask": "{device}의 로그인을 허용할까요?",
-    "signin.nearby.askBody": "표시된 코드를 탭하세요.",
+    "signin.nearby.askBody": "표시된 코드를 선택하세요.",
     "signin.nearby.approved": "{device}에 로그인했어요",
     "signin.nearby.notNearby": "{device}이(가) 이 네트워크에 없어요",
     "signin.nearby.notNearbyBody":
@@ -14205,15 +14259,21 @@ export const KIT_COPY: Readonly<
     "signin.cli.keys": "Enter 다시 열기 · c 코드 사용 · Esc 취소",
     "signin.cli.nearbyKey": "c 코드로 대신하기 · Esc 취소",
     "signin.cli.nearbyLooking": "근처의 다른 기기를 찾는 중…",
+    "signin.cli.nearbyWaiting": "대기 중…",
     "signin.cli.nearbyPromptKeys": "Enter 계속 · Esc 나중에",
-    "signin.cli.nearbyPickKeys": "1-9 선택 · c 코드로 대신하기 · Esc 취소",
-    "signin.cli.nearbyDoneKeys": "Enter 계속 · n 본인이 아닌가요?",
+    "signin.cli.nearbyPickKeys":
+      "1-{n} 기기 선택 · c 코드로 대신하기 · Esc 취소",
+    "signin.cli.nearbyPickOneKeys":
+      "1 이 기기 선택 · c 코드로 대신하기 · Esc 취소",
+    "signin.cli.nearbyDoneKeys":
+      "Enter 계속 · n 또는 Esc 본인이 아님, 로그아웃",
     "signin.cli.approveWaiting": "기기의 요청을 기다리는 중…",
     "signin.cli.approveWaitKeys": "Esc 중지",
-    "signin.cli.approveKeys": "1-3 코드 선택 · d 거부 · Esc 취소",
-    "signin.cli.approveUnsupported":
-      "이 컴퓨터에서는 Polaris Locker가 근처 기기의 로그인을 승인할 수 없습니다. 다른 기기에서 코드로 로그인하세요.",
-    "signin.cli.approveChooseKeys": "1-9 라이선스 선택 · Esc 거부",
+    "signin.cli.approveKeys": "1-3 코드 선택 · d 또는 Esc 거부",
+    "signin.cli.approveUnsupported": "다른 기기에서 코드로 로그인하세요.",
+    "signin.cli.approveUnsupportedTitle": "이 컴퓨터에서는 승인할 수 없습니다",
+    "signin.cli.approveChooseKeys": "1-{n} 라이선스 선택 · Esc 거부",
+    "signin.cli.approveChooseOneKeys": "1 라이선스 선택 · Esc 거부",
     "signin.cli.headless":
       "이 컴퓨터에 브라우저가 없어요. 대신 코드를 사용하세요:",
     "signin.cli.signedIn": "{name} 님으로 로그인됨 ({email})",
@@ -15929,6 +15989,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.title": "在你的另一台设备上批准",
     "signin.nearby.promptTitle": "用手机登录",
     "signin.nearby.body": "在已登录且处于此网络的手机或电脑上打开 {app}。",
+    "signin.nearby.bodyOn": "在 {device} 上打开 {app}。",
     "signin.nearby.match": "在那边点按此代码：",
     "signin.nearby.code": "改用代码",
     "signin.nearby.done": "已以 {email} 身份登录",
@@ -15936,7 +15997,7 @@ export const KIT_COPY: Readonly<
     "signin.nearby.prePrompt":
       "接下来请允许 {app} 查找网络中的设备，这样你的手机就能为你登录。",
     "signin.nearby.ask": "允许 {device} 登录？",
-    "signin.nearby.askBody": "点按它显示的代码。",
+    "signin.nearby.askBody": "选择它显示的代码。",
     "signin.nearby.approved": "{device} 已登录",
     "signin.nearby.notNearby": "{device} 不在此网络中",
     "signin.nearby.notNearbyBody":
@@ -16005,15 +16066,18 @@ export const KIT_COPY: Readonly<
     "signin.cli.keys": "Enter 再次打开 · c 使用代码 · Esc 取消",
     "signin.cli.nearbyKey": "c 改用代码 · Esc 取消",
     "signin.cli.nearbyLooking": "正在查找你的其他设备…",
+    "signin.cli.nearbyWaiting": "等待中…",
     "signin.cli.nearbyPromptKeys": "Enter 继续 · Esc 暂不",
-    "signin.cli.nearbyPickKeys": "1-9 选择 · c 改用代码 · Esc 取消",
-    "signin.cli.nearbyDoneKeys": "Enter 继续 · n 不是你？",
+    "signin.cli.nearbyPickKeys": "1-{n} 选择设备 · c 改用代码 · Esc 取消",
+    "signin.cli.nearbyPickOneKeys": "1 选择此设备 · c 改用代码 · Esc 取消",
+    "signin.cli.nearbyDoneKeys": "Enter 继续 · n 或 Esc 不是你，退出登录",
     "signin.cli.approveWaiting": "正在等待设备发出请求…",
     "signin.cli.approveWaitKeys": "Esc 停止",
-    "signin.cli.approveKeys": "1-3 选择代码 · d 拒绝 · Esc 取消",
-    "signin.cli.approveUnsupported":
-      "此电脑上的 Polaris Locker 无法批准附近设备的登录。请在另一台设备上使用代码登录。",
-    "signin.cli.approveChooseKeys": "1-9 选择许可证 · Esc 拒绝",
+    "signin.cli.approveKeys": "1-3 选择代码 · d 或 Esc 拒绝",
+    "signin.cli.approveUnsupported": "请在另一台设备上使用代码登录。",
+    "signin.cli.approveUnsupportedTitle": "无法在此电脑上批准",
+    "signin.cli.approveChooseKeys": "1-{n} 选择许可证 · Esc 拒绝",
+    "signin.cli.approveChooseOneKeys": "1 选择许可证 · Esc 拒绝",
     "signin.cli.headless": "这台电脑上没有浏览器。请改用代码：",
     "signin.cli.signedIn": "已登录为{name}（{email}）",
     "signin.cli.license":

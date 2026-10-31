@@ -451,7 +451,7 @@
           "copy": [
             "signin.nearby.chooseTitle",
             "signin.nearby.chooseLede",
-            "signin.choice.continue"
+            "signin.approve.deny"
           ]
         },
         "account-required": {
