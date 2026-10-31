@@ -340,6 +340,26 @@ const ROUTES: Record<string, unknown> = {
       },
     ],
   },
+  // A-22.6: a store's page is the Sales tab of its channel page, so the channel list names it.
+  "/manage/api/products/djdl/distribution/channels": {
+    product: "djdl",
+    now: 1,
+    platforms: [],
+    kinds: [],
+    channels: [
+      {
+        id: "polaris-key",
+        label: "Polaris Locker",
+        inScope: true,
+        declared: true,
+        oneClick: false,
+        notUsing: false,
+        delivery: { state: "live", attention: [], platforms: [] },
+        commerce: null,
+        identity: null,
+      },
+    ],
+  },
   // A-18j: Distribution → Storefronts and Listing.
   "/manage/api/products/djdl/distribution/storefronts": {
     listing: { name: "DJDL", defaultLocale: "en-US", locales: ["en-US"] },
@@ -790,7 +810,7 @@ describe("overlays under the Worker's CSP", () => {
     const page = await open({ width: 1440, height: 900 });
     await violations(page);
     for (const [hash, title] of [
-      ["#/p/djdl/distribution/storefronts/polaris-key", "Polaris Locker"],
+      ["#/p/djdl/distribution/channels/polaris-key/sales", "Polaris Locker"],
       [
         "#/p/djdl/settings/presentation/listing?tab=fit&store=polaris-key",
         "Settings",
@@ -807,7 +827,7 @@ describe("overlays under the Worker's CSP", () => {
       expect(await violations(page), `${hash}: CSP violations`).toEqual([]);
     }
     await page.evaluate(() => {
-      location.hash = "#/p/djdl/distribution/storefronts/polaris-key";
+      location.hash = "#/p/djdl/distribution/channels/polaris-key/sales";
     });
     await page.getByRole("radio", { name: /^Listed/ }).waitFor();
     await check(page, "Polaris Locker listing confirm", async () => {
