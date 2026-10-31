@@ -44,5 +44,10 @@ func with_root(_fn: Callable) -> Variant:
 	return null
 
 
+## Counts every change of the held root; a file codec made at one count is stale at any other.
+func root_generation() -> int:
+	return 0
+
+
 func open_pull(_body: Dictionary, _mutations: Variant, _aliases: Variant, _open_keys: Array, _record_keys: Array = []) -> Dictionary:
 	return {"ok": false}

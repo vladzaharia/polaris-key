@@ -66,6 +66,11 @@ func blind_record(collection: String, id: String) -> String:
 	return _ring.codec.blind("record", collection, id) if _ring != null else ""
 
 
+## Counts every change of the held root (see ring.gd); 0 without a ring.
+func root_generation() -> int:
+	return _ring.codec.generation() if _ring != null else 0
+
+
 ## Hands the current root to `fn` (a Callable(root) -> Variant); null while locked.
 func with_root(fn: Callable) -> Variant:
 	return _ring.codec.with_root(fn) if _ring != null else null

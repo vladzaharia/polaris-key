@@ -206,11 +206,7 @@ func _file_codec() -> Variant:
 		return null
 	if host.machine().encryption_mode() != "e2e":
 		return TransferCodec.Server.new()
-	var port: Object = host.codec()
-	if not port.has_method("with_root"):
-		return null
-	return port.with_root(func(root: PackedByteArray) -> Variant:
-		return TransferCodec.Guarded.new(TransferCodec.E2e.new(root, PKeySaves.COLLECTION), port.locked))
+	return TransferCodec.e2e_for(host.codec(), PKeySaves.COLLECTION)
 
 
 ## The chunk cache of the person signed in (D-9): held as stored, so ciphertext in end-to-end mode.

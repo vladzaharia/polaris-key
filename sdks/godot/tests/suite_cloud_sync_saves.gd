@@ -247,6 +247,7 @@ class Ring:
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_guarded(t)
+	_root_replaced(t)
 	await _server_mode(t)
 	await _e2e(t)
 	await _format_and_binding(t)
@@ -332,6 +333,33 @@ func _guarded(t: PKeyTestContext) -> void:
 	t.check("guarded: a ring that unlocks again does not revive a codec that saw the lock (a new codec is made per operation)", g.chunk_id(plain).is_empty())
 	var s := Codec.Guarded.new(Codec.E2e.new(ring.root, "saves"), func() -> bool: return ring.locked)
 	t.check("guarded: its text hides the key", not str(s).contains(Marshalls.raw_to_base64(ring.root)))
+
+
+## A real ring's root replaced under a codec made for the old one (an accepted, adopted or recovered root,
+## with no lock in between): the codec fails closed, like a lock.
+func _root_replaced(t: PKeyTestContext) -> void:
+	var down := func(_m: String, _p: String, _b: Variant) -> PKeyResult: return PKeyResult.failure(&"network-error", "down")
+	var ring := PKeySyncRing.new(PRODUCT, "dev_a", down, null, PKeySyncRingVault.new(PRODUCT, "user://pkey", true))
+	var port := PKeySyncHostCodec.new(ring)
+	var root_a := _noise(32)
+	var root_b := _noise(32)
+	var ring_id := "rg_" + "A".repeat(22)
+	ring._memory.set_held(PKeySyncRing._Held.new(ring_id, 1, PKeySyncHkdf.derive_kid(root_a), root_a), [])
+	var codec = Codec.e2e_for(port, "saves")
+	var plain := _noise(500)
+	var id: PackedByteArray = codec.chunk_id(plain)
+	var sealed: PackedByteArray = codec.seal_whole(plain)
+	t.check("replaced root: while the root is the one it was made for, the codec works", codec != null and not id.is_empty() and not sealed.is_empty() and codec.open_whole(sealed)["ok"] and not codec.tripped)
+	var gen := port.root_generation()
+	ring._memory.set_held(PKeySyncRing._Held.new(ring_id, 2, PKeySyncHkdf.derive_kid(root_b), root_b))
+	t.check("replaced root: every replacement moves the generation", port.root_generation() == gen + 1 and not port.locked())
+	var refused := [codec.chunk_id(plain).is_empty(), codec.seal_chunk(id, plain).is_empty(), codec.seal_manifest(plain).is_empty(), codec.seal_whole(plain).is_empty()]
+	t.check("replaced root: the old codec seals nothing (no lock was taken)", not refused.has(false), str(refused))
+	t.check("replaced root: it opens nothing, and the cause is the lock the saves layer reports", codec.open_whole(sealed) == {"ok": false, "reason": "locked"} and codec.open_chunk(id, sealed) == {"ok": false, "reason": "locked"} and codec.tripped)
+	var fresh = Codec.e2e_for(port, "saves")
+	t.check("replaced root: a codec made now is for the new root and works", fresh != null and not fresh.seal_whole(plain).is_empty() and not fresh.tripped)
+	ring.lock()
+	t.check("replaced root: a lock still stales it, and a locked ring makes no codec", fresh.seal_whole(plain).is_empty() and fresh.tripped and Codec.e2e_for(port, "saves") == null)
 
 
 # ── server mode ─────────────────────────────────────────────────────────────────────────────────

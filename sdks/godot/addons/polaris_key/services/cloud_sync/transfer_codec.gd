@@ -14,30 +14,31 @@ extends RefCounted
 ## Every opener answers `{ok: true, plain}` or `{ok: false, reason}`. The root of an E2e codec is never put
 ## in a result, a message or a log line.
 
-## A codec whose key is the key ring's. Every call and every stream piece asks `is_locked` first; once the
-## ring has locked it drops the inner codec (and the root in it), answers nothing usable (an empty result
-## or `{ok: false, reason: "locked"}`) and sets `tripped`, which the saves layer reads to report
-## `sync-locked` rather than a file error. Nothing after the lock is sealed under a zeroed or stale root.
+## A codec whose key is the key ring's. Every call and every stream piece asks `is_stale` first. It is stale
+## once the ring has locked or its root has been replaced (a new root accepted, adopted or recovered): from
+## then on it drops the inner codec (and the root in it), answers nothing usable (an empty result or
+## `{ok: false, reason: "locked"}`) and sets `tripped`, which the saves layer reads to report `sync-locked`
+## rather than a file error. Nothing after the lock is sealed under a zeroed, replaced or stale root.
 class Guarded:
 	extends RefCounted
 	var enc := "e2e"
 	var tripped := false
 	var _inner: Object
-	var _is_locked: Callable
+	var _is_stale: Callable
 
-	func _init(inner: Object, is_locked: Callable) -> void:
+	func _init(inner: Object, is_stale: Callable) -> void:
 		_inner = inner
-		_is_locked = is_locked
+		_is_stale = is_stale
 		enc = inner.enc
 
 	func _to_string() -> String:
 		return "GuardedFileCodec(locked=%s)" % locked()
 
-	## True once the ring has locked (and from then on, for good).
+	## True once the ring has locked or replaced its root (and from then on, for good).
 	func locked() -> bool:
 		if _inner == null:
 			return true
-		if _is_locked.is_valid() and _is_locked.call():
+		if _is_stale.is_valid() and _is_stale.call():
 			tripped = true
 			_inner = null
 			return true
@@ -72,6 +73,17 @@ class Guarded:
 
 	func open_whole(stored: PackedByteArray) -> Dictionary:
 		return {"ok": false, "reason": "locked"} if locked() else _inner.open_whole(stored)
+
+
+## The guarded end-to-end file codec of `collection` over `port` (a codec port: `with_root`, `locked`,
+## `root_generation`), made for the root held now; null while the ring is locked. It is stale when the ring
+## locks or the root generation moves.
+static func e2e_for(port: Object, collection: String) -> Variant:
+	if not port.has_method("with_root"):
+		return null
+	return port.with_root(func(root: PackedByteArray) -> Variant:
+		var generation: int = port.root_generation()
+		return Guarded.new(E2e.new(root, collection), func() -> bool: return port.locked() or port.root_generation() != generation))
 
 
 const SERVER_CHUNK_MAX_STORED_BYTES := 1048576 + 30
