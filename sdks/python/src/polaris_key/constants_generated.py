@@ -288,9 +288,12 @@ class ErrorCode:
     OP_INVALID_FOR_POLICY: Final = "op_invalid_for_policy"
     SETTING_NOT_SYNCED: Final = "setting_not_synced"
     COLLECTION_UNKNOWN: Final = "collection_unknown"
+    ENTITLEMENT_REQUIRED: Final = "entitlement_required"
     QUOTA_EXCEEDED: Final = "quota_exceeded"
     WRITES_PAUSED: Final = "writes_paused"
     ENCRYPTION_MISMATCH: Final = "encryption_mismatch"
+    REVISION_CONFLICT: Final = "revision_conflict"
+    UPLOAD_MISMATCH: Final = "upload_mismatch"
     UPLOAD_EXPIRED: Final = "upload_expired"
     UPLOAD_INCOMPLETE: Final = "upload_incomplete"
     FILE_TOO_LARGE: Final = "file_too_large"
@@ -499,9 +502,12 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "op_invalid_for_policy",
     "setting_not_synced",
     "collection_unknown",
+    "entitlement_required",
     "quota_exceeded",
     "writes_paused",
     "encryption_mismatch",
+    "revision_conflict",
+    "upload_mismatch",
     "upload_expired",
     "upload_incomplete",
     "file_too_large",
@@ -712,9 +718,12 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "op_invalid_for_policy": "wire",
         "setting_not_synced": "wire",
         "collection_unknown": "wire",
+        "entitlement_required": "wire",
         "quota_exceeded": "wire",
         "writes_paused": "wire",
         "encryption_mismatch": "wire",
+        "revision_conflict": "wire",
+        "upload_mismatch": "wire",
         "upload_expired": "wire",
         "upload_incomplete": "wire",
         "file_too_large": "wire",

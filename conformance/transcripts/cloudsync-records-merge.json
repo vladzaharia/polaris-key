@@ -1,0 +1,535 @@
+{
+  "transcriptVersion": 1,
+  "id": "cloudsync-records-merge",
+  "description": "A merge record (§13.3): each field is its own last-write-wins cell. Two devices' edits of different fields both stand; a concurrent edit of one field is decided by editedHlc whatever the arrival order (the loser is answered conflict); removeField is a tombstone that only a later setField beats; a whole set is op_invalid_for_policy. The pull carries the live object.",
+  "features": ["sync.records"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_5wYYvP7ZmL15tetSdHifQQJ53rsCdw5Gk39hQrrA7sU",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "cloudSyncPush",
+      "note": "Two fields of one record.",
+      "args": { "cursor": 0, "atomic": false, "mutations": 2 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 0,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_gGGF05kqcXjEapwFHlKWXQ",
+                "serverNow": 1700000000000,
+                "cursor": 2,
+                "more": false,
+                "lastMutationId": 2,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 114,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["cards", "c1"],
+                    "value": { "title": "Dragon", "hp": 10 },
+                    "version": 2,
+                    "editedHlc": "018bcfe55c48:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  { "mutationId": 1, "status": "ok", "version": 1 },
+                  { "mutationId": 2, "status": "ok", "version": 2 }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 2,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["cards/c1"],
+        "lastMutationId": 2,
+        "results": ["ok", "ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "A later hp wins, an older one loses; a removal beats an older write; a whole set and an undeclared field are refused.",
+      "args": { "cursor": 2, "atomic": false, "mutations": 6 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 2,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_gGGF05kqcXjEapwFHlKWXQ",
+                "serverNow": 1700000000000,
+                "cursor": 4,
+                "more": false,
+                "lastMutationId": 8,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 56,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["cards", "c1"],
+                    "value": { "hp": 30 },
+                    "version": 4,
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [
+                  { "mutationId": 3, "status": "ok", "version": 3 },
+                  {
+                    "mutationId": 4,
+                    "status": "conflict",
+                    "server": {
+                      "value": { "title": "Dragon", "hp": 30 },
+                      "version": 3,
+                      "editedHlc": "018bcfe56418:0000"
+                    }
+                  },
+                  { "mutationId": 5, "status": "ok", "version": 4 },
+                  {
+                    "mutationId": 6,
+                    "status": "conflict",
+                    "server": {
+                      "value": { "hp": 30 },
+                      "version": 4,
+                      "editedHlc": "018bcfe56418:0000"
+                    }
+                  },
+                  {
+                    "mutationId": 7,
+                    "status": "rejected",
+                    "code": "op_invalid_for_policy"
+                  },
+                  {
+                    "mutationId": 8,
+                    "status": "rejected",
+                    "code": "value_invalid"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 4,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["cards/c1"],
+        "lastMutationId": 8,
+        "results": [
+          "ok",
+          "conflict",
+          "ok",
+          "conflict",
+          "rejected:op_invalid_for_policy",
+          "rejected:value_invalid"
+        ]
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "The live object: title is gone, hp is 30.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"4.0\""
+              },
+              "body": {
+                "subject": "ps_gGGF05kqcXjEapwFHlKWXQ",
+                "serverNow": 1700000000000,
+                "cursor": 4,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 56,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["cards", "c1"],
+                    "value": { "hp": 30 },
+                    "version": 4,
+                    "editedHlc": "018bcfe56418:0000"
+                  }
+                ],
+                "tombstones": []
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 4,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["cards/c1"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "A write later than the removal brings the field back.",
+      "args": { "cursor": 4, "atomic": false, "mutations": 1 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 4,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_gGGF05kqcXjEapwFHlKWXQ",
+                "serverNow": 1700000000000,
+                "cursor": 5,
+                "more": false,
+                "lastMutationId": 9,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 113,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["cards", "c1"],
+                    "value": { "title": "Drake", "hp": 30 },
+                    "version": 5,
+                    "editedHlc": "018bcfe5660c:0000"
+                  }
+                ],
+                "tombstones": [],
+                "results": [{ "mutationId": 9, "status": "ok", "version": 5 }]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 5,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["cards/c1"],
+        "lastMutationId": 9,
+        "results": ["ok"]
+      }
+    },
+    {
+      "action": "cloudSyncPull",
+      "note": "The object with both fields.",
+      "args": { "cursor": 0 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync?cursor=0",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-cache",
+                "content-type": "application/json",
+                "etag": "\"5.0\""
+              },
+              "body": {
+                "subject": "ps_gGGF05kqcXjEapwFHlKWXQ",
+                "serverNow": 1700000000000,
+                "cursor": 5,
+                "more": false,
+                "lastMutationId": 0,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 113,
+                  "settings": 0,
+                  "records": 1,
+                  "files": 0
+                },
+                "changes": [
+                  {
+                    "record": ["cards", "c1"],
+                    "value": { "title": "Drake", "hp": 30 },
+                    "version": 5,
+                    "editedHlc": "018bcfe5660c:0000"
+                  }
+                ],
+                "tombstones": []
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 5,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "records": ["cards/c1"]
+      }
+    },
+    {
+      "action": "cloudSyncPush",
+      "note": "delete removes the record and every cell.",
+      "args": { "cursor": 5, "atomic": false, "mutations": 1 },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/ops",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "clientId": "c_AAAAAAAAAAAAAAAAAAAAAA",
+                  "cursor": 5,
+                  "mutations": []
+                },
+                "match": "shape",
+                "allowedKeys": ["clientId", "cursor", "atomic", "mutations"]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "subject": "ps_gGGF05kqcXjEapwFHlKWXQ",
+                "serverNow": 1700000000000,
+                "cursor": 6,
+                "more": false,
+                "lastMutationId": 10,
+                "catalogVersion": 1,
+                "aliases": {},
+                "quota": { "bytes": 268435456, "files": true },
+                "usage": {
+                  "bytes": 0,
+                  "settings": 0,
+                  "records": 0,
+                  "files": 0
+                },
+                "changes": [],
+                "tombstones": [
+                  {
+                    "record": ["cards", "c1"],
+                    "editedHlc": "018bcfe56738:0000"
+                  }
+                ],
+                "results": [{ "mutationId": 10, "status": "ok", "version": 6 }]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "cursor": 6,
+        "more": false,
+        "empty": false,
+        "settings": [],
+        "deletedRecords": ["cards/c1"],
+        "lastMutationId": 10,
+        "results": ["ok"]
+      }
+    }
+  ]
+}

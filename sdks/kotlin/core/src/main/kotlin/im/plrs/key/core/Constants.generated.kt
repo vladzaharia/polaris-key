@@ -82,9 +82,12 @@ public object ErrorCode {
     public const val opInvalidForPolicy: String = "op_invalid_for_policy"
     public const val settingNotSynced: String = "setting_not_synced"
     public const val collectionUnknown: String = "collection_unknown"
+    public const val entitlementRequired: String = "entitlement_required"
     public const val quotaExceeded: String = "quota_exceeded"
     public const val writesPaused: String = "writes_paused"
     public const val encryptionMismatch: String = "encryption_mismatch"
+    public const val revisionConflict: String = "revision_conflict"
+    public const val uploadMismatch: String = "upload_mismatch"
     public const val uploadExpired: String = "upload_expired"
     public const val uploadIncomplete: String = "upload_incomplete"
     public const val fileTooLarge: String = "file_too_large"
@@ -293,9 +296,12 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "op_invalid_for_policy",
     "setting_not_synced",
     "collection_unknown",
+    "entitlement_required",
     "quota_exceeded",
     "writes_paused",
     "encryption_mismatch",
+    "revision_conflict",
+    "upload_mismatch",
     "upload_expired",
     "upload_incomplete",
     "file_too_large",
@@ -504,9 +510,12 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "op_invalid_for_policy" to "wire",
     "setting_not_synced" to "wire",
     "collection_unknown" to "wire",
+    "entitlement_required" to "wire",
     "quota_exceeded" to "wire",
     "writes_paused" to "wire",
     "encryption_mismatch" to "wire",
+    "revision_conflict" to "wire",
+    "upload_mismatch" to "wire",
     "upload_expired" to "wire",
     "upload_incomplete" to "wire",
     "file_too_large" to "wire",

@@ -1352,6 +1352,9 @@ export const KIT_COPY: Readonly<
       "This setting isn't synced to your account.",
     "core.codes.collection_unknown.title": "Unknown collection",
     "core.codes.collection_unknown.message": "This collection isn't available.",
+    "core.codes.entitlement_required.title": "Not in your license",
+    "core.codes.entitlement_required.message":
+      "Your license doesn't include this. Upgrade it, then try again.",
     "core.codes.quota_exceeded.title": "Storage full",
     "core.codes.quota_exceeded.message":
       "Your synced storage is full. Free some space, then try again.",
@@ -1361,6 +1364,12 @@ export const KIT_COPY: Readonly<
     "core.codes.encryption_mismatch.title": "Encryption mismatch",
     "core.codes.encryption_mismatch.message":
       "This app and the sync service don't agree on encryption. Update the app and try again.",
+    "core.codes.revision_conflict.title": "Changed elsewhere",
+    "core.codes.revision_conflict.message":
+      "This was changed on another device. Refresh, then try again.",
+    "core.codes.upload_mismatch.title": "Upload failed",
+    "core.codes.upload_mismatch.message":
+      "The file didn't arrive intact. Try again.",
     "core.codes.upload_expired.title": "Upload expired",
     "core.codes.upload_expired.message":
       "This upload took too long and was cancelled. Try again.",
@@ -3256,6 +3265,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "Unbekannte Sammlung",
     "core.codes.collection_unknown.message":
       "Diese Sammlung ist nicht verfügbar.",
+    "core.codes.entitlement_required.title": "Nicht in Ihrer Lizenz",
+    "core.codes.entitlement_required.message":
+      "Ihre Lizenz enthält das nicht. Erweitern Sie sie und versuchen Sie es erneut.",
     "core.codes.quota_exceeded.title": "Speicher voll",
     "core.codes.quota_exceeded.message":
       "Ihr synchronisierter Speicher ist voll. Geben Sie Platz frei und versuchen Sie es erneut.",
@@ -3265,6 +3277,12 @@ export const KIT_COPY: Readonly<
     "core.codes.encryption_mismatch.title": "Verschlüsselung passt nicht",
     "core.codes.encryption_mismatch.message":
       "App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut.",
+    "core.codes.revision_conflict.title": "Anderswo geändert",
+    "core.codes.revision_conflict.message":
+      "Das wurde auf einem anderen Gerät geändert. Aktualisieren Sie und versuchen Sie es erneut.",
+    "core.codes.upload_mismatch.title": "Upload fehlgeschlagen",
+    "core.codes.upload_mismatch.message":
+      "Die Datei ist nicht unversehrt angekommen. Versuchen Sie es erneut.",
     "core.codes.upload_expired.title": "Upload abgelaufen",
     "core.codes.upload_expired.message":
       "Der Upload hat zu lange gedauert und wurde abgebrochen. Versuchen Sie es erneut.",
@@ -5158,6 +5176,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "Collection inconnue",
     "core.codes.collection_unknown.message":
       "Cette collection n'est pas disponible.",
+    "core.codes.entitlement_required.title": "Non inclus dans votre licence",
+    "core.codes.entitlement_required.message":
+      "Votre licence n'inclut pas cela. Mettez-la à niveau, puis réessayez.",
     "core.codes.quota_exceeded.title": "Stockage plein",
     "core.codes.quota_exceeded.message":
       "Votre stockage synchronisé est plein. Libérez de l'espace, puis réessayez.",
@@ -5167,6 +5188,12 @@ export const KIT_COPY: Readonly<
     "core.codes.encryption_mismatch.title": "Chiffrement incompatible",
     "core.codes.encryption_mismatch.message":
       "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.",
+    "core.codes.revision_conflict.title": "Modifié ailleurs",
+    "core.codes.revision_conflict.message":
+      "Cet élément a été modifié sur un autre appareil. Actualisez, puis réessayez.",
+    "core.codes.upload_mismatch.title": "Échec de l’envoi",
+    "core.codes.upload_mismatch.message":
+      "Le fichier n’est pas arrivé intact. Réessayez.",
     "core.codes.upload_expired.title": "Envoi expiré",
     "core.codes.upload_expired.message":
       "L’envoi a pris trop de temps et a été annulé. Réessayez.",
@@ -7048,6 +7075,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "Colección desconocida",
     "core.codes.collection_unknown.message":
       "Esta colección no está disponible.",
+    "core.codes.entitlement_required.title": "No incluido en tu licencia",
+    "core.codes.entitlement_required.message":
+      "Tu licencia no incluye esto. Mejórala e inténtalo de nuevo.",
     "core.codes.quota_exceeded.title": "Almacenamiento lleno",
     "core.codes.quota_exceeded.message":
       "Tu almacenamiento sincronizado está lleno. Libera espacio e inténtalo de nuevo.",
@@ -7057,6 +7087,12 @@ export const KIT_COPY: Readonly<
     "core.codes.encryption_mismatch.title": "Cifrado incompatible",
     "core.codes.encryption_mismatch.message":
       "La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo.",
+    "core.codes.revision_conflict.title": "Cambiado en otro lugar",
+    "core.codes.revision_conflict.message":
+      "Esto se cambió en otro dispositivo. Actualice e inténtelo de nuevo.",
+    "core.codes.upload_mismatch.title": "Error al subir",
+    "core.codes.upload_mismatch.message":
+      "El archivo no llegó completo. Inténtelo de nuevo.",
     "core.codes.upload_expired.title": "Subida caducada",
     "core.codes.upload_expired.message":
       "La subida tardó demasiado y se canceló. Inténtalo de nuevo.",
@@ -8914,6 +8950,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "Coleção desconhecida",
     "core.codes.collection_unknown.message":
       "Esta coleção não está disponível.",
+    "core.codes.entitlement_required.title": "Não incluído na sua licença",
+    "core.codes.entitlement_required.message":
+      "Sua licença não inclui isso. Faça o upgrade e tente de novo.",
     "core.codes.quota_exceeded.title": "Armazenamento cheio",
     "core.codes.quota_exceeded.message":
       "Seu armazenamento sincronizado está cheio. Libere espaço e tente de novo.",
@@ -8923,6 +8962,12 @@ export const KIT_COPY: Readonly<
     "core.codes.encryption_mismatch.title": "Criptografia incompatível",
     "core.codes.encryption_mismatch.message":
       "O app e o serviço de sincronização não concordam sobre a criptografia. Atualize o app e tente de novo.",
+    "core.codes.revision_conflict.title": "Alterado em outro lugar",
+    "core.codes.revision_conflict.message":
+      "Isso foi alterado em outro dispositivo. Atualize e tente novamente.",
+    "core.codes.upload_mismatch.title": "Falha no envio",
+    "core.codes.upload_mismatch.message":
+      "O arquivo não chegou íntegro. Tente novamente.",
     "core.codes.upload_expired.title": "Envio expirado",
     "core.codes.upload_expired.message":
       "O envio demorou demais e foi cancelado. Tente de novo.",
@@ -10780,6 +10825,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "Raccolta sconosciuta",
     "core.codes.collection_unknown.message":
       "Questa raccolta non è disponibile.",
+    "core.codes.entitlement_required.title": "Non incluso nella tua licenza",
+    "core.codes.entitlement_required.message":
+      "La tua licenza non lo include. Passa a un piano superiore e riprova.",
     "core.codes.quota_exceeded.title": "Spazio pieno",
     "core.codes.quota_exceeded.message":
       "Lo spazio sincronizzato è pieno. Libera spazio e riprova.",
@@ -10789,6 +10837,12 @@ export const KIT_COPY: Readonly<
     "core.codes.encryption_mismatch.title": "Crittografia non compatibile",
     "core.codes.encryption_mismatch.message":
       "L’app e il servizio di sincronizzazione non concordano sulla crittografia. Aggiorna l’app e riprova.",
+    "core.codes.revision_conflict.title": "Modificato altrove",
+    "core.codes.revision_conflict.message":
+      "Questo elemento è stato modificato su un altro dispositivo. Aggiorna e riprova.",
+    "core.codes.upload_mismatch.title": "Caricamento non riuscito",
+    "core.codes.upload_mismatch.message":
+      "Il file non è arrivato integro. Riprova.",
     "core.codes.upload_expired.title": "Caricamento scaduto",
     "core.codes.upload_expired.message":
       "Il caricamento ha richiesto troppo tempo ed è stato annullato. Riprova.",
@@ -12666,6 +12720,9 @@ export const KIT_COPY: Readonly<
     "core.codes.collection_unknown.title": "不明なコレクション",
     "core.codes.collection_unknown.message":
       "このコレクションは利用できません。",
+    "core.codes.entitlement_required.title": "ライセンスに含まれていません",
+    "core.codes.entitlement_required.message":
+      "お使いのライセンスには含まれていません。アップグレードしてから、もう一度お試しください。",
     "core.codes.quota_exceeded.title": "容量がいっぱいです",
     "core.codes.quota_exceeded.message":
       "同期用の容量がいっぱいです。空きを作ってから、もう一度お試しください。",
@@ -12675,6 +12732,12 @@ export const KIT_COPY: Readonly<
     "core.codes.encryption_mismatch.title": "暗号化が一致しません",
     "core.codes.encryption_mismatch.message":
       "アプリと同期サービスで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。",
+    "core.codes.revision_conflict.title": "他で変更されました",
+    "core.codes.revision_conflict.message":
+      "別のデバイスで変更されました。更新してから、もう一度お試しください。",
+    "core.codes.upload_mismatch.title": "アップロードに失敗しました",
+    "core.codes.upload_mismatch.message":
+      "ファイルが正しく届きませんでした。もう一度お試しください。",
     "core.codes.upload_expired.title": "アップロードの期限切れ",
     "core.codes.upload_expired.message":
       "アップロードに時間がかかりすぎたため、キャンセルされました。もう一度お試しください。",
@@ -14494,6 +14557,9 @@ export const KIT_COPY: Readonly<
       "이 설정은 계정과 동기화되지 않습니다.",
     "core.codes.collection_unknown.title": "알 수 없는 컬렉션",
     "core.codes.collection_unknown.message": "이 컬렉션은 사용할 수 없습니다.",
+    "core.codes.entitlement_required.title": "라이선스에 포함되지 않음",
+    "core.codes.entitlement_required.message":
+      "현재 라이선스에는 포함되어 있지 않습니다. 업그레이드한 뒤 다시 시도하세요.",
     "core.codes.quota_exceeded.title": "저장 공간이 가득 찼습니다",
     "core.codes.quota_exceeded.message":
       "동기화 저장 공간이 가득 찼습니다. 공간을 확보한 뒤 다시 시도하세요.",
@@ -14503,6 +14569,12 @@ export const KIT_COPY: Readonly<
     "core.codes.encryption_mismatch.title": "암호화 불일치",
     "core.codes.encryption_mismatch.message":
       "앱과 동기화 서비스의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요.",
+    "core.codes.revision_conflict.title": "다른 곳에서 변경됨",
+    "core.codes.revision_conflict.message":
+      "다른 기기에서 변경되었습니다. 새로고침한 뒤 다시 시도하세요.",
+    "core.codes.upload_mismatch.title": "업로드 실패",
+    "core.codes.upload_mismatch.message":
+      "파일이 온전하게 도착하지 않았습니다. 다시 시도하세요.",
     "core.codes.upload_expired.title": "업로드 만료",
     "core.codes.upload_expired.message":
       "업로드가 너무 오래 걸려 취소되었습니다. 다시 시도하세요.",
@@ -16200,6 +16272,9 @@ export const KIT_COPY: Readonly<
     "core.codes.setting_not_synced.message": "此设置不会同步到你的账户。",
     "core.codes.collection_unknown.title": "未知的集合",
     "core.codes.collection_unknown.message": "此集合不可用。",
+    "core.codes.entitlement_required.title": "不在你的许可证内",
+    "core.codes.entitlement_required.message":
+      "你的许可证不包含此项。请升级后再试。",
     "core.codes.quota_exceeded.title": "存储空间已满",
     "core.codes.quota_exceeded.message":
       "你的同步存储空间已满。请释放一些空间后再试。",
@@ -16209,6 +16284,11 @@ export const KIT_COPY: Readonly<
     "core.codes.encryption_mismatch.title": "加密不一致",
     "core.codes.encryption_mismatch.message":
       "应用与同步服务的加密设置不一致。请更新应用后重试。",
+    "core.codes.revision_conflict.title": "已在别处更改",
+    "core.codes.revision_conflict.message":
+      "此内容已在另一台设备上更改。请刷新后重试。",
+    "core.codes.upload_mismatch.title": "上传失败",
+    "core.codes.upload_mismatch.message": "文件未完整送达。请重试。",
     "core.codes.upload_expired.title": "上传已过期",
     "core.codes.upload_expired.message": "上传耗时过长，已取消。请重试。",
     "core.codes.upload_incomplete.title": "上传不完整",

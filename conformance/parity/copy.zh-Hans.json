@@ -285,6 +285,10 @@
       "title": "未知的集合",
       "message": "此集合不可用。"
     },
+    "entitlement_required": {
+      "title": "不在你的许可证内",
+      "message": "你的许可证不包含此项。请升级后再试。"
+    },
     "quota_exceeded": {
       "title": "存储空间已满",
       "message": "你的同步存储空间已满。请释放一些空间后再试。"
@@ -296,6 +300,14 @@
     "encryption_mismatch": {
       "title": "加密不一致",
       "message": "应用与同步服务的加密设置不一致。请更新应用后重试。"
+    },
+    "revision_conflict": {
+      "title": "已在别处更改",
+      "message": "此内容已在另一台设备上更改。请刷新后重试。"
+    },
+    "upload_mismatch": {
+      "title": "上传失败",
+      "message": "文件未完整送达。请重试。"
     },
     "upload_expired": {
       "title": "上传已过期",

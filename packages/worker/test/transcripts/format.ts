@@ -53,6 +53,12 @@
 //   * response `body` is a string served byte-for-byte (a compact JWS, an empty 304, a plain
 //     error) or a JSON value served as its compact serialization (member order is not
 //     significant to any client).
+//   * binary bodies (U-10.3; additive, `transcriptVersion` stays 1): a request that carries raw
+//     bytes (a Cloud Sync file `PUT`) has `body: null` and `bodyBase64`, the bytes in standard
+//     base64 with padding, asserted EXACT; its `content-type` is in `headers`. A response of raw
+//     bytes has `body: ""` and `bodyBase64`, served byte-for-byte. A member absent means a text or
+//     JSON body, as before, so every existing transcript is unchanged. A replayer that does not
+//     implement the transcript's `features` skips it and never reads the member.
 //   * `expect` is the client-visible outcome after the step, in the vocabulary below. Each SDK
 //     maps its own result types onto it in one helper.
 //
@@ -331,6 +337,8 @@ export interface RecordedRequest {
   /** Asserted by presence. Lowercased names. */
   requiredHeaders: string[];
   body: RequestBody | null;
+  /** Raw request bytes, base64 (U-10.3). Set only when `body` is null; asserted exact. */
+  bodyBase64?: string;
 }
 
 export interface RecordedResponse {
@@ -338,6 +346,8 @@ export interface RecordedResponse {
   /** Only the headers a client reads (`RECORDED_RESPONSE_HEADERS`), lowercased. */
   headers: Record<string, string>;
   body: string | JsonValue;
+  /** Raw response bytes, base64 (U-10.3). Set only when `body` is `""`. */
+  bodyBase64?: string;
 }
 
 export interface Exchange {

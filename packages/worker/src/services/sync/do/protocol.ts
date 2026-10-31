@@ -7,14 +7,26 @@
  * it from the authenticated principal).
  */
 
-import type { PushRequest } from "@polaris-key/protocol/sync";
+import type { RecordJoin } from "../engine/absorbRecords.js";
+import type {
+  BeginFileRequest,
+  FinalizeResponse,
+  PushRequest,
+  SyncUploadMode,
+  UploadStatus,
+} from "@polaris-key/protocol/sync";
 import type { PullOutcome } from "../engine/pull.js";
+import type { BeginRefusal, FileLimits } from "../engine/files.js";
 import type {
   Classification,
+  FieldCell,
   MemberCell,
+  ParkedRecord,
   PushLimits,
   PushOutcome,
+  SetElement,
   SettingPolicy,
+  StoredRecord,
   StoredSetting,
   StoreUsage,
 } from "../engine/types.js";
@@ -57,6 +69,95 @@ export type CloudSyncOp =
       /** `"e2e"`: sealed rows leave as `ct` and the answer names `encryptionSince` (§13.4). */
       encryption?: "e2e" | "server";
     })
+  /**
+   * File uploads (U-10): the object owns the sessions and makes the R2 control calls; the Worker
+   * streams the bytes. `fileBegin` is checks 5 to 7 of the plan's §2.3 and the reservation; the
+   * Worker has made 1 to 4 and chosen the mode.
+   */
+  | (DoPin & {
+      op: "fileBegin";
+      /** A fresh session id (`up_` and 22 base64url characters), chosen by the Worker. */
+      uploadId: string;
+      deviceId: string;
+      collection: string;
+      recordId: string;
+      request: BeginFileRequest;
+      mode: Extract<SyncUploadMode, "single" | "multipart">;
+      partBytes?: number;
+      /** The matched declaration's `maxRecords`. */
+      maxRecords: number;
+      limits: FileLimits;
+      serverNow: number;
+    })
+  | (DoPin & {
+      op: "fileStatus";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      serverNow: number;
+    })
+  /**
+   * The session a byte request belongs to: what the Worker needs to stream into R2 (the key, the
+   * size, the hash, the multipart handle) and nothing it should take from the path. U-10.6.
+   */
+  | (DoPin & {
+      op: "filePrepare";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      serverNow: number;
+    })
+  /** Records part `n` after the Worker streamed it, or forgets it (`etag` absent) when it did not verify. */
+  | (DoPin & {
+      op: "filePart";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      n: number;
+      etag?: string;
+      bytes?: number;
+      serverNow: number;
+    })
+  /**
+   * `finalize` in three steps (U-10.7): `Prepare` checks the parts, completes a multipart upload in
+   * R2 and takes the session's claim; the Worker then streams the stored object through SHA-256;
+   * `Commit` is the record write (`engine/files.ts` `commitFinalize`). `End` gives the claim up:
+   * back to open for a retry, or discarding the upload when its bytes did not verify.
+   */
+  | (DoPin & {
+      op: "fileFinalizePrepare";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      serverNow: number;
+    })
+  | (DoPin & {
+      op: "fileFinalizeCommit";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      deviceId: string;
+      /** The clientId-shaped name the write is stamped with (derived from the device). */
+      clientId: string;
+      /** The matched declaration's `maxRecords`. */
+      maxRecords: number;
+      serverNow: number;
+    })
+  | (DoPin & {
+      op: "fileFinalizeEnd";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      discard: boolean;
+      serverNow: number;
+    })
+  | (DoPin & {
+      op: "fileAbort";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      serverNow: number;
+    })
   | (DoPin & { op: "usage" })
   | (DoPin & { op: "exportAll" })
   /**
@@ -69,6 +170,8 @@ export type CloudSyncOp =
       op: "absorb";
       document: ExportDocument;
       policies?: [string, SettingPolicy][];
+      /** The declaration per concrete record collection, where the caller knows it (U-09.8). */
+      recordPolicies?: [string, RecordJoin][];
     })
   /**
    * `ifSeq` and `ifWrites`: delete only while the store is still at that sequence and write count
@@ -88,6 +191,18 @@ export type ExportedSetting = Omit<StoredSetting, "members"> & {
   members?: [string, MemberCell][];
 };
 
+/** A stored record as JSON: cells and elements become `[name, value]` pairs, in the engine's order. */
+export type ExportedRecord = Omit<StoredRecord, "fields" | "elements"> & {
+  fields?: [string, FieldCell][];
+  elements?: [string, SetElement][];
+};
+
+/** A parked copy as JSON, in the same form. */
+export type ExportedParked = Omit<ParkedRecord, "fields" | "elements"> & {
+  fields?: [string, FieldCell][];
+  elements?: [string, SetElement][];
+};
+
 export interface ExportDocument {
   product: string;
   subject: string;
@@ -95,9 +210,15 @@ export interface ExportDocument {
   /** The write count (see `SqlStore.writeCount`): `seq` plus the writes that do not move it. */
   writes: number;
   watermark: number;
+  /** The store's `encryptionSince` (§13.10.7); absent until its first sealed write. */
+  encryptionSince?: number;
   usage: StoreUsage;
   /** Live rows and tombstones, in version order. */
   settings: ExportedSetting[];
+  /** Live records and tombstones, in version order. Absent from an export made before U-09.8. */
+  records?: ExportedRecord[];
+  /** Copies earlier account merges parked (D3). Absent when there are none. */
+  parked?: ExportedParked[];
   clients: { clientId: string; deviceId: string; lastMutationId: number }[];
 }
 
@@ -110,10 +231,77 @@ export interface OpMeter {
 export type CloudSyncReply =
   | { op: "push"; outcome: PushOutcome; meter?: OpMeter }
   | { op: "pull"; outcome: PullOutcome; meter?: OpMeter }
+  | { op: "fileBegin"; outcome: FileBeginOutcome }
+  | { op: "fileStatus"; outcome: FileStatusOutcome }
+  | { op: "fileAbort"; outcome: FileAbortOutcome }
+  | { op: "filePrepare"; outcome: FilePrepareOutcome }
+  | { op: "filePart"; outcome: FileAbortOutcome }
+  | { op: "fileFinalizePrepare"; outcome: FinalizePrepareOutcome }
+  | { op: "fileFinalizeCommit"; outcome: FinalizeCommitOutcome }
+  | { op: "fileFinalizeEnd"; outcome: FileAbortOutcome }
   | { op: "usage"; usage: StoreUsage; seq: number; empty: boolean }
   | { op: "exportAll"; document: ExportDocument | null }
-  | { op: "absorb"; changed: number; meter?: OpMeter }
+  | { op: "absorb"; changed: number; skipped?: number; meter?: OpMeter }
   | { op: "deleteAll"; deleted: boolean };
+
+/** `begin`'s answer (`BeginFileResponse` less nothing: the Worker sends it as it is). */
+export type FileBeginOutcome =
+  | {
+      ok: true;
+      uploadId: string;
+      mode: SyncUploadMode;
+      partBytes?: number;
+      expiresAt: number;
+    }
+  | BeginRefusal;
+
+/** `404` for a session that is not this record's, is unknown or ended; `410` once it expired. */
+export type FileStatusOutcome =
+  | { ok: true; status: UploadStatus }
+  | { ok: false; error: "not_found" | "upload_expired" };
+
+/** What the Worker streams against. `parts` is 1 for a `single` upload. */
+export type FilePrepareOutcome =
+  | {
+      ok: true;
+      key: string;
+      mode: SyncUploadMode;
+      size: number;
+      sha256: string;
+      partBytes: number | null;
+      parts: number;
+      multipartId: string | null;
+    }
+  | { ok: false; error: "not_found" | "upload_expired" };
+
+/**
+ * `replay` is the stored answer of a session that already finished (no second charge); `verify`
+ * is the object to hash; `busy` is a `finalize` of the same session in flight; `mismatch` is an object of another length than declared (the upload ended); `missing` lists the
+ * part numbers that are not there. Not written as `error: "<code>"`, which the registry scan reads.
+ */
+export type FinalizePrepareOutcome =
+  | { ok: true; replay: FinalizeResponse }
+  | {
+      ok: true;
+      verify: {
+        key: string;
+        size: number;
+        sha256: string;
+        mode: SyncUploadMode;
+      };
+    }
+  | { ok: false; busy: true }
+  | { ok: false; mismatch: true }
+  | { ok: false; missing: number[] }
+  | { ok: false; error: "not_found" | "upload_expired" };
+
+export type FinalizeCommitOutcome =
+  | { ok: true; result: FinalizeResponse }
+  | { ok: false; error: "not_found" }
+  | { ok: false; error: "revision_conflict"; version: number }
+  | { ok: false; error: "quota_exceeded"; scope: "collection" };
+
+export type FileAbortOutcome = { ok: true } | { ok: false; error: "not_found" };
 
 export type CloudSyncError = {
   error:

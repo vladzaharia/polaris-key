@@ -73,6 +73,7 @@ export function makeEnv(kv: KvMock, _slugs?: string[]): Env {
     LAUNCH_IDENTITY_EXCHANGE: "on",
     LAUNCH_CONNECT: "on",
     LAUNCH_SYNC_E2E: "on",
+    LAUNCH_SYNC_FILES: "on",
     LAUNCH_RELAY: "on",
   };
   return env as Env;

@@ -17,6 +17,7 @@ import {
   deleteCloudSyncIfUnchanged,
   exportCloudSync,
 } from "../src/services/sync/do/client.js";
+import type { SyncMutation } from "@polaris-key/protocol/sync";
 import { D1Db } from "../src/db/d1.js";
 import { seedProduct } from "./seed.js";
 import { formatHlc } from "../src/services/sync/engine/hlc.js";
@@ -46,6 +47,16 @@ beforeAll(async () => {
     entries: [],
   });
 });
+
+/** The members of a push from the tests' device that do not depend on the mutations. */
+const PUSH_AS_D1 = {
+  op: "push" as const,
+  deviceId: "d1",
+  family: "desktop",
+  platform: "macos" as const,
+  limits: { quotaBytes: 1_000_000 },
+  serverNow: NOW,
+};
 
 const pushTo = (pin: { product: string; subject: string }, key: string) =>
   callCloudSync<"push">(env, pin, {
@@ -78,6 +89,145 @@ describe("CloudSyncDO under workerd (U-05.7)", () => {
     expect(pulled.meter?.rowsRead).toBeGreaterThan(0);
     const usage = await callCloudSync<"usage">(env, pin, { op: "usage" });
     expect(usage.empty).toBe(false);
+  });
+
+  it("stores records on SQLite-backed storage: create, delete, the tombstone bound and the usage (U-09.4)", async () => {
+    const pin = { product: "wd", subject: "sub_records" };
+    const route: Classification = {
+      verdict: "record",
+      policy: "revision",
+      maxRecords: 1,
+    };
+    const rec = (id: number, rid: string, op: "set" | "delete") => ({
+      mutationId: id,
+      target: { record: ["saves", rid] as [string, string] },
+      op,
+      ...(op === "set" ? { value: { n: id } } : {}),
+      editedHlc: formatHlc(NOW - 1000 + id, 0),
+    });
+    const mutations = [
+      rec(1, "r1", "set"),
+      rec(2, "r1", "delete"),
+      rec(3, "r2", "set"),
+      rec(4, "r2", "delete"),
+      rec(5, "r3", "set"),
+      rec(6, "r3", "delete"),
+      rec(7, "r4", "set"),
+    ];
+    const pushed = await callCloudSync<"push">(env, pin, {
+      op: "push",
+      deviceId: "d1",
+      family: "desktop",
+      platform: "macos",
+      limits: { quotaBytes: 1_000_000 },
+      request: { clientId: C1, cursor: 0, mutations },
+      classified: mutations.map(() => route),
+      serverNow: NOW,
+    });
+    expect(
+      pushed.outcome.ok && pushed.outcome.results.map((r) => r.status),
+    ).toEqual(["ok", "ok", "ok", "ok", "ok", "ok", "ok"]);
+    const stub = env.CLOUD_SYNC.get(
+      env.CLOUD_SYNC.idFromName(cloudSyncObjectName(pin)),
+    );
+    const rows = await runInDurableObject(stub, async (_obj, state) =>
+      state.storage.sql
+        .exec("SELECT id, deleted FROM records ORDER BY id")
+        .toArray(),
+    );
+    // Two tombstones kept (2 x maxRecords), the oldest forgotten, and the live one.
+    expect(rows).toEqual([
+      { id: "r2", deleted: 1 },
+      { id: "r3", deleted: 1 },
+      { id: "r4", deleted: 0 },
+    ]);
+    const usage = await callCloudSync<"usage">(env, pin, { op: "usage" });
+    expect(usage.usage).toMatchObject({ records: 1 });
+  });
+
+  it("stores merge and union records on SQLite-backed storage: cells, tags, the removed-cell bound and the pull (U-09.5/.7)", async () => {
+    const pin = { product: "wd", subject: "sub_merge_union" };
+    const routes = Object.fromEntries(
+      (["merge", "union"] as const).map((policy) => [
+        policy,
+        { verdict: "record", policy, maxRecords: 1 } as Classification,
+      ]),
+    ) as Record<"merge" | "union", Classification>;
+    let n = 0;
+    const mutations: SyncMutation[] = [];
+    const add = (
+      collection: string,
+      op: SyncMutation["op"],
+      extra: Partial<SyncMutation>,
+    ) => {
+      n++;
+      mutations.push({
+        mutationId: n,
+        target: { record: [collection, "r"] },
+        op,
+        ...extra,
+        editedHlc: formatHlc(NOW - 5000 + n, 0),
+      });
+    };
+    add("notes", "setField", { field: "keep", value: 1 });
+    for (let i = 0; i < 4; i++) {
+      add("notes", "setField", { field: `f${i}`, value: i });
+      add("notes", "removeField", { field: `f${i}` });
+    }
+    add("tags", "add", { element: "x" });
+    add("tags", "add", { element: "y" });
+    add("tags", "add", { element: "x" });
+    // The store sequence of the first add of x (one write per mutation before it).
+    add("tags", "remove", { element: "x", observedSeq: 10 });
+    const pushed = await callCloudSync<"push">(env, pin, {
+      ...PUSH_AS_D1,
+      request: { clientId: C1, cursor: 0, mutations },
+      classified: mutations.map((m) =>
+        "record" in m.target && m.target.record[0] === "notes"
+          ? routes.merge
+          : routes.union,
+      ),
+    });
+    expect(
+      pushed.outcome.ok &&
+        pushed.outcome.results.every((r) => r.status === "ok"),
+    ).toBe(true);
+    const stub = env.CLOUD_SYNC.get(
+      env.CLOUD_SYNC.idFromName(cloudSyncObjectName(pin)),
+    );
+    const { removed, tags } = await runInDurableObject(
+      stub,
+      async (_obj, state) => ({
+        // Two removed cells kept (2 x maxRecords), the oldest forgotten.
+        removed: state.storage.sql
+          .exec(
+            "SELECT field FROM record_fields WHERE removed = 1 ORDER BY field",
+          )
+          .toArray()
+          .map((r) => r.field),
+        tags: state.storage.sql
+          .exec(
+            "SELECT element_key, add_tag FROM set_elements ORDER BY add_tag",
+          )
+          .toArray(),
+      }),
+    );
+    expect(removed).toEqual(["f2", "f3"]);
+    // x's first add tag was dropped by the remove; its second add and y survive.
+    expect(tags).toHaveLength(2);
+    const pulled = await callCloudSync<"pull">(env, pin, {
+      op: "pull",
+      cursor: 0,
+      deviceId: "d1",
+      family: "desktop",
+      clientId: C1,
+    });
+    expect(pulled.outcome.ok && pulled.outcome.changes).toMatchObject([
+      { record: ["notes", "r"], value: { keep: 1 } },
+      { record: ["tags", "r"], value: ["y", "x"] },
+    ]);
+    const usage = await callCloudSync<"usage">(env, pin, { op: "usage" });
+    expect(usage.usage).toMatchObject({ records: 2 });
   });
 
   it("creates nothing on a read, and refuses another pair on the same object", async () => {
@@ -124,7 +274,7 @@ describe("CloudSyncDO under workerd (U-05.7)", () => {
           .exec("SELECT value FROM meta WHERE key = 'schema_version'")
           .one().value,
     );
-    expect(version).toBe("2");
+    expect(version).toBe("3");
   });
 
   it("deleteAll clears the data and the alarm, and the object can be written again", async () => {

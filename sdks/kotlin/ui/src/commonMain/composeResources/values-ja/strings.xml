@@ -2400,6 +2400,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_collection_unknown_message">このコレクションは利用できません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_title">ライセンスに含まれていません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_message">お使いのライセンスには含まれていません。アップグレードしてから、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_title">容量がいっぱいです</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_message">同期用の容量がいっぱいです。空きを作ってから、もう一度お試しください。</string>
@@ -2411,6 +2415,14 @@
     <string name="core_codes_encryption_mismatch_title">暗号化が一致しません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_message">アプリと同期サービスで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_title">他で変更されました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_message">別のデバイスで変更されました。更新してから、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_title">アップロードに失敗しました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_message">ファイルが正しく届きませんでした。もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_upload_expired_title">アップロードの期限切れ</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

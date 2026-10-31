@@ -90,6 +90,13 @@ const OLD_CORS_SERVICE_PATHS = [
   // U-05.12, U-05.13: the Cloud Sync pull and push (device bearer, never ambient).
   "sync",
   "sync/ops",
+  // U-10.5: the Cloud Sync file routes, as the push: the device bearer, never ambient, so a listed
+  // origin reaches only what that page's own device token already can. They answer 404 while the
+  // operator's launch gate launch.syncFiles is off.
+  "sync/files/{collection}/{id}/begin",
+  "sync/files/{collection}/{id}/upload/{uploadId}",
+  "sync/files/{collection}/{id}/upload/{uploadId}/parts/{n}",
+  "sync/files/{collection}/{id}/finalize",
   // CC-06.1: the Cloud Connect roster and the linked-devices list (device bearer, never ambient).
   "connect/identity",
   "connect/relay/ticket",

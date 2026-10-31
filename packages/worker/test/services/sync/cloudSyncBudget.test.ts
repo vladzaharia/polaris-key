@@ -80,6 +80,8 @@ describe("byte accounting", () => {
     expect(store.getUsage()).toEqual({
       settings: 1,
       settingsBytes: 2 + 16,
+      records: 0,
+      recordBytes: 0,
       bytes: 2 + 16,
     });
     expect(rowCost(store.getSetting("ab", "user"))).toEqual({
@@ -91,6 +93,8 @@ describe("byte accounting", () => {
     expect(store.getUsage()).toEqual({
       settings: 0,
       settingsBytes: 0,
+      records: 0,
+      recordBytes: 0,
       bytes: 0,
     });
   });
@@ -211,7 +215,13 @@ describe("the settings budget (256 keys, 64 KiB)", () => {
   it("a store already over the budget keeps everything and refuses only growth", () => {
     const store = new MemoryStore();
     push(store, [mut("set", "k", { value: "ab" })]);
-    store.setUsage({ settings: 400, settingsBytes: 200_000, bytes: 200_000 });
+    store.setUsage({
+      settings: 400,
+      settingsBytes: 200_000,
+      records: 0,
+      recordBytes: 0,
+      bytes: 200_000,
+    });
     expect(one(push(store, [mut("set", "k", { value: "cd" })])).status).toBe(
       "ok",
     );
@@ -230,7 +240,13 @@ describe("quota (the requesting device's) and the product ceiling", () => {
       limits: BIG,
       policy: "merge",
     });
-    store.setUsage({ settings: 2, settingsBytes: 30, bytes: 2_000_000 });
+    store.setUsage({
+      settings: 2,
+      settingsBytes: 30,
+      records: 0,
+      recordBytes: 0,
+      bytes: 2_000_000,
+    });
     const tight = { quotaBytes: 1_000_000 };
     const before = store.rows();
     expect(

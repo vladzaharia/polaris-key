@@ -5,7 +5,7 @@
  */
 
 import type { SyncJson } from "@polaris-key/protocol/sync";
-import type { StoredSetting } from "./types.js";
+import type { RemovedField, StoredRecord, StoredSetting } from "./types.js";
 
 export type { SyncStore } from "./types.js";
 
@@ -37,3 +37,33 @@ export function liveMembers(row: StoredSetting): SyncJson {
   }
   return any ? out : null;
 }
+
+/**
+ * A comparable dump of records for the stores' test `snapshot()`: keyed by (collection, id), the
+ * cells and elements as arrays. `undefined` when there are none, so a settings-only store dumps
+ * as before.
+ */
+export function recordsDump(rows: readonly StoredRecord[]): unknown {
+  if (rows.length === 0) return undefined;
+  return rows
+    .map((r) => [`${r.collection}\u0000${r.id}`, r] as const)
+    .sort(([a], [b]) => (a < b ? -1 : 1))
+    .map(([k, r]) => [
+      k,
+      {
+        ...r,
+        fields: r.fields ? [...r.fields] : undefined,
+        elements: r.elements ? [...r.elements] : undefined,
+      },
+    ]);
+}
+
+const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+/** The order the forgetting bounds take removed field cells in: oldest clock first, then by name. */
+export const compareRemoved = (a: RemovedField, b: RemovedField): number =>
+  cmp(a.stamp.hlc, b.stamp.hlc) ||
+  cmp(a.stamp.clientId, b.stamp.clientId) ||
+  cmp(a.collection, b.collection) ||
+  cmp(a.id, b.id) ||
+  cmp(a.field, b.field);

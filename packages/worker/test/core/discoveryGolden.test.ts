@@ -38,6 +38,8 @@
  * U-05.15 (plans/U-05-slices.md, WIRE-CONTRACT-V4 §13.5) turned Cloud Sync's `settings` on and named
  * its `pull` (`<base>/sync`) and `push` (`<base>/sync/ops`) endpoints in the everything product's
  * fragment; `collections`, `saves` and `files` stay off. Additive.
+ * U-09.7 (§13.5, G5d) turns `collections` true for a catalog that declares at least one collection
+ * (`cloudSyncRecordsPush.test.ts` pins it); these goldens carry no catalog, so it stays off here.
  * CM-29 added the eighth service, Commerce (plans/CM-29.md §2): each golden gained
  * `services.commerce` after `sync`, `{"enabled":false}` when off; the everything product runs it
  * and pins the fragment (the two device endpoints, nothing about any store). Additive.

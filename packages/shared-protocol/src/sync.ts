@@ -195,13 +195,13 @@ export interface SyncMutation {
   value?: SyncJson;
   /** `setMember` and `removeMember`. */
   member?: string;
-  /** `setField` and `removeField`. */
+  /** `setField` and `removeField` on a `merge` record. In E2E mode a blinded name (§13.10.3). */
   field?: string;
   /** `add` and `remove` on a `union` record. In E2E mode a blinded name (§13.10.3). */
   element?: SyncJson;
   /** §13.3, §13.10: the sealed value, a `pkey-sync-value/1` envelope in canonical base64url. Replaces `value` in E2E mode. */
   ct?: string;
-  /** `remove` on a `union` record. */
+  /** `remove` on a `union` record: the highest sequence the client has seen for the element (a pull `version`, or its own acknowledged `add`); without it, or above the store sequence, `value_invalid` (§13.3). */
   observedSeq?: number;
   /** A number is compare-and-swap, `"*"` create-only, absent unconditional. */
   baseVersion?: number | "*";
@@ -230,6 +230,18 @@ export type SyncRejectCode =
   | "quota_exceeded"
   | "encryption_mismatch";
 
+/**
+ * §13.4, §13.8.1 (U-10): the file a record carries. `version` is the store sequence of the
+ * `finalize` that stored it; `size` and `sha256` are those of the stored bytes (ciphertext in E2E
+ * mode). Absent from a change when the record has no file.
+ */
+export interface SyncFilePointer {
+  version: number;
+  size: number;
+  sha256: string;
+  format: SyncFileFormat;
+}
+
 /** §13.3: the server's copy carried by a `conflict`. */
 export interface SyncServerCopy {
   /** Absent on a sealed copy (§13.10): `ct` replaces it. A legacy plaintext row keeps `value`. */
@@ -240,6 +252,10 @@ export interface SyncServerCopy {
   editedHlc?: string;
   /** Plaintext members, or (end-to-end) `[{member, ct, editedHlc}]` with blinded names. */
   members?: Record<string, SyncJson> | SyncSealedMember[];
+  /** §13.3 (U-09): a sealed `merge` record's cells, `[{field, ct, editedHlc}]` with blinded names. It replaces `ct`. */
+  fields?: SyncSealedField[];
+  /** §13.3, §13.4 (U-10): the record's file, when it has one. A pointer is not a value and does not count in the one-of rule. */
+  file?: SyncFilePointer;
 }
 
 /** §13.3: `{mutationId, status}` and the status's members. */
@@ -286,7 +302,11 @@ export interface SyncUsage {
   files: number;
 }
 
-/** §13.4: a setting change or a record change. */
+/**
+ * §13.4: a setting change or a record change. In server mode a `merge` record's `value` is its live
+ * object and a `union` record's an array in the order of each element's first surviving add tag
+ * (U-09).
+ */
 export type SyncChange =
   | {
       setting: string;
@@ -302,6 +322,15 @@ export type SyncChange =
       value: SyncJson;
       version: number;
       editedHlc?: string;
+      /** §13.4 (U-10): the record's file, when it has one. */
+      file?: SyncFilePointer;
+    }
+  | {
+      /** §13.4 (U-10): a record that has a file and no value carries neither `value` nor `ct`. */
+      record: [collection: string, id: string];
+      version: number;
+      editedHlc?: string;
+      file: SyncFilePointer;
     };
 
 /** §13.4: `{setting}` or `{record}` with its `editedHlc`. */
@@ -336,7 +365,10 @@ export interface PullEncryption {
   encryptionSince: number;
 }
 
-/** §13.4: a sealed setting or record change; `ct` replaces `value`, and a merge setting's `members` are sealed. */
+/**
+ * §13.4: a sealed setting or record change; `ct` replaces `value`. A `merge` setting's `members`
+ * are sealed, and so are a `merge` record's `fields` and a `union` record's `elements` (U-09).
+ */
 export type SyncSealedChange =
   | {
       setting: string;
@@ -349,11 +381,51 @@ export type SyncSealedChange =
       members?: SyncSealedMember[];
     }
   | {
+      /** A `revision`, `lastWrite`, `max` or `min` record: one envelope under `k = id` (§13.10.4). */
       record: [collection: string, id: string];
       ct: string;
       version: number;
       editedHlc?: string;
+      /** §13.4 (U-10): the record's file, when it has one. */
+      file?: SyncFilePointer;
+    }
+  | {
+      /** A `merge` record (U-09): sealed cells and no `ct`; `editedHlc` is the newest of them. */
+      record: [collection: string, id: string];
+      fields: SyncSealedField[];
+      version: number;
+      editedHlc: string;
+      /** §13.4 (U-10): the record's file, when it has one. */
+      file?: SyncFilePointer;
+    }
+  | {
+      /** A `union` record (U-09): sealed elements in the order of each one's first surviving add tag, and no `ct`. */
+      record: [collection: string, id: string];
+      elements: SyncSealedElement[];
+      version: number;
+      /** §13.4 (U-10): the record's file, when it has one. */
+      file?: SyncFilePointer;
+    }
+  | {
+      /** §13.4 (U-10): a record that has a file and no value carries neither `ct`, `fields` nor `elements`. */
+      record: [collection: string, id: string];
+      version: number;
+      editedHlc?: string;
+      file: SyncFilePointer;
     };
+
+/** §13.4: one field of a sealed `merge` record (U-09); `field` is blinded. Its `ct` seals under `k = id ‖ U+0000 ‖ field` (§13.10.4). */
+export interface SyncSealedField {
+  field: string;
+  ct: string;
+  editedHlc: string;
+}
+
+/** §13.4: one element of a sealed `union` record (U-09); `element` is blinded. Its `ct` seals under `k = id ‖ U+0000 ‖ canonicalJson(e)` (§13.10.4). */
+export interface SyncSealedElement {
+  element: string;
+  ct: string;
+}
 
 /** §13.4: one member of a sealed `merge` setting; `member` is blinded. */
 export interface SyncSealedMember {
@@ -475,12 +547,7 @@ export interface FinalizeRequest {
 }
 
 /** §13.8.1: the `finalize` answer. */
-export interface FinalizeResponse {
-  version: number;
-  size: number;
-  sha256: string;
-  format: SyncFileFormat;
-}
+export type FinalizeResponse = SyncFilePointer;
 
 /** §13.2: one kept revision of a record's file. */
 export interface FileRevision {

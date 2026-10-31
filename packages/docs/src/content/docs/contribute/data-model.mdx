@@ -174,7 +174,7 @@ this page or fails the freshness gate.
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `sync_directory` | 0131_cloud_sync_directory.sql | `product`, `subject`, `bytes`, `settings`, `records`, `files`, `revision_bytes`, `quota_bytes`, `tier_id`, `platform`, `last_active_at`, `updated_at` |
+| `sync_directory` | 0131_cloud_sync_directory.sql | `product`, `subject`, `bytes`, `settings`, `records`, `files`, `revision_bytes`, `quota_bytes`, `tier_id`, `platform`, `last_active_at`, `updated_at`, `record_bytes (0149)` |
 | `sync_product_usage` | 0131_cloud_sync_directory.sql | `product`, `bytes`, `users`, `settings_bytes`, `record_bytes`, `file_bytes`, `revision_bytes`, `breakdown_json`, `computed_at` |
 | `sync_product_daily` | 0132_cloud_sync_daily.sql | `product`, `day`, `syncs`, `conflicts` |
 

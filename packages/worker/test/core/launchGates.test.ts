@@ -23,6 +23,7 @@ type Gate =
   | "LAUNCH_IDENTITY_EXCHANGE"
   | "LAUNCH_CONNECT"
   | "LAUNCH_SYNC_E2E"
+  | "LAUNCH_SYNC_FILES"
   | "LAUNCH_RELAY";
 
 interface W {
@@ -209,6 +210,7 @@ describe("launch gates, as settings", () => {
     ["launch.identityExchange", "LAUNCH_IDENTITY_EXCHANGE"],
     ["launch.connect", "LAUNCH_CONNECT"],
     ["launch.syncE2e", "LAUNCH_SYNC_E2E"],
+    ["launch.syncFiles", "LAUNCH_SYNC_FILES"],
     ["launch.relay", "LAUNCH_RELAY"],
   ] as const;
 

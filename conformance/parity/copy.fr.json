@@ -285,6 +285,10 @@
       "title": "Collection inconnue",
       "message": "Cette collection n'est pas disponible."
     },
+    "entitlement_required": {
+      "title": "Non inclus dans votre licence",
+      "message": "Votre licence n'inclut pas cela. Mettez-la à niveau, puis réessayez."
+    },
     "quota_exceeded": {
       "title": "Stockage plein",
       "message": "Votre stockage synchronisé est plein. Libérez de l'espace, puis réessayez."
@@ -296,6 +300,14 @@
     "encryption_mismatch": {
       "title": "Chiffrement incompatible",
       "message": "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez."
+    },
+    "revision_conflict": {
+      "title": "Modifié ailleurs",
+      "message": "Cet élément a été modifié sur un autre appareil. Actualisez, puis réessayez."
+    },
+    "upload_mismatch": {
+      "title": "Échec de l’envoi",
+      "message": "Le fichier n’est pas arrivé intact. Réessayez."
     },
     "upload_expired": {
       "title": "Envoi expiré",

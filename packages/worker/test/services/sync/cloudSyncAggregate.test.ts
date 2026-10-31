@@ -26,11 +26,12 @@ async function dir(
     platform?: string | null;
     active?: number;
     revisions?: number;
+    recordBytes?: number;
   },
 ) {
   await db.run(
     `INSERT INTO sync_directory (product, subject, bytes, quota_bytes, tier_id, platform,
-       last_active_at, revision_bytes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       last_active_at, revision_bytes, record_bytes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     product,
     subject,
     r.bytes,
@@ -39,6 +40,7 @@ async function dir(
     r.platform ?? null,
     r.active ?? NOW,
     r.revisions ?? 0,
+    r.recordBytes ?? 0,
   );
 }
 
@@ -116,6 +118,25 @@ describe("sync product aggregate (U-05.9)", () => {
     for (const k of keys)
       expect(k === null || knownPlatform(k) !== null).toBe(true);
     expect(await read(db, "other")).toBeNull();
+  });
+
+  it("splits the bytes into records' and settings' (U-09.9), and never reads more records than bytes", async () => {
+    const db = makeTestDb();
+    await dir(db, "acme", "s1", { bytes: 1000, recordBytes: 700 });
+    await dir(db, "acme", "s2", { bytes: 500, recordBytes: 0 });
+    // A directory row written by hand or by an older build cannot make settings negative.
+    await dir(db, "acme", "s3", { bytes: 100, recordBytes: 400 });
+    await syncScheduled(ctxOf(db, "acme"));
+    const row = await read(db, "acme");
+    expect(row).toMatchObject({
+      bytes: 1600,
+      settings_bytes: 500 + 300 + 0,
+      record_bytes: 700 + 100,
+    });
+    expect(JSON.parse(String(row?.breakdown_json)).byKind).toMatchObject({
+      settings: 800,
+      records: 800,
+    });
   });
 
   it("the median of an even tier averages its two middle people; a rerun replaces the row", async () => {

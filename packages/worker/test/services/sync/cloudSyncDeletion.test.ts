@@ -16,7 +16,11 @@ import {
   purgeProductData,
 } from "../../../src/core/contributions.js";
 import { deleteProduct } from "../../../src/core/products/store.js";
-import { callCloudSync } from "../../../src/services/sync/do/client.js";
+import {
+  absorbCloudSync,
+  callCloudSync,
+  exportCloudSync,
+} from "../../../src/services/sync/do/client.js";
 import { formatHlc } from "../../../src/services/sync/engine/hlc.js";
 import {
   PURGE_OBJECTS_PER_RUN,
@@ -156,6 +160,64 @@ describe("erasure", () => {
       ],
     ).toMatchObject({ settings: null, directory: null });
     await runSubjectDelete(ctx, { product: P, subject: "a" });
+  });
+
+  it("erases records of every shape and the copies an account merge parked (U-09.8)", async () => {
+    const { ns, env, db } = world();
+    const rec = (
+      subject: string,
+      mutations: SyncMutation[],
+      classified: Classification[],
+    ) =>
+      callCloudSync<"push">(
+        env,
+        { product: P, subject },
+        {
+          op: "push",
+          deviceId: "d1",
+          family: "desktop",
+          limits: { quotaBytes: 1_000_000_000 },
+          request: { clientId: C1, cursor: 0, mutations },
+          classified,
+          serverNow: T0 + 3_600_000,
+        },
+      );
+    const r = (c: string, key: string, op: SyncMutation["op"], x = {}) => ({
+      mutationId: id++,
+      target: { record: [c, key] as [string, string] },
+      op,
+      editedHlc: at(1),
+      ...x,
+    });
+    const kinds = (policy: "revision" | "merge" | "union"): Classification => ({
+      verdict: "record",
+      policy,
+      maxRecords: 10,
+    });
+    for (const [subject, value] of [
+      ["a", 1],
+      ["b", 2],
+    ] as const)
+      await rec(
+        subject,
+        [
+          r("saves", "s", "set", { value }),
+          r("notes", "n", "setField", { field: "f", value }),
+          r("tags", "t", "add", { element: value }),
+        ],
+        [kinds("revision"), kinds("merge"), kinds("union")],
+      );
+    const doc = (await exportCloudSync(env, { product: P, subject: "b" }))!;
+    await absorbCloudSync(env, { product: P, subject: "a" }, doc);
+    const held = (await exportCloudSync(env, { product: P, subject: "a" }))!;
+    expect(held.records).toHaveLength(3);
+    expect(held.parked).toHaveLength(1);
+    const failures = await runSubjectDeleteIsolated(
+      { db, env: env as never, now: 1 },
+      { product: P, subject: "a" },
+    );
+    expect(failures).toEqual([]);
+    expect(erasureLeftovers(ns, `${P}:a`)).toEqual(ERASED_LEFTOVERS);
   });
 
   it("a failing object is reported by store, keeps the directory row, and the retry finishes", async () => {

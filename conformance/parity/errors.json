@@ -419,6 +419,12 @@
       "description": "A per-mutation result, not an HTTP status: the record target names a collection the catalog does not declare (WIRE-CONTRACT-V4 §13.2, §13.3, §13.9; U-09). Emitted by the push engine for any record target until U-09 adds collections."
     },
     {
+      "code": "entitlement_required",
+      "kind": "wire",
+      "service": "sync",
+      "description": "A per-mutation result, or 403 for files: the record target's collection declares `requires` and the anchor licence does not grant it; a `delete` never answers it (WIRE-CONTRACT-V5 §13.3, §13.8.4, §13.9; U-09, U-10)."
+    },
+    {
       "code": "quota_exceeded",
       "kind": "wire",
       "service": "sync",
@@ -437,25 +443,34 @@
       "description": "A per-mutation result, or 400 from POST /<p>/sync/files/{collection}/{id}/begin: a `ct` on a server-mode product, a `value` or an unblinded name on an end-to-end product, or an `enc` that does not match the product's mode (WIRE-CONTRACT-V5 §13.3, §13.8.4, §13.9, §13.10.1; U-09.1, U-10)."
     },
     {
+      "code": "revision_conflict",
+      "kind": "wire",
+      "service": "sync",
+      "description": "409 from POST /<p>/sync/files/{collection}/{id}/begin or /finalize: `baseVersion` no longer equals the record's version. Carries `server: {version}`; the client re-reads the record and begins again (WIRE-CONTRACT-V5 §13.8.1, §13.8.4, §13.9; U-10)."
+    },
+    {
+      "code": "upload_mismatch",
+      "kind": "wire",
+      "service": "sync",
+      "description": "400 from a file upload route: the bytes do not match the declared `size` or `sha256`, a part has the wrong length or number, or `Content-Digest` is missing or does not match. Nothing is stored for the failed request (WIRE-CONTRACT-V5 §13.8.1, §13.8.4, §13.9; U-10)."
+    },
+    {
       "code": "upload_expired",
       "kind": "wire",
       "service": "sync",
-      "description": "410: the file upload outlived `SYNC_UPLOAD_TTL_SECONDS` (86,400 s); the server aborted it and released its reservation, and the client begins again (WIRE-CONTRACT-V5 §13.8.2, §13.9; U-10).",
-      "plannedBy": "U-10"
+      "description": "410: the file upload outlived `SYNC_UPLOAD_TTL_SECONDS` (86,400 s); the server aborted it and released its reservation, and the client begins again (WIRE-CONTRACT-V5 §13.8.2, §13.9; U-10)."
     },
     {
       "code": "upload_incomplete",
       "kind": "wire",
       "service": "sync",
-      "description": "409 from POST /<p>/sync/files/{collection}/{id}/finalize: parts or chunks are still missing. `missing` lists them; the client uploads those and finalizes again (WIRE-CONTRACT-V5 §13.8.4, §13.9; U-10, U-37).",
-      "plannedBy": "U-10"
+      "description": "409 from POST /<p>/sync/files/{collection}/{id}/finalize: parts or chunks are still missing. `missing` lists them; the client uploads those and finalizes again (WIRE-CONTRACT-V5 §13.8.4, §13.9; U-10, U-37)."
     },
     {
       "code": "file_too_large",
       "kind": "wire",
       "service": "sync",
-      "description": "413 from a file `begin`: the file is over its collection's `files.maxBytes` (WIRE-CONTRACT-V5 §13.8.4, §13.9; U-10).",
-      "plannedBy": "U-10"
+      "description": "413 from a file `begin`: the file is over its collection's `files.maxBytes` (WIRE-CONTRACT-V5 §13.8.4, §13.9; U-10)."
     },
     {
       "code": "keyring_conflict",

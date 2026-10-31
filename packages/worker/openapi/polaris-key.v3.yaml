@@ -10008,7 +10008,14 @@ paths:
         pushed with `platform`. A declared key is validated against its entry (`value_invalid`); an
         undeclared key is an open setting, `lastWrite`, at most 8 KiB. `quota_exceeded` carries its
         `scope`: `user` for the person's quota and budget, `product` past the operator's ceiling.
-        A clear always passes. A `clientId` that belongs to another device is `409 client_mismatch`;
+        A clear always passes.
+
+        A record target `{record: [collection, id]}` (U-09, §13.3, §13.7) is matched to a declared
+        collection (an exact name beats a pattern, then the longest `prefix.*`). The first check
+        that fails answers: `collection_unknown`; `entitlement_required` (a `requires` the licence
+        lacks; never for `delete`); `encryption_mismatch`; `value_invalid`;
+        `op_invalid_for_policy`. `quota_exceeded` with `scope: collection` means `maxRecords` is
+        reached, and only a create can hit it. A `clientId` that belongs to another device is `409 client_mismatch`;
         a `cursor` the store cannot serve is `410 cursor_expired` (the mutations were applied and
         the retry finds them `duplicate`).
       security: [{ deviceToken: [] }]
@@ -10132,6 +10139,579 @@ paths:
         Browser preflight for a page on one of the product's `web.origins`. Answered
         before service dispatch, so the result never depends on whether the service
         behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/sync/files/{collection}/{id}/begin:
+    post:
+      operationId: syncFileBegin
+      tags: [sync]
+      summary: Begin a file upload for a record
+      description: >
+        U-10 (WIRE-CONTRACT-V5 §13.8.1). Any record may carry one file. `begin` opens an upload
+        session, checks the quota and the collection's `files.maxBytes`, and reserves the bytes; the
+        answer names the `mode` the file travels in (`single` up to 16 MiB, `multipart` above). The
+        device's own credential only (`Authorization: Bearer pkeyt_…` and `X-PKey-Device`). `{id}`
+        is the record id: the blinded id in end-to-end mode.
+
+        Every file route is `404` while the operator's launch gate `launch.syncFiles` is off or the
+        Worker has no file store, whatever the caller holds (§13.5).
+
+        The order is: the gate; token and principal (`401`, `400`, `403 account_required`); the
+        platform pause (`503 writes_paused`); the limit of 30 file transfers a device an hour
+        (`429 rate_limited`); device trust, `cloudSyncWrite` (`403 attestation_required`); the body
+        (`400 bad_request`); then, in this order, `400 collection_unknown`, `403
+        entitlement_required` (a `requires` the licence lacks, or a quota with `files: false`),
+        `400 encryption_mismatch` (a wrong `enc`, or an unblinded id in end-to-end mode), `413
+        file_too_large`, `409 revision_conflict` (a stale `baseVersion`, with the server's
+        `version`), `429 rate_limited` (four uploads already open) and `403 quota_exceeded` (the
+        person's quota with what open uploads reserve; `scope` is `collection` for `maxRecords`,
+        `product` past the operator's ceiling, else `user`). A `format` of `chunks` is
+        `400 bad_request` until the chunks mode ships (U-37).
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SyncFileBeginRequest" }
+            examples:
+              single:
+                summary: test/services/sync/cloudSyncFilesBegin.test.ts
+                value:
+                  size: 1048576
+                  sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                  format: whole
+                  enc: none
+                  baseVersion: "*"
+      responses:
+        "200":
+          description: "The session, and how the bytes travel."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncFileBeginResponse" }
+              examples:
+                single:
+                  summary: test/services/sync/cloudSyncFilesBegin.test.ts
+                  value:
+                    {
+                      uploadId: up_AAAAAAAAAAAAAAAAAAAAAA,
+                      mode: single,
+                      expiresAt: 1700086400000,
+                    }
+                multipart:
+                  summary: test/services/sync/cloudSyncFilesBegin.test.ts
+                  value:
+                    {
+                      uploadId: up_AAAAAAAAAAAAAAAAAAAAAA,
+                      mode: multipart,
+                      partBytes: 8388608,
+                      expiresAt: 1700086400000,
+                    }
+        "400":
+          description: >
+            `bad_request` (a malformed body, a missing or malformed `X-PKey-Device`, or the chunks
+            format before it ships), `collection_unknown`, or `encryption_mismatch` — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                unknown: { value: { error: { code: collection_unknown } } }
+                mismatch: { value: { error: { code: encryption_mismatch } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `account_required` (the body carries the `signInUrl`), `attestation_required`,
+            `entitlement_required`, or `quota_exceeded` with `scope` (`user`, `collection` or
+            `product`). A file route's `403` is that call's error: it never blocks the client state
+            machine (§11.5).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+              examples:
+                quota:
+                  summary: test/services/sync/cloudSyncFilesBegin.test.ts
+                  value: { error: { code: quota_exceeded }, scope: user }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: "`revision_conflict` — `baseVersion` is stale. The server's `version` rides beside `error`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncFileRevisionConflict" }
+              examples:
+                stale:
+                  summary: test/services/sync/cloudSyncFilesBegin.test.ts
+                  value:
+                    {
+                      error: { code: revision_conflict },
+                      server: { version: 7 },
+                    }
+        "413":
+          description: "`file_too_large` (over the collection's `files.maxBytes`) or `body_too_large`. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                tooLarge: { value: { error: { code: file_too_large } } }
+        "429":
+          description: >
+            `rate_limited` — over 30 file transfers an hour, or four uploads already open.
+            `Retry-After` gives the seconds to wait. NESTED.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+        "503":
+          description: >
+            `writes_paused` (`Retry-After: 300`) or `unavailable` (`Retry-After: 5`). NESTED.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                paused: { value: { error: { code: writes_paused } } }
+    options:
+      operationId: preflightSyncFileBegin
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/sync/files/{collection}/{id}/upload/{uploadId}:
+    get:
+      operationId: syncFileUploadStatus
+      tags: [sync]
+      summary: The resume answer of a file upload
+      description: >
+        U-10 (WIRE-CONTRACT-V5 §13.8.2). The parts received (`received`, for `multipart`; a `single`
+        upload lists part 1 once its `PUT` landed) or, in the chunks mode, the chunk ids still
+        missing. A client resends only those. Counted against the 600 requests a device a minute.
+        An upload lives 24 hours; an expired one answers `410 upload_expired` and is collected. A
+        session that is unknown, ended, or another record's is `404`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+        - { $ref: "#/components/parameters/SyncFileUploadId" }
+      responses:
+        "200":
+          description: "The session's state."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncFileUploadStatus" }
+              examples:
+                multipart:
+                  summary: test/services/sync/cloudSyncFilesBegin.test.ts
+                  value:
+                    {
+                      mode: multipart,
+                      size: 20971520,
+                      partBytes: 8388608,
+                      received: [1, 3],
+                      expiresAt: 1700086400000,
+                    }
+        "400":
+          description: "A missing or malformed `X-PKey-Device` — NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                badRequest: { value: { error: { code: bad_request } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`account_required` (the body carries the `signInUrl`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountRequiredBody" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "410":
+          description: "`upload_expired` — the upload outlived its 24 hours and was collected. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                expired: { value: { error: { code: upload_expired } } }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: "`unavailable` (`Retry-After: 5`). NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    delete:
+      operationId: syncFileUploadAbort
+      tags: [sync]
+      summary: Abort a file upload
+      description: >
+        U-10 (WIRE-CONTRACT-V5 §13.8.2). Aborts the upload, deletes what it stored and releases its
+        quota reservation. Idempotent: an upload that already ended, or finished, is `204`. A
+        session that is unknown or another record's is `404`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+        - { $ref: "#/components/parameters/SyncFileUploadId" }
+      responses:
+        "204": { description: "Aborted, and the reservation released." }
+        "400":
+          description: "A missing or malformed `X-PKey-Device` — NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`account_required` (the body carries the `signInUrl`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountRequiredBody" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: "`unavailable` (`Retry-After: 5`). NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    put:
+      operationId: syncFileUploadPut
+      tags: [sync]
+      summary: Upload a whole file (mode single)
+      description: >
+        U-10 (WIRE-CONTRACT-V5 §13.8.1). The bytes of a file up to 16 MiB, for a session `begin`
+        answered `single`, with `Content-Length` and `Content-Digest: sha-256=:<base64>:`, which
+        must be the `sha256` `begin` declared. The server checks only size and SHA-256 and never
+        reads the content: R2 itself refuses bytes that do not hash to the declared value, and
+        nothing is stored. Resending a `PUT` that landed is `204` again. `Content-Length` over 16
+        MiB is `413 body_too_large`; a size or digest that does not match, or a missing
+        `Content-Length` or `Content-Digest`, is `400 upload_mismatch`. A session that is unknown,
+        ended, or another record's is `404`; one past its 24 hours is `410 upload_expired`. Writes
+        honour the platform pause and device trust like the push, and count against the 600
+        requests a device a minute.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+        - { $ref: "#/components/parameters/SyncFileUploadId" }
+        - { $ref: "#/components/parameters/ContentDigest" }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "204": { description: "Stored." }
+        "400":
+          description: "`upload_mismatch`, or a missing or malformed `X-PKey-Device` — NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                mismatch:
+                  summary: test/services/sync/cloudSyncFilesUpload.test.ts
+                  value: { error: { code: upload_mismatch } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`account_required` (the body carries the `signInUrl`) or `attestation_required`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "410":
+          description: "`upload_expired`. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "413":
+          description: "`body_too_large` — `Content-Length` over 16 MiB. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: "`writes_paused` (`Retry-After: 300`) or `unavailable` (`Retry-After: 5`). NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightSyncFileUpload
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/sync/files/{collection}/{id}/upload/{uploadId}/parts/{n}:
+    put:
+      operationId: syncFileUploadPart
+      tags: [sync]
+      summary: Upload one part of a multipart file
+      description: >
+        U-10 (WIRE-CONTRACT-V5 §13.8.1). Part `n` (from 1) of a session `begin` answered
+        `multipart`: exactly `partBytes` bytes, the last part shorter, with `Content-Length` and
+        `Content-Digest: sha-256=:<base64>:` of the part. Parts go in any order, at most four in
+        parallel. The server hashes the part as it streams to R2 and compares it with the digest;
+        a part that does not verify is forgotten (it counts as missing), so a resend replaces it.
+        Resending a part replaces it. A part number outside `1…⌈size / partBytes⌉`, a part of the
+        wrong length, or a missing `Content-Digest` is `400 upload_mismatch`. The rest is as the
+        single `PUT`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+        - { $ref: "#/components/parameters/SyncFileUploadId" }
+        - name: n
+          in: path
+          required: true
+          description: "The part number, from 1."
+          schema: { type: integer, minimum: 1 }
+        - { $ref: "#/components/parameters/ContentDigest" }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "204": { description: "Stored." }
+        "400":
+          description: "`upload_mismatch`, or a missing or malformed `X-PKey-Device` — NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                mismatch:
+                  summary: test/services/sync/cloudSyncFilesUpload.test.ts
+                  value: { error: { code: upload_mismatch } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: "`account_required` (the body carries the `signInUrl`) or `attestation_required`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "410":
+          description: "`upload_expired`. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: "`writes_paused` (`Retry-After: 300`) or `unavailable` (`Retry-After: 5`). NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightSyncFilePart
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+
+  /{product}/sync/files/{collection}/{id}/finalize:
+    post:
+      operationId: syncFileFinalize
+      tags: [sync]
+      summary: Finish a file upload
+      description: >
+        U-10 (WIRE-CONTRACT-V5 §13.8.1). Makes an upload the record's file. The server checks that
+        every part is there (`409 upload_incomplete` with `missing`), completes a multipart upload
+        in R2, streams the stored object through SHA-256 and compares size and hash with what
+        `begin` declared (`400 upload_mismatch`, and the upload ends). Then it is a record write:
+        `begin`'s `baseVersion` is checked again against the record as it is now, so any write to
+        the record since `begin` is `409 revision_conflict` carrying the server's `version`
+        (the upload ends; a new `baseVersion` needs a new `begin`). The record's `version` moves to
+        a new store sequence, which the answer returns; a create-only `finalize` of a missing record
+        makes a record with no value. The previous file stays as a revision. The stored bytes are
+        charged and the reservation released.
+
+        Idempotent per `uploadId`: a repeat answers the same body and charges nothing. A client
+        writes the file first and the record's metadata second, on the `version` returned here
+        (§11.5). A `finalize` of the same upload still in flight is `503 unavailable` (`Retry-After:
+        1`). `403 quota_exceeded` with `scope: collection` when the record would be a create past
+        `maxRecords`.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+        - { $ref: "#/components/parameters/SyncFileCollection" }
+        - { $ref: "#/components/parameters/SyncFileRecordId" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SyncFileFinalizeRequest" }
+            examples:
+              finalize:
+                summary: test/services/sync/cloudSyncFilesFinalize.test.ts
+                value: { uploadId: up_AAAAAAAAAAAAAAAAAAAAAA }
+      responses:
+        "200":
+          description: "The file, and the record's new `version`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SyncFilePointer" }
+              examples:
+                stored:
+                  summary: test/services/sync/cloudSyncFilesFinalize.test.ts
+                  value:
+                    {
+                      version: 8,
+                      size: 1048576,
+                      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                      format: whole,
+                    }
+        "400":
+          description: >
+            `upload_mismatch` (the stored size or SHA-256 is not the declared one; the upload
+            ends), `collection_unknown`, or `bad_request` — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                mismatch: { value: { error: { code: upload_mismatch } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `account_required` (the body carries the `signInUrl`), `attestation_required`, or
+            `quota_exceeded` with `scope: collection`.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/AccountRequiredBody" }
+                  - { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: >
+            `upload_incomplete` (parts are missing; `missing` lists their numbers) or
+            `revision_conflict` (the record changed since `begin`; the server's `version` rides
+            beside `error`).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/SyncFileUploadIncomplete" }
+                  - { $ref: "#/components/schemas/SyncFileRevisionConflict" }
+              examples:
+                incomplete:
+                  summary: test/services/sync/cloudSyncFilesFinalize.test.ts
+                  value: { error: { code: upload_incomplete }, missing: [2] }
+                conflict:
+                  summary: test/services/sync/cloudSyncFilesFinalize.test.ts
+                  value:
+                    {
+                      error: { code: revision_conflict },
+                      server: { version: 9 },
+                    }
+        "410":
+          description: "`upload_expired`. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "413":
+          description: "`body_too_large`. NESTED."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: "`rate_limited` — over 600 requests a minute. NESTED."
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "503":
+          description: >
+            `writes_paused` (`Retry-After: 300`) or `unavailable` (`Retry-After: 5`, or 1 while the
+            same upload's `finalize` is in flight). NESTED.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightSyncFileFinalize
+      tags: [sync]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch. See `CorsPreflight`. No credentials are allowed.
       parameters:
         - { $ref: "#/components/parameters/Product" }
       responses:
@@ -23803,6 +24383,30 @@ components:
         demands exactly 32 base64url characters; the license routes accept any non-empty
         string.
       schema: { type: string }
+    SyncFileCollection:
+      name: collection
+      in: path
+      required: true
+      description: "A declared collection name or one of its `prefix.*` names (the key charset)."
+      schema: { type: string, pattern: "^[A-Za-z0-9._:-]{1,128}$" }
+    SyncFileRecordId:
+      name: id
+      in: path
+      required: true
+      description: "The record id: the blinded id (`x:…`) in end-to-end mode."
+      schema: { type: string, pattern: "^[A-Za-z0-9._:-]{1,128}$" }
+    ContentDigest:
+      name: Content-Digest
+      in: header
+      required: true
+      description: "RFC 9530: `sha-256=:<base64>:` of the body (of the whole file for a single `PUT`, of the part for a part)."
+      schema: { type: string, pattern: "^sha-256=:[A-Za-z0-9+/]{43}=:" }
+    SyncFileUploadId:
+      name: uploadId
+      in: path
+      required: true
+      description: "The session `begin` opened."
+      schema: { type: string, pattern: "^up_[A-Za-z0-9_-]{22}$" }
     VersionHeader:
       name: X-PKey-Version
       in: header
@@ -24210,12 +24814,12 @@ components:
           schema: { type: string }
           example: https://diceroll.gg
         Access-Control-Allow-Methods:
-          schema: { type: string, const: "GET, POST, PATCH, DELETE" }
+          schema: { type: string, const: "GET, POST, PATCH, PUT, DELETE" }
         Access-Control-Allow-Headers:
           description: Listed explicitly (a `*` would not cover `Authorization`).
           schema:
             type: string
-            const: "Authorization, Content-Type, Range, If-None-Match, If-Range, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch"
+            const: "Authorization, Content-Type, Range, If-None-Match, If-Range, Content-Digest, X-PKey-Device, X-PKey-Version, X-PKey-Channel, X-PKey-SDK, X-PKey-SDK-Version, X-PKey-Platform, X-PKey-Arch"
         Access-Control-Max-Age:
           schema: { type: string, const: "600" }
         Vary:
@@ -29718,6 +30322,10 @@ components:
                   ct: { type: string }
                   editedHlc: { type: string }
         - type: object
+          description: >
+            A record in server mode (or a legacy plaintext row). `value` is the live record: a
+            `merge` record's object, or a `union` record's array in the order of each element's
+            first surviving add tag (§13.4, U-09).
           required: [record, value, version]
           additionalProperties: false
           properties:
@@ -29730,6 +30338,259 @@ components:
             value: {}
             version: { type: integer, minimum: 1 }
             editedHlc: { type: string }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
+        - type: object
+          description: >
+            A record that has a file and no value (§13.4, §13.8.1, U-10): it carries neither
+            `value` nor `ct`.
+          required: [record, version, file]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, id] (the blinded id in E2E mode)."
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
+        - type: object
+          description: >
+            End-to-end mode (§13.4, §13.10.4): a `revision`, `lastWrite`, `max` or `min` record.
+            `ct` replaces `value` and seals under `k = id`; `record[1]` is the blinded id.
+          required: [record, ct, version]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, blinded id]."
+            ct: { type: string }
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
+        - type: object
+          description: >
+            End-to-end mode (§13.4, U-09): a `merge` record. Each field is sealed under
+            `k = id ‖ U+0000 ‖ field`; there is no `ct` and no `value`. `editedHlc` is the newest
+            of its cells.
+          required: [record, fields, version, editedHlc]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, blinded id]."
+            fields:
+              type: array
+              items:
+                type: object
+                required: [field, ct, editedHlc]
+                additionalProperties: false
+                properties:
+                  field: { type: string, description: "Blinded (`x:…`)." }
+                  ct: { type: string }
+                  editedHlc: { type: string }
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
+        - type: object
+          description: >
+            End-to-end mode (§13.4, U-09): a `union` record. Each element is sealed under
+            `k = id ‖ U+0000 ‖ canonicalJson(e)`, listed in the order of its first surviving add
+            tag; there is no `ct` and no `value`.
+          required: [record, elements, version]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, blinded id]."
+            elements:
+              type: array
+              items:
+                type: object
+                required: [element, ct]
+                additionalProperties: false
+                properties:
+                  element: { type: string, description: "Blinded (`x:…`)." }
+                  ct: { type: string }
+            version: { type: integer, minimum: 1 }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
+        - type: object
+          description: >
+            End-to-end mode (§13.4, §13.8.1, U-10): a record that has a file and no value carries
+            neither `ct`, `fields` nor `elements`; `record[1]` is the blinded id.
+          required: [record, version, file]
+          additionalProperties: false
+          properties:
+            record:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: string }
+              description: "[collection, blinded id]."
+            version: { type: integer, minimum: 1 }
+            editedHlc: { type: string }
+            file: { $ref: "#/components/schemas/SyncFilePointer" }
+    SyncFilePointer:
+      type: object
+      description: >
+        The file a record carries (§13.4, §13.8.1, U-10). `version` is the store sequence of the
+        `finalize` that stored it; `size` and `sha256` are those of the stored bytes (ciphertext in
+        end-to-end mode). Absent from a change when the record has no file. It is also the
+        `finalize` answer.
+      required: [version, size, sha256, format]
+      additionalProperties: false
+      properties:
+        version: { type: integer, minimum: 1 }
+        size: { type: integer, minimum: 0 }
+        sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+        format: { type: string, enum: [whole, chunks] }
+    SyncFileBeginRequest:
+      type: object
+      description: >
+        `POST /{product}/sync/files/{collection}/{id}/begin` (§13.8.1, U-10). `sha256` is the hash
+        of what is stored (ciphertext in end-to-end mode). `baseVersion` is a number
+        (compare-and-swap), `"*"` (create-only) or absent. `enc` must match the product's mode.
+      required: [size, sha256, format, enc]
+      additionalProperties: false
+      properties:
+        size: { type: integer, minimum: 0, maximum: 1073741824 }
+        sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+        format: { type: string, enum: [whole, chunks] }
+        enc: { type: string, enum: [e2e, none] }
+        baseVersion:
+          oneOf:
+            - { type: integer, minimum: 0 }
+            - { type: string, const: "*" }
+    SyncFileBeginResponse:
+      type: object
+      description: "The `begin` answer (§13.8.1). `partBytes` appears for `multipart` only."
+      required: [uploadId, mode, expiresAt]
+      additionalProperties: false
+      properties:
+        uploadId: { type: string }
+        mode: { type: string, enum: [single, multipart, chunks] }
+        partBytes: { type: integer, minimum: 8388608, maximum: 67108864 }
+        expiresAt: { type: integer, description: "Epoch milliseconds." }
+    SyncFileUploadStatus:
+      type: object
+      description: >
+        The resume answer (§13.8.2). `received` lists the part numbers of a `multipart` upload,
+        `missing` the chunk ids of a `chunks` upload.
+      required: [mode, size, expiresAt]
+      additionalProperties: false
+      properties:
+        mode: { type: string, enum: [single, multipart, chunks] }
+        size: { type: integer, minimum: 0 }
+        partBytes: { type: integer }
+        received:
+          type: array
+          items: { type: integer, minimum: 1 }
+        missing:
+          type: array
+          items: { type: string, pattern: "^[0-9a-f]{64}$" }
+        expiresAt: { type: integer, description: "Epoch milliseconds." }
+    SyncFileChunkPlanRequest:
+      type: object
+      description: "`POST …/upload/{uploadId}/chunks` (§13.8.1, U-37): at most 1,024 ids."
+      required: [chunks]
+      additionalProperties: false
+      properties:
+        chunks:
+          type: array
+          maxItems: 1024
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            description: "[chunkId, storedBytes]."
+            prefixItems:
+              - { type: string, pattern: "^[0-9a-f]{64}$" }
+              - { type: integer, minimum: 1 }
+    SyncFileChunkPlanResponse:
+      type: object
+      description: "The chunks to send, and the ones the person's collection already holds (U-37)."
+      required: [missing, present]
+      additionalProperties: false
+      properties:
+        missing:
+          type: array
+          items: { type: string, pattern: "^[0-9a-f]{64}$" }
+        present:
+          type: array
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            prefixItems:
+              - { type: string, pattern: "^[0-9a-f]{64}$" }
+              - { type: integer, minimum: 1 }
+    SyncFileFinalizeRequest:
+      type: object
+      description: "`POST /{product}/sync/files/{collection}/{id}/finalize` (§13.8.1); idempotent per `uploadId`."
+      required: [uploadId]
+      additionalProperties: false
+      properties:
+        uploadId: { type: string }
+    SyncFileRevisionsResponse:
+      type: object
+      description: "The kept versions of a record's file (§13.2), newest first."
+      required: [revisions]
+      additionalProperties: false
+      properties:
+        revisions:
+          type: array
+          items:
+            type: object
+            required: [version, size, sha256, format, createdAt]
+            additionalProperties: false
+            properties:
+              version: { type: integer, minimum: 1 }
+              size: { type: integer, minimum: 0 }
+              sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+              format: { type: string, enum: [whole, chunks] }
+              createdAt: { type: integer, description: "Epoch milliseconds." }
+    SyncFileUploadIncomplete:
+      type: object
+      description: "`409 upload_incomplete` (§13.8.4): the parts (numbers) or chunks (ids) still missing."
+      allOf:
+        - { $ref: "#/components/schemas/WireError" }
+        - type: object
+          required: [missing]
+          properties:
+            missing:
+              type: array
+              items:
+                oneOf:
+                  - { type: integer }
+                  - { type: string }
+    SyncFileRevisionConflict:
+      type: object
+      description: "`409 revision_conflict` (§13.8.4) from `begin` or `finalize`: the server's version."
+      allOf:
+        - { $ref: "#/components/schemas/WireError" }
+        - type: object
+          required: [server]
+          properties:
+            server:
+              type: object
+              required: [version]
+              properties:
+                version:
+                  {
+                    type: integer,
+                    minimum: 0,
+                    description: "`0` when the record has no row.",
+                  }
     SyncTombstone:
       description: "A deleted setting or record with its `editedHlc` (§13.4)."
       oneOf:
@@ -29827,7 +30688,10 @@ components:
               { type: string, description: "`<origin>/signin?product=<slug>`." }
     SyncMutation:
       type: object
-      description: "One mutation of a push body (§13.3). Settings only until U-09."
+      description: >
+        One mutation of a push body (§13.3). A record target `{record: [collection, id]}` takes the
+        operations of its collection's policy (U-09): `set` and `delete` (`revision`, `lastWrite`,
+        `max`, `min`), `setField` and `removeField` (`merge`), `add` and `remove` (`union`).
       required: [mutationId, target, op]
       properties:
         mutationId:
@@ -29867,16 +30731,36 @@ components:
             ]
         value: {}
         member: { type: string }
+        field:
+          type: string
+          description: >
+            `setField` and `removeField` on a `merge` record (U-09). In end-to-end mode a blinded
+            name (`x:…`).
+        element:
+          description: >
+            `add` and `remove` on a `union` record (U-09): the element (any JSON; at most 1 KiB of
+            canonical JSON). In end-to-end mode a blinded name (`x:…`) and the value rides in `ct`.
+        observedSeq:
+          type: integer
+          minimum: 0
+          description: >
+            `remove` on a `union` record (U-09): the highest sequence the client has seen for the
+            element (a pull `version`, or its own acknowledged `add`). The server drops the element's add tags at or below it, so a concurrent `add`
+            survives. A `remove` without it, or with one above the store sequence, is
+            `value_invalid`.
         ct:
           type: string
           description: >
             End-to-end mode (§13.3, §13.10, U-09.1): the sealed value, a `pkey-sync-value/1`
-            envelope in canonical base64url, in place of `value`. The wrong one of the two is a
-            `rejected` result with `encryption_mismatch`.
+            envelope in canonical base64url, in place of `value`. On a record it seals the record's
+            value, a `setField` value or an `add` element, under the name of §13.10.4. The wrong
+            one of the two is a `rejected` result with `encryption_mismatch`.
         baseVersion:
           description: >
-            A `max`/`min` setting in end-to-end mode is a compare-and-swap register: a number
-            equal to the row's `version`, or `"*"` for create-only.
+            A `max`/`min` setting or record in end-to-end mode is a compare-and-swap register: a
+            number equal to the row's `version`, or `"*"` for create-only. On a `revision` or
+            `lastWrite` record, a number is compare-and-swap, `"*"` create-only and absent
+            unconditional.
           oneOf: [{ type: integer, minimum: 0 }, { type: string, const: "*" }]
         editedHlc: { type: string, pattern: "^[0-9a-f]{12}:[0-9a-f]{4}$" }
     PushRequest:
@@ -29924,8 +30808,9 @@ components:
               type: object
               required: [version]
               description: >
-                The server's copy. A sealed row (end-to-end mode, §13.3) answers `ct`, or sealed
-                `members`, in place of `value`.
+                The server's copy. A sealed row (end-to-end mode, §13.3) answers `ct`, sealed
+                `members` (a `merge` setting) or sealed `fields` (a `merge` record, U-09) in place
+                of `value`. A record's `value` is its live object.
               properties:
                 value: {}
                 ct: { type: string }
@@ -29935,6 +30820,19 @@ components:
                   oneOf:
                     - { type: object, additionalProperties: {} }
                     - { type: array, items: { type: object } }
+                fields:
+                  type: array
+                  description: "A sealed `merge` record's cells (U-09)."
+                  items:
+                    type: object
+                    required: [field, ct, editedHlc]
+                    properties:
+                      field: { type: string, description: "Blinded (`x:…`)." }
+                      ct: { type: string }
+                      editedHlc: { type: string }
+                file:
+                  description: "The record's file, when it has one (§13.4, U-10)."
+                  $ref: "#/components/schemas/SyncFilePointer"
         - type: object
           required: [mutationId, status, code]
           properties:
@@ -29953,7 +30851,8 @@ components:
             scope:
               type: string
               enum: [user, collection, product]
-              description: "Only with `quota_exceeded`."
+              description: >
+                Only with `quota_exceeded`. `collection`: the collection's `maxRecords` (U-09).
         - type: object
           required: [mutationId, status]
           properties:

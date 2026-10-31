@@ -21,7 +21,12 @@ import {
   validatePrepared,
   type PreparedSchema,
 } from "./validate.js";
-import type { ConfigEntry, ConfigKind, ProductCatalog } from "./types.js";
+import type {
+  CatalogCloudSync,
+  ConfigEntry,
+  ConfigKind,
+  ProductCatalog,
+} from "./types.js";
 import {
   describeRepresentabilityIssue,
   representabilityIssue,
@@ -51,6 +56,8 @@ function isRejected(a: Analysed): a is RejectedSchema {
 export class Catalog {
   readonly schemaVersion: number;
   readonly entries: readonly ConfigEntry[];
+  /** The catalog's Cloud Sync block (its collections and migrations), as published. */
+  readonly cloudSync?: CatalogCloudSync;
 
   private readonly byKey: Map<string, ConfigEntry>;
   private readonly analysed = new Map<string, Analysed>();
@@ -58,6 +65,7 @@ export class Catalog {
   constructor(catalog: ProductCatalog) {
     this.schemaVersion = catalog.schemaVersion;
     this.entries = catalog.entries;
+    if (catalog.cloudSync !== undefined) this.cloudSync = catalog.cloudSync;
     this.byKey = new Map(catalog.entries.map((e) => [e.key, e]));
   }
 

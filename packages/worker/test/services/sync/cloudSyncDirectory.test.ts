@@ -14,7 +14,12 @@ import {
 } from "../../../src/services/sync/do/directory.js";
 import { syncProductPurge } from "../../../src/services/sync/productDeletion.js";
 import { ABSORBED_RETENTION_MS } from "../../../src/services/sync/do/cloudSyncDo.js";
-import { deleteCloudSyncIfUnchanged } from "../../../src/services/sync/do/client.js";
+import { SCHEMA_VERSION } from "../../../src/services/sync/do/sqlStore.js";
+import {
+  absorbCloudSync,
+  deleteCloudSyncIfUnchanged,
+  exportCloudSync,
+} from "../../../src/services/sync/do/client.js";
 import { cloudSyncStore } from "../../../src/services/sync/subjectStore.js";
 import { makeTestDb } from "../../helpers.js";
 import { seedProduct } from "../../seed.js";
@@ -442,6 +447,13 @@ describe("directory flush (U-05.9)", () => {
   });
 });
 
+/** A write and an alarm on day `d`: the daily activity that keeps the tombstone clock marking. */
+const tickTo = async (w: Awaited<ReturnType<typeof world>>, d: number) => {
+  w.clock.t = T0 + d * DAY;
+  await write(w, A, [mut("z", "set", w.clock.t - 500, { value: d })]);
+  await w.ns.fireAlarm(NAME(A));
+};
+
 describe("housekeeping in the alarm (U-05.9)", () => {
   const pullAt = (w: Awaited<ReturnType<typeof world>>, cursor: number) =>
     callCloudSync<"pull">(
@@ -469,15 +481,9 @@ describe("housekeeping in the alarm (U-05.9)", () => {
       ).n;
     expect(tomb()).toBe(1);
     // Daily activity keeps the clock marking; 89 days on, still there.
-    for (let d = 1; d <= 89; d += 22) {
-      w.clock.t = T0 + d * DAY;
-      await write(w, A, [mut("z", "set", w.clock.t - 500, { value: d })]);
-      await w.ns.fireAlarm(NAME(A));
-    }
+    for (const d of [1, 23, 45, 67, 89]) await tickTo(w, d);
     expect(tomb()).toBe(1);
-    w.clock.t = T0 + 91 * DAY;
-    await write(w, A, [mut("z", "set", w.clock.t - 500, { value: 91 })]);
-    await w.ns.fireAlarm(NAME(A));
+    await tickTo(w, 91);
     expect(tomb()).toBe(0);
     const wm = w.ns
       .instance(NAME(A))
@@ -675,10 +681,13 @@ describe("alarm robustness (U-05.9 N-items)", () => {
     await write(w, A, [mut("a", "set", T0 - 1000, { value: 1 })]);
     const raw = w.ns.instance(NAME(A)).storage.sql.db;
     raw.exec("ALTER TABLE clients DROP COLUMN last_seen");
+    // A v1 object has neither the v3 `kid` columns nor the record tables (those are made fresh).
+    for (const table of ["settings", "tombstones", "setting_members"])
+      raw.exec(`ALTER TABLE ${table} DROP COLUMN kid`);
     raw.exec("UPDATE meta SET value = '1' WHERE key = 'schema_version'");
     w.ns.instance(NAME(A)).obj["store"].reset();
     await w.ns.fireAlarm(NAME(A));
-    expect(metaOf(w, NAME(A), "schema_version")).toBe("2");
+    expect(metaOf(w, NAME(A), "schema_version")).toBe(String(SCHEMA_VERSION));
     expect(await dirRow(w, A)).not.toBeNull();
   });
 });
@@ -878,5 +887,159 @@ describe("merge delete order and paged GC (U-05.9)", () => {
     await write(w, A, [mut("z", "set", w.clock.t - 500, { value: 1 })]);
     await w.ns.fireAlarm(NAME(A));
     expect(n()).toBe(0);
+  });
+});
+
+describe("records in the directory and in housekeeping (U-09.9)", () => {
+  const REC = (policy: "revision" | "merge" | "union"): Classification => ({
+    verdict: "record",
+    policy,
+    maxRecords: 100,
+  });
+  const rec = (
+    collection: string,
+    rid: string,
+    op: SyncMutation["op"],
+    at: number,
+    extra: Partial<SyncMutation> = {},
+  ): SyncMutation => ({
+    mutationId: id++,
+    target: { record: [collection, rid] },
+    op,
+    editedHlc: formatHlc(at, 0),
+    ...extra,
+  });
+  const send = (
+    w: Awaited<ReturnType<typeof world>>,
+    items: [SyncMutation, Classification][],
+  ) =>
+    write(
+      w,
+      A,
+      items.map(([m]) => m),
+      {
+        classified: items.map(([, c]) => c),
+        limits: { quotaBytes: 100_000 },
+      },
+    );
+  const usage = (w: Awaited<ReturnType<typeof world>>) =>
+    callCloudSync<"usage">(
+      w.env,
+      { product: P, subject: A },
+      { op: "usage" },
+    ).then((r) => r.usage);
+
+  it("the flush writes the live record count and the records' bytes, inside the total", async () => {
+    const w = await world();
+    await write(w, A, [mut("theme", "set", T0 - 1000, { value: "dark" })]);
+    await send(w, [
+      [
+        rec("saves", "a", "set", T0 - 900, { value: { hp: 3 } }),
+        REC("revision"),
+      ],
+      [
+        rec("notes", "n", "setField", T0 - 800, { field: "f", value: 1 }),
+        REC("merge"),
+      ],
+      [rec("tags", "t", "add", T0 - 700, { element: "x" }), REC("union")],
+    ]);
+    await w.ns.fireAlarm(NAME(A));
+    const u = await usage(w);
+    expect(u.records).toBe(3);
+    expect(u.recordBytes).toBeGreaterThan(0);
+    expect(u.bytes).toBeGreaterThan(u.recordBytes);
+    expect(await dirRow(w, A)).toMatchObject({
+      records: 3,
+      record_bytes: u.recordBytes,
+      bytes: u.bytes,
+      settings: 1,
+    });
+    // A delete takes the record out of both counters at the next flush.
+    w.clock.t += FLUSH_WINDOW_MS;
+    await send(w, [
+      [rec("saves", "a", "delete", w.clock.t - 500), REC("revision")],
+    ]);
+    await w.ns.fireAlarm(NAME(A));
+    expect(await dirRow(w, A)).toMatchObject({ records: 2 });
+  });
+
+  it("an object that only absorbed records is flushed with them", async () => {
+    const w = await world();
+    await send(w, [
+      [
+        rec("saves", "a", "set", T0 - 900, { value: { hp: 3 } }),
+        REC("revision"),
+      ],
+    ]);
+    const doc = (await exportCloudSync(w.env, { product: P, subject: A }))!;
+    await absorbCloudSync(w.env, { product: P, subject: B }, doc);
+    await w.ns.fireAlarm(NAME(B));
+    const row = await w.db.first<Record<string, unknown>>(
+      "SELECT records, record_bytes FROM sync_directory WHERE product = ? AND subject = ?",
+      P,
+      B,
+    );
+    expect(row).toMatchObject({ records: 1 });
+    expect(Number(row?.record_bytes)).toBeGreaterThan(0);
+  });
+
+  it("the alarm forgets record tombstones and removed field cells older than 90 days, and nothing younger", async () => {
+    const w = await world();
+    await send(w, [
+      [rec("saves", "gone", "set", T0 - 900, { value: 1 }), REC("revision")],
+      [rec("saves", "kept", "set", T0 - 900, { value: 2 }), REC("revision")],
+      [
+        rec("notes", "n", "setField", T0 - 800, { field: "a", value: 1 }),
+        REC("merge"),
+      ],
+      [
+        rec("notes", "n", "setField", T0 - 790, { field: "b", value: 2 }),
+        REC("merge"),
+      ],
+      [rec("tags", "t", "add", T0 - 700, { element: "x" }), REC("union")],
+    ]);
+    await send(w, [
+      [rec("saves", "gone", "delete", T0 - 500), REC("revision")],
+      [
+        rec("notes", "n", "removeField", T0 - 400, { field: "a" }),
+        REC("merge"),
+      ],
+    ]);
+    await w.ns.fireAlarm(NAME(A)); // day 0 mark
+    const raw = w.ns.instance(NAME(A)).storage.sql.db;
+    const count = (sql: string) => (raw.prepare(sql).get() as { n: number }).n;
+    const tombs = () =>
+      count("SELECT COUNT(*) AS n FROM records WHERE deleted = 1");
+    const removed = () =>
+      count("SELECT COUNT(*) AS n FROM record_fields WHERE removed = 1");
+    const before = await usage(w);
+    expect([tombs(), removed()]).toEqual([1, 1]);
+    // 89 days on, nothing has gone.
+    for (const d of [22, 44, 66, 88]) await tickTo(w, d);
+    expect([tombs(), removed()]).toEqual([1, 1]);
+    await tickTo(w, 91);
+    expect([tombs(), removed()]).toEqual([0, 0]);
+    // The live records, their live cells and the set are untouched, and the usage did not move.
+    expect(count("SELECT COUNT(*) AS n FROM records WHERE deleted = 0")).toBe(
+      3,
+    );
+    expect(count("SELECT COUNT(*) AS n FROM record_fields")).toBe(1);
+    expect(count("SELECT COUNT(*) AS n FROM set_elements")).toBe(1);
+    const after = await usage(w);
+    expect(after.records).toBe(before.records);
+    expect(after.recordBytes).toBe(before.recordBytes);
+    // A cursor from before the collection can no longer be served.
+    const stale = await callCloudSync<"pull">(
+      w.env,
+      { product: P, subject: A },
+      {
+        op: "pull",
+        cursor: 1,
+        deviceId: "d1",
+        family: "desktop",
+        clientId: C1,
+      },
+    );
+    expect(stale.outcome).toMatchObject({ ok: false });
   });
 });

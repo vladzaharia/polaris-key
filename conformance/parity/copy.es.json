@@ -285,6 +285,10 @@
       "title": "Colección desconocida",
       "message": "Esta colección no está disponible."
     },
+    "entitlement_required": {
+      "title": "No incluido en tu licencia",
+      "message": "Tu licencia no incluye esto. Mejórala e inténtalo de nuevo."
+    },
     "quota_exceeded": {
       "title": "Almacenamiento lleno",
       "message": "Tu almacenamiento sincronizado está lleno. Libera espacio e inténtalo de nuevo."
@@ -296,6 +300,14 @@
     "encryption_mismatch": {
       "title": "Cifrado incompatible",
       "message": "La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo."
+    },
+    "revision_conflict": {
+      "title": "Cambiado en otro lugar",
+      "message": "Esto se cambió en otro dispositivo. Actualice e inténtelo de nuevo."
+    },
+    "upload_mismatch": {
+      "title": "Error al subir",
+      "message": "El archivo no llegó completo. Inténtelo de nuevo."
     },
     "upload_expired": {
       "title": "Subida caducada",

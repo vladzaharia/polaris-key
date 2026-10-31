@@ -34,6 +34,15 @@ export function cloudSyncObjectName(pin: DoPin): string {
   return `${pin.product}:${pin.subject}`;
 }
 
+/**
+ * The file store (`SYNC_FILES`), when the Worker has one. Here and not in the object's own files,
+ * because this is the module that reads bindings; the object receives it as a thunk
+ * (`cloudSyncDo.ts`, `fileOps.ts`) and names no environment member itself.
+ */
+export const fileStoreOf = (
+  env: Pick<Env, "SYNC_FILES">,
+): R2Bucket | undefined => env.SYNC_FILES;
+
 export class CloudSyncDoError extends Error {
   constructor(
     readonly status: number,
@@ -95,14 +104,13 @@ export async function absorbCloudSync(
   pin: DoPin,
   document: ExportDocument,
   policies?: [string, SettingPolicy][],
-): Promise<number> {
-  return (
-    await callCloudSync<"absorb">(env, pin, {
-      op: "absorb",
-      document,
-      ...(policies ? { policies } : {}),
-    })
-  ).changed;
+): Promise<{ changed: number; skipped: number }> {
+  const out = await callCloudSync<"absorb">(env, pin, {
+    op: "absorb",
+    document,
+    ...(policies ? { policies } : {}),
+  });
+  return { changed: out.changed, skipped: out.skipped ?? 0 };
 }
 
 /**

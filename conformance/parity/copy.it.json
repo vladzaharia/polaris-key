@@ -285,6 +285,10 @@
       "title": "Raccolta sconosciuta",
       "message": "Questa raccolta non è disponibile."
     },
+    "entitlement_required": {
+      "title": "Non incluso nella tua licenza",
+      "message": "La tua licenza non lo include. Passa a un piano superiore e riprova."
+    },
     "quota_exceeded": {
       "title": "Spazio pieno",
       "message": "Lo spazio sincronizzato è pieno. Libera spazio e riprova."
@@ -296,6 +300,14 @@
     "encryption_mismatch": {
       "title": "Crittografia non compatibile",
       "message": "L’app e il servizio di sincronizzazione non concordano sulla crittografia. Aggiorna l’app e riprova."
+    },
+    "revision_conflict": {
+      "title": "Modificato altrove",
+      "message": "Questo elemento è stato modificato su un altro dispositivo. Aggiorna e riprova."
+    },
+    "upload_mismatch": {
+      "title": "Caricamento non riuscito",
+      "message": "Il file non è arrivato integro. Riprova."
     },
     "upload_expired": {
       "title": "Caricamento scaduto",

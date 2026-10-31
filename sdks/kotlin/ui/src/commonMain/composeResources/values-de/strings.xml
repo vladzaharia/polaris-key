@@ -2413,6 +2413,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_collection_unknown_message">Diese Sammlung ist nicht verfügbar.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_title">Nicht in Ihrer Lizenz</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_message">Ihre Lizenz enthält das nicht. Erweitern Sie sie und versuchen Sie es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_title">Speicher voll</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_message">Ihr synchronisierter Speicher ist voll. Geben Sie Platz frei und versuchen Sie es erneut.</string>
@@ -2424,6 +2428,14 @@
     <string name="core_codes_encryption_mismatch_title">Verschlüsselung passt nicht</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_message">App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_title">Anderswo geändert</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_message">Das wurde auf einem anderen Gerät geändert. Aktualisieren Sie und versuchen Sie es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_title">Upload fehlgeschlagen</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_message">Die Datei ist nicht unversehrt angekommen. Versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_upload_expired_title">Upload abgelaufen</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

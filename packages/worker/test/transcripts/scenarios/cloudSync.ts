@@ -60,8 +60,8 @@ const FEATURES = ["sync.settings"];
 const REQUIRES = ["core.store"];
 
 /** The install's partition id: client state, so never asserted. */
-const CLIENT = "c_AAAAAAAAAAAAAAAAAAAAAA";
-const OTHER_CLIENT = "c_BBBBBBBBBBBBBBBBBBBBBB";
+export const CLIENT = "c_AAAAAAAAAAAAAAAAAAAAAA";
+export const OTHER_CLIENT = "c_BBBBBBBBBBBBBBBBBBBBBB";
 
 const entry = (key: string, schema: unknown, extra: object = {}) => ({
   key,
@@ -93,7 +93,7 @@ const SYNC_CATALOG = {
 };
 
 /** A key-activated device whose person is signed in, with Cloud Sync on. */
-async function syncWorld(
+export async function syncWorld(
   opts: { catalog?: unknown; signedIn?: boolean; e2eGate?: boolean } = {},
 ): Promise<{
   world: World;
@@ -127,17 +127,18 @@ async function syncWorld(
   return { world, token, subject };
 }
 
-function recorder(
+export function recorder(
   id: string,
   description: string,
   pin: Pinned,
   world: World,
   token: string,
+  features: string[] = FEATURES,
 ): TranscriptRecorder {
   return new TranscriptRecorder({
     id,
     description,
-    features: FEATURES,
+    features,
     requires: REQUIRES,
     product: PRODUCT,
     now: T0,
@@ -150,8 +151,13 @@ function recorder(
 // ── Mutations ──────────────────────────────────────────────────────────────────────────────────
 
 let mid = 0;
+/** The next push-wide `mutationId`; a scenario resets it so its transcript is deterministic. */
+export const nextMutationId = (): number => ++mid;
+export const resetMutationIds = (): void => {
+  mid = 0;
+};
 /** An HLC `back` milliseconds before the recording instant. */
-const hlcAt = (offsetMs: number, counter = 0): string =>
+export const hlcAt = (offsetMs: number, counter = 0): string =>
   formatHlc(T0 * 1000 + offsetMs, counter);
 
 const mutation = (
@@ -172,7 +178,7 @@ const set = (setting: string, value: SyncJson, extra = {}): SyncMutation =>
 
 const PUSH_ALLOWED = ["clientId", "cursor", "atomic", "mutations"];
 
-function push(
+export function push(
   s: StepRecorder,
   mutations: SyncMutation[],
   opts: {
@@ -228,6 +234,20 @@ const label = (r: MutationResult): string =>
         ? "ok:dropped"
         : r.status;
 
+/** The record changes and record tombstones of an answer, as `collection/id` lists. */
+function recordsOf(body: PullResponse): Record<string, SyncJson> {
+  const live = body.changes
+    .flatMap((c) => ("record" in c ? [c.record.join("/")] : []))
+    .sort();
+  const gone = (body.tombstones ?? [])
+    .flatMap((t) => ("record" in t ? [t.record.join("/")] : []))
+    .sort();
+  return {
+    ...(live.length > 0 ? { records: live } : {}),
+    ...(gone.length > 0 ? { deletedRecords: gone } : {}),
+  };
+}
+
 /** The pull members a client acts on, as the step's `expect`. */
 function pulled(body: PullResponse): Record<string, SyncJson> {
   return {
@@ -238,6 +258,9 @@ function pulled(body: PullResponse): Record<string, SyncJson> {
     settings: body.changes
       .flatMap((c) => ("setting" in c ? [c.setting] : []))
       .sort(),
+    // Records (U-09): present only when the answer carries one, so a settings conversation is
+    // unchanged. `collection/id`, sorted.
+    ...recordsOf(body),
     // End-to-end mode only (U-09.1): the server-mode conversations carry neither member.
     ...(body.encryption !== undefined ? { encryption: body.encryption } : {}),
     ...(body.encryptionSince !== undefined
@@ -281,10 +304,10 @@ async function pushed(res: Response): Promise<Record<string, SyncJson>> {
   };
 }
 
-type Expect = Record<string, SyncJson>;
+export type Expect = Record<string, SyncJson>;
 
 /** One pull step. `etag` is sent as `If-None-Match`; the answer's ETag is returned. */
-async function pullStep(
+export async function pullStep(
   r: TranscriptRecorder,
   cursor: number,
   note: string,
@@ -323,7 +346,7 @@ async function pullStep(
 }
 
 /** One push step; the parsed `200` body, or null when the Worker refused. */
-async function pushStep(
+export async function pushStep(
   r: TranscriptRecorder,
   mutations: SyncMutation[],
   note: string,
@@ -372,7 +395,7 @@ async function pushStep(
   return out;
 }
 
-const statuses = (b: PushResponse | null): string[] =>
+export const statuses = (b: PushResponse | null): string[] =>
   (b?.results ?? []).map(label);
 
 export const cloudSyncPushPull: Scenario = {
@@ -1124,12 +1147,12 @@ export const cloudSyncCors: Scenario = {
  * A shaped `pkey-sync-value/1` envelope: byte 0 = 1 and `(length - 49) mod 64 = 0`. The server
  * checks the shape and never decodes the rest, so a fixture needs no key.
  */
-const sealed = (fill: number, blocks = 1): string => {
+export const sealed = (fill: number, blocks = 1): string => {
   const bytes = new Uint8Array(49 + 64 * blocks).fill(fill);
   bytes[0] = 1;
   return Buffer.from(bytes).toString("base64url");
 };
-const blinded = (c: string): string => `x:${c.repeat(43)}`;
+export const blinded = (c: string): string => `x:${c.repeat(43)}`;
 const sealedSet = (setting: string, ct: string, extra = {}): SyncMutation =>
   mutation(setting, "set", { ct, ...extra });
 

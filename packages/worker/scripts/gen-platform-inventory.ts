@@ -54,6 +54,17 @@ export const SECRETS_BLOCK_MARKER = "# Trusted publishing";
 
 const NAME_RE = /^[A-Z][A-Z0-9_]*$/;
 
+/**
+ * Env bindings that `wrangler.toml` does not bind YET, each with the package that binds it. A
+ * deploy fails on a bucket that does not exist, so a binding whose bucket the owner has not
+ * created stays out of the config. The list only shrinks: a row whose binding is now in
+ * `wrangler.toml` fails (delete the row), and so does a row naming no Env binding.
+ */
+export const PENDING_BINDINGS: Readonly<Record<string, string>> = {
+  // U-10.1 declared it; U-10.W binds `[[env.{prod,staging,dev}.r2_buckets]]` after the buckets exist.
+  SYNC_FILES: "U-10.W",
+};
+
 function tagText(tag: ts.JSDocTag): string {
   const c = tag.comment;
   if (c === undefined) return "";
@@ -246,9 +257,19 @@ export function checkWrangler(
         `${WRANGLER_PATH}: secrets comment block names ${tok}, which is not an Env var or secret`,
       );
   }
+  for (const name of Object.keys(PENDING_BINDINGS))
+    if (byName.get(name)?.kind !== "binding")
+      errors.push(
+        `PENDING_BINDINGS names ${name}, which is not an Env binding`,
+      );
   for (const e of entries) {
     if (e.kind === "binding") {
-      if (!m.bindings.has(e.name))
+      const pending = PENDING_BINDINGS[e.name];
+      if (pending !== undefined && m.bindings.has(e.name))
+        errors.push(
+          `${e.name}: ${WRANGLER_PATH} binds it now; remove its PENDING_BINDINGS row (${pending})`,
+        );
+      else if (pending === undefined && !m.bindings.has(e.name))
         errors.push(`${e.name}: an Env binding ${WRANGLER_PATH} never binds`);
       continue;
     }

@@ -22,6 +22,10 @@
  */
 
 import { CLOUD_SYNC_CEILINGS } from "@polaris-key/catalog";
+import {
+  SYNC_CHUNK_REQUESTS_PER_MINUTE,
+  SYNC_FILE_TRANSFERS_PER_HOUR,
+} from "@polaris-key/protocol/sync";
 import type { Env } from "../../platform/env.js";
 import { rateLimitOk, shardIndex } from "../../core/rateLimit.js";
 import { wireError } from "../../core/errors.js";
@@ -32,6 +36,10 @@ export const SYNC_PUSH_DEVICE_WINDOW_SEC = 60;
 export const SYNC_PUSH_PRODUCT_WINDOW_SEC = 1;
 export const SYNC_PULL_DEVICE_LIMIT = 120;
 export const SYNC_PULL_DEVICE_WINDOW_SEC = 60;
+/** U-10 (§13.8.2): file transfers (`begin` and a whole-file `GET`) per device an hour. */
+export const SYNC_FILES_DEVICE_WINDOW_SEC = 3600;
+/** U-10 (§13.8.2): part, chunk, status and ranged-`GET` requests per device a minute. */
+export const SYNC_PARTS_DEVICE_WINDOW_SEC = 60;
 
 /** The limiter object name for a caller: `sync:product:<p>:<0-7>`, by subject hash. */
 export function syncLimiterShard(product: string, subject: string): string {
@@ -110,4 +118,55 @@ export async function pullLimited(
     now,
   );
   return ok ? null : limited(SYNC_PULL_DEVICE_WINDOW_SEC, now);
+}
+
+/**
+ * A `429 rate_limited` Response when the device has used its 30 file transfers of the hour (a
+ * `begin`, or a whole-file `GET`), else null (U-10, §13.8.2). Fails open, like the push: the caller
+ * is authenticated, and the person's object bounds the work.
+ */
+export async function filesLimited(
+  env: Env,
+  product: string,
+  subject: string,
+  deviceId: string,
+  now: number,
+): Promise<Response | null> {
+  const ok = await rateLimitOk(
+    env,
+    syncLimiterShard(product, subject),
+    {
+      bucket: "syncFilesDevice",
+      id: deviceId,
+      limit: SYNC_FILE_TRANSFERS_PER_HOUR,
+      windowSec: SYNC_FILES_DEVICE_WINDOW_SEC,
+    },
+    now,
+  );
+  return ok ? null : limited(SYNC_FILES_DEVICE_WINDOW_SEC, now);
+}
+
+/**
+ * A `429 rate_limited` Response when the device is over 600 part, chunk, status or ranged-`GET`
+ * requests a minute, else null (U-10, §13.8.2). Fails open, as `filesLimited` does.
+ */
+export async function partsLimited(
+  env: Env,
+  product: string,
+  subject: string,
+  deviceId: string,
+  now: number,
+): Promise<Response | null> {
+  const ok = await rateLimitOk(
+    env,
+    syncLimiterShard(product, subject),
+    {
+      bucket: "syncParts",
+      id: deviceId,
+      limit: SYNC_CHUNK_REQUESTS_PER_MINUTE,
+      windowSec: SYNC_PARTS_DEVICE_WINDOW_SEC,
+    },
+    now,
+  );
+  return ok ? null : limited(SYNC_PARTS_DEVICE_WINDOW_SEC, now);
 }

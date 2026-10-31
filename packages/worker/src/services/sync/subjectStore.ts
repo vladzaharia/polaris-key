@@ -54,11 +54,15 @@ async function absorbObject(
   product: string,
   from: string,
   to: string,
-): Promise<void> {
+): Promise<number> {
   for (let round = 0; round < ABSORB_ROUNDS; round++) {
     const doc = await exportCloudSync(env, { product, subject: from });
-    if (!doc) return;
-    await absorbCloudSync(env, { product, subject: to }, doc);
+    if (!doc) return 0;
+    const { skipped } = await absorbCloudSync(
+      env,
+      { product, subject: to },
+      doc,
+    );
     if (
       await deleteCloudSyncIfUnchanged(
         env,
@@ -67,7 +71,7 @@ async function absorbObject(
         to,
       )
     )
-      return;
+      return skipped;
   }
   throw new Error("cloud sync: the absorbed object kept changing; retry");
 }
@@ -79,6 +83,7 @@ interface DirectoryRow {
   bytes: number;
   settings: number;
   records: number;
+  record_bytes: number;
   files: number;
   revision_bytes: number;
   quota_bytes: number;
@@ -94,13 +99,16 @@ export const cloudSyncStore: SubjectStore = {
 
   async merge({ db, env, now }, { product, from, to }) {
     if (from === to) return;
-    await absorbObject(env, product, from, to);
+    // The rows the join left out (a sealed row against a legacy plaintext one): a count, for the
+    // merge's audit row.
+    const skipped = await absorbObject(env, product, from, to);
+    const report = skipped > 0 ? { skipped } : undefined;
     const absorbed = await db.first<DirectoryRow>(
       "SELECT * FROM sync_directory WHERE product = ? AND subject = ?",
       product,
       from,
     );
-    if (!absorbed) return;
+    if (!absorbed) return report;
     const survivor = await db.first<DirectoryRow>(
       "SELECT * FROM sync_directory WHERE product = ? AND subject = ?",
       product,
@@ -112,12 +120,12 @@ export const cloudSyncStore: SubjectStore = {
     await db.batch([
       {
         sql: `INSERT INTO sync_directory
-                (product, subject, bytes, settings, records, files, revision_bytes, quota_bytes,
-                 tier_id, platform, last_active_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (product, subject, bytes, settings, records, record_bytes, files, revision_bytes,
+                 quota_bytes, tier_id, platform, last_active_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT (product, subject) DO UPDATE SET
                 bytes = excluded.bytes, settings = excluded.settings, records = excluded.records,
-                files = excluded.files, revision_bytes = excluded.revision_bytes,
+                record_bytes = excluded.record_bytes, files = excluded.files, revision_bytes = excluded.revision_bytes,
                 quota_bytes = excluded.quota_bytes, tier_id = excluded.tier_id,
                 platform = excluded.platform, last_active_at = excluded.last_active_at,
                 updated_at = excluded.updated_at`,
@@ -127,6 +135,7 @@ export const cloudSyncStore: SubjectStore = {
           a.bytes + (s?.bytes ?? 0),
           a.settings + (s?.settings ?? 0),
           a.records + (s?.records ?? 0),
+          a.record_bytes + (s?.record_bytes ?? 0),
           a.files + (s?.files ?? 0),
           a.revision_bytes + (s?.revision_bytes ?? 0),
           Math.max(a.quota_bytes, s?.quota_bytes ?? 0),
@@ -145,6 +154,7 @@ export const cloudSyncStore: SubjectStore = {
         params: [product, from],
       },
     ]);
+    return report;
   },
 
   async delete({ db, env }, { product, subject }) {
@@ -171,6 +181,7 @@ export const cloudSyncStore: SubjectStore = {
             bytes: r.bytes,
             settings: r.settings,
             records: r.records,
+            recordBytes: r.record_bytes,
             files: r.files,
             revisionBytes: r.revision_bytes,
             quotaBytes: r.quota_bytes,

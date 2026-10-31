@@ -42,18 +42,15 @@
 
 import {
   SYNC_MAX_PUSH_BYTES,
-  SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS,
   type PushRequest,
   type PushResponse,
 } from "@polaris-key/protocol/sync";
-import { CLOUD_SYNC_CEILINGS, Catalog } from "@polaris-key/catalog";
+import { Catalog } from "@polaris-key/catalog";
 import type { ServiceContext } from "../../../core/registry.js";
-import { ErrorCode, json, notFound, wireError } from "../../../core/errors.js";
+import { ErrorCode, json, wireError } from "../../../core/errors.js";
 import { BodyTooLargeError, readBodyText } from "../../../core/cappedBody.js";
 import { resolveSubject } from "../../../core/accounts/accountSubjects.js";
 import { syncAccess } from "../../../core/accounts/syncAccess.js";
-import { platformSetting } from "../../../core/settings/platformRead.js";
-import { resolveProductSetting } from "../../../core/settings/resolve.js";
 import { getActiveSchema } from "../../../core/products/store.js";
 import { trustRefusal } from "../../../core/trust/deviceTrust.js";
 import { getDevice } from "../../../core/devices/store.js";
@@ -62,24 +59,22 @@ import type { WireMigrations } from "../do/protocol.js";
 import type { PullOutcome } from "../engine/pull.js";
 import type { PushSuccess } from "../engine/types.js";
 import { validatePush } from "../engine/validate.js";
-import { productIsPurging } from "../purgeFlag.js";
 import { pushLimited } from "../limits.js";
 import { classifyMutations } from "./classify.js";
 import { OpTally } from "./meter.js";
 import {
   accountRequired,
-  authenticateSync,
   catalogView,
   isAbsorbed,
+  liveRefusal,
   objectFailure,
-  productGone,
-  productStillLive,
+  overCeiling,
+  pausedRefusal,
   retryable,
+  syncCaller,
   syncMode,
   type SyncCaller,
 } from "./common.js";
-
-const CEILING_KEY = "cloudSync.ceiling.bytes";
 
 /** Why the body is not a push: too large, or not one. */
 async function readPush(
@@ -112,35 +107,6 @@ async function readPush(
   };
 }
 
-/**
- * The product's ceilings, from the `sync_product_usage` aggregate (recomputed every 15 minutes
- * by `scheduled.ts`): `bytes` against the setting, and `users` against the fixed users ceiling.
- * `users` counts `sync_directory` rows, so a product with no aggregate row yet has neither.
- */
-async function overCeiling(
-  ctx: ServiceContext,
-): Promise<{ bytes: boolean; users: boolean }> {
-  const { db, env, product, now } = ctx;
-  let ceiling: number = CLOUD_SYNC_CEILINGS.perProduct.bytes;
-  if (ctx.settings) {
-    const r = await resolveProductSetting(
-      { env, db, registry: ctx.settings },
-      product.slug,
-      CEILING_KEY,
-      { now },
-    );
-    if (typeof r?.value === "number") ceiling = r.value;
-  }
-  const row = await db.first<{ bytes: number; users: number }>(
-    "SELECT bytes, users FROM sync_product_usage WHERE product = ?",
-    product.slug,
-  );
-  return {
-    bytes: (row?.bytes ?? 0) >= ceiling,
-    users: (row?.users ?? 0) >= CLOUD_SYNC_CEILINGS.perProduct.users,
-  };
-}
-
 const wireMigrations = (view: {
   migrations: {
     renamedTo: ReadonlyMap<string, string>;
@@ -162,22 +128,14 @@ async function pushInner(
 ): Promise<Response> {
   const { req, env, db, product, now } = ctx;
   if (req.method !== "POST") return wireError(405, "method_not_allowed");
-  if (!product.services.config.enabled || !product.services.identity.enabled)
-    return notFound();
 
-  // 1. Token, then principal.
-  const caller = await authenticateSync(req, env, db, product, now);
+  // 1. Config and Identity on, then the token and the principal.
+  const caller = await syncCaller(ctx);
   if (caller instanceof Response) return caller;
 
   // 2. The kill switch.
-  if ((await platformSetting(env, db, "cloudSync.writesPaused")) === "on") {
-    const res = wireError(503, ErrorCode.WritesPaused);
-    res.headers.set(
-      "retry-after",
-      String(SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS),
-    );
-    return res;
-  }
+  const paused = await pausedRefusal(env, db);
+  if (paused) return paused;
 
   // 2b. The push limits: a limited push costs nothing below.
   const limited = await pushLimited(
@@ -226,20 +184,15 @@ async function pushInner(
     catalog,
     view.migrations,
     mode.serve,
+    caller.access.entitlements,
   );
 
   // 6. The product ceiling.
   const ceilings = await overCeiling(ctx);
 
   // 7. The product is live and not being erased.
-  let purging: boolean;
-  try {
-    purging = await productIsPurging(env, product.slug);
-  } catch {
-    return retryable();
-  }
-  if (purging || !(await productStillLive(db, product.slug)))
-    return productGone();
+  const gone = await liveRefusal(env, db, product.slug);
+  if (gone) return gone;
 
   // 8. The object.
   let current: SyncCaller = caller;

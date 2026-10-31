@@ -6384,6 +6384,16 @@ msgstr "Collection inconnue"
 msgid "core.codes.collection_unknown.message"
 msgstr "Cette collection n'est pas disponible."
 
+#. Not in your license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.title"
+msgstr "Non inclus dans votre licence"
+
+#. Your license doesn't include this. Upgrade it, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.entitlement_required.message"
+msgstr "Votre licence n'inclut pas cela. Mettez-la à niveau, puis réessayez."
+
 #. Storage full
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.quota_exceeded.title"
@@ -6413,6 +6423,26 @@ msgstr "Chiffrement incompatible"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
 msgstr "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez."
+
+#. Changed elsewhere
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.title"
+msgstr "Modifié ailleurs"
+
+#. This was changed on another device. Refresh, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.revision_conflict.message"
+msgstr "Cet élément a été modifié sur un autre appareil. Actualisez, puis réessayez."
+
+#. Upload failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.title"
+msgstr "Échec de l’envoi"
+
+#. The file didn't arrive intact. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upload_mismatch.message"
+msgstr "Le fichier n’est pas arrivé intact. Réessayez."
 
 #. Upload expired
 #. Core copy (conformance/parity/copy.en.json, codes).

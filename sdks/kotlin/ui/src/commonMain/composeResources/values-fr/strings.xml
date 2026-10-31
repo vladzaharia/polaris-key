@@ -2426,6 +2426,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_collection_unknown_message">Cette collection n'est pas disponible.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_title">Non inclus dans votre licence</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_entitlement_required_message">Votre licence n'inclut pas cela. Mettez-la à niveau, puis réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_title">Stockage plein</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_quota_exceeded_message">Votre stockage synchronisé est plein. Libérez de l'espace, puis réessayez.</string>
@@ -2437,6 +2441,14 @@
     <string name="core_codes_encryption_mismatch_title">Chiffrement incompatible</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_message">L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_title">Modifié ailleurs</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_revision_conflict_message">Cet élément a été modifié sur un autre appareil. Actualisez, puis réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_title">Échec de l’envoi</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upload_mismatch_message">Le fichier n’est pas arrivé intact. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_upload_expired_title">Envoi expiré</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

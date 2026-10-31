@@ -229,6 +229,7 @@ describe("PLATFORM_SETTINGS", () => {
       "LAUNCH_IDENTITY_EXCHANGE",
       "LAUNCH_RELAY",
       "LAUNCH_SYNC_E2E",
+      "LAUNCH_SYNC_FILES",
       "LAZY_DELTAS",
       "LAZY_DELTA_MAX_BYTES",
       "LICENSING_RESERVED_NAMES",
@@ -253,6 +254,7 @@ describe("PLATFORM_SETTINGS", () => {
       LAUNCH_IDENTITY_EXCHANGE: "ceiling",
       LAUNCH_RELAY: "ceiling",
       LAUNCH_SYNC_E2E: "ceiling",
+      LAUNCH_SYNC_FILES: "ceiling",
       // HA-10 (notes/S-20 §6.10): the hosted-asset rollback switch. Not a security gate (off only
       // restores the pre-HA-07 behaviour), so `runtime`: an unreadable store is not an off.
       ASSET_HOSTING: "runtime",

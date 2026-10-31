@@ -67,6 +67,10 @@ new device from another of their devices or from a recovery code. With neither, 
 their synced settings, and Polaris Key can't help. With `server`, Polaris Key can read the values
 and you can use `mapValues` in a migration.
 
+A collection with `merge` or `union` records that held data before a product turned on `e2e` stays
+readable, but an `e2e` app can't change those records until it deletes and writes them again. A
+value sealed under a key a device doesn't hold stays locked on that device and is kept, never deleted.
+
 ## Records and saves
 
 A product declares collections in the catalog's `cloudSync` block, authored in `.pkey/schema`.

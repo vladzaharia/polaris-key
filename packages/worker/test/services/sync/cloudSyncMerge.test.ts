@@ -495,7 +495,8 @@ describe("absorb: the join", () => {
       },
     );
     expect(
-      pulled.outcome.ok && pulled.outcome.changes.map((c) => c.setting),
+      pulled.outcome.ok &&
+        pulled.outcome.changes.map((c) => (c as { setting: string }).setting),
     ).toEqual(["b"]);
   });
 });
@@ -581,9 +582,9 @@ describe("absorb: idempotence and retry-safety", () => {
     await setOne(env, "from", "b", 2, at(2), C2, "d2");
     const doc = (await exportCloudSync(env, { product: P, subject: "from" }))!;
     const to = { product: P, subject: "to" };
-    expect(await absorbCloudSync(env, to, doc)).toBeGreaterThan(0);
+    expect((await absorbCloudSync(env, to, doc)).changed).toBeGreaterThan(0);
     const seq = (await callCloudSync<"usage">(env, to, { op: "usage" })).seq;
-    expect(await absorbCloudSync(env, to, doc)).toBe(0);
+    expect((await absorbCloudSync(env, to, doc)).changed).toBe(0);
     expect((await callCloudSync<"usage">(env, to, { op: "usage" })).seq).toBe(
       seq,
     );
@@ -913,6 +914,9 @@ describe("absorb: isolation", () => {
       users(/do\/client\.js"/).filter((f) => f.startsWith("services/sync/")),
     ).toEqual([
       "services/sync/handlers/common.ts",
+      "services/sync/handlers/fileFinalize.ts",
+      "services/sync/handlers/fileUpload.ts",
+      "services/sync/handlers/files.ts",
       "services/sync/handlers/pull.ts",
       "services/sync/handlers/push.ts",
       "services/sync/productDeletion.ts",
@@ -925,7 +929,7 @@ describe("absorb: isolation", () => {
 });
 
 describe("absorb: the real account merge", () => {
-  it("an account merge moves the absorbed account's synced settings to the survivor's subject", async () => {
+  const setup = async () => {
     const db = makeTestDb();
     const env = makeEnv(new KvMock(), []);
     await seedProduct(db, P);
@@ -942,21 +946,62 @@ describe("absorb: the real account merge", () => {
     const ada = await account("ada@example.com");
     const bo = await account("bo@example.com");
     expect(ada.subject).not.toBe(bo.subject);
-    const cs = env as unknown as Cs;
+    const run = async () =>
+      mergeAccounts(
+        { db, env, now: NOW, origin: "https://key.plrs.im" },
+        {
+          survivor: { accountId: ada.id, authenticatedAt: NOW },
+          absorbed: { accountId: bo.id, authenticatedAt: NOW },
+        },
+      );
+    return { cs: env as unknown as Cs, ada, bo, run };
+  };
+
+  it("an account merge moves the absorbed account's synced settings to the survivor's subject", async () => {
+    const { cs, ada, bo, run } = await setup();
     await setOne(cs, ada.subject, "theme", "dark", at(1));
     await setOne(cs, bo.subject, "lang", "fr", at(2), C2, "d2");
-    const merged = await mergeAccounts(
-      { db, env, now: NOW, origin: "https://key.plrs.im" },
-      {
-        survivor: { accountId: ada.id, authenticatedAt: NOW },
-        absorbed: { accountId: bo.id, authenticatedAt: NOW },
-      },
-    );
-    expect(merged.ok).toBe(true);
+    expect((await run()).ok).toBe(true);
     expect(await dump(cs, ada.subject)).toMatchObject({
       theme: { value: "dark" },
       lang: { value: "fr" },
     });
     expect(await dump(cs, bo.subject)).toBeNull();
+  });
+
+  it("an account merge moves records, and parks the absorbed copy of a colliding revision record (U-09.8)", async () => {
+    const { cs, ada, bo, run } = await setup();
+    const REV: Classification = {
+      verdict: "record",
+      policy: "revision",
+      maxRecords: 10,
+    };
+    const rec = (id: string, value: number, n: number): SyncMutation => ({
+      mutationId: nextId++,
+      target: { record: ["saves", id] },
+      op: "set",
+      editedHlc: at(n),
+      value,
+    });
+    await push(cs, ada.subject, [rec("a", 1, 1)], [REV]);
+    await push(cs, bo.subject, [rec("a", 2, 2), rec("b", 3, 3)], [REV, REV], {
+      clientId: C2,
+      deviceId: "d2",
+    });
+    expect((await run()).ok).toBe(true);
+    const doc = (await exportCloudSync(cs, {
+      product: P,
+      subject: ada.subject,
+    }))!;
+    expect(doc.records?.map((r) => [r.id, r.value])).toEqual([
+      ["a", 1],
+      ["b", 3],
+    ]);
+    expect(doc.parked).toEqual([
+      expect.objectContaining({ id: "a", value: 2, fromSubject: bo.subject }),
+    ]);
+    expect(
+      await exportCloudSync(cs, { product: P, subject: bo.subject }),
+    ).toBeNull();
   });
 });

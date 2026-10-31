@@ -161,13 +161,17 @@ export async function mergeAccounts(
   );
 
   // Re-key account × product data BEFORE the subject rows change, while both still resolve.
+  // `skipped` counts the items a store left out of the join, for the audit row below.
+  let skipped = 0;
   for (const row of absorbedSubjects) {
     const to = survivorSubjects.get(row.product);
     if (to) {
-      await runSubjectMerge(
-        { db, env, now },
-        { product: row.product, from: row.subject, to },
-      );
+      skipped += (
+        await runSubjectMerge(
+          { db, env, now },
+          { product: row.product, from: row.subject, to },
+        )
+      ).skipped;
     }
   }
 
@@ -369,7 +373,9 @@ export async function mergeAccounts(
         S,
         now,
         A,
-        "Joined another Polaris Locker account into this one",
+        skipped > 0
+          ? `Joined another Polaris Locker account into this one (${skipped} synced ${skipped === 1 ? "item" : "items"} not carried over)`
+          : "Joined another Polaris Locker account into this one",
       ],
     },
     stmtRecordMerge(mergeId, S, A, snapshot, now),
