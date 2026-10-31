@@ -478,6 +478,33 @@ describe("keyring: the root stays in memory", () => {
     expect(flags).toHaveLength(3);
   });
 
+  it("a file codec refuses to seal or open once the ring is locked", async () => {
+    const s = new FakeRing();
+    const a = await device(s, "DEVICEAAAAAAAAAAAAAAAAAAAAAAAAAA");
+    await a.client.keyring.create();
+    const codec = a.client.keyring.fileCodec("saves");
+    const plain = new Uint8Array([1, 2, 3]);
+    const id = await codec.chunkId(plain);
+    expect((await codec.sealChunk(id, plain)).length).toBeGreaterThan(3);
+    a.client.keyring.lock();
+    await expect(codec.sealChunk(id, plain)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+    await expect(codec.chunkId(plain)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+    await expect(codec.sealManifest(plain)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+    const stream = codec.sealStream(
+      (async function* () {
+        yield plain;
+      })(),
+    );
+    await expect(stream.next()).rejects.toMatchObject({ code: "sync-locked" });
+    expect(() => a.client.keyring.fileCodec("saves")).toThrow();
+  });
+
   it("prints no key material, and the module touches no file", async () => {
     const s = new FakeRing();
     const a = await device(s, "DEVICEAAAAAAAAAAAAAAAAAAAAAAAAAA");

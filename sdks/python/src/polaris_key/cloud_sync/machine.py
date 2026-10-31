@@ -40,6 +40,7 @@ from ..constants_generated import (
     SYNC_SIGNOUT_FLUSH_MS,
     ErrorCode,
 )
+from ..core.sync_crypto import is_blinded_name
 
 #: The client code for the pin (``conformance/parity/errors.json``).
 SYNC_ENCRYPTION_PINNED: str = ErrorCode.SYNC_ENCRYPTION_PINNED
@@ -232,7 +233,30 @@ def _apply_record_op(base: Any, op: Obj) -> Any:
         return arr
     if name == "remove":
         return [x for x in (base if isinstance(base, list) else []) if not json_equal(x, op.get("element"))]
+    if name == "delete":
+        return _ABSENT
     return base
+
+
+def _file_of(v: Any) -> Optional[Obj]:
+    """A well-formed file pointer ``{version, size, sha256, format}``, or None."""
+    if not isinstance(v, dict):
+        return None
+    ok = (
+        _is_number(v.get("version"))
+        and _is_number(v.get("size"))
+        and isinstance(v.get("sha256"), str)
+        and v.get("format") in ("whole", "chunks")
+    )
+    if not ok:
+        return None
+    return {"version": v["version"], "size": v["size"], "sha256": v["sha256"], "format": v["format"]}
+
+
+def _file_mark(v: Any) -> Obj:
+    """``{"file": ...}`` for a well-formed pointer, else nothing (a row keeps ``file`` only when present)."""
+    f = _file_of(v)
+    return {"file": f} if f is not None else {}
 
 
 def _record_key(c: str, i: str) -> str:
@@ -259,7 +283,7 @@ def _new_partition(client_id: Optional[str]) -> Obj:
     }
 
 
-_JOURNAL_ONLY = ("preContact", "moved", "parked")
+_JOURNAL_ONLY = ("preContact", "moved", "parked", "ticket")
 
 
 def wire_of(op: Obj) -> Obj:
@@ -334,6 +358,7 @@ class CloudSyncMachine:
         self._paused = False
         self._outbox: List[Obj] = []
         self._events: List[Obj] = []
+        self._outcome: Optional[Callable[[Obj], None]] = None
         if persisted is not None:
             self._s: Obj = _clone(persisted)
         else:
@@ -484,7 +509,7 @@ class CloudSyncMachine:
             if self._in_flight_touches(rk):
                 p["held"][rk] = _clone(value)
             else:
-                queued = next((o for o in p["pending"] if is_record(o)), None)
+                queued = next((o for o in p["pending"] if is_record(o) and "ticket" not in o), None)
                 if queued is not None:
                     queued["value"] = _clone(value)
                 else:
@@ -540,6 +565,65 @@ class CloudSyncMachine:
                     )
         self._kick()
         return _OK()
+
+    def records(self, collection: str) -> List[Obj]:
+        """The cloud rows of a collection a person can read, by id: the snapshot as last pulled or
+        acknowledged, without pending edits. A file-only row has ``value`` None."""
+        if self._s["subject"] is None:
+            return []
+        p = self._active()
+        prefix = f"{collection}/"
+        out: List[Obj] = []
+        for rk in _sorted(p["records"].keys()):
+            if not rk.startswith(prefix):
+                continue
+            row = p["records"][rk]
+            if self._row_unreadable(row):
+                continue
+            out.append(
+                {
+                    "id": rk[len(prefix) :],
+                    "value": _clone(row["value"]),
+                    "version": row["version"],
+                    "file": dict(row["file"]) if row.get("file") else None,
+                }
+            )
+        return out
+
+    def put_at(self, collection: str, record_id: str, value: Json, base_version: Any) -> CallResult:
+        """Write a ``revision`` record at exactly ``base_version``: a new mutation, never coalesced
+        with a queued edit and never rebased on a conflict. Its outcome goes to :meth:`on_outcome`."""
+        return self._exact_op(collection, record_id, base_version, {"op": "set", "value": _clone(value)})
+
+    def remove_at(self, collection: str, record_id: str, base_version: Any) -> CallResult:
+        """Delete a ``revision`` record at exactly ``base_version`` (removes its file)."""
+        return self._exact_op(collection, record_id, base_version, {"op": "delete"})
+
+    def on_outcome(self, fn: Optional[Callable[[Obj], None]]) -> None:
+        """The listener for :meth:`put_at` / :meth:`remove_at` outcomes: once per call, when its result
+        arrives or on sign-out. It must not call the machine. ``None`` removes it."""
+        self._outcome = fn
+
+    def _exact_op(self, collection: str, record_id: str, base_version: Any, body: Obj) -> CallResult:
+        decl = self._collection(collection)
+        if decl is None or decl["policy"] != "revision":
+            return _fail("collection-unknown")
+        if self._s["subject"] is None:
+            return _fail("signed-out")
+        p = self._active()
+        op = self._enqueue(
+            p, {"target": {"record": [collection, record_id]}, **body, "baseVersion": base_version}
+        )
+        ticket = p.get("nextTicket", 1)
+        p["nextTicket"] = ticket + 1
+        op["ticket"] = ticket
+        self._kick()
+        return {"ok": True, "mutationId": ticket}
+
+    def _emit_outcome(self, op: Obj, outcome: Obj) -> None:
+        if "ticket" not in op or self._outcome is None:
+            return
+        self._outcome({"mutationId": op["ticket"], **outcome})
 
     def add(self, collection: str, record_id: str, element: Json) -> CallResult:
         """Add to a ``union`` record (an OR-set)."""
@@ -1360,7 +1444,19 @@ class CloudSyncMachine:
                 latch_key = "r:" + _record_key(str(c["record"][0]), str(c["record"][1]))
             else:
                 latch_key = ""
-            bad = self._row_bad(p, latch_key, c["version"], open_row, req["cursor"])
+            # A record with a file and no value carries nothing to judge: a good row, null value.
+            # Only when nothing was sealed (no ``ct``, host verdict not invalid) and, in E2E mode, only
+            # under a blinded id: a plain id there is not a save the host could have placed.
+            file_only = (
+                "value" not in c
+                and "ct" not in c
+                and (open_row or {}).get("invalid") is not True
+                and isinstance(c.get("record"), list)
+                and len(c["record"]) == 2
+                and _file_of(c.get("file")) is not None
+                and (not self._requires_e2e() or is_blinded_name(str(c["record"][1])))
+            )
+            bad = {} if file_only else self._row_bad(p, latch_key, c["version"], open_row, req["cursor"])
             if isinstance(c.get("setting"), str):
                 p["settings"][c["setting"]] = {"value": _clone(c.get("value")), "version": c["version"], **bad}
                 self._drop_parked_by_remote(p, c["setting"], c.get("editedHlc"))
@@ -1368,6 +1464,7 @@ class CloudSyncMachine:
                 p["records"][_record_key(str(c["record"][0]), str(c["record"][1]))] = {
                     "value": _clone(c.get("value")),
                     "version": c["version"],
+                    **_file_mark(c.get("file")),
                     **bad,
                 }
         for t in body["tombstones"] if isinstance(body.get("tombstones"), list) else []:
@@ -1425,8 +1522,14 @@ class CloudSyncMachine:
         """A conflict's ``server`` copy as a held row. ``cursor`` is the one the push request carried, so
         guard (b) judges the copy exactly as it judges a pulled row."""
         version = server["version"]
-        bad = self._row_bad(p, latch_key, version, open_row, cursor)
-        return {"value": _clone(server.get("value")), "version": version, **bad}
+        file_only = (
+            "value" not in server
+            and "ct" not in server
+            and (open_row or {}).get("invalid") is not True
+            and _file_of(server.get("file")) is not None
+        )
+        bad = {} if file_only else self._row_bad(p, latch_key, version, open_row, cursor)
+        return {"value": _clone(server.get("value")), "version": version, **_file_mark(server.get("file")), **bad}
 
     def _lower_since(self, p: Obj, served: Any) -> None:
         """Take a served boundary: the least ever served, held at or below the sealed floor."""
@@ -1535,21 +1638,42 @@ class CloudSyncMachine:
             self._note_sealed(p, r["version"], f"r:{rk}")
             prior = p["records"].get(rk)
             value = _apply_record_op(prior["value"] if prior else _ABSENT, op)
-            if value is not _ABSENT:
-                p["records"][rk] = {"value": value, "version": r["version"]}
+            if op["op"] == "delete":
+                p["records"].pop(rk, None)
+            elif value is not _ABSENT:
+                p["records"][rk] = {
+                    "value": value,
+                    "version": r["version"],
+                    **_file_mark(prior.get("file") if prior else None),
+                }
             if rk in p["held"]:
                 rebase_on, has_rebase = r["version"], True
+            self._emit_outcome(op, {"status": "ok", "version": r["version"]})
         elif status == "conflict" and _is_object(r.get("server")):
             server = r["server"]
             if _is_number(server.get("version")):
                 sbad = self._copy_row(p, f"r:{rk}", server, opened_conflict(), cursor)
                 p["records"][rk] = sbad
+                self._emit_outcome(
+                    op,
+                    {
+                        "status": "conflict",
+                        "server": {
+                            "value": _clone(sbad["value"]),
+                            "version": sbad["version"],
+                            "file": dict(sbad["file"]) if sbad.get("file") else None,
+                        }
+                        if _decidable(sbad)
+                        else None,
+                    },
+                )
                 # The resolution is a NEW mutation on the server's version; N is never resent. Only
                 # ``revision`` resolves on the device; every other policy took the server's copy.
                 if rk in p["held"]:
                     rebase_on, has_rebase = server["version"], True
                 elif (
-                    decl is not None
+                    "ticket" not in op
+                    and decl is not None
                     and op["op"] == "set"
                     and _decidable(sbad)
                     and self._client_decides(decl["policy"])
@@ -1563,7 +1687,8 @@ class CloudSyncMachine:
                     rebase_on, has_rebase = server["version"], True
                     rebase_value = op.get("value")
                 elif (
-                    decl is not None
+                    "ticket" not in op
+                    and decl is not None
                     and decl["policy"] == "revision"
                     and decl.get("resolve") == "keepLocal"
                     and op["op"] == "set"
@@ -1575,6 +1700,7 @@ class CloudSyncMachine:
                 self._events.append(
                     {"type": "rejected", "mutationId": op["mutationId"], "code": _js_string(r, "code")}
                 )
+                self._emit_outcome(op, {"status": "rejected", "code": _js_string(r, "code")})
             if rk in p["held"]:
                 row = p["records"].get(rk)
                 rebase_on, has_rebase = (row["version"] if row is not None else "*"), True
@@ -1605,6 +1731,10 @@ class CloudSyncMachine:
         self._commit_all_drafts()
         before = self._value_map()
         p = self._active()
+        # An exact write is not retried across a sign-out: its caller is told, and the op goes.
+        for op in [o for o in p["pending"] if "ticket" in o]:
+            self._emit_outcome(op, {"status": "dropped"})
+        p["pending"] = [o for o in p["pending"] if "ticket" not in o]
         unsynced = len(p["pending"]) + len(p["held"])
         if discard:
             p["pending"] = []

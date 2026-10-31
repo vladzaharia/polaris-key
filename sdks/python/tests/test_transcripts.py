@@ -66,10 +66,11 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
 # @pkey-feature identity.redirect.web identity.choice identity.signin.hints identity.devicecode.choice
-# @pkey-feature sync.keyring connect.identity connect.relay sync.settings
+# @pkey-feature sync.keyring connect.identity connect.relay sync.settings sync.files sync.files.delta sync.saves
 
 from __future__ import annotations
 
+import base64
 import copy
 import dataclasses
 import hashlib
@@ -96,7 +97,9 @@ from transcript_replay import (
 )
 
 from polaris_key import PolarisError, PolarisKeyClient, StagedUpdate, UpdateClientOptions
+from polaris_key.cloud_sync.files import FileRoutes
 from polaris_key.cloud_sync.host_codec import open_pull, seal_push
+from polaris_key.cloud_sync.transfer import FileQuery, FileTarget
 from polaris_key.cloud_sync.transport import send_sync
 from polaris_key.constants_generated import ERROR_CODE_VALUES
 from polaris_key.core import sync_crypto as sc
@@ -263,6 +266,8 @@ def _act(
         return _keyring_step(client, step, session)
     if action in ("cloudSyncPull", "cloudSyncPush"):
         return _cloud_sync_step(client, step, session)
+    if action in ("cloudSyncFile", "cloudSyncChunk"):
+        return _cloud_sync_file_step(client, step)
     if action in ("connectIdentity", "connectDevices"):
         return _connect_step(client, step, session)
     if action == "relayTicket":
@@ -646,6 +651,99 @@ def _generated_mutations(count: int, first: int, names: List[str]) -> List[Dict[
     ]
 
 
+def _record_names(rows: Any) -> List[str]:
+    """``collection/id`` of each record row, sorted."""
+    names = []
+    for r in rows if isinstance(rows, list) else []:
+        rec = r.get("record") if isinstance(r, dict) else None
+        if isinstance(rec, list) and len(rec) == 2:
+            names.append(f"{rec[0]}/{rec[1]}")
+    return sorted(names)
+
+
+def _cloud_sync_file_step(client: PolarisKeyClient, step: Dict[str, Any]) -> Dict[str, Any]:
+    """``cloudSyncFile`` / ``cloudSyncChunk`` (U-10.12, U-37.6; WIRE-CONTRACT-V5 section 13.2, 13.8): one file
+    route call through the host's ``FileRoutes``, the engine's ``FileTransport`` port. The transport builds
+    the path from the target and the upload id the recording drew (read from the recorded path), adds the
+    headers and ``Content-Digest``, and bounds what it reads; the call's JSON body and PUT bytes are the
+    recording's own, so a step pins what the transport does with them, not how the engine plans them."""
+    out: Dict[str, Any] = {}
+    transport = FileRoutes(client.core, lambda: client._tokens.current)
+    req = step["exchanges"]["items"][0]["request"]
+    args = step["args"]
+    op = args["op"]
+    collection = args["collection"]
+    target = FileTarget(collection, args.get("id", ""))
+    m = re.search(r"/upload/([^/?]+)", req["path"])
+    upload_id = m.group(1) if m else ""
+    body_json = (req.get("body") or {}).get("json")
+    data = base64.b64decode(req["bodyBase64"]) if req.get("bodyBase64") else b""
+    # A PUT carries the digest the recording sent. It is the body's own except where a step sends a wrong
+    # one on purpose (`upload_mismatch`); the transport only encodes the hex it is given.
+    digest_header = re.fullmatch(r"sha-256=:([A-Za-z0-9+/=]+):", req["headers"].get("content-digest", ""))
+    digest = base64.b64decode(digest_header.group(1)).hex() if digest_header else hashlib.sha256(data).hexdigest()
+    version = args.get("version")
+    if op == "begin":
+        reply = transport.begin(target, body_json)
+    elif op == "status":
+        reply = transport.status(target, upload_id)
+    elif op in ("put", "putManifest"):
+        reply = transport.put_single(target, upload_id, data, digest)
+    elif op == "part":
+        reply = transport.put_part(target, upload_id, int(args["part"]), data, digest)
+    elif op == "putChunk":
+        reply = transport.put_chunk(target, upload_id, args["chunk"], data, digest)
+    elif op == "abort":
+        reply = transport.abort(target, upload_id)
+    elif op == "plan":
+        reply = transport.plan_chunks(target, upload_id, body_json)
+    elif op == "finalize":
+        reply = transport.finalize(target, body_json)
+    elif op in ("download", "downloadManifest"):
+        reply = transport.get_file(target, FileQuery(version=version))
+    elif op == "getChunk":
+        reply = transport.get_chunk(collection, args["chunk"])
+    elif op == "revisions":
+        reply = transport.revisions(target)
+    else:
+        raise AssertionError(f"unknown {step['action']} op {op}")
+    if reply.ok:
+        out["result"] = "ok"
+        out["status"] = 204 if req["method"] == "PUT" or op == "abort" else 200
+        v = reply.value
+        if op == "begin":
+            out["mode"] = v["mode"]
+            if v.get("partBytes") is not None:
+                out["partBytes"] = v["partBytes"]
+        elif op == "status":
+            out.update(mode=v["mode"], size=v["size"], received=v["received"])
+            if v.get("missing") is not None:
+                out["missing"] = v["missing"]
+        elif op == "plan":
+            out["missing"] = sorted(v["missing"])
+            out["present"] = sorted(v["present"], key=lambda x: x[0])
+        elif op == "finalize":
+            out.update(version=v["version"], size=v["size"], sha256=v["sha256"], format=v["format"])
+        elif op in ("download", "downloadManifest"):
+            out.update(size=len(v.data), sha256=hashlib.sha256(v.data).hexdigest())
+        elif op == "getChunk":
+            out.update(size=len(v), sha256=hashlib.sha256(v).hexdigest())
+        elif op == "revisions":
+            out["versions"] = [r["version"] for r in v["revisions"]]
+            out["formats"] = [r["format"] for r in v["revisions"]]
+        return out
+    out.update(result="refused", status=reply.status, code=reply.code)
+    if reply.retry_after_seconds is not None:
+        out["retryAfter"] = reply.retry_after_seconds
+    extra = reply.body if isinstance(reply.body, dict) else {}
+    if extra.get("missing") is not None:
+        out["missing"] = extra["missing"]
+    server = extra.get("server")
+    if isinstance(server, dict) and server.get("version") is not None:
+        out["serverVersion"] = server["version"]
+    return out
+
+
 def _result_label(r: Dict[str, Any]) -> str:
     """One label per mutation result, in the transcript format's words."""
     status = r.get("status")
@@ -730,6 +828,12 @@ def _cloud_sync_step(
             out["quotaBytes"] = quota["bytes"]
         if isinstance(quota.get("files"), bool):
             out["files"] = quota["files"]
+    changed = _record_names(body_in.get("changes"))
+    if changed:
+        out["records"] = changed
+    deleted = _record_names(body_in.get("tombstones"))
+    if deleted:
+        out["deletedRecords"] = deleted
     if isinstance(body_in.get("encryption"), str):
         out["encryption"] = body_in["encryption"]
     if isinstance(body_in.get("encryptionSince"), int):

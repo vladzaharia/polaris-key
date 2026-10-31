@@ -31,6 +31,9 @@ _CORPUS: Dict[str, Any] = json.loads(
 )
 _SCENARIOS: List[Dict[str, Any]] = _CORPUS["scenarios"]
 _SETTING_CASES: List[Dict[str, Any]] = _CORPUS["settingCases"]
+#: The records binding of cloudSync.saves (plans/U-22.5.md): a second family, replayed in full.
+_FILE_RECORDS: Dict[str, Any] = _CORPUS["fileRecordCases"]
+_FILE_RECORD_CASES: List[Dict[str, Any]] = _FILE_RECORDS["scenarios"]
 
 
 
@@ -57,6 +60,10 @@ def _call(m: CloudSyncMachine, name: str, args: List[Any]) -> Dict[str, Any]:
         return m.add(args[0], args[1], args[2])
     if name == "remove":
         return m.remove(args[0], args[1], args[2])
+    if name == "putAt":
+        return m.put_at(args[0], args[1], args[2], args[3])
+    if name == "removeAt":
+        return m.remove_at(args[0], args[1], args[2])
     if name == "flush":
         return m.flush()
     if name == "refresh":
@@ -64,7 +71,15 @@ def _call(m: CloudSyncMachine, name: str, args: List[Any]) -> Dict[str, Any]:
     raise AssertionError(f"unknown call {name}")
 
 
-@pytest.mark.parametrize("sc", _SCENARIOS, ids=[s["name"] for s in _SCENARIOS])
+def test_file_record_family_vocabulary() -> None:
+    assert _FILE_RECORDS["calls"] == ["putAt", "removeAt"]
+    assert _FILE_RECORDS["asserts"] == ["rows", "outcomes"]
+
+
+_ALL = [*_SCENARIOS, *_FILE_RECORD_CASES]
+
+
+@pytest.mark.parametrize("sc", _ALL, ids=[s["name"] for s in _ALL])
 def test_scenario(sc: Dict[str, Any]) -> None:
     init = sc["init"]
     ids = list(init["clientIds"])
@@ -89,6 +104,8 @@ def test_scenario(sc: Dict[str, Any]) -> None:
     }
     licence = json.loads(json.dumps(init["licence"]))
     m = CloudSyncMachine(opts)
+    outcomes: List[Dict[str, Any]] = []
+    m.on_outcome(outcomes.append)
     if init["legacyLocal"] is not None:
         assert m.import_local(init["legacyLocal"]) == {"ok": True}, f"{sc['name']}: import"
     for i, step in enumerate(sc["steps"]):
@@ -113,6 +130,7 @@ def test_scenario(sc: Dict[str, Any]) -> None:
             m.sign_out(raw.get("discardUnsynced") is True)
         elif kind == "relaunch":
             m = relaunch(m, opts, "lost" if raw.get("journal") == "lost" else "kept")
+            m.on_outcome(outcomes.append)
         elif kind == "assert":
             requests = m.take_requests()
             events = m.take_events()
@@ -127,6 +145,12 @@ def test_scenario(sc: Dict[str, Any]) -> None:
             for key, want in (raw.get("records") or {}).items():
                 collection, _, record_id = key.partition("/")
                 assert m.record(collection, record_id) == want, f"{where}: records.{key}"
+            drained = list(outcomes)
+            outcomes.clear()
+            if "outcomes" in raw:
+                assert drained == raw["outcomes"], f"{where}: outcomes"
+            for collection, want in (raw.get("rows") or {}).items():
+                assert m.records(collection) == want, f"{where}: rows.{collection}"
             if "journal" in raw:
                 assert m.journal() == raw["journal"], f"{where}: journal"
             if "status" in raw:

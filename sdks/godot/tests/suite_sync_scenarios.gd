@@ -67,6 +67,13 @@ func _shape(t: PKeyTestContext, corpus: Dictionary) -> void:
 			elif kind == "local" and not CALLS.has(step[kind]["call"]):
 				unknown += 1
 	t.check("scenario names are unique", names.size() == corpus["scenarios"].size())
+	# The records binding of cloudSync.saves (plans/U-22.5.md): a second family, skipped by name here
+	# until the GDScript port of the machine's records, put_at, remove_at and on_outcome lands.
+	var family: Dictionary = corpus["fileRecordCases"]
+	var family_names := {}
+	for sc: Dictionary in family["scenarios"]:
+		family_names[sc["name"]] = true
+	t.check("fileRecordCases is declared (16 cases, skipped by name until its port)", family["scenarios"].size() == 16 and family_names.size() == 16)
 	t.check("every step and call is known", unknown == 0, str(unknown))
 	t.check("the corpus has scenarios, rules and setting cases", corpus["scenarios"].size() > 0 and corpus["rules"].size() > 0 and corpus["settingCases"].size() > 0)
 
