@@ -13,6 +13,9 @@
  *   - The alarm deletes only what nothing points at: an expired session's object (never a `done`
  *     session's: that object is the file), and the object of a `dead` file whose key no row that is
  *     not dead names. A live file, a kept revision and a parked file are never touched.
+ *   - A chunk row whose delete was attempted is answered `missing` until a `PUT` stores the object
+ *     again: the collector marks a batch (`CHUNK_COLLECTING`) before it deletes, so a delete that
+ *     reached R2 but did not answer never leaves a `present` answer for a missing object.
  *   - A row goes only after its object did. If R2 fails, the row stays and the alarm tries again
  *     (`GC_RETRY_MS`); a person's quota was given back when the file died, so a stuck delete costs
  *     them nothing, and costs the operator only the stored bytes.
@@ -25,6 +28,7 @@
  */
 
 import type { UploadRow } from "../engine/types.js";
+import { CHUNK_COLLECTING } from "../engine/chunks.js";
 import { fileObjectKey } from "../engine/files.js";
 import { discard, FILES_USED, type FileHost } from "./fileOps.js";
 import type { DoPin } from "./protocol.js";
@@ -192,6 +196,12 @@ async function collectChunks(
   const batch = store.collectableChunks(GC_CHUNK_BATCH);
   if (batch.length === 0) return true;
   try {
+    // Marked first: if the delete reaches R2 and the answer is lost, no plan may call the chunk
+    // `present` while its object is gone.
+    store.transaction(() => {
+      for (const c of batch)
+        store.putChunk({ ...c, unrefAt: CHUNK_COLLECTING });
+    });
     await deleteKeys(bucket, [...new Set(batch.map((c) => c.objectKey))]);
     store.transaction(() => {
       for (const c of batch) {

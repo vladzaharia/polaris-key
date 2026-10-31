@@ -38,6 +38,13 @@ export const chunkObjectKey = (
   chunkId: string,
 ): string => `u/${pin.product}/${pin.subject}/c/${collection}/${chunkId}`;
 
+/**
+ * The `unrefAt` of a chunk row whose object the collector has begun to delete: the object may be
+ * gone, so the row answers `missing` at a plan call and a `PUT` stores it again. It sorts before
+ * every real time, so a marked row is the first the collector retries.
+ */
+export const CHUNK_COLLECTING = -1;
+
 /** A chunk id as the wire writes it. */
 const CHUNK_ID = /^[0-9a-f]{64}$/;
 
@@ -103,7 +110,9 @@ export function planChunks(store: SyncStore, input: PlanInput): PlanOutcome {
   >();
   let delta = 0;
   for (const [id, declared] of input.chunks) {
-    const stored = store.getChunk(upload.collection, id);
+    const found = store.getChunk(upload.collection, id);
+    // A row the collector has begun to delete may point at nothing: it is no row.
+    const stored = found?.unrefAt === CHUNK_COLLECTING ? undefined : found;
     const prior = have.get(id);
     // A chunk this upload already holds stays present even if the row was replaced meanwhile.
     const row = stored
@@ -201,7 +210,9 @@ export function storeChunk(
   input: StoredInput,
   upload: UploadRow | undefined,
 ): StoredChunk {
-  const prior = store.getChunk(input.collection, input.chunkId);
+  const found = store.getChunk(input.collection, input.chunkId);
+  // The object is in R2 now: a row the collector had begun to delete is replaced, not kept.
+  const prior = found?.unrefAt === CHUNK_COLLECTING ? undefined : found;
   const row: StoredChunk = prior ?? {
     collection: input.collection,
     chunkId: input.chunkId,
