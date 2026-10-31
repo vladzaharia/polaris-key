@@ -19,6 +19,12 @@
 // are held (at most 16), and HELLO display data is unauthenticated. A responder in these modes needs a
 // [HandshakeLimiter].
 //
+// Mode v adds (section 15.6.1, CC-15): both payloads list `vouch/1` (without it the session closes
+// `peer_not_allowed` after HELLO, before any SAS record); [PeerChannel.vouch] is the order guard of the
+// vouch records; [PeerChannel.handshakeHash] gives the handshake hash `h` once established; an initiator
+// built with `holdSas` stops after HELLO until the host calls [PeerChannel.startSas], and its 120 s code
+// deadline restarts then (the approver's restarts when `SAS_COMMIT` arrives).
+//
 // Keys: the static private key is reached only through a [NoiseStatic] whose `dh` runs the static
 // operations (G1). Nothing here prints a key, certificate or record body (G19).
 
@@ -30,9 +36,9 @@ import im.plrs.key.core.PeerAdmission
 import im.plrs.key.core.RingReplacement
 import im.plrs.key.core.RingResult
 import im.plrs.key.core.StrictJson
+import im.plrs.key.core.StrictParse
 import im.plrs.key.core.TrustSet
 import im.plrs.key.core.longValue
-import im.plrs.key.core.normalizeDeviceLabel
 import im.plrs.key.core.stringValue
 import im.plrs.key.core.wireInteger
 import kotlinx.coroutines.CancellationException
@@ -40,7 +46,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import java.text.Normalizer
 import im.plrs.key.core.PeerSession as CertSession
 
 /** Seconds from the first byte to the transport. */
@@ -53,6 +58,13 @@ public const val SAS_DEADLINE_SECONDS: Int = 120
 public const val HANDSHAKE_FAILED: String = "handshake_failed"
 
 private const val MAX_QUEUED = 16
+
+/** Bytes of bodies held before this side's person confirms the code (modes v and p, section 15.6). */
+private const val MAX_QUEUED_BYTES = 16 * 1024
+
+/** The largest HELLO from a peer that is not yet verified (modes v and p, section 15.6). */
+private const val MAX_UNVERIFIED_HELLO = 4096
+
 private const val SAS_NONCE_BYTES = 32
 private const val RATE_WINDOW_SECONDS = 60.0
 private const val MAX_SAFE_INTEGER = 9_007_199_254_740_991L
@@ -189,10 +201,20 @@ public class PeerChannel(
     private val rekeySeconds: Double = DEFAULT_REKEY_SECONDS,
     private val mode: PeerMode = PeerMode.a,
     private val admission: HandshakeLimiter? = null,
+    /**
+     * Mode v, initiator only: stop after HELLO and send no SAS record until the host calls [startSas]. The
+     * host dials several approvers and starts the one the person chose (N9).
+     */
+    private val holdSas: Boolean = false,
 ) {
     private val lock = Mutex()
     private val asm = RecordAssembler(RecordMode.valueOf(mode.name))
-    private var caps: List<String> = caps.toList()
+
+    // Both mode-v payloads list `vouch/1` (rule 1); the host cannot leave it out.
+    private var caps: List<String> = if (mode == PeerMode.v && VOUCH_CAP !in caps) caps + VOUCH_CAP else caps.toList()
+    private val flow: VouchFlow<VouchMessage>? =
+        if (mode == PeerMode.v) VouchFlow(if (role == NoiseRole.initiator) VouchRole.Requester else VouchRole.Approver) else null
+    private var hash: ByteArray? = null
     private var hs: NoiseHandshake? = null
     private var hsStep = 0
     private var phase = "hs" // hs | hello | sas | sas-shown | open | closed
@@ -220,6 +242,7 @@ public class PeerChannel(
     init {
         require((mode == PeerMode.a) == (account != null)) { "account context" }
         require(mode == PeerMode.a || role != NoiseRole.responder || admission != null) { "an approver needs an admission limiter" }
+        require(!holdSas || (mode == PeerMode.v && role == NoiseRole.initiator)) { "holdSas is for the mode v initiator" }
     }
 
     override fun toString(): String = "PeerChannel(mode=${mode.name}, role=$role, phase=$phase)"
@@ -229,6 +252,19 @@ public class PeerChannel(
 
     /** True once the session has ended. */
     public val closed: Boolean get() = phase == "closed"
+
+    /**
+     * Mode v: this session's order guard (section 15.6.1), negotiated when the session is established. Null in
+     * the other modes.
+     */
+    public val vouch: VouchFlow<VouchMessage>? get() = flow
+
+    /**
+     * The Noise handshake hash `h`, a copy, once the session is established (section 15.6.1 binds the vouch
+     * to it). Throws [IllegalStateException] before that. It is a public value; the one-time keys never leave
+     * the handshake.
+     */
+    public fun handshakeHash(): ByteArray = checkNotNull(hash) { "session not established" }.copyOf()
 
     /** The transport, for tests that speak the wire by hand. */
     internal val transportForTest: NoiseTransport? get() = tp
@@ -292,6 +328,19 @@ public class PeerChannel(
         require(type !in OWNED && !(type == RecordType.CONFIRM && mode == PeerMode.p)) { "record owned by the session" }
         require(body.size <= maxSend) { "message too large" }
         emit(type, body)
+    }
+
+    /**
+     * Mode v, `holdSas` initiator: the person chose this approver; send `SAS_COMMIT` now and start the 120 s
+     * code deadline over. Only once, only after the session is established; any other call closes the
+     * session `peer_not_allowed`.
+     */
+    public suspend fun startSas(): Unit = guarded {
+        if (!canStartSas()) throw Fail(PeerCloseCode.peer_not_allowed.name)
+        // The code deadline counts from the person's choice, not from the first byte: a session held while
+        // the person looked at the list keeps its whole 120 s.
+        sasDue = mono() + SAS_DEADLINE_SECONDS
+        commitSas()
     }
 
     /**
@@ -503,18 +552,32 @@ public class PeerChannel(
     }
 
     private fun parseHello(body: ByteArray): PeerHello? {
-        val parsed = StrictJson.validate(body) ?: return null
+        // Modes v and p take a HELLO from a peer that is not yet verified: 4 KiB at most (section 15.6).
+        val tooBig = mode != PeerMode.a && body.size > MAX_UNVERIFIED_HELLO
+        return if (tooBig) null else StrictJson.validate(body)?.let(::helloOf)
+    }
+
+    private fun helloOf(parsed: StrictParse): PeerHello? {
         val o = parsed.value
         val platform = o["platform"].stringValue
         val app = o["app"].stringValue
-        if (platform == null || app == null) return null
         val rawLabel = o["label"]
-        if ("label" in o && rawLabel.stringValue == null) return null
+        val labelOk = "label" !in o || rawLabel.stringValue != null
         val mm = o["maxMessage"].longValue
-        if (!wireInteger(mm, "/maxMessage", 1, parsed.nonWireIntegers) || mm!! > MAX_SAFE_INTEGER) return null
-        // Display data from the peer: NFC, controls and bidi stripped, 64 code points.
-        val clean = rawLabel.stringValue?.let { normalizeDeviceLabel(Normalizer.normalize(it, Normalizer.Form.NFC)) }
-        return PeerHello(platform, app, mm, clean)
+        val mmOk = wireInteger(mm, "/maxMessage", 1, parsed.nonWireIntegers) && mm!! <= MAX_SAFE_INTEGER
+        val shapeOk = labelOk && mmOk
+        // Display data from an unauthenticated peer: NFC, controls and bidi stripped, 64 code points; a
+        // platform only in its plain spelling. What fails cleaning shows as "Unknown".
+        return if (platform == null || app == null || !shapeOk) {
+            null
+        } else {
+            PeerHello(
+                platform = cleanPlatform(platform),
+                app = cleanApp(app),
+                maxMessage = mm!!,
+                label = rawLabel.stringValue?.let(::cleanLabel),
+            )
+        }
     }
 
     private suspend fun onMessage(type: Int, body: ByteArray) {
@@ -525,19 +588,22 @@ public class PeerChannel(
             val p = pending
             if (h == null || p == null) throw Fail(PeerCloseCode.peer_bad_frame.name)
             maxSend = minOf(MAX_PEER_MESSAGE_BYTES.toLong(), h.maxMessage)
+            if (flow != null) {
+                // Rule 1 (N7): without `vouch/1` on both sides, close before any SAS record.
+                val v = flow.negotiate(caps, peerCaps)
+                if (v is VouchVerdict.Closed) throw Fail(v.close.name)
+            }
             caps = capsIntersection(caps, peerCaps)
             pending = null
+            hash = hs!!.handshakeHash
             val acctMode = mode == PeerMode.a
             phase = if (acctMode) "open" else "sas"
             onEvent(SessionEvent.Established(caps.toList(), h, acctMode, p.remote, p.peerDeviceId))
             if (acctMode) {
                 pushRing()
-            } else if (role == NoiseRole.initiator) {
-                // The device commits first.
-                val n = ports.random(SAS_NONCE_BYTES)
-                nD = n
-                emit(RecordType.SAS_COMMIT, sasBody(SasMember.c, sasCommit(n)))
-                sasStep = 1
+            } else if (role == NoiseRole.initiator && !holdSas) {
+                // The device commits first, unless the host holds the code back until it picks this approver.
+                commitSas()
             }
             return
         }
@@ -565,7 +631,8 @@ public class PeerChannel(
                 // Everything else belongs to the host, and only once the code is settled.
                 if (phase == "sas-shown") {
                     // The peer may confirm first: hold the record (bounded) until this side's person does.
-                    if (queued.size >= MAX_QUEUED) throw Fail(PeerCloseCode.peer_busy.name)
+                    val held = queued.sumOf { it.second.size }
+                    if (queued.size >= MAX_QUEUED || held + body.size > MAX_QUEUED_BYTES) throw Fail(PeerCloseCode.peer_busy.name)
                     queued += type to body
                 } else if (phase != "open") {
                     throw Fail(PeerCloseCode.peer_not_allowed.name)
@@ -576,12 +643,25 @@ public class PeerChannel(
         }
     }
 
+    /** The held initiator, established and not yet committed. */
+    private fun canStartSas(): Boolean = holdSas && phase == "sas" && sasStep == 0 && nD == null
+
+    private suspend fun commitSas() {
+        val n = ports.random(SAS_NONCE_BYTES)
+        nD = n
+        emit(RecordType.SAS_COMMIT, sasBody(SasMember.c, sasCommit(n)))
+        sasStep = 1
+    }
+
     private suspend fun onSas(type: Int, body: ByteArray) {
         if (phase != "sas" || sasDone) throw Fail(PeerCloseCode.peer_bad_frame.name)
         val initiator = role == NoiseRole.initiator
         // Responder (the approver): COMMIT then REVEAL. Initiator (the device): NONCE.
         if (type == RecordType.SAS_COMMIT && !initiator && sasStep == 0) {
             val c = parseSasBody(SasMember.c, body) ?: throw Fail(PeerCloseCode.peer_bad_frame.name)
+            // Mode v: the code deadline counts from D's choice, as D's does from [startSas]; a session held
+            // while D's person looked at the list keeps its whole 120 s on this end too.
+            if (mode == PeerMode.v) sasDue = mono() + SAS_DEADLINE_SECONDS
             commit = encodeSasValue(c)
             val n = ports.random(SAS_NONCE_BYTES)
             nM = n

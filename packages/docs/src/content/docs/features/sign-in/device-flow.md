@@ -13,7 +13,7 @@ Four routes under `/<product>/identity/auth/device` share the browser flow's PKC
 
 ## Start
 
-`POST /<product>/identity/auth/device/start` takes a device id from the body's `deviceId`, the `X-PKey-Device` header or a `device` query parameter, in that order. An optional `deviceName` is the label the sign-in page shows. The Worker normalizes it as every SDK does: controls become spaces or vanish, zero-width and bidi characters are removed, spaces collapse and 64 code points stay. It never rejects a label and echoes the stored one. The limit is 60 requests a minute per address.
+`POST /<product>/identity/auth/device/start` takes a device id from the body's `deviceId`, the `X-PKey-Device` header or a `device` query parameter, in that order. An optional `deviceName` is the label the sign-in page shows. The Worker normalizes it as every SDK does: spaces of every kind become one space, and controls and invisible characters are removed. Spaces collapse and 64 code points stay. It never rejects a label and echoes the stored one. The limit is 60 requests a minute per address.
 
 Four more members are optional, and an older Worker ignores them:
 

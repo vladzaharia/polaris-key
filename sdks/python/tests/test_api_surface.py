@@ -6,6 +6,7 @@ import pytest
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
+from polaris_key.connect.nearby import CloudNearby
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
@@ -21,6 +22,7 @@ CLASSES = {
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
+    "CloudNearby": CloudNearby,
 }
 
 ATTRS = [
@@ -107,6 +109,8 @@ ATTRS = [
     ("cloudConnect.refreshPeers", "CloudConnect", "refresh_peers"),
     ("cloudConnect.status", "CloudConnect", "status"),
     ("cloudConnect.onNotice", "CloudConnect", "on_notice"),
+    ("cloudConnect.nearby.request", "CloudNearby", "request"),
+    ("cloudConnect.nearby.onRequest", "CloudNearby", "on_request"),
 ]
 OPTION_PARAMS = [
     ("options.productSlug", "product_slug"),

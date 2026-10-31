@@ -105,6 +105,13 @@ const FAIL_MODE: Record<string, FailMode> = {
   // I-14.12b: the per-product budget of Play Games code redemptions, each an outbound call to
   // Google; an outage refuses (the exchange answers its one invalid_grant).
   pgsRedeem: "closed",
+  // I-40.4: nearby approval `start` writes one single-use record per call (per client network).
+  identityNearbyStart: "closed",
+  // I-40.5: `approve` is per approving device; the subject budget is charged on decisions only.
+  identityNearbyApprove: "closed",
+  identityNearbyApproveSubject: "closed",
+  // I-40.7: the coarse per-network ceiling on `poll`, beside the per-request interval.
+  identityNearbyPoll: "closed",
   identityLink: "closed",
   // LK-SKIP: the card's key return looks a licence key up with no account behind the request
   // (per client network, then per request handle), so with the limiter gone it must not become an

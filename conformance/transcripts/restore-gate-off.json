@@ -105,6 +105,7 @@
                     "account": true,
                     "keyEntryLimit": 10,
                     "restore": true,
+                    "nearby": true,
                     "endpoints": {
                       "session": "https://key.plrs.im/djdl/identity/session",
                       "sessionLicense": "https://key.plrs.im/djdl/identity/session/license",
@@ -127,6 +128,9 @@
                       "restore": "https://key.plrs.im/djdl/identity/restore",
                       "nonce": "https://key.plrs.im/djdl/identity/nonce",
                       "link": "https://key.plrs.im/djdl/identity/link",
+                      "nearbyStart": "https://key.plrs.im/djdl/identity/nearby/start",
+                      "nearbyApprove": "https://key.plrs.im/djdl/identity/nearby/approve",
+                      "nearbyPoll": "https://key.plrs.im/djdl/identity/nearby/poll",
                       "accountPortal": "https://key.plrs.im/#/p/djdl"
                     }
                   },
@@ -396,6 +400,7 @@
                     "issuer": "https://key.plrs.im/djdl/identity",
                     "account": true,
                     "keyEntryLimit": 10,
+                    "nearby": true,
                     "endpoints": {
                       "session": "https://key.plrs.im/djdl/identity/session",
                       "sessionLicense": "https://key.plrs.im/djdl/identity/session/license",
@@ -417,6 +422,9 @@
                       "signout": "https://key.plrs.im/djdl/identity/signout",
                       "nonce": "https://key.plrs.im/djdl/identity/nonce",
                       "link": "https://key.plrs.im/djdl/identity/link",
+                      "nearbyStart": "https://key.plrs.im/djdl/identity/nearby/start",
+                      "nearbyApprove": "https://key.plrs.im/djdl/identity/nearby/approve",
+                      "nearbyPoll": "https://key.plrs.im/djdl/identity/nearby/poll",
                       "accountPortal": "https://key.plrs.im/#/p/djdl"
                     }
                   },

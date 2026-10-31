@@ -61,7 +61,7 @@ A socket may send 200 messages a second, with a burst of 400. When the relay can
 
 Every SDK paces itself under the limit: 180 messages a second with a burst of 360, halved for 10 seconds after a `LIMIT` 1, and a queue of at most 8 MiB behind the socket. A send that would pass the queue is dropped before anything is encrypted and the session closes with `peer_busy`, so watch the close event. A `LIMIT` 1 from the room is pacing, not overflow, and shows as `rate_limited` in the relay status.
 
-A spent quota, the relay switch or a pause closes sockets within a minute. The SDK reports the reason in its status.
+A removed device's sockets close at once; a spent quota, the relay switch or a pause closes sockets within a minute. The SDK reports the reason in its status.
 
 ## In a web app
 

@@ -219,6 +219,7 @@
         "deviceChoice": true,
         "keyEntryLimit": 10,
         "restore": true,
+        "nearby": true,
         "endpoints": {
           "session": "https://key.plrs.im/full/identity/session",
           "sessionLicense": "https://key.plrs.im/full/identity/session/license",
@@ -241,6 +242,9 @@
           "restore": "https://key.plrs.im/full/identity/restore",
           "nonce": "https://key.plrs.im/full/identity/nonce",
           "link": "https://key.plrs.im/full/identity/link",
+          "nearbyStart": "https://key.plrs.im/full/identity/nearby/start",
+          "nearbyApprove": "https://key.plrs.im/full/identity/nearby/approve",
+          "nearbyPoll": "https://key.plrs.im/full/identity/nearby/poll",
           "accountPortal": "https://key.plrs.im/#/p/full"
         }
       },

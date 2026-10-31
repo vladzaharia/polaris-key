@@ -717,9 +717,7 @@ def test_nothing_runs_or_is_stored_after_close() -> None:
     assert d2._retry is None
 
 
-def test_a_peer_that_never_reads_is_closed_busy_not_buffered_without_bound() -> None:
-    from polaris_key.core import peer_link
-
+def test_lan_a_peer_that_does_not_read_is_closed_peer_busy_at_the_write_bound() -> None:
     with Rig() as rig:
         mine = rig.dial()
         assert rig.got_session.wait(5)
@@ -731,7 +729,7 @@ def test_a_peer_that_never_reads_is_closed_busy_not_buffered_without_bound() -> 
         aborted: List[bool] = []
         real_abort = t.abort
         t.abort = lambda: (aborted.append(True), real_abort())  # type: ignore[method-assign]
-        t.get_write_buffer_size = lambda: peer_link.WRITE_BUFFER_MAX + 1  # type: ignore[method-assign]
+        t.get_write_buffer_size = lambda: 4 * 1024 * 1024 + 1  # type: ignore[method-assign]
         theirs.send(b"x" * 100, 0x0100)
         for _ in range(250):
             if closed:

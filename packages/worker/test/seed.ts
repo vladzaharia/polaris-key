@@ -78,6 +78,7 @@ export function makeEnv(kv: KvMock, _slugs?: string[]): Env {
     LAUNCH_RELAY: "on",
     LAUNCH_IDENTITY_RESTORE: "on",
     LAUNCH_GAME_SIGN_IN: "on",
+    LAUNCH_IDENTITY_NEARBY: "on",
   };
   return env as Env;
 }

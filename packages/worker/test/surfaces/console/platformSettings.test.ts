@@ -228,6 +228,7 @@ describe("PLATFORM_SETTINGS", () => {
       "LAUNCH_CONNECT",
       "LAUNCH_GAME_SIGN_IN",
       "LAUNCH_IDENTITY_EXCHANGE",
+      "LAUNCH_IDENTITY_NEARBY",
       "LAUNCH_IDENTITY_RESTORE",
       "LAUNCH_IDENTITY_RETURNKEY",
       "LAUNCH_RELAY",
@@ -259,6 +260,7 @@ describe("PLATFORM_SETTINGS", () => {
       LAUNCH_IDENTITY_RESTORE: "ceiling",
       LAUNCH_IDENTITY_RETURNKEY: "ceiling",
       LAUNCH_RELAY: "ceiling",
+      LAUNCH_IDENTITY_NEARBY: "ceiling",
       LAUNCH_SYNC_E2E: "ceiling",
       LAUNCH_SYNC_FILES: "ceiling",
       // HA-10 (notes/S-20 §6.10): the hosted-asset rollback switch. Not a security gate (off only

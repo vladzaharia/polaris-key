@@ -199,6 +199,9 @@ import PolarisKeyPlatform
             onUp: @escaping @Sendable (BonjourFound) -> Void, onDown: @escaping @Sendable (String) -> Void,
             onError: @escaping @Sendable (BonjourBrowseError) -> Void
         ) throws -> @Sendable () -> Void
+        /// The addresses of a browse hit that may be dialled, in order, resolved and judged before any
+        /// connect (§15.4.1). The default is the hit itself, for a network that connects by a host and port.
+        func resolve(_ endpoint: BonjourEndpoint) async throws -> [BonjourEndpoint]
         /// Connect; the pipe is handed back only after the address passed the dial policy.
         func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe
         func stop() async
@@ -208,6 +211,7 @@ import PolarisKeyPlatform
 
     extension ConnectLanNetwork {
         public func rescan() {}
+        public func resolve(_ endpoint: BonjourEndpoint) async throws -> [BonjourEndpoint] { [endpoint] }
     }
 
     /// The OS network: `NWListener`, `NWBrowser` and `NWConnection` through `PolarisKeyPlatform`.
@@ -251,6 +255,10 @@ import PolarisKeyPlatform
                 browsing.set(nil)
                 b.stop()
             }
+        }
+
+        public func resolve(_ endpoint: BonjourEndpoint) async throws -> [BonjourEndpoint] {
+            try await BonjourPipes.resolve(endpoint, options: dialOptions)
         }
 
         public func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe {
@@ -659,36 +667,53 @@ import PolarisKeyPlatform
             return try await connect(peer)
         }
 
+        /// Dial a discovered device: the hit is resolved and judged first, then its addresses are tried in
+        /// order. A failed connect or handshake falls through to the next address; the dial fails with the
+        /// last error when none is left. A handshake that completes with another device ends the dial at
+        /// once as `wrongPeer` (§15.4.1, Dialling).
         public func connect(_ peer: ConnectLanPeer) async throws -> ConnectSession {
             if stopped { throw ConnectLanError(.notListening, "The LAN service is stopped.") }
             let ident = try await identity(force: false)
-            let pipe: NWPipe
-            do { pipe = try await network.dial(peer.endpoint) } catch let e as BonjourPipeError {
+            let targets: [BonjourEndpoint]
+            do { targets = try await network.resolve(peer.endpoint) } catch let e as BonjourPipeError {
                 if case .browse(.permissionDenied) = e { throw Self.lanError(e) }
                 throw ConnectLanError(.connectFailed, "The device did not answer.")
             }
-            let key = ObjectIdentifier(pipe)
-            pending[key] = pipe
-            defer { pending[key] = nil }
-            let session: ConnectSession
-            do {
-                let h = handlers(role: "initiator")
-                let link = try await makeLink(pipe: pipe, ident: ident, role: .initiator, handlers: h)
-                await link.start()
-                session = try await h.opened(link)
-            } catch let e as ConnectLanError {
-                await pipe.close()
-                throw e
-            } catch {
-                await pipe.close()
-                throw ConnectLanError(.handshakeFailed, "The handshake failed.")
+            var last = ConnectLanError(.connectFailed, "The device did not answer.")
+            for target in targets {
+                if stopped { throw ConnectLanError(.notListening, "The LAN service is stopped.") }
+                let pipe: NWPipe
+                do { pipe = try await network.dial(target) } catch let e as BonjourPipeError {
+                    if case .browse(.permissionDenied) = e { throw Self.lanError(e) }
+                    last = ConnectLanError(.connectFailed, "The device did not answer.")
+                    continue
+                }
+                let key = ObjectIdentifier(pipe)
+                pending[key] = pipe
+                defer { pending[key] = nil }
+                let session: ConnectSession
+                do {
+                    let h = handlers(role: "initiator")
+                    let link = try await makeLink(pipe: pipe, ident: ident, role: .initiator, handlers: h)
+                    await link.start()
+                    session = try await h.opened(link)
+                } catch let e as ConnectLanError {
+                    await pipe.close()
+                    last = e
+                    continue
+                } catch {
+                    await pipe.close()
+                    last = ConnectLanError(.handshakeFailed, "The handshake failed.")
+                    continue
+                }
+                if session.peerDeviceId != peer.deviceId {
+                    await session.close()
+                    throw ConnectLanError(.wrongPeer, "The device that answered is not the one that advertised.")
+                }
+                track(session)
+                return session
             }
-            if session.peerDeviceId != peer.deviceId {
-                await session.close()
-                throw ConnectLanError(.wrongPeer, "The device that answered is not the one that advertised.")
-            }
-            track(session)
-            return session
+            throw last
         }
 
         // MARK: Discovery

@@ -60,6 +60,7 @@ export interface PlatformValues {
   "console.access": unknown;
   "launch.identityRestore": "on" | "off";
   "launch.gameSignIn": "on" | "off";
+  "launch.identityNearby": "on" | "off";
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;

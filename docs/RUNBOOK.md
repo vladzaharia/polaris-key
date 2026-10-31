@@ -113,9 +113,15 @@ curl -fsS https://key.plrs.im/api/capabilities | jq .
 ```
 
 Launch gates: each v0.10.0 feature has a platform setting (`launch.identityExchange`,
-`launch.connect`, `launch.syncE2e`, `launch.relay`; Platform → Settings) that ships off. A gate is
+`launch.connect`, `launch.syncE2e`, `launch.relay`, `launch.identityNearby`; Platform → Settings) that ships off. A gate is
 on in staging and dev through `[vars]`. Turn one on in production only after the feature's
 security sign-off. An off gate answers as the build did before the feature existed.
+
+`launch.identityNearby` serves the three nearby approval routes and also needs the Identity
+service on and the product's `identity.nearby` setting on. Turn it on in production only after
+the SDK slices for the launched apps ship, the security review of nearby approval (SR-2) and the
+cryptographer's review of the key-binding and proof rules are signed off, and real-device runs on
+a local network have passed, a dual-stack network included. Its off state answers not found.
 
 ## Secrets
 

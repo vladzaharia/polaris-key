@@ -224,6 +224,9 @@ public final class ConnectSession: Sendable, CustomStringConvertible, CustomRefl
         await link.close(code)
     }
 
+    /// Close with `peer_revoked`: the roster no longer lists the peer.
+    func closeRevoked() async { await link.close(.peerRevoked) }
+
     // MARK: The link's calls
 
     func deliver(_ m: ConnectMessage) {

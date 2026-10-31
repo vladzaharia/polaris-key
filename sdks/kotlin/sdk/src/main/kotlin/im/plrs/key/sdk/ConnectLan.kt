@@ -11,11 +11,21 @@
 // - the listener starts a handshake only when this device holds a verified identity. The handshake
 //   (XXpsk0) and admission (certificate, roster, expiry, revocation) run in the channel; a failed tag
 //   closes the socket without a word (G2);
-// - sockets that have not been admitted are bounded: at most 32 in total and 4 per source address, each
-//   living at most 30 seconds, handshake frames at most 16 KiB (G7);
-// - the device dials only RFC 1918 IPv4 addresses (loopback only when the caller opts in, for tests), and
-//   checks the connected address as well as the advertised one (G6); the certificate's device must be the
-//   one dialled, or the session closes `wrong_peer` (G8);
+// - sockets that have not been admitted are bounded: at most 32 in total, 4 per source address and 16 per
+//   source group (a link, an IPv4 /24 or an IPv6 /64), each living at most 30 seconds (the deadline closes
+//   the socket, frees the slot and cancels the coroutine, so a hung identity read cannot hold it),
+//   handshake frames at most 16 KiB (G7);
+// - one port serves both families: a dual-stack `::` listener, falling back to 0.0.0.0 where IPv6 is
+//   unavailable. A `::` socket can be reached from beyond the LAN, so the listener is not bound to LAN
+//   addresses (a JVM `ServerSocket` binds one address); a socket is judged on its own addresses
+//   (`lanVerdict`, V5 15.4.1) before it takes a slot and before a byte is read, and a source off the LAN is
+//   closed at once, with nothing read or written (the TCP handshake itself is done by the OS by then);
+// - the device dials only addresses `lanVerdict` allows (loopback only when the caller opts in, for tests):
+//   the text of each address before a socket exists, and the connected socket again before its first byte
+//   (G6). Several addresses race (RFC 8305): 250 ms apart, at most two in flight, the first to pass wins. When
+//   the handshake with the winner fails, the race runs again over the addresses that are left; a handshake
+//   that completes with another device ends the dial. The certificate's device must be the one dialled, or
+//   the session closes `wrong_peer` (G8);
 // - a refused local-network permission is `permission_denied` (D-8), and nothing is opened;
 // - the device's X25519 private key never leaves the key port (G1).
 
@@ -31,13 +41,22 @@ import im.plrs.key.core.peer.TxtResult
 import im.plrs.key.core.peer.accountInstance
 import im.plrs.key.core.peer.advertEpoch
 import im.plrs.key.core.peer.lan.JvmMdns
+import im.plrs.key.core.peer.lan.LAN_MAX_PENDING
+import im.plrs.key.core.peer.lan.LAN_MAX_PENDING_PER_ADDRESS
+import im.plrs.key.core.peer.lan.LAN_MAX_PENDING_PER_GROUP
+import im.plrs.key.core.peer.lan.LanDialOptions
 import im.plrs.key.core.peer.lan.MdnsAdapter
 import im.plrs.key.core.peer.lan.MdnsAdvert
 import im.plrs.key.core.peer.lan.MdnsFound
 import im.plrs.key.core.peer.lan.MdnsHandle
 import im.plrs.key.core.peer.lan.MdnsUnavailableException
+import im.plrs.key.core.peer.lan.PendingLimiter
 import im.plrs.key.core.peer.lan.TcpPipe
-import im.plrs.key.core.peer.lan.isLanAddress
+import im.plrs.key.core.peer.lan.inetAddressOfLiteral
+import im.plrs.key.core.peer.lan.lanDialRaceTo
+import im.plrs.key.core.peer.lan.literalOfInetAddress
+import im.plrs.key.core.peer.lan.socketVerdict
+import im.plrs.key.core.peer.lan.textVerdict
 import im.plrs.key.core.peer.parseTxt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -46,22 +65,16 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
-import java.net.InetAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.CopyOnWriteArrayList
-
-/** Unauthenticated sockets at once (G7). */
-public const val LAN_MAX_PENDING: Int = 32
-
-/** Unauthenticated sockets per source address (G7). */
-public const val LAN_MAX_PENDING_PER_ADDRESS: Int = 4
 
 /** Open sessions at once. */
 public const val LAN_MAX_SESSIONS: Int = 64
@@ -92,13 +105,14 @@ public data class LanPeer(
 
 /**
  * LAN options. [mdns] is the discovery adapter (default [JvmMdns], with [interfaces] as the
- * `lan.interfaces` override). [port] 0 picks a random port each listen (section 15.4). [allowLoopback]
- * accepts and dials 127.0.0.0/8: for tests and same-host use only. [lanPermission] runs once before
+ * `lan.interfaces` override). [host] is the address to listen on, as a literal: by default `::` (both
+ * families on one port), or 0.0.0.0 where IPv6 is unavailable. [port] 0 picks a random port each listen
+ * (section 15.4). [allowLoopback] accepts and dials 127.0.0.0/8 and ::1: for tests and same-host use only. [lanPermission] runs once before
  * anything is opened; false means the OS refused local network access.
  */
 public class LanOptions(
     public val mdns: MdnsAdapter? = null,
-    public val host: String = "0.0.0.0",
+    public val host: String? = null,
     public val port: Int = 0,
     public val caps: List<String> = listOf("app/1"),
     public val label: String? = null,
@@ -108,6 +122,7 @@ public class LanOptions(
     public val interfaces: List<String>? = null,
     public val maxPending: Int = LAN_MAX_PENDING,
     public val maxPendingPerAddress: Int = LAN_MAX_PENDING_PER_ADDRESS,
+    public val maxPendingPerGroup: Int = LAN_MAX_PENDING_PER_GROUP,
     public val maxSessions: Int = LAN_MAX_SESSIONS,
     public val rekeyMessages: Int? = null,
     public val rekeySeconds: Double? = null,
@@ -153,8 +168,6 @@ internal fun lanSource(
     mono = mono,
 )
 
-private fun bare(addr: String): String = if (addr.startsWith("::ffff:")) addr.substring("::ffff:".length) else addr
-
 private class Held(val at: Long, val source: PeerSource)
 
 /** One running LAN service. Build it with [start]. */
@@ -184,7 +197,7 @@ internal class LanService private constructor(
     @Volatile
     private var names: Triple<Long, PeerSource, BrowseIndex>? = null
     private val pending = HashSet<Socket>()
-    private val perAddress = HashMap<String, Int>()
+    private val limiter = PendingLimiter(o.maxPending, o.maxPendingPerAddress, o.maxPendingPerGroup)
     private val links = HashSet<PeerLink<ConnectSession>>()
     private val sessions = HashSet<ConnectSession>()
     private val onSession = CopyOnWriteArrayList<(ConnectSession) -> Unit>()
@@ -213,7 +226,7 @@ internal class LanService private constructor(
     internal val listening: Boolean get() = server?.isClosed == false
 
     /** Source addresses with unadmitted sockets (a test hook). */
-    val pendingAddresses: Map<String, Int> get() = synchronized(lock) { HashMap(perAddress) }
+    val pendingAddresses: Map<String, Int> get() = synchronized(lock) { limiter.perAddressCounts() }
 
     /** Called for each pushed `RING` or `TRUST` once it is stored, applied or refused. */
     fun onNotice(fn: (ConnectNotice) -> Unit): () -> Unit = docs.onNotice(fn)
@@ -297,7 +310,7 @@ internal class LanService private constructor(
 
     // -- dial ------------------------------------------------------------------------------------
 
-    private fun dialable(host: String): Boolean = isLanAddress(host, o.allowLoopback)
+    private fun dialable(host: String): Boolean = textVerdict(host, o.allowLoopback)
 
     /** Dial a discovered device and run the handshake. */
     suspend fun connect(deviceId: String): ConnectSession = connectTo(deviceId, synchronized(lock) { peerTable[deviceId]?.first })
@@ -307,23 +320,30 @@ internal class LanService private constructor(
 
     private suspend fun connectTo(want: String, peer: LanPeer?): ConnectSession {
         if (stopped) throw LanException(LanErrorReason.not_listening, "The LAN service is stopped.")
-        if (peer == null || !dialable(peer.host)) {
+        // The address text is judged before any socket exists (a global IPv6 address is judged again on the
+        // connected socket, with its own local address).
+        val hosts = peer?.let { (listOf(it.host) + it.alternates).filter(::dialable) }.orEmpty()
+        if (peer == null || hosts.isEmpty()) {
             throw LanException(LanErrorReason.unknown_peer, "That device was not found on this network.")
         }
         val ident = identity(false)
-        val pipe = dial(peer)
-        val link = link(pipe, ident, NoiseRole.initiator)
-        val run = scope.launch { link.run() }
-        link.start()
-        val session = try {
-            waitOpened(link.opened, ((o.handshakeSeconds + OPEN_GRACE_SECONDS) * MILLIS).toLong())
-        } catch (e: LanException) {
-            throw e
-        } catch (e: TimeoutCancellationException) {
-            run.cancel()
-            pipe.close()
-            throw LanException(LanErrorReason.handshake_failed, "The handshake failed.", e)
+        // A neighbour can answer first with its own address: when the winner of the race fails the handshake,
+        // the race runs again over the addresses that are left (section 15.4.1, Dialling). A handshake that
+        // completes with another device ends the dial below as `wrong_peer`.
+        var left = hosts
+        var failure: LanException? = null
+        var opened: ConnectSession? = null
+        while (left.isNotEmpty() && opened == null) {
+            val (pipe, host) = dial(left, peer.port)
+            try {
+                opened = openOnce(pipe, ident)
+            } catch (e: LanException) {
+                if (e.reason != LanErrorReason.handshake_failed && e.reason != LanErrorReason.connect_failed) throw e
+                failure = e
+                left = left.filter { it != host }
+            }
         }
+        val session = opened ?: throw (failure ?: LanException(LanErrorReason.handshake_failed, "The handshake failed."))
         if (session.peerDeviceId != want) {
             session.close()
             throw LanException(LanErrorReason.wrong_peer, "The device that answered is not the one that advertised.")
@@ -331,25 +351,32 @@ internal class LanService private constructor(
         return session
     }
 
-    private suspend fun dial(peer: LanPeer): TcpPipe {
-        // Every announced address in turn; the first that answers on a LAN address wins (G6).
-        var last: Exception? = null
-        for (host in listOf(peer.host) + peer.alternates) {
-            if (!dialable(host)) continue
-            val pipe = try {
-                TcpPipe.connect(host, peer.port, (o.dialSeconds * MILLIS).toInt())
-            } catch (e: IOException) {
-                last = e
-                continue
-            }
-            // The address that actually answered must be a LAN one too (G6).
-            if (!dialable(bare(pipe.connectedAddress))) {
-                pipe.close()
-                continue
-            }
-            return pipe
+    /** The handshake over one connected pipe: the session, or a [LanException] after the pipe is closed. */
+    private suspend fun openOnce(pipe: TcpPipe, ident: PeerSource): ConnectSession {
+        val link = link(pipe, ident, NoiseRole.initiator)
+        val run = scope.launch { link.run() }
+        link.start()
+        try {
+            return waitOpened(link.opened, ((o.handshakeSeconds + OPEN_GRACE_SECONDS) * MILLIS).toLong())
+        } catch (e: TimeoutCancellationException) {
+            run.cancel()
+            pipe.close()
+            throw LanException(LanErrorReason.handshake_failed, "The handshake failed.", e)
+        } catch (e: LanException) {
+            run.cancel()
+            pipe.close()
+            throw e
         }
-        throw LanException(LanErrorReason.connect_failed, "The device did not answer.", last)
+    }
+
+    /** The race of RFC 8305 over every announced address: the first connection that passes the verdict on its own addresses wins (G6). */
+    private suspend fun dial(hosts: List<String>, port: Int): Pair<TcpPipe, String> {
+        val (socket, host) = try {
+            lanDialRaceTo(hosts, port, LanDialOptions(o.allowLoopback, (o.dialSeconds * MILLIS).toInt()))
+        } catch (e: IOException) {
+            throw LanException(LanErrorReason.connect_failed, "The device did not answer.", e)
+        }
+        return TcpPipe(socket) to host
     }
 
     // -- identity --------------------------------------------------------------------------------
@@ -396,8 +423,19 @@ internal class LanService private constructor(
 
     // -- TCP -------------------------------------------------------------------------------------
 
+    /** The listener: [LanOptions.host] when given, else `::` (both families), else 0.0.0.0 where IPv6 is unavailable. */
+    private fun bind(): ServerSocket {
+        val host = o.host
+        val any6 = inetAddressOfLiteral("::")
+        val any4 = inetAddressOfLiteral("0.0.0.0")
+        return when {
+            host != null -> ServerSocket(o.port, BACKLOG, requireNotNull(inetAddressOfLiteral(host)) { "lan host: not an address" })
+            else -> runCatching { ServerSocket(o.port, BACKLOG, any6) }.getOrElse { ServerSocket(o.port, BACKLOG, any4) }
+        }
+    }
+
     private fun listen() {
-        val s = ServerSocket(o.port, BACKLOG, InetAddress.getByName(o.host))
+        val s = bind()
         server = s
         listenPort = s.localPort
         acceptJob = scope.launch(Dispatchers.IO) {
@@ -420,37 +458,37 @@ internal class LanService private constructor(
         }
     }
 
+    /** Take a slot for [sock] under the lock, or null when the service is stopping or full or a limit is met. */
+    private fun admit(sock: Socket, key: String): (() -> Unit)? {
+        val release = if (!stopped && sessions.size < o.maxSessions) limiter.take(key) else null
+        if (release != null) pending += sock
+        return release
+    }
+
     private suspend fun accept(sock: Socket) {
-        val addr = sock.inetAddress?.hostAddress.orEmpty()
-        val admit = synchronized(lock) {
-            val per = perAddress[addr] ?: 0
-            if (stopped || pending.size >= o.maxPending || per >= o.maxPendingPerAddress ||
-                sessions.size >= o.maxSessions || !dialable(bare(addr))
-            ) {
-                false
-            } else {
-                pending += sock
-                perAddress[addr] = per + 1
-                true
-            }
-        }
-        if (!admit) {
+        // Judged first, on the socket's own addresses and before a byte is read or written: a source off
+        // the LAN is closed at once and costs no slot.
+        val verdict = socketVerdict(literalOfInetAddress(sock.inetAddress), literalOfInetAddress(sock.localAddress), o.allowLoopback)
+        val key = verdict.key
+        val release = if (verdict.dial && key != null) synchronized(lock) { admit(sock, key) } else null
+        if (release == null) {
             abort(sock)
             return
         }
-        // An unauthenticated socket lives for the handshake window and no longer.
+        // An unauthenticated socket lives for the handshake window and no longer: at the deadline the socket
+        // closes, the slot is released and this coroutine is cancelled, so an identity read that hangs
+        // (a refresh over the network) cannot hold the slot.
+        val self = currentCoroutineContext()[Job]
         val deadline = scope.launch {
             delay((o.handshakeSeconds * MILLIS).toLong())
             abort(sock)
+            synchronized(lock) { if (pending.remove(sock)) release() }
+            self?.cancel()
         }
 
         fun done() {
             deadline.cancel()
-            synchronized(lock) {
-                if (!pending.remove(sock)) return
-                val n = (perAddress[addr] ?: 1) - 1
-                if (n <= 0) perAddress.remove(addr) else perAddress[addr] = n
-            }
+            synchronized(lock) { if (pending.remove(sock)) release() }
         }
         try {
             // The identity is read before the first byte is handled; the socket buffers meanwhile.
@@ -535,7 +573,8 @@ internal class LanService private constructor(
     }
 
     private suspend fun found(f: MdnsFound) {
-        if (stopped || !dialable(f.host)) return
+        val hosts = f.hosts.filter(::dialable)
+        if (stopped || hosts.isEmpty()) return
         val txt = parseTxt(f.txt)
         if (txt !is TxtResult.Ok || txt.mode != PeerMode.a) return
         if (synchronized(lock) { f.instance in miss }) return
@@ -549,7 +588,7 @@ internal class LanService private constructor(
             }
             return
         }
-        val peer = LanPeer(hit.deviceId, f.host, f.port, f.hosts.drop(1))
+        val peer = LanPeer(hit.deviceId, hosts[0], f.port, hosts.drop(1))
         synchronized(lock) { peerTable[hit.deviceId] = peer to f.instance }
         for (fn in onPeerFns) {
             try {

@@ -87,6 +87,7 @@ class LicenseClient:
         fingerprint: bool = True,
         on_changed: Optional[Callable[[], None]] = None,
         on_deactivated: Optional[Callable[[], None]] = None,
+        before_release: Optional[Callable[[], None]] = None,
     ) -> None:
         self._ctx = ctx
         self._cache = cache
@@ -99,6 +100,7 @@ class LicenseClient:
         #: Raised by :meth:`deactivate` before the change event: the facade forgets the stored
         #: identity and subject (a deactivated device is signed out of nothing it still holds).
         self._on_deactivated = on_deactivated
+        self._before_release = before_release
         self._fingerprint_enabled = fingerprint
 
     # ── Gate ────────────────────────────────────────────────────────────────────────
@@ -222,6 +224,9 @@ class LicenseClient:
         unreachable. Emits one ``license`` event (``client.events``) when the gate changes,
         exactly as ``client.deactivate()`` does.
         """
+        if self._before_release is not None:
+            # First, before any request: a failure here stops the deactivation with nothing changed.
+            self._before_release()
         token = self._tokens.current
         if token:
             # `deauthorize` swallows transport failures, including local-only's refusal.

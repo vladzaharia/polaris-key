@@ -36,7 +36,7 @@ private final class Side: @unchecked Sendable {
 
     init(
         _ mode: PeerNoiseMode, _ role: PeerChannel.Role, admission: HandshakeLimiter? = nil, label: String? = nil,
-        nonce: Data? = nil
+        nonce: Data? = nil, holdSas: Bool = false, caps: [String] = ["app/1", "ring/1"]
     ) {
         let clock = self.clock
         let events = self.events
@@ -44,10 +44,10 @@ private final class Side: @unchecked Sendable {
         let lim = admission ?? (role == .responder ? HandshakeLimiter() : nil)
         s = try! PeerChannel(
             role: role, slug: "djdl", staticKey: try! PeerNoiseRawStaticKey(privateKey: rnd()), admission: lim,
-            caps: ["app/1", "ring/1"], hello: (label, "test", "demo", nil),
+            caps: caps, hello: (label, "test", "demo", nil),
             send: { d in out.mutate { $0.append(d) } }, onEvent: { e in events.mutate { $0.append(e) } },
             mode: mode, random: nonce.map { n in { @Sendable len in len == 32 ? n : rnd() } },
-            mono: { clock.value })
+            mono: { clock.value }, holdSas: holdSas)
     }
 
     var closed: [PeerSessionEvent] {
@@ -81,9 +81,11 @@ private func pump(_ a: Side, _ b: Side) async {
 }
 
 /// A raw initiator, past message 3, for the refusals only a hand-built peer can show.
-private func rawPeer(_ mode: PeerNoiseMode, to m: Side, payload3: String = #"{"v":1,"caps":[]}"#) async throws
+private func rawPeer(_ mode: PeerNoiseMode, to m: Side, payload3: String? = nil) async throws
     -> PeerNoiseTransport
 {
+    // Mode v lists `vouch/1` itself (§15.6.1 rule 1), so a raw mode-v peer must too.
+    let payload3 = payload3 ?? (mode == .v ? #"{"v":1,"caps":["vouch/1"]}"# : #"{"v":1,"caps":[]}"#)
     let raw = try PeerNoiseHandshake(
         role: .initiator, protocol: peerNoiseProtocol(mode), prologue: peerPrologue(slug: "djdl", mode: mode),
         staticKey: PeerNoiseRawStaticKey(privateKey: Data(repeating: 7, count: 32)))
@@ -128,7 +130,8 @@ final class PeerSessionSASTests: XCTestCase {
             XCTAssertEqual(sd.display.count, 7)
             XCTAssertEqual(sd.code, sm.code)
             let est = try XCTUnwrap(d.established.first)
-            XCTAssertEqual(est.caps, ["app/1", "ring/1"])
+            // Mode v adds `vouch/1` itself (rule 1).
+            XCTAssertEqual(est.caps, mode == .v ? ["app/1", "ring/1", "vouch/1"] : ["app/1", "ring/1"])
             XCTAssertFalse(est.helloAuthenticated)
             // Nothing flows until the person confirms.
             do {
@@ -193,6 +196,89 @@ final class PeerSessionSASTests: XCTestCase {
         let est = try XCTUnwrap(a.established.first)
         XCTAssertFalse(est.helloAuthenticated)
         XCTAssertEqual(est.hello.label, "Caf\u{E9} TV")
+    }
+
+    /// §15.6: held host records are bounded by bytes (16 KiB) as well as by count.
+    func testHeldRecordsAreBoundedByBytes() async throws {
+        let d = Side(.v, .initiator)
+        let a = Side(.v, .responder)
+        await d.s.start()
+        await pump(d, a)
+        await d.s.confirmSas()
+        let big = Data(#"{"pad":""#.utf8) + Data(repeating: 0x61, count: 8000) + Data(#""}"#.utf8)
+        try await d.s.sendRecord(type: PeerRecordType.vouchReq, body: big)
+        await pump(d, a)
+        XCTAssertTrue(a.closed.isEmpty, "8 KB is held")
+        try await d.s.sendRecord(type: PeerRecordType.vouchReq, body: big)
+        await pump(d, a)
+        XCTAssertTrue(a.closed.isEmpty, "16 KB in two records is still within the bound")
+        let more = Data(#"{"pad":""#.utf8) + Data(repeating: 0x61, count: 400) + Data(#""}"#.utf8)
+        try await d.s.sendRecord(type: PeerRecordType.vouchReq, body: more)
+        await pump(d, a)
+        XCTAssertEqual(a.closed, [.closed(.peerBusy, byPeer: false)], "past 16 KiB held")
+        XCTAssertEqual(a.types, [])
+    }
+
+    private func helloEstablished(_ mode: PeerNoiseMode, _ hello: String) async throws -> (Side, PeerHello?) {
+        let a = Side(mode, .responder)
+        let tp = try await rawPeer(mode, to: a)
+        try await put(tp, a, PeerRecordType.hello, Data(hello.utf8))
+        return (a, a.established.first?.hello)
+    }
+
+    /// §15.6: `platform` is shown as sent only in [A-Za-z0-9 ._+-], 1 to 32 characters.
+    func testHelloPlatformIsShownOnlyInTheNarrowSet() async throws {
+        func platform(_ p: String) async throws -> String? {
+            let json = try String(
+                decoding: JSONSerialization.data(
+                    withJSONObject: ["platform": p, "app": "a", "maxMessage": 1_048_576]), as: UTF8.self)
+            return try await helloEstablished(.v, json).1?.platform
+        }
+        let ok = "Mac OS+X 14.5_a-b"
+        for good in [ok, "x", String(repeating: "a", count: 32)] {
+            let shown = try await platform(good)
+            XCTAssertEqual(shown, good)
+        }
+        for bad in [
+            "", String(repeating: "a", count: 33), "Mac<script>", "Caf\u{E9}", "a\nb", "a\u{202E}b", "a/b", "a%b",
+        ] {
+            let shown = try await platform(bad)
+            XCTAssertEqual(shown, "Unknown", bad)
+        }
+    }
+
+    /// §15.6: `app` is cleaned like `label` (NFC, controls and bidi stripped, 64 code points).
+    func testHelloAppIsCleanedLikeTheLabel() async throws {
+        func app(_ p: String) async throws -> String? {
+            let json = try String(
+                decoding: JSONSerialization.data(
+                    withJSONObject: ["platform": "t", "app": p, "maxMessage": 1_048_576]), as: UTF8.self)
+            return try await helloEstablished(.p, json).1?.app
+        }
+        let cleaned = try await app("  Cafe\u{301} \u{202E}Demo\u{0}  ")
+        XCTAssertEqual(cleaned, "Caf\u{E9} Demo")
+        let none = try await app("\u{202E}\u{0}  ")
+        XCTAssertEqual(none, "Unknown")
+        let long = try await app(String(repeating: "\u{1F600}", count: 100))
+        XCTAssertEqual(long?.unicodeScalars.count, 64)
+    }
+
+    /// §15.6: a HELLO in mode v or p is at most 4 KiB.
+    func testHelloOverFourKiBIsRefusedInModesVAndP() async throws {
+        func hello(padded to: Int) -> String {
+            let base = #"{"platform":"t","app":"a","maxMessage":1048576,"x":""#
+            return base + String(repeating: "a", count: to - base.utf8.count - 2) + #""}"#
+        }
+        for mode in [PeerNoiseMode.v, .p] {
+            let exact = hello(padded: 4096)
+            XCTAssertEqual(exact.utf8.count, 4096)
+            let (ok, helloOK) = try await helloEstablished(mode, exact)
+            XCTAssertNotNil(helloOK, "4096 bytes is within the bound")
+            XCTAssertTrue(ok.closed.isEmpty)
+            let (bad, none) = try await helloEstablished(mode, hello(padded: 4097))
+            XCTAssertNil(none)
+            XCTAssertEqual(bad.closed, [.closed(.peerBadFrame, byPeer: false)])
+        }
     }
 
     func testTheLimiterCountsFiveAMinuteOnAMonotonicClock() {
@@ -369,5 +455,143 @@ final class PeerSessionSASTests: XCTestCase {
         await d.s.start()
         await pump(d, a)
         XCTAssertTrue(d.types.isEmpty && a.types.isEmpty)
+    }
+
+    // MARK: Mode v hooks for the vouch (CC-15.S1)
+
+    func testModeVListsVouchItselfAndExposesTheOrderGuard() async throws {
+        let v = Side(.v, .initiator)
+        let p = Side(.p, .initiator)
+        XCTAssertEqual(v.s.vouch?.role, .requester)
+        XCTAssertEqual(Side(.v, .responder).s.vouch?.role, .approver)
+        XCTAssertNil(p.s.vouch)
+    }
+
+    func testHandshakeHashIsTheSameOnBothEndsOnceEstablished() async throws {
+        let d = Side(.v, .initiator)
+        let a = Side(.v, .responder)
+        do {
+            _ = try await d.s.handshakeHash()
+            XCTFail("before established")
+        } catch { XCTAssertEqual(error as? PeerChannelError, .notEstablished) }
+        await d.s.start()
+        await pump(d, a)
+        let h = try await d.s.handshakeHash()
+        XCTAssertEqual(h.count, 32)
+        let ah = try await a.s.handshakeHash()
+        XCTAssertEqual(h, ah)
+    }
+
+    func testHoldSasStopsAfterHelloAndStartSasSendsTheCommit() async throws {
+        let d = Side(.v, .initiator, holdSas: true)
+        let a = Side(.v, .responder)
+        await d.s.start()
+        await pump(d, a)
+        XCTAssertEqual(d.established.count, 1)
+        XCTAssertEqual(a.established.count, 1)
+        XCTAssertTrue(d.sas.isEmpty && a.sas.isEmpty)
+        XCTAssertTrue(d.closed.isEmpty && a.closed.isEmpty)
+        await d.s.startSas()
+        await pump(d, a)
+        XCTAssertEqual(try XCTUnwrap(d.sas.first).code, try XCTUnwrap(a.sas.first).code)
+        // A second start is refused and closes the session.
+        await d.s.startSas()
+        XCTAssertEqual(d.closed, [.closed(.peerNotAllowed, byPeer: false)])
+    }
+
+    func testChoosingOneOfTwoHeldApproversStartsTheSasOnThatSessionOnly() async throws {
+        let d1 = Side(.v, .initiator, holdSas: true)
+        let m1 = Side(.v, .responder)
+        let d2 = Side(.v, .initiator, holdSas: true)
+        let m2 = Side(.v, .responder)
+        await d1.s.start()
+        await d2.s.start()
+        await pump(d1, m1)
+        await pump(d2, m2)
+        await d1.s.startSas()
+        await pump(d1, m1)
+        await d2.s.close(.peerBye)
+        await pump(d2, m2)
+        XCTAssertEqual(m1.sas.count, 1)
+        XCTAssertEqual(m2.sas.count, 0)
+        XCTAssertEqual(m2.closed, [.closed(.peerBye, byPeer: true)])
+    }
+
+    func testStartSasIsRefusedEarlyWithoutHoldAndOutsideModeVInitiator() async throws {
+        let early = Side(.v, .initiator, holdSas: true)
+        await early.s.start()
+        await early.s.startSas()
+        XCTAssertEqual(early.closed, [.closed(.peerNotAllowed, byPeer: false)])
+        let plain = Side(.v, .initiator)
+        let a = Side(.v, .responder)
+        await plain.s.start()
+        await pump(plain, a)
+        await plain.s.startSas()
+        XCTAssertEqual(plain.closed, [.closed(.peerNotAllowed, byPeer: false)])
+        for (mode, role) in [(PeerNoiseMode.p, PeerChannel.Role.initiator), (.v, .responder)] {
+            XCTAssertThrowsError(
+                try PeerChannel(
+                    role: role, slug: "djdl", staticKey: PeerNoiseRawStaticKey(privateKey: rnd()),
+                    admission: role == .responder ? HandshakeLimiter() : nil, hello: (nil, "t", "a", nil),
+                    send: { _ in }, onEvent: { _ in }, mode: mode, holdSas: true)
+            ) { XCTAssertEqual($0 as? PeerChannelError, .mode) }
+        }
+    }
+
+    func testAPeerWithoutVouch1IsClosedPeerNotAllowedBeforeAnySasRecord() async throws {
+        let a = Side(.v, .responder)
+        let tp = try await rawPeer(.v, to: a, payload3: #"{"v":1,"caps":["app/1"]}"#)
+        try await put(tp, a, PeerRecordType.hello, helloBody)
+        XCTAssertTrue(a.established.isEmpty)
+        XCTAssertEqual(a.closed, [.closed(.peerNotAllowed, byPeer: false)])
+        // Its own HELLO, then CLOSE: no SAS record.
+        let types = try a.take().map { out -> Int in
+            let rec = try tp.receive.decrypt(ad: Data(), out)
+            return Int(rec[rec.startIndex]) << 8 | Int(rec[rec.startIndex + 1])
+        }
+        XCTAssertEqual(types, [PeerRecordType.hello, PeerRecordType.close])
+    }
+
+    /// M's 120 s code deadline restarts once when `SAS_COMMIT` arrives (§15.6, mode v): a session held while
+    /// D's person looked at the list keeps its whole 120 s after the choice.
+    func testTheApproversCodeDeadlineRestartsOnceAtSasCommit() async throws {
+        let d = Side(.v, .initiator, holdSas: true)
+        let a = Side(.v, .responder)
+        await d.s.start()
+        await pump(d, a)
+        a.clock.value = 100
+        d.clock.value = 100
+        await a.s.tick()
+        XCTAssertTrue(a.closed.isEmpty)
+        await d.s.startSas()
+        await pump(d, a)
+        // M's deadline is now 100 + 120 and D's too; neither fires at the original 120.
+        a.clock.value = 119
+        d.clock.value = 119
+        await a.s.tick()
+        await d.s.tick()
+        XCTAssertTrue(a.closed.isEmpty && d.closed.isEmpty)
+        let wa = await a.s.wakeIn()
+        let wd = await d.s.wakeIn()
+        XCTAssertEqual(wa, 101)
+        XCTAssertEqual(wd, 101)
+        a.clock.value = 220
+        await a.s.tick()
+        XCTAssertEqual(a.closed, [.closed(.peerTimeout, byPeer: false)])
+    }
+
+    /// The restart is once: a second `SAS_COMMIT` is out of order and closes, it never moves the deadline.
+    func testASecondSasCommitClosesAndDoesNotMoveTheDeadline() async throws {
+        let a = Side(.v, .responder)
+        let tp = try await rawPeer(.v, to: a)
+        try await put(tp, a, PeerRecordType.hello, helloBody)
+        let c = try PeerSAS.body(.c, PeerSAS.commit(Data(repeating: 1, count: 32)))
+        a.clock.value = 50
+        try await put(tp, a, PeerRecordType.sasCommit, c)
+        let w = await a.s.wakeIn()
+        XCTAssertEqual(w, 120)
+        a.clock.value = 60
+        try await put(tp, a, PeerRecordType.sasCommit, c)
+        XCTAssertEqual(a.closed, [.closed(.peerBadFrame, byPeer: false)])
     }
 }

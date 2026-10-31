@@ -128,6 +128,8 @@ class ConnectSession:
         self._bytes = 0
         self._paused = False
         self._closed: Optional[SessionClosed] = None
+        #: The peer's Noise static key (its agree key in mode a).
+        self.peer_static: Optional[bytes] = None
         self._on_message: List[Callable[[SessionMessage], None]] = []
         self._on_close: List[Callable[[SessionClosed], None]] = []
 
@@ -213,6 +215,14 @@ class ConnectSession:
                     self._on_close.remove(fn)
 
         return off
+
+    def revoke(self) -> None:
+        """The roster no longer lists the peer: close ``peer_revoked``. Internal; a host closes with
+        :meth:`close`."""
+        try:
+            self._link.close("peer_revoked")
+        except (RuntimeError, TimeoutError, concurrent.futures.TimeoutError):
+            pass
 
     def close(self, code: str = "peer_bye") -> None:
         """Close with ``peer_bye`` (or ``peer_busy``); the CLOSE record is sent first."""
@@ -331,6 +341,7 @@ def session_handlers(
         s = ConnectSession(
             link, e.peer_device_id, e.caps, e.hello, role, link.remote_address, path=path, budget=budget
         )
+        s.peer_static = e.remote_static
         box[0] = s
         if on_established is not None:
             on_established(s)

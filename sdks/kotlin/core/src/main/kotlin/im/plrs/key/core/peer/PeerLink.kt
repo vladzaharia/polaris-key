@@ -35,7 +35,7 @@ import java.io.IOException
 public const val HANDSHAKE_FRAME_MAX: Int = 16_384
 
 /** Bytes a link may hold unsent before it closes `peer_busy` (a peer that never reads). */
-public const val LINK_WRITE_CAP: Long = 8L * 1024 * 1024
+public const val LINK_WRITE_CAP: Long = 4L * 1024 * 1024
 
 /** Seconds from accept (or connect) to an admitted channel. */
 public const val HANDSHAKE_SECONDS: Double = 30.0
@@ -93,6 +93,13 @@ public class LinkHandlers<H>(
     public val onRingWanted: () -> Unit = {},
     public val onClosed: (SessionEvent.Closed) -> Unit = {},
     public val onEnded: () -> Unit = {},
+    /** Modes v and p: the code both screens show (CC-15). */
+    public val onSas: (PeerLinkPort, SessionEvent.Sas) -> Unit = { _, _ -> },
+    /**
+     * Modes v and p: the peer has no device id, so an established session is the transport and the HELLO, and
+     * the handshake deadline ends there. Mode a admits by certificate and leaves this false.
+     */
+    public val anonymous: Boolean = false,
 )
 
 /** The frame-and-event glue between one [PeerChannel] and one [PeerPipe]. */
@@ -151,7 +158,7 @@ public class PeerLink<H>(
         }
         deadline = scope.launch {
             delay((handshakeSeconds * MILLIS).toLong())
-            fail(HANDSHAKE_FAILED)
+            fail(PeerCloseCode.peer_timeout.name)
         }
     }
 
@@ -253,17 +260,22 @@ public class PeerLink<H>(
         }
     }
 
+    /**
+     * The link ends itself: the closing side names its reason (V5 15.6; a zero-length frame is
+     * `peer_bad_frame`, the handshake deadline `peer_timeout`). A CLOSE goes out only once the
+     * transport exists.
+     */
     private suspend fun fail(code: String) {
         if (ended) return
         // Not a live session: the channel has nothing to send.
         if (!open) finish(SessionEvent.Closed(code, false))
-        channel.close(PeerCloseCode.peer_bye)
+        channel.close(PeerCloseCode.entries.firstOrNull { it.name == code } ?: PeerCloseCode.peer_bye)
     }
 
     private fun onEvent(e: SessionEvent) {
         when (e) {
             is SessionEvent.Established -> {
-                if (e.peerDeviceId == null) return
+                if (e.peerDeviceId == null && !handlers.anonymous) return
                 deadline?.cancel()
                 deadline = null
                 open = true
@@ -278,7 +290,7 @@ public class PeerLink<H>(
 
             SessionEvent.RingWanted -> handlers.onRingWanted()
 
-            is SessionEvent.Sas -> Unit
+            is SessionEvent.Sas -> handlers.onSas(this, e)
 
             is SessionEvent.Closed -> finish(if (lost && !closing && !e.byPeer) SessionEvent.Closed("connection_lost", false) else e)
         }
