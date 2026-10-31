@@ -5,7 +5,7 @@
 import type { InspectedCollection } from "./protocol.js";
 import type { Row } from "./sqlRecords.js";
 
-type All = <T extends Row>(q: string) => T[];
+type All = <T extends Row>(q: string, ...b: (string | number)[]) => T[];
 
 export interface InspectTables {
   collections: InspectedCollection[];
@@ -103,4 +103,29 @@ export function inspectTables(all: All, hasSchema: boolean): InspectTables {
     ),
     uploadsOpen,
   };
+}
+
+/**
+ * The ids of a collection's live records after `after`, in id order, at most `limit`. Ids only:
+ * the values are read one by one by the caller (the console's values read, U-11a.2).
+ */
+export function liveRecordIds(
+  all: All,
+  hasSchema: boolean,
+  collection: string,
+  after: string,
+  limit: number,
+): string[] {
+  if (!hasSchema) return [];
+  const have = new Set(
+    all<{ name: string }>(`PRAGMA table_info("records")`).map((c) => c.name),
+  );
+  if (!["collection", "id", "deleted"].every((c) => have.has(c))) return [];
+  return all<{ id: string }>(
+    `SELECT id FROM records WHERE collection = ? AND deleted = 0 AND id > ?
+      ORDER BY id LIMIT ?`,
+    collection,
+    after,
+    limit,
+  ).map((r) => r.id);
 }

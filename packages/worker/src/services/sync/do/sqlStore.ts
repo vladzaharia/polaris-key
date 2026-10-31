@@ -41,7 +41,11 @@ import {
   settle,
   type Row,
 } from "./sqlRecords.js";
-import { inspectTables, type InspectTables } from "./sqlInspect.js";
+import {
+  inspectTables,
+  liveRecordIds,
+  type InspectTables,
+} from "./sqlInspect.js";
 import type {
   ClientRecord,
   FileChunkRef,
@@ -887,6 +891,17 @@ export class SqlStore implements SyncStore {
   /** The console's per-collection counters (U-11a.1); the queries are `sqlInspect.ts`'s. */
   inspectTables(): InspectTables {
     return inspectTables(this.all.bind(this), this.hasSchema());
+  }
+
+  /** The ids of a collection's live records after `after`, in id order (the console's values read). */
+  liveRecordIds(collection: string, after: string, limit: number): string[] {
+    return liveRecordIds(
+      this.all.bind(this),
+      this.hasSchema(),
+      collection,
+      after,
+      limit,
+    );
   }
 
   private hydrate(r: SettingRow, deleted: boolean): StoredSetting {
