@@ -100,12 +100,23 @@ export const SYNC_CSS = `
    size): two panes both starting at the top. Left: title, lede and the cards, stacked. Right: the
    choices and Cancel, in the DOM order they already have. Taller windows and large text keep the
    one column, versions before choices. */
-@media (max-height: 480px) and (min-width: 36rem) {
+@media (max-height: 480px) {
+  /* The container query counts rem at the page's root size, so 200 % text keeps one column. */
+  @container pk (min-width: 40rem) {
+  .pk-root .stage[data-kind="screen"]:has(> .card > .save-cards) {
+    padding-inline: var(--pk-space-1);
+    padding-block: var(--pk-space-2);
+    align-content: start;
+  }
   .pk-root .stage[data-kind="screen"] .card:has(> .save-cards) {
+    inline-size: min(48rem, 100%);
+    padding-inline: var(--pk-space-4);
+    padding-block: var(--pk-space-3);
+    row-gap: var(--pk-space-2);
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto auto 1fr;
-    column-gap: var(--pk-space-5, 1.5rem);
+    column-gap: var(--pk-space-3);
     align-items: start;
     align-content: start;
   }
@@ -116,8 +127,10 @@ export const SYNC_CSS = `
     grid-template-columns: minmax(0, 1fr);
   }
   .pk-root .stage[data-kind="screen"] .card:has(> .save-cards) > .actions[data-part="actions"] {
+    gap: var(--pk-space-2);
     grid-column: 2;
     grid-row: 1 / -1;
+  }
   }
 }
 /* Delete it here too removes a save: the danger outline, quieter than a solid confirm. */

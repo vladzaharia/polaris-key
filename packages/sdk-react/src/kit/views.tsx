@@ -780,7 +780,7 @@ function strip(c: KitCtx, layout: Layout, kind: "banner" | "toast"): ReactNode {
       <div className="texts">
         {lines.map((k, i) => (
           <span
-            key={k}
+            key={labelLive ? i : k}
             className={i === 0 ? "label" : "meta"}
             data-key={k}
             role={labelLive && i === 0 ? role : undefined}
@@ -826,7 +826,7 @@ function inline(c: KitCtx, layout: Layout): ReactNode {
       {statusGlyph(c.view)}
       {lines.map((k, i) => (
         <span
-          key={k}
+          key={i}
           className={p.titles.includes(k) ? "label" : undefined}
           data-key={k}
           role={
