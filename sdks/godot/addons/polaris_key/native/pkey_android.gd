@@ -539,6 +539,58 @@ func integrity_token(cloud_project_number: String, request_hash: String) -> PKey
 	return _wrap(PKeyConstants.Feature.DEVICES_ATTEST, await call_async({"op": "integrity_token", "cloudProjectNumber": cloud_project_number, "requestHash": request_hash}, 60.0))
 
 
+# ── Google sign-in (I-48.5b; the Google provider drives these) ───────────────────────────────
+
+## Whether the Credential Manager ops can run in this build: the play flavour with the libraries in
+## the export (`googleId` in the plugin's capabilities).
+func google_id_available() -> bool:
+	return is_available() and _cap("googleId") == true
+
+
+## Why Google sign-in cannot run here in words, or "" when it can: `outlet` (the direct flavour),
+## `dependency` (the export carries no `androidx.credentials`) or the plugin's own unsupported reason.
+func google_id_unavailable_reason() -> String:
+	var why := unsupported_reason()
+	if why != "":
+		return why
+	if _cap("googleId") == true:
+		return ""
+	return PKeyConstants.UnsupportedReason.OUTLET if str(_cap("flavor")) == "direct" else PKeyConstants.UnsupportedReason.DEPENDENCY
+
+
+## Rung 3: a Google ID token for `nonce` with no UI when exactly one authorised account exists. On
+## success detail.token is the ID token (a secret). A failure is `platform-error` with detail.error
+## `cancelled` or `unavailable` (detail.reason: a fixed word such as `no-credential`, `no-activity`,
+## `refused`, `dependency`, `outlet`).
+func gid_silent(nonce: String, server_client_id: String) -> PKeyResult:
+	return await _gid("gid_silent", nonce, server_client_id)
+
+
+## Rung 4: the account chooser sheet.
+func gid_sheet(nonce: String, server_client_id: String) -> PKeyResult:
+	return await _gid("gid_sheet", nonce, server_client_id)
+
+
+## The sign-in form's "Sign in with Google" button flow.
+func gid_provider(nonce: String, server_client_id: String) -> PKeyResult:
+	return await _gid("gid_provider", nonce, server_client_id)
+
+
+## Forget Credential Manager's credential state (sign-out): detail.cleared.
+func gid_sign_out() -> PKeyResult:
+	var gate := availability(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN)
+	if not gate.ok:
+		return gate
+	return _wrap(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, await call_async({"op": "gid_sign_out"}, 30.0))
+
+
+func _gid(op: String, nonce: String, server_client_id: String) -> PKeyResult:
+	var gate := availability(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN)
+	if not gate.ok:
+		return gate
+	return _wrap(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, await call_async({"op": op, "nonce": nonce, "serverClientId": server_client_id}, 300.0))
+
+
 static func _apk_query(op: String, path: String, sha256: String, version_code: int) -> Dictionary:
 	var q := {"op": op, "path": path, "sha256": sha256}
 	if version_code >= 0:

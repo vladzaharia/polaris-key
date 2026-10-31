@@ -44,6 +44,12 @@ var garbage_for := ""
 ## success, which answers `token:<cloudProjectNumber>:<requestHash>`).
 var integrity_error := 0
 
+## Google sign-in (I-48.5a): whether the export carries the Credential Manager libraries, the next
+## gid_* answer (without ev/req), and how often gid_sign_out ran.
+var google_libraries := true
+var google_result := {"ok": true, "token": "eyJ.google.token"}
+var google_signed_out := 0
+
 var calls: Array[Dictionary] = []
 var _queue: Array[Dictionary] = []
 var _req := 0
@@ -88,7 +94,7 @@ func cmd(json: String) -> String:
 			_queue.clear()
 			return JSON.stringify({"ok": true, "dropped": 0, "events": out})
 		"capabilities":
-			return JSON.stringify({"ok": true, "protocol": 1, "flavor": flavor, "sdk": 34, "package": "gg.vlad.diceroll", "keystore": true, "inAppUpdates": flavor == "play", "assetPacks": flavor == "play", "packageInstaller": flavor == "direct", "playIntegrity": flavor == "play"})
+			return JSON.stringify({"ok": true, "protocol": 1, "flavor": flavor, "sdk": 34, "package": "gg.vlad.diceroll", "keystore": true, "inAppUpdates": flavor == "play", "assetPacks": flavor == "play", "packageInstaller": flavor == "direct", "playIntegrity": flavor == "play", "googleId": flavor == "play" and google_libraries})
 		"install_source":
 			return JSON.stringify({"ok": true, "installer": installer, "initiator": installer, "initiatorCertSha256": null, "packageSource": 0, "updateOwner": null, "selfUpdated": false, "sdk": 34})
 		"ks_get":
@@ -112,6 +118,13 @@ func cmd(json: String) -> String:
 			return JSON.stringify({"ok": true, "existed": existed})
 		"ks_info":
 			return JSON.stringify({"ok": true, "alias": "pkey:%s:device" % q.get("product"), "backend": "AndroidKeyStore", "exists": true, "securityLevel": 1})
+		"gid_silent", "gid_sheet", "gid_provider":
+			if flavor != "play" or not google_libraries:
+				return _later(op, {"ok": false, "error": "unavailable", "reason": "outlet" if flavor != "play" else "dependency"})
+			return _later(op, google_result.duplicate(true))
+		"gid_sign_out":
+			google_signed_out += 1
+			return _later(op, {"ok": true, "cleared": true})
 		"iau_check":
 			if check_fails:
 				return _later(op, {"ok": false, "error": "unavailable", "exception": "com.google.android.play.core.appupdate.internal.zzy", "message": "Failed to bind to the service.", "installErrorCode": null})

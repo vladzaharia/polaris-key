@@ -82,6 +82,9 @@ func _export_begin(_features: PackedStringArray, _is_debug: bool, _path: String,
 	var raw = _flavor_raw()
 	for w in A.warnings(raw, _outlet_kind(), _gradle_build(), A.missing_libraries(A.canonical(raw))):
 		push_warning("Polaris Key Android plugin: %s" % w)
+	var cw := A.credentials_warning(_flavor(), Engine.get_version_info())
+	if cw != "":
+		push_warning("Polaris Key Android plugin: %s" % cw)
 	var err := A.error(raw, _outlet_kind())
 	if err != "":
 		push_error("Polaris Key Android plugin: %s" % err)
@@ -96,7 +99,7 @@ func _get_android_dependencies(_platform: EditorExportPlatform, _debug: bool) ->
 	if A.error(_flavor_raw(), _outlet_kind()) != "":
 		push_error("Polaris Key Android plugin: %s" % A.error(_flavor_raw(), _outlet_kind()))
 		return PackedStringArray([A.REFUSAL_DEPENDENCY])
-	return A.dependencies(_flavor())
+	return A.dependencies(_flavor(), Engine.get_version_info())
 
 
 func _get_android_manifest_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:

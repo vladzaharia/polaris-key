@@ -26,9 +26,22 @@ const DEFAULT_FLAVOR := "play"
 ## Where build.sh installs the AARs, relative to res://addons/ (what _get_android_libraries wants).
 const BIN := "polaris_key/native/android/bin"
 ## Play Core: exactly the libraries polaris-key-platform-play's POM names (sdks/kotlin/gradle/
-## libs.versions.toml), Play Integrity included (P6-02); sdks/kotlin/tools/check_publication.sh fails
+## libs.versions.toml), Play Integrity included (P6-02), and the Credential Manager libraries
+## (I-48.5b); sdks/kotlin/tools/check_publication.sh fails
 ## when this list and that POM differ (P6-10).
-const PLAY_DEPENDENCIES := ["com.google.android.play:app-update:2.1.0", "com.google.android.play:asset-delivery:2.3.0", "com.google.android.play:integrity:1.6.0"]
+const PLAY_DEPENDENCIES := [
+	"com.google.android.play:app-update:2.1.0",
+	"com.google.android.play:asset-delivery:2.3.0",
+	"com.google.android.play:integrity:1.6.0",
+	"androidx.credentials:credentials:1.6.0",
+	"androidx.credentials:credentials-play-services-auth:1.6.0",
+	"com.google.android.libraries.identity.googleid:googleid:1.2.0",
+]
+## The Credential Manager part of PLAY_DEPENDENCIES (I-48.5b: Google sign-in), by group.
+const CREDENTIAL_GROUPS := ["androidx.credentials", "com.google.android.libraries.identity.googleid"]
+## credentials 1.6.0 declares minCompileSdk 35: Godot's Android build template compiles against 35
+## from 4.4 on, so older engines get no Credential Manager (Google sign-in answers `dependency`).
+const CREDENTIALS_MIN_ENGINE := [4, 4]
 const DIRECT_PERMISSIONS := ["android.permission.REQUEST_INSTALL_PACKAGES", "android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"]
 ## The outlet kinds each flavour suits (a mismatch only warns: the stamp is the product's call).
 const PLAY_KINDS := ["play", "play-testing"]
@@ -54,9 +67,40 @@ static func libraries(flavor: String) -> PackedStringArray:
 	])
 
 
-## The Maven coordinates `flavor` needs: Play Core for play, nothing for direct.
-static func dependencies(flavor: String) -> PackedStringArray:
-	return PackedStringArray(PLAY_DEPENDENCIES) if flavor == "play" else PackedStringArray()
+## The Maven coordinates `flavor` needs: Play Core and Credential Manager for play, nothing for
+## direct. `engine` is Engine.get_version_info() of the exporting editor ({} means a current one):
+## below Godot 4.4 the Credential Manager libraries are left out.
+static func dependencies(flavor: String, engine := {}) -> PackedStringArray:
+	if flavor != "play":
+		return PackedStringArray()
+	var out := PackedStringArray()
+	for d in PLAY_DEPENDENCIES:
+		if credentials_supported(engine) or not is_credential_dependency(d):
+			out.append(d)
+	return out
+
+
+## Whether a coordinate (`group:artifact:version`) is one of the Credential Manager libraries.
+static func is_credential_dependency(coordinate: String) -> bool:
+	return CREDENTIAL_GROUPS.has(coordinate.get_slice(":", 0))
+
+
+## Whether the engine's Android build template compiles against API 35 or later ({} is a current one).
+static func credentials_supported(engine := {}) -> bool:
+	if engine.is_empty():
+		return true
+	var major := int(engine.get("major", 0))
+	var minor := int(engine.get("minor", 0))
+	return major > CREDENTIALS_MIN_ENGINE[0] or (major == CREDENTIALS_MIN_ENGINE[0] and minor >= CREDENTIALS_MIN_ENGINE[1])
+
+
+## A warning when a play export leaves Credential Manager out for an old engine ("" otherwise).
+static func credentials_warning(flavor: String, engine := {}) -> String:
+	if flavor == "play" and not credentials_supported(engine):
+		var why := "Godot %s.%s compiles Android against an API below 35, which androidx.credentials 1.6.0 needs"
+		var effect := "this export carries no Credential Manager, so Google sign-in answers dependency. Use Godot 4.4 or later."
+		return "%s: %s" % [why % [engine.get("major", "?"), engine.get("minor", "?")], effect]
+	return ""
 
 
 ## The <manifest> children for `flavor`: the two install permissions for direct, nothing else.

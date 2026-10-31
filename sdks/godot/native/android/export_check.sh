@@ -6,10 +6,10 @@
 #   direct  APK, versionCodes 1 and 2: the merged manifest has REQUEST_INSTALL_PACKAGES and
 #           UPDATE_PACKAGES_WITHOUT_USER_ACTION (and not ENFORCE_UPDATE_OWNERSHIP), the
 #           PolarisKeyAndroid v2 meta-data and the install-status receiver; the dex has the direct
-#           classes and no Play Core
+#           classes and no Play Core, no androidx/credentials and no googleid
 #   play    AAB with one on-demand asset pack (`probeod`, a 2 MB data-only .pck), then a
 #           `bundletool build-apks --local-testing` set: no install permission, no session commit,
-#           no direct class
+#           no direct class, and androidx/credentials plus googleid packaged
 #
 # With DEVICE=<adb serial> it also runs the probe there (an emulator is enough; no Play Store, no
 # Play Console):
@@ -207,6 +207,7 @@ check_apk() { # check_apk <apk> <flavor>
     echo "$perms" | grep -q ENFORCE_UPDATE_OWNERSHIP && fail "direct: ENFORCE_UPDATE_OWNERSHIP present" || ok "direct: no ENFORCE_UPDATE_OWNERSHIP"
     echo "$manifest" | grep -q 'im.plrs.key.platform.direct.InstallStatusReceiver' && ok "direct: install-status receiver" || fail "direct: no receiver"
     [ "$(dex_has "$apk" 'Lcom/google/android/play/')" = 0 ] && ok "direct: no Play Core" || fail "direct: Play Core present"
+    [ "$(dex_has "$apk" 'Landroidx/credentials/|Lcom/google/android/libraries/identity/googleid/')" = 0 ] && ok "direct: no Credential Manager or googleid" || fail "direct: Credential Manager or googleid present"
   else
     for p in REQUEST_INSTALL_PACKAGES UPDATE_PACKAGES_WITHOUT_USER_ACTION ENFORCE_UPDATE_OWNERSHIP; do
       echo "$perms" | grep -q "android.permission.$p" && fail "play: $p present" || ok "play: no $p"
@@ -215,6 +216,8 @@ check_apk() { # check_apk <apk> <flavor>
     [ "$(dex_has "$apk" "Class descriptor *: 'Lim/plrs/key/platform/direct/")" = 0 ] && ok "play: no direct class" || fail "play: direct class present"
     [ "$(dex_has "$apk" "Class descriptor *: 'Lim/plrs/key/platform/play/InAppUpdates;'")" = 1 ] && ok "play: In-App Updates packaged" || fail "play: In-App Updates missing"
     [ "$(dex_has "$apk" "Class descriptor *: 'Lcom/google/android/play/core/integrity/StandardIntegrityManager;'")" = 1 ] && ok "play: the Play Integrity library packaged" || fail "play: the Play Integrity library missing (PlayIntegrity would not link)"
+    [ "$(dex_has "$apk" "Class descriptor *: 'Landroidx/credentials/CredentialManager;'")" = 1 ] && ok "play: androidx/credentials packaged" || fail "play: androidx/credentials missing (GoogleSignIn would not link)"
+    [ "$(dex_has "$apk" "Class descriptor *: 'Lcom/google/android/libraries/identity/googleid/GetGoogleIdOption;'")" = 1 ] && ok "play: googleid packaged" || fail "play: googleid missing"
   fi
 }
 
