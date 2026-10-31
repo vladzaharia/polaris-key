@@ -527,7 +527,8 @@ describe("saves, the transfer handle", () => {
     await until(hold.held);
     t.pause();
     hold.release();
-    await new Promise((res) => setTimeout(res, 50));
+    // The held put settles first; wait for that rather than a fixed delay a busy runner can outlast.
+    await until(() => t.state !== "running");
     expect(t.state).toBe("paused");
     const sent = r.server.chunkPuts.length;
     t.resume();
