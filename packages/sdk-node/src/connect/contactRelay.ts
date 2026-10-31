@@ -62,6 +62,8 @@ const HANDSHAKE_MS = 30_000;
 const MAX_SESSION_ID = 0xffffffff;
 const ENDED_MEMORY = 64;
 const MAX_ROOM_SESSIONS = 4;
+/** First messages held before MEMBERS names the peer (WIRE-CONTRACT-V5 §15.7). */
+const MAX_DEFERRED = 8;
 /** Contact tickets are limited to 30 an hour per device (§15.7): back off in minutes. */
 const BACKOFF_BASE_MS = 5_000;
 const BACKOFF_MAX_MS = 600_000;
@@ -205,6 +207,8 @@ export class ContactRoom {
   #out: RelayOutbox | null = null;
   #own: Uint8Array | null = null;
   #peerAlias: Uint8Array | null = null;
+  /** First messages that arrived before MEMBERS named the peer (at most MAX_DEFERRED), judged on MEMBERS. */
+  #deferred: { from: Uint8Array; session: number; noise: Uint8Array }[] = [];
   #links = new Map<string, RoomLink>();
   #ended: string[] = [];
   #waiters: { resolve: () => void; reject: (e: RelayError) => void }[] = [];
@@ -502,6 +506,7 @@ export class ContactRoom {
         out.clear();
         if (this.#out === out) this.#out = null;
         this.#peerAlias = null;
+        this.#deferred = [];
         this.#members = [];
         for (const l of [...this.#links.values()]) l.lost();
         resolve(code);
@@ -565,6 +570,10 @@ export class ContactRoom {
         const peer = m.devices.find((d) => hex(d) !== hex(own)) ?? null;
         this.#peerAlias = peer;
         for (const f of [...this.#onMembers]) f();
+        const held = this.#deferred;
+        this.#deferred = [];
+        for (const h of held)
+          await this.#recv(h.from, h.session, h.noise, false);
         return;
       }
       case "gone": {
@@ -607,6 +616,7 @@ export class ContactRoom {
     from: Uint8Array,
     session: number,
     noise: Uint8Array,
+    canDefer = true,
   ): Promise<void> {
     const key = `${hex(from)}:${session}`;
     const known = this.#links.get(key);
@@ -618,7 +628,16 @@ export class ContactRoom {
     const own = await this.#ownAlias();
     // The room stamps `from`; one that is this device's own alias cannot be the peer.
     if (hex(from) === hex(own)) return;
-    if (this.#peerAlias === null) this.#peerAlias = from;
+    // The peer is whom MEMBERS says, never whom a first message claims: hold it (bounded) until MEMBERS.
+    const peer = this.#peerAlias;
+    if (peer === null) {
+      if (canDefer && this.#deferred.length < MAX_DEFERRED) {
+        this.#deferred.push({ from, session, noise });
+        this.#sendEnv({ op: "list" });
+      }
+      return;
+    }
+    if (hex(from) !== hex(peer)) return;
     const id = await this.#identity().catch(() => null);
     if (id === null) return;
     const live = [...this.#links.values()].filter((l) => !l.ended).length;

@@ -519,6 +519,37 @@ describe("mode c through the contact room", () => {
     expect(w.rooms.sentTo().length).toBeGreaterThan(0);
   });
 
+  it("holds a first message that arrives before MEMBERS and judges it on MEMBERS: a stranger is never seated as the peer", async () => {
+    const w = await world();
+    await link(w);
+    await w.a.cloudConnect.start(relay(w.rooms));
+    await until(() => w.rooms.sockets.length === 1);
+    await until(() => w.rooms.received.some((r) => r.msg.op === "list"));
+    const lists = () =>
+      w.rooms.received.filter((r) => r.msg.op === "list").length;
+    const before = lists();
+    // The room has not named a peer yet (it holds this device only); a message from an alias that
+    // MEMBERS never names arrives first.
+    w.rooms.sockets[0]!.deliver({
+      op: "recv",
+      from: new Uint8Array(24).fill(7),
+      session: 5,
+      noise: new Uint8Array(48).fill(1),
+    });
+    // It is held and MEMBERS is asked for (a repeat of the same message does not grow the queue past 8).
+    for (let i = 0; i < 12; i++)
+      w.rooms.sockets[0]!.deliver({
+        op: "recv",
+        from: new Uint8Array(24).fill(7),
+        session: 6 + i,
+        noise: new Uint8Array(48).fill(1),
+      });
+    await until(() => lists() > before);
+    // The answer does not name the stranger, so nothing is answered and no session opens.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(w.rooms.received.some((r) => r.msg.op === "send")).toBe(false);
+  });
+
   it("falls back from the LAN to the contact room when the contact was not seen on the network", async () => {
     const w = await world();
     const { idOfA } = await link(w);
