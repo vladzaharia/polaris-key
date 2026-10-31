@@ -39,7 +39,15 @@ internal fun saveConflictScreen(inputs: KitInputs): KitScreen {
 
         "kept" -> {
             val keep = conflict.string("keep") ?: "local"
-            val key = KEPT_KEYS.getValue(if (keep == "remote" && gone) "deleted" else if (keep in KEPT_KEYS) keep else "local")
+            val key = KEPT_KEYS.getValue(
+                if (keep == "remote" && gone) {
+                    "deleted"
+                } else if (keep in KEPT_KEYS) {
+                    keep
+                } else {
+                    "local"
+                },
+            )
             screen(
                 KitComponent.saveConflict,
                 "kept",
@@ -80,7 +88,13 @@ internal fun saveConflictScreen(inputs: KitInputs): KitScreen {
                         device != null -> context.line("saveConflict.otherDevice", mapOf("device" to CopyArgument.Text(device)))
                         else -> context.line("saveConflict.otherUnknown")
                     },
-                    if (!gone && remoteWhen != null) context.line("saveConflict.savedOther", mapOf("when" to CopyArgument.Text(remoteWhen))) else null,
+                    if (!gone &&
+                        remoteWhen != null
+                    ) {
+                        context.line("saveConflict.savedOther", mapOf("when" to CopyArgument.Text(remoteWhen)))
+                    } else {
+                        null
+                    },
                     context.line("saveConflict.keepThis"),
                     context.line(if (gone) "saveConflict.acceptDelete" else "saveConflict.keepOther"),
                     if (!gone) context.line("saveConflict.keepBoth") else null,
