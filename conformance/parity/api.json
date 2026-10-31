@@ -3821,7 +3821,8 @@
           "planned": "U-23"
         },
         "godot": {
-          "planned": "U-23"
+          "shape": "property",
+          "reason": "a property holding the saves (PKeySaves)"
         }
       },
       "layer": "client"
@@ -3845,7 +3846,7 @@
           "planned": "U-23"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.list"
         }
       },
       "layer": "client"
@@ -3875,7 +3876,7 @@
           "planned": "U-23"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.read"
         }
       },
       "layer": "client"
@@ -3909,7 +3910,7 @@
           "planned": "U-23"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.write"
         }
       },
       "layer": "client"
@@ -3939,7 +3940,7 @@
           "planned": "U-23"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.delete"
         }
       },
       "layer": "client"
@@ -3969,7 +3970,7 @@
           "planned": "U-23"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.revisions"
         }
       },
       "layer": "client"
@@ -3992,9 +3993,7 @@
         "kotlin": {
           "planned": "U-23"
         },
-        "godot": {
-          "planned": "U-23"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4017,7 +4016,7 @@
           "planned": "U-23"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeyTransfer.pause"
         }
       },
       "layer": "client"
@@ -4041,7 +4040,7 @@
           "planned": "U-23"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeyTransfer.resume"
         }
       },
       "layer": "client"
@@ -4065,7 +4064,7 @@
           "planned": "U-23"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeyTransfer.cancel"
         }
       },
       "layer": "client"
@@ -4090,7 +4089,9 @@
           "planned": "U-23"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "client.event",
+          "shape": "signal",
+          "reason": "Godot observes the one event signal, kind cloudSync (type transferProgress, transferDone, transferFailed)"
         }
       },
       "layer": "client"

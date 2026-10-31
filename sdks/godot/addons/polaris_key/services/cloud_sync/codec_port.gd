@@ -33,5 +33,16 @@ func seal_push(_body: Dictionary, _routes: Array) -> Dictionary:
 	return {"ok": false}
 
 
+## The id a record travels under in end-to-end mode (§13.10.2): blinded under the root. "" while locked.
+func blind_record(_collection: String, _id: String) -> String:
+	return ""
+
+
+## Hands the current root to `fn` (a Callable(root) -> Variant); null while locked. How the saves' file
+## codec gets the key it seals files under, without the root leaving the ring.
+func with_root(_fn: Callable) -> Variant:
+	return null
+
+
 func open_pull(_body: Dictionary, _mutations: Variant, _aliases: Variant, _open_keys: Array, _record_keys: Array = []) -> Dictionary:
 	return {"ok": false}

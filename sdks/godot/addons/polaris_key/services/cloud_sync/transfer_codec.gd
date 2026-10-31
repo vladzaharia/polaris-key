@@ -14,6 +14,66 @@ extends RefCounted
 ## Every opener answers `{ok: true, plain}` or `{ok: false, reason}`. The root of an E2e codec is never put
 ## in a result, a message or a log line.
 
+## A codec whose key is the key ring's. Every call and every stream piece asks `is_locked` first; once the
+## ring has locked it drops the inner codec (and the root in it), answers nothing usable (an empty result
+## or `{ok: false, reason: "locked"}`) and sets `tripped`, which the saves layer reads to report
+## `sync-locked` rather than a file error. Nothing after the lock is sealed under a zeroed or stale root.
+class Guarded:
+	extends RefCounted
+	var enc := "e2e"
+	var tripped := false
+	var _inner: Object
+	var _is_locked: Callable
+
+	func _init(inner: Object, is_locked: Callable) -> void:
+		_inner = inner
+		_is_locked = is_locked
+		enc = inner.enc
+
+	func _to_string() -> String:
+		return "GuardedFileCodec(locked=%s)" % locked()
+
+	## True once the ring has locked (and from then on, for good).
+	func locked() -> bool:
+		if _inner == null:
+			return true
+		if _is_locked.is_valid() and _is_locked.call():
+			tripped = true
+			_inner = null
+			return true
+		return false
+
+	func chunk_id(plain: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray() if locked() else _inner.chunk_id(plain)
+
+	func chunk_object_bytes(plain_len: int) -> int:
+		return -1 if locked() else _inner.chunk_object_bytes(plain_len)
+
+	func seal_chunk(id: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray() if locked() else _inner.seal_chunk(id, plain)
+
+	func open_chunk(id: PackedByteArray, obj: PackedByteArray) -> Dictionary:
+		return {"ok": false, "reason": "locked"} if locked() else _inner.open_chunk(id, obj)
+
+	func stored_size(plain_size: int) -> int:
+		return -1 if locked() else _inner.stored_size(plain_size)
+
+	func plain_size(stored: int) -> int:
+		return -1 if locked() else _inner.plain_size(stored)
+
+	func seal_manifest(plain: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray() if locked() else _inner.seal_manifest(plain)
+
+	func open_manifest(stored: PackedByteArray) -> Dictionary:
+		return {"ok": false, "reason": "locked"} if locked() else _inner.open_manifest(stored)
+
+	func seal_whole(plain: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray() if locked() else _inner.seal_whole(plain)
+
+	func open_whole(stored: PackedByteArray) -> Dictionary:
+		return {"ok": false, "reason": "locked"} if locked() else _inner.open_whole(stored)
+
+
 const SERVER_CHUNK_MAX_STORED_BYTES := 1048576 + 30
 const SERVER_OBJECT_VERSION := 0x00
 

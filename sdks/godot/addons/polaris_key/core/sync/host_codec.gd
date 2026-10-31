@@ -61,6 +61,16 @@ func attach(listener: Callable) -> Callable:
 	return _ring.attach(listener)
 
 
+## The id a record travels under (§13.10.2): blinded under the root. "" while locked.
+func blind_record(collection: String, id: String) -> String:
+	return _ring.codec.blind("record", collection, id) if _ring != null else ""
+
+
+## Hands the current root to `fn` (a Callable(root) -> Variant); null while locked.
+func with_root(fn: Callable) -> Variant:
+	return _ring.codec.with_root(fn) if _ring != null else null
+
+
 func seal_push(body: Dictionary, routes: Array) -> Dictionary:
 	return seal_push_with(body, _ring.codec if _ring != null else null, routes)
 

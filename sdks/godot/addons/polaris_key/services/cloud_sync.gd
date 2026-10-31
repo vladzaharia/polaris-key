@@ -8,6 +8,11 @@ extends RefCounted
 ##   PolarisKey.event("cloudSync", d)  the machine's events, in order; `d.type` is the machine's name
 ##                                     (`signedOut`, `unsyncedData`, `signInOffered`, `change`,
 ##                                     `rejected`, `purgeFailed`), other keys snake_case, keys only
+##   PolarisKey.cloud_sync.saves       the synced saves (U-23; PKeySaves, services/cloud_sync/saves.gd): list, read,
+##                                     write, resolve, delete, revisions
+##   PolarisKey.cloud_sync.transfers() the saves being written now (PKeyTransfer handles)
+##                                     and, on the same stream, `transferProgress`, `transferDone` and
+##                                     `transferFailed` (a cancelled write is `transferDone` with state "cancelled")
 ##   PolarisKey.config.set_value / clear / setting(k).sync()   routed through the machine while a
 ##                                     person is signed in
 ##
@@ -40,6 +45,11 @@ const Host := preload("res://addons/polaris_key/services/cloud_sync/host.gd")
 const Transport := preload("res://addons/polaris_key/services/cloud_sync/transport.gd")
 const CodecPort := preload("res://addons/polaris_key/services/cloud_sync/codec_port.gd")
 const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
+const Transfer := preload("res://addons/polaris_key/services/cloud_sync/transfer.gd")
+const TransferCodec := preload("res://addons/polaris_key/services/cloud_sync/transfer_codec.gd")
+const FilesTransport := preload("res://addons/polaris_key/services/cloud_sync/files_transport.gd")
+const SavesRecords := preload("res://addons/polaris_key/services/cloud_sync/saves_records.gd")
+const Journal := preload("res://addons/polaris_key/services/cloud_sync/journal.gd")
 
 ## The reasons the machine leaves a principal, each of which drops the key ring.
 const FORGETTING := ["signOut", "accountRequired", "subjectChanged"]
@@ -49,6 +59,8 @@ const CHAIN_WAIT_MS := 10000
 var before_leave: Callable = Callable()
 ## The host node (a child of the autoload), or null before `bind`.
 var host: Node = null
+## The synced saves (PKeySaves), or null before `bind`.
+var saves: PKeySaves = null
 
 var _core: PKeyCore
 var _config: PKeyConfig
@@ -67,6 +79,11 @@ var _queue: Array = []
 var _running := false
 var _closed := false
 var _port := _Port.new()
+var _journal: Object = null
+## Held here: a Callable on a RefCounted does not keep it alive.
+var _saves_port: _SavesPort = null
+var _cache: Object = null
+var _cache_for: Variant = null
 
 
 ## Build the host over this Core. `emit` is `func(data: Dictionary)`: one cloudSync event.
@@ -108,11 +125,22 @@ func bind(p_core: PKeyCore, sdk: Node, p_config: PKeyConfig, p_keyring: Object, 
 		"encryption": opts.cloud_sync_encryption,
 		"catalog": null,
 		"aliases": opts.cloud_sync_aliases,
+		"saves": {
+			"delta": opts.cloud_sync_saves_delta,
+			"max_bytes": opts.cloud_sync_saves_max_bytes if opts.cloud_sync_saves_max_bytes > 0 else null,
+			"save_format_version": opts.cloud_sync_save_format_version,
+		},
 	})
 	_port.set_api(self)
+	_build_saves()
 
 
 # ── What app code calls ───────────────────────────────────────────────────────────────────────
+
+
+## The saves being written now (PKeyTransfer handles), oldest first.
+func transfers() -> Array:
+	return saves.transfers() if saves != null else []
 
 
 ## The machine's status. `local` before Cloud Sync has started. The typed `product` N/A when the
@@ -139,6 +167,97 @@ func flush() -> PKeyResult:
 	if host != null and host.is_started():
 		await host.flush()
 	return status()
+
+
+# ── The saves ─────────────────────────────────────────────────────────────────────────────────
+
+
+func _build_saves() -> void:
+	var port := _SavesPort.new()
+	port.set_api(self)
+	_saves_port = port
+	var tr := FilesTransport.make_transport(host, _core.local_only)
+	var transport := FilesTransport.new(tr, port.request_context)
+	_journal = Journal.Files.new(host.state_dir(), host.sealer())
+	var engine := Transfer.new(transport, _journal)
+	# A save may wait out a long throttle.
+	engine.max_retry_after = float(FilesTransport.RETRY_AFTER_CAP)
+	var records := SavesRecords.new(host, port.blind_record)
+	var o: Dictionary = host.saves_options()
+	saves = PKeySaves.new({
+		"records": records,
+		"engine": engine,
+		"file_codec": port.file_codec,
+		"cache": port.chunk_cache,
+		"gate": port.gate,
+		"delta": o["delta"],
+		"max_bytes": o["max_bytes"],
+		"format_version": o["save_format_version"],
+		"emit": port.emit_transfer,
+		"purge_files": port.purge_files,
+	})
+
+
+## The file codec of the saves now: the plain-hash codec in server mode, the key ring's in end-to-end
+## mode, null while the ring is locked. The root lives in the returned object for one operation only, and
+## the object asks the ring again before every use.
+func _file_codec() -> Variant:
+	if host == null or not host.is_started():
+		return null
+	if host.machine().encryption_mode() != "e2e":
+		return TransferCodec.Server.new()
+	var port: Object = host.codec()
+	if not port.has_method("with_root"):
+		return null
+	return port.with_root(func(root: PackedByteArray) -> Variant:
+		return TransferCodec.Guarded.new(TransferCodec.E2e.new(root, PKeySaves.COLLECTION), port.locked))
+
+
+## The chunk cache of the person signed in (D-9): held as stored, so ciphertext in end-to-end mode.
+func _chunk_cache() -> Variant:
+	if host == null or _subject == null or not host.saves_options()["delta"]:
+		return null
+	if _cache_for != _subject:
+		_cache_for = _subject
+		var largest: int = host.saves_options()["max_bytes"] if host.saves_options()["max_bytes"] != null else PKeySyncFileStream.LANE_MAX_BYTES
+		_cache = PKeyChunkCache.Files.new(PKeyChunkCache.dir_for(host.state_dir(), _subject, PKeySaves.COLLECTION), PKeyChunkCache.budget(largest))
+	return _cache
+
+
+func _saves_gate() -> Variant:
+	var refused: Variant = _core.require_service("sync", PKeyConstants.Feature.SYNC_SAVES) if _core != null else PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	if refused != null:
+		return refused
+	await attach()
+	if host == null or not host.is_started():
+		return PKeyResult.failure(PKeyConstants.ErrorCode.SYNC_FAILED, "Cloud Sync is not started.", {"reason": "sync-not-started"})
+	return null
+
+
+func _emit_transfer(event: Dictionary) -> void:
+	if _emit.is_valid():
+		_emit.call(event)
+
+
+## The journal of the transfers and the chunk cache go with the person (D-9). Each is tried whatever the other did.
+func _purge_save_files() -> void:
+	if _journal != null:
+		_journal.clear()
+	if host != null and is_instance_valid(host):
+		_remove_tree(host.state_dir().path_join(PKeyChunkCache.DIR_NAME))
+	_cache = null
+	_cache_for = null
+
+
+static func _remove_tree(path: String) -> void:
+	var d := DirAccess.open(path)
+	if d == null:
+		return
+	for name in d.get_files():
+		DirAccess.remove_absolute(path.path_join(name))
+	for name in d.get_directories():
+		_remove_tree(path.path_join(name))
+	DirAccess.remove_absolute(path)
 
 
 # ── What the SDK calls ────────────────────────────────────────────────────────────────────────
@@ -399,6 +518,13 @@ func _forget_task() -> void:
 ## failure is logged, never raised, and never replaces the sign-out's own error.
 func _forget() -> void:
 	_forgot = true
+	# Lock the ring first, synchronously: from here nothing is sealed for the saves, and a transfer in
+	# flight fails sync-locked. Then the saves' transfers, journal and chunk cache go, and only then the
+	# pin is removed.
+	if _keyring != null and _keyring.has_method("lock"):
+		_keyring.lock()
+	if saves != null:
+		await saves.purge()
 	if _keyring != null:
 		var r: Variant = await _keyring.forget()
 		if r is PKeyResult and not r.ok:
@@ -448,6 +574,54 @@ static func safe_sign_in_url(url: Variant, base_url: String) -> Variant:
 	if u.is_empty() or u["scheme"] != "https" or u["origin"] != base["origin"]:
 		return null
 	return resolved
+
+
+## The saves' port onto this API: every dependency PKeySaves holds is a method here, which reaches the API
+## through a weak reference, so the saves and the API form no cycle.
+class _SavesPort:
+	extends RefCounted
+	var _api: WeakRef = null
+
+	func set_api(a: Object) -> void:
+		_api = weakref(a)
+
+	func _owner() -> Object:
+		return _api.get_ref() if _api != null else null
+
+	func request_context() -> Dictionary:
+		var a: Object = _owner()
+		return a.host.request_context() if a != null and a.host != null else {"product": "", "token": "", "headers": func(x: Dictionary) -> Dictionary: return x, "url": func(p: String) -> String: return p}
+
+	func blind_record(collection: String, id: String) -> String:
+		var a: Object = _owner()
+		if a == null or a.host == null:
+			return ""
+		var codec: Object = a.host.codec()
+		return codec.blind_record(collection, id) if codec.has_method("blind_record") else ""
+
+	func file_codec() -> Variant:
+		var a: Object = _owner()
+		return a._file_codec() if a != null else null
+
+	func chunk_cache() -> Variant:
+		var a: Object = _owner()
+		return a._chunk_cache() if a != null else null
+
+	func gate() -> Variant:
+		var a: Object = _owner()
+		if a == null:
+			return PKeyResult.failure(PKeyConstants.ErrorCode.SYNC_FAILED, "Cloud Sync is gone.", {"reason": "sync-not-started"})
+		return await a._saves_gate()
+
+	func emit_transfer(event: Dictionary) -> void:
+		var a: Object = _owner()
+		if a != null:
+			a._emit_transfer(event)
+
+	func purge_files() -> void:
+		var a: Object = _owner()
+		if a != null:
+			a._purge_save_files()
 
 
 ## The config client's port onto the machine.

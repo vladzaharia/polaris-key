@@ -132,6 +132,14 @@ class Codec extends RefCounted:
 			return ""
 		return PKeySyncBlind.blind(_m.held.root, kind, ctx, name)
 
+	## Hands the current root to `fn` (a Callable(root) -> Variant) and answers what it returns; null while
+	## locked. The file codec is built this way: the root stays inside objects the caller drops with the
+	## operation, and each of them asks `locked()` again before it uses it.
+	func with_root(fn: Callable) -> Variant:
+		if _m.held == null:
+			return null
+		return fn.call(_m.held.root)
+
 	func _try(envelope: PackedByteArray, attempt: Callable) -> Dictionary:
 		if _m.held == null:
 			return {"ok": false, "reason": "locked"}

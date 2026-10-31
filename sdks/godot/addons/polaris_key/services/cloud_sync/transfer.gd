@@ -46,6 +46,9 @@ const Codec := preload("res://addons/polaris_key/services/cloud_sync/transfer_co
 const DOWNLOAD_RANGE_BYTES := 8 * 1024 * 1024
 const FEATURE := "sync.files"
 const _HASH_SLICE := 1048576
+## A seal or an open of at least this many bytes runs on a worker thread (the GDScript AES-GCM lane takes
+## about a second a MiB, so on the main thread a 32 MiB save would freeze the game).
+const THREAD_MIN_BYTES := 65536
 const _BACKOFF_BASE := 0.5
 const _BACKOFF_CAP := 30.0
 const _MANIFEST_PLAIN_MAX := PKeySyncManifest.HEADER_BYTES + PKeySyncManifest.RECORD_BYTES * 16384
@@ -84,6 +87,20 @@ class BytesSource:
 
 	func read(start: int, end: int) -> PackedByteArray:
 		return _data.slice(start, end)
+
+
+## Runs `fn` (a computation over values it holds, touching no node) and answers its result: on a worker
+## thread when `size` is at least `THREAD_MIN_BYTES`, else inline. The caller awaits it either way.
+static func off_thread(fn: Callable, size: int) -> Variant:
+	var tree := Engine.get_main_loop() as SceneTree
+	if size < THREAD_MIN_BYTES or tree == null:
+		return fn.call()
+	var out: Array = [null]
+	var task := WorkerThreadPool.add_task(func() -> void: out[0] = fn.call(), false, "pkey file codec")
+	while not WorkerThreadPool.is_task_completed(task):
+		await tree.process_frame
+	WorkerThreadPool.wait_for_task_completion(task)
+	return out[0]
 
 
 static func reply_ok(value: Variant = null) -> Dictionary:
@@ -740,7 +757,7 @@ func _send_chunk(ps: Dictionary, req: Dictionary, cut: Dictionary, unique: Dicti
 	# The file may have changed since it was cut: what is sent must still be the chunk named.
 	if plain.size() != rec["plain_len"] or not PKeySyncAesGcm.equal_constant_time(codec.chunk_id(plain), rec["id"]):
 		return _err("source-mismatch")
-	var obj: PackedByteArray = codec.seal_chunk(rec["id"], plain)
+	var obj: PackedByteArray = await off_thread(func() -> PackedByteArray: return codec.seal_chunk(rec["id"], plain), plain.size())
 	if obj.is_empty():
 		return _err("invalid")
 	var digest := _sha_hex(obj)
@@ -802,7 +819,7 @@ func _download_whole(ps: Dictionary, req: Dictionary) -> Dictionary:
 		at += data.size()
 	if ctx.finish().hex_encode() != req["sha256"]:
 		return _invalid("sha256")
-	var opened: Dictionary = codec.open_whole(stored)
+	var opened: Dictionary = await off_thread(func() -> Dictionary: return codec.open_whole(stored), stored.size())
 	if not opened["ok"]:
 		return _invalid(opened["reason"])
 	var plain: PackedByteArray = opened["plain"]
@@ -882,7 +899,7 @@ func _fetch_one(ps: Dictionary, req: Dictionary, codec, cache: Variant, rec: Dic
 	if cache != null:
 		var held: Variant = cache.get_object(id)
 		if held is PackedByteArray:
-			var o: Dictionary = codec.open_chunk(rec["id"], held)
+			var o: Dictionary = await off_thread(func() -> Dictionary: return codec.open_chunk(rec["id"], held), held.size())
 			if o["ok"] and (o["plain"] as PackedByteArray).size() == rec["plain_len"]:
 				return {"ok": true, "plain": o["plain"]}
 			cache.delete(id)  # damage costs a fetch
@@ -895,7 +912,7 @@ func _fetch_one(ps: Dictionary, req: Dictionary, codec, cache: Variant, rec: Dic
 	var obj: PackedByteArray = got["value"]
 	if obj.size() > Codec.SERVER_CHUNK_MAX_STORED_BYTES:
 		return _invalid("chunk-size")
-	var opened: Dictionary = codec.open_chunk(rec["id"], obj)
+	var opened: Dictionary = await off_thread(func() -> Dictionary: return codec.open_chunk(rec["id"], obj), obj.size())
 	if not opened["ok"]:
 		return _invalid("chunk-" + str(opened["reason"]))
 	if (opened["plain"] as PackedByteArray).size() != rec["plain_len"]:
