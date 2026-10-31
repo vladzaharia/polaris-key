@@ -815,7 +815,10 @@ function strip(c: KitCtx, layout: Layout, kind: "banner" | "toast"): ReactNode {
 /** A small status inside the host's layout. */
 function inline(c: KitCtx, layout: Layout): ReactNode {
   const p = place(c, layout);
-  const lines = [...p.titles, ...p.meta, ...p.body];
+  // The label first, then its figures: view.copy is sorted, the layout's meta list is the order.
+  const order = layout.meta ?? [];
+  const meta = [...p.meta].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const lines = [...p.titles, ...meta, ...p.body];
   return (
     <div
       className="inline-status"

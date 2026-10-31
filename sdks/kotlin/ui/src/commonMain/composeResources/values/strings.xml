@@ -838,6 +838,10 @@
     <string name="saveConflict_title">Two versions of this save</string>
     <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
     <string name="saveConflict_lede">Choose the one to keep. Nothing is deleted until you do.</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedTitle">This save was deleted elsewhere</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedLede">Keep it on this device, or delete it here too.</string>
     <!-- SaveConflict: heading of the card for the copy on this device. -->
     <string name="saveConflict_thisDevice">Version on this device</string>
     <!-- SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”). Arguments: 1=when. -->
@@ -851,11 +855,11 @@
     <!-- SaveConflict: the other copy no longer exists; there is nothing to compare. -->
     <string name="saveConflict_deletedElsewhere">Deleted on another device</string>
     <!-- SaveConflict: keep the copy on this device and replace the other. -->
-    <string name="saveConflict_keepThis">Keep this device's</string>
-    <string name="saveConflict_keepThis__macos">Keep This Device's</string>
+    <string name="saveConflict_keepThis">Keep this device's version</string>
+    <string name="saveConflict_keepThis__macos">Keep This Device's Version</string>
     <!-- SaveConflict: keep the other copy and replace the one on this device. -->
-    <string name="saveConflict_keepOther">Keep the other</string>
-    <string name="saveConflict_keepOther__macos">Keep the Other</string>
+    <string name="saveConflict_keepOther">Keep the other version</string>
+    <string name="saveConflict_keepOther__macos">Keep the Other Version</string>
     <!-- SaveConflict: the other copy was deleted; remove the one on this device as well. -->
     <string name="saveConflict_acceptDelete">Delete it here too</string>
     <string name="saveConflict_acceptDelete__macos">Delete It Here Too</string>

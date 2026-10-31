@@ -838,6 +838,10 @@
     <string name="saveConflict_title">Zwei Versionen dieses Spielstands</string>
     <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
     <string name="saveConflict_lede">Wählen Sie die Version, die bleibt. Bis dahin wird nichts gelöscht.</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedTitle">Dieser Spielstand wurde woanders gelöscht</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedLede">Behalten Sie ihn auf diesem Gerät oder löschen Sie ihn auch hier.</string>
     <!-- SaveConflict: heading of the card for the copy on this device. -->
     <string name="saveConflict_thisDevice">Version auf diesem Gerät</string>
     <!-- SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”). Arguments: 1=when. -->
@@ -854,8 +858,8 @@
     <string name="saveConflict_keepThis">Die Version dieses Geräts behalten</string>
     <string name="saveConflict_keepThis__macos">Die Version dieses Geräts behalten</string>
     <!-- SaveConflict: keep the other copy and replace the one on this device. -->
-    <string name="saveConflict_keepOther">Die andere behalten</string>
-    <string name="saveConflict_keepOther__macos">Die andere behalten</string>
+    <string name="saveConflict_keepOther">Die andere Version behalten</string>
+    <string name="saveConflict_keepOther__macos">Die andere Version behalten</string>
     <!-- SaveConflict: the other copy was deleted; remove the one on this device as well. -->
     <string name="saveConflict_acceptDelete">Auch hier löschen</string>
     <string name="saveConflict_acceptDelete__macos">Auch hier löschen</string>

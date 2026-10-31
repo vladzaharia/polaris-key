@@ -843,6 +843,10 @@
     <string name="saveConflict_title">Dos versiones de esta partida</string>
     <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
     <string name="saveConflict_lede">Elige cuál conservar. No se borra nada hasta entonces.</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedTitle">Esta partida se eliminó en otro sitio</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedLede">Consérvala en este dispositivo o elimínala aquí también.</string>
     <!-- SaveConflict: heading of the card for the copy on this device. -->
     <string name="saveConflict_thisDevice">Versión en este dispositivo</string>
     <!-- SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”). Arguments: 1=when. -->
@@ -856,11 +860,11 @@
     <!-- SaveConflict: the other copy no longer exists; there is nothing to compare. -->
     <string name="saveConflict_deletedElsewhere">Eliminada en otro dispositivo</string>
     <!-- SaveConflict: keep the copy on this device and replace the other. -->
-    <string name="saveConflict_keepThis">Conservar la de este dispositivo</string>
-    <string name="saveConflict_keepThis__macos">Conservar la de este dispositivo</string>
+    <string name="saveConflict_keepThis">Conservar la versión de este dispositivo</string>
+    <string name="saveConflict_keepThis__macos">Conservar la versión de este dispositivo</string>
     <!-- SaveConflict: keep the other copy and replace the one on this device. -->
-    <string name="saveConflict_keepOther">Conservar la otra</string>
-    <string name="saveConflict_keepOther__macos">Conservar la otra</string>
+    <string name="saveConflict_keepOther">Conservar la otra versión</string>
+    <string name="saveConflict_keepOther__macos">Conservar la otra versión</string>
     <!-- SaveConflict: the other copy was deleted; remove the one on this device as well. -->
     <string name="saveConflict_acceptDelete">Eliminarla aquí también</string>
     <string name="saveConflict_acceptDelete__macos">Eliminarla aquí también</string>

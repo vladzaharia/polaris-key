@@ -2272,6 +2272,16 @@ msgstr "Two versions of this save"
 msgid "saveConflict.lede"
 msgstr "Choose the one to keep. Nothing is deleted until you do."
 
+#. This save was deleted elsewhere
+#. SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too.
+msgid "saveConflict.deletedTitle"
+msgstr "This save was deleted elsewhere"
+
+#. Keep it on this device, or delete it here too.
+#. SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too.
+msgid "saveConflict.deletedLede"
+msgstr "Keep it on this device, or delete it here too."
+
 #. Version on this device
 #. SaveConflict: heading of the card for the copy on this device.
 msgid "saveConflict.thisDevice"
@@ -2302,25 +2312,25 @@ msgstr "Version on another device"
 msgid "saveConflict.deletedElsewhere"
 msgstr "Deleted on another device"
 
-#. Keep this device's
+#. Keep this device's version
 #. SaveConflict: keep the copy on this device and replace the other.
 msgid "saveConflict.keepThis"
-msgstr "Keep this device's"
+msgstr "Keep this device's version"
 
-#. macos: Keep This Device's
+#. macos: Keep This Device's Version
 msgctxt "macos"
 msgid "saveConflict.keepThis"
-msgstr "Keep This Device's"
+msgstr "Keep This Device's Version"
 
-#. Keep the other
+#. Keep the other version
 #. SaveConflict: keep the other copy and replace the one on this device.
 msgid "saveConflict.keepOther"
-msgstr "Keep the other"
+msgstr "Keep the other version"
 
-#. macos: Keep the Other
+#. macos: Keep the Other Version
 msgctxt "macos"
 msgid "saveConflict.keepOther"
-msgstr "Keep the Other"
+msgstr "Keep the Other Version"
 
 #. Delete it here too
 #. SaveConflict: the other copy was deleted; remove the one on this device as well.

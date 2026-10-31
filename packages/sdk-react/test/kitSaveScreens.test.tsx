@@ -95,6 +95,29 @@ describe("SaveConflict", () => {
     expect(kept).toEqual(["local", "remote", "both"]);
   });
 
+  it("draws the choices, the reason and Cancel as one undocked block in reading order", () => {
+    const { container } = render(
+      <SaveConflict
+        input={{
+          saveConflict: { step: "choose", local: THIS, remote: OTHER },
+        }}
+      />,
+    );
+    const blocks = container.querySelectorAll('[data-part="actions"]');
+    expect(blocks).toHaveLength(1);
+    const keys = [...blocks[0]!.children].map((n) =>
+      n.getAttribute("data-key"),
+    );
+    expect(keys).toEqual([
+      "saveConflict.keepThis",
+      "saveConflict.keepOther",
+      "saveConflict.keepBoth",
+      "saveConflict.bothFull",
+      "common.cancel",
+    ]);
+    expect(blocks[0]!.getAttribute("data-dock")).toBe("none");
+  });
+
   it("keeps Keep both on screen, unavailable, described by its reason", () => {
     const { container } = render(
       <SaveConflict
@@ -135,6 +158,15 @@ describe("SaveConflict", () => {
     expect(button(container, "saveConflict.keepOther")).toBeNull();
     expect(button(container, "saveConflict.keepBoth")).toBeNull();
     expect(container.textContent).toContain("Deleted on another device");
+    expect(container.querySelector("h1")?.textContent).toBe(
+      "This save was deleted elsewhere",
+    );
+    expect(container.textContent).not.toContain("Two versions");
+    expect(
+      button(container, "saveConflict.acceptDelete")?.getAttribute(
+        "data-variant",
+      ),
+    ).toBe("danger");
     fireEvent.click(button(container, "saveConflict.acceptDelete")!);
     expect(kept).toEqual(["remote"]);
   });
@@ -214,6 +246,20 @@ describe("CloudSyncStatus transfers", () => {
     expect(
       status({ state: "waiting", reason: "battery" }).textContent,
     ).toContain("Waiting for power");
+  });
+  it("draws the label before its figures and Try again as secondary", () => {
+    const c = status({
+      state: "transferring",
+      transfer: { size: "38 MB", total: "61 MB", fraction: 0.62 },
+    });
+    const t = c.textContent ?? "";
+    expect(t.indexOf("Syncing saves")).toBeLessThan(
+      t.indexOf("38 MB of 61 MB"),
+    );
+    const failed = status({ state: "transfer-failed" });
+    expect(
+      button(failed, "common.tryAgain")?.getAttribute("data-variant"),
+    ).toBe("secondary");
   });
   it("offers Try again on a failed transfer", () => {
     const seen: string[] = [];

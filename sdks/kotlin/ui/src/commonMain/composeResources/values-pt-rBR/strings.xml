@@ -843,6 +843,10 @@
     <string name="saveConflict_title">Duas versões deste jogo salvo</string>
     <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
     <string name="saveConflict_lede">Escolha qual manter. Nada é excluído antes disso.</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedTitle">Este jogo salvo foi excluído em outro lugar</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedLede">Mantenha-o neste dispositivo ou exclua-o aqui também.</string>
     <!-- SaveConflict: heading of the card for the copy on this device. -->
     <string name="saveConflict_thisDevice">Versão neste dispositivo</string>
     <!-- SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”). Arguments: 1=when. -->
@@ -856,11 +860,11 @@
     <!-- SaveConflict: the other copy no longer exists; there is nothing to compare. -->
     <string name="saveConflict_deletedElsewhere">Excluído em outro dispositivo</string>
     <!-- SaveConflict: keep the copy on this device and replace the other. -->
-    <string name="saveConflict_keepThis">Manter o deste dispositivo</string>
-    <string name="saveConflict_keepThis__macos">Manter o deste dispositivo</string>
+    <string name="saveConflict_keepThis">Manter a versão deste dispositivo</string>
+    <string name="saveConflict_keepThis__macos">Manter a versão deste dispositivo</string>
     <!-- SaveConflict: keep the other copy and replace the one on this device. -->
-    <string name="saveConflict_keepOther">Manter o outro</string>
-    <string name="saveConflict_keepOther__macos">Manter o outro</string>
+    <string name="saveConflict_keepOther">Manter a outra versão</string>
+    <string name="saveConflict_keepOther__macos">Manter a outra versão</string>
     <!-- SaveConflict: the other copy was deleted; remove the one on this device as well. -->
     <string name="saveConflict_acceptDelete">Excluir aqui também</string>
     <string name="saveConflict_acceptDelete__macos">Excluir aqui também</string>

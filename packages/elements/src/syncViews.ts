@@ -253,32 +253,31 @@ function saveConflictContent(c: RenderCtx): Out {
         part="actions"
         data-part="actions"
         data-layout="stack"
+        data-dock="none"
         role="group"
         aria-labelledby="pk-title"
       >
         ${button(c, "saveConflict.keepThis", "secondary")}
-        ${button(
-          c,
-          gone ? "saveConflict.acceptDelete" : "saveConflict.keepOther",
-          "secondary",
-        )}
+        ${gone
+          ? button(c, "saveConflict.acceptDelete", "danger")
+          : button(c, "saveConflict.keepOther", "secondary")}
         ${shown(c, "saveConflict.keepBoth")
           ? button(c, "saveConflict.keepBoth", "secondary", {
               disabled: full,
               describedBy: full ? "pk-both-full" : undefined,
             })
           : nothing}
-      </div>
-      ${full
-        ? html`<p
-            class="body note"
-            id="pk-both-full"
-            data-key="saveConflict.bothFull"
-          >
-            ${text(c, "saveConflict.bothFull")}
-          </p>`
-        : nothing}
-      ${row(c, ["common.cancel"], { quiet: true })}`;
+        ${full
+          ? html`<p
+              class="body note"
+              id="pk-both-full"
+              data-key="saveConflict.bothFull"
+            >
+              ${text(c, "saveConflict.bothFull")}
+            </p>`
+          : nothing}
+        ${button(c, "common.cancel", "link")}
+      </div>`;
   }
   if (state === "keeping")
     return html`<p class="body" role="status" data-key="saveConflict.keeping">

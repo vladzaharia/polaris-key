@@ -657,7 +657,10 @@ function strip(
 /** A small status inside the host's layout. */
 function inline(c: RenderCtx, layout: Layout): TemplateResult {
   const p = placeKeys(c.view, layout);
-  const lines = [...p.titles, ...p.meta, ...p.body];
+  // The label first, then its figures: view.copy is sorted, the layout's meta list is the order.
+  const order = layout.meta ?? [];
+  const meta = [...p.meta].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const lines = [...p.titles, ...meta, ...p.body];
   return html`<div
     class="inline-status"
     part="status"

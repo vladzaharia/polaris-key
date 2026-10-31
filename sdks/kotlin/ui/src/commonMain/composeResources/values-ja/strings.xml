@@ -833,6 +833,10 @@
     <string name="saveConflict_title">このセーブデータの2つのバージョン</string>
     <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
     <string name="saveConflict_lede">残す方を選んでください。選ぶまで何も削除されません。</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedTitle">このセーブデータは別の場所で削除されました</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedLede">このデバイスに残すか、こちらでも削除してください。</string>
     <!-- SaveConflict: heading of the card for the copy on this device. -->
     <string name="saveConflict_thisDevice">このデバイスのバージョン</string>
     <!-- SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”). Arguments: 1=when. -->
@@ -846,11 +850,11 @@
     <!-- SaveConflict: the other copy no longer exists; there is nothing to compare. -->
     <string name="saveConflict_deletedElsewhere">別のデバイスで削除済み</string>
     <!-- SaveConflict: keep the copy on this device and replace the other. -->
-    <string name="saveConflict_keepThis">このデバイスのものを残す</string>
-    <string name="saveConflict_keepThis__macos">このデバイスのものを残す</string>
+    <string name="saveConflict_keepThis">このデバイスのバージョンを残す</string>
+    <string name="saveConflict_keepThis__macos">このデバイスのバージョンを残す</string>
     <!-- SaveConflict: keep the other copy and replace the one on this device. -->
-    <string name="saveConflict_keepOther">もう一方を残す</string>
-    <string name="saveConflict_keepOther__macos">もう一方を残す</string>
+    <string name="saveConflict_keepOther">もう一方のバージョンを残す</string>
+    <string name="saveConflict_keepOther__macos">もう一方のバージョンを残す</string>
     <!-- SaveConflict: the other copy was deleted; remove the one on this device as well. -->
     <string name="saveConflict_acceptDelete">こちらでも削除</string>
     <string name="saveConflict_acceptDelete__macos">こちらでも削除</string>

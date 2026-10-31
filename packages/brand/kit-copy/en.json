@@ -1852,6 +1852,16 @@
       "role": "body",
       "note": "SaveConflict: the same save changed on two devices; the person picks one."
     },
+    "saveConflict.deletedTitle": {
+      "value": "This save was deleted elsewhere",
+      "role": "title",
+      "note": "SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too."
+    },
+    "saveConflict.deletedLede": {
+      "value": "Keep it on this device, or delete it here too.",
+      "role": "body",
+      "note": "SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too."
+    },
     "saveConflict.thisDevice": {
       "value": "Version on this device",
       "role": "label",
@@ -1883,12 +1893,12 @@
       "note": "SaveConflict: the other copy no longer exists; there is nothing to compare."
     },
     "saveConflict.keepThis": {
-      "value": "Keep this device's",
+      "value": "Keep this device's version",
       "role": "button",
       "note": "SaveConflict: keep the copy on this device and replace the other."
     },
     "saveConflict.keepOther": {
-      "value": "Keep the other",
+      "value": "Keep the other version",
       "role": "button",
       "note": "SaveConflict: keep the other copy and replace the one on this device."
     },

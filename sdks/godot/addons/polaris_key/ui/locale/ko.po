@@ -2267,6 +2267,16 @@ msgstr "이 저장 데이터의 두 가지 버전"
 msgid "saveConflict.lede"
 msgstr "남길 쪽을 선택하세요. 선택 전에는 아무것도 삭제되지 않아요."
 
+#. This save was deleted elsewhere
+#. SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too.
+msgid "saveConflict.deletedTitle"
+msgstr "이 저장 데이터가 다른 곳에서 삭제되었어요"
+
+#. Keep it on this device, or delete it here too.
+#. SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too.
+msgid "saveConflict.deletedLede"
+msgstr "이 기기에 남기거나 여기서도 삭제하세요."
+
 #. Version on this device
 #. SaveConflict: heading of the card for the copy on this device.
 msgid "saveConflict.thisDevice"
@@ -2297,25 +2307,25 @@ msgstr "다른 기기의 버전"
 msgid "saveConflict.deletedElsewhere"
 msgstr "다른 기기에서 삭제됨"
 
-#. Keep this device's
+#. Keep this device's version
 #. SaveConflict: keep the copy on this device and replace the other.
 msgid "saveConflict.keepThis"
-msgstr "이 기기의 것 유지"
+msgstr "이 기기의 버전 유지"
 
-#. macos: Keep This Device's
+#. macos: Keep This Device's Version
 msgctxt "macos"
 msgid "saveConflict.keepThis"
-msgstr "이 기기의 것 유지"
+msgstr "이 기기의 버전 유지"
 
-#. Keep the other
+#. Keep the other version
 #. SaveConflict: keep the other copy and replace the one on this device.
 msgid "saveConflict.keepOther"
-msgstr "다른 것 유지"
+msgstr "다른 버전 유지"
 
-#. macos: Keep the Other
+#. macos: Keep the Other Version
 msgctxt "macos"
 msgid "saveConflict.keepOther"
-msgstr "다른 것 유지"
+msgstr "다른 버전 유지"
 
 #. Delete it here too
 #. SaveConflict: the other copy was deleted; remove the one on this device as well.

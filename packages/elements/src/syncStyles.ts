@@ -60,6 +60,38 @@ export const SYNC_CSS = `
   box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
   overflow-wrap: anywhere;
 }
+/* The choices have no primary, so their block is not docked: one run in reading order (the two
+   choices, Keep both, its reason, then Cancel), never a bar over the cards or a second bar over
+   the reason, and never reversed in a short window (row-reverse would swap the sides). The
+   selectors out-weigh every docking rule, the short window's and the full-bleed screen's. */
+.pk-root .stage[data-kind="screen"] .card > .actions[data-dock="none"][data-part="actions"] {
+  position: static;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  justify-content: start;
+  margin: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+.pk-root .stage[data-kind="screen"] .card > .actions[data-dock="none"][data-part="actions"]::before {
+  content: none;
+}
+.pk-root .stage[data-kind="screen"] .card > .actions[data-dock="none"][data-part="actions"] .btn {
+  flex: none;
+  inline-size: 100%;
+  white-space: normal;
+}
+.pk-root .stage[data-kind="screen"] .card > .actions[data-dock="none"][data-part="actions"] .btn[data-variant="link"] {
+  inline-size: auto;
+  align-self: center;
+}
+/* Delete it here too removes a save: the danger outline, quieter than a solid confirm. */
+.btn[data-variant="danger"][data-key="saveConflict.acceptDelete"] {
+  background: transparent;
+  color: var(--pk-danger);
+  box-shadow: inset 0 0 0 1px var(--pk-danger-border);
+}
 .body.note {
   color: var(--pk-text-strong);
   font-weight: 500;

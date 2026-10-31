@@ -12851,17 +12851,21 @@
           "common.cancel",
           "saveConflict.acceptDelete",
           "saveConflict.deletedElsewhere",
+          "saveConflict.deletedLede",
+          "saveConflict.deletedTitle",
           "saveConflict.keepThis",
-          "saveConflict.lede",
           "saveConflict.savedThis",
-          "saveConflict.thisDevice",
-          "saveConflict.title"
+          "saveConflict.thisDevice"
         ],
         "actions": ["cancel", "keep-local", "keep-remote"]
       },
       "mustNot": {
-        "invariant": "A deletion is accepted only by its own button, never as Keep the other, and Keep both has nothing to keep.",
-        "copy": ["saveConflict.keepBoth", "saveConflict.keepOther"],
+        "invariant": "A deletion is accepted only by its own button, never as Keep the other, Keep both has nothing to keep, and the screen never says two versions.",
+        "copy": [
+          "saveConflict.keepBoth",
+          "saveConflict.keepOther",
+          "saveConflict.title"
+        ],
         "actions": ["keep-both"]
       }
     },

@@ -2267,6 +2267,16 @@ msgstr "此存档有两个版本"
 msgid "saveConflict.lede"
 msgstr "选择要保留的一个。在此之前不会删除任何内容。"
 
+#. This save was deleted elsewhere
+#. SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too.
+msgid "saveConflict.deletedTitle"
+msgstr "此存档已在别处删除"
+
+#. Keep it on this device, or delete it here too.
+#. SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too.
+msgid "saveConflict.deletedLede"
+msgstr "保留在此设备上，或在此也删除。"
+
 #. Version on this device
 #. SaveConflict: heading of the card for the copy on this device.
 msgid "saveConflict.thisDevice"
@@ -2297,25 +2307,25 @@ msgstr "另一台设备上的版本"
 msgid "saveConflict.deletedElsewhere"
 msgstr "已在另一台设备上删除"
 
-#. Keep this device's
+#. Keep this device's version
 #. SaveConflict: keep the copy on this device and replace the other.
 msgid "saveConflict.keepThis"
-msgstr "保留此设备的"
+msgstr "保留此设备的版本"
 
-#. macos: Keep This Device's
+#. macos: Keep This Device's Version
 msgctxt "macos"
 msgid "saveConflict.keepThis"
-msgstr "保留此设备的"
+msgstr "保留此设备的版本"
 
-#. Keep the other
+#. Keep the other version
 #. SaveConflict: keep the other copy and replace the one on this device.
 msgid "saveConflict.keepOther"
-msgstr "保留另一个"
+msgstr "保留另一个版本"
 
-#. macos: Keep the Other
+#. macos: Keep the Other Version
 msgctxt "macos"
 msgid "saveConflict.keepOther"
-msgstr "保留另一个"
+msgstr "保留另一个版本"
 
 #. Delete it here too
 #. SaveConflict: the other copy was deleted; remove the one on this device as well.

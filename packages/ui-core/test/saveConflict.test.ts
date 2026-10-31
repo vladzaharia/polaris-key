@@ -65,6 +65,32 @@ describe("SaveConflict", () => {
     expect(v.actions).toEqual(["cancel", "keep-local", "keep-remote"]);
   });
 
+  it("gives the deleted variant its own title and lede, never 'two versions'", () => {
+    const v = viewOf(
+      "SaveConflict",
+      sc({ step: "choose", local: THIS, remote: null }),
+    );
+    expect(v.copy).toContain("saveConflict.deletedTitle");
+    expect(v.copy).toContain("saveConflict.deletedLede");
+    expect(v.copy).not.toContain("saveConflict.title");
+    expect(v.copy).not.toContain("saveConflict.lede");
+    const both = viewOf(
+      "SaveConflict",
+      sc({ step: "choose", local: THIS, remote: OTHER }),
+    );
+    expect(both.copy).toContain("saveConflict.title");
+    expect(both.copy).not.toContain("saveConflict.deletedTitle");
+  });
+
+  it("focuses the heading on a failed choice, never Try again", () => {
+    const v = viewOf(
+      "SaveConflict",
+      sc({ step: "failed", keep: "remote", local: THIS, remote: null }),
+    );
+    expect(v.decisions.focus).toBe("heading");
+    expect(v.decisions.primary).toBe("common.tryAgain");
+  });
+
   it("offers no control while a choice is applied, and names it once kept", () => {
     const keeping = viewOf(
       "SaveConflict",
@@ -106,6 +132,15 @@ describe("CloudSyncStatus transfers", () => {
       status({ state: "transferring", transfer: { size: "38 MB" } }).copy,
     ).toEqual(["cloudSync.transferring"]);
   });
+  it("keeps Try again secondary on a failed transfer", () => {
+    const v = viewOf(
+      "CloudSyncStatus",
+      withDefaults({ cloudSync: { state: "transfer-failed" } }, defaults),
+    );
+    expect(v.copy).toContain("common.tryAgain");
+    expect(v.decisions.primary).toBeNull();
+  });
+
   it("names what a waiting transfer waits for", () => {
     expect(status({ state: "waiting" }).copy).toEqual([
       "cloudSync.waitingNetwork",

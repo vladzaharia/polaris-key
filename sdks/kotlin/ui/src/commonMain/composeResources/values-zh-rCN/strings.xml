@@ -833,6 +833,10 @@
     <string name="saveConflict_title">此存档有两个版本</string>
     <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
     <string name="saveConflict_lede">选择要保留的一个。在此之前不会删除任何内容。</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedTitle">此存档已在别处删除</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedLede">保留在此设备上，或在此也删除。</string>
     <!-- SaveConflict: heading of the card for the copy on this device. -->
     <string name="saveConflict_thisDevice">此设备上的版本</string>
     <!-- SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”). Arguments: 1=when. -->
@@ -846,11 +850,11 @@
     <!-- SaveConflict: the other copy no longer exists; there is nothing to compare. -->
     <string name="saveConflict_deletedElsewhere">已在另一台设备上删除</string>
     <!-- SaveConflict: keep the copy on this device and replace the other. -->
-    <string name="saveConflict_keepThis">保留此设备的</string>
-    <string name="saveConflict_keepThis__macos">保留此设备的</string>
+    <string name="saveConflict_keepThis">保留此设备的版本</string>
+    <string name="saveConflict_keepThis__macos">保留此设备的版本</string>
     <!-- SaveConflict: keep the other copy and replace the one on this device. -->
-    <string name="saveConflict_keepOther">保留另一个</string>
-    <string name="saveConflict_keepOther__macos">保留另一个</string>
+    <string name="saveConflict_keepOther">保留另一个版本</string>
+    <string name="saveConflict_keepOther__macos">保留另一个版本</string>
     <!-- SaveConflict: the other copy was deleted; remove the one on this device as well. -->
     <string name="saveConflict_acceptDelete">在此也删除</string>
     <string name="saveConflict_acceptDelete__macos">在此也删除</string>

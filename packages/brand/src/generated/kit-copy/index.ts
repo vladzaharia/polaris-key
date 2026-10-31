@@ -376,6 +376,8 @@ export type KitCopyKey =
   | "cloudSync.transferFailed"
   | "saveConflict.title"
   | "saveConflict.lede"
+  | "saveConflict.deletedTitle"
+  | "saveConflict.deletedLede"
   | "saveConflict.thisDevice"
   | "saveConflict.savedThis"
   | "saveConflict.savedOther"

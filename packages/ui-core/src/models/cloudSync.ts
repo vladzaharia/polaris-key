@@ -84,7 +84,8 @@ export function cloudSyncStatusView(
     return makeView(ctx, "CloudSyncStatus", {
       state: "transfer-failed",
       copy: ["cloudSync.transferFailed", "common.tryAgain"],
-      primary: "common.tryAgain",
+      // A small status: Try again stays secondary, so it never competes with the host's primary.
+      primary: null,
       tone: "danger",
       focus: null,
     });

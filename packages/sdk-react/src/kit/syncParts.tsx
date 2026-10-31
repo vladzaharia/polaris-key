@@ -400,36 +400,37 @@ function SaveConflictBody(props: { c: KitCtx }): ReactNode {
             when: "saveConflict.savedOther",
           })}
         </ul>
+        {/* One block, in reading order and not docked: nothing here is the primary, so nothing
+            sticks to the edge and covers the other choices or the reason (UX review K.UX 1, 2). */}
         <div
           className="actions"
           data-layout="stack"
           data-part="actions"
+          data-dock="none"
           role="group"
           aria-labelledby="pk-title"
         >
           {button(c, "saveConflict.keepThis", "secondary")}
-          {button(
-            c,
-            gone ? "saveConflict.acceptDelete" : "saveConflict.keepOther",
-            "secondary",
-          )}
+          {gone
+            ? button(c, "saveConflict.acceptDelete", "danger")
+            : button(c, "saveConflict.keepOther", "secondary")}
           {shown(c, "saveConflict.keepBoth")
             ? button(c, "saveConflict.keepBoth", "secondary", {
                 disabled: full,
                 describedBy: full ? "pk-both-full" : undefined,
               })
             : null}
+          {full ? (
+            <p
+              className="body note"
+              id="pk-both-full"
+              data-key="saveConflict.bothFull"
+            >
+              {text(c, "saveConflict.bothFull")}
+            </p>
+          ) : null}
+          {button(c, "common.cancel", "link")}
         </div>
-        {full ? (
-          <p
-            className="body note"
-            id="pk-both-full"
-            data-key="saveConflict.bothFull"
-          >
-            {text(c, "saveConflict.bothFull")}
-          </p>
-        ) : null}
-        {row(c, ["common.cancel"], { quiet: true })}
       </>
     );
   }

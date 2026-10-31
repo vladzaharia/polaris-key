@@ -843,6 +843,10 @@
     <string name="saveConflict_title">Deux versions de cette sauvegarde</string>
     <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
     <string name="saveConflict_lede">Choisissez celle à garder. Rien n’est supprimé avant.</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedTitle">Cette sauvegarde a été supprimée ailleurs</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedLede">Gardez-la sur cet appareil ou supprimez-la ici aussi.</string>
     <!-- SaveConflict: heading of the card for the copy on this device. -->
     <string name="saveConflict_thisDevice">Version sur cet appareil</string>
     <!-- SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”). Arguments: 1=when. -->
@@ -856,11 +860,11 @@
     <!-- SaveConflict: the other copy no longer exists; there is nothing to compare. -->
     <string name="saveConflict_deletedElsewhere">Supprimée sur un autre appareil</string>
     <!-- SaveConflict: keep the copy on this device and replace the other. -->
-    <string name="saveConflict_keepThis">Garder celle de cet appareil</string>
-    <string name="saveConflict_keepThis__macos">Garder celle de cet appareil</string>
+    <string name="saveConflict_keepThis">Garder la version de cet appareil</string>
+    <string name="saveConflict_keepThis__macos">Garder la version de cet appareil</string>
     <!-- SaveConflict: keep the other copy and replace the one on this device. -->
-    <string name="saveConflict_keepOther">Garder l’autre</string>
-    <string name="saveConflict_keepOther__macos">Garder l’autre</string>
+    <string name="saveConflict_keepOther">Garder l’autre version</string>
+    <string name="saveConflict_keepOther__macos">Garder l’autre version</string>
     <!-- SaveConflict: the other copy was deleted; remove the one on this device as well. -->
     <string name="saveConflict_acceptDelete">La supprimer ici aussi</string>
     <string name="saveConflict_acceptDelete__macos">La supprimer ici aussi</string>

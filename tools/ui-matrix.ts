@@ -4309,6 +4309,8 @@ function saveConflictFamily(a: A): Draft[] {
       "SaveConflict/choose: the two copies and the three choices",
       SC("choose", { bothAvailable: true }),
       [
+        "saveConflict.deletedTitle",
+        "saveConflict.deletedLede",
         "saveConflict.otherUnknown",
         "saveConflict.deletedElsewhere",
         "saveConflict.acceptDelete",
@@ -4322,6 +4324,8 @@ function saveConflictFamily(a: A): Draft[] {
       "SaveConflict/choose: the other device is not known",
       SC("choose", { remote: { when: OTHER.when }, bothAvailable: true }),
       [
+        "saveConflict.deletedTitle",
+        "saveConflict.deletedLede",
         "saveConflict.otherDevice",
         "saveConflict.deletedElsewhere",
         "saveConflict.acceptDelete",
@@ -4332,6 +4336,8 @@ function saveConflictFamily(a: A): Draft[] {
       "SaveConflict/choose: Keep both is disabled while every slot is in use",
       SC("choose", { bothAvailable: false }),
       [
+        "saveConflict.deletedTitle",
+        "saveConflict.deletedLede",
         "saveConflict.otherUnknown",
         "saveConflict.deletedElsewhere",
         "saveConflict.acceptDelete",
@@ -4349,6 +4355,8 @@ function saveConflictFamily(a: A): Draft[] {
       "SaveConflict/choose: the other copy was deleted",
       SC("choose", { remote: null, bothAvailable: true }),
       [
+        "saveConflict.title",
+        "saveConflict.lede",
         "saveConflict.otherDevice",
         "saveConflict.otherUnknown",
         "saveConflict.savedOther",
@@ -4357,9 +4365,13 @@ function saveConflictFamily(a: A): Draft[] {
         "saveConflict.bothFull",
       ],
       inv(
-        "A deletion is accepted only by its own button, never as Keep the other, and Keep both has nothing to keep.",
+        "A deletion is accepted only by its own button, never as Keep the other, Keep both has nothing to keep, and the screen never says two versions.",
         {
-          copy: ["saveConflict.keepOther", "saveConflict.keepBoth"],
+          copy: [
+            "saveConflict.keepOther",
+            "saveConflict.keepBoth",
+            "saveConflict.title",
+          ],
           actions: ["keep-both"],
         },
       ),

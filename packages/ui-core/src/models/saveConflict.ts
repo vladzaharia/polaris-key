@@ -5,7 +5,8 @@
 //   - Keep both is a copy of the other save under a new name and needs a free slot of the 16: with
 //     none (or when the input does not say) it is drawn disabled, with its reason, and not offered;
 //   - when the other copy was deleted there is nothing to keep or copy: Keep the other becomes
-//     Delete it here too, its own button, and Keep both goes;
+//     Delete it here too, its own button (danger), Keep both goes, and the screen has its own
+//     title and lede;
 //   - a choice is applied once: while it runs no control is offered, and `kept` names the choice
 //     that was made, never another, and never after a failure.
 
@@ -65,6 +66,8 @@ export function saveConflictView(
         primary: "common.tryAgain",
         tone: "danger",
         errorSlot: "screen",
+        // Try again repeats the choice (an overwrite, a deletion): a stray Enter must not run it.
+        focus: "heading",
       });
     default: {
       // Keep both needs a free slot and a copy to keep. Without the host saying so it is drawn
@@ -73,8 +76,9 @@ export function saveConflictView(
       return makeView(ctx, "SaveConflict", {
         state: "choose",
         copy: [
-          "saveConflict.title",
-          "saveConflict.lede",
+          // The deleted variant states its own situation: one copy and a deletion, not two versions.
+          gone ? "saveConflict.deletedTitle" : "saveConflict.title",
+          gone ? "saveConflict.deletedLede" : "saveConflict.lede",
           "saveConflict.thisDevice",
           c.local?.when !== undefined && "saveConflict.savedThis",
           gone
