@@ -33,8 +33,10 @@ const PARTS = "parts";
 export const XFER_STORE_MAX_FILES = 64;
 /** What the store assumes it may use when the browser gives no estimate. */
 export const XFER_STORE_FALLBACK_BYTES = 512 * 1024 ** 2;
-/** The share of the estimated free space the store may fill. */
-const SHARE = 0.8;
+/** The bytes all partial transfers may take together (the host may set another). */
+export const XFER_STORE_QUOTA_BYTES = 4 * 1024 ** 3;
+/** Space the browser reports as free that the store never uses. */
+export const XFER_STORE_RESERVE_BYTES = 256 * 1024 ** 2;
 /** The block a spooled stream is kept in. */
 export const SPOOL_BLOCK = 1024 * 1024;
 /** A record of the last write is flushed at most this often (ms). */
@@ -56,6 +58,10 @@ export interface XferStoreOptions {
   /** Milliseconds since the epoch. */
   now?: () => number;
   maxFiles?: number;
+  /** Bytes partials may take together (default 4 GiB), bounded by the storage estimate. */
+  quotaBytes?: number;
+  /** Estimated free space left alone (default 256 MiB). */
+  reserveBytes?: number;
   /** The storage estimate; default `navigator.storage.estimate`. */
   estimate?: () => Promise<{ quota?: number; usage?: number }>;
 }
@@ -89,6 +95,9 @@ export class XferStore {
   readonly #idb: IDBFactory | undefined;
   readonly #now: () => number;
   readonly #maxFiles: number;
+  readonly #quota: number;
+  readonly #reserve: number;
+  #onInvalid: (() => void) | null = null;
   readonly #estimate: () => Promise<{ quota?: number; usage?: number }>;
   #db: Promise<IDBDatabase> | null = null;
   #ready: Promise<void> | null = null;
@@ -98,7 +107,7 @@ export class XferStore {
   /** Bumped by every purge. */
   #gen = 0;
   /** Bytes the store may still take, kept current by the writes. */
-  #room = XFER_STORE_FALLBACK_BYTES;
+  #room = Math.min(XFER_STORE_FALLBACK_BYTES, XFER_STORE_QUOTA_BYTES);
   #sinceEstimate = 0;
   readonly #metas = new Map<string, Meta>();
   readonly #touched = new Map<string, number>();
@@ -109,6 +118,8 @@ export class XferStore {
       "idb" in o ? o.idb : (globalThis as { indexedDB?: IDBFactory }).indexedDB;
     this.#now = o.now ?? Date.now;
     this.#maxFiles = o.maxFiles ?? XFER_STORE_MAX_FILES;
+    this.#quota = o.quotaBytes ?? XFER_STORE_QUOTA_BYTES;
+    this.#reserve = o.reserveBytes ?? XFER_STORE_RESERVE_BYTES;
     this.#estimate =
       o.estimate ??
       (async () =>
@@ -157,8 +168,11 @@ export class XferStore {
           if (this.#db === p) this.#db = null;
         };
         d.onversionchange = () => {
+          // Another tab deleted or upgraded the database (a sign-out): what this store cached
+          // is gone, and nothing it still has queued may write it back.
           d.close();
           if (this.#db === p) this.#db = null;
+          this.#invalidate();
         };
         res(d);
       };
@@ -169,6 +183,22 @@ export class XferStore {
       if (this.#db === p) this.#db = null;
     });
     return p;
+  }
+
+  /** Called when the database was removed by another tab; the transfer layer ends its wires. */
+  onInvalidated(fn: () => void): void {
+    this.#onInvalid = fn;
+  }
+
+  #invalidate(): void {
+    this.#gen++;
+    this.#ready = null;
+    this.#db = null;
+    this.#metas.clear();
+    this.#touched.clear();
+    this.#reserved.clear();
+    this.#bound.clear();
+    this.#onInvalid?.();
   }
 
   #ref(ref: string): string {
@@ -249,17 +279,26 @@ export class XferStore {
   /** Read the storage estimate again (the quota the browser gives this origin). */
   async refreshRoom(): Promise<void> {
     this.#sinceEstimate = 0;
+    let held = 0;
+    try {
+      const g = this.#gen;
+      for (const ref of [...this.#metas.keys()])
+        held += await this.#bytesOf(ref, g);
+    } catch {
+      // unknown: counted as none
+    }
+    const under = Math.max(0, this.#quota - held);
     try {
       const e = await this.#estimate();
       if (typeof e.quota === "number" && e.quota > 0) {
-        const left = Math.max(0, e.quota - (e.usage ?? 0));
-        this.#room = Math.floor(left * SHARE);
+        const left = Math.max(0, e.quota - (e.usage ?? 0) - this.#reserve);
+        this.#room = Math.min(under, left);
         return;
       }
     } catch {
       // no estimate: the fallback stands
     }
-    this.#room = XFER_STORE_FALLBACK_BYTES;
+    this.#room = Math.min(under, XFER_STORE_FALLBACK_BYTES);
   }
 
   /** Bytes the store can still take: the estimate and the writes since, less what accepted

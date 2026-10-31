@@ -75,6 +75,7 @@ async function rig(
   const store = new XferStore(NAME, {
     idb,
     now: () => clock.ms,
+    reserveBytes: 0,
     ...(o.estimate !== undefined ? { estimate: o.estimate } : {}),
     ...(o.maxFiles !== undefined ? { maxFiles: o.maxFiles } : {}),
   });
@@ -506,7 +507,7 @@ describe("limits", () => {
   });
 
   it("takes its room from the storage estimate, and sets it aside at the accept so concurrent offers cannot overshoot", async () => {
-    // Room: 0.8 of 100 KB left = 80 KB.
+    // Room: the 100 KB the estimate leaves.
     const r = await rig({
       estimate: async () => ({ quota: 100_000, usage: 0 }),
     });
@@ -584,6 +585,28 @@ describe("names never reach a path", () => {
 });
 
 describe("purge", () => {
+  it("a sign-out in another tab ends the sessions and the owner tab does not write the database back", async () => {
+    const r = await rig();
+    const sink = { blob: null as Blob | null };
+    r.setHandler(collect(sink));
+    const other = new XferStore(NAME, { idb: r.idb });
+    let removed = false;
+    const write = r.store.write.bind(r.store);
+    r.store.write = async (ref, off, d) => {
+      await write(ref, off, d);
+      if (!removed) {
+        removed = true;
+        await other.purgeAll();
+      }
+    };
+    await r.sender
+      .send(r.p.out, new Blob([bytes(900_000)]))
+      .catch(() => undefined);
+    await new Promise((res) => setTimeout(res, 100));
+    expect(sink.blob).toBeNull();
+    expect((await r.idb.databases()).map((d) => d.name)).not.toContain(NAME);
+  });
+
   it("removes the database, and a late effect cannot bring it back", async () => {
     const r = await rig();
     const sink = { blob: null as Blob | null };

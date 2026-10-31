@@ -117,6 +117,8 @@ export class CloudTransfer {
     printAs(this, () => ({ transfer: "CloudTransfer" }));
     // A partial a live transfer holds is never the one made room for another.
     deps.store?.protect((ref) => this.#live.has(ref));
+    // Another tab removed the database (a sign-out): nothing of ours may write it back.
+    deps.store?.onInvalidated(() => void this.#killWires());
   }
 
   /**
@@ -124,6 +126,16 @@ export class CloudTransfer {
    * nothing they still had queued reaches the store afterwards.
    */
   async purge(): Promise<void> {
+    await this.#killWires();
+    await this.deps.store?.purgeAll();
+  }
+
+  /** Remove the partials kept for one peer key (a device that left the roster). */
+  async purgePeer(peerKey: Uint8Array): Promise<void> {
+    await this.deps.store?.purgePeer(peerKey);
+  }
+
+  async #killWires(): Promise<void> {
     const wires = [...this.#open];
     for (const w of wires) {
       w.dead = true;
@@ -132,7 +144,6 @@ export class CloudTransfer {
     }
     await Promise.all(wires.map((w) => w.ep.idle().catch(() => undefined)));
     this.#live.clear();
-    await this.deps.store?.purgeAll();
   }
 
   cancel(id: string): boolean {
@@ -364,8 +375,11 @@ export class CloudTransfer {
       consent: (id, answer) => guard(() => wire.ep.consent(id, answer)),
     };
     this.#open.add(wire);
-    session.onClose(() => {
+    session.onClose((c) => {
       ep.closed();
+      // A device that was revoked takes its partial transfers with it.
+      if (c.code === "peer_revoked")
+        void this.purgePeer(port.peerKey).catch(() => undefined);
       void ep.idle().then(() => {
         this.#open.delete(wire);
         for (const ref of wire.owned) this.#release(wire, ref);
@@ -396,7 +410,13 @@ export class CloudTransfer {
       const w = this.#live.get(ref);
       return w === undefined || w === wire;
     };
-    if ("write" in e) return store.write(e.write, e.offset, e.data);
+    // A write belongs to the wire that claimed the partial; a closed session's queued write
+    // never lands after another session took it over.
+    if ("write" in e) {
+      if (this.#live.get(e.write) !== wire)
+        throw new XferStoreError("a live transfer holds that partial");
+      return store.write(e.write, e.offset, e.data);
+    }
     if ("create" in e) {
       const p = wire.ep.machine.partials().find((x) => x.ref === e.create);
       if (p === undefined) throw new XferStoreError("unknown partial");
@@ -511,6 +531,16 @@ export class CloudTransfer {
       to = null;
     else if (to !== null) wire.reserved.set(a.id, this.#key(wire, a.id));
     if (to === null) return wire.consent(a.id, "decline");
+    // A kept partial is read back now, at the accept, not when the session began.
+    if (store !== null)
+      for (const p of wire.ep.machine.partials())
+        if (p.id === a.id && p.bytes > 0 && !p.held) {
+          const r = await store
+            .reread(p.ref, p.chunk, p.bytes)
+            .catch(() => null);
+          if (r !== null) wire.hashed.set(p.ref, r);
+          else wire.hashed.delete(p.ref);
+        }
     wire.inc.set(a.id, {
       to,
       ...(a.type !== undefined ? { type: a.type } : {}),
