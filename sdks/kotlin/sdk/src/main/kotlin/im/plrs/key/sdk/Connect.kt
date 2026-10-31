@@ -544,6 +544,14 @@ public class ConnectClient internal constructor(
      * device keys are untouched, and so is the Worker's roster.
      */
     public suspend fun leave(): Unit = lock.withLock {
+        // Whatever the record says, the device is leaving: what the SDK kept for it (partial transfers) goes too.
+        for (f in leftListeners) {
+            try {
+                f()
+            } catch (e: Exception) {
+                // a listener never stops a sign-out
+            }
+        }
         // Nothing held means nothing to forget, and sign-out must not depend on a store it never
         // used: no directory, lock file or Keystore call is made for an absent record.
         if (storage == null && options.state == null) {
@@ -571,6 +579,13 @@ public class ConnectClient internal constructor(
         } catch (e: DeviceKeysUnreadableException) {
             throw storeError(e)
         }
+    }
+
+    private val leftListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+
+    /** Called when the device leaves the person's devices ([leave]: sign-out). */
+    internal fun onLeft(fn: () -> Unit) {
+        leftListeners += fn
     }
 
     // ── Contacts (inter-account links, section 15.10) ────────────────────────────────────────

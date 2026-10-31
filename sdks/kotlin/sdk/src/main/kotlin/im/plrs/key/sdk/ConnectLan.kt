@@ -146,11 +146,15 @@ public class LanOptions(
     override fun toString(): String = "LanOptions"
 
     /** These options with another adapter and permission hook (the platform's, on Android). */
-    internal fun with(mdns: MdnsAdapter?, lanPermission: suspend () -> Boolean): LanOptions = LanOptions(
+    internal fun with(mdns: MdnsAdapter?, lanPermission: suspend () -> Boolean, caps: List<String> = this.caps): LanOptions = LanOptions(
         mdns, host, port, caps, label, advertise, browse, allowLoopback, interfaces, maxPending, maxPendingPerAddress,
         maxPendingPerGroup, maxSessions, rekeyMessages, rekeySeconds, handshakeSeconds, dialSeconds, timer, lanPermission,
     )
 }
+
+/** These options listing `xfer/1` among the capabilities (Direct Transfer rides every session). */
+internal fun LanOptions.withTransferCap(): LanOptions =
+    if (im.plrs.key.core.peer.XFER_CAP in caps) this else with(mdns, lanPermission, caps + im.plrs.key.core.peer.XFER_CAP)
 
 /**
  * What the LAN service needs of the client. [load] reads the held identity (it may read the key store and

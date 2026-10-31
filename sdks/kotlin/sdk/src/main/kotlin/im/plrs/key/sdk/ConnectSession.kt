@@ -26,6 +26,7 @@ import im.plrs.key.core.peer.PeerHello
 import im.plrs.key.core.peer.PeerLink
 import im.plrs.key.core.peer.PeerLinkPort
 import im.plrs.key.core.peer.SessionEvent
+import im.plrs.key.core.peer.XFER_CAP
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.withTimeout
@@ -39,6 +40,10 @@ private const val APP_LAST = 0x7FFF
 private const val CRITICAL_FIRST = 0x8100
 private const val CRITICAL_LAST = 0xFFFD
 private const val MIB = 1024 * 1024
+
+/** Transfer records held for the transfer layer before it binds. */
+private const val XFER_EARLY_RECORDS = 16
+private const val XFER_EARLY_BYTES = 2 * MIB
 
 /** Messages a session holds unread. */
 public const val MAX_QUEUED_MESSAGES: Int = 256
@@ -107,6 +112,8 @@ public class ConnectSession internal constructor(
     private val budget: QueueBudget = sharedBudget,
     /** The link a mode-`c` session runs over (section 15.10); null for the person's own devices. */
     public val contact: ContactRef? = null,
+    /** The peer's static key (32 raw bytes, a public key): what a partially received transfer is kept under. */
+    internal val peerKey: ByteArray? = null,
 ) {
     private val lock = Any()
     private val inbox = Channel<SessionMessage>(Channel.UNLIMITED)
@@ -119,6 +126,65 @@ public class ConnectSession internal constructor(
 
     /** The capabilities both sides listed. */
     public val caps: List<String> = caps.toList()
+
+    // -- the transfer port (section 15.11) ----------------------------------------------------------------------
+    //
+    // The channel hands the six transfer record types to the port attached here, at once and in order, from the
+    // moment the session is open. Until the transfer layer binds ([bindTransfer]) they wait in a small buffer, so
+    // a peer that offers the instant it connects is heard.
+
+    private val xferLock = Any()
+    private var xferSink: ((Int, ByteArray) -> Unit)? = null
+    private val xferEarly = ArrayList<Pair<Int, ByteArray>>()
+    private var xferEarlyBytes = 0
+    private var xferWriter: (suspend (Int, ByteArray) -> Unit)? = null
+
+    init {
+        if (XFER_CAP in this.caps) {
+            xferWriter = try {
+                link.attachXfer(::xferIn)
+            } catch (e: UnsupportedOperationException) {
+                null
+            } catch (e: IllegalStateException) {
+                null
+            }
+        }
+    }
+
+    private fun xferIn(type: Int, body: ByteArray) {
+        var over = false
+        synchronized(xferLock) {
+            val sink = xferSink
+            if (sink != null) {
+                sink(type, body)
+            } else if (xferEarly.size >= XFER_EARLY_RECORDS || xferEarlyBytes + body.size > XFER_EARLY_BYTES) {
+                over = true
+            } else {
+                xferEarly += type to body
+                xferEarlyBytes += body.size
+            }
+        }
+        if (over) link.closeNow(PeerCloseCode.peer_busy)
+    }
+
+    /** End the session with any close code, at once (the transfer layer's faults are `peer_bad_frame` and `peer_not_allowed`). */
+    internal fun closeWith(code: PeerCloseCode) = link.closeNow(code)
+
+    /** True when this session can carry transfers: both sides listed `xfer/1` and the link has a transfer port. */
+    internal val canTransfer: Boolean get() = xferWriter != null
+
+    /** Bind the transfer layer: the records that waited are delivered first, in order. Returns the writer. */
+    internal fun bindTransfer(sink: (Int, ByteArray) -> Unit): (suspend (Int, ByteArray) -> Unit)? {
+        val w = xferWriter ?: return null
+        synchronized(xferLock) {
+            check(xferSink == null) { "already bound" }
+            xferSink = sink
+            for ((t, b) in xferEarly) sink(t, b)
+            xferEarly.clear()
+            xferEarlyBytes = 0
+        }
+        return w
+    }
 
     override fun toString(): String =
         contact?.let { "ConnectSession(contact=${it.id}, path=$path, role=$role)" } ?: "ConnectSession(peer=$peerDeviceId, path=$path, role=$role)"
@@ -305,7 +371,9 @@ internal fun sessionHandlers(
         onEstablished = { link: PeerLinkPort, e: SessionEvent.Established ->
             // Mode c has no device id: the contact that opened the session names the peer.
             val ref = e.contactIndex?.let { contacts.getOrNull(it) }
-            val s = ConnectSession(link, e.peerDeviceId ?: "", e.caps, e.hello, role, link.remoteAddress, path, budget ?: sharedBudget, ref)
+            val s = ConnectSession(
+                link, e.peerDeviceId ?: "", e.caps, e.hello, role, link.remoteAddress, path, budget ?: sharedBudget, ref, e.remoteStatic.copyOf(),
+            )
             box = s
             onEstablished(s)
             s

@@ -79,6 +79,10 @@ public interface PeerLinkPort {
 
     /** Stop (true) or resume (false) reading from the pipe. Safe from any thread. */
     public fun pause(on: Boolean)
+
+    /** The transfer port of the session (section 15.11); see [PeerChannel.attachXfer]. A link with no channel behind it has none. */
+    public fun attachXfer(onRecord: (Int, ByteArray) -> Unit): suspend (Int, ByteArray) -> Unit =
+        throw UnsupportedOperationException("transfers are not available on this link")
 }
 
 /** The peer was not admitted. [closeCode] is the channel's close code. */
@@ -206,6 +210,8 @@ public class PeerLink<H>(
     }
 
     override suspend fun sendRecord(type: Int, body: ByteArray): Unit = channel.sendRecord(type, body)
+
+    override fun attachXfer(onRecord: (Int, ByteArray) -> Unit): suspend (Int, ByteArray) -> Unit = channel.attachXfer(onRecord)
 
     override suspend fun close(code: PeerCloseCode) {
         closing = true

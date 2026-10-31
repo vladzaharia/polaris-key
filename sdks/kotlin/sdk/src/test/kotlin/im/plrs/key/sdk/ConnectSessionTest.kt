@@ -320,9 +320,9 @@ class ConnectSessionTest {
         }
     }
 
-    private class Device(val id: String, val port: DeviceKeyPort, val signKey: String, val agreeKey: String)
+    internal class Device(val id: String, val port: DeviceKeyPort, val signKey: String, val agreeKey: String)
 
-    private fun device(id: String): Device = runBlocking {
+    internal fun device(id: String): Device = runBlocking {
         val port = DeviceKeyStore(InMemoryDeviceKeyStorage())
         val k = port.ensure()
         Device(id, port, k.signKey, k.agreeKey)
@@ -371,7 +371,7 @@ class ConnectSessionTest {
         )
     }
 
-    private class Rig(
+    internal class Rig(
         val a: PeerLink<ConnectSession>,
         val b: PeerLink<ConnectSession>,
         val sa: ConnectSession,
@@ -382,23 +382,29 @@ class ConnectSessionTest {
     private val idA = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH"
     private val idB = "HHHHGGGGFFFFEEEEDDDDCCCCBBBBAAAA"
 
-    private suspend fun connect(
+    /** The two devices of a rig; keep them to open another pair of sessions between the same peers. */
+    internal fun devices(): Pair<Device, Device> = device(idA) to device(idB)
+
+    /** Two connected sessions (a real link each, over in-memory pipes), listing [caps]. */
+    internal suspend fun connect(
         scope: CoroutineScope,
         epochA: Long = 1,
         epochB: Long = 1,
         docsB: PeerDocs? = null,
         budgetB: QueueBudget? = null,
+        caps: List<String> = listOf("app/1"),
+        devices: Pair<Device, Device> = devices(),
     ): Rig {
-        val da = device(idA)
-        val db = device(idB)
+        val da = devices.first
+        val db = devices.second
         val all = listOf(da, db)
         val k = ByteArray(32) { 5 }
         val pa = MemPipe("10.0.0.1")
         val pb = MemPipe("10.0.0.2")
         pa.other = pb
         pb.other = pa
-        val baseA = ChannelBase(source(da, all, epochA, k), caps = listOf("app/1"), now = { now })
-        val baseB = ChannelBase(source(db, all, epochB, k), caps = listOf("app/1"), now = { now })
+        val baseA = ChannelBase(source(da, all, epochA, k), caps = caps, now = { now })
+        val baseB = ChannelBase(source(db, all, epochB, k), caps = caps, now = { now })
         val a = PeerLink(pa, scope, sessionHandlers(NoiseRole.initiator), build = baseA.builder(NoiseRole.initiator))
         val b = PeerLink(pb, scope, sessionHandlers(NoiseRole.responder, docs = docsB, budget = budgetB), build = baseB.builder(NoiseRole.responder))
         scope.launch { a.run() }

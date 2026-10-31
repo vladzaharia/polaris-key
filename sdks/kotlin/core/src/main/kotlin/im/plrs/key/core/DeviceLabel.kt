@@ -49,15 +49,15 @@ private fun mapAndStrip(raw: String): String {
     return out.toString()
 }
 
-/** Steps 3 to 5. */
-private fun collapseAndCut(text: String): String? {
+/** Steps 3 to 5; [max] is the cut in code points. */
+private fun collapseAndCut(text: String, max: Int = DEVICE_LABEL_MAX_CODEPOINTS.toInt()): String? {
     val kept = ArrayList<Int>()
     text.codePoints().forEach { cp ->
         if (cp == 0x20 && (kept.isEmpty() || kept.last() == 0x20)) return@forEach
         kept.add(cp)
     }
     while (kept.isNotEmpty() && kept.last() == 0x20) kept.removeAt(kept.size - 1)
-    val cut = ArrayList(kept.take(DEVICE_LABEL_MAX_CODEPOINTS.toInt()))
+    val cut = ArrayList(kept.take(max))
     while (cut.isNotEmpty() && cut.last() == 0x20) cut.removeAt(cut.size - 1)
     if (cut.isEmpty()) return null
     val out = StringBuilder()
@@ -75,6 +75,13 @@ public fun normalizeDeviceLabel(raw: String?): String? =
  */
 public fun cleanDisplayLabel(raw: String?): String? =
     if (raw == null) null else collapseAndCut(Normalizer.normalize(mapAndStrip(raw), Normalizer.Form.NFC))
+
+/**
+ * §15.11: a transfer's `name` as shown. Cleaned as a HELLO label (steps 1 and 2, NFC, then steps 3 and 5)
+ * without the code point cut. Null when nothing is left. Display data only.
+ */
+public fun cleanDisplayName(raw: String?): String? =
+    if (raw == null) null else collapseAndCut(Normalizer.normalize(mapAndStrip(raw), Normalizer.Form.NFC), Int.MAX_VALUE)
 
 private val HOST_SUFFIX = Regex("\\.(local|lan|home)$", RegexOption.IGNORE_CASE)
 
