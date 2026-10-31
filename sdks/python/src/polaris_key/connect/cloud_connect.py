@@ -11,6 +11,8 @@ over the identity client, the LAN service, the relay and the sessions they open.
 - ``stop()``: close the sessions, the relay and the LAN service;
 - ``links``: inter-account links (CC-19): ``pair()``, ``list()``, ``remove()``, ``open()``, ``on_link()``;
   off unless discovery says ``interAccount``.
+- ``transfer``: Direct Transfer between peers (CC-20): ``send()``, ``on_offer()``, ``on_result()``. ``start()``
+  lists ``xfer/1`` in the capabilities unless the options say ``transfer=False``.
 - ``nearby``: approval of a device with no sign-in by a signed-in device nearby (mode ``v``, CC-15):
   ``nearby.request()`` on the new device, ``nearby.on_request()`` on the approver.
 
@@ -37,16 +39,19 @@ Rules this module keeps:
 from __future__ import annotations
 
 import concurrent.futures
+import dataclasses
 import threading
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional
 
 from ..core.b64url import b64url_encode
+from ..core.peer_xfer import XFER_CAP
 from .client import ConnectClient, ConnectDevice
 from .errors import LanError, RelayError
 from .links import CloudLinks
 from .loop import connect_loop
 from .nearby import CloudNearby, NearbyDeps
+from .transfer import Transfer
 
 if TYPE_CHECKING:  # the transports import asyncio and sockets: only when Connect starts
     from .channel import ConnectNotice
@@ -106,6 +111,16 @@ def relay_wanted(discovery: Optional[Mapping[str, Any]]) -> Optional[str]:
 Options = Optional[Mapping[str, Any]]
 
 
+def xfer_caps(caps: Any, on: bool) -> Any:
+    """``caps`` with ``xfer/1`` listed once when Direct Transfer is on."""
+    from ..core.peer_xfer import XFER_CAP
+
+    c = list(caps)
+    if on and XFER_CAP not in c:
+        c.append(XFER_CAP)
+    return tuple(c)
+
+
 class CloudConnect:
     """``client.cloud_connect``. ``discovery`` returns the loaded discovery document (or ``None``);
     ``apply_trust`` verifies and applies a trust manifest a peer pushed; ``now`` is epoch seconds (the
@@ -119,6 +134,7 @@ class CloudConnect:
         apply_trust: Optional[Callable[[str], Any]] = None,
         now: Optional[Callable[[], int]] = None,
         nearby: Optional[NearbyDeps] = None,
+        state_dir: Callable[[], Optional[str]] = lambda: None,
     ) -> None:
         self._nearby = CloudNearby(nearby)
         self._now = now
@@ -144,6 +160,27 @@ class CloudConnect:
         connect.on_roster(self._readmit)
         self._contact_relay: Optional["ContactRelay"] = None
         self._links = CloudLinks(self, connect)
+        self._transfer = Transfer(state_dir, self._open_for_transfer, links=self._link_ids)
+        leave = getattr(connect, "on_roster_leave", None)
+        if leave is not None:
+            leave(self._forget_left)
+
+    @property
+    def transfer(self) -> Transfer:
+        """Direct Transfer (CC-20): ``send``, ``on_offer``, ``on_result``."""
+        return self._transfer
+
+    def _forget_left(self, keys: List[bytes]) -> None:
+        for k in keys:
+            self._transfer.forget_peer(k)
+
+    def _link_ids(self) -> List[str]:
+        return [c.id for c in self._links.list()]
+
+    def _open_for_transfer(self, peer: Any) -> "ConnectSession":
+        if isinstance(peer, str):
+            return self.open(peer)
+        return self._links.open(peer.id)
 
     @property
     def links(self) -> CloudLinks:
@@ -215,6 +252,9 @@ class CloudConnect:
             self._touched = True
         self._run(self._start(options or {}))
 
+    def _xfer_hook(self, on: bool) -> Any:
+        return self._transfer.attach if on else None
+
     async def _start(self, opts: Mapping[str, Any]) -> None:
         from .lan import LanOptions, LanService, lan_source
         from .relay import RelayOptions, RelayService
@@ -233,6 +273,7 @@ class CloudConnect:
             relay_opt = opts.get("relay", True)
             reason = "host" if relay_opt is False else relay_wanted(self._discovery())
             relay_on = reason is None
+            xfer_on = opts.get("transfer", True) is not False
             src = lan_source(self._connect, apply_trust=self._apply_trust, now=self._now)
             lan_opt = opts.get("lan", True)
             if lan_opt is not False:
@@ -242,6 +283,7 @@ class CloudConnect:
                         if isinstance(lan_opt, LanOptions)
                         else LanOptions(**(lan_opt if isinstance(lan_opt, Mapping) else {}))
                     )
+                    lo = dataclasses.replace(lo, caps=xfer_caps(lo.caps, xfer_on), xfer=self._xfer_hook(xfer_on))
                     lan = await LanService.start(src, lo)
                     self._lan = lan
                     self._unsub.append(lan.on_session(self._inbound))
@@ -259,6 +301,7 @@ class CloudConnect:
                     if isinstance(relay_opt, RelayOptions)
                     else RelayOptions(**(relay_opt if isinstance(relay_opt, Mapping) else {}))
                 )
+                ro = ro._replace(caps=xfer_caps(ro.caps, xfer_on), xfer=self._xfer_hook(xfer_on))
                 relay = RelayService(src, self._connect.relay_ticket, ro)
                 self._relay = relay
                 self._unsub.append(relay.on_session(self._inbound))
@@ -443,6 +486,9 @@ class CloudConnect:
         with self._lock:
             subs = list(self._on_channel)
         if not subs:
+            if self._transfer.listening and XFER_CAP in s.caps:
+                self._track(s)  # a host that takes offers keeps the sessions its peers open for them
+                return
             try:
                 s.close()  # nobody to hand it to (G9)
             except Exception:

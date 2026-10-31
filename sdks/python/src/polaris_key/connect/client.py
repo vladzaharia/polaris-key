@@ -288,6 +288,7 @@ class ConnectClient:
     ) -> None:
         self._inter_account = inter_account
         self._on_contacts: List[Callable[[], None]] = []
+        self._on_leave: List[Callable[[List[bytes]], None]] = []
         self._ctx = ctx
         self._tokens = tokens
         self._devices = devices
@@ -586,6 +587,8 @@ class ConnectClient:
             except DeviceKeyError as e:
                 raise self._store_error(e) from e
             self._roster_stored(ring)
+            if held_ring is not None:
+                self._left(held_ring, ring)
             return RingAdoption(True, epoch=ring.epoch)
 
     def on_roster(self, fn: Callable[[Ring], None]) -> Callable[[], None]:
@@ -671,6 +674,27 @@ class ConnectClient:
         """Called when the contacts changed or the ``interAccount`` answer may have (on the caller's thread)."""
         self._on_contacts.append(fn)
         return lambda: self._on_contacts.remove(fn) if fn in self._on_contacts else None
+
+    def on_roster_leave(self, fn: Callable[[List[bytes]], None]) -> Callable[[], None]:
+        """Called with the agree keys (32 raw bytes) of devices a newer roster dropped (§15.11: a device
+        that left the roster has its kept partial transfers deleted)."""
+        self._on_leave.append(fn)
+        return lambda: self._on_leave.remove(fn) if fn in self._on_leave else None
+
+    def _left(self, old: Any, new: Any) -> None:
+        gone: List[bytes] = []
+        for d in old.devices:
+            if not any(_same_device(n, d) for n in new.devices):
+                try:
+                    gone.append(b64url_decode(d.agree_key))
+                except ValueError:
+                    pass
+        if gone:
+            for f in list(self._on_leave):
+                try:
+                    f(gone)
+                except Exception:
+                    pass  # a host's listener cannot stop the others
 
     def notify_contacts(self) -> None:
         for f in list(self._on_contacts):
@@ -826,6 +850,7 @@ class ConnectClient:
             intact = all(any(_same_device(n, d) for n in ring.devices) for d in prior.devices)
             if not intact:
                 keys = [keys[0]]
+            self._left(prior, ring)
         same_epoch_prev = (
             held is not None
             and prior is not None

@@ -542,7 +542,9 @@ class ContactRoom:
             if self.transient and not any(not lk.ended for lk in self._links.values()):
                 self._on_idle(self)
 
-        handlers = session_handlers(role, on_established=established, on_ended=ended, path="relay", contacts=[self._ref])
+        handlers = session_handlers(
+            role, on_established=established, on_ended=ended, path="relay", contacts=[self._ref], xfer=o.xfer
+        )
         options: Dict[str, Any] = {
             **contact_channel(
                 ident,

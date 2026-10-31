@@ -339,6 +339,7 @@ def session_handlers(
     budget: Optional[QueueBudget] = None,
     path: str = "lan",
     contacts: Optional[Sequence[ContactRef]] = None,
+    xfer: Optional[Callable[[Any, ConnectSession, Established], None]] = None,
 ) -> LinkHandlers:
     """The link callbacks that make a :class:`ConnectSession`: it is built when the peer is admitted,
     APP records are routed to it, and the link's close ends it."""
@@ -360,6 +361,9 @@ def session_handlers(
         )
         s.peer_static = e.remote_static
         box[0] = s
+        if xfer is not None:
+            # Direct Transfer takes its port before any record can follow the HELLO (§15.11).
+            xfer(link, s, e)
         if on_established is not None:
             on_established(s)
         return s

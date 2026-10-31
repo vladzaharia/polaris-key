@@ -28,6 +28,7 @@ from ..constants_generated import DEVICE_LABEL_MAX_CODEPOINTS
 __all__ = [
     "normalize_device_label",
     "clean_display_label",
+    "clean_display_name",
     "default_device_name",
     "resolve_device_label",
 ]
@@ -94,8 +95,8 @@ def _map_and_strip(raw: str) -> str:
     return "".join(out)
 
 
-def _collapse_and_cut(text: str) -> Optional[str]:
-    """Steps 3 to 5."""
+def _collapse_and_cut(text: str, limit: Optional[int] = DEVICE_LABEL_MAX_CODEPOINTS) -> Optional[str]:
+    """Steps 3 to 5 (``limit`` None: no cut)."""
     kept: list = []
     for ch in text:
         if ch == " " and (not kept or kept[-1] == " "):
@@ -103,7 +104,7 @@ def _collapse_and_cut(text: str) -> Optional[str]:
         kept.append(ch)
     while kept and kept[-1] == " ":
         kept.pop()
-    cut = kept[:DEVICE_LABEL_MAX_CODEPOINTS]
+    cut = kept[:limit]
     while cut and cut[-1] == " ":
         cut.pop()
     return "".join(cut) or None
@@ -122,6 +123,14 @@ def clean_display_label(raw: object) -> Optional[str]:
     if not isinstance(raw, str):
         return None
     return _collapse_and_cut(unicodedata.normalize("NFC", _map_and_strip(raw)))
+
+
+def clean_display_name(raw: object) -> Optional[str]:
+    """§15.11: a transfer's ``name`` as shown. Cleaned as a HELLO label (steps 1 and 2, NFC, then
+    steps 3 and 5) without the 64 code point cut. ``None`` when nothing is left. Display data only."""
+    if not isinstance(raw, str):
+        return None
+    return _collapse_and_cut(unicodedata.normalize("NFC", _map_and_strip(raw)), None)
 
 
 _HOST_SUFFIX = re.compile(r"\.(local|lan|home)$", re.IGNORECASE)

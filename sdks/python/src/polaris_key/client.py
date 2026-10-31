@@ -33,13 +33,12 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Union
 import httpx
 
 from .backend import BackendClient
-from .core.device_keys import DeviceKeyPort
-from .connect import CloudConnect, ConnectClient, NearbyDeps
-from .keyring import KeyringClient
-from .commerce import CommerceClient
 from .cloud_sync.api import CloudSyncApi, CloudSyncClient
 from .cloud_sync.host import CloudSyncHost, CloudSyncHostDeps, CloudSyncHostOptions
+from .commerce import CommerceClient
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
+from .connect import CloudConnect, ConnectClient, NearbyDeps
+from .constants_generated import Feature, StoreDegradedReason, UnsupportedReason
 from .core.bundle import ImportBundleResult, import_bundle
 from .core.cache import CacheManager
 from .core.caps import (
@@ -50,19 +49,20 @@ from .core.caps import (
     supported_features,
     validate_detectors,
 )
-from .constants_generated import Feature, StoreDegradedReason, UnsupportedReason
 from .core.context import DEFAULT_REQUEST_TIMEOUT_SECONDS, CoreContext
+from .core.device_keys import DeviceKeyPort
+from .core.events import EventBus, listener_failed
+from .core.local_state import JsonStateFile
 from .core.models import (
     ActivationSource,
     BlockedState,
     DocProfile,
     LicenseDoc,
 )
+from .core.portal import PortalStore
 from .core.store import Store, StoreStatus
-from .core.sync import SyncDeps, SyncResult, sync as run_sync
-from .core.events import EventBus, listener_failed
-from .core.local_state import JsonStateFile
-from .core.update_journal import UpdateJournal
+from .core.sync import SyncDeps, SyncResult
+from .core.sync import sync as run_sync
 from .core.token import (
     Reacquired,
     TokenManager,
@@ -70,6 +70,7 @@ from .core.token import (
     choose_reacquire_route,
 )
 from .core.trust import TrustManager
+from .core.update_journal import UpdateJournal
 from .devices.client import (
     DeviceManagementUnsupportedError,
     DevicesClient,
@@ -77,19 +78,19 @@ from .devices.client import (
     RegisterResult,
 )
 from .devices.facts import ProbeDeclaration
-from .identity.account import identity_fragment_from
-from .identity.client import IdentityClient
-from .distribution import DistributionClient
 from .discovery import (
     DiscoveryOk,
     ServicesMap,
     discover_product,
 )
+from .distribution import DistributionClient
+from .identity.account import identity_fragment_from
+from .identity.client import IdentityClient
+from .keyring import KeyringClient
 from .license.client import LicenseClient
-from .license.entitlements import EntitlementsClient
 from .license.endpoints import ActivationOk, reacquire_token
+from .license.entitlements import EntitlementsClient
 from .license.gate import LicenseState
-from .core.portal import PortalStore
 from .presentation import DiscoveryPresentationSource
 from .release.client import ReleaseClient
 from .update.bootguard import BootGuard
@@ -361,12 +362,15 @@ class PolarisKeyClient:
                 signed_in=lambda: not self._tokens.unconfirmed and self.identity.current() is not None,
                 signer=self.connect.nearby_signer,
             ),
+            state_dir=self.core.local_state_dir,
         )
         # Signing out first stops Cloud Connect (the sessions, the relay and the LAN service are this
         # person's devices' business), then forgets the held roster, certificate and K_disc (the device
         # keys stay). Hooks run in this order. A state that cannot be deleted raises, and the sign-out
         # stops (fail closed).
         self.identity.on_before_sign_out(self._stop_cloud_connect)
+        # Kept partial transfers are this person's data: they go with the sign-out (after the sessions end).
+        self.identity.on_before_sign_out(self.cloud_connect.transfer.purge)
         self.identity.on_before_sign_out(self.connect.leave)
 
         #: The Cloud Sync host (WIRE-CONTRACT-V5 §13): the machine, its transport and the state file.

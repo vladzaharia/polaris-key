@@ -184,6 +184,12 @@ class SocketLink:
         """Send one record message; blocks the calling thread until the loop has queued it."""
         self._call(lambda: self.channel.send_record(type_, body))
 
+    def attach_xfer(self, on_record: Callable[[int, bytes], None]) -> Callable[[int, bytes], None]:
+        """Take the engine's transfer port (§15.11). Call it on the loop's thread, as the session is
+        established; the writer it returns is safe from any thread."""
+        write = self.channel.attach_xfer(on_record)
+        return lambda type_, body: self._call(lambda: write(type_, body))
+
     def close(self, code: str = "peer_bye") -> None:
         """End the session with a code (a CLOSE record when the transport exists)."""
         self._call(lambda: self.channel.close(code))
