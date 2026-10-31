@@ -166,7 +166,7 @@ def format_hlc(physical_ms: int, counter: int) -> str:
 
 
 def parse_hlc(hlc: str) -> Tuple[int, int]:
-    if not isinstance(hlc, str) or not _HLC_RE.search(hlc):
+    if not isinstance(hlc, str) or not _HLC_RE.fullmatch(hlc):
         raise ValueError(f"not an HLC: {hlc}")
     return int(hlc[:12], 16), int(hlc[13:], 16)
 
@@ -988,7 +988,7 @@ class CloudSyncMachine:
 
     def _fresh_client_id(self) -> str:
         cid = self._new_client_id()
-        if not _CLIENT_ID_RE.search(cid):
+        if not _CLIENT_ID_RE.fullmatch(cid):
             raise ValueError(f"bad clientId: {cid}")
         return cid
 

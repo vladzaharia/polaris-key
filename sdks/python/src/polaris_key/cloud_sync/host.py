@@ -143,7 +143,7 @@ def _vetted(c: Any) -> Optional[Obj]:
     entries = []
     for e in c["entries"]:
         k = e.get("key") if isinstance(e, dict) else None
-        if not isinstance(k, str) or _SYNC_KEY.match(k) is None or k in seen:
+        if not isinstance(k, str) or _SYNC_KEY.fullmatch(k) is None or k in seen:
             continue
         seen.add(k)
         entries.append(e)

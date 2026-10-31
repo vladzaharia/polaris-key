@@ -122,6 +122,7 @@ func _ids(t: PKeyTestContext) -> void:
 	t.check("ids: apple asset pack <pack>-c<contentApi>, dots to hyphens", PKeyPackAppleBaTransport.asset_pack_id("diceroll.foes", 3) == "diceroll-foes-c3" and PKeyPackAppleBaTransport.asset_pack_id("foes", 4) == "foes-c4")
 	t.check("ids: a double hyphen is no asset pack", PKeyPackAppleBaTransport.asset_pack_id("x-.foes", 3) == "")
 	t.check("ids: over 64 characters is no asset pack", PKeyPackAppleBaTransport.asset_pack_id("a" + "b".repeat(61), 3) == "" and PKeyPackAppleBaTransport.asset_pack_id("a" + "b".repeat(59), 3) != "")
+	t.check("ids: a trailing newline or CR is no asset pack", PKeyPackAppleBaTransport.asset_pack_id("foes\n", 3) == "" and PKeyPackAppleBaTransport.asset_pack_id("foes\r", 3) == "")
 	t.check("ids: an unknown content level is no asset pack", PKeyPackAppleBaTransport.asset_pack_id("foes", -1) == "")
 	t.check("ids: Play asset pack names replace dots and hyphens", PKeyPackPlayPadTransport.pad_name("diceroll.big-foes") == "diceroll_big_foes")
 	t.check("ids: transports name their transport and floating", PKeyPackAppleBaTransport.new().id() == "apple-ba" and PKeyPackPlayPadTransport.new().id() == "play-pad" and PKeyPackSteamTransport.new().id() == "steam-depot"
