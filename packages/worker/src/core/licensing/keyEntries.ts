@@ -49,6 +49,7 @@ import type { Db, DbStatement } from "../../db/types.js";
 import { randomId } from "../../platform/crypto.js";
 import type { LicenseRow } from "../repo.js";
 import { licenseUsable } from "../devices.js";
+import { LICENSE_NOT_IN_AN_ACCOUNT } from "../devices/store.js";
 import { ErrorCode, errorResponse } from "../errors.js";
 import { identityEnabled } from "../accounts/identityGate.js";
 import { buildManageUrl, buildSignInUrl } from "./manageUrl.js";
@@ -224,6 +225,9 @@ export function stmtRecordDeviceKeyEntry(
   deviceId: string,
   surface: Exclude<KeyEntrySurface, "portal">,
   now: number,
+  /** CORE-SEAT-GUARD: write nothing while the licence is in an account, so a refused seat claim
+   *  leaves no counted entry. Pass the same value `claimDeviceSeat` gets as `refuseOwnedLicense`. */
+  refuseOwnedLicense = false,
 ): DbStatement {
   return {
     sql: `INSERT INTO license_key_entries
@@ -235,7 +239,9 @@ export function stmtRecordDeviceKeyEntry(
                 AND status = 'authorized')
              AND NOT EXISTS (
                SELECT 1 FROM license_key_entries
-                WHERE product = ? AND license_id = ? AND device_id = ?)`,
+                WHERE product = ? AND license_id = ? AND device_id = ?)${
+                  refuseOwnedLicense ? ` AND ${LICENSE_NOT_IN_AN_ACCOUNT}` : ""
+                }`,
     params: [
       product,
       licenseId,
@@ -249,6 +255,7 @@ export function stmtRecordDeviceKeyEntry(
       product,
       licenseId,
       deviceId,
+      ...(refuseOwnedLicense ? [product, licenseId] : []),
     ],
   };
 }
@@ -281,7 +288,18 @@ export type KeyEntryGate =
   /** Identity is off: nothing is counted or refused, and no member is sent. */
   | { kind: "off" }
   /** Authorise as before, passing `keyEntry` so a new authorisation records its entry. */
-  | { kind: "admit"; keyEntries: KeyEntries; enrolled: boolean }
+  | {
+      kind: "admit";
+      keyEntries: KeyEntries;
+      enrolled: boolean;
+      /**
+       * CORE-SEAT-GUARD: the refusals switch is on and the device is not enrolled, so the seat
+       * claim must itself refuse a licence that has joined an account since the caller read it
+       * (`authorizeDevice`'s `refuseOwnedLicense`). False while the switch is off, which leaves
+       * the claim exactly as it was.
+       */
+      guardOwned: boolean;
+    }
   /** Step 3 (I-09): answer `license_owned` ({@link licenseOwnedResponse}); nothing is written. */
   | { kind: "owned" }
   /** Step 4: answer `key_entry_limit` ({@link keyEntryLimitResponse}); nothing is written. */
@@ -306,7 +324,7 @@ export async function keyEntryGate(
   const keyEntries = await keyEntryState(ctx, product, license.id);
   if (!keyEntries) return { kind: "off" };
   if (await isEnrolled(db, product.slug, license.id, deviceId))
-    return { kind: "admit", keyEntries, enrolled: true };
+    return { kind: "admit", keyEntries, enrolled: true, guardOwned: false };
   if (licenseUsable(license, now)) {
     const owned = (license.account_id ?? null) !== null;
     if (
@@ -315,7 +333,14 @@ export async function keyEntryGate(
     )
       return owned ? { kind: "owned" } : { kind: "refuse", keyEntries };
   }
-  return { kind: "admit", keyEntries, enrolled: false };
+  // Not enrolled and not refused here. Switch on: the claim re-checks ownership at commit, for a
+  // licence that was claimed into an account after the read above. Switch off: nothing refuses.
+  return {
+    kind: "admit",
+    keyEntries,
+    enrolled: false,
+    guardOwned: await keyEntryRefusalsOn(env, db),
+  };
 }
 
 /**

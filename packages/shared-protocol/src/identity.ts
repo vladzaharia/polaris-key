@@ -111,6 +111,11 @@ export interface SignInRequestView {
   scope?: string[];
   loginHint?: string | null;
   nameHint?: string | null;
+  /**
+   * LK-SKIP (§12.4.2): `true` when the app opted into the key return and the Worker allows it for
+   * this request. Absent otherwise, so every earlier answer stays byte-identical.
+   */
+  keyReturn?: true;
 }
 
 /** One line of what an app gets when the person continues (§12.7.3). */
@@ -403,6 +408,9 @@ export type AuthorizePurpose = "signin" | "attach";
 /** §12.4: the `license_choice` extension: who shows the licence choice, the card or the app (I-08b). */
 export type AuthorizeLicenseChoice = "card" | "app";
 
+/** LK-SKIP (§12.4): the one value of the `key_return` extension: the app accepts a key return (§12.4.2). */
+export const KEY_RETURN_ALLOW = "allow";
+
 /** §12.4: the parameters of `GET /<p>/identity/authorize`, as a client sends them. */
 export interface AuthorizeParams {
   response_type: "code";
@@ -417,6 +425,8 @@ export interface AuthorizeParams {
   name_hint?: string;
   purpose?: AuthorizePurpose;
   license_choice?: AuthorizeLicenseChoice;
+  /** LK-SKIP (§12.4.2): offer the card's "Continue without an account". Any other value is `invalid_request`. */
+  key_return?: typeof KEY_RETURN_ALLOW;
 }
 
 /** §12.4: the errors a 302 back to the app carries in its `error` query. */
@@ -444,6 +454,27 @@ export interface TokenResponse {
   subject: string;
   /** I-08b (§12.5.1): the licence's key-entry count after a key entered through `choice/complete`. */
   keyEntries?: { used: number; limit: number };
+  /** LK-SKIP: absent on every ordinary answer, so `via` narrows {@link KeyReturnTokenResponse} apart. */
+  via?: never;
+}
+
+/**
+ * LK-SKIP (§12.5 rule 3): the `200` of `token` for a key-return code (§12.4.2). {@link TokenResponse}
+ * plus `via: "key"`, with `scope` always `""`, `license` never `null` and `keyEntries` present.
+ * `subject` is `null`: the bind by key writes no binding and clears any binding the device held
+ * (U-02). A client still accepts a pairwise-subject string here, so a later Worker may carry one. A
+ * client tells this answer apart by `via: "key"` and its own `key_return` opt-in, never by
+ * `subject`, and refuses a `via: "key"` body that breaks any member here (§12.5 rule 3).
+ */
+export interface KeyReturnTokenResponse extends Omit<
+  TokenResponse,
+  "subject" | "license" | "keyEntries" | "scope" | "via"
+> {
+  via: "key";
+  scope: "";
+  license: Record<string, unknown>;
+  subject: string | null;
+  keyEntries: { used: number; limit: number };
 }
 
 /** §12.5: the flat RFC 6749 §5.2 body, and the Polaris refusals that are flat beside it. */
@@ -479,6 +510,14 @@ export interface SignInContinueRequest {
 /** §12.4: the answer of Continue and Cancel; the card navigates to `redirect`. */
 export interface SignInRedirect {
   redirect: string;
+}
+
+/**
+ * LK-SKIP (§12.4.2): `POST /api/signin/requests/:handle/key`. The key is in this body only; the
+ * answer is a {@link SignInRedirect} whose code names the key's licence and no account.
+ */
+export interface SignInKeyReturnRequest {
+  key: string;
 }
 
 // ── I-08b: the licence choice (§12.4.1, §12.5.1; plans/I-04.md §C, §G) ───────────────────────────

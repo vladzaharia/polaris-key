@@ -1576,7 +1576,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // identity.link is I-43.3's link-* transcripts (I-46.13), replayed through `session.linkOffer`
     // and `session.linkAccept`; the Node runner also replays them with a reference client.
     // connect.identity is CC-06.4's connect-identity* transcripts, replayed here (CC-09.1).
-    const plannedHere: string[] = [];
+    // identity.keyreturn is LK-SKIP's redirect-web-key-return* transcripts (recorded by LK-SKIP.4);
+    // the browser SDK replays them in LK-SKIP.6b.
+    const plannedHere: string[] = ["identity.keyreturn"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     const naHere = ["ui.cli.portal"];

@@ -8809,6 +8809,13 @@ paths:
             description: "Who shows the licence choice (I-08b).",
             schema: { type: string, enum: [card, app] },
           }
+        - {
+            name: key_return,
+            in: query,
+            required: false,
+            description: 'LK-SKIP (§12.4.2): `allow` offers the card''s "Continue without an account". Any other value is `invalid_request`. Kept only for `purpose=signin` on a product that runs License with the launch gate `launch.identityKeyReturn` on; otherwise dropped silently.',
+            schema: { type: string, enum: [allow] },
+          }
       responses:
         "303":
           description: >
@@ -14695,6 +14702,75 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "429":
           description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/signin/requests/{request}/key:
+    post:
+      operationId: returnToAppWithKey
+      tags: [portal]
+      summary: Continue to the app on a licence key, without an account
+      description: >
+        LK-SKIP (WIRE-CONTRACT-V5 §12.4.2). The card's "Continue without an account". No portal
+        session: it needs the request's binder cookie (the R1-07 binding), same-origin JSON and a
+        request that recorded `key_return=allow`. The key is in the body only (at most 1 KiB) and
+        never in a URL, the redirect, a record or the audit. Refusals come in this order and none
+        consumes the request: a cross-origin call is `404`; a body that is not a JSON object under
+        1 KiB is `400`; 10 calls a minute per client network, charged before any lookup (fails
+        closed) is `429`; an unknown, expired, foreign, taken or device-code request, a product
+        with Identity or License off, or the launch gate `launch.identityKeyReturn` off is `404`;
+        5 calls per request in 600 s is `429`; a malformed key is `422`; another product's, an
+        unknown or inactive key, a missing licence or a licence that is not usable is `401`; a
+        licence in an account is `403
+        license_owned` whatever `identity.keyEntryRefusals` says; with refusals on and the
+        key-entry limit reached, `403 key_entry_limit`. Then the request is taken in one atomic
+        consume and `{redirect}` is `<redirect_uri>?code=…&state=…&iss=…`. The code names the key
+        by its hash and the licence, no account; the device binds at `token`, where seats are
+        checked.
+      parameters:
+        - name: request
+          in: path
+          required: true
+          schema: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignInKeyReturnRequest" }
+      responses:
+        "200":
+          description: Where the card sends the person next.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignInRedirect" }
+        "400":
+          description: "`invalid_request`: not JSON, over 1 KiB, or not an object."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401":
+          description: >
+            `unauthorized`: no such key, another product's key, no licence, or a licence that is
+            not usable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: >
+            `license_owned` (with `signInUrl`) or `key_entry_limit` (with `keyEntries` and
+            `manageUrl`). Nothing was consumed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "422":
+          description: "`bad_request`: not the shape of a licence key."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: "`rate_limited`, with `retryAfter` and the `retry-after` header."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -26988,6 +27064,12 @@ components:
           enum: [signin, attach]
           description: On a request that came through `authorize` (§12.4).
         licenseChoice: { type: string, enum: [card, app] }
+        keyReturn:
+          type: boolean
+          const: true
+          description: >
+            LK-SKIP (§12.7.2): present, and `true`, only on a request that recorded `key_return=allow`
+            (§12.4.2). Absent otherwise.
         scope:
           type: array
           items: { type: string, enum: [profile, email, cloudSync] }
@@ -30204,6 +30286,14 @@ components:
         terms:
           type: string
           description: The terms version the person accepted, when the product requires them.
+    SignInKeyReturnRequest:
+      type: object
+      description: >
+        LK-SKIP (§12.4.2): `POST /api/signin/requests/{request}/key`. The whole licence key,
+        `pkey_<product>_…`; the body is at most 1 KiB.
+      required: [key]
+      properties:
+        key: { type: string }
     SignInRedirect:
       type: object
       required: [redirect]

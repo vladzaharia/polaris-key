@@ -171,6 +171,15 @@ export interface Env {
    */
   LAUNCH_IDENTITY_EXCHANGE?: string;
   /**
+   * LG-1 launch gate for the key return on the Polaris Locker card (`key_return=allow`, the card's key route and its codes at `token`). Off until the feature's security sign-off. A `[vars]` value, read
+   * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
+   * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the
+   * console says off. An unreadable store reads off.
+   * @inventory var jobs
+   * @editable LAUNCH_IDENTITY_RETURNKEY
+   */
+  LAUNCH_IDENTITY_RETURNKEY?: string;
+  /**
    * LG-1 launch gate for the Cloud Connect identity and devices routes. Off until the feature's security sign-off. A `[vars]` value, read
    * only through the platform settings store (`core/settings/platformRead.ts`, `ceiling`): `off`
    * is a hard off; `runtime` lets the console decide, default off; `on` means on unless the

@@ -726,6 +726,7 @@ public object Feature {
     public const val identityRedirectWeb: String = "identity.redirect.web"
     public const val identityChoice: String = "identity.choice"
     public const val identitySigninHints: String = "identity.signin.hints"
+    public const val identityKeyreturn: String = "identity.keyreturn"
     public const val identityExchange: String = "identity.exchange"
     public const val identityGamecenter: String = "identity.gamecenter"
     public const val identityPgs: String = "identity.pgs"
@@ -867,6 +868,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.redirect.web",
     "identity.choice",
     "identity.signin.hints",
+    "identity.keyreturn",
     "identity.exchange",
     "identity.gamecenter",
     "identity.pgs",
@@ -2042,6 +2044,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.redirect.web" to CapabilityRow("implemented", "identity", listOf()),
     "identity.choice" to CapabilityRow("implemented", "identity", listOf()),
     "identity.signin.hints" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.keyreturn" to CapabilityRow("planned", "identity", listOf()),
     "identity.exchange" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.gamecenter" to CapabilityRow("na", "identity", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "identity.pgs" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
@@ -2114,4 +2117,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "4fe2f5106c311417b3733e8aef030e26bf23c8888c9cb37ea276ddcc6b1ff758"
+public const val CAPABILITY_DIGEST: String = "4e9a0c9447d78f6123126f7f9ff48168184833fcc40ee918cfd24b6c264208ca"

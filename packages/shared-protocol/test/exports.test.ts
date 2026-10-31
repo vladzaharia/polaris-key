@@ -2,7 +2,7 @@
 // core's values verbatim, so there is no second spelling of `ISSUER` or the `HEADER_*`
 // constants anywhere in the package. If this test fails after an edit, a consumer somewhere
 // is about to verify or sign with the wrong ISSUER or send the wrong header names.
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 
 import * as barrel from "../src/index.js";
 import * as core from "../src/core.js";
@@ -382,6 +382,41 @@ describe("@polaris-key/protocol layout", () => {
     ).toBe(false);
     // The subpath is not re-exported from the barrel: Identity's shapes are service-scoped.
     expect("REQUEST_HANDLE_PATTERN" in barrel).toBe(false);
+  });
+
+  it("the /identity subpath (plans/LK-SKIP.md §2, WIRE-CONTRACT-V5 §12.4.2, §12.5)", () => {
+    expect(identity.KEY_RETURN_ALLOW).toBe("allow");
+    const params: Pick<identity.AuthorizeParams, "key_return"> = {
+      key_return: identity.KEY_RETURN_ALLOW,
+    };
+    expect(params.key_return).toBe("allow");
+    // The key-return answer's subject is a string or null; the ordinary answer's stays a string.
+    const answer: Pick<
+      identity.KeyReturnTokenResponse,
+      "via" | "scope" | "subject"
+    > = {
+      via: "key",
+      scope: "",
+      subject: null,
+    };
+    expect(answer.subject).toBeNull();
+    const ordinary: Pick<identity.TokenResponse, "subject"> = {
+      subject: "ps_x",
+    };
+    expect(typeof ordinary.subject).toBe("string");
+    // `via` discriminates the two answers: it is `never` on the ordinary one.
+    const tell = (
+      r: identity.TokenResponse | identity.KeyReturnTokenResponse,
+    ) => (r.via === "key" ? r.keyEntries.used : (r.subject as string));
+    expectTypeOf(tell).returns.toEqualTypeOf<number | string>();
+    const ordinaryVia: identity.TokenResponse["via"] = undefined;
+    expect(ordinaryVia).toBeUndefined();
+    const view: Pick<identity.SignInRequestView, "keyReturn"> = {
+      keyReturn: true,
+    };
+    expect(view.keyReturn).toBe(true);
+    const body: identity.SignInKeyReturnRequest = { key: "pkey_x" };
+    expect(Object.keys(body)).toEqual(["key"]);
   });
 
   it("the /identity subpath (plans/I-09.md §2, WIRE-CONTRACT-V4 §8, §12.2, §12.3)", () => {

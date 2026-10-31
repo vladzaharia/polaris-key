@@ -1364,6 +1364,19 @@
       "note": "I-08 (WIRE-CONTRACT-V4 §12.4, absorbing PX-W18): the authorize request may carry login_hint (an email), name_hint and purpose (signin or attach). The card prefills from them and nothing is verified by them. Pinned by identity-request-hints.json; I-10a and I-10b implement it."
     },
     {
+      "id": "identity.keyreturn",
+      "family": "devices",
+      "title": "Key return: the Polaris Locker card's Continue without an account hands the app a device on the key's licence",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
+      "allowedNa": [],
+      "note": "LK-SKIP (WIRE-CONTRACT-V5 §12.4.2, §12.5): a host that opts in sends key_return=allow on authorize (last, after license_choice), and the card may then redeem a licence key into a code that names the key's licence and no account. Token answers the sign-in body plus via: \"key\", scope \"\", keyEntries and subject null (the key bind clears any binding; a client still accepts a pairwise-subject string). A client tells it apart by via: \"key\" and its own opt-in, never by subject alone; it stores the token as a key activation and emits activated, never signedIn. A Worker without the feature ignores the parameter and the card shows no skip. Pinned by redirect-web-key-return.json and redirect-web-key-return-limit.json; until an SDK implements it the row is planned and it never sends the parameter."
+    },
+    {
       "id": "identity.exchange",
       "family": "devices",
       "title": "Platform sign-in: a Google or Apple ID token for a device token (the exchange)",

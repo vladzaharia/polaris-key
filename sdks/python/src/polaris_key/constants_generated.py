@@ -939,6 +939,7 @@ class Feature:
     IDENTITY_REDIRECT_WEB: Final = "identity.redirect.web"
     IDENTITY_CHOICE: Final = "identity.choice"
     IDENTITY_SIGNIN_HINTS: Final = "identity.signin.hints"
+    IDENTITY_KEYRETURN: Final = "identity.keyreturn"
     IDENTITY_EXCHANGE: Final = "identity.exchange"
     IDENTITY_GAMECENTER: Final = "identity.gamecenter"
     IDENTITY_PGS: Final = "identity.pgs"
@@ -1080,6 +1081,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.redirect.web",
     "identity.choice",
     "identity.signin.hints",
+    "identity.keyreturn",
     "identity.exchange",
     "identity.gamecenter",
     "identity.pgs",
@@ -2498,6 +2500,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.redirect.web": CapabilityRow("implemented", "identity", ()),
         "identity.choice": CapabilityRow("implemented", "identity", ()),
         "identity.signin.hints": CapabilityRow("implemented", "identity", ()),
+        "identity.keyreturn": CapabilityRow("planned", "identity", ()),
         "identity.exchange": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.gamecenter": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
@@ -2571,4 +2574,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "e159051d1cb45b0ecd03fea9d2e66d564602c5b55c322a9917b6fe38c41cf23f"
+CAPABILITY_DIGEST: Final[str] = "8b78023f8bc7f65437cff9ad8ab5657f6222677607e4034345553b844bc5a833"

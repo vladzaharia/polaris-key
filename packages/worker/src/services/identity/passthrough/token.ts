@@ -29,6 +29,10 @@
  * runs on needs the device's own token in `Authorization: Bearer`: with that proof the sign-in
  * binds the account to the device where it stands and answers the token the device already holds.
  *
+ * A code the card's key route issued (`kind: "key"`, LK-SKIP, §12.4.2) names a key and no
+ * account: `redeemKeyReturn` binds the device by key, as `license/activate` does, and answers
+ * `via: "key"`.
+ *
  * ── ERRORS ──────────────────────────────────────────────────────────────────────────────────
  *
  * Flat RFC 6749 §5.2 bodies for the grant's own refusals, and flat Polaris refusals beside them
@@ -39,6 +43,7 @@
 import {
   CHOICE_GRANT_TTL_SECONDS,
   TOKEN_EXCHANGE_GRANT_TYPE,
+  type KeyReturnTokenResponse,
   type PendingSignIn,
   type TokenResponse,
 } from "@polaris-key/protocol/identity";
@@ -88,10 +93,15 @@ import {
 } from "../../../core/devices/keys.js";
 import { registerDeviceKeys } from "../../../core/devices/registerKeys.js";
 import { getAccountRow } from "../accounts/repo.js";
-import { redeemAuthorizationCode } from "./code.js";
+import { redeemAuthorizationCode, type SignInCodeRecord } from "./code.js";
 import { acceptsKeys, licenseChoiceView, offerFor } from "./choice.js";
 import { issueGrant } from "./grant.js";
-import { bindChoice, type BindRefusal, type BindResult } from "./bind.js";
+import {
+  bindChoice,
+  bindKeyReturn,
+  type BindRefusal,
+  type BindResult,
+} from "./bind.js";
 import { launchGateOn } from "../../../core/settings/platformRead.js";
 import { handleExchange } from "./exchange.js";
 import { markFresh } from "./fresh.js";
@@ -238,6 +248,15 @@ export async function handleToken(ctx: {
   )
     return oauth(400, ErrorCode.InvalidGrant);
 
+  // LK-SKIP (§12.4.2): a code the card's key route issued names a key, not an account.
+  if (record.kind === "key")
+    return redeemKeyReturn(
+      { req, env, db, product, now, ...(settings ? { settings } : {}) },
+      record,
+      deviceId,
+      form.get("device_name") ?? undefined,
+    );
+
   // The code is 60 s old at most; the account may not be what it was at Continue.
   const subject = await resolveSubject(db, product.slug, record.subject);
   const accountId = subject
@@ -272,6 +291,102 @@ export async function handleToken(ctx: {
       },
     },
   );
+}
+
+/**
+ * LK-SKIP (WIRE-CONTRACT-V5 §12.4.2 items 5 and 6, §12.5 rule 3): a key-return code binds the
+ * device on the key's licence as `license/activate` would, with no account and no sign-in binding.
+ *
+ * A code on a product whose launch gate, Identity or License is off is `invalid_grant`, and so is
+ * a code whose key, licence or product no longer holds (`bindKeyReturn`). A licence that is in an
+ * account is a flat `403 license_owned` with `signInUrl`. The answer is the ordinary one plus
+ * `via: "key"`, `scope: ""` and `keyEntries`; `subject` is always `null`, because the key bind
+ * clears any binding the device held (U-02). The code was consumed before this runs, so every
+ * refusal here spends it.
+ */
+async function redeemKeyReturn(
+  cx: {
+    req: Request;
+    env: Env;
+    db: Db;
+    product: Product;
+    now: number;
+    settings?: SettingsRegistry;
+  },
+  record: SignInCodeRecord,
+  deviceId: string,
+  deviceName: string | undefined,
+): Promise<Response> {
+  const { req, env, db, product, now } = cx;
+  const invalidGrant = (): Response => oauth(400, ErrorCode.InvalidGrant);
+  if (
+    record.product !== product.slug ||
+    typeof record.licenseId !== "string" ||
+    typeof record.keyHash !== "string" ||
+    !product.services.license.enabled ||
+    !product.services.identity?.enabled ||
+    !(await launchGateOn(env, db, "launch.identityKeyReturn"))
+  )
+    return invalidGrant();
+
+  const bound = await bindKeyReturn(
+    cx,
+    {
+      id: deviceId,
+      metadata: deviceMetadata(req),
+      label: normalizeDeviceLabel(deviceName),
+    },
+    { keyHash: record.keyHash, licenseId: record.licenseId },
+  );
+  if (!bound.ok) {
+    const r = bound.refusal;
+    if (r.reason === "invalid_grant") return invalidGrant();
+    if (r.reason === "license_owned")
+      return withNoStore(
+        errorResponse(403, ErrorCode.LicenseOwned, "license is in an account", {
+          signInUrl: r.signInUrl,
+        }),
+      );
+    if (r.reason === "key_entry_limit")
+      return withNoStore(
+        errorResponse(403, ErrorCode.KeyEntryLimit, "key entry limit reached", {
+          keyEntries: r.keyEntries,
+          ...(r.manageUrl !== undefined ? { manageUrl: r.manageUrl } : {}),
+        }),
+      );
+    return flatRefusal(r);
+  }
+  // Unreachable: Identity is on, so the gate admitted and counted. A fail-closed guard, so a
+  // missing count is never answered.
+  if (!bound.keyEntries) return oauth(503, "unavailable");
+
+  await appendAudit(db, {
+    product: product.slug,
+    id: randomId("aud"),
+    at: now,
+    actor_sub: null,
+    actor_name: null,
+    actor_email: null,
+    action: "signin.token.key",
+    target_kind: "device",
+    target_id: deviceId,
+    parent_id: bound.licenseId,
+    summary: "Returned a device to the app on a license key",
+  });
+  const license = await getLicense(db, product.slug, bound.licenseId);
+  if (!license) return oauth(503, "unavailable");
+  const body: KeyReturnTokenResponse = {
+    access_token: bound.token,
+    token_type: "Bearer",
+    via: "key",
+    scope: "",
+    schemaVersion: product.schemaVersion,
+    device: shapeDevice(bound.device, deviceId),
+    license: shapeLicense(license, await customerTierId(db, license)),
+    subject: null,
+    keyEntries: bound.keyEntries,
+  };
+  return withNoStore(json(body));
 }
 
 /** What `bindAndAnswer` needs about a sign-in that has found its account. */

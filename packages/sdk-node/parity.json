@@ -181,6 +181,11 @@
     "identity.signin.hints": {
       "status": "implemented"
     },
+    "identity.keyreturn": {
+      "status": "planned",
+      "wp": "UK-42",
+      "note": "LK-SKIP.7: signIn.start({channel: \"redirect\", keyReturn: true}) appends key_return=allow and settles an activated outcome for a via: \"key\" answer."
+    },
     "identity.exchange": {
       "status": "na",
       "runtime": ["node"],
