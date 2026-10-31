@@ -179,9 +179,8 @@
       "status": "implemented"
     },
     "identity.devicecode.choice": {
-      "status": "planned",
-      "wp": "UK-42",
-      "note": "UK-42.22 (SDK slice .6 and .7): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+      "status": "implemented",
+      "note": "UK-42.22.6: signIn.start({channel: \"device-code\", licenseChoice: \"app\"}) sends the member only when discovery has deviceChoice and the four choice* endpoints; wait() ends in a choose outcome (grant, choices, expiresIn) and stops polling. The desktop bridge (UK-42.22.7) is not yet wired."
     },
     "identity.signin.hints": {
       "status": "implemented"
