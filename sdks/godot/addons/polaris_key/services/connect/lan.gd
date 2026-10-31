@@ -311,6 +311,7 @@ func _start() -> PKeyResult:
 		if not b.ok:
 			return b
 		_browse = b.detail
+		_push_accepted()
 	return PKeyResult.success()
 
 
@@ -438,12 +439,24 @@ func _accepts(instance: String) -> bool:
 	return _names.has(instance)
 
 
+## An adapter that filters natively (`set_accepted`, the Apple lane) is told the instance names to report.
+func _push_accepted() -> void:
+	if _mdns == null or not _mdns.has_method("set_accepted"):
+		return
+	var idr := _identity(false)
+	if idr.ok:
+		_refresh_names(idr.detail)
+		_mdns.call("set_accepted", _names.keys())
+
+
 ## K_disc or the roster was stored (a pushed RING, or a refresh): the next read reloads, and the
 ## advert follows a new K_disc inside the epoch.
 func _stored() -> void:
 	_id = null
 	if not _stopped and _adv != null:
 		_rotate()
+	if not _stopped and _browse != null:
+		_push_accepted()
 
 
 # ── mDNS ─────────────────────────────────────────────────────────────────────────────────────
@@ -469,6 +482,8 @@ func _rotate() -> PKeyResult:
 		_adv_name = name
 		if old != null:
 			old.stop()
+	if _browse != null:
+		_push_accepted()
 	var next := (epoch + 1) * PKeyPeerAdvert.ADVERT_EPOCH_SECONDS - now
 	_after(float(maxi(1, next)), Callable(self, "_rotate_later"))
 	return PKeyResult.success()

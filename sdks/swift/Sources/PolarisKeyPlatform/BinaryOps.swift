@@ -14,6 +14,9 @@ public enum PlatformBinaryOps {
     ) -> [String: PlatformBinaryOp] {
         var ops: [String: PlatformBinaryOp] = [:]
         CryptoOps.register(into: &ops)
+        #if canImport(Network)
+            BonjourHost(sink: sink).register(into: &ops)
+        #endif
         if environment["PKEY_APPLE_SELFTEST"] == "1" {
             ops["selftest_echo"] = { Array($0) }
             ops["selftest_event"] = { input in

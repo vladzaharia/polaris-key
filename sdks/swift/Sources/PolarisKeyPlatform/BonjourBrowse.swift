@@ -141,6 +141,8 @@ public enum BonjourErrors {
 struct BonjourTable {
     static let maxInstances = 256
     static let maxTxt = 8
+    /// An instance name is `p1-` and 16 characters.
+    static let nameBytes = 19
 
     enum Change: Equatable {
         case up(BonjourFound)
@@ -229,7 +231,7 @@ public final class BonjourBrowse: Sendable {
         self.configurationCheck = configurationCheck ?? Self.processConfigurationCheck
     }
 
-    @Sendable private static func processConfigurationCheck() -> BonjourBrowseError? {
+    @Sendable static func processConfigurationCheck() -> BonjourBrowseError? {
         #if os(iOS) || os(tvOS) || os(visionOS)
             return BonjourErrors.configurationError(infoDictionary: Bundle.main.infoDictionary, requiresPlist: true)
         #else
