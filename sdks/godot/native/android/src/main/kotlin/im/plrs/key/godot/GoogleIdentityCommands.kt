@@ -129,10 +129,12 @@ class GoogleIdentityCommands(private val c: Commands, private val backend: Backe
         JSONObject().put("ok", false).put("error", "unavailable").put("reason", reason)
 
     companion object {
-        /** The classes `play.GoogleSignIn` links; absent from a Godot export that did not add them. */
+        /** The classes `play.GoogleSignIn` and its provider need; absent from a Godot export that did not add them. */
         val DEPENDENCY_CLASSES = listOf(
             "androidx.credentials.CredentialManager",
             "com.google.android.libraries.identity.googleid.GetGoogleIdOption",
+            // The provider artifact: Credential Manager finds no Google provider without it.
+            "androidx.credentials.playservices.CredentialProviderPlayServicesImpl",
         )
 
         /** [PlatformIdentityResult.Unavailable] reason: the Credential Manager libraries are not in this build. */

@@ -52,6 +52,9 @@ const DISTRIBUTOR_DEADLINE := 2.0
 
 ## The features that also run on macOS, through the desktop dylib: the Keychain and Sign in with Apple.
 const MACOS_FEATURES := [PKeyConstants.Feature.CORE_STORE, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, PKeyConstants.Feature.IDENTITY_GAMECENTER]
+## An abandoned request is forgotten after this long, and at most this many are kept.
+const ABANDONED_TTL_MSEC := 600000
+const ABANDONED_MAX := 64
 
 ## The platform this answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var platform := ""
@@ -69,7 +72,9 @@ var _dropped := 0
 ## native queue is one per process, so whichever instance polls may drain another instance's
 ## result. Entries are consumed by the awaiting call, or dropped when it times out.
 static var _results := {}
-## Requests whose caller timed out: their results are dropped when they arrive.
+## Requests whose caller timed out, with the tick they were given up at: their results are dropped when
+## they arrive. A result that never arrives is forgotten after `ABANDONED_TTL_MSEC`, and at most
+## `ABANDONED_MAX` are kept (the oldest go first), so the set cannot grow without bound.
 static var _abandoned := {}
 
 static var _shared: PKeyApple = null
@@ -233,7 +238,7 @@ func call_async(q: Dictionary, wait_s := -1.0, feature := "") -> Dictionary:
 			break
 		if Time.get_ticks_msec() - t0 > limit_ms or tree == null:
 			# A late result must not linger: poll() drops results nobody waits for any more.
-			_abandoned[key] = true
+			_abandon(key)
 			return {"ok": false, "error": "timeout", "req": req}
 		await tree.process_frame
 	var out: Dictionary = _results[key]
@@ -242,6 +247,17 @@ func call_async(q: Dictionary, wait_s := -1.0, feature := "") -> Dictionary:
 
 
 ## The shared-results key of request `req` on this instance's native side.
+## Give request `key` up: drop its result when it arrives, forget it if it never does.
+static func _abandon(key: String) -> void:
+	var now := Time.get_ticks_msec()
+	for k in _abandoned.keys():
+		if now - int(_abandoned[k]) > ABANDONED_TTL_MSEC:
+			_abandoned.erase(k)
+	while _abandoned.size() >= ABANDONED_MAX:
+		_abandoned.erase(_abandoned.keys()[0])
+	_abandoned[key] = now
+
+
 func _key(req: int) -> String:
 	# The class names the extension: the Apple plugin and the Game Center extension count requests apart.
 	return "%d:%s:%d" % [native.get_instance_id() if native != null else 0, native_class if native == null else "", req]

@@ -174,6 +174,16 @@ func _facade(t: PKeyTestContext) -> void:
 	a.poll()
 	t.check("facade: a result that arrives after its timeout is dropped", not PKeyApple._results.has(a._key(int(late.detail["req"]))) \
 			and not PKeyApple._abandoned.has(a._key(int(late.detail["req"]))))
+	# A result that never arrives cannot grow the set without bound (SR-4 L3): capped, and expired by age.
+	PKeyApple._abandoned.clear()
+	for i in PKeyApple.ABANDONED_MAX + 20:
+		PKeyApple._abandon("cap-%d" % i)
+	t.check("facade: the abandoned set is capped, the oldest first",
+		PKeyApple._abandoned.size() == PKeyApple.ABANDONED_MAX and not PKeyApple._abandoned.has("cap-0") and PKeyApple._abandoned.has("cap-%d" % (PKeyApple.ABANDONED_MAX + 19)))
+	PKeyApple._abandoned["old"] = Time.get_ticks_msec() - PKeyApple.ABANDONED_TTL_MSEC - 1000
+	PKeyApple._abandon("fresh")
+	t.check("facade: an abandoned request older than its ttl is forgotten", not PKeyApple._abandoned.has("old") and PKeyApple._abandoned.has("fresh"))
+	PKeyApple._abandoned.clear()
 	a.timeout_s = 2.0
 	fake.never = PackedStringArray()
 	fake.packs_supported = true

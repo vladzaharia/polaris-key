@@ -105,7 +105,7 @@ class Commands(
     } catch (e: JSONException) {
         fail("bad_request", e.message).toString()
     } catch (e: Exception) {
-        fail("exception", "${e.javaClass.name}: ${e.message}").toString()
+        fail("exception", EXCEPTION_REASON).toString()
     }
 
     private fun handle(op: String, q: JSONObject): JSONObject = when (op) {
@@ -214,7 +214,7 @@ class Commands(
         try {
             block(done)
         } catch (e: Exception) {
-            done(fail("exception", "${e.javaClass.name}: ${e.message}"))
+            done(fail("exception", EXCEPTION_REASON))
         }
         return JSONObject().put("ok", true).put("req", req)
     }
@@ -225,7 +225,7 @@ class Commands(
             try {
                 block(done)
             } catch (e: Exception) {
-                done(fail("exception", "${e.javaClass.name}: ${e.message}"))
+                done(fail("exception", EXCEPTION_REASON))
             }
         }
     }
@@ -237,7 +237,7 @@ class Commands(
                 try {
                     block()
                 } catch (e: Exception) {
-                    fail("exception", "${e.javaClass.name}: ${e.message}")
+                    fail("exception", EXCEPTION_REASON)
                 },
             )
         }
@@ -262,6 +262,12 @@ class Commands(
             "integrity_prepare", "integrity_token", "pgs_code", "pgs_sign_in",
         )
         val DIRECT_OPS = setOf("pi_can_install", "pi_open_settings", "pi_verify", "pi_install", "pi_last", "pi_abandon_stale", "pi_constraints")
+
+        /**
+         * The one word an uncaught exception answers with: its class and message can echo input (a nonce, a
+         * client id), so neither leaves the plugin.
+         */
+        const val EXCEPTION_REASON = "failed"
 
         fun fail(error: String, message: String?): JSONObject =
             JSONObject().put("ok", false).put("error", error).put("message", message ?: JSONObject.NULL)

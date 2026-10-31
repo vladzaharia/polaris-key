@@ -180,4 +180,10 @@ class GoogleIdentityCommandsTest {
         // A class-presence check answers either way; it never throws.
         real.dependencyPresent()
     }
+
+    @Test
+    fun theDependencyCheckNamesTheCredentialProviderArtifactToo() {
+        // SR-4 L2: without the provider artifact Credential Manager finds no Google provider.
+        assertTrue(GoogleIdentityCommands.DEPENDENCY_CLASSES.contains("androidx.credentials.playservices.CredentialProviderPlayServicesImpl"))
+    }
 }
