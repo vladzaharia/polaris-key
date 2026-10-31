@@ -174,6 +174,8 @@ export type PortalCopyKey =
   | "locker.account.sessions"
   | "locker.account.devices"
   | "locker.devices.subtitle"
+  | "locker.devices.none"
+  | "locker.devices.gone"
   | "locker.devices.restored"
   | "locker.devices.removeRestoredAll"
   | "locker.appearance.title"

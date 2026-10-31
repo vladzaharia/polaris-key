@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
+  CAPS_ALL,
   NOW_S,
   axeViolations,
   fetchedRequests,
@@ -42,6 +43,22 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
+
+const openRemove = async (region: HTMLElement) =>
+  userEvent.click(
+    await within(region).findByRole("button", { name: /Remove Studio Mac/ }),
+  );
+const confirmRemove = async (region: HTMLElement) =>
+  userEvent.click(
+    within(region)
+      .getAllByRole("button", { name: /Remove Studio Mac/ })
+      .at(-1)!,
+  );
+
+const removeStudioMac = async (region: HTMLElement) => {
+  await openRemove(region);
+  await confirmRemove(region);
+};
 
 describe("Account → Devices", () => {
   it("lists the licence-less devices with the backup badge on the restored one only", async () => {
@@ -123,11 +140,100 @@ describe("Account → Devices", () => {
     mockFetch(signedIn([], { "/api/me/devices": { devices: [PLAIN] } }));
     renderPortal();
     const region = await screen.findByRole("region", { name: "Devices" });
-    await userEvent.click(
-      await within(region).findByRole("button", { name: /Remove Studio Mac/ }),
-    );
+    await openRemove(region);
     await within(region).findByRole("heading", { name: "Remove Studio Mac?" });
     expect(within(region).queryByText(/Backup sign-in/)).toBeNull();
+  });
+
+  it("after the last device is removed the card stays with a status line and focus on its heading", async () => {
+    let devices = [PLAIN];
+    mockFetch(
+      signedIn([], {
+        "/api/me/devices": () => ({ devices }),
+        "DELETE /api/me/devices/quill/dev_plain": () => {
+          devices = [];
+          return { ok: true, deviceId: "dev_plain" };
+        },
+      }),
+    );
+    renderPortal();
+    const region = await screen.findByRole("region", { name: "Devices" });
+    await removeStudioMac(region);
+    expect(await within(region).findByText("No devices without a license."));
+    const heading = within(region).getByRole("heading", { name: "Devices" });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(
+      within(
+        screen.getByRole("navigation", { name: "On this page" }),
+      ).getByRole("link", { name: "Devices" }),
+    ).toBeTruthy();
+  });
+
+  it("a failed load keeps the section, with the error and Try again, and the nav entry", async () => {
+    window.history.replaceState(null, "", "/#/account/devices");
+    let fail = true;
+    mockFetch(
+      signedIn([], {
+        "/api/me/devices": () =>
+          fail
+            ? { status: 500, body: { error: "internal" } }
+            : { devices: [BACKUP] },
+      }),
+    );
+    renderPortal();
+    const region = await screen.findByRole("region", { name: "Devices" });
+    expect(
+      await within(region).findByText("Couldn't load your devices."),
+    ).toBeTruthy();
+    expect(
+      within(
+        screen.getByRole("navigation", { name: "On this page" }),
+      ).getByRole("link", { name: "Devices" }),
+    ).toBeTruthy();
+    fail = false;
+    await userEvent.click(
+      within(region).getByRole("button", { name: "Try again" }),
+    );
+    expect(await within(region).findByText("Pixel 9")).toBeTruthy();
+  });
+
+  it("a deep link with nothing to remove says the device is already removed", async () => {
+    window.history.replaceState(null, "", "/#/account/devices");
+    mockFetch(signedIn([], { "/api/me/devices": { devices: [] } }));
+    renderPortal();
+    const region = await screen.findByRole("region", { name: "Devices" });
+    expect(
+      within(region).getByText("This device is already removed."),
+    ).toBeTruthy();
+  });
+
+  it("promises the confirmation email only when the Worker can send mail", async () => {
+    mockFetch(signedIn([], { "/api/me/devices": { devices: [PLAIN] } }));
+    renderPortal();
+    let region = await screen.findByRole("region", { name: "Devices" });
+    await openRemove(region);
+    await within(region).findByRole("heading", { name: "Remove Studio Mac?" });
+    expect(
+      within(region).getByText("We'll email you to confirm."),
+    ).toBeTruthy();
+    cleanup();
+    mockFetch(
+      signedIn(
+        [],
+        { "/api/me/devices": { devices: [PLAIN] } },
+        {
+          ...CAPS_ALL,
+          auth: { oidc: true, magic: false },
+        },
+      ),
+    );
+    renderPortal();
+    region = await screen.findByRole("region", { name: "Devices" });
+    await openRemove(region);
+    await within(region).findByRole("heading", { name: "Remove Studio Mac?" });
+    expect(
+      within(region).queryByText("We'll email you to confirm."),
+    ).toBeNull();
   });
 
   it("the notice's link lands on the section", async () => {
@@ -151,14 +257,7 @@ describe("Account → Devices", () => {
     );
     renderPortal();
     const region = await screen.findByRole("region", { name: "Devices" });
-    await userEvent.click(
-      await within(region).findByRole("button", { name: /Remove Studio Mac/ }),
-    );
-    await userEvent.click(
-      within(region)
-        .getAllByRole("button", { name: /Remove Studio Mac/ })
-        .at(-1)!,
-    );
+    await removeStudioMac(region);
     expect(
       await within(region).findByText("Couldn't remove Studio Mac. Try again."),
     ).toBeTruthy();

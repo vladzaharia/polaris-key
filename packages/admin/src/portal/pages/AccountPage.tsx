@@ -17,7 +17,10 @@ import {
   packagesVisible,
 } from "../components/account/PackagesCard.js";
 import { SessionsCard } from "../components/account/SessionsCard.js";
-import { DevicesSection } from "../components/account/DevicesSection.js";
+import {
+  DevicesSection,
+  devicesVisible,
+} from "../components/account/DevicesSection.js";
 import { AccountCard as SectionCard } from "../components/account/AccountCard.js";
 import { SegmentedRow } from "../components/account/SegmentedRow.js";
 import { DownloadData } from "../components/DownloadData.js";
@@ -85,7 +88,12 @@ export function AccountPage({
   const sessions = useSessions();
   const sessionsShown = !sessions.isPending && sessions.data !== null;
   const accountDevices = useAccountDevices();
-  const devicesShown = (accountDevices.data?.length ?? 0) > 0;
+  const hadDevices = React.useRef(false);
+  const devicesShown = devicesVisible(
+    accountDevices,
+    hadDevices,
+    section === "devices",
+  );
   const packages = usePersonalTokens();
   const packagesShown = packagesVisible(packages.data);
   const sections = SECTIONS.filter(
@@ -215,7 +223,7 @@ export function AccountPage({
           <SignInMethods account={account} params={params} />
           <PackagesCard />
           <SessionsCard />
-          <DevicesSection />
+          <DevicesSection shown={devicesShown} wanted={section === "devices"} />
           <Appearance />
           <YourData account={account} />
         </div>

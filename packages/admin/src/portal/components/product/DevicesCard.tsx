@@ -21,6 +21,7 @@ import { focusPageHeading } from "../../router.js";
 import {
   DeviceRowHead,
   RemovePanel,
+  RemoveTail,
   useRemoveConfirm,
 } from "./DeviceRowParts.js";
 import { SeatMeter } from "../SeatMeter.js";
@@ -362,9 +363,11 @@ export function DeviceRow({
                 ? t("locker.devices.nextSignIn", { product: productName })
                 : t("locker.devices.nextActivate", { product: productName })}
             </li>
-            {emailConfigured ? (
-              <li>{t("locker.devices.emailConfirm")}</li>
-            ) : null}
+            <RemoveTail
+              restored={device.restored === true}
+              productName={productName}
+              emailConfigured={emailConfigured}
+            />
           </>
         }
         error={Boolean(remove.error)}

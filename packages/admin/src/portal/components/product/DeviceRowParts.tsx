@@ -79,6 +79,7 @@ export function DeviceRowHead({
   removeRef,
   panelId,
   onRemove,
+  oneLine = false,
 }: {
   platform: string | null;
   name: string;
@@ -89,6 +90,8 @@ export function DeviceRowHead({
   removeRef: React.RefObject<HTMLButtonElement | null>;
   panelId: string;
   onRemove: () => void;
+  /** The meta and the last-seen time on one line (the Account list's two-line rows). */
+  oneLine?: boolean;
 }): React.ReactElement {
   return (
     <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 @[20rem]:grid-cols-[auto_minmax(0,1fr)_auto] @[20rem]:items-center">
@@ -102,11 +105,25 @@ export function DeviceRowHead({
           data-device-name=""
           className="flex flex-wrap items-center gap-x-2 gap-y-1 break-words text-start font-medium text-fg-strong"
         >
-          <bdi>{name}</bdi>
+          {/* `min-w-0` and `anywhere`: in a flex line a long label with no break point would
+              otherwise hold the row wider than a 320 px screen (WCAG 1.4.10). */}
+          <bdi className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+            {name}
+          </bdi>
           {restored ? <RestoredBadge /> : null}
         </p>
-        {meta ? <p className="text-sm text-fg-muted">{meta}</p> : null}
-        <p className="text-sm text-fg-muted first-letter:uppercase">{seen}</p>
+        {oneLine ? (
+          <p className="text-sm text-fg-muted">
+            {[meta, seen].filter(Boolean).join(" · ")}
+          </p>
+        ) : (
+          <>
+            {meta ? <p className="text-sm text-fg-muted">{meta}</p> : null}
+            <p className="text-sm text-fg-muted first-letter:uppercase">
+              {seen}
+            </p>
+          </>
+        )}
       </div>
       {confirming ? null : (
         <Button
@@ -125,6 +142,31 @@ export function DeviceRowHead({
         </Button>
       )}
     </div>
+  );
+}
+
+/**
+ * The last consequences of a removal, shared by both confirms: backup sign-in ending for a device
+ * that signed in from backup, then the notice email (only where the Worker can send mail).
+ */
+export function RemoveTail({
+  restored,
+  productName,
+  emailConfigured,
+}: {
+  restored: boolean;
+  productName: string;
+  emailConfigured: boolean;
+}): React.ReactElement {
+  return (
+    <>
+      {restored ? (
+        <li>
+          {t("locker.devices.removeRestoredAll", { product: productName })}
+        </li>
+      ) : null}
+      {emailConfigured ? <li>{t("locker.devices.emailConfirm")}</li> : null}
+    </>
   );
 }
 
