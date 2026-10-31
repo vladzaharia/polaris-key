@@ -215,19 +215,18 @@ describe("SaveConflict", () => {
     expect(cancel).toHaveBeenCalledOnce();
   });
 
+  const show = (
+    saveConflict: Record<string, unknown>,
+    props: Record<string, unknown> = {},
+  ) => render(<SaveConflict input={{ saveConflict } as never} {...props} />);
+
   it("tags the newer card, and the busy state has one live region", () => {
-    const { container } = render(
-      <SaveConflict
-        input={{
-          saveConflict: {
-            step: "choose",
-            local: THIS,
-            remote: OTHER,
-            newer: "remote",
-          },
-        }}
-      />,
-    );
+    const { container } = show({
+      step: "choose",
+      local: THIS,
+      remote: OTHER,
+      newer: "remote",
+    });
     const tags = [...container.querySelectorAll("[data-part=newer]")];
     expect(tags).toHaveLength(1);
     expect(tags[0]!.closest("[data-side]")?.getAttribute("data-side")).toBe(
@@ -235,26 +234,16 @@ describe("SaveConflict", () => {
     );
     expect(container.querySelector('[data-variant="primary"]')).toBeNull();
     cleanup();
-    const keeping = render(
-      <SaveConflict
-        input={{ saveConflict: { step: "keeping", keep: "local" } }}
-      />,
-    );
-    expect(keeping.container.querySelectorAll('[role="status"]')).toHaveLength(
-      1,
-    );
-    expect(
-      keeping.container.querySelector('[aria-busy="true"]'),
-    ).not.toBeNull();
+    const keeping = show({ step: "keeping", keep: "local" }).container;
+    expect(keeping.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(keeping.querySelector('[aria-busy="true"]')).not.toBeNull();
   });
 
   it("shows the success mark and the result title on kept, and Escape is Done", () => {
     const done = vi.fn();
-    const { container } = render(
-      <SaveConflict
-        input={{ saveConflict: { step: "kept", keep: "both" } }}
-        onDone={done}
-      />,
+    const { container } = show(
+      { step: "kept", keep: "both" },
+      { onDone: done },
     );
     expect(container.querySelector(".success")).not.toBeNull();
     expect(container.querySelector("h1,h2")?.textContent).toBe(
@@ -266,13 +255,9 @@ describe("SaveConflict", () => {
 
   it("offers Choose again on a failed choice, with no filled control", () => {
     const again = vi.fn();
-    const { container } = render(
-      <SaveConflict
-        input={{
-          saveConflict: { step: "failed", keep: "remote", remote: null },
-        }}
-        onChooseAgain={again}
-      />,
+    const { container } = show(
+      { step: "failed", keep: "remote", remote: null },
+      { onChooseAgain: again },
     );
     expect(container.textContent).toContain("Your save is unchanged");
     expect(container.querySelector('[data-variant="primary"]')).toBeNull();
