@@ -20,8 +20,8 @@
  *     (`GC_RETRY_MS`); a person's quota was given back when the file died, so a stuck delete costs
  *     them nothing, and costs the operator only the stored bytes.
  *   - An erasure shreds the SSE-C keys first (the bytes are unreadable from then on, whatever
- *     happens to R2), then deletes every object the rows name, then sweeps the person's prefix and
- *     the prefix of each subject merged into it (`absorbed_from`): a merge moves rows, not bytes.
+ *     happens to R2), then deletes the objects the file and upload rows name, then sweeps the
+ *     person's prefix (every chunk object included) and the prefix of each subject merged into it (`absorbed_from`): a merge moves rows, not bytes.
  *   - An object an account merge absorbed owns nothing: its files are the survivor's now. Its
  *     delete clears only what does not move (open uploads and dead files), and an erasure of a
  *     merged-away subject touches no R2 object at all.
@@ -227,15 +227,15 @@ function hasFileActivity(host: FileHost): boolean {
     s.getMeta(FILES_USED) !== undefined ||
     s.getMeta(ABSORBED_FROM) !== undefined ||
     s.allFiles().length > 0 ||
-    s.allChunks().length > 0 ||
     s.allUploads().length > 0
   );
 }
 
 /**
  * An erasure (a plain `deleteAll`): every object of the person's leaves R2. The SSE-C keys go
- * first, so the bytes are unreadable whatever happens next; then the objects the rows name, then
- * the prefix sweep. `false` when R2 could not finish (the caller keeps the rows and answers a
+ * first, so the bytes are unreadable whatever happens next; then the objects the file and upload
+ * rows name, then the prefix sweep, which takes every chunk object a page at a time (the chunk rows
+ * are never loaded: a person's chunk count is bounded by the request limits, not by memory). `false` when R2 could not finish (the caller keeps the rows and answers a
  * retryable error, so the erasure is repeated). An object merged away owns nothing.
  */
 export async function eraseFileObjects(
@@ -254,7 +254,6 @@ export async function eraseFileObjects(
     });
     const keys = new Set<string>();
     for (const f of host.store.allFiles()) keys.add(f.objectKey);
-    for (const c of host.store.allChunks()) keys.add(c.objectKey);
     for (const u of host.store.allUploads()) {
       const key = fileObjectKey(pin, u.uploadId);
       if (inFlight(u)) await abortMultipart(bucket, key, u);

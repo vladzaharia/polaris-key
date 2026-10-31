@@ -14,6 +14,7 @@ import {
   deleteCloudSyncIfUnchanged,
   exportCloudSync,
 } from "../../../src/services/sync/do/client.js";
+import { SqlStore } from "../../../src/services/sync/do/sqlStore.js";
 import { syncProductPurge } from "../../../src/services/sync/productDeletion.js";
 import {
   SLUG,
@@ -353,6 +354,31 @@ describe("an erasure deletes the chunk prefix", () => {
     });
     expect(out).toEqual({ done: true });
     expect(w.r2.keys()).toEqual([theirs]);
+  });
+
+  it("an erasure removes chunk objects by the prefix sweep, a page at a time, without reading every chunk row", async () => {
+    const { w } = await chunked();
+    // More chunk objects than one page of the sweep.
+    for (let i = 0; i < 1500; i++)
+      await w.r2.put(
+        `u/${SLUG}/${w.subject}/c/delta/${i.toString(16).padStart(64, "0")}`,
+        new Uint8Array(3),
+      );
+    const allChunks = vi.spyOn(SqlStore.prototype, "allChunks");
+    const lists = vi.spyOn(w.r2, "list");
+    // The keys are gone before the first call to R2.
+    let keysAtFirstCall: number | undefined;
+    const realList = w.r2.list.bind(w.r2);
+    w.r2.list = ((...args: Parameters<typeof realList>) => {
+      keysAtFirstCall ??= rows(w, "SELECT kid FROM ssec_keys").length;
+      return realList(...args);
+    }) as typeof w.r2.list;
+    await deleteCloudSync(w.env, pin(w));
+    expect(allChunks).not.toHaveBeenCalled();
+    expect(lists.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(keysAtFirstCall).toBe(0);
+    expect(w.r2.keys().some((k) => k.includes(`/${w.subject}/`))).toBe(false);
+    allChunks.mockRestore();
   });
 
   it("if R2 fails the erasure is refused and the chunk rows are kept for a retry", async () => {
