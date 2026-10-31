@@ -18,7 +18,7 @@
 //               file's stored size and `sha256` the stored manifest's; a sealed manifest is
 //               different on every run, so a `chunks` record is only ever used to abort its
 //               upload before the next one begins
-//   expiresAt   Unix seconds, from `begin`
+//   expiresAt   Unix epoch milliseconds, from `begin`
 //   state       "uploading" until every part is in, then "finalizing"; a finished transfer's
 //               record is deleted
 

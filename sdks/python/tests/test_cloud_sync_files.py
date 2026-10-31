@@ -111,7 +111,7 @@ class FakeServer:
         self.max_in_flight = 0
         self.seq = 0
         self.part_bytes = 8 * MIB
-        self.expires_at = int(time.time()) + 86400
+        self.expires_at = int(time.time() * 1000) + 86_400_000
         self.etag = '"e1"'
         #: Breaks one kind of call; return a reply to override, or raise.
         self.hook: Callable[..., Optional[FileReply]] = lambda kind, arg=None: None
@@ -531,12 +531,55 @@ def test_begins_afresh_when_the_journal_record_is_past_expires_at() -> None:
             "done": [1, 2],
             "sha256": req.sha256,
             "size": req.size,
-            "expiresAt": int(time.time()) - 5,
+            "expiresAt": int(time.time() * 1000) - 5000,
             "state": "uploading",
         },
     )
     make_engine(s, j)[0].upload(req)
     assert "status" not in s.calls and s.begins == 1 and len(s.part_puts) == 5
+
+
+def test_reads_the_journal_expires_at_as_epoch_milliseconds() -> None:
+    req = request(BIG)
+
+    def record(expires_at: int) -> Dict[str, Any]:
+        return {
+            "v": 1,
+            "id": "t1",
+            "kind": "upload",
+            "collection": "saves",
+            "record": "rec1",
+            "uploadId": "old",
+            "mode": "multipart",
+            "partBytes": 8 * MIB,
+            "done": [1, 2],
+            "sha256": req.sha256,
+            "size": req.size,
+            "expiresAt": expires_at,
+            "state": "uploading",
+        }
+
+    # As seconds this would be a day from now; as milliseconds it is January 1970.
+    s, j = FakeServer(), MemoryJournal()
+    j.put("t1", record(int(time.time()) + 86400))
+    make_engine(s, j)[0].upload(req)
+    assert "status" not in s.calls and s.begins == 1
+    # A day ahead in milliseconds is live: the server is asked and no new session begins.
+    live, j2 = FakeServer(), MemoryJournal()
+    live.uploads["old"] = {
+        "size": req.size,
+        "sha256": req.sha256,
+        "mode": "multipart",
+        "partBytes": 8 * MIB,
+        "parts": {1: b"x", 2: b"x"},
+        "expiresAt": int(time.time() * 1000) + 86_400_000,
+    }
+    j2.put("t1", record(int(time.time() * 1000) + 86_400_000))
+    # The stand-in parts are not the file's bytes, so the upload ends in a refusal: what matters is
+    # that it was resumed (the server was asked) and no session began.
+    with pytest.raises(TransferError):
+        make_engine(live, j2)[0].upload(req)
+    assert "status" in live.calls and live.begins == 0
 
 
 def test_surfaces_a_409_revision_conflict_from_begin_with_the_server_version() -> None:

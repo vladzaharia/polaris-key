@@ -551,9 +551,8 @@ class TransferEngine:
             and rec["sha256"] == req.sha256
             and rec["size"] == req.size
         )
-        # ``expiresAt`` is Unix seconds. Read as milliseconds by a server that sends them, it is never in
-        # the past here, and the server's 410 still ends the upload.
-        live = rec["expiresAt"] > self._now()
+        # ``expiresAt`` is Unix epoch milliseconds (WIRE-CONTRACT-V5 §13.8.1); ``_now`` is seconds.
+        live = rec["expiresAt"] > self._now() * 1000
         if same and live:
             return rec
         if not same:

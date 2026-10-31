@@ -592,9 +592,8 @@ export class TransferEngine {
       rec.record === req.record &&
       rec.sha256 === req.sha256 &&
       rec.size === req.size;
-    // `expiresAt` is Unix seconds. Read as milliseconds by a server that sends them, it is
-    // never in the past here, and the server's 410 still ends the upload.
-    const live = rec.expiresAt > this.now() / 1000;
+    // `expiresAt` is Unix epoch milliseconds (WIRE-CONTRACT-V5 §13.8.1), as `now()` is.
+    const live = rec.expiresAt > this.now();
     if (same && live) return rec;
     if (!same) await this.abortQuietly(target, rec.uploadId);
     await this.deps.journal.delete(req.id);

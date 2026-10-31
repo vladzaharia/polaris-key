@@ -53,7 +53,7 @@ class FakeServer implements FileTransport {
   hook: (kind: string, n?: number) => Reply<null> | Reply<never> | undefined =
     () => undefined;
   delay: (n: number) => number = () => 0;
-  expiresAt = Math.floor(Date.now() / 1000) + 86_400;
+  expiresAt = Date.now() + 86_400_000;
   partBytes = 8 * MIB;
 
   begin = async (
@@ -417,13 +417,61 @@ describe("TransferEngine upload", () => {
       done: [1, 2],
       sha256: req.sha256,
       size: req.size,
-      expiresAt: Math.floor(Date.now() / 1000) - 5,
+      expiresAt: Date.now() - 5000,
       state: "uploading",
     });
     await engine(s, j).e.upload(req);
     expect(s.calls).not.toContain("status");
     expect(s.begins).toBe(1);
     expect(s.partPuts.length).toBe(5);
+  });
+
+  it("reads the journal's expiresAt as epoch milliseconds: a seconds-sized value is long past, a future one is resumed", async () => {
+    const req = await request(big);
+    const record = (expiresAt: number) => ({
+      v: 1 as const,
+      id: "t1",
+      kind: "upload" as const,
+      collection: "saves",
+      record: "rec1",
+      uploadId: "old",
+      mode: "multipart" as const,
+      partBytes: 8 * MIB,
+      done: [1, 2],
+      sha256: req.sha256,
+      size: req.size,
+      expiresAt,
+      state: "uploading" as const,
+    });
+    // As seconds this would be a day from now; as milliseconds it is January 1970.
+    const secs = new FakeServer();
+    const j1 = memoryJournal();
+    await j1.put("t1", record(Math.floor(Date.now() / 1000) + 86_400));
+    await engine(secs, j1).e.upload(req);
+    expect(secs.calls).not.toContain("status");
+    expect(secs.begins).toBe(1);
+    // A day ahead in milliseconds is live: the server is asked and no new session begins.
+    const live = new FakeServer();
+    live.uploads.set("old", {
+      sha256: req.sha256,
+      size: req.size,
+      mode: "multipart",
+      partBytes: 8 * MIB,
+      parts: new Map([
+        [1, new Uint8Array(1)],
+        [2, new Uint8Array(1)],
+      ]),
+      expiresAt: Date.now() + 86_400_000,
+    });
+    const j2 = memoryJournal();
+    await j2.put("t1", record(Date.now() + 86_400_000));
+    // The stand-in parts are not the file's bytes, so the upload ends in a refusal: what matters
+    // is that it was resumed (the server was asked) and no session began.
+    await engine(live, j2)
+      .e.upload(req)
+      .catch(() => undefined);
+    expect(live.calls).toContain("status");
+    expect(live.begins).toBe(0);
   });
 
   it("surfaces a 409 revision_conflict from begin with the server version, and retries nothing", async () => {
