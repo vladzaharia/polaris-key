@@ -1420,7 +1420,7 @@ jobs:
         run: ./gradlew --no-daemon -p samples/android-consumer assembleDebug assembleRelease assembleLeanDebugAndroidTest
       - name: Gradle 9.7.1 for the latest toolchain
         if: matrix.toolchain == 'latest'
-        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
         with:
           gradle-version: "9.7.1"
       - name: Build the consumer app (latest toolchain)
