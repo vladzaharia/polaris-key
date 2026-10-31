@@ -256,9 +256,8 @@ private func same(_ a: Data, _ b: Data) -> Bool {
     return d == 0
 }
 
-private let ringIdPattern = try! NSRegularExpression(pattern: "^rg_[A-Za-z0-9_-]{22}$")
-private func isRingId(_ s: String) -> Bool {
-    ringIdPattern.firstMatch(in: s, range: NSRange(s.startIndex..., in: s)) != nil
+func isRingId(_ s: String) -> Bool {
+    wholeMatches("rg_[A-Za-z0-9_-]{22}", s) != nil
 }
 
 /// The seams a host or a test may replace.
