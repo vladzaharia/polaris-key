@@ -2104,7 +2104,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.scenarios": { status: "implemented", service: "sync", na: [] },
   "sync.settings": { status: "implemented", service: "sync", na: [] },
   "sync.conflict": { status: "planned", service: "sync", na: [] },
-  "sync.saves": { status: "planned", service: "sync", na: [] },
+  "sync.saves": { status: "implemented", service: "sync", na: [] },
   "sync.keyring": { status: "implemented", service: "sync", na: [] },
   "sync.records": { status: "planned", service: "sync", na: [] },
   "sync.files": { status: "implemented", service: "sync", na: [] },
@@ -2407,4 +2407,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "04aeaf8089e8ef18517d19cc5d58d250e9c69802aa4a8ae188c3917a66aaf793";
+  "644f84e6cb69b8ecabc3f38f1e16d4b6980a3e3373855db83076a28e83b24d4d";

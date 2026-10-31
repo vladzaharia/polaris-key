@@ -46,6 +46,15 @@ export {
   type UseCloudSync,
   type SignInOffer,
 } from "./react/useCloudSync.js";
+// sync.saves (U-22.7): the saves of the signed-in person and the writes in flight.
+export {
+  useSaves,
+  useTransfers,
+  type UseSaves,
+  type UseTransfers,
+  type TransferView,
+  type SaveTransferEvent,
+} from "./react/useSaves.js";
 // connect.app (CC-09.2): Cloud Connect over the relay, the only path a page has.
 export {
   useCloudConnect,

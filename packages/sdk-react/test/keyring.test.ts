@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// @pkey-feature sync.keyring
+// @pkey-feature sync.keyring sync.saves
 //
 // U-38.2: the browser key ring engine against a small fake of the Worker's /devices/keyring routes
 // (real crypto, no mocks of it): create, unlock from this device's wrap, wrap to another device,
@@ -425,6 +425,55 @@ describe("the root in the browser", () => {
     await expect(codec.seal("$settings", "k", 1)).rejects.toMatchObject({
       code: "sync-locked",
     });
+  });
+
+  it("the file codec derives from the vault root and refuses sync-locked on every method and stream piece once the ring locks (SAVES.R)", async () => {
+    const server = new FakeRingServer();
+    const a = device(server, A);
+    expect(await a.engine.fileCodec("saves")).toBeNull();
+    await a.engine.create();
+    const codec = (await a.engine.fileCodec("saves"))!;
+    expect(codec.enc).toBe("e2e");
+    const plain = Uint8Array.from({ length: 64 }, (_, i) => i);
+    const id = await codec.chunkId(plain);
+    const object = await codec.sealChunk(id, plain);
+    expect(await codec.openChunk(id, object)).toMatchObject({ ok: true });
+    const manifest = await codec.sealManifest(plain);
+    const pieces = async function* () {
+      for (let i = 0; i < 4; i++) yield plain;
+    };
+    const sealed: Uint8Array[] = [];
+    for await (const p of codec.sealStream(pieces())) sealed.push(p);
+    expect(sealed.length).toBeGreaterThan(1);
+    const stored = async function* () {
+      yield* sealed;
+    };
+    // A stream already running stops at its next piece.
+    const seal = codec.sealStream(pieces());
+    const open = codec.openStream(stored());
+    await seal.next();
+    await open.next();
+    await a.engine.lock();
+    const locked = { code: "sync-locked" };
+    await expect(seal.next()).rejects.toMatchObject(locked);
+    await expect(open.next()).rejects.toMatchObject(locked);
+    // Every method of the codec built before the lock refuses after it.
+    await expect(codec.chunkId(plain)).rejects.toMatchObject(locked);
+    await expect(codec.sealChunk(id, plain)).rejects.toMatchObject(locked);
+    await expect(codec.openChunk(id, object)).rejects.toMatchObject(locked);
+    await expect(codec.sealManifest(plain)).rejects.toMatchObject(locked);
+    await expect(codec.openManifest(manifest)).rejects.toMatchObject(locked);
+    await expect(codec.sealStream(pieces()).next()).rejects.toMatchObject(
+      locked,
+    );
+    await expect(codec.openStream(stored()).next()).rejects.toMatchObject(
+      locked,
+    );
+    expect(() => codec.chunkObjectBytes(10)).toThrow(/locked/);
+    expect(() => codec.storedSize(10)).toThrow(/locked/);
+    expect(() => codec.plainSize(100)).toThrow(/locked/);
+    // And no new codec is handed out.
+    expect(await a.engine.fileCodec("saves")).toBeNull();
   });
 
   it("lock() forgets the root and tells subscribers", async () => {

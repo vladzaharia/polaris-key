@@ -48,7 +48,7 @@ import type {
   RingStatus,
   KeyringClient,
 } from "../../core/keyring.js";
-import { ringCodec } from "./codec.js";
+import { guardFileCodec, ringCodec } from "./codec.js";
 import {
   importRootHandle,
   memoryRootVault,
@@ -249,7 +249,11 @@ export class RingEngine implements KeyringClient {
     return () => this.listeners.delete(listener);
   }
 
+  /** Bumped whenever the root is dropped or newly taken, so a codec built for one root dies with it. */
+  private rootGen = 0;
+
   private setHeld(v: boolean): void {
+    if (!v || this.held !== v) this.rootGen++;
     if (this.held === v) return;
     this.held = v;
     for (const l of [...this.listeners]) l();
@@ -292,13 +296,16 @@ export class RingEngine implements KeyringClient {
 
   /** The file codec for `collection` (U-22.6), over the vault's handle; null while no root is held. */
   async fileCodec(collection: string): Promise<FileCodec | null> {
+    const gen = this.rootGen;
     const keys = this.held ? await this.ringKeys() : null;
-    if (keys === null) return null;
+    if (keys === null || gen !== this.rootGen || !this.held) return null;
     // Loaded here, not at the top: the ring chunk stays small for a page that never moves a file.
     const { e2eFileCodec } = await import("@polaris-key/client-core/sync");
-    return keys.withRoot(async (port, root) =>
+    const inner = await keys.withRoot(async (port, root) =>
       e2eFileCodec(port, root, collection),
     );
+    // The codec keeps the vault's handle, so it checks the lock itself (`sync-locked`).
+    return guardFileCodec(inner, () => this.held && this.rootGen === gen);
   }
 
   /** The derived keys the sealing codec takes, or null while this device holds no root. */

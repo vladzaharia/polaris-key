@@ -547,8 +547,8 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "SAVES.R (U-22.7): useSaves() and useTransfers() over adapter.cloudSync.saves, the browser host's SavesApi (loaded on the first call, lazySaves). It binds client-core's SavesClient to the machine's records, putAt, removeAt and onOutcome (MachineRecords, as Node and Python) and to createBrowserFiles; every engine entry runs under the Web Lock, so two tabs never drive one journal. The keyring's file codec goes through withRoot and refuses with sync-locked on every method and stream piece once the ring locks. Sign-out and forget: lock the ring, purge the saves (running writes, journal, chunk cache; the files layer is closed so a running transfer cannot recreate the database), then drop the pin. cancel() settles the waiting write as cancelled; the wait for the metadata write has no timeout. Only the writer tab owns a live machine: write, resolve and delete from another tab reject with sync-not-writer; list, read and revisions work in every tab. cloudsync-files-single replays in test/transcripts.test.ts; test/cloudSyncSaves.test.ts drives write, read, conflict, resolve, delete, cancel, the locked codec and the purge order. A cookie page, the local adapter and the desktop bridge answer the typed N/A."
     },
     "sync.keyring": {
       "status": "implemented",
@@ -560,7 +560,7 @@
     },
     "sync.files": {
       "status": "implemented",
-      "note": "U-22.6: the file layer of the browser host, not yet the saves API (sync.saves waits on U-22.5's machine change). BrowserFileTransport (the closed route list, no redirect, Content-Digest, bounded bodies), the IndexedDB journal and LRU chunk cache in pkey-sync-<p>-files (deleted with the person), client-core's TransferEngine over them with Retry-After waited out up to 3600 s, one writer by the Web Lock pkey-sync-files:<db> (createBrowserFiles, loaded on demand). The cloudsync-files-* transcripts replay through the transport (test/transcripts.test.ts); test/cloudSyncFiles.browser.test.ts drives the engine, the journal and the lock. cloudsync-files-single is also tagged sync.saves and replays once that flips. A cookie page, the local adapter and the desktop bridge hold no files (the typed N/A comes with the saves API)."
+      "note": "U-22.6: the file layer of the browser host, not yet the saves API (sync.saves waits on U-22.5's machine change). BrowserFileTransport (the closed route list, no redirect, Content-Digest, bounded bodies), the IndexedDB journal and LRU chunk cache in pkey-sync-<p>-files (deleted with the person), client-core's TransferEngine over them with Retry-After waited out up to 3600 s, one writer by the Web Lock pkey-sync-files:<db> (createBrowserFiles, loaded on demand). The cloudsync-files-* transcripts replay through the transport (test/transcripts.test.ts); test/cloudSyncFiles.browser.test.ts drives the engine, the journal and the lock. cloudsync-files-single is also tagged sync.saves and replays with it. A cookie page, the local adapter and the desktop bridge hold no files (the typed N/A comes with the saves API)."
     },
     "sync.files.delta": {
       "status": "implemented",
