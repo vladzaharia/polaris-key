@@ -163,6 +163,8 @@ public enum ErrorCode {
     public static let nearbyUnsupported = "nearby-unsupported"
     public static let peerHandshakeFailed = "peer-handshake-failed"
     public static let peerClosed = "peer-closed"
+    public static let transferCancelled = "transfer-cancelled"
+    public static let linkUnknown = "link-unknown"
     public static let peerRevoked = "peer_revoked"
     public static let peerExpired = "peer_expired"
     public static let peerBadFrame = "peer_bad_frame"
@@ -386,6 +388,8 @@ public let ERROR_CODE_VALUES: [String] = [
     "nearby-unsupported",
     "peer-handshake-failed",
     "peer-closed",
+    "transfer-cancelled",
+    "link-unknown",
     "peer_revoked",
     "peer_expired",
     "peer_bad_frame",
@@ -609,6 +613,8 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "nearby-unsupported": "client",
     "peer-handshake-failed": "client",
     "peer-closed": "client",
+    "transfer-cancelled": "client",
+    "link-unknown": "client",
     "peer_revoked": "peer",
     "peer_expired": "peer",
     "peer_bad_frame": "peer",

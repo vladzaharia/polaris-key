@@ -2820,6 +2820,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_closed_message">La connexion avec l'appareil à proximité s'est terminée. Réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transfer_cancelled_title">Transfert interrompu</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transfer_cancelled_message">Le transfert n'a pas abouti. Rien n'a été enregistré. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_unknown_title">Contact introuvable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_unknown_message">Ce contact n'est plus associé à cet appareil.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_title">Appareil non fiable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_message">L'autre appareil a été retiré du compte. Rien n'a été partagé.</string>

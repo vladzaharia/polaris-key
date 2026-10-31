@@ -617,6 +617,14 @@
       "title": "Connexion terminée",
       "message": "La connexion avec l'appareil à proximité s'est terminée. Réessayez."
     },
+    "transfer-cancelled": {
+      "title": "Transfert interrompu",
+      "message": "Le transfert n'a pas abouti. Rien n'a été enregistré. Réessayez."
+    },
+    "link-unknown": {
+      "title": "Contact introuvable",
+      "message": "Ce contact n'est plus associé à cet appareil."
+    },
     "peer_revoked": {
       "title": "Appareil non fiable",
       "message": "L'autre appareil a été retiré du compte. Rien n'a été partagé."

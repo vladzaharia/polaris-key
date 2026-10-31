@@ -617,6 +617,14 @@
       "title": "Conexão encerrada",
       "message": "A conexão com o dispositivo próximo foi encerrada. Tente novamente."
     },
+    "transfer-cancelled": {
+      "title": "Transferência interrompida",
+      "message": "A transferência não foi concluída. Nada foi salvo. Tente novamente."
+    },
+    "link-unknown": {
+      "title": "Contato não encontrado",
+      "message": "Esse contato não está mais vinculado a este dispositivo."
+    },
     "peer_revoked": {
       "title": "Dispositivo não é mais confiável",
       "message": "O outro dispositivo foi removido da conta. Nada foi compartilhado."

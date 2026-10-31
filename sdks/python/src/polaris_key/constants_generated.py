@@ -371,6 +371,8 @@ class ErrorCode:
     NEARBY_UNSUPPORTED: Final = "nearby-unsupported"
     PEER_HANDSHAKE_FAILED: Final = "peer-handshake-failed"
     PEER_CLOSED: Final = "peer-closed"
+    TRANSFER_CANCELLED: Final = "transfer-cancelled"
+    LINK_UNKNOWN: Final = "link-unknown"
     PEER_REVOKED: Final = "peer_revoked"
     PEER_EXPIRED: Final = "peer_expired"
     PEER_BAD_FRAME: Final = "peer_bad_frame"
@@ -594,6 +596,8 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "nearby-unsupported",
     "peer-handshake-failed",
     "peer-closed",
+    "transfer-cancelled",
+    "link-unknown",
     "peer_revoked",
     "peer_expired",
     "peer_bad_frame",
@@ -819,6 +823,8 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "nearby-unsupported": "client",
         "peer-handshake-failed": "client",
         "peer-closed": "client",
+        "transfer-cancelled": "client",
+        "link-unknown": "client",
         "peer_revoked": "peer",
         "peer_expired": "peer",
         "peer_bad_frame": "peer",

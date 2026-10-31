@@ -7360,6 +7360,26 @@ msgstr ""
 msgid "core.codes.peer-closed.message"
 msgstr ""
 
+#. Transfer stopped
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transfer-cancelled.title"
+msgstr ""
+
+#. The transfer didn't finish. Nothing was saved. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transfer-cancelled.message"
+msgstr ""
+
+#. Contact not found
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link-unknown.title"
+msgstr ""
+
+#. That contact is no longer linked on this device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link-unknown.message"
+msgstr ""
+
 #. Device no longer trusted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.peer_revoked.title"

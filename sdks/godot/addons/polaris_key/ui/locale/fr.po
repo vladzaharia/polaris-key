@@ -7374,6 +7374,26 @@ msgstr "Connexion terminée"
 msgid "core.codes.peer-closed.message"
 msgstr "La connexion avec l'appareil à proximité s'est terminée. Réessayez."
 
+#. Transfer stopped
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transfer-cancelled.title"
+msgstr "Transfert interrompu"
+
+#. The transfer didn't finish. Nothing was saved. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transfer-cancelled.message"
+msgstr "Le transfert n'a pas abouti. Rien n'a été enregistré. Réessayez."
+
+#. Contact not found
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link-unknown.title"
+msgstr "Contact introuvable"
+
+#. That contact is no longer linked on this device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link-unknown.message"
+msgstr "Ce contact n'est plus associé à cet appareil."
+
 #. Device no longer trusted
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.peer_revoked.title"

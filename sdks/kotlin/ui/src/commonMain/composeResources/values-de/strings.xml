@@ -2807,6 +2807,14 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_closed_message">Die Verbindung zum Gerät in der Nähe wurde beendet. Versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transfer_cancelled_title">Übertragung beendet</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transfer_cancelled_message">Die Übertragung wurde nicht abgeschlossen. Es wurde nichts gespeichert. Versuchen Sie es erneut.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_unknown_title">Kontakt nicht gefunden</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_unknown_message">Dieser Kontakt ist auf diesem Gerät nicht mehr verknüpft.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_title">Gerät nicht mehr vertrauenswürdig</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_message">Das andere Gerät wurde aus dem Konto entfernt. Es wurde nichts geteilt.</string>

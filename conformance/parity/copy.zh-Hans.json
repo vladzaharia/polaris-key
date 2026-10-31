@@ -617,6 +617,14 @@
       "title": "连接已结束",
       "message": "与附近设备的连接已结束。请重试。"
     },
+    "transfer-cancelled": {
+      "title": "传输已停止",
+      "message": "传输未完成，未保存任何内容。请重试。"
+    },
+    "link-unknown": {
+      "title": "未找到联系人",
+      "message": "此联系人已不再与此设备关联。"
+    },
     "peer_revoked": {
       "title": "设备不再受信任",
       "message": "对方设备已从账户中移除。未共享任何内容。"

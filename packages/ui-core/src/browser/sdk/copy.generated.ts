@@ -697,6 +697,14 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Connection ended",
     message: "The connection to the nearby device ended. Try again.",
   },
+  "transfer-cancelled": {
+    title: "Transfer stopped",
+    message: "The transfer didn't finish. Nothing was saved. Try again.",
+  },
+  "link-unknown": {
+    title: "Contact not found",
+    message: "That contact is no longer linked on this device.",
+  },
   peer_revoked: {
     title: "Device no longer trusted",
     message:
