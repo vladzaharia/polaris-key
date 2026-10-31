@@ -106,7 +106,7 @@ type AdminCtx = ServiceContext & { session: AdminSession };
 
 /**
  * PX-W13: the display-name problems of the named fields (`@polaris-key/manifest`
- * `checkDisplayName`). Text with a control, zero-width or bidi code point is always a problem; a
+ * `checkDisplayName`). Text with a control, invisible or bidi code point is always a problem; a
  * reserved name only when the platform enforces `identity.reservedDisplayNames`. The system
  * product is exempt from the reserved check.
  */
@@ -122,7 +122,7 @@ function displayNameProblems(
     if (verdict === "invalid")
       out.push({
         field,
-        message: `${field} must not hold control, zero-width or bidirectional-formatting characters, or start or end with a space`,
+        message: `${field} must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace`,
       });
     else if (verdict === "reserved" && reserved === "error")
       out.push({

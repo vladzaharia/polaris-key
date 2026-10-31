@@ -49,6 +49,7 @@ import { portalEnabled } from "../../../core/licensing/manageUrl.js";
 import { customerOrigin } from "../../../core/hosts.js";
 import type { LicenseRow } from "../../../core/repo.js";
 import type { LicenseAdminContext } from "./index.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 
 /** What the answer reports for the email: `queued` is reserved for a deferred transport. */
 export type EmailDelivered = "sent" | "queued" | "failed";
@@ -150,6 +151,8 @@ export async function emailLinks(ctx: LicenseAdminContext): Promise<{
   origin: string;
   signInUrl: string;
   downloadUrl: string | null;
+  /** The product's checked display name: the subject, the body and the sender all use it. */
+  appName: string;
 }> {
   const { env, db, product, req } = ctx;
   const origin = customerOrigin(env, req) ?? new URL(req.url).origin;
@@ -162,6 +165,7 @@ export async function emailLinks(ctx: LicenseAdminContext): Promise<{
     origin,
     signInUrl: `${origin}/signin?product=${encodeURIComponent(product.slug)}`,
     downloadUrl,
+    appName: await shownAppName(env, db, product.slug, product.name),
   };
 }
 
@@ -180,9 +184,9 @@ export async function emailLicenseKey(
   if (blocked) return { email: "failed", reason: blocked };
   const { env, db, product, now } = ctx;
   try {
-    const { origin, signInUrl, downloadUrl } = await emailLinks(ctx);
+    const { origin, signInUrl, downloadUrl, appName } = await emailLinks(ctx);
     const message = licenseKeyEmail({
-      productName: product.name,
+      productName: appName,
       holderName: license.name,
       key,
       signInUrl,
@@ -198,7 +202,7 @@ export async function emailLicenseKey(
         sender: {
           kind: "passthrough",
           product: product.slug,
-          displayName: product.name,
+          displayName: appName,
         },
         to,
         ...message,

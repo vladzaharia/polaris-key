@@ -227,9 +227,8 @@
       "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. The desktop renderer never holds a grant (the bridge's device-code sign-in never answers choose, so licenseChoice only rides as a hint), so its calls are a typed unsupported (runtime); a cookie page refuses the same way."
     },
     "identity.devicecode.choice": {
-      "status": "planned",
-      "wp": "UK-42",
-      "note": "UK-42.22 (SDK slice .7): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+      "status": "implemented",
+      "note": "UK-42.22.5: beginSignIn sends licenseChoice app only when discovery has deviceChoice and the four choice* endpoints; pollSignIn and waitForSignIn answer status choose (grant, choices, expiresIn) and the device-code session's wait() settles kind choose with no token. The desktop bridge (UK-42.22.7) is not yet wired."
     },
     "identity.signin.hints": {
       "status": "implemented",
@@ -573,12 +572,12 @@
       "wp": "U-46"
     },
     "sync.files": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "U-22.6: the file layer of the browser host, not yet the saves API (sync.saves waits on U-22.5's machine change). BrowserFileTransport (the closed route list, no redirect, Content-Digest, bounded bodies), the IndexedDB journal and LRU chunk cache in pkey-sync-<p>-files (deleted with the person), client-core's TransferEngine over them with Retry-After waited out up to 3600 s, one writer by the Web Lock pkey-sync-files:<db> (createBrowserFiles, loaded on demand). The cloudsync-files-* transcripts replay through the transport (test/transcripts.test.ts); test/cloudSyncFiles.browser.test.ts drives the engine, the journal and the lock. cloudsync-files-single is also tagged sync.saves and replays once that flips. A cookie page, the local adapter and the desktop bridge hold no files (the typed N/A comes with the saves API)."
     },
     "sync.files.delta": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "U-22.6: the chunks mode of the same transport and engine (plan, put chunk, manifest, GET chunk). The cloudsync-chunks and cloudsync-chunks-delta transcripts replay through the transport; sync-vectors.json cdcCases run in the browser runner. A chunk the Worker stored with zstd (codec 1) is refused as sync-file-invalid: the browser carries no zstd decoder, and every writer emits raw chunks (D-4)."
     },
     "sync.e2e.recovery": {
       "status": "planned",

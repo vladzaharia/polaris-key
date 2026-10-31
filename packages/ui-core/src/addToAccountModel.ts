@@ -77,6 +77,9 @@ export interface AddToAccountSnapshot {
   signedEmail?: string;
   name: string;
   email: string;
+  /** `busy`: the code the person checks against the one Polaris Locker shows, when the sign-in has
+   *  one. */
+  userCode?: string;
 }
 
 export interface AddToAccountOptions {
@@ -121,9 +124,12 @@ export class AddToAccountModel {
 
   /** The views' input: the base with the step on top. Name and email are not in it. */
   input(): UiInput {
-    const { step, field, typedEmail, signedEmail } = this.store.get();
+    const { step, field, typedEmail, signedEmail, userCode } = this.store.get();
     return {
       ...this.base,
+      ...(step === "busy" && userCode
+        ? { deviceCode: { phase: "waiting" as const, userCode } }
+        : {}),
       addToAccount: {
         step,
         ...(field ? { field } : {}),
@@ -203,6 +209,7 @@ export class AddToAccountModel {
       ...s,
       step: "form",
       field: undefined,
+      userCode: undefined,
       typedEmail: undefined,
       signedEmail: undefined,
     }));
@@ -216,7 +223,12 @@ export class AddToAccountModel {
 
   private set(step: AddToAccountModelStep, epoch: number): void {
     if (epoch === this.epoch)
-      this.store.set((s) => ({ ...s, step, field: undefined }));
+      this.store.set((s) => ({
+        ...s,
+        step,
+        field: undefined,
+        userCode: undefined,
+      }));
   }
 
   private async run(name: string, email: string): Promise<void> {
@@ -227,7 +239,12 @@ export class AddToAccountModel {
     this.end();
     if (prev) void Promise.resolve(prev.cancel()).catch(() => {});
     const epoch = this.epoch;
-    this.store.set((s) => ({ ...s, step: "busy", field: undefined }));
+    this.store.set((s) => ({
+      ...s,
+      step: "busy",
+      field: undefined,
+      userCode: undefined,
+    }));
     try {
       if (!this.signedIn && !(await this.signIn(d, name, email, epoch))) return;
       if (epoch !== this.epoch) return;
@@ -285,6 +302,8 @@ export class AddToAccountModel {
       return false;
     }
     this.handle = handle;
+    const userCode = handle.deviceCode?.userCode;
+    if (userCode) this.store.set((s) => ({ ...s, userCode }));
     for (;;) {
       const r = await handle.wait();
       if (epoch !== this.epoch) return false;

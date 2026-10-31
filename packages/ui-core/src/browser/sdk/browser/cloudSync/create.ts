@@ -11,6 +11,7 @@ import type { BearerSession } from "../bearer/session.js";
 import type { CloudSyncClient } from "../../core/cloudSync.js";
 import type { LocalConfigEngine } from "../../core/localConfig.js";
 import { BrowserCloudSyncApi, clientOf, importMarker } from "./api.js";
+import { filesDbName, purgeFilesStore } from "./filesPurge.js";
 import { BrowserCloudSyncHost, type CloudSyncHostOptions } from "./host.js";
 import { syncStateStore } from "./store.js";
 import { broadcastChannel, webLocks } from "./writer.js";
@@ -99,6 +100,8 @@ export async function createBrowserCloudSync(
       stateLock: `pkey-sync-state:${dbName}`,
       channel: broadcastChannel(dbName),
       ...(page ? { page } : {}),
+      // The file journal and chunk cache go with the record (D-9).
+      onPurge: () => purgeFilesStore(filesDbName(dbName)),
     },
     {
       ...o.cloudSyncOptions,

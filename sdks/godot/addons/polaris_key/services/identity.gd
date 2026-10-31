@@ -8,7 +8,8 @@ extends RefCounted
 ##   sign_in.start(opts)                   start a sign-in: a PKeySignInSession (the code, the
 ##                                         links, `wait()`, `outcome`, `cancel()`, `reopen()`,
 ##                                         `accept()`); opts {device_name, confirm_identity,
-##                                         browser}. See PKeySignInSession.
+##                                         browser, login_hint, name_hint, purpose,
+##                                         license_choice}. See PKeySignInSession.
 ##   choice.licenses(grant) / devices(grant, license_id) / complete(grant, choice) / cancel(grant)
 ##                                         the licence choice an app shows itself after a redirect
 ##                                         sign-in with license_choice = "app"; see PKeyIdentityChoice
@@ -319,7 +320,7 @@ func _start(opts: Dictionary) -> PKeySignInSession:
 	if channel == "redirect":
 		session = await _begin_redirect(opts)
 	else:
-		session = await _request_start(String(opts.get("device_name", "")))
+		session = await _request_start(String(opts.get("device_name", "")), opts)
 	if not session.ok:
 		return session
 	session.confirm_identity = opts.get("confirm_identity", false) == true and channel == "device-code"
@@ -433,7 +434,22 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String) -> P
 	return out
 
 
-func _request_start(device_name: String) -> PKeySignInSession:
+## The device start's optional members (WIRE-CONTRACT-V5 §12.10.1). The hints and `purpose` are
+## always sent when valid (an older Worker ignores them); `licenseChoice: "app"` only when the
+## caller asked for it AND discovery advertises `deviceChoice` with the four choice endpoints.
+func _start_members(opts: Dictionary, fragment: Dictionary) -> Dictionary:
+	var out := {}
+	for pair in [["login_hint", "loginHint"], ["name_hint", "nameHint"]]:
+		if opts.get(pair[0]) is String and opts[pair[0]] != "":
+			out[pair[1]] = opts[pair[0]]
+	if opts.get("purpose") in ["signin", "attach"]:
+		out["purpose"] = opts["purpose"]
+	if opts.get("license_choice") == "app" and fragment.get("device_choice") == true and PKeyIdentityChoice.available(fragment):
+		out["licenseChoice"] = "app"
+	return out
+
+
+func _request_start(device_name: String, opts: Dictionary = {}) -> PKeySignInSession:
 	var core := _core()
 	if core == null or not core.started:
 		return _failed(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() before sign_in.start().")
@@ -443,7 +459,12 @@ func _request_start(device_name: String) -> PKeySignInSession:
 		return off
 	if not is_available():
 		return _failed(PKeyErrors.SERVICE_UNAVAILABLE, "The identity service is not enabled (or not set up) for %s." % core.product)
+	if opts.get("license_choice") == "app" and core.discovery_manifest == null:
+		# The gate reads discovery; fetch it only for a start that asks for the app's choice.
+		await core.discover()
+	var members := _start_members(opts, PKeyDiscovery.identity_from(core.discovery_manifest))
 	var body := {"deviceId": core.device_id}
+	body.merge(members)
 	var label := PKeyDeviceLabel.resolve(device_name, core.options)
 	if label != "":
 		body["deviceName"] = label
@@ -467,6 +488,7 @@ func _request_start(device_name: String) -> PKeySignInSession:
 			or not _seconds(b.get("expiresIn")) or not _seconds(b.get("interval")):
 		return _failed(PKeyErrors.INVALID_RESPONSE, "The device sign-in start answered without a complete prompt.")
 	var session := PKeySignInSession.new(true)
+	session.license_choice = members.get("licenseChoice") == "app"
 	session.device_code = b["deviceCode"]
 	session.user_code = b["userCode"]
 	session.verification_uri = b["verificationUri"]
@@ -490,6 +512,9 @@ static func _failed(code: StringName, message: String) -> PKeySignInSession:
 ## {status, ...}:
 ##   pending                     not finished yet
 ##   slow-down    {interval}     polled too fast: wait `interval` seconds before the next poll
+##   license-choice {grant, expires_in, choices}
+##                               the poll answered `choose` (only after a start that sent
+##                               licenseChoice "app"): nothing is stored, `choice.*` finishes it
 ##   confirm      {identity, attachable}
 ##                               signed in, held for the player's acceptance (confirm_identity)
 ##   ready        {identity, attached, stored, sync, subject}
@@ -547,6 +572,13 @@ func _poll(prompt: PKeySignInSession, current: int, decision: Variant) -> Dictio
 			if b.get("reason") == "access_denied":
 				return {"status": "denied"}
 			return {"status": "error", "code": PKeyErrors.SIGN_IN_FAILED, "message": "The sign-in failed after approval; begin again.", "status_code": status}
+		"choose":
+			var chosen := PKeyIdentityRedirect.parse_token_answer(200, b)
+			if not prompt.license_choice:
+				return {"status": "error", "code": PKeyErrors.INVALID_RESPONSE, "message": "The poll asked for a licence choice this sign-in did not request.", "status_code": status}
+			if chosen["kind"] != "choose":
+				return {"status": "error", "code": PKeyErrors.INVALID_RESPONSE, "message": "The poll answered choose without a complete grant.", "status_code": status}
+			return {"status": "license-choice", "grant": chosen["grant"], "expires_in": chosen["expires_in"], "choices": chosen["choices"]}
 		"confirm":
 			return {"status": "confirm", "identity": _shown(b.get("identity")), "attachable": PKeyClaims.is_true(b.get("attachable"))}
 		"ready":

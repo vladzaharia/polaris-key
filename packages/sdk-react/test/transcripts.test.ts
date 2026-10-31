@@ -8,7 +8,8 @@
 // @pkey-feature ui.boot release.fetch release.distribution
 // @pkey-feature core.presentation identity.keyentry identity.account identity.attach
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints
-// @pkey-feature sync.keyring identity.exchange identity.link identity.keyreturn
+// @pkey-feature sync.keyring identity.exchange identity.link identity.keyreturn identity.devicecode.choice
+// @pkey-feature sync.files sync.files.delta
 //
 // `cloudSyncPull` / `cloudSyncPush` (U-20.4, sync.settings, WIRE-CONTRACT-V4 section 13.3, 13.4, V5 13.10):
 // the request goes through the browser host's own transport (`sendSync`, over `session.ringRequest`:
@@ -24,6 +25,14 @@
 // `tokenHeld` whether the session holds a token. A browser has no fingerprint; like the Node
 // replayer, this one hands the session a fixed hashed one, because the recordings were made by a
 // host that had one.
+//
+// `cloudSyncFile` / `cloudSyncChunk` (U-22.6, sync.files, sync.files.delta, V5 13.2, 13.8): one call
+// of the browser file transport (`BrowserFileTransport`, over `session.fileFetch`: the bearer and the
+// X-PKey headers, no redirect, no cookie) per step. The request bodies the engine would build (a begin, a
+// chunk plan) and the bytes of a PUT are the recording's own; what the replay holds the transport to is the
+// path, the headers (Content-Digest included), the bytes on the wire and the reading of every answer. The
+// replay engine matches text bodies; a binary PUT is matched here, by `bodyBase64`, after the engine picked
+// the exchange.
 //
 // The React transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, over the shared TypeScript replay engine
 // in `conformance/runners/node/transcriptReplay.ts`.
@@ -125,6 +134,10 @@ import type {
   WireMutation,
 } from "@polaris-key/client-core/cloud-sync";
 import { sendSync } from "../src/browser/cloudSync/transport.js";
+import {
+  BrowserFileTransport,
+  type FileFetch,
+} from "../src/browser/cloudSync/files.js";
 import { RingEngine } from "../src/browser/ring/engine.js";
 import { memoryRootVault } from "../src/browser/ring/rootVault.js";
 import {
@@ -170,7 +183,11 @@ import { ErrorCode } from "../src/constants.generated.js";
 import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
 import { projectState } from "../src/core/adapter.js";
 import { accountEndpointsOf } from "../src/core/account.js";
-import { choiceEndpointsOf, type LicenseChoice } from "../src/core/choice.js";
+import {
+  choiceEndpointsOf,
+  deviceChoiceOf,
+  type LicenseChoice,
+} from "../src/core/choice.js";
 import {
   redirectEndpointsOf,
   type RedirectEndpoints,
@@ -251,6 +268,14 @@ function redirectIssuer(t: Transcript): string {
 function usesRedirect(t: Transcript): boolean {
   return t.steps.some(
     (s) => s.action === "browser" || s.action === "redirectComplete",
+  );
+}
+
+/** Does this transcript start a device-code sign-in that asks `licenseChoice: "app"`? (UK-42.22:
+ *  discovery then carries `deviceChoice`, the SDK's gate for sending the member.) */
+function asksDeviceChoice(t: Transcript): boolean {
+  return t.steps.some(
+    (s) => s.action === "beginSignIn" && s.args.licenseChoice === "app",
   );
 }
 
@@ -564,6 +589,16 @@ async function cloudSyncStep(
     .map((c) => (isRec(c) ? c.setting : undefined))
     .filter((n): n is string => typeof n === "string")
     .sort();
+  // Records, named `collection/id` as the recordings do (a file's record has its tombstone here).
+  const named = (rows: unknown): string[] =>
+    (Array.isArray(rows) ? rows : [])
+      .map((r) =>
+        isRec(r) && Array.isArray(r.record) ? r.record.join("/") : "",
+      )
+      .filter((n) => n !== "")
+      .sort();
+  out.records = named(body.changes);
+  out.deletedRecords = named(body.tombstones);
   if (isRec(body.quota)) {
     if (typeof body.quota.bytes === "number") out.quotaBytes = body.quota.bytes;
     if (typeof body.quota.files === "boolean") out.files = body.quota.files;
@@ -580,6 +615,206 @@ async function cloudSyncStep(
     out.results = (Array.isArray(body.results) ? body.results : []).map((r) =>
       isRec(r) ? resultLabel(r) : "?",
     );
+  }
+}
+
+// ── Cloud Sync files (U-22.6, `sync.files`, `sync.files.delta`) ──────────────────
+
+/** The file routes of the engine, binary bodies included: matches the recording, then serves it. */
+async function fileRoute(
+  server: ReplayServer,
+  input: string | URL | Request,
+  init: RequestInit | undefined,
+  mem: { status: number },
+): Promise<Response> {
+  const url = new URL(String(input instanceof Request ? input.url : input));
+  const headers: Record<string, string> = {};
+  new Headers(init?.headers).forEach((v, k) => (headers[k.toLowerCase()] = v));
+  const raw = init?.body instanceof Uint8Array ? init.body : undefined;
+  const binary =
+    raw !== undefined && headers["content-type"] === "application/octet-stream";
+  const item = server.handle({
+    method: String(init?.method ?? "GET").toUpperCase(),
+    path: url.pathname + url.search,
+    headers,
+    body: binary ? null : typeof init?.body === "string" ? init.body : null,
+  });
+  if (!item)
+    return new Response("replay: no matching exchange", { status: 599 });
+  const want = (item.request as { bodyBase64?: string }).bodyBase64;
+  if (binary || want !== undefined) {
+    const got = raw ? Buffer.from(raw).toString("base64") : undefined;
+    if (got !== want)
+      server.failures.push(
+        `request ${init?.method} ${url.pathname}: the bytes sent are not the recording's`,
+      );
+  }
+  mem.status = item.response.status;
+  const b64 = (item.response as { bodyBase64?: string }).bodyBase64;
+  const nullBody = [101, 204, 205, 304].includes(item.response.status);
+  const text = ReplayServer.bodyText(item);
+  return new Response(
+    nullBody
+      ? null
+      : b64 !== undefined
+        ? Buffer.from(b64, "base64")
+        : text === ""
+          ? null
+          : text,
+    { status: item.response.status, headers: item.response.headers },
+  );
+}
+
+const sha256Hex = (b: Uint8Array): string =>
+  createHash("sha256").update(b).digest("hex");
+
+/** One file or chunk call of a `cloudsync-files-*` or `cloudsync-chunks*` transcript. */
+async function cloudSyncFileStep(
+  transport: BrowserFileTransport,
+  server: ReplayServer,
+  step: Step,
+  mem: { status: number },
+  out: Record<string, JsonValue>,
+): Promise<void> {
+  const a = step.args;
+  const op = String(a.op);
+  const target = { collection: String(a.collection), record: String(a.id) };
+  const item = step.exchanges.items[0]!;
+  // The upload id the recording's request names (a transcript may hold several uploads open).
+  // A finalize names it in its body; before any begin, the last one the Worker answered.
+  const uploadId =
+    /\/upload\/([^/?]+)/.exec(item.request.path)?.[1] ??
+    String(
+      (item.request.body?.json as { uploadId?: unknown } | undefined)
+        ?.uploadId ??
+        server.bindings.uploadId ??
+        "",
+    );
+  const sent = item.request as {
+    body: { json: never } | null;
+    bodyBase64?: string;
+  };
+  const sentBytes = sent.bodyBase64
+    ? new Uint8Array(Buffer.from(sent.bodyBase64, "base64"))
+    : new Uint8Array(0);
+  const sentJson = sent.body?.json as never;
+  // A recording may send a digest that is not the body's (upload_mismatch): the header is the recording's.
+  const digest = /^sha-256=:([A-Za-z0-9+/=]+):$/.exec(
+    item.request.headers["content-digest"] ?? "",
+  )?.[1];
+  const sentSha = digest
+    ? Buffer.from(digest, "base64").toString("hex")
+    : sha256Hex(sentBytes);
+  let reply;
+  switch (op) {
+    case "begin":
+      reply = await transport.begin(target, sentJson, {});
+      break;
+    case "status":
+      reply = await transport.status(target, uploadId, {});
+      break;
+    case "put":
+    case "putManifest":
+      reply = await transport.putSingle(
+        target,
+        uploadId,
+        sentBytes,
+        sentSha,
+        {},
+      );
+      break;
+    case "part":
+      reply = await transport.putPart(
+        target,
+        uploadId,
+        Number(a.part),
+        sentBytes,
+        sentSha,
+        {},
+      );
+      break;
+    case "abort":
+      reply = await transport.abort(target, uploadId, {});
+      break;
+    case "finalize":
+      reply = await transport.finalize(target, { uploadId }, {});
+      break;
+    case "plan":
+      reply = await transport.planChunks(target, uploadId, sentJson, {});
+      break;
+    case "putChunk":
+      reply = await transport.putChunk(
+        target,
+        uploadId,
+        String(a.chunk),
+        sentBytes,
+        sentSha,
+        {},
+      );
+      break;
+    case "download":
+    case "downloadManifest":
+      reply = await transport.getFile(
+        target,
+        a.version !== undefined ? { version: Number(a.version) } : {},
+        {},
+      );
+      break;
+    case "getChunk":
+      reply = await transport.getChunk(target.collection, String(a.chunk), {});
+      break;
+    case "revisions":
+      reply = await transport.revisions(target, {});
+      break;
+    default:
+      throw new Error(`the React replayer has no file op "${op}"`);
+  }
+  if (!reply.ok) {
+    out.result = "refused";
+    out.status = reply.status;
+    out.code = reply.code;
+    const body = (reply.body ?? {}) as Record<string, unknown>;
+    if (Array.isArray(body.missing)) out.missing = body.missing as JsonValue;
+    const srv = body.server as { version?: unknown } | undefined;
+    if (typeof srv?.version === "number") out.serverVersion = srv.version;
+    if (reply.retryAfterSeconds !== undefined)
+      out.retryAfter = reply.retryAfterSeconds;
+    return;
+  }
+  out.result = "ok";
+  out.status = mem.status;
+  const v = reply.value as unknown;
+  if (v instanceof Uint8Array) {
+    out.size = v.length;
+    out.sha256 = sha256Hex(v);
+  } else if (v !== null && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    if ("bytes" in o && o.bytes instanceof Uint8Array) {
+      out.size = o.bytes.length;
+      out.sha256 = sha256Hex(o.bytes);
+    } else if (Array.isArray(o.revisions)) {
+      const revs = o.revisions as Array<{ version: number; format: string }>;
+      out.versions = revs.map((r) => r.version);
+      if (op === "revisions" && step.expect.formats !== undefined)
+        out.formats = revs.map((r) => r.format);
+    } else if (op === "plan") {
+      out.missing = [...(o.missing as string[])].sort();
+      out.present = [...(o.present as Array<[string, number]>)].sort((x, y) =>
+        x[0] < y[0] ? -1 : 1,
+      );
+    } else {
+      for (const k of [
+        "mode",
+        "partBytes",
+        "size",
+        "received",
+        "missing",
+        "version",
+        "sha256",
+        "format",
+      ])
+        if (k in o) out[k] = o[k] as JsonValue;
+    }
   }
 }
 
@@ -711,7 +946,8 @@ async function replay(t: Transcript): Promise<void> {
   let slices: UpdateSlices = structuredClone(initialUpdate?.cache ?? {});
   let belief: ServicesMap = t.initial.services
     ? servicesFromList(t.initial.services as never)
-    : t.steps.some((s) => s.action === "attach") && usesRedirect(t)
+    : t.steps.some((s) => s.action === "attach") &&
+        (usesRedirect(t) || asksDeviceChoice(t))
       ? servicesFromList(["license", "config", "identity"] as never)
       : usesRedirect(t)
         ? servicesFromList(["identity"] as never)
@@ -723,6 +959,7 @@ async function replay(t: Transcript): Promise<void> {
   // `issued_token_type` is read off the Worker's answer, which the typed outcome does not carry.
   let suppliedNonce: string | null = null;
   const syncMem: SyncMemory = { etag: null, retryAfter: null, nextId: 1 };
+  const fileMem = { status: 0 };
   let issuedTokenType: string | undefined;
   const tapped = (async (input, init) => {
     const url = String(input instanceof Request ? input.url : input);
@@ -741,6 +978,8 @@ async function replay(t: Transcript): Promise<void> {
       syncMem.retryAfter = r.headers.get("retry-after");
       return r;
     }
+    if (u.pathname.startsWith(`/${t.product}/sync/files/`))
+      return fileRoute(server, input, init, fileMem);
     const res = await server.fetch(input, init);
     if (u.pathname === `/${t.product}/sync/ops`)
       syncMem.retryAfter = res.headers.get("retry-after");
@@ -791,6 +1030,11 @@ async function replay(t: Transcript): Promise<void> {
         redirectEndpointsOf(discovered as Record<string, unknown> | null) ??
         standardRedirect(t),
       redirectEntropy: () => entropy,
+      // identity.devicecode.choice: the last discovery's `deviceChoice`, else the standard one.
+      deviceChoice: () =>
+        discovered === null
+          ? asksDeviceChoice(t)
+          : deviceChoiceOf(discovered as Record<string, unknown>),
       // identity.choice: the last discovery's `choice*` endpoints, else the Worker's standard ones.
       choiceEndpoints: () =>
         choiceEndpointsOf(discovered as Record<string, unknown> | null) ?? {
@@ -821,7 +1065,7 @@ async function replay(t: Transcript): Promise<void> {
   // The sign-in's acquisition sync (trust, documents, report) is pinned by the sync transcripts,
   // so a transcript that signs in (redirect steps) over a product with License on skips it.
   const quiet = (s: BearerSession): BearerSession => {
-    if (usesRedirect(t))
+    if (usesRedirect(t) || asksDeviceChoice(t))
       (
         s as unknown as { syncAfterSignIn: () => Promise<void> }
       ).syncAfterSignIn = async () => undefined;
@@ -1023,10 +1267,20 @@ async function replay(t: Transcript): Promise<void> {
         break;
       case "beginSignIn": {
         const name = step.args.deviceName;
+        const hint = (k: string) =>
+          typeof step.args[k] === "string" ? { [k]: step.args[k] } : {};
         try {
-          prompt = await session.beginSignIn(
-            typeof name === "string" ? { deviceName: name } : {},
-          );
+          prompt = await session.beginSignIn({
+            ...(typeof name === "string" ? { deviceName: name } : {}),
+            ...hint("loginHint"),
+            ...hint("nameHint"),
+            ...(step.args.purpose === "signin" || step.args.purpose === "attach"
+              ? { purpose: step.args.purpose }
+              : {}),
+            ...(step.args.licenseChoice === "app"
+              ? { licenseChoice: "app" as const }
+              : {}),
+          });
         } catch (e) {
           // identity.toggle: Identity off is the typed `service-unavailable`, before or after
           // the Worker's 404.
@@ -1202,6 +1456,20 @@ async function replay(t: Transcript): Promise<void> {
       case "cloudSyncPull":
       case "cloudSyncPush":
         await cloudSyncStep(session, step, t, syncMem, observed);
+        break;
+      case "cloudSyncFile":
+      case "cloudSyncChunk":
+        await cloudSyncFileStep(
+          new BrowserFileTransport({
+            product: t.product,
+            request: ((path, init) =>
+              session.fileFetch(path, init)) as FileFetch,
+          }),
+          server,
+          step,
+          fileMem,
+          observed,
+        );
         break;
       case "relayTicket": {
         // connect.relay (CC-09.2): the ticket route. A refusal reads as `result: "refused"` with
@@ -1598,16 +1866,14 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // identity.link is I-43.3's link-* transcripts (I-46.13), replayed through `session.linkOffer`
     // and `session.linkAccept`; the Node runner also replays them with a reference client.
     // connect.identity is CC-06.4's connect-identity* transcripts, replayed here (CC-09.1).
-    // sync.records (U-09.10), sync.files (U-10.12) and sync.files.delta (U-37) are planned here (U-22 replays them); the
-    // cloudsync-records-* transcripts are the Worker's record-engine conversations.
+    // sync.records (U-09.10) stays planned here (D-2: v1 is saves only; `collection()` is C-26), so the
+    // cloudsync-records-* transcripts, the Worker's record-engine conversations, are not replayed.
+    // sync.saves waits on U-22.5's machine change, so cloudsync-files-single (also tagged sync.saves) is not
+    // replayed yet. sync.files (U-10.12) and sync.files.delta (U-37) are U-22.6's: the other cloudsync-files-*
+    // transcripts and cloudsync-chunks* replay through the file transport (cloudSyncFile, cloudSyncChunk).
     // identity.keyreturn is LK-SKIP's redirect-web-key-return* transcripts: replayed here (.6b).
-    // identity.devicecode.choice is UK-42.22's device start members and choose poll answer (planned).
-    const plannedHere: string[] = [
-      "sync.records",
-      "sync.files",
-      "sync.files.delta",
-      "identity.devicecode.choice",
-    ];
+    // identity.devicecode.choice is UK-42.22.5's holders-add-to-account-device, replayed here.
+    const plannedHere: string[] = ["sync.records", "sync.saves"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     // identity.gamecenter and identity.pgs are N/A on the web (parity.json), so exchange-gamecenter-*,
@@ -1633,6 +1899,37 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       await replay(t);
     });
   }
+});
+
+// @pkey-feature sync.files
+describe("the React replayer's file mapping fails on a doctored transcript", () => {
+  const base = TRANSCRIPTS.find((t) => t.id === "cloudsync-files-single")!;
+
+  it("a PUT the recording says is not an octet stream", async () => {
+    const t = doctor(base, 1, (items) =>
+      items.map((x) => ({
+        ...x,
+        request: {
+          ...x.request,
+          headers: { ...x.request.headers, "content-type": "text/plain" },
+        },
+      })),
+    );
+    await expect(replay(t)).rejects.toThrow(/content-type/);
+  });
+
+  it("a finalize answer whose size is not the recording's", async () => {
+    const t = doctor(base, 3, (items) =>
+      items.map((x) => ({
+        ...x,
+        response: {
+          ...x.response,
+          body: { ...(x.response.body as object), size: 1 },
+        },
+      })),
+    );
+    await expect(replay(t)).rejects.toThrow(/step 3: size/);
+  });
 });
 
 // @pkey-feature packs.apply.chunk

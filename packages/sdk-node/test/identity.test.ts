@@ -1,4 +1,4 @@
-// @pkey-feature identity.devicecode identity.toggle
+// @pkey-feature identity.devicecode identity.toggle identity.devicecode.choice
 // Device-code sign-in (RFC 8628, `identity.signIn.start({channel: "device-code"})`): the pacing rules `wait()` owns, which a transcript
 // cannot show because a recorded conversation has no clock between its requests.
 //
@@ -578,5 +578,97 @@ describe("hints", () => {
       "deviceId",
       "deviceName",
     ]);
+  });
+});
+
+describe("licenseChoice behind the deviceChoice discovery gate (UK-42.22.6, V5 §12.6, §12.10.1)", () => {
+  const DISCOVERY = `/${PRODUCT}/.well-known/polaris.json`;
+  const endpoints = {
+    choiceLicenses: `${BASE_URL}/${PRODUCT}/identity/choice/licenses`,
+    choiceDevices: `${BASE_URL}/${PRODUCT}/identity/choice/devices`,
+    choiceComplete: `${BASE_URL}/${PRODUCT}/identity/choice/complete`,
+    choiceCancel: `${BASE_URL}/${PRODUCT}/identity/choice/cancel`,
+  };
+  const discovery = (identity: Record<string, unknown>) =>
+    json({
+      product: PRODUCT,
+      services: {
+        identity: { enabled: true, configured: true, ...identity },
+      },
+    });
+  const sent = (p: ReturnType<typeof plane>) =>
+    p.calls.find((c) => c.path === START)!.body as Record<string, unknown>;
+
+  it("sends licenseChoice app when discovery has deviceChoice and the four endpoints", async () => {
+    const p = plane({
+      [START]: [started()],
+      [DISCOVERY]: [discovery({ deviceChoice: true, endpoints })],
+    });
+    const { c } = await client(p.fetchImpl);
+    await start(c, { licenseChoice: "app" });
+    expect(sent(p).licenseChoice).toBe("app");
+  });
+
+  it.each([
+    ["no deviceChoice", { endpoints }],
+    ["a missing choice endpoint", { deviceChoice: true, endpoints: {} }],
+  ])("sends none with %s", async (_n, identity) => {
+    const p = plane({
+      [START]: [started()],
+      [DISCOVERY]: [discovery(identity)],
+    });
+    const { c } = await client(p.fetchImpl);
+    await start(c, { licenseChoice: "app" });
+    expect(sent(p)).not.toHaveProperty("licenseChoice");
+  });
+
+  it("sends none when discovery cannot be loaded, and loads none when not asked", async () => {
+    const p = plane({ [START]: [started()] });
+    const { c } = await client(p.fetchImpl);
+    await start(c, { licenseChoice: "app" });
+    expect(sent(p)).not.toHaveProperty("licenseChoice");
+    const q = plane({ [START]: [started()] });
+    const { c: c2 } = await client(q.fetchImpl);
+    await start(c2);
+    expect(q.calls.map((x) => x.path)).toEqual([START]);
+  });
+
+  it("wait() ends in choose with the grant, stores no token and polls no more", async () => {
+    const p = plane({
+      [START]: [started()],
+      [DISCOVERY]: [discovery({ deviceChoice: true, endpoints })],
+      [POLL]: [
+        pending(),
+        json({
+          status: "choose",
+          grant: "sg_x",
+          expiresIn: 300,
+          choices: { state: "choose", choices: [], keep: true },
+        }),
+      ],
+    });
+    const { c, store } = await client(p.fetchImpl);
+    const prompt = await start(c, { licenseChoice: "app" });
+    const out = await settle(prompt.wait());
+    expect(out).toEqual({
+      kind: "choose",
+      grant: "sg_x",
+      expiresIn: 300,
+      choices: { state: "choose", choices: [], keep: true },
+    });
+    expect(polls(p.calls)).toHaveLength(2);
+    expect(await store.getToken()).toBeNull();
+  });
+
+  it("a choose answer without a grant is sign-in-failed", async () => {
+    const p = plane({
+      [START]: [started()],
+      [POLL]: [json({ status: "choose", expiresIn: 300, choices: {} })],
+    });
+    const { c } = await client(p.fetchImpl);
+    const prompt = await start(c);
+    await expect(prompt.wait({ once: true })).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
   });
 });

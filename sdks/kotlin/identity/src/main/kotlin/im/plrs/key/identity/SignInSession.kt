@@ -48,7 +48,7 @@ public data class SignInOptions @JvmOverloads constructor(
     val loginHint: String? = null,
     val nameHint: String? = null,
     val purpose: SignInPurpose? = null,
-    /** Redirect channel: `"app"` makes the app show the licence choice itself (§12.4). Honoured only when discovery names the `choice*` endpoints; otherwise the card chooses. */
+    /** `"app"` makes the app show the licence choice itself (§12.4). Honoured only when discovery names the `choice*` endpoints (on the device-code channel also `deviceChoice`); otherwise the card chooses. */
     val licenseChoice: String? = null,
 )
 
@@ -121,7 +121,7 @@ public class SignInNamespace internal constructor(private val client: IdentityCl
             if (options.opener != null) session.reopen()
             return session
         }
-        val prompt = client.startDeviceCode(options.deviceName)
+        val prompt = client.startDeviceCode(options.deviceName, options)
         val session = SignInSession(client, prompt, options.opener)
         if (options.opener != null) session.reopen()
         return session
@@ -248,6 +248,8 @@ public class SignInSession internal constructor(
                 synchronized(lock) { pace = maxOf(pace, ended.interval); pace }, slowDown = true,
             )
             is SignInPoll.Ready -> settle(Result.success(SignInOutcome.SignedIn(ended.subject)))
+
+            is SignInPoll.Choose -> settle(Result.success(SignInOutcome.Choose(ended.grant, ended.expiresIn, ended.choices)))
             SignInPoll.Expired -> settle(Result.success(SignInOutcome.Expired))
             is SignInPoll.Error -> {
                 val error = SignInError(ended.code ?: ErrorCode.signInFailed, ended.message)

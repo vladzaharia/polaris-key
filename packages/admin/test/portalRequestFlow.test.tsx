@@ -324,6 +324,58 @@ describe("the request's hints and purpose (UK-42.14)", () => {
     expect(document.body.textContent).not.toMatch(/wants you to sign in/);
   });
 
+  it("a device attach request drops Have a license key? and Sign in with another device", async () => {
+    out({
+      ...VIEW,
+      purpose: "attach",
+      client: { ...VIEW.client, kind: "device" },
+    });
+    renderPortal();
+    await screen.findByRole("textbox", { name: "Email" });
+    expect(screen.queryByText("Have a license key?")).toBeNull();
+    expect(screen.queryByText("Sign in with another device")).toBeNull();
+  });
+
+  it("a web or native request keeps them", async () => {
+    out({ ...VIEW, purpose: "attach" });
+    renderPortal();
+    await screen.findByRole("textbox", { name: "Email" });
+    expect(screen.queryByText("Sign in with another device")).not.toBeNull();
+  });
+
+  // UK-42.22.12: a device-code request carries the same hints; the card reads them as it does for
+  // `authorize`, and keeps the code panel (the person's check that they started it).
+  const DEVICE: SignInRequestView = {
+    ...VIEW,
+    client: { ...VIEW.client, kind: "device" },
+    deviceLabel: "Living room TV",
+    userCode: "WDJB-MJHT",
+  };
+
+  it("a device request with purpose attach: the attach header, the code panel, the prefilled email", async () => {
+    out({
+      ...DEVICE,
+      purpose: "attach",
+      licenseChoice: "app",
+      loginHint: "ada@example.com",
+    });
+    renderPortal();
+    const field = await screen.findByRole("textbox", { name: "Email" });
+    expect((field as HTMLInputElement).value).toBe("ada@example.com");
+    expect(screen.getByText("to your account", { exact: false })).toBeTruthy();
+    expect(screen.getByText("Diceroll", { selector: "strong" })).toBeTruthy();
+    expect(screen.getByText("WDJB-MJHT")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/wants you to sign in/);
+  });
+
+  it("a device request with purpose signin keeps the sign-in header", async () => {
+    out(DEVICE);
+    renderPortal();
+    await screen.findByRole("textbox", { name: "Email" });
+    expect(screen.getByText("WDJB-MJHT")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/to your account/);
+  });
+
   const finish = async (newAccount: boolean) => {
     window.history.replaceState(
       null,
@@ -360,6 +412,26 @@ describe("the request's hints and purpose (UK-42.14)", () => {
     expect(field.value).not.toBe("Ada Lovelace");
   });
 
+  // The hint is also offered as the first "Use a name from" chip, labelled with the app: tapping it
+  // fills the field, and nothing is sent unread.
+  it("FinishStep offers nameHint as the first Use a name from chip, unselected until tapped", async () => {
+    await finish(true);
+    const chip = await screen.findByRole("button", {
+      name: "Diceroll · Ada Lovelace",
+    });
+    expect(chip.getAttribute("aria-pressed")).toBe("false");
+    const chips = screen
+      .getAllByRole("button")
+      .filter((b) => b.hasAttribute("aria-pressed"));
+    expect(chips[0]).toBe(chip);
+    await userEvent.click(chip);
+    const field = screen.getByRole("textbox", {
+      name: /name/i,
+    }) as HTMLInputElement;
+    expect(field.value).toBe("Ada Lovelace");
+    expect(chip.getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("an existing account's finish step ignores nameHint", async () => {
     const field = await finish(false);
     expect(field.placeholder).not.toBe("Ada Lovelace");
@@ -368,6 +440,24 @@ describe("the request's hints and purpose (UK-42.14)", () => {
 });
 
 describe("LicenseChoiceStep (§3.6)", () => {
+  it("licenseChoice app (a device-code start): no licence step, the consent first", async () => {
+    flow(choices(), {
+      [REQUEST]: {
+        ...VIEW,
+        client: { ...VIEW.client, kind: "device" },
+        userCode: "WDJB-MJHT",
+        purpose: "attach",
+        licenseChoice: "app",
+      },
+    });
+    renderPortal();
+    await screen.findByText("Mara Fennick", { exact: false });
+    expect(screen.queryByText("Choose a license for this device")).toBeNull();
+    expect(fetchedRequests().some((r) => r === `GET ${REQUEST}/licenses`)).toBe(
+      false,
+    );
+  });
+
   it("lists the licences, preselects the server's pick and goes on to consent with it", async () => {
     flow(choices());
     renderPortal();

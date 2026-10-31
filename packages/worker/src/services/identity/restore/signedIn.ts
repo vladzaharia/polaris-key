@@ -14,6 +14,7 @@ import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type { Product } from "../../../core/products.js";
 import { customerOrigin } from "../../../core/hosts.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 import { appDeviceApprovedNotice } from "../../../core/notify/templates.js";
 import { sendSecurityNotice } from "../../../core/notify/send.js";
 import { resolveSubject } from "../../../core/accounts/accountSubjects.js";
@@ -66,7 +67,7 @@ export async function sendRestoreNotice(
       to.email,
       appDeviceApprovedNotice({
         deviceLabel: to.deviceLabel,
-        productName: product.name,
+        productName: await shownAppName(env, db, product.slug, product.name),
         productSlug: product.slug,
         origin,
         via: "restore",

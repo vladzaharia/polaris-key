@@ -1,6 +1,6 @@
 extends RefCounted
 # @pkey-feature identity.account identity.attach identity.toggle core.discover core.presentation core.sync core.cache config.schema config.mint devices.register devices.report
-# @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode identity.devicelabel
+# @pkey-feature license.activate license.enroll license.deactivate license.reregister identity.devicecode identity.devicecode.choice identity.devicelabel
 # @pkey-feature release.changelog release.download update.feed release.record update.decide
 # @pkey-feature commerce.receipt
 # @pkey-feature packs.apply.chunk
@@ -9,6 +9,7 @@ extends RefCounted
 # @pkey-feature release.fetch
 # @pkey-feature sync.keyring sync.settings
 # @pkey-feature identity.exchange identity.gamecenter identity.pgs
+# @pkey-feature sync.files sync.files.delta sync.saves
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -74,6 +75,7 @@ extends RefCounted
 
 const FLOOR := 4
 const SyncTypes := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
+const FilesTransport := preload("res://addons/polaris_key/services/cloud_sync/files_transport.gd")
 
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
@@ -121,10 +123,11 @@ static func replay(tr: Dictionary) -> Array:
 	var opts := PKeyTestFixtures.options(server.base_url(), store, clock, tr["product"], tr["trust"], tr["initial"]["version"])
 	# `cloudsync-cors` has `browser` steps too, but they are plain requests, not a redirect sign-in.
 	var redirects: bool = tr["id"] != "cloudsync-cors" and tr["steps"].any(func(st): return st["action"] in ["browser", "redirectComplete"])
+	var device_choice: bool = tr["steps"].any(func(st): return st["action"] == "beginSignIn" and st["args"].get("licenseChoice") == "app")
 	if tr["initial"].get("services") is Array:
 		opts.expected_services = PackedStringArray(tr["initial"]["services"])
-	elif redirects:
-		# The redirect conversations ride a product that runs Identity (their discovery names it).
+	elif redirects or device_choice:
+		# The redirect conversations (and the device start that asks for the app's choice) ride a product that runs Identity (their discovery names it).
 		opts.expected_services = PackedStringArray(["license", "config", "identity"])
 	# PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
 	opts.send_device_name = tr["initial"].get("deviceName") is String
@@ -173,7 +176,7 @@ static func replay(tr: Dictionary) -> Array:
 		if exchange_keys != null:
 			# The exchange recordings hold the token route, not the sync a sign-in triggers after it.
 			sdk.identity.redirect_acquisition_sync = false
-		if redirects:
+		if redirects or device_choice:
 			# The recordings hold the token exchange, not the sync a sign-in triggers after it.
 			sdk.identity.redirect_acquisition_sync = false
 			sdk.set_meta("pkey_replay", {"tr": tr, "engine": engine, "base": server.base_url()})
@@ -186,6 +189,9 @@ static func replay(tr: Dictionary) -> Array:
 			if step["action"] in ["subject", "signOut", "attach"] and sdk.core.discovery_manifest == null:
 				# identity.account: the account endpoints at the Worker's standard paths, on the loopback server.
 				sdk.core.discovery_manifest = _standard_identity_discovery(server.base_url(), tr["product"])
+			if step["action"] == "beginSignIn" and step["args"].get("licenseChoice") == "app" and sdk.core.discovery_manifest == null:
+				# The transcript ran no discovery: Identity with the account and choice endpoints and `deviceChoice`.
+				sdk.core.discovery_manifest = _redirect_discovery(server.base_url(), tr)
 			if step["action"] in ["browser", "redirectComplete"] and sdk.core.discovery_manifest == null:
 				sdk.core.discovery_manifest = _redirect_discovery(server.base_url(), tr)
 			if step["action"] in ["exchange", "choiceComplete"] and exchange_keys != null:
@@ -316,6 +322,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			out["updatesPending"] = sdk.update.updater.events().size()
 		"cloudSyncPull", "cloudSyncPush":
 			await _cloud_sync(sdk, step, out)
+		"cloudSyncFile", "cloudSyncChunk":
+			await _cloud_file(sdk, step, out)
 		"browser":
 			if not sdk.has_meta("pkey_replay"):
 				await _cors(sdk, step)
@@ -359,7 +367,13 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			out.merge(await _choice_step(sdk.identity.choice, step), true)
 		# The recorded action names stay (plans/I-10-slices.md D-6); they drive the session.
 		"beginSignIn":
-			var prompt: PKeySignInSession = await sdk.identity.sign_in.start({"device_name": String(step["args"].get("deviceName", ""))})
+			var start_opts := {"device_name": String(step["args"].get("deviceName", ""))}
+			for pair in [["loginHint", "login_hint"], ["nameHint", "name_hint"], ["purpose", "purpose"]]:
+				if step["args"].get(pair[0]) is String:
+					start_opts[pair[1]] = step["args"][pair[0]]
+			if step["args"].get("licenseChoice") == "app":
+				start_opts["license_choice"] = "app"
+			var prompt: PKeySignInSession = await sdk.identity.sign_in.start(start_opts)
 			sdk.set_meta("pkey_prompt", prompt)
 			if prompt.ok:
 				out["prompt"] = {
@@ -760,6 +774,8 @@ static func _redirect_discovery(base: String, tr: Dictionary) -> Dictionary:
 		"choiceComplete": root + "/choice/complete", "choiceCancel": root + "/choice/cancel",
 	}
 	var identity := {"enabled": true, "configured": true, "issuer": issuer, "endpoints": endpoints}
+	if tr["steps"].any(func(st): return st["action"] == "beginSignIn" and st["args"].get("licenseChoice") == "app"):
+		identity["deviceChoice"] = true
 	var services := {"identity": identity}
 	# A transcript that attaches after a redirect sign-in (holders-add-to-account) also runs
 	# Licence and Config, and names the account endpoints beside the redirect ones.
@@ -790,6 +806,8 @@ static func _rebased(manifest: Dictionary, from: String, to: String) -> Dictiona
 ## client's expiry are both `expired`, and its `error` state is `error`.
 static func _sign_in_status(status: String) -> String:
 	match status:
+		"license-choice":
+			return "choose"
 		"timeout", "expired":
 			return "expired"
 		"denied":
@@ -1108,6 +1126,12 @@ static func _cloud_sync(sdk: Node, step: Dictionary, out: Dictionary) -> void:
 	if b.get("more") is bool:
 		out["more"] = b["more"]
 	out["empty"] = b.get("empty") == true
+	var deleted: Array = []
+	for t in (b.get("tombstones", []) as Array if b.get("tombstones") is Array else []):
+		if t is Dictionary and t.get("record") is Array and t["record"].size() == 2:
+			deleted.append("%s/%s" % [t["record"][0], t["record"][1]])
+	deleted.sort()
+	out["deletedRecords"] = deleted
 	var names_out: Array = []
 	for c in (b.get("changes", []) as Array if b.get("changes") is Array else []):
 		if c is Dictionary and c.get("setting") is String:
@@ -1133,6 +1157,114 @@ static func _cloud_sync(sdk: Node, step: Dictionary, out: Dictionary) -> void:
 		for x in (b.get("results", []) as Array if b.get("results") is Array else []):
 			labels.append(_result_label(x) if x is Dictionary else "?")
 		out["results"] = labels
+
+
+## `cloudSyncFile` / `cloudSyncChunk` (WIRE-CONTRACT-V5 section 13.2, 13.8; format.ts): one file call, through
+## the Godot SDK's file transport (the typed routes of the transfer engine). The step's one recorded request
+## supplies what the engine would build (the `begin`/`finalize`/`plan` JSON, the PUT bytes); the transport
+## builds the URL and the headers, checks them against the allow-list and reads the answer under its caps.
+static func _file_ctx(core: PKeyCore) -> Dictionary:
+	return {"product": core.product, "token": core.tokens.current(), "headers": core.headers, "url": _join.bind(core.base_url)}
+
+
+## The file transport's paths start at the product (`/djdl/sync/files/...`), so the URL is the base and the path.
+static func _join(path: String, base: String) -> String:
+	return base + path
+
+
+static func _cloud_file(sdk: Node, step: Dictionary, out: Dictionary) -> void:
+	var args: Dictionary = step["args"]
+	var core: PKeyCore = sdk.core
+	var ft := FilesTransport.new(FilesTransport.make_transport(sdk), _file_ctx.bind(core))
+	var recorded: Dictionary = step["exchanges"]["items"][0]["request"]
+	var json: Variant = recorded["body"]["json"] if recorded.get("body") is Dictionary else null
+	var bytes := Marshalls.base64_to_raw(recorded["bodyBase64"]) if recorded.get("bodyBase64") is String else PackedByteArray()
+	# The digest the recording claims (a `mismatch` transcript sends bytes that are not the ones it names).
+	var claimed := String(recorded["headers"].get("content-digest", "")).trim_prefix("sha-256=:").trim_suffix(":")
+	var digest := Marshalls.base64_to_raw(claimed).hex_encode() if claimed != "" else (PKeySyncHkdf.sha256(bytes).hex_encode() if not bytes.is_empty() else "")
+	var target := {"collection": args["collection"], "record": args.get("id", "")}
+	var upload_id := ""
+	var at := String(recorded["path"]).find("/upload/")
+	if at >= 0:
+		upload_id = String(recorded["path"]).substr(at + 8).split("/")[0]
+	var op: String = args["op"]
+	var reply: Dictionary
+	match op:
+		"begin":
+			reply = await ft.begin(target, json)
+		"status":
+			reply = await ft.status(target, upload_id)
+		"put", "putManifest":
+			reply = await ft.put_single(target, upload_id, bytes, digest)
+		"part":
+			reply = await ft.put_part(target, upload_id, int(args["part"]), bytes, digest)
+		"putChunk":
+			reply = await ft.put_chunk(target, upload_id, args["chunk"], bytes, digest)
+		"abort":
+			reply = await ft.abort(target, upload_id)
+		"finalize":
+			reply = await ft.finalize(target, json)
+		"plan":
+			reply = await ft.plan_chunks(target, upload_id, json)
+		"download", "downloadManifest":
+			reply = await ft.get_file(target, {"version": args.get("version"), "range": null, "if_match": null})
+		"revisions":
+			reply = await ft.revisions(target)
+		"getChunk":
+			reply = await ft.get_chunk(args["collection"], args["chunk"])
+		_:
+			out["result"] = "unknown-op"
+			return
+	if not reply["ok"]:
+		out["result"] = "refused"
+		out["status"] = reply["status"]
+		out["code"] = reply["code"]
+		var rb: Variant = reply.get("body")
+		if rb is Dictionary:
+			if rb.get("missing") is Array:
+				out["missing"] = rb["missing"]
+			if rb.get("server") is Dictionary and rb["server"].has("version"):
+				out["serverVersion"] = rb["server"]["version"]
+		if reply.get("retry_after", -1.0) >= 0.0:
+			out["retryAfter"] = int(reply["retry_after"])
+		return
+	out["result"] = "ok"
+	out["status"] = ft.last_status
+	var v: Variant = reply["value"]
+	match op:
+		"begin":
+			out["mode"] = v["mode"]
+			if v.has("partBytes"):
+				out["partBytes"] = v["partBytes"]
+		"status":
+			for k in ["mode", "size", "received", "missing"]:
+				if v.has(k):
+					out[k] = v[k]
+		"finalize":
+			for k in ["version", "size", "sha256", "format"]:
+				out[k] = v[k]
+		"download", "downloadManifest":
+			var d: PackedByteArray = v["data"]
+			out["size"] = d.size()
+			out["sha256"] = PKeySyncHkdf.sha256(d).hex_encode()
+		"getChunk":
+			out["size"] = (v as PackedByteArray).size()
+			out["sha256"] = PKeySyncHkdf.sha256(v).hex_encode()
+		"revisions":
+			var versions: Array = []
+			var formats: Array = []
+			for r in v["revisions"]:
+				versions.append(r["version"])
+				formats.append(r.get("format"))
+			out["versions"] = versions
+			out["formats"] = formats
+		"plan":
+			var missing: Array = (v.get("missing", []) as Array).duplicate()
+			missing.sort()
+			out["missing"] = missing
+			var present: Array = (v.get("present", []) as Array).duplicate()
+			present.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+			out["present"] = present
 
 
 ## A CORS exchange (`cloudsync-cors`): the browser's own. The preflight is played as recorded; the

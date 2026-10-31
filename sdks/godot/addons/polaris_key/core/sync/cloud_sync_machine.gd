@@ -61,8 +61,8 @@ var _hlc_re: RegEx
 
 
 func _init(opts: Dictionary, persisted: Variant = null) -> void:
-	_client_id_re = RegEx.create_from_string(PKeyConstants.SYNC_CLIENT_ID_PATTERN)
-	_hlc_re = RegEx.create_from_string(PKeyConstants.SYNC_HLC_PATTERN)
+	_client_id_re = RegEx.create_from_string(PKeyChannel.anchored(PKeyConstants.SYNC_CLIENT_ID_PATTERN))
+	_hlc_re = RegEx.create_from_string(PKeyChannel.anchored(PKeyConstants.SYNC_HLC_PATTERN))
 	_product = opts["product"]
 	_catalog = opts["catalog"]
 	_document = opts["document"]

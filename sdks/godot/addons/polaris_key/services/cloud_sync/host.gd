@@ -109,7 +109,7 @@ func configure(deps: Dictionary, opts: Dictionary = {}) -> void:
 	_opts = opts
 	_codec = deps.get("codec", CodecPort.new())
 	_file = State.new(deps["state_dir"], deps["product"], deps.get("sealer"))
-	_sync_key_re = RegEx.create_from_string(PKeyConstants.SYNC_KEY_PATTERN)
+	_sync_key_re = RegEx.create_from_string(PKeyChannel.anchored(PKeyConstants.SYNC_KEY_PATTERN))
 
 
 ## How the journal is kept: "sealed", "encrypted-file" or "none" (see state.gd).

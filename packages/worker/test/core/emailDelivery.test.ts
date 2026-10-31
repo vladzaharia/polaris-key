@@ -107,6 +107,25 @@ describe("senders", () => {
     expect(sent[0]!.from.name).toBe("Acme Games via Polaris Locker");
   });
 
+  it.each([
+    ["a reserved name", "Steam"],
+    ["a Hangul filler", "Acme\u3164"],
+    ["a name of only a filler", "\u3164"],
+    ["a soft hyphen", "Ac\u00adme Games"],
+    ["a tag inside a reserved term", "Ste\u{E0061}am"],
+  ])(
+    "passthrough mail names a product whose name has %s by its slug (DISPLAY-NAME-INVISIBLE)",
+    async (_what, displayName) => {
+      const { env, db, sent } = setup();
+      const msg: OutgoingEmail = {
+        ...passthrough("a@example.com"),
+        sender: { kind: "passthrough", product: "acme", displayName },
+      };
+      expect(await deliverEmail(env, db, msg, NOW)).toEqual({ ok: true });
+      expect(sent[0]!.from.name).toBe("acme via Polaris Locker");
+    },
+  );
+
   it("a product whose name and slug are both reserved sends nothing", async () => {
     const { env, db, sent } = setup();
     const msg: OutgoingEmail = {

@@ -147,7 +147,7 @@ public struct ServerFileCodec: FileCodec {
     public func openChunk(id: Data, object: Data) -> FileOpened {
         let o = [UInt8](object)
         if o.count < 2 { return .invalid("shape") }
-        if o.count > serverChunkMaxStoredBytes { return .invalid("size") }
+        if o.count > SYNC_CHUNK_MAX_STORED_BYTES { return .invalid("size") }
         if o[0] != serverChunkObjectVersion { return .invalid("version") }
         let codec = o[1]
         guard codec == SyncChunks.codecRaw || codec == SyncChunks.codecZstd else { return .invalid("codec") }

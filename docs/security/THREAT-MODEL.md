@@ -4932,7 +4932,7 @@ is no new privilege level and no outbound call.
 - **`IDENTITY_RESERVED_DISPLAY_NAMES` (PX-W13, `identity.reservedDisplayNames`) is a validation
   severity too.** `warn` (the default) or `error` decides only whether a product or listing name
   that uses a platform or store name (`reserved_display_name`) is accepted with a warning or
-  refused at link, resync, the deploy hook and console listing edits. A hostile session that sets
+  refused at link, resync, the deploy hook, console listing edits and the console rename. A hostile session that sets
   `warn` gains nothing on the sign-in card: the card's render-time check shows such a name as the
   product slug in the neutral frame in both modes (see "Passthrough request metadata"). Setting
   `error` can only make a product's next resync fail; it is confirmed (L1) and audited.
@@ -8688,50 +8688,77 @@ page.
   one, a file waiting to be collected and a parked one are `404`.
 - **T25, cost abuse: quota, reservation and limits.** `begin` reserves the declared size against
   the person's allowance (the licence's `pkey.cloudSync.bytes`, clamped to the platform ceiling)
-  and both ceilings, so concurrent uploads cannot overshoot: the reservation is released at
-  finalize (and the bytes charged), at abort, and at expiry. A person has at most 4 open uploads (`429 rate_limited`).
-  A device gets 30 file transfers an hour (a `begin` or a whole-file `GET`) and 600 other file
-  requests a minute. Size is checked against the collection's `files.maxBytes` before an object is
-  touched. Quota never deletes.
-- **Compare-and-swap at finalize.** `begin` records `baseVersion`; `finalize` re-checks it inside
-  the person's object, so any write since is `409 revision_conflict` with the server's version and
-  the upload ends (its bytes are deleted, its reservation released). Two devices cannot both win,
-  and a stale writer cannot overwrite silently. `finalize` is idempotent per `uploadId`, and a
-  repeat charges nothing.
-- **Streamed SHA-256.** A single `PUT` goes to R2 create-only with the declared `sha256`, so R2
-  refuses bytes that do not hash to it and nothing is stored. A part is hashed on its way to R2 and
-  compared with its `Content-Digest`; a part that does not verify is forgotten. `finalize` streams
-  the assembled object through SHA-256 (no buffering) and checks size and hash against `begin`: a
-  mismatch is `400 upload_mismatch`, deletes the object and releases the reservation. The hash is
-  of what is stored, so in end-to-end mode the server never sees a plaintext hash.
-- **T11 (amended), shredding with SSE-C per person.** Server-mode files (`enc: "none"`) are stored
-  under a random SSE-C key per person, kept in the person's object, so deleting the object's rows
-  makes every R2 copy unreadable. End-to-end files are ciphertext and take no SSE-C key. The flag
-  `FILE_SSEC` (`services/sync/engine/files.ts`) is `true` pending the staging probe
-  (U-10.W) of whether R2 accepts `ssecKey` on the paths a file takes; if it
-  does not, the plan's fallback seals the stream with the person's key instead. Neither changes the
-  wire.
+  inside the person's object, so concurrent uploads cannot overshoot it. The reservation is
+  released once: at `finalize` (where the stored bytes are charged), at abort, at a size, hash or
+  version mismatch, at expiry and at erasure. A person has at most 4 open uploads
+  (`429 rate_limited`). The product's ceilings (`cloudSync.ceiling.bytes` and the users ceiling)
+  are checked at `begin` against the `sync_product_usage` aggregate, as for the push (T6). The
+  aggregate lags up to about 30 minutes and does not count open reservations, and `finalize` does
+  not check the ceilings again. A product can therefore overshoot its ceiling by what its people
+  reserve before the aggregate shows it, including a session opened under the ceiling, which may
+  finalize up to 24 hours later. Each person's part of that is bounded by their own allowance. A
+  device gets 30 file transfers an hour (a `begin`, or a `GET` answered with the whole file) and
+  600 other file requests a minute (parts, chunks, status, `finalize`, `DELETE` and ranged
+  reads), in fixed windows. A ranged read is one of the 600, whatever its length. Size is checked
+  against the collection's `files.maxBytes` before an object is touched. Quota never deletes.
+- **Compare-and-swap at finalize.** `begin` checks `baseVersion` (a number, `"*"` or absent) and
+  records it; `finalize` re-checks it inside the person's object, so any write since is
+  `409 revision_conflict` with the server's version and the upload ends (its bytes are deleted,
+  its reservation released). When `begin` carried a `baseVersion`, two devices cannot both win
+  and a stale writer cannot overwrite silently; an upload begun without one is an unconditional
+  write, and the file it replaces stays a revision. The SDKs' saves always send one. `finalize`
+  is idempotent per `uploadId` and a repeat charges nothing; a repeat that arrives while the first
+  is running is a retryable `503`.
+- **SHA-256 of what is stored.** A single `PUT` goes to R2 create-only with the declared
+  `sha256`, so R2 refuses bytes that do not hash to it and nothing is stored; a resend of one
+  that landed changes nothing. A part is hashed on its way to R2 and compared with its
+  `Content-Digest`; a part that does not verify is forgotten and must be resent. At `finalize` a
+  multipart object is completed and streamed through SHA-256 (no buffering); a single object is
+  accepted on the SHA-256 R2 checked at the `PUT`, and streamed when R2 holds none. Size and hash
+  must match `begin`: a mismatch is `400 upload_mismatch`, deletes the object and releases the
+  reservation. Bytes that land after their session closed are deleted, unless a stored file or a
+  running `finalize` holds that object. The hash is of what is stored, so in end-to-end mode the
+  server never sees a plaintext hash.
+- **T11 (amended), shredding with SSE-C per person.** Server-mode files and chunks
+  (`enc: "none"`) are stored under a random SSE-C key per person, kept in the person's object, so
+  deleting the object's rows makes every R2 copy unreadable. End-to-end files are ciphertext and
+  take no SSE-C key. There is no server-mode path without the key. Whether R2 enforces the key on
+  every call a file takes (`put`, `head`, whole and ranged `get`, multipart create, part, complete
+  and abort, `list`, `delete`) is the staging probe's (`scripts/probe/r2-ssec.mjs`, U-10.W);
+  `launch.syncFiles` stays off until it answers `supported`. Neither changes the wire.
 - **Expiry: lazy, then the alarm.** An upload lives 24 hours. The first call that finds a session
   expired answers `410 upload_expired` and ends it; the object's alarm also aborts expired sessions
-  (and their multipart uploads) and deletes the orphan objects, versions past `keepRevisions`, and
-  files whose record was deleted. An R2 lifecycle rule aborts incomplete multipart uploads after a
+  (and their multipart uploads) and deletes the objects its own rows name: expired sessions'
+  objects, versions past `keepRevisions`, and files whose record was deleted. An object that no row
+  names is not the alarm's to find. An R2 lifecycle rule aborts incomplete multipart uploads after a
   day (RUNBOOK).
 - **Erasure order.** A person's, product's or account's erasure first deletes the SSE-C keys (the
   bytes are unreadable whatever happens next), then every object the rows name and the sessions'
   multipart uploads, then sweeps the prefix `u/<p>/<s>/` and the prefixes of subjects merged into
   it, then clears the object's storage. An R2 failure keeps the rows and answers a retryable error,
-  so the erasure is repeated. An object merged away owns nothing.
+  so the erasure is repeated. An object that learns at its directory flush that its product was
+  deleted erases the same way before it clears its storage. A multipart upload whose abort fails is
+  left to the bucket's lifecycle rule. An object merged away owns nothing.
 - **A merge export carries R2 keys.** An account merge hands the survivor the absorbed object's
   files with their R2 keys, the SSE-C keys they reference and the subjects already folded in, so
   the survivor owns and can sweep and shred them. This export is the Worker's internal merge
   document; a person's own export carries pointers only (version, size, hash, format), never a key.
   Dead files are not exported.
-- **Residual (accepted; U-44 rules on it), the upload limiters fail open.** If the rate limiter
-  object is down, the file limits (30 transfers an hour, 600 requests a minute) allow the request,
-  as the push limits do (L10). The caller is authenticated and signed in, and the person's object
-  still bounds the work with the reservation, the open-uploads cap and the quota, so the exposure
-  is request volume from an authenticated device during a limiter outage. Closing it would turn a
-  limiter outage into a Cloud Sync outage.
+- **Residual (accepted, U-44 F3), the file read limits fail open.** If the rate limiter cannot
+  be read, every file call that writes (`begin`, a `PUT`, the chunk plan, `finalize`) answers
+  `503 unavailable` with `Retry-After`, and makes no object call and no R2 call. The calls that
+  read or end a session (status, `DELETE`, whole and ranged `GET`, revisions, a chunk `GET`)
+  proceed unmetered, as the push does (L10). Each of them costs at most one R2 read, and none can
+  create an object, a part, an upload or a reservation. An outage therefore pauses uploads (they
+  resume within the session's 24 hours) and never stops a download.
+- **Residual (accepted), the server-mode save window.** A save is two writes: `finalize`, then
+  the metadata `set` on the `version` it answered (WIRE-CONTRACT-V5 §13.7). Both are
+  compare-and-swap and the file pointer moves only at a verified commit, so a committed save is
+  never partial, and a metadata `set` that loses is a conflict the client sees. Between the two
+  writes, and until the next save if the client stops between them, a pull shows the new file
+  with the previous save's metadata: the record's `version` equals its live file's, and the
+  previous file is the newest revision. End-to-end mode binds the metadata to its file
+  (§13.10.4); server mode has no binding, so a reader tells the pair apart by that version rule.
 - **Tests:** `test/services/sync/cloudSyncFiles{Begin,Upload,Finalize,Get,Gc,Store}.test.ts`,
   `cloudSyncDeletion.test.ts`, `cloudSyncMergeRecords.test.ts`, the `cloudsync-files-*`
   transcripts.
@@ -8754,19 +8781,33 @@ ring for the product. The routes are recorded in the `keyring-*` transcripts.
   recovery code or a platform backup; there is no remote approval; a wrap is opened only against
   the ring's `rootKid`. The client also pins `{ringId, epoch, rootKid}` for its (product, subject)
   when it first acquires a root, by create, recover or unlock, and keeps the pin (no secret) in
-  its state directory, owner-only, or in the browser's IndexedDB beside the stored root. A served
-  ring or wrap that differs from the pin is not opened and replaces nothing: the client answers
-  `ring-changed`, and only the recovery code, or an explicit accept the person confirmed in the
-  app, re-pins. A reset made by the same device re-pins itself. Sign-out and deactivation lock the
-  client and drop the pin and, in the browser, the stored root. A client that has never held a root
-  has no pin and trusts the first ring it is wrapped into. The same trust on first use applies
+  its state directory, owner-only, or in the browser's IndexedDB beside the stored root. A client
+  that keeps the root on the device (the Apple Keychain, the Android Keystore or a sealed file,
+  Godot's sealed or engine-encrypted file, the browser's IndexedDB) treats that root's
+  `{ringId, epoch, kid}` as the pin whenever no pin can be read, so a pin lost while the root
+  survives still pins: an iOS reinstall keeps Keychain items and drops the app's files. A pin or a
+  root that cannot be read is an error, never an absent pin. Sign-out removes the root before the
+  pin and keeps the pin when the root cannot be removed. On a platform with no machine id (Godot
+  on the web, a Linux host without one), a Godot client keeps the root in memory and reopens it at
+  each start from its own wrap, and its device keys stay durable under a key derived from public
+  inputs and a salt beside them (`protection()` `file`), so whoever holds that folder and the
+  device token can do the same. Residual, at parity with the 0600 device-key files of Node and
+  Python. A served ring or wrap that differs from the pin is not opened and replaces nothing: the
+  client answers `ring-changed`, and only the recovery code, or an explicit accept the person
+  confirmed in the app, re-pins. A reset made by the same device re-pins itself. Sign-out and
+  deactivation lock the client and drop the pin and, in the browser, the stored root. A client that
+  has never held a root has no pin and trusts the first ring it is wrapped into. The same trust on first use applies
   wherever the pin is not durable: a Node client upgraded from a build without pins or run with an
-  ephemeral state directory, a Python client with no state directory, and a browser using the
-  memory vault or a degraded IndexedDB. The pin does not depend on the subject the Worker serves;
-  only sign-out or deactivation drops it. A confirmed accept names the ring the person was shown,
-  and a ring that changed again before the accept is refused. Residual: the server's device directory
-  is trusted for listing devices and nothing else, a client that skips the nearby step is not
-  stopped by the server, and a person who confirms a changed ring in the app accepts its root.
+  ephemeral state directory, a Python client with no state directory, a Kotlin client whose
+  `Store` has no state directory and that has no root storage, a Godot build whose `user://` does
+  not persist (the web without persistent storage), and a browser using the memory vault or an
+  IndexedDB that could not keep a write. The pin does not depend on the subject the Worker serves;
+  only sign-out or deactivation drops it. So a device whose app was removed while signed in keeps
+  its root, and the next person to sign in on it is shown `ring-changed` once; accepting replaces
+  that root on the device. A confirmed accept names the ring the person was shown, and a ring that
+  changed again before the accept is refused. Residual: the server's device directory is trusted
+  for listing devices and nothing else, a client that skips the nearby step is not stopped by the
+  server, and a person who confirms a changed ring in the app accepts its root.
 - **T22, key loss.** With every device lost and neither a recovery code nor a platform backup, the
   data cannot be recovered, by design. Start over (`POST .../reset`) creates a new ring, and the
   replaced ring stays readable as `previous` for 30 days, so a device that still holds the old root
@@ -8789,6 +8830,15 @@ rate_limited`). The device count includes a fetch with nothing to return; the su
   data away; the brakes make that visible, they do not prevent it.
   The code carries 128 bits of entropy; its 32-bit checksum is for typing errors and gives a
   guesser no advantage, so the effective strength is 128 bits, not the 160 written length.
+- **The root in the browser.** A browser keeps `R` as a non-extractable HKDF key in IndexedDB
+  beside the pin, so it cannot be exported. Its bytes stay in page memory only for
+  `sessionRootSeconds` after a create, a recovery or an unwrap (default 300 s; a larger value is
+  clamped to 900 s), because wrapping to another device, replacing the recovery code and adopting
+  need them. The copy a reset keeps for adopting ends with the window it came from. Residual: the
+  bytes are in page memory for that window. Script running on the app's origin can use the stored
+  key and the device's agreement key, so it can derive every key below `R` and open this device's
+  own wrap. The non-extractable key keeps `R` out of an export, not away from such script, which
+  has the same standing as the device token.
 - **Removing a device does not rotate R.** Removing a device deletes its wraps. A device that
   already held the root keeps it, so it can still open data sealed under that ring. Residual:
   the remedy is "reset", which creates a new ring; data written afterwards is sealed under the new
@@ -8884,20 +8934,27 @@ and T25; those numbers are taken (the envelope AAD, the cost of files), so they 
   accepted only for an id the plan answered `missing`, create-only, so a stored object is never
   replaced; a plan call names at most 1,024 distinct ids, an upload at most 16,384, and the
   declared sizes plus the manifest are held to the collection's `files.maxBytes`; the plan, the
-  `PUT` and the chunk `GET` share the device's 600 requests a minute; the plan reserves the stored
-  bytes of every named chunk no file references, so concurrent uploads cannot overshoot the
-  quota, and a chunk is charged once however many files and revisions name it and given back when
-  the last reference goes. The collector (the alarm) deletes a chunk only when its count is 0 and
-  no upload pins it: the plan pins every id it answers, `present` or `missing`, until `finalize`,
-  `DELETE` or expiry, so a chunk a client was told is present cannot be deleted before its
-  `finalize` (D-7). The count is taken at `finalize`, released by a revision pruned, a record
-  deleted or a copy a merge left dead, and never goes below 0; the object is deleted before its
-  row, so a failed delete is retried and a row never outlives a missing object. An erasure
-  deletes every object the rows name and then sweeps `u/<p>/<s>/` (the chunk prefix included) and
-  the prefixes of subjects merged into it. Residual: after an account merge a chunk both people
-  held exists twice under two prefixes until the erasure; an object stored with no row (a crash
-  between the store and the row) is found by a later `PUT` of other bytes under the same key and
-  refused, and goes at the erasure.
+  `PUT` and the chunk `GET` share the device's 600 requests a minute, and when the limiter cannot
+  be read the plan and the `PUT` answer `503` while the `GET` proceeds. The plan reserves the
+  stored bytes of every named chunk no file references, a chunk is charged once however many
+  files and revisions name it and given back when the last reference goes, and `finalize`
+  charges a chunk its upload did not reserve (one whose last reference went after the plan) only
+  if it fits the person's quota, else `403 quota_exceeded` and the upload ends; so no finalized
+  file takes a person past their quota. The collector (the alarm) deletes a chunk only when its
+  count is 0 and no upload pins it: the plan pins every id it answers, `present` or `missing`,
+  until `finalize`, `DELETE` or expiry, so a chunk a client was told is present cannot be deleted
+  before its `finalize` (D-7). After `DELETE`, expiry or a refused `finalize` the alarm runs at
+  once. The count is taken at `finalize`, released by a revision pruned, a record deleted or a
+  copy a merge left dead, and never goes below 0. The collector marks a batch before it deletes
+  the objects, and drops a row only after the store confirmed the delete; a marked chunk is
+  answered `missing` and a `PUT` stores it again, so a delete that took effect but did not answer
+  never leaves a `present` answer for a missing object. An erasure shreds the SSE-C keys, deletes
+  the objects the file and upload rows name, then sweeps `u/<p>/<s>/` (every chunk object
+  included) and the prefixes of subjects merged into it, a page at a time. Residual: after an
+  account merge a chunk both people held exists twice under two prefixes until the survivor's
+  erasure, at most the absorbed person's referenced chunk bytes for each merge; an object stored
+  with no row (a crash between the store and the row) is found by a later `PUT` of other bytes
+  under the same key and refused, and goes at the erasure.
 
 ### The account override layer (U-03, U-27)
 
@@ -10598,16 +10655,42 @@ user code. WIRE-CONTRACT-V4 §12.7 is the normative form; plans/PX-W13.md §6 is
 closes S-16 §5.4 items 13 and 14 (app impersonation on the card, and spoofed device names).
 
 - **Spoofed app names.** `@polaris-key/manifest`'s `checkDisplayName` refuses `product.name`,
-  `listing.name` and `listing.developerName` text that holds a control, zero-width or bidi code
-  point or starts or ends with whitespace (`invalid_display_text`, always an error), and reports
+  `listing.name` and `listing.developerName` text that holds a control, format, invisible or bidi
+  code point (the refused set `DISPLAY_NAME_REFUSED`, Unicode 16.0: soft hyphen, Hangul fillers,
+  U+2800, line and paragraph separators, the joiners), starts with a variation selector or tag
+  (`DISPLAY_NAME_KEPT`, valid only after another code point), or starts or ends with whitespace
+  (`invalid_display_text`, always an error), and reports
   a name that contains a reserved term (`reserved_display_name`). The terms are Polaris Key,
   plrs, Apple, App Store, Google, Google Play, Steam, Valve, Epic Games, Microsoft, Xbox,
-  PlayStation, Nintendo and itch.io. A name is compared as a skeleton: NFKD with marks dropped,
-  lowercased, Cyrillic and Greek look-alikes and `0`, `1`, `rn`, `vv` folded, split on anything
+  PlayStation, Nintendo and itch.io. A name is compared as a skeleton: refused and kept code
+  points deleted first (so `Ste<tag>am` and `Steam<VS16>` still read `steam`), NFKD with marks
+  dropped, lowercased, Cyrillic and Greek look-alikes and `0`, `1`, `rn`, `vv` folded, split on anything
   that is not a letter or digit, and matched as whole words or as a multi-word term written as one
-  word. The same function runs at ingest (link, resync, deploy hook), on console listing edits,
-  and again when the card renders. A failing app name renders as the product slug with
-  `nameVerified: false`, and a failing developer name is dropped. The render-time check also
+  word. The same function runs at ingest (link, resync, deploy hook), on console listing edits
+  and renames (the console rename, and `writeSetting` for `core.name`: the unchanged stored name
+  is not judged again), and again where an end user is shown the name before they consent. A
+  failing app name renders as the product slug (the sign-in card also sets `nameVerified:
+false`), and a failing developer name is dropped. The surfaces that check at render time, through
+  `shownAppName` and `shownDeveloperName` (`core/accounts/reservedDisplayNames.ts`), are the
+  sign-in card (`passthrough/client.ts`) and its gate view (the sign-in terms step,
+  `card/gate.ts`), `appForPage` (the authorize and refusal pages, the device-code entry,
+  confirmation, approval, denial and signed-in pages), the licence chooser's passport and body,
+  the callback's "no access" page, the consent card's licence anchor, the Polaris Locker
+  presentation (`presentationOf`: the key-claim preview and confirmation, Discover offers, library
+  tiles and the product page) and every end-user email (the subject,
+  the body and the "<App> via Polaris Locker" sender: licence and admin key mail, invitations, the
+  library, device-approval and sign-in-method notices, key mail from the keyring). A page
+  that cannot reach the database draws the slug, never `product.name`. The sign-in card's client
+  record is the one `presentationOf` caller that reads the stored name (it needs it to set `nameVerified`). Residuals,
+  where the stored name is printed as written: the signed-in person's own account views
+  (the licence list, releases, the product page's downloads, feeds and tokens in the Locker, and
+  the data export, which print the stored name after consent), developer-authored metadata outside the Polaris frame (updater feed titles, the
+  distribution feeds and download page, the discovery document's `name`), and operator-facing
+  console mail and alerts (invitation and binding mail, creator grants, alert destinations). A
+  legacy name stored before the rule stays in these until it is renamed (the read-only scan,
+  `tools/scan-display-names.ts`, lists them); a new name with an invalid code point cannot be stored, nor, once
+  `identity.reservedDisplayNames` is `error`, a reserved one (`warn`, the default, stores it and
+  the covered surfaces show the slug). A Revert to the manifest is judged like a rename. The render-time check also
   covers names written before the rule existed and names accepted in `warn` mode. The system
   product `polaris-key` is exempt from the reserved check, never from the text check. Residual:
   the confusable map is a heuristic. A look-alike outside it ("Stéäm" with an unlisted

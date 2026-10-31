@@ -170,6 +170,7 @@ export type {
 } from "./signIn.js";
 export {
   choiceEndpointsOf,
+  deviceChoiceOf,
   type ChoiceCancelResult,
   type ChoiceCompleteOptions,
   type ChoiceCompleteResult,

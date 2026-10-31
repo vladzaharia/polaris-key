@@ -2,7 +2,7 @@
 // drop-ins (React's `useSdkGate`, elements' `<pk-gate config>`) read it; the models decide every
 // screen and nothing here draws.
 
-import type { AddToAccountInput, UiInput } from "../input.js";
+import type { AddToAccountInput, DeviceCodeInput, UiInput } from "../input.js";
 import { activationFromOutcome } from "../errors.js";
 import type { Pending } from "../vocabulary.js";
 import { isSignInRefusal } from "./sdk/core/adapter.js";
@@ -141,6 +141,11 @@ export function gateInput(
     returned?: boolean;
     /** AddToAccount's step, while the gate is on `add`. */
     addToAccount?: AddToAccountInput;
+    /** AddToAccount's waiting code, while the sign-in has one. */
+    deviceCode?: DeviceCodeInput;
+    /** Where Add your name and email goes, once known; `addBusy` while the press waits for it. */
+    addIn?: "portal" | "app";
+    addBusy?: boolean;
   },
 ): UiInput {
   const caps = state.capabilities;
@@ -209,9 +214,13 @@ export function gateInput(
     input.activateDone = {
       ...(extra.deviceKind ? { deviceKind: extra.deviceKind } : {}),
       ...(extra.step === "done" && extra.returned ? { returned: true } : {}),
+      ...(extra.addIn ? { addIn: extra.addIn } : {}),
+      ...(extra.addBusy ? { addBusy: true } : {}),
     };
   if (extra.step === "add" && extra.addToAccount)
     input.addToAccount = extra.addToAccount;
+  if (extra.step === "add" && extra.deviceCode)
+    input.deviceCode = extra.deviceCode;
   const h = extra.handle;
   if (extra.step === "handoff" && h) {
     const address = safeLink(h.verificationUri ?? h.verificationUrl);

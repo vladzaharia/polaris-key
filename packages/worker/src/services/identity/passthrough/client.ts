@@ -47,6 +47,8 @@ export async function clientRecordFor(
     hooksFor,
     now,
     "client",
+    // The stored name, to judge `nameVerified` here.
+    { raw: true },
   );
   const check = await displayCheckOptions(env, db, product.slug);
   const nameVerified = checkDisplayName(presentation.name, check) === null;

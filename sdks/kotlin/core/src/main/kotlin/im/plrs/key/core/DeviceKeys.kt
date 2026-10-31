@@ -214,6 +214,22 @@ public class FileDeviceKeyStorage private constructor(
 
     override suspend fun get(): ByteArray? = locked { read() }
 
+    /**
+     * Whether a record may be stored, probed read-only: no directory, lock file or key is created. A directory
+     * that does not exist holds none; one that cannot be listed might, so the answer is true.
+     */
+    public suspend fun mightHold(): Boolean = withContext(Dispatchers.IO) {
+        val parent = file.absoluteFile.parentFile
+        if (parent != null && !parent.exists()) return@withContext false
+        try {
+            exists(file)
+        } catch (_: StoreException) {
+            true
+        } catch (_: SecurityException) {
+            true
+        }
+    }
+
     override suspend fun putIfAbsent(bytes: ByteArray): Boolean = locked {
         if (exists(file)) return@locked false
         write(bytes)

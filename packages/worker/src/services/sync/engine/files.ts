@@ -21,7 +21,7 @@ import {
   type FinalizeResponse,
   type SyncUploadMode,
 } from "@polaris-key/protocol/sync";
-import { refFileChunks } from "./chunks.js";
+import { refFileChunks, unreservedChunkBytes } from "./chunks.js";
 import { pruneRevisions } from "./fileRows.js";
 import { formatHlc } from "./hlc.js";
 import { casMismatch } from "./records.js";
@@ -64,15 +64,6 @@ export function syncTransferPlan(size: number, delta: boolean): TransferPlan {
   );
   return { mode: "multipart", partBytes, parts: Math.ceil(size / partBytes) };
 }
-
-/**
- * Whether server-mode files (`enc: "none"`) are stored under a per-person SSE-C key (D-8): `true`
- * until the staging probe (`scripts/probe/r2-ssec.mjs`, U-10.W) says R2 refuses `ssecKey` on the
- * paths a file takes, when the plan's fallback (sealing the stream as `pkey-sync-file/1`) replaces
- * it. Neither changes the wire. End-to-end files (`enc: "e2e"`) are ciphertext already and never
- * take it.
- */
-export const FILE_SSEC = true;
 
 /** The R2 key of an upload's object. Only ever built here, from the pin and a session id. */
 export const fileObjectKey = (
@@ -254,6 +245,8 @@ export interface FinalizeInput {
   /** The write's clock owner: a clientId-shaped name derived from the device (the file routes carry none). */
   clientId: string;
   maxRecords: number;
+  /** The person's allowance in bytes (the licence's, clamped to the platform ceiling). */
+  quotaBytes: number;
   /** The matched declaration's `files.keepRevisions`: the older versions the record keeps. */
   keepRevisions: number;
   /** The key id of the SSE-C key the object is stored under (`ssec_keys`), when it is. */
@@ -264,7 +257,7 @@ export interface FinalizeInput {
 export type FinalizeCommit =
   | { ok: true; result: FinalizeResponse }
   | { ok: false; error: "revision_conflict"; version: number }
-  | { ok: false; error: "quota_exceeded"; scope: "collection" };
+  | { ok: false; error: "quota_exceeded"; scope: "collection" | "user" };
 
 /**
  * The commit of a verified upload: a record write (GF2). It re-checks `begin`'s `baseVersion`
@@ -292,6 +285,19 @@ export function commitFinalize(
   const create = prev === undefined || prev.deleted;
   if (create && store.liveRecordCount(upload.collection) >= input.maxRecords)
     return { ok: false, error: "quota_exceeded", scope: "collection" };
+  // A chunk the plan answered `present` may have lost its last reference since: it is charged
+  // below, so it has to fit now (the check `planChunks` makes for a chunk it reserves).
+  if (upload.mode === "chunks") {
+    const extra = unreservedChunkBytes(store, upload);
+    if (extra > 0) {
+      const usage = store.getUsage();
+      if (
+        input.quotaBytes <= 0 ||
+        usage.bytes + fileUsage(usage).reservedBytes + extra > input.quotaBytes
+      )
+        return { ok: false, error: "quota_exceeded", scope: "user" };
+    }
+  }
 
   const version = store.nextSeq();
   // The record keeps its content and its clock: a file is not an HLC-ordered edit of the value.

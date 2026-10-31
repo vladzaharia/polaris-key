@@ -232,6 +232,8 @@ private class FakeServer : FileTransport {
         val obj = synchronized(this) { chunks[chunkId] } ?: return FileReply.Refused(FileRefusal(404, "not_found"))
         return FileReply.Ok(tamperChunk(chunkId, obj))
     }
+
+    override suspend fun revisions(target: FileTarget): FileReply<JsonObject> = FileReply.Ok(JsonObject(mapOf("revisions" to kotlinx.serialization.json.JsonArray(emptyList()))))
 }
 
 private class Collected {

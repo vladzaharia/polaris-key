@@ -682,13 +682,28 @@
       "role": "body",
       "note": "ActivateDone: the single reason line when Identity is off; the action opens the portal."
     },
+    "activate.attach.waitTitle": {
+      "value": "Finish in Polaris Locker",
+      "role": "title",
+      "note": "AddToAccount, waiting: the title while the person confirms the email in Polaris Locker (a device code is shown)."
+    },
+    "activate.attach.waitCheck": {
+      "value": "Check it matches in Polaris Locker.",
+      "role": "body",
+      "note": "AddToAccount, waiting: under the sign-in code; the person checks it against the code Polaris Locker shows."
+    },
+    "activate.attach.reopen": {
+      "value": "Open Polaris Locker again",
+      "role": "button",
+      "note": "AddToAccount, waiting: brings the Polaris Locker tab back."
+    },
     "activate.attach.lede": {
       "value": "Your license and its devices stay as they are.",
       "role": "body",
       "note": "AddToAccount: under the title, above the fields."
     },
     "activate.attach.fine": {
-      "value": "We send a code to this email in your browser. {product} never sees it.",
+      "value": "Polaris Locker sends a code to this email. {product} never sees it.",
       "role": "hint",
       "note": "AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated)."
     },
@@ -2667,6 +2682,11 @@
       "value": "{license} · replaces {device}",
       "role": "body",
       "note": "Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.consent.licenseKept": {
+      "value": "{app}'s license is added to your account.",
+      "role": "body",
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8), when the app keeps the license it holds and attaches it to the account (add to account). Arguments: {app} = the requesting app's name (never translated)."
     },
     "signin.consent.licenseInApp": {
       "value": "You'll choose a license in {app}.",
@@ -5437,6 +5457,11 @@
       "value": "Use a name from",
       "role": "label",
       "note": "Finish step: label above the screen-name suggestion chips."
+    },
+    "signin.gate.nameFromApp": {
+      "value": "{app} · {name}",
+      "role": "label",
+      "note": "A \"Use a name from\" chip that offers the name the app passed along. Arguments: {app} = the requesting app's name; {name} = the name the app suggested (neither translated)."
     },
     "signin.gate.nameHint": {
       "value": "Shown in Polaris Locker and in emails.",

@@ -556,6 +556,27 @@ describe("terms", () => {
     },
   });
 
+  it("names the app by its checked name: a stored name that fails the rules shows as the slug", async () => {
+    // DISPLAY-NAME-INVISIBLE B2: the gate view is the sign-in screen, before the person consents.
+    const w = await seededWorld();
+    const d = new Device(w);
+    await arrive(w, d, withTerms("2026-10"));
+    const nameShown = async (): Promise<unknown> =>
+      (
+        (await (await d.send("GET", GATE)).json()) as {
+          product: { slug: string; name: string };
+        }
+      ).product.name;
+    await w.db.run(
+      "UPDATE products SET name = 'Acme Arcade' WHERE slug = 'acme'",
+    );
+    expect(await nameShown()).toBe("Acme Arcade");
+    for (const name of ["Acme\u202E", "Steam"]) {
+      await w.db.run("UPDATE products SET name = ? WHERE slug = 'acme'", name);
+      expect(await nameShown(), name).toBe("acme");
+    }
+  });
+
   it("the gate does not pass until this version is accepted; acceptance is kept per version", async () => {
     const w = await seededWorld();
     const d = new Device(w);

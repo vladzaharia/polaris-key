@@ -177,6 +177,11 @@ export interface ActivateDoneInput {
   /** The person came back from AddToAccount (Cancel): focus returns to the control that opened it
    *  (DL9), not to the primary. */
   returned?: boolean;
+  /** Where Add your name and email goes. `portal` (Polaris Locker's page, an external link) says so
+   *  in the action's label even with Identity on; absent or `app`, the in-page form. */
+  addIn?: "portal" | "app";
+  /** The channel is still being read: the action shows busy until it is known. */
+  addBusy?: boolean;
 }
 
 /** AddToAccount's steps (SIGN-IN.md §3.9, frames 43 to 46). */

@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// @pkey-feature identity.devicecode identity.redirect.web identity.signin.hints identity.toggle identity.keyreturn
+// @pkey-feature identity.devicecode identity.redirect.web identity.signin.hints identity.toggle identity.keyreturn identity.devicecode.choice
 //
 // I-10a.10: `signIn.start` / `signIn.complete` through the ADAPTERS (the transcript replayer
 // drives the bearer engine; this is what the adapter adds): the device-code session and the web
@@ -64,6 +64,10 @@ interface Server {
   /** What the next device poll answers. */
   poll: Array<{ status: number; body: unknown }>;
   startStatus: number;
+  /** Discovery carries `deviceChoice` and the four `choice*` endpoints (UK-42.22, §12.6). */
+  deviceChoice?: boolean;
+  /** Discovery carries `deviceChoice` but names no `choice*` endpoint. */
+  noChoiceEndpoints?: boolean;
   /** Overrides the token endpoint's answer (a key return, or its refusal). */
   token?: { status: number; body: unknown };
 }
@@ -127,7 +131,28 @@ async function server(): Promise<Server> {
     });
     switch (url.pathname) {
       case "/acme/.well-known/polaris.json":
-        return json(disc);
+        if (!s.deviceChoice) return json(disc);
+        return json({
+          ...disc,
+          services: {
+            ...disc.services,
+            identity: {
+              ...disc.services.identity,
+              deviceChoice: true,
+              endpoints: {
+                ...disc.services.identity.endpoints,
+                ...(s.noChoiceEndpoints
+                  ? {}
+                  : {
+                      choiceLicenses: `${ORIGIN}/identity/choice/licenses`,
+                      choiceDevices: `${ORIGIN}/identity/choice/devices`,
+                      choiceComplete: `${ORIGIN}/identity/choice/complete`,
+                      choiceCancel: `${ORIGIN}/identity/choice/cancel`,
+                    }),
+              },
+            },
+          },
+        });
       case "/acme/identity/auth/device/start":
         return s.startStatus === 200
           ? json({
@@ -212,6 +237,85 @@ describe("bearer: device code", () => {
       deviceName: "Living-room PC",
       loginHint: "ada@example.com",
       purpose: "attach",
+    });
+  });
+
+  it("licenseChoice app is sent only behind the deviceChoice gate (UK-42.22.5)", async () => {
+    const sentFor = async (setup: (s: Server) => void) => {
+      const s = await server();
+      setup(s);
+      const adapter = await bearer(s);
+      await adapter.signIn.start({
+        channel: "device-code",
+        licenseChoice: "app",
+      });
+      const start = s.seen.find((r) => r.path.endsWith("/auth/device/start"));
+      return JSON.parse(start!.body!) as Record<string, unknown>;
+    };
+    expect(await sentFor(() => undefined)).not.toHaveProperty("licenseChoice");
+    expect(
+      await sentFor((s) => {
+        s.deviceChoice = true;
+        s.noChoiceEndpoints = true;
+      }),
+    ).not.toHaveProperty("licenseChoice");
+    expect(
+      await sentFor((s) => {
+        s.deviceChoice = true;
+      }),
+    ).toMatchObject({ licenseChoice: "app" });
+  });
+
+  it("a choose poll settles kind choose with the grant and stores no token (UK-42.22.5)", async () => {
+    const s = await server();
+    s.deviceChoice = true;
+    const adapter = await bearer(s);
+    const session = await adapter.signIn.start({
+      channel: "device-code",
+      licenseChoice: "app",
+    });
+    s.poll.push({
+      status: 200,
+      body: {
+        status: "choose",
+        grant: "sg_x",
+        expiresIn: 300,
+        choices: { state: "choose", choices: [], keep: true },
+      },
+    });
+    await expect(session.wait({ once: true })).resolves.toEqual({
+      kind: "choose",
+      grant: "sg_x",
+      expiresIn: 300,
+      choices: { state: "choose", choices: [], keep: true },
+    });
+    expect(adapter.snapshot().busy.identity).toBe(false);
+    // The wait loop stops at choose too (no further poll is needed).
+    const again = await adapter.signIn.start({
+      channel: "device-code",
+      licenseChoice: "app",
+    });
+    s.poll.push({
+      status: 200,
+      body: { status: "choose", grant: "sg_y", expiresIn: 300, choices: {} },
+    });
+    const polls = () =>
+      s.seen.filter((r) => r.path.endsWith("/auth/device/poll")).length;
+    const before = polls();
+    await expect(again.wait()).resolves.toMatchObject({
+      kind: "choose",
+      grant: "sg_y",
+    });
+    expect(polls() - before).toBe(1);
+  });
+
+  it("a choose answer without a grant fails the sign-in (UK-42.22.5)", async () => {
+    const s = await server();
+    const adapter = await bearer(s);
+    const session = await adapter.signIn.start({ channel: "device-code" });
+    s.poll.push({ status: 200, body: { status: "choose", choices: {} } });
+    await expect(session.wait({ once: true })).rejects.toMatchObject({
+      code: "sign-in-failed",
     });
   });
 

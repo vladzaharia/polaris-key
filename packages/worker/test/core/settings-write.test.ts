@@ -547,6 +547,118 @@ describe("writeSetting: an expired break-glass claim (ST-20's expires_at)", () =
 });
 
 describe("writeSetting: column-backed keys", () => {
+  it("refuses a product name the display rule refuses, and keeps the stored one", async () => {
+    // DISPLAY-NAME-INVISIBLE B1 (D-10): the same rule as the console rename.
+    const { db, env, real } = await world({ linked: true });
+    const nameOf = async () =>
+      (await db.first<{ name: string }>(
+        "SELECT name FROM products WHERE slug = 'acme'",
+      ))!.name;
+    const before = await nameOf();
+    for (const mode of ["warn", "error"]) {
+      env.IDENTITY_RESERVED_DISPLAY_NAMES = mode;
+      const res = await writeSetting(
+        real,
+        { key: "core.name", value: "Acme\u202E" },
+        opts({ strict: false }),
+      );
+      expect(res, mode).toMatchObject({
+        ok: false,
+        status: 422,
+        reason: "invalid_value",
+        details: { reason: "invalid_display_text" },
+      });
+    }
+    // A reserved name is refused where the platform enforces it, and passes in warn mode.
+    env.IDENTITY_RESERVED_DISPLAY_NAMES = "error";
+    expect(
+      await writeSetting(
+        real,
+        { key: "core.name", value: "Steam" },
+        opts({ strict: false }),
+      ),
+    ).toMatchObject({
+      ok: false,
+      details: { reason: "reserved_display_name" },
+    });
+    expect(await nameOf()).toBe(before);
+    env.IDENTITY_RESERVED_DISPLAY_NAMES = "warn";
+    expect(
+      (
+        await writeSetting(
+          real,
+          { key: "core.name", value: "Steam" },
+          opts({ strict: false }),
+        )
+      ).ok,
+    ).toBe(true);
+    expect(await nameOf()).toBe("Steam");
+  });
+
+  it("display-name rule: a revert to the manifest's name is judged like a rename", async () => {
+    // DNI-G1: the snapshot a Revert restores is judged as the value the write leaves.
+    const { db, env, real } = await world({ linked: true });
+    env.IDENTITY_RESERVED_DISPLAY_NAMES = "error";
+    expect(
+      (
+        await writeSetting(
+          real,
+          { key: "core.name", value: "Acme Two" },
+          opts({ strict: false }),
+        )
+      ).ok,
+    ).toBe(true);
+    const res = await writeSetting(
+      real,
+      { key: "core.name", op: "reset", restore: "Steam" },
+      opts({ strict: false }),
+    );
+    expect(res).toMatchObject({
+      ok: false,
+      status: 422,
+      details: { reason: "reserved_display_name" },
+    });
+    expect(
+      (await db.first<{ name: string }>(
+        "SELECT name FROM products WHERE slug = 'acme'",
+      ))!.name,
+    ).toBe("Acme Two");
+    expect(await rows(db)).toMatchObject([
+      { key: "core.name", source: "console" },
+    ]);
+  });
+
+  it("display-name rule: the stored text is the judged text", async () => {
+    // DNI-G2: edge whitespace is trimmed before the judgement and before the write.
+    const { db, real } = await world({ linked: true });
+    const res = await writeSetting(
+      real,
+      { key: "core.name", value: "  Acme Three \u3000" },
+      opts({ strict: false }),
+    );
+    expect(res.ok).toBe(true);
+    expect(
+      (await db.first<{ name: string }>(
+        "SELECT name FROM products WHERE slug = 'acme'",
+      ))!.name,
+    ).toBe("Acme Three");
+  });
+
+  it("does not judge a product name that is already stored", async () => {
+    const { db, env, real } = await world({ linked: true });
+    env.IDENTITY_RESERVED_DISPLAY_NAMES = "error";
+    await db.run(
+      "UPDATE products SET name = ? WHERE slug = 'acme'",
+      "Acme\u3164",
+    );
+    const res = await writeSetting(
+      real,
+      { key: "core.name", value: "Acme\u3164" },
+      opts({ strict: false }),
+    );
+    expect(res.ok).toBe(true);
+  });
+
   it("writes the column through its adapter and claims it on a linked product", async () => {
     const { db, real } = await world({ linked: true });
     const res = await writeSetting(

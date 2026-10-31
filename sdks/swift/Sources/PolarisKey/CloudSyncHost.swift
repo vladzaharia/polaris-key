@@ -711,6 +711,13 @@ public actor CloudSyncHost {
         generation += 1
         var failure: (any Error)?
         do { try file.remove() } catch { failure = error }
+        // The person's transfer journal and chunk cache leave with them (D-9).
+        for dir in [cloudSyncTransfersDirName, cloudSyncChunksDirName] {
+            let url = deps.stateDir.appendingPathComponent(dir, isDirectory: true)
+            if FileManager.default.fileExists(atPath: url.path) {
+                do { try FileManager.default.removeItem(at: url) } catch { failure = failure ?? error }
+            }
+        }
         openKeys = []
         timer?.cancel()
         timer = nil

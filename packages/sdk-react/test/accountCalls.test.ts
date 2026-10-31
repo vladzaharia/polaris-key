@@ -284,6 +284,53 @@ describe("bearer: the account calls", () => {
     expect(forget2).toHaveBeenCalledTimes(1);
   });
 
+  it("the key ring is forgotten before the release request, and a failed forget sends none", async () => {
+    for (const account of [true, false]) {
+      const path = account
+        ? "/acme/identity/signout"
+        : "/acme/license/deauthorize";
+      const s = await server({ account });
+      const adapter = await bearer(s);
+      await adapter.activateWithKey("pkey_good");
+      let sentAtForget = -1;
+      const forget = vi
+        .spyOn(adapter.keyring, "forget")
+        .mockImplementationOnce(async () => {
+          sentAtForget = s.seen.filter((r) => r.path === path).length;
+        });
+      await adapter.signOut();
+      expect(forget).toHaveBeenCalledTimes(1);
+      expect(sentAtForget).toBe(0);
+      expect(s.seen.filter((r) => r.path === path)).toHaveLength(1);
+
+      const s2 = await server({ account });
+      const failing = await bearer(s2);
+      await failing.activateWithKey("pkey_good");
+      vi.spyOn(failing.keyring, "forget").mockRejectedValueOnce(
+        new Error("store-failed"),
+      );
+      await expect(failing.signOut()).rejects.toBeDefined();
+      expect(s2.seen.some((r) => r.path === path)).toBe(false);
+      expect(failing.snapshot().status).toBe("ok");
+    }
+  });
+
+  it("deauthorizing this device's own seat forgets the ring first", async () => {
+    const s = await server({ account: false });
+    const adapter = await bearer(s);
+    await adapter.activateWithKey("pkey_good");
+    let sent = -1;
+    vi.spyOn(adapter.keyring, "forget").mockImplementationOnce(async () => {
+      sent = s.seen.filter(
+        (r) => r.path === "/acme/license/deauthorize",
+      ).length;
+    });
+    const own = adapter.currentDevice()?.id;
+    expect(own).toBeDefined();
+    await adapter.deauthorizeDevice(own!);
+    expect(sent).toBe(0);
+  });
+
   it("released: false keeps the key activation", async () => {
     const s = await server();
     const adapter = await bearer(s);

@@ -12,9 +12,10 @@
  * a warning or refused.
  */
 
-import type {
-  ReservedDisplayNamesMode,
-  ValidationOptions,
+import {
+  checkDisplayName,
+  type ReservedDisplayNamesMode,
+  type ValidationOptions,
 } from "@polaris-key/manifest";
 import type { Db } from "../../db/types.js";
 import type { SettingsEnv } from "../platformSettings.js";
@@ -107,4 +108,85 @@ export async function displayCheckOptions(
     extraTerms: await reservedDisplayTerms(env, db),
     approved: await displayNameApproved(env, db, slug),
   };
+}
+
+/**
+ * The app name a screen or an email may show before the person consents (DISPLAY-NAME-INVISIBLE
+ * D-8): `name` when it passes {@link checkDisplayName} for this product, else the slug, the
+ * neutral frame. It is the same answer in both `identity.reservedDisplayNames` modes: the mode
+ * decides what is accepted at write time, never what a person is shown. Every surface that prints
+ * a product or listing name to an end user goes through this.
+ */
+export async function shownAppName(
+  env: SettingsEnv,
+  db: Db,
+  slug: string,
+  name: string,
+): Promise<string> {
+  const check = await displayCheckOptions(env, db, slug);
+  return checkDisplayName(name, check) === null ? name : slug;
+}
+
+/** The developer's name a screen may show: `name` when it passes the same check, else `null`. */
+export async function shownDeveloperName(
+  env: SettingsEnv,
+  db: Db,
+  slug: string,
+  name: string | null | undefined,
+): Promise<string | null> {
+  if (!name) return null;
+  const check = await displayCheckOptions(env, db, slug);
+  return checkDisplayName(name, check) === null ? name : null;
+}
+
+/**
+ * A product row as a notice names it: the same row with `name` replaced by the checked name
+ * (`shownAppName`), or `null` when there is no row. Emails take their product name from here, so a
+ * subject and the sender name ("<App> via Polaris Locker") agree.
+ */
+export async function shownProductRow<T extends { slug: string; name: string }>(
+  env: SettingsEnv,
+  db: Db,
+  row: T | null | undefined,
+): Promise<(T & { name: string }) | null> {
+  if (!row) return null;
+  return { ...row, name: await shownAppName(env, db, row.slug, row.name) };
+}
+
+/**
+ * Why a console rename of `slug` to `name` is refused, or `null` (DISPLAY-NAME-INVISIBLE D-10).
+ * Text with a control, invisible or bidirectional-formatting code point is always refused. A
+ * reserved name is refused only when `identity.reservedDisplayNames` is `error`: in `warn` mode
+ * the screens show the slug instead, which `shownAppName` guarantees. The system product is
+ * exempt from the reserved check, and a product the operator approved by name is too.
+ */
+export async function productNameRefusal(
+  env: SettingsEnv,
+  db: Db,
+  slug: string,
+  name: string,
+): Promise<{
+  reason: "invalid_display_text" | "reserved_display_name";
+  message: string;
+} | null> {
+  const verdict = checkDisplayName(
+    name,
+    await displayCheckOptions(env, db, slug),
+  );
+  if (verdict === "invalid")
+    return {
+      reason: "invalid_display_text",
+      message:
+        "name must not hold control, invisible or bidirectional-formatting characters, start with a variation selector, or start or end with whitespace",
+    };
+  if (
+    verdict === "reserved" &&
+    (await reservedDisplayNamesMode(env, db)) === "error"
+  )
+    return {
+      reason: "reserved_display_name",
+      message:
+        "name uses a reserved platform or store name; an app may not present itself as one",
+    };
+  return null;
 }

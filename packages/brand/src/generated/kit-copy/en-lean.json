@@ -429,6 +429,7 @@
   "signin.gate.confirmedBy": "Confirmed by {provider}",
   "signin.gate.confirmedByCode": "Confirmed by code",
   "signin.gate.nameFrom": "Use a name from",
+  "signin.gate.nameFromApp": "{app} · {name}",
   "signin.gate.nameHint": "Shown in Polaris Locker and in emails.",
   "signin.gate.picture": "Picture",
   "signin.gate.pictureInitialsTile": "Initials",

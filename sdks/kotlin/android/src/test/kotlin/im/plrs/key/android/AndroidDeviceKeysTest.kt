@@ -154,4 +154,54 @@ class AndroidDeviceKeysTest {
         assertTrue(File(tmp.root, "pkey/$product/device-keys.bin").exists())
         assertTrue(File(tmp.root, "pkey/$product/sync-root.bin").exists())
     }
+
+    @Test
+    fun rootAndPinShareTheStoreNamespace() = runBlocking {
+        val ctx: android.content.Context = androidx.test.core.app.ApplicationProvider.getApplicationContext()
+        val base = im.plrs.key.sdk.PolarisKeyClientOptions(
+            core = im.plrs.key.core.CoreOptions(productSlug = product, version = "1.0.0", pinnedKeys = im.plrs.key.core.testing.TestSigner().trust),
+        )
+        // Two base URLs for one product slug: two store namespaces.
+        val nsA = im.plrs.key.core.storeNamespace(product, "https://a.example.test")
+        val nsB = im.plrs.key.core.storeNamespace(product, "https://b.example.test")
+        assertNotEquals(nsA, nsB)
+        val a = base.withAndroidKeyring(ctx, nsA, keys).keyring.rootStorage!!
+        val b = base.withAndroidKeyring(ctx, nsB, keys).keyring.rootStorage!!
+        a.put("root-a".toByteArray())
+        b.put("root-b".toByteArray())
+        val fileA = File(ctx.noBackupFilesDir, "pkey/$nsA/sync-root.bin")
+        val fileB = File(ctx.noBackupFilesDir, "pkey/$nsB/sync-root.bin")
+        assertTrue(fileA.exists())
+        assertTrue(fileB.exists())
+        assertEquals(setOf("pkey:$nsA:syncroot", "pkey:$nsB:syncroot"), keys.keys.keys)
+        // Forgetting one namespace's root leaves the other's file and alias.
+        a.clear()
+        assertFalse(fileA.exists())
+        assertTrue(fileB.exists())
+        assertEquals(setOf("pkey:$nsB:syncroot"), keys.keys.keys)
+        assertEquals("root-b", String(b.get()!!))
+    }
+
+    @Test
+    fun theClientEntryPointPlacesTheRootInTheStoreNamespace() = runBlocking {
+        val ctx: android.content.Context = androidx.test.core.app.ApplicationProvider.getApplicationContext()
+        fun options(baseUrl: String) = im.plrs.key.sdk.PolarisKeyClientOptions(
+            core = im.plrs.key.core.CoreOptions(
+                productSlug = product,
+                version = "1.0.0",
+                baseUrl = baseUrl,
+                pinnedKeys = im.plrs.key.core.testing.TestSigner().trust,
+            ),
+        )
+        val urlA = "https://a.example.test"
+        val urlB = "https://b.example.test"
+        val nsA = im.plrs.key.core.storeNamespace(product, urlA)
+        val nsB = im.plrs.key.core.storeNamespace(product, urlB)
+        assertNotEquals(nsA, nsB)
+        PolarisKeyAndroid.keyringOptions(ctx, options(urlA), keys).keyring.rootStorage!!.put("root-a".toByteArray())
+        PolarisKeyAndroid.keyringOptions(ctx, options(urlB), keys).keyring.rootStorage!!.put("root-b".toByteArray())
+        assertTrue(File(ctx.noBackupFilesDir, "pkey/$nsA/sync-root.bin").exists())
+        assertTrue(File(ctx.noBackupFilesDir, "pkey/$nsB/sync-root.bin").exists())
+        assertEquals(setOf("pkey:$nsA:syncroot", "pkey:$nsB:syncroot"), keys.keys.keys)
+    }
 }

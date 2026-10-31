@@ -51,6 +51,7 @@ import {
 import { stmtMoveLicenseAccount } from "../../../core/accounts/accountSubjects.js";
 import type { AccountContext } from "./links.js";
 import { verifiedAccountEmails } from "./repo.js";
+import { shownProductRow } from "../../../core/accounts/reservedDisplayNames.js";
 
 /**
  * Move a licence's owner pointer (`from` to `to`) as a compare-and-set: the row changes only while
@@ -286,7 +287,11 @@ async function notifyLicenseEmail(
   if (!email) return;
   const verified = await verifiedAccountEmails(ctx.db, accountId);
   if (verified.includes(normalizeEmail(email))) return;
-  const product = await getProduct(ctx.db, license.product);
+  const product = await shownProductRow(
+    ctx.env,
+    ctx.db,
+    await getProduct(ctx.db, license.product),
+  );
   await sendNotice(
     ctx.env,
     ctx.db,

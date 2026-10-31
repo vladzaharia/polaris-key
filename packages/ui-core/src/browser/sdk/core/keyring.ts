@@ -7,7 +7,7 @@
 // bytes. No type here carries `R`, and no error or status names a code.
 
 import type { Unsupported } from "@polaris-key/client-core";
-import type { HostCodec } from "@polaris-key/client-core/sync";
+import type { FileCodec, HostCodec } from "@polaris-key/client-core/sync";
 import { Feature } from "../constants.generated.js";
 import { UnsupportedError } from "./caps.js";
 
@@ -101,6 +101,12 @@ export interface KeyringClient {
    * `sync-locked` once the ring is locked.
    */
   codec(): HostCodec | null;
+  /**
+   * The file codec for a collection's files and chunks (U-22.6): ids, sealed chunks and sealed
+   * files under that collection's keys, derived from the root without reading its bytes. Null
+   * while this device holds no root. Build one per operation; do not keep it across a lock.
+   */
+  fileCodec?(collection: string): Promise<FileCodec | null>;
 }
 
 /** A ring client for a transport that cannot hold a ring: every verb throws the typed unsupported. */
@@ -197,6 +203,8 @@ export function lazyKeyring(load: () => Promise<KeyringClient>): KeyringClient {
     acceptRingChange: via((e) => (c: RingIdentity) => e.acceptRingChange(c)),
     hasRoot: () => engine?.hasRoot() ?? false,
     codec: () => engine?.codec() ?? null,
+    fileCodec: async (collection: string) =>
+      (await ready()).fileCodec?.(collection) ?? null,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);

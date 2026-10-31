@@ -1883,7 +1883,7 @@ func _chunk_context(pack_id: String, plan_id: String, variant: Dictionary, insta
 	return {"index": {"payloadSize": idx["payloadSize"], "payloadSha256": idx["payloadSha256"], "records": idx["records"]}, "parsed": idx, "seeds": seeds, "own": own}
 
 
-static var _lower_hex: RegEx = RegEx.create_from_string("^[0-9a-f]*$")
+static var _lower_hex: RegEx = RegEx.create_from_string("\\A[0-9a-f]*\\z")
 
 
 ## The run journal's completed runs for this index and run count (a Dictionary used as a set);
@@ -2253,5 +2253,5 @@ func _save_checkpoint(pack_id: String, plan_id: String, sha: String, have: int) 
 
 
 static func _range_starts_at(content_range: String, offset: int) -> bool:
-	var m := RegEx.create_from_string("^bytes (\\d+)-\\d+/\\d+$").search(content_range.strip_edges())
+	var m := RegEx.create_from_string("\\Abytes (\\d+)-\\d+/\\d+\\z").search(content_range.strip_edges())
 	return m != null and m.get_string(1) == str(offset)

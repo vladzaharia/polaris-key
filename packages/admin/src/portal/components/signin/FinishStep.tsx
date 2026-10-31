@@ -1,6 +1,14 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, CircleCheck, Lock, Mail, Upload, User } from "lucide-react";
+import {
+  AppWindow,
+  Check,
+  CircleCheck,
+  Lock,
+  Mail,
+  Upload,
+  User,
+} from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Checkbox } from "../../../ui/Checkbox.js";
 import { Input } from "../../../ui/Input.js";
@@ -135,7 +143,10 @@ export function FinishStep({
   onExpired,
   onTitle,
   nameHint,
+  appName,
 }: {
+  /** The requesting app's name: the label of the name hint's chip. */
+  appName?: string | null;
   /** The request's `nameHint`: a placeholder suggestion in the Name field of a new account, never
    *  a value (an app's hint is not the person's word, and a device-code start is unauthenticated). */
   nameHint?: string | null;
@@ -229,6 +240,7 @@ export function FinishStep({
       onCancel={() => void cancel()}
       onTitle={onTitle}
       nameHint={nameHint}
+      appName={appName}
     />
   );
 }
@@ -341,8 +353,10 @@ function FinishForm({
   onCancel,
   onTitle,
   nameHint,
+  appName,
 }: {
   nameHint?: string | null;
+  appName?: string | null;
   gate: PortalGate;
   reload: () => Promise<void>;
   onPassed: (next: string, nudge?: boolean) => Promise<void>;
@@ -362,6 +376,19 @@ function FinishForm({
   /** Back from the code or the join offer to the email choice (the next choose replaces it). */
   const [editing, setEditing] = React.useState(false);
   const suggestions = gate.profile.suggestions ?? [];
+  // The app's name hint is offered, never filled in: it is the app's word, so the person taps it
+  // (and it is never sent unread). It leads the "Use a name from" chips.
+  const hinted = nameHint?.trim() ?? "";
+  const appChip =
+    hinted && appName?.trim()
+      ? {
+          name: hinted,
+          label: t("signin.gate.nameFromApp", {
+            app: appName.trim(),
+            name: hinted,
+          }),
+        }
+      : null;
   // The provider path prefills its name; an email-code account prefills the email's local part.
   const [name, setName] = React.useState(
     gate.profile.name || (suggestions[0]?.name ?? ""),
@@ -1080,7 +1107,7 @@ function FinishForm({
                   {t("signin.gate.nameRequired")}
                 </p>
               ) : null}
-              {suggestions.length > 0 ? (
+              {suggestions.length > 0 || appChip ? (
                 <div
                   role="group"
                   aria-labelledby={`${nameId}-from`}
@@ -1090,6 +1117,32 @@ function FinishForm({
                     {t("signin.gate.nameFrom")}
                   </span>
                   <ul className="flex flex-wrap gap-2">
+                    {appChip ? (
+                      <li key="app-hint">
+                        <button
+                          type="button"
+                          aria-pressed={appChip.name === name.trim()}
+                          onClick={() => {
+                            setName(appChip.name);
+                            setNameError(false);
+                          }}
+                          className={cn(
+                            "inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border px-3 text-sm text-fg-strong hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus",
+                            appChip.name === name.trim()
+                              ? "border-fg-strong bg-hover"
+                              : "border-border-strong",
+                          )}
+                        >
+                          <AppWindow aria-hidden className="size-4 shrink-0" />
+                          <span className="min-w-0 [overflow-wrap:anywhere]">
+                            {appChip.label}
+                          </span>
+                          {appChip.name === name.trim() ? (
+                            <Check aria-hidden className="size-4 shrink-0" />
+                          ) : null}
+                        </button>
+                      </li>
+                    ) : null}
                     {suggestions.map((s) => {
                       const on = s.name === name.trim();
                       return (

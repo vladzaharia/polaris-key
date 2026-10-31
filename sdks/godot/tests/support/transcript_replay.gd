@@ -131,7 +131,11 @@ func problems(item: Dictionary, req: Dictionary) -> Array:
 			out.append("required header %s: missing" % name)
 	var body: PackedByteArray = req["body"]
 	var want = expected["body"]
-	if want == null:
+	if want == null and expected.get("bodyBase64") is String:
+		# Raw request bytes (U-10.3), asserted exact.
+		if body != Marshalls.base64_to_raw(expected["bodyBase64"]):
+			out.append("body: the bytes differ from the recording (%d sent)" % body.size())
+	elif want == null:
 		if not body.is_empty():
 			out.append("body: expected none, got %s" % body.get_string_from_utf8().left(120))
 	elif body.is_empty():
@@ -232,10 +236,12 @@ func _capture(item: Dictionary) -> void:
 
 static func _respond(response: Dictionary) -> Dictionary:
 	var b = response["body"]
+	# Raw response bytes (U-10.3) are served byte for byte.
+	var raw: Variant = Marshalls.base64_to_raw(response["bodyBase64"]) if response.get("bodyBase64") is String else null
 	return {
 		"status": int(response["status"]),
 		"headers": response["headers"],
-		"body": b if b is String else JSON.stringify(b, "", false),
+		"body": raw if raw != null else (b if b is String else JSON.stringify(b, "", false)),
 	}
 
 

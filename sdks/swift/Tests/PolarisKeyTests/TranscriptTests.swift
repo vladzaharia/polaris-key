@@ -10,7 +10,7 @@
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
 // @pkey-feature connect.relay
-// @pkey-feature identity.exchange sync.keyring sync.settings identity.restore identity.gamecenter
+// @pkey-feature identity.exchange sync.keyring sync.settings identity.restore identity.gamecenter identity.devicecode.choice sync.files sync.files.delta
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -164,6 +164,9 @@ enum SwiftReplay {
         case "cloudSyncPull", "cloudSyncPush":
             guard let server else { throw ReplayError("cloudSync without a replay server") }
             try await CloudSyncReplay.run(client, step: step, session: session, server: server, into: &out)
+        case "cloudSyncFile", "cloudSyncChunk":
+            guard let tap = session.tap else { throw ReplayError("no header tap") }
+            try await CloudSyncFilesReplay.run(client, step: step, tap: tap, into: &out)
         case "browser" where await server?.transcript.id == "cloudsync-cors":
             guard let server else { throw ReplayError("browser without a replay server") }
             await CloudSyncReplay.cors(client, step: step, server: server)
@@ -259,8 +262,15 @@ enum SwiftReplay {
         case "beginSignIn":
             let p: SignInSession
             do {
+                // UK-42.22: the recorded hints and licence choice ride the device start.
                 p = try await client.identity.signIn.start(
-                    SignInOptions(deviceName: step.args["deviceName"]?.stringValue))
+                    SignInOptions(
+                        deviceName: step.args["deviceName"]?.stringValue,
+                        loginHint: step.args["loginHint"]?.stringValue,
+                        nameHint: step.args["nameHint"]?.stringValue,
+                        purpose: step.args["purpose"]?.stringValue.flatMap(SignInPurpose.init),
+                        licenseChoice: step.args["licenseChoice"]?.stringValue.flatMap(
+                            LicenseChoiceMode.init)))
             } catch let e as PolarisError {
                 out["result"] = .string(e.code)
                 break
@@ -284,6 +294,7 @@ enum SwiftReplay {
                     out["interval"] = .int(interval)
                 case .ready: out["result"] = .string("ready")
                 case .confirm: out["result"] = .string("confirm")
+                case .choose: out["result"] = .string("choose")
                 case .expired: out["result"] = .string("expired")
                 case .error(_, let code):
                     out["result"] = .string("error")
@@ -1075,10 +1086,15 @@ enum SwiftReplay {
         let redirects =
             t.id != "cloudsync-cors"
             && t.steps.contains { ["browser", "redirectComplete"].contains($0.action) }
+        // identity.devicecode.choice rides the same product: License, Config and Identity.
+        let deviceChoice = t.steps.contains {
+            $0.action == "beginSignIn" && $0.args["licenseChoice"]?.stringValue == "app"
+        }
         let services =
             t.initial.services
             ?? (u != nil
-                ? ["release", "distribution", "update"] : (redirects ? ["license", "config", "identity"] : nil))
+                ? ["release", "distribution", "update"]
+                : (redirects || deviceChoice ? ["license", "config", "identity"] : nil))
         let tap = HeaderTap(ReplayTransport(server: server))
         let core = CoreOptions(
             productSlug: t.product, baseUrl: t.baseUrl,
@@ -1165,6 +1181,13 @@ final class TranscriptTests: XCTestCase {
         let cloud = try transcripts().filter { $0.features.contains("sync.settings") }.map(\.id)
         XCTAssertFalse(cloud.isEmpty)
         for id in cloud { XCTAssertTrue(replayed.contains(id), "\(id) was not replayed") }
+        // So are the file and chunk conversations (U-23.S6), but for `cloudsync-files-single`, which also proves
+        // `sync.saves` and waits for it.
+        let files = try transcripts().filter {
+            $0.features.contains("sync.files") || $0.features.contains("sync.files.delta")
+        }.filter { TranscriptFiles.applies($0, statuses) }.map(\.id)
+        XCTAssertGreaterThanOrEqual(files.count, 9)
+        for id in files { XCTAssertTrue(replayed.contains(id), "\(id) was not replayed") }
     }
 
     // ── The replayer fails on a doctored transcript ────────────────────────────────────
@@ -1260,6 +1283,20 @@ final class TranscriptTests: XCTestCase {
 
     /// The refused code is the body's registered wire code; an unregistered one falls back to
     /// the status's (`unauthorized` for a 401).
+    func testAFileCallWithAnotherOutcomeFails() async throws {
+        var t = try XCTUnwrap(try transcripts().first { $0.id == "cloudsync-files-quota" })
+        t.steps[0].expect["status"] = .int(200)
+        await assertReplayFails(t, matching: "status: expected 200")
+    }
+
+    func testAFilePutWithAnotherDigestFails() async throws {
+        var t = try XCTUnwrap(try transcripts().first { $0.id == "cloudsync-files-mismatch" })
+        let i = try XCTUnwrap(t.steps.firstIndex { $0.args["op"]?.stringValue == "put" })
+        // A recorded digest the replay cannot read as a hash: it sends the bytes' own digest, which differs.
+        t.steps[i].exchanges.items[0].request.headers["content-digest"] = "sha-256=:not-a-digest:"
+        await assertReplayFails(t, matching: "content-digest")
+    }
+
     func testAnUnregisteredRefusalCodeFallsBackToTheStatus() async throws {
         var t = try fetchGated()
         t.steps[3].exchanges.items[0].response.body = .object([

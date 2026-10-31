@@ -69,6 +69,8 @@ internal data class SignInPrompt(
      * older Worker) the label sent; null when there is none.
      */
     val deviceName: String? = null,
+    /** The start asked `licenseChoice: app` and discovery allowed it (section 12.6): a `choose` poll answer is then expected; else it is refused. */
+    val choiceApp: Boolean = false,
 ) {
     override fun toString(): String = "SignInPrompt(deviceCode=[redacted], userCode=$userCode, verificationUri=$verificationUri, " +
         "verificationUriComplete=$verificationUriComplete, expiresIn=$expiresIn, interval=$interval, expiresAt=$expiresAt, " +
@@ -85,6 +87,14 @@ internal sealed interface SignInPoll {
 
     /** Signed in: the device token is stored and the post-acquisition sync has run. */
     data class Ready(val subject: String? = null) : SignInPoll
+
+    /**
+     * Only after a start with `licenseChoice = "app"` (UK-42.22, section 12.10): the person approved the code and a
+     * licence choice is due. Nothing is bound and no token stored; the flow is spent. Run `identity.choice` with [grant].
+     */
+    data class Choose(val grant: String, val expiresIn: Double, val choices: JsonObject) : SignInPoll {
+        override fun toString(): String = "Choose(grant=[redacted], expiresIn=$expiresIn)"
+    }
 
     /** The code expired (or the server no longer knows it). Begin again. */
     data object Expired : SignInPoll
@@ -105,6 +115,8 @@ public typealias SignInAcquiredListener = suspend () -> Unit
  * repeated interval-less answers keep lengthening it.
  */
 public const val SLOW_DOWN_STEP_SECONDS: Long = 5
+
+private const val OK_STATUS: Int = 200
 
 /** The longest wait or lifetime this client represents: about 68 years. */
 private const val MAX_SECONDS: Long = Int.MAX_VALUE.toLong()
@@ -304,10 +316,19 @@ public class IdentityClient(
      * `signIn.start`'s request. Throws `service-unavailable` before any request when this product
      * does not run Identity (D-21). No bearer is sent even when the device holds a token: a sign-in
      * asks for the IDENTITY's credential, and the server binds the flow to this device by its id.
+     *
+     * UK-42.22 (section 12.10.1): [options] carries the hints (`loginHint`, `nameHint`, `purpose`, sent whenever set; an older
+     * Worker ignores them) and `licenseChoice`. `licenseChoice: app` is sent only when discovery carries `deviceChoice` and all
+     * four `choice*` routes (section 12.6); else the card chooses, exactly as before.
      */
-    internal suspend fun startDeviceCode(deviceName: String? = null): SignInPrompt {
+    internal suspend fun startDeviceCode(deviceName: String? = null, options: SignInOptions? = null): SignInPrompt {
         core.requireService(ServiceSlug.identity, Feature.identityDevicecode)
         val body = linkedMapOf<String, JsonElement>("deviceId" to JsonPrimitive(core.deviceId()))
+        options?.loginHint?.takeIf { it.isNotEmpty() }?.let { body["loginHint"] = JsonPrimitive(it) }
+        options?.nameHint?.takeIf { it.isNotEmpty() }?.let { body["nameHint"] = JsonPrimitive(it) }
+        options?.purpose?.let { body["purpose"] = JsonPrimitive(it.wire) }
+        val choiceApp = options?.licenseChoice == "app" && deviceChoiceOpen()
+        if (choiceApp) body["licenseChoice"] = JsonPrimitive("app")
         // §12.7.1: the per-call name, else `CoreOptions.deviceName`, else the platform default,
         // normalised exactly as the Worker will store it. `""` sends none.
         val label = core.deviceLabel(deviceName)
@@ -344,7 +365,47 @@ public class IdentityClient(
         }
         // The echo is what the page shows; an older Worker sends none, so show what was sent.
         val echoed = if (b != null && b.containsKey("deviceName")) b["deviceName"].stringValue else label
-        return SignInPrompt(deviceCode, userCode, uri, complete, expiresIn, interval, core.now() + expiresIn, echoed)
+        return SignInPrompt(deviceCode, userCode, uri, complete, expiresIn, interval, core.now() + expiresIn, echoed, choiceApp)
+    }
+
+    /** The discovery gate for `licenseChoice: app` on the device start (section 12.6); a product whose discovery cannot be read keeps the card. */
+    private suspend fun deviceChoiceOpen(): Boolean {
+        if (core.discoveryDocument() == null) {
+            try {
+                core.discover()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (ignored: PolarisException) {
+                return false
+            }
+        }
+        return core.discoveryDocument()?.identity?.deviceChoiceAvailable == true
+    }
+
+    /** A poll `ready`: store the token (and the subject before it, so no sync sees the new token under the previous person). */
+    private suspend fun readyAnswer(body: JsonObject?): SignInPoll {
+        val token = body?.get("token").stringValue
+        if (token.isNullOrEmpty()) return SignInPoll.Error("ready without a token.")
+        // The pairwise subject the Worker reports (`identity.account`); the facade hears of a change.
+        val subject = body?.get("subject").stringValue?.takeIf { it.isNotEmpty() }
+        if (subject == null) {
+            core.setToken(token, TokenSource.signin, personInitiated = true)
+        } else if (core.storeSignIn(token, subject, TokenSource.signin, personInitiated = true)) {
+            onSubject(subject)
+        }
+        afterSignIn()
+        onAcquired?.invoke()
+        return SignInPoll.Ready(subject)
+    }
+
+    /** A poll `choose` (section 12.10): only a start that asked `licenseChoice: app` may be answered one, and it takes the redirect's grant shape. */
+    private fun chooseAnswer(prompt: SignInPrompt, body: JsonObject?): SignInPoll {
+        val answer = if (prompt.choiceApp) IdentityRedirect.parseTokenAnswer(OK_STATUS, body) else null
+        return if (answer is TokenAnswer.Choose) {
+            SignInPoll.Choose(answer.grant, answer.expiresIn, answer.choices)
+        } else {
+            SignInPoll.Error("device sign-in asked for a licence choice it did not request.")
+        }
     }
 
     /**
@@ -375,21 +436,9 @@ public class IdentityClient(
 
             "timeout" -> SignInPoll.Expired
 
-            "ready" -> {
-                val token = body?.get("token").stringValue
-                if (token.isNullOrEmpty()) return SignInPoll.Error("ready without a token.")
-                // The pairwise subject the Worker reports (`identity.account`); the facade hears of a change. The subject is
-                // stored before the token, so no sync sees the new token under the previous person.
-                val subject = body?.get("subject").stringValue?.takeIf { it.isNotEmpty() }
-                if (subject == null) {
-                    core.setToken(token, TokenSource.signin, personInitiated = true)
-                } else if (core.storeSignIn(token, subject, TokenSource.signin, personInitiated = true)) {
-                    onSubject(subject)
-                }
-                afterSignIn()
-                onAcquired?.invoke()
-                SignInPoll.Ready(subject)
-            }
+            "choose" -> chooseAnswer(prompt, body)
+
+            "ready" -> readyAnswer(body)
 
             // A Deny names itself (`reason: access_denied`); a bare `error` failed after approval.
             "error" -> SignInPoll.Error(
@@ -425,7 +474,7 @@ public class IdentityClient(
             when (result) {
                 SignInPoll.Pending -> continue
                 is SignInPoll.SlowDown -> interval = maxOf(interval, result.interval)
-                is SignInPoll.Ready, SignInPoll.Expired, is SignInPoll.Error -> return result
+                is SignInPoll.Ready, is SignInPoll.Choose, SignInPoll.Expired, is SignInPoll.Error -> return result
             }
         }
     }

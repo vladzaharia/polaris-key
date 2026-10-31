@@ -10,6 +10,7 @@ import {
 import { tryParseJson } from "../../platform/json.js";
 import { platformSetting } from "../settings/platformRead.js";
 import { passthroughSender, platformSender } from "./emailSender.js";
+import { shownAppName } from "../accounts/reservedDisplayNames.js";
 
 // The ONE place sign-in and account email leaves the Worker (I-18). Every send, platform or
 // passthrough, goes through `deliverEmail`, which applies, in order:
@@ -71,7 +72,7 @@ export type EmailSender =
   | {
       kind: "passthrough";
       product: string;
-      /** The product's display name (`products.name`); refused names fall back to the slug. */
+      /** The product's display name (`products.name`); a name the display rules refuse falls back to the slug. */
       displayName: string | null;
     };
 
@@ -302,10 +303,23 @@ export async function deliverEmail(
   const binding = env.EMAIL;
   if (!binding) return unavailable;
 
+  // Passthrough: the name is the checked one (the slug when the display rules refuse it), the same
+  // value the notice templates put in the subject, so the two agree (DISPLAY-NAME-INVISIBLE D-9).
   const from =
     msg.sender.kind === "platform"
       ? platformSender(env, msg.sender.audience)
-      : passthroughSender(env, msg.sender.displayName, msg.sender.product);
+      : passthroughSender(
+          env,
+          msg.sender.displayName
+            ? await shownAppName(
+                env,
+                db,
+                msg.sender.product,
+                msg.sender.displayName,
+              )
+            : null,
+          msg.sender.product,
+        );
   if (!from) return unavailable;
 
   // Whatever reached here, only a bare addr-spec is accepted (and is mailed trimmed) to the provider.

@@ -44,6 +44,12 @@ export interface PlatformValues {
   "cloudSync.writesPaused": "on" | "off";
   "cloudConnect.relayPaused": "on" | "off";
   "cloudConnect.quota.defaultRelayBytes": number;
+  "cloudSync.minSdk.swift": string | null;
+  "cloudSync.minSdk.kotlin": string | null;
+  "cloudSync.minSdk.godot": string | null;
+  "cloudSync.minSdk.react": string | null;
+  "cloudSync.minSdk.node": string | null;
+  "cloudSync.minSdk.python": string | null;
   "launch.identityExchange": "on" | "off";
   "launch.identityKeyReturn": "on" | "off";
   "launch.connect": "on" | "off";

@@ -15,6 +15,7 @@ import {
   rows,
   setQuota,
   sha256Hex,
+  stored,
   uploadRow,
   usageOf,
   type FilesWorld,
@@ -22,6 +23,9 @@ import {
 import {
   beginChunks,
   chunkOf,
+  deleteRecord,
+  fireAlarm,
+  keyOfChunk,
   manifestOf,
   planned,
   putChunk,
@@ -300,5 +304,66 @@ describe("finalize in chunks mode", () => {
     expect(await errorCode(res)).toBe("upload_mismatch");
     const fin = await finalize(w, "delta", "slot", up.uploadId);
     expect(fin.status).toBe(409);
+  });
+});
+
+describe("finalize of a chunks upload whose present chunks lost their last reference after the plan", () => {
+  const SIZE = 160;
+  /** An open upload for `record` that the plan answered `present` for `chunk` (a file holds it). */
+  async function planPresent(w: FilesWorld, record: string, chunk: TestChunk) {
+    const manifest = manifestOf(9, SIZE);
+    const up = await beginChunks(w, "delta", record, manifest);
+    const plan = await planned(w, "delta", record, up.uploadId, [chunk]);
+    expect(plan.present).toHaveLength(1);
+    expect(
+      (await putManifest(w, "delta", record, up.uploadId, manifest)).status,
+    ).toBe(204);
+    return up;
+  }
+
+  it("finalize charges a chunk whose last reference went after the plan only when it fits the quota", async () => {
+    const w = await filesWorld();
+    const chunks = [1, 2, 3].map((n) => chunkOf(n, 1000));
+    const bytes = chunks[0]!.object.length;
+    await setQuota(w, 1_000_000);
+    const uploads = [];
+    for (const [i, c] of chunks.entries()) {
+      await writeChunked(w, "delta", `old${i}`, manifestOf(i, SIZE), [c]);
+      uploads.push(await planPresent(w, `new${i}`, c));
+    }
+    // Every file that held a chunk is deleted: the bytes are given back, the open uploads pin them.
+    for (const i of chunks.keys()) await deleteRecord(w, "delta", `old${i}`);
+    const filler = 2 * bytes + 3 * SIZE;
+    await stored(w, "saves", "filler", new Uint8Array(filler).fill(3));
+    const quota = filler + 3 * SIZE + bytes + 200;
+    await setQuota(w, quota);
+    const answers: number[] = [];
+    for (const [i, up] of uploads.entries()) {
+      const res = await finalize(w, "delta", `new${i}`, up.uploadId);
+      answers.push(res.status);
+      if (res.status === 403) {
+        expect(await errorCode(res)).toBe("quota_exceeded");
+        expect(uploadRow(w, up.uploadId)?.state).not.toBe("finalizing");
+      }
+    }
+    expect(answers).toEqual([200, 403, 403]);
+    expect(usage(w).bytes).toBeLessThanOrEqual(quota);
+    expect(usage(w).reserved_bytes ?? 0).toBe(0);
+    await fireAlarm(w);
+    const held = w.r2
+      .keys()
+      .filter((k) => k.includes("/c/"))
+      .sort();
+    expect(held).toEqual([keyOfChunk(w, "delta", chunks[0]!)]);
+  });
+
+  it("finalize of an upload whose present chunks kept their references is not refused near the quota", async () => {
+    const w = await filesWorld();
+    const c = chunkOf(1, 1000);
+    await writeChunked(w, "delta", "old", manifestOf(1, SIZE), [c]);
+    const up = await planPresent(w, "new", c);
+    // Exactly what is charged now plus the new manifest, and nothing more.
+    await setQuota(w, usage(w).bytes + usage(w).reserved_bytes);
+    expect((await finalize(w, "delta", "new", up.uploadId)).status).toBe(200);
   });
 });

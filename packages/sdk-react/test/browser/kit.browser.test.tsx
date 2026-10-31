@@ -211,13 +211,23 @@ const BASELINE_SCENES: readonly Scene[] = COMPONENT_STATE_FIXTURES.map(
   (fixture) => ({ id: fixture.id, fixture, baseline: true }),
 );
 
+// States this matrix does not draw. AddToAccount.waiting is baselined by holders.browser.test (its
+// own scene beside the other holder views); the consent line that keeps the license on the account
+// is the Polaris Locker portal's (packages/admin signInRequest), not a kit view.
+const ELSEWHERE_STATE_IDS: ReadonlySet<string> = new Set([
+  "AddToAccount.waiting",
+  "AddToAccount.consent-kept",
+]);
+
 const REGISTERED_COMPONENT_STATE_IDS = Object.entries(
   componentRegistryJson.components,
-).flatMap(([component, definition]) =>
-  Object.keys(definition.states)
-    .filter((state) => state !== "hidden")
-    .map((state) => `${component}.${state}`),
-);
+)
+  .flatMap(([component, definition]) =>
+    Object.keys(definition.states)
+      .filter((state) => state !== "hidden")
+      .map((state) => `${component}.${state}`),
+  )
+  .filter((id) => !ELSEWHERE_STATE_IDS.has(id));
 
 interface Size {
   label: string;

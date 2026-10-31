@@ -1,4 +1,4 @@
-# @pkey-feature identity.devicecode identity.toggle identity.account
+# @pkey-feature identity.devicecode identity.toggle identity.account identity.devicecode.choice
 """``identity.sign_in.start`` (I-10a.15): the session's ``wait`` (the outcomes, ``once``, the P1-07
 attach opt-in), the hints, the typed refusals, the subject stored on ``signed_in``, the
 ``identity`` event kind and ``license.deactivate()`` forgetting the identity. The pacing rules are
@@ -84,8 +84,30 @@ def test_the_identity_event_reports_the_sign_in_and_the_sign_out(clock) -> None:
     assert seen == [("signed_in", SUBJECT, None), ("signed_out", None, True)]
 
 
+CHOICE_ENDPOINTS = {
+    "choiceLicenses": f"{BASE}/{PRODUCT}/identity/choice/licenses",
+    "choiceDevices": f"{BASE}/{PRODUCT}/identity/choice/devices",
+    "choiceComplete": f"{BASE}/{PRODUCT}/identity/choice/complete",
+    "choiceCancel": f"{BASE}/{PRODUCT}/identity/choice/cancel",
+}
+
+
+def choice_discovery(device_choice: bool = True, endpoints: bool = True) -> Dict[str, Any]:
+    """Discovery whose Identity fragment carries ``deviceChoice`` and the ``choice*`` endpoints."""
+    doc = discovery()
+    ident = doc["services"]["identity"]
+    if device_choice:
+        ident["deviceChoice"] = True
+    if endpoints:
+        ident["endpoints"] = {**ident["endpoints"], **CHOICE_ENDPOINTS}
+    return doc
+
+
+CHOOSE = ok(status="choose", grant="sg_x", expiresIn=300, choices={"state": "choose", "choices": [], "keep": True})
+
+
 def test_the_start_carries_the_hints(clock) -> None:
-    w = worker(READY)
+    w = Worker(choice_discovery(), start=ok(**START), poll=queue(READY))
     c = make(w)
     c.identity.sign_in.start(
         device_name="Deck", login_hint="a@b.c", name_hint="Ada", purpose="signin", scope=["openid", "email"], license_choice="app"
@@ -93,6 +115,38 @@ def test_the_start_carries_the_hints(clock) -> None:
     body = next(c for c in w.calls if c["path"].endswith("/device/start"))["body"]
     assert body["loginHint"] == "a@b.c" and body["nameHint"] == "Ada" and body["purpose"] == "signin"
     assert body["scope"] == "openid email" and body["licenseChoice"] == "app" and body["deviceName"] == "Deck"
+
+
+@pytest.mark.parametrize(
+    "doc",
+    [discovery(), choice_discovery(device_choice=False), choice_discovery(endpoints=False)],
+    ids=["neither", "no deviceChoice", "no choice endpoints"],
+)
+def test_license_choice_app_is_not_sent_without_the_discovery_gate(clock, doc: Dict[str, Any]) -> None:
+    w = Worker(doc, start=ok(**START), poll=queue(READY))
+    c = make(w)
+    c.identity.sign_in.start(license_choice="app")
+    body = next(c for c in w.calls if c["path"].endswith("/device/start"))["body"]
+    assert "licenseChoice" not in body
+
+
+def test_a_choose_poll_is_the_choose_outcome_and_stops_polling(clock) -> None:
+    w = Worker(choice_discovery(), start=ok(**START), poll=queue(ok(status="pending"), CHOOSE))
+    c = make(w)
+    o = c.identity.sign_in.start(license_choice="app").wait()
+    assert o.kind == "choose" and o.grant == "sg_x" and o.expires_in == 300
+    assert o.choices == {"state": "choose", "choices": [], "keep": True}
+    assert "sg_x" not in repr(o)
+    assert len(polls(w)) == 2
+    assert c.identity.current() is None
+
+
+def test_a_choose_poll_without_a_grant_is_sign_in_failed(clock) -> None:
+    w = Worker(choice_discovery(), start=ok(**START), poll=queue(ok(status="choose", expiresIn=300, choices={})))
+    c = make(w)
+    with pytest.raises(PolarisError) as e:
+        c.identity.sign_in.start(license_choice="app").wait(once=True)
+    assert e.value.code == "sign-in-failed"
 
 
 def test_an_ordinary_poll_sends_no_opt_in_and_no_bearer(clock) -> None:

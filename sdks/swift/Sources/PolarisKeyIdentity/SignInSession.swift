@@ -44,7 +44,7 @@ public struct SignInOptions: Sendable {
     public var loginHint: String?
     public var nameHint: String?
     public var purpose: SignInPurpose?
-    /// Redirect channel: who shows the licence choice. `.app` asks for `license_choice=app` (sent
+    /// Who shows the licence choice (both channels). `.app` asks for `license_choice=app` (sent
     /// only when discovery publishes the four `choice*` routes; else the card chooses); a due
     /// choice then settles the session as `.chooseLicense` and the app runs `identity.choice`.
     public var licenseChoice: LicenseChoiceMode?
@@ -129,7 +129,7 @@ public struct SignInNamespace: Sendable {
             if options.browser != nil { try await session.show() }
             return session
         }
-        let prompt = try await client.startDeviceCode(deviceName: options.deviceName)
+        let prompt = try await client.startDeviceCode(deviceName: options.deviceName, options: options)
         let session = SignInSession(client: client, prompt: prompt, browser: options.browser)
         if options.browser != nil { try await session.show() }
         return session
@@ -281,6 +281,7 @@ public final class SignInSession: Sendable {
         case .ready(let ready): return try settle(.success(.signedIn(ready)))
         case .confirm(let identity, let attachable):
             return try settle(.success(.choose(identity: identity, attachable: attachable)))
+        case .choose(let pending): return try settle(.success(.chooseLicense(pending)))
         case .expired: return try settle(.success(.expired))
         case .error(let message, let code):
             let error = SignInError(code: code ?? ErrorCode.signInFailed, message: message)

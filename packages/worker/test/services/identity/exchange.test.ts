@@ -147,6 +147,7 @@ const postExchange = (
     keys: { signKey: string };
     proof: string;
     type?: string;
+    deviceName?: string;
   },
   device = DEVICE,
 ) =>
@@ -164,6 +165,7 @@ const postExchange = (
       nonce: fields.nonce,
       device_key: fields.keys.signKey,
       proof: fields.proof,
+      ...(fields.deviceName ? { device_name: fields.deviceName } : {}),
     }).toString(),
   });
 
@@ -222,6 +224,7 @@ async function exchange(
     nonce?: string;
     token?: string;
     type?: string;
+    deviceName?: string;
   } = {},
 ): Promise<{
   status: number;
@@ -250,6 +253,7 @@ async function exchange(
       keys: keys,
       proof: proof,
       ...(o.type ? { type: o.type } : {}),
+      ...(o.deviceName ? { deviceName: o.deviceName } : {}),
     },
     device,
   );
@@ -707,6 +711,31 @@ describe("L-1: consent on the exchange", () => {
     // The next device's exchange is silent: consent stands.
     const again = await exchange(google(), { device: DEVICE_2 });
     expect(again.text.slice(0, 200)).toContain("access_token");
+  });
+
+  it("the confirm grant keeps the exchange's device_name", async () => {
+    await link(
+      "https://accounts.google.com",
+      "",
+      GOOGLE_SUB,
+      "google",
+      "ada@example.com",
+      false,
+    );
+    const r = await exchange(google(), { deviceName: "Den\u202e TV" });
+    expect(r.body.status).toBe("confirm");
+    const res = await complete({
+      grant: r.body.grant,
+      consent: { claims: ["profile", "email"] },
+    });
+    expect(res.status).toBe(200);
+    const row = await h.db.first<{ label: string | null }>(
+      "SELECT label FROM devices WHERE product = ? AND device_id = ?",
+      SLUG,
+      DEVICE,
+    );
+    // Kept on the grant, cleaned (the bidi control is dropped), then written by complete.
+    expect(row?.label).toBe("Den TV");
   });
 
   it("a narrowed consent stays narrowed on every later exchange, and the grant is audited without a token", async () => {

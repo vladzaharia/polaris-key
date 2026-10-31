@@ -14,8 +14,6 @@
 // a forwarded copy reaches the flow only through the binder.
 
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
-import { checkDisplayName } from "@polaris-key/manifest";
-import { displayCheckOptions } from "../../../core/accounts/reservedDisplayNames.js";
 import { constantTimeEqual } from "../../../platform/compare.js";
 import { hashKey, randomId } from "../../../platform/crypto.js";
 import { type Env } from "../../../platform/env.js";
@@ -67,7 +65,11 @@ import {
   rateLimited,
 } from "./config.js";
 import { sameOriginDecisionPost } from "./deviceFlow.js";
-import { deviceHtmlHeaders, listingDeveloper, type PageView } from "./pages.js";
+import {
+  deviceHtmlHeaders,
+  shownListingDeveloper,
+  type PageView,
+} from "./pages.js";
 
 /** A name inside a sentence, isolated so a right-to-left label cannot scramble the line. */
 function isolate(name: string): string {
@@ -537,17 +539,13 @@ async function approvalApp(
   developer: string | null;
   imgOrigin: string | null;
 }> {
-  const raw = await appForPage({ product, env, db, hooks }).catch(() => ({
-    name: product.name,
+  // `appForPage` already returns the checked name (the slug when it fails the display rules).
+  const named = await appForPage({ product, env, db, hooks }).catch(() => ({
+    name: product.slug,
     iconUrl: null,
     artUrl: null,
   }));
-  const developer = await listingDeveloper(hooks);
-  const check = await displayCheckOptions(env, db, product.slug);
-  const named = {
-    ...raw,
-    name: checkDisplayName(raw.name, check) === null ? raw.name : product.slug,
-  };
+  const developer = await shownListingDeveloper(env, db, product.slug, hooks);
   const shown = pageApp(named);
   return {
     app: {
@@ -555,10 +553,7 @@ async function approvalApp(
       iconUrl: shown.app.iconUrl ?? null,
       artUrl: shown.app.artUrl ?? null,
     },
-    developer:
-      developer && checkDisplayName(developer, check) === null
-        ? developer
-        : null,
+    developer,
     imgOrigin: shown.imgOrigin,
   };
 }
@@ -668,7 +663,7 @@ async function renderApproval(
       // Keyed on the settled account, not the request: a start that fell back to card mode
       // (no account the Worker can name) signs in to a licence only.
       (flow.appChoice === true && flow.appAccount
-        ? // TODO(DNI): shownAppName; `app.app.name` is the display-checked name today.
+        ? // `app.app.name` is the checked name: `approvalApp` takes it from `shownAppName`.
           `<p>${escapeHtml(dev)} will be signed in to your Polaris Locker account for ${escapeHtml(isolate(app.app.name))}.</p>`
         : "") +
       (flow.userCode

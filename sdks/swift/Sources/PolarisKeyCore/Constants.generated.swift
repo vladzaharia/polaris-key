@@ -2002,8 +2002,8 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.saves": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.keyring": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.records": CapabilityRow(status: "planned", service: "sync", na: []),
-    "sync.files": CapabilityRow(status: "planned", service: "sync", na: []),
-    "sync.files.delta": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.files": CapabilityRow(status: "implemented", service: "sync", na: []),
+    "sync.files.delta": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.e2e.recovery": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.transfer.background": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.e2e": CapabilityRow(status: "implemented", service: "sync", na: []),
@@ -2031,7 +2031,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.account": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.redirect.web": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
-    "identity.devicecode.choice": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.devicecode.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.keyreturn": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.exchange": CapabilityRow(status: "implemented", service: "identity", na: []),
@@ -2107,4 +2107,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "033d5e07cc1b8195b1562ac13afee49953ed0f0b92019ef0188989648d0ea962"
+public let CAPABILITY_DIGEST = "2eadaea5c0d7646bb2163087a4d351bb0a94dd0861921a96040d19d80c1e9a01"

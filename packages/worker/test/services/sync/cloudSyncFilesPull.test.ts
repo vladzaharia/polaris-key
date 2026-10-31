@@ -66,6 +66,7 @@ function finalized(
     objectKey: `u/p/s/o/${upload.uploadId}`,
     clientId: "c_aaaaaaaaaaaaaaaaaaaaaa",
     maxRecords: 100,
+    quotaBytes: 1 << 30,
     keepRevisions: opts.keep ?? 5,
     nowMs: NOW,
   });
