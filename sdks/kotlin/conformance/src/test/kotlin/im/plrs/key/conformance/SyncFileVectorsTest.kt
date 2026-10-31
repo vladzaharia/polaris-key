@@ -7,6 +7,7 @@
 
 package im.plrs.key.conformance
 
+import im.plrs.key.core.SYNC_CDC_MAX_BYTES
 import im.plrs.key.core.SYNC_FILE_MAX_BYTES
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.boolValue
@@ -20,6 +21,7 @@ import im.plrs.key.core.sync.SyncFileStream
 import im.plrs.key.core.sync.SyncKeys
 import im.plrs.key.core.sync.SyncManifest
 import im.plrs.key.core.sync.SyncTransferPlan
+import im.plrs.key.core.sync.SyncZstdFrame
 import im.plrs.key.core.sync.ZstdDecode
 import im.plrs.key.packs.LibZstd
 import kotlinx.serialization.json.JsonObject
@@ -104,7 +106,45 @@ class SyncFileVectorsTest : ConformanceSuite() {
         assertNull(SyncCdc.params(-64))
     }
 
+    /**
+     * The reference reader of a server-mode chunk object (WIRE-CONTRACT-V5 section 13.8, U-37): a
+     * version byte 0, a codec byte, then the body, read in the written order of checks. Not SDK
+     * surface (an SDK reads server-mode chunks through its transfer engine); this is the corpus
+     * table's own proof, as the Node runner has it. Returns the plaintext and codec, or the reason.
+     */
+    private fun openServerChunk(id: ByteArray, obj: ByteArray): Pair<Pair<ByteArray, Int>?, String?> {
+        fun no(reason: String): Pair<Pair<ByteArray, Int>?, String?> = null to reason
+        if (obj.size < 2) return no("shape")
+        if (obj.size > 1_048_606) return no("size")
+        if (obj[0].toInt() != 0) return no("version")
+        val codec = obj[1].toInt()
+        if (codec != 0 && codec != 1) return no("codec")
+        var plain = obj.copyOfRange(2, obj.size)
+        if (codec == 1) {
+            val size = SyncZstdFrame.contentSize(plain) ?: return no("decode")
+            if (size > SYNC_CDC_MAX_BYTES) return no("size")
+            val out = runCatching { zstd(plain, size) }.getOrNull() ?: return no("decode")
+            if (out.size != size) return no("decode")
+            plain = out
+        }
+        if (plain.size > SYNC_CDC_MAX_BYTES) return no("size")
+        if (!SyncCrypto.sha256(plain).contentEquals(id)) return no("id")
+        return (plain to codec) to null
+    }
+
+    private fun serverObjectRow(c: JsonObject, f: Failures) {
+        val id = c.s("id")
+        val (ok, reason) = openServerChunk(bytes(c.s("idHex")), bytes(c.s("objectHex")))
+        val e = c["expect"]!!.obj
+        if (e.s("result") == "ok") {
+            f.check(ok != null && hex(ok.first) == e.s("plainHex") && ok.second == e.i("codec")) { "$id opens" }
+        } else {
+            f.equal(e.s("reason"), reason ?: "ok") { "$id reason" }
+        }
+    }
+
     private fun chunkRow(c: JsonObject, f: Failures) {
+        if (c.s("kind") == "server-object") return serverObjectRow(c, f)
         val id = c.s("id")
         val root = bytes(c.s("rootHex"))
         val collection = c.s("collection")

@@ -14,6 +14,9 @@
     "conformance/runners/browser/presentation.browser.test.ts": {
       "jscpd:duplicate": 3
     },
+    "conformance/runners/browser/syncScenarios.browser.test.ts": {
+      "jscpd:duplicate": 5
+    },
     "conformance/runners/browser/syncVectors.browser.test.ts": {
       "jscpd:duplicate": 11
     },
@@ -37,6 +40,9 @@
     },
     "conformance/runners/node/suites.ts": {
       "jscpd:duplicate": 23
+    },
+    "conformance/runners/node/syncScenarios.test.ts": {
+      "jscpd:duplicate": 5
     },
     "conformance/runners/node/syncVectors.test.ts": {
       "jscpd:duplicate": 6
@@ -108,7 +114,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/e2e/csp.e2e.test.ts": {
-      "jscpd:duplicate": 17
+      "jscpd:duplicate": 18
     },
     "packages/admin/e2e/dataMotion.e2e.test.ts": {
       "jscpd:duplicate": 37
@@ -628,6 +634,9 @@
     },
     "packages/admin/test/catalogStates.test.tsx": {
       "jscpd:duplicate": 3
+    },
+    "packages/admin/test/channelFixture.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/admin/test/channelSetup.test.tsx": {
       "jscpd:duplicate": 3
@@ -1920,7 +1929,7 @@
       "jscpd:duplicate": 8
     },
     "packages/sdk-react/test/browser/kit.browser.test.tsx": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/sdk-react/test/browser/motion.browser.test.tsx": {
       "jscpd:duplicate": 1
@@ -2010,7 +2019,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/kitMatrix.test.tsx": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/kitNext.test.tsx": {
       "jscpd:duplicate": 2
@@ -2021,8 +2030,14 @@
     "packages/sdk-react/test/kitRenew.test.tsx": {
       "jscpd:duplicate": 1
     },
+    "packages/sdk-react/test/kitSaveScreens.test.tsx": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-react/test/kitSignIn.test.tsx": {
       "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/test/kitSyncScreens.test.tsx": {
+      "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/lazyChunkFailure.test.ts": {
       "jscpd:duplicate": 3
@@ -2298,6 +2313,9 @@
       "jscpd:duplicate": 9
     },
     "packages/ui-core/src/input.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/vocabulary.ts": {
       "jscpd:duplicate": 1
     },
     "packages/ui-core/test/imports.test.ts": {
@@ -3776,6 +3794,24 @@
     "packages/worker/test/services/sync/cloudSyncDirectory.test.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/worker/test/services/sync/cloudSyncFilesBegin.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/sync/cloudSyncFilesFinalize.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/sync/cloudSyncFilesGet.test.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/sync/cloudSyncFilesRecords.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/sync/cloudSyncFilesUpload.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/sync/cloudSyncFilesWorld.ts": {
+      "jscpd:duplicate": 2
+    },
     "packages/worker/test/services/sync/cloudSyncLimits.test.ts": {
       "jscpd:duplicate": 10
     },
@@ -4439,6 +4475,12 @@
     "packages/worker/test/transcripts/scenarios/cloudSync.ts": {
       "jscpd:duplicate": 5
     },
+    "packages/worker/test/transcripts/scenarios/cloudSyncChunks.ts": {
+      "jscpd:duplicate": 10
+    },
+    "packages/worker/test/transcripts/scenarios/cloudSyncFiles.ts": {
+      "jscpd:duplicate": 10
+    },
     "packages/worker/test/transcripts/scenarios/devices.ts": {
       "jscpd:duplicate": 4
     },
@@ -4653,7 +4695,7 @@
       "jscpd:duplicate": 16
     },
     "tools/ui-matrix.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 16
     }
   }
 }

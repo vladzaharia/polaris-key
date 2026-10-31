@@ -675,10 +675,53 @@ func _cdc(t: PKeyTestContext, rows: Array) -> void:
 	t.check("the static lengths helper agrees", PKeySyncCdc.lengths(_cdc_input(rows[8]["input"]), int(rows[8]["avg"])) == PackedInt64Array(_int_array(rows[8]["lens"])))
 
 
+## The reference reader of a server-mode chunk object (WIRE-CONTRACT-V5 section 13.8, U-37): a
+## version byte 0, a codec byte, then the body, read in the written order of checks. Not SDK surface
+## (an SDK reads server-mode chunks through its transfer engine); this is the corpus table's own
+## proof, as the Node runner has it.
+func _open_server_chunk(id: PackedByteArray, object: PackedByteArray) -> Dictionary:
+	if object.size() < 2:
+		return {"ok": false, "reason": "shape"}
+	if object.size() > 1048606:
+		return {"ok": false, "reason": "size"}
+	if object[0] != 0:
+		return {"ok": false, "reason": "version"}
+	var codec := object[1]
+	if codec != 0 and codec != 1:
+		return {"ok": false, "reason": "codec"}
+	var plain := object.slice(2)
+	if codec == 1:
+		var size := PKeySyncChunks.zstd_content_size(plain)
+		if size < 0:
+			return {"ok": false, "reason": "decode"}
+		if size > PKeyConstants.SYNC_CDC_MAX_BYTES:
+			return {"ok": false, "reason": "size"}
+		var got: Variant = PKeyPackZstd.new().decode(plain, size)
+		if not (got is PackedByteArray) or (got as PackedByteArray).size() != size:
+			return {"ok": false, "reason": "decode"}
+		plain = got
+	if plain.size() > PKeyConstants.SYNC_CDC_MAX_BYTES:
+		return {"ok": false, "reason": "size"}
+	var hc := HashingContext.new()
+	hc.start(HashingContext.HASH_SHA256)
+	hc.update(plain)
+	if hc.finish() != id:
+		return {"ok": false, "reason": "id"}
+	return {"ok": true, "plain": plain, "codec": codec}
+
+
 func _chunks(t: PKeyTestContext, rows: Array) -> void:
 	for c in rows:
-		var root := _hex(c["rootHex"])
 		var id: String = c["id"]
+		if c["kind"] == "server-object":
+			var got := _open_server_chunk(_hex(c["idHex"]), _hex(c["objectHex"]))
+			var want: Dictionary = c["expect"]
+			if want["result"] == "ok":
+				t.check("chunk %s opens" % id, got["ok"] and (got["plain"] as PackedByteArray).hex_encode() == want["plainHex"] and got["codec"] == int(want["codec"]), str(got.get("reason")))
+			else:
+				t.check("chunk %s is refused as %s" % [id, want["reason"]], not got["ok"] and got["reason"] == want["reason"], str(got))
+			continue
+		var root := _hex(c["rootHex"])
 		if c["kind"] == "id":
 			var plain := _hex(c["plainHex"])
 			t.check("chunk %s e2e id" % id, PKeySyncChunks.chunk_id_hex(root, c["collection"], plain) == c["e2eIdHex"])
