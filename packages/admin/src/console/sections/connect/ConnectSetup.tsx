@@ -141,6 +141,7 @@ export function ConnectSetupPage({
         tab="connect-setup"
         refetching={platform.isFetching && !platform.isPending}
       />
+      <p className="text-sm text-fg-muted">People see it as Nearby Devices.</p>
       <div className="max-w-4xl space-y-6 min-[1280px]:max-w-none">
         {notice}
         <SettingsSection id="connect-relay" title="Relay limits">

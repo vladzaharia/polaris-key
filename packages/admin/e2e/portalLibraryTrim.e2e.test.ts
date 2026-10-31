@@ -195,7 +195,7 @@ describe("the Library shell trim", () => {
       const closedTop = s.y;
       await toggle.click();
       const link = strip.getByRole("link", {
-        name: "Add it in Sign-in methods",
+        name: "Add it in Sign-In Methods",
       });
       await link.waitFor();
       const open = (await strip.boundingBox())!;

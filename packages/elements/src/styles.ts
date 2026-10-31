@@ -1303,6 +1303,11 @@ bdi {
 .pane .links {
   justify-content: start;
 }
+/* A link in a pane ("Check for updates") reads as a link, not a stray label: underlined at rest. */
+.pane .links .btn[data-variant="link"] {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
 
 /* ── Banner, toast, inline status ────────────────────────────────────────────────────────── */
 .banner {

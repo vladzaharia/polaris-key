@@ -855,10 +855,10 @@ msgstr "Gardez {product} dans votre compte"
 msgid "activate.recommend.badge"
 msgstr "Recommandé"
 
-#. Cloud Sync keeps your settings and saves on every device
-#. ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them.
+#. Sync your settings across your devices
+#. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "La synchronisation cloud conserve vos réglages et vos sauvegardes sur chaque appareil"
+msgstr "Gardez vos réglages identiques sur chaque appareil"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -905,10 +905,10 @@ msgstr "Nous envoyons un code à cet e-mail dans votre navigateur. {product} ne 
 msgid "activate.attach.done"
 msgstr "{product} est dans votre compte"
 
-#. Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.
-#. AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone).
+#. Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too.
+#. AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone).
 msgid "activate.attach.syncOn"
-msgstr "La synchronisation cloud est activée sur cet {deviceKind}. Connectez-vous sur vos autres appareils pour les synchroniser aussi."
+msgstr "La synchronisation est activée sur cet {deviceKind}. Connectez-vous sur vos autres appareils pour les synchroniser aussi."
 
 #. Couldn't add this license. Try again in a moment.
 #. AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form.
@@ -1822,7 +1822,7 @@ msgstr "Hors ligne · dernier jour pour utiliser {product}"
 msgid "grace.deadline"
 msgstr "Utilisable hors ligne jusqu’au {date}"
 
-#. Account and license
+#. Account and License
 #. AccountAndLicense: the settings pane for the license and account.
 msgid "account.title"
 msgstr "Compte et licence"
@@ -1847,22 +1847,22 @@ msgstr "Activé avec une clé de licence"
 msgid "account.devices"
 msgstr "Appareils"
 
-#. Cloud Sync
-#. AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term.
+#. Sync Across Devices
+#. AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows.
 msgid "account.cloudSync"
-msgstr "Synchronisation cloud"
+msgstr "Synchronisation entre appareils"
 
 #. Updates
 #. AccountAndLicense: the settings pane for the license and account. Group header.
 msgid "account.updates"
 msgstr "Mises à jour"
 
-#. Update automatically
+#. Update Automatically
 #. AccountAndLicense: the settings pane for the license and account. Switch label.
 msgid "account.autoUpdate"
 msgstr "Mettre à jour automatiquement"
 
-#. Release channel
+#. Release Channel
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.channel"
 msgstr "Canal de publication"
@@ -1872,7 +1872,7 @@ msgstr "Canal de publication"
 msgid "account.version"
 msgstr "Version {version}"
 
-#. Managed settings
+#. Managed Settings
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.managedSettings"
 msgstr "Paramètres gérés"
@@ -2088,7 +2088,7 @@ msgid "cloudSync.signedOut"
 msgstr "Vous êtes déconnecté."
 
 #. Sign in to sync
-#. CloudSyncStatus: a small sync status. Cloud Sync needs an account.
+#. CloudSyncStatus: a small sync status. Syncing needs an account.
 msgid "cloudSync.signIn"
 msgstr "Se connecter pour synchroniser"
 
@@ -2477,7 +2477,7 @@ msgstr "Copier les diagnostics"
 msgid "about.diagnosticsCopied"
 msgstr "Diagnostics copiés"
 
-#. Release channel
+#. Release Channel
 #. ChannelPicker: the release channel choice.
 msgid "channel.title"
 msgstr "Canal de publication"
@@ -4172,7 +4172,7 @@ msgstr "{device} a été remplacé par {newDevice} lorsque vous vous êtes conne
 msgid "signin.mail.newDevice.subject"
 msgstr "Un nouvel appareil s’est connecté à votre compte Polaris Locker"
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
 msgstr "{device} s’est connecté le {date} depuis {place}. Si ce n’était pas vous, déconnectez-le dans Polaris Locker, rubrique « Où vous êtes connecté »."
@@ -5402,10 +5402,10 @@ msgctxt "macos"
 msgid "signin.consent.deny"
 msgstr "Ne pas autoriser"
 
-#. Cloud Sync
+#. Your synced settings and data
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.consent.cloudSync"
-msgstr "Synchronisation cloud"
+msgstr "Vos réglages et données synchronisés"
 
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
@@ -6059,55 +6059,55 @@ msgstr "Appareil non configuré"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez."
 
-#. Device not linked
+#. Device not set up to connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.title"
-msgstr "Appareil non lié"
+msgstr "Appareil non configuré pour se connecter"
 
-#. This device has not been set up to link with your others. Update the app and try again.
+#. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez."
+msgstr "Mettez à jour l'app et réessayez."
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.title"
 msgstr "Trop d'appareils"
 
-#. This account has more linked devices than can be connected. Remove one and try again.
+#. This account has more devices than can be connected. Remove one and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.message"
-msgstr "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez."
+msgstr "Ce compte compte plus d'appareils que l'on ne peut en connecter. Retirez-en un et réessayez."
 
-#. Remote connect is off
+#. Remote connection is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.title"
 msgstr "Connexion à distance désactivée"
 
-#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Remote connection is off for this app. Your devices connect only on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.message"
 msgstr "La connexion à distance est désactivée pour cette app. Vos appareils se connectent uniquement sur le même réseau."
 
-#. Remote connect paused
+#. Remote connection paused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.title"
 msgstr "Connexion à distance en pause"
 
-#. Remote connect is paused for now. Try again later.
+#. Remote connection is paused for now. Try again later.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.message"
 msgstr "La connexion à distance est en pause pour le moment. Réessayez plus tard."
 
-#. Remote limit reached
+#. Remote connection limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.title"
-msgstr "Limite à distance atteinte"
+msgstr "Limite de connexion à distance atteinte"
 
-#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
-msgstr "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
+msgstr "Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6614,10 +6614,10 @@ msgstr "La synchronisation est en pause un instant. Vos modifications sont conse
 msgid "core.codes.encryption_mismatch.title"
 msgstr "Chiffrement incompatible"
 
-#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. This app and Polaris Locker don't agree on encryption. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
-msgstr "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez."
+msgstr "L’app et Polaris Locker ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez."
 
 #. Changed elsewhere
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7379,15 +7379,15 @@ msgstr "Problème de stockage"
 msgid "core.codes.store-failed.message"
 msgstr "Enregistrement impossible sur cet appareil. Vérifiez le stockage et réessayez."
 
-#. Connect unavailable
+#. Nearby devices unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.title"
-msgstr "Connexion indisponible"
+msgstr "Appareils à proximité indisponibles"
 
-#. Nearby connection isn't available for this app on this device.
+#. This app can't use them on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
-msgstr "La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil."
+msgstr "Cette app ne peut pas les utiliser sur cet appareil."
 
 #. Device not verified
 #. Core copy (conformance/parity/copy.en.json, codes).

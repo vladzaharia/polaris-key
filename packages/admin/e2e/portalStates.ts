@@ -1926,7 +1926,7 @@ export const SHIPPED: ShippedState[] = [
     routes: identityOn("three", "nightfall"),
     ready: async (p) => {
       await h1(p, "Nightfall");
-      await p.getByRole("heading", { name: "Sign in to Nightfall" }).waitFor();
+      await p.getByRole("heading", { name: "Sign In to Nightfall" }).waitFor();
     },
   },
   // §4.27 Jump to a product (PX-03).

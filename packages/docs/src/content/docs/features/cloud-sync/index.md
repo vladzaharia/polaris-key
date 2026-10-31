@@ -7,7 +7,7 @@ sidebar:
   order: 1
 ---
 
-Cloud Sync (service slug `sync`) keeps what one person chose or made in one product and syncs it across their devices. It holds synced settings, which are the product's `config` keys a person sets, and records in declared collections, such as save slots. A record may carry one file. Together these are Cloud Sync data.
+Cloud Sync (service slug `sync`) keeps what one person chose or made in one product and syncs it across their devices. It holds synced settings, which are the product's `config` keys a person sets, and records in declared collections, such as save slots. A record may carry one file. Together these are Cloud Sync data. End users see the feature as **Sync Across Devices**.
 
 Settings and records sync today. Files are served only while the operator's `launch.syncFiles` gate is on, and discovery then reports `saves` as true and names `endpoints.files`; until then it reports `saves` as false and `files` as `null`. No SDK uploads files yet. See [Files](/docs/features/cloud-sync/files/).
 

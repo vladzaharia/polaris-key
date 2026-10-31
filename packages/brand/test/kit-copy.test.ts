@@ -242,6 +242,42 @@ describe("the checks refuse", () => {
       );
   });
 
+  it("a developer feature name in a value, a note, a pack or core copy", () => {
+    const errors = errorsAfter((s) => {
+      en(s, "common.cancel").value = "Cloud Sync is on";
+      en(s, "common.close").note = "Direct Transfer lives here.";
+      s.packs.de!.messages["common.back"] = "Cloud Connect";
+      s.core.en!.fallback.message = "Cloud Connect failed ({code}).";
+      s.core.de!.codes["relay_paused"]!.title = "Remote connect paused";
+    });
+    expect(errors.filter((e) => e.includes("developer"))).toEqual([
+      `en common.cancel: "Cloud Sync" is a developer name; users see a plain label (LOCKER-FEATURE-NAMES §1)`,
+      `en common.close: the note names a developer feature (Direct Transfer); say what it does`,
+      `de common.back: "Cloud Connect" is a developer name`,
+      `core en core.fallback.message: "Cloud Connect" is a developer name`,
+      `core de core.codes.relay_paused.title: "Remote connect" is a developer name`,
+    ]);
+  });
+
+  it("English that is not Title Case where a label or section title is", () => {
+    const errors = errorsAfter((s) => {
+      en(s, "account.cloudSync").value = "Sync across devices";
+      en(s, "locker.account.yourData").value = "Your data";
+    });
+    expect(errors).toContain(
+      `en account.cloudSync: a feature label or section title is Title Case in English ("Sync Across Devices")`,
+    );
+    expect(errors).toContain(
+      `en locker.account.yourData: a feature label or section title is Title Case in English ("Your Data")`,
+    );
+    // Other locales keep their own capitalization: no check on a pack.
+    expect(
+      errorsAfter((s) => {
+        s.packs.de!.messages["account.cloudSync"] = "synchronisierung";
+      }).filter((e) => e.includes("Title Case")),
+    ).toEqual([]);
+  });
+
   it("a control character, a tab and a %", () => {
     const errors = errorsAfter((s) => {
       s.packs.ko!.messages["common.cancel"] = "취소\t";

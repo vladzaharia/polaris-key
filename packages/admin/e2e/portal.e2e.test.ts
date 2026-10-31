@@ -776,7 +776,7 @@ describe("Account → Sign-in methods (PX-13, §4.26)", () => {
     });
     try {
       await h1(o.page, "Account");
-      const region = o.page.getByRole("region", { name: "Sign-in methods" });
+      const region = o.page.getByRole("region", { name: "Sign-In Methods" });
       await region.getByRole("button", { name: "Disconnect Steam" }).click();
       await region
         .getByRole("heading", { name: "Disconnect Steam?" })
@@ -856,7 +856,7 @@ describe("Account → Sign-in methods: Make primary and Rename (PX-W19)", () => 
     });
     try {
       await h1(o.page, "Account");
-      const region = o.page.getByRole("region", { name: "Sign-in methods" });
+      const region = o.page.getByRole("region", { name: "Sign-In Methods" });
       await region.getByText(/Found 2 products/).waitFor();
       await region.getByText(/Found 1 product\b/).waitFor();
       await shoot(o.page, "account-methods-w19-desktop-dark");
@@ -895,7 +895,7 @@ describe("Account → Sign-in methods: Make primary and Rename (PX-W19)", () => 
     });
     try {
       await h1(o.page, "Account");
-      const region = o.page.getByRole("region", { name: "Sign-in methods" });
+      const region = o.page.getByRole("region", { name: "Sign-In Methods" });
       await region
         .getByRole("button", { name: "Make mara.f@proton.me primary" })
         .click();
@@ -1156,7 +1156,7 @@ describe("main flows", () => {
     });
     await done
       .getByText(
-        "Its 2 devices came with it. Sign in on them to turn on Cloud Sync.",
+        "Its 2 devices came with it. Sign in on them to turn on syncing.",
       )
       .waitFor();
     await shoot(o.page, "activate-done-devices-desktop-dark");
@@ -1398,7 +1398,7 @@ describe("product page, owner polish 2026-10-07", () => {
     it(`What's new: Markdown formatted, a summary, the full notes in place, focus kept (${reducedMotion})`, async () => {
       const o = await open("three", "/#/p/nightfall", { reducedMotion });
       await h1(o.page, "Nightfall");
-      const news = o.page.getByRole("region", { name: "What's new in 1.4.2" });
+      const news = o.page.getByRole("region", { name: "What's New" });
       await news
         .getByRole("heading", { level: 3, name: "Highlights" })
         .waitFor();
@@ -1456,12 +1456,12 @@ describe("product page, owner polish 2026-10-07", () => {
       await h1(o.page, "Nightfall");
       const links = o.page.getByRole("navigation", { name: nav });
       const order = [
-        "Get it",
+        "Get It",
         "License",
         "Devices 2",
-        "What's new",
+        "What's New",
         "Help",
-        "Your data",
+        "Your Data",
       ];
       expect(await links.getByRole("link").allTextContents()).toEqual(order);
       // The device count is a pill.
@@ -1491,7 +1491,7 @@ describe("product page, owner polish 2026-10-07", () => {
       expect(seen, JSON.stringify(seen)).toEqual(order);
 
       // A picked section holds once the scroll lands, though a card may share its top.
-      for (const pick of ["License", "Get it"]) {
+      for (const pick of ["License", "Get It"]) {
         await links.getByRole("link", { name: pick }).click();
         await o.page.waitForTimeout(300);
         expect(await marked(o.page, nav)).toBe(pick);

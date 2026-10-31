@@ -935,7 +935,7 @@ function DoneStep({
 /**
  * A floating key's devices (notes/S-24 §10, D22; PX-23): on Confirm, "It's on 2 devices already.
  * They keep working and come with it."; on Done, "Its 2 devices came with it." and, when the
- * product runs Cloud Sync, "Sign in on them to turn on Cloud Sync." (the devices keep their
+ * product runs Cloud Sync, "Sign in on them to turn on syncing." (the devices keep their
  * seats and tokens; only signing in on each one turns Cloud Sync on). Nothing for a licence on
  * no device, or when the Worker did not say.
  */

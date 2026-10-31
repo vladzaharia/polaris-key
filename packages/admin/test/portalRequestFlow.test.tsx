@@ -816,7 +816,7 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("lists the reasons to keep the licence: Cloud Sync when the app has it, plus recover and devices", async () => {
+  it("lists the reasons to keep the licence: the sync reason when the app has it, plus recover and devices", async () => {
     await enter(true, preview());
     await screen.findByRole("heading", {
       level: 1,
@@ -828,20 +828,20 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
     expect(
       [...reasons.querySelectorAll("strong")].map((e) => e.textContent),
     ).toEqual([
-      "Cloud Sync",
+      "Sync your settings",
       "Get your license back",
       "Move it to a new device",
     ]);
     expect(
       [...reasons.querySelectorAll("li")].map((e) => e.textContent),
     ).toEqual([
-      "Cloud Sync keeps your settings and saves on every device",
+      "Sync your settings across your devices",
       "Get your license back if you lose the key or this device",
       "Move it to a new device yourself, without asking Example Games",
     ]);
   });
 
-  it("leaves the Cloud Sync reason out when the app has no Cloud Sync, and on the standalone on-ramp", async () => {
+  it("leaves the sync reason out when the app has no sync, and on the standalone on-ramp", async () => {
     await enter(true, preview(), {
       ...VIEW,
       client: { ...VIEW.client, services: { license: true, cloudSync: false } },
@@ -850,7 +850,7 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
       level: 1,
       name: "Keep Diceroll in an account",
     });
-    expect(screen.queryByText(/Cloud Sync keeps/)).toBeNull();
+    expect(screen.queryByText(/saved data the same/)).toBeNull();
     expect(screen.getByText(/Get your license back/)).toBeTruthy();
   });
 

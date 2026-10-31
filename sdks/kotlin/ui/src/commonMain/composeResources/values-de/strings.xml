@@ -313,8 +313,8 @@
     <string name="activate_recommend_title">%1$s in Ihrem Konto behalten</string>
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">Empfohlen</string>
-    <!-- ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">Die Cloud-Synchronisierung hält Ihre Einstellungen und Spielstände auf jedem Gerät aktuell</string>
+    <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
+    <string name="activate_recommend_sync">Ihre Einstellungen auf jedem Gerät gleich halten</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
     <string name="activate_recommend_recover">Ihre Lizenz zurückholen, wenn Sie den Schlüssel oder dieses Gerät verlieren</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
@@ -332,8 +332,8 @@
     <string name="activate_attach_fine">Wir senden einen Code an diese E-Mail in Ihrem Browser. %1$s sieht ihn nie.</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$s ist in Ihrem Konto</string>
-    <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
-    <string name="activate_attach_syncOn">Die Cloud-Synchronisierung ist für dieses %1$s aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren.</string>
+    <!-- AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
+    <string name="activate_attach_syncOn">Die Synchronisierung ist für dieses %1$s aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren.</string>
     <!-- AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form. -->
     <string name="activate_attach_failed">Die Lizenz konnte nicht hinzugefügt werden. Versuchen Sie es gleich noch einmal.</string>
     <!-- AddToAccount: the name field. The title is Add your name and email, so the label is one word. -->
@@ -677,8 +677,8 @@
     <string name="account_keyOnly">Mit einem Lizenzschlüssel aktiviert</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
     <string name="account_devices">Geräte</string>
-    <!-- AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term. -->
-    <string name="account_cloudSync">Cloud-Synchronisierung</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows. -->
+    <string name="account_cloudSync">Synchronisierung auf allen Geräten</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Group header. -->
     <string name="account_updates">Updates</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Switch label. -->
@@ -768,7 +768,7 @@
     <string name="cloudSync_error">Synchronisierung fehlgeschlagen. Versuchen Sie es später erneut.</string>
     <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
     <string name="cloudSync_signedOut">Sie sind abgemeldet.</string>
-    <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
+    <!-- CloudSyncStatus: a small sync status. Syncing needs an account. -->
     <string name="cloudSync_signIn">Zum Synchronisieren anmelden</string>
     <string name="cloudSync_signIn__macos">Zum Synchronisieren anmelden</string>
     <!-- CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it. -->
@@ -2021,7 +2021,7 @@
     <string name="signin_consent_deny">Nicht erlauben</string>
     <string name="signin_consent_deny__macos">Nicht erlauben</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_consent_cloudSync">Cloud-Synchronisierung</string>
+    <string name="signin_consent_cloudSync">Ihre synchronisierten Einstellungen und Daten</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="signin_consent_newLicense">Neu: %1$s-Lizenz, wird beim Fortfahren erstellt</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -2276,31 +2276,31 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_invalid_title">Gerät nicht eingerichtet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_invalid_message">Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut.</string>
+    <string name="core_codes_device_keys_invalid_message">Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisieren Sie die App und versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_title">Gerät nicht verknüpft</string>
+    <string name="core_codes_device_keys_required_title">Gerät nicht zum Verbinden eingerichtet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">Dieses Gerät wurde nicht zum Verknüpfen mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut.</string>
+    <string name="core_codes_device_keys_required_message">Aktualisieren Sie die App und versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">Zu viele Geräte</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_ring_too_large_message">Dieses Konto hat mehr verknüpfte Geräte, als verbunden werden können. Entferne eines und versuche es erneut.</string>
+    <string name="core_codes_ring_too_large_message">Dieses Konto hat mehr Geräte, als verbunden werden können. Entfernen Sie eines und versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_disabled_title">Fernverbindung aus</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_disabled_message">Die Fernverbindung ist für diese App ausgeschaltet. Deine Geräte verbinden sich nur im selben Netzwerk.</string>
+    <string name="core_codes_relay_disabled_message">Die Fernverbindung ist für diese App ausgeschaltet. Ihre Geräte verbinden sich nur im selben Netzwerk.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_paused_title">Fernverbindung pausiert</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_paused_message">Die Fernverbindung ist vorübergehend pausiert. Versuche es später erneut.</string>
+    <string name="core_codes_relay_paused_message">Die Fernverbindung ist vorübergehend pausiert. Versuchen Sie es später erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_title">Fernlimit erreicht</string>
+    <string name="core_codes_relay_quota_exceeded_title">Limit für Fernverbindungen erreicht</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_message">Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.</string>
+    <string name="core_codes_relay_quota_exceeded_message">Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">Verbindung abgelaufen</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_ticket_invalid_message">Die Verbindungsanfrage ist abgelaufen. Versuche es erneut.</string>
+    <string name="core_codes_relay_ticket_invalid_message">Die Verbindungsanfrage ist abgelaufen. Versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">Keine Schlüsseleingaben mehr</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2500,7 +2500,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_title">Verschlüsselung passt nicht</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_encryption_mismatch_message">App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut.</string>
+    <string name="core_codes_encryption_mismatch_message">App und Polaris Locker sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_revision_conflict_title">Anderswo geändert</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2806,9 +2806,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_message">Auf diesem Gerät konnte nichts gespeichert werden. Prüfen Sie den Speicher und versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_title">Verbindung nicht verfügbar</string>
+    <string name="core_codes_connect_unavailable_title">Geräte in der Nähe nicht verfügbar</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_message">Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar.</string>
+    <string name="core_codes_connect_unavailable_message">Diese App kann sie auf diesem Gerät nicht nutzen.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_title">Gerät nicht bestätigt</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

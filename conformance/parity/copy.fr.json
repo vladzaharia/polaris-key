@@ -78,12 +78,12 @@
       "message": "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez."
     },
     "device_keys_required": {
-      "title": "Appareil non lié",
-      "message": "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez."
+      "title": "Appareil non configuré pour se connecter",
+      "message": "Mettez à jour l'app et réessayez."
     },
     "ring_too_large": {
       "title": "Trop d'appareils",
-      "message": "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez."
+      "message": "Ce compte compte plus d'appareils que l'on ne peut en connecter. Retirez-en un et réessayez."
     },
     "relay_disabled": {
       "title": "Connexion à distance désactivée",
@@ -94,8 +94,8 @@
       "message": "La connexion à distance est en pause pour le moment. Réessayez plus tard."
     },
     "relay_quota_exceeded": {
-      "title": "Limite à distance atteinte",
-      "message": "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
+      "title": "Limite de connexion à distance atteinte",
+      "message": "Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
     },
     "relay_ticket_invalid": {
       "title": "Connexion expirée",
@@ -299,7 +299,7 @@
     },
     "encryption_mismatch": {
       "title": "Chiffrement incompatible",
-      "message": "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez."
+      "message": "L’app et Polaris Locker ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez."
     },
     "revision_conflict": {
       "title": "Modifié ailleurs",
@@ -606,8 +606,8 @@
       "message": "Enregistrement impossible sur cet appareil. Vérifiez le stockage et réessayez."
     },
     "connect-unavailable": {
-      "title": "Connexion indisponible",
-      "message": "La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil."
+      "title": "Appareils à proximité indisponibles",
+      "message": "Cette app ne peut pas les utiliser sur cet appareil."
     },
     "peer-cert-invalid": {
       "title": "Appareil non vérifié",

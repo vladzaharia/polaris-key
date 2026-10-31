@@ -851,10 +851,10 @@ msgstr "将{product}保存到你的账户"
 msgid "activate.recommend.badge"
 msgstr "推荐"
 
-#. Cloud Sync keeps your settings and saves on every device
-#. ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them.
+#. Sync your settings across your devices
+#. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "云同步会在每台设备上保留你的设置和存档"
+msgstr "让你的设置在每台设备上保持一致"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -901,10 +901,10 @@ msgstr "我们会在浏览器中向这个电子邮件发送验证码。{product}
 msgid "activate.attach.done"
 msgstr "{product}已在你的账户中"
 
-#. Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.
-#. AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone).
+#. Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too.
+#. AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone).
 msgid "activate.attach.syncOn"
-msgstr "这台{deviceKind}已开启云同步。在其他设备上登录即可一并同步。"
+msgstr "这台{deviceKind}已开启同步。在其他设备上登录即可一并同步。"
 
 #. Couldn't add this license. Try again in a moment.
 #. AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form.
@@ -1812,7 +1812,7 @@ msgstr "离线 · 今天是使用{product}的最后一天"
 msgid "grace.deadline"
 msgstr "离线可用至{date}"
 
-#. Account and license
+#. Account and License
 #. AccountAndLicense: the settings pane for the license and account.
 msgid "account.title"
 msgstr "账户与许可证"
@@ -1837,22 +1837,22 @@ msgstr "已通过许可证密钥激活"
 msgid "account.devices"
 msgstr "设备"
 
-#. Cloud Sync
-#. AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term.
+#. Sync Across Devices
+#. AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows.
 msgid "account.cloudSync"
-msgstr "云同步"
+msgstr "跨设备同步"
 
 #. Updates
 #. AccountAndLicense: the settings pane for the license and account. Group header.
 msgid "account.updates"
 msgstr "更新"
 
-#. Update automatically
+#. Update Automatically
 #. AccountAndLicense: the settings pane for the license and account. Switch label.
 msgid "account.autoUpdate"
 msgstr "自动更新"
 
-#. Release channel
+#. Release Channel
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.channel"
 msgstr "发布渠道"
@@ -1862,7 +1862,7 @@ msgstr "发布渠道"
 msgid "account.version"
 msgstr "版本{version}"
 
-#. Managed settings
+#. Managed Settings
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.managedSettings"
 msgstr "受管理的设置"
@@ -2078,7 +2078,7 @@ msgid "cloudSync.signedOut"
 msgstr "你已退出登录。"
 
 #. Sign in to sync
-#. CloudSyncStatus: a small sync status. Cloud Sync needs an account.
+#. CloudSyncStatus: a small sync status. Syncing needs an account.
 msgid "cloudSync.signIn"
 msgstr "登录以同步"
 
@@ -2467,7 +2467,7 @@ msgstr "复制诊断信息"
 msgid "about.diagnosticsCopied"
 msgstr "诊断信息已复制"
 
-#. Release channel
+#. Release Channel
 #. ChannelPicker: the release channel choice.
 msgid "channel.title"
 msgstr "发布渠道"
@@ -4152,7 +4152,7 @@ msgstr "你于{date}登录{product}时，{device}已被{newDevice}替换。如�
 msgid "signin.mail.newDevice.subject"
 msgstr "有新设备登录了你的Polaris Locker账户"
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
 msgstr "{device}于{date}从{place}登录。如果这不是你本人操作，请在Polaris Locker的“你的登录位置”中将其退出登录。"
@@ -5382,10 +5382,10 @@ msgctxt "macos"
 msgid "signin.consent.deny"
 msgstr "不允许"
 
-#. Cloud Sync
+#. Your synced settings and data
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.consent.cloudSync"
-msgstr "云同步"
+msgstr "你已同步的设置和数据"
 
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
@@ -6033,55 +6033,55 @@ msgstr "设备未设置"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "无法为同步设置此设备。请更新应用后重试。"
 
-#. Device not linked
+#. Device not set up to connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.title"
-msgstr "设备未关联"
+msgstr "设备未设置连接"
 
-#. This device has not been set up to link with your others. Update the app and try again.
+#. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "此设备尚未设置为与你的其他设备关联。请更新应用后重试。"
+msgstr "请更新应用后重试。"
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.title"
 msgstr "设备过多"
 
-#. This account has more linked devices than can be connected. Remove one and try again.
+#. This account has more devices than can be connected. Remove one and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.message"
-msgstr "此账户关联的设备超出了可连接的数量。请移除一台后重试。"
+msgstr "此账户的设备超出了可连接的数量。请移除一台后重试。"
 
-#. Remote connect is off
+#. Remote connection is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.title"
 msgstr "远程连接已关闭"
 
-#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Remote connection is off for this app. Your devices connect only on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.message"
 msgstr "此应用已关闭远程连接。你的设备仅能在同一网络下连接。"
 
-#. Remote connect paused
+#. Remote connection paused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.title"
 msgstr "远程连接已暂停"
 
-#. Remote connect is paused for now. Try again later.
+#. Remote connection is paused for now. Try again later.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.message"
 msgstr "远程连接暂时暂停。请稍后重试。"
 
-#. Remote limit reached
+#. Remote connection limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.title"
-msgstr "已达远程用量上限"
+msgstr "已达远程连接用量上限"
 
-#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
-msgstr "远程连接用量已用完，即将重置。同一网络下的设备仍可连接。"
+msgstr "即将重置。同一网络下的设备仍可连接。"
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6588,10 +6588,10 @@ msgstr "同步暂时暂停。你的更改会保留，稍后同步。"
 msgid "core.codes.encryption_mismatch.title"
 msgstr "加密不一致"
 
-#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. This app and Polaris Locker don't agree on encryption. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
-msgstr "应用与同步服务的加密设置不一致。请更新应用后重试。"
+msgstr "应用与 Polaris Locker 的加密设置不一致。请更新应用后重试。"
 
 #. Changed elsewhere
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7353,15 +7353,15 @@ msgstr "存储出现问题"
 msgid "core.codes.store-failed.message"
 msgstr "无法保存到此设备。请检查存储空间后重试。"
 
-#. Connect unavailable
+#. Nearby devices unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.title"
-msgstr "无法连接"
+msgstr "无法使用附近的设备"
 
-#. Nearby connection isn't available for this app on this device.
+#. This app can't use them on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
-msgstr "此设备上的此应用无法连接附近的设备。"
+msgstr "此设备上的此应用无法使用。"
 
 #. Device not verified
 #. Core copy (conformance/parity/copy.en.json, codes).

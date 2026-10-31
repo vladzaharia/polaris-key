@@ -311,8 +311,8 @@
     <string name="activate_recommend_title">%1$s을(를) 계정에 보관하세요</string>
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">추천</string>
-    <!-- ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">클라우드 동기화로 설정과 저장 데이터를 모든 기기에서 유지하세요</string>
+    <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
+    <string name="activate_recommend_sync">설정을 모든 기기에서 똑같이 유지하세요</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
     <string name="activate_recommend_recover">키나 이 기기를 잃어도 라이선스를 되찾으세요</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
@@ -330,8 +330,8 @@
     <string name="activate_attach_fine">브라우저에서 이 이메일로 코드를 보냅니다. %1$s은(는) 코드를 보지 못합니다.</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$s이(가) 계정에 있습니다</string>
-    <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
-    <string name="activate_attach_syncOn">이 %1$s에서 클라우드 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다.</string>
+    <!-- AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
+    <string name="activate_attach_syncOn">이 %1$s에서 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다.</string>
     <!-- AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form. -->
     <string name="activate_attach_failed">이 라이선스를 추가하지 못했어요. 잠시 후 다시 시도하세요.</string>
     <!-- AddToAccount: the name field. The title is Add your name and email, so the label is one word. -->
@@ -672,8 +672,8 @@
     <string name="account_keyOnly">라이선스 키로 활성화됨</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
     <string name="account_devices">기기</string>
-    <!-- AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term. -->
-    <string name="account_cloudSync">클라우드 동기화</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows. -->
+    <string name="account_cloudSync">기기 간 동기화</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Group header. -->
     <string name="account_updates">업데이트</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Switch label. -->
@@ -763,7 +763,7 @@
     <string name="cloudSync_error">동기화하지 못했어요. 나중에 다시 시도하세요.</string>
     <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
     <string name="cloudSync_signedOut">로그아웃된 상태예요.</string>
-    <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
+    <!-- CloudSyncStatus: a small sync status. Syncing needs an account. -->
     <string name="cloudSync_signIn">로그인하여 동기화</string>
     <string name="cloudSync_signIn__macos">로그인하여 동기화</string>
     <!-- CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it. -->
@@ -2011,7 +2011,7 @@
     <string name="signin_consent_deny">허용 안 함</string>
     <string name="signin_consent_deny__macos">허용 안 함</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_consent_cloudSync">클라우드 동기화</string>
+    <string name="signin_consent_cloudSync">동기화된 설정과 데이터</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="signin_consent_newLicense">새 %1$s 라이선스: 계속하면 생성돼요</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -2265,9 +2265,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_invalid_message">이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_title">기기가 연결되지 않음</string>
+    <string name="core_codes_device_keys_required_title">기기를 연결하도록 설정되지 않음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">이 기기는 다른 기기와 연결하도록 설정되지 않았습니다. 앱을 업데이트한 후 다시 시도하세요.</string>
+    <string name="core_codes_device_keys_required_message">앱을 업데이트한 후 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">기기가 너무 많음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2283,7 +2283,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_quota_exceeded_title">원격 연결 한도 도달</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_message">원격 연결 한도를 모두 사용했습니다. 곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다.</string>
+    <string name="core_codes_relay_quota_exceeded_message">곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">연결 만료</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2487,7 +2487,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_title">암호화 불일치</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_encryption_mismatch_message">앱과 동기화 서비스의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요.</string>
+    <string name="core_codes_encryption_mismatch_message">앱과 Polaris Locker의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_revision_conflict_title">다른 곳에서 변경됨</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2793,9 +2793,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_message">이 기기에 저장하지 못했어요. 저장 공간을 확인하고 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_title">연결할 수 없음</string>
+    <string name="core_codes_connect_unavailable_title">근처 기기를 사용할 수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_message">이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다.</string>
+    <string name="core_codes_connect_unavailable_message">이 기기에서는 이 앱이 사용할 수 없습니다.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_title">기기를 확인할 수 없음</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
