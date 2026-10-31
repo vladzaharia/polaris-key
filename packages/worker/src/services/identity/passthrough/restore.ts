@@ -45,7 +45,7 @@ import { appendAudit } from "../../../core/audit.js";
 import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { isValidClientDeviceId } from "../../../core/devices.js";
 import {
-  agreeKeyHeldElsewhere,
+  deviceKeysHeldElsewhere,
   deviceSignKey,
   isValidAgreeKey,
 } from "../../../core/devices/keys.js";
@@ -232,8 +232,15 @@ export async function handleRestoreGrant(
       retryAfter: RESTORE_ACCOUNT_RATE.windowSec,
     });
 
-  // ── 8: an agreement key another device holds ─────────────────────────────────────────────────
-  if (await agreeKeyHeldElsewhere(db, product.slug, agreeKey, deviceId))
+  // ── 8: a key another device holds ─────────────────────────────────────────────────
+  if (
+    await deviceKeysHeldElsewhere(
+      db,
+      product.slug,
+      { signKey: deviceKey, agreeKey },
+      deviceId,
+    )
+  )
     return refused();
 
   // ── 9: the terms, then the person's consent ──────────────────────────────────────────────────
