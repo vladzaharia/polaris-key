@@ -46,7 +46,7 @@ import type {
 } from "./protocol.js";
 import type { FinalizeResponse } from "@polaris-key/protocol/sync";
 import { hexEncode } from "../../../platform/bytes.js";
-import { randomToken } from "../../../platform/random.js";
+import { randomBytes, randomToken } from "../../../platform/random.js";
 import type { SqlStore } from "./sqlStore.js";
 
 /** What an operation hands back to `fetch`: a body in the object's protocol and a status. */
@@ -144,7 +144,7 @@ function ensureSsecKey(host: FileHost): string {
   const have = host.store.getMeta(SSEC_KID);
   if (have !== undefined && host.store.getSsecKey(have)) return have;
   const kid = `sk_${randomToken(12)}`;
-  const key = crypto.getRandomValues(new Uint8Array(32));
+  const key = randomBytes(32);
   host.store.transaction(() => {
     host.store.putSsecKey(kid, key);
     host.store.setMeta(SSEC_KID, kid);
