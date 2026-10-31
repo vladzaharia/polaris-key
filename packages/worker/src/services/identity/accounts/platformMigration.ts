@@ -50,6 +50,8 @@ import { normalizeEmail } from "../../../platform/email.js";
 import { erasureVerdict } from "../../../core/accounts/erasureFence.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
+import { adminOidcConfig } from "../../../platform/platformOidc.js";
+import { isConsoleIdpIssuer } from "../../../core/rbac/operatorIssuer.js";
 import { portalIdentityIssuerKey, recordLinkGroups } from "../portal/repo.js";
 import { providerVouchesForEmail } from "../providers/vouch.js";
 import {
@@ -336,13 +338,37 @@ export async function claimPlatformSubject(
   });
   switch (result.status) {
     case "signed_in":
-      await recordLinkGroups(db, result.linkId, input.groups, now);
+      // On the console IdP's own issuer, a link the console sign-in made strong holds the facts
+      // the console's rules read; a platform claim does not rewrite or clear them. A customer's
+      // link there is not strong and keeps this write.
+      if (!(await holdsConsoleFacts(db, env, result.linkId))) {
+        await recordLinkGroups(db, result.linkId, input.groups, now);
+      }
       return { status: "signed_in", result };
     case "join_offer":
       return { status: "join_offer", email: result.email, identity };
     case "refused":
       return { status: "refused", result };
   }
+}
+
+/** True for a strong link on the console IdP's issuer: its rule facts belong to the console sign-in. */
+async function holdsConsoleFacts(
+  db: Db,
+  env: Env,
+  linkId: string,
+): Promise<boolean> {
+  const link = await db.first<{ issuer_key: string; strong_at: number | null }>(
+    "SELECT issuer_key, strong_at FROM account_links WHERE id = ?",
+    linkId,
+  );
+  if (!link || link.strong_at === null) return false;
+  const consoleIssuer = adminOidcConfig(env)?.issuer;
+  return (
+    isConsoleIdpIssuer(env, link.issuer_key) ||
+    (consoleIssuer !== undefined &&
+      link.issuer_key === portalIdentityIssuerKey(consoleIssuer))
+  );
 }
 
 /**
