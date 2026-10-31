@@ -53,7 +53,9 @@ import Foundation
         }
 
         /// The `{"v":1,"restoreId","secret"}` value of the restore item.
-        public struct RestoreValue: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible {
+        public struct RestoreValue: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
+            CustomReflectable
+        {
             public let restoreId: String
             public let secret: String
 
@@ -64,6 +66,11 @@ import Foundation
 
             public var description: String { "RestoreValue(restoreId: \(restoreId), secret: <redacted>)" }
             public var debugDescription: String { description }
+
+            /// `dump` and `Mirror` show the same redacted fields as `description`.
+            public var customMirror: Mirror {
+                Mirror(self, children: ["restoreId": restoreId, "secret": "<redacted>"], displayStyle: .struct)
+            }
 
             public func encoded() throws -> Data {
                 // The keys are sorted, so the same value is the same bytes.

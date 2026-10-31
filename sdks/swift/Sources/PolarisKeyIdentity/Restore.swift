@@ -361,6 +361,8 @@ extension IdentityClient {
     /// key in the same request; false is a sign-out with no session (a revoked platform credential), where an
     /// item that was there is dropped and its revocation queued.
     func restoreAfterSignOut(serverRevoked: Bool) async {
+        // A daily check that began during the Worker's sign-out finishes first, so its item goes with the rest.
+        await restoreAwaitDailyCheck()
         var hadItem = false
         if let store = restoreStore() {
             hadItem = ((try? await store.read()) ?? nil) != nil

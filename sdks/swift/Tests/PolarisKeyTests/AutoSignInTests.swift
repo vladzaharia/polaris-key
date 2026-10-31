@@ -853,6 +853,80 @@ final class AutoSignInTests: XCTestCase {
         XCTAssertEqual(deletes.count, 1, "the item may have been deleted by a sibling; the key is still revoked")
     }
 
+    func testAnOfflineSignOutDeletesTheItemAndQueuesTheDelete() async throws {
+        let store = InMemoryStore(deviceId: "DEVICE00000000000000000000000001")
+        await store.setToken("pkeyt_a")
+        await server.drop("/djdl/.well-known/polaris.json")
+        let offline = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: [:], trustRefresh: false, store: store, transport: server.transport,
+                expectedServices: [], fingerprint: false,
+                connect: ConnectOptions(keys: try LabelKeyPort(label: "transcript-device-key-1"))))
+        backup.item.set(itemA)
+        offline.identity.installRestoreStore(backup)
+        do {
+            _ = try await offline.identity.signOut()
+            XCTFail("the sign-out should have failed")
+        } catch let error as PolarisError {
+            XCTAssertEqual(error.code, ErrorCode.networkError)
+        }
+        XCTAssertNil(backup.item.current)
+        let pending = await store.readRecord("restore-delete-pending")
+        XCTAssertNotNil(pending)
+
+        // The next launch, with discovery up, sends the DELETE first.
+        server = StubServer()
+        await discovery(restore: true)
+        await server.route("/djdl/identity/restore") { _ in StubServer.Reply(status: 204, body: "") }
+        let online = try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: [:], trustRefresh: false, store: store, transport: server.transport,
+                expectedServices: [.identity], fingerprint: false,
+                connect: ConnectOptions(keys: try LabelKeyPort(label: "transcript-device-key-1"))))
+        online.identity.installRestoreStore(backup)
+        _ = try await online.identity.autoSignIn()
+        let sent = await restoreRequests("DELETE")
+        XCTAssertEqual(sent.count, 1)
+        let cleared = await store.readRecord("restore-delete-pending")
+        XCTAssertNil(cleared)
+    }
+
+    func testAnEnrolmentDuringSignOutLeavesNoItemAfterIt() async throws {
+        await discovery(restore: true)
+        let created = enrolBody
+        let holder = LockedValue<PolarisKeyClient?>(nil)
+        let generation = LockedValue<Int>(0)
+        let gate = backup
+        await server.route("/djdl/identity/restore") { request in
+            request.method == "DELETE"
+                ? StubServer.Reply(status: 204, body: "")
+                : StubServer.Reply(status: 201, body: created)
+        }
+        // A daily check begins while the Worker handles the sign-out, after the client's own revocation.
+        await server.route("/djdl/identity/signout") { _ in
+            if let c = holder.current {
+                c.identity.restoreLaunchDailyCheck(generation: generation.current)
+                // Wait until the check is inside its first read, so it has passed the generation test.
+                for _ in 0..<400 where !gate.calls.current.contains("read") { usleep(5_000) }
+                Task {
+                    try? await Task.sleep(nanoseconds: 300_000_000)
+                    gate.hold.set(false)
+                }
+            }
+            return StubServer.Reply(status: 200, body: #"{"released":false}"#)
+        }
+        let (c, _) = try await client(token: "pkeyt_a", licensed: true)
+        holder.set(c)
+        generation.set(await c.core.signOutGeneration + 1)
+        backup.hold.set(true)
+        _ = try await c.identity.signOut()
+        backup.hold.set(false)
+        await c.identity.restoreAwaitDailyCheck()
+        XCTAssertNil(backup.item.current, "the item a check wrote during the sign-out is gone with the rest")
+    }
+
     func testTheDailyCheckIsDetachedAndNeverDelaysTheSignInResult() async throws {
         await discovery(restore: true)
         await server.reply("/djdl/identity/restore", status: 201, body: enrolBody)

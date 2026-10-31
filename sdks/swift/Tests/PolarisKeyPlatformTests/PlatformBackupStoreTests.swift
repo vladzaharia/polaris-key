@@ -146,6 +146,16 @@
             }
         }
 
+        func testRestoreValueRedactsInDumpAndMirror() {
+            var dumped = ""
+            dump(value, to: &dumped)
+            XCTAssertFalse(dumped.contains("s3cr3t-value"), dumped)
+            XCTAssertTrue(dumped.contains("redacted"))
+            let shown = Mirror(reflecting: value).children.map { "\($0.label ?? ""): \($0.value)" }.joined()
+            XCTAssertFalse(shown.contains("s3cr3t-value"), shown)
+            XCTAssertTrue(shown.contains("rst_1"), "the id is not a secret")
+        }
+
         func testMissingEntitlementAndNotAvailableAreUnavailable() throws {
             for status in [OSStatus(-34018), errSecNotAvailable] {
                 let kc = FakeKeychain()
