@@ -522,6 +522,9 @@ export class CloudTransfer {
     };
     if ("write" in e) {
       live();
+      // A session that has closed may have effects still queued. Once a new session has taken
+      // its partial over (`#claim`), they land nowhere: the new session re-read and truncated it.
+      if (this.#live.get(e.write) !== wire) return;
       return store.write(e.write, e.offset, e.data);
     }
     if ("create" in e) {

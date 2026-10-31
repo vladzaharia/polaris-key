@@ -397,6 +397,52 @@ describe.each([
     counted.mockRestore();
   });
 
+  it("writes queued by a closed session cannot land after a new session took the partial over (R-9b)", async () => {
+    const w = await make();
+    const size = 1_200_000;
+    const chunk = 4096;
+    w.a.cloudConnect.transfer.onOffer(() => ({
+      saveTo: join(w.out, "big.bin"),
+    }));
+    // Hold the receiver's second write after it landed, so the effects behind it stay queued.
+    let calls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const real = PartialStore.prototype.write;
+    const spy = vi
+      .spyOn(PartialStore.prototype, "write")
+      .mockImplementation(async function (this: PartialStore, ...args) {
+        calls++;
+        await real.apply(this, args);
+        if (calls === 2) {
+          void w.inn.at(-1)!.close();
+          await gate;
+        }
+      });
+    let id = "";
+    await expect(
+      w.b.cloudConnect.transfer.send(A, content(size), {
+        chunk,
+        onStart: (t) => (id = t.id),
+      }),
+    ).rejects.toMatchObject({ code: "peer-closed" });
+    await until(() => partsOf(w, w.a).length === 2);
+    // The same transfer again takes the partial over while the old chain is still held.
+    const second = w.b.cloudConnect.transfer.send(A, content(size), {
+      chunk,
+      id,
+    });
+    await sleep(50);
+    release();
+    await second;
+    spy.mockRestore();
+    expect(readFileSync(join(w.out, "big.bin"))).toEqual(
+      Buffer.from(content(size)),
+    );
+    // Every chunk was written once: none of the old session's queued writes ran.
+    expect(calls).toBe(Math.ceil(size / chunk));
+  });
+
   it("a kept partial that vanished before the resume starts the transfer afresh, without ending the process", async () => {
     const w = await make();
     const size = 600_000;
