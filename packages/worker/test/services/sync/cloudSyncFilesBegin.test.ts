@@ -31,6 +31,7 @@ import {
   filesWorld,
   meta,
   push,
+  r2Writes,
   setGate,
   uploadPath,
   uploadRow,
@@ -471,9 +472,21 @@ describe("the limits", () => {
     expect((await begin(w, "saves", "late", beginBody(1))).status).toBe(200);
   });
 
-  it("limiter down: it fails open and the begin goes through", async () => {
+  it("begin refuses with 503 when the limiter cannot be read, before the object and R2", async () => {
     const w = await filesWorld();
-    breakLimiter(w);
+    const restore = breakLimiter(w);
+    const calls = w.ns.calls.length;
+    let res!: Response;
+    const writes = await r2Writes(w, async () => {
+      res = await begin(w, "saves", "a", beginBody(1));
+    });
+    expect([res.status, await errorCode(res)]).toEqual([503, "unavailable"]);
+    expect(res.headers.get("retry-after")).toBe("5");
+    expect(writes).toBe(0);
+    expect(w.ns.calls.length).toBe(calls);
+    // The person's object was never created, so no session row and no reservation exist.
+    expect(w.ns.instances.size).toBe(0);
+    restore();
     expect((await begin(w, "saves", "a", beginBody(1))).status).toBe(200);
   });
 

@@ -18,6 +18,7 @@ import {
   begin,
   beginBody,
   breakLimiter,
+  r2Writes,
   bytesOf,
   call,
   digestHeader,
@@ -504,9 +505,28 @@ describe("the byte routes' front door", () => {
     ).toBe(204);
   });
 
-  it("limiter down: it fails open", async () => {
+  it("a part PUT and a single PUT refuse with 503 when the limiter cannot be read, with no R2 call", async () => {
     const { w, bytes, up } = await single(100);
-    breakLimiter(w);
+    const big = await opened(w, "saves", "m1", bytesOf(9 * MIB));
+    const restore = breakLimiter(w);
+    const refused: Response[] = [];
+    const writes = await r2Writes(w, async () => {
+      refused.push(
+        await putBytes(w, uploadPath("saves", "s1", up.uploadId), bytes),
+        await putBytes(
+          w,
+          partPath("saves", "m1", big.uploadId, 1),
+          bytesOf(8 * MIB),
+        ),
+      );
+    });
+    for (const res of refused) {
+      expect([res.status, await errorCode(res)]).toEqual([503, "unavailable"]);
+      expect(res.headers.get("retry-after")).toBe("5");
+    }
+    expect(writes).toBe(0);
+    expect(w.r2.keys()).toEqual([]);
+    restore();
     expect(
       (await putBytes(w, uploadPath("saves", "s1", up.uploadId), bytes)).status,
     ).toBe(204);
