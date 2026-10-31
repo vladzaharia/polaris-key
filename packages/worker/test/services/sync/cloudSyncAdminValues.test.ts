@@ -6,7 +6,7 @@
  * writes no audit row, each successful action writes exactly one audit row, and a delete takes
  * the object, the directory row and the key ring.
  */
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { SyncJson } from "@polaris-key/protocol/sync";
 import { handleAdmin } from "../../../src/console/index.js";
 import {
@@ -14,7 +14,14 @@ import {
   CSRF_HEADER,
 } from "../../../src/core/console/session.js";
 import { consoleTestSession } from "../../consoleSessionHelper.js";
-import { createRing, getRing } from "../../../src/core/keyring/store.js";
+import {
+  createRing,
+  getRing,
+  keyringStore,
+} from "../../../src/core/keyring/store.js";
+import { cloudSyncStore } from "../../../src/services/sync/subjectStore.js";
+import { ADMIN_ROUTES } from "../../../src/console/routes.js";
+import { findRoute, levelOf } from "../../../src/console/routeMatch.js";
 import { setServices } from "../../../src/core/products/store.js";
 import { serializeServices } from "../../../src/core/services.js";
 import { signIn } from "../../../src/services/identity/accounts/signIn.js";
@@ -31,7 +38,7 @@ import {
 } from "./cloudSyncFilesWorld.js";
 
 beforeAll(() => installDigestStream());
-afterEach(() => undefined);
+afterEach(() => vi.restoreAllMocks());
 
 const GROUP = "platform-admins";
 const OTHER = "other";
@@ -257,6 +264,9 @@ describe("files", () => {
     expect(live.status).toBe(200);
     expect(live.headers.get("content-disposition")).toBe("attachment");
     expect(live.headers.get("cache-control")).toBe("no-store");
+    // L-1: the console's security headers, and the file never runs.
+    expect(live.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(live.headers.get("content-security-policy")).toMatch(/; sandbox$/);
     expect(new Uint8Array(await live.arrayBuffer())).toEqual(two);
 
     const revs = (await (
@@ -348,6 +358,24 @@ describe("delete", () => {
     ]);
   });
 
+  it("leaves one audit row when the object's erase fails (M-1)", async () => {
+    const { w, call, audits } = await withData();
+    vi.spyOn(cloudSyncStore, "delete").mockRejectedValue(new Error("boom"));
+    await expect(
+      call("POST", SLUG, w.subject, "/delete", { json: { confirm: true } }),
+    ).rejects.toThrow("boom");
+    expect((await audits()).map((a) => a.action)).toEqual(["sync.data.delete"]);
+  });
+
+  it("leaves one audit row when the key ring's removal fails (M-1)", async () => {
+    const { w, call, audits } = await withData();
+    vi.spyOn(keyringStore, "delete").mockRejectedValue(new Error("boom"));
+    await expect(
+      call("POST", SLUG, w.subject, "/delete", { json: { confirm: true } }),
+    ).rejects.toThrow("boom");
+    expect((await audits()).map((a) => a.action)).toEqual(["sync.data.delete"]);
+  });
+
   it("needs a step-up and a confirmation, and is 404 for another product's subject", async () => {
     const { w, call, stale, otherSubject, audits } = await withData();
     expect(
@@ -370,5 +398,28 @@ describe("delete", () => {
     ).toBe(404);
     expect(await audits()).toEqual([]);
     expect(await getRing(w.db, SLUG, w.subject)).not.toBeNull();
+  });
+});
+
+describe("level (M-2)", () => {
+  const level = (method: "GET" | "POST", tail: string[]) => {
+    const m = findRoute(ADMIN_ROUTES, method, [
+      "products",
+      SLUG,
+      "sync",
+      "subjects",
+      "s",
+      ...tail,
+    ]);
+    if (m.kind !== "route") throw new Error(m.kind);
+    return levelOf(m.route);
+  };
+
+  it("needs edit to read values, files and revisions, and view for the summary", () => {
+    expect(level("GET", ["values"])).toBe("edit");
+    expect(level("GET", ["files", "saves", "s1"])).toBe("edit");
+    expect(level("GET", ["files", "saves", "s1", "revisions"])).toBe("edit");
+    expect(level("GET", [])).toBe("view");
+    expect(level("POST", ["delete"])).toBe("edit");
   });
 });

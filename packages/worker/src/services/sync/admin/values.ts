@@ -20,7 +20,10 @@
  *   3. A step-up no older than five minutes (`403 step_up_required`, `requireStepUp`).
  *   4. The read or the delete, then ONE audit row (`sync.data.values.view`,
  *      `sync.file.revisions.view`, `sync.file.download`, `sync.data.delete`) with the subject as
- *      target. A row carries no value, record id or file name.
+ *      target. The delete writes its row FIRST, before anything is erased.
+ *
+ *   The values, files and revisions GETs need `edit` (route rows in `console/routes.ts`): they
+ *      show the person's content, which the aggregate summary does not. A row carries no value, record id or file name.
  *
  * A download streams from R2 as `application/octet-stream`, `attachment`, `nosniff`, `no-store`;
  * the request names a record and a version, never a key (the object resolves it from its own rows).
@@ -28,6 +31,7 @@
 
 import type { FileRevisionsResponse } from "@polaris-key/protocol/sync";
 import { audit } from "../../../core/audit.js";
+import { appSecurityHeaders } from "../../../core/securityHeaders.js";
 import {
   AdminBodyError,
   adminJson,
@@ -224,17 +228,22 @@ export async function handleFile(
       who,
       "Downloaded a Cloud Sync file",
     );
-    return new Response(obj.body, {
-      status: 200,
-      headers: {
+    const headers = appSecurityHeaders(
+      new Headers({
         "content-type": "application/octet-stream",
         "content-disposition": "attachment",
         "content-length": String(out.file.size),
         "x-content-type-options": "nosniff",
         "cache-control": "no-store",
         etag: `"${out.file.sha256}"`,
-      },
-    });
+      }),
+    );
+    // The bytes are the person's: never run, never framed.
+    headers.set(
+      "content-security-policy",
+      `${headers.get("content-security-policy") ?? "default-src 'none'"}; sandbox`,
+    );
+    return new Response(obj.body, { status: 200, headers });
   } catch (e) {
     if (e instanceof CloudSyncDoError) return unavailable();
     throw e;
@@ -271,13 +280,8 @@ export async function handleDelete(
   )
     return err(400, "bad_request", "Confirm the deletion.");
   const at = { product: product.slug, subject };
-  try {
-    await cloudSyncStore.delete({ db, env, now }, at);
-  } catch (e) {
-    if (e instanceof CloudSyncDoError) return unavailable();
-    throw e;
-  }
-  await keyringStore.delete({ db, env, now }, at);
+  // The row goes first: the object's erase removes files and keys before it can fail, so a
+  // failure part-way still leaves the trail of an irreversible action (SEC M-1).
   await audit(
     db,
     product.slug,
@@ -287,5 +291,12 @@ export async function handleDelete(
     { kind: "user", id: subject },
     "Deleted Cloud Sync data",
   );
+  try {
+    await cloudSyncStore.delete({ db, env, now }, at);
+  } catch (e) {
+    if (e instanceof CloudSyncDoError) return unavailable();
+    throw e;
+  }
+  await keyringStore.delete({ db, env, now }, at);
   return adminJson({ deleted: true });
 }

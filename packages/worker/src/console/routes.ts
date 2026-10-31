@@ -486,6 +486,14 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["POST"], `${P}/release/ci-readiness/fix`, "ship", product, {
     stepUp: true,
   }),
+  // Cloud Sync's raw values, files and revisions are the person's content: edit, not view (U-11a
+  // SEC M-2). More specific than the service prefix, so these GETs win it.
+  ...rows(["GET"], `${P}/sync/subjects/:subject/values`, "sync", product, {
+    level: "edit",
+  }),
+  ...rows(["GET"], `${P}/sync/subjects/:subject/files/**`, "sync", product, {
+    level: "edit",
+  }),
   ...SERVICE_SLUGS.flatMap(serviceRows),
   // A-20.4: the channels read model (Distribution + Commerce facets), composed in the console layer.
   ...rows(["GET"], `${P}/distribution/channels`, "ship", product),
