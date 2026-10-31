@@ -163,6 +163,8 @@ export const ACTION_LEVELS = {
   // Users (I-12): the subject's data of this product (config overrides, Cloud Sync) is gone for
   // good. The subject, its licences and the account stay.
   "user.deleteData": 3,
+  // U-11a.6: the person's Cloud Sync data alone (values, files, history and key ring); the rest stays.
+  "sync.deleteData": 3,
   // Owner request (2026-10-05): deleting a licence removes it, its keys and its devices for good;
   // typed `delete <id>` (a bulk deletion types `delete <n> licenses`). The Worker compares.
   "license.delete": 3,
@@ -233,6 +235,7 @@ const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "registryToken.revokeAll": "slug",
   "storefront.audienceEveryone": "slug",
   "user.deleteData": "delete",
+  "sync.deleteData": "delete",
   "license.delete": "deleteId",
   "license.reassign": "licenseName",
   "license.makeFloating": "licenseName",

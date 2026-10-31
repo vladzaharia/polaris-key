@@ -266,4 +266,9 @@ class IdentityRedirectTest {
         for ((status, body, expected) in vectors) assertEquals("$status $body", expected, IdentityRedirect.parseTokenAnswer(status, json(body)))
         assertEquals(TokenAnswer.Refused("server_error", 500, null), IdentityRedirect.parseTokenAnswer(500, JsonNull))
     }
+
+    @Test
+    fun theCallbackCodeDoesNotPrint() {
+        assertEquals(false, CallbackResult.Code("secret-code-0123").toString().contains("secret-code-0123"))
+    }
 }

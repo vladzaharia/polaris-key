@@ -279,6 +279,7 @@ public actor PolarisKeyClient {
         }
         identityClient.installDeviceKeys(options.connect.keys)
         identityClient.installPlatformIdentity(AppleSignInProvider())
+        identityClient.installPlatformRestoreStore(product: options.core.productSlug)
         self.identity = identityClient
         self.release = ReleaseClient(core: core)
         self.distribution = DistributionClient(core: core)

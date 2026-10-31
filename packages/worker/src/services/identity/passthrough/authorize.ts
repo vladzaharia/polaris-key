@@ -30,6 +30,7 @@ import {
   AUTHORIZE_SCOPES,
   AUTHORIZE_STATE_MAX,
   AUTHORIZE_STATE_MIN,
+  KEY_RETURN_ALLOW,
   type AuthorizeRedirectError,
 } from "@polaris-key/protocol/identity";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
@@ -45,6 +46,7 @@ import { cardPage } from "../card/http.js";
 import { appForPage, codeRefusalPage } from "../../../core/brandPage.js";
 import type { ServiceHooks } from "../../../core/hooks.js";
 import { customerHostname, customerOrigin } from "../../../core/hosts.js";
+import { launchGateOn } from "../../../core/settings/platformRead.js";
 import { cloudSyncOn } from "./client.js";
 import { createSignInRequest, type AuthzRecord } from "./request.js";
 import { redirectPathsOf, validateRedirectUri } from "./redirectUri.js";
@@ -221,6 +223,17 @@ export async function handleAuthorize(ctx: {
   const choice = single(params, "license_choice");
   if (choice !== undefined && choice !== "card" && choice !== "app")
     return fail(ErrorCode.InvalidRequest);
+  // LK-SKIP (§12.4): `allow` is the only value. It is kept only for a sign-in on a product that
+  // runs License, with the launch gate on; otherwise it is dropped silently (the card offers nothing).
+  const keyReturnRaw = single(params, "key_return");
+  if (keyReturnRaw === null) return fail(ErrorCode.InvalidRequest);
+  if (keyReturnRaw !== undefined && keyReturnRaw !== KEY_RETURN_ALLOW)
+    return fail(ErrorCode.InvalidRequest);
+  const keyReturn =
+    keyReturnRaw === KEY_RETURN_ALLOW &&
+    (purpose ?? "signin") === "signin" &&
+    product.services.license.enabled &&
+    (await launchGateOn(env, db, "launch.identityKeyReturn"));
   const loginHint = single(params, "login_hint");
   const nameHint = single(params, "name_hint");
   if (loginHint === null || nameHint === null)
@@ -235,6 +248,7 @@ export async function handleAuthorize(ctx: {
     nonce: nonce ?? null,
     licenseChoice: choice ?? "card",
     purpose: purpose ?? "signin",
+    ...(keyReturn ? { keyReturn: true as const } : {}),
     // Hints prefill and verify nothing: a hint that does not normalise is dropped.
     loginHint: strictEmail(loginHint),
     nameHint: normalizeDeviceLabel(nameHint),

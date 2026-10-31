@@ -57,13 +57,23 @@ export interface PreloadBridgeOptions {
   channel?: string;
 }
 
+/** The `beginSignIn` bag (ui-core's `BridgeSignInBegin`, restated: this file imports nothing from
+ *  outside the directory). */
+interface SignInBeginBag {
+  deviceName?: string;
+  loginHint?: string;
+  nameHint?: string;
+  purpose?: "attach";
+  licenseChoice?: "app" | "card";
+}
+
 /** The bridge object the preload exposes. Its shape is `@polaris-key/react`'s `PolarisBridge`
  *  (protocol v4); `test/electronBridge.test.ts` pins the assignability. */
 export interface PreloadPolarisBridge {
   readonly version: number;
   getSyncState(): Promise<never>;
   refresh(): Promise<never>;
-  beginSignIn(opts?: { deviceName?: string }): Promise<never>;
+  beginSignIn(opts?: SignInBeginBag): Promise<never>;
   pollSignIn(flowId: string): Promise<never>;
   submitKey(key: string): Promise<never>;
   signOut(): Promise<void>;
@@ -166,7 +176,7 @@ export function createPreloadBridge(
     version: POLARIS_BRIDGE_VERSION,
     getSyncState: () => call("getSyncState") as Promise<never>,
     refresh: () => call("refresh") as Promise<never>,
-    beginSignIn: (opts?: { deviceName?: string }) =>
+    beginSignIn: (opts?: SignInBeginBag) =>
       call("beginSignIn", opts) as Promise<never>,
     pollSignIn: (flowId: string) =>
       call("pollSignIn", flowId) as Promise<never>,

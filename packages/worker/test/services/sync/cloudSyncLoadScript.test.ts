@@ -202,3 +202,30 @@ describe("cloud-sync-one-do summary", () => {
     );
   });
 });
+
+describe("cloud-sync-one-do worst-case scenarios", () => {
+  it("are off by default, need a collection, and print a plan on a dry run", async () => {
+    expect(load.parseArgs(ARGS).scenario).toBe("steady");
+    expect(() =>
+      load.parseArgs([...ARGS, "--scenario", "merge-record"]),
+    ).toThrow(/collection/);
+    expect(() => load.parseArgs([...ARGS, "--scenario", "nope"])).toThrow(
+      /scenario/,
+    );
+    for (const scenario of ["merge-record", "union-record", "merge-parked"]) {
+      const lines: string[] = [];
+      const res = await load.main(
+        [...ARGS, "--scenario", scenario, "--collection", "saves", "--dry-run"],
+        {},
+        {
+          out: (l: string) => lines.push(l),
+          fetch: () => {
+            throw new Error("network");
+          },
+        },
+      );
+      expect(res.dryRun).toBe(true);
+      expect(lines.join("\n")).toContain(scenario);
+    }
+  });
+});

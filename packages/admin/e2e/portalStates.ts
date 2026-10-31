@@ -10,6 +10,7 @@ import {
   profileRoutes,
   samRoutes,
   tidewaterInstallSources,
+  portalRoutes,
   type PortalScenario,
 } from "./portalFixtures.js";
 
@@ -48,6 +49,47 @@ export interface PendingState {
   /** The work package(s) that build it (docs/design/PORTAL.md §11). */
   wp: string[];
 }
+
+/** Two devices that hold no license: one signed in from the device backup, one with a long name. */
+const ACCOUNT_DEVICES = [
+  {
+    product: "quill",
+    productName: "Quill",
+    deviceId: "dev_restored",
+    label: "Pixel 9",
+    platform: "android",
+    lastSeen: FIXTURE_NOW - 3600,
+    restored: true,
+  },
+  {
+    product: "quill",
+    productName: "Quill",
+    deviceId: "dev_long",
+    label: "Living room Apple TV with a very long name that has to wrap",
+    platform: "tvos",
+    lastSeen: FIXTURE_NOW - 3 * 86400,
+    restored: false,
+  },
+  // Labels with no break point: they must wrap inside the row at 320 px (WCAG 1.4.10).
+  {
+    product: "quill",
+    productName: "Quill",
+    deviceId: "dev_token28",
+    label: "MarasSamsungGalaxyS24Ultra5G",
+    platform: "android",
+    lastSeen: FIXTURE_NOW - 5 * 86400,
+    restored: false,
+  },
+  {
+    product: "quill",
+    productName: "Quill",
+    deviceId: "dev_token51",
+    label: "workstation-0042.studio.internal.example-corp.local",
+    platform: "windows",
+    lastSeen: FIXTURE_NOW - 9 * 86400,
+    restored: true,
+  },
+];
 
 const LINK_ACCOUNT = (role: "started" | "other") => ({
   role,
@@ -1524,6 +1566,107 @@ export const SHIPPED: ShippedState[] = [
     },
   },
   {
+    // DEVICE-REMOVAL: devices that hold no license, one signed in from the device backup.
+    section: "4.11",
+    id: "account-devices",
+    title: "Account: Devices without a license, one signed in from backup",
+    scenario: "three",
+    path: "/#/account/devices",
+    routes: { "GET /api/me/devices": { body: { devices: ACCOUNT_DEVICES } } },
+    ready: async (p) => {
+      await p.getByRole("region", { name: "Devices" }).waitFor();
+      await p.getByText("Signed in from backup").first().waitFor();
+    },
+  },
+  {
+    // DEVICE-REMOVAL: the restore notice's link when the list fails to load.
+    section: "4.11",
+    id: "account-devices-error",
+    title:
+      "Account: Devices, the list failed to load (retry, link still lands)",
+    scenario: "three",
+    path: "/#/account/devices",
+    routes: { "GET /api/me/devices": SERVER_ERROR },
+    ready: async (p) => {
+      const region = p.getByRole("region", { name: "Devices" });
+      await region.getByText("Couldn't load your devices.").waitFor();
+      await region.getByRole("button", { name: "Try again" }).waitFor();
+    },
+  },
+  {
+    // DEVICE-REMOVAL: the link opened after the device was already removed.
+    section: "4.11",
+    id: "account-devices-gone",
+    title:
+      "Account: Devices, opened by the notice's link with nothing left to remove",
+    scenario: "three",
+    path: "/#/account/devices",
+    routes: { "GET /api/me/devices": { body: { devices: [] } } },
+    ready: async (p) => {
+      await p
+        .getByRole("region", { name: "Devices" })
+        .getByText("This device is already removed.")
+        .waitFor();
+    },
+  },
+  {
+    // DEVICE-REMOVAL: the product page's device rows with labels that have no break point.
+    section: "4.22",
+    id: "product-devices-long-labels",
+    title:
+      "Product page: Devices with unbroken long labels, one signed in from backup",
+    scenario: "three",
+    path: "/#/p/nightfall/devices",
+    routes: {
+      "/api/licenses/nightfall/lic_nightfall": async (req) => {
+        const base =
+          portalRoutes("three")["/api/licenses/nightfall/lic_nightfall"]!;
+        const r = typeof base === "function" ? await base(req) : base;
+        const body = r.body as { devices: Record<string, unknown>[] };
+        const [first, second, ...rest] = body.devices;
+        return {
+          ...r,
+          body: {
+            ...body,
+            devices: [
+              {
+                ...first,
+                label: "MarasSamsungGalaxyS24Ultra5G",
+                restored: true,
+              },
+              {
+                ...second,
+                label: "workstation-0042.studio.internal.example-corp.local",
+              },
+              ...rest,
+            ],
+          },
+        };
+      },
+    },
+    ready: async (p) => {
+      await h1(p, "Nightfall");
+      await p.getByText("Signed in from backup").waitFor();
+    },
+  },
+  {
+    section: "4.11",
+    id: "account-devices-remove",
+    title: "Account: Devices, removing the device that signed in from backup",
+    scenario: "three",
+    path: "/#/account/devices",
+    routes: { "GET /api/me/devices": { body: { devices: ACCOUNT_DEVICES } } },
+    ready: async (p) => {
+      const region = p.getByRole("region", { name: "Devices" });
+      await region.getByRole("button", { name: /Remove Pixel 9/ }).click();
+      await region
+        .getByText(
+          "Backup sign-in for Quill stops working on all your devices.",
+        )
+        .waitFor();
+    },
+  },
+  {
     section: "4.11",
     id: "account-link-start",
     title: "Link an existing account: before the second sign-in",
@@ -1783,7 +1926,7 @@ export const SHIPPED: ShippedState[] = [
     routes: identityOn("three", "nightfall"),
     ready: async (p) => {
       await h1(p, "Nightfall");
-      await p.getByRole("heading", { name: "Sign in to Nightfall" }).waitFor();
+      await p.getByRole("heading", { name: "Sign In to Nightfall" }).waitFor();
     },
   },
   // §4.27 Jump to a product (PX-03).

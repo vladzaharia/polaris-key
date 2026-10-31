@@ -1,10 +1,11 @@
 {
   "$schema": "./glossary.schema.json",
   "$comment": "Fixed translations of the product vocabulary (plans/UK-02.md §3.1). Every locale pack uses these words; the native-speaker review checks them first. Product, tier and developer names, {product} and Polaris Key are never translated.",
-  "glossaryVersion": 1,
+  "glossaryVersion": 2,
   "neverTranslate": [
     "Polaris Key",
     "Polaris Locker",
+    "Game Center",
     "{product}",
     "{app}",
     "{tier}",
@@ -111,16 +112,50 @@
       "ko": "다운로드 티켓",
       "zh-Hans": "下载凭证"
     },
-    "Cloud Sync": {
-      "note": "The feature that syncs a person's data through their account.",
-      "de": "Cloud-Synchronisierung",
-      "fr": "Synchronisation cloud",
-      "es": "Sincronización en la nube",
-      "pt-BR": "Sincronização na nuvem",
-      "it": "Sincronizzazione cloud",
-      "ja": "クラウド同期",
-      "ko": "클라우드 동기화",
-      "zh-Hans": "云同步"
+    "sync": {
+      "note": "The common noun and verb for keeping a person's settings and data the same across devices. Never the developer name \"Cloud Sync\".",
+      "de": "Synchronisierung",
+      "fr": "synchronisation",
+      "es": "sincronización",
+      "it": "sincronizzazione",
+      "pt-BR": "sincronização",
+      "ja": "同期",
+      "ko": "동기화",
+      "zh-Hans": "同步"
+    },
+    "nearby devices": {
+      "note": "The label for devices finding each other on the same network (Android's own \"Nearby devices\"). Never \"Cloud Connect\".",
+      "de": "Geräte in der Nähe",
+      "fr": "appareils à proximité",
+      "es": "dispositivos cercanos",
+      "it": "dispositivi nelle vicinanze",
+      "pt-BR": "dispositivos próximos",
+      "ja": "近くのデバイス",
+      "ko": "근처 기기",
+      "zh-Hans": "附近的设备"
+    },
+    "pair": {
+      "note": "Connecting a device to someone else's, sharing only what both choose. Not \"link\", which means a URL.",
+      "de": "koppeln",
+      "fr": "associer",
+      "es": "vincular",
+      "it": "associare",
+      "pt-BR": "parear",
+      "ja": "ペアリング",
+      "ko": "페어링",
+      "zh-Hans": "配对"
+    },
+    "Google Play Games": {
+      "note": "Google's product name. Google localizes it; the Play Store listing shows these names.",
+      "en": "Google Play Games",
+      "de": "Google Play Spiele",
+      "fr": "Google Play Jeux",
+      "es": "Google Play Juegos",
+      "pt-BR": "Google Play Games",
+      "it": "Google Play Giochi",
+      "ja": "Google Play Games",
+      "ko": "Google Play 게임즈",
+      "zh-Hans": "Google Play 游戏"
     }
   }
 }

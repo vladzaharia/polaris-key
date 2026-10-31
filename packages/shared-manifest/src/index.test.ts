@@ -407,6 +407,12 @@ describe("the identity block (I-09, plans/I-27.md §3)", () => {
     expect(codes(validate({ identity: { nearby: "yes" } })).errors).toEqual([
       "invalid_identity_nearby",
     ]);
+    expect(codes(validate({ identity: { restore: "yes" } })).errors).toEqual([
+      "invalid_identity_restore",
+    ]);
+    expect(codes(validate({ identity: { restore: false } })).errors).toEqual(
+      [],
+    );
   });
 
   it("checks gameCenter and playGames (I-14.2)", () => {

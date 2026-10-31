@@ -728,11 +728,11 @@
       "proof": [
         {
           "kind": "transcript",
-          "wp": "U-09"
+          "wp": "U-46"
         }
       ],
       "allowedNa": [],
-      "note": "plans/CC-01-cloud-sync.md §2.7. The sync-records transcripts pin the routes; the merge policies share the sync.conflict vocabulary. v1 ships saves only (plans/U-22-U-23-U-37-U-41-slices.md D-2): the client-core host codec seals every record shape (value, field, element) and the native ports seal scalar values; `cloudSync.collection` stays reserved until an adopter declares a non-save collection, and its package owns this feature."
+      "note": "plans/CC-01-cloud-sync.md §2.7. The sync-records transcripts pin the routes; the merge policies share the sync.conflict vocabulary. v1 ships saves only (plans/U-22-U-23-U-37-U-41-slices.md D-2): the client-core host codec seals every record shape (value, field, element) and the native ports seal scalar values; U-46 (plans/C-26) owns `cloudSync.collection` and this feature in every SDK."
     },
     {
       "id": "sync.files",
@@ -1350,6 +1350,20 @@
       "note": "I-08b (WIRE-CONTRACT-V4 §12.4.1, §12.5.1; plans/I-04.md §G): with license_choice=app the exchange answers status choose with a grant (300 s, bound to the redeeming device) and the licence view; the SDK reads choice.licenses(grant), lists a full licence's devices with choice.devices(grant, licenseId), and finishes with choice.complete(grant, license | keep | create | key) or choice.cancel(grant). complete answers token's shape (plus keyEntries after a key). An SDK sends license_choice=app only when discovery lists the four choice endpoints. Pinned by redirect-web-choose.json, redirect-web-choose-app.json, choice-replace-app.json, choice-key-app.json and choice-grant-errors.json; I-10a (Node, React, Python) and I-10b (Swift, Godot, Kotlin) implement it."
     },
     {
+      "id": "identity.devicecode.choice",
+      "family": "devices",
+      "title": "Device-code sign-in with the hints and the licence choice in the app (the choose poll answer)",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "UK-42"
+        }
+      ],
+      "allowedNa": [],
+      "note": "UK-42.22 (WIRE-CONTRACT-V5 §12.5.1 rule 5, §12.6, §12.10.1): the device start takes loginHint, nameHint, purpose (signin or attach) and licenseChoice (card or app) beside deviceId and deviceName. With licenseChoice app, the poll answers status choose with a grant (300 s, bound to the flow's device, via device) and the licence view when a choice is due, and the flow is spent; the SDK stops polling and settles as the choice outcome (choice.complete or choice.cancel). A device-code grant cannot read devices or Replace. An SDK sends licenseChoice app only when discovery carries identity.deviceChoice and the four choice endpoints; it may always send the hints and purpose. Pinned by holders-add-to-account-device.json and discovery-identity.json."
+    },
+    {
       "id": "identity.signin.hints",
       "family": "devices",
       "title": "Sign-in hints: login_hint, name_hint and purpose prefill the card",
@@ -1362,6 +1376,19 @@
       ],
       "allowedNa": [],
       "note": "I-08 (WIRE-CONTRACT-V4 §12.4, absorbing PX-W18): the authorize request may carry login_hint (an email), name_hint and purpose (signin or attach). The card prefills from them and nothing is verified by them. Pinned by identity-request-hints.json; I-10a and I-10b implement it."
+    },
+    {
+      "id": "identity.keyreturn",
+      "family": "devices",
+      "title": "Key return: the Polaris Locker card's Continue without an account hands the app a device on the key's licence",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
+      "allowedNa": [],
+      "note": "LK-SKIP (WIRE-CONTRACT-V5 §12.4.2, §12.5): a host that opts in sends key_return=allow on authorize (last, after license_choice), and the card may then redeem a licence key into a code that names the key's licence and no account. Token answers the sign-in body plus via: \"key\", scope \"\", keyEntries and subject null (the key bind clears any binding; a client still accepts a pairwise-subject string). A client tells it apart by via: \"key\" and its own opt-in, never by subject alone; it stores the token as a key activation and emits activated, never signedIn. A Worker without the feature ignores the parameter and the card shows no skip. Pinned by redirect-web-key-return.json and redirect-web-key-return-limit.json; until an SDK implements it the row is planned and it never sends the parameter."
     },
     {
       "id": "identity.exchange",
@@ -1535,6 +1562,56 @@
       ],
       "allowedNa": [],
       "note": "I-46.2 (plan-auto-sign-in §1, §2.2): autoSignIn() walks the ladder in order and answers signedIn, confirm (PendingConsent), choose (PendingSignIn), needsSignIn (linkHandle?, reason), deviceLimit or unavailable (code). An optional syncKey (present or needed) is reported only where an E2E client exists (web now; Swift and Kotlin leave it absent until U-39). Each SDK proves it with its own unit tests over fake providers; the exchange rung replays the exchange-* transcripts (identity.exchange). I-46 (React), I-44 (Swift), I-45 (Kotlin), I-47 (Node, Python) and I-48 (Godot) implement it."
+    },
+    {
+      "id": "identity.restore",
+      "family": "devices",
+      "title": "Silent restore: a new device of the same person signs in from the platform backup",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-49"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "A Node process has no iCloud Keychain or Block Store to keep a restore secret in; it signs in by loopback or device code."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "A Python process has no iCloud Keychain or Block Store to keep a restore secret in; it signs in by loopback or device code."
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no platform backup item; it keeps its sign-in in the cookie session."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "A JVM desktop app has no platform backup item to keep a restore secret in."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Windows has no synchronizable secret store an app can use for a restore secret."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Linux has no synchronizable secret store an app can use for a restore secret."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer holds no device key and no platform backup; the host signs in."
+        }
+      ],
+      "note": "I-49 (WIRE-CONTRACT-V5 §12.11.8): a signed-in device enrols a restore secret with POST /<p>/identity/restore and keeps it in an end-to-end platform backup (iCloud Keychain, Block Store). A new device of the same person redeems it at token with the urn:polaris-key:grant-type:restore grant and the pkey-proof/1 restore proof, once, and signs in with no click. Sign-out deletes the server row and the item. Discovery's restore member and endpoint gate it. Pinned by the restore-* and discovery-identity-restore transcripts (I-49.8); Swift, Kotlin and Godot implement it on their native lanes."
     },
     {
       "id": "identity.link",

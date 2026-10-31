@@ -52,7 +52,9 @@ import {
   formatVerdict,
   previewVerdict,
   productLabel,
+  skipRefusal,
   type KeyVerdict,
+  type SkipRefusal,
 } from "../model/key.js";
 import { setParams, useDocumentTitle, useRoute } from "../router.js";
 import { FinishStep } from "../components/signin/FinishStep.js";
@@ -64,12 +66,19 @@ import { HintStep } from "../components/signin/HintStep.js";
 import { useSessionRecheck } from "../session.js";
 import { returnUrl, stashCarriedKey } from "../carriedKey.js";
 import type { KeyPreview } from "../api.js";
-import { AccountUpgrade } from "../components/signin/AccountUpgrade.js";
+import {
+  AccountUpgrade,
+  KeyOwned,
+} from "../components/signin/AccountUpgrade.js";
 import {
   RequestFooter,
   RequestHeader,
 } from "../components/signin/RequestHeader.js";
-import { requestHandleFromUrl } from "../model/signInRequest.js";
+import {
+  navigation,
+  requestHandleFromUrl,
+  safeRedirect,
+} from "../model/signInRequest.js";
 import { useSignInRequest } from "../requestData.js";
 import { qk } from "../queries.js";
 import { mutate } from "../mutations.js";
@@ -131,7 +140,15 @@ type Step =
   | { kind: "sso"; email: string; next: PortalSsoNext }
   | { kind: "key" }
   /** AccountUpgrade (§3.9, PX-12): what the previewed key leads to, before sign-in. */
-  | { kind: "upgrade"; key: string; preview: KeyPreview }
+  | {
+      kind: "upgrade";
+      key: string;
+      preview: KeyPreview;
+      /** The forced body came from **Continue without an account** (`key_entry_limit`). */
+      fromSkip?: true;
+    }
+  /** The key return was refused `license_owned` (LK-SKIP.5): sign in to the account that has it. */
+  | { kind: "owned"; product: string }
   /** Sign in with another device (§3.11): this browser asks, a signed-in device approves. */
   | { kind: "device" }
   /** FinishStep (§3.5): a provider's first sign-in, or a new address's code, finishes here. */
@@ -224,7 +241,10 @@ export function SignInPage({
   const [direction, setDirection] = React.useState<"forward" | "back">(
     "forward",
   );
+  /** Counts the steps entered: an answer that arrives after the step changed is not acted on. */
+  const stepToken = React.useRef(0);
   const go = (next: Step, dir: "forward" | "back" = "forward"): void => {
+    stepToken.current += 1;
     setDirection(dir);
     setStep(next);
   };
@@ -237,7 +257,9 @@ export function SignInPage({
   );
   // Escape backs out of the steps that have somewhere to go back to.
   React.useEffect(() => {
-    if (!["key", "upgrade", "code", "device", "hint"].includes(step.kind))
+    if (
+      !["key", "upgrade", "owned", "code", "device", "hint"].includes(step.kind)
+    )
       return;
     const onKey = (e: KeyboardEvent): void => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
@@ -249,7 +271,7 @@ export function SignInPage({
                 step.kind === "code" && step.masked ? undefined : step.email,
               focusEmail: true,
             }
-          : step.kind === "upgrade"
+          : step.kind === "upgrade" || step.kind === "owned"
             ? { kind: "key" }
             : { kind: "methods" },
         "back",
@@ -259,10 +281,12 @@ export function SignInPage({
     return () => document.removeEventListener("keydown", onKey);
   });
   // A request that is gone (expired, unknown, Identity off, no binder) has nothing to sign in to.
+  // The key return's own 404 (the request was used up or ended meanwhile) is the same state.
+  const [keyReturnGone, setKeyReturnGone] = React.useState(false);
   const requestGone =
     handle !== null &&
-    request.error instanceof HttpError &&
-    request.error.status === 404;
+    (keyReturnGone ||
+      (request.error instanceof HttpError && request.error.status === 404));
   useDocumentTitle(
     requestGone
       ? t("signin.request.goneTitle")
@@ -278,16 +302,18 @@ export function SignInPage({
                 ? t("signin.approve.title")
                 : step.kind === "key"
                   ? t("signin.link.key")
-                  : step.kind === "upgrade"
-                    ? t(
-                        step.preview.upgrade === "forced"
-                          ? "signin.key.noEntriesTitle"
-                          : "signin.key.upgradeTitle",
-                        { product: step.preview.product.name },
-                      )
-                    : step.kind === "sso"
-                      ? step.next.connection.label
-                      : t("signin.methods.titleApp"),
+                  : step.kind === "owned"
+                    ? t("core.codes.license_owned.title")
+                    : step.kind === "upgrade"
+                      ? t(
+                          step.preview.upgrade === "forced"
+                            ? "signin.key.noEntriesTitle"
+                            : "signin.key.upgradeTitle",
+                          { product: step.preview.product.name },
+                        )
+                      : step.kind === "sso"
+                        ? step.next.connection.label
+                        : t("signin.methods.titleApp"),
   );
   /** The card's step key: a connection step is keyed by its route, so a change re-announces. */
   const ssoKey =
@@ -295,11 +321,58 @@ export function SignInPage({
       ? `sso:${step.next.connection.id}:${step.next.enforced ? "only" : "first"}`
       : null;
 
+  /**
+   * **Continue without an account** (LK-SKIP.5): the key goes to the card route and the person
+   * returns to the app on its licence. `null` once the card is left; a refusal that stays is the
+   * control's to say. `license_owned`, `key_entry_limit` and a gone request are steps of this page.
+   */
+  const returnOnKey = async (
+    handle: string,
+    key: string,
+    preview: KeyPreview,
+  ): Promise<Extract<SkipRefusal, { kind: "message" }> | null> => {
+    const token = stepToken.current;
+    // The person left the step meanwhile (Escape): a refusal is no longer theirs to read.
+    const current = (): boolean => stepToken.current === token;
+    try {
+      const out = await mutate("signinKeyReturn", handle, key);
+      const to = safeRedirect(out.redirect);
+      if (to) navigation.go(to);
+      else setKeyReturnGone(true);
+      return null;
+    } catch (err) {
+      const refusal = skipRefusal(
+        err instanceof HttpError ? err : { status: 0 },
+        portalErrorCopy(err).line,
+      );
+      // A gone request is gone whichever step the person is on.
+      if (refusal.kind === "gone") setKeyReturnGone(true);
+      else if (!current()) return null;
+      else if (refusal.kind === "message") return refusal;
+      else if (refusal.kind === "owned")
+        go({ kind: "owned", product: preview.product.name });
+      else
+        // No entries left: the card's forced body, with no skip.
+        go({
+          kind: "upgrade",
+          key,
+          fromSkip: true,
+          preview: {
+            ...preview,
+            upgrade: "forced",
+            keyEntries: refusal.entries ?? preview.keyEntries,
+          },
+        });
+      return null;
+    }
+  };
+
   const ctx = caps.data?.product;
   const passport = usePassport();
   // The key on-ramp works without an account: it keeps the product header, not "wants you to sign
   // in" (§3.1). Every other step of an app's request keeps the request's header and footer.
-  const onRamp = step.kind === "key" || step.kind === "upgrade";
+  const onRamp =
+    step.kind === "key" || step.kind === "upgrade" || step.kind === "owned";
   // While an app's request loads the card already has the passport's width (no jump when the
   // header arrives); a loaded request builds the header, on-ramp included, from the request alone.
   const header = requestGone ? undefined : handle !== null &&
@@ -336,7 +409,11 @@ export function SignInPage({
           ? "loading"
           : caps.error || requestFailed
             ? "unreachable"
-            : (ssoKey ?? step.kind);
+            : (ssoKey ??
+              // The forced body is its own step: its heading takes focus and is announced.
+              (step.kind === "upgrade" && step.preview.upgrade === "forced"
+                ? "upgrade:forced"
+                : step.kind));
 
   const legalNav = <LegalNav />;
 
@@ -508,10 +585,28 @@ export function SignInPage({
         />
       ) : step.kind === "device" ? (
         <DeviceStep onOther={() => go({ kind: "methods" }, "back")} />
+      ) : step.kind === "owned" ? (
+        <KeyOwned
+          product={step.product}
+          // The sign-in the card already has keeps the request; the key is not carried (it is not
+          // this account's to add).
+          onSignIn={() => go({ kind: "methods" })}
+          onDifferentKey={() => go({ kind: "key" }, "back")}
+        />
       ) : step.kind === "upgrade" ? (
         <AccountUpgrade
           preview={step.preview}
           cloudSync={request.data?.client.services.cloudSync === true}
+          fromSkip={step.fromSkip === true}
+          skip={
+            handle !== null &&
+            request.data?.keyReturn === true &&
+            request.data.client.product === step.preview.product.slug &&
+            step.preview.upgrade === "skippable"
+              ? () => returnOnKey(handle, step.key, step.preview)
+              : undefined
+          }
+          onDifferentKey={() => go({ kind: "key" }, "back")}
           onCreate={() => {
             setParams({ activate: step.key });
             go({ kind: "methods" });

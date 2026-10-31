@@ -279,10 +279,13 @@ LAZY_DELTAS = "runtime"
 # LG-1: launch gates for the v0.10.0 features. "runtime" = the console decides (default off,
 # turned on only after the feature's security sign-off); "on" = on here (staging and dev only).
 LAUNCH_IDENTITY_EXCHANGE = "runtime"
+LAUNCH_IDENTITY_RETURNKEY = "runtime"
 LAUNCH_CONNECT = "runtime"
 LAUNCH_SYNC_E2E = "runtime"
 LAUNCH_SYNC_FILES = "runtime"
 LAUNCH_RELAY = "runtime"
+LAUNCH_IDENTITY_RESTORE = "runtime"
+LAUNCH_GAME_SIGN_IN = "runtime"
 # F-10 automation: the deploy hook (src/platformDeploy.ts, POST /webhooks/deploy). Only this
 # repository's .github/workflows/deploy.yml, in the `production` environment, at a protected
 # v* tag, may call it with its GitHub OIDC token; the ids are GitHub's numeric repository and
@@ -416,10 +419,13 @@ LAZY_DELTAS = "runtime"
 # LG-1: launch gates for the v0.10.0 features. "runtime" = the console decides (default off,
 # turned on only after the feature's security sign-off); "on" = on here (staging and dev only).
 LAUNCH_IDENTITY_EXCHANGE = "on"
+LAUNCH_IDENTITY_RETURNKEY = "on"
 LAUNCH_CONNECT = "on"
 LAUNCH_SYNC_E2E = "on"
 LAUNCH_SYNC_FILES = "on"
 LAUNCH_RELAY = "on"
+LAUNCH_IDENTITY_RESTORE = "on"
+LAUNCH_GAME_SIGN_IN = "on"
 # I-18: staging sends from the production auth sending subdomain, so the staging deliverability
 # check proves the very records production uses (RUNBOOK "Sign-in email"). Until the owner
 # onboards auth.plrs.im the provider refuses the sender and the Worker answers email_unavailable.
@@ -430,7 +436,7 @@ TURNSTILE_SITE_KEY = "0x4AAAAAAFPA8ouKFZ_KIKJO"
 # the platform IdP"). Unset = "off": the platform IdP signs everyone in as before. The owner's go
 # sets "claim", then "operators-only"; the sunset day (UTC) is set only after the email-less count
 # at /manage/api/platform/identity-migration. Both are reviewed changes here, never console values.
-# PLATFORM_OIDC_MIGRATION = "claim"
+PLATFORM_OIDC_MIGRATION = "claim"
 # PLATFORM_OIDC_SUNSET = "YYYY-MM-DD"
 [[env.staging.send_email]]
 name = "EMAIL"
@@ -535,10 +541,13 @@ LAZY_DELTAS = "runtime"
 # LG-1: launch gates for the v0.10.0 features. "runtime" = the console decides (default off,
 # turned on only after the feature's security sign-off); "on" = on here (staging and dev only).
 LAUNCH_IDENTITY_EXCHANGE = "on"
+LAUNCH_IDENTITY_RETURNKEY = "on"
 LAUNCH_CONNECT = "on"
 LAUNCH_SYNC_E2E = "on"
 LAUNCH_SYNC_FILES = "on"
 LAUNCH_RELAY = "on"
+LAUNCH_IDENTITY_RESTORE = "on"
+LAUNCH_GAME_SIGN_IN = "on"
 # I-07: Turnstile site key (public); the secret stays unset until the portal renders the widget.
 TURNSTILE_SITE_KEY = "0x4AAAAAAFPA80GfFwEcAJOR"
 # I-17: moving `provider: platform` end users off the platform IdP (RUNBOOK "Moving end users off

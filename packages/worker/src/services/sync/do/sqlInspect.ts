@@ -5,7 +5,7 @@
 import type { InspectedCollection } from "./protocol.js";
 import type { Row } from "./sqlRecords.js";
 
-type All = <T extends Row>(q: string) => T[];
+type All = <T extends Row>(q: string, ...b: (string | number)[]) => T[];
 
 export interface InspectTables {
   collections: InspectedCollection[];
@@ -71,6 +71,27 @@ export function inspectTables(all: All, hasSchema: boolean): InspectTables {
       c.lastWriteAt = Number.isFinite(ms) ? ms : null;
     }
   }
+  // The cells of `merge` records and the elements of `union` records: their bytes are the live
+  // entries' (a removed cell holds none).
+  for (const [table, cols, size] of [
+    [
+      "record_fields",
+      ["collection", "field", "value_json", "removed"],
+      "length(CAST(field AS BLOB)) + length(CAST(value_json AS BLOB))",
+    ],
+    [
+      "set_elements",
+      ["collection", "element_key", "element_json"],
+      "length(CAST(element_key AS BLOB)) + length(CAST(element_json AS BLOB))",
+    ],
+  ] as const) {
+    if (!has(table, ...cols)) continue;
+    const live = table === "record_fields" ? "WHERE removed = 0" : "";
+    for (const r of all<{ collection: string; b: number | null }>(
+      `SELECT collection, SUM(${size}) AS b FROM ${table} ${live} GROUP BY collection`,
+    ))
+      entry(r.collection).bytes += Number(r.b ?? 0);
+  }
   if (has("files", "collection", "size", "status")) {
     for (const r of all<{
       collection: string;
@@ -103,4 +124,29 @@ export function inspectTables(all: All, hasSchema: boolean): InspectTables {
     ),
     uploadsOpen,
   };
+}
+
+/**
+ * The ids of a collection's live records after `after`, in id order, at most `limit`. Ids only:
+ * the values are read one by one by the caller (the console's values read, U-11a.2).
+ */
+export function liveRecordIds(
+  all: All,
+  hasSchema: boolean,
+  collection: string,
+  after: string,
+  limit: number,
+): string[] {
+  if (!hasSchema) return [];
+  const have = new Set(
+    all<{ name: string }>(`PRAGMA table_info("records")`).map((c) => c.name),
+  );
+  if (!["collection", "id", "deleted"].every((c) => have.has(c))) return [];
+  return all<{ id: string }>(
+    `SELECT id FROM records WHERE collection = ? AND deleted = 0 AND id > ?
+      ORDER BY id LIMIT ?`,
+    collection,
+    after,
+    limit,
+  ).map((r) => r.id);
 }

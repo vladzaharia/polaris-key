@@ -505,23 +505,74 @@ export function deviceReplacedNotice(input: {
 }
 
 /**
- * A nearby approval bound a device (WIRE-CONTRACT-V5 §12.11.5 rule 7): "Diceroll signed in on
- * Living room TV". Sent to the primary address only, so it is not a security notice (no "every
- * verified email" footer); the remedy is the product's devices page. The label may be null.
+ * An app signed in on a device without the person at that device: "Diceroll signed in on Living
+ * room TV". A nearby approval goes to the primary address only, so it is not a security notice (no
+ * "every verified email" footer); the remedy is the product's devices page. The label may be null.
+ *
+ * `via: "device"` is the device-code sign-in in app mode (UK-42.22): the device is now signed in
+ * to the person's account, so it is sent as a security notice (the caller uses
+ * `sendSecurityNotice`, every verified address) and the remedy is **Sign out everywhere**, which
+ * also ends the device's sign-in.
+ *
+ * `via: "restore"` (I-49.7; WIRE-CONTRACT-V5 §12.11.8): the sign-in came from a restore key in the
+ * person's platform backup, not from an approval. It is a security notice (every verified
+ * address gets it) whose action is "Remove this device", a link to the Devices section that
+ * carries no device id; the secure line is "sign out everywhere", which unbinds every device of
+ * the account and so ends every restore key. The label is chosen by the new device, so it is shown
+ * in quotes, and a label that looks like a link is replaced by "a new device".
  */
 export function appDeviceApprovedNotice(input: {
   deviceLabel: string | null | undefined;
   productName: string | null | undefined;
   productSlug: string;
   origin: string;
+  via?: "nearby" | "device" | "restore";
 }): NoticeMessage {
-  const device = displayValue(input.deviceLabel, "a new device");
   const name = displayValue(input.productName, "An app");
+  if (input.via === "restore") {
+    const label = displayValue(input.deviceLabel, "");
+    const device =
+      label === "" || /:\/\/|www\./i.test(label)
+        ? "a new device"
+        : `\u201c${label}\u201d`;
+    // The links carry no device id: an email link gets logged, so the person finds the row in
+    // the Devices section by its label and its "Signed in from backup" badge.
+    const remove = appLink(input.origin, "account/devices");
+    const signOut = appLink(input.origin, "account/sessions");
+    return buildNotice({
+      help: "app-device-approved",
+      subject: `${name} signed in on ${device} from your backup`,
+      paragraphs: [
+        "It used a key saved in your device backup.",
+        "If this wasn't you, remove this device in Polaris Locker. Or sign out everywhere.",
+      ],
+      action: { label: "Remove this device", url: remove },
+      secureUrl: signOut,
+      origin: input.origin,
+    });
+  }
+  const device = displayValue(input.deviceLabel, "a new device");
+  const subject = `${name} signed in on ${device}`;
+  if (input.via === "device")
+    return buildNotice({
+      help: "app-device-approved",
+      subject,
+      paragraphs: [
+        "You approved it from another device.",
+        "If this wasn't you, sign out everywhere in Polaris Locker.",
+      ],
+      action: {
+        label: "Sign out everywhere",
+        url: appLink(input.origin, "account/sessions"),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
   // Without a label there is nothing to name twice: "remove it".
   const it = displayValue(input.deviceLabel, "") === "" ? "it" : device;
   return buildNotice({
     help: "app-device-approved",
-    subject: `${name} signed in on ${device}`,
+    subject,
     paragraphs: [
       "You approved it from another device.",
       `If this wasn't you, remove ${it} from your devices in Polaris Locker.`,
@@ -658,7 +709,7 @@ export function newDeviceSignInNotice(input: {
     subject: "A new device signed in to your Polaris Locker account", // signin.mail.newDevice.subject
     paragraphs: [
       // signin.mail.newDevice.body
-      `${device} signed in${when}${where}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.`,
+      `${device} signed in${when}${where}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.`,
     ],
     action: {
       label: "Open Polaris Locker", // signin.mail.open

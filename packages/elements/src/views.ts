@@ -275,6 +275,7 @@ const LOADING: Record<string, readonly string[]> = {
   EntitlementGate: ["loading"],
   SignInHandoff: ["starting", "finishing"],
   SignIn: ["finishing"],
+  SaveConflict: ["keeping"],
 };
 
 function isLoading(view: View): boolean {
@@ -369,6 +370,7 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
       ${(view.component === "SignIn" &&
         (view.state === "done" || view.state === "link-done")) ||
       (view.component as string) === "ActivateDone" ||
+      (view.component === "SaveConflict" && view.state === "kept") ||
       ((view.component as string) === "AddToAccount" && view.state === "added")
         ? successMark()
         : view.component === "SignIn" &&
@@ -574,6 +576,11 @@ function statusGlyph(view: View): TemplateResult | typeof nothing {
           ? GLYPHS.warning()
           : GLYPHS.info();
   if (view.component === "GraceBanner") return GLYPHS.offline();
+  if (view.component === "CloudSyncStatus" && s === "waiting")
+    // A connection is the offline glyph; power or the app being closed is information.
+    return view.copy.includes("cloudSync.waitingNetwork")
+      ? GLYPHS.offline()
+      : GLYPHS.info();
   if (view.component === "CloudSyncStatus")
     return view.decisions.tone === "neutral"
       ? GLYPHS.info()
@@ -619,18 +626,24 @@ function strip(
   const p = placeKeys(c.view, layout);
   const lines = [...p.titles, ...p.body, ...p.meta];
   const role = c.view.decisions.tone === "danger" ? "alert" : "status";
+  // A transfer's label is the live region, so a state change is announced once and byte updates
+  // are not.
+  const labelLive = c.view.component === "CloudSyncStatus";
   return html`<div
     class=${kind}
     part=${kind}
     data-part=${kind}
     data-status=${statusOf(c.view)}
-    role=${role}
+    role=${labelLive ? nothing : role}
   >
     ${statusGlyph(c.view)}
     <div class="texts">
       ${lines.map(
         (k, i) =>
-          html`<span class=${i === 0 ? "label" : "meta"} data-key=${k}
+          html`<span
+            class=${i === 0 ? "label" : "meta"}
+            data-key=${k}
+            role=${labelLive && i === 0 ? role : nothing}
             >${text(c, k)}</span
           >`,
       )}
@@ -666,12 +679,17 @@ function inline(c: RenderCtx, layout: Layout): TemplateResult {
     part="status"
     data-part="status"
     data-status=${statusOf(c.view)}
-    role="status"
+    role=${c.view.component === "CloudSyncStatus" ? nothing : "status"}
   >
     ${statusGlyph(c.view)}
     ${lines.map(
-      (k) =>
-        html`<span class=${p.titles.includes(k) ? "label" : ""} data-key=${k}
+      (k, i) =>
+        html`<span
+          class=${p.titles.includes(k) ? "label" : ""}
+          data-key=${k}
+          role=${c.view.component === "CloudSyncStatus" && i === 0
+            ? "status"
+            : nothing}
           >${text(c, k)}</span
         >`,
     )}
@@ -1996,7 +2014,12 @@ function accountRows(c: RenderCtx): TemplateResult | typeof nothing {
         t("account.notInAccount"),
         keys.has("activate.recommend.action")
           ? button(c, "activate.recommend.action", "secondary")
-          : nothing,
+          : keys.has("signin.key.addInLocker")
+            ? // Identity off: the same press opens polaris.locker, and the label says so.
+              button(c, "signin.key.addInLocker", "secondary", {
+                external: true,
+              })
+            : nothing,
       ),
     );
   if (keys.has("account.devices")) {

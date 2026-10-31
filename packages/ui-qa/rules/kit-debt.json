@@ -125,7 +125,7 @@
       "kit": "godot",
       "rule": "godot-link-validation",
       "file": "sdks/godot/addons/polaris_key/ui/gate/pkey_gate.gd",
-      "count": 2
+      "count": 3
     },
     {
       "kit": "godot",
@@ -161,6 +161,12 @@
       "kit": "godot",
       "rule": "godot-rtl",
       "file": "sdks/godot/addons/polaris_key/ui/settings/pkey_settings_panel.gd",
+      "count": 1
+    },
+    {
+      "kit": "godot",
+      "rule": "godot-rtl",
+      "file": "sdks/godot/addons/polaris_key/ui/theme/pkey_provider_button.gd",
       "count": 1
     },
     {

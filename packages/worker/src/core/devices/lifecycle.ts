@@ -34,6 +34,8 @@ export interface DeviceChange {
   subject?: string | null;
   /** The device's key sequence after a `keys` change. */
   keySeq?: number;
+  /** A `keys` change made by a sign-in with a silent-restore key (I-49.7). */
+  via?: "restore";
 }
 
 export interface DeviceChangeContext {

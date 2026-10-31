@@ -157,6 +157,7 @@ export type WriteMethod =
   | "resetDeviceFingerprint"
   | "deauthorizeProductDevice"
   | "deleteProductUserData"
+  | "syncDeleteData"
   | "detachProductUserLicense"
   | "relinkProductUserLicense"
   | "makeLicenseFloating"
@@ -164,6 +165,7 @@ export type WriteMethod =
   | "undoRelink"
   | "putProductUserOverrides"
   | "updateSignInSettings"
+  | "purgeRestoreKeys"
   | "resetProductDeviceFingerprint"
   | "mintBundle"
   | "updateFingerprintPolicy"
@@ -680,6 +682,11 @@ export const MUTATIONS: MutationTable = {
     invalidates: () => [],
     why: "A dry run for a persona: the Worker evaluates it in memory and writes nothing.",
   },
+  purgeRestoreKeys: {
+    label: "restore keys purge",
+    // The keys are not listed anywhere in the console; the audit row is the trail.
+    invalidates: (slug) => [prefix(qk.activity(slug))],
+  },
   updateSignInSettings: {
     label: "sign-in settings",
     // `claimByKey` is the same column the Portal page edits.
@@ -692,6 +699,15 @@ export const MUTATIONS: MutationTable = {
     label: "user data delete",
     // Cloud Sync data is one of the stores it empties: the Data tab reads it afresh.
     invalidates: (slug) => [...users(slug), prefix(qk.syncSubjects(slug))],
+  },
+  syncDeleteData: {
+    label: "Cloud Sync data delete",
+    // The person's summary and every value read under it, the usage page and the user's size.
+    invalidates: (slug) => [
+      ...users(slug),
+      prefix(qk.syncSubjects(slug)),
+      prefix(qk.syncUsage(slug)),
+    ],
   },
   detachProductUserLicense: {
     label: "user license detach",

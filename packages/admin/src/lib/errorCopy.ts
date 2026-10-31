@@ -464,6 +464,14 @@ export function errorCopy(
         details,
       };
     }
+    // D11: a gated action whose sign-in is too old: a request to sign in, never "need edit access".
+    if (code === "step_up_required")
+      return {
+        title: "Sign in again to confirm it's you",
+        description: "This needs a sign-in from the last 5 minutes.",
+        action: "none",
+        details,
+      };
     if (context.read)
       return {
         title: "You don't have access to this",

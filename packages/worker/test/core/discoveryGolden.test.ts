@@ -70,6 +70,10 @@
  * the Worker has a file store (`SYNC_FILES`) and the launch gate `launch.syncFiles` is on; these worlds bind
  * no file store, so the goldens are unchanged (`cloudSyncFilesRecords.test.ts` pins both states).
  * I-13.9 added `endpoints.link` (`<base>/identity/link`) right after `nonce`, under the same gate.
+ * I-49.5 (WIRE-CONTRACT-V5 §12.11.8) added Identity's `restore: true` after `keyEntryLimit` and
+ * `endpoints.restore` (`<base>/identity/restore`) right after `signout`, while Identity, the
+ * product setting `identity.restore` and the launch gate `launch.identityRestore` all allow it (the
+ * gate is on in this suite's env). Additive; the identity transcripts pin both.
  */
 
 import { readFileSync } from "node:fs";

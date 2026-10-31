@@ -887,6 +887,32 @@ describe("the save screens at the §7.1 sizes", () => {
               h1.contains(document.activeElement),
           ).toBe(true);
           if (name === "failed") return;
+          const short = size.label === "844x390" || size.label === "640x360";
+          const card = kit
+            .querySelector("[data-side=remote]")!
+            .getBoundingClientRect();
+          const keep = kit
+            .querySelector('[data-key="saveConflict.keepThis"]')!
+            .getBoundingClientRect();
+          if (short) {
+            // Two panes: the cards on the left, every choice and Cancel in the first viewport.
+            expect(card.right, "cards left of the choices").toBeLessThanOrEqual(
+              keep.left + 1,
+            );
+            for (const key of ["saveConflict.keepThis", "common.cancel"]) {
+              const r = kit
+                .querySelector(`[data-key="${key}"]`)!
+                .getBoundingClientRect();
+              expect(
+                r.bottom,
+                `${key} in the first viewport`,
+              ).toBeLessThanOrEqual(size.height);
+            }
+          } else {
+            expect(card.bottom, "versions before choices").toBeLessThanOrEqual(
+              keep.top + 1,
+            );
+          }
           // One block in reading order: the choices stack in one column, the reason sits under
           // Keep both, Cancel last; no two controls overlap.
           const rects = (key: string) =>

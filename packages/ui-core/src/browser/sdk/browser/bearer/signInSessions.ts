@@ -14,7 +14,7 @@ import {
 import type { BearerSession, SignInPrompt } from "./session.js";
 
 /** What the adapter does once a sign-in ended: apply the state, fetch the subject. `signedIn`
- *  outcomes come back with the subject filled in; every other outcome is a notification. */
+ *  outcomes (and `activated`, which has none) come back with the subject filled in; every other outcome is a notification. */
 export interface SettleHooks {
   onSettled(outcome: SignInOutcome): Promise<SignInOutcome>;
   /** The sign-in failed or was refused (thrown to the caller too). */
@@ -205,7 +205,8 @@ export async function completeRedirect(
     hooks.onFailed(error);
     throw error;
   }
-  if (outcome.kind === "signedIn") return hooks.onSettled(outcome);
+  if (outcome.kind === "signedIn" || outcome.kind === "activated")
+    return hooks.onSettled(outcome);
   hooks.onStopped();
   return outcome;
 }

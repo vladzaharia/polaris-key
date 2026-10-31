@@ -844,15 +844,15 @@
           `<div class="wrow">${g(ic, 20)}<div class="t">${t}${small ? `<small>${small}</small>` : ""}</div>${right || ""}</div>`;
         return `<div style="display:grid;grid-template-columns:240px 1fr;height:100%">
           <div class="nav" style="padding:8px;display:grid;align-content:start;gap:4px">
-            <span>${g("sliders")}General</span><span>${g("play")}Audio</span><span class="on">${g("user")}Account and license</span></div>
+            <span>${g("sliders")}General</span><span>${g("play")}Audio</span><span class="on">${g("user")}Account and License</span></div>
           <div style="padding:28px 36px;display:grid;align-content:start;gap:4px;background:var(--w-layer);border-radius:8px 0 0 0;overflow:hidden">
-            <h1 class="wh hero" style="margin-bottom:16px">Account and license</h1>
+            <h1 class="wh hero" style="margin-bottom:16px">Account and License</h1>
             <div class="wrow" style="min-height:72px">${appIcon(40, 8)}<div class="t"><span style="font-weight:500">Tidewater Studio Pro</span><small>Lifetime · mara@fennick.studio</small></div><span class="wb">Manage${g("external", 14)}</span></div>
             ${row("laptop", "<span>Devices</span>", "2 of 3 in use", `<span class="wmute">${g("chevronRight")}</span>`)}
             <div class="wgroup"><h2>From Harbor Audio</h2>
-              ${row("download", "<span>Update automatically</span>", "Changed by you", `<span class="val">On</span><span class="tog"></span>`)}</div>
-            <div class="wgroup"><h2>Managed settings</h2>
-              ${row("shield", "<span>Release channel</span>", "Set by Fennick Studio", `<span class="val">${g("lock", 14)}Locked</span>`)}</div>
+              ${row("download", "<span>Update Automatically</span>", "Changed by you", `<span class="val">On</span><span class="tog"></span>`)}</div>
+            <div class="wgroup"><h2>Managed Settings</h2>
+              ${row("shield", "<span>Release Channel</span>", "Set by Fennick Studio", `<span class="val">${g("lock", 14)}Locked</span>`)}</div>
             <div class="wgroup"><h2>Updates</h2>
               ${row("update", "Version <span class=tnum>2.4.1</span>", "You’re up to date", `<span class="wb">Check for updates</span>`)}</div>
           </div></div>`;

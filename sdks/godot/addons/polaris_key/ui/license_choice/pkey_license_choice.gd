@@ -56,6 +56,10 @@ var flags: Dictionary = {}
 var replace_view: Dictionary = {}
 ## `{os, formFactor}` of the device, or {} (a browser tab says "in this browser").
 var platform: Dictionary = {}
+## The quiet link is "Use another account" (`other_account_requested`) instead of "Use a license key
+## instead": the choice after an automatic sign-in, where the person did not type a key and the way out
+## is another account (SIGN-IN.md §3.19).
+var other_account_link := false
 ## What the build offers (`keyEntry`); a member left out is on.
 var capabilities: Dictionary = {}
 var model: Dictionary = {}
@@ -308,8 +312,8 @@ func _render() -> void:
 	var link_key := ""
 	var get_license = choices.get("getLicense")
 	var wants_key: bool = capabilities.get("keyEntry", true) != false and not (get_license is Dictionary and get_license.get("keyEntry") == false)
-	if state in ["many", "one", "current", "keep", "new", "create", "mixed", "all-full"] and wants_key:
-		link_key = "sign_in_use_key"
+	if state in ["many", "one", "current", "keep", "new", "create", "mixed", "all-full"] and (wants_key or other_account_link):
+		link_key = "choice_none_other" if other_account_link else "sign_in_use_key"
 	elif state == "replace-open":
 		link_key = "replace_back"
 	elif state in ["none-keys"]:
@@ -573,7 +577,10 @@ func _on_secondary() -> void:
 		"none-no-keys":
 			other_account_requested.emit()
 		_:
-			key_requested.emit()
+			if other_account_link:
+				other_account_requested.emit()
+			else:
+				key_requested.emit()
 
 
 func _cancel() -> bool:

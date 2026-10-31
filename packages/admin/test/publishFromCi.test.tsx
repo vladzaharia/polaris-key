@@ -533,7 +533,9 @@ describe("Publish from CI", () => {
     mount();
     await screen.findByText(/Waiting for the release from CI/);
     expect(screen.getByText("2. Push a tag")).toBeTruthy();
-    expect(document.body.textContent).toContain("git push origin v0.1.0");
+    await waitFor(() =>
+      expect(document.body.textContent).toContain("git push origin v0.1.0"),
+    );
     fns.releases.mockResolvedValue({
       releases: [RELEASED],
       channels: [],
@@ -572,7 +574,9 @@ describe("Publish from CI", () => {
     );
     mount();
     await screen.findByText(/Waiting for the release from CI/);
-    expect(document.body.textContent).toContain("git push origin v0.1.1");
+    await waitFor(() =>
+      expect(document.body.textContent).toContain("git push origin v0.1.1"),
+    );
     expect(document.body.textContent).not.toContain("first tag");
     expect(document.body.textContent).not.toContain("git tag v0.1.0");
   });

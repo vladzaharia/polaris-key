@@ -273,7 +273,7 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     },
     "cloudSyncStatus-synced" to {
         PolarisScreen(showLogo = false) {
-            PolarisTitle("Cloud Sync")
+            PolarisTitle("Sync Across Devices")
             Spacer(Modifier.height(16.dp))
             PolarisCloudSyncStatus(PolarisCloudSync.Synced, syncedAtMillis = NOW * 1000 - 300_000, nowMillis = NOW * 1000, onOpen = {})
             Spacer(Modifier.height(12.dp))
@@ -285,7 +285,7 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     // The Cloud Sync screens (U-42), resolved by KitStates from the cloudSync family's inputs.
     "cloudSyncStatus-locked" to {
         PolarisScreen(showLogo = false) {
-            PolarisTitle("Cloud Sync")
+            PolarisTitle("Sync Across Devices")
             Spacer(Modifier.height(16.dp))
             PolarisCloudSyncStatus(PolarisCloudSync.Locked, onUnlock = {})
             Spacer(Modifier.height(12.dp))

@@ -60,7 +60,7 @@ final class IdentityChoiceTests: XCTestCase {
     }
 
     private let tokenOk =
-        #"{"access_token":"pkeyt_new","token_type":"Bearer","scope":"profile email","schemaVersion":1,"device":{"id":"D"},"license":{"id":"lic_pro"},"subject":"ps_abc","keyEntries":{"used":1,"limit":10},"attachable":true}"#
+        #"{"access_token":"pkeyt_new","token_type":"Bearer","scope":"profile email","schemaVersion":1,"device":{"id":"D"},"license":{"id":"lic_pro"},"subject":"ps_abc","keyEntries":{"used":1,"limit":10}}"#
 
     func testAnUnpublishedRouteIsTheTypedUnsupportedResult() async throws {
         await discovery(choice: false)
@@ -119,6 +119,10 @@ final class IdentityChoiceTests: XCTestCase {
         let held = await c.core.token
         XCTAssertEqual(held, "pkeyt_new")
         XCTAssertEqual(c.identity.account, "ps_abc")
+        // Only a Keep leaves a licence outside the account for `attach` to move.
+        let other = try await c.identity.choice.complete(
+            grant: grant, choice: .license(id: "lic_pro"))
+        XCTAssertNil(other.attachable)
     }
 
     func testKeepSendsTheDevicesBearerAndNoOtherChoiceDoes() async throws {

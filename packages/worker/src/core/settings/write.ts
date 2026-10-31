@@ -70,6 +70,7 @@ import {
 import { NO_GUARD } from "./columns.js";
 import { reservedValueIn } from "./rules.js";
 import { valueHeldByOtherProduct } from "./unique.js";
+import { scopeReleaseStatements } from "../contributions.js";
 import {
   BREAK_GLASS_MAX_SECONDS,
   BREAK_GLASS_REASON_MAX,
@@ -982,6 +983,24 @@ async function writeProduct(
     opts.origin === "resync" || opts.origin === "manifest-push"
       ? "manifest"
       : "console";
+  // A value this write frees clears the links scoped by it (a service's `scopeRelease`); the
+  // statements read the row still stored, so they precede its write below.
+  for (const p of plans) {
+    if (p.def.storage.kind !== "scalar") continue;
+    if (p.row === "delete" || p.row === "manifest" || p.row === "upsert")
+      stmts.push(
+        ...scopeReleaseStatements({
+          product: slug,
+          key: p.def.key,
+          next:
+            p.row === "delete"
+              ? null
+              : JSON.stringify(p.row === "manifest" ? p.w.restore : p.w.value),
+          now: opts.now,
+          when: guard,
+        }),
+      );
+  }
   for (const p of plans) {
     if (p.row === "delete")
       stmts.push({

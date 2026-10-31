@@ -460,6 +460,7 @@ export {
   type CallbackResult,
   type RandomBytes,
   type RedirectPending,
+  type RefusalDetails,
   type StartRedirectOptions,
   type TokenAnswer,
 } from "./identityRedirect.js";

@@ -513,11 +513,14 @@ class Feature:
 	const IDENTITY_ACCOUNT := "identity.account"
 	const IDENTITY_REDIRECT_WEB := "identity.redirect.web"
 	const IDENTITY_CHOICE := "identity.choice"
+	const IDENTITY_DEVICECODE_CHOICE := "identity.devicecode.choice"
 	const IDENTITY_SIGNIN_HINTS := "identity.signin.hints"
+	const IDENTITY_KEYRETURN := "identity.keyreturn"
 	const IDENTITY_EXCHANGE := "identity.exchange"
 	const IDENTITY_GAMECENTER := "identity.gamecenter"
 	const IDENTITY_PGS := "identity.pgs"
 	const IDENTITY_AUTOSIGNIN := "identity.autosignin"
+	const IDENTITY_RESTORE := "identity.restore"
 	const IDENTITY_LINK := "identity.link"
 	const RELEASE_CHANGELOG := "release.changelog"
 	const RELEASE_DOWNLOAD := "release.download"
@@ -586,7 +589,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "core.backend", "core.devicekeys", "license.gate", "license.signedinuser", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "sync.keyring", "sync.records", "sync.files", "sync.files.delta", "sync.e2e.recovery", "sync.transfer.background", "sync.e2e", "connect.identity", "connect.noise", "connect.protocol", "connect.lan", "connect.relay", "connect.links", "connect.transfer", "connect.app", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "identity.redirect.web", "identity.choice", "identity.signin.hints", "identity.exchange", "identity.gamecenter", "identity.pgs", "identity.autosignin", "identity.link", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.kit.holders", "ui.cli", "ui.cli.mount", "ui.cli.contract", "ui.cli.portal", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt", "server.license", "server.signin", "server.config", "server.webhooks"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "core.backend", "core.devicekeys", "license.gate", "license.signedinuser", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "sync.keyring", "sync.records", "sync.files", "sync.files.delta", "sync.e2e.recovery", "sync.transfer.background", "sync.e2e", "connect.identity", "connect.noise", "connect.protocol", "connect.lan", "connect.relay", "connect.links", "connect.transfer", "connect.app", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "identity.redirect.web", "identity.choice", "identity.devicecode.choice", "identity.signin.hints", "identity.keyreturn", "identity.exchange", "identity.gamecenter", "identity.pgs", "identity.autosignin", "identity.restore", "identity.link", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.kit.holders", "ui.cli", "ui.cli.mount", "ui.cli.contract", "ui.cli.portal", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt", "server.license", "server.signin", "server.config", "server.webhooks"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -1057,7 +1060,7 @@ const PRESENTATION_MATRIX_VERSION := 1
 const PORTAL_MATRIX_VERSION := 1
 
 ## `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-const UI_MATRIX_VERSION := 7
+const UI_MATRIX_VERSION := 10
 
 ## `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 const BACKEND_MATRIX_VERSION := 1
@@ -1520,11 +1523,14 @@ static func capabilities() -> Dictionary:
 		"identity.account": {"status": "implemented", "service": "identity", "na": []},
 		"identity.redirect.web": {"status": "implemented", "service": "identity", "na": []},
 		"identity.choice": {"status": "implemented", "service": "identity", "na": []},
+		"identity.devicecode.choice": {"status": "planned", "service": "identity", "na": []},
 		"identity.signin.hints": {"status": "implemented", "service": "identity", "na": []},
-		"identity.exchange": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
-		"identity.gamecenter": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
-		"identity.pgs": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"identity.keyreturn": {"status": "planned", "service": "identity", "na": []},
+		"identity.exchange": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
+		"identity.gamecenter": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"identity.pgs": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"identity.autosignin": {"status": "planned", "service": "identity", "na": []},
+		"identity.restore": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
 		"identity.link": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
 		"release.download": {"status": "implemented", "service": "release", "na": []},
@@ -1593,4 +1599,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "d95c22e41888f94b21f38aab070c3f3ff52ea164a743af29eac12d8cdf83e346"
+const CAPABILITY_DIGEST := "6e45d5d2a2315c1aa47ddd70026caf6ae298ef47111cd0f836ad4cc6d8c4f0c7"

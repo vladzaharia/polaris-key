@@ -17,6 +17,10 @@
  *                     product's enablement of the contributing service.
  *   onDeviceChange    listeners told that a device was bound, unbound, removed or changed its keys
  *                     (R-7, `core/devices/lifecycle.ts`); run for every mounted service.
+ *   onServicesChange  listeners told that a write of a product's service enablement happened
+ *                     (`core/servicesTransitions.ts`), with the set before it when the writer
+ *                     knows it; run for every mounted service WHATEVER its enablement, because a
+ *                     switched-off service must still clean up what it stored.
  *   maintenance       the service's retention and reconciliation steps; `scheduled.ts` iterates
  *                     descriptors instead of importing them.
  *   keyring           whether the service needs the Core key ring for a product (U-36.2): Cloud
@@ -35,12 +39,13 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-import type { Db, DbStatement } from "../db/types.js";
+import type { Db, DbParam, DbStatement } from "../db/types.js";
 import type { Env } from "../platform/env.js";
 import type { MigrationJob } from "./migrate/job.js";
 import { CORE_MIGRATIONS } from "./migrate/coreJobs.js";
 import type { AuthorizationListener } from "./authorizationListeners.js";
 import type { DeviceChangeListener } from "./devices/lifecycle.js";
+import type { AuditActor } from "./audit.js";
 import type { SubjectStore } from "./accounts/subjectHooks.js";
 import type { LicenseHolderHooks } from "./licensing/licenseHolders.js";
 import type { ProductPublic } from "./products.js";
@@ -167,6 +172,23 @@ export type ProductDeletionContributor = (
 ) => DbStatement[];
 
 /**
+ * What a setting edit or a manifest ingest tells a service that a setting's value is being
+ * replaced (I-14.13, C10 note 6). `next` is the JSON of the value the write leaves, or `null`
+ * when the stored row is going away. The statements read the row still stored, so a caller puts
+ * them BEFORE its own write of `product_settings` in the same batch. `when` is an extra SQL
+ * condition every statement ANDs in (the settings write's anchor, the ingest's "no console
+ * claim"). Run for every mounted service WHATEVER its enablement; a service ignores a key it
+ * does not scope. Statements only, idempotent, touching this service's own tables.
+ */
+export type ScopeReleaseContributor = (ctx: {
+  product: string;
+  key: string;
+  next: string | null;
+  now: number;
+  when?: { sql: string; params: DbParam[] };
+}) => DbStatement[];
+
+/**
  * The part of a service's product erasure that is not a D1 statement: data it keeps outside D1
  * (Cloud Sync's per-person Durable Objects). Runs BEFORE `deleteProduct`, while the service's own
  * rows still say what exists, and only that batch removes those rows, so a failure here leaves
@@ -189,9 +211,30 @@ export type KeyringContributor = (ctx: {
   product: string;
 }) => Promise<boolean>;
 
+/**
+ * What a write of a product's service enablement tells a listener: the set now stored (`after`)
+ * and, when the writer saw it, the set the write replaced (`before`; `null` when it did not).
+ * Writers call it on EVERY write, so a listener is idempotent and decides for itself whether the
+ * change concerns it.
+ */
+export interface ServicesChange {
+  product: string;
+  before: ServicesMap | null;
+  after: ServicesMap;
+  actor: AuditActor;
+}
+
+/** A service's reaction to a services write. A throw reaches the writer, which reports it. */
+export type ServicesChangeListener = (
+  ctx: { db: Db; env: Env; now: number },
+  change: ServicesChange,
+) => Promise<void>;
+
 export interface ServiceContributions {
   keyring?: KeyringContributor;
   productDeletion?: ProductDeletionContributor;
+  /** Statements run when a setting's stored value is replaced or removed (see the type). */
+  scopeRelease?: ScopeReleaseContributor;
   productPurge?: ProductPurgeContributor;
   /**
    * The service's rows of a `.pkey/` ingest (P0-26): checks, statements for its OWN tables,
@@ -213,6 +256,8 @@ export interface ServiceContributions {
   onAuthorization?: Readonly<Record<string, AuthorizationListener>>;
   /** Device lifecycle listeners (CC-03.3), by their stable name. */
   onDeviceChange?: Readonly<Record<string, DeviceChangeListener>>;
+  /** Service-enablement write listeners (I-49.8), by their stable name. */
+  onServicesChange?: Readonly<Record<string, ServicesChangeListener>>;
 }
 
 // ── the bound registry ──────────────────────────────────────────────────────────────────────
@@ -302,6 +347,13 @@ export function contributedDeviceChangeListeners(): DeviceChangeListener[] {
   );
 }
 
+/** Every mounted service's service-enablement listeners, in canonical slug order. */
+export function contributedServicesChangeListeners(): ServicesChangeListener[] {
+  return contributionsOf().flatMap(([, c]) =>
+    Object.values(c.onServicesChange ?? {}),
+  );
+}
+
 /**
  * Every mounted service's product-deletion statements. Fails CLOSED: before `mount.ts` has bound
  * the registry it throws, because silently skipping them would delete a product and leave its
@@ -317,6 +369,19 @@ export function productDeletionStatements(
     );
   return contributionsOf().flatMap(([, c]) =>
     c.productDeletion ? c.productDeletion(product, now) : [],
+  );
+}
+
+/**
+ * Every mounted service's statements for a setting whose stored value is being replaced. Empty
+ * while no registry is bound (nothing is mounted, so nothing holds a scope).
+ */
+export function scopeReleaseStatements(
+  ctx: Parameters<ScopeReleaseContributor>[0],
+): DbStatement[] {
+  if (!BOUND) return [];
+  return contributionsOf().flatMap(([, c]) =>
+    c.scopeRelease ? c.scopeRelease(ctx) : [],
   );
 }
 

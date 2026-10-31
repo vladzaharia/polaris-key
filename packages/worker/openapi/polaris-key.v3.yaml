@@ -284,6 +284,7 @@ paths:
                         configured: true
                         issuer: https://key.plrs.im/djdl/identity
                         account: true
+                        deviceChoice: true
                         keyEntryLimit: 10
                         endpoints:
                           session: https://key.plrs.im/djdl/identity/session
@@ -7837,6 +7838,16 @@ paths:
               named:
                 summary: test/services/identity/oidcEdge.test.ts
                 value: { deviceId: dev-1, deviceName: Studio Mac }
+              hinted:
+                summary: test/services/identity/deviceStartHints.test.ts — Add your name and email, in the app
+                value:
+                  {
+                    deviceId: dev-1,
+                    loginHint: ada@example.com,
+                    nameHint: Ada,
+                    purpose: attach,
+                    licenseChoice: app,
+                  }
               headerOnly:
                 summary: Device id supplied by `X-PKey-Device` instead
                 value: {}
@@ -7860,7 +7871,10 @@ paths:
                     pollUrl: https://key.plrs.im/djdl/identity/auth/device/poll
                     deviceName: Studio Mac
         "400":
-          description: Unparseable body, or no device id from any of the three sources — LEGACY FLAT.
+          description: >
+            Unparseable body, no device id from any of the three sources, or a `purpose`,
+            `licenseChoice`, `loginHint` or `nameHint` that is not an allowed value or not a string
+            — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -7869,6 +7883,8 @@ paths:
                   { value: { error: bad_request, message: invalid json } }
                 missingDevice:
                   { value: { error: bad_request, message: missing device id } }
+                invalidHints:
+                  { value: { error: bad_request, message: invalid hints } }
         "404":
           description: The product has no OIDC configuration — LEGACY FLAT.
           content:
@@ -8386,7 +8402,7 @@ paths:
       tags: [identity]
       summary: Poll the device-code flow
       description: >
-        Four flow states, all at HTTP 200 unless noted: `pending` (nothing confirmed yet),
+        Five flow states, all at HTTP 200 unless noted: `pending` (nothing confirmed yet),
         `ready` (with the minted `pkeyt_` token), `timeout` (the flow record is gone,
         including immediately after a `ready`, which deletes it) and `error`, which names a
         reason only for a refusal (WIRE-CONTRACT-V4 §12.10, below). The body names `deviceCode` (the spelling `state` is
@@ -8428,6 +8444,18 @@ paths:
         answers the bare `error`, then `timeout`. A refusal at the mint is never a 503: it
         answers the bare `error` once and drops the flow. A client treats every 5xx on the poll
         as transient.
+
+
+        **`choose`** (UK-42.22, WIRE-CONTRACT-V5 §12.10.1) is answered only to a start that sent
+        `licenseChoice: "app"`, for a product that runs License, when a licence choice is due: the
+        account holds a candidate, the device runs on a licence outside the list (`keep`), or it
+        holds none and the product accepts keys. It carries a pending sign-in grant (`grant`,
+        300 s, bound to the flow's device, `via: device`) and the `choices` view, and the flow is
+        spent: the poll after it is `timeout`, and a client stops at `choose` and finishes with the
+        four `identity/choice` routes. That grant cannot list a licence's devices or Replace. With
+        no choice due the poll answers `ready` after binding as `token` does with no choice due. It
+        is never answered in card mode (absent or `card`), nor when no account can be found for
+        the signed-in identity: those polls are exactly the ones above.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: Authorization
@@ -8484,6 +8512,19 @@ paths:
                     schemaVersion: 1
                     identity: { name: Player, email: player@example.com }
                 timeout: { value: { status: timeout } }
+                choose:
+                  summary: test/services/identity/deviceChoicePoll.test.ts — a licence choice is due; the flow is spent
+                  value:
+                    status: choose
+                    grant: sg_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
+                    expiresIn: 300
+                    choices:
+                      state: choose
+                      choices: []
+                      keep: true
+                      preselected: null
+                      create: null
+                      getLicense: null
                 error:
                   summary: the sign-in failed after approval; the cause is not said
                   value: { status: error }
@@ -8809,6 +8850,13 @@ paths:
             description: "Who shows the licence choice (I-08b).",
             schema: { type: string, enum: [card, app] },
           }
+        - {
+            name: key_return,
+            in: query,
+            required: false,
+            description: 'LK-SKIP (§12.4.2): `allow` offers the card''s "Continue without an account". Any other value is `invalid_request`. Kept only for `purpose=signin` on a product that runs License with the launch gate `launch.identityKeyReturn` on; otherwise dropped silently.',
+            schema: { type: string, enum: [allow] },
+          }
       responses:
         "303":
           description: >
@@ -8846,7 +8894,15 @@ paths:
         changed scope), `403 interstitial_required` (no link yet, or unaccepted terms), and one
         byte-identical `400 invalid_grant` for every verifier failure. It is served only while the
         `launch.identityExchange` gate is on; off, its `grant_type` is `unsupported_grant_type`.
-        The rest of this text is the `authorization_code` grant. A form-encoded body
+        A third grant, `urn:polaris-key:grant-type:restore` (I-49.7, §12.11.8,
+        `RestoreTokenRequest`), signs a new device in with no click from the restore key its
+        platform backup carried: the key is checked against the product, its secret and a
+        `restore` proof, and used once. It answers as the exchange does, with `confirm` carrying no
+        provider and no address, and one byte-identical `400 invalid_grant` for every refusal up
+        to the account check; with the launch gate `launch.identityRestore` or the product setting
+        `identity.restore` off it is `unsupported_grant_type` and nothing is read or used. 10 calls
+        a minute per client network and 5 per device. The rest of this text is the
+        `authorization_code` grant. A form-encoded body
         (`application/x-www-form-urlencoded`; a JSON body is `invalid_request`) with `client_id`,
         `code`, `code_verifier` and, optionally, `redirect_uri` (compared exactly when sent) and
         `device_name`. Needs `X-PKey-Device`; the device metadata headers are read when present.
@@ -8868,6 +8924,7 @@ paths:
               oneOf:
                 - { $ref: "#/components/schemas/TokenRequest" }
                 - { $ref: "#/components/schemas/TokenExchangeRequest" }
+                - { $ref: "#/components/schemas/RestoreTokenRequest" }
       responses:
         "200":
           description: >
@@ -9235,7 +9292,8 @@ paths:
         the code (`X-PKey-Device` is required). JSON body, `no-store`, nested Polaris errors.
         Only while the product's Identity service is on.
         Answers only for a FULL licence in the grant's view whose Replace is allowed; every other
-        id gets the one `404`. Spends one read.
+        id gets the one `404`. Spends one read. A grant earned by a device code (`choose` from
+        `deviceAuthPoll`, WIRE-CONTRACT-V5 §12.5.1 rule 5) lists no devices: always the `404`.
       security: []
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -9300,7 +9358,10 @@ paths:
         `consent` in the body (`400 bad_request` without it, the grant left open); the consent
         row is written in the same press that binds the device. `choice.kind` is `license` (with an optional
         `replaceDeviceId`, committed in one batch with the device claim), `keep` (needs the device's own
-        `Authorization: Bearer`), `create` or `key`. A key is PX-W9's app key entry, counted once
+        `Authorization: Bearer`), `create` or `key`. A grant earned by a device code cannot Replace
+        (WIRE-CONTRACT-V5 §12.5.1 rule 5): a `replaceDeviceId` is `409 license_choice_required`
+        with a `view` whose rows have `replace: null`, and the grant stays open.
+        A key is PX-W9's app key entry, counted once
         with the device claim, and refuses with `license_owned` and `key_entry_limit`. A refusal the
         person can retry (`device_limit` with a fresh `view`, a lost mint, a wrong key) leaves
         the grant open for the time it has left.
@@ -9454,6 +9515,107 @@ paths:
                 limited: { value: { error: { code: rate_limited } } }
     options:
       operationId: preflightIdentitySubject
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/restore:
+    post:
+      operationId: identityRestoreEnrol
+      tags: [identity]
+      summary: Enrol or check this device's silent-restore key (I-49.5)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.8. The device bearer with its `X-PKey-Device`. The body is JSON
+        `{restoreId?}`; an `restoreId` that is not `rk_` and 22 base64url characters is
+        `400 bad_request`. `200 {status: "current"}` only when `restoreId` is this device's own
+        live key for the device's subject and was made under 90 days ago (it moves `checkedAt`);
+        any other id, including another device's key for the same person, gets `201` with a new
+        `restoreId` and `secret` that replace this device's key. The secret is shown once and is
+        never stored. A subject holds at most 10 keys for a product. `403 account_required`
+        when the device holds no sign-in binding. With the launch gate `launch.identityRestore`
+        off, or the product setting `identity.restore` off, the route answers `404 not_found` and
+        reads nothing. NESTED errors. 20 calls a minute per client network and 10 a day per
+        device; both fail closed.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RestoreKeyRequest" }
+      responses:
+        "200":
+          description: "The device's key is current. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RestoreKeyCurrent" }
+              examples:
+                current: { value: { status: current } }
+        "201":
+          description: "A new key replaced this device's. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RestoreKeyIssued" }
+              examples:
+                issued:
+                  value:
+                    restoreId: rk_Zk8LqR8nT0sYp2vcEgHj6B
+                    secret: rs_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
+        "400":
+          description: No or malformed `X-PKey-Device`, or a malformed body (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: The device holds no sign-in binding (`account_required`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Over the network or the device limit — NESTED. Fails closed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    delete:
+      operationId: identityRestoreRevoke
+      tags: [identity]
+      summary: Revoke this device's silent-restore key (I-49.5)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.8. Only the device bearer with its `X-PKey-Device` is needed.
+        Deletes this device's key and answers `204` whether or not one existed, and whatever the
+        state of Identity's launch gate or the product setting: a revocation is never gated. 60
+        calls a minute per client network; fails open.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      responses:
+        "204":
+          description: "Revoked, or there was nothing to revoke. `cache-control: no-store`."
+        "400":
+          description: No or malformed `X-PKey-Device` (`bad_request`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: 60 calls per 60 s per client network — NESTED.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityRestore
       tags: [identity]
       summary: CORS preflight
       description: >
@@ -15116,6 +15278,75 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  /api/signin/requests/{request}/key:
+    post:
+      operationId: returnToAppWithKey
+      tags: [portal]
+      summary: Continue to the app on a licence key, without an account
+      description: >
+        LK-SKIP (WIRE-CONTRACT-V5 §12.4.2). The card's "Continue without an account". No portal
+        session: it needs the request's binder cookie (the R1-07 binding), same-origin JSON and a
+        request that recorded `key_return=allow`. The key is in the body only (at most 1 KiB) and
+        never in a URL, the redirect, a record or the audit. Refusals come in this order and none
+        consumes the request: a cross-origin call is `404`; a body that is not a JSON object under
+        1 KiB is `400`; 10 calls a minute per client network, charged before any lookup (fails
+        closed) is `429`; an unknown, expired, foreign, taken or device-code request, a product
+        with Identity or License off, or the launch gate `launch.identityKeyReturn` off is `404`;
+        5 calls per request in 600 s is `429`; a malformed key is `422`; another product's, an
+        unknown or inactive key, a missing licence or a licence that is not usable is `401`; a
+        licence in an account is `403
+        license_owned` whatever `identity.keyEntryRefusals` says; with refusals on and the
+        key-entry limit reached, `403 key_entry_limit`. Then the request is taken in one atomic
+        consume and `{redirect}` is `<redirect_uri>?code=…&state=…&iss=…`. The code names the key
+        by its hash and the licence, no account; the device binds at `token`, where seats are
+        checked.
+      parameters:
+        - name: request
+          in: path
+          required: true
+          schema: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignInKeyReturnRequest" }
+      responses:
+        "200":
+          description: Where the card sends the person next.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignInRedirect" }
+        "400":
+          description: "`invalid_request`: not JSON, over 1 KiB, or not an object."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401":
+          description: >
+            `unauthorized`: no such key, another product's key, no licence, or a licence that is
+            not usable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: >
+            `license_owned` (with `signInUrl`) or `key_entry_limit` (with `keyEntries` and
+            `manageUrl`). Nothing was consumed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "422":
+          description: "`bad_request`: not the shape of a licence key."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: "`rate_limited`, with `retryAfter` and the `retry-after` header."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /api/signin/requests/{request}/cancel:
     post:
       operationId: cancelSignInRequest
@@ -16877,6 +17108,87 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
   # ── The account's passkeys (I-16, PORTAL.md §4.26): the settings list, adding and removing.
   # Session-authenticated by the portal cookie; mutations need the `X-PKey-Portal-CSRF` header.
+  /api/me/devices:
+    get:
+      operationId: listAccountDevices
+      tags: [portal]
+      summary: The account's devices that hold no licence
+      description: >
+        The authorized devices of the account's products with the portal on that are bound to no
+        licence: an app that uses sign-in or Cloud Sync alone, or a device that signed in from
+        backup. Licence devices stay on the product pages. Newest seen first.
+      responses:
+        "200":
+          description: The devices.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [devices]
+                properties:
+                  devices:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          product,
+                          productName,
+                          deviceId,
+                          label,
+                          platform,
+                          lastSeen,
+                          restored,
+                        ]
+                      properties:
+                        product: { type: string }
+                        productName: { type: string }
+                        deviceId: { type: string }
+                        label: { type: [string, "null"] }
+                        platform: { type: [string, "null"] }
+                        lastSeen: { type: integer }
+                        restored:
+                          {
+                            type: boolean,
+                            description: "True while the device is marked as signed in from backup (at most 270 days).",
+                          }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/devices/{product}/{deviceId}:
+    delete:
+      operationId: removeAccountDevice
+      tags: [portal]
+      summary: Remove a device that holds no licence
+      description: >
+        Releases the device as the licence route does (the shared `portalDeviceDisconnect`
+        budget, the audit row, the security email) and, for a device that signed in from backup,
+        deletes all of the account's restore keys for the product. A device bound to a licence,
+        another account's device, an unknown one and a product with the portal off all answer
+        the same 404.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: deviceId, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Removed. }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: Too many device removals (the shared `portalDeviceDisconnect` budget).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /api/me/passkeys:
     get:
       operationId: listAccountPasskeys
@@ -27410,8 +27722,16 @@ components:
         purpose:
           type: string
           enum: [signin, attach]
-          description: On a request that came through `authorize` (§12.4).
+          description: >
+            On a request that came through `authorize` (§12.4), and on a `device` request whose
+            start sent the hints (§12.10.1; there the view has no `scope`).
         licenseChoice: { type: string, enum: [card, app] }
+        keyReturn:
+          type: boolean
+          const: true
+          description: >
+            LK-SKIP (§12.7.2): present, and `true`, only on a request that recorded `key_return=allow`
+            (§12.4.2). Absent otherwise.
         scope:
           type: array
           items: { type: string, enum: [profile, email, cloudSync] }
@@ -30266,6 +30586,57 @@ components:
             type: string,
             description: The device's label; normalised as in §12.7.1.,
           }
+    RestoreTokenRequest:
+      type: object
+      description: >
+        `POST /{product}/identity/token` (I-49.7, §12.11.8): the form body of the restore grant.
+        `X-PKey-Device` is required. `proof` is the `restore` proof (§12.11.1): its fifth line is
+        `<restore_id>.<device_key>` and its sixth the base64url SHA-256 of `restore_secret`.
+      required:
+        - grant_type
+        - client_id
+        - restore_id
+        - restore_secret
+        - device_key
+        - agree_key
+        - proof
+      additionalProperties: false
+      properties:
+        grant_type:
+          { type: string, const: "urn:polaris-key:grant-type:restore" }
+        client_id: { type: string, description: The product slug. }
+        restore_id: { type: string, pattern: "^rk_[A-Za-z0-9_-]{22}$" }
+        restore_secret: { type: string, pattern: "^rs_[A-Za-z0-9_-]{43}$" }
+        device_key: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        agree_key: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        proof: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
+        license_choice: { type: string, enum: [app, card], default: app }
+        device_name:
+          {
+            type: string,
+            description: The device's label; normalised as in §12.7.1.,
+          }
+    RestoreKeyRequest:
+      type: object
+      description: "`POST /{product}/identity/restore` (I-49.5, §12.11.8). The body may be empty."
+      additionalProperties: false
+      properties:
+        restoreId: { type: string, pattern: "^rk_[A-Za-z0-9_-]{22}$" }
+    RestoreKeyCurrent:
+      type: object
+      description: The device's own key is live and under 90 days old (§12.11.8).
+      required: [status]
+      additionalProperties: false
+      properties:
+        status: { type: string, const: current }
+    RestoreKeyIssued:
+      type: object
+      description: A new key replaced the device's; the secret is shown once (§12.11.8).
+      required: [restoreId, secret]
+      additionalProperties: false
+      properties:
+        restoreId: { type: string, pattern: "^rk_[A-Za-z0-9_-]{22}$" }
+        secret: { type: string, pattern: "^rs_[A-Za-z0-9_-]{43}$" }
     TokenExchangeRequest:
       type: object
       description: >
@@ -30347,7 +30718,10 @@ components:
           type: object
           required: [provider, email]
           properties:
-            provider: { type: string, enum: [google, apple, gamecenter, pgs] }
+            provider:
+              type: [string, "null"]
+              enum: [google, apple, gamecenter, pgs, null]
+              description: "`null` with `email: null` on a restore's `confirm` (§12.11.8): it proves a key, not a provider token."
             email: { type: [string, "null"] }
         items:
           type: array
@@ -30628,6 +31002,14 @@ components:
         terms:
           type: string
           description: The terms version the person accepted, when the product requires them.
+    SignInKeyReturnRequest:
+      type: object
+      description: >
+        LK-SKIP (§12.4.2): `POST /api/signin/requests/{request}/key`. The whole licence key,
+        `pkey_<product>_…`; the body is at most 1 KiB.
+      required: [key]
+      properties:
+        key: { type: string }
     SignInRedirect:
       type: object
       required: [redirect]
@@ -31655,10 +32037,12 @@ components:
       properties:
         status:
           type: string
-          enum: [pending, confirm, ready, timeout, error]
+          enum: [pending, confirm, ready, timeout, error, choose]
           description: >
             `confirm` is `deviceAuthPoll` only, answered to a poll that asked to confirm the
             identity (`confirmIdentity` / `attachLicense`) once the player has signed in.
+            `choose` is `deviceAuthPoll` only, answered to a start that sent
+            `licenseChoice: "app"` when a licence choice is due (WIRE-CONTRACT-V5 §12.10.1).
         reason:
           type: string
           enum: [access_denied]
@@ -31680,6 +32064,14 @@ components:
           properties:
             name: { type: string }
             email: { type: string }
+        grant:
+          type: string
+          pattern: "^sg_[A-Za-z0-9_-]{43}$"
+          description: Present only on `choose` — the pending sign-in grant (`PendingSignIn`).
+        expiresIn:
+          type: integer
+          description: Present only on `choose` — the grant's lifetime in seconds (300).
+        choices: { $ref: "#/components/schemas/LicenseChoiceView" }
         attachable:
           type: boolean
           description: >
@@ -31706,13 +32098,37 @@ components:
     DeviceAuthStartRequest:
       type: object
       description: >
-        Both fields optional; an empty body is legal. The device id is taken from `deviceId`,
+        Every field is optional; an empty body is legal. The device id is taken from `deviceId`,
         then the `X-PKey-Device` header, then `?device=`.
       properties:
         deviceId: { type: string }
         deviceName:
           type: string
           description: The device label (WIRE-CONTRACT-V4 §12.7.1), normalised and never rejected; shown to the human on the sign-in page as reported by the device.
+        loginHint:
+          type: string
+          description: >
+            An email that prefills the sign-in card and verifies nothing (WIRE-CONTRACT-V5 §12.10.1).
+            A value that is not a strict email is dropped, never an error.
+        nameHint:
+          type: string
+          description: >
+            A display name that prefills the card and verifies nothing. Normalised as a device
+            label (§12.7.1) and dropped when nothing is left.
+        purpose:
+          type: string
+          enum: [signin, attach]
+          description: >
+            Why the person signs in: `signin` (default), or `attach` ("add this device's license
+            to your account"). Any other value is `400 bad_request`.
+        licenseChoice:
+          type: string
+          enum: [card, app]
+          description: >
+            `card` (default) is today's device-code sign-in. `app` asks the poll to answer
+            `choose` with a pending sign-in grant when a licence choice is due, so the app runs
+            the choice itself; an SDK sends it only when discovery carries `deviceChoice`. Any
+            other value is `400 bad_request`. `scope` is ignored.
     DeviceAuthStartResult:
       type: object
       description: >

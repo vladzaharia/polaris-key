@@ -612,6 +612,10 @@ public actor KeychainStore: Store, DeviceIdRebindable {
         return recordsDir.appendingPathComponent("\(name).json")
     }
 
+    /// Records a device backup must not carry (silent restore's check clock and queued revocation: a restored
+    /// copy would only delay a check or delete a key this device is about to replace).
+    private static let noBackupRecords: Set<String> = ["restore-checked", "restore-delete-pending"]
+
     public func readRecord(_ name: String) async -> Data? {
         guard let url = recordURL(name) else { return nil }
         return (try? readSecure(url)) ?? nil
@@ -630,6 +634,13 @@ public actor KeychainStore: Store, DeviceIdRebindable {
         guard let url = recordURL(name) else { return }
         if let data {
             try writeSecure(data, to: url)
+            // Per-install bookkeeping that means nothing on another device stays out of device backups.
+            if Self.noBackupRecords.contains(name) {
+                var target = url
+                var values = URLResourceValues()
+                values.isExcludedFromBackup = true
+                try? target.setResourceValues(values)
+            }
         } else if FileManager.default.fileExists(atPath: url.path) {
             do {
                 try FileManager.default.removeItem(at: url)

@@ -18,6 +18,12 @@ const SOURCE_ENROLL := "enroll"
 const SOURCE_REGISTER := "register"
 const SOURCE_SIGNIN := "signin"
 const SOURCE_REACQUIRE := "reacquire"
+## What the device holds its token as (`tokenOrigin` in the cache record, kept across restarts).
+## Automatic sign-in's rung 1 counts only ORIGIN_SIGN_IN: not a key activation, an enrolment or a
+## registration, and not a device an account sign-out left activated.
+const ORIGIN_SIGN_IN := "sign_in"
+const ORIGIN_REGISTER := "register"
+const ORIGIN_KEY := "key"
 ## The two routes the §5 single re-acquire can take (`choose_reacquire_route`).
 const ROUTE_LICENSE_TOKEN := "license-token"
 const ROUTE_DEVICES_REGISTER := "devices-register"
@@ -30,6 +36,10 @@ var store: PKeyStore
 var core_ref: WeakRef = null
 ## How many re-acquire attempts actually ran (tests assert one per pass).
 var attempts := 0
+
+## Bumped by every sign-out. A ladder that read an earlier value must not store a token
+## (set_token_unless_signed_out).
+var sign_out_generation := 0
 
 var _token := ""
 var _source := ""
@@ -64,16 +74,80 @@ func source() -> String:
 
 ## Hold and persist `token`, obtained through `p_source` (SOURCE_*). False when the store could
 ## not write it (the token is still held for this session; the store reported the failure).
-func set_token(token: String, p_source := "") -> bool:
+##
+## `p_origin` (ORIGIN_*) is what the device holds the token as; "" derives it from the source
+## (`reacquire` and "" keep what is held). `person` is true for a sign-in the person started
+## (device code, redirect, `choice.complete`, an `exchange` called from the sign-in form): only that
+## lowers the sign-out flag. The ladder's own store never does.
+func set_token(token: String, p_source := "", person := false, p_origin := "") -> bool:
+	var cache := _cache()
+	var origin := p_origin if p_origin != "" else origin_of(p_source)
+	# Crash-safe order: a changing origin is erased first and written last, so a crash between
+	# leaves none, which rung 1 reads as "not a sign-in".
+	if cache != null and origin != "" and cache.token_origin != "" and cache.token_origin != origin:
+		cache.set_token_origin("")
 	_token = token
 	_source = p_source
-	return store.set_token(token)
+	var stored := store.set_token(token)
+	if cache != null:
+		if origin != "":
+			cache.set_token_origin(origin)
+		if person:
+			cache.set_explicit_sign_out(false)
+	return stored
 
 
 func clear() -> bool:
 	_token = ""
 	_source = ""
+	var cache := _cache()
+	if cache != null:
+		cache.set_token_origin("")
 	return store.clear_token()
+
+
+## The ladder's store: only while no sign-out happened since `generation` was read and the flag is
+## clear. The check and the write have no await between them, so a sign-out cannot interleave
+## (I-45.9's fix). Null stores nothing; else the store's verdict, as set_token(). Never lowers the
+## flag.
+func set_token_unless_signed_out(token: String, generation: int) -> Variant:
+	var cache := _cache()
+	if cache == null or cache.explicit_sign_out or generation != sign_out_generation:
+		return null
+	return set_token(token, SOURCE_SIGNIN)
+
+
+func bump_sign_out_generation() -> void:
+	sign_out_generation += 1
+
+
+## What the held token is (ORIGIN_*), or "" when none or unknown.
+func origin() -> String:
+	var cache := _cache()
+	return cache.token_origin if cache != null and _token != "" else ""
+
+
+## True after a sign-out until the next sign-in the person starts. Fails closed: without a cache
+## it reads as signed out.
+func explicit_sign_out() -> bool:
+	var cache := _cache()
+	return cache == null or cache.explicit_sign_out
+
+
+static func origin_of(p_source: String) -> String:
+	match p_source:
+		SOURCE_SIGNIN:
+			return ORIGIN_SIGN_IN
+		SOURCE_REGISTER, SOURCE_ENROLL:
+			return ORIGIN_REGISTER
+		SOURCE_ACTIVATE:
+			return ORIGIN_KEY
+	return ""
+
+
+func _cache() -> PKeyCache:
+	var core = core_ref.get_ref() if core_ref != null else null
+	return core.cache if core != null else null
 
 
 ## P1b-06's route rule for the §5 single re-acquire, the same in every SDK: License disabled for

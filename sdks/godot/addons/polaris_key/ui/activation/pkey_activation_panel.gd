@@ -106,6 +106,9 @@ var _hint_bar: PKeyHintBar
 var _input_kind: StringName = &""
 var _sign_in_block: VBoxContainer
 var _sign_in: Button
+## The platform's own button above Polaris Locker's (Continue with Apple, Continue with Google) on iOS,
+## macOS and Android; hidden elsewhere, where `_sign_in` is the one Sign in.
+var _provider: Button
 var _msg_sign_in: Label
 var _free_block: VBoxContainer
 var _free: Button
@@ -203,6 +206,8 @@ func _build() -> void:
 	# The hint: the glyph of the confirm control of the last input device, then its words.
 	_hint_bar = hint_bar(_key_field, "HintBar", [{"action": PKeyInputGlyphs.CONFIRM, "key": {"keyboard": "core.gate.needs-activation.title", "pad": "part.hint.select"}}])
 	_sign_in_block = vbox(_form, "SignInBlock", "PKeyTight")
+	_provider = button(_sign_in_block, "ProviderSignIn", _on_provider)
+	_provider.visible = false
 	_sign_in = button(_sign_in_block, "SignIn", _on_sign_in)
 	_msg_sign_in = label(_sign_in_block, "SignInMessage")
 	# A store build with no way to activate here (key entry is the store's to forbid, no sign-in
@@ -440,7 +445,7 @@ func _arrange(m: Dictionary) -> void:
 	var want := 3
 	if _form.get_child(want) != first:
 		_form.move_child(first, want)
-	_sign_in.theme_type_variation = &"PKeyPrimary" if pad else &""
+	_sign_in.theme_type_variation = &"PKeyPrimary" if pad and not _provider.visible else &""
 	_submit.theme_type_variation = &"" if pad else &"PKeyPrimary"
 	# "Replace a device" is the one filled primary where it shows (Try again is then secondary); with
 	# a QR code instead of the button, Try again is the primary.
@@ -520,7 +525,16 @@ func _render() -> void:
 	_hint_bar.enabled = caps["key_entry"] and mode == "main"
 	_submit.text = t.text("key_submit")
 	_sign_in_block.visible = caps["sign_in"]
-	_sign_in.text = t.text("sign_in")
+	var row_kind := sign_in_dialog.row_kind()
+	_provider.visible = caps["sign_in"] and row_kind != ""
+	if row_kind != "":
+		# The platform's button leads; Polaris Locker's is the next row ("Continue with Polaris Locker").
+		cat_text(_provider, "signin.provider.continue", {"provider": PKeyProviderButton.provider_name(row_kind)})
+		PKeyProviderButton.apply(_provider, row_kind, self)
+		cat_text(_sign_in, "signin.provider.continue", {"provider": PKeyConstants.SIGN_IN_PROVIDER_NAME})
+	else:
+		_sign_in.remove_meta(CATALOG_META)
+		_sign_in.text = t.text("sign_in")
 	_free_block.visible = caps["continue_free"]
 	_free.visible = caps["continue_free"]
 	_free.text = t.text("continue_free")
@@ -693,8 +707,8 @@ func _focus_chain() -> Array:
 	if not limit.is_empty():
 		return [_manage, _again, _other_key]
 	if pad_only():
-		return [_sign_in, _key, _submit, _free, _offline, _restore]
-	return [_key, _submit, _sign_in, _free, _offline, _restore]
+		return [_provider, _sign_in, _key, _submit, _free, _offline, _restore]
+	return [_key, _submit, _provider, _sign_in, _free, _offline, _restore]
 
 
 ## Sign in on a pad-only device (no keyboard to type a key with); otherwise the key field.
@@ -707,11 +721,13 @@ func _initial_focus() -> Control:
 		return _again if is_focusable(_again) else _other_key
 	if not limit.is_empty():
 		return _manage if is_focusable(_manage) else _again
+	if pad_only() and is_focusable(_provider):
+		return _provider
 	if pad_only() and is_focusable(_sign_in):
 		return _sign_in
 	if is_focusable(_key):
 		return _key
-	for b in [_sign_in, _free, _offline]:
+	for b in [_provider, _sign_in, _free, _offline]:
 		if is_focusable(b):
 			return b
 	return null
@@ -900,6 +916,32 @@ func _on_sign_in() -> void:
 		return
 	open_mode("sign-in")
 	sign_in_dialog.begin()
+
+
+## The platform's own button: its account sheet first. A dismissal returns to this form (the dialog
+## closes back to it, the focus on this button), where Polaris Locker's button is one press away.
+func _on_provider() -> void:
+	if busy:
+		return
+	open_mode("sign-in")
+	sign_in_dialog.begin_platform()
+
+
+## What the key field holds ("" for nothing typed).
+func key_text() -> String:
+	return _key.text
+
+
+## Polaris Locker's sign-in button (the one Sign in where the platform has no button of its own).
+func locker_sign_in_button() -> Button:
+	return _sign_in
+
+
+## Put the focus on Polaris Locker's sign-in button (after "Use another account", where the platform's
+## one account is not what the person wants).
+func focus_locker_sign_in() -> void:
+	if is_focusable(_sign_in):
+		_sign_in.grab_focus.call_deferred()
 
 
 func _on_offline() -> void:

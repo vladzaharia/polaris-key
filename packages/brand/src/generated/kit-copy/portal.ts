@@ -14,6 +14,7 @@ import type { KitCopyLocale } from "./index.js";
 
 /** Every key the portal table holds. */
 export type PortalCopyKey =
+  | "locker.key.noEntriesLead"
   | "profile.title"
   | "profile.subtitle"
   | "profile.edit"
@@ -172,6 +173,12 @@ export type PortalCopyKey =
   | "locker.account.onThisPage"
   | "locker.account.packages"
   | "locker.account.sessions"
+  | "locker.account.devices"
+  | "locker.devices.subtitle"
+  | "locker.devices.none"
+  | "locker.devices.gone"
+  | "locker.devices.restored"
+  | "locker.devices.removeRestoredAll"
   | "locker.appearance.title"
   | "locker.appearance.theme"
   | "locker.appearance.motion"
@@ -269,6 +276,8 @@ export type PortalCopyKey =
   | "locker.discover.ended"
   | "locker.discover.addFailed"
   | "locker.account.yourData"
+  | "locker.account.methods"
+  | "locker.product.whatsNew"
   | "locker.account.menuLabel"
   | "locker.sessions.subtitle"
   | "locker.sessions.signOutAll"
@@ -509,6 +518,7 @@ export type PortalCopyKey =
   | "locker.key.long"
   | "locker.key.badChars"
   | "locker.key.unknown"
+  | "locker.key.cantUse"
   | "locker.key.emailMismatch"
   | "locker.key.emailMismatchAny"
   | "locker.key.managedElsewhere"

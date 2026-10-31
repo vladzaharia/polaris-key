@@ -49,6 +49,8 @@ export async function beginAuthFlow(
     /** I-37: the DeviceConfirm page's display data, stored beside the flow. */
     startedAt?: number;
     startPlace?: { country: string | null; label: string | null };
+    /** UK-42.22 (§12.10.1): the device start asked `licenseChoice: "app"`. */
+    appChoice?: boolean;
   } = {},
 ): Promise<
   | {
@@ -102,6 +104,7 @@ export async function beginAuthFlow(
   if (opts.deviceName) flow.deviceName = opts.deviceName;
   if (opts.startedAt !== undefined) flow.startedAt = opts.startedAt;
   if (opts.startPlace) flow.startPlace = opts.startPlace;
+  if (opts.appChoice) flow.appChoice = true;
   // I-26: only a `provider: platform` product can reach the licence chooser, so only its flows
   // carry a binder; a custom-IdP product's sign-in is byte-identical to before.
   let binderCookie: string | undefined;

@@ -16,6 +16,9 @@
 // the `common.continue` action (a host that drives the step itself), and nowhere else.
 
 import {
+  Children,
+  Fragment,
+  isValidElement,
   useEffect,
   useInsertionEffect,
   useLayoutEffect,
@@ -26,14 +29,17 @@ import {
   activateDoneView,
   addToAccountView,
   contextOf,
+  leadParts,
   reasonsOf,
   type ComponentName,
   type HolderScreenName,
   type View,
 } from "@polaris-key/ui-core";
 
+import { focusClear } from "@polaris-key/ui-core/browser/reveal";
 import { KitRoot, useKit, type KitAction, type KitProps } from "./component.js";
 import type { Layout } from "./contract.js";
+import { lightDomHolderCss } from "./holderAssets.js";
 import {
   useAddToAccount,
   type AttachOutcome,
@@ -69,6 +75,7 @@ const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
       "activate.recommend.devices",
       "activate.recommend.portal",
       "activate.recommend.action",
+      "signin.key.addInLocker",
       "activate.recommend.skip",
       "activate.waitingSignIn",
       "signin.done.start",
@@ -77,26 +84,28 @@ const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
   AddToAccount: {
     kind: "screen",
     header: "compact",
-    // A form like Activate: two panes in a landscape box, the controls in the docked bar.
-    split: true,
+    // The same centred card as Done and Added: the frame never jumps mid-task (M6).
     controls: [],
+    meta: ["common.working"],
     // The form's title is the action that opened it ("Add your name and email").
     titles: [
       "activate.recommend.action",
       "activate.owned.title",
       "activate.otherEmail.title",
+      "activate.otherAccount.title",
       "activate.attach.done",
     ],
     content: [
-      "signin.gate.name",
+      "activate.attach.name",
       "signin.email.label",
-      "signin.gate.nameRequired",
+      "activate.attach.nameRequired",
+      "signin.handoff.again",
+      "common.done",
       "signin.email.invalid",
       "activate.attach.lede",
       "activate.attach.fine",
       "common.continue",
       "common.cancel",
-      "common.working",
       "common.tryAgain",
       "activate.attach.failed",
       "signin.done.start",
@@ -107,73 +116,40 @@ const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
   },
 };
 
-/** The rules these two screens add to the kit's sheet: the quiet card, the reason lines, the form's
- *  hint, and the check that the Web Animations API draws (so the sheet's own CSS draw is off). */
+/** The rules these two screens add to the elements' own (`lightDomHolderCss`, which draws the card,
+ *  the reason lines and the form): the reason glyphs' size, Settings' pane, and the check that the
+ *  Web Animations API draws (so the sheet's own CSS draw is off). */
 const HOLDERS_CSS = `@layer polaris-key {
-.pk-root .recommend {
-  display: grid;
-  gap: var(--pk-space-3);
-  padding: var(--pk-space-4);
-  border-radius: var(--pk-kit-radius-control);
-  background: var(--pk-surface-sunken);
-  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
-  text-align: start;
-}
-.pk-root .recommend-head {
-  display: grid;
-  justify-items: start;
-  gap: var(--pk-space-2);
-}
-.pk-root .recommend .pill {
-  background: color-mix(in srgb, var(--pk-text-strong) 9%, transparent);
-  color: var(--pk-text-strong);
-}
-.pk-root .recommend-head .title {
-  margin: 0;
-  min-inline-size: 0;
-}
-.pk-root .reasons {
-  display: grid;
-  gap: var(--pk-space-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.pk-root .reasons li {
-  display: grid;
-  grid-template-columns: 1.25rem minmax(0, 1fr);
-  align-items: start;
-  gap: var(--pk-space-3);
-  color: var(--pk-text-default);
-}
-.pk-root .reasons svg {
+.pk-root .holder-icon svg {
   inline-size: 1.25rem;
   block-size: 1.25rem;
-  color: var(--pk-text-muted);
 }
-.pk-root .holder-skip {
-  margin: 0;
-  color: var(--pk-text-muted);
-  font-size: var(--pk-kit-type-meta-size);
-  line-height: var(--pk-kit-type-meta-line-height);
+/* Add your name and email opened from Settings is that pane's own content (one Done): no inner
+   card frame, a bar that scrolls with the content, and the pane's own Done out of the way. */
+[data-adding] .stage[data-kind="screen"] {
+  padding: 0;
+  min-block-size: 0;
 }
-.pk-root .holder-form {
-  display: grid;
-  gap: var(--pk-space-4);
+[data-adding] .stage[data-kind="screen"] .card {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  min-block-size: 0;
+  inline-size: 100%;
+  max-inline-size: none;
 }
-.pk-root .holder-form .field-error {
-  margin: var(--pk-space-2) 0 0;
-  color: var(--pk-danger);
-  font-size: var(--pk-kit-type-meta-size);
+[data-adding] .stage[data-kind="screen"] .card > .actions {
+  position: static;
+  margin-inline: 0;
+  padding-inline: 0;
+  background: transparent;
 }
-.pk-root .holder-form .hint {
-  margin: var(--pk-space-2) 0 0;
-  color: var(--pk-text-muted);
-  font-size: var(--pk-kit-type-meta-size);
-  line-height: var(--pk-kit-type-meta-line-height);
+[data-adding] .stage[data-kind="screen"] .card > .actions::before {
+  content: none;
 }
-.pk-root .holder-form .field input[readonly] {
-  color: var(--pk-text-muted);
+.pane:has([data-adding]) > .actions {
+  display: none;
 }
 .success[data-waapi] svg,
 .pk-root .success[data-waapi] path {
@@ -189,7 +165,7 @@ function adoptHolderStyles(doc: Document): void {
   if (sheets.has(doc) || typeof CSSStyleSheet !== "function") return;
   try {
     const own = new CSSStyleSheet();
-    own.replaceSync(HOLDERS_CSS);
+    own.replaceSync(`${lightDomHolderCss()}${HOLDERS_CSS}`);
     doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, own];
     sheets.set(doc, own);
   } catch {
@@ -198,6 +174,27 @@ function adoptHolderStyles(doc: Document): void {
 }
 
 // ── Glyphs: one lucide icon per reason ───────────────────────────────────────────────────────
+
+/** The first words of a reason are marked `**like this**` in the catalog: bold them. */
+function lead(node: ReactNode): ReactNode {
+  const items =
+    isValidElement<{ children?: ReactNode }>(node) && node.type === Fragment
+      ? Children.toArray(node.props.children)
+      : [node];
+  const out: ReactNode[] = [];
+  let n = 0;
+  for (const it of items) {
+    if (typeof it !== "string") {
+      out.push(it);
+      continue;
+    }
+    for (const part of leadParts(it))
+      out.push(
+        part.strong ? <strong key={`s${n++}`}>{part.text}</strong> : part.text,
+      );
+  }
+  return <>{out}</>;
+}
 
 function Icon(props: { children: ReactNode }): ReactNode {
   return (
@@ -298,10 +295,9 @@ function morphCard(card: HTMLElement, fromHeight: number): void {
 /** The reason lines come in one after another (three at most), and the check draws once. */
 function introduce(card: HTMLElement): void {
   const t = timing(card);
-  const lines = [...card.querySelectorAll<HTMLElement>(".reasons li")].slice(
-    0,
-    3,
-  );
+  const lines = [
+    ...card.querySelectorAll<HTMLElement>(".holder-reasons li"),
+  ].slice(0, 3);
   lines.forEach((li, i) =>
     li.animate(
       [
@@ -342,6 +338,8 @@ function mark(): ReactNode {
 type Name = HolderScreenName;
 
 interface ScreenProps extends KitProps {
+  /** The step is the sign-in form's: it shares the form's card width, as its other steps do. */
+  form?: boolean;
   /** Press routes for the host: called after `onAction`. */
   route?: (a: KitAction) => void;
 }
@@ -405,9 +403,7 @@ function Screen(
               `[data-key="${target.replace(/["\\]/g, "")}"]`,
             )
           : null;
-      (el ?? root.querySelector<HTMLElement>("#pk-title"))?.focus({
-        preventScroll: true,
-      });
+      focusClear(el ?? root.querySelector<HTMLElement>("#pk-title"));
     }
     if (typeof card.animate !== "function" || reducedMotion(motion)) return;
     if (prev) morphCard(card, prev.height);
@@ -421,6 +417,7 @@ function Screen(
     layout: HOLDER_LAYOUTS[name],
     mark: markStates.includes(kit.view.state) ? mark() : null,
     content: null,
+    ...(props.form ? { form: true } : {}),
   };
   const content = body(ctx);
   return (
@@ -432,7 +429,10 @@ function Screen(
       onEscape={
         kit.view.copy.includes("common.cancel")
           ? () => ctx.act("common.cancel")
-          : undefined
+          : // Done and Added are success screens: Escape is Start using (or Done).
+            name === "ActivateDone" || kit.view.state === "added"
+            ? () => ctx.act(kit.view.decisions.primary ?? "signin.done.start")
+            : undefined
       }
     >
       {renderView({ ...ctx, content })}
@@ -443,6 +443,8 @@ function Screen(
 // ── ActivateDone ─────────────────────────────────────────────────────────────────────────────
 
 export interface ActivateDoneProps extends KitProps {
+  /** @internal The sign-in form's step: it shares the form's card width (the split). */
+  form?: boolean;
   /** Start using the product (the one primary). */
   onStart?: () => void;
   /** Add your name and email: open AddToAccount. */
@@ -457,32 +459,45 @@ function Recommendation(props: { c: KitCtx }): ReactNode {
   const has = (k: string) => c.view.copy.includes(k);
   const reasons = reasonsOf(contextOf(c.input)).filter(has);
   return (
-    <div className="recommend" data-part="recommend">
-      <div className="recommend-head">
-        <span className="pill" data-key="activate.recommend.badge">
-          {text(c, "activate.recommend.badge")}
-        </span>
+    <section
+      className="holder-card"
+      data-part="recommend"
+      aria-labelledby="pk-recommend"
+    >
+      <div className="holder-head">
         <h2
+          id="pk-recommend"
           className="title"
           data-size="section"
-          data-part="heading"
           data-key="activate.recommend.title"
         >
           {text(c, "activate.recommend.title")}
         </h2>
+        {has("activate.recommend.badge") ? (
+          <span
+            className="holder-badge"
+            data-part="badge"
+            data-key="activate.recommend.badge"
+          >
+            {text(c, "activate.recommend.badge")}
+          </span>
+        ) : null}
       </div>
-      <ul className="reasons" data-part="reasons">
+      <ul className="holder-reasons" role="list">
         {reasons.map((k) => (
           <li key={k} data-key={k}>
-            {REASON_ICONS[k]?.()}
-            <span>{text(c, k)}</span>
+            <span className="holder-icon" aria-hidden="true">
+              {REASON_ICONS[k]?.()}
+            </span>
+            <span>{lead(text(c, k))}</span>
           </li>
         ))}
       </ul>
-      <div className="actions" data-part="actions" data-layout="stack">
-        {button(c, "activate.recommend.action", "secondary")}
-      </div>
-    </div>
+      {has("signin.key.addInLocker")
+        ? // Identity off: it opens polaris.locker, so the label and the glyph say so.
+          button(c, "signin.key.addInLocker", "secondary", { external: true })
+        : button(c, "activate.recommend.action", "secondary")}
+    </section>
   );
 }
 
@@ -521,7 +536,11 @@ export function ActivateDone(props: ActivateDoneProps): ReactNode {
       body={(c) => <DoneBody c={c} />}
       route={(a) => {
         if (a.key === "signin.done.start") onStart?.();
-        else if (a.key === "activate.recommend.action") onAddToAccount?.();
+        else if (
+          a.key === "activate.recommend.action" ||
+          a.key === "signin.key.addInLocker"
+        )
+          onAddToAccount?.();
         else if (a.key === "activate.waitingSignIn") onSignIn?.();
       }}
     />
@@ -531,6 +550,8 @@ export function ActivateDone(props: ActivateDoneProps): ReactNode {
 // ── AddToAccount ─────────────────────────────────────────────────────────────────────────────
 
 export interface AddToAccountProps extends KitProps {
+  /** @internal The sign-in form's step: it shares the form's card width (the split). */
+  form?: boolean;
   /** Confirm the email in the browser and attach the license; resolves with the outcome. The
    *  screen then draws added, owned, email-bound or failed itself. Without it (or with
    *  `input.addToAccount`) the host drives the step and hears `common.continue` with `name` and
@@ -546,23 +567,26 @@ export interface AddToAccountProps extends KitProps {
   onSignIn?: () => void;
   /** Verify the license's email in the portal (email-bound). */
   onVerify?: () => void;
+  /** Bring the browser tab back while the sign-in runs (busy's "Open browser again"). Drawn only
+   *  when given, or when the host drives the step. */
+  onReopen?: () => void;
 }
 
 function Fields(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
   const { c, flow } = props;
   const keys = new Set(c.view.copy);
   const busy = c.view.state === "busy";
-  const badName = keys.has("signin.gate.nameRequired");
+  const badName = keys.has("activate.attach.nameRequired");
   const badEmail = keys.has("signin.email.invalid");
   return (
     <>
       <div className="field" data-part="field">
         <label className="label" htmlFor="pk-holder-name">
-          {text(c, "signin.gate.name")}
+          {text(c, "activate.attach.name")}
         </label>
         <input
           id="pk-holder-name"
-          data-key="signin.gate.name"
+          data-key="activate.attach.name"
           data-field="name"
           type="text"
           autoComplete="nickname"
@@ -579,12 +603,13 @@ function Fields(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
         />
         {badName ? (
           <p
-            className="field-error"
+            className="message"
+            data-tone="danger"
             id="pk-holder-name-error"
             role="alert"
-            data-key="signin.gate.nameRequired"
+            data-key="activate.attach.nameRequired"
           >
-            {text(c, "signin.gate.nameRequired")}
+            {text(c, "activate.attach.nameRequired")}
           </p>
         ) : null}
       </div>
@@ -618,7 +643,8 @@ function Fields(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
         />
         {badEmail ? (
           <p
-            className="field-error"
+            className="message"
+            data-tone="danger"
             id="pk-holder-email-error"
             role="alert"
             data-key="signin.email.invalid"
@@ -628,7 +654,7 @@ function Fields(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
         ) : null}
         {usableKey(c, "activate.attach.fine") ? (
           <p
-            className="hint"
+            className="meta"
             id="pk-holder-fine"
             data-key="activate.attach.fine"
           >
@@ -640,10 +666,16 @@ function Fields(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
   );
 }
 
-function AddBody(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
-  const { c, flow } = props;
+function AddBody(props: {
+  c: KitCtx;
+  flow: UseAddToAccount;
+  /** The host can bring the browser tab back (busy's "Open browser again"). */
+  reopen: boolean;
+}): ReactNode {
+  const { c, flow, reopen } = props;
   const s = c.view.state;
-  if (s === "added") return actions(c, ["signin.done.start"]);
+  if (s === "added")
+    return actions(c, [c.view.decisions.primary ?? "signin.done.start"]);
   if (s === "owned")
     return (
       <>
@@ -654,10 +686,19 @@ function AddBody(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
   if (s === "email-bound")
     return (
       <>
-        {actions(c, [
-          "activate.otherEmail.verify",
-          "signin.auto.confirm.other",
-        ])}
+        {actions(
+          c,
+          ["activate.otherEmail.verify", "signin.auto.confirm.other"].filter(
+            (k) => c.view.copy.includes(k),
+          ),
+        )}
+        {links(c, ["signin.done.start"])}
+      </>
+    );
+  if (s === "other-account")
+    return (
+      <>
+        {actions(c, ["common.tryAgain"])}
         {links(c, ["signin.done.start"])}
       </>
     );
@@ -672,6 +713,7 @@ function AddBody(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
       <form
         className="holder-form"
         noValidate
+        hidden={failed}
         aria-busy={busy ? "true" : undefined}
         onSubmit={(e) => {
           e.preventDefault();
@@ -684,38 +726,34 @@ function AddBody(props: { c: KitCtx; flow: UseAddToAccount }): ReactNode {
           }
         }}
       >
-        <Fields c={c} flow={flow} />
         {usableKey(c, "activate.attach.lede") ? (
           <p className="body" data-key="activate.attach.lede">
             {text(c, "activate.attach.lede")}
           </p>
         ) : null}
-        {failed && c.copy.has("activate.attach.failed")
-          ? callout(c, ["activate.attach.failed"])
-          : null}
+        <Fields c={c} flow={flow} />
       </form>
+      {failed && c.copy.has("activate.attach.failed")
+        ? callout(c, ["activate.attach.failed"])
+        : null}
       <div className="actions" data-part="actions" data-layout="stack">
         {button(c, failed ? "common.tryAgain" : "common.continue", "primary", {
           busy,
         })}
       </div>
-      {busy ? (
-        <span
-          className="visually-hidden"
-          role="status"
-          data-key="common.working"
-        >
-          {plain(c, "common.working")}
-        </span>
-      ) : null}
-      {links(c, ["common.cancel"])}
+      {links(
+        c,
+        busy && reopen
+          ? ["signin.handoff.again", "common.cancel"]
+          : ["common.cancel"],
+      )}
     </>
   );
 }
 
 /** Add your name and email: the person types them here; the browser confirms the email. */
 export function AddToAccount(props: AddToAccountProps): ReactNode {
-  const { onCancel, onStart, onSignIn, onVerify } = props;
+  const { onCancel, onStart, onSignIn, onVerify, onReopen } = props;
   const hosted = props.input?.addToAccount !== undefined;
   const flow = useAddToAccount({
     ...(props.attach && !hosted ? { attach: props.attach } : {}),
@@ -728,7 +766,9 @@ export function AddToAccount(props: AddToAccountProps): ReactNode {
       name="AddToAccount"
       input={flow.input}
       markStates={["added"]}
-      body={(c) => <AddBody c={c} flow={flow} />}
+      body={(c) => (
+        <AddBody c={c} flow={flow} reopen={hosted || onReopen !== undefined} />
+      )}
       detail={(key) =>
         // A host that drives the step hears the values in the press that submits them (S13).
         hosted && key === "common.continue"
@@ -749,7 +789,11 @@ export function AddToAccount(props: AddToAccountProps): ReactNode {
             onCancel?.();
             return;
           case "signin.done.start":
+          case "common.done":
             onStart?.();
+            return;
+          case "signin.handoff.again":
+            onReopen?.();
             return;
           case "signin.key.ownedSignIn":
           case "signin.auto.confirm.other":
@@ -766,7 +810,7 @@ export function AddToAccount(props: AddToAccountProps): ReactNode {
 
 /** Focus the first wrong field again, when the state stays `invalid` and so does not refocus. */
 function focusField(field: "name" | "email"): void {
-  document
-    .querySelector<HTMLElement>(`.pk-root [data-field="${field}"]`)
-    ?.focus({ preventScroll: true });
+  focusClear(
+    document.querySelector<HTMLElement>(`.pk-root [data-field="${field}"]`),
+  );
 }

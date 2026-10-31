@@ -201,7 +201,7 @@ def test_row_fragments_do_not_dangle_without_their_row():
     spec = _spec("Settings", "list", product="Tidewater Studio")
     assert not {"On", "Off", "Default", "Changed by you", "Set by the environment"} & set(spec.body)
     spec = _spec("AccountAndLicense", "signed-in", product="Tidewater Studio")
-    assert not {"Cloud Sync", "Devices", "Release channel", "Updates"} & set(spec.body)
+    assert not {"Sync Across Devices", "Devices", "Release channel", "Updates"} & set(spec.body)
     spec = _spec("DeviceLimit", "default", product="Tidewater Studio")
     assert "3 of 3 in use" not in spec.body, "the title already says it (DL8)"
 

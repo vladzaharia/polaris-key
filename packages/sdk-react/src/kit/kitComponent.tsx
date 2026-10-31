@@ -14,6 +14,7 @@ import { platformVariant } from "@polaris-key/ui-core/theme";
 import { KitRoot, useKit, type KitProps } from "./component.js";
 import { adaptPane, adaptUpdate, oneVerb, withoutLede } from "./adapt.js";
 import { withChoice } from "./licenseRows.js";
+import { successMark } from "./parts.js";
 import { renderView } from "./views.js";
 import { SYNC_LAYOUTS, syncContent } from "./syncParts.js";
 
@@ -167,6 +168,10 @@ export function kitComponent(component: ComponentName) {
           ...base,
           layout: SYNC_LAYOUTS[component],
           content: syncContent(base, props.code ?? ""),
+          // The result under the success mark; decorative, the title says it.
+          ...(component === "SaveConflict" && view.state === "kept"
+            ? { mark: successMark() }
+            : {}),
         }
       : base;
     const body = renderView(ctx);
@@ -179,7 +184,9 @@ export function kitComponent(component: ComponentName) {
         onEscape={
           isSyncScreen(component) && view.copy.includes("common.cancel")
             ? () => ctx.act("common.cancel")
-            : undefined
+            : component === "SaveConflict" && view.state === "kept"
+              ? () => ctx.act("common.done")
+              : undefined
         }
       >
         {asDialog ? (

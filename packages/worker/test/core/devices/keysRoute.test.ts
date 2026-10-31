@@ -86,6 +86,66 @@ describe("PUT /<p>/devices/keys", () => {
     expect((await getDeviceKeys(w.db, "djdl", DEVICE))?.key_seq).toBe(4);
   });
 
+  it("refuses a proof no newer than the last accepted one without spending a change", async () => {
+    const w = await world();
+    const token = await register(w);
+    for (let i = 1; i <= 3; i++)
+      expect(
+        (await put(w, token, await body(await newKeys(), DEVICE, NOW + i)))
+          .status,
+      ).toBe(200);
+    // Replays of an older proof, with other keys: refused, and no change spent.
+    for (let i = 0; i < 6; i++) {
+      const r = await put(
+        w,
+        token,
+        await body(await newKeys(), DEVICE, NOW + 2),
+      );
+      expect({ status: r.status, body: r.body }).toEqual({
+        status: 400,
+        body: INVALID,
+      });
+    }
+    // The fourth change of the day is still there.
+    const fourth = await put(
+      w,
+      token,
+      await body(await newKeys(), DEVICE, NOW + 4),
+    );
+    expect(fourth).toEqual({ status: 200, body: { keySeq: 4 } });
+  });
+
+  it("an agreement key another device holds still spends a change", async () => {
+    const w = await world();
+    const token = await register(w);
+    const token2 = await register(w, DEVICE_2);
+    const holder = await newKeys();
+    expect((await put(w, token2, await body(holder, DEVICE_2))).status).toBe(
+      200,
+    );
+    for (let i = 1; i <= 4; i++) {
+      const r = await put(
+        w,
+        token,
+        await body(
+          { ...(await newKeys()), agreeKey: holder.agreeKey },
+          DEVICE,
+          NOW + i,
+        ),
+      );
+      expect({ status: r.status, body: r.body }).toEqual({
+        status: 400,
+        body: INVALID,
+      });
+    }
+    const fifth = await put(
+      w,
+      token,
+      await body(await newKeys(), DEVICE, NOW + 5),
+    );
+    expect(fifth.status).toBe(429);
+  });
+
   it("refuses a missing, foreign or non-device token with 401", async () => {
     const w = await world();
     const k = await newKeys();

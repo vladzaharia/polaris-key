@@ -38,7 +38,7 @@ describe("Account v1 (PX-07)", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Account" }),
     ).toBeTruthy();
-    const methods = screen.getByRole("region", { name: "Sign-in methods" });
+    const methods = screen.getByRole("region", { name: "Sign-In Methods" });
     // A Worker without G27's methods list (404): the session's email alone.
     expect(await within(methods).findByText(ACCOUNT.email)).toBeTruthy();
     // Neutral facts are text, never a chip (EXPERIENCE §11.3).
@@ -50,10 +50,10 @@ describe("Account v1 (PX-07)", () => {
         .map((a) => a.textContent),
     ).toEqual([
       "Profile",
-      "Sign-in methods",
+      "Sign-In Methods",
       "Packages",
       "Appearance",
-      "Your data",
+      "Your Data",
     ]);
     // A coarse pointer gets the 44 px target (B-095).
     for (const a of within(nav).getAllByRole("link"))
@@ -121,7 +121,7 @@ describe("Account v1 (PX-07)", () => {
       },
     });
     renderPortal();
-    const data = await screen.findByRole("region", { name: "Your data" });
+    const data = await screen.findByRole("region", { name: "Your Data" });
     await userEvent.click(
       within(data).getByRole("button", { name: "Delete account" }),
     );
@@ -180,7 +180,7 @@ describe("Account v1 (PX-07)", () => {
   it("keeps the account with Cancel", async () => {
     mockFetch(signedIn());
     renderPortal();
-    const data = await screen.findByRole("region", { name: "Your data" });
+    const data = await screen.findByRole("region", { name: "Your Data" });
     await userEvent.click(
       within(data).getByRole("button", { name: "Delete account" }),
     );
@@ -195,7 +195,7 @@ describe("Account v1 (PX-07)", () => {
   it("Delete account is a modal dialog: Escape closes it, focus goes back, and nothing is sent (B-092)", async () => {
     mockFetch(signedIn());
     renderPortal();
-    const data = await screen.findByRole("region", { name: "Your data" });
+    const data = await screen.findByRole("region", { name: "Your Data" });
     const trigger = within(data).getByRole("button", {
       name: "Delete account",
     });
@@ -257,7 +257,7 @@ describe("Your data: Download my data (I-11)", () => {
       "/api/me/export": answer,
     });
     renderPortal();
-    const data = await screen.findByRole("region", { name: "Your data" });
+    const data = await screen.findByRole("region", { name: "Your Data" });
     const button = within(data).getByRole("button", {
       name: "Download my data",
     }) as HTMLButtonElement;
@@ -499,7 +499,7 @@ describe("Your data: a stale sign-in asks to confirm it's you in place (I-11)", 
       "/api/me/export": () => (++asked === 1 ? STEP_UP : ACCOUNT_FILE),
     });
     renderPortal();
-    const data = await screen.findByRole("region", { name: "Your data" });
+    const data = await screen.findByRole("region", { name: "Your Data" });
     await userEvent.click(
       within(data).getByRole("button", { name: "Download my data" }),
     );
@@ -522,7 +522,7 @@ describe("Your data: a stale sign-in asks to confirm it's you in place (I-11)", 
       },
     });
     renderPortal();
-    const data = await screen.findByRole("region", { name: "Your data" });
+    const data = await screen.findByRole("region", { name: "Your Data" });
     await userEvent.click(
       within(data).getByRole("button", { name: "Delete account" }),
     );
@@ -553,7 +553,7 @@ describe("Your data: a stale sign-in asks to confirm it's you in place (I-11)", 
       },
     });
     renderPortal();
-    const data = await screen.findByRole("region", { name: "Your data" });
+    const data = await screen.findByRole("region", { name: "Your Data" });
     await userEvent.click(
       await within(data).findByRole("button", { name: "Cancel deletion" }),
     );

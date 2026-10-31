@@ -123,6 +123,9 @@ export function formatSettingValue(
     return value.length === 0
       ? "empty"
       : `${formatCount(value.length)} ${value.length === 1 ? "item" : "items"}`;
+  // Text reads as itself: no quotes, never `null`.
+  if (spec.kind === "string")
+    return typeof value === "string" && value !== "" ? value : "Not set";
   return JSON.stringify(value);
 }
 
@@ -193,6 +196,14 @@ function listError(
 /** The message a draft fails with, or `null` when it can be saved. */
 export function draftError(spec: SettingSpec, draft: unknown): string | null {
   if (spec.kind === "list") return listError(spec, draft);
+  if (spec.kind === "string") {
+    if (typeof draft !== "string" || draft === "") return null;
+    if (draft.length > spec.maxLength)
+      return `Use ${spec.maxLength} characters or fewer.`;
+    if (spec.pattern && !new RegExp(spec.pattern).test(draft))
+      return "That isn't in the expected format.";
+    return null;
+  }
   if (spec.kind !== "integer") return null;
   if (typeof draft !== "number" || Number.isNaN(draft)) return "Enter a value.";
   const min = toField(spec, spec.min);

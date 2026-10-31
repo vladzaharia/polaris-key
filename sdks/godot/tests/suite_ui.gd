@@ -1730,6 +1730,7 @@ func _activation_copy(t: PKeyTestContext) -> void:
 		PKeyActivationResult.KIND_LICENSE_DISABLED, PKeyActivationResult.KIND_HARDWARE_MISMATCH, PKeyActivationResult.KIND_RATE_LIMITED,
 		PKeyActivationResult.KIND_UNSUPPORTED, PKeyActivationResult.KIND_ERROR,
 		PKeyActivationResult.KIND_LICENSE_EXPIRED, PKeyActivationResult.KIND_ATTESTATION_REQUIRED, PKeyActivationResult.KIND_REFUSED,
+		PKeyActivationResult.KIND_KEY_ENTRY_LIMIT, PKeyActivationResult.KIND_LICENSE_OWNED,
 	]
 	var keys := {}
 	for k in kinds:
@@ -1737,6 +1738,13 @@ func _activation_copy(t: PKeyTestContext) -> void:
 		keys[m[0]] = true
 		t.check("activation: %s has its own copy" % k, PKeyUiCopy.DEFAULTS.has(m[0]), m[0])
 	t.check("activation: every kind reads differently", keys.size() == kinds.size())
+	# The two key refusals read as their catalog rows, not the generic error.
+	PKeyUiTheme.product_name = "Diceroll"
+	var lim := PKeyActivationController.message_for(PKeyActivationResult.of(PKeyActivationResult.KIND_KEY_ENTRY_LIMIT, PKeyErrors.KEY_ENTRY_LIMIT, ""))
+	var own := PKeyActivationController.message_for(PKeyActivationResult.of(PKeyActivationResult.KIND_LICENSE_OWNED, PKeyErrors.LICENSE_OWNED, ""))
+	t.check("copy: key-entry-limit reads the Polaris Locker refusal line", PKeyUiCopy.new().text(lim[0], lim[1]) == "Sign in and add this key to your Polaris Locker account instead.")
+	t.check("copy: license-owned names the product and Polaris Locker", PKeyUiCopy.new().text(own[0], own[1]) == "Sign in to the Polaris Locker account that has this Diceroll license to use it.")
+	PKeyUiTheme.product_name = ""
 	# SDK parity §3.2: a refusal reads by its code, a missing code falls back to a generic line
 	# with the code, never the raw body.
 	var c := PKeyUiCopy.new()

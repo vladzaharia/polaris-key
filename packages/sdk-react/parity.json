@@ -224,11 +224,20 @@
     },
     "identity.choice": {
       "status": "implemented",
-      "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. The desktop renderer never holds a grant (the bridge's beginSignIn refuses licenseChoice), so its calls are a typed unsupported (runtime); a cookie page refuses the same way."
+      "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. The desktop renderer never holds a grant (the bridge's device-code sign-in never answers choose, so licenseChoice only rides as a hint), so its calls are a typed unsupported (runtime); a cookie page refuses the same way."
+    },
+    "identity.devicecode.choice": {
+      "status": "planned",
+      "wp": "UK-42",
+      "note": "UK-42.22 (SDK slice .7): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
     },
     "identity.signin.hints": {
       "status": "implemented",
-      "note": "I-10a.10: bearer mode: loginHint, nameHint and purpose go on the authorize URL (redirect) and the device start body (device code). The desktop bridge's beginSignIn carries only deviceName, so a hint there is a typed unsupported (runtime) rather than a silent drop."
+      "note": "I-10a.10: bearer mode: loginHint, nameHint and purpose go on the authorize URL (redirect) and the device start body (device code). UK-42.17: the desktop bridge's beginSignIn carries loginHint, nameHint, purpose \"attach\" and licenseChoice to the host's Node sign-in, validated on both sides; only scope is a typed unsupported (runtime)."
+    },
+    "identity.keyreturn": {
+      "status": "implemented",
+      "note": "LK-SKIP.6b: bearer mode. signIn.start({channel: \"redirect\", redirectUri, keyReturn: true}) appends key_return=allow and signIn.complete settles an activated outcome (the key's license, subject null, keyEntries) for a via: \"key\" answer, stored as a key activation. The kits start the app at once (no ActivateDone; AccountAndLicense shows Not in an account from the license's profile). A token refusal (device_limit, key_entry_limit, license_owned) carries the typed activation with limit, deviceCount, manageUrl and keyEntries and opens the key step. Both redirect-web-key-return transcripts replay. The desktop renderer signs in by device code only, so its redirect is the same typed unsupported (runtime) as identity.redirect.web."
     },
     "identity.exchange": {
       "status": "implemented",
@@ -254,9 +263,14 @@
       "note": "Play Games runs only on Android."
     },
     "identity.autosignin": {
-      "status": "planned",
-      "wp": "I-46",
-      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-46)."
+      "status": "implemented",
+      "note": "I-46: usePolarisAuth().autoSignIn() runs the ladder (a stored token, the provider silently through FedCM, its chooser only with prompt optional); a result, never a throw. The gate runs it once at boot and Provider autoSignIn={false} turns it off. The desktop bridge and a local adapter hold no platform sign-in and answer unavailable (runtime); the gate stays on Welcome. test/autoSignIn.test.ts runs it against a scripted Worker."
+    },
+    "identity.restore": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "A browser has no platform backup item and the desktop renderer holds no device key (I-49)."
     },
     "identity.link": {
       "status": "implemented",
@@ -556,7 +570,7 @@
     },
     "sync.records": {
       "status": "planned",
-      "wp": "U-22"
+      "wp": "U-46"
     },
     "sync.files": {
       "status": "planned",

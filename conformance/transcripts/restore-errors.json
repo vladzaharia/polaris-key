@@ -1,0 +1,751 @@
+{
+  "transcriptVersion": 1,
+  "id": "restore-errors",
+  "description": "Every way a restore is refused (WIRE-CONTRACT-V5 §12.11.8). The grant answers the SAME 400 invalid_grant, byte for byte, whichever check failed: a wrong secret, an id nobody issued, a proof that is not the key's, a key of another product presented with that product's name (the key is NOT used up), an agreement key another device of the product holds, a key whose enrolling device is no longer signed in, and a key already used. A device that holds a token but is not signed in cannot enrol: 403 account_required. The key that was refused for another product's sake still works afterwards. Past a person's 5 restores a day the answer is 429 rate_limited with retryAfter 86400, and the key it was presented with is used up. No refusal names the check that failed; the client falls to the next rung.",
+  "features": ["identity.restore"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "restoreRedeem",
+      "note": "A wrong secret of the right shape.",
+      "args": {
+        "keyLabel": "transcript-restore-key-1",
+        "restoreId": "rk_Oa-MwLhXzkfm73BbHtLZMA",
+        "restoreSecret": "rs_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "now": 1700000120,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:polaris-key:grant-type:restore",
+                  "client_id": "djdl",
+                  "restore_id": "rk_Oa-MwLhXzkfm73BbHtLZMA",
+                  "restore_secret": "rs_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                  "device_key": "OPxKhcjiEVaZG72-6SccbfMR6QrG-0LlopuMMyMFTA4",
+                  "agree_key": "WXUTHGEMtA-LpOlfvB4-I0me88igyTyAP9a5qOoEcWc",
+                  "proof": "qNnQeMypNXfrOVHvhEZfaKG2E9LM3POv7p4iwmNEWabbPh69-4qvqqBCsDFuC0Jk0DPrlrgcPg7fjnbZlcIEAw"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "restore_id",
+                  "restore_secret",
+                  "device_key",
+                  "agree_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 400,
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "restoreRedeem",
+      "note": "An id nobody issued.",
+      "args": {
+        "keyLabel": "transcript-restore-key-1",
+        "restoreId": "rk_AAAAAAAAAAAAAAAAAAAAAA",
+        "restoreSecret": "rs_vytRSKNTWR4n7-Q56V5YX6dC2jrBzttp-O5B7858fe8"
+      },
+      "now": 1700000240,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:polaris-key:grant-type:restore",
+                  "client_id": "djdl",
+                  "restore_id": "rk_AAAAAAAAAAAAAAAAAAAAAA",
+                  "restore_secret": "rs_vytRSKNTWR4n7-Q56V5YX6dC2jrBzttp-O5B7858fe8",
+                  "device_key": "OPxKhcjiEVaZG72-6SccbfMR6QrG-0LlopuMMyMFTA4",
+                  "agree_key": "WXUTHGEMtA-LpOlfvB4-I0me88igyTyAP9a5qOoEcWc",
+                  "proof": "EkCILU5HOE786Gb274aLHbt54m4hAKuXCOZZ4f72AKTIe4B1aUYnQffw7yZKPWTZRo7eQ0dTr3qbighOYvyKBA"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "restore_id",
+                  "restore_secret",
+                  "device_key",
+                  "agree_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 400,
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "restoreRedeem",
+      "note": "A proof that covers something other than <restore_id>.<device_key>.",
+      "args": {
+        "keyLabel": "transcript-restore-key-1",
+        "restoreId": "rk_Oa-MwLhXzkfm73BbHtLZMA",
+        "restoreSecret": "rs_vytRSKNTWR4n7-Q56V5YX6dC2jrBzttp-O5B7858fe8",
+        "proofValue": "rk_Oa-MwLhXzkfm73BbHtLZMA.AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "now": 1700000360,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:polaris-key:grant-type:restore",
+                  "client_id": "djdl",
+                  "restore_id": "rk_Oa-MwLhXzkfm73BbHtLZMA",
+                  "restore_secret": "rs_vytRSKNTWR4n7-Q56V5YX6dC2jrBzttp-O5B7858fe8",
+                  "device_key": "OPxKhcjiEVaZG72-6SccbfMR6QrG-0LlopuMMyMFTA4",
+                  "agree_key": "WXUTHGEMtA-LpOlfvB4-I0me88igyTyAP9a5qOoEcWc",
+                  "proof": "f5ouAbmgMNHIuN7iNCo_oFl1Pyztl9dK04UM8tWSjJ9IvA6c8ofT9vZ3BvZ4Ihd-zXXgMosdNGKa2hfz8ElzAA"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "restore_id",
+                  "restore_secret",
+                  "device_key",
+                  "agree_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 400,
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "restoreRedeem",
+      "note": "The right key and secret, presented to another product: refused, and not used up.",
+      "args": {
+        "keyLabel": "transcript-restore-key-1",
+        "restoreId": "rk_Oa-MwLhXzkfm73BbHtLZMA",
+        "restoreSecret": "rs_vytRSKNTWR4n7-Q56V5YX6dC2jrBzttp-O5B7858fe8",
+        "product": "other"
+      },
+      "now": 1700000480,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/other/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:polaris-key:grant-type:restore",
+                  "client_id": "other",
+                  "restore_id": "rk_Oa-MwLhXzkfm73BbHtLZMA",
+                  "restore_secret": "rs_vytRSKNTWR4n7-Q56V5YX6dC2jrBzttp-O5B7858fe8",
+                  "device_key": "OPxKhcjiEVaZG72-6SccbfMR6QrG-0LlopuMMyMFTA4",
+                  "agree_key": "WXUTHGEMtA-LpOlfvB4-I0me88igyTyAP9a5qOoEcWc",
+                  "proof": "WumPEXr_1b9IGYzseHzlMEIoZgj2jnT_ZD8zkZmjUtW04nAPhlF07pvlfsgtuhPPktSjfS6I6jharvh7yeCiDQ"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "restore_id",
+                  "restore_secret",
+                  "device_key",
+                  "agree_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 400,
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "restoreRedeem",
+      "note": "An agreement key another device of the product holds.",
+      "args": {
+        "keyLabel": "transcript-restore-key-2",
+        "restoreId": "rk_GhfrNAmEsb4cp3ARi8rb5Q",
+        "restoreSecret": "rs_q_ZFRFVWyip-YcgMJkP8sIStyTkeKJnscOYOE9Tt5cA"
+      },
+      "now": 1700000600,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:polaris-key:grant-type:restore",
+                  "client_id": "djdl",
+                  "restore_id": "rk_GhfrNAmEsb4cp3ARi8rb5Q",
+                  "restore_secret": "rs_q_ZFRFVWyip-YcgMJkP8sIStyTkeKJnscOYOE9Tt5cA",
+                  "device_key": "LIEtVjQK-feRGrqJxXv6OnY_1QXAJq0AySTgmFY7I7w",
+                  "agree_key": "IMXvlD2gNdFUEcgbHPW5OWXraJ4LluXmZ3pImIrjbkk",
+                  "proof": "ij--VBelGYdcJnVEoZ5WiyGI20ohq4SyLqWxBSGyMbWjXvPVvVom5-hkS5VehqCF9TjLN4nddD-DD4-3PtTsBw"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "restore_id",
+                  "restore_secret",
+                  "device_key",
+                  "agree_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 400,
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "restoreRedeem",
+      "note": "The device that enrolled the key is no longer signed in.",
+      "args": {
+        "keyLabel": "transcript-restore-key-1",
+        "restoreId": "rk_EyeV50XcagovTL-x-Apr0g",
+        "restoreSecret": "rs_aghD1ENhUY2NPsqDzirz1BJfA1HkGz_BHTaMN1Wy4Ic"
+      },
+      "now": 1700000720,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:polaris-key:grant-type:restore",
+                  "client_id": "djdl",
+                  "restore_id": "rk_EyeV50XcagovTL-x-Apr0g",
+                  "restore_secret": "rs_aghD1ENhUY2NPsqDzirz1BJfA1HkGz_BHTaMN1Wy4Ic",
+                  "device_key": "OPxKhcjiEVaZG72-6SccbfMR6QrG-0LlopuMMyMFTA4",
+                  "agree_key": "WXUTHGEMtA-LpOlfvB4-I0me88igyTyAP9a5qOoEcWc",
+                  "proof": "c_cmeSXEkCtQh7YiJta_IdF4_zuCFfvkawC_Y-HwNfwx9Nw632CN1Ezalrq9NNt1_cvB8U0MBd-yPJvCIp6rDQ"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "restore_id",
+                  "restore_secret",
+                  "device_key",
+                  "agree_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 400,
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "restoreRedeem",
+      "note": "The key that other product refused was not used up: it signs the device in.",
+      "args": {
+        "keyLabel": "transcript-restore-key-1",
+        "restoreId": "rk_Oa-MwLhXzkfm73BbHtLZMA",
+        "restoreSecret": "rs_vytRSKNTWR4n7-Q56V5YX6dC2jrBzttp-O5B7858fe8"
+      },
+      "now": 1700000840,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:polaris-key:grant-type:restore",
+                  "client_id": "djdl",
+                  "restore_id": "rk_Oa-MwLhXzkfm73BbHtLZMA",
+                  "restore_secret": "rs_vytRSKNTWR4n7-Q56V5YX6dC2jrBzttp-O5B7858fe8",
+                  "device_key": "OPxKhcjiEVaZG72-6SccbfMR6QrG-0LlopuMMyMFTA4",
+                  "agree_key": "WXUTHGEMtA-LpOlfvB4-I0me88igyTyAP9a5qOoEcWc",
+                  "proof": "7xcj_VrmxHNEZwMvibL6oCZ01YzLFqW-lC5rjREwrVxdyFZBueI4zXMMrDDxcCa80fFuab5hgCmIMU3I99-oDA"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "restore_id",
+                  "restore_secret",
+                  "device_key",
+                  "agree_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_y103c8iq00-29N8BDXT6OrA0Ywt7PNS9wtR2VdAEJ-g",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000840,
+                  "lastSeen": 1700000840,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": null,
+                "subject": "ps__SC4a5db4xKrETO2BwkXXQ",
+                "issued_token_type": "urn:polaris-key:token-type:device"
+              }
+            },
+            "capture": { "token": "$.access_token" }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "tokenHeld": true,
+        "scope": "profile email",
+        "issuedTokenType": "urn:polaris-key:token-type:device",
+        "licenseId": null
+      }
+    },
+    {
+      "action": "restoreRedeem",
+      "note": "The same key again: used.",
+      "args": {
+        "keyLabel": "transcript-restore-key-1",
+        "restoreId": "rk_Oa-MwLhXzkfm73BbHtLZMA",
+        "restoreSecret": "rs_vytRSKNTWR4n7-Q56V5YX6dC2jrBzttp-O5B7858fe8"
+      },
+      "now": 1700000960,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:polaris-key:grant-type:restore",
+                  "client_id": "djdl",
+                  "restore_id": "rk_Oa-MwLhXzkfm73BbHtLZMA",
+                  "restore_secret": "rs_vytRSKNTWR4n7-Q56V5YX6dC2jrBzttp-O5B7858fe8",
+                  "device_key": "OPxKhcjiEVaZG72-6SccbfMR6QrG-0LlopuMMyMFTA4",
+                  "agree_key": "WXUTHGEMtA-LpOlfvB4-I0me88igyTyAP9a5qOoEcWc",
+                  "proof": "7xcj_VrmxHNEZwMvibL6oCZ01YzLFqW-lC5rjREwrVxdyFZBueI4zXMMrDDxcCa80fFuab5hgCmIMU3I99-oDA"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "restore_id",
+                  "restore_secret",
+                  "device_key",
+                  "agree_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 400,
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "restoreEnroll",
+      "note": "The device holds a token but is not signed in: no account to enrol for.",
+      "args": {},
+      "now": 1700001020,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/restore",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": { "json": {}, "match": "exact" }
+            },
+            "response": {
+              "status": 403,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "account_required" } }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 403,
+        "code": "account_required"
+      }
+    },
+    {
+      "action": "restoreRedeem",
+      "note": "The person's sixth restore of the day.",
+      "args": {
+        "keyLabel": "transcript-restore-key-1",
+        "restoreId": "rk_wRcBh-e7-lzc2uKAaoOrMg",
+        "restoreSecret": "rs_qaAF6blr0d2pKsZfoAdwHWXI0uNAZao0D-BBufeEsIY"
+      },
+      "now": 1700001080,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:polaris-key:grant-type:restore",
+                  "client_id": "djdl",
+                  "restore_id": "rk_wRcBh-e7-lzc2uKAaoOrMg",
+                  "restore_secret": "rs_qaAF6blr0d2pKsZfoAdwHWXI0uNAZao0D-BBufeEsIY",
+                  "device_key": "OPxKhcjiEVaZG72-6SccbfMR6QrG-0LlopuMMyMFTA4",
+                  "agree_key": "WXUTHGEMtA-LpOlfvB4-I0me88igyTyAP9a5qOoEcWc",
+                  "proof": "orwcOIZTb7ZL371pwlEYURDUdwC2tnNuNcNLpAwM_-pipCDv1IqefVZvWCmDMyI13wIJRJ5B33RNxEvdUh-iCw"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "restore_id",
+                  "restore_secret",
+                  "device_key",
+                  "agree_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 429,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "rate_limited", "retryAfter": 86400 }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 429,
+        "code": "rate_limited",
+        "tokenHeld": false,
+        "retryAfter": 86400
+      }
+    }
+  ]
+}

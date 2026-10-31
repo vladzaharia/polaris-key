@@ -22,11 +22,13 @@
 
 package im.plrs.key.identity
 
+import im.plrs.key.core.BoundedPlatformBackupStore
 import im.plrs.key.core.CoreContext
 import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.Feature
 import im.plrs.key.core.JsonText
+import im.plrs.key.core.PlatformBackupStore
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.ServiceSlug
@@ -138,7 +140,10 @@ public class IdentityClient(
     private val sleep: suspend (Long) -> Unit = sleep ?: { seconds -> delay(seconds * 1000) }
     internal val beforeSignOut = java.util.concurrent.CopyOnWriteArrayList<BeforeSignOutHook>()
     internal val platformProvider = java.util.concurrent.atomic.AtomicReference<PlatformIdentityProvider?>(null)
-    private val account = IdentityAccount(core, opener, { beforeSignOut.toList() }, onSubject, onSignedOut) { markSignedOut() }
+    private val revokeRestore: BeforeSignOutHook = { restoreSignOut() }
+    private val account =
+        IdentityAccount(core, opener, { beforeSignOut.toList() + revokeRestore }, onSubject, onSignedOut) { markSignedOut() }
+            .also { it.restoreStep = { restoreSignOut() } }
 
     @Volatile
     private var deviceKeys: DeviceKeyPort? = deviceKeys
@@ -154,6 +159,67 @@ public class IdentityClient(
     public fun installPlatformIdentity(provider: PlatformIdentityProvider?) {
         platformProvider.set(provider)
     }
+
+    /** The bound on each platform backup call; tests shorten it before `installPlatformBackup`. */
+    internal var backupBoundMillis: Long = BoundedPlatformBackupStore.DEFAULT_BOUND_MILLIS
+
+    internal val backupStore = java.util.concurrent.atomic.AtomicReference<PlatformBackupStore?>(null)
+
+    /** One restore write at a time: an enrolment and a sign-out's revocation never interleave. */
+    internal val restoreLock = kotlinx.coroutines.sync.Mutex()
+
+    /** Where rung 1's daily check runs, off the sign-in's path. */
+    internal val restoreScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default)
+    internal val dailyCheck = java.util.concurrent.atomic.AtomicReference<kotlinx.coroutines.Job?>(null)
+    private val restoreInstalled = java.util.concurrent.atomic.AtomicBoolean(true)
+
+    /** Whether silent restore (rung 2 and its enrolment) is on: a store is installed, `restore` was asked for, and the call allows it. */
+    internal val restoreOn = java.util.concurrent.atomic.AtomicBoolean(true)
+
+    /**
+     * Install the OS-held backup silent restore (V5 section 12.11.8) keeps its item in: Block Store on Android
+     * (`:android` does this). With none installed, as on the JVM desktop, rung 2 is skipped and nothing is
+     * enrolled. [restore] false turns restore off for this client (the developer's opt-out): the next
+     * `autoSignIn()` deletes this app's item and sends `DELETE restore`; an `autoSignIn` with
+     * `AutoSignInOptions.restore = false` does the same for that launch.
+     */
+    @JvmOverloads
+    public fun installPlatformBackup(store: PlatformBackupStore?, restore: Boolean = true) {
+        backupStore.set(BoundedPlatformBackupStore.of(store, backupBoundMillis))
+        restoreInstalled.set(restore)
+        restoreOn.set(restore)
+    }
+
+    /** Whether a backup store is installed (`installPlatformBackup`); with none, rung 2 is skipped. */
+    public val hasPlatformBackup: Boolean get() = backupStore.get() != null
+
+    internal fun applyRestoreOption(option: Boolean) {
+        restoreOn.set(restoreInstalled.get() && option)
+    }
+
+    /**
+     * Conformance replay only: the restore grant with the item the recorded step names; no enrolment follows.
+     * [proofValue] and [product] stand in for the step's `proofValue` and `product` args.
+     */
+    @ConformanceReplayOnly
+    @JvmOverloads
+    public suspend fun restoreRedeemRecorded(
+        restoreId: String,
+        secret: String,
+        proofValue: String? = null,
+        product: String? = null,
+    ): ExchangeOutcome {
+        val port = deviceKeys ?: return ExchangeOutcome.Unavailable(ExchangeUnavailableReason.noDeviceKeys)
+        return redeemRestore(RestoreItem(restoreId, secret), port, replay = RestoreReplayOverrides(proofValue, product))
+    }
+
+    /** Conformance replay only: `POST restore` with the id the step holds (or none). */
+    @ConformanceReplayOnly
+    public suspend fun restoreEnrolRecorded(restoreId: String?): RestoreEnrolResult = enrolRestore(restoreId)
+
+    /** Conformance replay only: `DELETE restore`; true on 204. */
+    @ConformanceReplayOnly
+    public suspend fun restoreDeleteRecorded(): Boolean = deleteRestore()
 
     /** Whether a platform provider is installed (`installPlatformIdentity`): the sign-in form offers its row. */
     public val hasPlatformProvider: Boolean get() = platformProvider.get() != null
@@ -320,6 +386,7 @@ public class IdentityClient(
                 } else if (core.storeSignIn(token, subject, TokenSource.signin, personInitiated = true)) {
                     onSubject(subject)
                 }
+                afterSignIn()
                 onAcquired?.invoke()
                 SignInPoll.Ready(subject)
             }

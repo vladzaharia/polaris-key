@@ -311,8 +311,8 @@
     <string name="activate_recommend_title">将%1$s保存到你的账户</string>
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">推荐</string>
-    <!-- ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">云同步会在每台设备上保留你的设置和存档</string>
+    <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
+    <string name="activate_recommend_sync">让你的设置在每台设备上保持一致</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
     <string name="activate_recommend_recover">丢失密钥或这台设备后，可找回你的许可证</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
@@ -324,16 +324,24 @@
     <string name="activate_recommend_skip">或不使用账户继续。%1$s的使用方式完全相同。</string>
     <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
     <string name="activate_recommend_portal">将许可证安全保存在 Polaris Locker</string>
-    <!-- AddToAccount: under the name and email fields. -->
+    <!-- AddToAccount: under the title, above the fields. -->
     <string name="activate_attach_lede">你的许可证及其设备保持不变。你将在浏览器中用验证码确认电子邮件。</string>
     <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_fine">我们会在浏览器中向这个电子邮件发送验证码。%1$s看不到它。</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$s已在你的账户中</string>
-    <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
-    <string name="activate_attach_syncOn">这台%1$s已开启云同步。在其他设备上登录即可一并同步。</string>
+    <!-- AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
+    <string name="activate_attach_syncOn">这台%1$s已开启同步。在其他设备上登录即可一并同步。</string>
     <!-- AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form. -->
     <string name="activate_attach_failed">无法添加此许可证。请稍后重试。</string>
+    <!-- AddToAccount: the name field. The title is Add your name and email, so the label is one word. -->
+    <string name="activate_attach_name">姓名</string>
+    <!-- AddToAccount: shown under the name field when it is empty. -->
+    <string name="activate_attach_nameRequired">请输入你的姓名。</string>
+    <!-- AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere. -->
+    <string name="activate_otherAccount_title">你登录的是另一个账户</string>
+    <!-- AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated). Arguments: 1=email, 2=maskedEmail. -->
+    <string name="activate_otherAccount_body">你登录的是 %1$s，而不是 %2$s。没有添加任何内容。</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
     <string name="activate_waiting">这个许可证已发送到 %1$s。用该电子邮件登录，即可保存到你的账户。</string>
     <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->
@@ -352,6 +360,9 @@
     <string name="activate_otherEmail_verify__macos">验证该电子邮件</string>
     <!-- AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email. -->
     <string name="account_notInAccount">不在账户中</string>
+    <!-- AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device. -->
+    <string name="account_removeKey">从此设备移除许可证</string>
+    <string name="account_removeKey__macos">从此设备移除许可证</string>
     <!-- The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="signin_attach_header">将%1$s添加到你的账户</string>
     <!-- License key step: under Continue without an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
@@ -661,8 +672,8 @@
     <string name="account_keyOnly">已通过许可证密钥激活</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
     <string name="account_devices">设备</string>
-    <!-- AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term. -->
-    <string name="account_cloudSync">云同步</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows. -->
+    <string name="account_cloudSync">跨设备同步</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Group header. -->
     <string name="account_updates">更新</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Switch label. -->
@@ -752,7 +763,7 @@
     <string name="cloudSync_error">无法同步。请稍后重试。</string>
     <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
     <string name="cloudSync_signedOut">你已退出登录。</string>
-    <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
+    <!-- CloudSyncStatus: a small sync status. Syncing needs an account. -->
     <string name="cloudSync_signIn">登录以同步</string>
     <string name="cloudSync_signIn__macos">登录以同步</string>
     <!-- CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it. -->
@@ -865,14 +876,25 @@
     <string name="saveConflict_bothFull">存档位已全部占用。删除一个存档后才能两个都保留。</string>
     <!-- SaveConflict: the choice is being applied. -->
     <string name="saveConflict_keeping">正在应用你的选择…</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptLocal">已保留此设备的存档。</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptRemote">已保留另一个存档。</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptBoth">两个都已保留。另一个已另存为副本。</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptDeleted">存档已删除。</string>
+    <!-- SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerThis">较新</string>
+    <!-- SaveConflict: tag on the other card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerOther">较新</string>
+    <!-- SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied. -->
+    <string name="saveConflict_chooseAgain">重新选择</string>
+    <string name="saveConflict_chooseAgain__macos">重新选择</string>
+    <!-- SaveConflict: the choice failed after the other copy was deleted; only this device's save exists. -->
+    <string name="saveConflict_failedDeleted">无法应用你的选择。你的存档未更改。</string>
+    <!-- SaveConflict: result title after Keep this device's version. -->
+    <string name="saveConflict_keptLocalTitle">已保留此设备的版本</string>
+    <!-- SaveConflict: result title after Keep the other version. -->
+    <string name="saveConflict_keptRemoteTitle">已保留另一个版本</string>
+    <!-- SaveConflict: result title after Keep both. -->
+    <string name="saveConflict_keptBothTitle">已保留两个版本</string>
+    <!-- SaveConflict: under Kept both versions, where the other version went. -->
+    <string name="saveConflict_keptCopy">另一个版本已另存为副本。</string>
+    <!-- SaveConflict: result title after Delete it here too. -->
+    <string name="saveConflict_keptDeletedTitle">存档已删除</string>
     <!-- SaveConflict: applying the choice failed; Try again repeats it. -->
     <string name="saveConflict_failed">无法应用你的选择。两个存档均未更改。</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -1236,6 +1258,10 @@
     <string name="signin_auto_confirm_as">以 %1$s 身份</string>
     <!-- Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private). -->
     <string name="signin_auto_confirm_asApple">使用你的 Apple 账户</string>
+    <!-- Automatic sign-in: the confirm step. After a Game Center sign-in (it shares no email). "Game Center" is Apple's product name (never translated). -->
+    <string name="signin_auto_confirm_asGameCenter">使用 Game Center</string>
+    <!-- Automatic sign-in: the confirm step. After a Google Play Games sign-in (it shares no email). "Google Play Games" is Google's product name; use Google's localized name (glossary). -->
+    <string name="signin_auto_confirm_asPlayGames">使用 Google Play 游戏</string>
     <!-- Automatic sign-in: the confirm step's main button. -->
     <string name="signin_auto_confirm_primary">继续</string>
     <!-- Automatic sign-in: the confirm step's secondary button; opens the regular sign-in. -->
@@ -1996,7 +2022,7 @@
     <string name="signin_consent_deny">不允许</string>
     <string name="signin_consent_deny__macos">不允许</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_consent_cloudSync">云同步</string>
+    <string name="signin_consent_cloudSync">你已同步的设置和数据</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="signin_consent_newLicense">新：%1$s许可证，继续后创建</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -2250,13 +2276,13 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_invalid_message">无法为同步设置此设备。请更新应用后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_title">设备未关联</string>
+    <string name="core_codes_device_keys_required_title">设备未设置连接</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">此设备尚未设置为与你的其他设备关联。请更新应用后重试。</string>
+    <string name="core_codes_device_keys_required_message">请更新应用后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">设备过多</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_ring_too_large_message">此账户关联的设备超出了可连接的数量。请移除一台后重试。</string>
+    <string name="core_codes_ring_too_large_message">此账户的设备超出了可连接的数量。请移除一台后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_disabled_title">远程连接已关闭</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2266,9 +2292,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_paused_message">远程连接暂时暂停。请稍后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_title">已达远程用量上限</string>
+    <string name="core_codes_relay_quota_exceeded_title">已达远程连接用量上限</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_message">远程连接用量已用完，即将重置。同一网络下的设备仍可连接。</string>
+    <string name="core_codes_relay_quota_exceeded_message">即将重置。同一网络下的设备仍可连接。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">连接已过期</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2472,7 +2498,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_title">加密不一致</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_encryption_mismatch_message">应用与同步服务的加密设置不一致。请更新应用后重试。</string>
+    <string name="core_codes_encryption_mismatch_message">应用与 Polaris Locker 的加密设置不一致。请更新应用后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_revision_conflict_title">已在别处更改</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2778,9 +2804,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_message">无法保存到此设备。请检查存储空间后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_title">无法连接</string>
+    <string name="core_codes_connect_unavailable_title">无法使用附近的设备</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_message">此设备上的此应用无法连接附近的设备。</string>
+    <string name="core_codes_connect_unavailable_message">此设备上的此应用无法使用。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_title">无法验证设备</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

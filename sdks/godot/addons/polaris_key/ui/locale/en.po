@@ -853,10 +853,10 @@ msgstr "Keep {product} in your account"
 msgid "activate.recommend.badge"
 msgstr "Recommended"
 
-#. Cloud Sync keeps your settings and saves on every device
-#. ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them.
+#. Sync your settings across your devices
+#. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "Cloud Sync keeps your settings and saves on every device"
+msgstr "Sync your settings across your devices"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -888,10 +888,10 @@ msgstr "Or continue without an account. {product} works the same."
 msgid "activate.recommend.portal"
 msgstr "Keep your license safe in Polaris Locker"
 
-#. Your license and its devices stay as they are. You'll confirm the email with a code in your browser.
-#. AddToAccount: under the name and email fields.
+#. Your license and its devices stay as they are.
+#. AddToAccount: under the title, above the fields.
 msgid "activate.attach.lede"
-msgstr "Your license and its devices stay as they are. You'll confirm the email with a code in your browser."
+msgstr "Your license and its devices stay as they are."
 
 #. We send a code to this email in your browser. {product} never sees it.
 #. AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated).
@@ -903,15 +903,35 @@ msgstr "We send a code to this email in your browser. {product} never sees it."
 msgid "activate.attach.done"
 msgstr "{product} is in your account"
 
-#. Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.
-#. AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone).
+#. Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too.
+#. AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone).
 msgid "activate.attach.syncOn"
-msgstr "Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too."
+msgstr "Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too."
 
 #. Couldn't add this license. Try again in a moment.
 #. AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form.
 msgid "activate.attach.failed"
 msgstr "Couldn't add this license. Try again in a moment."
+
+#. Name
+#. AddToAccount: the name field. The title is Add your name and email, so the label is one word.
+msgid "activate.attach.name"
+msgstr "Name"
+
+#. Enter your name.
+#. AddToAccount: shown under the name field when it is empty.
+msgid "activate.attach.nameRequired"
+msgstr "Enter your name."
+
+#. You signed in with a different account
+#. AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere.
+msgid "activate.otherAccount.title"
+msgstr "You signed in with a different account"
+
+#. You signed in as {email}, not {maskedEmail}. Nothing was added.
+#. AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated).
+msgid "activate.otherAccount.body"
+msgstr "You signed in as {email}, not {maskedEmail}. Nothing was added."
 
 #. This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.
 #. ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated).
@@ -962,6 +982,16 @@ msgstr "Verify That Email"
 #. AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email.
 msgid "account.notInAccount"
 msgstr "Not in an account"
+
+#. Remove license from this device
+#. AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device.
+msgid "account.removeKey"
+msgstr "Remove license from this device"
+
+#. macos: Remove License from This Device
+msgctxt "macos"
+msgid "account.removeKey"
+msgstr "Remove License from This Device"
 
 #. Add {product} to your account
 #. The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated).
@@ -1787,10 +1817,10 @@ msgstr "Offline · last day to use {product}"
 msgid "grace.deadline"
 msgstr "Works offline until {date}"
 
-#. Account and license
+#. Account and License
 #. AccountAndLicense: the settings pane for the license and account.
 msgid "account.title"
-msgstr "Account and license"
+msgstr "Account and License"
 
 #. {tier} license
 #. AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated).
@@ -1812,35 +1842,35 @@ msgstr "Activated with a license key"
 msgid "account.devices"
 msgstr "Devices"
 
-#. Cloud Sync
-#. AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term.
+#. Sync Across Devices
+#. AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows.
 msgid "account.cloudSync"
-msgstr "Cloud Sync"
+msgstr "Sync Across Devices"
 
 #. Updates
 #. AccountAndLicense: the settings pane for the license and account. Group header.
 msgid "account.updates"
 msgstr "Updates"
 
-#. Update automatically
+#. Update Automatically
 #. AccountAndLicense: the settings pane for the license and account. Switch label.
 msgid "account.autoUpdate"
-msgstr "Update automatically"
+msgstr "Update Automatically"
 
-#. Release channel
+#. Release Channel
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.channel"
-msgstr "Release channel"
+msgstr "Release Channel"
 
 #. Version {version}
 #. AccountAndLicense: the settings pane for the license and account. Arguments: {version} = a version string such as 2.4.1.
 msgid "account.version"
 msgstr "Version {version}"
 
-#. Managed settings
+#. Managed Settings
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.managedSettings"
-msgstr "Managed settings"
+msgstr "Managed Settings"
 
 #. Offline · showing the last saved details
 #. AccountAndLicense: the settings pane for the license and account.
@@ -2053,7 +2083,7 @@ msgid "cloudSync.signedOut"
 msgstr "You're signed out."
 
 #. Sign in to sync
-#. CloudSyncStatus: a small sync status. Cloud Sync needs an account.
+#. CloudSyncStatus: a small sync status. Syncing needs an account.
 msgid "cloudSync.signIn"
 msgstr "Sign in to sync"
 
@@ -2362,25 +2392,55 @@ msgstr "All save slots are in use. Delete a save to keep both."
 msgid "saveConflict.keeping"
 msgstr "Keeping your choice…"
 
-#. Kept this device's save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptLocal"
-msgstr "Kept this device's save."
+#. Newer
+#. SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerThis"
+msgstr "Newer"
 
-#. Kept the other save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptRemote"
-msgstr "Kept the other save."
+#. Newer
+#. SaveConflict: tag on the other card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerOther"
+msgstr "Newer"
 
-#. Kept both. The other is saved as a copy.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptBoth"
-msgstr "Kept both. The other is saved as a copy."
+#. Choose again
+#. SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied.
+msgid "saveConflict.chooseAgain"
+msgstr "Choose again"
 
-#. The save is deleted.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptDeleted"
-msgstr "The save is deleted."
+#. macos: Choose Again
+msgctxt "macos"
+msgid "saveConflict.chooseAgain"
+msgstr "Choose Again"
+
+#. Couldn't keep your choice. Your save is unchanged.
+#. SaveConflict: the choice failed after the other copy was deleted; only this device's save exists.
+msgid "saveConflict.failedDeleted"
+msgstr "Couldn't keep your choice. Your save is unchanged."
+
+#. Kept this device's version
+#. SaveConflict: result title after Keep this device's version.
+msgid "saveConflict.keptLocalTitle"
+msgstr "Kept this device's version"
+
+#. Kept the other version
+#. SaveConflict: result title after Keep the other version.
+msgid "saveConflict.keptRemoteTitle"
+msgstr "Kept the other version"
+
+#. Kept both versions
+#. SaveConflict: result title after Keep both.
+msgid "saveConflict.keptBothTitle"
+msgstr "Kept both versions"
+
+#. The other version is saved as a copy.
+#. SaveConflict: under Kept both versions, where the other version went.
+msgid "saveConflict.keptCopy"
+msgstr "The other version is saved as a copy."
+
+#. Save deleted
+#. SaveConflict: result title after Delete it here too.
+msgid "saveConflict.keptDeletedTitle"
+msgstr "Save deleted"
 
 #. Couldn't keep your choice. Both saves are unchanged.
 #. SaveConflict: applying the choice failed; Try again repeats it.
@@ -2442,10 +2502,10 @@ msgstr "Copy Diagnostics"
 msgid "about.diagnosticsCopied"
 msgstr "Diagnostics copied"
 
-#. Release channel
+#. Release Channel
 #. ChannelPicker: the release channel choice.
 msgid "channel.title"
-msgstr "Release channel"
+msgstr "Release Channel"
 
 #. {store} sets the channel.
 #. ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam).
@@ -3369,6 +3429,16 @@ msgstr "as {email}"
 msgid "signin.auto.confirm.asApple"
 msgstr "with your Apple Account"
 
+#. with Game Center
+#. Automatic sign-in: the confirm step. After a Game Center sign-in (it shares no email). "Game Center" is Apple's product name (never translated).
+msgid "signin.auto.confirm.asGameCenter"
+msgstr "with Game Center"
+
+#. with Google Play Games
+#. Automatic sign-in: the confirm step. After a Google Play Games sign-in (it shares no email). "Google Play Games" is Google's product name; use Google's localized name (glossary).
+msgid "signin.auto.confirm.asPlayGames"
+msgstr "with Google Play Games"
+
 #. Continue
 #. Automatic sign-in: the confirm step's main button.
 msgid "signin.auto.confirm.primary"
@@ -4122,10 +4192,10 @@ msgstr "{device} was replaced by {newDevice} when you signed in to {product} on 
 msgid "signin.mail.newDevice.subject"
 msgstr "A new device signed in to your Polaris Locker account"
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
-msgstr "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in."
+msgstr "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In."
 
 #. Open Polaris Locker
 #. Security email (SIGN-IN.md §3.15).
@@ -5352,10 +5422,10 @@ msgctxt "macos"
 msgid "signin.consent.deny"
 msgstr "Don't Allow"
 
-#. Cloud Sync
+#. Your synced settings and data
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.consent.cloudSync"
-msgstr "Cloud Sync"
+msgstr "Your synced settings and data"
 
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
@@ -6006,55 +6076,55 @@ msgstr "Device not set up"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "This device could not be set up for sync. Update the app and try again."
 
-#. Device not linked
+#. Device not set up to connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.title"
-msgstr "Device not linked"
+msgstr "Device not set up to connect"
 
-#. This device has not been set up to link with your others. Update the app and try again.
+#. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "This device has not been set up to link with your others. Update the app and try again."
+msgstr "Update the app and try again."
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.title"
 msgstr "Too many devices"
 
-#. This account has more linked devices than can be connected. Remove one and try again.
+#. This account has more devices than can be connected. Remove one and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.message"
-msgstr "This account has more linked devices than can be connected. Remove one and try again."
+msgstr "This account has more devices than can be connected. Remove one and try again."
 
-#. Remote connect is off
+#. Remote connection is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.title"
-msgstr "Remote connect is off"
+msgstr "Remote connection is off"
 
-#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Remote connection is off for this app. Your devices connect only on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.message"
-msgstr "Remote connect is off for this app. Your devices connect only on the same network."
+msgstr "Remote connection is off for this app. Your devices connect only on the same network."
 
-#. Remote connect paused
+#. Remote connection paused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.title"
-msgstr "Remote connect paused"
+msgstr "Remote connection paused"
 
-#. Remote connect is paused for now. Try again later.
+#. Remote connection is paused for now. Try again later.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.message"
-msgstr "Remote connect is paused for now. Try again later."
+msgstr "Remote connection is paused for now. Try again later."
 
-#. Remote limit reached
+#. Remote connection limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.title"
-msgstr "Remote limit reached"
+msgstr "Remote connection limit reached"
 
-#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
-msgstr "The remote connection limit is used up. It resets soon. Devices on the same network still connect."
+msgstr "It resets soon. Devices on the same network still connect."
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6561,10 +6631,10 @@ msgstr "Syncing is paused for a moment. Your changes are kept and will sync late
 msgid "core.codes.encryption_mismatch.title"
 msgstr "Encryption mismatch"
 
-#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. This app and Polaris Locker don't agree on encryption. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
-msgstr "This app and the sync service don't agree on encryption. Update the app and try again."
+msgstr "This app and Polaris Locker don't agree on encryption. Update the app and try again."
 
 #. Changed elsewhere
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7326,15 +7396,15 @@ msgstr "Storage problem"
 msgid "core.codes.store-failed.message"
 msgstr "Couldn't save on this device. Check storage and try again."
 
-#. Connect unavailable
+#. Nearby devices unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.title"
-msgstr "Connect unavailable"
+msgstr "Nearby devices unavailable"
 
-#. Nearby connection isn't available for this app on this device.
+#. This app can't use them on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
-msgstr "Nearby connection isn't available for this app on this device."
+msgstr "This app can't use them on this device."
 
 #. Device not verified
 #. Core copy (conformance/parity/copy.en.json, codes).

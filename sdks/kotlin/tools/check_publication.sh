@@ -55,8 +55,8 @@ done
 # The Godot binding (P6-10): per flavour the AAR, POM, sources jar and module metadata; the ONLY
 # im.plrs.key dependency, in the POM and in the module metadata, is polaris-key-platform-<same
 # flavour> at the same version (no :core, :license, :update, :packs or :sdk; never the other
-# flavour); Play Core arrives only through the platform POM. And the Godot export plugin adds, for a
-# play export, exactly the Play Core libraries the platform play POM names (android_export.gd's
+# flavour); Play Core arrives only through the platform POM (so does Credential Manager). And the Godot export plugin adds, for a
+# play export, exactly the Play Core and Credential Manager libraries the platform play POM names (android_export.gd's
 # PLAY_DEPENDENCIES), so the two lists cannot drift apart again.
 GODOT_EXPORT="$ROOT/../godot/addons/polaris_key/native/android_export.gd"
 if [ -d "$REPO/polaris-key-godot-play" ] || [ -d "$REPO/polaris-key-godot-direct" ]; then
@@ -88,9 +88,10 @@ if [ -d "$REPO/polaris-key-godot-play" ] || [ -d "$REPO/polaris-key-godot-direct
   done
   echo "── godot export plugin"
   play_pom="$REPO/polaris-key-platform-play/$VERSION/polaris-key-platform-play-$VERSION.pom"
-  want="$(sed '/<dependencies>/,$!d' "$play_pom" | tr -d ' \n' | grep -o '<groupId>com.google.android.play</groupId><artifactId>[^<]*</artifactId><version>[^<]*</version>' |
+  want="$(sed '/<dependencies>/,$!d' "$play_pom" | tr -d ' \n' | grep -oE '<groupId>(com.google.android.play|androidx.credentials|com.google.android.libraries.identity.googleid)</groupId><artifactId>[^<]*</artifactId><version>[^<]*</version>' |
     sed 's|<groupId>\([^<]*\)</groupId><artifactId>\([^<]*\)</artifactId><version>\([^<]*\)</version>|\1:\2:\3|' | sort | tr '\n' ' ' | sed 's/ $//')"
-  have="$(sed -n 's/^const PLAY_DEPENDENCIES := \[\(.*\)\]$/\1/p' "$GODOT_EXPORT" | tr ',' '\n' | tr -d ' "' | grep . | sort | tr '\n' ' ' | sed 's/ $//')"
+  # PLAY_DEPENDENCIES spans several lines: from its `[` to the closing `]`.
+  have="$(sed -n '/^const PLAY_DEPENDENCIES := \[/,/^\]/p' "$GODOT_EXPORT" | sed 's/^const PLAY_DEPENDENCIES := \[//' | tr ',' '\n' | tr -d ' \t"[]' | grep . | sort | tr '\n' ' ' | sed 's/ $//')"
   if [ -n "$want" ] && [ "$want" = "$have" ]; then
     ok "android_export.gd's PLAY_DEPENDENCIES match the platform play POM ($want)"
   else
@@ -156,6 +157,37 @@ PY
     pom="$REPO/polaris-key-$a/$VERSION/polaris-key-$a-$VERSION.pom"
     if grep -q 'zstd-jni' "$pom"; then fail "polaris-key-$a names zstd-jni (the decoder is opt-in)"; else ok "polaris-key-$a names no zstd-jni"; fi
   done
+fi
+
+# The opt-in Play Games sign-in (I-45.5): polaris-key-games carries the AAR, POM, sources jar and module
+# metadata; its only SDK dependency is polaris-key-identity (and polaris-key-core through it), never
+# polaris-key-sdk or a platform artifact; it names play-services-games-v2 at the catalog's pin; and no
+# other published POM names a Play Games artifact (an app that does not sign in through Play Games links none).
+if [ -d "$REPO/polaris-key-games" ]; then
+  echo "── games"
+  a="polaris-key-games"
+  dir="$REPO/$a/$VERSION"
+  for f in "$a-$VERSION.aar" "$a-$VERSION.pom" "$a-$VERSION.module" "$a-$VERSION-sources.jar"; do
+    [ -s "$dir/$f" ] && ok "$f" || fail "$f missing"
+  done
+  pom="$dir/$a-$VERSION.pom"
+  deps="$(sed '/<dependencies>/,$!d' "$pom" | tr -d ' \n')"
+  sdk_deps="$(grep -o '<groupId>im.plrs.key</groupId><artifactId>[^<]*</artifactId><version>[^<]*</version>' <<<"$deps" |
+    sed 's|<groupId>im.plrs.key</groupId><artifactId>\([^<]*\)</artifactId><version>\([^<]*\)</version>|\1:\2|' | sort -u | tr '\n' ' ' | sed 's/ $//')"
+  [ "$sdk_deps" = "polaris-key-identity:$VERSION" ] && ok "$a's POM depends on polaris-key-identity:$VERSION only" ||
+    fail "$a's POM SDK dependencies are '$sdk_deps', expected 'polaris-key-identity:$VERSION'"
+  games_version="$(sed -n 's/^playGames = "\(.*\)"/\1/p' "$ROOT/gradle/libs.versions.toml")"
+  if grep -q "<artifactId>play-services-games-v2</artifactId><version>$games_version</version>" <<<"$deps"; then
+    ok "$a's POM names play-services-games-v2 $games_version"
+  else
+    fail "$a's POM does not name play-services-games-v2 $games_version"
+  fi
+  for other in "$REPO"/polaris-key-*; do
+    [ "$(basename "$other")" = "$a" ] && continue
+    if grep -qs 'play-services-games' "$other/$VERSION/$(basename "$other")-$VERSION.pom"; then fail "$(basename "$other") names Play Games (the module is opt-in)"; fi
+  done
+  ok "no other POM names Play Games"
+  if ls "$dir" | grep -qE '\.(asc|sig)$'; then fail "$a is signed (no signing in this program)"; else ok "$a carries no signature"; fi
 fi
 
 echo "── build scripts"

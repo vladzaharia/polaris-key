@@ -111,6 +111,11 @@ export interface SignInRequestView {
   scope?: string[];
   loginHint?: string | null;
   nameHint?: string | null;
+  /**
+   * LK-SKIP (§12.4.2): `true` when the app opted into the key return and the Worker allows it for
+   * this request. Absent otherwise, so every earlier answer stays byte-identical.
+   */
+  keyReturn?: true;
 }
 
 /** One line of what an app gets when the person continues (§12.7.3). */
@@ -149,6 +154,21 @@ export interface AppConsentView {
   changed: boolean;
 }
 
+/**
+ * `POST /<p>/identity/auth/device/start`'s body (§12.7.1, §12.10.1). Every member is optional. The
+ * hints prefill the card and verify nothing; `licenseChoice: "app"` asks for the `choose` poll
+ * answer, and an SDK sends it only when discovery carries `deviceChoice` and the four `choice*`
+ * endpoints. `scope` is ignored.
+ */
+export interface DeviceStartRequest {
+  deviceId?: string;
+  deviceName?: string;
+  loginHint?: string;
+  nameHint?: string;
+  purpose?: AuthorizePurpose;
+  licenseChoice?: AuthorizeLicenseChoice;
+}
+
 /** `POST /<p>/identity/auth/device/start`'s answer. `deviceName` echoes the stored label. */
 export interface DeviceStartResponse {
   status: "pending";
@@ -181,7 +201,9 @@ export type DevicePollResponse =
       identity?: { name?: string; email?: string };
     }
   | { status: "timeout" }
-  | { status: "error"; reason?: typeof DEVICE_POLL_DENIED };
+  | { status: "error"; reason?: typeof DEVICE_POLL_DENIED }
+  /** §12.10.1: only to a start that sent `licenseChoice: "app"`. The flow is spent; a client stops. */
+  | PendingSignIn;
 
 /** §12.10: the same route at HTTP 429 (a state, not an error body). */
 export interface DevicePollSlowDown {
@@ -351,6 +373,10 @@ export interface IdentityDiscovery {
   };
   /** I-40 (§12.11.5): nearby approval is served. */
   nearby?: true;
+  /** UK-42.22 (§12.10.1): the device-code poll answers `choose` to a start that asked `licenseChoice: "app"`. */
+  deviceChoice?: true;
+  /** I-49 (§12.11.8): silent restore is served; the `restore` endpoint comes with it. */
+  restore?: true;
   endpoints: {
     session: string;
     sessionLicense: string;
@@ -376,6 +402,8 @@ export interface IdentityDiscovery {
     nearbyStart?: string;
     nearbyApprove?: string;
     nearbyPoll?: string;
+    /** I-49 (§12.11.8): enrol and revoke a restore key. Present only with `restore: true`. */
+    restore?: string;
     attach?: string;
     subject?: string;
     signout?: string;
@@ -403,6 +431,9 @@ export type AuthorizePurpose = "signin" | "attach";
 /** §12.4: the `license_choice` extension: who shows the licence choice, the card or the app (I-08b). */
 export type AuthorizeLicenseChoice = "card" | "app";
 
+/** LK-SKIP (§12.4): the one value of the `key_return` extension: the app accepts a key return (§12.4.2). */
+export const KEY_RETURN_ALLOW = "allow";
+
 /** §12.4: the parameters of `GET /<p>/identity/authorize`, as a client sends them. */
 export interface AuthorizeParams {
   response_type: "code";
@@ -417,6 +448,8 @@ export interface AuthorizeParams {
   name_hint?: string;
   purpose?: AuthorizePurpose;
   license_choice?: AuthorizeLicenseChoice;
+  /** LK-SKIP (§12.4.2): offer the card's "Continue without an account". Any other value is `invalid_request`. */
+  key_return?: typeof KEY_RETURN_ALLOW;
 }
 
 /** §12.4: the errors a 302 back to the app carries in its `error` query. */
@@ -444,6 +477,27 @@ export interface TokenResponse {
   subject: string;
   /** I-08b (§12.5.1): the licence's key-entry count after a key entered through `choice/complete`. */
   keyEntries?: { used: number; limit: number };
+  /** LK-SKIP: absent on every ordinary answer, so `via` narrows {@link KeyReturnTokenResponse} apart. */
+  via?: never;
+}
+
+/**
+ * LK-SKIP (§12.5 rule 3): the `200` of `token` for a key-return code (§12.4.2). {@link TokenResponse}
+ * plus `via: "key"`, with `scope` always `""`, `license` never `null` and `keyEntries` present.
+ * `subject` is `null`: the bind by key writes no binding and clears any binding the device held
+ * (U-02). A client still accepts a pairwise-subject string here, so a later Worker may carry one. A
+ * client tells this answer apart by `via: "key"` and its own `key_return` opt-in, never by
+ * `subject`, and refuses a `via: "key"` body that breaks any member here (§12.5 rule 3).
+ */
+export interface KeyReturnTokenResponse extends Omit<
+  TokenResponse,
+  "subject" | "license" | "keyEntries" | "scope" | "via"
+> {
+  via: "key";
+  scope: "";
+  license: Record<string, unknown>;
+  subject: string | null;
+  keyEntries: { used: number; limit: number };
 }
 
 /** §12.5: the flat RFC 6749 §5.2 body, and the Polaris refusals that are flat beside it. */
@@ -479,6 +533,14 @@ export interface SignInContinueRequest {
 /** §12.4: the answer of Continue and Cancel; the card navigates to `redirect`. */
 export interface SignInRedirect {
   redirect: string;
+}
+
+/**
+ * LK-SKIP (§12.4.2): `POST /api/signin/requests/:handle/key`. The key is in this body only; the
+ * answer is a {@link SignInRedirect} whose code names the key's licence and no account.
+ */
+export interface SignInKeyReturnRequest {
+  key: string;
 }
 
 // ── I-08b: the licence choice (§12.4.1, §12.5.1; plans/I-04.md §C, §G) ───────────────────────────
@@ -812,3 +874,107 @@ export type NearbyPollResponse =
   | TokenResponse
   | DevicePollSlowDown
   | DevicePollUnavailable;
+
+// ── I-49: silent restore (§12.11.8) ──────────────────────────────────────────────────────────────
+
+/** §12.11.8: the restore grant on `POST /<p>/identity/token`. */
+export const RESTORE_GRANT_TYPE = "urn:polaris-key:grant-type:restore";
+/** §12.11.8: a restore key's id, `rk_` and 16 random bytes in base64url. */
+export const RESTORE_ID_PATTERN = "^rk_[A-Za-z0-9_-]{22}$";
+/** §12.11.8: a restore key's secret, `rs_` and 32 random bytes in base64url. */
+export const RESTORE_SECRET_PATTERN = "^rs_[A-Za-z0-9_-]{43}$";
+/** §12.11.8: the most restore keys one subject holds for one product; the oldest check goes. */
+export const RESTORE_KEYS_MAX = 10;
+/** §12.11.8: days without a check after which maintenance deletes a restore key. */
+export const RESTORE_IDLE_DAYS = 180;
+/** §12.11.8: how often a signed-in client re-checks its restore key, seconds (24 hours). */
+export const RESTORE_CHECK_INTERVAL_SECONDS = 86_400;
+
+/**
+ * §12.11.8: the form parameters of the restore grant. The proof's purpose is `restore`, its value
+ * is `<restore_id>.<device_key>` and its sixth line is the base64url SHA-256 of `restore_secret`.
+ */
+export interface RestoreTokenParams {
+  grant_type: typeof RESTORE_GRANT_TYPE;
+  /** The product slug. */
+  client_id: string;
+  /** Matches {@link RESTORE_ID_PATTERN}. */
+  restore_id: string;
+  /** Matches {@link RESTORE_SECRET_PATTERN}. */
+  restore_secret: string;
+  /** The device's signing key, raw 32 bytes in base64url. */
+  device_key: string;
+  /** The device's agreement key, raw 32 bytes in base64url. */
+  agree_key: string;
+  /** A `pkey-proof/1` signature, purpose `restore` (§12.11.1). */
+  proof: string;
+  license_choice?: AuthorizeLicenseChoice;
+  device_name?: string;
+}
+
+/** §12.11.8: a silent restore's `200` is the exchange's (§12.11.3): a device token. */
+export type RestoreTokenResponse = ExchangeTokenResponse;
+
+/**
+ * §12.11.8: the consent a restore asks for. A restore proves a key, not a provider token, so `as`
+ * names no provider and carries no address. {@link ExchangeConsentView} is unchanged.
+ */
+export type RestoreConsentView = Omit<ExchangeConsentView, "as"> & {
+  as: { provider: null; email: null };
+};
+
+/** §12.11.8: a restore's `confirm`: {@link ConfirmSignIn} with a {@link RestoreConsentView}. */
+export interface RestoreConfirmSignIn extends Omit<ConfirmSignIn, "consent"> {
+  consent: RestoreConsentView;
+}
+
+/**
+ * §12.11.8: the flat `403` of a restore. Only `terms` is possible: there is no `no_link`, so no
+ * `linkHandle` and no `expiresIn`.
+ */
+export interface RestoreInterstitialRequiredBody {
+  error: "interstitial_required";
+  reason: "terms";
+  url: string;
+}
+
+/**
+ * §12.11.8: the bodies a restore grant answers with beyond the errors of §12.5. `200`: a device
+ * token, `confirm` or `choose`; `403`: `interstitial_required` with reason `terms`.
+ */
+export type RestoreTokenResult =
+  | RestoreTokenResponse
+  | RestoreConfirmSignIn
+  | PendingSignIn
+  | RestoreInterstitialRequiredBody;
+
+/**
+ * §12.11.8: `POST /<p>/identity/restore`. `restoreId` is the id of the item the device holds;
+ * when present it matches {@link RESTORE_ID_PATTERN}, and anything else is `400 bad_request`.
+ */
+export interface RestoreKeyRequest {
+  restoreId?: string;
+}
+
+/**
+ * §12.11.8: `200`. The id is a live key of this product and subject, held by the calling device
+ * and under 90 days old; `checkedAt` moved. Any other id gets the `201` instead.
+ */
+export interface RestoreKeyCurrent {
+  status: "current";
+}
+
+/** §12.11.8: `201`. The key replaces this device's; the secret is shown here once. */
+export interface RestoreKeyIssued {
+  restoreId: string;
+  secret: string;
+}
+
+/** §12.11.8: the answers to {@link RestoreKeyRequest}. `DELETE` answers `204` with no body. */
+export type RestoreKeyResponse = RestoreKeyCurrent | RestoreKeyIssued;
+
+/** §12.11.8: the members of the identity fragment that announce silent restore. */
+export interface RestoreDiscovery {
+  restore: true;
+  endpoints: { restore: string };
+}

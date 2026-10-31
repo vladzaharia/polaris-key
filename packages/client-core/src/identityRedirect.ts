@@ -25,6 +25,8 @@ import {
   AUTHORIZE_STATE_MAX,
   AUTHORIZE_STATE_MIN,
   CHOICE_GRANT_PATTERN,
+  KEY_RETURN_ALLOW,
+  PAIRWISE_SUBJECT_PATTERN,
   type AuthorizeLicenseChoice,
   type AuthorizePurpose,
 } from "@polaris-key/protocol/identity";
@@ -89,6 +91,11 @@ export interface StartRedirectOptions {
    *  nothing is sent. */
   licenseChoice?: AuthorizeLicenseChoice;
   choiceAvailable?: boolean;
+  /** LK-SKIP (§12.4): the app accepts a key return, so `key_return=allow` is sent (last). The
+   *  Worker records it only for a sign-in on a product that runs License with the gate on, and
+   *  drops it otherwise. Recorded on {@link RedirectPending.keyReturn}; the token answer is read
+   *  with the same flag. */
+  keyReturn?: boolean;
   /** Test hooks: the entropy, or the exact `state` and verifier of a recorded conversation. */
   random?: RandomBytes;
   state?: string;
@@ -109,6 +116,9 @@ export interface RedirectPending {
   clientId: string;
   issuer: string;
   tokenEndpoint: string;
+  /** `true` when the request opted in to a key return; absent otherwise. Pass it to
+   *  {@link parseTokenAnswer}. */
+  keyReturn?: true;
 }
 
 function invalid(message: string): PolarisError {
@@ -140,7 +150,7 @@ function scopeString(scope: string | readonly string[] | undefined): string {
 /**
  * Build the authorize request. Query order is fixed so every SDK emits the same bytes:
  * `response_type client_id redirect_uri state code_challenge code_challenge_method scope
- * [login_hint] [name_hint] [purpose] [license_choice]`, each value form-encoded by
+ * [login_hint] [name_hint] [purpose] [license_choice] [key_return]`, each value form-encoded by
  * `manageFormEncode` (space as `+`). A hint that is empty is not sent; a hint is sent verbatim
  * (the Worker normalises, and drops a login hint that is not an email).
  */
@@ -191,6 +201,7 @@ export async function startRedirect(
   if (opts.purpose) pairs.push(["purpose", opts.purpose]);
   if (opts.licenseChoice === "app" && opts.choiceAvailable === true)
     pairs.push(["license_choice", "app"]);
+  if (opts.keyReturn === true) pairs.push(["key_return", KEY_RETURN_ALLOW]);
   const query = formBody(pairs);
   const base = opts.authorizeEndpoint;
   return {
@@ -201,6 +212,7 @@ export async function startRedirect(
     clientId: opts.clientId,
     issuer: opts.issuer,
     tokenEndpoint: opts.tokenEndpoint,
+    ...(opts.keyReturn === true ? { keyReturn: true as const } : {}),
   };
 }
 
@@ -328,6 +340,16 @@ export function tokenForm(
   return formBody(pairs);
 }
 
+/** The flat members a refusal can carry beside `error` (`device_limit`, `key_entry_limit`,
+ *  `license_owned`), each present only when the body has it with the right type. */
+export interface RefusalDetails {
+  limit?: number;
+  deviceCount?: number;
+  manageUrl?: string;
+  keyEntries?: { used: number; limit: number };
+  signInUrl?: string;
+}
+
 export type TokenAnswer =
   /** `200` with an `access_token`: the activation response under its OAuth names. */
   | {
@@ -338,6 +360,20 @@ export type TokenAnswer =
       schemaVersion: number;
       device: Record<string, unknown>;
       license: Record<string, unknown> | null;
+    }
+  /** LK-SKIP (§12.5 rule 3): `200` with `via: "key"`, read only with the `key_return` opt-in. The
+   *  device is bound on the key's licence with no account: `subject` is `null` (U-02), `license`
+   *  is never `null`, and `keyEntries` is the licence's count. The caller stores it as a key
+   *  activation, sets the stored subject to `subject` and emits `activated`, not `signedIn`. */
+  | {
+      kind: "activated";
+      accessToken: string;
+      scope: "";
+      subject: string | null;
+      schemaVersion: number;
+      device: Record<string, unknown>;
+      license: Record<string, unknown>;
+      keyEntries: { used: number; limit: number };
     }
   /** `200` with `status: "choose"` (I-08b): the app shows the licence choice, then calls
    *  `choice/complete` with `grant`. */
@@ -355,6 +391,7 @@ export type TokenAnswer =
       error: string;
       status: number;
       retryAfterSeconds?: number;
+      details?: RefusalDetails;
     }
   /** A `200` that is neither of the above, or lacks a member the call needs. */
   | { kind: "malformed" };
@@ -362,20 +399,62 @@ export type TokenAnswer =
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 
+const isCount = (v: unknown): v is number =>
+  typeof v === "number" && Number.isInteger(v) && v >= 0;
+
+function keyEntriesOf(v: unknown): { used: number; limit: number } | null {
+  return isRecord(v) && isCount(v.used) && isCount(v.limit)
+    ? { used: v.used, limit: v.limit }
+    : null;
+}
+
+function refusalDetails(b: Record<string, unknown>): RefusalDetails {
+  const out: RefusalDetails = {};
+  if (isCount(b.limit)) out.limit = b.limit;
+  if (isCount(b.deviceCount)) out.deviceCount = b.deviceCount;
+  if (typeof b.manageUrl === "string" && b.manageUrl !== "")
+    out.manageUrl = b.manageUrl;
+  const entries = keyEntriesOf(b.keyEntries);
+  if (entries) out.keyEntries = entries;
+  if (typeof b.signInUrl === "string" && b.signInUrl !== "")
+    out.signInUrl = b.signInUrl;
+  return out;
+}
+
 /** Read the token endpoint's answer. `choose` is decided by the `status` member alone, never by
- *  the absence of `access_token`. */
-export function parseTokenAnswer(status: number, body: unknown): TokenAnswer {
+ *  the absence of `access_token`. A `200` with `via: "key"` is `activated` only when the caller
+ *  opted in (`keyReturn`, from {@link RedirectPending.keyReturn}); without the opt-in, or with any
+ *  other `via`, it is `malformed`. A `via: "key"` body is `malformed` unless `scope` is `""`,
+ *  `license` is an object, `keyEntries` is `{used, limit}` of non-negative integers, and `subject`
+ *  is a pairwise-subject string or `null`. */
+export function parseTokenAnswer(
+  status: number,
+  body: unknown,
+  opts?: { keyReturn?: false },
+): Exclude<TokenAnswer, { kind: "activated" }>;
+export function parseTokenAnswer(
+  status: number,
+  body: unknown,
+  opts: { keyReturn?: boolean },
+): TokenAnswer;
+export function parseTokenAnswer(
+  status: number,
+  body: unknown,
+  opts: { keyReturn?: boolean } = {},
+): TokenAnswer {
   if (status !== 200) {
     const b = isRecord(body) ? body : {};
     const error =
       typeof b.error === "string" && b.error !== "" ? b.error : "server_error";
     const retry = b.retryAfter;
+    const details = refusalDetails(b);
     return {
       kind: "refused",
       error,
       status,
+      ...(Object.keys(details).length > 0 ? { details } : {}),
       ...(typeof retry === "number" && Number.isFinite(retry) && retry > 0
-        ? { retryAfterSeconds: Math.ceil(retry) }
+        ? { retryAfterSeconds: Math.min(Math.ceil(retry), 3600) }
         : {}),
     };
   }
@@ -392,6 +471,35 @@ export function parseTokenAnswer(status: number, body: unknown): TokenAnswer {
     return { kind: "choose", grant, expiresIn, choices };
   }
   const { access_token, scope, subject, schemaVersion, device, license } = body;
+  if ("via" in body) {
+    if (body.via !== "key" || opts.keyReturn !== true)
+      return { kind: "malformed" };
+    const keyEntries = keyEntriesOf(body.keyEntries);
+    if (
+      typeof access_token !== "string" ||
+      access_token === "" ||
+      scope !== "" ||
+      !(
+        subject === null ||
+        (typeof subject === "string" &&
+          new RegExp(PAIRWISE_SUBJECT_PATTERN).test(subject))
+      ) ||
+      !isRecord(device) ||
+      !isRecord(license) ||
+      keyEntries === null
+    )
+      return { kind: "malformed" };
+    return {
+      kind: "activated",
+      accessToken: access_token,
+      scope: "",
+      subject,
+      schemaVersion: typeof schemaVersion === "number" ? schemaVersion : 1,
+      device,
+      license,
+      keyEntries,
+    };
+  }
   if (
     typeof access_token !== "string" ||
     access_token === "" ||

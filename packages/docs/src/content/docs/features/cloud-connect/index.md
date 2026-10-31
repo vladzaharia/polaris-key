@@ -7,7 +7,7 @@ sidebar:
   order: 1
 ---
 
-Cloud Connect (service slug `connect`) lets one person's devices find each other and open an encrypted channel, on the local network or through a relay. It needs sign-in: the devices it links are the ones signed in to the same account.
+Cloud Connect (service slug `connect`) lets one person's devices find each other and open an encrypted channel, on the local network or through a relay. It needs sign-in: the devices it links are the ones signed in to the same account. End users see it as **Nearby Devices**.
 
 **Direct Transfer** is the data that crosses such a channel: a file, a save or a setting sent from one of a person's devices to another without going through Cloud Sync's storage.
 

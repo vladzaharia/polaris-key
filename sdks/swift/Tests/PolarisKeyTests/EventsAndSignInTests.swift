@@ -231,6 +231,10 @@ final class EventsAndSignInTests: XCTestCase {
     }
 
     func testSignOutRefusesWithoutIdentity() async throws {
+        // A loaded discovery document that serves no Identity (an unreachable one is a network error, not this).
+        await server.reply(
+            "/djdl/.well-known/polaris.json",
+            body: #"{"product":"djdl","services":{"license":{"enabled":true,"configured":true}}}"#)
         let core = try CoreContext(
             options: CoreOptions(
                 productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",

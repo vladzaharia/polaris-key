@@ -355,7 +355,7 @@ describe("Library on today's data (PX-02)", () => {
     const strip = screen.getByRole("region", { name: "Missing a license?" });
     // The other email links Sign-in methods, underlined: colour alone is not a link (WCAG 1.4.1).
     const methods = within(strip).getByRole("link", {
-      name: "Add it in Sign-in methods",
+      name: "Add it in Sign-In Methods",
     });
     expect(methods.getAttribute("href")).toMatch(/methods/);
     expect(methods.className).toContain("underline");

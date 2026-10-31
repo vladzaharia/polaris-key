@@ -89,13 +89,13 @@ reports each control instead of calling the SDK.
 | `autoFocus` | Take focus on mount                                                                                                             |
 | `className` | Extra classes on the kit root                                                                                                   |
 
-| Kind   | Components                                                                                                                                               | Layout                                                                        |
-| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Screen | `Boot`, `Welcome`, `SignIn`, `SignInHandoff`, `Activate`, `OfflineActivation`, `DeviceLimit`, `LicenseChoice`, `UpdatePrompt`, `StatusScreen`, `Paywall` | A card on the product's blurred icon; two columns in a short landscape window |
-| Pane   | `Devices`, `Settings`, `AccountAndLicense`, `ReleaseNotes`, `About`, `ChannelPicker`                                                                     | From your container's start edge, up to 40rem, framed unless `bare`           |
-| Banner | `GraceBanner`                                                                                                                                            | One line, its consequence and at most two actions                             |
-| Toast  | `Toast`                                                                                                                                                  | One line, with a visible timer where the state has one                        |
-| Inline | `UpdateProgress`, `EntitlementGate`, `CloudSyncStatus`                                                                                                   | A small status inside your layout                                             |
+| Kind   | Components                                                                                                                                                                               | Layout                                                                        |
+| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Screen | `Boot`, `Welcome`, `SignIn`, `SignInHandoff`, `Activate`, `ActivateDone`, `AddToAccount`, `OfflineActivation`, `DeviceLimit`, `LicenseChoice`, `UpdatePrompt`, `StatusScreen`, `Paywall` | A card on the product's blurred icon; two columns in a short landscape window |
+| Pane   | `Devices`, `Settings`, `AccountAndLicense`, `ReleaseNotes`, `About`, `ChannelPicker`                                                                                                     | From your container's start edge, up to 40rem, framed unless `bare`           |
+| Banner | `GraceBanner`                                                                                                                                                                            | One line, its consequence and at most two actions                             |
+| Toast  | `Toast`                                                                                                                                                                                  | One line, with a visible timer where the state has one                        |
+| Inline | `UpdateProgress`, `EntitlementGate`, `CloudSyncStatus`                                                                                                                                   | A small status inside your layout                                             |
 
 ```tsx
 import { Devices, type KitAction, type UiInput } from "@polaris-key/react/kit";
@@ -148,6 +148,69 @@ For a form you lay out yourself, the step parts draw one step each: `SignInMetho
 `useSignIn({ primitives, presentation, replace, input })` returns `{ model, input, step }`: the live
 `SignInModel` (`null` without primitives), the form's input, and `step.body`, the view the card
 draws now.
+
+## After a license key
+
+A key that activates leaves the license floating: it has devices and a term, and no account.
+`SignIn` and `PolarisKeyGate` go on to the next two screens by themselves. `ActivateDone` says the app is
+ready and recommends adding a name and email once; **Start using** is its one primary. **Add your
+name and email** opens `AddToAccount`, which signs in with the typed email and name as hints,
+keeps this device's license and attaches it. The key is held in memory only, and with Identity off
+the card opens Polaris Locker instead. The account pane keeps a Not in an account row for later.
+
+For your own layout, place the two screens or use their hooks:
+
+```tsx
+import {
+  ActivateDone,
+  AddToAccount,
+  useAddToAccount,
+  type UiInput,
+} from "@polaris-key/react/kit";
+import { useState } from "react";
+
+export function AfterKey(props: { input: UiInput; start: () => void }) {
+  const [adding, setAdding] = useState(false);
+  return adding ? (
+    <AddToAccount
+      attach={async () => "added"}
+      deviceKind="computer"
+      onCancel={() => setAdding(false)}
+      onStart={props.start}
+    />
+  ) : (
+    <ActivateDone
+      input={props.input}
+      onStart={props.start}
+      onAddToAccount={() => setAdding(true)}
+    />
+  );
+}
+
+export function NameAndEmail() {
+  const form = useAddToAccount();
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        form.submit();
+      }}
+    >
+      <input value={form.name} onChange={(e) => form.setName(e.target.value)} />
+      <input
+        value={form.email}
+        onChange={(e) => form.setEmail(e.target.value)}
+      />
+      <p data-step={form.step} />
+    </form>
+  );
+}
+```
+
+`attach` confirms the email in the browser and resolves with `added`, `owned`, `email-bound` or
+`failed`; the screen then draws that outcome. Without it you hear `common.continue` with the name
+and email in the action. [ActivateDone](/docs/build/ui/components/activate-done/) and
+[AddToAccount](/docs/build/ui/components/add-to-account/) list the states, copy and keys.
 
 ## Headless
 

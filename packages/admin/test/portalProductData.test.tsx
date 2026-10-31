@@ -144,7 +144,7 @@ async function open(
   mockFetch(routes);
   renderPortal();
   await screen.findByRole("heading", { level: 1, name });
-  return screen.findByRole("region", { name: "Your data" });
+  return screen.findByRole("region", { name: "Your Data" });
 }
 
 async function openRemove(
@@ -205,7 +205,7 @@ describe("Download my data from a product (I-11)", () => {
     expect(screen.queryByRole("button", { name: "Delete account" })).toBeNull();
     // It is the last section of the nav.
     expect(
-      screen.getAllByRole("link", { name: "Your data" }).length,
+      screen.getAllByRole("link", { name: "Your Data" }).length,
     ).toBeGreaterThan(0);
     await settle();
     expect(fetchedRequests().filter((r) => /export|\/data$/.test(r))).toEqual(
@@ -401,7 +401,7 @@ describe("Remove my data from a product (I-11)", () => {
     // Still Mossgarden's page, still holding its license.
     expect(window.location.hash).toBe("#/p/mossgarden");
     expect(
-      await screen.findByRole("region", { name: "Your data" }),
+      await screen.findByRole("region", { name: "Your Data" }),
     ).toBeTruthy();
     expect(screen.getByRole("region", { name: "License" })).toBeTruthy();
     // This product's route alone: not the account's deletion, not another product.
@@ -797,7 +797,7 @@ describe("an open product's page (I-11)", () => {
     // The entry stays: the page is still its page, with its card.
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(window.location.hash).toBe("#/p/driftwood");
-    expect(screen.getByRole("region", { name: "Your data" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Your Data" })).toBeTruthy();
   });
 
   it("saves that product's file", async () => {

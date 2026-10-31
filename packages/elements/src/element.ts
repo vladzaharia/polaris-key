@@ -17,6 +17,7 @@ import {
   type UiInput,
   type View,
 } from "@polaris-key/ui-core";
+import { focusClear } from "@polaris-key/ui-core/browser/reveal";
 import type { ResolvedIdentity } from "@polaris-key/ui-core/theme";
 import {
   platformVariant,
@@ -76,6 +77,19 @@ if (typeof document !== "undefined") {
 
 /** How long the Start over confirm ignores presses after the warning appears. */
 const ARM_MS = 500;
+
+const SYSTEM_FONT_STACK =
+  'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const BROWSER_DEFAULT_FONT =
+  /^\s*(?:"?times new roman"?|"?times"?|serif|-webkit-standard)\s*$/i;
+/** The platform's UI face per chrome (UI-KITS.md §3.4). */
+const NATIVE_FONT_STACKS: Record<string, string> = {
+  windows: '"Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif',
+  gnome:
+    '"Adwaita Sans", Cantarell, "Noto Sans", "Helvetica Neue", system-ui, sans-serif',
+  macos:
+    '-apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif',
+};
 
 /** The detail of `pk-action`: the control's copy key and the vocabulary action it performs. */
 export interface PkActionDetail {
@@ -381,7 +395,12 @@ export abstract class PkElement extends LitElement {
     return inputWithIdentity(this.baseInput(), this.resolved);
   }
 
+  /** Focus was inside before this render: a control the new state replaced leaves focus on the
+   *  page, and the new state's focus target should still take it (DL9). */
+  private focusHeld = false;
+
   protected override willUpdate(changed: PropertyValues): void {
+    this.focusHeld = this.matches(":focus-within");
     super.willUpdate(changed);
     const model = this.ensureModel();
     model.update(() => this.modelInput());
@@ -486,13 +505,30 @@ export abstract class PkElement extends LitElement {
             this.renderRoot
               .querySelector<HTMLInputElement>(`[data-key="${label}"]`)
               ?.value.trim() ?? "";
-          detail.name = read("signin.gate.name");
+          detail.name = read("activate.attach.name");
           detail.email = read("signin.email.label");
         }
         this.unlockStep(key, view);
         if (key === "ringChange.accept" && this.input.ringChange?.served)
           detail.served = this.input.ringChange.served;
         if (this.localAction(key, detail, view)) return;
+        // A second Continue while the form is still invalid: the state does not change, so the
+        // focus rule does not fire; move focus to the first wrong field here (as React does).
+        if (
+          key === "common.continue" &&
+          this.renderRoot.querySelector('input[aria-invalid="true"]')
+        )
+          setTimeout(
+            () =>
+              void this.updateComplete.then(() =>
+                focusClear(
+                  this.renderRoot.querySelector<HTMLElement>(
+                    'input[aria-invalid="true"]',
+                  ),
+                ),
+              ),
+            0,
+          );
         this.dispatchEvent(
           new CustomEvent<PkActionDetail>("pk-action", {
             detail,
@@ -765,6 +801,17 @@ export abstract class PkElement extends LitElement {
   /** Escape leaves a Cloud Sync screen by its Cancel (DL9), where it has one. */
   private escapes(e: KeyboardEvent, c: RenderCtx): void {
     const v = c.view;
+    // A kept save conflict has no Cancel: Escape is Done.
+    if (
+      e.key === "Escape" &&
+      !e.defaultPrevented &&
+      v.component === "SaveConflict" &&
+      v.state === "kept"
+    ) {
+      e.preventDefault();
+      c.act("common.done");
+      return;
+    }
     if (
       e.key !== "Escape" ||
       e.defaultPrevented ||
@@ -792,6 +839,26 @@ export abstract class PkElement extends LitElement {
       return;
     }
     const vars = themeVars(this.resolved);
+    // `native` takes the host's face; a page that sets none would draw the kit in the browser's
+    // default serif, so it gets the platform's UI face instead.
+    if (this.resolved.theme.preset === "native") {
+      const host = getComputedStyle(this).fontFamily;
+      if (BROWSER_DEFAULT_FONT.test(host)) {
+        const stack =
+          NATIVE_FONT_STACKS[platformVariant(this.resolved.theme)] ??
+          SYSTEM_FONT_STACK;
+        for (const role of [
+          "body",
+          "title",
+          "display",
+          "label",
+          "button",
+          "meta",
+        ])
+          vars[`--pk-kit-type-${role}-family`] = stack;
+        vars["font-family"] = stack;
+      }
+    }
     for (const name of this.appliedVars)
       if (!(name in vars)) node.style.removeProperty(name);
     for (const [name, value] of Object.entries(vars))
@@ -801,7 +868,7 @@ export abstract class PkElement extends LitElement {
 
   protected override updated(changed: PropertyValues): void {
     super.updated(changed);
-    const view = this.view;
+    const view = this.focusView(this.view);
     this.applyThemeVars();
     // A list that scrolls (past six devices) opens on its checked row, not the top of the list.
     for (const list of (
@@ -824,6 +891,12 @@ export abstract class PkElement extends LitElement {
     this.moveFocus(view);
   }
 
+  /** The view whose state the focus rule follows: the element's own, or the screen it draws in
+   *  its body (the sign-in form's steps after a key). */
+  protected focusView(view: View): View {
+    return view;
+  }
+
   /** DL9: focus what the view says, by ui-core's one focus-on-mount rule. */
   private moveFocus(view: View): void {
     const target = view.decisions.focus;
@@ -839,7 +912,11 @@ export abstract class PkElement extends LitElement {
     const where = focusOnMount(target, {
       owns: LAYOUTS[view.component].kind === "screen",
       asked: this.autofocus,
-      within: this.matches(":focus-within"),
+      within:
+        this.matches(":focus-within") ||
+        (this.focusHeld &&
+          (document.activeElement === document.body ||
+            document.activeElement === null)),
       coldStart:
         (this.fill || this.fillsWindow(view.state)) &&
         document.activeElement === document.body,
@@ -857,8 +934,6 @@ export abstract class PkElement extends LitElement {
       checked.focus({ preventScroll: true });
       return;
     }
-    (where === "heading" ? heading() : (field ?? heading()))?.focus({
-      preventScroll: true,
-    });
+    focusClear(where === "heading" ? heading() : (field ?? heading()));
   }
 }

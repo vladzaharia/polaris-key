@@ -171,6 +171,8 @@ export async function finish(session: RedirectSession, callbackUrl: string) {
       return { subject: outcome.subject, licenseId: outcome.licenseId };
     case "choose":
       return { grant: outcome.grant, seconds: outcome.expiresIn }; // see below
+    case "activated":
+      return { licenseId: outcome.licenseId, entries: outcome.keyEntries }; // see below
     case "cancelled":
       return null;
   }
@@ -179,6 +181,44 @@ export async function finish(session: RedirectSession, callbackUrl: string) {
 
 `complete` checks `state` and the issuer before it sends anything. A refusal throws under the
 Worker's code (`invalid_grant`, `rate_limited`, `sign-in-failed`) and leaves the device's token alone.
+
+### Continue without an account
+
+Pass `keyReturn: true` to `signIn.start` and the card offers **Continue without an account** to a person
+who has a license key. `complete` then settles `activated`: the token is stored as a key activation (as
+`license.activateWithKey` leaves it), the account the device held is forgotten, `subject` is `null` and
+`keyEntries` is the license's count. No `signedIn` event fires; `client.events` reports
+`subjectChanged` with a null subject when an account was forgotten.
+
+```ts
+import { RedirectRefusedError } from "@polaris-key/node";
+import type { PolarisKeyClient } from "@polaris-key/node";
+
+export async function continueWithoutAccount(
+  client: PolarisKeyClient,
+  callbackUrl: string,
+) {
+  const session = await client.identity.signIn.start({
+    channel: "redirect",
+    redirectUri: "https://app.example/auth/callback",
+    keyReturn: true,
+  });
+  // open session.authorizeUrl in the browser, then:
+  try {
+    const outcome = await session.complete(callbackUrl);
+    return outcome.kind === "activated" ? outcome.keyEntries : null;
+  } catch (e) {
+    // device_limit, key_entry_limit and license_owned carry their numbers and links.
+    if (e instanceof RedirectRefusedError)
+      return { code: e.code, manageUrl: e.details.manageUrl };
+    throw e;
+  }
+}
+```
+
+`details` holds `limit`, `deviceCount`, `manageUrl`, `keyEntries` and `signInUrl`, each only when the
+answer carried it. A link that is not a plain `https:` link is dropped. A refusal uses up the code, so send the person
+back to the card for a fresh one.
 
 ### The license choice
 

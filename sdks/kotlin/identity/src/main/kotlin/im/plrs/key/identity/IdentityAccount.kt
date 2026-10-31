@@ -134,7 +134,7 @@ internal class IdentityAccount(
     }
 
     suspend fun subject(): SubjectResult {
-        val url = fragment()?.takeIf { it.account }?.subject ?: return SubjectResult.Unavailable
+        val url = fragment()?.takeIf { it.account }?.subject?.let(::onProduct) ?: return SubjectResult.Unavailable
         val token = core.token() ?: return SubjectResult.None
         val response = send(url, "GET", token)
         if (response.status >= 500) throw PolarisException(ErrorCode.serverError, "subject read failed with status ${response.status}.")
@@ -152,11 +152,23 @@ internal class IdentityAccount(
         return if (subject == null) SubjectResult.None else SubjectResult.Subject(subject)
     }
 
+    /** The restore step alone (the item goes, the revocation is sent or queued), for a sign-out that cannot load discovery. */
+    var restoreStep: suspend () -> Unit = {}
+
     suspend fun signOut(): SignOutResult {
-        val url = fragment()?.takeIf { it.account }?.signout ?: return SignOutResult.Unavailable
+        val identity = fragment()
+        if (core.discoveryDocument() == null) {
+            // Offline before discovery loaded: the restore step still runs (the revocation is queued for the next launch), then the error.
+            core.bumpSignOutGeneration()
+            restoreStep()
+            throw PolarisException(ErrorCode.networkError, "sign-out could not reach the Worker (discovery is not loaded).")
+        }
+        val url = identity?.takeIf { it.account }?.signout?.let(::onProduct) ?: return SignOutResult.Unavailable
         // A ladder already running must not store a token after this point.
         core.bumpSignOutGeneration()
-        // Nothing may be lost to a sign-out: each hook finishes, or throws and the sign-out stops.
+        // Nothing may be lost to a sign-out: each hook finishes, or throws and the sign-out stops. The last hook is the
+        // client's own: the restore item goes and the key is revoked (sent, or queued) before the Worker is asked,
+        // whatever it answers.
         for (hook in hooks()) hook()
         val token = core.token()
         var released = false
@@ -185,7 +197,8 @@ internal class IdentityAccount(
     }
 
     suspend fun openAccount(): OpenAccountResult {
-        val url = fragment()?.accountPortal ?: return OpenAccountResult.Unavailable
+        // The opener gets a web link only: https, or http on this machine for development.
+        val url = fragment()?.accountPortal?.takeIf { isWebLink(it) } ?: return OpenAccountResult.Unavailable
         val opened = try {
             opener?.open(url) == true
         } catch (e: CancellationException) {
@@ -197,7 +210,7 @@ internal class IdentityAccount(
     }
 
     suspend fun attach(confirm: Boolean): AttachResult {
-        val url = fragment()?.takeIf { it.account }?.attach ?: return AttachResult.Unavailable
+        val url = fragment()?.takeIf { it.account }?.attach?.let(::onProduct) ?: return AttachResult.Unavailable
         val token = core.token() ?: throw PolarisException(ErrorCode.noToken, "Activate or sign in before attaching.")
         val body = JsonObject(mapOf("confirm" to JsonPrimitive(confirm))).toString().toByteArray()
         val response = send(url, "POST", token, body)
@@ -217,6 +230,29 @@ internal class IdentityAccount(
         val subject = answer["subject"].stringValue?.takeIf { it.isNotEmpty() }
         if (core.storeSignIn(newToken, subject, TokenSource.activate, provenance = TokenProvenance.signin)) onSubject(subject)
         return AttachResult.Ok(subject, if (answer["attached"].stringValue == "claimed") "claimed" else null)
+    }
+
+    /** The device's headers go to this product only: an endpoint elsewhere is refused before any request. */
+    private fun onProduct(url: String): String {
+        if (!url.startsWith(core.endpoints.url(""))) {
+            throw PolarisException(ErrorCode.badResponse, "an identity endpoint points outside this product.")
+        }
+        return url
+    }
+
+    private fun isWebLink(raw: String): Boolean {
+        val uri = try {
+            java.net.URI(raw)
+        } catch (e: java.net.URISyntaxException) {
+            return false
+        }
+        val host = uri.host?.lowercase() ?: return false
+        if (uri.userInfo != null) return false
+        return when (uri.scheme?.lowercase()) {
+            "https" -> true
+            "http" -> host == "localhost" || host == "127.0.0.1" || host == "[::1]"
+            else -> false
+        }
     }
 
     private suspend fun send(url: String, method: String, token: String, body: ByteArray? = null): PolarisResponse = try {

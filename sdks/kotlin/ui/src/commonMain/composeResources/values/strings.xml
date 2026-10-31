@@ -313,8 +313,8 @@
     <string name="activate_recommend_title">Keep %1$s in your account</string>
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">Recommended</string>
-    <!-- ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">Cloud Sync keeps your settings and saves on every device</string>
+    <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
+    <string name="activate_recommend_sync">Sync your settings across your devices</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
     <string name="activate_recommend_recover">Get your license back if you lose the key or this device</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
@@ -326,16 +326,24 @@
     <string name="activate_recommend_skip">Or continue without an account. %1$s works the same.</string>
     <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
     <string name="activate_recommend_portal">Keep your license safe in Polaris Locker</string>
-    <!-- AddToAccount: under the name and email fields. -->
-    <string name="activate_attach_lede">Your license and its devices stay as they are. You'll confirm the email with a code in your browser.</string>
+    <!-- AddToAccount: under the title, above the fields. -->
+    <string name="activate_attach_lede">Your license and its devices stay as they are.</string>
     <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_fine">We send a code to this email in your browser. %1$s never sees it.</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$s is in your account</string>
-    <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
-    <string name="activate_attach_syncOn">Cloud Sync is on for this %1$s. Sign in on your other devices to sync them too.</string>
+    <!-- AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
+    <string name="activate_attach_syncOn">Syncing is on for this %1$s. Sign in on your other devices to sync them too.</string>
     <!-- AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form. -->
     <string name="activate_attach_failed">Couldn't add this license. Try again in a moment.</string>
+    <!-- AddToAccount: the name field. The title is Add your name and email, so the label is one word. -->
+    <string name="activate_attach_name">Name</string>
+    <!-- AddToAccount: shown under the name field when it is empty. -->
+    <string name="activate_attach_nameRequired">Enter your name.</string>
+    <!-- AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere. -->
+    <string name="activate_otherAccount_title">You signed in with a different account</string>
+    <!-- AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated). Arguments: 1=email, 2=maskedEmail. -->
+    <string name="activate_otherAccount_body">You signed in as %1$s, not %2$s. Nothing was added.</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
     <string name="activate_waiting">This license was sent to %1$s. Sign in with that email to keep it in your account.</string>
     <!-- ActivateDone: the action under the waiting line. Arguments: {maskedEmail} = the email with its middle hidden (never translated). Arguments: 1=maskedEmail. -->
@@ -354,6 +362,9 @@
     <string name="activate_otherEmail_verify__macos">Verify That Email</string>
     <!-- AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email. -->
     <string name="account_notInAccount">Not in an account</string>
+    <!-- AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device. -->
+    <string name="account_removeKey">Remove license from this device</string>
+    <string name="account_removeKey__macos">Remove License from This Device</string>
     <!-- The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="signin_attach_header">Add %1$s to your account</string>
     <!-- License key step: under Continue without an account. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
@@ -657,7 +668,7 @@
     <!-- GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
     <string name="grace_deadline">Works offline until %1$s</string>
     <!-- AccountAndLicense: the settings pane for the license and account. -->
-    <string name="account_title">Account and license</string>
+    <string name="account_title">Account and License</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="account_tier">%1$s license</string>
     <!-- AccountAndLicense: the settings pane for the license and account. The account signed in on this device. Arguments: {name} = the person's display name. Arguments: 1=name. -->
@@ -666,18 +677,18 @@
     <string name="account_keyOnly">Activated with a license key</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
     <string name="account_devices">Devices</string>
-    <!-- AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term. -->
-    <string name="account_cloudSync">Cloud Sync</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows. -->
+    <string name="account_cloudSync">Sync Across Devices</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Group header. -->
     <string name="account_updates">Updates</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Switch label. -->
-    <string name="account_autoUpdate">Update automatically</string>
+    <string name="account_autoUpdate">Update Automatically</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
-    <string name="account_channel">Release channel</string>
+    <string name="account_channel">Release Channel</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
     <string name="account_version">Version %1$s</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
-    <string name="account_managedSettings">Managed settings</string>
+    <string name="account_managedSettings">Managed Settings</string>
     <!-- AccountAndLicense: the settings pane for the license and account. -->
     <string name="account_offline">Offline · showing the last saved details</string>
     <!-- Settings: settings delivered by the developer. -->
@@ -757,7 +768,7 @@
     <string name="cloudSync_error">Couldn't sync. Try again later.</string>
     <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
     <string name="cloudSync_signedOut">You're signed out.</string>
-    <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
+    <!-- CloudSyncStatus: a small sync status. Syncing needs an account. -->
     <string name="cloudSync_signIn">Sign in to sync</string>
     <string name="cloudSync_signIn__macos">Sign In to Sync</string>
     <!-- CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it. -->
@@ -870,14 +881,25 @@
     <string name="saveConflict_bothFull">All save slots are in use. Delete a save to keep both.</string>
     <!-- SaveConflict: the choice is being applied. -->
     <string name="saveConflict_keeping">Keeping your choice…</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptLocal">Kept this device's save.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptRemote">Kept the other save.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptBoth">Kept both. The other is saved as a copy.</string>
-    <!-- SaveConflict: the choice was applied. -->
-    <string name="saveConflict_keptDeleted">The save is deleted.</string>
+    <!-- SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerThis">Newer</string>
+    <!-- SaveConflict: tag on the other card when the app says that version was saved later. Never a choice. -->
+    <string name="saveConflict_newerOther">Newer</string>
+    <!-- SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied. -->
+    <string name="saveConflict_chooseAgain">Choose again</string>
+    <string name="saveConflict_chooseAgain__macos">Choose Again</string>
+    <!-- SaveConflict: the choice failed after the other copy was deleted; only this device's save exists. -->
+    <string name="saveConflict_failedDeleted">Couldn't keep your choice. Your save is unchanged.</string>
+    <!-- SaveConflict: result title after Keep this device's version. -->
+    <string name="saveConflict_keptLocalTitle">Kept this device's version</string>
+    <!-- SaveConflict: result title after Keep the other version. -->
+    <string name="saveConflict_keptRemoteTitle">Kept the other version</string>
+    <!-- SaveConflict: result title after Keep both. -->
+    <string name="saveConflict_keptBothTitle">Kept both versions</string>
+    <!-- SaveConflict: under Kept both versions, where the other version went. -->
+    <string name="saveConflict_keptCopy">The other version is saved as a copy.</string>
+    <!-- SaveConflict: result title after Delete it here too. -->
+    <string name="saveConflict_keptDeletedTitle">Save deleted</string>
     <!-- SaveConflict: applying the choice failed; Try again repeats it. -->
     <string name="saveConflict_failed">Couldn't keep your choice. Both saves are unchanged.</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -900,7 +922,7 @@
     <!-- About: product and build information. -->
     <string name="about_diagnosticsCopied">Diagnostics copied</string>
     <!-- ChannelPicker: the release channel choice. -->
-    <string name="channel_title">Release channel</string>
+    <string name="channel_title">Release Channel</string>
     <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
     <string name="channel_locked">%1$s sets the channel.</string>
     <!-- ChannelPicker: the license allows one release channel, so the choice is locked. -->
@@ -1245,6 +1267,10 @@
     <string name="signin_auto_confirm_as">as %1$s</string>
     <!-- Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private). -->
     <string name="signin_auto_confirm_asApple">with your Apple Account</string>
+    <!-- Automatic sign-in: the confirm step. After a Game Center sign-in (it shares no email). "Game Center" is Apple's product name (never translated). -->
+    <string name="signin_auto_confirm_asGameCenter">with Game Center</string>
+    <!-- Automatic sign-in: the confirm step. After a Google Play Games sign-in (it shares no email). "Google Play Games" is Google's product name; use Google's localized name (glossary). -->
+    <string name="signin_auto_confirm_asPlayGames">with Google Play Games</string>
     <!-- Automatic sign-in: the confirm step's main button. -->
     <string name="signin_auto_confirm_primary">Continue</string>
     <!-- Automatic sign-in: the confirm step's secondary button; opens the regular sign-in. -->
@@ -1526,7 +1552,7 @@
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_newDevice_subject">A new device signed in to your Polaris Locker account</string>
     <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
-    <string name="signin_mail_newDevice_body">%1$s signed in on %2$s from %3$s. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.</string>
+    <string name="signin_mail_newDevice_body">%1$s signed in on %2$s from %3$s. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.</string>
     <!-- Security email (SIGN-IN.md §3.15). -->
     <string name="signin_mail_open">Open Polaris Locker</string>
     <!-- Email code step (SIGN-IN.md §3.4). -->
@@ -2006,7 +2032,7 @@
     <string name="signin_consent_deny">Don't allow</string>
     <string name="signin_consent_deny__macos">Don't Allow</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_consent_cloudSync">Cloud Sync</string>
+    <string name="signin_consent_cloudSync">Your synced settings and data</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="signin_consent_newLicense">New: %1$s license, created when you continue</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -2263,25 +2289,25 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_invalid_message">This device could not be set up for sync. Update the app and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_title">Device not linked</string>
+    <string name="core_codes_device_keys_required_title">Device not set up to connect</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">This device has not been set up to link with your others. Update the app and try again.</string>
+    <string name="core_codes_device_keys_required_message">Update the app and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">Too many devices</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_ring_too_large_message">This account has more linked devices than can be connected. Remove one and try again.</string>
+    <string name="core_codes_ring_too_large_message">This account has more devices than can be connected. Remove one and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_disabled_title">Remote connect is off</string>
+    <string name="core_codes_relay_disabled_title">Remote connection is off</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_disabled_message">Remote connect is off for this app. Your devices connect only on the same network.</string>
+    <string name="core_codes_relay_disabled_message">Remote connection is off for this app. Your devices connect only on the same network.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_paused_title">Remote connect paused</string>
+    <string name="core_codes_relay_paused_title">Remote connection paused</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_paused_message">Remote connect is paused for now. Try again later.</string>
+    <string name="core_codes_relay_paused_message">Remote connection is paused for now. Try again later.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_title">Remote limit reached</string>
+    <string name="core_codes_relay_quota_exceeded_title">Remote connection limit reached</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_message">The remote connection limit is used up. It resets soon. Devices on the same network still connect.</string>
+    <string name="core_codes_relay_quota_exceeded_message">It resets soon. Devices on the same network still connect.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">Connection expired</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2485,7 +2511,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_encryption_mismatch_title">Encryption mismatch</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_encryption_mismatch_message">This app and the sync service don't agree on encryption. Update the app and try again.</string>
+    <string name="core_codes_encryption_mismatch_message">This app and Polaris Locker don't agree on encryption. Update the app and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_revision_conflict_title">Changed elsewhere</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2791,9 +2817,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_store_failed_message">Couldn't save on this device. Check storage and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_title">Connect unavailable</string>
+    <string name="core_codes_connect_unavailable_title">Nearby devices unavailable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_message">Nearby connection isn't available for this app on this device.</string>
+    <string name="core_codes_connect_unavailable_message">This app can't use them on this device.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_title">Device not verified</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

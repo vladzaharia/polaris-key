@@ -9,6 +9,8 @@
  * test-only override (`setAppleRootsForTesting`).
  */
 
+import { X509Error } from "../src/core/trust/x509.js";
+
 export const APPLE_LEAF_OID = "1.2.840.113635.100.6.11.1";
 export const APPLE_INTERMEDIATE_OID = "1.2.840.113635.100.6.2.1";
 
@@ -21,6 +23,11 @@ const OIDS = {
   basicConstraints: "2.5.29.19",
   keyUsage: "2.5.29.15",
   cn: "2.5.4.3",
+  rsaEncryption: "1.2.840.113549.1.1.1",
+  rsaSha256: "1.2.840.113549.1.1.11",
+  rsaSha384: "1.2.840.113549.1.1.12",
+  rsaSha512: "1.2.840.113549.1.1.13",
+  extKeyUsage: "2.5.29.37",
 };
 
 // ── DER encoding ─────────────────────────────────────────────────────────────────────────────
@@ -81,7 +88,19 @@ function generalizedTime(epoch: number): Uint8Array {
   return tlv(0x18, new TextEncoder().encode(s));
 }
 
-const name = (cn: string) => seq(set(seq(oid(OIDS.cn), utf8(cn))));
+const nul = () => tlv(0x05, new Uint8Array());
+
+/** A Name: the CN, then any `extra` [oid, value, string tag] RDNs (default UTF8String). */
+const name = (
+  cn: string,
+  extra: ReadonlyArray<[string, string, number?]> = [],
+) =>
+  seq(
+    ...extra.map(([o, v, tag]) =>
+      set(seq(oid(o), tlv(tag ?? 0x0c, new TextEncoder().encode(v)))),
+    ),
+    set(seq(oid(OIDS.cn), utf8(cn))),
+  );
 
 /** raw r||s → DER ECDSA-Sig-Value. */
 function rawToDer(raw: Uint8Array): Uint8Array {
@@ -109,12 +128,64 @@ export async function testKey(curve: "P-256" | "P-384"): Promise<TestKey> {
   return { curve, keys, spki };
 }
 
+/** A generated RSA key pair (RSASSA-PKCS1-v1_5). */
+export interface RsaTestKey {
+  rsa: true;
+  bits: number;
+  keys: CryptoKeyPair;
+  spki: Uint8Array;
+}
+
+export async function rsaTestKey(
+  bits = 2048,
+  hash: "SHA-256" | "SHA-384" | "SHA-512" = "SHA-256",
+): Promise<RsaTestKey> {
+  const keys = (await crypto.subtle.generateKey(
+    {
+      name: "RSASSA-PKCS1-v1_5",
+      modulusLength: bits,
+      publicExponent: Uint8Array.of(1, 0, 1),
+      hash,
+    },
+    true,
+    ["sign", "verify"],
+  )) as CryptoKeyPair;
+  const spki = new Uint8Array(
+    (await crypto.subtle.exportKey("spki", keys.publicKey)) as ArrayBuffer,
+  );
+  return { rsa: true, bits, keys, spki };
+}
+
+/**
+ * An RSA SubjectPublicKeyInfo around a synthetic modulus of exactly `bits` bits (top and bottom
+ * bit set, so odd): no private key exists. For parser range tests, where the certificate is
+ * refused (or read) before any signature is checked. `exponent` is the big-endian public exponent.
+ */
+export function syntheticRsaSpki(
+  bits: number,
+  exponent: number[] = [1, 0, 1],
+): Uint8Array {
+  const n = new Uint8Array(Math.ceil(bits / 8)).fill(0xa5);
+  n[0] = 1 << ((bits - 1) % 8);
+  n[n.length - 1] = n[n.length - 1]! | 1;
+  return seq(
+    seq(oid(OIDS.rsaEncryption), nul()),
+    bits_(seq(integer(n), integer(Uint8Array.from(exponent)))),
+  );
+}
+const bits_ = bits;
+
 export interface CertSpec {
   subject: string;
   issuer: string;
-  key: TestKey;
+  key: TestKey | RsaTestKey;
   /** The signer (the issuer's key; the subject's own for a self-signed root). */
-  signer: TestKey;
+  signer: TestKey | RsaTestKey;
+  /** Extra subject RDNs ahead of the CN: [oid, value, string tag (default UTF8String 0x0c)]. */
+  subjectExtra?: Array<[string, string, number?]>;
+  /** extendedKeyUsage purposes (dotted OIDs); critical when `ekuCritical`. */
+  eku?: string[];
+  ekuCritical?: boolean;
   notBefore: number;
   notAfter: number;
   ca: boolean;
@@ -123,10 +194,14 @@ export interface CertSpec {
   oids?: string[];
   /** Mark an unknown extension critical. */
   criticalUnknown?: boolean;
-  hash?: "SHA-256" | "SHA-384";
+  hash?: "SHA-256" | "SHA-384" | "SHA-512";
   serial?: number;
   /** Refusal-test knobs, each breaking one DER/profile rule. */
   tamper?: {
+    /** Name this signature algorithm OID (inner and outer) instead of the real one. */
+    sigOid?: string;
+    /** Write the RSA signature algorithm without its NULL parameters. */
+    rsaNoNull?: boolean;
     /** A raw GeneralizedTime string for notBefore (e.g. "20231301000000Z"). */
     notBeforeRaw?: string;
     /** The keyUsage BIT STRING contents ([unusedBits, ...bytes]); `null` omits keyUsage. */
@@ -146,10 +221,21 @@ export interface CertSpec {
 
 export async function makeCert(spec: CertSpec): Promise<Uint8Array> {
   const hash = spec.hash ?? "SHA-384";
-  const alg = seq(
-    oid(hash === "SHA-256" ? OIDS.ecdsaSha256 : OIDS.ecdsaSha384),
-  );
+  const rsaSigner = "rsa" in spec.signer;
   const t = spec.tamper ?? {};
+  const sigOid =
+    t.sigOid ??
+    (rsaSigner
+      ? hash === "SHA-256"
+        ? OIDS.rsaSha256
+        : hash === "SHA-384"
+          ? OIDS.rsaSha384
+          : OIDS.rsaSha512
+      : hash === "SHA-256"
+        ? OIDS.ecdsaSha256
+        : OIDS.ecdsaSha384);
+  const alg =
+    rsaSigner && !t.rsaNoNull ? seq(oid(sigOid), nul()) : seq(oid(sigOid));
   const critical = t.longBoolean
     ? tlv(0x01, Uint8Array.of(0xff, 0xff))
     : bool(true);
@@ -183,6 +269,15 @@ export async function makeCert(spec: CertSpec): Promise<Uint8Array> {
             ),
           ),
         ]),
+    ...(spec.eku
+      ? [
+          seq(
+            oid(OIDS.extKeyUsage),
+            ...(spec.ekuCritical ? [bool(true)] : []),
+            octets(seq(...spec.eku.map(oid))),
+          ),
+        ]
+      : []),
     ...(spec.oids ?? []).map((o) =>
       seq(oid(o), octets(tlv(0x05, new Uint8Array()))),
     ),
@@ -209,19 +304,19 @@ export async function makeCert(spec: CertSpec): Promise<Uint8Array> {
     alg,
     name(spec.issuer),
     seq(notBefore, generalizedTime(spec.notAfter)),
-    name(spec.subject),
+    name(spec.subject, spec.subjectExtra),
     spec.key.spki,
     extField,
     ...(t.repeatExtensions ? [extField] : []),
   );
   const sig = new Uint8Array(
     await crypto.subtle.sign(
-      { name: "ECDSA", hash },
+      rsaSigner ? { name: "RSASSA-PKCS1-v1_5" } : { name: "ECDSA", hash },
       spec.signer.keys.privateKey,
       tbs as BufferSource,
     ),
   );
-  return seq(tbs, alg, bits(rawToDer(sig)));
+  return seq(tbs, alg, bits(rsaSigner ? sig : rawToDer(sig)));
 }
 
 export interface TestChain {
@@ -345,4 +440,112 @@ export async function signX5cJws(
     ),
   );
   return `${h}.${p}.${b64url(sig)}`;
+}
+
+// ── An RSA chain (Game Center's shape) ───────────────────────────────────────────────────────
+
+export interface RsaChainOptions {
+  /** Epoch seconds the chain is valid around. */
+  at: number;
+  /** Modulus bits of every key (default 2048). */
+  bits?: number;
+  /** The hash every certificate is signed with (default SHA-256). */
+  hash?: "SHA-256" | "SHA-384" | "SHA-512";
+  /** Sign the leaf with a key other than the intermediate's. */
+  brokenLink?: boolean;
+  /** The leaf's extendedKeyUsage purposes (default code signing); `null` omits the extension. */
+  eku?: string[] | null;
+  /** The leaf's subject: O and CN (default "Apple Inc." for both). */
+  leafO?: string;
+  leafCn?: string;
+  /** The leaf was not yet valid at `at`. */
+  futureLeaf?: boolean;
+  /** The leaf expired before `at`. */
+  expiredLeaf?: boolean;
+  /** Reuse this root instead of generating one. */
+  root?: { der: Uint8Array; key: RsaTestKey };
+}
+
+export interface RsaTestChain {
+  root: Uint8Array;
+  rootKey: RsaTestKey;
+  intermediate: Uint8Array;
+  leaf: Uint8Array;
+  leafKey: RsaTestKey;
+  /** `[leaf, intermediate, root]`. */
+  chain: Uint8Array[];
+}
+
+export async function makeRsaChain(o: RsaChainOptions): Promise<RsaTestChain> {
+  const year = 365 * 86400;
+  const bits = o.bits ?? 2048;
+  const hash = o.hash ?? "SHA-256";
+  const rootKey = o.root?.key ?? (await rsaTestKey(bits, hash));
+  const root =
+    o.root?.der ??
+    (await makeCert({
+      subject: "Test RSA Root",
+      issuer: "Test RSA Root",
+      key: rootKey,
+      signer: rootKey,
+      notBefore: o.at - 10 * year,
+      notAfter: o.at + 10 * year,
+      ca: true,
+      hash,
+    }));
+  const interKey = await rsaTestKey(bits, hash);
+  const intermediate = await makeCert({
+    subject: "Test RSA Code Signing CA",
+    issuer: "Test RSA Root",
+    key: interKey,
+    signer: rootKey,
+    notBefore: o.at - 5 * year,
+    notAfter: o.at + 5 * year,
+    ca: true,
+    pathLen: 0,
+    hash,
+    serial: 2,
+  });
+  const leafKey = await rsaTestKey(bits, hash);
+  const stranger = await rsaTestKey(bits, hash);
+  const leaf = await makeCert({
+    subject: o.leafCn ?? "Apple Inc.",
+    subjectExtra: [["2.5.4.10", o.leafO ?? "Apple Inc."]],
+    issuer: "Test RSA Code Signing CA",
+    key: leafKey,
+    signer: o.brokenLink ? stranger : interKey,
+    notBefore: o.futureLeaf
+      ? o.at + 86400
+      : o.expiredLeaf
+        ? o.at - 2 * year
+        : o.at - year,
+    notAfter: o.futureLeaf
+      ? o.at + year
+      : o.expiredLeaf
+        ? o.at - 86400
+        : o.at + year,
+    ca: false,
+    eku: o.eku === null ? undefined : (o.eku ?? ["1.3.6.1.5.5.7.3.3"]),
+    hash,
+    serial: 3,
+  });
+  return {
+    root,
+    rootKey,
+    intermediate,
+    leaf,
+    leafKey,
+    chain: [leaf, intermediate, root],
+  };
+}
+
+/** The refusal reason of an `X509Error` a promise rejects with, or "accepted". */
+export async function x509Reason(p: Promise<unknown>): Promise<string> {
+  try {
+    await p;
+  } catch (e) {
+    if (e instanceof X509Error) return e.reason;
+    throw e;
+  }
+  return "accepted";
 }

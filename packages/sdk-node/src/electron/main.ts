@@ -429,6 +429,52 @@ function arg(v: unknown, name: string): string {
 }
 
 /** `v` when it is a string, else undefined (an optional string argument). */
+/** The longest `loginHint` (an e-mail address) and `nameHint` a renderer may send. */
+const LOGIN_HINT_MAX = 254;
+const NAME_HINT_MAX = 200;
+// eslint-disable-next-line no-control-regex
+const CONTROL = /[\u0000-\u001f\u007f]/;
+
+/** `beginSignIn`'s hints (UK-42.17), validated: a wrong type, an oversized or control-laden
+ *  string, or a `purpose` / `licenseChoice` other than the Node SDK's own values is refused
+ *  `invalid-argument`, never dropped. An empty string is "none". */
+export function signInHints(b: Record<string, unknown>): {
+  loginHint?: string;
+  nameHint?: string;
+  purpose?: "attach";
+  licenseChoice?: "app";
+} {
+  const text = (v: unknown, name: string, max: number): string | undefined => {
+    if (v === undefined || v === "") return undefined;
+    if (typeof v !== "string" || v.length > max || CONTROL.test(v))
+      throw new BridgeRefusal(
+        "invalid-argument",
+        `${name} must be a string of at most ${max} characters without control characters.`,
+      );
+    return v;
+  };
+  const loginHint = text(b.loginHint, "loginHint", LOGIN_HINT_MAX);
+  const nameHint = text(b.nameHint, "nameHint", NAME_HINT_MAX);
+  if (b.purpose !== undefined && b.purpose !== "attach")
+    throw new BridgeRefusal("invalid-argument", 'purpose must be "attach".');
+  if (
+    b.licenseChoice !== undefined &&
+    b.licenseChoice !== "app" &&
+    b.licenseChoice !== "card"
+  )
+    throw new BridgeRefusal(
+      "invalid-argument",
+      'licenseChoice must be "app" or "card".',
+    );
+  return {
+    ...(loginHint ? { loginHint } : {}),
+    ...(nameHint ? { nameHint } : {}),
+    ...(b.purpose === "attach" ? { purpose: "attach" as const } : {}),
+    // "card" is what the Worker does without the hint.
+    ...(b.licenseChoice === "app" ? { licenseChoice: "app" as const } : {}),
+  };
+}
+
 function optStr(v: unknown): string | undefined {
   return typeof v === "string" && v !== "" ? v : undefined;
 }
@@ -1067,9 +1113,13 @@ export function exposePolarisBridge(
     beginSignIn: async (_e, begin) => {
       // v4: the renderer's device name wins over the host option, which stays the default.
       const deviceName = optStr(bag(begin).deviceName) ?? opts.deviceName;
+      // UK-42.17: the hints the Node SDK's own `signIn.start` takes, and nothing more (no scope,
+      // no channel). Types and lengths are checked here; the Worker normalises the rest.
+      const hints = signInHints(bag(begin));
       const prompt = await client.identity.signIn.start({
         channel: "device-code",
         ...(deviceName ? { deviceName } : {}),
+        ...hints,
       });
       const flowId = randomUUID();
       const ttl = Math.max(0, prompt.expiresIn * 1000) + graceMs;

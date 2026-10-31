@@ -644,6 +644,8 @@ describe("actions", () => {
       // U-36.2: the key ring store; no ring for Ada yet.
       "core.keyring": null,
       "core.provisionedSecretMoves": [],
+      // I-49.4: silent-restore keys; none for Ada.
+      "identity.restore": null,
       // U-05.8: Cloud Sync's store answers for a person who never synced.
       "sync.cloudSync": { settings: null, directory: null },
       "test-store": { overrides: { volume: 3 }, of: f.adaAlpha },
@@ -657,6 +659,7 @@ describe("actions", () => {
         "core.entitlementEvents",
         "core.keyring",
         "core.provisionedSecretMoves",
+        "identity.restore",
         "sync.cloudSync",
         "test-store",
       ],

@@ -407,8 +407,10 @@ def parse_token_answer(status: int, body: Any) -> TokenAnswer:
         error = err if isinstance(err, str) and err != "" else "server_error"
         retry = b.get("retryAfter")
         seconds = (
-            int(math.ceil(retry))
-            if _is_number(retry) and math.isfinite(retry) and retry > 0
+            int(math.ceil(min(retry, 3600)))
+            if _is_number(retry)
+            and (not isinstance(retry, float) or math.isfinite(retry))
+            and retry > 0
             else None
         )
         return TokenAnswer(kind="refused", error=error, status=status, retry_after_seconds=seconds)
@@ -555,7 +557,7 @@ class RedirectSession:
             retry = answer.retry_after_seconds
             if retry is None:
                 header = (res.headers.get("retry-after") or "").strip()
-                retry = int(header) if header.isdigit() else None
+                retry = min(int(header), 3600) if header.isdigit() else None
             raise SignInError(
                 answer.error or ErrorCode.SERVER_ERROR,
                 f"the token endpoint refused the sign-in ({answer.error}).",

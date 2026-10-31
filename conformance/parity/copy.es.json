@@ -78,12 +78,12 @@
       "message": "No se pudo configurar este dispositivo para la sincronización. Actualiza la app e inténtalo de nuevo."
     },
     "device_keys_required": {
-      "title": "Dispositivo no vinculado",
-      "message": "Este dispositivo no se ha configurado para vincularse con los demás. Actualiza la app e inténtalo de nuevo."
+      "title": "Dispositivo no configurado para conectarse",
+      "message": "Actualiza la app e inténtalo de nuevo."
     },
     "ring_too_large": {
       "title": "Demasiados dispositivos",
-      "message": "Esta cuenta tiene más dispositivos vinculados de los que se pueden conectar. Quita uno e inténtalo de nuevo."
+      "message": "Esta cuenta tiene más dispositivos de los que se pueden conectar. Quita uno e inténtalo de nuevo."
     },
     "relay_disabled": {
       "title": "Conexión remota desactivada",
@@ -94,8 +94,8 @@
       "message": "La conexión remota está en pausa por ahora. Inténtalo más tarde."
     },
     "relay_quota_exceeded": {
-      "title": "Límite remoto alcanzado",
-      "message": "Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose."
+      "title": "Límite de conexión remota alcanzado",
+      "message": "Se restablece pronto. Los dispositivos de la misma red siguen conectándose."
     },
     "relay_ticket_invalid": {
       "title": "Conexión caducada",
@@ -299,7 +299,7 @@
     },
     "encryption_mismatch": {
       "title": "Cifrado incompatible",
-      "message": "La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo."
+      "message": "La app y Polaris Locker no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo."
     },
     "revision_conflict": {
       "title": "Cambiado en otro lugar",
@@ -606,8 +606,8 @@
       "message": "No se pudo guardar en este dispositivo. Comprueba el almacenamiento e inténtalo de nuevo."
     },
     "connect-unavailable": {
-      "title": "Conexión no disponible",
-      "message": "La conexión con dispositivos cercanos no está disponible para esta app en este dispositivo."
+      "title": "Dispositivos cercanos no disponibles",
+      "message": "Esta app no puede usarlos en este dispositivo."
     },
     "peer-cert-invalid": {
       "title": "Dispositivo no verificado",

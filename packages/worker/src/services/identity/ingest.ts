@@ -240,6 +240,16 @@ export const identityManifest: ManifestContributor = {
             ps?.apple?.teamId,
             "/identity/platformSignIn/apple/teamId",
           ],
+          [
+            "identity.platformSignIn.playGames.applicationId",
+            ps?.playGames?.applicationId,
+            "/identity/platformSignIn/playGames/applicationId",
+          ],
+          [
+            "identity.platformSignIn.playGames.serverClientId",
+            ps?.playGames?.serverClientId,
+            "/identity/platformSignIn/playGames/serverClientId",
+          ],
         ];
         for (const [key, value, path] of owned) {
           if (!value) continue;

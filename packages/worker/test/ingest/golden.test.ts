@@ -71,6 +71,10 @@
  *     those writes and their end-state rows: 1, 3, 4, 5, 6a, 8, 9-license, 9-config,
  *     9-identity, 11a and 11b. Re-captured by diffing: no other table, no result and no trip
  *     count moved (9-distribution, with Distribution off, is unchanged).
+ *   - I-49.6: `identity.restore` is a row-backed setting beside `identity.nearby`, so the manifest-row
+ *     DELETE's key list and the audit statement's `json_each` parameter name one more key, in
+ *     every scenario that runs Identity's row settings. Only those key lists changed: no
+ *     table's end state, result or trip count moved (the fixture declares no `restore`).
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";

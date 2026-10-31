@@ -346,6 +346,34 @@ describe("which connection asserted the facts", () => {
     expect(await ruleGrantsFor(env, db, a, NOW)).toEqual([]);
   });
 
+  it("a connection's assertion on the console IdP's link gives the console-idp rules nothing", async () => {
+    await writeRules([
+      {
+        when: {
+          connection: "console-idp",
+          claim: { name: "dept", equals: "games" },
+        },
+        grant: { role: "console_access", scope: "platform" },
+      },
+    ]);
+    const a = await account();
+    await link(a, { issuer: CONSOLE_ISSUER });
+    await recordLinkAssertion(
+      env,
+      db,
+      "lnk_" + n,
+      { groups: null, claims: { dept: "games" }, connectionId: "conn_other" },
+      NOW,
+    );
+    expect(await ruleGrantsFor(env, db, a, NOW)).toEqual([]);
+    expect(
+      await db.first(
+        "SELECT claims_json, asserted_connection_id FROM account_links WHERE id = ?",
+        "lnk_" + n,
+      ),
+    ).toEqual({ claims_json: null, asserted_connection_id: "console-idp" });
+  });
+
   it("a claim removed at the next console sign-in stops matching", async () => {
     await writeRules([
       {

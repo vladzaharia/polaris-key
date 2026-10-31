@@ -75,6 +75,19 @@ export interface PortalDevice {
   sdkName: string | null;
   sdkVersion: string | null;
   ua: string | null;
+  /** Signed in from the device backup (a restore key), while the Worker still marks it. */
+  restored?: boolean;
+}
+
+/** A device of the account that holds no licence (`GET /api/me/devices`). */
+export interface PortalAccountDevice {
+  product: string;
+  productName: string;
+  deviceId: string;
+  label: string | null;
+  platform: string | null;
+  lastSeen: number;
+  restored: boolean;
 }
 
 export interface PortalLicenseDetail extends PortalLicenseSummary {
@@ -497,6 +510,16 @@ export const libraryApi = {
   disconnectDevice: (product: string, id: string, deviceId: string) =>
     call<{ ok: true; deviceId: string }>(
       `/api/licenses/${enc(product)}/${enc(id)}/devices/${enc(deviceId)}`,
+      { method: "DELETE" },
+    ),
+
+  /** The account's devices that hold no licence (a Sync-only app, a sign-in from backup). */
+  accountDevices: () =>
+    call<{ devices: PortalAccountDevice[] }>("/api/me/devices"),
+
+  removeAccountDevice: (product: string, deviceId: string) =>
+    call<{ ok: true; deviceId: string }>(
+      `/api/me/devices/${enc(product)}/${enc(deviceId)}`,
       { method: "DELETE" },
     ),
 

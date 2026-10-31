@@ -114,7 +114,7 @@ export function SignInMethods({
   return (
     <SectionCard
       id="methods"
-      title={t("signin.join.methodsLink")}
+      title={t("locker.account.methods")}
       aside={
         !emailOnly && methods.data ? (
           <ActionMenu

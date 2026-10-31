@@ -16,7 +16,7 @@ account. For what an app reads and what Polaris Locker holds, see
 
 You can download everything from your account, or information from one app.
 
-1. Open **Account**, then **Your data**, to download your full account file.
+1. Open **Account**, then **Your Data**, to download your full account file.
 2. Open an app in your library to download a file for that app only.
 3. Select **Download my data**.
 4. If you see **Confirm it's you first**, confirm with your passkey or an emailed code. This protects your information if you left the site signed in.

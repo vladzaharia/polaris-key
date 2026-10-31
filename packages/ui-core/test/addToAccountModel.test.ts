@@ -189,6 +189,29 @@ describe("AddToAccountModel", () => {
     expect(m.view().state).toBe(step);
   });
 
+  it("a different account than the email typed is its own step, with both emails masked", async () => {
+    const f = fake({ waits: [{ outcome: "signedIn", email: "jo@other.com" }] });
+    const m = model(f);
+    await m.submit();
+    expect(f.previews).toBe(1);
+    expect(f.attachArgs).toEqual([]);
+    expect(m.snapshot.step).toBe("other-account");
+    const v = m.view();
+    expect(v.state).toBe("other-account");
+    expect(v.args).toMatchObject({
+      maskedEmail: "a•••@example.com",
+      email: "j•••@other.com",
+    });
+    expect(JSON.stringify(m.input())).not.toContain("jo@other.com");
+    // Try again goes back to the form with the fields kept.
+    await m.tryAgain();
+    expect(m.snapshot).toMatchObject({
+      step: "form",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+    });
+  });
+
   it("a network failure at sign-in or attach is failed", async () => {
     const a = model(fake({ signInError: true }));
     await a.submit();

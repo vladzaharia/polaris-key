@@ -8,6 +8,12 @@
 //   redirect-web-errors      every authorize refusal (a card page for client_id and redirect_uri,
 //                            a redirect for the rest), then token's refusals.
 //   identity-request-hints   login_hint, name_hint and purpose carried to the card (PX-W18).
+//   redirect-web-key-return  LK-SKIP (WIRE-CONTRACT-V5 §12.4.2): authorize with `key_return=allow`,
+//                            the card's key route, and the SDK redeeming the key code at token:
+//                            an activation, never a sign-in; the same code again is invalid_grant.
+//   redirect-web-key-return-limit  the same on a full licence: `device_limit` at token spends the
+//                            code, a fresh card press gets a fresh code, and once a seat is free
+//                            that code activates.
 //
 // `browser` steps are the requests the SDK never makes; they are recorded so a replayer's fake
 // server can serve the whole conversation (format.ts). The SDK's own request is the `token` form.
@@ -25,12 +31,16 @@ import {
 import { DEVICE, T0, VERSION } from "../client.js";
 import type { JsonValue } from "../format.js";
 import {
+  enforced,
   pinned,
   PRODUCT,
   productWorld,
+  seedLicense,
   servicesOn,
+  setup,
   type Scenario,
 } from "../world.js";
+import { seedLicenseWithKey } from "../../seed.js";
 import { seedAccount } from "./account.js";
 import { PORTAL_CSRF_HEADER } from "../../../src/services/identity/portal/session.js";
 import { portalSession, registerWebApp, WEB_CALLBACK } from "./webSignIn.js";
@@ -496,6 +506,297 @@ export const identityRequestHints: Scenario = {
           ).toBeNull();
         },
         { navigated: "card", loginHint: null },
+      );
+      return r.transcript();
+    }),
+};
+
+// ── LK-SKIP: "Continue without an account" ──────────────────────────────────────────────────
+
+const KEY_RETURN_FEATURES = ["identity.keyreturn"];
+const KEY_RETURN_REQUIRES = ["identity.redirect.web"];
+
+/** The launch gate is a platform setting; the transcript Worker runs with it on. */
+function keyReturnOn(w: World): void {
+  (w.env as unknown as Record<string, string>)["LAUNCH_IDENTITY_RETURNKEY"] =
+    "on";
+}
+
+/** The browser's `authorize` with the opt-in, then the request view the card reads. */
+async function startKeyReturn(
+  r: TranscriptRecorder,
+  note: string,
+): Promise<{ binder: string; handle: string }> {
+  const out = { binder: "", handle: "" };
+  await r.step(
+    {
+      action: "browser",
+      note,
+      args: {
+        state: STATE,
+        redirectUri: CALLBACK,
+        codeVerifier: VERIFIER,
+        keyReturn: true,
+      },
+    },
+    async (s) => {
+      const res = await navigate(s, authorizePath({ key_return: "allow" }));
+      expect(res.status).toBe(303);
+      out.binder = binderOf(res);
+      out.handle = handleOf(res);
+    },
+    { navigated: "card" },
+  );
+  return out;
+}
+
+/** The card's view of the request, the key preview, and the key route: the redirect it answers. */
+async function pressKey(
+  r: TranscriptRecorder,
+  card: { binder: string; handle: string },
+  key: string,
+  note: string,
+): Promise<string> {
+  let redirect = "";
+  await r.step(
+    { action: "browser", note },
+    async (s) => {
+      const view = await s.send({
+        method: "GET",
+        path: `/api/signin/requests/${card.handle}`,
+        metadata: false,
+        headers: { cookie: card.binder },
+      });
+      expect(view.status).toBe(200);
+      expect(((await view.json()) as { keyReturn?: boolean }).keyReturn).toBe(
+        true,
+      );
+      const body = { key };
+      const preview = await s.send({
+        method: "POST",
+        path: "/api/key/preview",
+        metadata: false,
+        body,
+        expectBody: { json: body, match: "exact" as const },
+      });
+      expect(preview.status).toBe(200);
+      const done = await s.send({
+        method: "POST",
+        path: `/api/signin/requests/${card.handle}/key`,
+        metadata: false,
+        headers: { cookie: card.binder },
+        body,
+        expectBody: { json: body, match: "exact" as const },
+      });
+      expect(done.status).toBe(200);
+      redirect = ((await done.json()) as { redirect: string }).redirect;
+      expect(redirect.startsWith(`${CALLBACK}?code=`)).toBe(true);
+      expect(redirect).not.toContain(key);
+    },
+    { navigated: "app" },
+  );
+  return redirect;
+}
+
+/** The SDK redeems `code` and is refused with `invalid_grant`. */
+async function refusedGrant(s: StepRecorder, code: string): Promise<void> {
+  const res = await token(s, code, VERIFIER);
+  expect(res.status).toBe(400);
+  expect(await res.json()).toEqual({ error: "invalid_grant" });
+}
+
+/** What the SDK reports for a key activation. */
+const activated = (licenseId: string, used: number) => ({
+  result: "activated",
+  scope: "",
+  licenseId,
+  subject: null,
+  keyEntries: { used, limit: 10 },
+  tokenHeld: true,
+});
+
+const keyReturnArgs = (callbackUrl: string) => ({
+  callbackUrl,
+  codeVerifier: VERIFIER,
+  state: STATE,
+  keyReturn: true,
+});
+
+export const redirectWebKeyReturn: Scenario = {
+  id: "redirect-web-key-return",
+  record: () =>
+    pinned("redirect-web-key-return", async (pin) => {
+      const { w } = await world();
+      keyReturnOn(w);
+      const { key, licenseId } = await seedLicense(w);
+      const r = new TranscriptRecorder({
+        id: "redirect-web-key-return",
+        description:
+          "Continue without an account (LK-SKIP, WIRE-CONTRACT-V5 §12.4.2). A web app opts in with key_return=allow on authorize. The card reads the request (keyReturn true), previews the key and posts it to the card's key route, which answers the redirect with a code, state and the issuer: the key travels in that body only. The SDK checks state and iss and redeems the code at token with a form body and its PKCE verifier. The answer is a key activation, never a sign-in: via key, an empty scope, the licence, the key-entry count and a null subject. The device holds the licence by key, with no account. The same code again is invalid_grant.",
+        features: KEY_RETURN_FEATURES,
+        requires: KEY_RETURN_REQUIRES,
+        product: PRODUCT,
+        now: T0,
+        world: w,
+        pinned: pin,
+        initial: { deviceId: DEVICE, version: VERSION },
+      });
+      const card = await startKeyReturn(
+        r,
+        "The app sends the person's browser to authorize with key_return=allow; the Worker answers with a 303 to the card and the request's binder cookie.",
+      );
+      const redirect = await pressKey(
+        r,
+        card,
+        key,
+        "Continue without an account: the card reads the request, previews the key and posts it; the answer carries the code and no key.",
+      );
+      const code = codeOfRedirect(redirect);
+      await r.step(
+        {
+          action: "redirectComplete",
+          note: "The SDK redeems the code. State and iss are checked by the SDK before this request.",
+          args: keyReturnArgs(redirect),
+        },
+        async (s) => {
+          const res = await token(s, code, VERIFIER);
+          const body = (await res.json()) as Record<string, unknown>;
+          expect(res.status).toBe(200);
+          // The ordinary answer's seven members, plus `via` and `keyEntries`.
+          expect(Object.keys(body)).toHaveLength(9);
+          expect(body).toMatchObject({
+            via: "key",
+            scope: "",
+            subject: null,
+            license: { id: licenseId },
+            keyEntries: { used: 1, limit: 10 },
+          });
+          expect(JSON.stringify(body)).not.toContain(key);
+        },
+        activated(licenseId, 1),
+      );
+      expect(new URL(redirect).searchParams.get("iss")).toBe(ISSUER);
+      await r.step(
+        {
+          action: "redirectComplete",
+          note: "A replayed code is refused: it was single use.",
+          args: keyReturnArgs(redirect),
+        },
+        (s) => refusedGrant(s, code),
+        { result: "invalid-grant", code: "invalid_grant" },
+      );
+      return r.transcript();
+    }),
+};
+
+/** The device that holds the licence's only seat in `redirect-web-key-return-limit`. */
+const OCCUPANT = "TRANSCRIPTOCCUPANT00000000000001";
+
+export const redirectWebKeyReturnLimit: Scenario = {
+  id: "redirect-web-key-return-limit",
+  record: () =>
+    pinned("redirect-web-key-return-limit", async (pin) => {
+      const { w } = await world();
+      keyReturnOn(w);
+      const { key, licenseId } = await seedLicenseWithKey(w.db, PRODUCT, {
+        entitlements: { deviceLimit: enforced(1) },
+      });
+      // Another device takes the only seat, outside the recording.
+      const seat = await setup(w, "POST", `/${PRODUCT}/license/activate`, {
+        authorization: `Bearer ${key}`,
+        "x-pkey-device": OCCUPANT,
+      });
+      expect(seat.status).toBe(200);
+      const occupant = ((await seat.json()) as { token: string }).token;
+
+      const r = new TranscriptRecorder({
+        id: "redirect-web-key-return-limit",
+        description:
+          "Continue without an account on a full licence (LK-SKIP, WIRE-CONTRACT-V5 §12.4.2 item 5). The card's key route issues a code without checking seats, because the device is unknown until token. Redeeming it answers 403 device_limit with the limit, the count and the manage link, and takes no seat. The code is consumed before the bind, so redeeming it again is invalid_grant and the person presses Continue without an account again for a fresh code. Once the other device has left, that code activates the device with keyEntries.",
+        features: KEY_RETURN_FEATURES,
+        requires: KEY_RETURN_REQUIRES,
+        product: PRODUCT,
+        now: T0,
+        world: w,
+        pinned: pin,
+        initial: { deviceId: DEVICE, version: VERSION },
+      });
+      const first = await startKeyReturn(
+        r,
+        "The app sends the person's browser to authorize with key_return=allow.",
+      );
+      const redirect = await pressKey(
+        r,
+        first,
+        key,
+        "Continue without an account: the route does not check seats, so it answers a code.",
+      );
+      const code = codeOfRedirect(redirect);
+      await r.step(
+        {
+          action: "redirectComplete",
+          note: "token binds the device and meets the licence's only seat: device_limit, flat, with the limit, the count and the manage link.",
+          args: keyReturnArgs(redirect),
+        },
+        async (s) => {
+          const res = await token(s, code, VERIFIER);
+          expect(res.status).toBe(403);
+          expect(await res.json()).toMatchObject({
+            error: "device_limit",
+            limit: 1,
+            deviceCount: 1,
+          });
+        },
+        {
+          result: "device-limit",
+          limit: 1,
+          deviceCount: 1,
+          manageUrl: `https://key.plrs.im/activate?product=${PRODUCT}&next=free-device&for=Linux%20x86_64`,
+          tokenHeld: false,
+        },
+      );
+      await r.step(
+        {
+          action: "redirectComplete",
+          note: "The refusal spent the code: it cannot be redeemed again.",
+          args: keyReturnArgs(redirect),
+        },
+        (s) => refusedGrant(s, code),
+        { result: "invalid-grant", code: "invalid_grant" },
+      );
+
+      // The other device leaves, outside the recording.
+      const freed = await setup(w, "POST", `/${PRODUCT}/license/deauthorize`, {
+        authorization: `Bearer ${occupant}`,
+        "x-pkey-device": OCCUPANT,
+      });
+      expect(freed.status).toBe(200);
+
+      const retry = await startKeyReturn(
+        r,
+        "The retry starts from a fresh card press: a new authorize.",
+      );
+      const again = await pressKey(
+        r,
+        retry,
+        key,
+        "Continue without an account again: a fresh code.",
+      );
+      await r.step(
+        {
+          action: "redirectComplete",
+          note: "With a seat free the fresh code activates the device.",
+          args: keyReturnArgs(again),
+        },
+        async (s) => {
+          const res = await token(s, codeOfRedirect(again), VERIFIER);
+          expect(res.status).toBe(200);
+          expect(await res.json()).toMatchObject({
+            via: "key",
+            keyEntries: { used: 2, limit: 10 },
+          });
+        },
+        activated(licenseId, 2),
       );
       return r.transcript();
     }),

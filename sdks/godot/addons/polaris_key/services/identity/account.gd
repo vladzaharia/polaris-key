@@ -163,6 +163,9 @@ func sign_out() -> PKeyResult:
 		released = sent["released"]
 	if not released:
 		core.cache.set_subject("")
+		# The licence and token stay: the device is activated, no longer by a sign-in.
+		if core.tokens.has_token():
+			core.cache.set_token_origin(PKeyTokenManager.ORIGIN_KEY)
 		_notify(KIND_SIGNED_OUT, "", previous)
 		return PKeyResult.success({"released": false})
 	# The seat is released server-side: the token and everything it vouched for go, the subject
@@ -234,7 +237,7 @@ func attach(confirm: bool) -> PKeyResult:
 	var token = body.get("token")
 	if not (token is String and token != ""):
 		return PKeyResult.failure(PKeyErrors.INVALID_RESPONSE, "Attach answered without a token.")
-	if not core.tokens.set_token(token, PKeyTokenManager.SOURCE_ACTIVATE):
+	if not core.tokens.set_token(token, PKeyTokenManager.SOURCE_ACTIVATE, false, PKeyTokenManager.ORIGIN_SIGN_IN):
 		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The rotated token could not be stored.")
 	var subject = body.get("subject")
 	_store_subject(subject if subject is String else "")

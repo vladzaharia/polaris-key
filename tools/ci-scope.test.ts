@@ -260,7 +260,7 @@ describe("the changes job outputs", () => {
     for (const lane of Object.keys(scope.lanes))
       expect(out[lane], lane).toBe("true");
     expect(JSON.parse(out["python-matrix"]!).include).toContainEqual({
-      os: "macos-14",
+      os: "macos-15",
       python: "3.12",
     });
     expect(JSON.parse(out["godot-matrix"]!).include).toHaveLength(6);

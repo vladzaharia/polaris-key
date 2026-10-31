@@ -13,7 +13,7 @@
  *
  * `members_hash` is a SHA-256 over the members' `deviceId.signKey.agreeKey` lines. When it differs
  * from the stored one the epoch rises by one, a new K_disc is drawn, and the old one is kept as
- * `prev_disc_key` for 24 hours (not after a leave). The device lifecycle listener
+ * `prev_disc_key` for 24 hours (not after a leave: a device that left, or whose keys changed). The device lifecycle listener
  * (`ringListener.ts`) is the primary path: it runs `currentRing` as soon as a device is removed,
  * unbound, bound elsewhere or changes its keys. The comparison on every read stays as a backstop.
  * The update is conditional on the epoch it read, so two requests racing a bump make one bump.
@@ -100,14 +100,21 @@ export class RingTooLargeError extends Error {
 
 const idsOf = (members: readonly AccountDeviceKeys[]): string =>
   sortMembers(members)
-    .map((m) => m.deviceId)
+    .map((m) => `${m.deviceId}:${m.keySeq}`)
     .join("\n");
 
-/** True when a device in the stored epoch is not among the current members. */
+/**
+ * True when a stored line (`deviceId:keySeq`) is not among the current members: a device left,
+ * or its keys changed (the key sequence rises on every change). A legacy line without the
+ * sequence compares by device id only.
+ */
 function someoneLeft(stored: string, members: readonly AccountDeviceKeys[]) {
   if (stored === "") return false;
-  const now = new Set(members.map((m) => m.deviceId));
-  return stored.split("\n").some((id) => !now.has(id));
+  const lines = new Set(members.map((m) => `${m.deviceId}:${m.keySeq}`));
+  const ids = new Set(members.map((m) => m.deviceId));
+  return stored
+    .split("\n")
+    .some((l) => (l.includes(":") ? !lines.has(l) : !ids.has(l)));
 }
 
 /** Why a ring moved: a read that found the members changed, or a lifecycle event. */
@@ -173,8 +180,9 @@ export async function currentRing(
       continue;
     }
     if (row.members_hash === hash) return { row, members, bumped };
-    // `leave` marks a key rotation, treated as a leave: it is often the answer to a compromise,
-    // so the old key is not kept for the window.
+    // A key change is a leave, on every path: the event passes `leave`, and the stored key
+    // sequences expose it to a read. It is often the answer to a compromise, so the old key is
+    // not kept for the window.
     const left =
       opts.leave === true || someoneLeft(row.member_ids, members) ? 1 : 0;
     const changed = await db.runChanges(

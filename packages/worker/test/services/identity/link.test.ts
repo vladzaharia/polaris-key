@@ -10,7 +10,7 @@
 //   - a conflict moves nothing; every key, proof and token failure is one `invalid_grant`;
 //   - the notice goes to both addresses and names the app; Identity off and the gate off are 404.
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { base64UrlEncodeBytes } from "@polaris-key/jws";
 import {
   appleClaims,
@@ -45,6 +45,25 @@ import {
   putArtefact,
 } from "../../../src/core/singleUse.js";
 import type { Env } from "../../../src/platform/env.js";
+import {
+  gameCenterIs,
+  playGamesIs,
+  refuseGameTokens,
+} from "../../gameSignInStubs.js";
+import { verifyPlayGamesCode } from "../../../src/services/identity/providers/playGames.js";
+import { putOutletCredential } from "../../../src/core/outletCredentials.js";
+import {
+  GAME_CENTER_SUBJECT_TOKEN_TYPE,
+  PGS_SUBJECT_TOKEN_TYPE,
+} from "@polaris-key/protocol/identity";
+
+// The two game verifiers have their own suites; here they are stand-ins for the wiring.
+vi.mock("../../../src/services/identity/providers/gameCenter.js", async (o) =>
+  Object.assign({}, await o(), { verifyGameCenterToken: vi.fn() }),
+);
+vi.mock("../../../src/services/identity/providers/playGames.js", async (o) =>
+  Object.assign({}, await o(), { verifyPlayGamesCode: vi.fn() }),
+);
 
 const SLUG = "djdl";
 const BASE = "https://key.plrs.im";
@@ -262,7 +281,7 @@ const links = () =>
 async function tokenForm(
   d: Dev,
   mint: (nonce: string) => Promise<string>,
-  o: { signer?: CryptoKey } = {},
+  o: { signer?: CryptoKey; type?: string } = {},
 ) {
   const res = await dispatchWith(
     new Request(`${BASE}/${SLUG}/identity/nonce`, {
@@ -281,6 +300,7 @@ async function tokenForm(
   const token = await mint(nonce);
   return call("POST", d, {
     subjectToken: token,
+    ...(o.type ? { subjectTokenType: o.type } : {}),
     nonce,
     signKey: d.keys.signKey,
     agreeKey: d.keys.agreeKey,
@@ -710,5 +730,227 @@ describe("off", () => {
     expect((await call("GET", ada)).status).toBe(404);
     expect(await freshIsLive()).toBe(true);
     expect(await live(HANDLE)).toBe(true);
+  });
+});
+
+// ── I-14.8 (WIRE-CONTRACT-V5 §12.11.7): Game Center and Play Games on the link offer ─────────────
+
+const PGS_APP = "123456789012";
+const PGS_CLIENT = "9-pgs.apps.googleusercontent.com";
+const GC_SUB = "T:team-player-1";
+const PLAYER = "player-1";
+
+async function gameSetup(): Promise<void> {
+  await setting("identity.platformSignIn.gameCenter", true);
+  await setting("identity.platformSignIn.playGames.applicationId", PGS_APP);
+  await setting("identity.platformSignIn.playGames.serverClientId", PGS_CLIENT);
+  await putOutletCredential(h.env, h.db, {
+    product: SLUG,
+    credentialId: "pgs-server",
+    kind: "pgs-server-client",
+    outletId: null,
+    value: { clientSecret: "FAKE-secret-not-real-0000" },
+    expiresAt: null,
+    pin: PGS_CLIENT,
+    actor: "admin-1",
+    now: NOW,
+  });
+}
+
+const gameTokenForm = (d: Dev, type: string, token: string) =>
+  tokenForm(d, async () => token, { type });
+
+describe("the game kinds on the link offer (I-14.8)", () => {
+  beforeEach(async () => {
+    await gameSetup();
+    refuseGameTokens();
+  });
+
+  it("offers both with reach developer, known before any token", async () => {
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    expect(await body(await call("GET", ada))).toEqual({
+      offer: [
+        { kind: "google", reach: null },
+        { kind: "apple", reach: null },
+        { kind: "gamecenter", reach: "developer" },
+        { kind: "pgs", reach: "developer" },
+      ],
+    });
+  });
+
+  it("leaves both out with the gate off, and Play Games without its credential", async () => {
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    await h.db.run("DELETE FROM outlet_credentials");
+    const kinds = async () =>
+      ((await body(await call("GET", ada))).offer as { kind: string }[]).map(
+        (o) => o.kind,
+      );
+    expect(await kinds()).toEqual(["google", "apple", "gamecenter"]);
+    delete (h.env as { LAUNCH_GAME_SIGN_IN?: string }).LAUNCH_GAME_SIGN_IN;
+    expect(await kinds()).toEqual(["google", "apple"]);
+  });
+
+  it("discovery lists the game kinds and the PGS client id while the gate is on", async () => {
+    const get = async () =>
+      (await (
+        await dispatchWith(
+          new Request(
+            `${BASE}/${SLUG}/.well-known/polaris.json`,
+          ) as unknown as Request,
+          h.env,
+          h.db,
+          NOW,
+        )
+      ).json()) as any;
+    const on = (await get()).services.identity.exchange;
+    expect(on.kinds).toEqual(["google", "apple", "gamecenter", "pgs"]);
+    expect(on.pgs).toEqual({ serverClientId: PGS_CLIENT });
+    delete (h.env as { LAUNCH_GAME_SIGN_IN?: string }).LAUNCH_GAME_SIGN_IN;
+    const off = (await get()).services.identity.exchange;
+    expect(off.kinds).toEqual(["google", "apple"]);
+    expect(off.pgs).toBeUndefined();
+  });
+
+  it("leaves a game kind out once the account has it", async () => {
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    gameCenterIs(GC_SUB, `apple-team:${TEAM}`, BUNDLE);
+    const res = await gameTokenForm(
+      ada,
+      GAME_CENTER_SUBJECT_TOKEN_TYPE,
+      "gc1.t",
+    );
+    expect(res.status).toBe(200);
+    expect(await body(res)).toEqual({
+      linked: { kind: "gamecenter", reach: "developer" },
+    });
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    const offered = (
+      (await body(await call("GET", ada))).offer as { kind: string }[]
+    ).map((o) => o.kind);
+    expect(offered).not.toContain("gamecenter");
+  });
+
+  it("pgsRedeemBudget answers rate_limited with Retry-After", async () => {
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    vi.mocked(verifyPlayGamesCode).mockResolvedValue({
+      ok: false,
+      reason: "rate_limited",
+    });
+    const res = await gameTokenForm(ada, PGS_SUBJECT_TOKEN_TYPE, "code");
+    expect(res.status).toBe(429);
+    expect(res.headers.get("retry-after")).toBe("60");
+    expect(await body(res)).toMatchObject({ error: { code: "rate_limited" } });
+    expect(await pgsRows()).toEqual([]);
+  });
+
+  it("links Play Games through a token, scoped to the application", async () => {
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    playGamesIs(PGS_APP, PLAYER);
+    const res = await gameTokenForm(ada, PGS_SUBJECT_TOKEN_TYPE, "code");
+    expect(res.status).toBe(200);
+    expect(await body(res)).toEqual({
+      linked: { kind: "pgs", reach: "developer" },
+    });
+    const row = await h.db.first<{ tenant_scope: string; subject: string }>(
+      "SELECT tenant_scope, subject FROM account_links WHERE kind = 'pgs'",
+    );
+    expect(row).toEqual({
+      tenant_scope: `pgs-app:${PGS_APP}`,
+      subject: PLAYER,
+    });
+  });
+
+  const pgsRows = () =>
+    h.db.all<{ subject: string; account_id: string }>(
+      "SELECT subject, account_id FROM account_links WHERE kind = 'pgs' ORDER BY subject",
+    );
+  const seedPgs = (subject: string, accountId: string) =>
+    h.db.run(
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind,
+         email_verified, created_at, last_used_at)
+       VALUES (?, ?, 'pgs', ?, ?, 'pgs', 0, ?, ?)`,
+      `lnk_${subject}`,
+      accountId,
+      `pgs-app:${PGS_APP}`,
+      subject,
+      NOW,
+      NOW,
+    );
+
+  it("moves this account's link from the alternate id to the player id, with no second link", async () => {
+    await seedPgs("alt-1", ada.accountId);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    playGamesIs(PGS_APP, PLAYER, "alt-1");
+    const res = await gameTokenForm(ada, PGS_SUBJECT_TOKEN_TYPE, "code");
+    expect(res.status).toBe(200);
+    expect(await pgsRows()).toEqual([
+      { subject: PLAYER, account_id: ada.accountId },
+    ]);
+  });
+
+  it("is a link_conflict when another account holds the alternate id", async () => {
+    const other = await signIn(
+      h.db,
+      {
+        issuerKey: "email",
+        subject: "other@example.com",
+        kind: "email",
+        email: "other@example.com",
+        emailVerified: true,
+      },
+      NOW,
+      { unfenced: true, product: { slug: SLUG } },
+    );
+    if (other.status !== "signed_in") throw new Error("seed failed");
+    await seedPgs("alt-1", other.account.id);
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    playGamesIs(PGS_APP, PLAYER, "alt-1");
+    const res = await gameTokenForm(ada, PGS_SUBJECT_TOKEN_TYPE, "code");
+    expect(res.status).toBe(409);
+    expect(await body(res)).toEqual({ error: { code: "link_conflict" } });
+    expect(await pgsRows()).toEqual([
+      { subject: "alt-1", account_id: other.account.id },
+    ]);
+  });
+
+  it("links a game handle the exchange issued", async () => {
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    await handleFor({
+      kind: "gamecenter",
+      issuerKey: "gamecenter",
+      subject: GC_SUB,
+      tenantScopes: [`apple-team:${TEAM}`],
+      email: null,
+      emailVerified: false,
+    });
+    const res = await postHandle(ada, HANDLE);
+    expect(res.status).toBe(200);
+    expect(await body(res)).toEqual({
+      linked: { kind: "gamecenter", reach: "developer" },
+    });
+  });
+
+  it("a refused game token is the one refusal and spends nothing of the step-up", async () => {
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    const res = await gameTokenForm(
+      ada,
+      GAME_CENTER_SUBJECT_TOKEN_TYPE,
+      "gc1.t",
+    );
+    expect(res.status).toBe(400);
+    expect((await body(res)).error.code).toBe("invalid_grant");
+    expect(await freshIsLive()).toBe(true);
+  });
+
+  it("a game type with the gate off, or an unknown type, is 400 bad_request", async () => {
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    const unknown = await gameTokenForm(ada, "urn:example:nope", "x");
+    expect(unknown.status).toBe(400);
+    expect((await body(unknown)).error.code).toBe("bad_request");
+    delete (h.env as { LAUNCH_GAME_SIGN_IN?: string }).LAUNCH_GAME_SIGN_IN;
+    const off = await gameTokenForm(ada, PGS_SUBJECT_TOKEN_TYPE, "code");
+    expect(off.status).toBe(400);
+    expect((await body(off)).error.code).toBe("bad_request");
+    expect(verifyPlayGamesCode).not.toHaveBeenCalled();
   });
 });
