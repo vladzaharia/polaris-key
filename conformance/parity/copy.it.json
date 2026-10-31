@@ -619,11 +619,11 @@
     },
     "transfer-cancelled": {
       "title": "Trasferimento interrotto",
-      "message": "Il trasferimento non è stato completato. Non è stato salvato nulla. Riprova."
+      "message": "Il trasferimento non è stato completato. Non è stato ricevuto nulla."
     },
     "link-unknown": {
-      "title": "Contatto non trovato",
-      "message": "Questo contatto non è più collegato a questo dispositivo."
+      "title": "Non associato",
+      "message": "Quel dispositivo non è più associato a questo."
     },
     "peer_revoked": {
       "title": "Dispositivo non più attendibile",

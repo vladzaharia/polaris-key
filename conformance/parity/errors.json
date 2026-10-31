@@ -928,7 +928,7 @@
       "code": "link-unknown",
       "kind": "client",
       "service": "connect",
-      "description": "The host named a contact this device does not hold, or one that was removed (WIRE-CONTRACT-V5 \u00a715.10). Nothing was sent; a host refreshes its list."
+      "description": "The host named a contact this device does not hold, or one that was removed (WIRE-CONTRACT-V5 \u00a715.10, \u00a715.11). Nothing was sent; a host refreshes its list."
     },
     {
       "code": "peer_revoked",

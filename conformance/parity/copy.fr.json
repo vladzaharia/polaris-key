@@ -619,11 +619,11 @@
     },
     "transfer-cancelled": {
       "title": "Transfert interrompu",
-      "message": "Le transfert n'a pas abouti. Rien n'a été enregistré. Réessayez."
+      "message": "Le transfert n'a pas abouti. Rien n'a été reçu."
     },
     "link-unknown": {
-      "title": "Contact introuvable",
-      "message": "Ce contact n'est plus associé à cet appareil."
+      "title": "Non associé",
+      "message": "Cet appareil n'est plus associé à celui-ci."
     },
     "peer_revoked": {
       "title": "Appareil non fiable",

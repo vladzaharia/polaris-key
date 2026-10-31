@@ -2822,11 +2822,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_transfer_cancelled_title">Transferencia detenida</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_transfer_cancelled_message">La transferencia no se completó. No se guardó nada. Inténtalo de nuevo.</string>
+    <string name="core_codes_transfer_cancelled_message">La transferencia no se completó. No se recibió nada.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_unknown_title">Contacto no encontrado</string>
+    <string name="core_codes_link_unknown_title">Sin vincular</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_unknown_message">Ese contacto ya no está vinculado en este dispositivo.</string>
+    <string name="core_codes_link_unknown_message">Ese dispositivo ya no está vinculado con este.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_title">Dispositivo ya no es de confianza</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

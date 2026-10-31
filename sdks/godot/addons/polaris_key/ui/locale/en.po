@@ -7366,20 +7366,20 @@ msgstr "The connection to the nearby device ended. Try again."
 msgid "core.codes.transfer-cancelled.title"
 msgstr "Transfer stopped"
 
-#. The transfer didn't finish. Nothing was saved. Try again.
+#. The transfer didn't finish. Nothing was received.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.transfer-cancelled.message"
-msgstr "The transfer didn't finish. Nothing was saved. Try again."
+msgstr "The transfer didn't finish. Nothing was received."
 
-#. Contact not found
+#. Not paired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.link-unknown.title"
-msgstr "Contact not found"
+msgstr "Not paired"
 
-#. That contact is no longer linked on this device.
+#. That device is no longer paired with this one.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.link-unknown.message"
-msgstr "That contact is no longer linked on this device."
+msgstr "That device is no longer paired with this one."
 
 #. Device no longer trusted
 #. Core copy (conformance/parity/copy.en.json, codes).

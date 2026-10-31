@@ -2809,11 +2809,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_transfer_cancelled_title">Übertragung beendet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_transfer_cancelled_message">Die Übertragung wurde nicht abgeschlossen. Es wurde nichts gespeichert. Versuchen Sie es erneut.</string>
+    <string name="core_codes_transfer_cancelled_message">Die Übertragung wurde nicht abgeschlossen. Es wurde nichts empfangen.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_unknown_title">Kontakt nicht gefunden</string>
+    <string name="core_codes_link_unknown_title">Nicht gekoppelt</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_unknown_message">Dieser Kontakt ist auf diesem Gerät nicht mehr verknüpft.</string>
+    <string name="core_codes_link_unknown_message">Dieses Gerät ist nicht mehr mit diesem gekoppelt.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_title">Gerät nicht mehr vertrauenswürdig</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

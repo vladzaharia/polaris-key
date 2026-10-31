@@ -7379,20 +7379,20 @@ msgstr "A conexão com o dispositivo próximo foi encerrada. Tente novamente."
 msgid "core.codes.transfer-cancelled.title"
 msgstr "Transferência interrompida"
 
-#. The transfer didn't finish. Nothing was saved. Try again.
+#. The transfer didn't finish. Nothing was received.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.transfer-cancelled.message"
-msgstr "A transferência não foi concluída. Nada foi salvo. Tente novamente."
+msgstr "A transferência não foi concluída. Nada foi recebido."
 
-#. Contact not found
+#. Not paired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.link-unknown.title"
-msgstr "Contato não encontrado"
+msgstr "Não pareado"
 
-#. That contact is no longer linked on this device.
+#. That device is no longer paired with this one.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.link-unknown.message"
-msgstr "Esse contato não está mais vinculado a este dispositivo."
+msgstr "Esse dispositivo não está mais pareado com este."
 
 #. Device no longer trusted
 #. Core copy (conformance/parity/copy.en.json, codes).

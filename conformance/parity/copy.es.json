@@ -619,11 +619,11 @@
     },
     "transfer-cancelled": {
       "title": "Transferencia detenida",
-      "message": "La transferencia no se completó. No se guardó nada. Inténtalo de nuevo."
+      "message": "La transferencia no se completó. No se recibió nada."
     },
     "link-unknown": {
-      "title": "Contacto no encontrado",
-      "message": "Ese contacto ya no está vinculado en este dispositivo."
+      "title": "Sin vincular",
+      "message": "Ese dispositivo ya no está vinculado con este."
     },
     "peer_revoked": {
       "title": "Dispositivo ya no es de confianza",

@@ -2822,11 +2822,11 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_transfer_cancelled_title">Transfert interrompu</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_transfer_cancelled_message">Le transfert n'a pas abouti. Rien n'a été enregistré. Réessayez.</string>
+    <string name="core_codes_transfer_cancelled_message">Le transfert n'a pas abouti. Rien n'a été reçu.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_unknown_title">Contact introuvable</string>
+    <string name="core_codes_link_unknown_title">Non associé</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_link_unknown_message">Ce contact n'est plus associé à cet appareil.</string>
+    <string name="core_codes_link_unknown_message">Cet appareil n'est plus associé à celui-ci.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_revoked_title">Appareil non fiable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

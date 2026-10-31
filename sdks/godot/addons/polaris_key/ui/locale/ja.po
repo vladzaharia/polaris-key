@@ -7353,20 +7353,20 @@ msgstr "近くのデバイスとの接続が終了しました。もう一度お
 msgid "core.codes.transfer-cancelled.title"
 msgstr "転送が停止しました"
 
-#. The transfer didn't finish. Nothing was saved. Try again.
+#. The transfer didn't finish. Nothing was received.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.transfer-cancelled.message"
-msgstr "転送は完了しませんでした。何も保存されていません。もう一度お試しください。"
+msgstr "転送は完了しませんでした。何も受信されていません。"
 
-#. Contact not found
+#. Not paired
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.link-unknown.title"
-msgstr "連絡先が見つかりません"
+msgstr "ペアリングされていません"
 
-#. That contact is no longer linked on this device.
+#. That device is no longer paired with this one.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.link-unknown.message"
-msgstr "この連絡先はこのデバイスでリンクされていません。"
+msgstr "そのデバイスはこのデバイスとペアリングされていません。"
 
 #. Device no longer trusted
 #. Core copy (conformance/parity/copy.en.json, codes).

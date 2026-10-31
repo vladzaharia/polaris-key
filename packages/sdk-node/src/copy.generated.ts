@@ -699,11 +699,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   "transfer-cancelled": {
     title: "Transfer stopped",
-    message: "The transfer didn't finish. Nothing was saved. Try again.",
+    message: "The transfer didn't finish. Nothing was received.",
   },
   "link-unknown": {
-    title: "Contact not found",
-    message: "That contact is no longer linked on this device.",
+    title: "Not paired",
+    message: "That device is no longer paired with this one.",
   },
   peer_revoked: {
     title: "Device no longer trusted",
