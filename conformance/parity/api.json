@@ -2465,6 +2465,16 @@
       "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .onRequest); not a verb"
     },
     {
+      "sdk": "node",
+      "path": "identity.nearby",
+      "reason": "the accessor of the identity nearby namespace (identity.nearby.available, .onRequest; I-47.2); not a verb"
+    },
+    {
+      "sdk": "node",
+      "path": "identity.nearbyRoutes",
+      "reason": "internal: the nearby HTTP routes under the sign-in and approver sessions (I-47.4); no host calls it, and approve refuses a call without a matched pick"
+    },
+    {
       "sdk": "python",
       "path": "cloudConnect.nearby",
       "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .on_request); not a verb"
@@ -2478,6 +2488,11 @@
       "sdk": "kotlin",
       "path": "cloudConnect.nearby",
       "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .onRequest); not a verb"
+    },
+    {
+      "sdk": "python",
+      "path": "identity.nearby",
+      "reason": "the accessor of the identity nearby namespace (identity.nearby.available, .on_request; I-47.3); not a verb"
     },
     {
       "sdk": "kotlin",
@@ -3572,18 +3587,12 @@
       ],
       "returns": "json",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
-        },
+        "node": {},
         "react": {
           "spelling": "usePolarisAuth().autoSignIn",
           "shape": "hook"
         },
-        "python": {
-          "planned": "I-47",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
-        },
+        "python": {},
         "swift": {
           "labels": ["_"]
         },
@@ -7196,6 +7205,318 @@
           "type": "json"
         }
       ]
+    },
+    {
+      "id": "identity.nearby.available",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "returns": "bool",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.nearby.onRequest",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "handler",
+          "type": "listener"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "returns": "json",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.approvers",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "json",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.onApprovers",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "fn",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.code",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "string",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.result",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "string",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.onResult",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "fn",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.choose",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ],
+      "returns": "json",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.confirmAccount",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "returns": "json",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.declineAccount",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.wrap",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "string",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.onWrap",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "fn",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
     }
   ],
   "removed": [

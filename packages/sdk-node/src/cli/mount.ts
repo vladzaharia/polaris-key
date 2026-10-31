@@ -12,6 +12,7 @@ import { CLI_VERBS, type CliVerb } from "./kit.js";
 export const END_USER: readonly string[] = [
   "activate",
   "deactivate",
+  "devices approve",
   "devices deauthorize",
   "devices list",
   "devices rename",

@@ -29,6 +29,7 @@ from ..core.ui_view import View, actions_for, valid_link
 from . import _binding as qt
 from .flow import default_open_url
 from .kit import KitView
+from .nearby import Approver, NearbyApproval
 
 __all__ = ["AccountPage", "account_page", "settings_page"]
 
@@ -73,6 +74,7 @@ class AccountPage:
         channels: Optional[Sequence[Tuple[str, str]]] = None,
         on_channel: Optional[Callable[[str], None]] = None,
         platform: Optional[Mapping[str, Any]] = None,
+        approver: Optional[Approver] = None,
     ) -> None:
         if section not in _SECTIONS:
             raise ValueError("section is one of %s, not %r" % (", ".join(_SECTIONS), section))
@@ -96,6 +98,13 @@ class AccountPage:
         self._rename_text = ""
         self._settings_error: Optional[str] = None
         self._channel: Optional[str] = None
+        #: "Approve a nearby device" (I-47.14, D-6): the account menu's entry, shown when the product and
+        #: runtime offer it (read once, off the GUI thread), and the machine that runs it in this pane. The
+        #: advert is ``approver``'s (a :class:`~.nearby.ForegroundApprover` keeps it up while the window is
+        #: active); with none the page makes its own and stops it when the screen is left.
+        self._approver = approver
+        self._nearby_ok: Optional[bool] = None
+        self._nearby: Optional[NearbyApproval] = None
         bridge = self.kit.bridge
         bridge.row_invoked.connect(self._row_invoked)
         bridge.invoked.connect(self._invoked)
@@ -125,6 +134,8 @@ class AccountPage:
         if self._closed:
             return
         self._closed = True
+        if self._nearby is not None:
+            self._nearby.close()
         self.kit.close()
 
     # ── what the client holds ───────────────────────────────────────────────────────────────
@@ -251,6 +262,9 @@ class AccountPage:
         """Show the ``account``, ``devices`` or ``settings`` pane."""
         if section not in _SECTIONS:
             raise ValueError("section is one of %s, not %r" % (", ".join(_SECTIONS), section))
+        if self._nearby is not None:  # leaving the approval: nothing is left listening
+            self._nearby.close()
+            self._nearby = None
         self.section = section
         self._edit = None
         self._settings_error = None
@@ -264,6 +278,9 @@ class AccountPage:
 
     def render(self) -> None:
         if self._closed:
+            return
+        if self.section == "nearby" and self._nearby is not None:
+            self._nearby.redraw()
             return
         if self.section == "devices":
             self._render_devices()
@@ -292,8 +309,46 @@ class AccountPage:
             drop.add("common.signOut")
         if "a11y.externalLink" in drop and account.get("renew"):
             drop.discard("a11y.externalLink")
-        view = _replace_copy(view, tuple(k for k in view.copy if k not in drop))
+        copy = tuple(k for k in view.copy if k not in drop)
+        if account.get("signedIn") and self._nearby_offered():
+            copy += ("signin.nearby.menu",)  # the account menu's entry (D-6)
+        view = _replace_copy(view, copy)
         self.kit.set_view(view, {"account": account})
+
+    def _nearby_offered(self) -> bool:
+        """Whether "Approve a nearby device" is offered: Identity is on, discovery names the approver's
+        endpoint and this runtime can advertise (``identity.nearby.available``). Read once, off the GUI
+        thread; the pane is drawn again when the answer is in."""
+        if self._nearby_ok is None:
+            nearby = getattr(getattr(self.client, "identity", None), "nearby", None)
+            if nearby is None:
+                self._nearby_ok = False
+                return False
+            self._nearby_ok = False
+
+            def probe() -> bool:
+                return bool(nearby.available(role="approver"))
+
+            def done(result: Any, error: Optional[BaseException]) -> None:
+                self._nearby_ok = error is None and result is True
+                if self._nearby_ok:
+                    self.render()
+
+            self._work(probe, done)
+        return self._nearby_ok
+
+    def _open_nearby(self) -> None:
+        self._nearby = NearbyApproval(
+            self.client,
+            self.kit,
+            approver=self._approver or Approver(self.client),
+            platform=self.platform,
+            on_exit=lambda: self.show_section("account"),
+            on_devices=lambda: self.show_section("devices"),
+            on_sign_in=lambda: self.show_section("account"),
+        )
+        self.section = "nearby"
+        self._nearby.open()
 
     def _can_sign_out(self) -> bool:
         return hasattr(getattr(self.client, "identity", None), "sign_out") or hasattr(getattr(self.client, "license", None), "deactivate")
@@ -374,6 +429,12 @@ class AccountPage:
 
     # ── what the controls do ────────────────────────────────────────────────────────────────
     def _invoked(self, key: str, _action: str) -> None:
+        if self.section == "nearby" and self._nearby is not None:
+            self._nearby.handle(key, _action)
+            return
+        if key == "signin.nearby.menu":
+            self._open_nearby()
+            return
         if key == "common.back":
             self.show_section("account")
         elif key == "common.tryAgain":

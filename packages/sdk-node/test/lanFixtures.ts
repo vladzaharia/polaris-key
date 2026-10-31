@@ -1,21 +1,26 @@
 // Shared fixtures for the Cloud Connect LAN tests (CC-08.2): an in-process mDNS network, a small
 // multi-device fake of the Worker's connect routes, and helpers to build clients.
 import { randomBytes } from "node:crypto";
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { base64UrlEncodeBytes, signJws } from "@polaris-key/jws";
 import { ISSUER } from "@polaris-key/protocol/core";
 import { PolarisKeyClient } from "../src/client.js";
 import { createNodeDeviceKeyStore } from "../src/devices/deviceKeys.js";
-import { InMemoryStore } from "../src/core/store.js";
+import { CACHE_VERSION, InMemoryStore } from "../src/core/store.js";
 import type {
   MdnsAdapter,
   MdnsAdvert,
   MdnsFound,
   MdnsHandle,
 } from "../src/connect/mdns.js";
-import { TEST_KID, TEST_PEM, TEST_PUB } from "./parityFixtures.js";
+import {
+  signedLicense,
+  TEST_KID,
+  TEST_PEM,
+  TEST_PUB,
+} from "./parityFixtures.js";
 
 export const PRODUCT = "djdl";
 export const BASE = "https://k.test";
@@ -226,16 +231,30 @@ export async function makeClient(
   worker: MultiWorker,
   n: string,
   dirs: string[],
-  extra: { trustRefresh?: boolean } = {},
+  extra: {
+    trustRefresh?: boolean;
+    /** A device with no credential (and so not known to the Worker's token table). */
+    noToken?: boolean;
+    /** A licence document cached for this device: the "licence" half of autoSignIn()'s rung 1
+     *  (the acquisition sync that would fetch it after a sign-in is not part of these tests). */
+    licensed?: boolean;
+  } = {},
 ): Promise<PolarisKeyClient> {
   const deviceId = devId(n);
-  const token = tokenOf(n);
-  worker.add(deviceId, token);
   const store = Object.assign(new InMemoryStore(), {
     getDeviceId: async () => deviceId,
   });
-  await store.setToken(token);
+  if (extra.licensed === true)
+    await store.writeCache({
+      v: CACHE_VERSION,
+      docs: { license: await signedLicense({}, undefined, deviceId) },
+    });
+  if (extra.noToken !== true) {
+    worker.add(deviceId, tokenOf(n));
+    await store.setToken(tokenOf(n));
+  }
   const stateDir = tmpDir(dirs);
+  const keys = createNodeDeviceKeyStore({ product: PRODUCT, stateDir });
   const client = new PolarisKeyClient({
     productSlug: PRODUCT,
     baseUrl: BASE,
@@ -247,12 +266,23 @@ export async function makeClient(
     store,
     fetchImpl: worker.fetch,
     stateDir,
-    connect: {
-      deviceKeys: createNodeDeviceKeyStore({ product: PRODUCT, stateDir }),
-    },
+    // One key store for Connect and the key ring: both are this device's identity.
+    connect: { deviceKeys: keys },
+    keyring: { deviceKeys: keys },
   });
   await client.init();
   return client;
+}
+
+/** Mark a client signed in, as a finished sign-in leaves it (identity.json beside the token). */
+export function markSignedIn(c: PolarisKeyClient): void {
+  const state = (c as unknown as { core: { dirs: { state: string } } }).core
+    .dirs.state;
+  mkdirSync(state, { recursive: true });
+  writeFileSync(
+    join(state, "identity.json"),
+    JSON.stringify({ email: "ana@example.test", signedInAt: T0 }),
+  );
 }
 
 export const sleep = (ms: number): Promise<void> =>

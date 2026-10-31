@@ -71,6 +71,12 @@ first, under its own headings, then the verbs under one **License** heading:
 | `devices list`, `devices rename <deviceId> [label...]`, `devices deauthorize <deviceId>` | The devices on the license |
 | `update check`, `update apply`                                                           | The program's updates      |
 
+`login` looks for the person's other devices first, on an interactive terminal: a signed-in device nearby shows three
+codes, the new device shows one, and the person chooses the matching code on the other device (`c` signs in with a
+code instead, and nothing answering within 2 seconds does the same). `devices approve` is the other side: it listens
+while it runs, then asks which of the three codes the new device shows; `d` or Esc denies, and so does leaving the
+license choice. Neither starts under `--json` or without a terminal.
+
 A group word on its own runs its default action: `tidewater devices` is `devices list` and
 `tidewater update` is `update check`. The developer verbs mount only when `verbs` names them, or `verbs: "all"` mounts every one:
 

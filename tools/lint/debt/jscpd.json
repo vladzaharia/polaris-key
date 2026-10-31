@@ -51,7 +51,7 @@
       "jscpd:duplicate": 3
     },
     "conformance/runners/node/transcripts.test.ts": {
-      "jscpd:duplicate": 28
+      "jscpd:duplicate": 26
     },
     "examples/node-electron/src/main.ts": {
       "jscpd:duplicate": 1
@@ -1530,13 +1530,16 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/cli/flows.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 6
     },
     "packages/sdk-node/src/cli/gate.ts": {
       "jscpd:duplicate": 2
     },
     "packages/sdk-node/src/cli/kit.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/cli/nearby.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/sdk-node/src/cli/term/prompt.ts": {
       "jscpd:duplicate": 2
@@ -1695,7 +1698,7 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-node/test/cli/cliMount.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/sdk-node/test/cli/envelope.test.ts": {
       "jscpd:duplicate": 1
@@ -1707,6 +1710,9 @@
       "jscpd:duplicate": 4
     },
     "packages/sdk-node/test/cli/kit.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/cli/nearby.test.ts": {
       "jscpd:duplicate": 2
     },
     "packages/sdk-node/test/cli/offline.test.ts": {
@@ -1722,7 +1728,7 @@
       "jscpd:duplicate": 13
     },
     "packages/sdk-node/test/cli/scenarios.ts": {
-      "jscpd:duplicate": 25
+      "jscpd:duplicate": 26
     },
     "packages/sdk-node/test/cli/uk45.test.ts": {
       "jscpd:duplicate": 2
@@ -2091,7 +2097,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/transcripts.test.ts": {
-      "jscpd:duplicate": 29
+      "jscpd:duplicate": 27
     },
     "packages/sdk-react/test/trustCustody.test.ts": {
       "jscpd:duplicate": 2

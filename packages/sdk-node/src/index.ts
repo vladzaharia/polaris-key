@@ -168,6 +168,22 @@ export {
   type WaitOptions,
 } from "./identity/signIn.js";
 export {
+  type AutoSignInOptions,
+  type AutoSignInReason,
+  type AutoSignInResult,
+  type AutoSignInUnavailable,
+  type NearbyRole,
+} from "./identity/autoSignIn.js";
+export {
+  type NearbyApprovalStep,
+  type NearbyAsk,
+} from "./identity/nearbyApprover.js";
+export {
+  NearbySignInSession,
+  type NearbyApprover,
+  type NearbySignInOptions,
+} from "./identity/nearbySession.js";
+export {
   type AttachLicense,
   type AttachResult,
   type OpenAccountResult,

@@ -16,7 +16,7 @@ state, the last one ``"event": "result"``; never prompts), ``--no-color`` and ``
 ``sign-in``         sign in in the browser, or with a code when headless (``--device-code``);
                     ``login`` is the same verb
 ``sign-out``        release this device's seat and forget the identity (``--yes``); ``logout``
-``devices``         ``list`` (default) · ``rename <id> <label>`` · ``deauthorize <id>``
+``devices``         ``list`` (default) · ``rename <id> <label>`` · ``deauthorize <id>`` · ``approve``
 ``config``          ``list`` · ``get <key>`` · ``set <key> <value>`` · ``reset <key>`` (and the
                     v3 shorthand ``config <key>``)
 ``secret``          ``secret <key>``: whether a managed secret is present; ``--reveal`` prints it
@@ -326,7 +326,7 @@ VERBS: Tuple[Verb, ...] = (
     Verb("sign-out", "identity", "Sign out on this device.", sign_out, opts=_YES),
     Verb("logout", "identity", "Same as sign-out.", sign_out, opts=_YES),
     Verb("register", "devices", "Register this device with no key.", register),
-    Verb("devices", "devices", "list | rename <id> <label> | deauthorize <id>", devices, words=True, opts=_YES),
+    Verb("devices", "devices", "list | rename <id> <label> | deauthorize <id> | approve", devices, words=True, opts=_YES),
     Verb("config", "config", "list | get <key> | set <key> <value> | reset <key>", config, words=True,
          opts=(Opt("fallback", "str", "Value if the key is unset (get)."),)),
     Verb("secret", "config", "A managed secret; --reveal prints it.", secret, words=True, opts=_REVEAL),

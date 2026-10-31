@@ -1,0 +1,79 @@
+#### truecolor-80-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
+[2m│[22m
+[38;2;114;202;190m◆[39m  [1mSign in with your phone[22m
+[2m│[22m  Next, allow Tidewater Studio to find devices on your network, so your phone
+[2m│[22m  can sign you in.
+[2m└[22m  [1mEnter[22m[2m continue[22m[2m · [22m[1mEsc[22m[2m not now[22m
+
+#### truecolor-80-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
+[2m│[22m
+[38;2;20;121;111m◆[39m  [1mSign in with your phone[22m
+[2m│[22m  Next, allow Tidewater Studio to find devices on your network, so your phone
+[2m│[22m  can sign you in.
+[2m└[22m  [1mEnter[22m[2m continue[22m[2m · [22m[1mEsc[22m[2m not now[22m
+
+#### ansi16-80
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · login[22m
+[2m│[22m
+[36m◆[39m  [1mSign in with your phone[22m
+[2m│[22m  Next, allow Tidewater Studio to find devices on your network, so your phone
+[2m│[22m  can sign you in.
+[2m└[22m  [1mEnter[22m[2m continue[22m[2m · [22m[1mEsc[22m[2m not now[22m
+
+#### no-color-80
+┌  [7m Tidewater Studio [27m · login
+│
+◆  [1mSign in with your phone[22m
+│  Next, allow Tidewater Studio to find devices on your network, so your phone
+│  can sign you in.
+└  [1mEnter[22m continue · [1mEsc[22m not now
+
+#### ascii-80
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - login[22m
+[2m|[22m
+[36m*[39m  [1mSign in with your phone[22m
+[2m|[22m  Next, allow Tidewater Studio to find devices on your network, so your phone
+[2m|[22m  can sign you in.
+[2m`[22m  [1mEnter[22m[2m continue[22m[2m - [22m[1mEsc[22m[2m not now[22m
+
+#### truecolor-60-dark
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
+[2m│[22m
+[38;2;114;202;190m◆[39m  [1mSign in with your phone[22m
+[2m│[22m  Next, allow Tidewater Studio to find devices on your
+[2m│[22m  network, so your phone can sign you in.
+[2m└[22m  [1mEnter[22m[2m continue[22m[2m · [22m[1mEsc[22m[2m not now[22m
+
+#### truecolor-60-light
+[2m┌[22m  [48;2;38;132;122m[38;2;255;255;255m Tidewater Studio [39m[49m[2m · login[22m
+[2m│[22m
+[38;2;20;121;111m◆[39m  [1mSign in with your phone[22m
+[2m│[22m  Next, allow Tidewater Studio to find devices on your
+[2m│[22m  network, so your phone can sign you in.
+[2m└[22m  [1mEnter[22m[2m continue[22m[2m · [22m[1mEsc[22m[2m not now[22m
+
+#### ansi16-60
+[2m┌[22m  [36m[7m Tidewater Studio [27m[39m[2m · login[22m
+[2m│[22m
+[36m◆[39m  [1mSign in with your phone[22m
+[2m│[22m  Next, allow Tidewater Studio to find devices on your
+[2m│[22m  network, so your phone can sign you in.
+[2m└[22m  [1mEnter[22m[2m continue[22m[2m · [22m[1mEsc[22m[2m not now[22m
+
+#### no-color-60
+┌  [7m Tidewater Studio [27m · login
+│
+◆  [1mSign in with your phone[22m
+│  Next, allow Tidewater Studio to find devices on your
+│  network, so your phone can sign you in.
+└  [1mEnter[22m continue · [1mEsc[22m not now
+
+#### ascii-60
+[2m+[22m  [36m[7m Tidewater Studio [27m[39m[2m - login[22m
+[2m|[22m
+[36m*[39m  [1mSign in with your phone[22m
+[2m|[22m  Next, allow Tidewater Studio to find devices on your
+[2m|[22m  network, so your phone can sign you in.
+[2m`[22m  [1mEnter[22m[2m continue[22m[2m - [22m[1mEsc[22m[2m not now[22m

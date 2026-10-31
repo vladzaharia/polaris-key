@@ -1940,7 +1940,7 @@ PORTAL_MATRIX_VERSION: Final[int] = 1
 
 
 #: `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-UI_MATRIX_VERSION: Final[int] = 7
+UI_MATRIX_VERSION: Final[int] = 8
 
 
 #: `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
@@ -2554,10 +2554,10 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.exchange": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.gamecenter": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
-        "identity.autosignin": CapabilityRow("planned", "identity", ()),
+        "identity.autosignin": CapabilityRow("implemented", "identity", ()),
         "identity.restore": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.link": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
-        "identity.nearby": CapabilityRow("planned", "identity", ()),
+        "identity.nearby": CapabilityRow("implemented", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -2626,4 +2626,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "e845b9d47b1af32fa233a4a3a6b134a997db25866d36afe4bac752e1625c4c2d"
+CAPABILITY_DIGEST: Final[str] = "960c0a9698c191250346a0f0e810f20a340450ddbba88c868c6b48f14c66c0b5"

@@ -373,6 +373,18 @@ if (r.kind === "device-limit" && r.manageUrl) {
 `withManageReturn` adds `return=`, which Polaris Locker honours only for a declared return target. The
 CLI prints the link on a device-limit refusal.
 
+## Nearby sign-in
+
+`client.identity.autoSignIn()` answers first: `signedIn` (a stored sign-in), `needsSignIn` (`signed_out` or
+`no_credential`) or `unavailable`; it never throws and sends nothing. A device with no browser at hand then
+asks a signed-in device on the same network to approve it: `identity.signIn.start({ channel: "nearby" })` is
+the new device's session (`approvers`, `onApprovers`, `choose`, `code`, `result`, `wait`, `confirmAccount`,
+`declineAccount`, `wrap`, `onWrap`) over the `nearby/start` and `poll` routes, and
+`identity.nearby.available({ role })` and `onRequest` are the signed-in device's side (three codes, the
+matched pick, the license choice). They need the optional `multicast-dns` dependency
+(`nearby-unsupported` otherwise). The CLI's `login` looks for nearby devices first and `devices approve` is
+the other side. The guide is [Your own UI](https://key.plrs.im/docs/build/sdks/node/your-own-ui/).
+
 ## Device-code sign-in
 
 For a host that cannot complete a browser redirect — a CLI over SSH, a daemon, a game on a TV —

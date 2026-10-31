@@ -310,6 +310,19 @@ export class PolarisKeyClient {
       () => this.cache.state.license?.doc.licenseId ?? null,
       // Sign-out and deactivation both end in `identity.forget()`: the root and its pin go with them.
       () => this.keyring.forget(),
+      // Nearby approval (I-47.4): the device keys, the keys route and a fresh discovery read.
+      {
+        signer: () => this.connect.nearbySigner(),
+        registerKeys: (port) => this.devices.registerKeys(port),
+        refreshDiscovery: async () => {
+          // A read that failed says nothing about nearby, so it never falls back to the old
+          // document (N11: only a fresh read that still names `nearby` keeps a 404 an expiry).
+          const r = await this.discover().catch(() => null);
+          return r !== null && r.kind === "ok" ? this.discoveryDoc : null;
+        },
+        lan: () => this.cloudConnect.nearby,
+        keyring: () => this.keyring,
+      },
     );
     this.release = new ReleaseClient(
       this.core,
@@ -357,7 +370,9 @@ export class PolarisKeyClient {
           await this.discover().catch(() => undefined);
         return identityFragmentFrom(this.discoveryDoc);
       },
-      signedIn: async () => (await this.identity.current()) !== null,
+      // An unconfirmed nearby sign-in is not a sign-in yet (V5 §15.6.1 rule 12).
+      signedIn: async () =>
+        !this.tokens.unconfirmed && (await this.identity.current()) !== null,
       signer: () => this.connect.nearbySigner(),
     });
     this.cloudSyncHost = new CloudSyncHost(

@@ -22,7 +22,7 @@ only corpus. `corpusVersion 2`,
 `configMatrixVersion 1`,
 `updateMatrixVersion 1`, `outletMatrixVersion 1`,
 `planMatrixVersion 2`, `deviceLabelVersion 2`,
-`presentationMatrixVersion 1`, `portalMatrixVersion 1`, `uiMatrixVersion 7`,
+`presentationMatrixVersion 1`, `portalMatrixVersion 1`, `uiMatrixVersion 8`,
 `backendMatrixVersion 1`,
 `contentCorpusVersion 2`, `syncScenariosVersion 4`.
 Wire contract v4 (`docs/security/WIRE-CONTRACT-V4.md`) adds the `feedCases` and
@@ -135,11 +135,11 @@ Not a component family: one object with typed sections (`plans/UK-51.md`), the s
 
 | Section | Rows |
 | --- | --- |
-| `verbs` | 10 end-user, 16 developer, 2 aliases |
+| `verbs` | 11 end-user, 16 developer, 2 aliases |
 | `mount` | 13 |
 | `help` | 6 |
 | `gate` | 85 |
-| `outcomes` | 32 |
+| `outcomes` | 42 |
 | `stdin` | 10 |
 | `capabilities` | 14 |
 | `exit` | `ok` 0, `failed` 1, `usage` 2, `licenseRequired` 4, `interrupted` 130 |
@@ -224,7 +224,7 @@ Every state a kit, or an app drawing its own UI, handles, with the copy keys the
 | NearbyApproval | `denied` | `common.done`, `signin.approve.deniedDone` |
 | NearbyApproval | `expired` | `common.done`, `core.codes.sign-in-expired.title`, `signin.nearby.expiredBody` |
 | NearbyApproval | `device-limit` | `core.codes.device_limit.title`, `devices.manage`, `signin.nearby.deviceLimitBody` |
-| NearbyApproval | `choose` | `signin.choice.continue`, `signin.nearby.chooseLede`, `signin.nearby.chooseTitle` |
+| NearbyApproval | `choose` | `signin.approve.deny`, `signin.nearby.chooseLede`, `signin.nearby.chooseTitle` |
 | NearbyApproval | `account-required` | `core.codes.account_required.message`, `core.codes.account_required.title`, `signin.key.signIn` |
 | NearbyApproval | `rate-limited` | `common.done`, `core.codes.rate_limited.title`, `signin.nearby.rateLimitedBody` |
 | NearbyApproval | `hidden` | none |

@@ -50,6 +50,13 @@ end-to-end transcript the push body is sealed by ``seal_push`` and the answer op
 ``invalid``. The report is ``result``, ``cursor``, ``more``, ``settings`` (the wire's setting names,
 sorted) and ``results`` (one label per mutation result) beside the quota and encryption members.
 
+``nearbyStart`` / ``nearbyPoll`` (D) and ``nearbyApprove`` (M) (I-47.5, ``identity.nearby``, WIRE-CONTRACT-V5
+§12.11.5) drive the nearby route client (``client.identity._nearby_routes``) with the fixture keys of the
+step's labels. The transcript's own device is D; M is the ``approver*`` device, which the replay sends as
+(its id, its bearer, its key). ``proofKeyLabel`` / ``proofValue`` sign the proof with another key or over
+another value; ``agreeKeyLabel`` sends another agreement key. ``unavailable`` is the client sending
+nothing because discovery names no ``nearby`` member, or a 404 from ``start`` (the gate is off).
+
 ``chunkRange`` (P4-32, plans/P4-32.md §5) is ``chunk_range_fetch`` over the packs client's own
 object fetch (``client.update.packs._fetch_object``), against the blobs template the last
 discover returned. ``range`` is the fetch's status; ``bytes`` the body it returned, as a string.
@@ -66,7 +73,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
 # @pkey-feature identity.redirect.web identity.choice identity.signin.hints identity.devicecode.choice
-# @pkey-feature sync.keyring connect.identity connect.relay sync.settings
+# @pkey-feature sync.keyring connect.identity connect.relay sync.settings identity.nearby
 
 from __future__ import annotations
 
@@ -79,6 +86,7 @@ import re
 import shutil
 import tempfile
 import time
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urljoin, urlsplit
 
@@ -106,6 +114,8 @@ from polaris_key.core.device_keys import DevicePublicKeys
 from polaris_key.core.models import ReleaseRecordDoc
 from polaris_key.core.store import CacheRecord
 from polaris_key.devices.keys import create_device_key_store
+from polaris_key.identity.account import identity_fragment_from
+from polaris_key.identity.nearby import NearbyCredentials, NearbyStarted, _grant
 from polaris_key.update.packs import chunk_range_fetch
 
 MANIFEST = load_manifest("sdks/python/parity.json")
@@ -247,6 +257,94 @@ def _relay_ticket_step(client: PolarisKeyClient) -> Dict[str, Any]:
     return out
 
 
+def _nearby_step(
+    client: PolarisKeyClient, store: TranscriptStore, step: Dict[str, Any], session: Dict[str, Any]
+) -> Dict[str, Any]:
+    """The nearby route client (I-47.5, ``identity.nearby``) over the fixture keys of the step's labels."""
+    t = session["transcript"]
+    action, args = step["action"], step["args"]
+    routes = client.identity._nearby_routes
+    own = t["initial"]["deviceId"]
+
+    def keys(label_arg: str) -> _FixtureKeys:
+        label = str(args[label_arg])
+        cache = session.setdefault("fixtureKeys", {})
+        if label not in cache:
+            cache[label] = _FixtureKeys(label)
+        return cache[label]  # type: ignore[no-any-return]
+
+    # A doctored proof: the same call, signed by other keys or over another value.
+    real_sign = type(routes)._sign
+    proof_label = args.get("proofKeyLabel")
+    proof_value = args.get("proofValue")
+
+    def sign(creds: NearbyCredentials, purpose: str, value: str) -> str:
+        port = _FixtureKeys(str(proof_label)) if proof_label is not None else creds.keys
+        return real_sign(
+            routes,
+            NearbyCredentials(creds.device_id, port, creds.token),
+            purpose,
+            str(proof_value) if proof_value is not None else value,
+        )
+
+    routes._sign = sign  # type: ignore[method-assign]
+    out: Dict[str, Any] = {}
+    try:
+        d = NearbyCredentials(own, keys("keyLabel"), store.token)
+        if action == "nearbyStart":
+            r = routes.start(d, device_name=args.get("deviceName"))
+            if r.kind == "started":
+                session["nearbyStarted"] = r
+                out.update(result="ok", expiresIn=r.expires_in, interval=r.interval)
+            elif r.kind == "unavailable":
+                out["result"] = "unavailable"
+            else:
+                out.update(result="refused", status=r.status, code=r.code)
+        elif action == "nearbyPoll":
+            k = d.keys.ensure()
+            base = session.get("nearbyStarted") or NearbyStarted("nr_" + "A" * 22, 300, 3, k.sign_key, k.agree_key, own)
+            handle = args.get("request")
+            started = dataclasses.replace(base, request=handle) if isinstance(handle, str) else base
+            r = routes.poll(d, started)
+            if r.kind == "unavailable":
+                out["result"] = "unavailable"
+            elif r.kind == "refused":
+                out.update(result="refused", status=r.status, code=r.code)
+            elif r.kind == "signed_in":
+                out.update(result="ready", scope=r.scope)
+            elif r.kind == "denied":
+                out.update(result="error", reason=r.reason)
+            elif r.kind == "slow_down":
+                out.update(result="slow-down", interval=r.interval)
+            elif r.kind == "retry":
+                out["result"] = "transient"
+            else:
+                out["result"] = r.kind
+        else:
+            m = NearbyCredentials(str(args["approverDeviceId"]), keys("approverKeyLabel"), str(args["approverToken"]))
+            dk = d.keys.ensure()
+            agree = _FixtureKeys(str(args["agreeKeyLabel"])).ensure().agree_key if "agreeKeyLabel" in args else dk.agree_key
+            started = session.get("nearbyStarted")
+            request = args.get("request") or (started.request if started is not None else None)
+            # The replay vouches for what the recording sent (it may carry other keys than D's): the permit
+            # is made here, in the test, because no route offers one.
+            vouch = _grant(
+                SimpleNamespace(request=str(request), device_id=own, sign_key=dk.sign_key, agree_key=agree)
+            )
+            r = routes.approve(m, vouch, decision=str(args["decision"]), choice=args.get("choice"))
+            out["result"] = r.kind
+            if r.kind == "approved":
+                out["deviceLabel"] = r.device_label
+            elif r.kind == "choose":
+                out["choices"] = r.choices
+            elif r.kind == "refused":
+                out.update(status=r.status, code=r.code)
+    finally:
+        del routes._sign  # drop the instance override: the class method is the real one
+    out["tokenHeld"] = store.token is not None
+    return out
+
+
 def _act(
     client: PolarisKeyClient,
     store: TranscriptStore,
@@ -267,6 +365,8 @@ def _act(
         return _connect_step(client, step, session)
     if action == "relayTicket":
         return _relay_ticket_step(client)
+    if action in ("nearbyStart", "nearbyPoll", "nearbyApprove"):
+        return _nearby_step(client, store, step, session)
     # D-6: the recorded action names map onto the session (`sign_in.start`, `wait`).
     if action == "beginSignIn":
         try:
@@ -358,6 +458,12 @@ def _act(
         out["presentation"] = client.presentation()
         # ui.cli.portal (DISC-01): the core.portal member the client holds after this discovery.
         out["portal"] = client.portal()
+        # identity.nearby (I-40): the member and the three endpoints the last discovery names.
+        frag = identity_fragment_from(client.discovery())
+        out["nearby"] = True if frag is not None and frag.get("nearby") is True else None
+        out["nearbyEndpoints"] = frag is not None and all(
+            n in frag["endpoints"] for n in ("nearbyStart", "nearbyApprove", "nearbyPoll")
+        )
     elif action == "sync":
         r = client.sync(force=args.get("force") is True)
         out["applied"] = r.applied
@@ -966,6 +1072,26 @@ def _asks_device_choice(t: Dict[str, Any]) -> bool:
 def _standard_discovery(t: Dict[str, Any]) -> Dict[str, Any]:
     """The Worker's standard discovery document, for a transcript that loads none itself."""
     base = f"{t['baseUrl']}/{t['product']}"
+    if "identity.nearby" in t["features"]:
+        # Nearby approval is named (WIRE-CONTRACT-V5 §12.11.6): the member and the three endpoints.
+        return {
+            "product": t["product"],
+            "services": {
+                "license": {"enabled": True},
+                "config": {"enabled": True},
+                "identity": {
+                    "enabled": True,
+                    "configured": True,
+                    "account": True,
+                    "nearby": True,
+                    "endpoints": {
+                        "nearbyStart": f"{base}/identity/nearby/start",
+                        "nearbyApprove": f"{base}/identity/nearby/approve",
+                        "nearbyPoll": f"{base}/identity/nearby/poll",
+                    },
+                },
+            },
+        }
     if _uses_account(t) or _uses_redirect(t) or _asks_device_choice(t):
         choice = any(
             "/identity/choice/" in x["request"]["path"]
@@ -1110,8 +1236,8 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
         **kwargs,
     )
     client.devices.fingerprint = lambda: FINGERPRINT  # type: ignore[method-assign]
-    if _uses_redirect(t) or _asks_device_choice(t):
-        # The redirect recordings pin the token exchange alone. The acquisition sync a sign-in
+    if _uses_redirect(t) or _asks_device_choice(t) or "identity.nearby" in t["features"]:
+        # The redirect and nearby recordings pin the token exchange alone. The acquisition sync a sign-in
         # raises (trust fetch, documents, report) is pinned by the sync transcripts.
         client.identity._deps.on_acquired = lambda: None
     client.init()

@@ -26,6 +26,7 @@ MODELS = {
     "OfflineActivation": ui_activate.offline_activation_view,
     "SignIn": ui_signin.sign_in_view,
     "SignInHandoff": ui_signin.sign_in_handoff_view,
+    "NearbyApproval": ui_signin.nearby_approval_view,
     "DeviceLimit": ui_devices.device_limit_view,
     "Devices": ui_devices.devices_view,
     "UpdatePrompt": ui_update.update_prompt_view,

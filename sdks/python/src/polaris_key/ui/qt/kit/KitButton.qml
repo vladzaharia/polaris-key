@@ -17,6 +17,8 @@ Button {
     // the glyph is decorative, so `externalNote` ("Opens in your browser") is the description.
     property bool external: false
     property string externalNote: ""
+    // The label is data to compare by eye with another device (a code to tap): the mono face.
+    property bool mono: false
     readonly property bool primary: role === "primary"
     readonly property bool quiet: role === "quiet"
     readonly property bool danger: role === "danger"
@@ -80,7 +82,7 @@ Button {
                 id: label
                 text: control.text
                 width: Math.min(implicitWidth, content.width - (control.busy ? spinner.width + row.spacing : 0) - (control.external ? leave.width + row.spacing : 0))
-                font.family: Theme.fontFamily
+                font.family: control.mono ? Theme.monoFamily : Theme.fontFamily
                 font.pixelSize: Theme.typeButton.size * control.scale_
                 font.weight: Theme.typeButton.weight
                 color: content.ink

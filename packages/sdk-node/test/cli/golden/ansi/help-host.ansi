@@ -26,6 +26,7 @@ License:
                               Rename a device (no name clears it)
   devices deauthorize <deviceId>
                               Remove a device and make room for another
+  devices approve             Approve a device signing in nearby
   update check                Check for a newer version
   update apply                Download and install the newer version
 
@@ -57,6 +58,7 @@ License:
                               Rename a device (no name clears it)
   devices deauthorize <deviceId>
                               Remove a device and make room for another
+  devices approve             Approve a device signing in nearby
   update check                Check for a newer version
   update apply                Download and install the newer version
 
@@ -88,6 +90,7 @@ License:
                               Rename a device (no name clears it)
   devices deauthorize <deviceId>
                               Remove a device and make room for another
+  devices approve             Approve a device signing in nearby
   update check                Check for a newer version
   update apply                Download and install the newer version
 
@@ -119,6 +122,7 @@ License:
                               Rename a device (no name clears it)
   devices deauthorize <deviceId>
                               Remove a device and make room for another
+  devices approve             Approve a device signing in nearby
   update check                Check for a newer version
   update apply                Download and install the newer version
 
@@ -150,6 +154,7 @@ License:
                               Rename a device (no name clears it)
   devices deauthorize <deviceId>
                               Remove a device and make room for another
+  devices approve             Approve a device signing in nearby
   update check                Check for a newer version
   update apply                Download and install the newer version
 
@@ -188,6 +193,8 @@ License:
   devices deauthorize <deviceId>
                               Remove a device and make room
                               for another
+  devices approve             Approve a device signing
+                              in nearby
   update check                Check for a newer version
   update apply                Download and install the
                               newer version
@@ -227,6 +234,8 @@ License:
   devices deauthorize <deviceId>
                               Remove a device and make room
                               for another
+  devices approve             Approve a device signing
+                              in nearby
   update check                Check for a newer version
   update apply                Download and install the
                               newer version
@@ -266,6 +275,8 @@ License:
   devices deauthorize <deviceId>
                               Remove a device and make room
                               for another
+  devices approve             Approve a device signing
+                              in nearby
   update check                Check for a newer version
   update apply                Download and install the
                               newer version
@@ -305,6 +316,8 @@ License:
   devices deauthorize <deviceId>
                               Remove a device and make room
                               for another
+  devices approve             Approve a device signing
+                              in nearby
   update check                Check for a newer version
   update apply                Download and install the
                               newer version
@@ -344,6 +357,8 @@ License:
   devices deauthorize <deviceId>
                               Remove a device and make room
                               for another
+  devices approve             Approve a device signing
+                              in nearby
   update check                Check for a newer version
   update apply                Download and install the
                               newer version
@@ -393,6 +408,8 @@ License:
   devices deauthorize <deviceId>
     Remove a device and make room
     for another
+  devices approve
+    Approve a device signing in nearby
   update check
     Check for a newer version
   update apply
@@ -444,6 +461,8 @@ License:
   devices deauthorize <deviceId>
     Remove a device and make room
     for another
+  devices approve
+    Approve a device signing in nearby
   update check
     Check for a newer version
   update apply
@@ -501,6 +520,9 @@ License:
     deauthorize <deviceId>
       Remove a device and make
       room for another
+  devices approve
+    Approve a device signing
+    in nearby
   update check
     Check for a newer version
   update apply
@@ -558,6 +580,9 @@ License:
     deauthorize <deviceId>
       Remove a device and make
       room for another
+  devices approve
+    Approve a device signing
+    in nearby
   update check
     Check for a newer version
   update apply

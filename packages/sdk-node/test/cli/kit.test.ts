@@ -1063,7 +1063,7 @@ describe("help and completion", () => {
         expect(s, `${shell}: ${word}`).toContain(word);
     }
     expect(completionScript(ctx, "bash", CLI_VERBS)).toContain(
-      'devices) [ "$COMP_CWORD" -eq 2 ] && words="list rename deauthorize"',
+      'devices) [ "$COMP_CWORD" -eq 2 ] && words="list rename deauthorize approve"',
     );
   });
 });

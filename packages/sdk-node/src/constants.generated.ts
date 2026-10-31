@@ -1679,7 +1679,7 @@ export const PRESENTATION_MATRIX_VERSION = 1;
 export const PORTAL_MATRIX_VERSION = 1;
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-export const UI_MATRIX_VERSION = 7;
+export const UI_MATRIX_VERSION = 8;
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 export const BACKEND_MATRIX_VERSION = 1;
@@ -2204,7 +2204,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [{ runtime: "node", reason: "runtime" }],
   },
-  "identity.autosignin": { status: "planned", service: "identity", na: [] },
+  "identity.autosignin": { status: "implemented", service: "identity", na: [] },
   "identity.restore": {
     status: "na",
     service: "identity",
@@ -2215,7 +2215,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [{ runtime: "node", reason: "runtime" }],
   },
-  "identity.nearby": { status: "planned", service: "identity", na: [] },
+  "identity.nearby": { status: "implemented", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -2340,4 +2340,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "131e4ea175d94d1fc2365b5ecea26ea45fc8cd07a67e277b4d04b06a4780fd60";
+  "12bf421c070023633daab5784c29a897605bea16b90f00bea1c6f35e9c795966";

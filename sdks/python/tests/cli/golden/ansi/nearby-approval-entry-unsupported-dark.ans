@@ -1,0 +1,44 @@
+── truecolor · 80 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[33m▲[0m  [1mCan't approve from this computer[0m
+[2m└[0m  [2mSign in with a code on the other device.[0m
+── ansi16 · 80 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[33m▲[0m  [1mCan't approve from this computer[0m
+[2m└[0m  [2mSign in with a code on the other device.[0m
+── no-color · 80 ──
+┌  [7m Tidewater Studio [0m · devices approve
+│
+▲  [1mCan't approve from this computer[0m
+└  Sign in with a code on the other device.
+── ascii · 80 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices approve[0m
+[2m|[0m
+[33m![0m  [1mCan't approve from this computer[0m
+[2m`[0m  [2mSign in with a code on the other device.[0m
+── truecolor · 60 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[33m▲[0m  [1mCan't approve from this computer[0m
+[2m└[0m  [2mSign in with a code on the other device.[0m
+── ansi16 · 60 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[33m▲[0m  [1mCan't approve from this computer[0m
+[2m└[0m  [2mSign in with a code on the other device.[0m
+── no-color · 60 ──
+┌  [7m Tidewater Studio [0m · devices approve
+│
+▲  [1mCan't approve from this computer[0m
+└  Sign in with a code on the other device.
+── ascii · 60 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices approve[0m
+[2m|[0m
+[33m![0m  [1mCan't approve from this computer[0m
+[2m`[0m  [2mSign in with a code on the other device.[0m
+── pipe · 80 ──
+Tidewater Studio · devices approve
+Can't approve from this computer
+Sign in with a code on the other device.

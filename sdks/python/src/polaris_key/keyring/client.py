@@ -20,6 +20,12 @@ Rules this module keeps:
   explicit :meth:`~KeyringClient.accept_ring_change` re-pins. Sign-out (:meth:`~KeyringClient.forget`)
   drops the pin.
 * (CPython cannot promise to erase every copy of a secret; the zeroing here is best effort.)
+
+Nearby approval carries a wrap as well (I-47.11; WIRE-CONTRACT-V5 §13.11, §15.6): :meth:`KeyringClient.wrap_to`
+answers the :class:`WrapBody` it PUT, whose :meth:`WrapBody.channel_record` is the ``KEYRING_WRAP``
+(``0x0030``) the approving device sends over the LAN; the new device hands the record it received to
+:meth:`KeyringClient.adopt_wrap`, which checks the ring, epoch and ``kid`` against a FRESH :meth:`read`
+(and the pin), opens it through the port's ``dh`` and pins. A server copy that differs never replaces it.
 """
 
 from __future__ import annotations
@@ -55,6 +61,8 @@ __all__ = [
     "RingPin",
     "SyncCodec",
     "UnlockResult",
+    "WrapBody",
+    "parse_wrap_record",
 ]
 
 #: The spelling an earlier Worker stored for DHKEM X25519. A reader accepts it; a writer sends the
@@ -162,6 +170,62 @@ class AdoptRoot:
     ring_id: str
     epoch: int
     root: bytes = field(repr=False)
+
+
+@dataclass(frozen=True)
+class WrapBody:
+    """A wrap of the root as the routes and the nearby channel carry it: ``PUT .../wraps/{deviceId}`` takes
+    :meth:`put_json`, and :meth:`channel_record` is the ``KEYRING_WRAP`` (``0x0030``) body, ``{ringId,
+    epoch, kid, kem, enc, ct}``. An HPKE ciphertext only the target's agreement key opens, but it is kept
+    out of every ``repr``."""
+
+    ring_id: str
+    epoch: int
+    kid: str
+    kem: Union[int, str]
+    enc: str = field(repr=False)
+    ct: str = field(repr=False)
+
+    def put_json(self) -> Dict[str, Any]:
+        """The body ``PUT .../wraps/{deviceId}`` carries."""
+        return {"epoch": self.epoch, "kid": self.kid, "kem": self.kem, "enc": self.enc, "ct": self.ct}
+
+    def channel_record(self) -> bytes:
+        """The ``KEYRING_WRAP`` record body: the same wrap with the ring it belongs to."""
+        return json.dumps({"ringId": self.ring_id, **self.put_json()}, separators=(",", ":")).encode("utf-8")
+
+
+#: The most a ``KEYRING_WRAP`` record is read at (a real one is about 300 bytes).
+_WRAP_RECORD_MAX = 2048
+_WRAP_RECORD_KEYS = frozenset(("ringId", "epoch", "kid", "kem", "enc", "ct"))
+
+
+def parse_wrap_record(body: Any) -> Optional[WrapBody]:
+    """A ``KEYRING_WRAP`` record body, or ``None`` when it is not exactly ``{ringId, epoch, kid, kem, enc,
+    ct}`` (a missing or extra member, a wrong type, an oversized body). Nothing is opened here."""
+    if not isinstance(body, (bytes, bytearray)) or len(body) > _WRAP_RECORD_MAX:
+        return None
+    try:
+        raw = json.loads(bytes(body).decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        return None
+    if not isinstance(raw, dict) or set(raw) != _WRAP_RECORD_KEYS:
+        return None
+    ring_id, epoch, kid, kem = raw["ringId"], raw["epoch"], raw["kid"], raw["kem"]
+    if (
+        not isinstance(ring_id, str)
+        or _RING_ID.match(ring_id) is None
+        or not _is_int(epoch)
+        or epoch < 1
+        or not isinstance(kid, str)
+        or len(kid) != 32
+        or _HEX.match(kid) is None
+        or not _is_x25519(kem)
+        or not isinstance(raw["enc"], str)
+        or not isinstance(raw["ct"], str)
+    ):
+        return None
+    return WrapBody(ring_id=ring_id, epoch=epoch, kid=kid, kem=kem, enc=raw["enc"], ct=raw["ct"])
 
 
 class _Held:
@@ -407,7 +471,20 @@ class KeyringClient:
         A wrap that does not open leaves the pin as it was."""
         return self._unlock(confirmed)
 
-    def _unlock(self, accept: Optional[RingPin]) -> UnlockResult:
+    def adopt_wrap(self, record: Any) -> UnlockResult:
+        """Take the wrap a nearby approval sent over the LAN (a ``KEYRING_WRAP`` record body) instead of
+        waiting for the server's copy. The ring, epoch and ``kid`` it names are checked against a FRESH
+        :meth:`read` and the pin first (a ring that is not the pinned one is ``ring-changed`` and is not
+        opened; one that is not the served ring, or a record that is not a wrap, is ``locked`` with
+        ``unusable-wrap``); it is opened through the port's ``dh`` and pinned. A root already held for the
+        same ring and epoch stays: the server's copy never replaces it either. Call it only after the
+        person confirmed the signed-in account (V5 §15.6.1 rule 12)."""
+        offered = parse_wrap_record(record)
+        if offered is None:
+            return UnlockResult("locked", reason="unusable-wrap")
+        return self._unlock(None, offered)
+
+    def _unlock(self, accept: Optional[RingPin], offered: Optional[WrapBody] = None) -> UnlockResult:
         state = self.read()
         ring, wrap = state.ring, state.wrap
         if ring is None:
@@ -424,8 +501,24 @@ class KeyringClient:
                 served_by=wrap.by if wrap is not None else None,
                 served_created_at=ring.created_at,
             )
+        if offered is not None:
+            if offered.ring_id != ring.ring_id or offered.epoch != ring.epoch or offered.kid != ring.root_kid:
+                return UnlockResult("locked", reason="unusable-wrap")
+            wrap = KeyringWrapInfo(
+                epoch=offered.epoch, kid=offered.kid, kem=offered.kem, enc=offered.enc, ct=offered.ct
+            )
         if wrap is None:
             return UnlockResult("locked", reason="no-wrap")
+        held = self._held
+        if (
+            held is not None
+            and held.ring_id == ring.ring_id
+            and held.epoch == ring.epoch
+            and held.kid.hex() == ring.root_kid
+        ):
+            # A root already held for this ring and epoch is never replaced, and the wrap (the channel
+            # copy or the server's) is not opened again: the answer is "unlocked".
+            return UnlockResult("unlocked", ring_id=ring.ring_id, epoch=ring.epoch)
         keys = self._keys
         kid = _unhex(ring.root_kid)
         enc = _unb64(wrap.enc, sc.HPKE_ENC_BYTES)
@@ -470,11 +563,22 @@ class KeyringClient:
         :meth:`adopt`."""
         return self._make_ring("devices/keyring/reset", recovery)
 
-    def wrap_to(self, device_id: str, agree_key: Union[bytes, str]) -> None:
+    def wrap_to(self, device_id: str, agree_key: Union[bytes, str]) -> WrapBody:
         """Wrap the root to another device of the same person (``PUT .../wraps/{deviceId}``).
         ``agree_key`` is that device's X25519 key (raw bytes or base64url), from the nearby approval:
         the host decides when to call this, and the Worker accepts a wrap only from a device that
-        holds one itself."""
+        holds one itself. Answers the :class:`WrapBody` that was PUT. A nearby approver uses the two
+        halves instead (:meth:`seal_wrap_to`, then :meth:`put_wrap`), so that it sends the
+        ``KEYRING_WRAP`` before the ``PUT`` (V5 §13.11.3)."""
+        sent = self.seal_wrap_to(device_id, agree_key)
+        self.put_wrap(device_id, sent)
+        return sent
+
+    def seal_wrap_to(self, device_id: str, agree_key: Union[bytes, str]) -> WrapBody:
+        """The first half of :meth:`wrap_to`: seal the root to ``agree_key`` for ``device_id`` and answer
+        the :class:`WrapBody`, storing nothing. The approver sends its ``channel_record()`` over the
+        nearby channel first, then stores the same bytes with :meth:`put_wrap`, so a refused or failed
+        ``PUT`` cannot take the channel copy with it."""
         h = self._need()
         if not _device_ok(device_id):
             raise _bad_arg("A device id is required.")
@@ -485,11 +589,14 @@ class KeyringClient:
             w = sc.wrap_root(pub, self._wrap_context(h.ring_id, h.epoch, device_id), h.kid, h.root)
         except ValueError:
             raise _bad_arg("The agreement key is not usable.") from None
-        self._send(
-            "PUT",
-            f"devices/keyring/wraps/{quote(device_id, safe='')}",
-            {"epoch": h.epoch, "kid": h.kid.hex(), **_wire_wrap(w)},
-        )
+        return WrapBody(h.ring_id, h.epoch, h.kid.hex(), sc.HPKE_KEM_X25519, b64url_encode(w.enc), b64url_encode(w.ct))
+
+    def put_wrap(self, device_id: str, body: WrapBody) -> None:
+        """The second half of :meth:`wrap_to`: ``PUT .../wraps/{deviceId}`` with a wrap
+        :meth:`seal_wrap_to` made."""
+        if not _device_ok(device_id):
+            raise _bad_arg("A device id is required.")
+        self._send("PUT", f"devices/keyring/wraps/{quote(device_id, safe='')}", body.put_json())
 
     def remove_wrap(self, device_id: str) -> None:
         """``DELETE .../wraps/{deviceId}``: the Worker removes a device's own wrap only."""
