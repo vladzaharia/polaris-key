@@ -59,6 +59,10 @@ public enum ConnectRelayReason: String, Sendable, CaseIterable {
     case modeNotAllowed = "mode_not_allowed"
     case replaced
     case stopped
+    /// A contact ticket while links between accounts are off (403 `connect_links_disabled`).
+    case linksDisabled = "links_disabled"
+    /// The Worker did not echo `room: "c"`: it predates contact rooms (§15.7).
+    case contactUnsupported = "contact_unsupported"
 
     /// The registered code: the Worker's own for the four it answers with.
     public var code: String {
@@ -73,6 +77,8 @@ public enum ConnectRelayReason: String, Sendable, CaseIterable {
         case .notMember, .handshakeFailed, .wrongPeer: return ErrorCode.peerCertInvalid
         case .unknownPeer, .modeNotAllowed: return ErrorCode.invalidArgument
         case .replaced, .stopped: return ErrorCode.cancelled
+        case .linksDisabled: return ErrorCode.connectLinksDisabled
+        case .contactUnsupported: return ErrorCode.connectUnavailable
         }
     }
 }

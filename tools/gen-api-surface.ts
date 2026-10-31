@@ -435,6 +435,9 @@ function renderSwift(api: Api): string {
       lines.push(
         `_ = \\${r.name === "events" ? "PolarisKeyClient" : (SWIFT_TYPE[r.ns] ?? "PolarisKeyClient")}.${r.name}  // ${r.id}`,
       );
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
+      lines.push(`_ = CloudLinks.${ref}  // ${r.id}`);
     } else if (SWIFT_TYPE[r.ns]) {
       lines.push(`_ = ${SWIFT_TYPE[r.ns]}.${ref}  // ${r.id}`);
     }

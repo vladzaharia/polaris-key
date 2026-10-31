@@ -939,6 +939,15 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
 
 // MARK: - Sessions over the room
 
+/// A room that carries sessions: the account room (`ConnectRelayService`) or a contact room
+/// (`ConnectContactRoom`).
+protocol RelayRoom: AnyObject, Sendable {
+    func sendSession(peer: Data, session: UInt32, noise: Data) async
+    func hasRoom(_ n: Int) async -> Bool
+}
+
+extension ConnectRelayService: RelayRoom {}
+
 final class RelayLinkEntry: @unchecked Sendable {
     let peer: Data
     let session: UInt32
@@ -966,7 +975,7 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
         var bytes = 0
         var waiter: CheckedContinuation<Data?, Never>?
         var closed = false
-        var svc: ConnectRelayService?
+        var svc: (any RelayRoom)?
         var peer = Data()
         var session: UInt32 = 0
     }
@@ -976,7 +985,7 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
     var onOverflow: (@Sendable () -> Void)?
     var remoteAddress: String { "relay" }
 
-    func attach(svc: ConnectRelayService, peer: Data, session: UInt32) {
+    func attach(svc: any RelayRoom, peer: Data, session: UInt32) {
         state.with {
             $0.svc = svc
             $0.peer = peer
@@ -1054,7 +1063,7 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
 /// What a `ConnectSession` needs of its link, with the relay's queue check before anything is encrypted.
 struct RelayLinkFacade: ConnectSessionLink {
     let link: PeerLink
-    let svc: ConnectRelayService
+    let svc: any RelayRoom
 
     func sendRecord(type: Int, body: Data) async throws {
         // Refuse before the engine encrypts: a message dropped after encryption would break the stream.

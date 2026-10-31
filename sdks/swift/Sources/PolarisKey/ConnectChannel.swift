@@ -84,6 +84,22 @@ extension PeerChannelOptions {
     }
 }
 
+extension PeerChannelOptions {
+    /// The options of a mode-`c` channel (§15.10): no account, no certificate; the static key is the device's
+    /// agreeKey behind the same port as mode `a`. An initiator names exactly one contact; a responder names the
+    /// contacts it serves and needs the `admission` limiter.
+    public static func connectContact(
+        _ src: PeerSource, role: PeerChannel.Role, contacts: [PeerContactLink], admission: HandshakeLimiter? = nil,
+        caps: [String] = ["app/1"], label: String? = nil, platform: String = connectPlatformName,
+        now: (@Sendable () -> Int)? = nil, rekeyMessages: Int? = nil, rekeySeconds: TimeInterval? = nil
+    ) -> PeerChannelOptions {
+        PeerChannelOptions(
+            role: role, slug: src.slug, staticKey: src.staticKey, admission: admission, caps: caps,
+            hello: (label, platform, src.slug, nil), mode: .c, contacts: contacts, now: now,
+            rekeyMessages: rekeyMessages ?? (1 << 20), rekeySeconds: rekeySeconds ?? 3600)
+    }
+}
+
 /// The HELLO `platform` of this process.
 public let connectPlatformName: String = {
     #if os(macOS)

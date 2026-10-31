@@ -161,4 +161,11 @@ func apiSurface() async {
     _ = CloudConnect.refreshPeers  // cloudConnect.refreshPeers
     _ = CloudConnect.status  // cloudConnect.status
     _ = CloudConnect.onNotice  // cloudConnect.onNotice
+    _ = CloudLinks.pair  // cloudConnect.links.pair
+    _ = CloudLinks.list  // cloudConnect.links.list
+    _ = CloudLinks.remove  // cloudConnect.links.remove
+    _ = CloudLinks.setReachable  // cloudConnect.links.setReachable
+    _ = CloudLinks.open  // cloudConnect.links.open
+    _ = CloudLinks.onLink  // cloudConnect.links.onLink
+    _ = CloudLinks.interAccount  // cloudConnect.links.interAccount
 }

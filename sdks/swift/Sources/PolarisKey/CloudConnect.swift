@@ -121,6 +121,9 @@ import PolarisKeyCore
 
     public final class CloudConnect: Sendable {
         let core: CloudConnectCore
+        /// Inter-account links (CC-19): `pair`, `list`, `remove`, `setReachable`, `open`, `onLink`. Off unless
+        /// discovery says `interAccount`.
+        public let links: CloudLinks
         private let channelListeners = Listeners<ConnectSession>()
         private let noticeListeners = Listeners<ConnectNotice>()
         private let statusBox = LockedValue(
@@ -135,12 +138,14 @@ import PolarisKeyCore
             applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil,
             now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970) }
         ) {
+            let links = CloudLinks(connect: connect)
+            self.links = links
             let channel = channelListeners
             let notices = noticeListeners
             let box = statusBox
             let q = queue
             core = CloudConnectCore(
-                connect: connect, discovery: discovery, applyTrust: applyTrust, now: now,
+                connect: connect, discovery: discovery, applyTrust: applyTrust, now: now, links: links,
                 emit: Emit(
                     inbound: { s in
                         let subs = channel.all
@@ -251,11 +256,15 @@ import PolarisKeyCore
         private var unsub: [@Sendable () -> Void] = []
         private var sessions: [ObjectIdentifier: ConnectSession] = [:]
         private var lanAttempt = cloudConnectLanAttemptSeconds
+        private var contactRelay: ConnectContactRelay?
+        private let links: CloudLinks
 
         init(
             connect: ConnectClient, discovery: @escaping @Sendable () async -> ProductDiscoveryDocument?,
-            applyTrust: (@Sendable (String) async -> PeerTrustResult)?, now: @escaping @Sendable () -> Int, emit: Emit
+            applyTrust: (@Sendable (String) async -> PeerTrustResult)?, now: @escaping @Sendable () -> Int,
+            links: CloudLinks, emit: Emit
         ) {
+            self.links = links
             self.connect = connect
             self.discovery = discovery
             self.applyTrust = applyTrust
@@ -366,6 +375,22 @@ import PolarisKeyCore
             } else {
                 relayReason = reason
             }
+            // The contact rooms (§15.7) and the links API ride the same transports. A device with no links keeps no
+            // room; the list is read again whenever it changes.
+            if relayOn {
+                let c = connect
+                let cr = ConnectContactRelay(
+                    source: ConnectContactRelaySource(
+                        lan: src, ticket: { rid in await c.relayTicket(room: "c", rid: rid) }),
+                    options: o.relayOptions)
+                contactRelay = cr
+                await cr.start()
+                guard gen == generation else {
+                    await cr.stop()
+                    throw CancellationError()
+                }
+            }
+            await links.attach(lan: lan, relay: contactRelay, lanAttempt: lanAttempt, relayOn: relayOn)
             guard gen == generation else { throw CancellationError() }
             running = true
             publish()
@@ -400,16 +425,20 @@ import PolarisKeyCore
             running = false
             for u in unsub { u() }
             unsub = []
-            let (l, r) = (lan, relay)
+            let (l, r, cr) = (lan, relay, contactRelay)
             lan = nil
             relay = nil
+            contactRelay = nil
             let open = Array(sessions.values)
             sessions = [:]
             relayStatus = nil
             publish()
+            let links = self.links
             let closed = await connectBounded(timeout) {
                 if let t { _ = try? await t.value }
+                await links.detach()
                 for s in open { await s.close() }
+                await cr?.stop()
                 await r?.stop()
                 await l?.stop()
             }
@@ -418,6 +447,8 @@ import PolarisKeyCore
                 // the services let go of the discovery key.
                 l?.abort()
                 r?.abort()
+                cr?.abort()
+                Task { await links.detach() }
                 t?.cancel()
             }
         }

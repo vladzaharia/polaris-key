@@ -6484,6 +6484,170 @@
           "type": "json"
         }
       ]
+    },
+    {
+      "id": "cloudConnect.links.pair",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {
+          "planned": "CC-19"
+        },
+        "python": {
+          "planned": "CC-19"
+        },
+        "swift": {},
+        "kotlin": {
+          "planned": "CC-19"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.list",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {
+          "planned": "CC-19"
+        },
+        "python": {
+          "planned": "CC-19"
+        },
+        "swift": {},
+        "kotlin": {
+          "planned": "CC-19"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.links.remove",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {
+          "planned": "CC-19"
+        },
+        "python": {
+          "planned": "CC-19"
+        },
+        "swift": {},
+        "kotlin": {
+          "planned": "CC-19"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.setReachable",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {
+          "planned": "CC-19"
+        },
+        "python": {
+          "planned": "CC-19"
+        },
+        "swift": {},
+        "kotlin": {
+          "planned": "CC-19"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "reachable",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.open",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {
+          "planned": "CC-19"
+        },
+        "python": {
+          "planned": "CC-19"
+        },
+        "swift": {},
+        "kotlin": {
+          "planned": "CC-19"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.onLink",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {
+          "planned": "CC-19"
+        },
+        "python": {
+          "planned": "CC-19"
+        },
+        "swift": {},
+        "kotlin": {
+          "planned": "CC-19"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.interAccount",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {
+          "planned": "CC-19"
+        },
+        "python": {
+          "planned": "CC-19"
+        },
+        "swift": {},
+        "kotlin": {
+          "planned": "CC-19"
+        }
+      },
+      "layer": "client"
     }
   ],
   "removed": [
