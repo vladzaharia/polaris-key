@@ -501,6 +501,7 @@ class SyncKeyringTest {
         }
         // The unlock itself ended too: the backup is an unavailable store, the device falls through to the code.
         assertEquals(SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap), kotlinx.coroutines.withTimeout(10_000) { unlock.await() })
+    }
 
     // -- K1-D1: with no pin, a stored root is the pin ---------------------------------------------
 
