@@ -16,7 +16,24 @@ import type { LicenseState } from "@polaris-key/client-core";
 import type { UpdateCheck } from "@polaris-key/protocol/update";
 import type { IdentityEvent } from "../identity/signIn.js";
 import type { SyncEvent } from "@polaris-key/client-core/cloud-sync";
+import type { TransferEvent } from "../constants.generated.js";
 import type { ConfigChange } from "../config/client.js";
+
+/** A transfer event on the `cloudSync` stream (`TransferEvent` in `conformance/parity/enums.json`). */
+export type SaveTransferEvent =
+  | {
+      type: typeof TransferEvent.transferprogress;
+      id: string;
+      done: number;
+      total: number;
+    }
+  | {
+      type: typeof TransferEvent.transferdone;
+      id: string;
+      /** `done`; `cancelled` (a state, not a failure); `conflict` (settle it with `resolve`). */
+      state: "done" | "cancelled" | "conflict";
+    }
+  | { type: typeof TransferEvent.transferfailed; id: string; code: string };
 
 export interface PolarisEvents {
   license: [{ state: LicenseState; previous: LicenseState["status"] | null }];
@@ -25,7 +42,7 @@ export interface PolarisEvents {
   packs: [PackProgress];
   identity: [IdentityEvent];
   store: [StoreStatus | null];
-  cloudSync: [SyncEvent];
+  cloudSync: [SyncEvent | SaveTransferEvent];
 }
 
 export type PolarisEventName = keyof PolarisEvents;

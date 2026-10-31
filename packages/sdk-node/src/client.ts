@@ -76,6 +76,7 @@ import { BackendClient, type BackendClientOptions } from "./backend/client.js";
 import { KeyringClient, type KeyringOptions } from "./keyring/client.js";
 import { CloudSyncHost, type CloudSyncHostOptions } from "./cloudSync/host.js";
 import { CloudSyncApi } from "./cloudSync/api.js";
+import { SavesApi } from "./cloudSync/saves.js";
 import { readStoredSubject } from "./identity/account.js";
 import { ConnectClient, type ConnectOptions } from "./connect/client.js";
 import { CloudConnect } from "./connect/cloudConnect.js";
@@ -215,8 +216,14 @@ export class PolarisKeyClient {
   readonly cloudSyncHost: CloudSyncHost;
   /** Cloud Sync settings (U-06.3): `status()` and `flush()`; its events arrive on
    *  `events.on("cloudSync", …)`. A product without the Sync service answers the typed N/A. */
-  readonly cloudSync: Pick<CloudSyncApi, "status" | "flush">;
+  readonly cloudSync: Pick<CloudSyncApi, "status" | "flush"> & {
+    /** The saves of the signed-in person (U-22.5). */
+    readonly saves: SavesApi;
+    /** The save writes in flight. */
+    transfers(): ReturnType<SavesApi["transfers"]>;
+  };
   private readonly cloudSyncApi: CloudSyncApi;
+  private readonly savesApi: SavesApi;
 
   private readonly cache: CacheManager;
   private readonly tokens: TokenManager;
@@ -369,6 +376,7 @@ export class PolarisKeyClient {
       },
       opts.cloudSync ?? {},
     );
+    let signedInAs: string | null = null;
     this.cloudSyncApi = new CloudSyncApi({
       ctx: this.core,
       host: this.cloudSyncHost,
@@ -376,10 +384,25 @@ export class PolarisKeyClient {
       config: this.config,
       subject: () => readStoredSubject(this.core.dirs.state),
       emit: (e) => this.events.safeEmit("cloudSync", e),
+      onSubject: (s) => {
+        signedInAs = s;
+      },
+      purgeSaves: () => this.savesApi.purge(),
+    });
+    this.savesApi = new SavesApi({
+      ctx: this.core,
+      host: this.cloudSyncHost,
+      keyring: this.keyring,
+      tokens: this.tokens,
+      subject: () => signedInAs,
+      attach: () => this.cloudSyncApi.attach(),
+      emit: (e) => this.events.safeEmit("cloudSync", e),
     });
     this.cloudSync = {
       status: () => this.cloudSyncApi.status(),
       flush: () => this.cloudSyncApi.flush(),
+      saves: this.savesApi,
+      transfers: () => this.savesApi.transfers(),
     };
     this.events.on("identity", (e) => {
       void this.cloudSyncApi.onIdentity(e).catch(() => undefined);
