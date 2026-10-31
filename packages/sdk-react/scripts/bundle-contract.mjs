@@ -74,9 +74,14 @@ await build(
 await build(
   buildOf({ syncAssets: join(root, "src", "kit", "syncAssets.ts") }, []),
 );
+// The holder screens' rules, the elements' own sheet for them.
+await build(
+  buildOf({ holderAssets: join(root, "src", "kit", "holderAssets.ts") }, []),
+);
 rmSync(join(root, "dist", "kit", "contract.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "qr.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "contractForm.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "desktopCss.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "syncAssets.js.map"), { force: true });
+rmSync(join(root, "dist", "kit", "holderAssets.js.map"), { force: true });
 rmSync(join(root, "dist", "kit", "contract.d.ts.map"), { force: true });

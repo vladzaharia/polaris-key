@@ -339,7 +339,7 @@ describe.concurrent("Account → Packages", () => {
     });
     try {
       await h1(o.page, "Account");
-      await o.page.getByRole("region", { name: "Sign-in methods" }).waitFor();
+      await o.page.getByRole("region", { name: "Sign-In Methods" }).waitFor();
       await o.page.waitForTimeout(300);
       expect(
         await o.page.getByRole("region", { name: /^Packages$/ }).count(),

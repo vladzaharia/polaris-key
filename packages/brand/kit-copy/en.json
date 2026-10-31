@@ -653,17 +653,17 @@
       "note": "ActivateDone: the badge on the recommendation card."
     },
     "activate.recommend.sync": {
-      "value": "Cloud Sync keeps your settings and saves on every device",
+      "value": "**Sync your settings** across your devices",
       "role": "body",
-      "note": "ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them."
+      "note": "ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them."
     },
     "activate.recommend.recover": {
-      "value": "Get your license back if you lose the key or this device",
+      "value": "**Get your license back** if you lose the key or this device",
       "role": "body",
       "note": "ActivateDone: a reason line, shown when Identity is on. The first words (\"Get your license back\") are a lead-in; the kit may style them."
     },
     "activate.recommend.devices": {
-      "value": "Move it to a new device yourself, without asking {developer}",
+      "value": "**Move it to a new device** yourself, without asking {developer}",
       "role": "body",
       "note": "ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words (\"Move it to a new device\") are a lead-in; the kit may style them."
     },
@@ -683,9 +683,9 @@
       "note": "ActivateDone: the single reason line when Identity is off; the action opens the portal."
     },
     "activate.attach.lede": {
-      "value": "Your license and its devices stay as they are. You'll confirm the email with a code in your browser.",
+      "value": "Your license and its devices stay as they are.",
       "role": "body",
-      "note": "AddToAccount: under the name and email fields."
+      "note": "AddToAccount: under the title, above the fields."
     },
     "activate.attach.fine": {
       "value": "We send a code to this email in your browser. {product} never sees it.",
@@ -698,14 +698,34 @@
       "note": "AddToAccount: added. Arguments: {product} = the product's name (never translated)."
     },
     "activate.attach.syncOn": {
-      "value": "Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.",
+      "value": "Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too.",
       "role": "body",
-      "note": "AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone)."
+      "note": "AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone)."
     },
     "activate.attach.failed": {
       "value": "Couldn't add this license. Try again in a moment.",
       "role": "hint",
       "note": "AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form."
+    },
+    "activate.attach.name": {
+      "value": "Name",
+      "role": "label",
+      "note": "AddToAccount: the name field. The title is Add your name and email, so the label is one word."
+    },
+    "activate.attach.nameRequired": {
+      "value": "Enter your name.",
+      "role": "body",
+      "note": "AddToAccount: shown under the name field when it is empty."
+    },
+    "activate.otherAccount.title": {
+      "value": "You signed in with a different account",
+      "role": "title",
+      "note": "AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere."
+    },
+    "activate.otherAccount.body": {
+      "value": "You signed in as {email}, not {maskedEmail}. Nothing was added.",
+      "role": "body",
+      "note": "AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated)."
     },
     "activate.waiting": {
       "value": "This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.",
@@ -746,6 +766,11 @@
       "value": "Not in an account",
       "role": "body",
       "note": "AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email."
+    },
+    "account.removeKey": {
+      "value": "Remove license from this device",
+      "role": "button",
+      "note": "AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device."
     },
     "signin.attach.header": {
       "value": "Add {product} to your account",
@@ -1428,7 +1453,7 @@
       "note": "GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform."
     },
     "account.title": {
-      "value": "Account and license",
+      "value": "Account and License",
       "role": "title",
       "note": "AccountAndLicense: the settings pane for the license and account."
     },
@@ -1453,9 +1478,9 @@
       "note": "AccountAndLicense: the settings pane for the license and account. Row label."
     },
     "account.cloudSync": {
-      "value": "Cloud Sync",
+      "value": "Sync Across Devices",
       "role": "label",
-      "note": "AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term."
+      "note": "AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows."
     },
     "account.updates": {
       "value": "Updates",
@@ -1463,12 +1488,12 @@
       "note": "AccountAndLicense: the settings pane for the license and account. Group header."
     },
     "account.autoUpdate": {
-      "value": "Update automatically",
+      "value": "Update Automatically",
       "role": "label",
       "note": "AccountAndLicense: the settings pane for the license and account. Switch label."
     },
     "account.channel": {
-      "value": "Release channel",
+      "value": "Release Channel",
       "role": "label",
       "note": "AccountAndLicense: the settings pane for the license and account. Row label."
     },
@@ -1478,7 +1503,7 @@
       "note": "AccountAndLicense: the settings pane for the license and account. Arguments: {version} = a version string such as 2.4.1."
     },
     "account.managedSettings": {
-      "value": "Managed settings",
+      "value": "Managed Settings",
       "role": "label",
       "note": "AccountAndLicense: the settings pane for the license and account. Row label."
     },
@@ -1670,7 +1695,7 @@
     "cloudSync.signIn": {
       "value": "Sign in to sync",
       "role": "button",
-      "note": "CloudSyncStatus: a small sync status. Cloud Sync needs an account."
+      "note": "CloudSyncStatus: a small sync status. Syncing needs an account."
     },
     "cloudSync.locked": {
       "value": "Sync is locked.",
@@ -1922,25 +1947,50 @@
       "role": "label",
       "note": "SaveConflict: the choice is being applied."
     },
-    "saveConflict.keptLocal": {
-      "value": "Kept this device's save.",
-      "role": "body",
-      "note": "SaveConflict: the choice was applied."
+    "saveConflict.newerThis": {
+      "value": "Newer",
+      "role": "label",
+      "note": "SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice."
     },
-    "saveConflict.keptRemote": {
-      "value": "Kept the other save.",
-      "role": "body",
-      "note": "SaveConflict: the choice was applied."
+    "saveConflict.newerOther": {
+      "value": "Newer",
+      "role": "label",
+      "note": "SaveConflict: tag on the other card when the app says that version was saved later. Never a choice."
     },
-    "saveConflict.keptBoth": {
-      "value": "Kept both. The other is saved as a copy.",
-      "role": "body",
-      "note": "SaveConflict: the choice was applied."
+    "saveConflict.chooseAgain": {
+      "value": "Choose again",
+      "role": "button",
+      "note": "SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied."
     },
-    "saveConflict.keptDeleted": {
-      "value": "The save is deleted.",
+    "saveConflict.failedDeleted": {
+      "value": "Couldn't keep your choice. Your save is unchanged.",
       "role": "body",
-      "note": "SaveConflict: the choice was applied."
+      "note": "SaveConflict: the choice failed after the other copy was deleted; only this device's save exists."
+    },
+    "saveConflict.keptLocalTitle": {
+      "value": "Kept this device's version",
+      "role": "title",
+      "note": "SaveConflict: result title after Keep this device's version."
+    },
+    "saveConflict.keptRemoteTitle": {
+      "value": "Kept the other version",
+      "role": "title",
+      "note": "SaveConflict: result title after Keep the other version."
+    },
+    "saveConflict.keptBothTitle": {
+      "value": "Kept both versions",
+      "role": "title",
+      "note": "SaveConflict: result title after Keep both."
+    },
+    "saveConflict.keptCopy": {
+      "value": "The other version is saved as a copy.",
+      "role": "body",
+      "note": "SaveConflict: under Kept both versions, where the other version went."
+    },
+    "saveConflict.keptDeletedTitle": {
+      "value": "Save deleted",
+      "role": "title",
+      "note": "SaveConflict: result title after Delete it here too."
     },
     "saveConflict.failed": {
       "value": "Couldn't keep your choice. Both saves are unchanged.",
@@ -1988,7 +2038,7 @@
       "note": "About: product and build information."
     },
     "channel.title": {
-      "value": "Release channel",
+      "value": "Release Channel",
       "role": "title",
       "note": "ChannelPicker: the release channel choice."
     },
@@ -2713,6 +2763,11 @@
       "role": "body",
       "note": "License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
     },
+    "locker.key.noEntriesLead": {
+      "value": "You can't continue without an account:",
+      "role": "body",
+      "note": "License key step (SIGN-IN.md §3.9), bold lead of the no-entries callout when Continue without an account was refused key_entry_limit (LK-SKIP.5)."
+    },
     "signin.key.skip": {
       "value": "Continue without an account",
       "role": "button",
@@ -2747,6 +2802,16 @@
       "value": "with your Apple Account",
       "role": "body",
       "note": "Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private)."
+    },
+    "signin.auto.confirm.asGameCenter": {
+      "value": "with Game Center",
+      "role": "body",
+      "note": "Automatic sign-in: the confirm step. After a Game Center sign-in (it shares no email). \"Game Center\" is Apple's product name (never translated)."
+    },
+    "signin.auto.confirm.asPlayGames": {
+      "value": "with Google Play Games",
+      "role": "body",
+      "note": "Automatic sign-in: the confirm step. After a Google Play Games sign-in (it shares no email). \"Google Play Games\" is Google's product name; use Google's localized name (glossary)."
     },
     "signin.auto.confirm.primary": {
       "value": "Continue",
@@ -3384,7 +3449,7 @@
       "note": "Security email (SIGN-IN.md §3.15)."
     },
     "signin.mail.newDevice.body": {
-      "value": "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.",
+      "value": "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.",
       "role": "body",
       "note": "Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country)."
     },
@@ -4554,7 +4619,7 @@
       "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
     },
     "signin.consent.cloudSync": {
-      "value": "Cloud Sync",
+      "value": "Your synced settings and data",
       "role": "body",
       "note": "PX-14a: the app card (SIGN-IN.md §3.6 to §3.9)."
     },
@@ -5284,7 +5349,7 @@
       "note": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). Under the title when the license's last covered version isn't the newest. Arguments: {version} = the newest version."
     },
     "getIt.heading": {
-      "value": "Get it",
+      "value": "Get It",
       "role": "title",
       "note": "The customer portal's Get it section and download steps (PX-28a; copy moved from the portal's own table, P0-36). The product page card's heading."
     },
@@ -5749,9 +5814,39 @@
       "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
     },
     "locker.account.sessions": {
-      "value": "Where you're signed in",
+      "value": "Where You're Signed In",
       "role": "label",
-      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+      "note": "Account page: the section label in the nav and its card title (a name in a Title Case list; Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+    },
+    "locker.account.devices": {
+      "value": "Devices",
+      "role": "label",
+      "note": "Account page: the licence-less devices section (DEVICE-REMOVAL)."
+    },
+    "locker.devices.subtitle": {
+      "value": "Devices signed in without a license. Licensed ones are on their product's page.",
+      "role": "hint",
+      "note": "Account page: the licence-less devices section (DEVICE-REMOVAL)."
+    },
+    "locker.devices.none": {
+      "value": "No devices without a license.",
+      "role": "hint",
+      "note": "Account, Devices: shown after the last device without a license was removed."
+    },
+    "locker.devices.gone": {
+      "value": "This device is already removed.",
+      "role": "hint",
+      "note": "Account, Devices: shown when the restore notice's Remove this device link opens and nothing is left to remove."
+    },
+    "locker.devices.restored": {
+      "value": "Signed in from backup",
+      "role": "label",
+      "note": "Account page and product Devices: a device that signed in from a backup key (DEVICE-REMOVAL)."
+    },
+    "locker.devices.removeRestoredAll": {
+      "value": "Backup sign-in for {product} stops working on all your devices.",
+      "role": "hint",
+      "note": "Account page: the consequence of removing a device that signed in from backup. Arguments: {product} = the product's name."
     },
     "locker.appearance.title": {
       "value": "Appearance",
@@ -5981,7 +6076,7 @@
     "locker.error.loadFailedDevices": {
       "value": "Couldn't load your devices.",
       "role": "body",
-      "note": "A product page's Devices card failed to load; the Try again button is separate."
+      "note": "A product page's Devices card or Account, Devices failed to load; the Try again button is separate."
     },
     "locker.error.loadFailedName": {
       "value": "Couldn't load {name}.",
@@ -6234,9 +6329,19 @@
       "note": "Discover page; moved from the portal's components (P0-36)."
     },
     "locker.account.yourData": {
-      "value": "Your data",
+      "value": "Your Data",
       "role": "label",
-      "note": "Account page; moved from the portal's components (P0-36)."
+      "note": "Account page and product page: the section label in the nav and its card title (a name in a Title Case list; owner's case rule, LOCKER-FEATURE-NAMES §2)."
+    },
+    "locker.account.methods": {
+      "value": "Sign-In Methods",
+      "role": "label",
+      "note": "Account page: the section label in the nav and its card title (a name in a Title Case list). The link and menu item to it keep signin.join.methodsLink in sentence case."
+    },
+    "locker.product.whatsNew": {
+      "value": "What's New",
+      "role": "label",
+      "note": "Product page: the section label in the page's nav and its card title, with the newest version in the card's meta slot (a name in a Title Case list; the update prompt keeps update.whatsNew in sentence case)."
     },
     "locker.account.menuLabel": {
       "value": "Account: {name}",
@@ -6244,7 +6349,7 @@
       "note": "Account page; moved from the portal's components (P0-36)."
     },
     "locker.sessions.subtitle": {
-      "value": "Browsers signed in to this account. Devices that use a license are on each product's page.",
+      "value": "Browsers signed in to this account.",
       "role": "hint",
       "note": "Account → Where you're signed in (P0-36)."
     },
@@ -7354,12 +7459,12 @@
       "note": "Activate a license dialog (P0-36)."
     },
     "locker.activate.syncOne": {
-      "value": "Sign in on it to turn on Cloud Sync.",
+      "value": "Sign in on it to turn on syncing.",
       "role": "body",
       "note": "Activate a license dialog (P0-36)."
     },
     "locker.activate.syncMany": {
-      "value": "Sign in on them to turn on Cloud Sync.",
+      "value": "Sign in on them to turn on syncing.",
       "role": "body",
       "note": "Activate a license dialog (P0-36)."
     },
@@ -7437,6 +7542,11 @@
       "value": "We couldn't find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it.",
       "role": "hint",
       "note": "License key checks in the Activate dialog (P0-36)."
+    },
+    "locker.key.cantUse": {
+      "value": "This key can't be used here.",
+      "role": "hint",
+      "note": "The sign-in card's Continue without an account, when the key is refused (LK-SKIP.5): unknown, inactive, another product's, or a license that can't be used. Never 'not found'."
     },
     "locker.key.emailMismatch": {
       "value": "{product} was bought with {email}. It joins only the account with that email verified.",
@@ -7874,7 +7984,7 @@
       "note": "Portal shell, library and product pages (P0-36)."
     },
     "locker.notFound.addEmail": {
-      "value": "Add an email in Account → Sign-in methods",
+      "value": "Add an email in Account → Sign-In Methods",
       "role": "button",
       "note": "Portal shell, library and product pages (P0-36)."
     },
@@ -8014,7 +8124,7 @@
       "note": "Portal shell, library and product pages (P0-36)."
     },
     "locker.remove.licenseSync": {
-      "value": "The devices you signed in on stop syncing it with Cloud Sync.",
+      "value": "The devices you signed in on stop syncing it.",
       "role": "body",
       "note": "Portal shell, library and product pages (P0-36)."
     },
@@ -8089,9 +8199,9 @@
       "note": "Portal shell, library and product pages (P0-36)."
     },
     "locker.identity.title": {
-      "value": "Sign in to {product}",
+      "value": "Sign In to {product}",
       "role": "title",
-      "note": "Portal shell, library and product pages (P0-36)."
+      "note": "Portal shell, library and product pages (P0-36): the product page's sign-in card title, a name in the page's Title Case card list."
     },
     "locker.identity.body": {
       "value": "{product} signs you in with your Polaris Locker account.",
@@ -8614,7 +8724,7 @@
       "note": "Library strip: other ways to get a license (P0-36, PX-35)."
     },
     "locker.missing.addInMethods": {
-      "value": "Add it in Sign-in methods",
+      "value": "Add it in Sign-In Methods",
       "role": "button",
       "note": "Library strip: other ways to get a license (P0-36, PX-35)."
     },

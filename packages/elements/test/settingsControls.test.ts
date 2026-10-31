@@ -162,12 +162,19 @@ describe("AccountAndLicense: a floating license (UK-42.8)", () => {
     });
   });
 
-  it("keeps the Add action with Identity off: the host opens the portal", async () => {
+  it("with Identity off the action says it opens polaris.locker, with the external glyph", async () => {
     const el = await drawRow(floatingRow(["license"]));
+    const root = el.shadowRoot!;
     expect(
-      el.shadowRoot!.querySelector(
-        'button[data-key="activate.recommend.action"]',
-      ),
+      root.querySelector('button[data-key="activate.recommend.action"]'),
+    ).toBeNull();
+    const add = root.querySelector('button[data-key="signin.key.addInLocker"]');
+    expect(add).not.toBeNull();
+    expect(add!.querySelector("svg")).not.toBeNull();
+    // A key holder who never signed in is not offered Sign out: the exit forgets the key.
+    expect(root.querySelector('button[data-key="common.signOut"]')).toBeNull();
+    expect(
+      root.querySelector('button[data-key="account.removeKey"]'),
     ).not.toBeNull();
   });
 

@@ -45,12 +45,15 @@ export interface PlatformValues {
   "cloudConnect.relayPaused": "on" | "off";
   "cloudConnect.quota.defaultRelayBytes": number;
   "launch.identityExchange": "on" | "off";
+  "launch.identityKeyReturn": "on" | "off";
   "launch.connect": "on" | "off";
   "launch.syncE2e": "on" | "off";
   "launch.syncFiles": "on" | "off";
   "launch.relay": "on" | "off";
   /** The rule document, unparsed: `parseAccessRules` (`core/rbac/ruleGrants.ts`) reads it. */
   "console.access": unknown;
+  "launch.identityRestore": "on" | "off";
+  "launch.gameSignIn": "on" | "off";
 }
 
 let CORE_REGISTRY: SettingsRegistry | undefined;

@@ -52,7 +52,9 @@ export function IconButton({
       </span>
     </Button>
   );
-  // A disabled-with-reason button already carries the reason as its tooltip.
-  if (disabledReason) return button;
-  return <Tooltip content={label}>{button}</Tooltip>;
+  // A disabled-with-reason button already carries the reason as its tooltip, so the label's is
+  // empty then; the wrapper stays, so a reason that comes or goes under focus keeps focus.
+  return (
+    <Tooltip content={disabledReason ? undefined : label}>{button}</Tooltip>
+  );
 }

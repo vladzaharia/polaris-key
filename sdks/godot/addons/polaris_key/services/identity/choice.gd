@@ -6,7 +6,7 @@ extends RefCounted
 ##
 ##   licenses(grant)            the licences the account can run this device on (a view)
 ##   devices(grant, license_id) a full licence's seated devices, for Replace (a view)
-##   complete(grant, choice)    the person's choice: {kind = "license", license_id, replace_device_id?},
+##   complete(grant, choice, consent = null)   the person's choice: {kind = "license", license_id, replace_device_id?},
 ##                              {kind = "keep"}, {kind = "create"} or {kind = "key", key}; the device
 ##                              token is stored like a sign-in
 ##   cancel(grant)              give the grant up; no token, nothing stored
@@ -77,19 +77,45 @@ func devices(grant: String, license_id: String) -> PKeyChoiceResult:
 ## `scope` (and `key_entries` after a key, `attachable` after a keep) say what was signed in. The
 ## grant is spent on `ok`; a refusal the person can fix (`device_limit`, `license_choice_required`,
 ## a wrong key) leaves it open and carries the fresh `view`.
-func complete(grant: String, choice: Variant) -> PKeyChoiceResult:
-	var wire = _choice_wire(choice)
-	if wire is String:
-		return PKeyChoiceResult.failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, wire)
-	return await _complete(grant, wire)
+##
+## `consent` ({claims = [...]}, a subset of the consent view's items) is required on a grant the
+## exchange issued with `confirm` (V5 §12.11.3 rule 2); without it the Worker answers
+## `bad_request` and leaves the grant open. A `choice` of null is allowed only with a consent:
+## the consent alone completes a `confirm` grant when no licence choice is due.
+func complete(grant: String, choice: Variant, consent: Variant = null) -> PKeyChoiceResult:
+	var wire = null
+	if choice != null or consent == null:
+		wire = _choice_wire(choice)
+		if wire is String:
+			return PKeyChoiceResult.failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, wire)
+	var wire_consent = null
+	if consent != null:
+		wire_consent = _consent_wire(consent)
+		if wire_consent is String:
+			return PKeyChoiceResult.failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, wire_consent)
+	return await _complete(grant, wire, wire_consent)
+
+
+## The wire `consent` member for `consent` ({claims = [String]}), or an error String.
+static func _consent_wire(consent: Variant) -> Variant:
+	if not (consent is Dictionary) or not (consent.get("claims") is Array):
+		return "consent must be a Dictionary with claims."
+	var claims: Array = []
+	for c in consent["claims"]:
+		if not (c is String) or c == "":
+			return "consent.claims holds claim names."
+		claims.append(c)
+	return {"claims": claims}
 
 
 ## Conformance replay only: a completion sending exactly `choice` (a wire `choice` member, or null
 ## for none: the Worker's 409 `license_choice_required`).
-func _complete(grant: String, choice: Variant) -> PKeyChoiceResult:
+func _complete(grant: String, choice: Variant, consent: Variant = null) -> PKeyChoiceResult:
 	var body := {"grant": grant}
 	if choice is Dictionary:
 		body["choice"] = choice
+	if consent is Dictionary:
+		body["consent"] = consent
 	# `keep` is proven by the device's own token (the Worker reads it as held); every other choice
 	# is made on the grant alone.
 	var held := ""
@@ -104,7 +130,7 @@ func _complete(grant: String, choice: Variant) -> PKeyChoiceResult:
 		return PKeyChoiceResult.failed(PKeyErrors.INVALID_RESPONSE, "choice complete answered without a complete sign-in.")
 	var identity := _identity()
 	var core := identity._core()
-	var stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN)
+	var stored := core.tokens.set_token(answer["access_token"], PKeyTokenManager.SOURCE_SIGNIN, true)
 	if identity._account != null:
 		identity._account.note_signed_in(answer["subject"])
 	var r := PKeyChoiceResult.made_ok()
@@ -117,6 +143,7 @@ func _complete(grant: String, choice: Variant) -> PKeyChoiceResult:
 	if entries is Dictionary and PKeyClaims.is_number(entries.get("used")) and PKeyClaims.is_number(entries.get("limit")):
 		r.key_entries = {"used": int(entries["used"]), "limit": int(entries["limit"])}
 	r.attachable = choice is Dictionary and choice.get("kind") == "keep"
+	await identity.ladder.session_completed(grant)
 	if identity.redirect_acquisition_sync and identity.on_acquired.is_valid():
 		var synced: PKeySyncResult = await identity.on_acquired.call()
 		var problem := PKeyLicense.unverified(core, synced, "the sign-in succeeded")
@@ -130,6 +157,7 @@ func cancel(grant: String) -> PKeyChoiceResult:
 	var sent := await _post("choiceCancel", {"grant": grant}, "choice cancel")
 	if sent is PKeyChoiceResult:
 		return sent
+	_identity().ladder.session_dropped(grant)
 	return PKeyChoiceResult.made_ok(sent["status"])
 
 
@@ -238,11 +266,11 @@ static func _refusal(status: int, r: PKeyResult, body: Variant) -> PKeyChoiceRes
 	var out := PKeyChoiceResult.refused(StringName(code if code is String and code != "" else "http_%d" % status), status)
 	var retry = b.get("retryAfter")
 	if PKeyClaims.is_number(retry) and not is_nan(float(retry)) and not is_inf(float(retry)) and float(retry) > 0.0:
-		out.retry_after_seconds = int(ceil(float(retry)))
+		out.retry_after_seconds = int(minf(ceilf(float(retry)), 3600.0))
 	else:
 		var header = r.detail["headers"].get("retry-after") if r.detail["headers"] is Dictionary else null
 		if header is String and (header as String).strip_edges().is_valid_int() and int((header as String).strip_edges()) > 0:
-			out.retry_after_seconds = int((header as String).strip_edges())
+			out.retry_after_seconds = mini(int((header as String).strip_edges()), 3600)
 	var view = b.get("view")
 	if view is Dictionary and view.get("state") is String and view.get("choices") is Array:
 		out.view = view

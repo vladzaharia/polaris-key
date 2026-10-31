@@ -173,6 +173,7 @@ export {
   type ReplaceView,
 } from "./identity/choice.js";
 export {
+  RedirectRefusedError,
   RedirectSession,
   type RedirectOutcome,
   type RedirectSignInOptions,

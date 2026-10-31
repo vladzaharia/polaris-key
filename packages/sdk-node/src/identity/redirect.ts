@@ -17,11 +17,13 @@
 import {
   PolarisError,
   TOKEN_CONTENT_TYPE,
+  isManageUrl,
   checkCallback,
   parseTokenAnswer,
   startRedirect,
   tokenForm,
   type RedirectPending,
+  type RefusalDetails,
   type TokenAnswer,
 } from "@polaris-key/client-core";
 import type {
@@ -32,7 +34,7 @@ import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 import type { ProductDiscoveryDocument } from "../discovery.js";
-import { writeStoredSubject } from "./account.js";
+import { readStoredSubject, writeStoredSubject } from "./account.js";
 import type { ChooseOutcome } from "./choice.js";
 import type { IdentityEvent } from "./signIn.js";
 
@@ -51,6 +53,11 @@ export interface RedirectSignInOptions {
   licenseChoice?: AuthorizeLicenseChoice;
   /** The device label the Worker stores (§12.7.1), else the client's default. */
   deviceName?: string;
+  /** LK-SKIP: the app accepts a key return. Sends `key_return=allow`, so the card offers
+   *  "Continue without an account" to a person who has a license key, and `complete` answers
+   *  `activated` for it. The Worker drops the parameter when the product or its launch gate does
+   *  not take it. Default off. */
+  keyReturn?: boolean;
 }
 
 /** How a redirect sign-in ended. A refusal is a thrown `PolarisError` (`invalid_grant`,
@@ -67,10 +74,49 @@ export type RedirectOutcome =
       /** The activation the sign-in produced (the same as `licenseId`, in the session shape). */
       activation: { licenseId: string | null };
     }
+  /** LK-SKIP (a redirect that opted in with `keyReturn`): the person continued without an
+   *  account. The device holds the key's license as a key activation (as `license.activateWithKey`
+   *  leaves it) and any account it held is gone: `subject` is null. */
+  | {
+      kind: "activated";
+      subject: null;
+      /** The license the device runs on. */
+      licenseId: string | null;
+      activation: { licenseId: string | null };
+      /** The license's key entries (`used` may exceed `limit`). */
+      keyEntries: { used: number; limit: number };
+    }
   /** `license_choice=app` and a choice is due: show it, then `identity.choice.*` with `grant`
    *  (I-10a.8). No token was stored. */
   | ChooseOutcome
   | { kind: "cancelled" };
+
+/** A refusal of the token request that came with the flat members `license/activate` gives its
+ *  own refusals (`device_limit`, `key_entry_limit`, `license_owned`). The code is the Worker's. */
+export class RedirectRefusedError extends PolarisError {
+  /** `limit`, `deviceCount`, `manageUrl`, `keyEntries` and `signInUrl`, each present only when the
+   *  answer carried it (`manageUrl` and `signInUrl` are https links the Worker named). */
+  readonly details: RefusalDetails;
+  constructor(
+    code: string,
+    message: string,
+    errorDetails: ConstructorParameters<typeof PolarisError>[2],
+    details: RefusalDetails,
+  ) {
+    super(code, message, errorDetails);
+    this.name = "PolarisError";
+    const { manageUrl, signInUrl, ...rest } = details;
+    this.details = {
+      ...rest,
+      ...(manageUrl !== undefined && isManageUrl(manageUrl)
+        ? { manageUrl }
+        : {}),
+      ...(signInUrl !== undefined && isManageUrl(signInUrl)
+        ? { signInUrl }
+        : {}),
+    };
+  }
+}
 
 /** What the session needs from the identity client. */
 export interface RedirectDeps {
@@ -148,7 +194,9 @@ export class RedirectSession {
       .text()
       .then((t) => JSON.parse(t) as unknown)
       .catch(() => null);
-    const answer: TokenAnswer = parseTokenAnswer(res.status, body);
+    const answer: TokenAnswer = parseTokenAnswer(res.status, body, {
+      keyReturn: pending.keyReturn === true,
+    });
     switch (answer.kind) {
       case "malformed":
         throw new PolarisError(
@@ -161,9 +209,9 @@ export class RedirectSession {
         const retryAfterSeconds =
           answer.retryAfterSeconds ??
           (retry !== null && /^\d+$/.test(retry.trim())
-            ? Number(retry)
+            ? Math.min(Number(retry), 3600)
             : undefined);
-        throw new PolarisError(
+        const refusal = [
           answer.status >= 500 ? ErrorCode.serverError : answer.error,
           `the token endpoint refused the sign-in (${answer.error}).`,
           {
@@ -171,7 +219,13 @@ export class RedirectSession {
             ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
             ...(answer.status >= 500 ? { wireCode: answer.error } : {}),
           },
-        );
+        ] as const;
+        // A key return is refused as `license/activate` would refuse it (`device_limit`,
+        // `key_entry_limit`, `license_owned`): the limit, the device count, the manage link,
+        // the key entries and the sign-in link ride along on `details`.
+        if (answer.details !== undefined && answer.status < 500)
+          throw new RedirectRefusedError(...refusal, answer.details);
+        throw new PolarisError(...refusal);
       }
       case "choose":
         return {
@@ -180,6 +234,27 @@ export class RedirectSession {
           expiresIn: answer.expiresIn,
           choices: answer.choices,
         };
+      case "activated": {
+        // A key return (LK-SKIP, §12.5 rule 3): a key activation, never a sign-in. The token is
+        // stored as `activate` (re-acquired by `license/token`) and the account the device held,
+        // if any, is forgotten with its stored subject (U-02): `subjectChanged` with a null subject, and
+        // no `signedIn` event. The license event comes from the sync after the token is stored.
+        const before = await readStoredSubject(ctx.dirs.state);
+        await tokens.set(answer.accessToken, "activate");
+        await this.#deps.forget();
+        await this.#deps.onAcquired();
+        const licenseId =
+          typeof answer.license.id === "string" ? answer.license.id : null;
+        if (before !== null)
+          this.#deps.emit?.({ kind: "subjectChanged", subject: null });
+        return {
+          kind: "activated",
+          subject: null,
+          licenseId,
+          activation: { licenseId },
+          keyEntries: answer.keyEntries,
+        };
+      }
       case "token": {
         await tokens.set(answer.accessToken, "signin");
         await this.#deps.forget();
@@ -246,6 +321,7 @@ export async function startRedirectSignIn(
     ...(opts.licenseChoice !== undefined
       ? { licenseChoice: opts.licenseChoice }
       : {}),
+    ...(opts.keyReturn === true ? { keyReturn: true } : {}),
     ...(deps.entropy?.state !== undefined ? { state: deps.entropy.state } : {}),
     ...(deps.entropy?.codeVerifier !== undefined
       ? { codeVerifier: deps.entropy.codeVerifier }

@@ -520,6 +520,35 @@ describe("unavailable", () => {
   });
 });
 
+describe("a web key store that falls back to memory inside ensure()", () => {
+  it("is unavailable(device-keys) and makes no request", async () => {
+    const failing = {
+      get: async () => {
+        throw new Error("idb open failed");
+      },
+      putIfAbsent: async () => {
+        throw new Error("idb open failed");
+      },
+      put: async () => {
+        throw new Error("idb open failed");
+      },
+      clear: async () => undefined,
+    };
+    const port = createWebDeviceKeyStore({
+      storage: failing,
+      fallbackToMemory: true,
+    });
+    // Before the first use it still reports durable: only ensure() finds out.
+    expect(await port.persistence()).toBe("durable");
+    const r = rig(() => json(TOKEN_BODY));
+    expect(await r.session.exchange(port, google())).toEqual({
+      kind: "unavailable",
+      reason: "device-keys",
+    });
+    expect(r.calls).toHaveLength(0);
+  });
+});
+
 describe("the nonce is single use", () => {
   it("asks for a new nonce on every attempt, and none is retried", async () => {
     const r = rig(() => json({ error: "invalid_grant" }, 400));
@@ -573,6 +602,35 @@ describe("secrets stay out of logs", () => {
       await r.session.exchange(r.port, google()).catch(() => undefined);
     }
     for (const s of spies) expect(s).not.toHaveBeenCalled();
+  });
+});
+
+describe("the choice endpoints", () => {
+  it("are posted to with redirects refused, and nothing leaves the product's origin", async () => {
+    const ok = rig(() => json({}), { complete: () => json(TOKEN_BODY) });
+    await ok.session.choiceComplete(GRANT, { kind: "create" });
+    expect(ok.calls.at(-1)?.redirect).toBe("error");
+    expect(ok.calls.at(-1)?.signal).toBeDefined();
+
+    const elsewhere = rig(() => json({}), {
+      discovery: {
+        services: {
+          identity: {
+            ...DISCOVERY.services.identity,
+            endpoints: {
+              ...DISCOVERY.services.identity.endpoints,
+              choiceComplete: "https://other.example/choice/complete",
+              choiceCancel: "http://acme.example/choice/cancel",
+            },
+          },
+        },
+      },
+    });
+    await expect(
+      elsewhere.session.choiceComplete(GRANT, { kind: "create" }),
+    ).rejects.toThrow();
+    await expect(elsewhere.session.choiceCancel(GRANT)).rejects.toThrow();
+    expect(elsewhere.calls).toHaveLength(0);
   });
 });
 

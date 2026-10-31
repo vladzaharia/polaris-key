@@ -175,8 +175,10 @@ def test_the_settings_namespace_an_empty_id_and_a_missing_id_never_open() -> Non
         {"record": ["saves", ""], "ct": env, "version": 1},
         {"record": ["saves"], "ct": env, "version": 1},
     ]
-    _out, opened = open_pull({"changes": rows}, C)
+    out, opened = open_pull({"changes": rows}, C)
     assert opened["changes"] == [{"invalid": True}] * 3
+    # An invalid row carries neither the sealed cells nor the sealed elements back.
+    assert all("fields" not in c and "elements" not in c for c in out["changes"])
 
 
 def test_a_plaintext_record_row_is_legacy_and_claims_are_stripped() -> None:

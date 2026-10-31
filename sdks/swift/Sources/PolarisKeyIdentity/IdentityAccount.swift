@@ -101,8 +101,21 @@ extension IdentityClient {
     func signOut(cleaningUp provider: (any PlatformIdentityProvider)?) async throws -> SignOutResult {
         // A ladder already waiting on the platform or the Worker must not store a token now.
         await core.bumpSignOutGeneration()
+        // Offline before discovery loaded: the restore step still runs (the item goes, the revocation is queued for
+        // the next launch), then the error is a network one, not "the product does not serve sign-out".
+        if await core.discoveryDocument == nil { await core.discover() }
+        if await core.discoveryDocument == nil {
+            await restoreSignOutPrelude()
+            throw PolarisError(
+                code: ErrorCode.networkError,
+                message: "sign-out could not reach the Worker (discovery is not loaded).")
+        }
         let url = try await accountEndpoint("signout") { $0.signout }
         for hook in beforeSignOut.current.map(\.hook) { try await hook() }
+        // Silent restore (I-49): revoke this device's key while the bearer still exists. The Worker's
+        // `signout` deletes it in the same request too; this covers a signout that is refused, and queues
+        // the delete for the next launch when the Worker cannot be reached.
+        await restoreSignOutPrelude()
         let response = try await withBearer(url, method: "POST")
         guard response.status == 200 else { throw refusal(response) }
         guard
@@ -214,7 +227,7 @@ extension IdentityClient {
         return url
     }
 
-    private func withBearer(
+    func withBearer(
         _ url: URL, method: String, headers: [String: String] = [:], body: Data? = nil
     ) async throws -> PolarisResponse {
         guard let token = await core.token else {

@@ -101,6 +101,21 @@ export interface BridgeOidcBegin {
   interval?: number;
 }
 
+/** UK-42.17: what `beginSignIn` takes. Every member is optional; a host that predates the hints
+ *  ignores them. The hints prefill the sign-in page and verify nothing; `purpose: "attach"` asks
+ *  for the account to hold the license; `licenseChoice: "app"` is the Node SDK's own hint. The host
+ *  checks types and lengths and refuses a malformed bag (`invalid-argument`); a member it does
+ *  not know is dropped. */
+export interface BridgeSignInBegin {
+  deviceName?: string;
+  /** At most 254 characters, no control characters. */
+  loginHint?: string;
+  /** At most 200 characters, no control characters. */
+  nameHint?: string;
+  purpose?: "attach";
+  licenseChoice?: "app" | "card";
+}
+
 /** The terminal outcome of polling an OIDC flow. v4's `ok` may carry the signed-in identity. */
 export type BridgeOidcPoll =
   | { kind: "pending" }
@@ -154,7 +169,8 @@ export type BridgeActivation =
  *
  * Method changes:
  *
- *   * `beginSignIn({deviceName?})`: the renderer's name wins over the host's `deviceName`
+ *   * `beginSignIn({deviceName?, loginHint?, nameHint?, purpose?, licenseChoice?})` (the hints are
+ *     UK-42.17; see `BridgeSignInBegin`): the renderer's name wins over the host's `deviceName`
  *     option, which stays the default. The result adds `verificationUri` (the bare page, the
  *     code typed by hand), `expiresAt` (epoch seconds, the host's clock) and `interval` (the
  *     minimum seconds between polls) to `flowId`, `verificationUrl` and `userCode`. The device
@@ -300,8 +316,9 @@ export interface PolarisBridge {
   getSyncState(): Promise<BridgeState>;
   /** Re-pull + re-apply the managed documents; resolves to the fresh state. */
   refresh(): Promise<BridgeState>;
-  /** Begin an OIDC sign-in; returns a handle to render + poll. v4 passes `{deviceName}`. */
-  beginSignIn(opts?: { deviceName?: string }): Promise<BridgeOidcBegin>;
+  /** Begin an OIDC sign-in; returns a handle to render + poll. v4 passes `{deviceName}`; UK-42.17
+   *  adds the optional hints (`BridgeSignInBegin`), which an older host ignores. */
+  beginSignIn(opts?: BridgeSignInBegin): Promise<BridgeOidcBegin>;
   /** Poll an in-flight OIDC sign-in by its `flowId`. */
   pollSignIn(flowId: string): Promise<BridgeOidcPoll>;
   /** Activate with a typed key. */

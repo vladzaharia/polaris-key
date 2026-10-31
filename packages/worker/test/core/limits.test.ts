@@ -184,12 +184,16 @@ const INTERNAL: Record<string, string[]> = {
   ],
   "core/stores/microsoftStore/credentials.ts": ["MAX_TOKEN_RESPONSE_BYTES"],
   "core/stores/platformApps.ts": ["PLATFORM_APPS_TTL_SECONDS"],
+  // The server-credential cache lifetime of the Play Games proof (I-14): a cache TTL, not a limit.
+  "core/stores/playGames/serverAuth.ts": ["PGS_SECRET_CACHE_SECONDS"],
   "core/stores/play/client.ts": ["MAX_RESPONSE_BYTES"],
   "core/stores/steam/client.ts": ["MAX_STEAM_RESPONSE_BYTES"],
   "core/stores/steam/publisher.ts": ["MAX_STEAM_APPS"],
   "core/trust/attestation.ts": ["ATTEST_CHALLENGE_TTL"],
   "core/trust/deviceTrust.ts": ["TRUST_AUDIT_WINDOW"],
   "core/trust/playIntegrity.ts": ["MAX_VERDICT_AGE", "MAX_CLOCK_SKEW"],
+  // The widest RSA modulus the pinned-chain x509 reader accepts (I-14): a parser bound, not a limit.
+  "core/trust/x509.ts": ["RSA_MAX_BITS"],
   "core/updateHealth.ts": ["MAX_UPDATE_EVENTS", "MAX_REPORT_GROUPS"],
   "core/updateHealthDo.ts": [
     "RETENTION_SECONDS",

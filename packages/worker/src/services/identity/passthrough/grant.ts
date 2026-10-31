@@ -16,6 +16,8 @@
  *   reads    30 views and device lists in all (and every key attempt), counted in the store by
  *            compare-and-set, so the budget is the grant's, not the network's.
  *
+ * A grant earned by a device code (`via: "device"`) is narrower: no device list, no Replace.
+ *
  * The grant carries no licence, key or token. What it unlocks is what the person already saw on the
  * card; what it cannot do is bind anything the offer does not list.
  */
@@ -55,10 +57,19 @@ export interface GrantRecord {
   /** Earned by a same-device `authorization_code` (I-43.1): `choice/complete` then marks the step-up. */
   fresh?: true;
   /**
+   * Issued to a device-code sign-in that asked for the app's licence choice (WIRE-CONTRACT-V5
+   * §12.5.1 rule 5). That channel can be phished, so this grant never carries `fresh`, cannot list
+   * a licence's devices and cannot Replace.
+   */
+  via?: "device" | "restore";
+  /**
    * Set when the exchange answered `confirm` (I-13.5): `choice/complete` then needs the person's
    * `consent` and writes the app consent against this hash, the one the person was shown.
    */
   consent?: { scopeHash: string };
+  // `via: "restore"` (I-49.7): earned by a silent-restore grant; `choice/complete` then marks the
+  // device as signed in by restore, registers its keys `via: "restore"`, audits `signin.restore`
+  // and sends the notice.
   /** Reads spent so far. */
   reads: number;
   /** Epoch seconds the grant ends, for restoring it after a retryable refusal. */

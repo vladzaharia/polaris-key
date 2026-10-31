@@ -190,7 +190,7 @@
       "reason": "Fixture device rows: a device name, its least-recent chip and the formatted platform and last-used line (devices.meta), drawn as one row title."
     },
     {
-      "pattern": "Cloud Sync Synced 2 min ago|lock On|Share crash reports( Set by Fennick Studio| On · set by Fennick Studio)?|Audio|General|Stable|Beta|Install updates automatically|Send anonymous usage data|Check now|Up to date · checked 2 min ago|Cloud saves|Controls|Video|Online play Set by your parent or guardian|Lifetime · m•••@fennick\\.studio|This Mac, Mara['’]s iPad · 2 of 3",
+      "pattern": "Sync Across Devices Synced 2 min ago|lock On|Share crash reports( Set by Fennick Studio| On · set by Fennick Studio)?|Audio|General|Stable|Beta|Install updates automatically|Send anonymous usage data|Check now|Up to date · checked 2 min ago|Cloud saves|Controls|Video|Online play Set by your parent or guardian|Lifetime · m•••@fennick\\.studio|This Mac, Mara['’]s iPad · 2 of 3",
       "reason": "Fixture settings: the developer's own config-catalog labels and values (Fennick Studio's catalog), with the kit's 'Set by' source line; the developer writes them, not the kit copy catalog."
     },
     {

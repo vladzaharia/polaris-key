@@ -67,6 +67,7 @@ import {
 import { FILES_USED } from "./fileOps.js";
 import { fileStoreOf } from "./client.js";
 import { SCHEMA_VERSION, SqlStore } from "./sqlStore.js";
+import { inspectValues } from "./inspectValues.js";
 import { knownPlatform } from "../../../core/devices/platformFamily.js";
 import { hexEncode } from "../../../platform/bytes.js";
 
@@ -421,6 +422,8 @@ export class CloudSyncDO implements DurableObject {
       }
       case "inspect":
         return this.inspect();
+      case "inspectValues":
+        return this.inspectValues(op);
       case "exportAll":
         return reply({
           op: "exportAll",
@@ -874,6 +877,32 @@ export class CloudSyncDO implements DurableObject {
       collections: tables.collections,
       uploadsOpen: tables.uploadsOpen,
     });
+  }
+
+  /** The console's values read (U-11a.2); `inspectValues.ts`. A gone object answers nothing. */
+  private inspectValues(
+    op: Extract<CloudSyncOp, { op: "inspectValues" }>,
+  ): Response {
+    if (
+      !Number.isSafeInteger(op.limit) ||
+      op.limit < 1 ||
+      op.limit > 200 ||
+      (op.collection !== undefined && !isName(op.collection)) ||
+      (op.after !== undefined && typeof op.after !== "string")
+    )
+      return reply({ error: "bad_request" }, 400);
+    const gone =
+      this.store.getMeta("absorbed_into") !== undefined ||
+      this.store.getMeta("erased_at") !== undefined;
+    this.migrateIfBehind();
+    const out = gone
+      ? {
+          settings: op.collection === undefined ? [] : null,
+          records: [],
+          next: null,
+        }
+      : inspectValues(this.store, op);
+    return reply({ op: "inspectValues", ...out });
   }
 
   private exportAll(

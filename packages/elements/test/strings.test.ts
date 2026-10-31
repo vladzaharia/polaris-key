@@ -44,6 +44,9 @@ beforeAll(() => {
  * The text a person reads, one string per element: its direct text, with an inline `<bdi>` (someone's
  * own text inside a sentence) joined in place. Shadow roots of nested elements are walked too.
  */
+/** Inline marks inside a sentence: someone's own text (`bdi`) and a reason's bold lead (`strong`). */
+const INLINE: ReadonlySet<string> = new Set(["bdi", "strong"]);
+
 function visibleStrings(root: ShadowRoot): string[] {
   const out: string[] = [];
   const clean = (s: string) => s.replace(/\s+/g, " ").trim();
@@ -56,7 +59,7 @@ function visibleStrings(root: ShadowRoot): string[] {
         .map((n) =>
           n.nodeType === Node.TEXT_NODE
             ? (n.textContent ?? "")
-            : n instanceof Element && n.localName === "bdi"
+            : n instanceof Element && INLINE.has(n.localName)
               ? (n.textContent ?? "")
               : "",
         )
@@ -64,7 +67,7 @@ function visibleStrings(root: ShadowRoot): string[] {
       const t = clean(own);
       if (t) out.push(t);
       node.childNodes.forEach((n) => {
-        if (n instanceof Element && n.localName !== "bdi") walk(n);
+        if (n instanceof Element && !INLINE.has(n.localName)) walk(n);
       });
       return;
     }

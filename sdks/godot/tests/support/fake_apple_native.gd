@@ -29,6 +29,18 @@ var store_kit := true
 var garbage_for := ""
 ## Ops whose result never arrives (tests the facade's timeout).
 var never := PackedStringArray()
+## Sign in with Apple (I-48.4a): the next `apple_sign_in` answer (without ev/req), the stored user
+## id (`apple_remember`) and the state the stored id is in. `apple_supported` false answers unsupported.
+var apple_supported := true
+var apple_result := {"ok": true, "token": "eyJ.apple.token", "userID": "001234.abcd"}
+var apple_user_id := ""
+var apple_state := "authorized"
+## Game Center (I-48.6a), the opt-in extension: the next `gc_identity` answer (without ev/req).
+var gc_result := {
+	"ok": true, "publicKeyUrl": "https://static.gc.apple.com/public-key/gc-prod-12.cer", "signature": "AQID", "salt": "UEtleQECAwQ",
+	"timestamp": "1699999995000", "teamPlayerId": "T:transcript-team-player-1", "bundleId": "com.acme.mac",
+}
+
 ## App Attest (P6-02): whether it runs here, the keys the "system" knows (generated ones are added;
 ## clear it to model a reinstall), and a failure code the next attest answers.
 var app_attest_supported := true
@@ -66,7 +78,7 @@ func cmd(json: String) -> String:
 		"ping":
 			return JSON.stringify({"ok": true, "mainThread": true, "protocol": 1})
 		"capabilities":
-			return JSON.stringify({"ok": true, "protocol": 1, "platform": "ios", "appDistributor": true, "appDistributorWeb": true, "managedAssetPacks": packs_supported, "backgroundAssetsConfigured": packs_supported, "storeKit": store_kit, "keychain": true, "entitlementsForID": true, "appAttest": app_attest_supported})
+			return JSON.stringify({"ok": true, "protocol": 1, "platform": "ios", "appDistributor": true, "appDistributorWeb": true, "managedAssetPacks": packs_supported, "backgroundAssetsConfigured": packs_supported, "storeKit": store_kit, "keychain": true, "entitlementsForID": true, "appAttest": app_attest_supported, "appleSignIn": apple_supported})
 		"distributor":
 			return _later(op, distributor.duplicate(true))
 		"app_transaction":
@@ -112,6 +124,20 @@ func cmd(json: String) -> String:
 			if op == "app_attest_assert":
 				return _later(op, {"ok": true, "keyId": key, "assertion": Marshalls.utf8_to_base64("assertion:%s" % key)})
 			return _later(op, {"ok": true, "keyId": key, "attestation": Marshalls.utf8_to_base64("attestation:%s:%s" % [key, q.get("requestHash")]), "generated": generated, "ms": 1})
+		"gc_identity":
+			return _later(op, gc_result.duplicate(true))
+		"apple_sign_in", "apple_credential_state", "apple_remember", "apple_forget":
+			if not apple_supported:
+				return JSON.stringify({"ok": false, "unsupported": true, "reason": "runtime", "detail": "fake: no Sign in with Apple"})
+			if op == "apple_sign_in":
+				return _later(op, apple_result.duplicate(true))
+			if op == "apple_credential_state":
+				return _later(op, {"ok": true, "state": apple_state if apple_user_id != "" else "none"})
+			if op == "apple_remember":
+				apple_user_id = str(q.get("userID", ""))
+			else:
+				apple_user_id = ""
+			return JSON.stringify({"ok": true})
 		"kc_get":
 			keychain_flavors.append(str(q.get("keychain", "")))
 			var key := "%s/%s" % [q.get("product"), q.get("account")]

@@ -10,7 +10,7 @@
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints identity.account
-// @pkey-feature identity.attach identity.choice
+// @pkey-feature identity.attach identity.choice identity.keyreturn
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
@@ -74,6 +74,7 @@ import {
   ErrorCode,
   PolarisError,
   PolarisKeyClient,
+  RedirectRefusedError,
   RelayError,
   createNodeDeviceKeyStore,
   type CacheRecordV3,
@@ -333,6 +334,7 @@ async function startRedirectFor(
   step: Step,
   redirectUri: string,
   licenseChoice: "app" | undefined,
+  keyReturn = false,
 ): Promise<RedirectSession> {
   (client.identity as unknown as { redirectEntropy: unknown }).redirectEntropy =
     {
@@ -352,6 +354,7 @@ async function startRedirectFor(
       ? { purpose: purpose as "signin" | "attach" }
       : {}),
     ...(licenseChoice ? { licenseChoice } : {}),
+    ...(keyReturn ? { keyReturn } : {}),
   });
 }
 
@@ -387,6 +390,7 @@ async function browserStep(
           recorded.searchParams.get("license_choice") === "app"
             ? "app"
             : undefined,
+          recorded.searchParams.get("key_return") === "allow",
         );
         session.redirect = session1;
         const built = new URL(session1.authorizeUrl);
@@ -903,6 +907,7 @@ async function act(
         step,
         `${cb.origin}${cb.pathname}`,
         undefined,
+        step.args.keyReturn === true,
       );
       try {
         const done = await sess.complete(callbackUrl);
@@ -913,10 +918,22 @@ async function act(
           out.subject = done.subject;
           out.tokenHeld = store.token !== null;
         }
+        if (done.kind === "activated") {
+          // A key return: the key's license, no account, no scope.
+          out.scope = "";
+          out.licenseId = done.licenseId;
+          out.subject = done.subject;
+          out.keyEntries = done.keyEntries;
+          out.tokenHeld = store.token !== null;
+        }
       } catch (e) {
         if (!(e instanceof PolarisError)) throw e;
         out.result = e.code.replace(/_/g, "-");
         out.code = e.code;
+        if (e instanceof RedirectRefusedError) {
+          // The refusal's details (device limit, key entries, owned): LK-SKIP's key return.
+          Object.assign(out, e.details);
+        }
       }
       break;
     }

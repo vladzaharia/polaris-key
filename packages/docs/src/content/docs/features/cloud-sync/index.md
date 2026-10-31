@@ -7,7 +7,7 @@ sidebar:
   order: 1
 ---
 
-Cloud Sync (service slug `sync`) keeps what one person chose or made in one product and syncs it across their devices. It holds synced settings, which are the product's `config` keys a person sets, and records in declared collections, such as save slots. A record may carry one file. Together these are Cloud Sync data.
+Cloud Sync (service slug `sync`) keeps what one person chose or made in one product and syncs it across their devices. It holds synced settings, which are the product's `config` keys a person sets, and records in declared collections, such as save slots. A record may carry one file. Together these are Cloud Sync data. End users see the feature as **Sync Across Devices**.
 
 Settings and records sync today. Files are served only while the operator's `launch.syncFiles` gate is on, and discovery then reports `saves` as true and names `endpoints.files`; until then it reports `saves` as false and `files` as `null`. No SDK uploads files yet. See [Files](/docs/features/cloud-sync/files/).
 
@@ -159,7 +159,7 @@ The **Usage** page shows how many people have data, the storage they use against
 
 ## Next steps
 
-- In your app: [Node](/docs/build/sdks/node/your-own-ui/#synced-settings) and [Python](/docs/build/sdks/python/your-own-ui/#synced-settings), the calls, states and events. [Swift](/docs/build/sdks/swift/#cloud-sync-settings), [Kotlin](/docs/build/sdks/kotlin/#cloud-sync-settings) and [Godot](/docs/build/sdks/godot/#cloud-sync-settings-polariskeycloud_sync), the same calls; end-to-end mode is in review there and `sync.e2e` is planned.
+- In your app: [Node](/docs/build/sdks/node/your-own-ui/#synced-settings), [Python](/docs/build/sdks/python/your-own-ui/#synced-settings) and [React](/docs/build/sdks/react/your-own-ui/#synced-settings), the calls, states and events. [Swift](/docs/build/sdks/swift/#cloud-sync-settings), [Kotlin](/docs/build/sdks/kotlin/#cloud-sync-settings) and [Godot](/docs/build/sdks/godot/#cloud-sync-settings-polariskeycloud_sync), the same calls; end-to-end mode is in review there and `sync.e2e` is planned.
 - [The catalog](/docs/features/managed-config/catalog/): declare the keys that sync.
 - [Management states](/docs/features/managed-config/management-states/): which keys are locked.
 - [Sign-in](/docs/features/sign-in/): the principal Cloud Sync needs.

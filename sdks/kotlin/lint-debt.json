@@ -68,8 +68,7 @@
     "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/PolarisKeyAndroid.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,
       "detekt:exceptions.SwallowedException": 1,
-      "detekt:exceptions.TooGenericExceptionCaught": 1,
-      "ktlint:standard:no-consecutive-blank-lines": 1
+      "detekt:exceptions.TooGenericExceptionCaught": 1
     },
     "sdks/kotlin/android/src/main/kotlin/im/plrs/key/android/PolarisKeyLifecycle.kt": {
       "detekt:complexity.TooManyFunctions": 1,
@@ -452,8 +451,7 @@
       "detekt:style.LoopWithTooManyJumpStatements": 1,
       "detekt:style.ReturnCount": 3,
       "detekt:style.ThrowsCount": 1,
-      "detekt:style.UnusedParameter": 1,
-      "ktlint:standard:import-ordering": 1
+      "detekt:style.UnusedParameter": 1
     },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/TranscriptTest.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 4,
@@ -1157,24 +1155,29 @@
       "ktlint:standard:property-wrapping": 2,
       "ktlint:standard:statement-wrapping": 3
     },
+    "sdks/kotlin/games/src/main/kotlin/im/plrs/key/games/PlayGamesProvider.kt": {
+      "detekt:exceptions.SwallowedException": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 1
+    },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/AutoSignIn.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 8,
       "detekt:exceptions.TooGenericExceptionCaught": 7,
       "detekt:style.ReturnCount": 3
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityAccount.kt": {
-      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.SwallowedException": 3,
       "detekt:exceptions.TooGenericExceptionCaught": 3,
       "detekt:style.MagicNumber": 5,
-      "detekt:style.ReturnCount": 2,
+      "detekt:style.ReturnCount": 3,
       "detekt:style.ThrowsCount": 3
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityChoice.kt": {
       "detekt:exceptions.SwallowedException": 1,
       "detekt:exceptions.TooGenericExceptionCaught": 2,
       "detekt:style.MagicNumber": 7,
-      "detekt:style.ThrowsCount": 1
+      "detekt:style.ThrowsCount": 2
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityClient.kt": {
       "detekt:complexity.ComplexCondition": 1,
@@ -1189,15 +1192,14 @@
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityExchange.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,
-      "detekt:complexity.LongMethod": 1,
-      "detekt:complexity.LongParameterList": 1,
+      "detekt:complexity.LongParameterList": 2,
       "detekt:exceptions.SwallowedException": 5,
       "detekt:exceptions.TooGenericExceptionCaught": 5,
-      "detekt:naming.EnumNaming": 8,
+      "detekt:naming.EnumNaming": 9,
       "detekt:style.MagicNumber": 6,
-      "detekt:style.ReturnCount": 5,
-      "detekt:style.ThrowsCount": 3,
-      "ktlint:standard:enum-entry-name-case": 8
+      "detekt:style.ReturnCount": 6,
+      "detekt:style.ThrowsCount": 4,
+      "ktlint:standard:enum-entry-name-case": 9
     },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityRedirect.kt": {
       "detekt:complexity.ComplexCondition": 4,
@@ -1215,6 +1217,13 @@
       "ktlint:standard:import-ordering": 1,
       "ktlint:standard:max-line-length": 1
     },
+    "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityRestore.kt": {
+      "detekt:exceptions.TooGenericExceptionCaught": 1
+    },
+    "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/RestoreLadder.kt": {
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.TooGenericExceptionCaught": 1
+    },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/SignInSession.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,
       "detekt:exceptions.SwallowedException": 1,
@@ -1229,13 +1238,17 @@
       "ktlint:standard:statement-wrapping": 3
     },
     "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/AutoSignInTest.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LargeClass": 1,
       "detekt:complexity.LongParameterList": 1,
       "detekt:exceptions.SwallowedException": 1
     },
     "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/IdentityAccountTest.kt": {
-      "ktlint:standard:argument-list-wrapping": 5,
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 11,
       "ktlint:standard:function-signature": 4,
-      "ktlint:standard:statement-wrapping": 3
+      "ktlint:standard:max-line-length": 1,
+      "ktlint:standard:statement-wrapping": 6
     },
     "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/IdentityAttachTest.kt": {
       "ktlint:standard:argument-list-wrapping": 5

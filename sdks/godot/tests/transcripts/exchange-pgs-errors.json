@@ -1,0 +1,481 @@
+{
+  "transcriptVersion": 1,
+  "id": "exchange-pgs-errors",
+  "description": "Play Games refusals (WIRE-CONTRACT-V5 §12.11.7). A code Google refuses to redeem, and an application verify and a player lookup that both refuse, answer 400 invalid_grant with the same bytes. A verify that is refused for scope falls back to the player lookup, which is not refused here, so a later good exchange still signs in. Google answering 503 is the Worker's 503 unavailable, a failure to retry later: the SDK holds no token and the person is not told the code was bad.",
+  "features": ["identity.pgs"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "exchange",
+      "note": "Google refuses to redeem the code.",
+      "args": {
+        "kind": "pgs",
+        "keyLabel": "transcript-device-key-1",
+        "serverAuthCode": "4/transcript-server-auth-code"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "zft_jY6AN52P3nfeS5MjRHipZ6N6mrcnoEd48fR0ADQ",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "4/transcript-server-auth-code",
+                  "subject_token_type": "urn:polaris-key:token-type:pgs-server-auth-code",
+                  "nonce": "zft_jY6AN52P3nfeS5MjRHipZ6N6mrcnoEd48fR0ADQ",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "bwXusug-d8RfuJ5BtV55oH45Ovd2ptDZ6cXp9HLUCKJIN7fs_pYDXVB84z9DUPWvEXTbW-yaeP5kMAwaYCtTBg"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "Verify and the player lookup are both refused.",
+      "args": {
+        "kind": "pgs",
+        "keyLabel": "transcript-device-key-1",
+        "serverAuthCode": "4/transcript-server-auth-code"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "vkvhPT-Rqxxgu9HOYID1phV05z1ggM8d0dlC267gpK8",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "4/transcript-server-auth-code",
+                  "subject_token_type": "urn:polaris-key:token-type:pgs-server-auth-code",
+                  "nonce": "vkvhPT-Rqxxgu9HOYID1phV05z1ggM8d0dlC267gpK8",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "rOsJ8SGDYk2-X1BxnZUlWGf3kEToGHtyvvk9FZdmGV1PkDcUmVMBQ2lgUro2nqnhCm9na-2ZgGZUcsx_SJnvBg"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "Verify is refused for scope; the player lookup answers.",
+      "args": {
+        "kind": "pgs",
+        "keyLabel": "transcript-device-key-1",
+        "serverAuthCode": "4/transcript-server-auth-code"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "LBUukA12-yeJYTOiX-sY5Q4-sWmGe9DALlLv9Zcti0M",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "4/transcript-server-auth-code",
+                  "subject_token_type": "urn:polaris-key:token-type:pgs-server-auth-code",
+                  "nonce": "LBUukA12-yeJYTOiX-sY5Q4-sWmGe9DALlLv9Zcti0M",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "8Fi0f2V8bM9gZMju2YXFDCQMXBr_-nWYDfOXPe90Yp9aI2tCFmcWzDvl_WIsFFhHooqLrSDvz8U6628GwfFDDA"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_nLm61pug1iWBLhMu6bNKZUhh0jdG0FFwV5tjBjOrJMg",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000000,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": null,
+                "subject": "ps_OQPka457m7AkootHFszJCg",
+                "issued_token_type": "urn:polaris-key:token-type:device"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "tokenHeld": true,
+        "scope": "profile email",
+        "issuedTokenType": "urn:polaris-key:token-type:device",
+        "licenseId": null
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "Google is down.",
+      "args": {
+        "kind": "pgs",
+        "keyLabel": "transcript-device-key-1",
+        "serverAuthCode": "4/transcript-server-auth-code"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "-PTa_BKUVNRKvO5IGwpc02p1MGpt9tAD4mdVrBrea2s",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "4/transcript-server-auth-code",
+                  "subject_token_type": "urn:polaris-key:token-type:pgs-server-auth-code",
+                  "nonce": "-PTa_BKUVNRKvO5IGwpc02p1MGpt9tAD4mdVrBrea2s",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "r1Ez3-bBKeXH_c83r-F1I4iNTkCJUtN79dYeD1OWQbFhx7NTh_drDH3Zhhc2DFq_xDtSVlBLV-5xkDwYXMlSAg"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 503,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "unavailable" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "unavailable",
+        "tokenHeld": false
+      }
+    }
+  ]
+}

@@ -132,6 +132,10 @@ class CommandsTest {
         val r = c.awaitResult(a.getInt("req"))
         assertFalse(r.getBoolean("ok"))
         assertEquals("exception", r.getString("error"))
+        // The class and the message can echo input: only the fixed word leaves (SR-4 L1).
+        assertEquals(Commands.EXCEPTION_REASON, r.getString("message"))
+        assertFalse(r.toString().contains("boom"))
+        assertFalse(r.toString().contains("IllegalStateException"))
     }
 
     @Test

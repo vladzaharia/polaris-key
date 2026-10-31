@@ -30,6 +30,7 @@ import {
   type PortalProfileChange,
   type PortalRelease,
   type PortalSession,
+  type PortalAccountDevice,
   type PortalStorefrontProduct,
 } from "./api.js";
 import { browser } from "./browser.js";
@@ -326,6 +327,25 @@ export function useRemoveDevice(product: string, licenseId: string) {
       product,
       licenseId,
       deviceId,
+    ],
+  });
+}
+
+/**
+ * Account → Devices (`GET /api/me/devices`): the account's devices that hold no licence, or `null`
+ * on a Worker without the route (the section hides).
+ */
+export function useAccountDevices(): UseQueryResult<
+  PortalAccountDevice[] | null
+> {
+  return useQuery(pq.accountDevices());
+}
+
+export function useRemoveAccountDevice() {
+  return useWrite("removeAccountDevice", {
+    toArgs: (d: { product: string; deviceId: string }): [string, string] => [
+      d.product,
+      d.deviceId,
     ],
   });
 }

@@ -470,7 +470,11 @@ export interface BrowserAdapterOptions {
   keyring?: {
     deviceKeys?: DeviceKeyPort;
     vault?: RootVault;
-    /** Seconds the root stays in memory as bytes after it was made or recovered. Default 300. */
+    /**
+     * Seconds the root stays in memory as bytes after it was made or recovered. Default 300;
+     * above 900 is clamped to 900, and a non-finite or non-positive value is `invalid-options`
+     * (raised when the ring is first used).
+     */
     sessionRootSeconds?: number;
   };
   /**
@@ -2129,8 +2133,8 @@ export class BrowserAdapter implements PolarisAdapter {
     const b = this.bearer;
     if (this.configError || !b) return { kind: "unavailable", code: "runtime" };
     try {
-      // A person-initiated sign-in lifts the sign-out flag (a boot-time ladder honours it).
-      if (opts.explicit === true) await this.setExplicitSignOut(false);
+      // A person-initiated run ignores the sign-out flag for this run only; the stored flag
+      // clears when a sign-in lands (below), not when one is merely attempted.
       await this.ensureDiscovery();
       const m = await import("./bearer/autoSignIn.js");
       const result = await m.runAutoSignIn(
@@ -2139,7 +2143,10 @@ export class BrowserAdapter implements PolarisAdapter {
           port: await this.deviceKeyPort(),
           provider: this.platformProvider(m),
           endpoints: exchangeDiscoveryOf(this.discovery_),
-          explicitSignOut: () => this.explicitSignOut(),
+          explicitSignOut: () =>
+            opts.explicit === true
+              ? Promise.resolve(false)
+              : this.explicitSignOut(),
           generation: () => this.signOutGeneration,
           syncKey: () =>
             this.bearer && this.capabilities.sync.enabled
@@ -2148,8 +2155,10 @@ export class BrowserAdapter implements PolarisAdapter {
         },
         opts,
       );
-      if (result.kind === "signedIn" && result.via === "platform")
+      if (result.kind === "signedIn" && result.via === "platform") {
+        if (opts.explicit === true) await this.setExplicitSignOut(false);
         this.applyBearer({ busy: noBusy(), error: noErrors() });
+      }
       // `no_link` carries a handle for the link offer: held across the sign-in redirect.
       if (result.kind === "needsSignIn" && result.linkHandle !== undefined)
         this.linkHandle(`${this.clock()} ${result.linkHandle}`);
@@ -2381,6 +2390,15 @@ export class BrowserAdapter implements PolarisAdapter {
           this.noteSubject(outcome.subject);
           if (redirect) this.linkFor_ = outcome.subject ?? "";
         }
+        if (outcome.kind === "activated") {
+          // A key return (LK-SKIP): a key activation with no account. No link offer follows (the
+          // person chose to go without one) and Cloud Sync, which follows an account, is told
+          // there is none. The app starts at once.
+          this.linkFor_ = undefined;
+          this.applyBearer({ busy: noBusy(), error: noErrors() });
+          this.syncFollowsSession(false);
+          return outcome;
+        }
         this.applyBearer({ busy: noBusy(), error: noErrors() });
         if (outcome.kind === "signedIn") await this.setExplicitSignOut(false);
         if (outcome.kind !== "signedIn") return outcome;
@@ -2397,7 +2415,13 @@ export class BrowserAdapter implements PolarisAdapter {
         return { ...outcome, subject };
       },
       onFailed: (error) => {
-        this.fail("identity", error);
+        // A key return is refused as `license/activate` would refuse it (device limit, key entry
+        // limit, license owned): the typed refusal stands in the license slot, where the gate's
+        // refusal steps read it.
+        this.fail(
+          error.activation !== undefined ? "license" : "identity",
+          error,
+        );
       },
       onStopped: () => this.setBusy("identity", false),
     };

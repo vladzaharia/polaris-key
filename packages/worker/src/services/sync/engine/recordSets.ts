@@ -285,6 +285,8 @@ function fieldsBase(
   }
   row.deleted = false;
   if (hasStamp(prev.stamp)) row.floor = prev.stamp;
+  // A conversion adds every entry, so the record budget holds for it too (§13.3).
+  if (overBudget(row, false)) return { ok: false, plan: badPolicy };
   return { ok: true, row };
 }
 
@@ -315,6 +317,7 @@ function setBase(
     row.elements?.set(canonicalJson(e), { element: e, tags: [prev.version] });
   }
   row.deleted = false;
+  if (overBudget(row, false)) return { ok: false, plan: badPolicy };
   return { ok: true, row };
 }
 
@@ -364,6 +367,12 @@ function begin(
 
 // ---- merge ---------------------------------------------------------------------------------
 
+/** Whether a mutation's base was converted from another shape: the stored row is live and of one. */
+const converted = (
+  prev: StoredRecord | undefined,
+  kind: "fields" | "set",
+): boolean => prev !== undefined && !prev.deleted && prev.kind !== kind;
+
 const anyLive = (fields: ReadonlyMap<string, FieldCell>): boolean => {
   for (const c of fields.values()) if (!c.removed) return true;
   return false;
@@ -407,7 +416,13 @@ export function planFields(
     fields.set(name, { value: null, removed: true, stamp });
     clampRemovedCells(fields);
     row.deleted = !anyLive(fields);
-    return { kind: "write", next: row, shrinking: true, removedCell: true };
+    // A removal that converts the record's shape adds every entry: the quota applies to it.
+    return {
+      kind: "write",
+      next: row,
+      shrinking: !converted(prev, "fields"),
+      removedCell: true,
+    };
   }
   const kid = sealed ? envelopeKid(m.ct as string) : undefined;
   fields.set(name, {
@@ -456,7 +471,7 @@ export function planSet(
     else elements.delete(key);
     row.stamp = stamp;
     row.deleted = liveElements(row).length === 0;
-    return { kind: "write", next: row, shrinking: true };
+    return { kind: "write", next: row, shrinking: !converted(prev, "set") };
   }
 
   const kid = sealed ? envelopeKid(m.ct as string) : undefined;

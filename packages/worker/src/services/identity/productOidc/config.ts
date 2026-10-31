@@ -9,6 +9,7 @@ import { openProductSecret, type Product } from "../../../core/products.js";
 import { errorResponse } from "../../../core/errors.js";
 import { rateLimitOk, type RateLimit } from "../../../core/rateLimit.js";
 import { type ChoiceNotice } from "../licenseChoice.js";
+import type { DeviceHints } from "../passthrough/request.js";
 import { artefactRef, type ArtefactRef } from "../../../core/singleUse.js";
 import {
   type OidcConfigRow,
@@ -95,6 +96,15 @@ export interface FlowRecord {
   customerOk?: boolean;
   /** The label the device-code client sent (`deviceName`), for the chooser and its audit row. */
   deviceName?: string;
+  /** UK-42.22 (§12.10.1): the start asked `licenseChoice: "app"`. With an account to settle for
+   *  (`appModeAccount`) the legacy chooser never opens and the poll answers `choose`. Absent: card
+   *  mode, exactly as every flow was. */
+  appChoice?: true;
+  /** UK-42.22: the account the callback settled this app-mode flow for (`appModeAccount`), stored
+   *  where the callback skipped the legacy chooser. The poll reads it and never decides again, so a
+   *  difference between the two sides cannot fall back to card mode after the chooser was skipped.
+   *  Server-side only; never on a page. */
+  appAccount?: string;
   /** I-26: the chooser is open. Nothing completes, and the poll answers `pending`, until the
    *  person's choice is recorded. */
   choiceOpen?: boolean;
@@ -147,6 +157,8 @@ export interface DeviceFlowRecord {
   userCode: string;
   authorizeUrl: string;
   deviceName?: string;
+  /** What the start sent beside the label (§12.10.1). Absent: card mode, as every start was. */
+  hints?: DeviceHints;
   /** Unix seconds the code was issued: the confirmation page shows its static expiry. */
   startedAt?: number;
   confirmedAt?: number;

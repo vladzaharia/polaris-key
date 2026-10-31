@@ -81,10 +81,10 @@ class ListDetailTest {
     @Config(sdk = [35], qualifiers = "w1280dp-h800dp-mdpi")
     fun aTabletOpensTheChannelRowInTheEndPane() {
         show(sampleSettings.copy(channel = sampleChannel))
-        rule.onNodeWithText("Release channel").assertIsDisplayed() // the list row
+        rule.onNodeWithText("Release Channel").assertIsDisplayed() // the list row
         rule.onNodeWithText("Music volume").assertIsDisplayed()
         rule.onNodeWithText("Beta").assertDoesNotExist()
-        rule.onNodeWithText("Release channel").performClick()
+        rule.onNodeWithText("Release Channel").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Beta").assertIsDisplayed()
         rule.onNodeWithText("Music volume").assertDoesNotExist()
@@ -95,7 +95,7 @@ class ListDetailTest {
     @Config(sdk = [35], qualifiers = "w411dp-h891dp-mdpi")
     fun aPhoneOpensTheChannelThenBackReturnsToTheList() {
         show(sampleSettings.copy(channel = sampleChannel))
-        rule.onNodeWithText("Release channel").performClick()
+        rule.onNodeWithText("Release Channel").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Beta").assertIsDisplayed()
         back()
@@ -107,7 +107,7 @@ class ListDetailTest {
     @Config(sdk = [35], qualifiers = "w1280dp-h800dp-mdpi")
     fun withoutAChannelThereIsNoChannelRow() {
         show(sampleSettings.copy(channel = null))
-        rule.onNodeWithText("Release channel").assertDoesNotExist()
+        rule.onNodeWithText("Release Channel").assertDoesNotExist()
     }
 
     private val studio = sampleSettings.copy(license = sampleSettings.license!!.copy(tierLabel = "Studio", deviceLimit = 5))

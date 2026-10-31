@@ -149,12 +149,14 @@ struct ContentView: View {
 }
 ```
 
+The gate's sign-in form runs the device code and, on the redirect channel, the license choice, and it handles a key with no entries left and a license held by an account. See [License choice and refusals](/docs/build/ui/frameworks/swiftui/#license-choice-and-refusals).
+
 The kit reads its words in nine locales, the device's or `PolarisKeyTheme.locale`, and falls back to English. To customize it or take the parts one by one, see [SwiftUI kit](/docs/build/ui/frameworks/swiftui/).
 
   </Fragment>
   <Fragment slot="library">
 
-Call the client and handle each state yourself. Activate with `client.license.activateWithKey(_:)`, read the state with `client.status()` and `client.isLicensed()`, and sign in with `client.identity.signIn.start(_:)`. `ErrorCopy.activationMessage(result.kind)` gives the words for a refusal, in English only. [Your own UI](/docs/build/sdks/swift/your-own-ui/) gives each call with its states, including [UIKit and AppKit](/docs/build/sdks/swift/your-own-ui/#uikit-and-appkit).
+Call the client and handle each state yourself. Activate with `client.license.activateWithKey(_:)`, read the state with `client.status()` and `client.isLicensed()`, and sign in with `client.identity.signIn.start(_:)`, by device code or redirect, then `client.identity.choice` and `client.identity.signOut()`. `ErrorCopy.activationMessage(result.kind)` gives the words for a refusal, in English only. [Your own UI](/docs/build/sdks/swift/your-own-ui/) gives each call with its states, including [UIKit and AppKit](/docs/build/sdks/swift/your-own-ui/#uikit-and-appkit).
 
 ```swift title="OwnUI.swift"
 import PolarisKey

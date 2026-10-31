@@ -940,11 +940,14 @@ class Feature:
     IDENTITY_ACCOUNT: Final = "identity.account"
     IDENTITY_REDIRECT_WEB: Final = "identity.redirect.web"
     IDENTITY_CHOICE: Final = "identity.choice"
+    IDENTITY_DEVICECODE_CHOICE: Final = "identity.devicecode.choice"
     IDENTITY_SIGNIN_HINTS: Final = "identity.signin.hints"
+    IDENTITY_KEYRETURN: Final = "identity.keyreturn"
     IDENTITY_EXCHANGE: Final = "identity.exchange"
     IDENTITY_GAMECENTER: Final = "identity.gamecenter"
     IDENTITY_PGS: Final = "identity.pgs"
     IDENTITY_AUTOSIGNIN: Final = "identity.autosignin"
+    IDENTITY_RESTORE: Final = "identity.restore"
     IDENTITY_LINK: Final = "identity.link"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
@@ -1081,11 +1084,14 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.account",
     "identity.redirect.web",
     "identity.choice",
+    "identity.devicecode.choice",
     "identity.signin.hints",
+    "identity.keyreturn",
     "identity.exchange",
     "identity.gamecenter",
     "identity.pgs",
     "identity.autosignin",
+    "identity.restore",
     "identity.link",
     "release.changelog",
     "release.download",
@@ -1899,7 +1905,7 @@ PORTAL_MATRIX_VERSION: Final[int] = 1
 
 
 #: `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-UI_MATRIX_VERSION: Final[int] = 7
+UI_MATRIX_VERSION: Final[int] = 10
 
 
 #: `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
@@ -2471,9 +2477,9 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "config.mint": CapabilityRow("implemented", "config", ()),
         "config.mirror": CapabilityRow("implemented", "config", ()),
         "config.local": CapabilityRow("implemented", "sdk", ()),
-        "config.sync": CapabilityRow("planned", "sync", ()),
-        "sync.scenarios": CapabilityRow("planned", "sync", ()),
-        "sync.settings": CapabilityRow("planned", "sync", ()),
+        "config.sync": CapabilityRow("implemented", "sync", ()),
+        "sync.scenarios": CapabilityRow("implemented", "sync", ()),
+        "sync.settings": CapabilityRow("implemented", "sync", ()),
         "sync.conflict": CapabilityRow("planned", "sync", ()),
         "sync.saves": CapabilityRow("planned", "sync", ()),
         "sync.keyring": CapabilityRow("implemented", "sync", ()),
@@ -2482,7 +2488,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.files.delta": CapabilityRow("planned", "sync", ()),
         "sync.e2e.recovery": CapabilityRow("planned", "sync", ()),
         "sync.transfer.background": CapabilityRow("na", "sync", (CapabilityNa("python", "runtime"),)),
-        "sync.e2e": CapabilityRow("planned", "sync", ()),
+        "sync.e2e": CapabilityRow("implemented", "sync", ()),
         "connect.identity": CapabilityRow("implemented", "connect", ()),
         "connect.noise": CapabilityRow("implemented", "connect", ()),
         "connect.protocol": CapabilityRow("implemented", "connect", ()),
@@ -2507,11 +2513,14 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.account": CapabilityRow("implemented", "identity", ()),
         "identity.redirect.web": CapabilityRow("implemented", "identity", ()),
         "identity.choice": CapabilityRow("implemented", "identity", ()),
+        "identity.devicecode.choice": CapabilityRow("planned", "identity", ()),
         "identity.signin.hints": CapabilityRow("implemented", "identity", ()),
+        "identity.keyreturn": CapabilityRow("planned", "identity", ()),
         "identity.exchange": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.gamecenter": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.autosignin": CapabilityRow("planned", "identity", ()),
+        "identity.restore": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.link": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
@@ -2581,4 +2590,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "e159051d1cb45b0ecd03fea9d2e66d564602c5b55c322a9917b6fe38c41cf23f"
+CAPABILITY_DIGEST: Final[str] = "23551c87789e34793de669fccb03a6d4c7d75cc95d783fda9a39a8fcc9b7fdf6"

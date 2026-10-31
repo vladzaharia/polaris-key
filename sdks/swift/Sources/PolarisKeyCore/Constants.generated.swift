@@ -723,11 +723,14 @@ public enum Feature {
     public static let identityAccount = "identity.account"
     public static let identityRedirectWeb = "identity.redirect.web"
     public static let identityChoice = "identity.choice"
+    public static let identityDevicecodeChoice = "identity.devicecode.choice"
     public static let identitySigninHints = "identity.signin.hints"
+    public static let identityKeyreturn = "identity.keyreturn"
     public static let identityExchange = "identity.exchange"
     public static let identityGamecenter = "identity.gamecenter"
     public static let identityPgs = "identity.pgs"
     public static let identityAutosignin = "identity.autosignin"
+    public static let identityRestore = "identity.restore"
     public static let identityLink = "identity.link"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
@@ -864,11 +867,14 @@ public let FEATURE_VALUES: [String] = [
     "identity.account",
     "identity.redirect.web",
     "identity.choice",
+    "identity.devicecode.choice",
     "identity.signin.hints",
+    "identity.keyreturn",
     "identity.exchange",
     "identity.gamecenter",
     "identity.pgs",
     "identity.autosignin",
+    "identity.restore",
     "identity.link",
     "release.changelog",
     "release.download",
@@ -1541,7 +1547,7 @@ public let PRESENTATION_MATRIX_VERSION = 1
 public let PORTAL_MATRIX_VERSION = 1
 
 /// `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-public let UI_MATRIX_VERSION = 7
+public let UI_MATRIX_VERSION = 10
 
 /// `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 public let BACKEND_MATRIX_VERSION = 1
@@ -2025,11 +2031,14 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.account": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.redirect.web": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.devicecode.choice": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.keyreturn": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.exchange": CapabilityRow(status: "implemented", service: "identity", na: []),
-    "identity.gamecenter": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.gamecenter": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.pgs": CapabilityRow(status: "na", service: "identity", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "identity.autosignin": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.restore": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.link": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -2098,4 +2107,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "5b9dc80eda0f570b0c802dea0d336da82b9b4c988b50da7a63f7ff84b4af29f0"
+public let CAPABILITY_DIGEST = "033d5e07cc1b8195b1562ac13afee49953ed0f0b92019ef0188989648d0ea962"

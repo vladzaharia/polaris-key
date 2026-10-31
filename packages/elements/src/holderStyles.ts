@@ -18,7 +18,6 @@ export const HOLDER_CSS = `
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: var(--pk-space-2);
 }
 .holder-head .title {
@@ -59,10 +58,21 @@ export const HOLDER_CSS = `
 }
 .holder-skip {
   margin: 0;
+  color: var(--pk-text-muted);
+  font-size: var(--pk-kit-type-meta-size);
+  line-height: var(--pk-kit-type-meta-line-height);
 }
 .holder-form {
   display: grid;
   gap: var(--pk-space-4);
+}
+/* A short window (DL1, DL3): the form's steps sit closer, so the title, the first field and the
+   docked bar share the 390 px that large text leaves. */
+.pk-root[data-shape="short"] .holder-form {
+  gap: var(--pk-space-2);
+}
+.pk-root[data-shape="short"] .stage[data-split][data-kind] .card.step[data-part="card"] > .texts ~ .holder-form {
+  margin-block-start: var(--pk-space-1);
 }
 .holder-form[hidden] {
   display: none;

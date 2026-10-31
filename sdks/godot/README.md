@@ -1,6 +1,6 @@
 # Polaris Key — Godot SDK
 
-The Polaris Key addon for Godot 4: licensing, managed config, devices, device-code sign-in,
+The Polaris Key addon for Godot 4: licensing, managed config, devices, sign-in by device code or redirect,
 updates by outlet and downloadable packs, every document verified offline against keys the game
 pins. It is pure GDScript. The engine has no Ed25519 and no SHA-512, so the addon carries its own,
 and it runs on every platform Godot exports to, web included, with no GDExtension. Godot is the
@@ -171,7 +171,8 @@ server answers an expired key `unauthorized`, so `license-expired` does not occu
 A key with no entries left is `key-entry-limit` (`key_entries` {used, limit}, `manage_url`); a
 licence that belongs to an account is `license-owned` (`sign_in_url`). Neither wipes state or
 retries, and `key_entries` is also on `ok` when Identity is on (else null). The words come from
-`PKeyActivationController.message_for(r)` and `PKeyUiCopy`. Every code has plain-words copy in `PKeyUiCopy` (`for_code(code, reason)`,
+`PKeyActivationController.message_for(r)` and `PKeyUiCopy`, except these two kinds: `message_for()` answers
+`activation_error` for them, so say it in your own words from `r.kind` (the sign-in form has the catalog's lines). Every code has plain-words copy in `PKeyUiCopy` (`for_code(code, reason)`,
 `for_result(result)`), so a custom screen shows the same text the kit does. The client gate is a
 user-experience gate, not DRM: see [Platform caveats](#platform-caveats).
 
@@ -206,9 +207,10 @@ sync; it carries those hashes, the device name and the build's facts, and nothin
 
 ### Identity
 
-Device-code sign-in (RFC 8628) with a QR code: `sign_in.start()` returns a session with the code
-and the URL to show, and `await session.wait()` the outcome. `PKeySignInDialog`
-is the drop-in screen. Details in [Identity](#identity-polariskeyidentity).
+Sign-in by device code (RFC 8628, with a QR code) or by redirect: `sign_in.start()` returns a
+session, and `await session.wait()` (device code) or `await session.complete(callback_url)`
+(redirect) the outcome. `identity.choice` runs the license choice, and `subject()`, `attach()`,
+`open_account()` and `sign_out()` are the account. `PKeySignInDialog` is the drop-in screen. Details in [Identity](#identity-polariskeyidentity).
 
 ### Update and release
 
@@ -819,7 +821,28 @@ PolarisKey.event.connect(func(kind, data):
 var who = PolarisKey.identity.current()          # {name, email, activatedAt} or null
 await PolarisKey.identity.sign_out()             # cancel, hooks, POST signout (else license.deactivate())
 var who_id = await PolarisKey.identity.subject()  # ok, detail.subject: "ps_..." or null
+await PolarisKey.identity.attach(false)          # preview; attach(true) adds this device's license to the account
 await PolarisKey.identity.open_account()         # the product's account page, detail {url, opened}
+```
+
+**Redirect and the license choice.** A game that can take the browser back to an `https:` address it
+registered passes `channel = "redirect"` and a `redirect_uri`. `session.authorize_url` is the page to
+open; hand the URL the browser lands on to `await session.complete(callback_url)`. The session is
+single use, and `complete()` checks `state` and the issuer before it sends anything. With
+`license_choice = "app"`, a person who holds licenses settles `license_choice` (`grant`, `choices`)
+and nothing is stored until `identity.choice.complete(grant, choice)` succeeds. A refusal there
+(`device_limit`, `license_owned`, `key_entry_limit`, ...) is a `PKeyChoiceResult` of kind `refused`
+with its `manage_url` or `sign_in_url`; the grant stays open when the person can fix it.
+
+```gdscript
+var r := await PolarisKey.identity.sign_in.start({
+	channel = "redirect", redirect_uri = "https://game.example/auth/callback", license_choice = "app"})
+OS.shell_open(r.authorize_url)
+var callback_url := ""                                   # the URL the browser returned to
+var out := await r.complete(callback_url)
+if out.kind == PKeySignInOutcome.KIND_LICENSE_CHOICE:
+	var done := await PolarisKey.identity.choice.complete(out.grant, {kind = "keep"})
+	print(done.ok, done.attachable)                      # keep: attach() may follow
 ```
 
 - **Account calls.** `subject()`, `sign_out()` and `open_account()` use only the endpoints
@@ -830,14 +853,12 @@ await PolarisKey.identity.open_account()         # the product's account page, d
   on `released: true`, otherwise the license and token stay. `current()` reads the signed-in person off the verified license's profile.
   `sign_out()` cancels any sign-in, forgets the identity and stops counting the device through
   `license.deactivate()` (best-effort server call, then the mandatory local wipe), so
-  `state_changed` fires as for a deactivation. `sign_in.start({browser = true})` is the interim "Sign in
-  with browser": device code with the verification page opened in the system browser. A native
-  redirect sign-in waits on the server's redirect token route. It polls
-  `/identity/auth/device/poll` like any device-code sign-in; the old `/identity/auth/poll` route
+  `state_changed` fires as for a deactivation. `sign_in.start({browser = true})` is "Sign in
+  with browser": device code with the verification page opened in the system browser. A device-code
+  sign-in polls `/identity/auth/device/poll`; the old `/identity/auth/poll` route
   is retired and the Worker no longer serves it.
 
-- Device-code sign-in (RFC 8628) is the only native way a game finishes an identity sign-in.
-  `sign_in.start()` refuses with `service-unavailable` before any request when Identity is off or,
+- `sign_in.start()` refuses with `service-unavailable` before any request when Identity is off or,
   per this session's discovery, not configured; a start the Worker answers 404 is the same
   `service-unavailable`. A session that could not start has `ok == false` and a typed `code`, and
   `wait()` returns it as a `PKeySignInOutcome`.

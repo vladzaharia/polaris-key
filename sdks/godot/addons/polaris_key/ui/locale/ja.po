@@ -851,10 +851,10 @@ msgstr "{product}をアカウントに保存"
 msgid "activate.recommend.badge"
 msgstr "おすすめ"
 
-#. Cloud Sync keeps your settings and saves on every device
-#. ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them.
+#. Sync your settings across your devices
+#. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "クラウド同期で、設定とセーブデータをすべてのデバイスに保てます"
+msgstr "設定をすべてのデバイスで同じに保てます"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -886,8 +886,8 @@ msgstr "またはアカウントなしで続ける。{product}は同じように
 msgid "activate.recommend.portal"
 msgstr "ライセンスを Polaris Locker で安全に保管"
 
-#. Your license and its devices stay as they are. You'll confirm the email with a code in your browser.
-#. AddToAccount: under the name and email fields.
+#. Your license and its devices stay as they are.
+#. AddToAccount: under the title, above the fields.
 msgid "activate.attach.lede"
 msgstr "ライセンスとそのデバイスはそのままです。メールアドレスはブラウザーでコードを入力して確認します。"
 
@@ -901,15 +901,35 @@ msgstr "ブラウザーでこのメールアドレスにコードを送ります
 msgid "activate.attach.done"
 msgstr "{product}がアカウントに入りました"
 
-#. Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.
-#. AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone).
+#. Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too.
+#. AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone).
 msgid "activate.attach.syncOn"
-msgstr "この{deviceKind}でクラウド同期がオンになりました。ほかのデバイスでもサインインすると同期されます。"
+msgstr "この{deviceKind}で同期がオンになりました。ほかのデバイスでもサインインすると同期されます。"
 
 #. Couldn't add this license. Try again in a moment.
 #. AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form.
 msgid "activate.attach.failed"
 msgstr "このライセンスを追加できませんでした。しばらくしてからもう一度お試しください。"
+
+#. Name
+#. AddToAccount: the name field. The title is Add your name and email, so the label is one word.
+msgid "activate.attach.name"
+msgstr "名前"
+
+#. Enter your name.
+#. AddToAccount: shown under the name field when it is empty.
+msgid "activate.attach.nameRequired"
+msgstr "名前を入力してください。"
+
+#. You signed in with a different account
+#. AddToAccount: the person signed in as an account other than the email they typed. The license was added nowhere.
+msgid "activate.otherAccount.title"
+msgstr "別のアカウントでサインインしました"
+
+#. You signed in as {email}, not {maskedEmail}. Nothing was added.
+#. AddToAccount: under the otherAccount title. Arguments: {email} = the account that signed in, {maskedEmail} = the email the person typed; both with their middle hidden (never translated).
+msgid "activate.otherAccount.body"
+msgstr "{email}でサインインしましたが、入力したのは{maskedEmail}です。何も追加されていません。"
 
 #. This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.
 #. ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated).
@@ -960,6 +980,16 @@ msgstr "そのメールアドレスを確認"
 #. AccountAndLicense: the row for a license held by a key only. Its action is Add your name and email.
 msgid "account.notInAccount"
 msgstr "アカウントにありません"
+
+#. Remove license from this device
+#. AccountAndLicense: the exit for a license held by a key alone, where nobody is signed in to sign out of. It forgets the key on this device.
+msgid "account.removeKey"
+msgstr "このデバイスからライセンスを削除"
+
+#. macos: Remove License from This Device
+msgctxt "macos"
+msgid "account.removeKey"
+msgstr "このデバイスからライセンスを削除"
 
 #. Add {product} to your account
 #. The sign-in card's header when an app asks to add its license to an account. Arguments: {product} = the product's name (never translated).
@@ -1782,7 +1812,7 @@ msgstr "オフライン · {product}を使えるのは今日まで"
 msgid "grace.deadline"
 msgstr "{date}までオフラインで使えます"
 
-#. Account and license
+#. Account and License
 #. AccountAndLicense: the settings pane for the license and account.
 msgid "account.title"
 msgstr "アカウントとライセンス"
@@ -1807,22 +1837,22 @@ msgstr "ライセンスキーでアクティベート済み"
 msgid "account.devices"
 msgstr "デバイス"
 
-#. Cloud Sync
-#. AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term.
+#. Sync Across Devices
+#. AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows.
 msgid "account.cloudSync"
-msgstr "クラウド同期"
+msgstr "デバイス間の同期"
 
 #. Updates
 #. AccountAndLicense: the settings pane for the license and account. Group header.
 msgid "account.updates"
 msgstr "アップデート"
 
-#. Update automatically
+#. Update Automatically
 #. AccountAndLicense: the settings pane for the license and account. Switch label.
 msgid "account.autoUpdate"
 msgstr "自動的にアップデート"
 
-#. Release channel
+#. Release Channel
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.channel"
 msgstr "リリースチャンネル"
@@ -1832,7 +1862,7 @@ msgstr "リリースチャンネル"
 msgid "account.version"
 msgstr "バージョン{version}"
 
-#. Managed settings
+#. Managed Settings
 #. AccountAndLicense: the settings pane for the license and account. Row label.
 msgid "account.managedSettings"
 msgstr "管理対象の設定"
@@ -2048,7 +2078,7 @@ msgid "cloudSync.signedOut"
 msgstr "サインアウトしています。"
 
 #. Sign in to sync
-#. CloudSyncStatus: a small sync status. Cloud Sync needs an account.
+#. CloudSyncStatus: a small sync status. Syncing needs an account.
 msgid "cloudSync.signIn"
 msgstr "サインインして同期"
 
@@ -2357,25 +2387,55 @@ msgstr "すべてのセーブ枠が使用中です。両方残すには、セー
 msgid "saveConflict.keeping"
 msgstr "選択を反映しています…"
 
-#. Kept this device's save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptLocal"
-msgstr "このデバイスのセーブデータを残しました。"
+#. Newer
+#. SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerThis"
+msgstr "新しい"
 
-#. Kept the other save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptRemote"
-msgstr "もう一方のセーブデータを残しました。"
+#. Newer
+#. SaveConflict: tag on the other card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerOther"
+msgstr "新しい"
 
-#. Kept both. The other is saved as a copy.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptBoth"
-msgstr "両方残しました。もう一方はコピーとして保存されています。"
+#. Choose again
+#. SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied.
+msgid "saveConflict.chooseAgain"
+msgstr "選び直す"
 
-#. The save is deleted.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptDeleted"
-msgstr "セーブデータを削除しました。"
+#. macos: Choose Again
+msgctxt "macos"
+msgid "saveConflict.chooseAgain"
+msgstr "選び直す"
+
+#. Couldn't keep your choice. Your save is unchanged.
+#. SaveConflict: the choice failed after the other copy was deleted; only this device's save exists.
+msgid "saveConflict.failedDeleted"
+msgstr "選択を反映できませんでした。セーブデータは変わっていません。"
+
+#. Kept this device's version
+#. SaveConflict: result title after Keep this device's version.
+msgid "saveConflict.keptLocalTitle"
+msgstr "このデバイスのバージョンを残しました"
+
+#. Kept the other version
+#. SaveConflict: result title after Keep the other version.
+msgid "saveConflict.keptRemoteTitle"
+msgstr "もう一方のバージョンを残しました"
+
+#. Kept both versions
+#. SaveConflict: result title after Keep both.
+msgid "saveConflict.keptBothTitle"
+msgstr "両方のバージョンを残しました"
+
+#. The other version is saved as a copy.
+#. SaveConflict: under Kept both versions, where the other version went.
+msgid "saveConflict.keptCopy"
+msgstr "もう一方のバージョンはコピーとして保存されています。"
+
+#. Save deleted
+#. SaveConflict: result title after Delete it here too.
+msgid "saveConflict.keptDeletedTitle"
+msgstr "セーブデータを削除しました"
 
 #. Couldn't keep your choice. Both saves are unchanged.
 #. SaveConflict: applying the choice failed; Try again repeats it.
@@ -2437,7 +2497,7 @@ msgstr "診断情報をコピー"
 msgid "about.diagnosticsCopied"
 msgstr "診断情報をコピーしました"
 
-#. Release channel
+#. Release Channel
 #. ChannelPicker: the release channel choice.
 msgid "channel.title"
 msgstr "リリースチャンネル"
@@ -3360,6 +3420,16 @@ msgstr "{email} で"
 msgid "signin.auto.confirm.asApple"
 msgstr "Apple アカウントで"
 
+#. with Game Center
+#. Automatic sign-in: the confirm step. After a Game Center sign-in (it shares no email). "Game Center" is Apple's product name (never translated).
+msgid "signin.auto.confirm.asGameCenter"
+msgstr "Game Center で"
+
+#. with Google Play Games
+#. Automatic sign-in: the confirm step. After a Google Play Games sign-in (it shares no email). "Google Play Games" is Google's product name; use Google's localized name (glossary).
+msgid "signin.auto.confirm.asPlayGames"
+msgstr "Google Play Games で"
+
 #. Continue
 #. Automatic sign-in: the confirm step's main button.
 msgid "signin.auto.confirm.primary"
@@ -4112,7 +4182,7 @@ msgstr "{date}に{product}にサインインした際、{device}は{newDevice}�
 msgid "signin.mail.newDevice.subject"
 msgstr "Polaris Lockerアカウントに新しいデバイスがサインインしました"
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
 msgstr "{date}に{place}から{device}がサインインしました。心当たりがない場合は、Polaris Lockerの「サインイン中のデバイス」からサインアウトしてください。"
@@ -5342,10 +5412,10 @@ msgctxt "macos"
 msgid "signin.consent.deny"
 msgstr "許可しない"
 
-#. Cloud Sync
+#. Your synced settings and data
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.consent.cloudSync"
-msgstr "クラウド同期"
+msgstr "同期された設定とデータ"
 
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).
@@ -5993,55 +6063,55 @@ msgstr "デバイスを設定できません"
 msgid "core.codes.device_keys_invalid.message"
 msgstr "このデバイスを同期用に設定できませんでした。アプリを更新して、もう一度お試しください。"
 
-#. Device not linked
+#. Device not set up to connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.title"
-msgstr "デバイスがリンクされていません"
+msgstr "接続の設定が済んでいません"
 
-#. This device has not been set up to link with your others. Update the app and try again.
+#. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "このデバイスは、ほかのデバイスとリンクする設定が済んでいません。アプリを更新して、もう一度お試しください。"
+msgstr "アプリを更新して、もう一度お試しください。"
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.title"
 msgstr "デバイスが多すぎます"
 
-#. This account has more linked devices than can be connected. Remove one and try again.
+#. This account has more devices than can be connected. Remove one and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.message"
-msgstr "このアカウントのリンク済みデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。"
+msgstr "このアカウントのデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。"
 
-#. Remote connect is off
+#. Remote connection is off
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.title"
 msgstr "リモート接続はオフです"
 
-#. Remote connect is off for this app. Your devices connect only on the same network.
+#. Remote connection is off for this app. Your devices connect only on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.message"
 msgstr "このアプリではリモート接続がオフです。デバイスは同じネットワーク上でのみ接続されます。"
 
-#. Remote connect paused
+#. Remote connection paused
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.title"
 msgstr "リモート接続は一時停止中"
 
-#. Remote connect is paused for now. Try again later.
+#. Remote connection is paused for now. Try again later.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.message"
 msgstr "リモート接続は現在一時停止中です。しばらくしてからもう一度お試しください。"
 
-#. Remote limit reached
+#. Remote connection limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.title"
 msgstr "リモート接続の上限に達しました"
 
-#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
-msgstr "リモート接続の上限を使い切りました。まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。"
+msgstr "まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。"
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6548,10 +6618,10 @@ msgstr "同期は少しの間一時停止されています。変更は保持さ
 msgid "core.codes.encryption_mismatch.title"
 msgstr "暗号化が一致しません"
 
-#. This app and the sync service don't agree on encryption. Update the app and try again.
+#. This app and Polaris Locker don't agree on encryption. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.encryption_mismatch.message"
-msgstr "アプリと同期サービスで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。"
+msgstr "アプリとPolaris Lockerで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。"
 
 #. Changed elsewhere
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7313,15 +7383,15 @@ msgstr "保存の問題"
 msgid "core.codes.store-failed.message"
 msgstr "このデバイスに保存できませんでした。ストレージを確認して、もう一度お試しください。"
 
-#. Connect unavailable
+#. Nearby devices unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.title"
-msgstr "接続できません"
+msgstr "近くのデバイスは利用できません"
 
-#. Nearby connection isn't available for this app on this device.
+#. This app can't use them on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
-msgstr "このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。"
+msgstr "このデバイスでは、このアプリで利用できません。"
 
 #. Device not verified
 #. Core copy (conformance/parity/copy.en.json, codes).

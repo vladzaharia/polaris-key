@@ -24,6 +24,14 @@ var flow_requests: Array = []
 ## a Dictionary or a Callable `func(req) -> Dictionary`. Every request: {path, body (parsed), headers}.
 var choice_answers: Dictionary = {}
 var choice_requests: Array = []
+## Answers for `POST …/identity/nonce`: as `tokens`. Every nonce request: {path, body (parsed), headers}.
+var nonces: Array = []
+var nonce_requests: Array = []
+## Answers for `POST …/identity/signout`: as `tokens`; empty answers `{released: false}`. Every request: {path, headers}.
+var signouts: Array = []
+var signout_requests: Array = []
+## The options' device key port (null: the autoload builds its own).
+var device_keys: Object = null
 var sdk: Node = null
 
 
@@ -76,6 +84,19 @@ func _answer(req: Dictionary) -> Dictionary:
 			return {"status": 500}
 		var a = q[0] if q.size() == 1 else q.pop_front()
 		return a.call(req) if a is Callable else a
+	if path.ends_with("/identity/nonce"):
+		var np := PKeyJson.parse_bytes(req["body"])
+		nonce_requests.append({"path": path, "body": np["value"] if np["ok"] else null, "headers": req["headers"]})
+		if nonces.is_empty():
+			return {"status": 500}
+		var n = nonces[0] if nonces.size() == 1 else nonces.pop_front()
+		return n.call(req) if n is Callable else n
+	if path.ends_with("/identity/signout"):
+		signout_requests.append({"path": path, "headers": req["headers"]})
+		if signouts.is_empty():
+			return json(200, {"released": false})
+		var so = signouts[0] if signouts.size() == 1 else signouts.pop_front()
+		return so.call(req) if so is Callable else so
 	if path.ends_with("/identity/token"):
 		token_requests.append({"path": path, "body": (req["body"] as PackedByteArray).get_string_from_utf8(), "headers": req["headers"]})
 		if tokens.is_empty():
@@ -108,6 +129,8 @@ func make_sdk(token := "", services := PackedStringArray(["license", "config", "
 	var store := PKeyMemoryStore.new(F["device_id"], token)
 	var opts := PKeyTestFixtures.options(server.base_url(), store, clock, F["product"], F["trust"], F["version"])
 	opts.expected_services = services
+	if device_keys != null:
+		opts.device_keys = device_keys
 	sdk.configure(opts)
 	await sdk.start()
 	sdk.devices.fingerprint_host = PKeyFakeHost.load_host("linux")

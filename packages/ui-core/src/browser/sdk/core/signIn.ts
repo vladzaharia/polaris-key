@@ -46,6 +46,11 @@ export interface RedirectSignInOptions extends SignInHints {
    *  `choice*` endpoints; otherwise the card chooses. */
   licenseChoice?: "app";
   deviceName?: string;
+  /** LK-SKIP: the app accepts a key return. The card then offers "Continue without an account"
+   *  to a person who has a license key, and `complete` answers `activated` for it. Sent as
+   *  `key_return=allow`; the Worker drops it when the product or the gate does not take it.
+   *  Default off. */
+  keyReturn?: boolean;
 }
 
 export type SignInOptions = DeviceCodeSignInOptions | RedirectSignInOptions;
@@ -73,6 +78,17 @@ export type SignInOutcome =
       activation: { licenseId: string | null };
       /** Who signed in, when the server named them (device code). */
       identity?: { name?: string; email?: string };
+    }
+  /** LK-SKIP (a redirect that opted in with `keyReturn`): the person continued without an
+   *  account. The device holds the key's license as a key activation (as `activateWithKey`
+   *  leaves it), with no account: `subject` is null. The app starts at once; there is no
+   *  ActivateDone, because the card already showed the reasons. */
+  | {
+      kind: "activated";
+      subject: null;
+      activation: { licenseId: string | null };
+      /** The license's key entries (`used` may exceed `limit`). */
+      keyEntries: { used: number; limit: number };
     }
   | { kind: "cancelled" }
   | { kind: "expired" };
@@ -110,7 +126,8 @@ export interface RedirectSignInSession {
   readonly authorizeUrl: string;
   /** Forget the pending request. `complete` then refuses. */
   cancel(): void;
-  /** Redeem the callback the browser was sent back to: `signedIn`, `choose` or `cancelled`. */
+  /** Redeem the callback the browser was sent back to: `signedIn`, `choose`, `cancelled`, or
+   *  (with `keyReturn`) `activated`. */
   complete(callbackUrl: string): Promise<SignInOutcome>;
 }
 

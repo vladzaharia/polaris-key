@@ -141,7 +141,7 @@ describe("product page on today's data (PX-04)", () => {
       const items = within(nav)
         .getAllByRole("link")
         .map((a) => a.textContent);
-      expect(items).not.toContain("Cloud Sync");
+      expect(items).not.toContain("Sync Across Devices");
       expect(items).not.toContain("Packages");
       expect(items).not.toContain("Help");
     }
@@ -152,7 +152,7 @@ describe("product page on today's data (PX-04)", () => {
         within(nav)
           .getAllByRole("link")
           .map((a) => a.textContent),
-      ).toEqual(["Get it", "License", "Devices 2", "What's new", "Your data"]);
+      ).toEqual(["Get It", "License", "Devices 2", "What's New", "Your Data"]);
     // The device count is a small neutral pill, and the link still reads as one name.
     for (const nav of navs) {
       const devicesLink = within(nav).getByRole("link", { name: "Devices 2" });
@@ -160,7 +160,7 @@ describe("product page on today's data (PX-04)", () => {
       expect(pill.textContent).toBe("2");
       expect(pill.getAttribute("data-tone")).toBe("neutral");
     }
-    expect(document.body.textContent).not.toMatch(/Cloud Sync/);
+    expect(document.body.textContent).not.toMatch(/Sync Across Devices/);
     expect(await axeViolations()).toEqual([]);
   });
 
@@ -460,7 +460,7 @@ describe("product page on today's data (PX-04)", () => {
     mockFetch(routes());
     renderPortal();
     await page();
-    const get = screen.getByRole("region", { name: "Get it" });
+    const get = screen.getByRole("region", { name: "Get It" });
     // One table; the build for this Mac is its first row, marked "For your Mac".
     const first = within(get).getAllByRole("row")[1]!;
     expect(first.textContent).toContain("macOS · Universal");
@@ -475,7 +475,7 @@ describe("product page on today's data (PX-04)", () => {
     expect(
       within(get).getAllByRole("button", { name: /Copy SHA-256/ }).length,
     ).toBeGreaterThan(0);
-    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    const news = screen.getByRole("region", { name: "What's New" });
     expect(
       within(news).getByText("New Photo Mode with free camera."),
     ).toBeTruthy();
@@ -560,7 +560,7 @@ describe("product page on today's data (PX-04)", () => {
     );
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get it" });
+    const get = await screen.findByRole("region", { name: "Get It" });
     await within(get).findByText(/Version 2.0 isn't included/);
     expect(get.textContent).toContain("Your license covers 1.8");
     expect(
@@ -722,6 +722,41 @@ describe("product page on today's data (PX-04)", () => {
     expect(
       within(devices).queryByText("We'll email you to confirm."),
     ).toBeNull();
+  });
+
+  it("removing a device that signed in from backup says backup sign-in ends everywhere; an ordinary one does not", async () => {
+    const restoredDetail = detail(nightfall, {
+      devices: [
+        device({ deviceId: "d1", label: "Mara's MacBook Pro" }),
+        device({ deviceId: "d2", label: "Studio PC", restored: true }),
+      ],
+    });
+    mockFetch(
+      signedIn([nightfall], {
+        "/api/releases": { releases },
+        "/api/licenses/nightfall/lic_nightfall": restoredDetail,
+      }),
+    );
+    renderPortal();
+    await page();
+    const asks = async (name: string): Promise<boolean> => {
+      const card = screen.getByRole("region", { name: "Devices" });
+      await userEvent.click(
+        within(card).getByRole("button", { name: `Remove ${name}` }),
+      );
+      await within(card).findByRole("heading", { name: `Remove ${name}?` });
+      const said = Boolean(
+        within(card).queryByText(
+          "Backup sign-in for Nightfall stops working on all your devices.",
+        ),
+      );
+      await userEvent.click(
+        within(card).getByRole("button", { name: "Keep it" }),
+      );
+      return said;
+    };
+    expect(await asks("Studio PC")).toBe(true);
+    expect(await asks("Mara's MacBook Pro")).toBe(false);
   });
 
   it("switches between several licenses for one product", async () => {
@@ -1163,9 +1198,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     const dialog = await openRemove("Remove Mossgarden from your library?");
     expect(within(dialog).getByText("Its devices keep working.")).toBeTruthy();
     expect(
-      within(dialog).getByText(
-        "The devices you signed in on stop syncing it with Cloud Sync.",
-      ),
+      within(dialog).getByText("The devices you signed in on stop syncing it."),
     ).toBeTruthy();
     expect(
       within(dialog).getByText(
@@ -1186,7 +1219,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/"));
   });
 
-  it("a floating key Mara added: anyone with the key can add it; Keep it changes nothing; no Cloud Sync line without the service", async () => {
+  it("a floating key Mara added: anyone with the key can add it; Keep it changes nothing; no sync line without the service", async () => {
     window.history.replaceState(null, "", "/#/p/mossgarden");
     const added = license({
       product: "mossgarden",
@@ -1203,7 +1236,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
         "It won't be in an account: anyone with the key can add it, and it won't come back to this account by itself.",
       ),
     ).toBeTruthy();
-    expect(within(dialog).queryByText(/Cloud Sync/)).toBeNull();
+    expect(within(dialog).queryByText(/stop syncing/)).toBeNull();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Keep it" }),
     );
@@ -1407,7 +1440,7 @@ describe("product page correctness (UX-04)", () => {
     );
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get it" });
+    const get = await screen.findByRole("region", { name: "Get It" });
     await within(get).findByText(/For your Windows PC/);
     expect(within(get).queryByText(/For your Mac/)).toBeNull();
     expect(within(get).getByText(/Windows · x64/)).toBeTruthy();
@@ -1450,7 +1483,7 @@ describe("product page correctness (UX-04)", () => {
     );
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get it" });
+    const get = await screen.findByRole("region", { name: "Get It" });
     const steam = await within(get).findByRole("link", {
       name: "Get it from Steam (opens in a new tab)",
     });
@@ -1608,7 +1641,7 @@ describe("product identity card (PX-13; §4.20, §3.1)", () => {
     renderPortal();
     await page();
     const card = await screen.findByRole("region", {
-      name: "Sign in to Nightfall",
+      name: "Sign In to Nightfall",
     });
     expect(
       within(card).getByText(
@@ -1641,7 +1674,7 @@ describe("product identity card (PX-13; §4.20, §3.1)", () => {
         screen.getByRole("region", { name: "Devices" }).textContent,
       ).toMatch(/of 3 in use/),
     );
-    expect(screen.queryByRole("region", { name: /^Sign in to/ })).toBeNull();
+    expect(screen.queryByRole("region", { name: /^Sign In to/ })).toBeNull();
   });
 });
 
@@ -1666,7 +1699,7 @@ describe("What's new reads its notes as Markdown (owner polish 2026-10-07)", () 
     mockFetch(withNotes(NOTES));
     renderPortal();
     await page();
-    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    const news = screen.getByRole("region", { name: "What's New" });
     // Formatted: a heading under the card's h2, bold, a safe link out.
     expect(
       within(news).getByRole("heading", { level: 3, name: "Highlights" }),
@@ -1719,7 +1752,7 @@ describe("What's new reads its notes as Markdown (owner polish 2026-10-07)", () 
       mockFetch(withNotes(NOTES));
       renderPortal();
       await page();
-      const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+      const news = screen.getByRole("region", { name: "What's New" });
       await userEvent.click(
         within(news).getByRole("button", { name: "Show full notes" }),
       );
@@ -1736,7 +1769,7 @@ describe("What's new reads its notes as Markdown (owner polish 2026-10-07)", () 
     mockFetch(withNotes("Faster *preset* browser."));
     renderPortal();
     await page();
-    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    const news = screen.getByRole("region", { name: "What's New" });
     expect(within(news).getByText("preset").tagName).toBe("EM");
     expect(
       within(news).queryByRole("button", { name: "Show full notes" }),
@@ -1788,27 +1821,27 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     await page();
     // At the top: no card has reached the reading line, so the first section.
     await scrollTo({ get: 500, license: 500, devices: 800, new: 1100 });
-    await waitFor(() => expect(marked()).toBe("Get it"));
+    await waitFor(() => expect(marked()).toBe("Get It"));
     // Get it and License (side by side) pass the line together: the later one in the order.
     await scrollTo({ get: 4, license: 4, devices: 304, new: 604 });
     await waitFor(() => expect(marked()).toBe("License"));
     await scrollTo({ get: -300, license: -300, devices: 0, new: 300 });
     await waitFor(() => expect(marked()).toBe("Devices 2"));
     await scrollTo({ get: -600, license: -600, devices: -300, new: 0 });
-    await waitFor(() => expect(marked()).toBe("What's new"));
+    await waitFor(() => expect(marked()).toBe("What's New"));
 
     // Picking Get it holds the mark, though License shares its top once it lands.
     const toc = screen.getByRole("navigation", { name: "On this page" });
-    await userEvent.click(within(toc).getByRole("link", { name: "Get it" }));
+    await userEvent.click(within(toc).getByRole("link", { name: "Get It" }));
     await scrollTo({ get: 0, license: 0, devices: 300, new: 600 });
     await new Promise((r) => setTimeout(r, 50));
-    expect(marked()).toBe("Get it");
+    expect(marked()).toBe("Get It");
     // Once the person scrolls by themselves, the reading line leads again.
     act(() => {
       window.dispatchEvent(new Event("wheel"));
     });
     await scrollTo({ get: -600, license: -600, devices: -300, new: 0 });
-    await waitFor(() => expect(marked()).toBe("What's new"));
+    await waitFor(() => expect(marked()).toBe("What's New"));
   });
 
   it("with no main-column card, the licence's cards are one column, not a column of air beside one", async () => {
@@ -1905,14 +1938,14 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     const card = await screen.findByRole("region", { name: "License" });
     await within(card).findByText(/^Ended /);
     expect(screen.queryByText("Not included")).toBeNull();
-    expect(screen.queryByRole("region", { name: "Get it" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Get It" })).toBeNull();
     // Neither the section nav nor the jump bar points at the card that is not there.
     for (const nav of ["On this page", "Sections"]) {
       const links = within(screen.getByRole("navigation", { name: nav }))
         .getAllByRole("link")
         .map((l) => l.textContent);
       expect(links).toContain("License");
-      expect(links).not.toContain("Get it");
+      expect(links).not.toContain("Get It");
     }
   });
 
@@ -1945,15 +1978,15 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     const card = await screen.findByRole("region", { name: "License" });
     await within(card).findByText(/^Ended /);
     expect(screen.queryByText(/Open this page on your computer/)).toBeNull();
-    expect(screen.queryByRole("region", { name: "Get it" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Get It" })).toBeNull();
     for (const nav of ["On this page", "Sections"])
       expect(
         within(screen.getByRole("navigation", { name: nav }))
           .getAllByRole("link")
           .map((l) => l.textContent),
-      ).not.toContain("Get it");
+      ).not.toContain("Get It");
     // The License card leads the main column, with What's new, not the rail.
-    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    const news = screen.getByRole("region", { name: "What's New" });
     expect(card.parentElement!.parentElement).toBe(
       news.parentElement!.parentElement,
     );
@@ -1970,7 +2003,7 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     renderPortal();
     await page();
     const help = await screen.findByRole("region", { name: "Help" });
-    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    const news = screen.getByRole("region", { name: "What's New" });
     const license = screen.getByRole("region", { name: "License" });
     // In the main column with What's new, after it; not in the licence's side column.
     const column = (el: HTMLElement) => el.parentElement!;
@@ -2041,7 +2074,7 @@ describe("Get it: other ways to install (P0-48)", () => {
     mockFetch(routes({ "/api/products/nightfall/downloads": view("macos") }));
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get it" });
+    const get = await screen.findByRole("region", { name: "Get It" });
     const mac = await within(get).findByRole("list", {
       name: "Other ways to install on macOS",
     });
@@ -2114,7 +2147,7 @@ describe("Get it: other ways to install (P0-48)", () => {
     mockFetch(routes({ "/api/products/nightfall/downloads": view("ios") }));
     renderPortal();
     await page();
-    const get = await screen.findByRole("region", { name: "Get it" });
+    const get = await screen.findByRole("region", { name: "Get It" });
     const lead = await within(get).findByRole("list", {
       name: "Install on this iPhone",
     });

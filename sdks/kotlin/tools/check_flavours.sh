@@ -20,7 +20,9 @@
 #           Play Core either (P6-09), though it carries the flavour-neutral PlatformIntegrity (which
 #           answers Unsupported "outlet" there); :android's DirectInstallDriver present
 #           (I-45.4) no androidx/credentials or googleid class in the platform AAR or the dex; play
-#           carries GoogleSignIn and Credential Manager
+#           carries GoogleSignIn and Credential Manager; (I-49.1b) no
+#           com/google/android/gms/auth/blockstore class or reference in the platform AAR or the dex;
+#           play carries BlockStoreBackup and Block Store
 #   both    no native libraries in the platform, Godot or :android AAR (pure Kotlin, notes/E4
 #           §2.1); the PlatformIntegrity surface is present (P6-09); the APK's only native library
 #           is zstd-jni's (which the opt-in polaris-key-zstd links, SP-50; :boundary adds it so its
@@ -103,6 +105,16 @@ for flavor in play direct; do
     [ "$n" -ge 1 ] && ok "platform AAR links Credential Manager" || fail "platform AAR has no Credential Manager reference"
   fi
 
+  # Block Store (I-49.1b): the flavour-neutral PlatformBackup is in both AARs, the Block Store
+  # classes only in play.
+  if grep -q 'im/plrs/key/platform/PlatformBackup.class' <<<"$listing"; then ok "platform AAR has PlatformBackup"; else fail "platform AAR lacks PlatformBackup"; fi
+  n="$(unzip -p "$jar" '*.class' | LC_ALL=C grep -a -c 'com/google/android/gms/auth/blockstore' || true)"
+  if [ "$flavor" = direct ]; then
+    [ "$n" = 0 ] && ok "platform AAR references no Block Store" || fail "platform AAR references Block Store ($n)"
+  else
+    [ "$n" -ge 1 ] && ok "platform AAR links Block Store" || fail "platform AAR has no Block Store reference"
+  fi
+
   # The APK's native libraries: only zstd-jni's (through :android), each 16 KB page aligned.
   libs="$(unzip -Z1 "$apk" | grep -E '\.so$' || true)"
   other="$(grep -v -E '^lib/[^/]+/libzstd-jni-[0-9.-]+\.so$' <<<"$libs" | grep -v '^$' || true)"
@@ -143,9 +155,15 @@ for flavor in play direct; do
     [ "$n" = 1 ] && ok "Credential Manager present" || fail "Credential Manager missing ($n)"
     n="$(count "Class descriptor *: 'Lim/plrs/key/platform/play/PlayPlatformIntegrity;'" "$dex")"
     [ "$n" = 1 ] && ok "PlatformIntegrity over Play present" || fail "PlatformIntegrity over Play missing ($n)"
+    n="$(count "Class descriptor *: 'Lim/plrs/key/platform/play/BlockStoreBackup;'" "$dex")"
+    [ "$n" = 1 ] && ok "Block Store backup present" || fail "Block Store backup missing ($n)"
+    n="$(count "Class descriptor *: 'Lcom/google/android/gms/auth/blockstore/Blockstore;'" "$dex")"
+    [ "$n" = 1 ] && ok "Block Store present" || fail "Block Store missing ($n)"
   else
     n="$(count 'Landroidx/credentials/|Lcom/google/android/libraries/identity/googleid/' "$dex")"
     [ "$n" = 0 ] && ok "no androidx/credentials or googleid class or reference" || fail "$n Credential Manager or googleid references"
+    n="$(count 'Lcom/google/android/gms/auth/blockstore/' "$dex")"
+    [ "$n" = 0 ] && ok "no Block Store class or reference" || fail "$n Block Store references"
     n="$(count 'Lcom/google/android/play/' "$dex")"
     [ "$n" = 0 ] && ok "no Play Core class or reference" || fail "$n Play Core references"
     n="$(count "Class descriptor *: 'Lim/plrs/key/platform/play/|Class descriptor *: 'Lim/plrs/key/godot/PlayCommands|Class descriptor *: 'Lim/plrs/key/android/(PlayInstallDriver|PadPackTransport)" "$dex")"

@@ -1,0 +1,625 @@
+{
+  "transcriptVersion": 1,
+  "id": "exchange-gamecenter-errors",
+  "description": "Every Game Center verifier failure is the same refusal (WIRE-CONTRACT-V5 §12.11.7). A signature older than the 120 s window, a signature the Worker has already accepted and a bundle id the product does not declare all answer 400 invalid_grant with the same bytes, so a caller learns nothing about which check failed. A good exchange spends its signature: sending the same token with a new nonce is refused. A Worker whose Game Center and Play Games launch gate is off does not serve the token type at all and answers 400 invalid_request; a client with discovery from before the gate went off holds no token and may sign in another way.",
+  "features": ["identity.gamecenter"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "exchange",
+      "note": "A signature from five minutes ago.",
+      "args": {
+        "kind": "gamecenter",
+        "keyLabel": "transcript-device-key-1",
+        "gameCenter": {
+          "publicKeyUrl": "https://static.gc.apple.com/public-key/gc-prod-12.cer",
+          "signature": "IUJ--dDgM2q5g8nrTgyeNN5ww8Ef0u3YL5Jbe5kqAYJnV1ZIrspIxM1a3jG7_6QsF9_fVaBv3CcU7rsovVZ7aD3RiZrIb-yOaYAUFGX2ePvRhdLbpvF7yUUaYZK7Wx6Ksrl6WMG6ddwPP1sDES7f7iSRyTXerKtXyCLzPiZRCWh5UzjAnT7Bg9tmJsKkv8tg0Fr6rh_53en4lW7Ul-hrSy2ZN0zvKepvpZvxxy0Wras8PZWy8ePrlpU4gWa8EvqYbqhabAmDybOuKyhnH3sbWV8fSbJHQYM5xAQPlcbrOKyXMu7erHNDecC0VeaO6JVwvc-w9hUp55vpYIupoz2X_A",
+          "salt": "UEtleQECAwQ",
+          "timestamp": 1699999700000,
+          "teamPlayerId": "T:transcript-team-player-1",
+          "bundleId": "com.acme.mac"
+        }
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "u_Q1AW5DE6sWY7hWCgMzLroRF__P_R0dWbTTYIpI4vY",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "gc1.aHR0cHM6Ly9zdGF0aWMuZ2MuYXBwbGUuY29tL3B1YmxpYy1rZXkvZ2MtcHJvZC0xMi5jZXI.IUJ--dDgM2q5g8nrTgyeNN5ww8Ef0u3YL5Jbe5kqAYJnV1ZIrspIxM1a3jG7_6QsF9_fVaBv3CcU7rsovVZ7aD3RiZrIb-yOaYAUFGX2ePvRhdLbpvF7yUUaYZK7Wx6Ksrl6WMG6ddwPP1sDES7f7iSRyTXerKtXyCLzPiZRCWh5UzjAnT7Bg9tmJsKkv8tg0Fr6rh_53en4lW7Ul-hrSy2ZN0zvKepvpZvxxy0Wras8PZWy8ePrlpU4gWa8EvqYbqhabAmDybOuKyhnH3sbWV8fSbJHQYM5xAQPlcbrOKyXMu7erHNDecC0VeaO6JVwvc-w9hUp55vpYIupoz2X_A.UEtleQECAwQ.1699999700000.VDp0cmFuc2NyaXB0LXRlYW0tcGxheWVyLTE.Y29tLmFjbWUubWFj",
+                  "subject_token_type": "urn:polaris-key:token-type:gamecenter-signature",
+                  "nonce": "u_Q1AW5DE6sWY7hWCgMzLroRF__P_R0dWbTTYIpI4vY",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "pYCvAhWW2qPcwaU15LzBL_1Z1WAAq73zV4_wMPPqkLwyp6CpYCzjEnVer2lSbVnqFuskAr9os9dNN5kYkplDBA"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "A bundle id the product does not declare.",
+      "args": {
+        "kind": "gamecenter",
+        "keyLabel": "transcript-device-key-1",
+        "gameCenter": {
+          "publicKeyUrl": "https://static.gc.apple.com/public-key/gc-prod-12.cer",
+          "signature": "ZDpyN5mXD5jNBkWKdgGDypg63bZuIRzYlx1YLbXi20w6er87wcQ93NOPcSMgc-c8i0Pmx8thzCcLyW5jCg0TZtzxjVaFmR1e2aCWzRHQSfWoHmdRg8pNdiTCSl8YdiJV-nsJ2ocyA_4rNxlOmaRelvtSE3BAAc5uNhiPWHIDTLDXxlVg_fvdi3iHjcV-iNhq3b5NsnNrKXN6typ9wnlFgG_t5bS9MTwWIvpg6hyMsWEN_0GCrh0HknnaQ_w0Ozhok7oyghqKUg9okJJuznWEz9ocsecLKczYuZsUovZ-ZhflFX5q-vnJeLX5Z77Hy9-exLwbV8Gq1oGhydqs9SMWgg",
+          "salt": "UEtleQECAwQ",
+          "timestamp": 1699999995000,
+          "teamPlayerId": "T:transcript-team-player-1",
+          "bundleId": "com.example.undeclared"
+        }
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "GfM_rDE8V46AyLdPlAxC_VmuPgTIvNquADdH7Vy-1uo",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "gc1.aHR0cHM6Ly9zdGF0aWMuZ2MuYXBwbGUuY29tL3B1YmxpYy1rZXkvZ2MtcHJvZC0xMi5jZXI.ZDpyN5mXD5jNBkWKdgGDypg63bZuIRzYlx1YLbXi20w6er87wcQ93NOPcSMgc-c8i0Pmx8thzCcLyW5jCg0TZtzxjVaFmR1e2aCWzRHQSfWoHmdRg8pNdiTCSl8YdiJV-nsJ2ocyA_4rNxlOmaRelvtSE3BAAc5uNhiPWHIDTLDXxlVg_fvdi3iHjcV-iNhq3b5NsnNrKXN6typ9wnlFgG_t5bS9MTwWIvpg6hyMsWEN_0GCrh0HknnaQ_w0Ozhok7oyghqKUg9okJJuznWEz9ocsecLKczYuZsUovZ-ZhflFX5q-vnJeLX5Z77Hy9-exLwbV8Gq1oGhydqs9SMWgg.UEtleQECAwQ.1699999995000.VDp0cmFuc2NyaXB0LXRlYW0tcGxheWVyLTE.Y29tLmV4YW1wbGUudW5kZWNsYXJlZA",
+                  "subject_token_type": "urn:polaris-key:token-type:gamecenter-signature",
+                  "nonce": "GfM_rDE8V46AyLdPlAxC_VmuPgTIvNquADdH7Vy-1uo",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "uoyJgH7MdKfLx_71H8obnnnNCiV57C4haiDYMQnkv5GwQV_OSFVb3MKVqVm0A0PIX5DLtW85ofIjicyACRB7DQ"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "A good exchange spends its signature.",
+      "args": {
+        "kind": "gamecenter",
+        "keyLabel": "transcript-device-key-1",
+        "gameCenter": {
+          "publicKeyUrl": "https://static.gc.apple.com/public-key/gc-prod-12.cer",
+          "signature": "hDC8IrR-CHInlJdzFrBIaZ0NDwD9w12SRB0aeHXgSzitCf8yd5M-pzuSWbDszufrYU27rgn_MDcp-NgpMTOrouoATbrumBvI7Co0fZuQ2BjPYsGrSQXVt58c1IYlaq--NxPxEP1XRsYGnb537-nce67ZdJDEy8xlITe-HPyhQ0GaeF2-KJpgPfFI2IeCTzQMb3DrHm5xXsi5HmzDDg61YkL0ByrsCtzeFulsWxZPi1Nvh_V-UY6M6hqCdGSwG_4MEYPClEcn1ldCH-5Bbfd9XNNg62hXxgvpHn2PE6Sc1xFuFGsTA4FKmXIGJmgdeOhUrFpRKcp-yrMjYq4yj2JEbg",
+          "salt": "UEtleQECAwQ",
+          "timestamp": 1699999995000,
+          "teamPlayerId": "T:transcript-team-player-1",
+          "bundleId": "com.acme.mac"
+        }
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "RbIwpAHVNNyxDsh5HAhP3CZLGICJBJjM4Cr--Dl5hkM",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "gc1.aHR0cHM6Ly9zdGF0aWMuZ2MuYXBwbGUuY29tL3B1YmxpYy1rZXkvZ2MtcHJvZC0xMi5jZXI.hDC8IrR-CHInlJdzFrBIaZ0NDwD9w12SRB0aeHXgSzitCf8yd5M-pzuSWbDszufrYU27rgn_MDcp-NgpMTOrouoATbrumBvI7Co0fZuQ2BjPYsGrSQXVt58c1IYlaq--NxPxEP1XRsYGnb537-nce67ZdJDEy8xlITe-HPyhQ0GaeF2-KJpgPfFI2IeCTzQMb3DrHm5xXsi5HmzDDg61YkL0ByrsCtzeFulsWxZPi1Nvh_V-UY6M6hqCdGSwG_4MEYPClEcn1ldCH-5Bbfd9XNNg62hXxgvpHn2PE6Sc1xFuFGsTA4FKmXIGJmgdeOhUrFpRKcp-yrMjYq4yj2JEbg.UEtleQECAwQ.1699999995000.VDp0cmFuc2NyaXB0LXRlYW0tcGxheWVyLTE.Y29tLmFjbWUubWFj",
+                  "subject_token_type": "urn:polaris-key:token-type:gamecenter-signature",
+                  "nonce": "RbIwpAHVNNyxDsh5HAhP3CZLGICJBJjM4Cr--Dl5hkM",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "EoIPleIGzsE7GoI53X14dYV1n90dMtoihpmetJSrvWzzVke-W_EJSM05PWoQ3NTg8yEZS6kuTZKJ_1ihzNPwCQ"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_sQjaxtQNdyrapUmJnjiVXyCXHd0jy29ZmZ-QJW4l1J4",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000000,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": null,
+                "subject": "ps_Dffe1ubzL7k2QID0t_Rn0A",
+                "issued_token_type": "urn:polaris-key:token-type:device"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "tokenHeld": true,
+        "scope": "profile email",
+        "issuedTokenType": "urn:polaris-key:token-type:device",
+        "licenseId": null
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "The same signature again, with a new nonce.",
+      "args": {
+        "kind": "gamecenter",
+        "keyLabel": "transcript-device-key-1",
+        "gameCenter": {
+          "publicKeyUrl": "https://static.gc.apple.com/public-key/gc-prod-12.cer",
+          "signature": "hDC8IrR-CHInlJdzFrBIaZ0NDwD9w12SRB0aeHXgSzitCf8yd5M-pzuSWbDszufrYU27rgn_MDcp-NgpMTOrouoATbrumBvI7Co0fZuQ2BjPYsGrSQXVt58c1IYlaq--NxPxEP1XRsYGnb537-nce67ZdJDEy8xlITe-HPyhQ0GaeF2-KJpgPfFI2IeCTzQMb3DrHm5xXsi5HmzDDg61YkL0ByrsCtzeFulsWxZPi1Nvh_V-UY6M6hqCdGSwG_4MEYPClEcn1ldCH-5Bbfd9XNNg62hXxgvpHn2PE6Sc1xFuFGsTA4FKmXIGJmgdeOhUrFpRKcp-yrMjYq4yj2JEbg",
+          "salt": "UEtleQECAwQ",
+          "timestamp": 1699999995000,
+          "teamPlayerId": "T:transcript-team-player-1",
+          "bundleId": "com.acme.mac"
+        }
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "JXDx8ZY4YM-sAjHdgsO2P4HpaitPMQJOw3lk_vSFbhk",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "gc1.aHR0cHM6Ly9zdGF0aWMuZ2MuYXBwbGUuY29tL3B1YmxpYy1rZXkvZ2MtcHJvZC0xMi5jZXI.hDC8IrR-CHInlJdzFrBIaZ0NDwD9w12SRB0aeHXgSzitCf8yd5M-pzuSWbDszufrYU27rgn_MDcp-NgpMTOrouoATbrumBvI7Co0fZuQ2BjPYsGrSQXVt58c1IYlaq--NxPxEP1XRsYGnb537-nce67ZdJDEy8xlITe-HPyhQ0GaeF2-KJpgPfFI2IeCTzQMb3DrHm5xXsi5HmzDDg61YkL0ByrsCtzeFulsWxZPi1Nvh_V-UY6M6hqCdGSwG_4MEYPClEcn1ldCH-5Bbfd9XNNg62hXxgvpHn2PE6Sc1xFuFGsTA4FKmXIGJmgdeOhUrFpRKcp-yrMjYq4yj2JEbg.UEtleQECAwQ.1699999995000.VDp0cmFuc2NyaXB0LXRlYW0tcGxheWVyLTE.Y29tLmFjbWUubWFj",
+                  "subject_token_type": "urn:polaris-key:token-type:gamecenter-signature",
+                  "nonce": "JXDx8ZY4YM-sAjHdgsO2P4HpaitPMQJOw3lk_vSFbhk",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "ZFOXZ9phgo7JHYBTtWyRbhOZjiFwL1HkWpiTh0bZNj8tDpG4LLhuMriNYYFGytL1ZioQ7_22O9D-FtMAk24tBg"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_grant" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "invalid_grant",
+        "tokenHeld": false
+      }
+    },
+    {
+      "action": "exchange",
+      "note": "The launch gate is off: the token type is not served.",
+      "args": {
+        "kind": "gamecenter",
+        "keyLabel": "transcript-device-key-1",
+        "gameCenter": {
+          "publicKeyUrl": "https://static.gc.apple.com/public-key/gc-prod-12.cer",
+          "signature": "BJAToFtg5YkdJoMsSDlv69SeGxGTFNfGEWOHRXa56x2-6aJRK0aYO7OCMCTHuABijJQoI26fRfgK1K270dwunqxRMMjvZPI1Tjp0ofhapaKVEiUgD6JPZ8Xl9QIDxuvRoAftIptS_euhP5mDvnO7RoO5iwzSCMxV-onljyiYluTvLBnmVW48PbQOSRtWVtBYEuOibs6DX7Z-npl5hIWf5_NCi7oj4cCFOsrjykFCRkbqZ0uGccjAdRIqo4P8ensP5y3rLJ4n90Nfsll-xq5cL3n-a7X_gMnJzaMpAD0nZi_ZtPved-YXcb5rrasDWHvYxXCL2OmI5GCW1gYcbiruSg",
+          "salt": "UEtleQECAwQ",
+          "timestamp": 1699999996000,
+          "teamPlayerId": "T:transcript-team-player-1",
+          "bundleId": "com.acme.mac"
+        }
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "9rp7C0nKP7oTmtqd3L7gH9A_BLH6XXLrgHoGePjXfhM",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "gc1.aHR0cHM6Ly9zdGF0aWMuZ2MuYXBwbGUuY29tL3B1YmxpYy1rZXkvZ2MtcHJvZC0xMi5jZXI.BJAToFtg5YkdJoMsSDlv69SeGxGTFNfGEWOHRXa56x2-6aJRK0aYO7OCMCTHuABijJQoI26fRfgK1K270dwunqxRMMjvZPI1Tjp0ofhapaKVEiUgD6JPZ8Xl9QIDxuvRoAftIptS_euhP5mDvnO7RoO5iwzSCMxV-onljyiYluTvLBnmVW48PbQOSRtWVtBYEuOibs6DX7Z-npl5hIWf5_NCi7oj4cCFOsrjykFCRkbqZ0uGccjAdRIqo4P8ensP5y3rLJ4n90Nfsll-xq5cL3n-a7X_gMnJzaMpAD0nZi_ZtPved-YXcb5rrasDWHvYxXCL2OmI5GCW1gYcbiruSg.UEtleQECAwQ.1699999996000.VDp0cmFuc2NyaXB0LXRlYW0tcGxheWVyLTE.Y29tLmFjbWUubWFj",
+                  "subject_token_type": "urn:polaris-key:token-type:gamecenter-signature",
+                  "nonce": "9rp7C0nKP7oTmtqd3L7gH9A_BLH6XXLrgHoGePjXfhM",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "hd7LStGFjCR3sjBhxIo6-GGsKUpkvBoidnrScgZv8mSWzr2NDQ5foKV0S6-zuO3Qku4Inwq8LNmLI0kMGQtEBg"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "invalid_request" }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "invalid_request",
+        "tokenHeld": false
+      }
+    }
+  ]
+}

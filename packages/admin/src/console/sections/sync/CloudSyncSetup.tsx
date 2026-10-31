@@ -198,6 +198,9 @@ export function CloudSyncSetupPage({
   return (
     <div className="space-y-6" data-template="record">
       {header}
+      <p className="text-sm text-fg-muted">
+        People see it as Sync Across Devices.
+      </p>
 
       {readFailed ? (
         <ErrorState

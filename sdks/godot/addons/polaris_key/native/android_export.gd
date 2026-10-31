@@ -26,9 +26,31 @@ const DEFAULT_FLAVOR := "play"
 ## Where build.sh installs the AARs, relative to res://addons/ (what _get_android_libraries wants).
 const BIN := "polaris_key/native/android/bin"
 ## Play Core: exactly the libraries polaris-key-platform-play's POM names (sdks/kotlin/gradle/
-## libs.versions.toml), Play Integrity included (P6-02); sdks/kotlin/tools/check_publication.sh fails
+## libs.versions.toml), Play Integrity included (P6-02), and the Credential Manager libraries
+## (I-48.5b); sdks/kotlin/tools/check_publication.sh fails
 ## when this list and that POM differ (P6-10).
-const PLAY_DEPENDENCIES := ["com.google.android.play:app-update:2.1.0", "com.google.android.play:asset-delivery:2.3.0", "com.google.android.play:integrity:1.6.0"]
+const PLAY_DEPENDENCIES := [
+	"com.google.android.play:app-update:2.1.0",
+	"com.google.android.play:asset-delivery:2.3.0",
+	"com.google.android.play:integrity:1.6.0",
+	"androidx.credentials:credentials:1.6.0",
+	"androidx.credentials:credentials-play-services-auth:1.6.0",
+	"com.google.android.libraries.identity.googleid:googleid:1.2.0",
+]
+## Play Games Services v2 (I-48.7a; Q-3): added only by the opt-in `polaris_key/play_games` (env
+## PKEY_ANDROID_PLAY_GAMES), with the app id from `polaris_key/play_games_app_id` (PKEY_ANDROID_PLAY_GAMES_APP_ID).
+## The pin is libs.versions.toml's `playGames`; a test holds them together.
+const PLAY_GAMES_OPTION := "polaris_key/play_games"
+const PLAY_GAMES_ENV := "PKEY_ANDROID_PLAY_GAMES"
+const PLAY_GAMES_APP_ID_OPTION := "polaris_key/play_games_app_id"
+const PLAY_GAMES_APP_ID_ENV := "PKEY_ANDROID_PLAY_GAMES_APP_ID"
+const PLAY_GAMES_DEPENDENCY := "com.google.android.gms:play-services-games-v2:22.1.0"
+const PLAY_GAMES_APP_ID_META := "com.google.android.gms.games.APP_ID"
+## The Credential Manager part of PLAY_DEPENDENCIES (I-48.5b: Google sign-in), by group.
+const CREDENTIAL_GROUPS := ["androidx.credentials", "com.google.android.libraries.identity.googleid"]
+## credentials 1.6.0 declares minCompileSdk 35: Godot's Android build template compiles against 35
+## from 4.4 on, so older engines get no Credential Manager (Google sign-in answers `dependency`).
+const CREDENTIALS_MIN_ENGINE := [4, 4]
 const DIRECT_PERMISSIONS := ["android.permission.REQUEST_INSTALL_PACKAGES", "android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"]
 ## The outlet kinds each flavour suits (a mismatch only warns: the stamp is the product's call).
 const PLAY_KINDS := ["play", "play-testing"]
@@ -54,9 +76,72 @@ static func libraries(flavor: String) -> PackedStringArray:
 	])
 
 
-## The Maven coordinates `flavor` needs: Play Core for play, nothing for direct.
-static func dependencies(flavor: String) -> PackedStringArray:
-	return PackedStringArray(PLAY_DEPENDENCIES) if flavor == "play" else PackedStringArray()
+## The Maven coordinates `flavor` needs: Play Core and Credential Manager for play, nothing for
+## direct. `engine` is Engine.get_version_info() of the exporting editor ({} means a current one):
+## below Godot 4.4 the Credential Manager libraries are left out.
+static func dependencies(flavor: String, engine := {}, play_games := false) -> PackedStringArray:
+	if flavor != "play":
+		return PackedStringArray()
+	var out := PackedStringArray()
+	for d in PLAY_DEPENDENCIES:
+		if credentials_supported(engine) or not is_credential_dependency(d):
+			out.append(d)
+	if play_games:
+		out.append(PLAY_GAMES_DEPENDENCY)
+	return out
+
+
+## The Play Games app id from an option or env value: digits only ("" when it is anything else).
+static func play_games_app_id(raw: Variant) -> String:
+	var id := str(raw).strip_edges() if raw != null else ""
+	return id if id != "" and id.is_valid_int() and not id.begins_with("-") and not id.begins_with("+") else ""
+
+
+## The <application> children for `flavor`: the Play Games app id meta-data for an export that opted in
+## with a valid app id, nothing else. The value is `\u003` plus the digits (the form Google's Unity
+## plugin uses: `\u003` and the first digit are that digit's own escape), so that aapt2 keeps the digits
+## a string with no leading character (a bare number would be an integer, which Play Games rejects).
+static func application_elements(flavor: String, play_games: bool, app_id: String) -> String:
+	if flavor != "play" or not play_games or app_id == "":
+		return ""
+	return "    <meta-data android:name=\"%s\" android:value=\"\\u003%s\" />\n" % [PLAY_GAMES_APP_ID_META, app_id]
+
+
+## Warnings for the Play Games opt-in ("" entries never appear).
+static func play_games_warnings(flavor: String, play_games: bool, app_id_raw: Variant) -> PackedStringArray:
+	var out := PackedStringArray()
+	var app_id := play_games_app_id(app_id_raw)
+	if play_games and flavor != "play":
+		out.append("%s is on but the flavour is %s: Play Games is a play-flavour feature, so nothing is added." % [PLAY_GAMES_OPTION, flavor if flavor != "" else "none"])
+	elif play_games and app_id == "":
+		var why := "%s is on but %s is not a number: Play Games needs the digits of the app id from the Play Console"
+		out.append("%s, so no meta-data is added and the sign-in will fail." % (why % [PLAY_GAMES_OPTION, PLAY_GAMES_APP_ID_OPTION]))
+	elif not play_games and app_id != "":
+		out.append("%s is set but %s is off: nothing is added." % [PLAY_GAMES_APP_ID_OPTION, PLAY_GAMES_OPTION])
+	return out
+
+
+## Whether a coordinate (`group:artifact:version`) is one of the Credential Manager libraries.
+static func is_credential_dependency(coordinate: String) -> bool:
+	return CREDENTIAL_GROUPS.has(coordinate.get_slice(":", 0))
+
+
+## Whether the engine's Android build template compiles against API 35 or later ({} is a current one).
+static func credentials_supported(engine := {}) -> bool:
+	if engine.is_empty():
+		return true
+	var major := int(engine.get("major", 0))
+	var minor := int(engine.get("minor", 0))
+	return major > CREDENTIALS_MIN_ENGINE[0] or (major == CREDENTIALS_MIN_ENGINE[0] and minor >= CREDENTIALS_MIN_ENGINE[1])
+
+
+## A warning when a play export leaves Credential Manager out for an old engine ("" otherwise).
+static func credentials_warning(flavor: String, engine := {}) -> String:
+	if flavor == "play" and not credentials_supported(engine):
+		var why := "Godot %s.%s compiles Android against an API below 35, which androidx.credentials 1.6.0 needs"
+		var effect := "this export carries no Credential Manager, so Google sign-in answers dependency. Use Godot 4.4 or later."
+		return "%s: %s" % [why % [engine.get("major", "?"), engine.get("minor", "?")], effect]
+	return ""
 
 
 ## The <manifest> children for `flavor`: the two install permissions for direct, nothing else.

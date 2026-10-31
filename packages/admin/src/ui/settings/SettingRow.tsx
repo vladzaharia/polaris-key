@@ -5,6 +5,7 @@ import { Button } from "../Button.js";
 import { RowRevertContext } from "../SourceBadge.js";
 import { ListField } from "./ListField.js";
 import { draftError, listDeltaWords } from "./model.js";
+import { Input } from "../Input.js";
 import { NumberInput } from "../NumberInput.js";
 import { SegmentedControl } from "../SegmentedControl.js";
 import { Select } from "../Select.js";
@@ -157,7 +158,9 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
   const errId = `${id}-error`;
   // A bounds failure sits under the input, in place of the hint, with the unit (B-037).
   const fieldError =
-    w.error?.field === true && !w.conflict && spec.kind === "integer";
+    !w.conflict &&
+    ((w.error?.field === true && spec.kind === "integer") ||
+      (w.error != null && spec.kind === "string"));
   const hintId = `${id}-hint`;
   // A custom unit is long ("per license"): it goes under the field with the bounds, never inside.
   const unit = props.unitLabel ?? fieldUnit(spec);
@@ -175,7 +178,9 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
   const reasonId = `${id}-readonly`;
   // A list is checked as it is typed: the message names the term, Save waits for it.
   const draftProblem =
-    spec.kind === "list" && !viewOnly ? draftError(spec, w.draft) : null;
+    (spec.kind === "list" || spec.kind === "string") && !viewOnly
+      ? draftError(spec, w.draft)
+      : null;
   const asText = viewOnly;
   let control: React.ReactNode;
   if (asText)
@@ -328,6 +333,47 @@ export function SettingRow(props: SettingRowProps): React.ReactElement {
             {spec.max}
           </p>
         )}
+      </div>
+    );
+  } else if (spec.kind === "string") {
+    const problem = draftProblem ?? (fieldError ? w.error!.title : null);
+    control = (
+      <div
+        className="w-full text-start sm:w-80"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && w.dirty && !off && !draftProblem) {
+            e.preventDefault();
+            w.commit();
+          } else if (e.key === "Escape" && w.dirty) {
+            e.stopPropagation();
+            w.discard();
+          }
+        }}
+      >
+        <Input
+          id={id}
+          mono
+          aria-label={label}
+          aria-invalid={problem ? true : undefined}
+          aria-describedby={problem ? errId : undefined}
+          value={typeof w.draft === "string" ? w.draft : ""}
+          onValueChange={(v) => w.setDraft(v === "" ? null : v)}
+          maxLength={spec.maxLength}
+          placeholder="Not set"
+          spellCheck={false}
+          autoComplete="off"
+          disabled={off}
+          readOnly={frozen}
+        />
+        {problem ? (
+          <p
+            id={errId}
+            role="alert"
+            className="mt-1 text-xs font-medium text-danger [overflow-wrap:anywhere]"
+          >
+            {problem}
+          </p>
+        ) : null}
       </div>
     );
   } else control = <code className="font-mono text-xs">{fmt(value)}</code>;

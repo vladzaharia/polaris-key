@@ -8,6 +8,7 @@ extends RefCounted
 # @pkey-feature license.manage identity.keyentry identity.redirect.web identity.signin.hints identity.choice
 # @pkey-feature release.fetch
 # @pkey-feature sync.keyring sync.settings
+# @pkey-feature identity.exchange identity.gamecenter identity.pgs
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -48,6 +49,14 @@ extends RefCounted
 # payload an earlier step fetched, so the SDK resumes with Range and If-Range. `result` is `ok`
 # (with the verified file's `size` and `sha256`), `refused` for a wire or SDK error code
 # (PKeyConstants.ERROR_CODE_VALUES) with its `code`, else `error`.
+#
+# `exchange` (I-48.3, `identity.exchange`) is PolarisKey.identity.exchange.exchange(kind, subjectToken,
+# nonce) with the recording's platform token (the fake provider: the token is never built from the
+# nonce) and the recorder's fixture device keys for `keyLabel` (PKeyFixtureDeviceKeys, a different
+# label is a rotation). A transcript that never ran `discover` is given the Worker's standard
+# identity fragment; a recorded discovery is rebased onto the loopback server. Its `confirm` is
+# completed by `choiceComplete` with the consent the recording's request carries. Each exchange
+# step reports `tokenHeld` for that step alone: whether it stored a token.
 #
 # `discover` reports the result's `kind` as `result` and PolarisKey.presentation() as
 # `presentation` (core.presentation: the normalised member, or null when there is none), so
@@ -129,6 +138,13 @@ static func replay(tr: Dictionary) -> Array:
 		# The key ring's own device keys and vault: scratch files and memory, nothing in the keychain.
 		opts.device_keys = PKeyDeviceKeyStore.new(tr["product"], PKeyTestFixtures.scratch_dir("transcript-ring-keys"), false, false)
 		opts.ring_vault = PKeySyncRingVault.new(tr["product"], "user://pkey", true)
+	var exchange_keys: PKeyFixtureDeviceKeys = null
+	for st in tr["steps"]:
+		if st["action"] == "exchange":
+			# The key ring and the exchange share this one port (the autoload hands it to both).
+			exchange_keys = PKeyFixtureDeviceKeys.new(String(st["args"].get("keyLabel", "")))
+			opts.device_keys = exchange_keys
+			break
 	var sdk := PKeyTestFixtures.new_sdk()
 	if tr["id"] == "cloudsync-e2e-settings":
 		# The end-to-end transcript runs the real host codec over a ring of its own: its root is not the
@@ -154,6 +170,9 @@ static func replay(tr: Dictionary) -> Array:
 			if not updater.slots.save_state(st):
 				fails.append("the update journal could not be seeded")
 		await sdk.start()
+		if exchange_keys != null:
+			# The exchange recordings hold the token route, not the sync a sign-in triggers after it.
+			sdk.identity.redirect_acquisition_sync = false
 		if redirects:
 			# The recordings hold the token exchange, not the sync a sign-in triggers after it.
 			sdk.identity.redirect_acquisition_sync = false
@@ -169,11 +188,16 @@ static func replay(tr: Dictionary) -> Array:
 				sdk.core.discovery_manifest = _standard_identity_discovery(server.base_url(), tr["product"])
 			if step["action"] in ["browser", "redirectComplete"] and sdk.core.discovery_manifest == null:
 				sdk.core.discovery_manifest = _redirect_discovery(server.base_url(), tr)
+			if step["action"] in ["exchange", "choiceComplete"] and exchange_keys != null:
+				if sdk.core.discovery_manifest == null:
+					sdk.core.discovery_manifest = _exchange_discovery(server.base_url(), tr["product"])
+				else:
+					sdk.core.discovery_manifest = _identity_rebased(sdk.core.discovery_manifest, tr["baseUrl"], server.base_url())
 			if step["action"] in ["chunkRange", "releaseFetch"] and sdk.core.discovery_manifest is Dictionary:
 				# The discovered blobs template names the transcript's base; the bytes come from the
 				# loopback server.
 				sdk.core.discovery_manifest = _rebased(sdk.core.discovery_manifest, tr["baseUrl"], server.base_url())
-			var observed := await _act(sdk, store, step)
+			var observed := await _act(sdk, store, step, exchange_keys)
 			# A built URL names the loopback server; the recording names the transcript's base.
 			if observed.get("url") is String and String(observed["url"]).begins_with(server.base_url() + "/"):
 				observed["url"] = tr["baseUrl"] + String(observed["url"]).substr(server.base_url().length())
@@ -190,7 +214,7 @@ static func replay(tr: Dictionary) -> Array:
 
 
 ## THE mapping from transcript verbs and `expect` keys onto the Godot SDK.
-static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Dictionary:
+static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_keys: PKeyFixtureDeviceKeys = null) -> Dictionary:
 	var out := {}
 	match step["action"]:
 		"discover":
@@ -198,6 +222,12 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 			out["result"] = r.detail.get("kind", "") if r.detail is Dictionary else ""
 			var p: Dictionary = sdk.presentation()
 			out["presentation"] = p if not p.is_empty() else null
+			# identity.exchange (WIRE-CONTRACT-V5 §12.11.6): the fragment's member, and whether it names the nonce route.
+			var fragment := PKeyDiscovery.identity_from(sdk.core.discovery_manifest)
+			out["exchange"] = _exchange_member(fragment.get("exchange", {}))
+			out["nonceEndpoint"] = String(fragment.get("nonce", "")) != ""
+		"exchange":
+			out.merge(await _exchange_step(sdk, step, exchange_keys), true)
 		"subject":
 			var r: PKeyResult = await sdk.identity.subject()
 			out["subject"] = r.detail.get("subject") if r.ok else "unavailable"
@@ -423,7 +453,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 		services[slug] = PKeyClaims.is_true(caps[slug]["enabled"])
 	out["services"] = services
 	out["licenseStatus"] = sdk.status()["status"]
-	out["tokenHeld"] = store.token != ""
+	if step["action"] != "exchange":
+		out["tokenHeld"] = store.token != ""
 	return out
 
 
@@ -581,13 +612,17 @@ static func _choice_step(choice: PKeyIdentityChoice, step: Dictionary) -> Dictio
 				out["devices"] = r.view["devices"].map(func(d): return d.get("id"))
 		"choiceComplete":
 			var recorded = null
+			var consent = null
 			var items: Array = step["exchanges"]["items"]
 			if not items.is_empty() and items[0]["request"]["body"] is Dictionary:
 				recorded = items[0]["request"]["body"]["json"].get("choice")
-			r = await choice._complete(grant, recorded)
+				# An exchange `confirm` grant is completed with the consent the recording sent.
+				consent = items[0]["request"]["body"]["json"].get("consent")
+			r = await choice._complete(grant, recorded, consent)
 			if r.ok:
 				out["licenseId"] = r.license_id if r.license_id != "" else null
 				out["subject"] = r.subject
+				out["scope"] = r.scope
 				if not r.key_entries.is_empty():
 					out["keyEntries"] = r.key_entries
 		_:
@@ -596,6 +631,107 @@ static func _choice_step(choice: PKeyIdentityChoice, step: Dictionary) -> Dictio
 	if not r.ok:
 		out["code"] = String(r.code)
 	return out
+
+
+## `exchange`: the recording's platform token (a fake provider answers it) exchanged over the
+## fixture device keys. See the header for the mapping.
+static func _exchange_step(sdk: Node, step: Dictionary, keys: PKeyFixtureDeviceKeys) -> Dictionary:
+	var out := {}
+	var a: Dictionary = step["args"]
+	keys.use_label(String(a.get("keyLabel", "")))
+	# A step that never reaches the token route records no token; the SDK needs a non-empty one.
+	var token := String(a.get("subjectToken", "unused.subject.token"))
+	if a.get("gameCenter") is Dictionary:
+		# Game Center (I-48.6b): the recording holds the raw fields the extension returns; the token is
+		# the SDK's own gc1. encoder over them, and the recorded request body is matched exactly.
+		token = PKeyGameCenterToken.encode(a["gameCenter"])
+	elif a.get("serverAuthCode") is String:
+		# Play Games (I-48.7b): the server auth code is the subject token as it is.
+		token = a["serverAuthCode"]
+	var before: String = sdk.core.tokens.current()
+	var r: PKeyExchangeResult = await sdk.identity.exchange.exchange(String(a.get("kind", "")), token, String(a.get("nonce", "")))
+	match r.kind:
+		PKeyExchangeResult.KIND_SIGNED_IN:
+			out["result"] = "ok"
+			out["scope"] = r.scope
+			out["subject"] = r.subject if r.subject != "" else null
+			out["licenseId"] = r.license_id if r.license_id != "" else null
+			out["issuedTokenType"] = "urn:polaris-key:token-type:device"
+		PKeyExchangeResult.KIND_CONFIRM:
+			var c: Dictionary = r.consent
+			out["result"] = "confirm"
+			out["firstTime"] = PKeyClaims.is_true(c.get("firstTime"))
+			out["changed"] = PKeyClaims.is_true(c.get("changed"))
+			var who: Dictionary = c.get("as", {})
+			out["as"] = {"provider": who.get("provider"), "email": who.get("email")}
+		PKeyExchangeResult.KIND_CHOOSE:
+			out["result"] = "choose"
+		PKeyExchangeResult.KIND_NEEDS_SIGN_IN:
+			out["result"] = "interstitial-required"
+			out["reason"] = r.reason
+			out["url"] = r.url
+			out["linkHandle"] = r.link_handle if r.link_handle != "" else null
+			out["expiresIn"] = r.expires_in if r.link_handle != "" else null
+		PKeyExchangeResult.KIND_UNAVAILABLE:
+			out["result"] = "unavailable"
+		PKeyExchangeResult.KIND_REFUSED:
+			out["result"] = "refused"
+			out["code"] = String(r.code)
+		_:
+			out["result"] = "error"
+			out["code"] = String(r.code)
+	# This exchange stored a token, or it left the one held exactly as it was.
+	var signed_in := r.kind == PKeyExchangeResult.KIND_SIGNED_IN
+	if not signed_in and sdk.core.tokens.current() != before:
+		out["result"] = "a step that signed nobody in changed the held token"
+	out["tokenHeld"] = signed_in and sdk.core.tokens.current() != ""
+	return out
+
+
+## The discovery `exchange` member as the recording pins it: {kinds, google?: {serverClientId}}, or null.
+static func _exchange_member(ex: Dictionary) -> Variant:
+	if ex.is_empty():
+		return null
+	var out := {"kinds": ex["kinds"]}
+	if String(ex.get("google_server_client_id", "")) != "":
+		out["google"] = {"serverClientId": ex["google_server_client_id"]}
+	if String(ex.get("pgs_server_client_id", "")) != "":
+		out["pgs"] = {"serverClientId": ex["pgs_server_client_id"]}
+	return out
+
+
+## The identity fragment of a product that runs the platform exchange, at the Worker's standard paths
+## on the loopback server (for a transcript that never ran `discover`).
+static func _exchange_discovery(base: String, product: String) -> Dictionary:
+	var root := "%s/%s/identity" % [base, product]
+	return {"product": product, "services": {"identity": {
+		"enabled": true, "configured": true, "issuer": root,
+		"exchange": {
+			"kinds": ["google", "apple", "gamecenter", "pgs"],
+			"google": {"serverClientId": "1234-web.apps.googleusercontent.com"},
+			"pgs": {"serverClientId": "123456789012-transcriptpgs.apps.googleusercontent.com"},
+		},
+		"endpoints": {
+			"token": root + "/token", "nonce": root + "/nonce",
+			"choiceLicenses": root + "/choice/licenses", "choiceDevices": root + "/choice/devices",
+			"choiceComplete": root + "/choice/complete", "choiceCancel": root + "/choice/cancel",
+		},
+	}}}
+
+
+## `manifest` with the identity endpoints moved from `from` (the recorded base) to `to` (the loopback server).
+static func _identity_rebased(manifest: Dictionary, from: String, to: String) -> Dictionary:
+	var m: Dictionary = manifest.duplicate(true)
+	var frag = m.get("services", {}).get("identity")
+	if not (frag is Dictionary) or not (frag.get("endpoints") is Dictionary):
+		return m
+	for name in frag["endpoints"]:
+		var t = frag["endpoints"][name]
+		if t is String and (t as String).begins_with(from + "/"):
+			frag["endpoints"][name] = to + (t as String).substr(from.length())
+	if frag.get("issuer") is String and (frag["issuer"] as String).begins_with(from + "/"):
+		frag["issuer"] = to + (frag["issuer"] as String).substr(from.length())
+	return m
 
 
 ## `redirectComplete`'s `result` for a refusal's code (format.ts).

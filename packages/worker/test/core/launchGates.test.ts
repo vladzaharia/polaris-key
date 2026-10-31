@@ -21,10 +21,13 @@ import type { Env } from "../../src/platform/env.js";
 const P = "djdl";
 type Gate =
   | "LAUNCH_IDENTITY_EXCHANGE"
+  | "LAUNCH_IDENTITY_RETURNKEY"
   | "LAUNCH_CONNECT"
   | "LAUNCH_SYNC_E2E"
   | "LAUNCH_SYNC_FILES"
-  | "LAUNCH_RELAY";
+  | "LAUNCH_RELAY"
+  | "LAUNCH_IDENTITY_RESTORE"
+  | "LAUNCH_GAME_SIGN_IN";
 
 interface W {
   db: Db;
@@ -208,10 +211,13 @@ describe("launch.syncE2e", () => {
 describe("launch gates, as settings", () => {
   const gates = [
     ["launch.identityExchange", "LAUNCH_IDENTITY_EXCHANGE"],
+    ["launch.identityKeyReturn", "LAUNCH_IDENTITY_RETURNKEY"],
     ["launch.connect", "LAUNCH_CONNECT"],
     ["launch.syncE2e", "LAUNCH_SYNC_E2E"],
     ["launch.syncFiles", "LAUNCH_SYNC_FILES"],
     ["launch.relay", "LAUNCH_RELAY"],
+    ["launch.identityRestore", "LAUNCH_IDENTITY_RESTORE"],
+    ["launch.gameSignIn", "LAUNCH_GAME_SIGN_IN"],
   ] as const;
 
   it("default off with no deploy value, on with one, off under a hard-off deploy value", async () => {

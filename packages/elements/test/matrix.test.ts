@@ -83,7 +83,7 @@ async function draw(row: Row): Promise<PkElement> {
   // A row without `elapsedMs` means the DL7 delay has passed; the element's live model would
   // otherwise hold the loading state empty for its first 250 ms.
   // The runner plays a host that answers the controls that open another screen.
-  el.handles = "unlock review use-code";
+  el.handles = "unlock review use-code key";
   el.input = { elapsedMs: 60_000, ...withDefaults(row.input, defaults) };
   document.body.replaceChildren(el);
   await el.updateComplete;

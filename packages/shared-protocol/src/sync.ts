@@ -258,6 +258,8 @@ export interface SyncServerCopy {
   members?: Record<string, SyncJson> | SyncSealedMember[];
   /** §13.3 (U-09): a sealed `merge` record's cells, `[{field, ct, editedHlc}]` with blinded names. It replaces `ct`. */
   fields?: SyncSealedField[];
+  /** A sealed `union` record's elements, as a pulled row carries them. It replaces `ct`. */
+  elements?: SyncSealedElement[];
   /** §13.3, §13.4 (U-10): the record's file, when it has one. A pointer is not a value and does not count in the one-of rule. */
   file?: SyncFilePointer;
 }

@@ -21,7 +21,10 @@ import type {
   UiInput,
 } from "@polaris-key/ui-core";
 import {
+  armTab,
+  disarmTab,
   gateInput,
+  keyReturnRefusal,
   openManage,
   type GateStep,
 } from "@polaris-key/ui-core/browser";
@@ -102,6 +105,8 @@ export function useSdkGate(
   // The refusal the person left behind: leaving the step, or editing the key, clears it (DL7),
   // and the key they typed stays in the field.
   const [dismissed, setDismissed] = useState<unknown>(null);
+  const dismissedRef = useRef<unknown>(null);
+  dismissedRef.current = dismissed;
   const [opener, setOpener] = useState<string | null>(null);
   const errorRef = useRef<unknown>(null);
   errorRef.current = state.error.license;
@@ -128,6 +133,8 @@ export function useSdkGate(
   const owning = useRef(false);
   // Where AddToAccount opened from: ActivateDone, or a screen of the app (the settings row).
   const addFrom = useRef<SdkStep>("home");
+  // Done was reached by cancelling AddToAccount: focus returns to Add your name and email.
+  const returned = useRef(false);
   // The toast lasts a few seconds.
   useEffect(() => {
     if (!toast) return;
@@ -140,6 +147,7 @@ export function useSdkGate(
   const skipPop = useRef(false);
   /** Leave AddToAccount: its model and its sign-in are both cancelled. */
   const dropAdd = useCallback(() => {
+    disarmTab();
     addToken.current++;
     const f = addFlow.current;
     addFlow.current = null;
@@ -168,6 +176,7 @@ export function useSdkGate(
     setSubmitted(false);
   }, [dropHolder]);
   const enter = useCallback((next: SdkStep, from: string) => {
+    returned.current = false;
     setOpener(from);
     setStep(next);
     if (typeof history !== "undefined" && !pushed.current) {
@@ -267,6 +276,19 @@ export function useSdkGate(
       }
     }
   }, [state.status, state.phase]);
+  // A key return the Worker refused at `token` (device limit, key entries, owned) leaves a typed
+  // refusal in the license slot with no step to draw it: the key step shows it, with the manage
+  // link and the counts it carried (LK-SKIP). A refusal the person left never reopens it.
+  const licenseError = state.error.license;
+  useEffect(() => {
+    if (
+      stepRef.current === "home" &&
+      !activating.current &&
+      keyReturnRefusal(state, dismissedRef.current)
+    )
+      enter("activate", "signin.key.differentKey");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [licenseError, state.status, state.phase]);
   // Automatic sign-in: once at boot, when the page needs one and the product can sign in. What
   // it found steps the gate into the in-app form (a confirm, the license list, the device
   // limit); a sign-in that landed moves the license state by itself.
@@ -388,17 +410,13 @@ export function useSdkGate(
       if (!adapter) return;
       void import("./holderGate.js")
         .then((m) =>
-          m.portalTarget(adapter, {
-            ...(ctx?.baseUrl !== undefined ? { baseUrl: ctx.baseUrl } : {}),
-            ...(ctx?.productSlug !== undefined
-              ? { product: ctx.productSlug }
-              : {}),
-          }),
+          m.openPortal(
+            adapter,
+            { baseUrl: ctx?.baseUrl, product: ctx?.productSlug },
+            held,
+            opts.returnUrl,
+          ),
         )
-        .then((t) => {
-          if (t)
-            openManage(t.url, opts.returnUrl, t.withKey ? held : undefined);
-        })
         .catch(() => undefined);
     },
     [adapter, ctx, opts.returnUrl],
@@ -495,6 +513,12 @@ export function useSdkGate(
         case "signin.again":
         case "signin.handoff.again":
         case "signInHandoff.newCode":
+          // AddToAccount while busy: bring the browser tab back, inside the press; the sign-in
+          // keeps running.
+          if (step === "add" && k === "signin.handoff.again") {
+            void Promise.resolve(session.current?.reopen()).catch(() => {});
+            return;
+          }
           handleRef.current?.cancel?.();
           signIn();
           return;
@@ -553,6 +577,7 @@ export function useSdkGate(
           return;
         case "activate.recommend.skip":
         case "signin.done.start":
+        case "common.done":
           finish();
           return;
         case "activate.waitingSignIn":
@@ -561,7 +586,11 @@ export function useSdkGate(
           signIn();
           return;
         case "common.continue":
-          if (step === "add") void addFlow.current?.model.submit();
+          if (step === "add") {
+            // Open the tab inside the press; the sign-in navigates it once it has an address.
+            if (addFlow.current?.model.willOpenBrowser) armTab();
+            void addFlow.current?.model.submit();
+          }
           return;
         case "activate.otherEmail.verify":
         case "signin.auto.confirm.other":
@@ -569,6 +598,11 @@ export function useSdkGate(
           if (step === "add") void addFlow.current?.model.cancel();
           return;
         case "signin.key.addInLocker": {
+          // ActivateDone with Identity off: the same press as Add your name and email.
+          if (step === "done") {
+            addToAccount();
+            return;
+          }
           // The refusal's manage link: where the key is added to the account.
           const url = state.error.license?.manageUrl;
           if (url) openManage(url, opts.returnUrl, key.trim() || undefined);
@@ -602,9 +636,18 @@ export function useSdkGate(
         }
         case "common.cancel":
         case "common.back":
+          // Done and Added are success screens: Escape and Back are Start using (or Done).
+          if (
+            step === "done" ||
+            (step === "add" && addFlow.current?.model.snapshot.step === "added")
+          ) {
+            finish();
+            return;
+          }
           if (step === "add" && addFrom.current === "done") {
             // AddToAccount's Cancel goes back to ActivateDone, the key still held.
             dropAdd();
+            returned.current = true;
             setStep("done");
             return;
           }
@@ -612,6 +655,7 @@ export function useSdkGate(
           return;
         case "common.tryAgain":
           if (step === "add") {
+            if (addFlow.current?.model.willOpenBrowser) armTab();
             void addFlow.current?.model.tryAgain();
             return;
           }
@@ -621,6 +665,7 @@ export function useSdkGate(
           void adapter.refresh({ force: true }).catch(() => undefined);
           return;
         case "common.signOut":
+        case "account.removeKey":
           void adapter.signOut().catch(() => undefined);
           return;
       }
@@ -668,8 +713,16 @@ export function useSdkGate(
               secondsLeft,
               dismissed,
               deviceKind: "device",
+              ...(returned.current ? { returned: true } : {}),
               ...(addFlow.current
-                ? { addToAccount: addFlow.current.model.input().addToAccount }
+                ? {
+                    addToAccount: {
+                      ...addFlow.current.model.input().addToAccount!,
+                      ...(addFrom.current !== "done"
+                        ? { fromSettings: true }
+                        : {}),
+                    },
+                  }
                 : {}),
               ...(opts.locale !== undefined ? { locale: opts.locale } : {}),
             }),

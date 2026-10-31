@@ -106,6 +106,10 @@ func clear_cache() -> bool:
 	return _remove(CACHE_FILE)
 
 
+func cache_unreadable() -> bool:
+	return FileAccess.file_exists(path_of(CACHE_FILE)) and read_cache() == null
+
+
 func status() -> Dictionary:
 	var s := {"backend": "indexeddb" if OS.has_feature("web") else "file"}
 	if not OS.is_userfs_persistent():

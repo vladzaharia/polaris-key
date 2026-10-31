@@ -1,6 +1,7 @@
 /**
  * Distribution → Credentials (ADMIN.md §6.4): the credentials that belong to no channel
- * (Sentry's integration secret, whose alerts open halt candidates), and a held credential whose
+ * (Sentry's integration secret, whose alerts open halt candidates; the Play Games server
+ * credential, which serves sign-in, not a store), and a held credential whose
  * channel is out of scope for the product, flagged (A-20 R6). A store's own keys moved to its
  * channel's Setup tab (A-22.3a); this page links to each. Values are write-only: the table shows
  * metadata and health, never a value. The editors live in `CredentialEditors`. Store controls moved to each channel's Setup
@@ -68,7 +69,9 @@ export function CredentialsPage({
     ? []
     : KINDS.filter(
         (k) =>
-          channelsOfKind(k.value).length === 0 ||
+          (channelsOfKind(k.value).length === 0 &&
+            // A kind this Worker does not list is not offered (an older build).
+            (!creds.data?.kinds || creds.data.kinds.includes(k.value))) ||
           (outOfScope(k.value) && all.some((c) => c.kind === k.value)),
       );
   const editor = useCredentialEditor({
@@ -181,7 +184,7 @@ export function CredentialsPage({
           <EmptyState
             kind="first-run"
             title="No other credentials yet"
-            description="Sentry needs its integration secret to send alerts that open halt candidates."
+            description="Sentry needs its integration secret to send alerts that open halt candidates. Play Games sign-in needs its server credential."
             primaryAction={
               <Button
                 disabledReason={gate.disabledReason}

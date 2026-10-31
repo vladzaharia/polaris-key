@@ -72,13 +72,13 @@
       "jscpd:duplicate": 1
     },
     "examples/ui/react-next/app/fixtures.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 8
     },
     "examples/ui/react-next/app/polaris.config.ts": {
       "jscpd:duplicate": 1
     },
     "examples/ui/react-vite/src/fixtures.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 7
     },
     "examples/ui/react-vite/src/polaris.config.ts": {
       "jscpd:duplicate": 1
@@ -87,13 +87,13 @@
       "jscpd:duplicate": 9
     },
     "packages/admin/e2e/access.e2e.test.ts": {
-      "jscpd:duplicate": 51
+      "jscpd:duplicate": 53
     },
     "packages/admin/e2e/artPng.ts": {
       "jscpd:duplicate": 4
     },
     "packages/admin/e2e/config.e2e.test.ts": {
-      "jscpd:duplicate": 48
+      "jscpd:duplicate": 50
     },
     "packages/admin/e2e/consoleBreakGlassBanner.e2e.test.ts": {
       "jscpd:duplicate": 23
@@ -108,7 +108,7 @@
       "jscpd:duplicate": 6
     },
     "packages/admin/e2e/core.e2e.test.ts": {
-      "jscpd:duplicate": 39
+      "jscpd:duplicate": 41
     },
     "packages/admin/e2e/coreFixtures.ts": {
       "jscpd:duplicate": 1
@@ -150,7 +150,7 @@
       "jscpd:duplicate": 21
     },
     "packages/admin/e2e/licenseHolders.e2e.test.ts": {
-      "jscpd:duplicate": 19
+      "jscpd:duplicate": 20
     },
     "packages/admin/e2e/licenseInviteRecord.e2e.test.ts": {
       "jscpd:duplicate": 20
@@ -171,7 +171,7 @@
       "jscpd:duplicate": 5
     },
     "packages/admin/e2e/newLicenseInvite.e2e.test.ts": {
-      "jscpd:duplicate": 21
+      "jscpd:duplicate": 23
     },
     "packages/admin/e2e/pageMoved.e2e.test.ts": {
       "jscpd:duplicate": 10
@@ -253,6 +253,9 @@
     },
     "packages/admin/e2e/storefront.e2e.test.ts": {
       "jscpd:duplicate": 2
+    },
+    "packages/admin/e2e/syncDataTab.e2e.test.ts": {
+      "jscpd:duplicate": 9
     },
     "packages/admin/e2e/uiLint.e2e.test.ts": {
       "jscpd:duplicate": 3
@@ -345,7 +348,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/distribution/components/CredentialForms.tsx": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 6
     },
     "packages/admin/src/console/sections/distribution/components/RolloutDialogs.tsx": {
       "jscpd:duplicate": 2
@@ -545,9 +548,6 @@
     "packages/admin/src/portal/components/product/BuildDetails.tsx": {
       "jscpd:duplicate": 1
     },
-    "packages/admin/src/portal/components/product/DevicesCard.tsx": {
-      "jscpd:duplicate": 1
-    },
     "packages/admin/src/portal/components/product/FileHash.tsx": {
       "jscpd:duplicate": 1
     },
@@ -558,9 +558,6 @@
       "jscpd:duplicate": 2
     },
     "packages/admin/src/portal/model/library.ts": {
-      "jscpd:duplicate": 1
-    },
-    "packages/admin/src/portal/pages/FreeDevicePage.tsx": {
       "jscpd:duplicate": 1
     },
     "packages/admin/src/portal/pages/SignInPage.tsx": {
@@ -639,7 +636,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/test/channelSetup.test.tsx": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 2
     },
     "packages/admin/test/commerceIdentity.test.tsx": {
       "jscpd:duplicate": 4
@@ -762,10 +759,10 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/test/outletCredentials.test.tsx": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 2
     },
     "packages/admin/test/overview.test.tsx": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 12
     },
     "packages/admin/test/packViews.test.tsx": {
       "jscpd:duplicate": 2
@@ -956,9 +953,6 @@
     "packages/admin/test/settingsAll.test.tsx": {
       "jscpd:duplicate": 4
     },
-    "packages/admin/test/settingsLayout.test.tsx": {
-      "jscpd:duplicate": 1
-    },
     "packages/admin/test/settingsSearch.test.tsx": {
       "jscpd:duplicate": 1
     },
@@ -972,6 +966,9 @@
       "jscpd:duplicate": 4
     },
     "packages/admin/test/sync.test.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/admin/test/syncDataTab.test.tsx": {
       "jscpd:duplicate": 1
     },
     "packages/admin/test/syncSetup.test.tsx": {
@@ -1012,6 +1009,9 @@
     },
     "packages/admin/test/updateFeed.test.tsx": {
       "jscpd:duplicate": 6
+    },
+    "packages/admin/test/users.test.tsx": {
+      "jscpd:duplicate": 1
     },
     "packages/admin/test/wizardKit.test.tsx": {
       "jscpd:duplicate": 3
@@ -2351,6 +2351,9 @@
     "packages/worker/scripts/gen-settings.ts": {
       "jscpd:duplicate": 3
     },
+    "packages/worker/scripts/load/cloud-sync-one-do.mjs": {
+      "jscpd:duplicate": 3
+    },
     "packages/worker/scripts/registry-clients/clients/cargo.seed.ts": {
       "jscpd:duplicate": 5
     },
@@ -3084,6 +3087,9 @@
       "jscpd:duplicate": 1
     },
     "packages/worker/src/services/sync/do/cloudSyncDo.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/sync/do/inspectValues.ts": {
       "jscpd:duplicate": 1
     },
     "packages/worker/src/services/sync/engine/memoryStore.ts": {
@@ -3248,6 +3254,9 @@
     "packages/worker/test/core/customerEmailHtml.test.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/worker/test/core/devices/keysRoute.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/worker/test/core/discoveryGolden.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -3339,6 +3348,9 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test/core/repo.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/ruleGrants.test.ts": {
       "jscpd:duplicate": 1
     },
     "packages/worker/test/core/services.test.ts": {
@@ -3594,7 +3606,7 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test/services/identity/exchange.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "packages/worker/test/services/identity/identityCardEmail.test.ts": {
       "jscpd:duplicate": 2
@@ -3784,6 +3796,12 @@
     },
     "packages/worker/test/services/sync/cloudSyncAbuseWorld.ts": {
       "jscpd:duplicate": 5
+    },
+    "packages/worker/test/services/sync/cloudSyncAdminSubject.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/sync/cloudSyncAdminValues.test.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/worker/test/services/sync/cloudSyncBudget.test.ts": {
       "jscpd:duplicate": 1
@@ -4275,7 +4293,7 @@
       "jscpd:duplicate": 5
     },
     "packages/worker/test/surfaces/keyEntries.test.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/worker/test/surfaces/keysOutOfLogs.test.ts": {
       "jscpd:duplicate": 1

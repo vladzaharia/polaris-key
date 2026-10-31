@@ -45,6 +45,7 @@ import { open, seal, type SealContext } from "../platform/keyvault.js";
 import { appendAudit } from "./audit.js";
 import { randomId } from "../platform/crypto.js";
 import { sha256Hex } from "../platform/hash.js";
+import { GOOGLE_CLIENT_ID_RE } from "@polaris-key/manifest";
 import { importEs256PrivateKey, importRs256PrivateKey } from "./jwt.js";
 
 // ── kinds ────────────────────────────────────────────────────────────────────────────────────
@@ -105,6 +106,13 @@ export interface SteamPublisherKey {
   key: string;
 }
 
+/** The Web OAuth client secret of a product's Play Games "game server" credential (I-14.4). It
+ *  is sent only to Google's token endpoint, to redeem a server auth code, and carries a pin: the
+ *  server client id it belongs to. */
+export interface PgsServerClient {
+  clientSecret: string;
+}
+
 export interface OutletCredentialValues {
   "asc-api-key": AscApiKey;
   "app-store-server-key": AppStoreServerKey;
@@ -113,6 +121,7 @@ export interface OutletCredentialValues {
   "google-service-account": GoogleServiceAccount;
   "ms-partner-center": MsPartnerCenter;
   "sentry-integration": SentryIntegration;
+  "pgs-server-client": PgsServerClient;
 }
 
 export type OutletCredentialKind = keyof OutletCredentialValues;
@@ -125,6 +134,7 @@ export const OUTLET_CREDENTIAL_KINDS: readonly OutletCredentialKind[] = [
   "google-service-account",
   "ms-partner-center",
   "sentry-integration",
+  "pgs-server-client",
 ];
 
 export function isOutletCredentialKind(v: unknown): v is OutletCredentialKind {
@@ -275,6 +285,21 @@ async function validateSentryIntegration(
   return { ok: true, value: { clientSecret }, meta: {} };
 }
 
+/** A client secret: 8 to 512 printable ASCII characters, no whitespace inside. */
+const PGS_CLIENT_SECRET_RE = /^[\x21-\x7e]{8,512}$/;
+
+async function validatePgsServerClient(
+  o: Record<string, unknown>,
+): Promise<Validation<"pgs-server-client">> {
+  const clientSecret = str(o, "clientSecret", 512);
+  if (!clientSecret || !PGS_CLIENT_SECRET_RE.test(clientSecret))
+    return fail(
+      "clientSecret",
+      "clientSecret must be 8 to 512 printable characters (the Web client's secret)",
+    );
+  return { ok: true, value: { clientSecret }, meta: {} };
+}
+
 const VALIDATORS: {
   [K in OutletCredentialKind]: (
     o: Record<string, unknown>,
@@ -287,6 +312,7 @@ const VALIDATORS: {
   "google-service-account": validateGoogleServiceAccount,
   "ms-partner-center": validateMsPartnerCenter,
   "sentry-integration": validateSentryIntegration,
+  "pgs-server-client": validatePgsServerClient,
 };
 
 /** Validate a raw value for `kind`: the normalised value to seal and its display metadata, or
@@ -460,6 +486,16 @@ export const OUTLET_CREDENTIAL_PINS: Readonly<
     label: "Microsoft Store product id (Store ID)",
     message:
       "pin must be the Microsoft Store product id (the app's 12-character Store ID, such as 9NBLGGH4R315)",
+  },
+  // I-14.4: the Play Games server secret belongs to one Web client; Core redeems a code only for
+  // the client id the product declares (`identity.platformSignIn.playGames.serverClientId`),
+  // compared with this pin.
+  "pgs-server-client": {
+    field: "serverClientId",
+    pattern: GOOGLE_CLIENT_ID_RE,
+    label: "Play Games server client id",
+    message:
+      "pin must be the Web client id of the game server credential (such as 1234567890-abc.apps.googleusercontent.com)",
   },
 };
 

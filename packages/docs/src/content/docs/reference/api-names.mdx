@@ -128,7 +128,7 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `config.setting.set` | `set_value` | `config.resolve` |
 | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.setting.clear` | `config.resolve` |
 | `config.setting.on` | `config.setting.on` | planned (U-20) | `config.setting.on` | `config.setting.on` | `config.setting.on` | `changed` | `config.resolve` |
-| `config.setting.sync` | `config.setting.sync` | `useSetting().sync` | planned (U-06) | `config.setting.sync` | `config.setting.sync` | `config.setting.sync` | `config.sync` |
+| `config.setting.sync` | `config.setting.sync` | `useSetting().sync` | `config.setting.sync` | `config.setting.sync` | `config.setting.sync` | `config.setting.sync` | `config.sync` |
 | `config.listUserConfig` | `config.listUserConfig` | — | `config.list_user_config` | `config.listUserConfig` | `config.listUserConfig` | `config.list_user_config` | — |
 | `config.schemaVersion` | `config.schemaVersion` | — | `config.schema_version` | `config.schemaVersion` | `config.schemaVersion` | `config.schema_version` | — |
 | `config.fetchSchema` | `config.fetchSchema` | — | `config.fetch_schema` | `config.fetchSchema` | `config.fetchSchema` | `config.fetch_schema` | — |
@@ -198,12 +198,12 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.choice` | `identity.choice` | `usePolarisAuth().choice` | planned (I-10a) | planned (I-10b) | `identity.choice` | `PKeyIdentity.choice` | `identity.choice` |
 | `identity.choice.licenses` | `identity.choice.licenses` | `usePolarisAuth().choice.licenses` | planned (I-10a) | `ChoiceNamespace.licenses` | `ChoiceClient.licenses` | `PKeyIdentityChoice.licenses` | `identity.choice` |
 | `identity.choice.devices` | `identity.choice.devices` | `usePolarisAuth().choice.devices` | planned (I-10a) | `ChoiceNamespace.devices` | `ChoiceClient.devices` | `PKeyIdentityChoice.devices` | `identity.choice` |
-| `identity.choice.complete` | `identity.choice.complete` | `usePolarisAuth().choice.complete` (planned: I-46) | planned (I-10a) | `ChoiceNamespace.complete` | `ChoiceClient.complete` | `PKeyIdentityChoice.complete` (planned: I-48) | `identity.choice` |
+| `identity.choice.complete` | `identity.choice.complete` | `usePolarisAuth().choice.complete` | planned (I-10a) | `ChoiceNamespace.complete` | `ChoiceClient.complete` | `PKeyIdentityChoice.complete` (planned: I-48) | `identity.choice` |
 | `identity.choice.cancel` | `identity.choice.cancel` | `usePolarisAuth().choice.cancel` | planned (I-10a) | `ChoiceNamespace.cancel` | `ChoiceClient.cancel` | `PKeyIdentityChoice.cancel` | `identity.choice` |
-| `identity.autoSignIn` | planned (I-47) | planned (I-46) | planned (I-47) | `identity.autoSignIn` | `identity.autoSignIn` | `PKeyIdentity.auto_sign_in` (planned: I-48) | `identity.autosignin` |
-| `identity.link.offer` | — | planned (I-46) | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
-| `identity.link.accept` | — | planned (I-46) | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
-| `identity.link.decline` | — | planned (I-46) | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
+| `identity.autoSignIn` | planned (I-47) | `usePolarisAuth().autoSignIn` | planned (I-47) | `identity.autoSignIn` | `identity.autoSignIn` | `PKeyIdentity.auto_sign_in` (planned: I-48) | `identity.autosignin` |
+| `identity.link.offer` | — | `usePolarisAuth().link.offer` | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
+| `identity.link.accept` | — | `usePolarisAuth().link.accept` | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
+| `identity.link.decline` | — | `usePolarisAuth().link.decline` | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
 | `identity.useLicenseChoice` | `identity.choice` | `useLicenseChoice` | `identity.choice` | `LicenseChoiceModel` | `identity.choice` | `identity.choice` | `identity.choice` |
 | `identity.attachLicense` | `attach` | planned (I-10a) | `attach` | `attach` | `attach` | `attach` | `identity.attach` |
 | `identity.openAccount` | `identity.openAccount` | planned (I-10a) | `identity.open_account` | `identity.openAccount` | `identity.openAccount` | `identity.open_account` | `identity.account` |
@@ -223,10 +223,10 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `cloudSync.status` | `cloudSync.status` | `useCloudSync().status` | planned (U-06) | `cloudSync.status` | `cloudSync.status` | `cloud_sync.status` | `sync.settings` |
-| `cloudSync.flush` | `cloudSync.flush` | `useCloudSync().flush` | planned (U-06) | `cloudSync.flush` | `cloudSync.flush` | `cloud_sync.flush` | `sync.settings` |
-| `cloudSync.encryption` | `cloudSync.encryption` | `BrowserAdapterOptions.cloudSync.encryption` | planned (U-06) | `CloudSyncOptions(encryption:)` | `cloudSync.encryption` | `cloud_sync_encryption` | `sync.e2e` |
-| `cloudSync.event` | `events.on("cloudSync")` | `useCloudSync().status` | planned (U-06) | `events` | `client.events` | `client.event` | `sync.settings` |
+| `cloudSync.status` | `cloudSync.status` | `useCloudSync().status` | `cloud_sync.status` | `cloudSync.status` | `cloudSync.status` | `cloud_sync.status` | `sync.settings` |
+| `cloudSync.flush` | `cloudSync.flush` | `useCloudSync().flush` | `cloud_sync.flush` | `cloudSync.flush` | `cloudSync.flush` | `cloud_sync.flush` | `sync.settings` |
+| `cloudSync.encryption` | `cloudSync.encryption` | `BrowserAdapterOptions.cloudSync.encryption` | `cloud_sync.encryption` | `CloudSyncOptions(encryption:)` | `cloudSync.encryption` | `cloud_sync_encryption` | `sync.e2e` |
+| `cloudSync.event` | `events.on("cloudSync")` | `useCloudSync().status` | `cloud_sync.event` | `events` | `client.events` | `client.event` | `sync.settings` |
 | `cloudSync.saves` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
 | `cloudSync.saves.list` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
 | `cloudSync.saves.read` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
@@ -238,7 +238,15 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `cloudSync.transfer.resume` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
 | `cloudSync.transfer.cancel` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
 | `cloudSync.transferEvent` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
-| `cloudSync.collection` | reserved for U-23 | | | | | | `sync.saves` |
+| `cloudSync.collection` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
+| `cloudSync.collection.get` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
+| `cloudSync.collection.ids` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
+| `cloudSync.collection.put` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
+| `cloudSync.collection.update` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
+| `cloudSync.collection.add` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
+| `cloudSync.collection.remove` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
+| `cloudSync.collection.delete` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
+| `cloudSync.collection.on` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
 
 ## auth
 

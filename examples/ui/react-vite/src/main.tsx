@@ -5,10 +5,10 @@ import { StrictMode, useMemo } from "react";
 import { createRoot } from "react-dom/client";
 import { PolarisKeyProvider } from "@polaris-key/react";
 import { PolarisKeyGate } from "@polaris-key/react/kit";
-import { desktopAdapter } from "@polaris-key/react/desktop";
 import "@polaris-key/react/fonts.css";
 
 import { App } from "./App";
+import { desktopAdapter } from "@polaris-key/react/desktop";
 import { tidewaterBridge } from "./fixtures";
 import { polarisKey as samplePolarisKey } from "./polaris.config";
 import "./app.css";

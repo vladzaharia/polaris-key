@@ -8,7 +8,7 @@
 import { html, nothing, type TemplateResult } from "lit";
 import { ifDefined } from "lit/directives/if-defined.js";
 
-import { button, text, GLYPHS, type RenderCtx } from "./render.js";
+import { button, lead, text, GLYPHS, type RenderCtx } from "./render.js";
 
 type Out = TemplateResult | typeof nothing;
 const shown = (c: RenderCtx, k: string): boolean => c.view.copy.includes(k);
@@ -57,16 +57,19 @@ function recommendation(c: RenderCtx): Out {
             html`<li data-key=${k}>
               <span class="holder-icon" aria-hidden="true"
                 >${REASON_GLYPH[k]!()}</span
-              ><span>${text(c, k)}</span>
+              ><span>${lead(c, k)}</span>
             </li>`,
         )}
       </ul>
       ${shown(c, "activate.recommend.action")
         ? button(c, "activate.recommend.action", "secondary")
-        : nothing}
+        : // Identity off: it opens polaris.locker, so the label and the glyph say so.
+          shown(c, "signin.key.addInLocker")
+          ? button(c, "signin.key.addInLocker", "secondary", { external: true })
+          : nothing}
     </section>
     ${shown(c, "activate.recommend.skip")
-      ? html`<p class="body holder-skip" data-key="activate.recommend.skip">
+      ? html`<p class="holder-skip" data-key="activate.recommend.skip">
           ${text(c, "activate.recommend.skip")}
         </p>`
       : nothing}`;
@@ -78,9 +81,9 @@ function field(
   id: "name" | "email",
   o: { bad: boolean; locked: boolean; submit: () => void },
 ): TemplateResult {
-  const label = id === "name" ? "signin.gate.name" : "signin.email.label";
+  const label = id === "name" ? "activate.attach.name" : "signin.email.label";
   const error =
-    id === "name" ? "signin.gate.nameRequired" : "signin.email.invalid";
+    id === "name" ? "activate.attach.nameRequired" : "signin.email.invalid";
   const note = id === "email" ? "activate.attach.fine" : null;
   const refused = o.bad && shown(c, error);
   const described = [refused ? `pk-${id}-error` : null, note ? "pk-fine" : null]
@@ -103,7 +106,10 @@ function field(
       aria-invalid=${o.bad ? "true" : "false"}
       aria-describedby=${ifDefined(described || undefined)}
       @keydown=${(e: KeyboardEvent) => {
-        if (e.key === "Enter" && id === "email" && !o.locked) o.submit();
+        if (e.key === "Enter" && !o.locked) {
+          e.preventDefault();
+          o.submit();
+        }
       }}
     />
     ${refused
@@ -141,8 +147,13 @@ function form(c: RenderCtx): Out {
     novalidate
     @submit=${(e: Event) => e.preventDefault()}
   >
+    ${shown(c, "activate.attach.lede")
+      ? html`<p class="body" data-key="activate.attach.lede">
+          ${text(c, "activate.attach.lede")}
+        </p>`
+      : nothing}
     ${field(c, "name", {
-      bad: bad.includes("signin.gate.nameRequired"),
+      bad: bad.includes("activate.attach.nameRequired"),
       locked,
       submit,
     })}
@@ -151,11 +162,6 @@ function form(c: RenderCtx): Out {
       locked,
       submit,
     })}
-    ${shown(c, "activate.attach.lede")
-      ? html`<p class="body" data-key="activate.attach.lede">
-          ${text(c, "activate.attach.lede")}
-        </p>`
-      : nothing}
   </form>`;
 }
 
@@ -180,5 +186,8 @@ export function readHolderFields(root: ParentNode): {
     root
       .querySelector<HTMLInputElement>(`[data-key="${label}"]`)
       ?.value.trim() ?? "";
-  return { name: read("signin.gate.name"), email: read("signin.email.label") };
+  return {
+    name: read("activate.attach.name"),
+    email: read("signin.email.label"),
+  };
 }

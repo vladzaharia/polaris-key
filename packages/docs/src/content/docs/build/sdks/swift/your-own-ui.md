@@ -4,7 +4,7 @@ description: "Draw your own screens on PolarisKey for Swift: the state model, ea
 sidebar:
   order: 2
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 sdks: ["swift"]
 lanes: ["library"]
 ---
@@ -77,6 +77,12 @@ func refusalScreen(_ result: ActivationResult) -> (message: String, link: String
         if let count { params["deviceCount"] = String(count) }
         let link = ManageLink.read(manageURL).map { ManageLink.withReturn($0, "myapp://activated") }
         return (ErrorCopy.activationMessage(result.kind, params: params), link)
+    case .keyEntryLimit(let manageUrl, _):
+        // The key has no entries left; nothing was wiped. Add it to an account, or sign in.
+        return (ErrorCopy.activationMessage(result.kind), manageUrl)
+    case .licenseOwned(let signInUrl):
+        // The license is in an account and a key never moves it: sign in.
+        return (ErrorCopy.activationMessage(result.kind), signInUrl)
     case .rateLimited(let seconds):
         let params = seconds.map { ["retryAfterSeconds": String($0)] } ?? [:]
         return (ErrorCopy.activationMessage(result.kind, params: params), nil)
@@ -98,6 +104,8 @@ func activate(_ client: PolarisKeyClient, key: String) async -> String? {
 | `.deviceLimit`                                                      | The device limit is reached                    | `manageURL`, then retry the same key       |
 | `.licenseExpired`, `.licenseDisabled`                               | The license ended or an operator disabled it   | Renew, or contact the developer            |
 | `.hardwareMismatch`, `.fingerprintRequired`, `.attestationRequired` | The device check failed                        | Retry; `hardwareMismatch` lists what moved |
+| `.keyEntryLimit`                                                    | The key has no entries left                    | `manageUrl`, or sign in                    |
+| `.licenseOwned`                                                     | The license is in an account                   | `signInUrl`: sign in                       |
 | `.enrollDisabled`, `.enrollClaimed`                                 | No free license, or it is on an account        | Key entry, or sign in                      |
 | `.rateLimited`                                                      | Too many attempts                              | Wait `retryAfterSeconds`                   |
 | `.refused`, `.error`                                                | Any other refusal; a network or server failure | Show the sentence and the `code`           |
@@ -109,9 +117,9 @@ that still has a credential: `await client.deauthorizeDevice(id)`.
 
 ## Sign-in and who signed in
 
-`client.identity.signIn.start(_:)` starts the device-code flow; pass `SignInOptions(browser:)` to
-show the page in an `ASWebAuthenticationSession`. Anyone holding the code can finish the sign-in
-elsewhere, so say who signed in before you move on.
+`client.identity.signIn.start(_:)` starts a sign-in. The default channel is the device code; pass
+`SignInOptions(browser:)` to show the page in an `ASWebAuthenticationSession`. Anyone holding the
+code can finish the sign-in elsewhere, so say who signed in before you move on.
 
 ```swift
 import PolarisKey
@@ -121,15 +129,16 @@ func signIn(_ client: PolarisKeyClient) async -> String {
         let browser = await WebAuthenticationSignInBrowser()
         let session = try await client.identity.signIn.start(
             SignInOptions(deviceName: "Studio Mac", browser: browser))
+        // Also draw session.userCode, session.verificationUri and the QR of
+        // session.verificationUriComplete, for another device.
         switch try await session.wait() {
-        case .signedIn:
-            // identity is nil for a key-only device, so ask once sign-in has settled.
-            let who = await client.identity.current()
+        case .signedIn(let ready):
+            let who = ready.identity
             return "Signed in as \(who?.name ?? who?.email ?? "your account")"
+        case .chooseLicense:
+            return "Pick the license to use."  // redirect channel only
         case .choose(let identity, _):
             return "Continue as \(identity.name ?? identity.email ?? "this account")?"
-        case .chooseLicense:
-            return "Pick the license to use."
         case .expired:
             return "The code expired. Start again."
         case .cancelled, .pending:
@@ -143,11 +152,100 @@ func signIn(_ client: PolarisKeyClient) async -> String {
 }
 ```
 
-`wait()` never returns `.choose` today: that case is for a flow held at the signed-in identity.
-A Deny on the Polaris Locker approval page throws `SignInError` with
-`code == ErrorCode.signInDenied`. Sign-in needs the Identity service; with it off,
-`start` throws `service-unavailable` before any request. `try await client.signOut()` ends the
-session.
+`session.reopen()` shows the page again and `session.cancel()` stops the wait. `wait()` never
+returns `.choose` today: that case is for a flow held at the signed-in identity. A Deny on the
+Polaris Locker approval page throws `SignInError` with `code == ErrorCode.signInDenied`; a failure
+after approval throws `sign-in-failed`. Sign-in needs the Identity service; with it off, `start`
+throws `service-unavailable` before any request.
+
+### Redirect sign-in
+
+A host that opens a browser and receives its redirect (an app with a universal link on an `https:`
+address it registered) uses `channel: .redirect`. The session is single use: keep it until the
+browser returns.
+
+```swift
+import PolarisKey
+
+func beginRedirect(_ client: PolarisKeyClient) async throws -> SignInSession {
+    try await client.identity.signIn.start(
+        SignInOptions(
+            channel: .redirect, redirectUri: "https://app.example/auth/callback",
+            licenseChoice: .app))
+}
+
+/// Open session.authorizeUrl in the browser; hand the URL it lands on back here.
+func finish(_ session: SignInSession, callback: String) async throws -> String? {
+    switch try await session.complete(callbackUrl: callback) {
+    case .signedIn(let ready):
+        return ready.subject
+    case .chooseLicense(let pending):
+        return pending.view.state  // run `identity.choice`, below
+    default:
+        return nil  // cancelled
+    }
+}
+```
+
+`complete` checks `state` and the issuer before it sends anything. A refusal throws a `SignInError`
+under the Worker's code (`invalid_grant`, `rate_limited` with `retryAfterSeconds`,
+`sign-in-failed`) and leaves the device's token alone. A second call with the same callback is
+refused without a request.
+
+### The license choice
+
+With `licenseChoice: .app`, a person who holds licenses settles `.chooseLicense(PendingSignIn)`. No
+token is stored until you finish with `client.identity.choice`. A refusal throws a `ChoiceError`
+with its `code`:
+
+```swift
+import PolarisKey
+import PolarisKeyIdentity
+
+func choose(_ client: PolarisKeyClient, pending: PendingSignIn) async -> String {
+    guard let first = pending.view.choices.first else {
+        try? await client.identity.choice.cancel(grant: pending.grant)
+        return "No license to use."
+    }
+    do {
+        let done = try await client.identity.choice.complete(
+            grant: pending.grant, choice: .license(id: first.id))
+        return done.ready.licenseId ?? "Signed in."
+    } catch let error as ChoiceError {
+        // device_limit leaves the grant open and carries manageUrl and a fresh view.
+        return error.manageUrl ?? error.signInUrl ?? error.code
+    } catch {
+        return error.localizedDescription
+    }
+}
+```
+
+The grant lives 300 seconds (`pending.expiresAt`) and is a credential: its description prints
+`[redacted]`, so keep it out of your own logs too. `choice.licenses(grant:)` reads a fresh view,
+`choice.devices(grant:licenseId:)` lists the devices on a full license for **Replace a device**, and
+the inputs are `.license(id:replaceDeviceId:)`, `.keep`, `.create` and `.key(_:)`. To draw the choice
+with the kit's screen, build a `LicenseChoiceModel(identity:pending:)` from `PolarisKeyUICore`.
+
+### The account
+
+```swift
+import PolarisKey
+
+func account(_ client: PolarisKeyClient) async throws -> String? {
+    let subject = try await client.identity.subject()  // "ps_…" or nil
+    if case .confirm = try await client.identity.attach(confirm: false) {
+        _ = try await client.identity.attach(confirm: true)
+    }
+    try await client.identity.openAccount()  // Polaris Locker, in the system browser
+    let result = try await client.identity.signOut()
+    return result.released ? "Signed out. Activate again to continue." : subject
+}
+```
+
+`attach(confirm: false)` previews and writes nothing; `confirm: true` adds the device's license to
+the account. A refusal (`account_required`, `license_owned`) is a `.refused` result. `signOut()`
+removes the device token only when `released` is true; a device activated by a key keeps its
+license. `client.signOut()` forwards to it, and `client.deactivate()` frees the device itself.
 
 ## Status, offline and refresh
 

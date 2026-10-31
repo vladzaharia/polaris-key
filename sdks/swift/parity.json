@@ -174,17 +174,26 @@
       "status": "implemented",
       "note": "SignInOptions(licenseChoice: .app) sends license_choice=app (only when discovery lists the four choice routes; else the card chooses) and session.complete(callbackUrl:) then settles .chooseLicense(PendingSignIn); identity.choice.licenses/devices/complete/cancel(grant:) take the grant (complete with keep also sends the device's own bearer, which the Worker reads as held; every other choice sends none), store the device token on complete like a sign-in, and throw a typed ChoiceError (invalid_grant, license_choice_required and device_limit with a fresh view, not_found, rate_limited with retryAfterSeconds); UnsupportedError(product) when a route is not published. LicenseChoiceModel (PolarisKeyUICore, @Observable) drives the LicenseChoice screen's KitInputs from the SDK."
     },
+    "identity.devicecode.choice": {
+      "status": "planned",
+      "wp": "UK-42",
+      "note": "UK-42.22 (SDK slice .9): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+    },
     "identity.signin.hints": {
       "status": "implemented"
+    },
+    "identity.keyreturn": {
+      "status": "planned",
+      "wp": "I-15b",
+      "note": "LK-SKIP.9: the opt-in, the via rule and the activated outcome, with the replayer."
     },
     "identity.exchange": {
       "status": "implemented",
       "note": "identity.exchange(kind:subjectToken:nonce:) and exchangeNonce(kind:) (PolarisKeyIdentity): the nonce route registers the device keys, the token route takes the pkey-proof/1 exchange proof over nonce.key and the token hash; the outcome is signedIn, confirm (PendingConsent, completed through identity.choice.complete(grant:choice:consent:)), choose, needsSignIn or unavailable, and refusals are a typed ExchangeError. A 404 on either route, a discovery with no exchange member or a memory-only key port is unavailable with no request. Replayed against the exchange-* transcripts (TranscriptTests). Sign in with Apple itself is I-44.4."
     },
     "identity.gamecenter": {
-      "status": "planned",
-      "wp": "I-44",
-      "note": "PolarisKeyGameCenter (I-44.5)."
+      "status": "implemented",
+      "note": "PolarisKeyGameCenter (I-44.5, standalone): GameCenterIdentity checks the local player is signed in (authenticateHandler, never presenting Game Center's view) and scopedIDsArePersistent(), takes fetchItemsForIdentityVerificationSignature() and encodes the gc1. token (GameCenterToken, V5 §12.11.7) over a GameCenterPlayerPort; ExchangeKind.gamecenter sends subject_token_type urn:polaris-key:token-type:gamecenter-signature; GameCenterSignInProvider (opt-in product PolarisKeyGameCenterSignIn; the umbrella links no GameKit) is the autoSignIn provider. Replayed against exchange-gamecenter-* (TranscriptTests) with a fake player; link-game waits on identity.link. The signature hash and timestamp unit are unconfirmed on a real device (owner step)."
     },
     "identity.pgs": {
       "status": "na",
@@ -195,6 +204,10 @@
     "identity.autosignin": {
       "status": "implemented",
       "note": "autoSignIn() rungs 1-4 (plan-auto-sign-in §1, I-44): a stored sign-in, then the platform provider's silent mode where it has one (Apple has none; Game Center is I-44.5), then its one sheet under prompt: .optional; every refusal is a result."
+    },
+    "identity.restore": {
+      "status": "implemented",
+      "note": "Rung 2 of autoSignIn() (PolarisKeyIdentity/Restore.swift): the restore grant over the PlatformBackupStore item (the umbrella's RestoreBackup.swift adapter), enrolment after every completed sign-in and once a day on rung 1, sign-out deletion (DELETE restore queued for the next launch, the synchronizable item, the signed-out flag), AutoSignInOptions.restore and backupAccessGroup (I-49.9). The restore-* transcripts and discovery-identity-restore are replayed (I-49.10)."
     },
     "identity.link": {
       "status": "planned",
@@ -488,7 +501,7 @@
     },
     "sync.records": {
       "status": "planned",
-      "wp": "U-23"
+      "wp": "U-46"
     },
     "sync.files": {
       "status": "planned",

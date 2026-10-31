@@ -1,5 +1,5 @@
 ---
-title: "Cloud Sync"
+title: "Sync Across Devices"
 description: "How your settings follow you between devices, what its status messages mean, and what happens when your storage is full."
 type: "help"
 status: "shipped"
@@ -8,7 +8,7 @@ sidebar:
   order: 9
 ---
 
-Cloud Sync keeps an app's settings in your Polaris Locker account, so your devices agree.
+**Sync Across Devices** keeps your settings the same on every device, through your Polaris Locker account.
 
 ## What you need
 
@@ -16,7 +16,7 @@ You need to be signed in to the app with your Polaris Locker account. A device y
 
 ## What syncs
 
-Settings the app marks as yours, such as volume or layout. A setting your developer locked does not sync, and the lock wins on every device. Some apps keep a setting on one kind of device only, such as Windows.
+Settings the app marks as yours, such as volume or layout, and, where the app supports it, other data it syncs. A setting your developer locked does not sync, and the lock wins on every device. Some apps keep a setting on one kind of device only, such as Windows.
 
 ## Unlock sync on a new device
 

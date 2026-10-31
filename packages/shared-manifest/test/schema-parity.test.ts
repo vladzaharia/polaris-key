@@ -1365,6 +1365,13 @@ const MUTATIONS: Mutation[] = [
     schema: "rejects",
     mutate: (d) => (p(d).identity.nearby = "yes"),
   },
+  // I-49.6: identity.restore, the silent-restore opt-out (plans/I-49-slices.md D-6).
+  {
+    code: "invalid_identity_restore",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.restore = "yes"),
+  },
   {
     code: "google_client_ids_without_server",
     file: "product",

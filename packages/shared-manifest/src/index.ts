@@ -405,6 +405,8 @@ export interface ManifestIdentity {
   };
   /** Nearby sign-in (R-13): a developer switch, on when absent; needs no Cloud Connect. */
   nearby?: boolean;
+  /** Silent restore (I-49; V5 §12.11.8): a developer opt-out, on when absent. */
+  restore?: boolean;
 }
 
 /**
@@ -6568,7 +6570,7 @@ function isHttpsUrl(v: unknown): v is string {
 
 /**
  * I-09 (plans/I-27.md §3, plans/I-04.md §3): the `identity:` block of `.pkey/product`. I-09 allows
- * `keyEntry {limit, claimByKey}`, `terms {version, url?}` and `redirectPaths`; I-42.1 adds `platformSignIn` and `nearby`.
+ * `keyEntry {limit, claimByKey}`, `terms {version, url?}` and `redirectPaths`; I-42.1 adds `platformSignIn` and `nearby`; I-49.6 adds `restore`.
  * Each `add` is written out with literal arguments so the generated validation-codes page lists
  * it.
  */
@@ -6586,7 +6588,7 @@ function validateIdentityBlock(
       "product",
       "/identity",
       "invalid_identity",
-      "identity must be an object with keyEntry, terms, redirectPaths, platformSignIn and nearby.",
+      "identity must be an object with keyEntry, terms, redirectPaths, platformSignIn, nearby and restore.",
     );
     return;
   }
@@ -6597,7 +6599,7 @@ function validateIdentityBlock(
         "product",
         `/identity/${key}`,
         "invalid_identity",
-        "identity takes only keyEntry, terms, redirectPaths, platformSignIn and nearby.",
+        "identity takes only keyEntry, terms, redirectPaths, platformSignIn, nearby and restore.",
       );
     }
   }
@@ -6732,6 +6734,15 @@ function validateIdentityBlock(
       "/identity/nearby",
       "invalid_identity_nearby",
       "identity.nearby must be true or false.",
+    );
+  }
+  if (identity.restore !== undefined && typeof identity.restore !== "boolean") {
+    add(
+      errors,
+      "product",
+      "/identity/restore",
+      "invalid_identity_restore",
+      "identity.restore must be true or false.",
     );
   }
   if (identity.platformSignIn !== undefined)
@@ -7100,6 +7111,7 @@ const IDENTITY_MEMBERS: readonly string[] = [
   "redirectPaths",
   "platformSignIn",
   "nearby",
+  "restore",
 ];
 
 /** The `identity:` block's declared settings, validated above; `undefined` when none. */
@@ -7131,6 +7143,7 @@ function normalizeIdentityBlock(raw: unknown): ManifestIdentity | undefined {
   if (Array.isArray(raw.redirectPaths))
     out.redirectPaths = raw.redirectPaths.filter(isString);
   if (typeof raw.nearby === "boolean") out.nearby = raw.nearby;
+  if (typeof raw.restore === "boolean") out.restore = raw.restore;
   const psi = normalizePlatformSignIn(raw.platformSignIn);
   if (psi) out.platformSignIn = psi;
   return Object.keys(out).length > 0 ? out : undefined;

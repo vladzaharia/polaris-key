@@ -173,8 +173,7 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · this {deviceKind} is device {n} of {limit}.",
     "activate.recommend.title": "Keep {product} in your account",
     "activate.recommend.badge": "Recommended",
-    "activate.recommend.sync":
-      "Cloud Sync keeps your settings and saves on every device",
+    "activate.recommend.sync": "Sync your settings across your devices",
     "activate.recommend.recover":
       "Get your license back if you lose the key or this device",
     "activate.recommend.devices":
@@ -183,15 +182,19 @@ export const KIT_COPY: Readonly<
     "activate.recommend.skip":
       "Or continue without an account. {product} works the same.",
     "activate.recommend.portal": "Keep your license safe in Polaris Locker",
-    "activate.attach.lede":
-      "Your license and its devices stay as they are. You'll confirm the email with a code in your browser.",
+    "activate.attach.lede": "Your license and its devices stay as they are.",
     "activate.attach.fine":
       "We send a code to this email in your browser. {product} never sees it.",
     "activate.attach.done": "{product} is in your account",
     "activate.attach.syncOn":
-      "Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.",
+      "Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too.",
     "activate.attach.failed":
       "Couldn't add this license. Try again in a moment.",
+    "activate.attach.name": "Name",
+    "activate.attach.nameRequired": "Enter your name.",
+    "activate.otherAccount.title": "You signed in with a different account",
+    "activate.otherAccount.body":
+      "You signed in as {email}, not {maskedEmail}. Nothing was added.",
     "activate.waiting":
       "This license was sent to {maskedEmail}. Sign in with that email to keep it in your account.",
     "activate.waitingSignIn": "Sign in as {maskedEmail}",
@@ -203,6 +206,7 @@ export const KIT_COPY: Readonly<
       "It was sent to {maskedEmail}. Sign in with that email, or add it to this account and verify it.",
     "activate.otherEmail.verify": "Verify that email",
     "account.notInAccount": "Not in an account",
+    "account.removeKey": "Remove license from this device",
     "signin.attach.header": "Add {product} to your account",
     "signin.key.skipNote":
       "{product} works the same. Add it to an account any time.",
@@ -352,17 +356,17 @@ export const KIT_COPY: Readonly<
       "Offline · {days, plural, one {# day} other {# days}} left",
     "grace.lastDay": "Offline · last day to use {product}",
     "grace.deadline": "Works offline until {date}",
-    "account.title": "Account and license",
+    "account.title": "Account and License",
     "account.tier": "{tier} license",
     "account.holder": "Signed in as {name}",
     "account.keyOnly": "Activated with a license key",
     "account.devices": "Devices",
-    "account.cloudSync": "Cloud Sync",
+    "account.cloudSync": "Sync Across Devices",
     "account.updates": "Updates",
-    "account.autoUpdate": "Update automatically",
-    "account.channel": "Release channel",
+    "account.autoUpdate": "Update Automatically",
+    "account.channel": "Release Channel",
     "account.version": "Version {version}",
-    "account.managedSettings": "Managed settings",
+    "account.managedSettings": "Managed Settings",
     "account.offline": "Offline · showing the last saved details",
     "settings.title": "Settings",
     "settings.search": "Search settings",
@@ -464,10 +468,16 @@ export const KIT_COPY: Readonly<
     "saveConflict.bothFull":
       "All save slots are in use. Delete a save to keep both.",
     "saveConflict.keeping": "Keeping your choice…",
-    "saveConflict.keptLocal": "Kept this device's save.",
-    "saveConflict.keptRemote": "Kept the other save.",
-    "saveConflict.keptBoth": "Kept both. The other is saved as a copy.",
-    "saveConflict.keptDeleted": "The save is deleted.",
+    "saveConflict.newerThis": "Newer",
+    "saveConflict.newerOther": "Newer",
+    "saveConflict.chooseAgain": "Choose again",
+    "saveConflict.failedDeleted":
+      "Couldn't keep your choice. Your save is unchanged.",
+    "saveConflict.keptLocalTitle": "Kept this device's version",
+    "saveConflict.keptRemoteTitle": "Kept the other version",
+    "saveConflict.keptBothTitle": "Kept both versions",
+    "saveConflict.keptCopy": "The other version is saved as a copy.",
+    "saveConflict.keptDeletedTitle": "Save deleted",
     "saveConflict.failed":
       "Couldn't keep your choice. Both saves are unchanged.",
     "about.title": "About {product}",
@@ -478,7 +488,7 @@ export const KIT_COPY: Readonly<
     "about.licenses": "Open-source licenses",
     "about.copyDiagnostics": "Copy diagnostics",
     "about.diagnosticsCopied": "Diagnostics copied",
-    "channel.title": "Release channel",
+    "channel.title": "Release Channel",
     "channel.locked": "{store} sets the channel.",
     "channel.lockedLicense": "Your license includes this channel only.",
     "toast.undo": "Undo",
@@ -658,6 +668,8 @@ export const KIT_COPY: Readonly<
     "signin.auto.confirm.title": "Continue to {app}",
     "signin.auto.confirm.as": "as {email}",
     "signin.auto.confirm.asApple": "with your Apple Account",
+    "signin.auto.confirm.asGameCenter": "with Game Center",
+    "signin.auto.confirm.asPlayGames": "with Google Play Games",
     "signin.auto.confirm.primary": "Continue",
     "signin.auto.confirm.other": "Use another account",
     "signin.linkOffer.title": "Sign in with {provider} next time?",
@@ -816,7 +828,7 @@ export const KIT_COPY: Readonly<
     "signin.mail.newDevice.subject":
       "A new device signed in to your Polaris Locker account",
     "signin.mail.newDevice.body":
-      "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.",
+      "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.",
     "signin.mail.open": "Open Polaris Locker",
     "signin.code.label": "6-digit code",
     "cli.group.license": "License",
@@ -1082,7 +1094,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "on {device}",
     "signin.thisBrowser": "this browser",
     "signin.consent.deny": "Don't allow",
-    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.cloudSync": "Your synced settings and data",
     "signin.consent.newLicense":
       "New: {tier} license, created when you continue",
     "signin.key.upgradeTitle": "Keep {product} in an account",
@@ -1233,21 +1245,20 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Device not set up",
     "core.codes.device_keys_invalid.message":
       "This device could not be set up for sync. Update the app and try again.",
-    "core.codes.device_keys_required.title": "Device not linked",
-    "core.codes.device_keys_required.message":
-      "This device has not been set up to link with your others. Update the app and try again.",
+    "core.codes.device_keys_required.title": "Device not set up to connect",
+    "core.codes.device_keys_required.message": "Update the app and try again.",
     "core.codes.ring_too_large.title": "Too many devices",
     "core.codes.ring_too_large.message":
-      "This account has more linked devices than can be connected. Remove one and try again.",
-    "core.codes.relay_disabled.title": "Remote connect is off",
+      "This account has more devices than can be connected. Remove one and try again.",
+    "core.codes.relay_disabled.title": "Remote connection is off",
     "core.codes.relay_disabled.message":
-      "Remote connect is off for this app. Your devices connect only on the same network.",
-    "core.codes.relay_paused.title": "Remote connect paused",
+      "Remote connection is off for this app. Your devices connect only on the same network.",
+    "core.codes.relay_paused.title": "Remote connection paused",
     "core.codes.relay_paused.message":
-      "Remote connect is paused for now. Try again later.",
-    "core.codes.relay_quota_exceeded.title": "Remote limit reached",
+      "Remote connection is paused for now. Try again later.",
+    "core.codes.relay_quota_exceeded.title": "Remote connection limit reached",
     "core.codes.relay_quota_exceeded.message":
-      "The remote connection limit is used up. It resets soon. Devices on the same network still connect.",
+      "It resets soon. Devices on the same network still connect.",
     "core.codes.relay_ticket_invalid.title": "Connection expired",
     "core.codes.relay_ticket_invalid.message":
       "The connection request expired. Try again.",
@@ -1394,7 +1405,7 @@ export const KIT_COPY: Readonly<
       "Syncing is paused for a moment. Your changes are kept and will sync later.",
     "core.codes.encryption_mismatch.title": "Encryption mismatch",
     "core.codes.encryption_mismatch.message":
-      "This app and the sync service don't agree on encryption. Update the app and try again.",
+      "This app and Polaris Locker don't agree on encryption. Update the app and try again.",
     "core.codes.revision_conflict.title": "Changed elsewhere",
     "core.codes.revision_conflict.message":
       "This was changed on another device. Refresh, then try again.",
@@ -1614,9 +1625,9 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Storage problem",
     "core.codes.store-failed.message":
       "Couldn't save on this device. Check storage and try again.",
-    "core.codes.connect-unavailable.title": "Connect unavailable",
+    "core.codes.connect-unavailable.title": "Nearby devices unavailable",
     "core.codes.connect-unavailable.message":
-      "Nearby connection isn't available for this app on this device.",
+      "This app can't use them on this device.",
     "core.codes.peer-cert-invalid.title": "Device not verified",
     "core.codes.peer-cert-invalid.message":
       "This device couldn't be verified. Try again.",
@@ -2020,7 +2031,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "{product} in Ihrem Konto behalten",
     "activate.recommend.badge": "Empfohlen",
     "activate.recommend.sync":
-      "Die Cloud-Synchronisierung hält Ihre Einstellungen und Spielstände auf jedem Gerät aktuell",
+      "Ihre Einstellungen auf jedem Gerät gleich halten",
     "activate.recommend.recover":
       "Ihre Lizenz zurückholen, wenn Sie den Schlüssel oder dieses Gerät verlieren",
     "activate.recommend.devices":
@@ -2030,15 +2041,20 @@ export const KIT_COPY: Readonly<
       "Oder ohne Konto fortfahren. {product} funktioniert genauso.",
     "activate.recommend.portal":
       "Ihre Lizenz sicher in Polaris Locker aufbewahren",
-    "activate.attach.lede":
-      "Ihre Lizenz und ihre Geräte bleiben unverändert. Die E-Mail bestätigen Sie mit einem Code in Ihrem Browser.",
+    "activate.attach.lede": "Ihre Lizenz und ihre Geräte bleiben unverändert.",
     "activate.attach.fine":
       "Wir senden einen Code an diese E-Mail in Ihrem Browser. {product} sieht ihn nie.",
     "activate.attach.done": "{product} ist in Ihrem Konto",
     "activate.attach.syncOn":
-      "Die Cloud-Synchronisierung ist für dieses {deviceKind} aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren.",
+      "Die Synchronisierung ist für dieses {deviceKind} aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren.",
     "activate.attach.failed":
       "Die Lizenz konnte nicht hinzugefügt werden. Versuchen Sie es gleich noch einmal.",
+    "activate.attach.name": "Name",
+    "activate.attach.nameRequired": "Geben Sie Ihren Namen ein.",
+    "activate.otherAccount.title":
+      "Sie haben sich mit einem anderen Konto angemeldet",
+    "activate.otherAccount.body":
+      "Sie haben sich als {email} angemeldet, nicht als {maskedEmail}. Es wurde nichts hinzugefügt.",
     "activate.waiting":
       "Diese Lizenz wurde an {maskedEmail} gesendet. Melden Sie sich mit dieser E-Mail an, um sie in Ihrem Konto zu behalten.",
     "activate.waitingSignIn": "Als {maskedEmail} anmelden",
@@ -2051,6 +2067,7 @@ export const KIT_COPY: Readonly<
       "Sie wurde an {maskedEmail} gesendet. Melden Sie sich mit dieser E-Mail an oder fügen Sie sie diesem Konto hinzu und bestätigen Sie sie.",
     "activate.otherEmail.verify": "Diese E-Mail bestätigen",
     "account.notInAccount": "In keinem Konto",
+    "account.removeKey": "Lizenz von diesem Gerät entfernen",
     "signin.attach.header": "{product} zu Ihrem Konto hinzufügen",
     "signin.key.skipNote":
       "{product} funktioniert genauso. Fügen Sie es jederzeit einem Konto hinzu.",
@@ -2216,7 +2233,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "Angemeldet als {name}",
     "account.keyOnly": "Mit einem Lizenzschlüssel aktiviert",
     "account.devices": "Geräte",
-    "account.cloudSync": "Cloud-Synchronisierung",
+    "account.cloudSync": "Synchronisierung auf allen Geräten",
     "account.updates": "Updates",
     "account.autoUpdate": "Automatisch aktualisieren",
     "account.channel": "Release-Kanal",
@@ -2333,11 +2350,16 @@ export const KIT_COPY: Readonly<
     "saveConflict.bothFull":
       "Alle Speicherplätze sind belegt. Löschen Sie einen Spielstand, um beide zu behalten.",
     "saveConflict.keeping": "Ihre Wahl wird übernommen…",
-    "saveConflict.keptLocal": "Spielstand dieses Geräts behalten.",
-    "saveConflict.keptRemote": "Anderen Spielstand behalten.",
-    "saveConflict.keptBoth":
-      "Beide behalten. Der andere ist als Kopie gespeichert.",
-    "saveConflict.keptDeleted": "Der Spielstand ist gelöscht.",
+    "saveConflict.newerThis": "Neuer",
+    "saveConflict.newerOther": "Neuer",
+    "saveConflict.chooseAgain": "Erneut wählen",
+    "saveConflict.failedDeleted":
+      "Ihre Wahl konnte nicht übernommen werden. Ihr Spielstand ist unverändert.",
+    "saveConflict.keptLocalTitle": "Version dieses Geräts behalten",
+    "saveConflict.keptRemoteTitle": "Andere Version behalten",
+    "saveConflict.keptBothTitle": "Beide Versionen behalten",
+    "saveConflict.keptCopy": "Die andere Version ist als Kopie gespeichert.",
+    "saveConflict.keptDeletedTitle": "Spielstand gelöscht",
     "saveConflict.failed":
       "Ihre Wahl konnte nicht übernommen werden. Beide Spielstände sind unverändert.",
     "about.title": "Über {product}",
@@ -2541,6 +2563,8 @@ export const KIT_COPY: Readonly<
     "signin.auto.confirm.title": "Weiter zu {app}",
     "signin.auto.confirm.as": "als {email}",
     "signin.auto.confirm.asApple": "mit Ihrem Apple Account",
+    "signin.auto.confirm.asGameCenter": "mit Game Center",
+    "signin.auto.confirm.asPlayGames": "mit Google Play Spiele",
     "signin.auto.confirm.primary": "Weiter",
     "signin.auto.confirm.other": "Anderes Konto verwenden",
     "signin.linkOffer.title": "Nächstes Mal mit {provider} anmelden?",
@@ -3010,7 +3034,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "auf {device}",
     "signin.thisBrowser": "diesen Browser",
     "signin.consent.deny": "Nicht erlauben",
-    "signin.consent.cloudSync": "Cloud-Synchronisierung",
+    "signin.consent.cloudSync": "Ihre synchronisierten Einstellungen und Daten",
     "signin.consent.newLicense":
       "Neu: {tier}-Lizenz, wird beim Fortfahren erstellt",
     "signin.key.upgradeTitle": "{product} in einem Konto behalten",
@@ -3172,25 +3196,27 @@ export const KIT_COPY: Readonly<
       "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden.",
     "core.codes.device_keys_invalid.title": "Gerät nicht eingerichtet",
     "core.codes.device_keys_invalid.message":
-      "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut.",
-    "core.codes.device_keys_required.title": "Gerät nicht verknüpft",
+      "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisieren Sie die App und versuchen Sie es erneut.",
+    "core.codes.device_keys_required.title":
+      "Gerät nicht zum Verbinden eingerichtet",
     "core.codes.device_keys_required.message":
-      "Dieses Gerät wurde nicht zum Verknüpfen mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut.",
+      "Aktualisieren Sie die App und versuchen Sie es erneut.",
     "core.codes.ring_too_large.title": "Zu viele Geräte",
     "core.codes.ring_too_large.message":
-      "Dieses Konto hat mehr verknüpfte Geräte, als verbunden werden können. Entferne eines und versuche es erneut.",
+      "Dieses Konto hat mehr Geräte, als verbunden werden können. Entfernen Sie eines und versuchen Sie es erneut.",
     "core.codes.relay_disabled.title": "Fernverbindung aus",
     "core.codes.relay_disabled.message":
-      "Die Fernverbindung ist für diese App ausgeschaltet. Deine Geräte verbinden sich nur im selben Netzwerk.",
+      "Die Fernverbindung ist für diese App ausgeschaltet. Ihre Geräte verbinden sich nur im selben Netzwerk.",
     "core.codes.relay_paused.title": "Fernverbindung pausiert",
     "core.codes.relay_paused.message":
-      "Die Fernverbindung ist vorübergehend pausiert. Versuche es später erneut.",
-    "core.codes.relay_quota_exceeded.title": "Fernlimit erreicht",
+      "Die Fernverbindung ist vorübergehend pausiert. Versuchen Sie es später erneut.",
+    "core.codes.relay_quota_exceeded.title":
+      "Limit für Fernverbindungen erreicht",
     "core.codes.relay_quota_exceeded.message":
-      "Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.",
+      "Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.",
     "core.codes.relay_ticket_invalid.title": "Verbindung abgelaufen",
     "core.codes.relay_ticket_invalid.message":
-      "Die Verbindungsanfrage ist abgelaufen. Versuche es erneut.",
+      "Die Verbindungsanfrage ist abgelaufen. Versuchen Sie es erneut.",
     "core.codes.key_entry_limit.title": "Keine Schlüsseleingaben mehr",
     "core.codes.key_entry_limit.message":
       "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
@@ -3343,7 +3369,7 @@ export const KIT_COPY: Readonly<
       "Die Synchronisierung ist kurz pausiert. Ihre Änderungen bleiben erhalten und werden später synchronisiert.",
     "core.codes.encryption_mismatch.title": "Verschlüsselung passt nicht",
     "core.codes.encryption_mismatch.message":
-      "App und Sync-Dienst sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut.",
+      "App und Polaris Locker sind bei der Verschlüsselung nicht einig. Aktualisieren Sie die App und versuchen Sie es erneut.",
     "core.codes.revision_conflict.title": "Anderswo geändert",
     "core.codes.revision_conflict.message":
       "Das wurde auf einem anderen Gerät geändert. Aktualisieren Sie und versuchen Sie es erneut.",
@@ -3574,9 +3600,10 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Speicherproblem",
     "core.codes.store-failed.message":
       "Auf diesem Gerät konnte nichts gespeichert werden. Prüfen Sie den Speicher und versuchen Sie es erneut.",
-    "core.codes.connect-unavailable.title": "Verbindung nicht verfügbar",
+    "core.codes.connect-unavailable.title":
+      "Geräte in der Nähe nicht verfügbar",
     "core.codes.connect-unavailable.message":
-      "Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar.",
+      "Diese App kann sie auf diesem Gerät nicht nutzen.",
     "core.codes.peer-cert-invalid.title": "Gerät nicht bestätigt",
     "core.codes.peer-cert-invalid.message":
       "Dieses Gerät konnte nicht bestätigt werden. Versuchen Sie es erneut.",
@@ -3982,7 +4009,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Gardez {product} dans votre compte",
     "activate.recommend.badge": "Recommandé",
     "activate.recommend.sync":
-      "La synchronisation cloud conserve vos réglages et vos sauvegardes sur chaque appareil",
+      "Gardez vos réglages identiques sur chaque appareil",
     "activate.recommend.recover":
       "Récupérez votre licence si vous perdez la clé ou cet appareil",
     "activate.recommend.devices":
@@ -3993,14 +4020,20 @@ export const KIT_COPY: Readonly<
     "activate.recommend.portal":
       "Gardez votre licence en sécurité dans Polaris Locker",
     "activate.attach.lede":
-      "Votre licence et ses appareils restent tels quels. Vous confirmerez l’e-mail avec un code dans votre navigateur.",
+      "Votre licence et ses appareils restent tels quels.",
     "activate.attach.fine":
       "Nous envoyons un code à cet e-mail dans votre navigateur. {product} ne le voit jamais.",
     "activate.attach.done": "{product} est dans votre compte",
     "activate.attach.syncOn":
-      "La synchronisation cloud est activée sur cet {deviceKind}. Connectez-vous sur vos autres appareils pour les synchroniser aussi.",
+      "La synchronisation est activée sur cet {deviceKind}. Connectez-vous sur vos autres appareils pour les synchroniser aussi.",
     "activate.attach.failed":
       "Impossible d’ajouter cette licence. Réessayez dans un instant.",
+    "activate.attach.name": "Nom",
+    "activate.attach.nameRequired": "Saisissez votre nom.",
+    "activate.otherAccount.title":
+      "Vous vous êtes connecté avec un autre compte",
+    "activate.otherAccount.body":
+      "Vous vous êtes connecté en tant que {email}, pas {maskedEmail}. Rien n’a été ajouté.",
     "activate.waiting":
       "Cette licence a été envoyée à {maskedEmail}. Connectez-vous avec cet e-mail pour la garder dans votre compte.",
     "activate.waitingSignIn": "Se connecter en tant que {maskedEmail}",
@@ -4013,6 +4046,7 @@ export const KIT_COPY: Readonly<
       "Elle a été envoyée à {maskedEmail}. Connectez-vous avec cet e-mail, ou ajoutez-le à ce compte et vérifiez-le.",
     "activate.otherEmail.verify": "Vérifier cet e-mail",
     "account.notInAccount": "Dans aucun compte",
+    "account.removeKey": "Retirer la licence de cet appareil",
     "signin.attach.header": "Ajouter {product} à votre compte",
     "signin.key.skipNote":
       "{product} fonctionne de la même façon. Ajoutez-le à un compte quand vous voulez.",
@@ -4175,7 +4209,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "Connecté en tant que {name}",
     "account.keyOnly": "Activé avec une clé de licence",
     "account.devices": "Appareils",
-    "account.cloudSync": "Synchronisation cloud",
+    "account.cloudSync": "Synchronisation entre appareils",
     "account.updates": "Mises à jour",
     "account.autoUpdate": "Mettre à jour automatiquement",
     "account.channel": "Canal de publication",
@@ -4288,11 +4322,16 @@ export const KIT_COPY: Readonly<
     "saveConflict.bothFull":
       "Tous les emplacements sont utilisés. Supprimez une sauvegarde pour garder les deux.",
     "saveConflict.keeping": "Application de votre choix…",
-    "saveConflict.keptLocal": "Sauvegarde de cet appareil conservée.",
-    "saveConflict.keptRemote": "Autre sauvegarde conservée.",
-    "saveConflict.keptBoth":
-      "Les deux sont conservées. L’autre est enregistrée en copie.",
-    "saveConflict.keptDeleted": "La sauvegarde est supprimée.",
+    "saveConflict.newerThis": "Plus récente",
+    "saveConflict.newerOther": "Plus récente",
+    "saveConflict.chooseAgain": "Choisir à nouveau",
+    "saveConflict.failedDeleted":
+      "Impossible d’appliquer votre choix. Votre sauvegarde est inchangée.",
+    "saveConflict.keptLocalTitle": "Version de cet appareil conservée",
+    "saveConflict.keptRemoteTitle": "Autre version conservée",
+    "saveConflict.keptBothTitle": "Les deux versions conservées",
+    "saveConflict.keptCopy": "L’autre version est enregistrée comme copie.",
+    "saveConflict.keptDeletedTitle": "Sauvegarde supprimée",
     "saveConflict.failed":
       "Impossible d’appliquer votre choix. Les deux sauvegardes sont inchangées.",
     "about.title": "À propos de {product}",
@@ -4495,6 +4534,8 @@ export const KIT_COPY: Readonly<
     "signin.auto.confirm.title": "Continuer vers {app}",
     "signin.auto.confirm.as": "en tant que {email}",
     "signin.auto.confirm.asApple": "avec votre compte Apple",
+    "signin.auto.confirm.asGameCenter": "avec Game Center",
+    "signin.auto.confirm.asPlayGames": "avec Google Play Jeux",
     "signin.auto.confirm.primary": "Continuer",
     "signin.auto.confirm.other": "Utiliser un autre compte",
     "signin.linkOffer.title":
@@ -4955,7 +4996,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "sur {device}",
     "signin.thisBrowser": "ce navigateur",
     "signin.consent.deny": "Ne pas autoriser",
-    "signin.consent.cloudSync": "Synchronisation cloud",
+    "signin.consent.cloudSync": "Vos réglages et données synchronisés",
     "signin.consent.newLicense":
       "Nouvelle licence {tier}, créée lorsque vous continuez",
     "signin.key.upgradeTitle": "Gardez {product} dans un compte",
@@ -5118,21 +5159,23 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Appareil non configuré",
     "core.codes.device_keys_invalid.message":
       "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez.",
-    "core.codes.device_keys_required.title": "Appareil non lié",
+    "core.codes.device_keys_required.title":
+      "Appareil non configuré pour se connecter",
     "core.codes.device_keys_required.message":
-      "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez.",
+      "Mettez à jour l'app et réessayez.",
     "core.codes.ring_too_large.title": "Trop d'appareils",
     "core.codes.ring_too_large.message":
-      "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez.",
+      "Ce compte compte plus d'appareils que l'on ne peut en connecter. Retirez-en un et réessayez.",
     "core.codes.relay_disabled.title": "Connexion à distance désactivée",
     "core.codes.relay_disabled.message":
       "La connexion à distance est désactivée pour cette app. Vos appareils se connectent uniquement sur le même réseau.",
     "core.codes.relay_paused.title": "Connexion à distance en pause",
     "core.codes.relay_paused.message":
       "La connexion à distance est en pause pour le moment. Réessayez plus tard.",
-    "core.codes.relay_quota_exceeded.title": "Limite à distance atteinte",
+    "core.codes.relay_quota_exceeded.title":
+      "Limite de connexion à distance atteinte",
     "core.codes.relay_quota_exceeded.message":
-      "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.",
+      "Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.",
     "core.codes.relay_ticket_invalid.title": "Connexion expirée",
     "core.codes.relay_ticket_invalid.message":
       "La demande de connexion a expiré. Réessayez.",
@@ -5289,7 +5332,7 @@ export const KIT_COPY: Readonly<
       "La synchronisation est en pause un instant. Vos modifications sont conservées et seront synchronisées plus tard.",
     "core.codes.encryption_mismatch.title": "Chiffrement incompatible",
     "core.codes.encryption_mismatch.message":
-      "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.",
+      "L’app et Polaris Locker ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.",
     "core.codes.revision_conflict.title": "Modifié ailleurs",
     "core.codes.revision_conflict.message":
       "Cet élément a été modifié sur un autre appareil. Actualisez, puis réessayez.",
@@ -5520,9 +5563,10 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Problème de stockage",
     "core.codes.store-failed.message":
       "Enregistrement impossible sur cet appareil. Vérifiez le stockage et réessayez.",
-    "core.codes.connect-unavailable.title": "Connexion indisponible",
+    "core.codes.connect-unavailable.title":
+      "Appareils à proximité indisponibles",
     "core.codes.connect-unavailable.message":
-      "La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil.",
+      "Cette app ne peut pas les utiliser sur cet appareil.",
     "core.codes.peer-cert-invalid.title": "Appareil non vérifié",
     "core.codes.peer-cert-invalid.message":
       "Cet appareil n'a pas pu être vérifié. Réessayez.",
@@ -5926,7 +5970,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Conserva {product} en tu cuenta",
     "activate.recommend.badge": "Recomendado",
     "activate.recommend.sync":
-      "La sincronización en la nube mantiene tus ajustes y partidas en todos tus dispositivos",
+      "Mantén tus ajustes iguales en todos tus dispositivos",
     "activate.recommend.recover":
       "Recupera tu licencia si pierdes la clave o este dispositivo",
     "activate.recommend.devices":
@@ -5936,14 +5980,19 @@ export const KIT_COPY: Readonly<
       "O continúa sin cuenta. {product} funciona igual.",
     "activate.recommend.portal": "Guarda tu licencia a salvo en Polaris Locker",
     "activate.attach.lede":
-      "Tu licencia y sus dispositivos se quedan como están. Confirmarás el correo con un código en tu navegador.",
+      "Tu licencia y sus dispositivos se quedan como están.",
     "activate.attach.fine":
       "Enviamos un código a este correo en tu navegador. {product} nunca lo ve.",
     "activate.attach.done": "{product} está en tu cuenta",
     "activate.attach.syncOn":
-      "La sincronización en la nube está activada en este {deviceKind}. Inicia sesión en tus otros dispositivos para sincronizarlos también.",
+      "La sincronización está activada en este {deviceKind}. Inicia sesión en tus otros dispositivos para sincronizarlos también.",
     "activate.attach.failed":
       "No se pudo añadir esta licencia. Inténtalo de nuevo en un momento.",
+    "activate.attach.name": "Nombre",
+    "activate.attach.nameRequired": "Escribe tu nombre.",
+    "activate.otherAccount.title": "Iniciaste sesión con otra cuenta",
+    "activate.otherAccount.body":
+      "Iniciaste sesión como {email}, no como {maskedEmail}. No se añadió nada.",
     "activate.waiting":
       "Esta licencia se envió a {maskedEmail}. Inicia sesión con ese correo para conservarla en tu cuenta.",
     "activate.waitingSignIn": "Iniciar sesión como {maskedEmail}",
@@ -5956,6 +6005,7 @@ export const KIT_COPY: Readonly<
       "Se envió a {maskedEmail}. Inicia sesión con ese correo, o añádelo a esta cuenta y verifícalo.",
     "activate.otherEmail.verify": "Verificar ese correo",
     "account.notInAccount": "No está en una cuenta",
+    "account.removeKey": "Quitar la licencia de este dispositivo",
     "signin.attach.header": "Añade {product} a tu cuenta",
     "signin.key.skipNote":
       "{product} funciona igual. Añádelo a una cuenta cuando quieras.",
@@ -6116,7 +6166,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "Sesión iniciada como {name}",
     "account.keyOnly": "Activado con una clave de licencia",
     "account.devices": "Dispositivos",
-    "account.cloudSync": "Sincronización en la nube",
+    "account.cloudSync": "Sincronización entre dispositivos",
     "account.updates": "Actualizaciones",
     "account.autoUpdate": "Actualizar automáticamente",
     "account.channel": "Canal de versiones",
@@ -6228,11 +6278,16 @@ export const KIT_COPY: Readonly<
     "saveConflict.bothFull":
       "Todas las ranuras están en uso. Elimina una partida para conservar ambas.",
     "saveConflict.keeping": "Aplicando tu elección…",
-    "saveConflict.keptLocal": "Se conservó la partida de este dispositivo.",
-    "saveConflict.keptRemote": "Se conservó la otra partida.",
-    "saveConflict.keptBoth":
-      "Se conservaron ambas. La otra se guardó como copia.",
-    "saveConflict.keptDeleted": "La partida está eliminada.",
+    "saveConflict.newerThis": "Más reciente",
+    "saveConflict.newerOther": "Más reciente",
+    "saveConflict.chooseAgain": "Elegir de nuevo",
+    "saveConflict.failedDeleted":
+      "No se pudo aplicar tu elección. Tu partida sigue igual.",
+    "saveConflict.keptLocalTitle": "Se conservó la versión de este dispositivo",
+    "saveConflict.keptRemoteTitle": "Se conservó la otra versión",
+    "saveConflict.keptBothTitle": "Se conservaron ambas versiones",
+    "saveConflict.keptCopy": "La otra versión se guardó como copia.",
+    "saveConflict.keptDeletedTitle": "Partida eliminada",
     "saveConflict.failed":
       "No se pudo aplicar tu elección. Ambas partidas siguen igual.",
     "about.title": "Acerca de {product}",
@@ -6432,6 +6487,8 @@ export const KIT_COPY: Readonly<
     "signin.auto.confirm.title": "Continuar a {app}",
     "signin.auto.confirm.as": "como {email}",
     "signin.auto.confirm.asApple": "con tu cuenta de Apple",
+    "signin.auto.confirm.asGameCenter": "con Game Center",
+    "signin.auto.confirm.asPlayGames": "con Google Play Juegos",
     "signin.auto.confirm.primary": "Continuar",
     "signin.auto.confirm.other": "Usar otra cuenta",
     "signin.linkOffer.title": "¿Iniciar sesión con {provider} la próxima vez?",
@@ -6891,7 +6948,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "en {device}",
     "signin.thisBrowser": "este navegador",
     "signin.consent.deny": "No permitir",
-    "signin.consent.cloudSync": "Sincronización en la nube",
+    "signin.consent.cloudSync": "Tus ajustes y datos sincronizados",
     "signin.consent.newLicense": "Nueva: licencia {tier}, se crea al continuar",
     "signin.key.upgradeTitle": "Guarda {product} en una cuenta",
     "signin.key.upgradeLede":
@@ -7049,21 +7106,23 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Dispositivo no configurado",
     "core.codes.device_keys_invalid.message":
       "No se pudo configurar este dispositivo para la sincronización. Actualiza la app e inténtalo de nuevo.",
-    "core.codes.device_keys_required.title": "Dispositivo no vinculado",
+    "core.codes.device_keys_required.title":
+      "Dispositivo no configurado para conectarse",
     "core.codes.device_keys_required.message":
-      "Este dispositivo no se ha configurado para vincularse con los demás. Actualiza la app e inténtalo de nuevo.",
+      "Actualiza la app e inténtalo de nuevo.",
     "core.codes.ring_too_large.title": "Demasiados dispositivos",
     "core.codes.ring_too_large.message":
-      "Esta cuenta tiene más dispositivos vinculados de los que se pueden conectar. Quita uno e inténtalo de nuevo.",
+      "Esta cuenta tiene más dispositivos de los que se pueden conectar. Quita uno e inténtalo de nuevo.",
     "core.codes.relay_disabled.title": "Conexión remota desactivada",
     "core.codes.relay_disabled.message":
       "La conexión remota está desactivada para esta app. Tus dispositivos se conectan solo en la misma red.",
     "core.codes.relay_paused.title": "Conexión remota en pausa",
     "core.codes.relay_paused.message":
       "La conexión remota está en pausa por ahora. Inténtalo más tarde.",
-    "core.codes.relay_quota_exceeded.title": "Límite remoto alcanzado",
+    "core.codes.relay_quota_exceeded.title":
+      "Límite de conexión remota alcanzado",
     "core.codes.relay_quota_exceeded.message":
-      "Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose.",
+      "Se restablece pronto. Los dispositivos de la misma red siguen conectándose.",
     "core.codes.relay_ticket_invalid.title": "Conexión caducada",
     "core.codes.relay_ticket_invalid.message":
       "La solicitud de conexión caducó. Inténtalo de nuevo.",
@@ -7223,7 +7282,7 @@ export const KIT_COPY: Readonly<
       "La sincronización está en pausa un momento. Tus cambios se conservan y se sincronizarán más tarde.",
     "core.codes.encryption_mismatch.title": "Cifrado incompatible",
     "core.codes.encryption_mismatch.message":
-      "La app y el servicio de sincronización no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo.",
+      "La app y Polaris Locker no coinciden en el cifrado. Actualiza la app e inténtalo de nuevo.",
     "core.codes.revision_conflict.title": "Cambiado en otro lugar",
     "core.codes.revision_conflict.message":
       "Esto se cambió en otro dispositivo. Actualice e inténtelo de nuevo.",
@@ -7455,9 +7514,10 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Problema de almacenamiento",
     "core.codes.store-failed.message":
       "No se pudo guardar en este dispositivo. Comprueba el almacenamiento e inténtalo de nuevo.",
-    "core.codes.connect-unavailable.title": "Conexión no disponible",
+    "core.codes.connect-unavailable.title":
+      "Dispositivos cercanos no disponibles",
     "core.codes.connect-unavailable.message":
-      "La conexión con dispositivos cercanos no está disponible para esta app en este dispositivo.",
+      "Esta app no puede usarlos en este dispositivo.",
     "core.codes.peer-cert-invalid.title": "Dispositivo no verificado",
     "core.codes.peer-cert-invalid.message":
       "No se pudo verificar este dispositivo. Inténtalo de nuevo.",
@@ -7861,7 +7921,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Guarde {product} na sua conta",
     "activate.recommend.badge": "Recomendado",
     "activate.recommend.sync":
-      "A sincronização na nuvem mantém suas configurações e seus saves em todos os dispositivos",
+      "Mantenha suas configurações iguais em todos os dispositivos",
     "activate.recommend.recover":
       "Recupere sua licença se perder a chave ou este dispositivo",
     "activate.recommend.devices":
@@ -7872,14 +7932,19 @@ export const KIT_COPY: Readonly<
     "activate.recommend.portal":
       "Guarde sua licença com segurança no Polaris Locker",
     "activate.attach.lede":
-      "Sua licença e os dispositivos dela continuam como estão. Você confirma o e-mail com um código no navegador.",
+      "Sua licença e os dispositivos dela continuam como estão.",
     "activate.attach.fine":
       "Enviamos um código para este e-mail no navegador. {product} nunca o vê.",
     "activate.attach.done": "{product} está na sua conta",
     "activate.attach.syncOn":
-      "A sincronização na nuvem está ativada neste {deviceKind}. Entre nos seus outros dispositivos para sincronizá-los também.",
+      "A sincronização está ativada neste {deviceKind}. Entre nos seus outros dispositivos para sincronizá-los também.",
     "activate.attach.failed":
       "Não foi possível adicionar esta licença. Tente novamente em instantes.",
+    "activate.attach.name": "Nome",
+    "activate.attach.nameRequired": "Digite seu nome.",
+    "activate.otherAccount.title": "Você entrou com outra conta",
+    "activate.otherAccount.body":
+      "Você entrou como {email}, não como {maskedEmail}. Nada foi adicionado.",
     "activate.waiting":
       "Esta licença foi enviada para {maskedEmail}. Entre com esse e-mail para guardá-la na sua conta.",
     "activate.waitingSignIn": "Entrar como {maskedEmail}",
@@ -7891,6 +7956,7 @@ export const KIT_COPY: Readonly<
       "Ela foi enviada para {maskedEmail}. Entre com esse e-mail, ou adicione-o a esta conta e verifique.",
     "activate.otherEmail.verify": "Verificar esse e-mail",
     "account.notInAccount": "Sem conta",
+    "account.removeKey": "Remover a licença deste dispositivo",
     "signin.attach.header": "Adicionar {product} à sua conta",
     "signin.key.skipNote":
       "{product} funciona do mesmo jeito. Adicione a uma conta quando quiser.",
@@ -8054,7 +8120,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "Conectado como {name}",
     "account.keyOnly": "Ativado com uma chave de licença",
     "account.devices": "Dispositivos",
-    "account.cloudSync": "Sincronização na nuvem",
+    "account.cloudSync": "Sincronização entre dispositivos",
     "account.updates": "Atualizações",
     "account.autoUpdate": "Atualizar automaticamente",
     "account.channel": "Canal de lançamento",
@@ -8167,11 +8233,16 @@ export const KIT_COPY: Readonly<
     "saveConflict.bothFull":
       "Todos os espaços estão em uso. Exclua um jogo salvo para manter os dois.",
     "saveConflict.keeping": "Aplicando sua escolha…",
-    "saveConflict.keptLocal": "Jogo salvo deste dispositivo mantido.",
-    "saveConflict.keptRemote": "Outro jogo salvo mantido.",
-    "saveConflict.keptBoth":
-      "Os dois foram mantidos. O outro foi salvo como cópia.",
-    "saveConflict.keptDeleted": "O jogo salvo foi excluído.",
+    "saveConflict.newerThis": "Mais recente",
+    "saveConflict.newerOther": "Mais recente",
+    "saveConflict.chooseAgain": "Escolher de novo",
+    "saveConflict.failedDeleted":
+      "Não foi possível aplicar sua escolha. Seu jogo salvo continua igual.",
+    "saveConflict.keptLocalTitle": "Versão deste dispositivo mantida",
+    "saveConflict.keptRemoteTitle": "Outra versão mantida",
+    "saveConflict.keptBothTitle": "As duas versões mantidas",
+    "saveConflict.keptCopy": "A outra versão foi salva como cópia.",
+    "saveConflict.keptDeletedTitle": "Jogo salvo excluído",
     "saveConflict.failed":
       "Não foi possível aplicar sua escolha. Os dois jogos salvos continuam iguais.",
     "about.title": "Sobre {product}",
@@ -8370,6 +8441,8 @@ export const KIT_COPY: Readonly<
     "signin.auto.confirm.title": "Continuar para {app}",
     "signin.auto.confirm.as": "como {email}",
     "signin.auto.confirm.asApple": "com sua conta Apple",
+    "signin.auto.confirm.asGameCenter": "com o Game Center",
+    "signin.auto.confirm.asPlayGames": "com o Google Play Games",
     "signin.auto.confirm.primary": "Continuar",
     "signin.auto.confirm.other": "Usar outra conta",
     "signin.linkOffer.title": "Entrar com {provider} da próxima vez?",
@@ -8815,7 +8888,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "em {device}",
     "signin.thisBrowser": "este navegador",
     "signin.consent.deny": "Não permitir",
-    "signin.consent.cloudSync": "Sincronização na nuvem",
+    "signin.consent.cloudSync": "Suas configurações e dados sincronizados",
     "signin.consent.newLicense": "Nova: licença {tier}, criada ao continuar",
     "signin.key.upgradeTitle": "Guarde {product} em uma conta",
     "signin.key.upgradeLede":
@@ -8968,21 +9041,23 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Dispositivo não configurado",
     "core.codes.device_keys_invalid.message":
       "Não foi possível configurar este dispositivo para a sincronização. Atualize o app e tente de novo.",
-    "core.codes.device_keys_required.title": "Dispositivo não vinculado",
+    "core.codes.device_keys_required.title":
+      "Dispositivo não configurado para conectar",
     "core.codes.device_keys_required.message":
-      "Este dispositivo não foi configurado para se vincular aos seus outros. Atualize o app e tente novamente.",
+      "Atualize o app e tente novamente.",
     "core.codes.ring_too_large.title": "Dispositivos demais",
     "core.codes.ring_too_large.message":
-      "Esta conta tem mais dispositivos vinculados do que é possível conectar. Remova um e tente novamente.",
+      "Esta conta tem mais dispositivos do que é possível conectar. Remova um e tente novamente.",
     "core.codes.relay_disabled.title": "Conexão remota desativada",
     "core.codes.relay_disabled.message":
       "A conexão remota está desativada para este app. Seus dispositivos se conectam apenas na mesma rede.",
     "core.codes.relay_paused.title": "Conexão remota em pausa",
     "core.codes.relay_paused.message":
       "A conexão remota está em pausa por enquanto. Tente novamente mais tarde.",
-    "core.codes.relay_quota_exceeded.title": "Limite remoto atingido",
+    "core.codes.relay_quota_exceeded.title":
+      "Limite de conexão remota atingido",
     "core.codes.relay_quota_exceeded.message":
-      "O limite de conexão remota acabou. Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando.",
+      "Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando.",
     "core.codes.relay_ticket_invalid.title": "Conexão expirada",
     "core.codes.relay_ticket_invalid.message":
       "O pedido de conexão expirou. Tente novamente.",
@@ -9133,7 +9208,7 @@ export const KIT_COPY: Readonly<
       "A sincronização está pausada por um momento. Suas alterações são mantidas e serão sincronizadas depois.",
     "core.codes.encryption_mismatch.title": "Criptografia incompatível",
     "core.codes.encryption_mismatch.message":
-      "O app e o serviço de sincronização não concordam sobre a criptografia. Atualize o app e tente de novo.",
+      "O app e o Polaris Locker não concordam sobre a criptografia. Atualize o app e tente de novo.",
     "core.codes.revision_conflict.title": "Alterado em outro lugar",
     "core.codes.revision_conflict.message":
       "Isso foi alterado em outro dispositivo. Atualize e tente novamente.",
@@ -9358,9 +9433,10 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Erro de armazenamento",
     "core.codes.store-failed.message":
       "Não foi possível salvar neste dispositivo. Verifique o armazenamento e tente novamente.",
-    "core.codes.connect-unavailable.title": "Conexão indisponível",
+    "core.codes.connect-unavailable.title":
+      "Dispositivos próximos indisponíveis",
     "core.codes.connect-unavailable.message":
-      "A conexão com dispositivos próximos não está disponível para este app neste dispositivo.",
+      "Este app não pode usá-los neste dispositivo.",
     "core.codes.peer-cert-invalid.title": "Dispositivo não verificado",
     "core.codes.peer-cert-invalid.message":
       "Não foi possível verificar este dispositivo. Tente novamente.",
@@ -9759,7 +9835,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Tieni {product} nel tuo account",
     "activate.recommend.badge": "Consigliato",
     "activate.recommend.sync":
-      "La sincronizzazione cloud mantiene impostazioni e salvataggi su ogni dispositivo",
+      "Mantieni le impostazioni uguali su ogni dispositivo",
     "activate.recommend.recover":
       "Riavere la licenza se perdi la chiave o questo dispositivo",
     "activate.recommend.devices":
@@ -9769,14 +9845,20 @@ export const KIT_COPY: Readonly<
       "Oppure continua senza account. {product} funziona allo stesso modo.",
     "activate.recommend.portal": "Tieni la licenza al sicuro in Polaris Locker",
     "activate.attach.lede":
-      "La licenza e i suoi dispositivi restano come sono. Confermerai l’e-mail con un codice nel browser.",
+      "La licenza e i suoi dispositivi restano come sono.",
     "activate.attach.fine":
       "Inviamo un codice a questa e-mail nel browser. {product} non lo vede mai.",
     "activate.attach.done": "{product} è nel tuo account",
     "activate.attach.syncOn":
-      "La sincronizzazione cloud è attiva su questo {deviceKind}. Accedi sugli altri dispositivi per sincronizzare anche quelli.",
+      "La sincronizzazione è attiva su questo {deviceKind}. Accedi sugli altri dispositivi per sincronizzare anche quelli.",
     "activate.attach.failed":
       "Impossibile aggiungere questa licenza. Riprova tra un momento.",
+    "activate.attach.name": "Nome",
+    "activate.attach.nameRequired": "Inserisci il tuo nome.",
+    "activate.otherAccount.title":
+      "Hai effettuato l’accesso con un altro account",
+    "activate.otherAccount.body":
+      "Hai effettuato l’accesso come {email}, non come {maskedEmail}. Non è stato aggiunto nulla.",
     "activate.waiting":
       "Questa licenza è stata inviata a {maskedEmail}. Accedi con quell’e-mail per tenerla nel tuo account.",
     "activate.waitingSignIn": "Accedi come {maskedEmail}",
@@ -9789,6 +9871,7 @@ export const KIT_COPY: Readonly<
       "È stata inviata a {maskedEmail}. Accedi con quell’e-mail, oppure aggiungila a questo account e verificala.",
     "activate.otherEmail.verify": "Verifica quell’e-mail",
     "account.notInAccount": "In nessun account",
+    "account.removeKey": "Rimuovi la licenza da questo dispositivo",
     "signin.attach.header": "Aggiungi {product} al tuo account",
     "signin.key.skipNote":
       "{product} funziona allo stesso modo. Aggiungilo a un account quando vuoi.",
@@ -9948,7 +10031,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "Accesso effettuato come {name}",
     "account.keyOnly": "Attivato con una chiave di licenza",
     "account.devices": "Dispositivi",
-    "account.cloudSync": "Sincronizzazione cloud",
+    "account.cloudSync": "Sincronizzazione tra dispositivi",
     "account.updates": "Aggiornamenti",
     "account.autoUpdate": "Aggiorna automaticamente",
     "account.channel": "Canale di rilascio",
@@ -10058,11 +10141,16 @@ export const KIT_COPY: Readonly<
     "saveConflict.bothFull":
       "Tutti gli slot sono in uso. Elimina un salvataggio per tenerli entrambi.",
     "saveConflict.keeping": "Applicazione della scelta…",
-    "saveConflict.keptLocal": "Salvataggio di questo dispositivo mantenuto.",
-    "saveConflict.keptRemote": "Altro salvataggio mantenuto.",
-    "saveConflict.keptBoth":
-      "Mantenuti entrambi. L’altro è salvato come copia.",
-    "saveConflict.keptDeleted": "Il salvataggio è eliminato.",
+    "saveConflict.newerThis": "Più recente",
+    "saveConflict.newerOther": "Più recente",
+    "saveConflict.chooseAgain": "Scegli di nuovo",
+    "saveConflict.failedDeleted":
+      "Impossibile applicare la scelta. Il salvataggio è invariato.",
+    "saveConflict.keptLocalTitle": "Versione di questo dispositivo mantenuta",
+    "saveConflict.keptRemoteTitle": "Altra versione mantenuta",
+    "saveConflict.keptBothTitle": "Entrambe le versioni mantenute",
+    "saveConflict.keptCopy": "L’altra versione è salvata come copia.",
+    "saveConflict.keptDeletedTitle": "Salvataggio eliminato",
     "saveConflict.failed":
       "Impossibile applicare la scelta. Entrambi i salvataggi sono invariati.",
     "about.title": "Informazioni su {product}",
@@ -10262,6 +10350,8 @@ export const KIT_COPY: Readonly<
     "signin.auto.confirm.title": "Continua su {app}",
     "signin.auto.confirm.as": "come {email}",
     "signin.auto.confirm.asApple": "con il tuo account Apple",
+    "signin.auto.confirm.asGameCenter": "con Game Center",
+    "signin.auto.confirm.asPlayGames": "con Google Play Giochi",
     "signin.auto.confirm.primary": "Continua",
     "signin.auto.confirm.other": "Usa un altro account",
     "signin.linkOffer.title": "Accedere con {provider} la prossima volta?",
@@ -10712,7 +10802,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "su {device}",
     "signin.thisBrowser": "questo browser",
     "signin.consent.deny": "Non consentire",
-    "signin.consent.cloudSync": "Sincronizzazione cloud",
+    "signin.consent.cloudSync": "Impostazioni e dati sincronizzati",
     "signin.consent.newLicense":
       "Nuova: licenza {tier}, creata quando continui",
     "signin.key.upgradeTitle": "Conserva {product} in un account",
@@ -10871,21 +10961,22 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "Dispositivo non configurato",
     "core.codes.device_keys_invalid.message":
       "Non è stato possibile configurare questo dispositivo per la sincronizzazione. Aggiorna l’app e riprova.",
-    "core.codes.device_keys_required.title": "Dispositivo non collegato",
-    "core.codes.device_keys_required.message":
-      "Questo dispositivo non è stato configurato per collegarsi agli altri. Aggiorna l'app e riprova.",
+    "core.codes.device_keys_required.title":
+      "Dispositivo non configurato per connettersi",
+    "core.codes.device_keys_required.message": "Aggiorna l'app e riprova.",
     "core.codes.ring_too_large.title": "Troppi dispositivi",
     "core.codes.ring_too_large.message":
-      "Questo account ha più dispositivi collegati di quanti se ne possano connettere. Rimuovine uno e riprova.",
+      "Questo account ha più dispositivi di quanti se ne possano connettere. Rimuovine uno e riprova.",
     "core.codes.relay_disabled.title": "Connessione remota disattivata",
     "core.codes.relay_disabled.message":
       "La connessione remota è disattivata per questa app. I tuoi dispositivi si connettono solo sulla stessa rete.",
     "core.codes.relay_paused.title": "Connessione remota in pausa",
     "core.codes.relay_paused.message":
       "La connessione remota è in pausa per ora. Riprova più tardi.",
-    "core.codes.relay_quota_exceeded.title": "Limite remoto raggiunto",
+    "core.codes.relay_quota_exceeded.title":
+      "Limite di connessione remota raggiunto",
     "core.codes.relay_quota_exceeded.message":
-      "Il limite della connessione remota è esaurito. Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque.",
+      "Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque.",
     "core.codes.relay_ticket_invalid.title": "Connessione scaduta",
     "core.codes.relay_ticket_invalid.message":
       "La richiesta di connessione è scaduta. Riprova.",
@@ -11042,7 +11133,7 @@ export const KIT_COPY: Readonly<
       "La sincronizzazione è in pausa per un momento. Le tue modifiche restano salvate e verranno sincronizzate più tardi.",
     "core.codes.encryption_mismatch.title": "Crittografia non compatibile",
     "core.codes.encryption_mismatch.message":
-      "L’app e il servizio di sincronizzazione non concordano sulla crittografia. Aggiorna l’app e riprova.",
+      "L’app e Polaris Locker non concordano sulla crittografia. Aggiorna l’app e riprova.",
     "core.codes.revision_conflict.title": "Modificato altrove",
     "core.codes.revision_conflict.message":
       "Questo elemento è stato modificato su un altro dispositivo. Aggiorna e riprova.",
@@ -11271,9 +11362,10 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "Problema di archiviazione",
     "core.codes.store-failed.message":
       "Impossibile salvare su questo dispositivo. Controlla lo spazio di archiviazione e riprova.",
-    "core.codes.connect-unavailable.title": "Connessione non disponibile",
+    "core.codes.connect-unavailable.title":
+      "Dispositivi nelle vicinanze non disponibili",
     "core.codes.connect-unavailable.message":
-      "La connessione ai dispositivi vicini non è disponibile per questa app su questo dispositivo.",
+      "Questa app non può usarli su questo dispositivo.",
     "core.codes.peer-cert-invalid.title": "Dispositivo non verificato",
     "core.codes.peer-cert-invalid.message":
       "Impossibile verificare questo dispositivo. Riprova.",
@@ -11675,8 +11767,7 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · この{deviceKind}は{limit}台中{n}台目のデバイスです。",
     "activate.recommend.title": "{product}をアカウントに保存",
     "activate.recommend.badge": "おすすめ",
-    "activate.recommend.sync":
-      "クラウド同期で、設定とセーブデータをすべてのデバイスに保てます",
+    "activate.recommend.sync": "設定をすべてのデバイスで同じに保てます",
     "activate.recommend.recover":
       "キーやこのデバイスを失ってもライセンスを取り戻せます",
     "activate.recommend.devices":
@@ -11691,9 +11782,14 @@ export const KIT_COPY: Readonly<
       "ブラウザーでこのメールアドレスにコードを送ります。{product}にはコードは見えません。",
     "activate.attach.done": "{product}がアカウントに入りました",
     "activate.attach.syncOn":
-      "この{deviceKind}でクラウド同期がオンになりました。ほかのデバイスでもサインインすると同期されます。",
+      "この{deviceKind}で同期がオンになりました。ほかのデバイスでもサインインすると同期されます。",
     "activate.attach.failed":
       "このライセンスを追加できませんでした。しばらくしてからもう一度お試しください。",
+    "activate.attach.name": "名前",
+    "activate.attach.nameRequired": "名前を入力してください。",
+    "activate.otherAccount.title": "別のアカウントでサインインしました",
+    "activate.otherAccount.body":
+      "{email}でサインインしましたが、入力したのは{maskedEmail}です。何も追加されていません。",
     "activate.waiting":
       "このライセンスは{maskedEmail}に送られました。そのメールアドレスでサインインすると、アカウントに保存できます。",
     "activate.waitingSignIn": "{maskedEmail}でサインイン",
@@ -11707,6 +11803,7 @@ export const KIT_COPY: Readonly<
       "{maskedEmail}に送られました。そのメールアドレスでサインインするか、このアカウントに追加して確認してください。",
     "activate.otherEmail.verify": "そのメールアドレスを確認",
     "account.notInAccount": "アカウントにありません",
+    "account.removeKey": "このデバイスからライセンスを削除",
     "signin.attach.header": "{product}をアカウントに追加",
     "signin.key.skipNote":
       "{product}は同じように使えます。いつでもアカウントに追加できます。",
@@ -11871,7 +11968,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "{name}としてサインイン中",
     "account.keyOnly": "ライセンスキーでアクティベート済み",
     "account.devices": "デバイス",
-    "account.cloudSync": "クラウド同期",
+    "account.cloudSync": "デバイス間の同期",
     "account.updates": "アップデート",
     "account.autoUpdate": "自動的にアップデート",
     "account.channel": "リリースチャンネル",
@@ -11979,11 +12076,17 @@ export const KIT_COPY: Readonly<
     "saveConflict.bothFull":
       "すべてのセーブ枠が使用中です。両方残すには、セーブデータを1つ削除してください。",
     "saveConflict.keeping": "選択を反映しています…",
-    "saveConflict.keptLocal": "このデバイスのセーブデータを残しました。",
-    "saveConflict.keptRemote": "もう一方のセーブデータを残しました。",
-    "saveConflict.keptBoth":
-      "両方残しました。もう一方はコピーとして保存されています。",
-    "saveConflict.keptDeleted": "セーブデータを削除しました。",
+    "saveConflict.newerThis": "新しい",
+    "saveConflict.newerOther": "新しい",
+    "saveConflict.chooseAgain": "選び直す",
+    "saveConflict.failedDeleted":
+      "選択を反映できませんでした。セーブデータは変わっていません。",
+    "saveConflict.keptLocalTitle": "このデバイスのバージョンを残しました",
+    "saveConflict.keptRemoteTitle": "もう一方のバージョンを残しました",
+    "saveConflict.keptBothTitle": "両方のバージョンを残しました",
+    "saveConflict.keptCopy":
+      "もう一方のバージョンはコピーとして保存されています。",
+    "saveConflict.keptDeletedTitle": "セーブデータを削除しました",
     "saveConflict.failed":
       "選択を反映できませんでした。どちらのセーブデータも変わっていません。",
     "about.title": "{product}について",
@@ -12182,6 +12285,8 @@ export const KIT_COPY: Readonly<
     "signin.auto.confirm.title": "{app} に進む",
     "signin.auto.confirm.as": "{email} で",
     "signin.auto.confirm.asApple": "Apple アカウントで",
+    "signin.auto.confirm.asGameCenter": "Game Center で",
+    "signin.auto.confirm.asPlayGames": "Google Play Games で",
     "signin.auto.confirm.primary": "続ける",
     "signin.auto.confirm.other": "別のアカウントを使う",
     "signin.linkOffer.title": "次回から {provider} でサインインしますか？",
@@ -12643,7 +12748,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "{device} で",
     "signin.thisBrowser": "このブラウザ",
     "signin.consent.deny": "許可しない",
-    "signin.consent.cloudSync": "クラウド同期",
+    "signin.consent.cloudSync": "同期された設定とデータ",
     "signin.consent.newLicense":
       "新規：{tier}ライセンス（続けると作成されます）",
     "signin.key.upgradeTitle": "{product} をアカウントに保管",
@@ -12803,12 +12908,12 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "デバイスを設定できません",
     "core.codes.device_keys_invalid.message":
       "このデバイスを同期用に設定できませんでした。アプリを更新して、もう一度お試しください。",
-    "core.codes.device_keys_required.title": "デバイスがリンクされていません",
+    "core.codes.device_keys_required.title": "接続の設定が済んでいません",
     "core.codes.device_keys_required.message":
-      "このデバイスは、ほかのデバイスとリンクする設定が済んでいません。アプリを更新して、もう一度お試しください。",
+      "アプリを更新して、もう一度お試しください。",
     "core.codes.ring_too_large.title": "デバイスが多すぎます",
     "core.codes.ring_too_large.message":
-      "このアカウントのリンク済みデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。",
+      "このアカウントのデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。",
     "core.codes.relay_disabled.title": "リモート接続はオフです",
     "core.codes.relay_disabled.message":
       "このアプリではリモート接続がオフです。デバイスは同じネットワーク上でのみ接続されます。",
@@ -12817,7 +12922,7 @@ export const KIT_COPY: Readonly<
       "リモート接続は現在一時停止中です。しばらくしてからもう一度お試しください。",
     "core.codes.relay_quota_exceeded.title": "リモート接続の上限に達しました",
     "core.codes.relay_quota_exceeded.message":
-      "リモート接続の上限を使い切りました。まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。",
+      "まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。",
     "core.codes.relay_ticket_invalid.title": "接続の期限が切れました",
     "core.codes.relay_ticket_invalid.message":
       "接続リクエストの期限が切れました。もう一度お試しください。",
@@ -12971,7 +13076,7 @@ export const KIT_COPY: Readonly<
       "同期は少しの間一時停止されています。変更は保持され、後で同期されます。",
     "core.codes.encryption_mismatch.title": "暗号化が一致しません",
     "core.codes.encryption_mismatch.message":
-      "アプリと同期サービスで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。",
+      "アプリとPolaris Lockerで暗号化の設定が一致しません。アプリを更新してもう一度お試しください。",
     "core.codes.revision_conflict.title": "他で変更されました",
     "core.codes.revision_conflict.message":
       "別のデバイスで変更されました。更新してから、もう一度お試しください。",
@@ -13205,9 +13310,9 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "保存の問題",
     "core.codes.store-failed.message":
       "このデバイスに保存できませんでした。ストレージを確認して、もう一度お試しください。",
-    "core.codes.connect-unavailable.title": "接続できません",
+    "core.codes.connect-unavailable.title": "近くのデバイスは利用できません",
     "core.codes.connect-unavailable.message":
-      "このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。",
+      "このデバイスでは、このアプリで利用できません。",
     "core.codes.peer-cert-invalid.title": "デバイスを確認できません",
     "core.codes.peer-cert-invalid.message":
       "このデバイスを確認できませんでした。もう一度お試しください。",
@@ -13611,8 +13716,7 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · 이 {deviceKind}은(는) {limit}대 중 {n}번째 기기입니다.",
     "activate.recommend.title": "{product}을(를) 계정에 보관하세요",
     "activate.recommend.badge": "추천",
-    "activate.recommend.sync":
-      "클라우드 동기화로 설정과 저장 데이터를 모든 기기에서 유지하세요",
+    "activate.recommend.sync": "설정을 모든 기기에서 똑같이 유지하세요",
     "activate.recommend.recover": "키나 이 기기를 잃어도 라이선스를 되찾으세요",
     "activate.recommend.devices":
       "{developer}에게 묻지 않고 직접 새 기기로 옮기세요",
@@ -13621,15 +13725,19 @@ export const KIT_COPY: Readonly<
       "또는 계정 없이 계속하세요. {product}은(는) 똑같이 작동합니다.",
     "activate.recommend.portal":
       "라이선스를 Polaris Locker에 안전하게 보관하세요",
-    "activate.attach.lede":
-      "라이선스와 기기는 그대로입니다. 브라우저에서 코드로 이메일을 확인합니다.",
+    "activate.attach.lede": "라이선스와 기기는 그대로입니다.",
     "activate.attach.fine":
       "브라우저에서 이 이메일로 코드를 보냅니다. {product}은(는) 코드를 보지 못합니다.",
     "activate.attach.done": "{product}이(가) 계정에 있습니다",
     "activate.attach.syncOn":
-      "이 {deviceKind}에서 클라우드 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다.",
+      "이 {deviceKind}에서 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다.",
     "activate.attach.failed":
       "이 라이선스를 추가하지 못했어요. 잠시 후 다시 시도하세요.",
+    "activate.attach.name": "이름",
+    "activate.attach.nameRequired": "이름을 입력하세요.",
+    "activate.otherAccount.title": "다른 계정으로 로그인했습니다",
+    "activate.otherAccount.body":
+      "{email}(으)로 로그인했지만 입력한 이메일은 {maskedEmail}입니다. 아무것도 추가되지 않았습니다.",
     "activate.waiting":
       "이 라이선스는 {maskedEmail}(으)로 전송되었습니다. 그 이메일로 로그인하면 계정에 보관할 수 있습니다.",
     "activate.waitingSignIn": "{maskedEmail}(으)로 로그인",
@@ -13641,6 +13749,7 @@ export const KIT_COPY: Readonly<
       "{maskedEmail}(으)로 전송되었습니다. 그 이메일로 로그인하거나, 이 계정에 추가한 뒤 확인하세요.",
     "activate.otherEmail.verify": "해당 이메일 확인",
     "account.notInAccount": "계정에 없음",
+    "account.removeKey": "이 기기에서 라이선스 제거",
     "signin.attach.header": "{product}을(를) 계정에 추가",
     "signin.key.skipNote":
       "{product}은(는) 똑같이 작동합니다. 언제든 계정에 추가할 수 있습니다.",
@@ -13798,7 +13907,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "{name} 님으로 로그인됨",
     "account.keyOnly": "라이선스 키로 활성화됨",
     "account.devices": "기기",
-    "account.cloudSync": "클라우드 동기화",
+    "account.cloudSync": "기기 간 동기화",
     "account.updates": "업데이트",
     "account.autoUpdate": "자동으로 업데이트",
     "account.channel": "릴리스 채널",
@@ -13906,10 +14015,16 @@ export const KIT_COPY: Readonly<
     "saveConflict.bothFull":
       "저장 슬롯이 모두 사용 중이에요. 둘 다 유지하려면 저장 데이터를 하나 삭제하세요.",
     "saveConflict.keeping": "선택을 적용하는 중…",
-    "saveConflict.keptLocal": "이 기기의 저장 데이터를 유지했어요.",
-    "saveConflict.keptRemote": "다른 저장 데이터를 유지했어요.",
-    "saveConflict.keptBoth": "둘 다 유지했어요. 다른 쪽은 사본으로 저장됐어요.",
-    "saveConflict.keptDeleted": "저장 데이터를 삭제했어요.",
+    "saveConflict.newerThis": "최신",
+    "saveConflict.newerOther": "최신",
+    "saveConflict.chooseAgain": "다시 선택",
+    "saveConflict.failedDeleted":
+      "선택을 적용하지 못했어요. 저장 데이터는 그대로예요.",
+    "saveConflict.keptLocalTitle": "이 기기의 버전을 유지했어요",
+    "saveConflict.keptRemoteTitle": "다른 버전을 유지했어요",
+    "saveConflict.keptBothTitle": "두 버전을 모두 유지했어요",
+    "saveConflict.keptCopy": "다른 버전은 사본으로 저장돼요.",
+    "saveConflict.keptDeletedTitle": "저장 데이터를 삭제했어요",
     "saveConflict.failed":
       "선택을 적용하지 못했어요. 두 저장 데이터는 그대로예요.",
     "about.title": "{product} 정보",
@@ -14098,6 +14213,8 @@ export const KIT_COPY: Readonly<
     "signin.auto.confirm.title": "{app}(으)로 계속",
     "signin.auto.confirm.as": "{email} 계정으로",
     "signin.auto.confirm.asApple": "Apple 계정으로",
+    "signin.auto.confirm.asGameCenter": "Game Center로",
+    "signin.auto.confirm.asPlayGames": "Google Play 게임즈로",
     "signin.auto.confirm.primary": "계속",
     "signin.auto.confirm.other": "다른 계정 사용",
     "signin.linkOffer.title": "다음부터 {provider}(으)로 로그인할까요?",
@@ -14530,7 +14647,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "{device}에서",
     "signin.thisBrowser": "이 브라우저",
     "signin.consent.deny": "허용 안 함",
-    "signin.consent.cloudSync": "클라우드 동기화",
+    "signin.consent.cloudSync": "동기화된 설정과 데이터",
     "signin.consent.newLicense": "새 {tier} 라이선스: 계속하면 생성돼요",
     "signin.key.upgradeTitle": "{product}을(를) 계정에 보관",
     "signin.key.upgradeLede":
@@ -14679,9 +14796,9 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "기기를 설정하지 못했어요",
     "core.codes.device_keys_invalid.message":
       "이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요.",
-    "core.codes.device_keys_required.title": "기기가 연결되지 않음",
+    "core.codes.device_keys_required.title": "기기를 연결하도록 설정되지 않음",
     "core.codes.device_keys_required.message":
-      "이 기기는 다른 기기와 연결하도록 설정되지 않았습니다. 앱을 업데이트한 후 다시 시도하세요.",
+      "앱을 업데이트한 후 다시 시도하세요.",
     "core.codes.ring_too_large.title": "기기가 너무 많음",
     "core.codes.ring_too_large.message":
       "이 계정에 연결된 기기가 연결 가능한 수보다 많습니다. 하나를 제거한 후 다시 시도하세요.",
@@ -14693,7 +14810,7 @@ export const KIT_COPY: Readonly<
       "원격 연결이 잠시 중지되었습니다. 나중에 다시 시도하세요.",
     "core.codes.relay_quota_exceeded.title": "원격 연결 한도 도달",
     "core.codes.relay_quota_exceeded.message":
-      "원격 연결 한도를 모두 사용했습니다. 곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다.",
+      "곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다.",
     "core.codes.relay_ticket_invalid.title": "연결 만료",
     "core.codes.relay_ticket_invalid.message":
       "연결 요청이 만료되었습니다. 다시 시도하세요.",
@@ -14841,7 +14958,7 @@ export const KIT_COPY: Readonly<
       "동기화가 잠시 일시 중지되었습니다. 변경 사항은 보관되며 나중에 동기화됩니다.",
     "core.codes.encryption_mismatch.title": "암호화 불일치",
     "core.codes.encryption_mismatch.message":
-      "앱과 동기화 서비스의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요.",
+      "앱과 Polaris Locker의 암호화 설정이 맞지 않습니다. 앱을 업데이트한 뒤 다시 시도하세요.",
     "core.codes.revision_conflict.title": "다른 곳에서 변경됨",
     "core.codes.revision_conflict.message":
       "다른 기기에서 변경되었습니다. 새로고침한 뒤 다시 시도하세요.",
@@ -15064,9 +15181,9 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "저장소 문제",
     "core.codes.store-failed.message":
       "이 기기에 저장하지 못했어요. 저장 공간을 확인하고 다시 시도하세요.",
-    "core.codes.connect-unavailable.title": "연결할 수 없음",
+    "core.codes.connect-unavailable.title": "근처 기기를 사용할 수 없음",
     "core.codes.connect-unavailable.message":
-      "이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다.",
+      "이 기기에서는 이 앱이 사용할 수 없습니다.",
     "core.codes.peer-cert-invalid.title": "기기를 확인할 수 없음",
     "core.codes.peer-cert-invalid.message":
       "이 기기를 확인할 수 없습니다. 다시 시도하세요.",
@@ -15456,7 +15573,7 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · 这台{deviceKind}是第 {n} 台设备，共 {limit} 台。",
     "activate.recommend.title": "将{product}保存到你的账户",
     "activate.recommend.badge": "推荐",
-    "activate.recommend.sync": "云同步会在每台设备上保留你的设置和存档",
+    "activate.recommend.sync": "让你的设置在每台设备上保持一致",
     "activate.recommend.recover": "丢失密钥或这台设备后，可找回你的许可证",
     "activate.recommend.devices": "无需联系{developer}，自己就能迁移到新设备",
     "activate.recommend.action": "添加姓名和电子邮件",
@@ -15469,8 +15586,13 @@ export const KIT_COPY: Readonly<
       "我们会在浏览器中向这个电子邮件发送验证码。{product}看不到它。",
     "activate.attach.done": "{product}已在你的账户中",
     "activate.attach.syncOn":
-      "这台{deviceKind}已开启云同步。在其他设备上登录即可一并同步。",
+      "这台{deviceKind}已开启同步。在其他设备上登录即可一并同步。",
     "activate.attach.failed": "无法添加此许可证。请稍后重试。",
+    "activate.attach.name": "姓名",
+    "activate.attach.nameRequired": "请输入你的姓名。",
+    "activate.otherAccount.title": "你登录的是另一个账户",
+    "activate.otherAccount.body":
+      "你登录的是 {email}，而不是 {maskedEmail}。没有添加任何内容。",
     "activate.waiting":
       "这个许可证已发送到 {maskedEmail}。用该电子邮件登录，即可保存到你的账户。",
     "activate.waitingSignIn": "以 {maskedEmail} 登录",
@@ -15482,6 +15604,7 @@ export const KIT_COPY: Readonly<
       "它发送到了 {maskedEmail}。请用该电子邮件登录，或将其添加到此账户并验证。",
     "activate.otherEmail.verify": "验证该电子邮件",
     "account.notInAccount": "不在账户中",
+    "account.removeKey": "从此设备移除许可证",
     "signin.attach.header": "将{product}添加到你的账户",
     "signin.key.skipNote":
       "{product}的使用方式完全相同。你可以随时将其添加到账户。",
@@ -15623,7 +15746,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "已登录为{name}",
     "account.keyOnly": "已通过许可证密钥激活",
     "account.devices": "设备",
-    "account.cloudSync": "云同步",
+    "account.cloudSync": "跨设备同步",
     "account.updates": "更新",
     "account.autoUpdate": "自动更新",
     "account.channel": "发布渠道",
@@ -15720,10 +15843,15 @@ export const KIT_COPY: Readonly<
     "saveConflict.keepBoth": "两个都保留",
     "saveConflict.bothFull": "存档位已全部占用。删除一个存档后才能两个都保留。",
     "saveConflict.keeping": "正在应用你的选择…",
-    "saveConflict.keptLocal": "已保留此设备的存档。",
-    "saveConflict.keptRemote": "已保留另一个存档。",
-    "saveConflict.keptBoth": "两个都已保留。另一个已另存为副本。",
-    "saveConflict.keptDeleted": "存档已删除。",
+    "saveConflict.newerThis": "较新",
+    "saveConflict.newerOther": "较新",
+    "saveConflict.chooseAgain": "重新选择",
+    "saveConflict.failedDeleted": "无法应用你的选择。你的存档未更改。",
+    "saveConflict.keptLocalTitle": "已保留此设备的版本",
+    "saveConflict.keptRemoteTitle": "已保留另一个版本",
+    "saveConflict.keptBothTitle": "已保留两个版本",
+    "saveConflict.keptCopy": "另一个版本已另存为副本。",
+    "saveConflict.keptDeletedTitle": "存档已删除",
     "saveConflict.failed": "无法应用你的选择。两个存档均未更改。",
     "about.title": "关于{product}",
     "about.nav": "关于",
@@ -15902,6 +16030,8 @@ export const KIT_COPY: Readonly<
     "signin.auto.confirm.title": "继续前往 {app}",
     "signin.auto.confirm.as": "以 {email} 身份",
     "signin.auto.confirm.asApple": "使用你的 Apple 账户",
+    "signin.auto.confirm.asGameCenter": "使用 Game Center",
+    "signin.auto.confirm.asPlayGames": "使用 Google Play 游戏",
     "signin.auto.confirm.primary": "继续",
     "signin.auto.confirm.other": "使用其他账户",
     "signin.linkOffer.title": "下次使用 {provider} 登录？",
@@ -16301,7 +16431,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "在 {device} 上",
     "signin.thisBrowser": "此浏览器",
     "signin.consent.deny": "不允许",
-    "signin.consent.cloudSync": "云同步",
+    "signin.consent.cloudSync": "你已同步的设置和数据",
     "signin.consent.newLicense": "新：{tier}许可证，继续后创建",
     "signin.key.upgradeTitle": "将 {product} 保存在账户中",
     "signin.key.upgradeLede":
@@ -16437,20 +16567,19 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "设备未设置",
     "core.codes.device_keys_invalid.message":
       "无法为同步设置此设备。请更新应用后重试。",
-    "core.codes.device_keys_required.title": "设备未关联",
-    "core.codes.device_keys_required.message":
-      "此设备尚未设置为与你的其他设备关联。请更新应用后重试。",
+    "core.codes.device_keys_required.title": "设备未设置连接",
+    "core.codes.device_keys_required.message": "请更新应用后重试。",
     "core.codes.ring_too_large.title": "设备过多",
     "core.codes.ring_too_large.message":
-      "此账户关联的设备超出了可连接的数量。请移除一台后重试。",
+      "此账户的设备超出了可连接的数量。请移除一台后重试。",
     "core.codes.relay_disabled.title": "远程连接已关闭",
     "core.codes.relay_disabled.message":
       "此应用已关闭远程连接。你的设备仅能在同一网络下连接。",
     "core.codes.relay_paused.title": "远程连接已暂停",
     "core.codes.relay_paused.message": "远程连接暂时暂停。请稍后重试。",
-    "core.codes.relay_quota_exceeded.title": "已达远程用量上限",
+    "core.codes.relay_quota_exceeded.title": "已达远程连接用量上限",
     "core.codes.relay_quota_exceeded.message":
-      "远程连接用量已用完，即将重置。同一网络下的设备仍可连接。",
+      "即将重置。同一网络下的设备仍可连接。",
     "core.codes.relay_ticket_invalid.title": "连接已过期",
     "core.codes.relay_ticket_invalid.message": "连接请求已过期。请重试。",
     "core.codes.key_entry_limit.title": "密钥已无剩余输入次数",
@@ -16586,7 +16715,7 @@ export const KIT_COPY: Readonly<
       "同步暂时暂停。你的更改会保留，稍后同步。",
     "core.codes.encryption_mismatch.title": "加密不一致",
     "core.codes.encryption_mismatch.message":
-      "应用与同步服务的加密设置不一致。请更新应用后重试。",
+      "应用与 Polaris Locker 的加密设置不一致。请更新应用后重试。",
     "core.codes.revision_conflict.title": "已在别处更改",
     "core.codes.revision_conflict.message":
       "此内容已在另一台设备上更改。请刷新后重试。",
@@ -16783,9 +16912,8 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.title": "存储出现问题",
     "core.codes.store-failed.message":
       "无法保存到此设备。请检查存储空间后重试。",
-    "core.codes.connect-unavailable.title": "无法连接",
-    "core.codes.connect-unavailable.message":
-      "此设备上的此应用无法连接附近的设备。",
+    "core.codes.connect-unavailable.title": "无法使用附近的设备",
+    "core.codes.connect-unavailable.message": "此设备上的此应用无法使用。",
     "core.codes.peer-cert-invalid.title": "无法验证设备",
     "core.codes.peer-cert-invalid.message": "无法验证此设备。请重试。",
     "core.codes.nearby-permission-denied.title": "本地网络已被阻止",
@@ -17037,6 +17165,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "activate.recommend.action": { macos: "Add Your Name and Email" },
   "activate.waitingSignIn": { macos: "Sign In as {maskedEmail}" },
   "activate.otherEmail.verify": { macos: "Verify That Email" },
+  "account.removeKey": { macos: "Remove License from This Device" },
   "offlineActivation.copyCode": { macos: "Copy Code" },
   "offlineActivation.loadFile": { macos: "Load File…" },
   "offlineActivation.submit": { macos: "Activate from File" },
@@ -17079,6 +17208,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "saveConflict.keepOther": { macos: "Keep the Other Version" },
   "saveConflict.acceptDelete": { macos: "Delete It Here Too" },
   "saveConflict.keepBoth": { macos: "Keep Both" },
+  "saveConflict.chooseAgain": { macos: "Choose Again" },
   "about.support": { macos: "Get Help" },
   "about.licenses": { macos: "Open-Source Licenses" },
   "about.copyDiagnostics": { macos: "Copy Diagnostics" },

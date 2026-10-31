@@ -386,3 +386,81 @@ describe("stamping", () => {
     );
   });
 });
+
+describe("each SDK reports the version its release stamps (D-39b)", () => {
+  const read = (f: string) => readFileSync(join(ROOT, f), "utf8");
+  const one = (f: string, re: RegExp) => {
+    const m = re.exec(read(f));
+    expect(m, `${f} holds ${re}`).not.toBeNull();
+    return m![1]!;
+  };
+
+  it("the Kotlin Gradle version and POLARIS_SDK_VERSION are one value", () => {
+    expect(
+      one(
+        "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Models.kt",
+        /POLARIS_SDK_VERSION: String = "([^"]*)"/,
+      ),
+    ).toBe(one("sdks/kotlin/build.gradle.kts", /^\s*version = "([^"]*)"$/m));
+  });
+
+  it("the Godot plugin.cfg version and SDK_VERSION (the header) are one value", () => {
+    expect(
+      one(
+        "sdks/godot/addons/polaris_key/polaris_key.gd",
+        /^const SDK_VERSION := "([^"]*)"$/m,
+      ),
+    ).toBe(
+      one("sdks/godot/addons/polaris_key/plugin.cfg", /^version="([^"]*)"$/m),
+    );
+  });
+
+  it("the Python source-checkout fallback is the pyproject version", () => {
+    expect(
+      one("sdks/python/src/polaris_key/_version.py", /_installed = "([^"]*)"/),
+    ).toBe(one("sdks/python/pyproject.toml", /^version = "([^"]*)"$/m));
+  });
+
+  it("the React SDK literal is the @polaris-key/react package version", () => {
+    const pkg = JSON.parse(read("packages/sdk-react/package.json")) as {
+      version: string;
+    };
+    expect(
+      one(
+        "packages/ui-core/src/browser/sdk/version.ts",
+        /SDK_VERSION = "([^"]*)"/,
+      ),
+    ).toBe(pkg.version);
+  });
+
+  it("the stamp reaches every constant the headers read", () => {
+    const tmp = mkdtempSync(join(tmpdir(), "sdkver-"));
+    try {
+      for (const t of STAMP_TARGETS) {
+        mkdirSync(dirname(join(tmp, t.file)), { recursive: true });
+        writeFileSync(join(tmp, t.file), read(t.file));
+      }
+      for (const f of publicPackageJsons(ROOT)) {
+        mkdirSync(dirname(join(tmp, f)), { recursive: true });
+        writeFileSync(join(tmp, f), read(f));
+      }
+      stampVersions(tmp, { version: "7.8.9", pep440: "7.8.9" });
+      const at = (f: string) => readFileSync(join(tmp, f), "utf8");
+      expect(at("sdks/swift/Sources/PolarisKeyCore/Models.swift")).toContain(
+        'POLARIS_SDK_VERSION = "7.8.9"',
+      );
+      expect(
+        at("sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Models.kt"),
+      ).toContain('POLARIS_SDK_VERSION: String = "7.8.9"');
+      expect(at("sdks/godot/addons/polaris_key/polaris_key.gd")).toContain(
+        'SDK_VERSION := "7.8.9"',
+      );
+      expect(at("packages/ui-core/src/browser/sdk/version.ts")).toContain(
+        'SDK_VERSION = "7.8.9"',
+      );
+      expect(at("sdks/python/pyproject.toml")).toContain('version = "7.8.9"');
+    } finally {
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+});

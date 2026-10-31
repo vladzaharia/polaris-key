@@ -51,6 +51,37 @@ public enum CallbackResult: Sendable, Equatable {
     case failed(reason: CallbackFailure, error: String?)
 }
 
+extension CallbackResult: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public var description: String {
+        switch self {
+        case .code: return "CallbackResult.code(\(redactedCredential))"
+        case .cancelled: return "CallbackResult.cancelled"
+        case .failed(let reason, let error):
+            return "CallbackResult.failed(reason: \(reason.rawValue), error: \(error ?? "nil"))"
+        }
+    }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: ["result": description], displayStyle: .struct) }
+}
+
+extension TokenAnswer: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
+    public var description: String {
+        switch self {
+        case .token(_, let scope, let subject, let schemaVersion, _, _):
+            return
+                "TokenAnswer.token(accessToken: \(redactedCredential), scope: \(scope), subject: \(subject), schemaVersion: \(schemaVersion))"
+        case .choose(_, let expiresIn, _):
+            return "TokenAnswer.choose(grant: \(redactedCredential), expiresIn: \(expiresIn))"
+        case .refused(let error, let status, let retry):
+            return
+                "TokenAnswer.refused(error: \(error), status: \(status), retryAfterSeconds: \(retry.map(String.init) ?? "nil"))"
+        case .malformed: return "TokenAnswer.malformed"
+        }
+    }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: ["result": description], displayStyle: .struct) }
+}
+
 public enum TokenAnswer: Sendable, Equatable {
     /// `200` with an `access_token`: the activation response under its OAuth names.
     case token(
@@ -466,6 +497,7 @@ extension IdentityClient {
             if redirectAcquisitionSync.current { await onAcquired?() }
             announceSubject(subject, previous: previous)
             notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
+            await restoreSignInCompleted()
             return .ready(
                 SignInReady(
                     identity: nil, attached: nil, subject: subject, scope: scope,

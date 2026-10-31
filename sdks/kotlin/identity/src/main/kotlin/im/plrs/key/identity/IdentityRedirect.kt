@@ -68,7 +68,9 @@ public enum class CallbackFailure(public val wire: String) {
 
 public sealed interface CallbackResult {
     /** The code to redeem. */
-    public data class Code(val code: String) : CallbackResult
+    public data class Code(val code: String) : CallbackResult {
+        override fun toString(): String = "Code(code=[redacted])"
+    }
 
     /** The person pressed Cancel on the card (`error=access_denied`). */
     public data object Cancelled : CallbackResult
@@ -491,6 +493,7 @@ internal suspend fun IdentityClient.redeemRedirect(pending: RedirectPending, cod
             }
         is TokenAnswer.Token -> {
             if (core.storeSignIn(answer.accessToken, answer.subject, TokenSource.signin, personInitiated = true)) onSubject(answer.subject)
+            afterSignIn()
             if (redirectAcquisitionSyncValue) onAcquired?.invoke()
             SignInOutcome.SignedIn(answer.subject, answer.scope, answer.license?.get("id").stringValue)
         }

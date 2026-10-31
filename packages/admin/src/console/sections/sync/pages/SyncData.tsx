@@ -66,7 +66,8 @@ export function formatBinaryBytes(bytes: number): string {
     unit++;
   }
   const rounded = Number.isInteger(value) ? value : Number(value.toFixed(2));
-  return `${new Intl.NumberFormat("en").format(rounded)} ${UNITS[unit]}`;
+  const name = unit === 0 && rounded === 1 ? "byte" : UNITS[unit];
+  return `${new Intl.NumberFormat("en").format(rounded)} ${name}`;
 }
 
 const muted = (text: string): React.ReactElement => (

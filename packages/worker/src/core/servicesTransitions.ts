@@ -16,6 +16,10 @@
  *   documents, and only the sign-in goes. `account_product_grants` rows are kept, so turning
  *   Identity back on asks nobody for consent again; nobody is re-bound until they sign in again.
  *
+ * Then every mounted service's `onServicesChange` listener hears the write (`contributions.ts`):
+ * Identity's silent-restore keys are purged while Identity is off and when it comes back on, because
+ * `DELETE restore` answers 404 while Identity is off and a key must not outlive that window.
+ *
  * Together with the bind guard (`setDeviceSubject`, `bindDevice`, `registerDeviceBinding` refuse
  * while Identity is off), this is what lets LX-09's resolver trust `devices.subject` without
  * reading the toggle.
@@ -28,6 +32,7 @@ import { randomId } from "../platform/crypto.js";
 import type { ServicesMap } from "./services.js";
 import { seedImplicitTierStatement } from "./licensing/store.js";
 import { clearDeviceSubjects } from "./accounts/subjectHooks.js";
+import { contributedServicesChangeListeners } from "./contributions.js";
 
 /** Who made the write, for the audit row: the verified admin session, or the resync. */
 export interface ServicesActor {
@@ -77,7 +82,11 @@ export async function applyServiceTransitions(
   actor: ServicesActor,
   now: number,
   /** `seedDefaultTier: false`: a manifest resync never touches the Default tier (LX-33.7). */
-  opts: { seedDefaultTier?: boolean } = {},
+  opts: {
+    seedDefaultTier?: boolean;
+    /** The set the write replaced, when the writer saw it (the console's PATCH, a resync). */
+    before?: ServicesMap;
+  } = {},
 ): Promise<ServiceTransitionResult> {
   // LX-33.7: License on ⇒ the product has its Default tier (a no-op when it does, so an enable
   // and a re-enable both land here).
@@ -85,7 +94,25 @@ export async function applyServiceTransitions(
     const seed = await seedImplicitTierStatement(db, product, now);
     if (seed) await db.run(seed.sql, ...seed.params);
   }
-  if (after.identity?.enabled) return { signedInDevicesCleared: 0 };
+  const result = after.identity?.enabled
+    ? { signedInDevicesCleared: 0 }
+    : await signOutIdentityOff(env, db, product, actor, now);
+  for (const listener of contributedServicesChangeListeners())
+    await listener(
+      { db, env, now },
+      { product, before: opts.before ?? null, after, actor },
+    );
+  return result;
+}
+
+/** Identity is off: clear every device binding, with the audit row when any was left. */
+async function signOutIdentityOff(
+  env: Env,
+  db: Db,
+  product: string,
+  actor: ServicesActor,
+  now: number,
+): Promise<ServiceTransitionResult> {
   const { cleared } = await clearDeviceSubjects(
     db,
     env,

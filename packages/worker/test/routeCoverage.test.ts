@@ -176,9 +176,14 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/signin/requests/{request}/licenses/{licenseId}/devices", ["get"]],
     ["/api/signin/requests/{request}/continue", ["post"]],
     ["/api/signin/requests/{request}/cancel", ["post"]],
+    // LK-SKIP (§12.4.2): "Continue without an account", the key return on the card.
+    ["/api/signin/requests/{request}/key", ["post"]],
     // I-16: passkeys on the login card, and the account's passkeys.
     ["/api/signin/passkey/options", ["post"]],
     ["/api/signin/passkey/verify", ["post"]],
+    // DEVICE-REMOVAL: the account's licence-less devices, and removing one.
+    ["/api/me/devices", ["get"]],
+    ["/api/me/devices/{product}/{deviceId}", ["delete"]],
     ["/api/me/passkeys", ["get", "post"]],
     ["/api/me/passkeys/options", ["post"]],
     ["/api/me/passkeys/{passkeyId}", ["delete", "patch"]],
