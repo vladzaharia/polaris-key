@@ -272,8 +272,9 @@ describe("the form over the SDK primitives", () => {
 async function mountGate(
   result: unknown,
   attrs: Record<string, string> = {},
+  over: Record<string, unknown> = {},
 ): Promise<{ gate: PkGate; autoSignIn: ReturnType<typeof vi.fn> }> {
-  const { adapter, autoSignIn } = fakeClient(result);
+  const { adapter, autoSignIn } = fakeClient(result, over);
   const gate = document.createElement("pk-gate") as PkGate;
   for (const [k, v] of Object.entries(attrs)) gate.setAttribute(k, v);
   gate.setAttribute("config", '{"product":"acme"}');
@@ -306,6 +307,35 @@ describe("<pk-gate config> and automatic sign-in", () => {
       '[data-key="signin.consent.licenseLine"]',
     );
     expect(line?.textContent).toMatch(/Pro/);
+    expect(line?.textContent).not.toMatch(/[{}]/);
+  });
+
+  it("a first-time account's confirm names the tier the new license is created at", async () => {
+    const noAnchor = {
+      ...CONSENT,
+      items: CONSENT.items.filter((i) => i.kind !== "license"),
+    };
+    const licenses = vi.fn(async () => ({
+      kind: "ok",
+      view: { create: { tierName: "Standard" }, choices: [], keep: false },
+    }));
+    const { gate } = await mountGate(
+      { kind: "confirm", grant: "sg_n", expiresIn: 300, consent: noAnchor },
+      {},
+      {
+        choice: {
+          licenses,
+          devices: vi.fn(),
+          complete: vi.fn(),
+          cancel: vi.fn(),
+        },
+      },
+    );
+    expect(licenses).toHaveBeenCalledWith("sg_n");
+    const line = formOf(gate)!.shadowRoot!.querySelector(
+      '[data-key="signin.consent.newLicense"]',
+    );
+    expect(line?.textContent).toMatch(/Standard/);
     expect(line?.textContent).not.toMatch(/[{}]/);
   });
 

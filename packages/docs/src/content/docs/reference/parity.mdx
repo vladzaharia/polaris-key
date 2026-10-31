@@ -20,8 +20,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
 | Node | `node` | 108 | 16 | 14 | 0 |
-| React | `web`, `desktop-bridge` | 102 | 25 | 11 | 0 |
-| Python | `python` | 94 | 16 | 28 | 0 |
+| React | `web`, `desktop-bridge` | 103 | 25 | 10 | 0 |
+| Python | `python` | 98 | 16 | 24 | 0 |
 | Swift | `macos`, `ios` | 109 | 10 | 18 | 1 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 103 | 9 | 26 | 0 |
 | Kotlin | `android`, `jvm` | 111 | 9 | 17 | 1 |
@@ -71,14 +71,14 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `config.mint` | Edge-mint of third-party tokens | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.mirror` | Typed catalog mirrors | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.local` | Persisted device-local overrides: config.set, config.setting, onConfigChange | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `config.sync` | Synced settings on config.*: setting(key).sync(), routes from syncedSettings, the config.local import | `sync-scenarios.json` `settingCases` + transcripts (U-05) | ✓ | ✓ | planned (U-06) | ✓ | ✓ | ✓ | — |
+| `config.sync` | Synced settings on config.*: setting(key).sync(), routes from syncedSettings, the config.local import | `sync-scenarios.json` `settingCases` + transcripts (U-05) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Cloud Sync
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `sync.scenarios` | The Cloud Sync client machine: journal, HLC, partitions, open settings, import, paused and parked edits | `sync-scenarios.json` | ✓ | planned (U-20) | planned (U-06) | ✓ | ✓ | ✓ | — |
-| `sync.settings` | Settings over /sync: pull, push, cloudSync.status() and cloudSync.flush() | transcripts | ✓ | ✓ | planned (U-06) | ✓ | ✓ | ✓ | — |
+| `sync.scenarios` | The Cloud Sync client machine: journal, HLC, partitions, open settings, import, paused and parked edits | `sync-scenarios.json` | ✓ | planned (U-20) | ✓ | ✓ | ✓ | ✓ | — |
+| `sync.settings` | Settings over /sync: pull, push, cloudSync.status() and cloudSync.flush() | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.conflict` | One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records | unit + transcripts (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | — |
 | `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts (U-10) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
 | `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
@@ -87,7 +87,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `sync.files.delta` | cloudSync file delta: content-defined chunks, only the missing chunks travel | `sync-vectors.json` `cdcCases` + transcripts (U-37) | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
 | `sync.e2e.recovery` | The recovery code, and the platform backup of the root where the OS has one | `sync-vectors.json` `recoveryCodeCases` + transcripts (U-36) | planned (U-38) | planned (U-20) | planned (U-06) | planned (U-39) | planned (U-40) | planned (U-39) | web, node, python, jvm, windows, linux: runtime |
 | `sync.transfer.background` | Background transfer: an upload or download that continues when the app is suspended | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (U-41) | planned (U-41); N/A (web: runtime) | planned (U-41); N/A (jvm: runtime) | web, desktop-bridge, node, python, jvm: runtime |
-| `sync.e2e` | End-to-end encrypted Cloud Sync on the client: envelope, blinding, root wrap and the encryption-mode machine | `sync-vectors.json` + `sync-scenarios.json` + transcripts (U-33) | ✓ | planned (U-20) | planned (U-06) | planned (U-07) | planned (U-21) | planned (U-07) | — |
+| `sync.e2e` | End-to-end encrypted Cloud Sync on the client: envelope, blinding, root wrap and the encryption-mode machine | `sync-vectors.json` + `sync-scenarios.json` + transcripts (U-33) | ✓ | planned (U-20) | ✓ | planned (U-07) | planned (U-21) | planned (U-07) | — |
 
 ## Cloud Connect
 
@@ -126,7 +126,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.exchange` | Platform sign-in: a Google or Apple ID token for a device token (the exchange) | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | ✓ | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 | `identity.gamecenter` | Platform sign-in: a Game Center identity-verification token for a device token (the exchange) | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm: runtime |
 | `identity.pgs` | Platform sign-in: a Play Games server auth code for a device token (the exchange) | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime); N/A (macos: runtime); N/A (ios: runtime); N/A (web: runtime) | ✓; N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm: runtime |
-| `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | planned (I-47) | planned (I-46) | planned (I-47) | ✓ | planned (I-48) | ✓ | — |
+| `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | planned (I-47) | ✓ | planned (I-47) | ✓ | planned (I-48) | ✓ | — |
 | `identity.restore` | Silent restore: a new device of the same person signs in from the platform backup | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓ | planned (I-49); N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, web, jvm, windows, linux, desktop-bridge: runtime |
 | `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 

@@ -112,8 +112,8 @@
       "status": "implemented"
     },
     "config.sync": {
-      "status": "planned",
-      "wp": "U-06"
+      "status": "implemented",
+      "note": "client.config.setting(key).sync() answers local, pending or synced; a synced key routes through the Cloud Sync machine while it is active. tests/test_cloud_sync_settings.py, tests/test_sync_scenarios.py (settingCases)."
     },
     "devices.fingerprint": {
       "status": "implemented"
@@ -470,12 +470,12 @@
       "note": "polaris_key.commerce: binding() and claim(store, payload) over the P6-01 bridge, plus claim_steam(ticket_hex, dlc_app_id), claim_play() and claim_app_store(), which sync on success; the host's Steamworks binding supplies the ticket, so there is no store dependency. Refusals keep the server's code and reason (ClaimNotOwned, ClaimAttestationRequired, ClaimRefused). tests/test_commerce.py and the commerce-claim transcript."
     },
     "sync.scenarios": {
-      "status": "planned",
-      "wp": "U-06"
+      "status": "implemented",
+      "note": "tests/test_sync_scenarios.py replays every sync-scenarios.json scenario and settingCases through polaris_key.cloud_sync.machine; none is skipped."
     },
     "sync.settings": {
-      "status": "planned",
-      "wp": "U-06"
+      "status": "implemented",
+      "note": "client.cloud_sync.status()/flush() and the cloudSync event (polaris_key/cloud_sync): one machine per client over the shared keyring, driven by identity events, with typed N/A while the product has no Sync service. tests/test_cloud_sync_host.py; the cloudsync-* transcripts replay in tests/test_transcripts.py."
     },
     "sync.conflict": {
       "status": "planned",
@@ -511,8 +511,8 @@
       "reason": "runtime"
     },
     "sync.e2e": {
-      "status": "planned",
-      "wp": "U-06"
+      "status": "implemented",
+      "note": "The host seals and opens every synced value through core.sync_crypto (cloud_sync encryption defaults to e2e; app code only) over client.keyring. tests/test_sync_crypto_conformance.py and tests/test_sync_scenarios.py."
     },
     "connect.identity": {
       "status": "implemented",

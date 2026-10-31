@@ -2988,9 +2988,7 @@
       "feature": "config.sync",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useSetting().sync",
           "shape": "hook",
@@ -3463,9 +3461,7 @@
         "node": {},
         "react": {
           "spelling": "usePolarisAuth().choice.complete",
-          "shape": "hook",
-          "planned": "I-46",
-          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3536,8 +3532,8 @@
           "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
         },
         "react": {
-          "planned": "I-46",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+          "spelling": "usePolarisAuth().autoSignIn",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-47",
@@ -3561,8 +3557,8 @@
       "feature": "identity.link",
       "sdks": {
         "react": {
-          "planned": "I-46",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "usePolarisAuth().link.offer",
+          "shape": "hook"
         },
         "swift": {
           "planned": "I-44",
@@ -3586,8 +3582,8 @@
       "feature": "identity.link",
       "sdks": {
         "react": {
-          "planned": "I-46",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "usePolarisAuth().link.accept",
+          "shape": "hook"
         },
         "swift": {
           "planned": "I-44",
@@ -3617,8 +3613,8 @@
       "feature": "identity.link",
       "sdks": {
         "react": {
-          "planned": "I-46",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "usePolarisAuth().link.decline",
+          "shape": "hook"
         },
         "swift": {
           "planned": "I-44",
@@ -3761,9 +3757,7 @@
       "feature": "sync.settings",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useCloudSync().status",
           "shape": "hook",
@@ -3781,9 +3775,7 @@
       "feature": "sync.settings",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useCloudSync().flush",
           "shape": "hook",
@@ -3804,7 +3796,7 @@
           "path": "cloudSync.encryption"
         },
         "python": {
-          "planned": "U-06"
+          "path": "cloud_sync.encryption"
         },
         "react": {
           "planned": "U-20"
@@ -3831,9 +3823,7 @@
           "spelling": "events.on(\"cloudSync\")",
           "reason": "one event stream on the client emitter, kind cloudSync"
         },
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useCloudSync().status",
           "shape": "hook",

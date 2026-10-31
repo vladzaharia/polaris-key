@@ -2463,9 +2463,9 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "config.mint": CapabilityRow("implemented", "config", ()),
         "config.mirror": CapabilityRow("implemented", "config", ()),
         "config.local": CapabilityRow("implemented", "sdk", ()),
-        "config.sync": CapabilityRow("planned", "sync", ()),
-        "sync.scenarios": CapabilityRow("planned", "sync", ()),
-        "sync.settings": CapabilityRow("planned", "sync", ()),
+        "config.sync": CapabilityRow("implemented", "sync", ()),
+        "sync.scenarios": CapabilityRow("implemented", "sync", ()),
+        "sync.settings": CapabilityRow("implemented", "sync", ()),
         "sync.conflict": CapabilityRow("planned", "sync", ()),
         "sync.saves": CapabilityRow("planned", "sync", ()),
         "sync.keyring": CapabilityRow("implemented", "sync", ()),
@@ -2474,7 +2474,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.files.delta": CapabilityRow("planned", "sync", ()),
         "sync.e2e.recovery": CapabilityRow("planned", "sync", ()),
         "sync.transfer.background": CapabilityRow("na", "sync", (CapabilityNa("python", "runtime"),)),
-        "sync.e2e": CapabilityRow("planned", "sync", ()),
+        "sync.e2e": CapabilityRow("implemented", "sync", ()),
         "connect.identity": CapabilityRow("implemented", "connect", ()),
         "connect.noise": CapabilityRow("implemented", "connect", ()),
         "connect.protocol": CapabilityRow("implemented", "connect", ()),
@@ -2574,4 +2574,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "f2966306e098dc8c1b5052d5addb4defac60ad6807ea6e6bed18c05579b6ce2d"
+CAPABILITY_DIGEST: Final[str] = "0489652bce2a6fbeae766e85acf1b6ed46f64acc396cecd94bf6c16ed25f7096"
