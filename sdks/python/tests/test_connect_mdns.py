@@ -13,10 +13,10 @@ import pytest
 from polaris_key.connect.loop import connect_loop
 from polaris_key.core.peer_mdns import (
     ENTRY_TTL_SECONDS,
-    AddressBook,
     MAX_ADDRS,
     MAX_INSTANCES,
     NEW_WINDOW_SECONDS,
+    AddressBook,
     MdnsAdvert,
     MdnsFound,
     MdnsUnavailableError,

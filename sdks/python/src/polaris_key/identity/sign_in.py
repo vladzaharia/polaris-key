@@ -31,7 +31,7 @@ import math
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, cast
 
 import httpx
 
@@ -378,7 +378,7 @@ class SignInSession:
             interval = answer.get("interval")
             return {
                 "s": "slow-down",
-                "interval": _whole_seconds(float(interval))
+                "interval": _whole_seconds(float(cast(float, interval)))
                 if _is_seconds(interval)
                 else self.interval + SLOW_DOWN_STEP_SECONDS,
             }
@@ -416,7 +416,7 @@ class SignInSession:
                 "outcome": SignInOutcome(
                     kind=CHOOSE,
                     grant=grant,
-                    expires_in=_whole_seconds(expires_in),
+                    expires_in=_whole_seconds(cast(float, expires_in)),
                     choices=choices,
                 ),
             }
@@ -426,7 +426,7 @@ class SignInSession:
                 raise PolarisError(
                     ErrorCode.SIGN_IN_FAILED, "device sign-in answered ready without a token."
                 )
-            tokens.set(token, "signin")
+            tokens.set(cast(str, token), "signin")
             deps.store_identity(identity)
             deps.on_acquired()
             try:

@@ -31,7 +31,7 @@ import re
 import secrets
 import threading
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple, Union, cast
 from urllib.parse import unquote_plus
 
 from ..constants_generated import ErrorCode, Feature
@@ -407,10 +407,10 @@ def parse_token_answer(status: int, body: Any) -> TokenAnswer:
         error = err if isinstance(err, str) and err != "" else "server_error"
         retry = b.get("retryAfter")
         seconds = (
-            int(math.ceil(min(retry, 3600)))
+            int(math.ceil(min(cast(float, retry), 3600)))
             if _is_number(retry)
             and (not isinstance(retry, float) or math.isfinite(retry))
-            and retry > 0
+            and cast(float, retry) > 0
             else None
         )
         return TokenAnswer(kind="refused", error=error, status=status, retry_after_seconds=seconds)
@@ -445,7 +445,7 @@ def parse_token_answer(status: int, body: Any) -> TokenAnswer:
         access_token=token,
         scope=scope,
         subject=subject,
-        schema_version=sv if _is_number(sv) else 1,
+        schema_version=cast(int, sv) if _is_number(sv) else 1,
         device=device,
         license=lic,
     )
