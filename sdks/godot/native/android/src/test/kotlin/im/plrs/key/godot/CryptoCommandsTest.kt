@@ -1,0 +1,54 @@
+package im.plrs.key.godot
+
+import im.plrs.key.platform.PlatformCrypto
+import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/** CC-14b.8: the binary crypto entry: status byte, length checks at the boundary, refusals. */
+class CryptoCommandsTest {
+    private fun hex(s: String): ByteArray = ByteArray(s.length / 2) { s.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
+    private val c33 = CryptoCommands(PlatformCrypto(33))
+    private val c24 = CryptoCommands(PlatformCrypto(24))
+    private fun ok(b: ByteArray) = byteArrayOf(CryptoCommands.OK) + b
+    private fun st(s: Byte) = byteArrayOf(s)
+
+    @Test
+    fun x25519AndPublicKnownAnswers() {
+        val a = hex("77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a")
+        val bPub = hex("de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f")
+        assertArrayEquals(ok(hex("4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742")), c33.x25519(a, bPub))
+        assertArrayEquals(ok(hex("8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a")), c33.x25519Public(a))
+    }
+
+    @Test
+    fun x25519RefusalsAreStatusBytes() {
+        val sk = ByteArray(32) { 3 }
+        assertArrayEquals(st(CryptoCommands.REFUSED), c33.x25519(sk, ByteArray(32)))
+        assertArrayEquals(st(CryptoCommands.UNSUPPORTED), c24.x25519(sk, sk))
+        assertArrayEquals(st(CryptoCommands.UNSUPPORTED), c24.x25519Public(sk))
+        assertArrayEquals(st(CryptoCommands.BAD_INPUT), c33.x25519(ByteArray(5), sk))
+        assertArrayEquals(st(CryptoCommands.BAD_INPUT), c33.x25519(null, sk))
+        assertArrayEquals(st(CryptoCommands.BAD_INPUT), c33.x25519Public(null))
+    }
+
+    @Test
+    fun sealAndOpenKnownAnswersAndRefusals() {
+        val key = ByteArray(32)
+        val nonce = ByteArray(12)
+        val empty = ByteArray(0)
+        assertArrayEquals(ok(hex("530f8afbc74536b9a963b4f1c4cb738b")), c24.seal(key, nonce, empty, empty))
+        val sealed = hex("cea7403d4d606b6e074ec5d3baf39d18d0d1c8a799996bf0265b98b5d48ab919")
+        assertArrayEquals(ok(sealed), c24.seal(key, nonce, empty, ByteArray(16)))
+        assertArrayEquals(ok(ByteArray(16)), c24.open(key, nonce, empty, sealed))
+        // A valid empty message opens to the status byte alone plus nothing: OK, then zero bytes.
+        assertArrayEquals(ok(empty), c24.open(key, nonce, empty, hex("530f8afbc74536b9a963b4f1c4cb738b")))
+        val bad = sealed.copyOf().also { it[20] = (it[20].toInt() xor 1).toByte() }
+        assertArrayEquals(st(CryptoCommands.REFUSED), c24.open(key, nonce, empty, bad))
+        assertArrayEquals(st(CryptoCommands.BAD_INPUT), c24.seal(ByteArray(31), nonce, empty, empty))
+        assertArrayEquals(st(CryptoCommands.BAD_INPUT), c24.open(key, ByteArray(13), empty, sealed))
+        assertArrayEquals(st(CryptoCommands.BAD_INPUT), c24.open(key, nonce, empty, ByteArray(3)))
+        assertArrayEquals(st(CryptoCommands.BAD_INPUT), c24.seal(key, nonce, null, empty))
+        assertEquals(1, c24.open(key, nonce, empty, bad).size)
+    }
+}
