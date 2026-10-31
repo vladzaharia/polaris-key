@@ -104,14 +104,11 @@ public fun PolarisSaveConflict(
         PolarisProductHeader()
         if (screen.state == "kept") {
             // The result is the news: the success mark (decorative) above its title.
-            Icon(PolarisSymbols.Check, contentDescription = null, tint = PolarisTheme.status.success, modifier = Modifier.size(32.dp))
+            PolarisIconBadge(PolarisSymbols.Check, PolarisTheme.status.successContainer, PolarisTheme.status.success)
             Spacer(Modifier.height(PolarisSpace.controls))
         }
-        PolarisTitle(
-            title,
-            if (screen.state == "kept") Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier,
-            key = screen.state,
-        )
+        // The heading takes the focus and is the one announcement (no live region on it).
+        PolarisTitle(title, key = screen.state)
         when (screen.state) {
             "keeping" -> Keeping(lines)
 
@@ -192,7 +189,7 @@ private val KEPT_TITLES = listOf(
 private fun Copies(lines: KitLines, stacked: Boolean) {
     Spacer(Modifier.height(PolarisSpace.tight))
     (lines.text("saveConflict.deletedLede") ?: lines.text("saveConflict.lede"))?.let { PolarisBody(it, textAlign = TextAlign.Start) }
-    Spacer(Modifier.height(PolarisSpace.medium))
+    Spacer(Modifier.height(if (stacked) PolarisSpace.tight else PolarisSpace.medium))
     // Newer only tags a card (and only the app says which); it chooses nothing.
     val newer = lines.text("saveConflict.newerThis") to lines.text("saveConflict.newerOther")
     val local = lines.text("saveConflict.thisDevice").orEmpty() to lines.text("saveConflict.savedThis")
@@ -206,8 +203,8 @@ private fun Copies(lines: KitLines, stacked: Boolean) {
         }
     } else {
         Column(verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls)) {
-            SaveCard(local.first, local.second, newer.first, Modifier)
-            SaveCard(other.first, other.second, newer.second, Modifier)
+            SaveCard(local.first, local.second, newer.first, Modifier, compact = stacked)
+            SaveCard(other.first, other.second, newer.second, Modifier, compact = stacked)
         }
     }
 }

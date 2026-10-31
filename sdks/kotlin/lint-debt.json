@@ -2838,8 +2838,8 @@
     },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisCloudSyncKit.kt": {
       "detekt:complexity.LongParameterList": 1,
-      "detekt:naming.FunctionNaming": 2,
-      "ktlint:standard:function-naming": 2
+      "detekt:naming.FunctionNaming": 3,
+      "ktlint:standard:function-naming": 3
     },
     "sdks/kotlin/ui/src/commonMain/kotlin/im/plrs/key/ui/PolarisCopy.kt": {
       "detekt:style.LoopWithTooManyJumpStatements": 1,

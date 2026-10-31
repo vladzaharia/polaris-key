@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
@@ -32,7 +33,6 @@ import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertRangeInfoEquals
-import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -621,8 +621,8 @@ class SyncScreensTest {
     @Test
     fun aTransferNamesItsLabelBeforeItsFiguresAndNeverSaysSynced() {
         show { PolarisCloudSyncTransfer(transferScreen("transferring"), fraction = 0.62f) }
-        rule.onNodeWithText("Syncing saves…").assertIsDisplayed()
-        rule.onNodeWithText("· 38 MB of 61 MB", substring = true).assertIsDisplayed()
+        rule.onNodeWithContentDescription("Syncing saves…").assertIsDisplayed()
+        rule.onNodeWithText("38 MB of 61 MB").assertIsDisplayed()
         rule.onNodeWithText("Synced", substring = true).assertDoesNotExist()
         rule.onNode(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
             .assertRangeInfoEquals(androidx.compose.ui.semantics.ProgressBarRangeInfo(0.62f, 0f..1f))
@@ -631,7 +631,7 @@ class SyncScreensTest {
     @Test
     fun onlyTheLabelIsALiveRegionAndTheBarCarriesNoSentence() {
         show { PolarisCloudSyncTransfer(transferScreen("transferring"), fraction = 0.62f) }
-        rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)).assertTextEquals("Syncing saves…")
+        rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion)).assertContentDescriptionEquals("Syncing saves…")
         rule.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.StateDescription))
     }
@@ -692,7 +692,9 @@ internal val saveSnapshotScreens = listOf(
     "saveConflict-choose-full",
     "saveConflict-choose-deleted",
     "saveConflict-choose-newer",
+    "saveConflict-choose-newer-local",
     "saveConflict-failed",
+    "saveConflict-failed-deleted",
     "cloudSyncTransfer-transferring",
     "cloudSyncTransfer-failed",
 )
@@ -716,7 +718,18 @@ class SaveScreensSnapshotTest(private val variant: SnapshotVariant) {
         // The quieter states are recorded once, on the phone.
         val phone = variant.name.startsWith("phone-390x844-")
         val screens =
-            saveSnapshotScreens + if (phone) listOf("saveConflict-keeping", "saveConflict-kept", "cloudSyncTransfer-waiting") else emptyList()
+            saveSnapshotScreens +
+                if (phone) {
+                    listOf(
+                        "saveConflict-keeping",
+                        "saveConflict-keeping-deleted",
+                        "saveConflict-kept",
+                        "saveConflict-kept-deleted",
+                        "cloudSyncTransfer-waiting",
+                    )
+                } else {
+                    emptyList()
+                }
         for (name in screens) rule.capture("$name/${variant.name}", variant, content = kitScreen(name))
     }
 }

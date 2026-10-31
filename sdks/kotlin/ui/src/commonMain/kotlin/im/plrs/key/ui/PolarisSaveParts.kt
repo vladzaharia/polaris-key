@@ -16,7 +16,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -25,7 +24,7 @@ import androidx.compose.ui.unit.dp
 
 /** One copy of the save: whose it is, the Newer tag when named, and when it was saved. */
 @Composable
-internal fun SaveCard(who: String, whenText: String?, newer: String?, modifier: Modifier) {
+internal fun SaveCard(who: String, whenText: String?, newer: String?, modifier: Modifier, compact: Boolean = false) {
     Surface(
         modifier = modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
         shape = MaterialTheme.shapes.medium,
@@ -33,20 +32,18 @@ internal fun SaveCard(who: String, whenText: String?, newer: String?, modifier: 
         contentColor = MaterialTheme.colorScheme.onSurface,
     ) {
         Column(
-            Modifier.padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.controls),
+            Modifier.padding(horizontal = PolarisSpace.medium, vertical = if (compact) 8.dp else PolarisSpace.controls),
             verticalArrangement = Arrangement.spacedBy(PolarisSpace.hairline),
         ) {
-            // The head: whose copy, and Newer when the app says it was saved later (a tag, never a control).
-            Row(horizontalArrangement = Arrangement.spacedBy(PolarisSpace.controls), verticalAlignment = Alignment.Top) {
-                Text(who, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), modifier = Modifier.weight(1f))
-                if (newer != null) {
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    ) {
-                        Text(newer, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
-                    }
+            // The name in full, then Newer when the app says it was saved later (a tag, never a control), then the date.
+            Text(who, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold))
+            if (newer != null) {
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ) {
+                    Text(newer, style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
                 }
             }
             if (whenText != null) {

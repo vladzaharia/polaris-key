@@ -23,8 +23,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -108,32 +112,55 @@ public fun PolarisCloudSyncTransfer(
             Modifier.fillMaxWidth().padding(horizontal = PolarisSpace.medium, vertical = PolarisSpace.controls),
             verticalArrangement = Arrangement.spacedBy(PolarisSpace.controls),
         ) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                val line = with(LocalDensity.current) { MaterialTheme.typography.bodyLarge.lineHeight.toDp() }
-                Icon(
-                    glyph,
-                    contentDescription = null,
-                    tint = tint,
-                    modifier = Modifier.padding(top = ((line - 20.dp) / 2).coerceAtLeast(0.dp)).size(20.dp),
-                )
-                Spacer(Modifier.width(PolarisSpace.controls))
-                // Only the label is a live region: a state change is announced once, byte updates are not.
-                FlowRow(Modifier.weight(1f)) {
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = scheme.onSurface,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                    )
-                    if (figures != null) {
-                        Text(" · $figures", style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
-                    }
-                }
-            }
+            TransferLine(glyph, tint, label, figures)
             // The bar takes its own full-width row at every size; determinate only with counted bytes.
             // It reports its own range (no description), so the figures are not read twice.
             if (screen.state == "transferring") PolarisProgressBar(fraction, null)
-            if (screen.state == "transfer-failed") PolarisTextButton(lines.text("common.tryAgain").orEmpty(), onRetry)
+            if (screen.state == "transfer-failed") {
+                PolarisTextButton(
+                    lines.text("common.tryAgain").orEmpty(),
+                    onRetry,
+                    // Its label lines up with the status text (the glyph and its gap, less the button's own padding).
+                    Modifier.padding(start = PolarisSpace.controls + 8.dp),
+                )
+            }
+        }
+    }
+}
+
+/** The status line: the glyph, then the label (the only live region) and its figures. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TransferLine(glyph: ImageVector, tint: Color, label: String, figures: String?) {
+    val scheme = MaterialTheme.colorScheme
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        val line = with(LocalDensity.current) { MaterialTheme.typography.bodyLarge.lineHeight.toDp() }
+        Icon(
+            glyph,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.padding(top = ((line - 20.dp) / 2).coerceAtLeast(0.dp)).size(20.dp),
+        )
+        Spacer(Modifier.width(PolarisSpace.controls))
+        // Only the label is a live region: a state change is announced once, byte updates are not.
+        FlowRow(Modifier.weight(1f)) {
+            // The separator ends the label's run, so wrapped figures never start with it; the label is read clean.
+            Text(
+                if (figures != null) "$label · " else label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = scheme.onSurface,
+                modifier = if (figures != null) {
+                    Modifier.clearAndSetSemantics {
+                        contentDescription = label
+                        liveRegion = LiveRegionMode.Polite
+                    }
+                } else {
+                    Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                },
+            )
+            if (figures != null) {
+                Text(figures, style = MaterialTheme.typography.bodyLarge, color = scheme.onSurface)
+            }
         }
     }
 }
