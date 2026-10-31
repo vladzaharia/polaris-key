@@ -351,7 +351,7 @@ func _redeem(session: PKeySignInSession, pending: Dictionary, code: String) -> P
 			if retry == null:
 				var header = r.detail["headers"].get("retry-after") if r.detail["headers"] is Dictionary else null
 				if header is String and (header as String).strip_edges().is_valid_int():
-					retry = int((header as String).strip_edges())
+					retry = mini(int((header as String).strip_edges()), 3600)
 			var refused := PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.SERVER_ERROR if status >= 500 else StringName(answer["error"]), "The token endpoint refused the sign-in (%s)." % answer["error"], status)
 			if retry != null:
 				refused.detail = {"retry_after_seconds": retry}
