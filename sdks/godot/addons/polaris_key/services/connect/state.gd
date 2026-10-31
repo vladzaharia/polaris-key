@@ -28,7 +28,8 @@ const FILE := "connect.v1"
 const SALT_FILE := "connect.v1.salt"
 const _SEALED_MAGIC := "PKSL"
 const _SEALED_VERSION := 1
-const _MAX_FILE_BYTES := 16384
+## A 128-device roster (cert.gd MAX_RING_DEVICES) with its certificate is tens of KiB (R-6G2 N8).
+const _MAX_FILE_BYTES := 262144
 const _OWNER_RW := FileAccess.UNIX_READ_OWNER | FileAccess.UNIX_WRITE_OWNER
 const _OWNER_RWX := FileAccess.UNIX_READ_OWNER | FileAccess.UNIX_WRITE_OWNER \
 		| FileAccess.UNIX_EXECUTE_OWNER

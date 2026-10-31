@@ -75,10 +75,15 @@ signal in_play_changed(playing: bool)
 const BOOT_SCENE := "res://addons/polaris_key/ui/boot/pkey_boot.tscn"
 
 var core: PKeyCore = null
-## The Cloud Connect client (services/connect/client.gd): `identity()`, `list_devices()`, `current()`,
-## `discovery_keys()` and `leave()`, with the LAN and relay halves following. Null until configure().
-var cloud_connect: PKeyConnectClient = null
+## The Cloud Connect API (services/cloud_connect.gd): `start`, `stop`, `peers`, `devices`, `open`,
+## `refresh_peers`, `status` and the signals `channel` and `notice`. Null until configure(). (Not `connect`:
+## that is Object's.) Sign-out runs its `stop()` and then forgets the Connect state (G18).
+var cloud_connect: PKeyCloudConnect = null
+## The Cloud Connect identity client (services/connect/client.gd) under it: `identity()`, `list_devices()`,
+## `current()`, `discovery_keys()` and `leave()`. Null until configure().
+var connect_client: PKeyConnectClient = null
 var _ring_hook_added := false
+var _connect_hook_added := false
 ## The device principal's surface (services/devices.gd); null until configure().
 var devices: PKeyDevices = null
 ## The Cloud Sync key ring (core/sync/ring.gd): create, unlock, wrap_to, recovery, adopt, forget, and the
@@ -229,9 +234,23 @@ func _build_connect(opts: PKeyOptions, keys: Object) -> void:
 	var state := opts.connect_state
 	if state == null:
 		state = PKeyConnectState.new(core.product, PKeyBackupExclusion.root(opts.store_root))
-	cloud_connect = PKeyConnectClient.new(core, state, keys)
-	cloud_connect.devices = devices
-	cloud_connect.allow_ephemeral_keys = opts.allow_ephemeral_keys
+	if cloud_connect != null:
+		cloud_connect.stop()
+	connect_client = PKeyConnectClient.new(core, state, keys)
+	connect_client.devices = devices
+	connect_client.allow_ephemeral_keys = opts.allow_ephemeral_keys
+	cloud_connect = PKeyCloudConnect.new(core, connect_client)
+	if not _connect_hook_added:
+		_connect_hook_added = true
+		identity.add_before_sign_out(_stop_connect)
+
+
+## Sign-out (G18): Cloud Connect stops, then its state record is forgotten; a record that cannot be
+## removed stops the sign-out. One hook, registered once, reads the current facade.
+func _stop_connect() -> Variant:
+	if cloud_connect == null:
+		return null
+	return cloud_connect._sign_out_step()
 
 
 ## The sign-out chain (A-3): Cloud Sync flushes, signs the machine out, forgets the ring, purges, in

@@ -85,6 +85,7 @@ class FakeMdns extends RefCounted:
 	var bus: Bus
 	var fail_advertise := false
 	var fail_browse := false
+	var querier_only := false
 	var adverts: Array = []
 	var browse_up: Callable
 	var browse_down: Callable
@@ -125,7 +126,7 @@ class FakeMdns extends RefCounted:
 
 
 	func status() -> Dictionary:
-		return {"active": true, "responder": true, "querier": true, "reason": ""}
+		return {"active": true, "responder": not querier_only, "querier": true, "reason": "querier_only" if querier_only else ""}
 
 
 	static func _deliver(b: Dictionary, e: Dictionary) -> void:

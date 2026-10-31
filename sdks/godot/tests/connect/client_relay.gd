@@ -208,6 +208,16 @@ func _state_store(t: PKeyTestContext) -> void:
 	t.check("a sealer that cannot open fails, not as none", not sealed.read().ok)
 	sealer.fault_open = false
 	t.check("sealed clear leaves the platform key", sealed.clear().ok and not FileAccess.file_exists(path) and not sealer.calls.has("destroy"))
+	# R-6G2 N8: the engine-encrypted file lane reads a roster of 128 devices, far over the old 16 KiB cap.
+	var enc := PKeyConnectState.new(PRODUCT, _scratch.path_join("enc"), false, null)
+	if enc.protection() == "encrypted-file":
+		var big := _record("r".repeat(60000), "c".repeat(700))
+		var wrote := enc.write(big)
+		var back := enc.read()
+		t.check("the encrypted-file lane reads back a 60 KiB roster", wrote.ok and back.ok and back.detail != null and (back.detail as PKeyConnectState.Record).ring.length() == 60000, str(back))
+		enc.clear()
+	else:
+		t.info("the encrypted-file lane is not available here (%s); the 60 KiB read is skipped" % enc.protection())
 	var plain_dir := PKeyConnectState.new(PRODUCT, "user://not-a-private-root", false, null)
 	t.check("a root that is not private is memory", plain_dir.persistence() == "memory" or plain_dir.sealer == null)
 

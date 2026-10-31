@@ -543,12 +543,12 @@ func _devices(t: PKeyTestContext, core: PKeyCore) -> void:
 	t.check("account_required passes through", not refused.ok and String(refused.code) == "account_required")
 
 
-# ── PolarisKey.cloud_connect ───────────────────────────────────────────────────────────────────
+# ── PolarisKey.connect_client ───────────────────────────────────────────────────────────────────
 
 func _facade(t: PKeyTestContext) -> void:
 	var sdk := PKeyTestFixtures.new_sdk()
-	var before: Variant = sdk.get("cloud_connect")
-	t.check("PolarisKey.cloud_connect is null until configure()", before == null)
+	var before: Variant = sdk.get("connect_client")
+	t.check("PolarisKey.connect_client and cloud_connect are null until configure()", before == null and sdk.get("cloud_connect") == null)
 	var keys := PKeyDeviceKeyStore.for_tests(PRODUCT, _scratch.path_join("facade"))
 	var opts := PKeyTestFixtures.options(_server.base_url(), PKeyMemoryStore.new(ME, TOKEN), _clock, PRODUCT, _trust)
 	opts.device_keys = keys
@@ -556,9 +556,10 @@ func _facade(t: PKeyTestContext) -> void:
 	opts.ring_vault = PKeySyncRingVault.new(PRODUCT, _scratch.path_join("facade-vault"), true)
 	opts.allow_ephemeral_keys = true
 	t.check("configure() builds it", sdk.configure(opts).ok)
-	var client: Variant = sdk.get("cloud_connect")
-	t.check("PolarisKey.cloud_connect is the Connect client over the shared keys and devices", \
+	var client: Variant = sdk.get("connect_client")
+	t.check("PolarisKey.connect_client is the Connect client over the shared keys and devices", \
 			client is PKeyConnectClient and client.allow_ephemeral_keys and client.devices == sdk.devices)
+	t.check("PolarisKey.cloud_connect is the facade over it", sdk.get("cloud_connect") is PKeyCloudConnect)
 	var pub := _public(keys)
 	var body := {"ring": _ring(SUB, 1, [pub, X]), "certificate": _cert(1, SUB, ME, pub), "discKeys": [_k(1)]}
 	_reset()
