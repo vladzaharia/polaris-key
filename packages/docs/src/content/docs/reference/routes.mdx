@@ -234,6 +234,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/api/library` | portal | The signed-in account's library |
 | DELETE | `/api/licenses/{product}/{licenseId}` | portal | Remove a licence from the library |
 | POST | `/api/me/deletion/cancel` | portal | Cancel a pending account deletion |
+| DELETE | `/api/me/devices/{product}/{deviceId}` | portal | Remove a device that holds no licence |
+| GET | `/api/me/devices` | portal | The account's devices that hold no licence |
 | GET | `/api/me/export` | portal | Download everything held for the signed-in account |
 | POST | `/api/me/link/cancel` | portal | Forget this browser's link flow |
 | POST | `/api/me/link/confirm` | portal | Join the two accounts, with proof of both |
