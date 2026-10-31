@@ -136,7 +136,8 @@ export function FinishStep({
   onTitle,
   nameHint,
 }: {
-  /** The request's `nameHint`: starts the Name field, for a new account (this step) only. */
+  /** The request's `nameHint`: a placeholder suggestion in the Name field of a new account, never
+   *  a value (an app's hint is not the person's word, and a device-code start is unauthenticated). */
   nameHint?: string | null;
   /** Cancel sign-in: back to the methods. */
   onLeave: () => void;
@@ -363,9 +364,7 @@ function FinishForm({
   const suggestions = gate.profile.suggestions ?? [];
   // The provider path prefills its name; an email-code account prefills the email's local part.
   const [name, setName] = React.useState(
-    gate.profile.name ||
-      (gate.newAccount === false ? "" : nameHint?.trim()) ||
-      (suggestions[0]?.name ?? ""),
+    gate.profile.name || (suggestions[0]?.name ?? ""),
   );
   const [nameError, setNameError] = React.useState(false);
   const hasPicture = Boolean(gate.profile.picture);
@@ -1067,6 +1066,7 @@ function FinishForm({
                 maxLength={64}
                 autoComplete="name"
                 dir="auto"
+                {...(nameHint?.trim() ? { placeholder: nameHint.trim() } : {})}
                 aria-invalid={nameError || undefined}
                 aria-describedby={`${nameId}-hint${nameError ? ` ${nameId}-err` : ""}`}
                 className="h-12 text-base"

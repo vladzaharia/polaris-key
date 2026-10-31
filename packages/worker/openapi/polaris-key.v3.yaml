@@ -284,6 +284,7 @@ paths:
                         configured: true
                         issuer: https://key.plrs.im/djdl/identity
                         account: true
+                        deviceChoice: true
                         keyEntryLimit: 10
                         endpoints:
                           session: https://key.plrs.im/djdl/identity/session
@@ -7837,6 +7838,16 @@ paths:
               named:
                 summary: test/services/identity/oidcEdge.test.ts
                 value: { deviceId: dev-1, deviceName: Studio Mac }
+              hinted:
+                summary: test/services/identity/deviceStartHints.test.ts — Add your name and email, in the app
+                value:
+                  {
+                    deviceId: dev-1,
+                    loginHint: ada@example.com,
+                    nameHint: Ada,
+                    purpose: attach,
+                    licenseChoice: app,
+                  }
               headerOnly:
                 summary: Device id supplied by `X-PKey-Device` instead
                 value: {}
@@ -7860,7 +7871,10 @@ paths:
                     pollUrl: https://key.plrs.im/djdl/identity/auth/device/poll
                     deviceName: Studio Mac
         "400":
-          description: Unparseable body, or no device id from any of the three sources — LEGACY FLAT.
+          description: >
+            Unparseable body, no device id from any of the three sources, or a `purpose`,
+            `licenseChoice`, `loginHint` or `nameHint` that is not an allowed value or not a string
+            — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -7869,6 +7883,8 @@ paths:
                   { value: { error: bad_request, message: invalid json } }
                 missingDevice:
                   { value: { error: bad_request, message: missing device id } }
+                invalidHints:
+                  { value: { error: bad_request, message: invalid hints } }
         "404":
           description: The product has no OIDC configuration — LEGACY FLAT.
           content:
@@ -8386,7 +8402,7 @@ paths:
       tags: [identity]
       summary: Poll the device-code flow
       description: >
-        Four flow states, all at HTTP 200 unless noted: `pending` (nothing confirmed yet),
+        Five flow states, all at HTTP 200 unless noted: `pending` (nothing confirmed yet),
         `ready` (with the minted `pkeyt_` token), `timeout` (the flow record is gone,
         including immediately after a `ready`, which deletes it) and `error`, which names a
         reason only for a refusal (WIRE-CONTRACT-V4 §12.10, below). The body names `deviceCode` (the spelling `state` is
@@ -8428,6 +8444,18 @@ paths:
         answers the bare `error`, then `timeout`. A refusal at the mint is never a 503: it
         answers the bare `error` once and drops the flow. A client treats every 5xx on the poll
         as transient.
+
+
+        **`choose`** (UK-42.22, WIRE-CONTRACT-V5 §12.10.1) is answered only to a start that sent
+        `licenseChoice: "app"`, for a product that runs License, when a licence choice is due: the
+        account holds a candidate, the device runs on a licence outside the list (`keep`), or it
+        holds none and the product accepts keys. It carries a pending sign-in grant (`grant`,
+        300 s, bound to the flow's device, `via: device`) and the `choices` view, and the flow is
+        spent: the poll after it is `timeout`, and a client stops at `choose` and finishes with the
+        four `identity/choice` routes. That grant cannot list a licence's devices or Replace. With
+        no choice due the poll answers `ready` after binding as `token` does with no choice due. It
+        is never answered in card mode (absent or `card`), nor when no account can be found for
+        the signed-in identity: those polls are exactly the ones above.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: Authorization
@@ -8484,6 +8512,19 @@ paths:
                     schemaVersion: 1
                     identity: { name: Player, email: player@example.com }
                 timeout: { value: { status: timeout } }
+                choose:
+                  summary: test/services/identity/deviceChoicePoll.test.ts — a licence choice is due; the flow is spent
+                  value:
+                    status: choose
+                    grant: sg_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
+                    expiresIn: 300
+                    choices:
+                      state: choose
+                      choices: []
+                      keep: true
+                      preselected: null
+                      create: null
+                      getLicense: null
                 error:
                   summary: the sign-in failed after approval; the cause is not said
                   value: { status: error }
@@ -9242,7 +9283,8 @@ paths:
         the code (`X-PKey-Device` is required). JSON body, `no-store`, nested Polaris errors.
         Only while the product's Identity service is on.
         Answers only for a FULL licence in the grant's view whose Replace is allowed; every other
-        id gets the one `404`. Spends one read.
+        id gets the one `404`. Spends one read. A grant earned by a device code (`choose` from
+        `deviceAuthPoll`, WIRE-CONTRACT-V5 §12.5.1 rule 5) lists no devices: always the `404`.
       security: []
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -9307,7 +9349,10 @@ paths:
         `consent` in the body (`400 bad_request` without it, the grant left open); the consent
         row is written in the same press that binds the device. `choice.kind` is `license` (with an optional
         `replaceDeviceId`, committed in one batch with the device claim), `keep` (needs the device's own
-        `Authorization: Bearer`), `create` or `key`. A key is PX-W9's app key entry, counted once
+        `Authorization: Bearer`), `create` or `key`. A grant earned by a device code cannot Replace
+        (WIRE-CONTRACT-V5 §12.5.1 rule 5): a `replaceDeviceId` is `409 license_choice_required`
+        with a `view` whose rows have `replace: null`, and the grant stays open.
+        A key is PX-W9's app key entry, counted once
         with the device claim, and refuses with `license_owned` and `key_entry_limit`. A refusal the
         person can retry (`device_limit` with a fresh `view`, a lost mint, a wrong key) leaves
         the grant open for the time it has left.
@@ -27062,7 +27107,9 @@ components:
         purpose:
           type: string
           enum: [signin, attach]
-          description: On a request that came through `authorize` (§12.4).
+          description: >
+            On a request that came through `authorize` (§12.4), and on a `device` request whose
+            start sent the hints (§12.10.1; there the view has no `scope`).
         licenseChoice: { type: string, enum: [card, app] }
         keyReturn:
           type: boolean
@@ -31321,10 +31368,12 @@ components:
       properties:
         status:
           type: string
-          enum: [pending, confirm, ready, timeout, error]
+          enum: [pending, confirm, ready, timeout, error, choose]
           description: >
             `confirm` is `deviceAuthPoll` only, answered to a poll that asked to confirm the
             identity (`confirmIdentity` / `attachLicense`) once the player has signed in.
+            `choose` is `deviceAuthPoll` only, answered to a start that sent
+            `licenseChoice: "app"` when a licence choice is due (WIRE-CONTRACT-V5 §12.10.1).
         reason:
           type: string
           enum: [access_denied]
@@ -31346,6 +31395,14 @@ components:
           properties:
             name: { type: string }
             email: { type: string }
+        grant:
+          type: string
+          pattern: "^sg_[A-Za-z0-9_-]{43}$"
+          description: Present only on `choose` — the pending sign-in grant (`PendingSignIn`).
+        expiresIn:
+          type: integer
+          description: Present only on `choose` — the grant's lifetime in seconds (300).
+        choices: { $ref: "#/components/schemas/LicenseChoiceView" }
         attachable:
           type: boolean
           description: >
@@ -31372,13 +31429,37 @@ components:
     DeviceAuthStartRequest:
       type: object
       description: >
-        Both fields optional; an empty body is legal. The device id is taken from `deviceId`,
+        Every field is optional; an empty body is legal. The device id is taken from `deviceId`,
         then the `X-PKey-Device` header, then `?device=`.
       properties:
         deviceId: { type: string }
         deviceName:
           type: string
           description: The device label (WIRE-CONTRACT-V4 §12.7.1), normalised and never rejected; shown to the human on the sign-in page as reported by the device.
+        loginHint:
+          type: string
+          description: >
+            An email that prefills the sign-in card and verifies nothing (WIRE-CONTRACT-V5 §12.10.1).
+            A value that is not a strict email is dropped, never an error.
+        nameHint:
+          type: string
+          description: >
+            A display name that prefills the card and verifies nothing. Normalised as a device
+            label (§12.7.1) and dropped when nothing is left.
+        purpose:
+          type: string
+          enum: [signin, attach]
+          description: >
+            Why the person signs in: `signin` (default), or `attach` ("add this device's license
+            to your account"). Any other value is `400 bad_request`.
+        licenseChoice:
+          type: string
+          enum: [card, app]
+          description: >
+            `card` (default) is today's device-code sign-in. `app` asks the poll to answer
+            `choose` with a pending sign-in grant when a licence choice is due, so the app runs
+            the choice itself; an SDK sends it only when discovery carries `deviceChoice`. Any
+            other value is `400 bad_request`. `scope` is ignored.
     DeviceAuthStartResult:
       type: object
       description: >

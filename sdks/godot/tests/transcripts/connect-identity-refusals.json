@@ -102,6 +102,7 @@
                     "configured": true,
                     "issuer": "https://key.plrs.im/djdl/identity",
                     "account": true,
+                    "deviceChoice": true,
                     "keyEntryLimit": 10,
                     "endpoints": {
                       "session": "https://key.plrs.im/djdl/identity/session",
@@ -575,6 +576,7 @@
                     "configured": true,
                     "issuer": "https://key.plrs.im/djdl/identity",
                     "account": true,
+                    "deviceChoice": true,
                     "keyEntryLimit": 10,
                     "endpoints": {
                       "session": "https://key.plrs.im/djdl/identity/session",

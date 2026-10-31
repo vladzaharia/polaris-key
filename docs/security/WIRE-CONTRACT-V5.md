@@ -1707,9 +1707,19 @@ own token in `Authorization: Bearer`), `{kind: "create"}` or `{kind: "key", key}
    for the time it has left.
 4. **Budgets.** 30 reads per grant (`licenses`, `devices`, and each key attempt), 60 calls a minute
    per client network, failing closed.
-5. **Device code never issues a grant.** The cross-device channel can be phished (R1-07); only the
-   same-device channels (the web redirect here; loopback, scheme and claimed HTTPS by I-15; the
-   native exchange by I-13) can.
+5. **A device-code grant is issued only to a start that asked `licenseChoice: app`** (§12.10.1).
+   The cross-device channel can be phished (R1-07), so the grant it issues is narrower than the
+   same-device one (the web redirect here; loopback, scheme and claimed HTTPS by I-15; the native
+   exchange by I-13), and the person's approval page (I-37) is the consent. A grant with
+   `via: "device"` is bound to the product, the account, the subject and the flow's `deviceId`, as
+   any grant is, and it:
+   - never carries `fresh`, so it never makes the step-up that §12.11 asks for;
+   - cannot read devices: `devices` answers `404 not_found`;
+   - cannot Replace: `complete` with a `replaceDeviceId` answers `409 license_choice_required`, and
+     the view's `replace` is `null` (the `freeDeviceUrl` stays, so the person frees a seat in the
+     portal);
+   - keeps `keep` (the device's own token in `Authorization: Bearer`), `create`, `key` and a
+     listed `license` as they are.
 
 ### 12.4.2 The key return [C]
 
@@ -1808,6 +1818,12 @@ and never by `configured` alone. I-08b adds `choiceLicenses`, `choiceDevices`, `
 `choiceCancel` (§12.5.1) beside `token`; an SDK sends `license_choice=app` only when all four are
 present.
 
+The identity fragment gains `"deviceChoice": true` (§12.10.1) from the release that serves the
+`choose` poll answer, beside `endpoints`, while the product's License service is on. An SDK sends `licenseChoice: "app"` on the device start
+only when `deviceChoice` is present and all four `choice*` endpoints are present. It may always
+send `loginHint`, `nameHint` and `purpose`: an older Worker ignores them. `DISCOVERY_VERSION`
+stays 2, because an SDK that predates the member ignores it.
+
 ### 12.7 Passthrough request metadata
 
 These are the Identity service's browser-facing shapes: same-origin portal JSON and the device
@@ -1844,7 +1860,8 @@ overrides the default in its configuration or per call, and opts out with an emp
 `PKeyOptions.send_device_name = false`).
 
 `POST /<p>/identity/auth/device/start` answers `deviceName`: the stored label, or `null`. An
-older Worker omits the member, and an SDK then shows the label it sent. `license/activate` and
+older Worker omits the member, and an SDK then shows the label it sent. The start also takes the hints and
+the licence-choice mode (§12.10.1). `license/activate` and
 `devices/register` store the label only while the device row has none, so a console or portal
 rename always wins.
 
@@ -1862,7 +1879,9 @@ nameVerified}`, with `kind` one of `web`, `native` and `device`. `appName` and
   product, the kind, the label, the user code, the origin and a flow reference. The device-code
   confirmation page creates handles. There is no public creation route.
 - **`GET /api/signin/requests/:handle`** answers `{request, client, deviceLabel, userCode,
-expiresAt}` to the binding browser, with `cache-control: no-store`. An unknown, expired or
+expiresAt}` to the binding browser, plus `purpose`, `licenseChoice`, `loginHint` and `nameHint`
+  on a request that carries them: an `authorize` request (§12.4) and a `device` request whose start
+  sent them (§12.10.1; the view has no `scope` for a `device` request), with `cache-control: no-store`. An unknown, expired or
   unbound handle answers `404 not_found`, and so does a handle for a product whose Identity toggle
   is off. No display query parameter is read: `appName`, `name`, `icon`, `developer`, `origin`
   and `device` are all ignored. The view carries `keyReturn: true` on a request that recorded
@@ -1955,15 +1974,16 @@ and `deviceId`). Nothing here is signed: `PROTOCOL_VERSION` stays 5. The types a
 `DevicePollResponse`, `DevicePollSlowDown` and `DevicePollUnavailable` in `@polaris-key/protocol/identity`; the transcripts
 `devicecode-*.json` and `locker-devicecode.json` pin it.
 
-| HTTP | Body                                                              | Meaning                                                                              | SDK result                               |
-| ---- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------- |
-| 200  | `{"status":"pending"}`                                            | Not yet confirmed, signed in and approved                                            | keep polling                             |
-| 429  | `{"status":"slow_down","interval":n}`                             | Polled inside `interval` (a state, not an error body)                                | lengthen the interval                    |
-| 200  | `confirm` / `ready`                                               | Unchanged (I-37: `attachable` is always `false`)                                     | unchanged                                |
-| 200  | `{"status":"timeout"}`                                            | The flow is gone: expired, redeemed, or dropped after a refusal                      | `expired`                                |
-| 200  | `{"status":"error","reason":"access_denied"}`                     | A person refused: Deny, **Not you?**, the chooser's Cancel, or Deny on the code page | `sign-in-denied`                         |
-| 503  | `{"error":"unavailable","message":"try again"}`, `Retry-After: n` | Approved, but the sign-in could not finish yet. The flow is kept                     | keep polling (`server-error`, transient) |
-| 200  | `{"status":"error"}`                                              | The sign-in failed after approval and will not be retried; the cause is not said     | `sign-in-failed`                         |
+| HTTP | Body                                                                             | Meaning                                                                              | SDK result                               |
+| ---- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------- |
+| 200  | `{"status":"pending"}`                                                           | Not yet confirmed, signed in and approved                                            | keep polling                             |
+| 429  | `{"status":"slow_down","interval":n}`                                            | Polled inside `interval` (a state, not an error body)                                | lengthen the interval                    |
+| 200  | `confirm` / `ready`                                                              | Unchanged (I-37: `attachable` is always `false`)                                     | unchanged                                |
+| 200  | `{"status":"timeout"}`                                                           | The flow is gone: expired, redeemed, or dropped after a refusal                      | `expired`                                |
+| 200  | `{"status":"choose","grant":"sg_…","expiresIn":300,"choices":LicenseChoiceView}` | A licence choice is due, and the start asked `licenseChoice: "app"` (§12.10.1)       | the choose outcome; stop polling         |
+| 200  | `{"status":"error","reason":"access_denied"}`                                    | A person refused: Deny, **Not you?**, the chooser's Cancel, or Deny on the code page | `sign-in-denied`                         |
+| 503  | `{"error":"unavailable","message":"try again"}`, `Retry-After: n`                | Approved, but the sign-in could not finish yet. The flow is kept                     | keep polling (`server-error`, transient) |
+| 200  | `{"status":"error"}`                                                             | The sign-in failed after approval and will not be retried; the cause is not said     | `sign-in-failed`                         |
 
 1. `reason` appears only on `error`, and `access_denied` is its only value. A client reads an
    unknown `reason` as absent.
@@ -1995,6 +2015,50 @@ before this subsection ignores `reason` and treats every `error` as a refusal; t
 first and nothing else changes for it. Every SDK since its first device-code build treats a 5xx on
 the poll as transient, so a build that predates rule 5 completes on the retry. The Worker deploys
 first, and nothing else changes for it.
+
+#### 12.10.1 Device start members and the `choose` answer [C]
+
+Written by UK-42.22. Nothing here is signed: `PROTOCOL_VERSION` stays 5 and `DISCOVERY_VERSION` 2.
+The types are `DeviceStartRequest` and `DevicePollResponse` in `@polaris-key/protocol/identity`;
+the transcript `holders-add-to-account-device.json` pins it.
+
+1. **The start body.** `POST /<p>/identity/auth/device/start` takes, beside `deviceId` and
+   `deviceName` (§12.7.1), four optional members in camelCase JSON:
+
+   | Member          | Value              | Rule                                                                 |
+   | --------------- | ------------------ | -------------------------------------------------------------------- |
+   | `loginHint`     | an email address   | not a strict email: dropped                                          |
+   | `nameHint`      | a label            | normalised as a device label (§12.7.1); dropped when nothing is left |
+   | `purpose`       | `signin`, `attach` | any other value, or a non-string: `400 bad_request`                  |
+   | `licenseChoice` | `card`, `app`      | any other value, or a non-string: `400 bad_request`                  |
+
+   A hint prefills the card and verifies nothing, as on `authorize` (§12.4). A non-string
+   `loginHint` or `nameHint` is `400 bad_request`. `scope` is ignored: the device sign-in keeps the
+   product's full grant. The members are stored with the flow and with the device request record
+   (§12.7.2). The start's answer does not change. A start that sends none of them is card mode, as
+   every start was before this subsection.
+
+2. **The `choose` answer.** The poll answers `200` `{"status":"choose","grant":"sg_…",
+"expiresIn":300,"choices":LicenseChoiceView}` (`PendingSignIn`, §12.5.1) only when:
+   - the start carried `licenseChoice: "app"`;
+   - the product runs License; and
+   - a choice is due, which means what it means for `token` (§12.5.1): the account holds a
+     candidate, the device runs on a licence outside the list (`keep`), or it holds none, the policy
+     grants none and the product accepts keys.
+
+   With no choice due the poll binds as `token` does with no choice due and answers `ready`. It
+   never mints a second licence in app mode.
+
+3. **Order.** Every refusal, `confirm` (when it is asked) and the account claim come before
+   `choose`, unchanged. In app mode the legacy chooser never opens, so the person never picks a
+   licence on the card. In card mode (absent or `card`) the poll is exactly §12.10 without this
+   subsection.
+4. **The grant.** It is §12.5.1's grant with `via: "device"` and the narrowing of §12.5.1 rule 5.
+   The flow is consumed atomically when the grant is issued, so a later poll answers `timeout`; a
+   client stops at `choose`. A store failure while issuing the grant is the `503` of rule 5, and
+   the flow is kept.
+5. **Capability.** The identity fragment of discovery carries `"deviceChoice": true` while the
+   Worker serves this subsection and the product's License service is on (§12.6).
 
 ### 12.11 Platform sign-in, the link offer and nearby approval
 
@@ -2060,7 +2124,7 @@ The lookup finds an existing link and never creates an account. It is never by e
 2. **`complete` takes consent.** `choice/complete` (§12.5.1) takes `{grant, choice, consent?: {claims}, deviceName?}`. `consent` is required on a grant that was issued with `confirm`, and its absence is `400 bad_request` with the grant left open. The consent row is written right after the device is bound (and, for `create`, the licence minted), before the token is returned. `cancel` writes nothing.
 3. **`confirm` carries no licence view.** Before the person consents the app learns nothing about the account beyond what the token already showed. A client that gets `confirm` shows the consent, then sends it to `complete` alone. If a licence choice is due, `complete` refuses with `license_choice_required` and the view (§12.5.1), the grant stays open, and the client sends the choice with the consent.
 4. **`interstitial_required`.** `reason` is `no_link` or `terms`; a client reads an unknown `reason` as `no_link`. `url` is the sign-in card for this product. `linkHandle` is `lh_` and 43 base64url characters, held 600 seconds, and bound to the product, the device and the key. It is used once, by the link offer (§12.11.4), so the app does not ask the provider for a second token. This answer registers no device key: a client that links by handle first registers its keys with `PUT /<p>/devices/keys` (§15.8), because the link proof is checked against the device's registered signing key.
-5. **The grant is same-device.** A grant issued here follows §12.5.1 rule 5: the exchange is a same-device channel. Device code and nearby approval never issue one.
+5. **The grant is same-device.** A grant issued here follows §12.5.1 rule 5: the exchange is a same-device channel. Nearby approval never issues one, and the device code issues only the narrower one of §12.5.1 rule 5.
 6. **Never a token in a URL**, and a `subject_token` is never logged or audited. Audit carries the provider kind and the outcome only.
 
 #### 12.11.4 The link offer

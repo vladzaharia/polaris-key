@@ -93,7 +93,15 @@ export async function signInRequestView(
             ? { keyReturn: true as const }
             : {}),
         }
-      : {}),
+      : // UK-42.22 (§12.10.1): what a device-code start carried. The view has no `scope`.
+        record.hints
+        ? {
+            purpose: record.hints.purpose,
+            licenseChoice: record.hints.licenseChoice,
+            loginHint: record.hints.loginHint,
+            nameHint: record.hints.nameHint,
+          }
+        : {}),
   };
   return { status: 200, body: view };
 }

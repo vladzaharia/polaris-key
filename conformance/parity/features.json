@@ -1350,6 +1350,20 @@
       "note": "I-08b (WIRE-CONTRACT-V4 §12.4.1, §12.5.1; plans/I-04.md §G): with license_choice=app the exchange answers status choose with a grant (300 s, bound to the redeeming device) and the licence view; the SDK reads choice.licenses(grant), lists a full licence's devices with choice.devices(grant, licenseId), and finishes with choice.complete(grant, license | keep | create | key) or choice.cancel(grant). complete answers token's shape (plus keyEntries after a key). An SDK sends license_choice=app only when discovery lists the four choice endpoints. Pinned by redirect-web-choose.json, redirect-web-choose-app.json, choice-replace-app.json, choice-key-app.json and choice-grant-errors.json; I-10a (Node, React, Python) and I-10b (Swift, Godot, Kotlin) implement it."
     },
     {
+      "id": "identity.devicecode.choice",
+      "family": "devices",
+      "title": "Device-code sign-in with the hints and the licence choice in the app (the choose poll answer)",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "UK-42"
+        }
+      ],
+      "allowedNa": [],
+      "note": "UK-42.22 (WIRE-CONTRACT-V5 §12.5.1 rule 5, §12.6, §12.10.1): the device start takes loginHint, nameHint, purpose (signin or attach) and licenseChoice (card or app) beside deviceId and deviceName. With licenseChoice app, the poll answers status choose with a grant (300 s, bound to the flow's device, via device) and the licence view when a choice is due, and the flow is spent; the SDK stops polling and settles as the choice outcome (choice.complete or choice.cancel). A device-code grant cannot read devices or Replace. An SDK sends licenseChoice app only when discovery carries identity.deviceChoice and the four choice endpoints; it may always send the hints and purpose. Pinned by holders-add-to-account-device.json and discovery-identity.json."
+    },
+    {
       "id": "identity.signin.hints",
       "family": "devices",
       "title": "Sign-in hints: login_hint, name_hint and purpose prefill the card",

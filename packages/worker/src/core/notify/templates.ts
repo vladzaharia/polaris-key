@@ -505,23 +505,45 @@ export function deviceReplacedNotice(input: {
 }
 
 /**
- * A nearby approval bound a device (WIRE-CONTRACT-V5 §12.11.5 rule 7): "Diceroll signed in on
- * Living room TV". Sent to the primary address only, so it is not a security notice (no "every
- * verified email" footer); the remedy is the product's devices page. The label may be null.
+ * An approval bound a device (WIRE-CONTRACT-V5 §12.11.5 rule 7): "Diceroll signed in on Living
+ * room TV". A nearby approval goes to the primary address only, so it is not a security notice (no
+ * "every verified email" footer); the remedy is the product's devices page. The label may be null.
+ *
+ * `via: "device"` is the device-code sign-in in app mode (UK-42.22): the device is now signed in
+ * to the person's account, so it is sent as a security notice (the caller uses
+ * `sendSecurityNotice`, every verified address) and the remedy is **Sign out everywhere**, which
+ * also ends the device's sign-in.
  */
 export function appDeviceApprovedNotice(input: {
   deviceLabel: string | null | undefined;
   productName: string | null | undefined;
   productSlug: string;
   origin: string;
+  via?: "nearby" | "device";
 }): NoticeMessage {
   const device = displayValue(input.deviceLabel, "a new device");
   const name = displayValue(input.productName, "An app");
+  const subject = `${name} signed in on ${device}`;
+  if (input.via === "device")
+    return buildNotice({
+      help: "app-device-approved",
+      subject,
+      paragraphs: [
+        "You approved it from another device.",
+        "If this wasn't you, sign out everywhere in Polaris Locker.",
+      ],
+      action: {
+        label: "Sign out everywhere",
+        url: appLink(input.origin, "account/sessions"),
+      },
+      secureUrl: appLink(input.origin, "account/methods"),
+      origin: input.origin,
+    });
   // Without a label there is nothing to name twice: "remove it".
   const it = displayValue(input.deviceLabel, "") === "" ? "it" : device;
   return buildNotice({
     help: "app-device-approved",
-    subject: `${name} signed in on ${device}`,
+    subject,
     paragraphs: [
       "You approved it from another device.",
       `If this wasn't you, remove ${it} from your devices in Polaris Locker.`,

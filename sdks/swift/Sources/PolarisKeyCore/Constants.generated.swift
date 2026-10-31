@@ -723,6 +723,7 @@ public enum Feature {
     public static let identityAccount = "identity.account"
     public static let identityRedirectWeb = "identity.redirect.web"
     public static let identityChoice = "identity.choice"
+    public static let identityDevicecodeChoice = "identity.devicecode.choice"
     public static let identitySigninHints = "identity.signin.hints"
     public static let identityKeyreturn = "identity.keyreturn"
     public static let identityExchange = "identity.exchange"
@@ -865,6 +866,7 @@ public let FEATURE_VALUES: [String] = [
     "identity.account",
     "identity.redirect.web",
     "identity.choice",
+    "identity.devicecode.choice",
     "identity.signin.hints",
     "identity.keyreturn",
     "identity.exchange",
@@ -2021,6 +2023,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.account": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.redirect.web": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.devicecode.choice": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.keyreturn": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.exchange": CapabilityRow(status: "implemented", service: "identity", na: []),
@@ -2095,4 +2098,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "28fc02d6e708c2c8974b7cf60382ece52d3e3352598a548dd3cdca1c29bf514f"
+public let CAPABILITY_DIGEST = "ba0f04dd272228292f228d73e2b7a32a356e95b4e595c572ecab6eade0d695eb"

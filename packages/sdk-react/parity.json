@@ -226,6 +226,11 @@
       "status": "implemented",
       "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. The desktop renderer never holds a grant (the bridge's device-code sign-in never answers choose, so licenseChoice only rides as a hint), so its calls are a typed unsupported (runtime); a cookie page refuses the same way."
     },
+    "identity.devicecode.choice": {
+      "status": "planned",
+      "wp": "UK-42",
+      "note": "UK-42.22 (SDK slice .7): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+    },
     "identity.signin.hints": {
       "status": "implemented",
       "note": "I-10a.10: bearer mode: loginHint, nameHint and purpose go on the authorize URL (redirect) and the device start body (device code). UK-42.17: the desktop bridge's beginSignIn carries loginHint, nameHint, purpose \"attach\" and licenseChoice to the host's Node sign-in, validated on both sides; only scope is a typed unsupported (runtime)."

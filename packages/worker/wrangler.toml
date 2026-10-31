@@ -432,7 +432,7 @@ TURNSTILE_SITE_KEY = "0x4AAAAAAFPA8ouKFZ_KIKJO"
 # the platform IdP"). Unset = "off": the platform IdP signs everyone in as before. The owner's go
 # sets "claim", then "operators-only"; the sunset day (UTC) is set only after the email-less count
 # at /manage/api/platform/identity-migration. Both are reviewed changes here, never console values.
-# PLATFORM_OIDC_MIGRATION = "claim"
+PLATFORM_OIDC_MIGRATION = "claim"
 # PLATFORM_OIDC_SUNSET = "YYYY-MM-DD"
 [[env.staging.send_email]]
 name = "EMAIL"
