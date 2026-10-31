@@ -249,6 +249,13 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public val license: LicenseClient = LicenseClient(
         core, options.license,
         onAcquired = { syncAfterAcquisition() },
+        // The credential goes with the device: Connect stops and leaves, then Cloud Sync flushes, forgets the key ring
+        // and purges. A root that cannot be removed stops the deactivation (no request, the token stays).
+        beforeRelease = {
+            cloudConnect.stopForSignOut()
+            connect.leave()
+            cloudSyncApi.get()?.beforeRelease()
+        },
         onDeactivated = {
             tokenRejection.clear()
             config.publish()
@@ -515,6 +522,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         account = { core.storedSubject() },
         emit = { eventFlow.tryEmit(PolarisEvent.CloudSync(it)) },
         forgetRing = { keyring.forget() },
+        ringHeld = { keyring.holdsState() },
         recovery = { keyring.setRecoveryCode() },
         cleanup = { tempStateDir?.deleteRecursively() },
     ).also { api ->

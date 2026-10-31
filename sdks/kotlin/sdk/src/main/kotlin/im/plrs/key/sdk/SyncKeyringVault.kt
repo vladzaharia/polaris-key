@@ -80,23 +80,29 @@ internal class RingVault(private val core: CoreContext, private val options: Key
         onFail(e)
     }
 
-    private fun storeError(e: Exception): PolarisException =
-        PolarisException(ErrorCode.storeFailed, "The key ring state could not be used: ${e.message}", cause = e)
-
-    /** The pinned ring, or null before this client first acquired a root. Only [clear] drops it. */
-    suspend fun pin(): SyncRingPin? {
-        val raw = guarded({ null }) { pins().get() }
-        val o = raw?.let { JsonText.parseOrNull(it.toString(Charsets.UTF_8)).objectValue }
-        val id = o?.get("ringId").stringValue
-        val epoch = o?.get("epoch").longValue
-        val kid = o?.get("rootKid").stringValue
-        val stored = if (o?.get("product").stringValue == core.product && !anyNull(id, epoch, kid)) {
-            SyncRingPin(id!!, epoch!!.toInt(), kid!!)
-        } else {
-            null
-        }
-        return stored ?: memoryPin
+    /**
+     * Whether a pin or a root may be held, without creating a directory, lock file or key where none exists.
+     * Unknown (a storage that cannot be read) counts as held, so the caller forgets rather than skips.
+     */
+    suspend fun mightHold(): Boolean {
+        val dir: File? = core.store.stateDirectory
+        val custom = options.rootStorage
+        return memoryPin != null || (dir != null && File(dir, SYNC_PIN_FILE).exists()) ||
+            when {
+                custom is FileDeviceKeyStorage -> custom.mightHold()
+                custom != null -> guarded({ true }) { custom.get() != null }
+                dir != null -> File(dir, SYNC_ROOT_FILE).exists()
+                else -> guarded({ true }) { roots().get() != null }
+            }
     }
+
+    /**
+     * The pinned ring, or null before this client first acquired a root. Only [clear] drops it. With [checked], a pin that
+     * cannot be read (I/O, permission, a refused loose or linked file) is an error, never an absent pin; a record that does
+     * not parse, or names another product, is absent.
+     */
+    suspend fun pin(checked: Boolean = false): SyncRingPin? =
+        parsePin(core.product, guarded({ if (checked) throw storeFault(it) else null }) { pins().get() }) ?: memoryPin
 
     suspend fun writePin(p: SyncRingPin) {
         memoryPin = p
@@ -106,22 +112,49 @@ internal class RingVault(private val core: CoreContext, private val options: Key
             "epoch" to jsonInt(p.epoch.toLong()),
             "rootKid" to str(p.rootKid),
         )
-        guarded({ throw storeError(it) }) { pins().put(rec.toString().toByteArray(Charsets.UTF_8)) }
+        guarded({ throw storeFault(it) }) { pins().put(rec.toString().toByteArray(Charsets.UTF_8)) }
     }
 
-    suspend fun load(): SyncRootRecord? = guarded({ null }) { roots().get()?.let { SyncRootRecord.parse(it) } }
+    /**
+     * The stored root. With [checked], one that cannot be read is not an absent root: a storage fault is `store-failed`,
+     * a record that is present but cannot be opened or decoded is `device-keys-unreadable`.
+     */
+    suspend fun load(checked: Boolean = false): SyncRootRecord? {
+        val raw = guarded({ if (checked) throw rootFault(it) else null }) { roots().get() }
+        val record = raw?.let { SyncRootRecord.parse(it) }
+        if (checked && raw != null && record == null) throw rootFault(null)
+        return record
+    }
 
     /** A failure leaves the root in memory only; the next start unlocks through this device's wrap. */
     suspend fun save(r: SyncRootRecord) {
         guarded({ }) { roots().put(r.encode()) }
     }
 
-    /** Drops the root and the pin. One that cannot be deleted throws, so the sign-out stops rather than leave it behind. */
+    /**
+     * Drops the root, then the pin (a stored root never outlives its pin). A root that cannot be deleted
+     * throws before the pin is touched, so the sign-out stops rather than leave it behind.
+     */
     suspend fun clear() {
+        guarded({ throw storeFault(it) }) { roots().clear() }
+        guarded({ throw storeFault(it) }) { pins().clear() }
         memoryPin = null
-        var failure: Exception? = null
-        guarded({ failure = it }) { roots().clear() }
-        guarded({ failure = failure ?: it }) { pins().clear() }
-        failure?.let { throw storeError(it) }
     }
 }
+
+private fun parsePin(product: String, raw: ByteArray?): SyncRingPin? {
+    val o = raw?.let { JsonText.parseOrNull(it.toString(Charsets.UTF_8)).objectValue }
+    val id = o?.get("ringId").stringValue
+    val epoch = o?.get("epoch").longValue
+    val kid = o?.get("rootKid").stringValue
+    return if (o?.get("product").stringValue == product && !anyNull(id, epoch, kid)) SyncRingPin(id!!, epoch!!.toInt(), kid!!) else null
+}
+
+/** A storage fault is `store-failed`; a root that cannot be opened or decoded is `device-keys-unreadable`. */
+private fun rootFault(e: Exception?): PolarisException = when (e) {
+    is StoreException, is java.io.IOException -> storeFault(e)
+    else -> PolarisException(ErrorCode.deviceKeysUnreadable, "The stored key ring root cannot be opened.", cause = e)
+}
+
+private fun storeFault(e: Exception): PolarisException =
+    PolarisException(ErrorCode.storeFailed, "The key ring state could not be used: ${e.message}", cause = e)

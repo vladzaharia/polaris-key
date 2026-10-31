@@ -14,6 +14,7 @@ import im.plrs.key.platform.SecureStoreException
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -171,7 +172,13 @@ class Commands(
     }
 
     private fun store(q: JSONObject, block: (SecureStore) -> JSONObject): JSONObject = try {
-        block(SecureStore(host.appContext, q.getString("product")))
+        block(
+            SecureStore(
+                { File(host.appContext.noBackupFilesDir, "pkey/${q.getString("product")}/keystore") },
+                q.getString("product"),
+                keyProvider(),
+            ),
+        )
     } catch (e: SecureStoreException) {
         fail("keystore", e.message).put("reason", e.reason)
     }
