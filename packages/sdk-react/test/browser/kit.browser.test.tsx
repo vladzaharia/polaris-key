@@ -78,6 +78,7 @@ const FAMILIES = [
   "paywall",
   "cloudSync",
   "holders",
+  "connect",
 ] as const;
 
 const matrix = matrixJson as Obj & { vocabulary: Obj & { defaults: Obj } };
