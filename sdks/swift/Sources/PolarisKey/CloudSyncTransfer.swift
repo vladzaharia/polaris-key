@@ -942,7 +942,9 @@ private final class ChunkedRun: UploadPass, @unchecked Sendable {
         let codec = req.codec
         let plain = try req.source.read(start, start + rec.plainLen)
         // The file may have changed since it was cut: what is sent must still be the chunk named.
-        guard plain.count == rec.plainLen, try codec.chunkId(plain) == rec.id else { throw TransferError(.sourceMismatch) }
+        guard plain.count == rec.plainLen, try codec.chunkId(plain) == rec.id else {
+            throw TransferError(.sourceMismatch)
+        }
         let object = try codec.sealChunk(id: rec.id, plain: plain)
         let digest = sha256Hex(object)
         let up = uploadId

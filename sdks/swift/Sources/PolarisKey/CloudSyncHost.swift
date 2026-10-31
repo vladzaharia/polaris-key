@@ -374,7 +374,8 @@ public actor CloudSyncHost {
         routes = Self.routesOf(catalog)
         documentJSON = Self.dump(document)
         var o = SyncMachineOptions(
-            product: deps.product, catalog: SyncMachineCatalog(settings: routes, collections: [Self.savesDecl]), document: document,
+            product: deps.product, catalog: SyncMachineCatalog(settings: routes, collections: [Self.savesDecl]),
+            document: document,
             now: deps.clock(), newClientId: { "c_" + Base64URL.encode(SyncCrypto.random(16)) })
         o.encryption = options.encryption
         o.hasRoot = deps.keyringUnlocked()

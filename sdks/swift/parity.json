@@ -479,8 +479,8 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "note": "client.cloudSync.saves (PolarisKey/CloudSyncSaves.swift, CloudSyncSavesBinding.swift): list(), read(_:options:), write(_:bytes:metadata:options:) (and write(_:source:...) and write(_:bytes:encoding:...)), resolve(_:keep:bytes:options:), delete(_:baseVersion:), revisions(_:), and client.cloudSync.transfers() with pause(), resume() and cancel() on each SaveTransfer. The machine holds the saves collection (file pointers, records(), putAt/removeAt with journal-only tickets, one outcome per ticket); the file goes first and the metadata `set` second on the version finalize answered, so no save is torn; in end-to-end mode the sealed metadata carries the $file binding and a read downloads the revision it names (a miss is sync-file-invalid); newerFormat from SavesOptions.saveFormatVersion; the 16-slot cap, conflicts as SaveConflict with keep local/remote/both, and transferProgress/transferDone/transferFailed on client.events (a cancelled write is a transferDone with state cancelled). The wait for the metadata write has no timeout: cancel(), a sign-out (the write is dropped) and the host's retries end it; a pause never does. The key ring's fileCodec(collection:) refuses with sync-locked on every call and stream piece once the ring locks. Sign-out and forget: lock the ring, purge the saves (journal, the person's chunk cache, waiting writes), then remove the root and the pin. CloudSyncSavesTests, CloudSyncSavesHostTests, ForgetOrderTests, SyncKeyringTests, SyncScenariosTests (fileRecordCases) and the cloudsync-files-single transcript."
     },
     "sync.keyring": {
       "status": "implemented",

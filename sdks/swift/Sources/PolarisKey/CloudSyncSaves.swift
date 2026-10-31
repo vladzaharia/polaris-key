@@ -81,10 +81,39 @@ public enum SaveSetResult: Sendable, Equatable {
 
 /// Tells a waiting write that the caller cancelled it (not paused it: a pause never ends the wait).
 public final class SaveStop: Sendable {
-    private let flag = LockedValue(false)
+    private let state = LockedValue<(set: Bool, next: Int, handlers: [Int: @Sendable () -> Void])>((false, 0, [:]))
     public init() {}
-    public var isSet: Bool { flag.current }
-    func set() { flag.set(true) }
+    public var isSet: Bool { state.with { $0.set } }
+
+    /// Sets the flag and runs the handlers once. A cancel is not a Task cancellation (a pause cancels the
+    /// task too, and a task is cancelled only once), so a waiting write listens here.
+    func set() {
+        let run = state.with { s -> [@Sendable () -> Void] in
+            guard !s.set else { return [] }
+            s.set = true
+            let all = Array(s.handlers.values)
+            s.handlers.removeAll()
+            return all
+        }
+        for h in run { h() }
+    }
+
+    /// Runs `handler` when the flag is set (at once if it already is). Returns the token for `remove`.
+    func onSet(_ handler: @escaping @Sendable () -> Void) -> Int? {
+        let token = state.with { s -> Int? in
+            if s.set { return nil }
+            s.next += 1
+            s.handlers[s.next] = handler
+            return s.next
+        }
+        if token == nil { handler() }
+        return token
+    }
+
+    func remove(_ token: Int?) {
+        guard let token else { return }
+        state.with { _ = $0.handlers.removeValue(forKey: token) }
+    }
 }
 
 public protocol SaveRecords: Sendable {
@@ -292,7 +321,8 @@ private func savesError(_ e: Error) -> SavesError {
     if let s = e as? SavesError { return s }
     if let t = e as? TransferError {
         return t.reason == .fileInvalid
-            ? SavesError(.fileInvalid, detail: t.detail) : SavesError(.transferFailed, detail: t.code ?? t.reason.rawValue)
+            ? SavesError(.fileInvalid, detail: t.detail)
+            : SavesError(.transferFailed, detail: t.code ?? t.reason.rawValue)
     }
     if let p = e as? PolarisError { return SavesError(.transferFailed, detail: p.code) }
     return SavesError(.transferFailed)
@@ -369,7 +399,9 @@ public final class SavesClient: Sendable {
             emit(.transferDone(id: tid, state: "done"))
             return r
         } catch {
-            emit(.transferFailed(id: tid, code: (error as? SavesError)?.code.rawValue ?? SavesError.Code.transferFailed.rawValue))
+            emit(
+                .transferFailed(
+                    id: tid, code: (error as? SavesError)?.code.rawValue ?? SavesError.Code.transferFailed.rawValue))
             throw error
         }
     }
@@ -428,7 +460,9 @@ public final class SavesClient: Sendable {
         guard let found = try await revisionList(ctx, id).first(where: { fits($0.sha256, $0.size, $0.format) }) else {
             throw SavesError(.fileInvalid, detail: "binding")
         }
-        guard let format = SaveFile.Format(rawValue: found.format) else { throw SavesError(.fileInvalid, detail: "binding") }
+        guard let format = SaveFile.Format(rawValue: found.format) else {
+            throw SavesError(.fileInvalid, detail: "binding")
+        }
         return SaveFile(version: found.version, size: found.size, sha256: found.sha256, format: format)
     }
 
@@ -459,7 +493,8 @@ public final class SavesClient: Sendable {
     /// Settle a conflict. `remote` keeps the server's copy and writes nothing; `local` writes this device's
     /// save on top of the server's version; `both` writes it as a new save in a free slot.
     public func resolve(
-        _ conflict: SaveConflict, keep: SaveKeep, bytes: Data, options writeOptions: SaveWriteOptions = SaveWriteOptions()
+        _ conflict: SaveConflict, keep: SaveKeep, bytes: Data,
+        options writeOptions: SaveWriteOptions = SaveWriteOptions()
     ) async throws -> SaveTransfer {
         _ = try await env.savesContext()
         switch keep {
@@ -518,7 +553,9 @@ public final class SavesClient: Sendable {
     /// The journal key of a save's write: stable across launches, so an interrupted upload resumes.
     private func transferId(_ id: String) -> String { "saves:\(id)" }
 
-    private func run(_ id: String, _ source: any RangedSource, _ metadata: JSONValue, _ opts: SaveWriteOptions, mode: Mode?)
+    private func run(
+        _ id: String, _ source: any RangedSource, _ metadata: JSONValue, _ opts: SaveWriteOptions, mode: Mode?
+    )
         -> SaveTransfer
     {
         let transferId = self.transferId(id)
@@ -613,7 +650,8 @@ public final class SavesClient: Sendable {
                         onProgress: onProgress))
             }
         } catch let e as TransferError where e.reason == .conflict {
-            return try await conflictOutcome(records, ctx.codec.enc == "e2e", id, metadata, source.size, e.serverVersion)
+            return try await conflictOutcome(
+                records, ctx.codec.enc == "e2e", id, metadata, source.size, e.serverVersion)
         } catch let e as TransferError where e.reason == .aborted {
             throw e
         } catch is CancellationError {
@@ -745,7 +783,8 @@ public final class SaveTransfer: @unchecked Sendable {
     }
 
     public func cancel() async {
-        let (task, g, skip) = lock.withLock { () -> (Task<SaveOutcome, Error>?, CheckedContinuation<Void, Never>?, Bool) in
+        let (task, g, skip) = lock.withLock {
+            () -> (Task<SaveOutcome, Error>?, CheckedContinuation<Void, Never>?, Bool) in
             if stateValue == .done || stateValue == .failed || stateValue == .conflict || stateValue == .cancelled {
                 return (nil, nil, true)
             }

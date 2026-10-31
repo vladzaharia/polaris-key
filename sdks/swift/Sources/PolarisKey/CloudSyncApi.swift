@@ -410,9 +410,16 @@ actor CloudSyncApi {
     /// codec stops with it), the save transfers are purged (journal, chunk cache, waiting writes), then the
     /// root and the pin are removed. A removal that fails throws; the earlier steps are not undone.
     private func forgetPerson() async throws {
-        await lockRing()
+        try await Self.forgetInOrder(lock: lockRing, purgeSaves: purgeSaves, forget: forgetRing)
+    }
+
+    static func forgetInOrder(
+        lock: @Sendable () async -> Void, purgeSaves: @Sendable () async -> Void,
+        forget: @Sendable () async throws -> Void
+    ) async throws {
+        await lock()
         await purgeSaves()
-        try await forgetRing()
+        try await forget()
     }
 
     private func purge() async {

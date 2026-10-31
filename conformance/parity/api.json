@@ -3815,7 +3815,7 @@
           "reason": "a hook returns a render value; its handle carries the verbs"
         },
         "swift": {
-          "planned": "U-23"
+          "shape": "property"
         },
         "kotlin": {
           "planned": "U-23"
@@ -3839,7 +3839,7 @@
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.list"
         },
         "kotlin": {
           "planned": "U-23"
@@ -3869,7 +3869,8 @@
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.read",
+          "labels": ["_", "options"]
         },
         "kotlin": {
           "planned": "U-23"
@@ -3903,7 +3904,8 @@
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.write",
+          "labels": ["_", "bytes", "metadata", "options"]
         },
         "kotlin": {
           "planned": "U-23"
@@ -3933,7 +3935,8 @@
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.delete",
+          "labels": ["_", "baseVersion"]
         },
         "kotlin": {
           "planned": "U-23"
@@ -3963,7 +3966,8 @@
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.revisions",
+          "labels": ["_"]
         },
         "kotlin": {
           "planned": "U-23"
@@ -3986,9 +3990,7 @@
           "shape": "hook",
           "reason": "a hook returns the render value: the transfers in flight"
         },
-        "swift": {
-          "planned": "U-23"
-        },
+        "swift": {},
         "kotlin": {
           "planned": "U-23"
         },
@@ -4011,7 +4013,7 @@
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.pause"
         },
         "kotlin": {
           "planned": "U-23"
@@ -4035,7 +4037,7 @@
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.resume"
         },
         "kotlin": {
           "planned": "U-23"
@@ -4059,7 +4061,7 @@
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.cancel"
         },
         "kotlin": {
           "planned": "U-23"
@@ -4084,7 +4086,8 @@
           "reason": "the hook re-renders on each transfer event, so no event listener is exposed"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "events",
+          "reason": "one event stream on the client; the transfer cases of CloudSyncEvent"
         },
         "kotlin": {
           "planned": "U-23"

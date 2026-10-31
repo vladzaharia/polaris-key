@@ -360,6 +360,8 @@ const SWIFT_TYPE: Record<string, string> = {
   packs: "PacksClient",
   cloudConnect: "CloudConnect",
   cloudSync: "CloudSyncClient",
+  SavesClient: "SavesClient",
+  SaveTransfer: "SaveTransfer",
   SignInNamespace: "SignInNamespace",
   SignInSession: "SignInSession",
   ChoiceNamespace: "ChoiceNamespace",

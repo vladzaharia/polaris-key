@@ -101,7 +101,7 @@ public struct E2eFileCodec: FileCodec, CustomStringConvertible, CustomReflectabl
     public var customMirror: Mirror { Mirror(self, children: [], displayStyle: .struct) }
     public var enc: String { "e2e" }
 
-    public func chunkId(_ plain: Data) throws -> Data {
+    public func chunkId(_ plain: Data) -> Data {
         SyncChunks.chunkId(root: root, collection: collection, plain: plain)
     }
     public func chunkObjectBytes(_ plainLen: Int) -> Int { plainLen + 30 }
@@ -110,7 +110,7 @@ public struct E2eFileCodec: FileCodec, CustomStringConvertible, CustomReflectabl
         try SyncChunks.seal(root: root, collection: collection, id: id, codec: SyncChunks.codecRaw, body: plain)
     }
 
-    public func openChunk(id: Data, object: Data) throws -> FileOpened {
+    public func openChunk(id: Data, object: Data) -> FileOpened {
         switch SyncChunks.open(root: root, collection: collection, id: id, object: object, decode: zstdDecodeChunk) {
         case .ok(let plain, _): return .ok(plain)
         case .invalid(let r): return .invalid(r.rawValue)
@@ -124,21 +124,21 @@ public struct E2eFileCodec: FileCodec, CustomStringConvertible, CustomReflectabl
         try SyncFileStream.sealFile(collKey: collKey, kid: kid, plain: plain)
     }
 
-    public func openManifest(_ stored: Data) throws -> FileOpened {
+    public func openManifest(_ stored: Data) -> FileOpened {
         switch SyncFileStream.openFile(collKey: collKey, kid: kid, sealed: stored) {
         case .ok(let plain): return .ok(plain)
         case .invalid(let r): return .invalid(r.rawValue)
         }
     }
 
-    public func makeOpener() throws -> any FileOpener { SyncOpener(collKey: collKey, kid: kid) }
+    public func makeOpener() -> any FileOpener { SyncOpener(collKey: collKey, kid: kid) }
 }
 
 /// The codec of a collection of a server-mode product.
 public struct ServerFileCodec: FileCodec {
     public init() {}
     public var enc: String { "none" }
-    public func chunkId(_ plain: Data) throws -> Data { SyncCrypto.sha256(plain) }
+    public func chunkId(_ plain: Data) -> Data { SyncCrypto.sha256(plain) }
     public func chunkObjectBytes(_ plainLen: Int) -> Int { plainLen + 2 }
 
     public func sealChunk(id: Data, plain: Data) throws -> Data {
@@ -146,7 +146,7 @@ public struct ServerFileCodec: FileCodec {
         return Data([serverChunkObjectVersion, SyncChunks.codecRaw]) + plain
     }
 
-    public func openChunk(id: Data, object: Data) throws -> FileOpened {
+    public func openChunk(id: Data, object: Data) -> FileOpened {
         let o = [UInt8](object)
         if o.count < 2 { return .invalid("shape") }
         if o.count > SYNC_CHUNK_MAX_STORED_BYTES { return .invalid("size") }
@@ -172,6 +172,6 @@ public struct ServerFileCodec: FileCodec {
     public func plainSize(_ storedSize: Int) -> Int? { storedSize }
     public func sealManifest(_ plain: Data) throws -> Data { plain }
     public func sealWhole(_ plain: Data) throws -> Data { plain }
-    public func openManifest(_ stored: Data) throws -> FileOpened { .ok(stored) }
-    public func makeOpener() throws -> any FileOpener { PassThrough() }
+    public func openManifest(_ stored: Data) -> FileOpened { .ok(stored) }
+    public func makeOpener() -> any FileOpener { PassThrough() }
 }

@@ -624,14 +624,17 @@ public final class CloudSyncMachine {
             let row = p.records[rk]!
             if rowUnreadable(row) { continue }
             out.append(
-                SyncRecordRow(id: String(rk.dropFirst(prefix.count)), value: row.value, version: row.version, file: row.file))
+                SyncRecordRow(
+                    id: String(rk.dropFirst(prefix.count)), value: row.value, version: row.version, file: row.file))
         }
         return out
     }
 
     /// Write a `revision` record at exactly `baseVersion`: a new mutation, never coalesced with a
     /// queued edit and never rebased on a conflict. Its outcome goes to `onOutcome`. Returns the ticket.
-    public func putAt(_ collection: String, _ recordId: String, _ value: JSONValue, baseVersion: SyncBase) -> SyncTicketResult {
+    public func putAt(_ collection: String, _ recordId: String, _ value: JSONValue, baseVersion: SyncBase)
+        -> SyncTicketResult
+    {
         exactOp(collection, recordId, baseVersion, op: .set, value: value)
     }
 

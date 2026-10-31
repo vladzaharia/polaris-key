@@ -108,7 +108,9 @@ final class MachineRecords: SaveRecords, @unchecked Sendable {
         return row.map { Self.record($0, id: id) }
     }
 
-    private func wait(_ stop: SaveStop?, _ start: @Sendable (@escaping @Sendable (Int) -> Void) async -> SyncTicketResult)
+    private func wait(
+        _ stop: SaveStop?, _ start: @Sendable (@escaping @Sendable (Int) -> Void) async -> SyncTicketResult
+    )
         async throws -> SaveSetResult
     {
         await host.catchUp()
@@ -123,11 +125,9 @@ final class MachineRecords: SaveRecords, @unchecked Sendable {
         }
         Task { await host.touch() }
         // A cancel ends the wait; a pause never does (the task is cancelled for a pause too).
-        let end = await withTaskCancellationHandler {
-            await slot.wait()
-        } onCancel: {
-            if stop?.isSet == true { slot.settle(.aborted) }
-        }
+        let token = stop?.onSet { slot.settle(.aborted) }
+        let end = await slot.wait()
+        stop?.remove(token)
         guard case .outcome(let outcome) = end else {
             slots.with { _ = $0.removeValue(forKey: ticket) }
             throw TransferError(.aborted)
@@ -212,7 +212,8 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
         if options.delta, let subject = await host.machineSubject() {
             state.with { _ = $0.subjects.insert(subject) }
             cache = FileChunkCache(
-                directory: chunkCacheDirectory(stateDir: core.dirs.state, subject: subject, collection: savesCollection),
+                directory: chunkCacheDirectory(
+                    stateDir: core.dirs.state, subject: subject, collection: savesCollection),
                 maxBytes: chunkCacheBudget(largestSave: options.maxBytes))
         }
         return SavesContext(

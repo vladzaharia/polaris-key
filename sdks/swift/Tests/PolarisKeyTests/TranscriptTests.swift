@@ -9,7 +9,7 @@
 // @pkey-feature license.manage
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
-// @pkey-feature connect.relay
+// @pkey-feature connect.relay sync.files sync.files.delta sync.saves
 // @pkey-feature identity.exchange sync.keyring sync.settings sync.files sync.files.delta
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in

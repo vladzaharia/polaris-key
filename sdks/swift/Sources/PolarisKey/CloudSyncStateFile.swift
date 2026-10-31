@@ -251,7 +251,8 @@ extension SyncRow {
         guard case .object(let o) = v, let value = o["value"], case .int(let version)? = o["version"] else {
             return nil
         }
-        self.init(value: value, version: version, bad: o["bad"]?.boolValue ?? false, plain: o["plain"]?.intValue,
+        self.init(
+            value: value, version: version, bad: o["bad"]?.boolValue ?? false, plain: o["plain"]?.intValue,
             file: SyncFilePointer(json: o["file"]))
     }
 }

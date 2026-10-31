@@ -1993,7 +1993,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.scenarios": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.settings": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.conflict": CapabilityRow(status: "planned", service: "sync", na: []),
-    "sync.saves": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.saves": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.keyring": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.records": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.files": CapabilityRow(status: "implemented", service: "sync", na: []),
@@ -2098,4 +2098,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "e1899f9b1b18ebf5d9b1cff0ec1e0e65484d9ebe8c4f5d1152078bb78b51e711"
+public let CAPABILITY_DIGEST = "a5c1febd164df184a4880d68e3c86d2eeec4c4395d1179dda28ef191abca57dc"
