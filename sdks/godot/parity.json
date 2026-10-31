@@ -683,12 +683,32 @@
       "wp": "U-46"
     },
     "sync.files": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        }
+      ],
+      "note": "The file transport (services/cloud_sync/files_transport.gd: a closed route allow-list, no redirects, Content-Digest, answer caps, Retry-After read under a 3600 s cap) under the transfer engine (transfer.gd). The cloudsync-files-* transcripts replay each file call through it (tests/suite_transcripts.gd, cloudSyncFile) and tests/suite_cloud_sync_files.gd covers the transport. Files are at most 32 MiB on the GDScript lane; iOS and Android wait for CC-14b. The saves API (sync.saves) waits for the machine's file records (U-22.5)."
     },
     "sync.files.delta": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Delta files: the chunks upload (CDC, plan calls of at most SYNC_CHUNK_PLAN_MAX_IDS ids, the missing chunks, the manifest, finalize) and the chunk download with the chunk cache, over the same transport. The cloudsync-chunks* transcripts replay each delta call (cloudSyncChunk). iOS and Android wait for CC-14b."
     },
     "sync.e2e.recovery": {
       "status": "planned",
@@ -698,6 +718,18 @@
       "status": "planned",
       "wp": "U-41",
       "except": [
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
         {
           "runtime": "web",
           "reason": "runtime"

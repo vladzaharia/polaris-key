@@ -504,7 +504,7 @@ static func _run_intact(run: Dictionary, records: Array, pos_of: PackedInt64Arra
 
 # ── The exact Content-Range adapter ─────────────────────────────────────────────────────────
 
-static var _content_range_re: RegEx = RegEx.create_from_string("^bytes (\\d{1,16})-(\\d{1,16})/(\\d{1,16})$")
+static var _content_range_re: RegEx = RegEx.create_from_string("\\Abytes (\\d{1,16})-(\\d{1,16})/(\\d{1,16})\\z")
 
 
 ## Whether a ranged answer may be read, and how many bytes (plans/P4-10.md §2.5): only a `206`

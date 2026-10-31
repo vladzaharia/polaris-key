@@ -73,8 +73,8 @@ static func welcome_view(ctx: RefCounted) -> Dictionary:
 const KEY_SECRET_LENGTH := 22
 const KEY_PREFIX := "pkey_"
 ## The input is trimmed first, so `$` (which PCRE also matches before a final newline) is JS's.
-static var _key_shape := RegEx.create_from_string("^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]*)$")
-static var _key_typing := RegEx.create_from_string("^pkey_[a-z0-9-]*$")
+static var _key_shape := RegEx.create_from_string("\\Apkey_([a-z0-9-]+)_([A-Za-z0-9_-]*)\\z")
+static var _key_typing := RegEx.create_from_string("\\Apkey_[a-z0-9-]*\\z")
 
 ## JavaScript's `String.prototype.trim` set: ECMAScript white space and line terminators.
 const _JS_SPACE := [

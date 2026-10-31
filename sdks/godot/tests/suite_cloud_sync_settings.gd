@@ -58,8 +58,13 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	return true
 
 
+## Every request path the handler saw, "METHOD /path".
+var _paths: Array = []
+
+
 func _handler(log: Array, version: Array, extra: Callable = Callable()) -> Callable:
 	return func(req: Dictionary) -> Dictionary:
+		_paths.append("%s %s" % [req["method"], req["path"]])
 		if extra.is_valid():
 			var r: Variant = extra.call(req)
 			if r != null:
@@ -164,6 +169,8 @@ func _settings_and_machine(t: PKeyTestContext) -> void:
 	var fr: PKeyResult = await sdk.cloud_sync.flush()
 	t.check("flush: sends the edit and answers the status", fr.ok and log.size() == posts + 1 and fr.detail["pending"] == 0, str(fr))
 	t.check("setting.sync(): synced after the push", sdk.config.setting(KEY).sync() == "synced")
+	var sync_paths := _paths.filter(func(p: String) -> bool: return p.contains("/sync"))
+	t.check("wiring: the host's requests carry the product prefix exactly once", not sync_paths.is_empty() and sync_paths.all(func(p: String) -> bool: return p.begins_with("GET /%s/sync?" % PRODUCT) or p == "POST /%s/sync/ops" % PRODUCT), str(sync_paths))
 	var cleared: PKeyResult = sdk.config.clear(KEY)
 	t.check("config: clear goes through the machine too", cleared.ok and sdk.config.get_config_source(KEY) != &"local")
 	t.check("events: the stream carries no value", c["events"].all(func(e: Dictionary) -> bool: return not e.has("value")))
