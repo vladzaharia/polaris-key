@@ -78,6 +78,7 @@ import {
   type ExchangeNonceRecord,
 } from "./nonce.js";
 import { bindAndAnswer, oauth, TOKEN_DEVICE_RATE } from "./token.js";
+import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { issueGrant } from "./grant.js";
 import { clientRecordFor } from "./client.js";
 import { consentState } from "./routes.js";
@@ -295,6 +296,7 @@ export async function handleExchange(ctx: {
   );
   if (consent.firstTime || consent.changed) {
     let grant: string;
+    const deviceLabel = normalizeDeviceLabel(form.get("device_name"));
     try {
       grant = await issueGrant(
         env,
@@ -306,6 +308,7 @@ export async function handleExchange(ctx: {
           scope: resolveScope(undefined, product) ?? [],
           keys: { signKey: deviceKey, agreeKey: spent.agreeKey },
           consent: { scopeHash: consent.scopeHash },
+          ...(deviceLabel ? { label: deviceLabel } : {}),
         },
         now,
       );

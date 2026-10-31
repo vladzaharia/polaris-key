@@ -860,8 +860,8 @@ document, claim, header or error code changes, and `PROTOCOL_VERSION` stays 5.
 
 Pinned by `device-label.json`.
 
-`deviceName` on `POST /<p>/identity/auth/device/start`, `POST /<p>/license/activate` and
-`POST /<p>/devices/register` is the device label (§12.7.1): what the sign-in page, the customer
+`deviceName` on `POST /<p>/identity/auth/device/start`, `POST /<p>/identity/choice/complete`,
+`POST /<p>/license/activate` and `POST /<p>/devices/register` is the device label (§12.7.1): what the sign-in page, the customer
 portal and the console call the device. No server decision reads it, and no signed document
 carries it. Every SDK normalises it before sending and the Worker normalises it again on receipt;
 neither ever rejects one.
@@ -1690,6 +1690,10 @@ Identity on only. Errors are the nested Polaris body.
 
 `choice` is `{kind: "license", licenseId, replaceDeviceId?}`, `{kind: "keep"}` (needs the device's
 own token in `Authorization: Bearer`), `{kind: "create"}` or `{kind: "key", key}`.
+
+`deviceName` (§12.7.1) names the device the bind writes. A grant keeps the label its sign-in carried
+(the device start's `deviceName`, or `token`'s or the exchange's `device_name`), which comes first;
+the member names the device when the grant has none.
 
 1. **Replace.** `replaceDeviceId` names a seat-holding device of a FULL licence. The removal is the
    portal's Remove (same checks, the shared `portalDeviceDisconnect` budget of 20 per 60 s, the

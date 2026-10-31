@@ -10,6 +10,7 @@
 //   - the `choice.complete` audit row says "(device code)".
 
 import { describe, expect, it } from "vitest";
+import { upsertDevice } from "../../../src/core/devices/store.js";
 import {
   getArtefact,
   putArtefact,
@@ -178,11 +179,10 @@ describe("a device grant (§12.5.1 rule 5)", () => {
       });
       expect(res.status).toBe(409);
       const body = (await res.json()) as {
-        error: { code: string; view?: { choices: { replace: unknown }[] } };
+        error: { code: string };
+        view?: { choices: { replace: unknown }[] };
       };
       expect(body.error.code).toBe("license_choice_required");
-      for (const c of body.error.view?.choices ?? [])
-        expect(c.replace).toBeNull();
       // Nothing was bound, and the grant is still good.
       const bound = await w.db.first<{ n: number }>(
         "SELECT COUNT(*) AS n FROM devices WHERE product = ? AND device_id = ?",
@@ -198,6 +198,115 @@ describe("a device grant (§12.5.1 rule 5)", () => {
         asDevice,
       );
       expect(view.status).toBe(200);
+    }));
+
+  it("a device grant's 409 view withholds Replace on a full licence", () =>
+    pinned("uk-42-22f-grant", async () => {
+      const w = await noGrantWorld();
+      const { started } = await signedIn(w);
+      // The account holds a FULL licence (limit one, taken by another device): a card or
+      // same-device grant would offer Replace on it.
+      const account = await w.db.first<{ account_id: string }>(
+        "SELECT account_id FROM account_links WHERE kind = 'oidc' AND subject = ?",
+        PLAYER.sub,
+      );
+      await w.db.run(
+        `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id, activated_at,
+         expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
+         modified_by, modified_at, account_id)
+       VALUES (?, 'lic_full', 'active', NULL, 'Full', NULL, NULL, NULL, ?, NULL, NULL, '{}', NULL, NULL, NULL, NULL, ?, ?)`,
+        PRODUCT,
+        T0,
+        T0,
+        account!.account_id,
+      );
+      await w.db.run(
+        "UPDATE products SET default_device_limit = 1 WHERE slug = ?",
+        PRODUCT,
+      );
+      await upsertDevice(w.db, {
+        product: PRODUCT,
+        device_id: "other-device",
+        customer_id: null,
+        license_id: "lic_full",
+        status: "authorized",
+        first_seen: T0,
+        last_seen: T0,
+        ua: null,
+        label: "Other PC",
+        overrides_json: null,
+        reported_json: null,
+        token_hash: null,
+      });
+      await w.db.run(
+        "UPDATE devices SET seat_no = 1 WHERE product = ? AND device_id = 'other-device'",
+        PRODUCT,
+      );
+      const { grant } = await choose(w, started);
+      const res = await complete(w, grant, {
+        kind: "license",
+        licenseId: "lic_full",
+        replaceDeviceId: "other-device",
+      });
+      expect(res.status).toBe(409);
+      const body = (await res.json()) as {
+        view: { choices: { id: string; replace: unknown }[] };
+      };
+      // The loop must run: an empty list would pass whatever the view offered.
+      expect(body.view.choices.length).toBeGreaterThan(0);
+      for (const c of body.view.choices) expect(c.replace).toBeNull();
+    }));
+
+  it("the bind notice names the device the approval page showed", () =>
+    pinned("uk-42-22f-grant", async () => {
+      const w = await noGrantWorld();
+      const sent = mailbox(w);
+      const { key } = await seedLicense(w);
+      const { started } = await signedIn(w);
+      const { grant } = await choose(w, started);
+      const res = await complete(w, grant, { kind: "key", key });
+      expect(res.status).toBe(200);
+      const got = notices(sent);
+      expect(got.length).toBeGreaterThan(0);
+      for (const m of got)
+        expect(m.subject).toBe("djdl signed in on Living room TV");
+      const row = await w.db.first<{ label: string | null }>(
+        "SELECT label FROM devices WHERE product = ? AND device_id = ?",
+        PRODUCT,
+        DEVICE,
+      );
+      expect(row?.label).toBe("Living room TV");
+    }));
+
+  it("keep over a renamed device keeps the row's label, and the notice names the page's", () =>
+    pinned("uk-42-22f-grant", async () => {
+      const w = await noGrantWorld();
+      const sent = mailbox(w);
+      const { key } = await seedLicense(w);
+      const token = await activated(w, key);
+      await w.db.run(
+        "UPDATE devices SET label = 'Renamed' WHERE product = ? AND device_id = ?",
+        PRODUCT,
+        DEVICE,
+      );
+      const { started } = await signedIn(w);
+      const { grant } = await choose(w, started);
+      const res = await complete(
+        w,
+        grant,
+        { kind: "keep" },
+        { authorization: `Bearer ${token}` },
+      );
+      expect(res.status).toBe(200);
+      for (const m of notices(sent))
+        expect(m.subject).toBe("djdl signed in on Living room TV");
+      expect(notices(sent).length).toBeGreaterThan(0);
+      const row = await w.db.first<{ label: string | null }>(
+        "SELECT label FROM devices WHERE product = ? AND device_id = ?",
+        PRODUCT,
+        DEVICE,
+      );
+      expect(row?.label).toBe("Renamed");
     }));
 
   it("binds a licence key the person enters, as the account's subject", () =>

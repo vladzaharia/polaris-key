@@ -23,7 +23,12 @@ import {
 } from "../seed.js";
 import { stmtsDeauthorizeDevice } from "../../src/core/devices/store.js";
 import { withMintClaim } from "../../src/services/identity/passthrough/mint.js";
-import { artefactRef, getArtefact } from "../../src/core/singleUse.js";
+import {
+  artefactRef,
+  getArtefact,
+  putArtefact,
+} from "../../src/core/singleUse.js";
+import { hashKey } from "../../src/platform/crypto.js";
 import { dispatchWith } from "../../src/dispatch.js";
 import {
   serializeServices,
@@ -833,6 +838,101 @@ describe("the pending sign-in grant (app mode, §12.5.1)", () => {
     expect(await again.json()).toMatchObject({
       error: { code: "invalid_grant" },
     });
+  });
+
+  async function pendingNamed(deviceName?: string): Promise<string> {
+    const s0 = await signedIn();
+    await ownLicense(s0.id, "lic_a");
+    const { handle, binder } = await begin({ license_choice: "app" });
+    const s = await signedIn();
+    const out = await proceed(handle, s, binder, {});
+    const res = await tokenReq(
+      { code: codeOf(out.json.redirect!), device_name: deviceName ?? null },
+      {},
+    );
+    const body = (await res.json()) as { status: string; grant: string };
+    expect(body.status).toBe("choose");
+    return body.grant;
+  }
+
+  const labelOf = (id: string) =>
+    db.first<{ label: string | null }>(
+      "SELECT label FROM devices WHERE product = ? AND device_id = ?",
+      SLUG,
+      id,
+    );
+
+  it("a redirect grant keeps token's device_name for the bind", async () => {
+    const grant = await pendingNamed("Den TV");
+    const done = await grantReq("complete", {
+      grant,
+      choice: { kind: "license", licenseId: "lic_a" },
+    });
+    expect(done.status).toBe(200);
+    expect((await labelOf(DEVICE))?.label).toBe("Den TV");
+  });
+
+  it("a body deviceName is used only when the grant has no label", async () => {
+    const named = await pendingNamed("Den TV");
+    expect(
+      (
+        await grantReq("complete", {
+          grant: named,
+          choice: { kind: "license", licenseId: "lic_a" },
+          deviceName: "Other name",
+        })
+      ).status,
+    ).toBe(200);
+    expect((await labelOf(DEVICE))?.label).toBe("Den TV");
+  });
+
+  it("complete's deviceName names the device when the grant has none", async () => {
+    const bare = await pendingNamed();
+    expect(
+      (
+        await grantReq("complete", {
+          grant: bare,
+          choice: { kind: "license", licenseId: "lic_a" },
+          deviceName: "Body name",
+        })
+      ).status,
+    ).toBe(200);
+    expect((await labelOf(DEVICE))?.label).toBe("Body name");
+  });
+
+  it("a grant stored without a label binds as before", async () => {
+    const bare = await pendingNamed();
+    expect(
+      (
+        await grantReq("complete", {
+          grant: bare,
+          choice: { kind: "license", licenseId: "lic_a" },
+        })
+      ).status,
+    ).toBe(200);
+    expect((await labelOf(DEVICE))?.label ?? null).toBeNull();
+  });
+
+  it("a label is cleaned at use", async () => {
+    const grant = await pendingNamed("Den TV");
+    // A record written before a cleaning rule existed: the stored label carries a bidi control.
+    const ref = await artefactRef(
+      "signin-grant",
+      `${SLUG}:${await hashKey(grant, env.KEY_HASH_PEPPER)}`,
+    );
+    const stored = JSON.parse((await getArtefact(env, ref))!) as {
+      label?: string;
+      exp: number;
+    };
+    expect(stored.label).toBe("Den TV");
+    stored.label = "Den\u202e TV";
+    await putArtefact(env, ref, JSON.stringify(stored), 300);
+    const done = await grantReq("complete", {
+      grant,
+      choice: { kind: "license", licenseId: "lic_a" },
+    });
+    expect(done.status).toBe(200);
+    expect((await labelOf(DEVICE))?.label).toBe("Den TV");
   });
 
   it("a grant redeemed from another device id is invalid_grant and is not burned", async () => {

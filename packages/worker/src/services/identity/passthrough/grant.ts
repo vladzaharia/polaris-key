@@ -63,6 +63,11 @@ export interface GrantRecord {
    */
   via?: "device";
   /**
+   * The device label the sign-in carried (the approval page's, `token`'s or the exchange's
+   * `device_name`), already cleaned. `choice/complete` names the bound device by it first.
+   */
+  label?: string;
+  /**
    * Set when the exchange answered `confirm` (I-13.5): `choice/complete` then needs the person's
    * `consent` and writes the app consent against this hash, the one the person was shown.
    */
