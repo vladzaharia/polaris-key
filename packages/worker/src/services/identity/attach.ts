@@ -77,6 +77,7 @@ import { customerTierId } from "../../core/licensing/implicitTier.js";
 import { customerOrigin } from "../../core/hosts.js";
 import { readBodyJson } from "../../core/cappedBody.js";
 import { attachLicense, evaluateAttach } from "./accounts/claim.js";
+import { revokeDeviceRestore } from "./restore/store.js";
 import { getAccountRow } from "./accounts/repo.js";
 
 /** Attach writes the licence's owner: 30 a minute per client network, failing closed. */
@@ -329,6 +330,9 @@ export async function handleIdentitySignOut(
     { kind: "device", product: product.slug, deviceId: auth.deviceId },
     "signout",
   );
+  // I-49.4 (§12.3 rule 5): this device's restore key goes in this request, before it answers,
+  // whatever the gate, the setting or the device-change listeners did.
+  await revokeDeviceRestore(db, product.slug, auth.deviceId);
   const body: SignOutResponse = {
     released: cleared.released.includes(`${product.slug}:${auth.deviceId}`),
   };

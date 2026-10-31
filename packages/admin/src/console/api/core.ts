@@ -922,6 +922,12 @@ export const coreApi = {
       `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/relink`,
       { method: "POST", body: JSON.stringify(body) },
     ),
+  /** I-49.5. Needs a step-up (403 `step_up_required` otherwise); `confirmSlug` is the typed slug. */
+  purgeRestoreKeys: (slug: string, confirmSlug: string) =>
+    call<{ ok: true; purged: number }>(`${p(slug)}/identity/restore/purge`, {
+      method: "POST",
+      body: JSON.stringify({ confirmSlug }),
+    }),
   signInSettings: (slug: string) =>
     call<{ settings: SignInSettings }>(`${p(slug)}/identity/sign-in-settings`),
   updateSignInSettings: (

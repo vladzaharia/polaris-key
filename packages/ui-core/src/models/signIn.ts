@@ -286,7 +286,7 @@ function autoStepView(
       args: {
         ...args,
         provider,
-        tier: ctx.input.account?.tier,
+        tier: ctx.input.account?.tier ?? auto.tier,
         code: auto.code,
         // The existing-license line's arguments (the kit words `term` itself, from its copy).
         license: auto.anchor?.name,

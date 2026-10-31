@@ -25,13 +25,13 @@ to draw your own screens, [Your own UI](/docs/build/sdks/kotlin/your-own-ui/).
 answers an `AutoSignInResult`. The rungs, in order:
 
 1. **Stored session.** A device token from an earlier sign-in and a held license: `SignedIn`, no network.
-2. **Silent restore.** Planned; the ladder skips it.
+2. **Silent restore.** The restore key from the device backup, redeemed once. See [Restore from backup](#restore-from-backup). A JVM desktop app has no backup, so the ladder skips it.
 3. **Platform account, silently.** On Android the Google account the person already used with your app,
    through Credential Manager. The exchange runs over a fresh nonce from the Worker.
 4. **Platform sheet.** One Google account sheet, listing the accounts already used with your app, only when you pass `AutoSignInPrompt.OPTIONAL`.
 
-Anything else is the regular sign-in form. A JVM desktop app has no platform account: the ladder is
-rung 1, then `NeedsSignIn`.
+Anything else is the regular sign-in form. A JVM desktop app has no platform account and no backup:
+the ladder is rung 1, then `NeedsSignIn`.
 
 ```kotlin
 import im.plrs.key.identity.AutoSignInOptions
@@ -90,9 +90,40 @@ takes a fallback for a product that publishes none.
 
 `identity.signOut()` sets a flag on the device and, on Android, clears Credential Manager's state (through
 the Activity in front, else the `appContext` you gave `PlatformSignIn`; without either, only the flag is set). While it is set,
-rungs 3 and 4 do not run: nothing signs the person back in behind their back. The next sign-in the person
+rungs 2 to 4 do not run: nothing signs the person back in behind their back. The next sign-in the person
 starts clears it. A provider that reports its credential revoked at launch signs the device out the
 same way.
+
+### Restore from backup
+
+Rung 2 signs a person in on a new Android device with no click. A signed-in device keeps a restore
+key in Block Store, under the key `pkey-restore-<product>`. A new device of the same person, set up
+from that backup, redeems it once. The key reaches your product and that person's account, never
+another product, the card or a license. Each restore sign-in emails the person a notice with a
+**Sign out everywhere** action.
+
+- **Where the key lives.** `PolarisKeyAndroid.client` installs the backup. The `play` flavor
+  uses Block Store, and an item goes to the cloud only when Block Store reports end-to-end
+  encryption; otherwise it stays on the device and moves only device to device. The `direct` flavor
+  has no Block Store: rung 2 is skipped and nothing is enrolled.
+- **Enrolment.** After any completed sign-in, and on a stored sign-in at most once every 24 hours,
+  the client enrols or checks the key and writes the item when it gets a new one. The check runs
+  after `autoSignIn()` has answered and never delays a launch.
+- **Refusals.** An `invalid_grant` deletes the Android item, because the key is spent or never was. A
+  `429`, a `503`, a network failure or an unavailable store leaves it. Whatever refuses a redeemed
+  key, the ladder goes on to rung 3.
+- **Signing out.** `identity.signOut()` deletes the item and sends `DELETE restore` before it asks the
+  Worker, whatever the Worker answers. A revocation that cannot reach the Worker is queued and sent
+  at the next launch, before any other call. The explicit sign-out flag keeps rung 2 quiet and
+  stops enrolment until the person signs in again.
+- **Opt out.** `AutoSignInOptions(restore = false)` skips rung 2 and never enrols for that launch;
+  `AndroidOptions(restore = false)` turns it off for the client. Either way the next
+  `autoSignIn()` deletes this app's item and sends `DELETE restore`, which revokes the saved key.
+  The default is on.
+
+Restore runs only while your product's `identity.restore` setting is on (the default) and the
+platform has switched silent restore on. Otherwise discovery omits the member and the SDK skips
+rung 2.
 
 ### Compose
 

@@ -67,7 +67,9 @@ export interface SettleFacts {
   /** A same-device grant: the grant carries `fresh`, and `choice/complete` marks the step-up. */
   fresh?: true;
   /** The grant is earned by a device code: it cannot list devices or Replace (§12.5.1 rule 5). */
-  via?: "device";
+  via?: "device" | "restore";
+  /** Restore only: true when the single free licence is one this device may not take (refuses the silent bind). */
+  silentBlocked?: (licenseId: string) => Promise<boolean>;
   /** The exchange found the person's consent standing: one free licence binds with no tap. */
   silentSingle?: boolean;
   /** Whether the device's own live token proved it (the rule `bindWithoutChoice` reads). */
@@ -77,7 +79,8 @@ export interface SettleFacts {
 
 export type Settled =
   | { kind: "choose"; pending: PendingSignIn }
-  | { kind: "bound"; bound: BindResult };
+  | { kind: "bound"; bound: BindResult }
+  | { kind: "refused" };
 
 /**
  * Decide and act for an app-mode sign-in with an account: bind silently, hand over the pending
@@ -103,6 +106,13 @@ export async function settleAppMode(
     !offer.keep &&
     only !== undefined &&
     only.state === "free";
+  if (
+    silent &&
+    only &&
+    facts.silentBlocked &&
+    (await facts.silentBlocked(only.licenseId))
+  )
+    return { kind: "refused" };
   if (silent && only)
     return {
       kind: "bound",

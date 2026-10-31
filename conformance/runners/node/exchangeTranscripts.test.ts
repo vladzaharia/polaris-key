@@ -30,6 +30,7 @@ import {
   observe,
   offered,
   replay,
+  runChoiceComplete,
   runExchange,
   type Observed,
 } from "./exchangeReference.js";
@@ -68,19 +69,8 @@ async function runStep(
       nonceEndpoint: typeof identity.endpoints?.nonce === "string",
     } as Observed;
   }
-  if (step.action === "choiceComplete") {
-    // The SDK's input is the consent and the choice the host gave; the recording holds them.
-    const sent = step.exchanges.items[0]!.request.body!.json as Record<
-      string,
-      JsonValue
-    >;
-    const res = await server.fetch(`${base}/identity/choice/complete`, {
-      method: "POST",
-      headers: { ...device, "content-type": "application/json" },
-      body: JSON.stringify({ ...sent, grant: step.args.grant }),
-    });
-    return observe(res.status, await json(res));
-  }
+  if (step.action === "choiceComplete")
+    return runChoiceComplete(server, t, step);
   expect(step.action).toBe("exchange");
   return runExchange(server, t, step);
 }
@@ -128,6 +118,46 @@ describe("identity.exchange transcripts, reference client", () => {
     const doctored = doctor(silent, 0, (items) => items.slice(1));
     await expect(replay(doctored, runStep)).rejects.toThrow(
       /unexpected request/,
+    );
+  });
+});
+
+// I-14.9: the Game Center and Play Games exchanges. The reference client encodes the `gc1.` token
+// from the structured fields in `args` and sends the server auth code as it is, so the recorded
+// bodies pin both encodings. `link-game` is replayed by the link runner.
+const GAME = loadTranscripts().filter(
+  (t) =>
+    t.id.startsWith("exchange-") &&
+    (t.features.includes("identity.gamecenter") ||
+      t.features.includes("identity.pgs")),
+);
+
+describe("identity.gamecenter and identity.pgs transcripts, reference client", () => {
+  it("covers the game exchange scenarios", () => {
+    expect(GAME.map((t) => t.id).sort()).toEqual([
+      "exchange-gamecenter-errors",
+      "exchange-gamecenter-no-link",
+      "exchange-gamecenter-silent",
+      "exchange-pgs-errors",
+      "exchange-pgs-no-link",
+      "exchange-pgs-silent",
+    ]);
+  });
+
+  for (const t of GAME)
+    it(`${t.id}: the client half reproduces every request`, async () => {
+      await replay(t, runStep);
+    });
+
+  const gc = GAME.find((t) => t.id === "exchange-gamecenter-silent")!;
+
+  it("fails when the gc1. token is not the recorded encoding", async () => {
+    const doctored = structuredClone(gc);
+    (
+      doctored.steps[0]!.args.gameCenter as Record<string, JsonValue>
+    ).teamPlayerId = "another-player";
+    await expect(replay(doctored, runStep)).rejects.toThrow(
+      /does not match the recording/,
     );
   });
 });

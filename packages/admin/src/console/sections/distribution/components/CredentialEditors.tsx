@@ -30,12 +30,14 @@ import { useTableUrlState } from "../../../useTableUrlState.js";
 import { hrefWithQuery, patchQuery, useCredentials } from "../data.js";
 import {
   describe,
+  KIND,
   kindLabel,
   pinField,
   sharedLine,
   type KindSpec,
 } from "../model/credentialKinds.js";
 import { humanField } from "../model/channelCopy.js";
+import { channelsOfKind } from "../model/channelScope.js";
 import { PinDialog, SetCredentialDrawer } from "./CredentialForms.js";
 
 export function LastResult({
@@ -52,7 +54,7 @@ export function LastResult({
         <span
           // A long id in the text breaks anywhere; prose breaks between words. The end padding holds the clamp's
           // ellipsis, which Linux Chromium draws past the last full line.
-          className={`line-clamp-2 max-w-64 pe-2 text-xs text-fg-muted${
+          className={`line-clamp-2 max-w-64 pe-4 text-xs text-fg-muted${
             /\S{25,}/.test(c.lastError) ? " break-all" : ""
           }`}
           title={c.lastError}
@@ -74,6 +76,10 @@ export function LastResult({
     );
   return <span className="text-fg-subtle">Not used yet</span>;
 }
+
+/** A credential that belongs to no channel (Sentry's secret, the Play Games server credential). */
+const channelless = (c: OutletCredentialInfo | null): boolean =>
+  c !== null && channelsOfKind(c.kind).length === 0;
 
 function CredentialDetail({
   cred,
@@ -152,15 +158,17 @@ function CredentialDetail({
                       <span className="font-mono text-xs break-all">{v}</span>
                     ),
                   })),
-                ...(showChannel
-                  ? [
-                      {
-                        term: "Channel",
-                        detail:
-                          cred.outletId ?? "Any of the product's channels",
-                      },
-                    ]
-                  : []),
+                ...(KIND.get(cred.kind)?.serves
+                  ? [{ term: "Serves", detail: KIND.get(cred.kind)!.serves }]
+                  : showChannel
+                    ? [
+                        {
+                          term: "Channel",
+                          detail:
+                            cred.outletId ?? "Any of the product's channels",
+                        },
+                      ]
+                    : []),
                 {
                   term: "Created",
                   detail: (
@@ -287,6 +295,17 @@ export function useCredentialEditor({
     null,
   );
   const open = rows.find((c) => c.id === openId);
+  // `?set=<kind>` (a link from Platform sign-in) opens the Set drawer with that kind chosen.
+  const [setKind] = useSearchParam("set", CREDENTIAL);
+  const [linkedKind, setLinkedKind] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    if (setKind === "" || creds.isPending || kinds.length === 0) return;
+    if (kinds.some((k) => k.value === setKind)) {
+      setLinkedKind(setKind);
+      setDrawer({ mode: "create" });
+    }
+    patchQuery({ set: null });
+  }, [setKind, creds.isPending, kinds]); // eslint-disable-line react-hooks/exhaustive-deps
   const rowActions = (c: OutletCredentialInfo): RowActionItem[] => [
     {
       label: "Rotate…",
@@ -322,10 +341,16 @@ export function useCredentialEditor({
           existing={creds.data?.credentials ?? []}
           rotate={drawer.mode === "rotate" ? drawer.cred : null}
           kinds={kinds}
+          fixedKindValue={
+            drawer.mode === "create" ? (linkedKind ?? undefined) : undefined
+          }
           channelScoped={channelScoped}
           channelName={channelName}
           alsoUsedBy={alsoUsedBy}
-          onClose={() => setDrawer(null)}
+          onClose={() => {
+            setDrawer(null);
+            setLinkedKind(null);
+          }}
         />
       ) : null}
       {pinning ? (
@@ -340,9 +365,10 @@ export function useCredentialEditor({
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
         intent="danger"
-        title={`Delete the channel credential “${deleting?.id ?? ""}”?`}
+        title={`Delete the ${channelless(deleting) ? "" : "channel "}credential “${deleting?.id ?? ""}”?`}
         consequences={[
-          "Connectors using it stop working until another is set.",
+          KIND.get(deleting?.kind ?? "")?.deleteConsequence ??
+            "Connectors using it stop working until another is set.",
           ...sharedLine(deleting, alsoUsedBy),
           "The value cannot be recovered.",
         ]}
@@ -351,14 +377,19 @@ export function useCredentialEditor({
         onConfirm={async () => {
           if (!deleting) return;
           await mutate("deleteOutletCredential", slug, deleting.id);
-          toast.success(`Deleted the channel credential “${deleting.id}”`);
+          toast.success(
+            `Deleted the ${channelless(deleting) ? "" : "channel "}credential “${deleting.id}”`,
+          );
           if (openId === deleting.id) patchQuery({ credential: null });
         }}
       />
     </>
   );
   return {
-    create: () => setDrawer({ mode: "create" }),
+    create: () => {
+      setLinkedKind(null);
+      setDrawer({ mode: "create" });
+    },
     dialogs,
     rowActions,
     data: creds.data,
@@ -470,9 +501,10 @@ export function CredentialTable({
             meta: { priority: 2 },
             cell: ({ row }: { row: { original: OutletCredentialInfo } }) =>
               row.original.outletId ??
-              (kindChannels?.(row.original.kind) || (
-                <span className="text-fg-subtle">Any</span>
-              )),
+              (kindChannels?.(row.original.kind) ||
+                KIND.get(row.original.kind)?.serves || (
+                  <span className="text-fg-subtle">Any</span>
+                )),
           } satisfies DataColumn<OutletCredentialInfo>,
         ]
       : []),

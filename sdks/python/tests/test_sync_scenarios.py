@@ -1,10 +1,9 @@
-# @pkey-feature sync.scenarios
+# @pkey-feature sync.scenarios config.sync sync.e2e
 # @pkey-feature sync.settings
 """``sync-scenarios.json`` (v3): the Cloud Sync client state machine and the setting routes.
 
-Mirrors ``conformance/runners/node/syncScenarios.test.ts``. ``settingCases`` runs in full. While
-``sync.scenarios`` is ``planned`` (D-12), the scenario replays run an allow-list, ``PORTED``, and skip the
-rest by name with a reason; the flip to ``implemented`` deletes the list.
+Mirrors ``conformance/runners/node/syncScenarios.test.ts``. ``settingCases`` and every scenario run in full;
+nothing is skipped.
 """
 
 from __future__ import annotations
@@ -33,74 +32,6 @@ _CORPUS: Dict[str, Any] = json.loads(
 _SCENARIOS: List[Dict[str, Any]] = _CORPUS["scenarios"]
 _SETTING_CASES: List[Dict[str, Any]] = _CORPUS["settingCases"]
 
-# Scenarios the Python machine port replays (D-12). Every corpus scenario is listed; the flip of
-# `sync.scenarios` to implemented deletes this list and the skip.
-PORTED = frozenset(
-    (
-        "optimistic-read-pending",
-        "max-policy-optimistic",
-        "debounce-slider",
-        "clock-offset-folded",
-        "clock-slow-precontact-restamp",
-        "clock-fast-precontact-restamp",
-        "lww-conflict-server-wins",
-        "conflict-then-ok-one-push",
-        "request-failure-keeps-journal",
-        "conflict-rebase-new-mutation",
-        "one-outstanding-cas",
-        "account-switch-partition",
-        "first-sign-in-empty-cloud",
-        "first-sign-in-newer-and-older-cloud",
-        "sign-out-local-edit-sign-in-other",
-        "account-required-on-push",
-        "relink-clears-binding",
-        "key-activated-device-local-only",
-        "merge-alias-subject-change",
-        "unauthorized-pauses",
-        "sign-out-flush-succeeds",
-        "sign-out-flush-timeout",
-        "sign-out-discard-unsynced",
-        "pending-expire-after-30-days",
-        "on-sign-out-keep",
-        "journal-loss-new-client-id",
-        "client-mismatch-regenerates",
-        "cursor-expired-with-pending",
-        "member-merge",
-        "union-add-remove",
-        "renamed-and-dropped-keys",
-        "locked-key-refused",
-        "invalid-stored-value",
-        "rejected-result-reverts",
-        "relaunch-commits-and-pushes",
-        "open-setting-synced",
-        "open-setting-too-large",
-        "local-key-stays-local",
-        "secret-key-refused",
-        "platform-scope-target",
-        "config-local-import-loses-to-cloud",
-        "record-max-field-conflict",
-        "attestation-required-blocks",
-        "other-403-blocks",
-        "writes-paused-keeps-journal",
-        "quota-rejected-keeps-value",
-        "quota-raised-retries",
-        "quota-lowered-deletes-nothing",
-        "terminal-rejection-reverts",
-        "e2e-max-conflict-remerged",
-        "e2e-min-server-wins",
-        "e2e-merge-member-cells",
-        "e2e-locked-keeps-journal",
-        "e2e-unlock-pushes",
-        "e2e-downgrade-refused",
-        "e2e-legacy-plain-below-since",
-        "server-mode-unchanged",
-        "e2e-forged-plain-change-at-or-below-cursor",
-        "e2e-forged-plain-needs-cursor-below-since",
-        "e2e-forged-plain-sealed-key-latched",
-        "e2e-conflict-plaintext-copy-refused",
-    )
-)
-_SKIP = "not on the PORTED allow-list"
 
 
 def test_corpus_constants() -> None:
@@ -113,10 +44,6 @@ def test_corpus_constants() -> None:
         "maxClockSkewMs": SYNC_MAX_CLOCK_SKEW_MS,
         "maxValueBytes": SYNC_MAX_VALUE_BYTES,
     }
-
-
-def test_ported_names_exist() -> None:
-    assert PORTED == {s["name"] for s in _SCENARIOS}
 
 
 def _call(m: CloudSyncMachine, name: str, args: List[Any]) -> Dict[str, Any]:
@@ -139,8 +66,6 @@ def _call(m: CloudSyncMachine, name: str, args: List[Any]) -> Dict[str, Any]:
 
 @pytest.mark.parametrize("sc", _SCENARIOS, ids=[s["name"] for s in _SCENARIOS])
 def test_scenario(sc: Dict[str, Any]) -> None:
-    if sc["name"] not in PORTED:
-        pytest.skip(f"{sc['name']}: {_SKIP}")
     init = sc["init"]
     ids = list(init["clientIds"])
 

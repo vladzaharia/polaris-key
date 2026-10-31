@@ -147,6 +147,7 @@
   "POST /products/:slug/distribution/feeds/**": "ship",
   "POST /products/:slug/distribution/listing/import": "ship",
   "POST /products/:slug/identity/**": "signin",
+  "POST /products/:slug/identity/restore/purge": "signin",
   "POST /products/:slug/keys/:action": "keys",
   "POST /products/:slug/license/**": "license",
   "POST /products/:slug/release/ci-readiness/fix": "ship",

@@ -280,6 +280,18 @@
 //                   sends nothing, a step with no exchanges, because the last discovery names no
 //                   `exchange` member (§12.11.6), or a 404 answers the nonce or token route, the
 //                   Worker having rolled the launch gate back after discovery)
+// Game kinds (I-14.9, WIRE-CONTRACT-V5 §12.11.7; `identity.gamecenter`, `identity.pgs`): `kind` may
+// also be "gamecenter" or "pgs", and the subject token is not recorded whole. `args.gameCenter` is
+// {publicKeyUrl, signature, salt, timestamp, teamPlayerId, bundleId}: `signature` and `salt` are
+// base64url, `timestamp` is Apple's, in milliseconds, and the rest are text. The SDK encodes the
+// `gc1.` token itself (six dot-joined fields after the prefix: base64url of the UTF-8 URL, the
+// signature, the salt, the decimal timestamp, base64url of the player id, base64url of the
+// bundle id), sends it with subject_token_type urn:polaris-key:token-type:gamecenter-signature,
+// and the recorded form is matched exactly, so the transcript pins the encoding. `args.serverAuthCode`
+// is the Play Games code, sent as it is with subject_token_type
+// urn:polaris-key:token-type:pgs-server-auth-code. The proof's token hash covers the encoded
+// token. A 503 from the Worker is `result` "refused" with `code` "unavailable" (a failure to retry
+// later; the rung itself is there).
 // A `confirm` or `choose` answer is completed by a `choiceComplete` step whose body (the
 // consent, the choice) is the one the recording sent; its `expect` is an exchange `ok`.
 // A `discover` step in these transcripts also pins `exchange` (the fragment's member or null)
@@ -294,7 +306,12 @@
 // handle's). The proof is `pkey-proof/1` with purpose `link`, the handle as value and `-` as the
 // token hash. `expect`: `result` "ok" with `linked` {kind, reach} ("global" | "developer"), or
 // "refused" with `status` and `code` (`step_up_required`, `link_conflict`, `not_found`,
-// `invalid_grant`). A transcript whose feature is `identity.link` is replayed only by an SDK
+// `invalid_grant`). A `link` step with no `args.linkHandle` links by token (I-14.9): the client
+// posts for a nonce, then `POST …/identity/link` with {subjectToken, subjectTokenType, nonce,
+// signKey, agreeKey, proof}; `args.subjectTokenType` and the token's own args (`serverAuthCode`
+// or `gameCenter`, see `exchange`) say what is sent, the proof's value is `<nonce>.<signKey>`
+// and its token hash covers the token. `linked.kind` may be "gamecenter" or "pgs" (reach
+// "developer"), and an offer lists them with reach "developer". A transcript whose feature is `identity.link` is replayed only by an SDK
 // that marks it implemented.
 // keyringGet / keyringCreate / keyringWrap / keyringUnwrap / keyringRecoverySet /
 // keyringRecoveryGet / keyringAdopt / keyringReset (U-36.4, WIRE-CONTRACT-V5 §13.11.2) — the
@@ -332,6 +349,37 @@
 //     themselves are never in `expect`.
 //   connectDevices `expect`: `result` "ok" with `devices`, the answer's list by value
 //     ({deviceId, label, platform, lastSeen, self}), or "refused" with `code`.
+//
+// restoreRedeem / restoreEnroll / restoreDelete (I-49.8, WIRE-CONTRACT-V5 §12.11.8,
+// `identity.restore`) — silent restore, replayed only by an SDK that marks `identity.restore`
+// implemented (Swift, Kotlin and Godot; Node, Python, React and the desktop runtimes are N/A).
+// The recorded client is the NEW device; the device that enrolled the first key is scenario setup.
+//   restoreRedeem   the restore grant: a form at `…/identity/token` with `grant_type`
+//     urn:polaris-key:grant-type:restore, `client_id`, `restore_id`, `restore_secret`, `device_key`,
+//     `agree_key` and `proof` (purpose `restore`, value `<restore_id>.<device_key>`, line 6 the
+//     base64url SHA-256 of the secret; `pkey-proof/1`, §12.11.1). `args`: `keyLabel` (the device's
+//     fixture keys, see `exchange`), `restoreId` and `restoreSecret` (what the replayer's backup
+//     stub holds: the item the platform backup carried) and, only where the step needs them,
+//     `product` (the product slug the grant is addressed to, instead of the transcript's: a
+//     replayer builds a second client for it) and `proofValue` (the value the proof covers instead
+//     of `<restore_id>.<device_key>`). A step with no exchanges is "unavailable": the last discovery
+//     names no `restore` member (§12.11.6), so the client sends nothing. `expect`: `result` "ok"
+//     (a device token: `tokenHeld`, `scope`, `issuedTokenType`, `licenseId` or null) | "confirm"
+//     (`firstTime`, `changed`, `as`, which is `{provider: null, email: null}`: a restore names no
+//     provider and no address; a `choiceComplete` step finishes it with the recorded body) |
+//     "refused" (`status`, `code`, `tokenHeld` false, and on a 429 `retryAfter`, the seconds in the body) |
+//     "unavailable" (`tokenHeld` false). Every `invalid_grant` refusal of the grant carries the
+//     same bytes (§12.11.8, "no oracle"); the replayer asserts the client reports `code`.
+//   restoreEnroll   `POST …/identity/restore` with the device token and the body `{}` or
+//     `{restoreId}` (`args.restoreId`: the id the client holds, absent when it holds none).
+//     `expect`: `result` "enrolled" (a 201: `restoreId` and `secret`, which the client writes into
+//     its backup item) | "current" (a 200 `{status: "current"}`: the client writes nothing) |
+//     "refused" (`status` 403 `account_required`, …, with `code`) | "unavailable" (a 404: the
+//     feature is off).
+//   restoreDelete   `DELETE …/identity/restore` with the device token; `expect` `result` "ok"
+//     (a 204, whether or not a key existed).
+// Discovery for these transcripts: a `discover` step also pins `restore` (whether the identity
+// fragment carries `restore: true`) and `restoreEndpoint` (whether its endpoints name `restore`).
 //
 // chunkRange (P4-32, plans/P4-32.md §4) — `{ bundle, offset, length }`: the SDK's chunk-range
 // fetch (client-core `chunkRangeFetch`, Python `chunk_range_fetch`, Swift `chunkRangeFetch`,
@@ -475,7 +523,13 @@ export type Action =
   | "relayTicket"
   /** CC-06.4 (WIRE-CONTRACT-V5 §15.2 to §15.4): the Cloud Connect identity of the `connect-identity*` transcripts. */
   | "connectIdentity"
-  | "connectDevices";
+  | "connectDevices"
+  /** I-49.8 (WIRE-CONTRACT-V5 §12.11.8): the restore grant at `token`, a new device's silent sign-in. */
+  | "restoreRedeem"
+  /** I-49.8 (§12.11.8): `POST …/identity/restore`, enrol or check this device's restore key. */
+  | "restoreEnroll"
+  /** I-49.8 (§12.11.8): `DELETE …/identity/restore`, a revocation that no gate stops. */
+  | "restoreDelete";
 
 export interface Step {
   action: Action;

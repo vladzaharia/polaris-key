@@ -1,0 +1,154 @@
+{
+  "transcriptVersion": 1,
+  "id": "exchange-pgs-silent",
+  "description": "Play Games sign-in with nothing to ask (WIRE-CONTRACT-V5 §12.11.7). The app checks that the player is already authenticated, so it never calls signIn at launch. exchange() posts the device's keys for a nonce, asks Play Games for a server auth code for the product's server client id (named in discovery as exchange.pgs.serverClientId) and sends the code as the subject token with subject_token_type urn:polaris-key:token-type:pgs-server-auth-code and the exchange proof. The Worker redeems the code and asks Google which player and application it was granted to; the player is linked under the product's application, so the answer is a device token. The Worker's calls to Google are not part of this conversation, and the access token never leaves the Worker.",
+  "features": ["identity.pgs"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "exchange",
+      "note": "A signed-in player with a fresh server auth code.",
+      "args": {
+        "kind": "pgs",
+        "keyLabel": "transcript-device-key-1",
+        "serverAuthCode": "4/transcript-server-auth-code"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "C_yDBp4X7K8CTIMbGowesLC1seYF_m7YjvY_hA8x3oQ",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "4/transcript-server-auth-code",
+                  "subject_token_type": "urn:polaris-key:token-type:pgs-server-auth-code",
+                  "nonce": "C_yDBp4X7K8CTIMbGowesLC1seYF_m7YjvY_hA8x3oQ",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "S9XjTc7X3v19MQLFWukKlK-RGUGyS0xVNpnZm0MSgzeLiFO6KIUGf2zT4RmJLzztpij0fSenkVardqbfAUurAw"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_Kc2sXWpyd0RJB1wuO9z15aeXfTJbpmk8jzxJDhbLQJg",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000000,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": null,
+                "subject": "ps_B4rjiSeI2CbydOrRPTp87w",
+                "issued_token_type": "urn:polaris-key:token-type:device"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "tokenHeld": true,
+        "scope": "profile email",
+        "issuedTokenType": "urn:polaris-key:token-type:device",
+        "licenseId": null
+      }
+    }
+  ]
+}

@@ -17,17 +17,17 @@ import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.PolarisTransport
 import im.plrs.key.core.arrayValue
 import im.plrs.key.core.boolValue
+import im.plrs.key.core.jsonEquals
 import im.plrs.key.core.jsonInt
 import im.plrs.key.core.longValue
+import im.plrs.key.core.objectValue
+import im.plrs.key.core.stringValue
 import im.plrs.key.core.sync.HostCodec
 import im.plrs.key.core.sync.SyncBlind
 import im.plrs.key.core.sync.SyncCodecPort
 import im.plrs.key.core.sync.SyncEnvelope
 import im.plrs.key.core.sync.SyncResponse
 import im.plrs.key.sdk.CloudSyncTransport
-import im.plrs.key.core.jsonEquals
-import im.plrs.key.core.objectValue
-import im.plrs.key.core.stringValue
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonArray
@@ -346,6 +346,31 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
                 mapOf("product" to JsonPrimitive(transcript.product), "services" to JsonObject(redirectServices)),
             ).toString()
         }
+        // identity.restore (I-49.12): a transcript with restore steps and no discover step rides a product whose Identity
+        // fragment offers silent restore (V5 section 12.11.6, 12.11.8): the grant route, the enrol route, the
+        // grant-completion route a confirm answer is finished at, and the account endpoints a sign-out uses.
+        if (transcript.steps.any { it["action"].stringValue in setOf("restoreRedeem", "restoreEnroll", "restoreDelete") }) {
+            val identity = JsonObject(
+                mapOf(
+                    "enabled" to JsonPrimitive(true),
+                    "account" to JsonPrimitive(true),
+                    "restore" to JsonPrimitive(true),
+                    "endpoints" to JsonObject(
+                        mapOf(
+                            "token" to "$base/identity/token",
+                            "restore" to "$base/identity/restore",
+                            "choiceComplete" to "$base/identity/choice/complete",
+                            "signout" to "$base/identity/signout",
+                            "subject" to "$base/identity/subject",
+                            "attach" to "$base/identity/attach",
+                        ).mapValues { JsonPrimitive(it.value) },
+                    ),
+                ),
+            )
+            return JsonObject(
+                mapOf("product" to JsonPrimitive(transcript.product), "services" to JsonObject(mapOf("identity" to identity))),
+            ).toString()
+        }
         // identity.exchange (I-45.3): a transcript with an `exchange` step and no discover step rides a product whose
         // Identity fragment offers the rung (V5 section 12.11.6): the kinds, the Google audience, the nonce and token routes,
         // and the grant-completion route a confirm or choose answer is finished at.
@@ -357,8 +382,9 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
             )
             val exchange = JsonObject(
                 mapOf(
-                    "kinds" to JsonArray(listOf(JsonPrimitive("google"), JsonPrimitive("apple"))),
+                    "kinds" to JsonArray(listOf(JsonPrimitive("google"), JsonPrimitive("apple"), JsonPrimitive("pgs"))),
                     "google" to JsonObject(mapOf("serverClientId" to JsonPrimitive("1234-web.apps.googleusercontent.com"))),
+                    "pgs" to JsonObject(mapOf("serverClientId" to JsonPrimitive("5678-pgs.apps.googleusercontent.com"))),
                 ),
             )
             val identity = JsonObject(

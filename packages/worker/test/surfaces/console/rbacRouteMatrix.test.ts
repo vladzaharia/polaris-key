@@ -382,6 +382,7 @@ describe("negative controls", () => {
         "POST /products/:slug/users/licenses/:id/reassign",
         "POST /products/:slug/users/relinks/:id/undo",
         "POST /products/:slug/config/mint/:id/approve",
+        "POST /products/:slug/identity/restore/purge",
         "POST /platform/connections",
         "PATCH /platform/connections/:id",
         "DELETE /platform/connections/:id",

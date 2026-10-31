@@ -454,7 +454,7 @@ export function parseTokenAnswer(
       status,
       ...(Object.keys(details).length > 0 ? { details } : {}),
       ...(typeof retry === "number" && Number.isFinite(retry) && retry > 0
-        ? { retryAfterSeconds: Math.ceil(retry) }
+        ? { retryAfterSeconds: Math.min(Math.ceil(retry), 3600) }
         : {}),
     };
   }

@@ -732,6 +732,7 @@ public object Feature {
     public const val identityGamecenter: String = "identity.gamecenter"
     public const val identityPgs: String = "identity.pgs"
     public const val identityAutosignin: String = "identity.autosignin"
+    public const val identityRestore: String = "identity.restore"
     public const val identityLink: String = "identity.link"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
@@ -875,6 +876,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.gamecenter",
     "identity.pgs",
     "identity.autosignin",
+    "identity.restore",
     "identity.link",
     "release.changelog",
     "release.download",
@@ -2056,8 +2058,9 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.keyreturn" to CapabilityRow("planned", "identity", listOf()),
     "identity.exchange" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.gamecenter" to CapabilityRow("na", "identity", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
-    "identity.pgs" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
+    "identity.pgs" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.autosignin" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.restore" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.link" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
@@ -2126,4 +2129,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "d1b430bbc19376fa7b42087fc08ab1ded7600b3b02cd9f69a548aefec2e43962"
+public const val CAPABILITY_DIGEST: String = "05164d483bd89d2e76b5f80e8bf6b6bf562a9dd5c8e2db862bff3c6677864af4"

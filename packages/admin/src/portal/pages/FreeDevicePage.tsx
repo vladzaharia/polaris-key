@@ -1,14 +1,7 @@
 import * as React from "react";
 import { ErrorState } from "../../ui/ErrorState.js";
-import {
-  Glasses,
-  Info,
-  Laptop,
-  Monitor,
-  Smartphone,
-  Tv,
-  Watch,
-} from "lucide-react";
+import { Info } from "lucide-react";
+import { DeviceGlyph } from "../components/product/DeviceRowParts.js";
 import { Button } from "../../ui/Button.js";
 import { RadioCards } from "../../ui/RadioCards.js";
 import { announce } from "../../ui/LiveRegion.js";
@@ -35,11 +28,7 @@ import {
 } from "../data.js";
 import { isNotFound, portalErrorCopy } from "../errors.js";
 import { consumeHeadingFocus } from "../focus.js";
-import {
-  deviceFamily,
-  deviceOsName,
-  presentationFrom,
-} from "../model/library.js";
+import { deviceOsName, presentationFrom } from "../model/library.js";
 import { deviceSeats } from "../model/product.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { allowedReturn } from "../model/returnUrl.js";
@@ -168,23 +157,6 @@ export function lastSeenText(
 
 function deviceName(d: PortalProductDevice): string {
   return d.label?.trim() || t("devices.unnamed");
-}
-
-function DeviceGlyph({ platform }: { platform: string | null }) {
-  const k = deviceFamily(platform);
-  const Icon =
-    k === "ios" || k === "android"
-      ? Smartphone
-      : k === "macos"
-        ? Laptop
-        : k === "tvos"
-          ? Tv
-          : k === "visionos"
-            ? Glasses
-            : k === "watchos"
-              ? Watch
-              : Monitor;
-  return <Icon aria-hidden className="size-5" />;
 }
 
 function FreeDevice({

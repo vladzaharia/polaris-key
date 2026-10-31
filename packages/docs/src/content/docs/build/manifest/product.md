@@ -354,9 +354,14 @@ identity:
   TestFlight outlets, and need `teamId`.
 - `nearby`: whether a signed-in device nearby may approve a sign-in on a new one. On when
   absent; it needs no Cloud Connect.
+- `restore`: whether a signed-in app may keep a restore key in the person's own backup, so a new
+  device signs in with no click. On when absent. Off stops new keys and sign-ins from stored ones.
+  The SDKs' `restore` option (default on) is the per-launch switch; see the
+  [Swift](/docs/build/sdks/swift/#restore-from-backup) and
+  [Kotlin](/docs/build/sdks/kotlin/#restore-from-backup) sections.
 
 Each member is a claimable setting (`identity.keyEntry.limit`, `identity.keyEntry.claimByKey`,
-`identity.terms`, `identity.redirectPaths`): a console change claims it until you revert it.
+`identity.terms`, `identity.redirectPaths`, `identity.restore`): a console change claims it until you revert it.
 
 ## Cloud Connect settings: `connect`
 

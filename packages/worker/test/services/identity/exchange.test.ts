@@ -44,7 +44,20 @@ import { withMintClaim } from "../../../src/services/identity/passthrough/mint.j
 import { seedTier } from "../../seed.js";
 import { artefactRef, getArtefact } from "../../../src/core/singleUse.js";
 import {
+  OidcNetworkError,
+  OidcVerifyError,
+} from "../../../src/core/oidc/client.js";
+import {
+  gameCenterIs,
+  playGamesIs,
+  refuseGameTokens,
+} from "../../gameSignInStubs.js";
+import { verifyGameCenterToken } from "../../../src/services/identity/providers/gameCenter.js";
+import { verifyPlayGamesCode } from "../../../src/services/identity/providers/playGames.js";
+import {
   EXCHANGE_SUBJECT_TOKEN_TYPE,
+  GAME_CENTER_SUBJECT_TOKEN_TYPE,
+  PGS_SUBJECT_TOKEN_TYPE,
   LINK_HANDLE_PATTERN,
   TOKEN_EXCHANGE_GRANT_TYPE,
 } from "@polaris-key/protocol/identity";
@@ -55,6 +68,17 @@ vi.mock("../../../src/core/devices/lifecycle.js", async (orig) => {
     await orig<typeof import("../../../src/core/devices/lifecycle.js")>();
   return { ...m, notifyDeviceChange: vi.fn(m.notifyDeviceChange) };
 });
+
+// The two game verifiers have their own suites (gameCenter, playGames); here they are stand-ins,
+// so this file tests the wiring: the dispatch, the link lookup and the answers.
+vi.mock(
+  "../../../src/services/identity/providers/gameCenter.js",
+  async (o) => ({ ...(await o<object>()), verifyGameCenterToken: vi.fn() }),
+);
+vi.mock("../../../src/services/identity/providers/playGames.js", async (o) => ({
+  ...(await o<object>()),
+  verifyPlayGamesCode: vi.fn(),
+}));
 
 const SLUG = "djdl";
 const BASE = "https://key.plrs.im";
@@ -104,6 +128,7 @@ beforeEach(async () => {
   await setting("identity.platformSignIn.google.clientIds", [AND]);
   await setting("identity.platformSignIn.apple.teamId", TEAM);
   await setting("identity.platformSignIn.apple.bundleIds", [BUNDLE]);
+  refuseGameTokens();
 });
 
 const route = (path: string, init: RequestInit) =>
@@ -121,6 +146,7 @@ const postExchange = (
     nonce: string;
     keys: { signKey: string };
     proof: string;
+    type?: string;
   },
   device = DEVICE,
 ) =>
@@ -134,7 +160,7 @@ const postExchange = (
       grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
       client_id: SLUG,
       subject_token: fields.token,
-      subject_token_type: EXCHANGE_SUBJECT_TOKEN_TYPE,
+      subject_token_type: fields.type ?? EXCHANGE_SUBJECT_TOKEN_TYPE,
       nonce: fields.nonce,
       device_key: fields.keys.signKey,
       proof: fields.proof,
@@ -195,10 +221,12 @@ async function exchange(
     nonceKeys?: Keys;
     nonce?: string;
     token?: string;
+    type?: string;
   } = {},
 ): Promise<{
   status: number;
   text: string;
+  retryAfter: string | null;
   body: Record<string, unknown>;
   keys: Keys;
   nonce: string;
@@ -216,13 +244,20 @@ async function exchange(
     device,
   });
   const res = await postExchange(
-    { token: token, nonce: nonce, keys: keys, proof: proof },
+    {
+      token: token,
+      nonce: nonce,
+      keys: keys,
+      proof: proof,
+      ...(o.type ? { type: o.type } : {}),
+    },
     device,
   );
   const text = await res.text();
   return {
     status: res.status,
     text,
+    retryAfter: res.headers.get("retry-after"),
     body: text.startsWith("{") ? (JSON.parse(text) as never) : {},
     keys,
     nonce,
@@ -261,7 +296,7 @@ async function link(
   issuerKey: string,
   tenantScope: string,
   subject: string,
-  kind: "google" | "apple",
+  kind: "google" | "apple" | "gamecenter" | "pgs",
   email = "ada@example.com",
   consented = true,
 ): Promise<string> {
@@ -501,6 +536,27 @@ describe("device key guards", () => {
     expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();
   });
 
+  it("a signing key another device holds is refused before the bind: nothing is bound", async () => {
+    await link("https://accounts.google.com", "", GOOGLE_SUB, "google");
+    const mine = await newKeys();
+    await upsertDeviceKeys(
+      h.db,
+      SLUG,
+      DEVICE_2,
+      { ...(await newKeys()), signKey: mine.signKey },
+      NOW,
+    );
+    const r = await exchange(google(), { keys: mine });
+    expect(r.status).toBe(400);
+    expect(r.body.error).toBe("invalid_grant");
+    const row = await h.db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM devices WHERE device_id = ?",
+      DEVICE,
+    );
+    expect(row!.n).toBe(0);
+    expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();
+  });
+
   it("a rotation expects the key it saw: a key that changed since is refused, not overwritten", async () => {
     const a = await newKeys();
     const b = await newKeys();
@@ -691,6 +747,20 @@ describe("L-1: consent on the exchange", () => {
     expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();
   });
 
+  it("a signing key registered by another device in the grant window is refused", async () => {
+    const { accountId, r, grant } = await confirmed();
+    await upsertDeviceKeys(
+      h.db,
+      SLUG,
+      DEVICE_2,
+      { ...(await newKeys()), signKey: r.keys.signKey },
+      NOW,
+    );
+    await expectInvalidGrant(grant);
+    expect(await grantRow(accountId)).toBeNull();
+    expect(await getDeviceKeys(h.db, SLUG, DEVICE)).toBeNull();
+  });
+
   it("a different signing key registered for the device in the grant window is refused", async () => {
     const { accountId, grant } = await confirmed();
     await upsertDeviceKeys(h.db, SLUG, DEVICE, await newKeys(), NOW);
@@ -850,5 +920,219 @@ describe("confirm carries no licence view (I-13.9)", () => {
       "grant",
       "status",
     ]);
+  });
+});
+
+// ── I-14.8 (WIRE-CONTRACT-V5 §12.11.7): Game Center and Play Games on the same grant ─────────────
+
+const GC_TOKEN = "gc1.fake-token";
+const PGS_CODE = "fake-server-auth-code";
+const PLAYER = "player-1";
+const ALT = "player-0";
+const PGS_APP = "123456789012";
+const GC_SUB = "T:team-player-1";
+const gcMint = async () => GC_TOKEN;
+const pgsMint = async () => PGS_CODE;
+
+const gcIs = (): void => gameCenterIs(GC_SUB, `apple-team:${TEAM}`, BUNDLE);
+const pgsIs = (
+  subject = PLAYER,
+  alternateSubject: string | null = null,
+): void => playGamesIs(PGS_APP, subject, alternateSubject);
+
+const gcExchange = (o: Parameters<typeof exchange>[1] = {}) =>
+  exchange(gcMint, { type: GAME_CENTER_SUBJECT_TOKEN_TYPE, ...o });
+const pgsExchange = (o: Parameters<typeof exchange>[1] = {}) =>
+  exchange(pgsMint, { type: PGS_SUBJECT_TOKEN_TYPE, ...o });
+
+describe("Game Center and Play Games on the exchange (I-14.8)", () => {
+  beforeEach(async () => {
+    await setting("identity.platformSignIn.gameCenter", true);
+    await setting("identity.platformSignIn.playGames.applicationId", PGS_APP);
+    await setting(
+      "identity.platformSignIn.playGames.serverClientId",
+      "9-pgs.apps.googleusercontent.com",
+    );
+  });
+
+  it("Game Center: a linked team player signs in; the audit names the kind and never the token", async () => {
+    await link("gamecenter", `apple-team:${TEAM}`, GC_SUB, "gamecenter");
+    gcIs();
+    const r = await gcExchange();
+    expect(r.status).toBe(200);
+    expect(r.body.issued_token_type).toBe("urn:polaris-key:token-type:device");
+    const audit = await h.db.all<{ summary: string }>(
+      "SELECT summary FROM audit WHERE action = 'signin.exchange'",
+    );
+    expect(audit).toHaveLength(1);
+    expect(audit[0]!.summary).toContain("gamecenter");
+    expect(JSON.stringify(audit)).not.toContain(GC_TOKEN);
+    expect(vi.mocked(verifyGameCenterToken).mock.calls[0]![0]).toBe(GC_TOKEN);
+  });
+
+  it("Game Center: no link is no_link with a handle holding the team scope and no address", async () => {
+    gcIs();
+    const r = await gcExchange();
+    expect(r.status).toBe(403);
+    expect(r.body).toMatchObject({
+      error: "interstitial_required",
+      reason: "no_link",
+    });
+    const rec = JSON.parse(
+      (await getArtefact(
+        h.env,
+        await exchangeLinkRef(h.env, SLUG, r.body.linkHandle as string),
+      ))!,
+    ) as ExchangeLinkRecord;
+    expect(rec).toMatchObject({
+      kind: "gamecenter",
+      issuerKey: "gamecenter",
+      subject: GC_SUB,
+      tenantScopes: [`apple-team:${TEAM}`],
+      email: null,
+      emailVerified: false,
+    });
+  });
+
+  it("Game Center: a player id under another team misses (cross-team)", async () => {
+    await link("gamecenter", "apple-team:OTHERTEAM1", GC_SUB, "gamecenter");
+    gcIs();
+    const r = await gcExchange();
+    expect(r.status).toBe(403);
+    expect(r.body.reason).toBe("no_link");
+  });
+
+  it("Game Center: a linked player with no consent gets confirm, as game center, no address", async () => {
+    await link(
+      "gamecenter",
+      `apple-team:${TEAM}`,
+      GC_SUB,
+      "gamecenter",
+      "x@y.z",
+      false,
+    );
+    gcIs();
+    const r = await gcExchange();
+    expect(r.status).toBe(200);
+    expect(r.body.status).toBe("confirm");
+    expect((r.body.consent as any).as).toEqual({
+      provider: "gamecenter",
+      email: null,
+    });
+  });
+
+  it("Play Games: a linked player signs in", async () => {
+    await link("pgs", `pgs-app:${PGS_APP}`, PLAYER, "pgs");
+    pgsIs();
+    const r = await pgsExchange();
+    expect(r.status).toBe(200);
+    expect(typeof r.body.access_token).toBe("string");
+  });
+
+  it("Play Games: no link is no_link; confirm names pgs", async () => {
+    pgsIs();
+    const none = await pgsExchange();
+    expect(none.status).toBe(403);
+    expect(none.body.reason).toBe("no_link");
+    await link("pgs", `pgs-app:${PGS_APP}`, PLAYER, "pgs", "x@y.z", false);
+    const ask = await pgsExchange();
+    expect(ask.body.status).toBe("confirm");
+    expect((ask.body.consent as any).as).toEqual({
+      provider: "pgs",
+      email: null,
+    });
+  });
+
+  it("Play Games: a hit on the alternate id moves the link to the player id, audited once", async () => {
+    await link("pgs", `pgs-app:${PGS_APP}`, ALT, "pgs");
+    pgsIs(PLAYER, ALT);
+    const first = await pgsExchange();
+    expect(first.status).toBe(200);
+    const rows = await h.db.all<{ subject: string }>(
+      "SELECT subject FROM account_links WHERE kind = 'pgs'",
+    );
+    expect(rows).toEqual([{ subject: PLAYER }]);
+    const audit = await h.db.all<{ summary: string }>(
+      "SELECT summary FROM audit WHERE action = 'identity.link.rekeyed'",
+    );
+    expect(audit).toHaveLength(1);
+    expect(audit[0]!.summary).not.toContain(ALT);
+    // The next sign-in finds it under the player id alone.
+    pgsIs(PLAYER, null);
+    const second = await pgsExchange({ device: DEVICE_2 });
+    expect(second.status).toBe(200);
+  });
+
+  it("Play Games: the same player id in another application misses", async () => {
+    await link("pgs", "pgs-app:999999999999", PLAYER, "pgs");
+    pgsIs();
+    expect((await pgsExchange()).body.reason).toBe("no_link");
+  });
+
+  it("the gate off: both game types are invalid_request and neither verifier runs", async () => {
+    await link("gamecenter", `apple-team:${TEAM}`, GC_SUB, "gamecenter");
+    gcIs();
+    pgsIs();
+    delete (h.env as { LAUNCH_GAME_SIGN_IN?: string }).LAUNCH_GAME_SIGN_IN;
+    for (const run of [gcExchange, pgsExchange]) {
+      const r = await run();
+      expect(r.status).toBe(400);
+      expect(r.body.error).toBe("invalid_request");
+    }
+    expect(verifyGameCenterToken).not.toHaveBeenCalled();
+    expect(verifyPlayGamesCode).not.toHaveBeenCalled();
+  });
+
+  it("an unknown token type is invalid_request", async () => {
+    const r = await exchange(gcMint, { type: "urn:example:nope" });
+    expect(r.body.error).toBe("invalid_request");
+  });
+
+  it("every refusal is the one invalid_grant body; an unreachable host is 503", async () => {
+    const refusals: string[] = [];
+    vi.mocked(verifyGameCenterToken).mockRejectedValue(
+      new OidcVerifyError("a"),
+    );
+    refusals.push((await gcExchange()).text);
+    vi.mocked(verifyPlayGamesCode).mockResolvedValue({
+      ok: false,
+      reason: "invalid_grant",
+    });
+    refusals.push((await pgsExchange()).text);
+    vi.mocked(verifyGameCenterToken).mockRejectedValue(
+      new OidcVerifyError("b"),
+    );
+    refusals.push((await exchange(google(), { token: "bad" })).text);
+    expect(new Set(refusals).size).toBe(1);
+    expect(JSON.parse(refusals[0]!).error).toBe("invalid_grant");
+    vi.mocked(verifyGameCenterToken).mockRejectedValue(
+      new OidcNetworkError("h"),
+    );
+    expect((await gcExchange()).status).toBe(503);
+    vi.mocked(verifyPlayGamesCode).mockResolvedValue({
+      ok: false,
+      reason: "unavailable",
+    });
+    expect((await pgsExchange()).status).toBe(503);
+  });
+
+  it("pgsRedeemBudget answers rate_limited with Retry-After", async () => {
+    pgsIs();
+    vi.mocked(verifyPlayGamesCode).mockResolvedValue({
+      ok: false,
+      reason: "rate_limited",
+    });
+    const r = await pgsExchange();
+    expect(r.status).toBe(429);
+    expect(r.body).toMatchObject({ error: "rate_limited", retryAfter: 60 });
+    expect(r.retryAfter).toBe("60");
+    // Not the refused-code answer, and not the outage answer.
+    expect(r.text).not.toContain("invalid_grant");
+  });
+
+  it("Identity off is 404 for a game type", async () => {
+    await services({ identity: false });
+    gcIs();
+    expect((await gcExchange({ nonce: "x".repeat(20) })).status).toBe(404);
   });
 });

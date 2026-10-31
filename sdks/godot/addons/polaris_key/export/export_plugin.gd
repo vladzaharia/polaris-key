@@ -108,12 +108,19 @@ func _get_export_options(platform: EditorExportPlatform) -> Array[Dictionary]:
 			"default_value": "auto",
 			"update_visibility": true,
 		})
+	if p == "ios" or p == "macos":
+		for name in [Apple.SIGN_IN_OPTION, Apple.GAME_CENTER_OPTION]:
+			options.append({
+				"option": {"name": name, "type": TYPE_BOOL},
+				"default_value": false,
+				"update_visibility": true,
+			})
 	if p == "macos":
 		options.append_array(N.options())
 	return options
 
 
-func _get_export_option_warning(_platform: EditorExportPlatform, option: String) -> String:
+func _get_export_option_warning(platform: EditorExportPlatform, option: String) -> String:
 	match option:
 		S.OPTION_OUTLET:
 			return S.outlet_warning(str(get_option(S.OPTION_OUTLET)))
@@ -128,6 +135,12 @@ func _get_export_option_warning(_platform: EditorExportPlatform, option: String)
 		Apple.OPTION:
 			var v := _values("ios")
 			return _join([Apple.mode_warning(str(get_option(Apple.OPTION)), _outlet_kind(v)), Apple.min_ios_warning(_preset_string("application/min_ios_version"))])
+		Apple.SIGN_IN_OPTION:
+			return Apple.sign_in_warning(_apple_sign_in(), S.platform_for(platform.get_os_name(), PackedStringArray()))
+		Apple.GAME_CENTER_OPTION:
+			var gc_platform := S.platform_for(platform.get_os_name(), PackedStringArray())
+			var gc_note := Apple.sign_in_warning(_apple_game_center(), gc_platform, Apple.GAME_CENTER_OPTION, Apple.ENTITLEMENT_GAME_CENTER)
+			return _join([gc_note, Apple.game_center_warning(_apple_game_center(), Apple.extension_installed(gc_platform))])
 		S.OPTION_OUTLET_IDS:
 			var raw = get_option(S.OPTION_OUTLET_IDS)
 			var parsed: Dictionary = S.parse_outlet_ids(raw)
@@ -158,9 +171,41 @@ func _mac_app_store() -> bool:
 	return _outlet_kind(v) == "app-store"
 
 
+## Whether Sign in with Apple's entitlement is asked for (option or env; off by default).
+func _apple_sign_in() -> bool:
+	return N.truthy(_get_or_env(Apple.SIGN_IN_OPTION, Apple.SIGN_IN_ENV, false))
+
+
+## The warnings of the entitlement options on this platform (macOS has no entitlement text option).
+func _entitlement_warnings(platform: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	out.append(Apple.sign_in_warning(_apple_sign_in(), platform))
+	out.append(Apple.sign_in_warning(_apple_game_center(), platform, Apple.GAME_CENTER_OPTION, Apple.ENTITLEMENT_GAME_CENTER))
+	out.append(Apple.game_center_warning(_apple_game_center(), Apple.extension_installed(platform)))
+	var kept := PackedStringArray()
+	for w in out:
+		if w != "":
+			kept.append(w)
+	return kept
+
+
+## Whether the Game Center entitlement and extension are asked for (option or env; off by default).
+func _apple_game_center() -> bool:
+	return N.truthy(_get_or_env(Apple.GAME_CENTER_OPTION, Apple.GAME_CENTER_ENV, false))
+
+
 func _get_export_options_overrides(platform: EditorExportPlatform) -> Dictionary:
 	var preset := get_export_preset()
-	if preset == null or S.platform_for(platform.get_os_name(), PackedStringArray()) != "macos":
+	if preset == null:
+		return {}
+	var os_name := S.platform_for(platform.get_os_name(), PackedStringArray())
+	if os_name == "ios":
+		# The entitlement rides the preset's own `entitlements/additional` text, which is kept.
+		var fragments := Apple.entitlement_fragments(_apple_sign_in(), _apple_game_center())
+		if fragments.is_empty() or not preset.has(Apple.IOS_ENTITLEMENTS_OPTION):
+			return {}
+		return {Apple.IOS_ENTITLEMENTS_OPTION: Apple.merge_entitlements(str(preset.get(Apple.IOS_ENTITLEMENTS_OPTION)), fragments)}
+	if os_name != "macos":
 		return {}
 	var sp := _sparkle()
 	if not sp["enabled"]:
@@ -216,6 +261,9 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, _f
 	add_file(S.PATH, S.encode(stamp), false)
 	if platform == "ios":
 		_export_apple(v)
+	if platform == "ios" or platform == "macos":
+		for w in _entitlement_warnings(platform):
+			push_warning("Polaris Key Apple plugin: %s" % w)
 
 
 ## The iOS switches (PKeyAppleExport): the Background Assets mark in the Info.plist, and the

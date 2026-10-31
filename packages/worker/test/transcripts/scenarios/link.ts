@@ -52,23 +52,25 @@ const TEAM = "ABCDE12345";
 /** A handle that names nothing: well formed, never issued. */
 const UNKNOWN_HANDLE = `lh_${"A".repeat(43)}`;
 /** Later than the 300 s step-up of the sign-in at T0, earlier than the handle's 600 s. */
-const LATER = T0 + 400;
+export const LATER = T0 + 400;
 
-async function linkWorld(): Promise<{
+export async function linkWorld(
+  make: () => Promise<World> = () => exchangeWorld(["config", "identity"]),
+): Promise<{
   w: World;
   who: { cookie: string; csrf: string };
 }> {
-  const w = await exchangeWorld(["config", "identity"]);
+  const w = await make();
   await registerWebApp(w);
   const ada = await seedAccount(w, "ada@example.com");
   const who = await portalSession(w, { id: ada.id, email: "ada@example.com" });
   return { w, who };
 }
 
-type Rec = TranscriptRecorder;
+export type Rec = TranscriptRecorder;
 
 /** The device registers its keys once it is signed in (the exchange or the SDK's first call). */
-async function holdKeys(w: World): Promise<void> {
+export async function holdKeys(w: World): Promise<void> {
   const keys = fixtureDeviceKeys(KEY_LABEL);
   await upsertDeviceKeys(
     w.db,
@@ -100,7 +102,7 @@ async function handleStep(r: Rec): Promise<string> {
 
 /** The redirect sign-in as the browser and the SDK make it: authorize, Continue, token. The
  *  token response binds `{token}` for the link steps that follow. */
-async function signInSteps(
+export async function signInSteps(
   r: Rec,
   who: { cookie: string; csrf: string },
   o: { now?: number; bearer?: boolean } = {},
@@ -168,7 +170,7 @@ function newRecorder(
 }
 
 /** `GET link`: the kinds the person could add. */
-async function offerStep(
+export async function offerStep(
   r: Rec,
   note: string,
   now: number | undefined,
@@ -187,7 +189,7 @@ async function offerStep(
 
 /** `POST link` with the handle. `proofOver` signs another value (a proof that is not the
  *  handle's). `check` asserts the Worker's answer as an ordinary test. */
-async function linkStep(
+export async function linkStep(
   r: Rec,
   o: {
     note: string;
@@ -235,11 +237,11 @@ async function linkStep(
   );
 }
 
-const LINKED_APPLE: Json = {
+export const LINKED_APPLE: Json = {
   result: "ok",
   linked: { kind: "apple", reach: "developer" },
 };
-const refusal = (code: string, status: number): Json => ({
+export const refusal = (code: string, status: number): Json => ({
   result: "refused",
   status,
   code,

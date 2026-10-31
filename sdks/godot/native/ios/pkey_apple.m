@@ -27,9 +27,27 @@
 
 #include "gdextension_interface.h"
 
-extern char *pkp_call(const char *json);
-extern void pkp_free(char *p);
-extern void pkp_set_event_callback(void (*cb)(const char *json));
+// The same glue builds two extensions (I-48.6a): the Apple platform plugin (PolarisKeyApple over
+// PolarisKeyPlatformC's pkp_*) and, with -DPKEY_GAMECENTER, the opt-in Game Center extension
+// (PolarisKeyGameCenter over PolarisKeyGameCenterC's pkgc_*), so a build links GameKit only for a game
+// that asks for it.
+#ifdef PKEY_GAMECENTER
+#define PKEY_CLASS "PolarisKeyGameCenter"
+#define PKEY_INIT pkey_gamecenter_library_init
+#define PKEY_CALL pkgc_call
+#define PKEY_FREE pkgc_free
+#define PKEY_SET_CALLBACK pkgc_set_event_callback
+#else
+#define PKEY_CLASS "PolarisKeyApple"
+#define PKEY_INIT pkey_apple_library_init
+#define PKEY_CALL pkp_call
+#define PKEY_FREE pkp_free
+#define PKEY_SET_CALLBACK pkp_set_event_callback
+#endif
+
+extern char *PKEY_CALL(const char *json);
+extern void PKEY_FREE(char *p);
+extern void PKEY_SET_CALLBACK(void (*cb)(const char *json));
 
 // ---------------------------------------------------------------------------------------------
 // The event queue (any thread in, the engine main thread out)
@@ -74,9 +92,9 @@ static char *pkey_apple_cmd_c(const char *json) {
                                                           [out componentsJoinedByString:@","]];
             return strdup(joined.UTF8String);
         }
-        char *r = pkp_call(json);
+        char *r = PKEY_CALL(json);
         char *copy = strdup(r ? r : "{\"ok\":false,\"error\":\"bad_json\"}");
-        pkp_free(r);
+        PKEY_FREE(r);
         return copy;
     }
 }
@@ -161,11 +179,11 @@ static void initialize(void *userdata, GDExtensionInitializationLevel level) {
 
     g_events = [NSMutableArray array];
     g_lock = [NSLock new];
-    pkp_set_event_callback(on_event);
+    PKEY_SET_CALLBACK(on_event);
 
     static GSName parent_name, method_name, empty_sn, arg_name;
     static GStr empty_s;
-    sn_new(&g_class_name, "PolarisKeyApple", 1);
+    sn_new(&g_class_name, PKEY_CLASS, 1);
     sn_new(&parent_name, "Object", 1);
     sn_new(&method_name, "cmd", 1);
     sn_new(&empty_sn, "", 1);
@@ -209,12 +227,12 @@ static void initialize(void *userdata, GDExtensionInitializationLevel level) {
 static void deinitialize(void *userdata, GDExtensionInitializationLevel level) {
     (void)userdata;
     if (level != GDEXTENSION_INITIALIZATION_SCENE) return;
-    pkp_set_event_callback(NULL);
+    PKEY_SET_CALLBACK(NULL);
     if (unreg_class) unreg_class(g_library, &g_class_name);
 }
 
 __attribute__((visibility("default"))) GDExtensionBool
-pkey_apple_library_init(GDExtensionInterfaceGetProcAddress gpa, GDExtensionClassLibraryPtr lib,
+PKEY_INIT(GDExtensionInterfaceGetProcAddress gpa, GDExtensionClassLibraryPtr lib,
                         GDExtensionInitialization *r_init) {
     g_library = lib;
     s_new_utf8 = (GDExtensionInterfaceStringNewWithUtf8Chars)gpa("string_new_with_utf8_chars");

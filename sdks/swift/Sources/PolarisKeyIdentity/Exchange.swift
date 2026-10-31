@@ -37,6 +37,16 @@ import PolarisKeyCore
 public enum ExchangeKind: String, Sendable, Equatable, CaseIterable {
     case google
     case apple
+    /// Game Center (§12.11.7): the `gc1.` token, a different `subject_token_type`.
+    case gamecenter
+
+    /// The grant's `subject_token_type`.
+    var subjectTokenType: String {
+        switch self {
+        case .google, .apple: return "urn:ietf:params:oauth:token-type:id_token"
+        case .gamecenter: return "urn:polaris-key:token-type:gamecenter-signature"
+        }
+    }
 }
 
 /// A nonce the Worker issued for one exchange: 300 seconds, spent by the first attempt. Printing
@@ -77,7 +87,8 @@ public struct ExchangeConsent: Sendable, Equatable {
         public let nameVerified: Bool
     }
     public struct Account: Sendable, Equatable {
-        public let provider: String
+        /// The provider the token came from, or nil for a restore (it proves a key, not a provider).
+        public let provider: String?
         /// The token's own address, or nil.
         public let email: String?
     }
@@ -92,7 +103,7 @@ public struct ExchangeConsent: Sendable, Equatable {
     static func read(_ value: JSONValue?) -> ExchangeConsent? {
         guard let o = value?.objectValue, let c = o["client"]?.objectValue,
             let appName = c["appName"]?.stringValue, let a = o["as"]?.objectValue,
-            let provider = a["provider"]?.stringValue, case .array(let items)? = o["items"],
+            case .array(let items)? = o["items"],
             let scopeHash = o["scopeHash"]?.stringValue, let firstTime = o["firstTime"]?.boolValue,
             let changed = o["changed"]?.boolValue
         else { return nil }
@@ -101,7 +112,7 @@ public struct ExchangeConsent: Sendable, Equatable {
                 appName: appName, developerName: c["developerName"]?.stringValue,
                 iconUrl: c["iconUrl"]?.stringValue,
                 nameVerified: c["nameVerified"]?.boolValue ?? false),
-            as: Account(provider: provider, email: a["email"]?.stringValue), items: items,
+            as: Account(provider: a["provider"]?.stringValue, email: a["email"]?.stringValue), items: items,
             scopeHash: scopeHash, firstTime: firstTime, changed: changed)
     }
 }
@@ -120,7 +131,7 @@ public struct PendingConsent: Sendable, Equatable {
 extension PendingConsent: CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public var description: String {
         "PendingConsent(grant: \(redactedCredential), expiresIn: \(expiresIn), "
-            + "provider: \(consent.as.provider), firstTime: \(consent.firstTime))"
+            + "provider: \(consent.as.provider ?? "none"), firstTime: \(consent.firstTime))"
     }
     public var debugDescription: String { description }
     public var customMirror: Mirror {
@@ -205,7 +216,6 @@ struct SignedOutDuringLadder: Error {}
 
 extension IdentityClient {
     static let exchangeGrantType = "urn:ietf:params:oauth:grant-type:token-exchange"
-    static let idTokenType = "urn:ietf:params:oauth:token-type:id_token"
 
     /// Ask the Worker for a nonce for `kind`, registering this device's public keys with it. Send
     /// the value to the platform, then pass it to `exchange(kind:subjectToken:nonce:)`.
@@ -265,7 +275,7 @@ extension IdentityClient {
             tokenHash: Base64URL.encode(Data(SHA256.hash(data: Data(subjectToken.utf8)))))
         let pairs: [(String, String)] = [
             ("grant_type", Self.exchangeGrantType), ("client_id", core.product),
-            ("subject_token", subjectToken), ("subject_token_type", Self.idTokenType),
+            ("subject_token", subjectToken), ("subject_token_type", kind.subjectTokenType),
             ("nonce", value), ("device_key", keys.signKey), ("proof", proof.sig),
         ]
         let form = pairs.map { "\(ManageLink.formEncode($0.0))=\(ManageLink.formEncode($0.1))" }
@@ -298,7 +308,7 @@ extension IdentityClient {
 
     /// The key port, or nil when its keys die with the process: registering them would bind the
     /// device to a key it cannot present again.
-    private func exchangePort() async throws -> (any DeviceKeyPort)? {
+    func exchangePort() async throws -> (any DeviceKeyPort)? {
         var held = deviceKeys.current
         if held == nil {
             let made = try DeviceKeyStore(productSlug: core.product, accessGroup: core.keychainAccessGroup)
@@ -317,7 +327,7 @@ extension IdentityClient {
     }
 
     /// `count` characters of the base64url alphabet: a shape check, as the redirect grant's.
-    private static func urlSafe(_ s: String, count: Int) -> Bool {
+    static func urlSafe(_ s: String, count: Int) -> Bool {
         s.utf8.count == count
             && s.utf8.allSatisfy {
                 ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x41 && $0 <= 0x5A) || ($0 >= 0x61 && $0 <= 0x7A)
@@ -346,7 +356,7 @@ extension IdentityClient {
     // ── Transport and answers ────────────────────────────────────────────────────────────
 
     /// No bearer: the proof and the nonce are the credentials, bound to this device.
-    private func exchangeSend(_ url: URL, contentType: String, body: Data) async throws -> PolarisResponse {
+    func exchangeSend(_ url: URL, contentType: String, body: Data) async throws -> PolarisResponse {
         do {
             return try await core.request(
                 url, method: "POST", headers: ["content-type": contentType], body: body)
@@ -357,11 +367,11 @@ extension IdentityClient {
         }
     }
 
-    private func exchangeBody(_ response: PolarisResponse) -> JSONValue? {
+    func exchangeBody(_ response: PolarisResponse) -> JSONValue? {
         try? JSONDecoder().decode(JSONValue.self, from: response.body)
     }
 
-    private func exchangeOutcome(_ response: PolarisResponse, ladderGeneration: Int?) async throws
+    func exchangeOutcome(_ response: PolarisResponse, ladderGeneration: Int?) async throws
         -> ExchangeOutcome
     {
         let body = exchangeBody(response)
@@ -407,6 +417,7 @@ extension IdentityClient {
             if redirectAcquisitionSync.current { await onAcquired?() }
             announceSubject(subject, previous: previous)
             notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
+            await restoreSignInCompleted()
             return .signedIn(
                 SignInReady(
                     identity: nil, attached: nil, subject: subject, scope: scope,
@@ -454,7 +465,7 @@ extension IdentityClient {
 
     /// A refusal: the flat OAuth `{"error": "code"}` or the nested `{"error": {"code"}}` body. A 5xx
     /// or a body with no code is `server_error`. Nothing of the request is echoed.
-    private func exchangeRefusal(_ response: PolarisResponse) -> ExchangeError {
+    func exchangeRefusal(_ response: PolarisResponse) -> ExchangeError {
         let object = exchangeBody(response)?.objectValue ?? [:]
         let code = object["error"]?.stringValue ?? object["error"]?.objectValue?["code"]?.stringValue
         var retry = wholeSeconds(object["retryAfter"]?.doubleValue)

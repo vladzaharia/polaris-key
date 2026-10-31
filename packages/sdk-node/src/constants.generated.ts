@@ -730,6 +730,7 @@ export const Feature = {
   identityGamecenter: "identity.gamecenter",
   identityPgs: "identity.pgs",
   identityAutosignin: "identity.autosignin",
+  identityRestore: "identity.restore",
   identityLink: "identity.link",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
@@ -874,6 +875,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.gamecenter",
   "identity.pgs",
   "identity.autosignin",
+  "identity.restore",
   "identity.link",
   "release.changelog",
   "release.download",
@@ -2168,6 +2170,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [{ runtime: "node", reason: "runtime" }],
   },
   "identity.autosignin": { status: "planned", service: "identity", na: [] },
+  "identity.restore": {
+    status: "na",
+    service: "identity",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
   "identity.link": {
     status: "na",
     service: "identity",
@@ -2297,4 +2304,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "16a1c19ba0323ee376b8d9ab8b02a7d2d071debc7bce5ba6f23342e788051005";
+  "3a1e8a718760ae46175967ad152e67cc8643de1a6e003ce6e9fcda95fb4b7562";

@@ -1,0 +1,697 @@
+{
+  "transcriptVersion": 1,
+  "id": "link-game",
+  "description": "Linking a game identity after a regular sign-in (WIRE-CONTRACT-V5 §12.11.4, §12.11.7). A Game Center exchange found no link and answered a link handle. The person signs in on this device through the browser, which leaves a step-up of 300 s. GET link names the kinds the person could add: a game kind always carries reach developer, known before any token. POST link with the handle and a pkey-proof/1 link proof adds the Game Center identity under the developer's team. A later sign-in earns a new step-up. Play Games has no handle in this conversation: POST link carries the server auth code as subjectToken with subjectTokenType urn:polaris-key:token-type:pgs-server-auth-code, a nonce, the device's keys and a proof over the nonce, the key and the token's hash. The Worker redeems the code and adds the Play Games identity under the product's application. Each link spends the step-up, so the offer drops the kind that was added.",
+  "features": ["identity.link", "identity.gamecenter", "identity.pgs"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "exchange",
+      "note": "No account links this team player: the answer carries the link handle.",
+      "args": {
+        "kind": "gamecenter",
+        "keyLabel": "transcript-device-key-1",
+        "gameCenter": {
+          "publicKeyUrl": "https://static.gc.apple.com/public-key/gc-prod-12.cer",
+          "signature": "hDC8IrR-CHInlJdzFrBIaZ0NDwD9w12SRB0aeHXgSzitCf8yd5M-pzuSWbDszufrYU27rgn_MDcp-NgpMTOrouoATbrumBvI7Co0fZuQ2BjPYsGrSQXVt58c1IYlaq--NxPxEP1XRsYGnb537-nce67ZdJDEy8xlITe-HPyhQ0GaeF2-KJpgPfFI2IeCTzQMb3DrHm5xXsi5HmzDDg61YkL0ByrsCtzeFulsWxZPi1Nvh_V-UY6M6hqCdGSwG_4MEYPClEcn1ldCH-5Bbfd9XNNg62hXxgvpHn2PE6Sc1xFuFGsTA4FKmXIGJmgdeOhUrFpRKcp-yrMjYq4yj2JEbg",
+          "salt": "UEtleQECAwQ",
+          "timestamp": 1699999995000,
+          "teamPlayerId": "T:transcript-team-player-1",
+          "bundleId": "com.acme.mac"
+        }
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "vu88yNyfv_YQt_gFk0rdYK4lHzmAiB0FvaKNBwo-hFQ",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "gc1.aHR0cHM6Ly9zdGF0aWMuZ2MuYXBwbGUuY29tL3B1YmxpYy1rZXkvZ2MtcHJvZC0xMi5jZXI.hDC8IrR-CHInlJdzFrBIaZ0NDwD9w12SRB0aeHXgSzitCf8yd5M-pzuSWbDszufrYU27rgn_MDcp-NgpMTOrouoATbrumBvI7Co0fZuQ2BjPYsGrSQXVt58c1IYlaq--NxPxEP1XRsYGnb537-nce67ZdJDEy8xlITe-HPyhQ0GaeF2-KJpgPfFI2IeCTzQMb3DrHm5xXsi5HmzDDg61YkL0ByrsCtzeFulsWxZPi1Nvh_V-UY6M6hqCdGSwG_4MEYPClEcn1ldCH-5Bbfd9XNNg62hXxgvpHn2PE6Sc1xFuFGsTA4FKmXIGJmgdeOhUrFpRKcp-yrMjYq4yj2JEbg.UEtleQECAwQ.1699999995000.VDp0cmFuc2NyaXB0LXRlYW0tcGxheWVyLTE.Y29tLmFjbWUubWFj",
+                  "subject_token_type": "urn:polaris-key:token-type:gamecenter-signature",
+                  "nonce": "vu88yNyfv_YQt_gFk0rdYK4lHzmAiB0FvaKNBwo-hFQ",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "BH3iSJqDO1LUl1201rajIYHAgeoskb79w54uY5TUCKDtvSYebixo5PEYWtBepMb5C3oagCcpx8xFf2mMsm-4AA"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 403,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "interstitial_required",
+                "reason": "no_link",
+                "url": "https://key.plrs.im/djdl/identity/authorize",
+                "linkHandle": "lh_uomljrCm5ZQKZyDRZ4CjI3MT2j0LUC-OVVnsTIR2xcQ",
+                "expiresIn": 600
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "interstitial-required" }
+    },
+    {
+      "action": "browser",
+      "note": "The app sends the person's browser to authorize.",
+      "args": {
+        "state": "tidewater-state-0123456789",
+        "redirectUri": "https://app.example/auth/callback",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/identity/authorize?response_type=code&client_id=djdl&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&state=tidewater-state-0123456789&code_challenge=-583Jx3Gn4AKAj7xr5NSDQ3V6snyKHhZUDKua28Tp10&code_challenge_method=S256&scope=profile+email",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 303,
+              "headers": {
+                "cache-control": "no-store",
+                "location": "https://key.plrs.im/signin?request=rq_R_7Tg21aIU_nlm6K3cFdjA"
+              },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "card" }
+    },
+    {
+      "action": "browser",
+      "note": "Continue to the app: the sign-in on this device is the step-up.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/api/signin/requests/rq_R_7Tg21aIU_nlm6K3cFdjA/continue",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": {
+                "redirect": "https://app.example/auth/callback?code=27_7lbTrLNJoyDguS3HqWnBf79PC9ygfqwR0vBvk7bg&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity"
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "app" }
+    },
+    {
+      "action": "redirectComplete",
+      "note": "The SDK redeems the code; the device token it holds is the bearer of the link calls.",
+      "args": {
+        "callbackUrl": "https://app.example/auth/callback?code=27_7lbTrLNJoyDguS3HqWnBf79PC9ygfqwR0vBvk7bg&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+        "state": "tidewater-state-0123456789"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "authorization_code",
+                  "client_id": "djdl",
+                  "code": "27_7lbTrLNJoyDguS3HqWnBf79PC9ygfqwR0vBvk7bg",
+                  "code_verifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+                  "redirect_uri": "https://app.example/auth/callback"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "code",
+                  "code_verifier",
+                  "redirect_uri",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_eP_9O9S06z9Zt8FZX3Tk_8ITOLDEJpGGV-Yhi7I4gjI",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000000,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": null,
+                "subject": "ps_jnh5DJy5BKDO4KEeU_G5Sg"
+              }
+            },
+            "capture": { "token": "$.access_token" }
+          }
+        ]
+      },
+      "expect": { "result": "ok", "scope": "profile email", "tokenHeld": true }
+    },
+    {
+      "action": "linkOffer",
+      "note": "The offer names the game kinds with their reach.",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/identity/link",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "offer": [
+                  { "kind": "google", "reach": null },
+                  { "kind": "apple", "reach": null },
+                  { "kind": "gamecenter", "reach": "developer" },
+                  { "kind": "pgs", "reach": "developer" }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "offer": [
+          { "kind": "google", "reach": null },
+          { "kind": "apple", "reach": null },
+          { "kind": "gamecenter", "reach": "developer" },
+          { "kind": "pgs", "reach": "developer" }
+        ]
+      }
+    },
+    {
+      "action": "link",
+      "note": "Link by handle: the Game Center identity is added.",
+      "args": {
+        "linkHandle": "lh_uomljrCm5ZQKZyDRZ4CjI3MT2j0LUC-OVVnsTIR2xcQ",
+        "keyLabel": "transcript-device-key-1"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/link",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "linkHandle": "lh_uomljrCm5ZQKZyDRZ4CjI3MT2j0LUC-OVVnsTIR2xcQ",
+                  "proof": "ZisqSwtivHdWTIGcO5ro956e0NHIdDtN3xkuoY9VMnTtnNqeN9Du9zC9tX-N0Y56QVXlO4_Wud5TotGj5MctCg"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "linked": { "kind": "gamecenter", "reach": "developer" }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "linked": { "kind": "gamecenter", "reach": "developer" }
+      }
+    },
+    {
+      "action": "browser",
+      "note": "The app sends the person's browser to authorize.",
+      "args": {
+        "state": "tidewater-state-0123456789",
+        "redirectUri": "https://app.example/auth/callback",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst"
+      },
+      "now": 1700000400,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/identity/authorize?response_type=code&client_id=djdl&redirect_uri=https%3A%2F%2Fapp.example%2Fauth%2Fcallback&state=tidewater-state-0123456789&code_challenge=-583Jx3Gn4AKAj7xr5NSDQ3V6snyKHhZUDKua28Tp10&code_challenge_method=S256&scope=profile+email",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 303,
+              "headers": {
+                "cache-control": "no-store",
+                "location": "https://key.plrs.im/signin?request=rq_A-N1dXuqbcyapO6t7_HPUw"
+              },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "card" }
+    },
+    {
+      "action": "browser",
+      "note": "Continue to the app: the sign-in on this device is the step-up.",
+      "args": {},
+      "now": 1700000400,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/api/signin/requests/rq_A-N1dXuqbcyapO6t7_HPUw/continue",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json; charset=utf-8"
+              },
+              "body": {
+                "redirect": "https://app.example/auth/callback?code=O1dS-j09cLMKU6zMvQzcPLBzoryHcjfPzAOknUwk540&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity"
+              }
+            }
+          }
+        ]
+      },
+      "expect": { "navigated": "app" }
+    },
+    {
+      "action": "redirectComplete",
+      "note": "The SDK redeems the code; the device token it holds is the bearer of the link calls.",
+      "args": {
+        "callbackUrl": "https://app.example/auth/callback?code=O1dS-j09cLMKU6zMvQzcPLBzoryHcjfPzAOknUwk540&state=tidewater-state-0123456789&iss=https%3A%2F%2Fkey.plrs.im%2Fdjdl%2Fidentity",
+        "codeVerifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+        "state": "tidewater-state-0123456789"
+      },
+      "now": 1700000400,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "authorization_code",
+                  "client_id": "djdl",
+                  "code": "O1dS-j09cLMKU6zMvQzcPLBzoryHcjfPzAOknUwk540",
+                  "code_verifier": "transcript-verifier-0123456789-abcdefghijklmnopqrst",
+                  "redirect_uri": "https://app.example/auth/callback"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "code",
+                  "code_verifier",
+                  "redirect_uri",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_B28vJ9lRoX29SoqkP25YuYYojhk-aLSne1th12zKHFs",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000400,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": null,
+                "subject": "ps_jnh5DJy5BKDO4KEeU_G5Sg"
+              }
+            },
+            "capture": { "token": "$.access_token" }
+          }
+        ]
+      },
+      "expect": { "result": "ok", "scope": "profile email", "tokenHeld": true }
+    },
+    {
+      "action": "linkOffer",
+      "note": "Game Center is linked: the offer no longer names it.",
+      "args": {},
+      "now": 1700000400,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/identity/link",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "offer": [
+                  { "kind": "google", "reach": null },
+                  { "kind": "apple", "reach": null },
+                  { "kind": "pgs", "reach": "developer" }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "offer": [
+          { "kind": "google", "reach": null },
+          { "kind": "apple", "reach": null },
+          { "kind": "pgs", "reach": "developer" }
+        ]
+      }
+    },
+    {
+      "action": "link",
+      "note": "Link by token: the server auth code is redeemed and the Play Games identity is added.",
+      "args": {
+        "keyLabel": "transcript-device-key-1",
+        "subjectTokenType": "urn:polaris-key:token-type:pgs-server-auth-code",
+        "serverAuthCode": "4/transcript-server-auth-code"
+      },
+      "now": 1700000400,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "MaUZzUEnNmlywjEpp9Bn8LqBcOvQKGWnSzeyvvSBcZo",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/link",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "subjectToken": "4/transcript-server-auth-code",
+                  "subjectTokenType": "urn:polaris-key:token-type:pgs-server-auth-code",
+                  "nonce": "MaUZzUEnNmlywjEpp9Bn8LqBcOvQKGWnSzeyvvSBcZo",
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM",
+                  "proof": "TC_Wjhu6bqV7quFtw1KHR-dELI4VdlMmS4RimTu0c_Iofww-J1YN15jp9wOCEaeo2vCzT-S2aLLKqpTX4zFRDg"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "linked": { "kind": "pgs", "reach": "developer" } }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "linked": { "kind": "pgs", "reach": "developer" }
+      }
+    }
+  ]
+}

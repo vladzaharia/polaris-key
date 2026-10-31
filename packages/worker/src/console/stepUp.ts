@@ -140,6 +140,11 @@ export const STEP_UP_ROUTES: readonly StepUpRoute[] = [
   },
   {
     method: "POST",
+    path: "/products/:slug/identity/restore/purge",
+    why: "retires every silent-restore key apps saved in a backup",
+  },
+  {
+    method: "POST",
     path: "/platform/connections",
     why: "adds a sign-in provider and seals its secret",
   },

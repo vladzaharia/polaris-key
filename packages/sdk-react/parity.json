@@ -263,9 +263,14 @@
       "note": "Play Games runs only on Android."
     },
     "identity.autosignin": {
-      "status": "planned",
-      "wp": "I-46",
-      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-46)."
+      "status": "implemented",
+      "note": "I-46: usePolarisAuth().autoSignIn() runs the ladder (a stored token, the provider silently through FedCM, its chooser only with prompt optional); a result, never a throw. The gate runs it once at boot and Provider autoSignIn={false} turns it off. The desktop bridge and a local adapter hold no platform sign-in and answer unavailable (runtime); the gate stays on Welcome. test/autoSignIn.test.ts runs it against a scripted Worker."
+    },
+    "identity.restore": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "A browser has no platform backup item and the desktop renderer holds no device key (I-49)."
     },
     "identity.link": {
       "status": "implemented",

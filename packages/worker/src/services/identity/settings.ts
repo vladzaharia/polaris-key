@@ -35,6 +35,7 @@ import {
   MAX_GOOGLE_CLIENT_IDS,
   MAX_IDENTITY_REDIRECT_PATH_LENGTH,
   MAX_IDENTITY_REDIRECT_PATHS,
+  PLAY_GAMES_APPLICATION_ID_RE,
   OIDC_SYNC_TIER_ON_SIGN_IN_VALUES,
   type OidcSyncTierOnSignIn,
   type ParsedManifest,
@@ -301,6 +302,7 @@ function audienceSetting(
   value: SettingDef["value"],
   defaultValue: unknown,
   uniqueAcrossProducts = false,
+  since = "I-42.2",
 ): SettingDef {
   return setting({
     key,
@@ -327,7 +329,7 @@ function audienceSetting(
     visibleWhen: VISIBLE,
     storage: { kind: "scalar" },
     readers: ["services/identity/platformSignIn.ts"],
-    since: "I-42.2",
+    since,
   });
 }
 
@@ -379,6 +381,57 @@ const PS_APPLE_BUNDLES = audienceSetting(
   },
   [],
 );
+/** I-14.3: Game Center sign-in on or off; it uses the Apple team id and bundle ids above. */
+const PS_GAME_CENTER: SettingDef = setting({
+  key: "identity.platformSignIn.gameCenter",
+  rbacArea: "keys",
+  scope: "product",
+  service: "identity",
+  area: PS_AREA,
+  label: "Game Center",
+  description:
+    "Whether players can sign in with Game Center. Uses the Apple team id and bundle ids.",
+  keywords: ["game center", "apple", "gamekit", "player"],
+  docs: PLATFORM_SIGN_IN_DOCS,
+  value: { kind: "boolean" },
+  defaultValue: false,
+  merge: "cascade",
+  ownership: "claimable",
+  manifest: { path: "product:identity.platformSignIn.gameCenter" },
+  securityWidening: true,
+  widensWhen: "on",
+  critical: true,
+  confirm: { on: "L1", off: "L0" },
+  reservedFrom: PLATFORM_CLIENT_VARS,
+  visibleWhen: VISIBLE,
+  storage: { kind: "scalar" },
+  readers: ["services/identity/platformSignIn.ts"],
+  since: "I-14.3",
+});
+const PS_PLAY_APP = audienceSetting(
+  "identity.platformSignIn.playGames.applicationId",
+  "Play Games application id",
+  "The application id from Play Console, under Play Games Services.",
+  ["play games", "pgs", "google", "application id"],
+  {
+    kind: "string",
+    pattern: PLAY_GAMES_APPLICATION_ID_RE.source,
+    maxLength: 20,
+  },
+  null,
+  true,
+  "I-14.3",
+);
+const PS_PLAY_SERVER = audienceSetting(
+  "identity.platformSignIn.playGames.serverClientId",
+  "Play Games server client id",
+  "The Web client id of the game server credential. Set its secret in Credentials.",
+  ["play games", "pgs", "google", "oauth", "server client"],
+  GOOGLE_ID_SPEC,
+  null,
+  true,
+  "I-14.3",
+);
 /** `identity.nearby`: on unless a developer switches it off; widens nothing by itself. */
 const NEARBY: SettingDef = setting({
   key: "identity.nearby",
@@ -403,6 +456,36 @@ const NEARBY: SettingDef = setting({
   since: "I-42.2",
 });
 
+/**
+ * `identity.restore` (I-49.6; plans/I-49-slices.md D-6): the developer's opt-out of silent restore.
+ * On unless a developer switches it off; switching it off narrows what the app does and widens
+ * nothing. It only gates enrolling and redeeming: stored keys stay inert and every revocation
+ * still runs (`restore/gate.ts`).
+ */
+export const IDENTITY_RESTORE_SETTING = "identity.restore";
+export const IDENTITY_RESTORE: SettingDef = setting({
+  key: IDENTITY_RESTORE_SETTING,
+  rbacArea: "keys",
+  scope: "product",
+  service: "identity",
+  area: PS_AREA,
+  label: "Sign back in on a new device",
+  description:
+    "Whether a signed-in app may keep a restore key in the person's own backup, so it signs them in again on a new device with no click. On unless you turn it off. Off stops new keys and sign-ins from stored ones; keys already stored are removed when the person signs out.",
+  keywords: ["restore", "backup", "new device", "silent sign-in"],
+  docs: "/docs/features/sign-in/",
+  value: { kind: "boolean" },
+  defaultValue: true,
+  merge: "cascade",
+  ownership: "claimable",
+  manifest: { path: "product:identity.restore" },
+  confirm: { on: "L0", off: "L0" },
+  visibleWhen: VISIBLE,
+  storage: { kind: "scalar" },
+  readers: ["services/identity/restore/gate.ts"],
+  since: "I-49.6",
+});
+
 /** `browserSession.ts`'s 30-day browser session: a product may only shorten it (rule 3). */
 const BROWSER_SESSION_DAYS = 30;
 
@@ -419,7 +502,11 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
     PS_GOOGLE_CLIENTS,
     PS_APPLE_TEAM,
     PS_APPLE_BUNDLES,
+    PS_GAME_CENTER,
+    PS_PLAY_APP,
+    PS_PLAY_SERVER,
     NEARBY,
+    IDENTITY_RESTORE,
     setting({
       key: "identity.oidc",
       rbacArea: "keys",
@@ -544,7 +631,11 @@ export const IDENTITY_ROW_SETTINGS: readonly SettingDef[] = [
   PS_GOOGLE_CLIENTS,
   PS_APPLE_TEAM,
   PS_APPLE_BUNDLES,
+  PS_GAME_CENTER,
+  PS_PLAY_APP,
+  PS_PLAY_SERVER,
   NEARBY,
+  IDENTITY_RESTORE,
 ];
 
 /** The platform-sign-in rows, in the order the console lists them. */
@@ -553,7 +644,11 @@ export const PLATFORM_SIGN_IN_SETTINGS: readonly SettingDef[] = [
   PS_GOOGLE_CLIENTS,
   PS_APPLE_TEAM,
   PS_APPLE_BUNDLES,
+  PS_GAME_CENTER,
+  PS_PLAY_APP,
+  PS_PLAY_SERVER,
   NEARBY,
+  IDENTITY_RESTORE,
 ];
 
 /**

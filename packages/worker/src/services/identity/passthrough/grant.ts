@@ -61,12 +61,15 @@ export interface GrantRecord {
    * §12.5.1 rule 5). That channel can be phished, so this grant never carries `fresh`, cannot list
    * a licence's devices and cannot Replace.
    */
-  via?: "device";
+  via?: "device" | "restore";
   /**
    * Set when the exchange answered `confirm` (I-13.5): `choice/complete` then needs the person's
    * `consent` and writes the app consent against this hash, the one the person was shown.
    */
   consent?: { scopeHash: string };
+  // `via: "restore"` (I-49.7): earned by a silent-restore grant; `choice/complete` then marks the
+  // device as signed in by restore, registers its keys `via: "restore"`, audits `signin.restore`
+  // and sends the notice.
   /** Reads spent so far. */
   reads: number;
   /** Epoch seconds the grant ends, for restoring it after a retryable refusal. */

@@ -1,0 +1,401 @@
+{
+  "transcriptVersion": 1,
+  "id": "restore-happy",
+  "description": "A new device of a person who was signed in, with the restore key its platform backup carried (I-49, WIRE-CONTRACT-V5 §12.11.8). Discovery names restore. The device posts the restore grant as a form: grant_type urn:polaris-key:grant-type:restore, client_id, restore_id, restore_secret, its device_key and agree_key, and the pkey-proof/1 restore proof (value <restore_id>.<device_key>, the sixth line the SHA-256 of the secret). The person has already consented to this app, so the answer is a device token and the SDK holds it: no click. The key is used up. The device then enrols a key of its own, POST restore {} answering 201 {restoreId, secret}, which the client writes into the backup; a check with that id answers 200 current; and past 90 days the same call answers 201 with a new key that replaces it.",
+  "features": ["identity.restore"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 5,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "requires-identity",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report",
+                    "deviceKeys": "https://key.plrs.im/djdl/devices/keys",
+                    "register": "https://key.plrs.im/djdl/devices/register"
+                  },
+                  "portal": {
+                    "enabled": true,
+                    "activate": "https://key.plrs.im/activate?product=djdl"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": { "enabled": false },
+                  "config": {
+                    "enabled": true,
+                    "schemaVersion": 1,
+                    "endpoints": {
+                      "document": "https://key.plrs.im/djdl/config/document",
+                      "schema": "https://key.plrs.im/djdl/config/schema"
+                    },
+                    "mint": { "available": false }
+                  },
+                  "release": { "enabled": false },
+                  "distribution": { "enabled": false },
+                  "update": { "enabled": false },
+                  "identity": {
+                    "enabled": true,
+                    "configured": true,
+                    "issuer": "https://key.plrs.im/djdl/identity",
+                    "account": true,
+                    "keyEntryLimit": 10,
+                    "restore": true,
+                    "endpoints": {
+                      "session": "https://key.plrs.im/djdl/identity/session",
+                      "sessionLicense": "https://key.plrs.im/djdl/identity/session/license",
+                      "authStart": "https://key.plrs.im/djdl/identity/auth/start",
+                      "authCallback": "https://key.plrs.im/djdl/identity/auth/callback",
+                      "authLogout": "https://key.plrs.im/djdl/identity/auth/logout",
+                      "authDeviceStart": "https://key.plrs.im/djdl/identity/auth/device/start",
+                      "authDeviceEntry": "https://key.plrs.im/djdl/identity/auth/device",
+                      "authDeviceVerify": "https://key.plrs.im/djdl/identity/auth/device/verify",
+                      "authDevicePoll": "https://key.plrs.im/djdl/identity/auth/device/poll",
+                      "authorize": "https://key.plrs.im/djdl/identity/authorize",
+                      "token": "https://key.plrs.im/djdl/identity/token",
+                      "choiceLicenses": "https://key.plrs.im/djdl/identity/choice/licenses",
+                      "choiceDevices": "https://key.plrs.im/djdl/identity/choice/devices",
+                      "choiceComplete": "https://key.plrs.im/djdl/identity/choice/complete",
+                      "choiceCancel": "https://key.plrs.im/djdl/identity/choice/cancel",
+                      "attach": "https://key.plrs.im/djdl/identity/attach",
+                      "subject": "https://key.plrs.im/djdl/identity/subject",
+                      "signout": "https://key.plrs.im/djdl/identity/signout",
+                      "restore": "https://key.plrs.im/djdl/identity/restore",
+                      "nonce": "https://key.plrs.im/djdl/identity/nonce",
+                      "link": "https://key.plrs.im/djdl/identity/link",
+                      "accountPortal": "https://key.plrs.im/#/p/djdl"
+                    }
+                  },
+                  "sync": { "enabled": false },
+                  "commerce": { "enabled": false },
+                  "connect": { "enabled": false }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "services": {
+          "license": false,
+          "config": true,
+          "release": false,
+          "distribution": false,
+          "update": false,
+          "identity": true,
+          "sync": false,
+          "commerce": false,
+          "connect": false
+        },
+        "restore": true,
+        "restoreEndpoint": true
+      }
+    },
+    {
+      "action": "restoreRedeem",
+      "note": "The backup's key, once: a device token.",
+      "args": {
+        "keyLabel": "transcript-restore-key-1",
+        "restoreId": "rk_mGjWVP1Jfb9eQJcoZkogvA",
+        "restoreSecret": "rs_RbCfrvvgMUNh9oKZ3yqFc8rygtfSQqCZymVu_7ggAs0"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:polaris-key:grant-type:restore",
+                  "client_id": "djdl",
+                  "restore_id": "rk_mGjWVP1Jfb9eQJcoZkogvA",
+                  "restore_secret": "rs_RbCfrvvgMUNh9oKZ3yqFc8rygtfSQqCZymVu_7ggAs0",
+                  "device_key": "OPxKhcjiEVaZG72-6SccbfMR6QrG-0LlopuMMyMFTA4",
+                  "agree_key": "WXUTHGEMtA-LpOlfvB4-I0me88igyTyAP9a5qOoEcWc",
+                  "proof": "9uekaKNvESkDHvgdnoyAe3h6akpZst9olNtCg2kNck8iKTVPMlvrh7weXRnx6RF37NKR6eFM4E6nMR_T9YM1BQ"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "restore_id",
+                  "restore_secret",
+                  "device_key",
+                  "agree_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "access_token": "pkeyt_K77T4zZUQ-GGaIno0JG_8ujVJsW7fe9mdYnG0x2_5VA",
+                "token_type": "Bearer",
+                "scope": "profile email",
+                "schemaVersion": 1,
+                "device": {
+                  "id": "TRANSCRIPTDEVICE0000000000000001",
+                  "licenseId": "",
+                  "label": null,
+                  "status": "authorized",
+                  "current": true,
+                  "firstSeen": 1700000000,
+                  "lastSeen": 1700000000,
+                  "userAgent": null,
+                  "platform": "linux",
+                  "arch": "x86_64",
+                  "appVersion": "1.0.0",
+                  "sdkName": "pkey-transcript-recorder",
+                  "sdkVersion": "1"
+                },
+                "license": null,
+                "subject": "ps_NhUfOFfwBwkDcsQv0KQyQA",
+                "issued_token_type": "urn:polaris-key:token-type:device"
+              }
+            },
+            "capture": { "token": "$.access_token" }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "tokenHeld": true,
+        "scope": "profile email",
+        "issuedTokenType": "urn:polaris-key:token-type:device",
+        "licenseId": null
+      }
+    },
+    {
+      "action": "restoreEnroll",
+      "note": "Signed in: enrol a key of its own. The secret comes once, in the 201.",
+      "args": {},
+      "now": 1700000060,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/restore",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": { "json": {}, "match": "exact" }
+            },
+            "response": {
+              "status": 201,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "restoreId": "rk_ZzlEKqRYAdStRbj-Kv5sYQ",
+                "secret": "rs_3UwyMjs4oYt8J2QGvvOWBM9F1o03kxkYdZv7DQ2ipCc"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "enrolled",
+        "restoreId": "rk_ZzlEKqRYAdStRbj-Kv5sYQ",
+        "secret": "rs_3UwyMjs4oYt8J2QGvvOWBM9F1o03kxkYdZv7DQ2ipCc"
+      }
+    },
+    {
+      "action": "restoreEnroll",
+      "note": "A day later, a check with the held id: this device's live key, 200 current.",
+      "args": { "restoreId": "rk_ZzlEKqRYAdStRbj-Kv5sYQ" },
+      "now": 1700086460,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/restore",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "restoreId": "rk_ZzlEKqRYAdStRbj-Kv5sYQ" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "status": "current" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "current" }
+    },
+    {
+      "action": "restoreEnroll",
+      "note": "Past 90 days the key is no longer current: a new key replaces it (201).",
+      "args": { "restoreId": "rk_ZzlEKqRYAdStRbj-Kv5sYQ" },
+      "now": 1707862400,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/restore",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "restoreId": "rk_ZzlEKqRYAdStRbj-Kv5sYQ" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 201,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "restoreId": "rk_nP8j7rqZWDfyp0KJMB9-kw",
+                "secret": "rs_CFsQy_MhFQK3CwKltC2DptfsSXHYBaqBJmVhC6gYHQE"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "enrolled",
+        "restoreId": "rk_nP8j7rqZWDfyp0KJMB9-kw",
+        "secret": "rs_CFsQy_MhFQK3CwKltC2DptfsSXHYBaqBJmVhC6gYHQE"
+      }
+    }
+  ]
+}

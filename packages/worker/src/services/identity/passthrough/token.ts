@@ -41,6 +41,7 @@
  */
 
 import {
+  RESTORE_GRANT_TYPE,
   TOKEN_EXCHANGE_GRANT_TYPE,
   type KeyReturnTokenResponse,
   type TokenResponse,
@@ -97,7 +98,14 @@ import {
 import { bindWithoutChoice, settleAppMode } from "./settle.js";
 import { launchGateOn } from "../../../core/settings/platformRead.js";
 import { handleExchange } from "./exchange.js";
+import { handleRestoreGrant } from "./restore.js";
 import { markFresh } from "./fresh.js";
+import { restoreServed } from "../restore/gate.js";
+import { markRestoreOrigin } from "../restore/store.js";
+import {
+  deviceBelongsElsewhere,
+  sendRestoreNotice,
+} from "../restore/signedIn.js";
 
 // `choice/complete` binds without a choice through the same function (settle.ts).
 export { bindWithoutChoice };
@@ -196,6 +204,13 @@ export async function handleToken(ctx: {
     (await launchGateOn(env, db, "launch.identityExchange"))
   )
     return handleExchange({ req, env, db, product, now, form, settings });
+  // I-49.7 (§12.11.8 step 1): with the launch gate, the product setting or Identity off the grant
+  // is not one this build knows, and nothing has been read or consumed.
+  if (
+    grant === RESTORE_GRANT_TYPE &&
+    (await restoreServed(env, db, product.slug))
+  )
+    return handleRestoreGrant({ req, env, db, product, now, form, settings });
   if (grant !== "authorization_code")
     return oauth(400, ErrorCode.UnsupportedGrantType);
   const clientId = form.get("client_id");
@@ -411,6 +426,12 @@ export interface SignedIn {
    * with a free seat then binds with no tap. Never set by `authorization_code`.
    */
   silentSingle?: boolean;
+  /**
+   * A sign-in by silent-restore key (I-49.7): the device row must not belong to another subject or
+   * licence, the grant a choice leaves open carries it, and once the device is bound it is marked
+   * as signed in by restore, its keys are registered `via: "restore"` and the notice goes out.
+   */
+  via?: "restore";
 }
 
 /**
@@ -446,6 +467,13 @@ export async function bindAndAnswer(
       ? proven
       : null;
 
+  // I-49.7: a restore never takes over a device row that belongs to another person or licence.
+  if (
+    p.via === "restore" &&
+    (await deviceBelongsElsewhere(db, product.slug, deviceId, subject))
+  )
+    return oauth(400, ErrorCode.InvalidGrant);
+
   const who = { accountId: account.id, subject, email: account.primary_email };
   const deviceArgs = {
     id: deviceId,
@@ -472,9 +500,23 @@ export async function bindAndAnswer(
       ...(p.keys ? { keys: p.keys } : {}),
       ...(p.fresh ? { fresh: true as const } : {}),
       ...(p.silentSingle ? { silentSingle: true } : {}),
+      ...(p.via ? { via: p.via } : {}),
+      ...(p.via === "restore"
+        ? {
+            silentBlocked: (licenseId: string) =>
+              deviceBelongsElsewhere(
+                db,
+                product.slug,
+                deviceId,
+                subject,
+                licenseId,
+              ),
+          }
+        : {}),
       keepable: keepable !== null,
       proven: proven !== null,
     });
+    if (settled.kind === "refused") return oauth(400, ErrorCode.InvalidGrant);
     if (settled.kind === "choose") return withNoStore(json(settled.pending));
     bound = settled.bound;
   } else {
@@ -488,6 +530,13 @@ export async function bindAndAnswer(
   }
   if (!bound.ok) return flatRefusal(bound.refusal);
 
+  if (p.via === "restore")
+    await markRestoreOrigin(db, {
+      product: product.slug,
+      deviceId,
+      subject,
+      now,
+    });
   if (p.keys) {
     try {
       await registerDeviceKeys(
@@ -497,6 +546,7 @@ export async function bindAndAnswer(
         p.keys,
         undefined,
         p.heldSignKey,
+        p.via,
       );
     } catch (e) {
       // A key another device of the product holds, or a malformed one: the same plain refusal.
@@ -523,6 +573,12 @@ export async function bindAndAnswer(
     parent_id: bound.licenseId === NO_LICENSE_ID ? null : bound.licenseId,
     summary: p.audit.summary,
   });
+  if (p.via === "restore")
+    await sendRestoreNotice(cx, {
+      accountId: account.id,
+      email: account.primary_email,
+      deviceLabel: bound.device.label,
+    });
   return withNoStore(
     json(await tokenBody(db, product, deviceId, p.scope, subject, bound)),
   );

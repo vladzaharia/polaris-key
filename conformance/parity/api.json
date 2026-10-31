@@ -297,6 +297,16 @@
         "file": "sdks/swift/Sources/PolarisKeyIdentity/SignIn.swift"
       },
       {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/swift/Sources/PolarisKeyIdentity/AutoSignIn.swift"
+      },
+      {
+        "ns": "identity",
+        "type": "IdentityClient",
+        "file": "sdks/swift/Sources/PolarisKeyIdentity/Restore.swift"
+      },
+      {
         "ns": "devices",
         "type": "DevicesClient",
         "file": "sdks/swift/Sources/PolarisKey/DevicesClient.swift"
@@ -1951,6 +1961,21 @@
     },
     {
       "sdk": "godot",
+      "path": "identity.install_platform_provider",
+      "reason": "wiring: installs, lists and clears the platform sign-in providers the ladder and sign_out() use (the platform adapters call it); apps sign in with auto_sign_in() or exchange.exchange()"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.platform_providers",
+      "reason": "wiring: installs, lists and clears the platform sign-in providers the ladder and sign_out() use (the platform adapters call it); apps sign in with auto_sign_in() or exchange.exchange()"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.clear_platform_providers",
+      "reason": "wiring: installs, lists and clears the platform sign-in providers the ladder and sign_out() use (the platform adapters call it); apps sign in with auto_sign_in() or exchange.exchange()"
+    },
+    {
+      "sdk": "godot",
       "path": "identity.add_before_sign_out",
       "reason": "the seam Cloud Sync's SDK package registers its flush on (D-4); not an app verb"
     },
@@ -2266,6 +2291,11 @@
     },
     {
       "sdk": "godot",
+      "path": "store.cache_unreadable",
+      "reason": "the Store persistence port that app and backend code implement (true when a held cache record cannot be read, so PKeyCache fails the sign-out flag closed); not a client verb"
+    },
+    {
+      "sdk": "godot",
       "path": "presentation.attach",
       "reason": "wiring the boot and update flows call; not an app verb"
     },
@@ -2341,6 +2371,31 @@
     },
     {
       "sdk": "kotlin",
+      "path": "identity.installPlatformBackup",
+      "reason": "wiring: hands rung 2 of identity.autoSignIn its OS-held backup store (I-49.11) and the developer's opt-out; not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.hasPlatformBackup",
+      "reason": "wiring: whether a backup store is installed (I-49.11); a property, not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.restoreRedeemRecorded",
+      "reason": "conformance replay only (ConformanceReplayOnly): the restore grant with the recorded item (I-49.12); rung 2 of identity.autoSignIn carries the row"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.restoreEnrolRecorded",
+      "reason": "conformance replay only (ConformanceReplayOnly): POST restore with the recorded id (I-49.12); not an app verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.restoreDeleteRecorded",
+      "reason": "conformance replay only (ConformanceReplayOnly): DELETE restore (I-49.12); not an app verb"
+    },
+    {
+      "sdk": "kotlin",
       "path": "identity.useDeviceKeys",
       "reason": "wiring: hands the exchange proof its device key store; not an app verb"
     },
@@ -2363,6 +2418,26 @@
       "sdk": "kotlin",
       "path": "identity.signInWithProvider",
       "reason": "wiring: the kit's sign-in form runs the installed provider's sheet and exchange (personInitiated); apps use the kit or exchange()"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.installRestoreStoreFactory",
+      "reason": "wiring: hands rung 2 of identity.autoSignIn the platform backup store (the umbrella installs the Keychain one) (I-49.9); not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.installRestoreStore",
+      "reason": "wiring: hands rung 2 of identity.autoSignIn a backup store of the host's own (I-49.9); not an app verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.installPlatformIdentity",
+      "reason": "wiring: hands the ladder its platform provider (I-44.3); apps pass a provider to identity.autoSignIn or install one at the umbrella"
+    },
+    {
+      "sdk": "swift",
+      "path": "identity.platformSession",
+      "reason": "wiring: hands the platform provider its session once a sign-in completes (I-44.3); not an app verb"
     },
     {
       "sdk": "swift",
@@ -2933,9 +3008,7 @@
       "feature": "config.sync",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useSetting().sync",
           "shape": "hook",
@@ -3408,9 +3481,7 @@
         "node": {},
         "react": {
           "spelling": "usePolarisAuth().choice.complete",
-          "shape": "hook",
-          "planned": "I-46",
-          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
+          "shape": "hook"
         },
         "python": {
           "planned": "I-10a",
@@ -3481,8 +3552,8 @@
           "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
         },
         "react": {
-          "planned": "I-46",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+          "spelling": "usePolarisAuth().autoSignIn",
+          "shape": "hook"
         },
         "python": {
           "planned": "I-47",
@@ -3506,8 +3577,8 @@
       "feature": "identity.link",
       "sdks": {
         "react": {
-          "planned": "I-46",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "usePolarisAuth().link.offer",
+          "shape": "hook"
         },
         "swift": {
           "planned": "I-44",
@@ -3531,8 +3602,8 @@
       "feature": "identity.link",
       "sdks": {
         "react": {
-          "planned": "I-46",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "usePolarisAuth().link.accept",
+          "shape": "hook"
         },
         "swift": {
           "planned": "I-44",
@@ -3562,8 +3633,8 @@
       "feature": "identity.link",
       "sdks": {
         "react": {
-          "planned": "I-46",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "usePolarisAuth().link.decline",
+          "shape": "hook"
         },
         "swift": {
           "planned": "I-44",
@@ -3706,9 +3777,7 @@
       "feature": "sync.settings",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useCloudSync().status",
           "shape": "hook",
@@ -3726,9 +3795,7 @@
       "feature": "sync.settings",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useCloudSync().flush",
           "shape": "hook",
@@ -3749,7 +3816,7 @@
           "path": "cloudSync.encryption"
         },
         "python": {
-          "planned": "U-06"
+          "path": "cloud_sync.encryption"
         },
         "react": {
           "spelling": "BrowserAdapterOptions.cloudSync.encryption",
@@ -3778,9 +3845,7 @@
           "spelling": "events.on(\"cloudSync\")",
           "reason": "one event stream on the client emitter, kind cloudSync"
         },
-        "python": {
-          "planned": "U-06"
-        },
+        "python": {},
         "react": {
           "spelling": "useCloudSync().status",
           "shape": "hook",

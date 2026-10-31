@@ -252,6 +252,7 @@ public struct ChoiceNamespace: Sendable {
         if client.redirectAcquisitionSync.current { await client.onAcquired?() }
         client.announceSubject(subject, previous: previous)
         client.notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
+        await client.restoreSignInCompleted()
         let object = body?.objectValue ?? [:]
         let wire = (try? JSONEncoder().encode(object["keyEntries"] ?? .null))
             .flatMap { try? JSONDecoder().decode(KeyEntries.Wire.self, from: $0) }
@@ -259,7 +260,7 @@ public struct ChoiceNamespace: Sendable {
             ready: SignInReady(
                 identity: nil, attached: nil, subject: subject, scope: scope,
                 licenseId: license?["id"]?.stringValue),
-            keyEntries: KeyEntries.read(wire), attachable: object["attachable"]?.boolValue)
+            keyEntries: KeyEntries.read(wire), attachable: choice == .keep ? true : nil)
     }
 
     /// Abandon the grant: nothing is bound. A lapsed grant is the same `invalid_grant`.

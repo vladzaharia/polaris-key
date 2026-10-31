@@ -977,6 +977,7 @@ describe("GET /api/me/export", () => {
       "core.entitlementEvents",
       "core.keyring",
       "core.provisionedSecretMoves",
+      "identity.restore",
       "sync.cloudSync",
       "test.notes",
     ]);

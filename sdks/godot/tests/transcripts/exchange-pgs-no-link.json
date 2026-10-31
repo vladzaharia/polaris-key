@@ -1,0 +1,138 @@
+{
+  "transcriptVersion": 1,
+  "id": "exchange-pgs-no-link",
+  "description": "A valid Play Games server auth code for a player no account links (WIRE-CONTRACT-V5 §12.11.3 rule 4, §12.11.7). Nothing is created and nothing is bound. The answer is 403 interstitial_required with reason no_link, the sign-in card's url and a linkHandle (lh_ and 43 characters, 600 s). The SDK reports needs-sign-in carrying the handle.",
+  "features": ["identity.pgs"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "version": "1.0.0",
+    "services": ["config", "identity"]
+  },
+  "steps": [
+    {
+      "action": "exchange",
+      "note": "A fresh code for a player nobody linked.",
+      "args": {
+        "kind": "pgs",
+        "keyLabel": "transcript-device-key-1",
+        "serverAuthCode": "4/transcript-server-auth-code"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/nonce",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "signKey": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "agreeKey": "eZbQsxbWj6QgLgveeni_8Df0hpuxymxeIFHXBPntMSM"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "nonce": "pafRUUZSrcddSSM-SvQ00xCooV-MMsZMbKi_KOeaDuA",
+                "expiresIn": 300
+              }
+            }
+          },
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/identity/token",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "content-type": "application/x-www-form-urlencoded"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                  "client_id": "djdl",
+                  "subject_token": "4/transcript-server-auth-code",
+                  "subject_token_type": "urn:polaris-key:token-type:pgs-server-auth-code",
+                  "nonce": "pafRUUZSrcddSSM-SvQ00xCooV-MMsZMbKi_KOeaDuA",
+                  "device_key": "SUGpjn-cVyue7MG3fspOs1hv4xcBFkxlhDMgzzrDx0U",
+                  "proof": "xRkr5c4BQ2pq1TFZlDbOHINmuTf38iY_LapRu5tyOEGv58wh_BtCnuYQ9t75OsFCB2lipMps6AjI8v_iU2l9Bw"
+                },
+                "match": "exact",
+                "allowedKeys": [
+                  "grant_type",
+                  "client_id",
+                  "subject_token",
+                  "subject_token_type",
+                  "nonce",
+                  "device_key",
+                  "proof",
+                  "license_choice",
+                  "device_name"
+                ]
+              }
+            },
+            "response": {
+              "status": 403,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "interstitial_required",
+                "reason": "no_link",
+                "url": "https://key.plrs.im/djdl/identity/authorize",
+                "linkHandle": "lh_IJgmVj3nwiT656LuOlIpulcWr6NCM8QNO9I5mUEyPO8",
+                "expiresIn": 600
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "interstitial-required",
+        "reason": "no_link",
+        "url": "https://key.plrs.im/djdl/identity/authorize",
+        "linkHandle": "lh_IJgmVj3nwiT656LuOlIpulcWr6NCM8QNO9I5mUEyPO8",
+        "expiresIn": 600,
+        "tokenHeld": false
+      }
+    }
+  ]
+}

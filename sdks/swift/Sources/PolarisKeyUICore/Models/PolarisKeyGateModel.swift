@@ -1015,7 +1015,7 @@ public final class PolarisKeyGateModel {
         dropLimit()
         signInError = nil
         pending = nil
-        signInProvider = Self.providerName(held.consent.as.provider) ?? fallback
+        signInProvider = held.consent.as.provider.flatMap { Self.providerName($0) } ?? fallback
         if signIn == nil || signIn?.outcome == .signedIn {
             signIn = KitSignIn(
                 presentation: options.signInPresentation, replace: options.replace, channel: .browser)

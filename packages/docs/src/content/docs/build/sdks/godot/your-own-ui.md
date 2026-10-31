@@ -2,7 +2,7 @@
 title: "Your own UI (Godot)"
 description: "Draw your own Godot screens on the Polaris Key addon: its four headless controllers, state-to-screen and copy-key mapping, signals, manual discovery, and update decisions."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 sidebar:
   order: 2
 sdks: ["godot"]
@@ -113,9 +113,27 @@ Replace a device link only when its served `manage_url` is valid. Pass `true` as
 `manage_link()` argument when rendering a shared-screen QR code: that intentionally omits the key
 fragment.
 
-A key with no entries left comes back `refused` with the code `key_entry_limit`. `message_for()`
-maps it to "This key has no entries left. Add it to your account and sign in instead.", so offer
-sign-in. The result carries no manage link; a `KIND_KEY_ENTRY_LIMIT` with its link is planned.
+Two refusals have kinds of their own and are not auth failures. Nothing is wiped. `message_for()`
+maps them to the refusal lede copy (`refusal_limit_lede`, `refusal_owned_lede`), so the default
+message is already right; branch on `result.kind` for the link to offer:
+
+| `kind`                 | Meaning                      | Offer                                         |
+| ---------------------- | ---------------------------- | --------------------------------------------- |
+| `KIND_KEY_ENTRY_LIMIT` | The key has no entries left  | `manage_url` (or `manage_link()`), or sign-in |
+| `KIND_LICENSE_OWNED`   | The license is in an account | `sign_in_url`, behind a user action: sign in  |
+
+```gdscript
+func key_refusal_link(result: PKeyActivationResult, key: String) -> String:
+	match result.kind:
+		PKeyActivationResult.KIND_KEY_ENTRY_LIMIT:
+			return PKeyActivationController.manage_link(result, key, "mygame://activated")
+		PKeyActivationResult.KIND_LICENSE_OWNED:
+			return String(result.sign_in_url) if result.sign_in_url != null else ""
+	return ""
+```
+
+`result.key_entries` is `{used, limit}` on the first. Resubmitting the same key cannot succeed, so
+show no key field on these two. The shipped sign-in form draws them as their own step.
 
 ## Sign-in: prompt, countdown, and identity
 
@@ -144,7 +162,93 @@ func begin_sign_in() -> void:
 The flow states are `starting`, `pending`, `confirm`, and `ended`. Pending shows the user code,
 short URI, QR payload, and countdown. Ended maps `signed_in`, `expired`, `cancelled`, `denied` (the person pressed Deny),
 `device-mismatch`, `rate-limited`, `service-unavailable`, and other errors to a copy key. Use `PolarisKey.identity.current()` after success to restore the signed-in person on a later
-screen; `sign_out()` ends the identity and stops counting it.
+screen. `session.reopen()` opens the page again.
+
+### Redirect sign-in
+
+A game that opens a browser and receives its redirect (a web export, or a desktop game with an
+`https:` address it registered) passes `channel = "redirect"`. The session is single use: keep it
+until the browser returns.
+
+```gdscript
+extends Node
+
+
+func begin_redirect() -> PKeySignInSession:
+	var session := await PolarisKey.identity.sign_in.start({
+		channel = "redirect",
+		redirect_uri = "https://game.example/auth/callback",
+		license_choice = "app",
+	})
+	if session.ok:
+		session.reopen()  # opens authorize_url (https only); then wait for the browser to return
+	return session
+
+
+func finish(session: PKeySignInSession, callback_url: String) -> void:
+	var outcome := await session.complete(callback_url)
+	match outcome.kind:
+		PKeySignInOutcome.KIND_SIGNED_IN:
+			print(outcome.subject, outcome.license_id)
+		PKeySignInOutcome.KIND_LICENSE_CHOICE:
+			print(outcome.choices.keys())  # draw the choice, below
+		_:
+			print(outcome.code)  # cancelled, or the Worker's code
+```
+
+`complete()` checks `state` and the issuer before it sends anything. A refusal is an outcome under
+the Worker's code (`invalid_grant`, `rate_limited` with `retry_after_seconds` in its detail,
+`sign-in-failed`) and leaves the device token alone. A replayed callback is refused without a request.
+
+### The license choice
+
+With `license_choice = "app"`, a person who holds licenses settles `license_choice`, with a `grant`.
+No token is stored until you finish with `PolarisKey.identity.choice`. A refusal is a result of
+`kind == refused` with its `code`, not an error:
+
+```gdscript
+func choose(outcome: PKeySignInOutcome) -> String:
+	var view := await PolarisKey.identity.choice.licenses(outcome.grant)
+	if not view.ok:
+		return String(view.code)
+	var licenses: Array = view.view.get("choices", [])
+	if licenses.is_empty():
+		await PolarisKey.identity.choice.cancel(outcome.grant)
+		return "No license to use."
+	var done := await PolarisKey.identity.choice.complete(
+		outcome.grant, {kind = "license", license_id = licenses[0]["id"]})
+	if done.ok:
+		return done.license_id
+	# device_limit leaves the grant open and carries manage_url and a fresh view.
+	return done.manage_url if done.manage_url != "" else String(done.code)
+```
+
+The grant lives 300 seconds and is a credential: it never prints in `str()`, so keep it out of your
+own logs too. `choice.devices(grant, license_id)` lists the devices on a full license for **Replace a
+device**. A choice is `{kind = "license", license_id, replace_device_id?}`, `{kind = "keep"}`,
+`{kind = "create"}` or `{kind = "key", key}`. The shipped `PKeyLicenseChoice` scene draws this step
+from `PKeyLicenseChoiceController`.
+
+### The account
+
+```gdscript
+func account() -> bool:
+	var who := await PolarisKey.identity.subject()
+	print(who.detail)  # {subject: "ps_..." or null}
+	var preview := await PolarisKey.identity.attach(false)
+	var previewed: Dictionary = preview.detail if preview.detail is Dictionary else {}
+	if preview.ok and previewed.get("kind") == "confirm":
+		await PolarisKey.identity.attach(true)
+	await PolarisKey.identity.open_account()  # detail {url, opened}
+	var out := await PolarisKey.identity.sign_out()
+	var signed_out: Dictionary = out.detail if out.detail is Dictionary else {}
+	return out.ok and signed_out.get("released", false) == true  # true: activate again
+```
+
+`attach(false)` previews and writes nothing; `attach(true)` adds the device's license to the
+account. A refusal (`account_required`, `license_owned`) is a failure with that `code`. `sign_out()`
+removes the device token only when `released` is true; a device activated by a key keeps its
+license. When `open_account()` did not open the page, show `detail.url` as a link or a QR code.
 
 ## Status and signals
 

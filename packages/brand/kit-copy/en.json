@@ -2778,6 +2778,16 @@
       "role": "body",
       "note": "Automatic sign-in: the confirm step when the provider shared no email (Sign in with Apple, private)."
     },
+    "signin.auto.confirm.asGameCenter": {
+      "value": "with Game Center",
+      "role": "body",
+      "note": "Automatic sign-in: the confirm step. After a Game Center sign-in (it shares no email). \"Game Center\" is Apple's product name (never translated)."
+    },
+    "signin.auto.confirm.asPlayGames": {
+      "value": "with Google Play Games",
+      "role": "body",
+      "note": "Automatic sign-in: the confirm step. After a Google Play Games sign-in (it shares no email). \"Google Play Games\" is Google's product name; use Google's localized name (glossary)."
+    },
     "signin.auto.confirm.primary": {
       "value": "Continue",
       "role": "button",
@@ -5783,6 +5793,36 @@
       "role": "label",
       "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
     },
+    "locker.account.devices": {
+      "value": "Devices",
+      "role": "label",
+      "note": "Account page: the licence-less devices section (DEVICE-REMOVAL)."
+    },
+    "locker.devices.subtitle": {
+      "value": "Devices signed in without a license. Licensed ones are on their product's page.",
+      "role": "hint",
+      "note": "Account page: the licence-less devices section (DEVICE-REMOVAL)."
+    },
+    "locker.devices.none": {
+      "value": "No devices without a license.",
+      "role": "hint",
+      "note": "Account, Devices: shown after the last device without a license was removed."
+    },
+    "locker.devices.gone": {
+      "value": "This device is already removed.",
+      "role": "hint",
+      "note": "Account, Devices: shown when the restore notice's Remove this device link opens and nothing is left to remove."
+    },
+    "locker.devices.restored": {
+      "value": "Signed in from backup",
+      "role": "label",
+      "note": "Account page and product Devices: a device that signed in from a backup key (DEVICE-REMOVAL)."
+    },
+    "locker.devices.removeRestoredAll": {
+      "value": "Backup sign-in for {product} stops working on all your devices.",
+      "role": "hint",
+      "note": "Account page: the consequence of removing a device that signed in from backup. Arguments: {product} = the product's name."
+    },
     "locker.appearance.title": {
       "value": "Appearance",
       "role": "title",
@@ -6011,7 +6051,7 @@
     "locker.error.loadFailedDevices": {
       "value": "Couldn't load your devices.",
       "role": "body",
-      "note": "A product page's Devices card failed to load; the Try again button is separate."
+      "note": "A product page's Devices card or Account, Devices failed to load; the Try again button is separate."
     },
     "locker.error.loadFailedName": {
       "value": "Couldn't load {name}.",
@@ -6274,7 +6314,7 @@
       "note": "Account page; moved from the portal's components (P0-36)."
     },
     "locker.sessions.subtitle": {
-      "value": "Browsers signed in to this account. Devices that use a license are on each product's page.",
+      "value": "Browsers signed in to this account.",
       "role": "hint",
       "note": "Account → Where you're signed in (P0-36)."
     },

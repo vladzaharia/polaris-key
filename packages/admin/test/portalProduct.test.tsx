@@ -724,6 +724,41 @@ describe("product page on today's data (PX-04)", () => {
     ).toBeNull();
   });
 
+  it("removing a device that signed in from backup says backup sign-in ends everywhere; an ordinary one does not", async () => {
+    const restoredDetail = detail(nightfall, {
+      devices: [
+        device({ deviceId: "d1", label: "Mara's MacBook Pro" }),
+        device({ deviceId: "d2", label: "Studio PC", restored: true }),
+      ],
+    });
+    mockFetch(
+      signedIn([nightfall], {
+        "/api/releases": { releases },
+        "/api/licenses/nightfall/lic_nightfall": restoredDetail,
+      }),
+    );
+    renderPortal();
+    await page();
+    const asks = async (name: string): Promise<boolean> => {
+      const card = screen.getByRole("region", { name: "Devices" });
+      await userEvent.click(
+        within(card).getByRole("button", { name: `Remove ${name}` }),
+      );
+      await within(card).findByRole("heading", { name: `Remove ${name}?` });
+      const said = Boolean(
+        within(card).queryByText(
+          "Backup sign-in for Nightfall stops working on all your devices.",
+        ),
+      );
+      await userEvent.click(
+        within(card).getByRole("button", { name: "Keep it" }),
+      );
+      return said;
+    };
+    expect(await asks("Studio PC")).toBe(true);
+    expect(await asks("Mara's MacBook Pro")).toBe(false);
+  });
+
   it("switches between several licenses for one product", async () => {
     const edu = license({
       product: "nightfall",

@@ -242,6 +242,9 @@ export interface AutoSignInInput {
   };
   /** The name this device goes by in the license line. */
   device?: string;
+  /** The tier a new license is created at (the confirm's "New: {tier} license" line), read from
+   *  the license list when no account is signed in yet. */
+  tier?: string;
 }
 
 /** The approving device's side of nearby sign-in. Absent: the account-menu entry. */

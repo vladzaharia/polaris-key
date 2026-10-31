@@ -197,4 +197,32 @@ describe("R12 outlet credentials vs the product-secret paths", () => {
       }),
     ).toBeNull();
   });
+  it("REFUTES: a pgs-server-client secret copied into product_secrets opens as an edge-mint secret", async () => {
+    const put = await putOutletCredential(env, db, {
+      product: "djdl",
+      credentialId: "pgs-server",
+      kind: "pgs-server-client",
+      outletId: null,
+      value: { clientSecret: "FAKE-secret-not-real-0000" },
+      expiresAt: null,
+      pin: "123456789012-fake.apps.googleusercontent.com",
+      actor: "admin-1",
+      now: NOW,
+    });
+    expect(put.ok).toBe(true);
+    const row = await db.first<{ enc_value_json: string }>(
+      "SELECT enc_value_json FROM outlet_credentials WHERE product = 'djdl' AND credential_id = 'pgs-server'",
+    );
+    await upsertProductSecret(db, {
+      product: "djdl",
+      name: "pgs-server",
+      enc_value_json: row!.enc_value_json,
+      usage: "edge-mint",
+      created_at: NOW,
+      modified_at: NOW,
+    });
+    expect(
+      await openProductSecret(db, env, "djdl", "pgs-server", "edge-mint"),
+    ).toBeUndefined();
+  });
 });

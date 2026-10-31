@@ -2129,8 +2129,8 @@ export class BrowserAdapter implements PolarisAdapter {
     const b = this.bearer;
     if (this.configError || !b) return { kind: "unavailable", code: "runtime" };
     try {
-      // A person-initiated sign-in lifts the sign-out flag (a boot-time ladder honours it).
-      if (opts.explicit === true) await this.setExplicitSignOut(false);
+      // A person-initiated run ignores the sign-out flag for this run only; the stored flag
+      // clears when a sign-in lands (below), not when one is merely attempted.
       await this.ensureDiscovery();
       const m = await import("./bearer/autoSignIn.js");
       const result = await m.runAutoSignIn(
@@ -2139,7 +2139,10 @@ export class BrowserAdapter implements PolarisAdapter {
           port: await this.deviceKeyPort(),
           provider: this.platformProvider(m),
           endpoints: exchangeDiscoveryOf(this.discovery_),
-          explicitSignOut: () => this.explicitSignOut(),
+          explicitSignOut: () =>
+            opts.explicit === true
+              ? Promise.resolve(false)
+              : this.explicitSignOut(),
           generation: () => this.signOutGeneration,
           syncKey: () =>
             this.bearer && this.capabilities.sync.enabled
@@ -2148,8 +2151,10 @@ export class BrowserAdapter implements PolarisAdapter {
         },
         opts,
       );
-      if (result.kind === "signedIn" && result.via === "platform")
+      if (result.kind === "signedIn" && result.via === "platform") {
+        if (opts.explicit === true) await this.setExplicitSignOut(false);
         this.applyBearer({ busy: noBusy(), error: noErrors() });
+      }
       // `no_link` carries a handle for the link offer: held across the sign-in redirect.
       if (result.kind === "needsSignIn" && result.linkHandle !== undefined)
         this.linkHandle(`${this.clock()} ${result.linkHandle}`);

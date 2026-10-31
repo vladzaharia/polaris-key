@@ -197,6 +197,10 @@
         "signin.code.resend": "The card's email-code step (SIGN-IN.md \u00a73.4, \u00a74.16). Credentials are entered only on the card (S-16 D17); the kit form's `code` step is the device-code view, which SignInHandoff draws.",
         "core.codes.invalid_code.message": "The card's email-code step (SIGN-IN.md \u00a73.4, \u00a74.16). Credentials are entered only on the card (S-16 D17); the kit form's `code` step is the device-code view, which SignInHandoff draws."
       },
+      "SignIn.confirm": {
+        "signin.auto.confirm.asGameCenter": "The no-email line of a Game Center grant. The confirm model picks its line by email alone, so no input reaches it until UI-CONFIRM-PROVIDER (UCP.1) adds the exchange-kind input member.",
+        "signin.auto.confirm.asPlayGames": "The no-email line of a Google Play Games grant. The confirm model picks its line by email alone, so no input reaches it until UI-CONFIRM-PROVIDER (UCP.1) adds the exchange-kind input member."
+      },
       "SignIn.choose": {
         "signin.consent.licenseInApp": "The card's ConsentStep in app mode (plans/I-04.md \u00a7G.3), not the kit form.",
         "signin.return.chooseInApp": "The card's ReturnStep in app mode (SIGN-IN.md \u00a73.10), not the kit form."

@@ -7,15 +7,14 @@ pack engine, the platform module's stable API, the Godot binding on `:platform`,
 kit and the Android glue. `parity.json` says which features are implemented;
 the docs' parity page renders it. The SDK parity pass (notes/SDK-PARITY-PASS.md §5.5) added
 attestation, commerce, update-health events and the typed activation results; the rows it leaves
-planned are `identity.oidc` (native browser sign-in waits on the server's redirect-token route) and `packs.transport.steam`,
-each with a note.
+planned include `packs.transport.steam`, with a note.
 
 | Module                 | Kind                  | What                                                                                                                                                                                                                                                                                                  |
 | ---------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `:core`                | JVM library (JAR)     | JWS + Ed25519, the signed documents, trust, the verified cache and clock floor, transport, discovery, sync, capabilities, the boot stage machine, the generated constants                                                                                                                             |
 | `:license`             | JVM library (JAR)     | the license gate, activation, enrolment, entitlements, channels, deactivation                                                                                                                                                                                                                         |
 | `:config`              | JVM library (JAR)     | layered config resolution, the user-visible list, secrets, the catalog fetch, edge-mint                                                                                                                                                                                                               |
-| `:identity`            | JVM library (JAR)     | RFC 8628 device-code sign-in (the OIDC redirect stays a host-supplied closure), the token exchange and `autoSignIn()`                                                                                                                                                                                 |
+| `:identity`            | JVM library (JAR)     | RFC 8628 device-code and redirect sign-in, the app's license choice, the account calls, the token exchange and `autoSignIn()`                                                                                                                                                                         |
 | `:release`             | JVM library (JAR)     | the changelog, download and install URLs, release-record verification                                                                                                                                                                                                                                 |
 | `:update`              | JVM library (JAR)     | the version check, the signed channel feed and the v4 update decision (content included), the boot guard, the `InstallDriver` port                                                                                                                                                                    |
 | `:packs`               | JVM library (JAR)     | the pack engine: planner, full / file / chunk / delta appliers (zstd-jni), install state, `DirPackStorage`, revocations, delegation, handlers, provides, feed deltas                                                                                                                                  |
@@ -172,7 +171,8 @@ suspend fun start(key: String) {
   `["stable"]`). The `entitlements` namespace (`has`, `value`, `all`, in `EntitlementsClient`) reads the held document; **`entitlements.has` answers `false` whenever the gate is not usable** (revoked,
   expired, blocked, never activated; S-19 G11), whatever the last document said; it used to read
   the document alone. Activation answers a typed `ActivationResult` whose every refusal carries the
-  server's registry `code`: `DeviceLimit`, `Unauthorized`, `FingerprintRequired`,
+  server's registry `code`: `DeviceLimit`, `KeyEntryLimit(manageUrl, keyEntries)` (the key has no entries left),
+  `LicenseOwned(signInUrl)` (the license is in an account; a key never moves it), `Unauthorized`, `FingerprintRequired`,
   `HardwareMismatch`, `EnrollDisabled`, `EnrollClaimed`, `LicenseDisabled`, `LicenseExpired`,
   `AttestationRequired`, `RateLimited(retryAfterSeconds)`, `Refused(code, status, message)` for any
   other 4xx, and `Error` (`network` or `server-error`). An unknown 403 is `Refused`, never
@@ -242,7 +242,7 @@ suspend fun start(key: String) {
   `BillingFailed` (`unsupported`); `restore()`'s `Restored.unlisted` names the product types Play
   could not list. Built on Play Billing Library 9 (Play's floor for new apps and updates from
   31 August 2026).
-- **`:identity`**: `identity.signIn.start(options)` and its `SignInSession` (`wait()` paced and cancellable, `wait(once = true)`, `cancel()`, `reopen()`).
+- **`:identity`**: `identity.signIn.start(options)` and its `SignInSession`. The device code settles through `wait()` (paced and cancellable, `wait(once = true)`); the redirect channel (`channel = SignInChannel.Redirect`, with a `redirectUri`) gives `authorizeUrl` and settles through `complete(callbackUrl)`, which checks `state` and the issuer before it sends anything. Both have `cancel()` and `reopen()`. With `licenseChoice = "app"`, a redirect sign-in that has a license to choose settles `SignInOutcome.Choose` (a short-lived `grant`, printed `[redacted]`), and `identity.choice` (`licenses`, `devices`, `complete`, `cancel`) finishes it with a `ChoiceResult`: a refusal such as `device_limit`, `license_owned` or `key_entry_limit` is `ChoiceResult.Refused` with its `manageUrl` or `signInUrl`, not a throw. The account: `identity.subject()`, `signOut()` (the token goes only when `released`), `attach(confirm)` and `openAccount()`. `:ui-core` holds the choice as `PolarisLicenseChoiceState` and `:ui` wraps it as `rememberLicenseChoiceState`. [Your own UI](https://key.plrs.im/docs/build/sdks/kotlin/your-own-ui/#sign-in-and-who-signed-in) has the code.
 - **Delivery helpers** (notes/SDK-PARITY-PASS.md §3.5–§3.8, §3.14): `release.fetch(target, to,
 onProgress)` downloads one build of a verified release record (a `binary` decision, a version +
   build + record hash, or a record you verified) from discovery's builds template, with the bearer

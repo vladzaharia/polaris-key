@@ -1564,6 +1564,56 @@
       "note": "I-46.2 (plan-auto-sign-in §1, §2.2): autoSignIn() walks the ladder in order and answers signedIn, confirm (PendingConsent), choose (PendingSignIn), needsSignIn (linkHandle?, reason), deviceLimit or unavailable (code). An optional syncKey (present or needed) is reported only where an E2E client exists (web now; Swift and Kotlin leave it absent until U-39). Each SDK proves it with its own unit tests over fake providers; the exchange rung replays the exchange-* transcripts (identity.exchange). I-46 (React), I-44 (Swift), I-45 (Kotlin), I-47 (Node, Python) and I-48 (Godot) implement it."
     },
     {
+      "id": "identity.restore",
+      "family": "devices",
+      "title": "Silent restore: a new device of the same person signs in from the platform backup",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-49"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "node",
+          "reason": "runtime",
+          "why": "A Node process has no iCloud Keychain or Block Store to keep a restore secret in; it signs in by loopback or device code."
+        },
+        {
+          "runtime": "python",
+          "reason": "runtime",
+          "why": "A Python process has no iCloud Keychain or Block Store to keep a restore secret in; it signs in by loopback or device code."
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no platform backup item; it keeps its sign-in in the cookie session."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "A JVM desktop app has no platform backup item to keep a restore secret in."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "Windows has no synchronizable secret store an app can use for a restore secret."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "Linux has no synchronizable secret store an app can use for a restore secret."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The renderer holds no device key and no platform backup; the host signs in."
+        }
+      ],
+      "note": "I-49 (WIRE-CONTRACT-V5 §12.11.8): a signed-in device enrols a restore secret with POST /<p>/identity/restore and keeps it in an end-to-end platform backup (iCloud Keychain, Block Store). A new device of the same person redeems it at token with the urn:polaris-key:grant-type:restore grant and the pkey-proof/1 restore proof, once, and signs in with no click. Sign-out deletes the server row and the item. Discovery's restore member and endpoint gate it. Pinned by the restore-* and discovery-identity-restore transcripts (I-49.8); Swift, Kotlin and Godot implement it on their native lanes."
+    },
+    {
       "id": "identity.link",
       "family": "devices",
       "title": "The link offer: attach a platform identity to the account after a fresh sign-in",

@@ -112,6 +112,12 @@ static func message_for(r: PKeyActivationResult) -> Array:
 			return ["activation_device_limit", null]
 		PKeyActivationResult.KIND_UNAUTHORIZED:
 			return ["activation_unauthorized", null]
+		# The two key refusals: the focused refusal view's lede (the same sentence the catalog's
+		# key-entry-limit / license_owned rows carry; {product} is filled by the copy).
+		PKeyActivationResult.KIND_KEY_ENTRY_LIMIT:
+			return ["refusal_limit_lede", null]
+		PKeyActivationResult.KIND_LICENSE_OWNED:
+			return ["refusal_owned_lede", null]
 		PKeyActivationResult.KIND_FINGERPRINT_REQUIRED:
 			return ["activation_fingerprint_required", null]
 		PKeyActivationResult.KIND_ENROLL_DISABLED:

@@ -42,6 +42,7 @@ ATTRS = [
     ("config.setting.set", "ConfigSetting", "set"),
     ("config.setting.clear", "ConfigSetting", "clear"),
     ("config.setting.on", "ConfigSetting", "on"),
+    ("config.setting.sync", "ConfigSetting", "sync"),
     ("license.activateWithKey", "LicenseClient", "activate_with_key"),
     ("entitlements.has", "EntitlementsClient", "has"),
     ("entitlements.value", "EntitlementsClient", "value"),
@@ -113,6 +114,7 @@ OPTION_PARAMS = [
     ("options.pinnedReleaseKeys", "update"),
     ("options.baseUrl", "base_url"),
     ("options.expectedServices", "expected_services"),
+    ("cloudSync.encryption", "cloud_sync"),
 ]
 REMOVED = [
     ("config.get_config", "ConfigClient", "get_config"),

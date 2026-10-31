@@ -387,6 +387,7 @@ async function settleDevicePoll(
     proven: false,
   });
   if (settled.kind === "choose") return json(settled.pending);
+  if (settled.kind === "refused") return json({ status: "error" });
   if (!settled.bound.ok) return json({ status: "error" });
   // R1-07: the device is bound to the person's account, so the person is told, whoever approved.
   await noticeDeviceCodeBind(cx, who, deviceId, device.label);

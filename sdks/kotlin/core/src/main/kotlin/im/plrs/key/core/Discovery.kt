@@ -48,10 +48,12 @@ public data class DiscoveryTrust(val jwksUrl: String? = null, val trustManifestU
 
 /** The Identity fragment's `exchange` member (WIRE-CONTRACT-V5 section 12.11.6): the platform kinds the product accepts. */
 public data class IdentityExchangeDiscovery(
-    /** `google` and `apple`, as published; a kind this SDK does not know is kept as text. */
+    /** `google`, `apple`, `gamecenter` and `pgs`, as published; a kind this SDK does not know is kept as text. */
     val kinds: List<String> = emptyList(),
     /** `exchange.google.serverClientId`: the audience a Google ID token must carry. */
     val googleServerClientId: String? = null,
+    /** `exchange.pgs.serverClientId`: the web client id Play Games issues the server auth code for (V5 section 12.11.7). */
+    val pgsServerClientId: String? = null,
 )
 
 /**
@@ -73,6 +75,8 @@ public data class IdentityDiscovery(
     val endpoints: Map<String, String> = emptyMap(),
     /** `exchange`: present only when the product declares a platform kind (V5 section 12.11.6). */
     val exchange: IdentityExchangeDiscovery? = null,
+    /** `restore: true` with the `restore` endpoint: silent restore is served (V5 section 12.11.8). */
+    val restore: Boolean = false,
 ) {
     /** The authorize endpoint a redirect sign-in sends the browser to. */
     val authorize: String? get() = endpoints["authorize"]
@@ -131,6 +135,7 @@ public object Discovery {
             accountPortal = e["accountPortal"],
             endpoints = e,
             exchange = exchange(fragment.extras["exchange"].objectValue),
+            restore = fragment.extras["restore"].boolValue == true && !e["restore"].isNullOrEmpty(),
         )
     }
 
@@ -138,7 +143,11 @@ public object Discovery {
         val kinds = o?.get("kinds").arrayValue ?: return null
         val list = kinds.mapNotNull { it.stringValue }
         if (list.isEmpty()) return null
-        return IdentityExchangeDiscovery(list, o?.get("google").objectValue?.get("serverClientId").stringValue)
+        return IdentityExchangeDiscovery(
+            list,
+            o?.get("google").objectValue?.get("serverClientId").stringValue,
+            o?.get("pgs").objectValue?.get("serverClientId").stringValue,
+        )
     }
 
     /** Parse a discovery document; the fail-closed rules as pure data. */

@@ -229,6 +229,10 @@ public final class IdentityClient: Sendable {
     let platformProvider = LockedValue<(any PlatformIdentityProvider)?>(nil)
     /// Platform sessions waiting on `choice.complete`, by grant (see `platformSession`).
     let pendingPlatformSessions = LockedValue<[String: PendingPlatformSession]>([:])
+    /// Silent restore (I-49): the option, the access group and the backup store (Restore.swift).
+    let restoreSetup = LockedValue<RestoreSetup>(RestoreSetup())
+    /// Rung 1's detached daily check (Restore.swift).
+    let restoreDaily = LockedValue<RestoreDailyState>(RestoreDailyState())
     private let sleep: @Sendable (Double) async throws -> Void
 
     /// - Parameter sleep: how the wait loop waits between polls. Defaults to `Task.sleep`, which
@@ -412,6 +416,7 @@ public final class IdentityClient: Sendable {
             }
             await onAcquired?()
             notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
+            await restoreSignInCompleted()
             return .ready(
                 SignInReady(identity: body?.identity, attached: body?.attached, subject: subject))
         case "error":

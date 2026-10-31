@@ -62,10 +62,15 @@ import { noticeDeviceCodeBind } from "./deviceNotice.js";
 import {
   DeviceKeysConflictError,
   DeviceKeysInvalidError,
-  agreeKeyHeldElsewhere,
+  deviceKeysHeldElsewhere,
   deviceSignKey,
 } from "../../../core/devices/keys.js";
 import { registerDeviceKeys } from "../../../core/devices/registerKeys.js";
+import { markRestoreOrigin } from "../restore/store.js";
+import {
+  deviceBelongsElsewhere,
+  sendRestoreNotice,
+} from "../restore/signedIn.js";
 
 /** The grant routes: 60 a minute per client network (a guess at a grant or a key is not free). */
 export const CHOICE_RATE = {
@@ -342,15 +347,24 @@ export async function handleChoice(
     heldSignKey = await deviceSignKey(db, product.slug, deviceId);
     if (
       (heldSignKey !== null && heldSignKey !== taken.keys.signKey) ||
-      (await agreeKeyHeldElsewhere(
-        db,
-        product.slug,
-        taken.keys.agreeKey,
-        deviceId,
-      ))
+      (await deviceKeysHeldElsewhere(db, product.slug, taken.keys, deviceId))
     )
       return invalidGrant();
   }
+
+  // A sign-in by restore never takes over a device row of another person or licence (I-49.7). The
+  // device proving it holds its licence with its own bearer is the exception for the licence.
+  if (
+    taken.via === "restore" &&
+    (await deviceBelongsElsewhere(
+      db,
+      product.slug,
+      deviceId,
+      taken.subject,
+      held ? undefined : choice?.kind === "license" ? choice.licenseId : null,
+    ))
+  )
+    return invalidGrant();
 
   const bcx = {
     req,
@@ -396,6 +410,13 @@ export async function handleChoice(
     return nestedRefusal(r, extra);
   }
 
+  if (taken.via === "restore")
+    await markRestoreOrigin(db, {
+      product: product.slug,
+      deviceId,
+      subject: taken.subject,
+      now,
+    });
   if (taken.keys) {
     try {
       await registerDeviceKeys(
@@ -405,6 +426,7 @@ export async function handleChoice(
         taken.keys,
         undefined,
         heldSignKey,
+        taken.via === "restore" ? "restore" : undefined,
       );
     } catch (e) {
       // A key another device registered inside the grant window, or a malformed one.
@@ -461,7 +483,8 @@ export async function handleChoice(
     actor_sub: taken.subject,
     actor_name: null,
     actor_email: null,
-    action: "signin.choice.complete",
+    action:
+      taken.via === "restore" ? "signin.restore" : "signin.choice.complete",
     target_kind: "device",
     target_id: deviceId,
     parent_id: bound.licenseId === NO_LICENSE_ID ? null : bound.licenseId,
@@ -471,6 +494,12 @@ export async function handleChoice(
         : "Confirmed consent") +
       (taken.via === "device" ? " (device code)" : ""),
   });
+  if (taken.via === "restore")
+    await sendRestoreNotice(bcx, {
+      accountId: account.id,
+      email: account.primary_email,
+      deviceLabel: bound.device.label,
+    });
   return noStore(
     json(
       await tokenBody(

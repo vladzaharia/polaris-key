@@ -37,6 +37,9 @@ import {
   PRODUCT_AUDIENCES,
   withProviders,
 } from "../providers.js";
+import { PGS_APP, PGS_CLIENT, PGS_SECRET } from "../gameChain.js";
+import { putOutletCredential } from "../../../src/core/outletCredentials.js";
+import { resetPgsSecretCache } from "../../../src/core/stores/playGames/serverAuth.js";
 import { dispatchWith } from "../../../src/dispatch.js";
 import { signIn } from "../../../src/services/identity/accounts/signIn.js";
 import { loadProductPublic } from "../../../src/core/products.js";
@@ -58,6 +61,7 @@ const FEATURES = ["identity.exchange"];
 
 export async function exchangeWorld(
   on: ServiceSlug[] = ["config", "identity"],
+  games = false,
 ): Promise<World> {
   const w = await productWorld(servicesOn(...on));
   w.env.PORTAL_SESSION_SECRET = "transcript-portal-session-secret";
@@ -84,6 +88,26 @@ export async function exchangeWorld(
   await set("identity.platformSignIn.apple.bundleIds", [
     PRODUCT_AUDIENCES.appleBundle,
   ]);
+  if (games) {
+    // I-14.9: Game Center on, and Play Games with its application, server client and stored
+    // server credential, so discovery lists both game kinds.
+    await set("identity.platformSignIn.gameCenter", true);
+    await set("identity.platformSignIn.playGames.applicationId", PGS_APP);
+    await set("identity.platformSignIn.playGames.serverClientId", PGS_CLIENT);
+    resetPgsSecretCache();
+    const put = await putOutletCredential(w.env, w.db, {
+      product: PRODUCT,
+      credentialId: "pgs-server",
+      kind: "pgs-server-client",
+      outletId: null,
+      value: { clientSecret: PGS_SECRET },
+      expiresAt: null,
+      pin: PGS_CLIENT,
+      actor: "transcript-admin",
+      now: T0,
+    });
+    if (!put.ok) throw new Error(`pgs credential: ${put.message}`);
+  }
   return w;
 }
 
@@ -143,7 +167,14 @@ export function recorder(
 const NONCE = `/${PRODUCT}/identity/nonce`;
 const TOKEN = `/${PRODUCT}/identity/token`;
 
-interface Attempt {
+/** The parts of a game-token call (I-14.9): the subject token type and the outbound routes the
+ *  verifier reaches (Apple's key host, Google's token and games hosts). */
+export interface GameCall {
+  type: string;
+  routes?: Record<string, () => Response>;
+}
+
+export interface Attempt {
   /** The nonce answer (always present). */
   nonce: Response;
   /** The grant answer; absent when the nonce was refused. */
@@ -157,11 +188,12 @@ interface Attempt {
  * platform returns for that nonce, then `POST …/token` with the RFC 8693 grant and the
  * `exchange` proof. `preset` replays a nonce the client already holds (no nonce request).
  */
-async function exchangeCall(
+export async function exchangeCall(
   s: StepRecorder,
   args: Json,
   mint: (nonce: string) => Promise<string>,
   preset?: string,
+  game?: GameCall,
 ): Promise<Attempt> {
   const keys = fixtureDeviceKeys(KEY_LABEL);
   let nonce = preset;
@@ -181,12 +213,13 @@ async function exchangeCall(
     args.nonce = nonce;
   }
   const token = await mint(nonce);
-  args.subjectToken = token;
+  // A game token is encoded by the client from the structured args (I-14.9), never recorded whole.
+  if (!game) args.subjectToken = token;
   const form = {
     grant_type: TOKEN_EXCHANGE_GRANT_TYPE,
     client_id: PRODUCT,
     subject_token: token,
-    subject_token_type: EXCHANGE_SUBJECT_TOKEN_TYPE,
+    subject_token_type: game?.type ?? EXCHANGE_SUBJECT_TOKEN_TYPE,
     nonce,
     device_key: keys.signKey,
     proof: keys.proof({
@@ -197,27 +230,31 @@ async function exchangeCall(
       token,
     }),
   };
-  const grant = await withProviders(() =>
-    s.send({
-      method: "POST",
-      path: TOKEN,
-      form,
-      expectBody: {
-        json: form,
-        match: "exact",
-        allowedKeys: [...Object.keys(form), "license_choice", "device_name"],
-      },
-    }),
+  const grant = await withProviders(
+    () =>
+      s.send({
+        method: "POST",
+        path: TOKEN,
+        form,
+        expectBody: {
+          json: form,
+          match: "exact",
+          allowedKeys: [...Object.keys(form), "license_choice", "device_name"],
+        },
+      }),
+    game?.routes,
   );
   return { nonce: nonceRes, grant, json: await jsonOf(grant), token };
 }
 
-async function jsonOf(res: Response): Promise<Record<string, unknown>> {
+export async function jsonOf(res: Response): Promise<Record<string, unknown>> {
   const text = await res.clone().text();
   return text.startsWith("{") ? (JSON.parse(text) as never) : {};
 }
 
-const exchangeArgs = (kind: "google" | "apple"): Json => ({
+export const exchangeArgs = (
+  kind: "google" | "apple" | "gamecenter" | "pgs",
+): Json => ({
   kind,
   keyLabel: KEY_LABEL,
 });
@@ -232,7 +269,7 @@ export const apple =
     appleToken(nonce, APPLE_SUB, over);
 
 /** The code of a refusal body: `{"error":"x"}` or `{"error":{"code":"x"}}`. */
-function codeOf(body: Record<string, unknown>): string {
+export function codeOf(body: Record<string, unknown>): string {
   const e = body.error;
   return typeof e === "string"
     ? e
@@ -240,7 +277,7 @@ function codeOf(body: Record<string, unknown>): string {
 }
 
 /** `choice/complete` as the SDK sends it after `confirm` or `choose`. */
-function complete(s: StepRecorder, body: Json): Promise<Response> {
+export function complete(s: StepRecorder, body: Json): Promise<Response> {
   return s.send({
     method: "POST",
     path: `/${PRODUCT}/identity/choice/complete`,
@@ -253,6 +290,42 @@ function complete(s: StepRecorder, body: Json): Promise<Response> {
 
 type Recorder = ReturnType<typeof recorder>;
 type Pin = Parameters<Parameters<typeof pinned>[1]>[0];
+
+/**
+ * A `confirm` answer: asserts its shape, fills `view` with what the client reports of it (the
+ * consent's `firstTime`, `changed` and `as`) and returns the pending grant.
+ */
+export function confirmed(json: Record<string, unknown>, view: Json): string {
+  expect(json.status).toBe("confirm");
+  expect(json.access_token).toBeUndefined();
+  const consent = json.consent as Record<string, unknown>;
+  expect(consent.firstTime).toBe(true);
+  Object.assign(view, {
+    firstTime: consent.firstTime,
+    changed: consent.changed,
+    as: consent.as,
+  } as Json);
+  return json.grant as string;
+}
+
+/** `choice.complete(grant, {consent})` after a `confirm`: the person kept both claims. */
+export function keptBothClaims(r: Recorder, grant: string): Promise<void> {
+  return r.step(
+    {
+      action: "choiceComplete",
+      note: "choice.complete(grant, {consent}): the person kept both claims.",
+      args: { grant },
+    },
+    async (s) => {
+      const res = await complete(s, {
+        grant,
+        consent: { claims: ["profile", "email"] },
+      });
+      expect(res.status).toBe(200);
+    },
+    { result: "ok", tokenHeld: true, scope: "profile email", licenseId: null },
+  );
+}
 
 /** The identity fragment of discovery, read through a recorded discover step. */
 async function identityFragment(
@@ -273,15 +346,18 @@ async function identityFragment(
 export function exchangeStep(
   r: Recorder,
   o: {
-    kind?: "google" | "apple";
+    kind?: "google" | "apple" | "gamecenter" | "pgs";
     note?: string;
     mint?: (nonce: string) => Promise<string>;
     preset?: string;
+    /** I-14.9: a game token (`args` already hold its structured fields). */
+    game?: GameCall;
+    args?: Json;
   },
   check: (a: Attempt) => void | Promise<void>,
   expectation: Json,
 ): Promise<void> {
-  const args = exchangeArgs(o.kind ?? "google");
+  const args = { ...exchangeArgs(o.kind ?? "google"), ...(o.args ?? {}) };
   return r.step(
     { action: "exchange", ...(o.note ? { note: o.note } : {}), args },
     async (s) => {
@@ -290,6 +366,7 @@ export function exchangeStep(
         args,
         o.mint ?? (o.kind === "apple" ? apple() : google()),
         o.preset,
+        o.game,
       );
       await check(a);
     },
@@ -311,16 +388,17 @@ export const discoveryIdentityExchange: Scenario = {
   id: "discovery-identity-exchange",
   record: () =>
     pinned("discovery-identity-exchange", async (pin) => {
-      const w = await exchangeWorld();
+      const w = await exchangeWorld(["config", "identity"], true);
       const kinds = {
-        kinds: ["google", "apple"],
+        kinds: ["google", "apple", "gamecenter", "pgs"],
         google: { serverClientId: PRODUCT_AUDIENCES.googleServer },
+        pgs: { serverClientId: PGS_CLIENT },
       };
       const r = recorder(
         w,
         pin,
         "discovery-identity-exchange",
-        "Discovery of a product that declares Google and Apple platform sign-in (I-13, WIRE-CONTRACT-V5 §12.11.6). The identity fragment carries exchange {kinds, google.serverClientId} and the nonce endpoint beside the regular sign-in ones; the Apple bundle ids and team id are never published. An SDK uses the exchange rung only when both are present. A product that declares no kind keeps the fragment of discovery-identity.json, and one whose launch gate is off names neither (exchange-gate-off.json; a client with an older discovery: exchange-gate-off-stale.json).",
+        "Discovery of a product that declares Google, Apple, Game Center and Play Games platform sign-in (I-13, I-14, WIRE-CONTRACT-V5 §12.11.6, §12.11.7). The identity fragment carries exchange {kinds, google.serverClientId, pgs.serverClientId} and the nonce endpoint beside the regular sign-in ones; a client ignores a kind it does not know. The Apple bundle ids and team id are never published, and neither is the Play Games application id. An SDK uses the exchange rung only when both are present. A product that declares no kind keeps the fragment of discovery-identity.json, and one whose launch gate is off names neither (exchange-gate-off.json; a client with an older discovery: exchange-gate-off-stale.json).",
         ["config", "identity"],
         ["core.discover", "identity.exchange"],
       );
@@ -355,7 +433,9 @@ const SERVICES = [
 ] as const;
 
 /** The `services` map a discover step expects: every slug, on or off. */
-function services(on: Partial<Record<(typeof SERVICES)[number], true>>): Json {
+export function services(
+  on: Partial<Record<(typeof SERVICES)[number], true>>,
+): Json {
   return Object.fromEntries(SERVICES.map((k) => [k, on[k] === true]));
 }
 
@@ -411,39 +491,11 @@ export const exchangeConfirm: Scenario = {
         {},
         (a) => {
           expect(a.grant!.status).toBe(200);
-          expect(a.json.status).toBe("confirm");
-          expect(a.json.access_token).toBeUndefined();
-          pending = a.json.grant as string;
-          const consent = a.json.consent as Record<string, unknown>;
-          expect(consent.firstTime).toBe(true);
-          Object.assign(view, {
-            firstTime: consent.firstTime,
-            changed: consent.changed,
-            as: consent.as,
-          } as Json);
+          pending = confirmed(a.json, view);
         },
         view,
       );
-      await r.step(
-        {
-          action: "choiceComplete",
-          note: "choice.complete(grant, {consent}): the person kept both claims.",
-          args: { grant: pending },
-        },
-        async (s) => {
-          const res = await complete(s, {
-            grant: pending,
-            consent: { claims: ["profile", "email"] },
-          });
-          expect(res.status).toBe(200);
-        },
-        {
-          result: "ok",
-          tokenHeld: true,
-          scope: "profile email",
-          licenseId: null,
-        },
-      );
+      await keptBothClaims(r, pending);
       return r.transcript();
     }),
 };
@@ -512,6 +564,24 @@ export const exchangeChoose: Scenario = {
     }),
 };
 
+/** The check of an exchange that finds no link: 403 `interstitial_required` with a link handle,
+ *  recorded into `seen` for the step's expectation. */
+export function noLinkSeen(seen: Json): (a: Attempt) => void {
+  return (a) => {
+    expect(a.grant!.status).toBe(403);
+    expect(a.json.error).toBe("interstitial_required");
+    expect(a.json.reason).toBe("no_link");
+    expect(String(a.json.linkHandle)).toMatch(/^lh_[A-Za-z0-9_-]{43}$/);
+    Object.assign(seen, {
+      reason: a.json.reason as string,
+      url: a.json.url as string,
+      linkHandle: a.json.linkHandle as string,
+      expiresIn: a.json.expiresIn as number,
+      tokenHeld: false,
+    });
+  };
+}
+
 export const exchangeNoLink: Scenario = {
   id: "exchange-no-link",
   record: () =>
@@ -525,24 +595,7 @@ export const exchangeNoLink: Scenario = {
         ["config", "identity"],
       );
       const seen: Json = { result: "interstitial-required" };
-      await exchangeStep(
-        r,
-        { kind: "apple" },
-        (a) => {
-          expect(a.grant!.status).toBe(403);
-          expect(a.json.error).toBe("interstitial_required");
-          expect(a.json.reason).toBe("no_link");
-          expect(String(a.json.linkHandle)).toMatch(/^lh_[A-Za-z0-9_-]{43}$/);
-          Object.assign(seen, {
-            reason: a.json.reason as string,
-            url: a.json.url as string,
-            linkHandle: a.json.linkHandle as string,
-            expiresIn: a.json.expiresIn as number,
-            tokenHeld: false,
-          });
-        },
-        seen,
-      );
+      await exchangeStep(r, { kind: "apple" }, noLinkSeen(seen), seen);
       return r.transcript();
     }),
 };

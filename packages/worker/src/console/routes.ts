@@ -494,6 +494,11 @@ export const ADMIN_ROUTES: readonly AdminRoute[] = [
   ...rows(["GET"], `${P}/sync/subjects/:subject/files/**`, "sync", product, {
     level: "edit",
   }),
+  // I-49.5: purging a product's silent-restore keys signs nobody out but retires every backed-up
+  // credential: a sign-in proven in the last five minutes, ahead of Identity's prefix.
+  ...rows(["POST"], `${P}/identity/restore/purge`, "signin", product, {
+    stepUp: true,
+  }),
   ...SERVICE_SLUGS.flatMap(serviceRows),
   // A-20.4: the channels read model (Distribution + Commerce facets), composed in the console layer.
   ...rows(["GET"], `${P}/distribution/channels`, "ship", product),

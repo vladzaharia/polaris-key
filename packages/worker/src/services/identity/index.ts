@@ -51,6 +51,7 @@ import type {
 import { launchGateOn } from "../../core/settings/platformRead.js";
 import { getProduct } from "../../core/products/store.js";
 import { readPlatformSignIn } from "./platformSignIn.js";
+import { gameKindsOn } from "./passthrough/subjectToken.js";
 import { keyEntryLimit } from "../../core/licensing/keyEntries.js";
 import { accountPortalUrl } from "../../core/licensing/manageUrl.js";
 import { licenseHolderHooks } from "./accounts/holders.js";
@@ -62,8 +63,22 @@ import { identityIntegration } from "./integration.js";
 import { discoverVisibility } from "./portal/store/visibility.js";
 import { identityMaintenance } from "./maintenance.js";
 import { platformConnectionSeedJob } from "./connections/seed.js";
+import { restoreServed } from "./restore/gate.js";
+import {
+  IDENTITY_RESTORE_LISTENER,
+  restoreDeviceListener,
+} from "./restore/listener.js";
+import {
+  IDENTITY_RESTORE_SERVICES_LISTENER,
+  restoreServicesListener,
+} from "./restore/servicesListener.js";
+import {
+  IDENTITY_RESTORE_STORE,
+  identityRestoreStore,
+} from "./restore/subjectStore.js";
 
 import { identityProductDeletion } from "./productDeletion.js";
+import { identityScopeRelease } from "./scopeRelease.js";
 
 export const identityService: ServiceDescriptor = {
   slug: "identity",
@@ -73,6 +88,7 @@ export const identityService: ServiceDescriptor = {
   contributes: {
     manifest: identityManifest,
     productDeletion: identityProductDeletion,
+    scopeRelease: identityScopeRelease,
     // LX-26: the licence-holder hooks, so License's creation path and every account-email
     // verification reach them (`core/licensing/licenseHolders.ts`).
     licenseHolders: licenseHolderHooks,
@@ -81,6 +97,13 @@ export const identityService: ServiceDescriptor = {
       [STOREFRONT_ACTIVATIONS_LISTENER]: recordFirstActivation,
     },
     maintenance: identityMaintenance,
+    // I-49.4: the silent-restore keys, revoked with the account's data and with a device.
+    subjectStores: { [IDENTITY_RESTORE_STORE]: identityRestoreStore },
+    onDeviceChange: { [IDENTITY_RESTORE_LISTENER]: restoreDeviceListener },
+    // I-49.8: Identity off or back on ends every restore key (`DELETE restore` is 404 while off).
+    onServicesChange: {
+      [IDENTITY_RESTORE_SERVICES_LISTENER]: restoreServicesListener,
+    },
     // P0-49: run by an operator through the migration runner, never by a tick.
     migrations: [platformConnectionSeedJob],
     integration: identityIntegration,
@@ -154,6 +177,13 @@ export const identityService: ServiceDescriptor = {
     if (audiences?.google.serverClientId) kinds.push("google");
     if (audiences?.apple.teamId && audiences.apple.bundleIds.length > 0)
       kinds.push("apple");
+    // I-49 (§12.11.8): the gate first, then the product setting; off reads nothing else.
+    const restoreOn = await restoreServed(env, db, product.slug);
+    // I-14 (§12.11.7): the game kinds, while `launch.gameSignIn` is on and the product sets them up.
+    const games = audiences
+      ? await gameKindsOn(env, db, product.slug, audiences)
+      : [];
+    kinds.push(...games);
     const fragment: IdentityDiscovery = {
       enabled: true,
       // I-08: the platform sign-in (`authorize`, `token`) needs no per-product IdP row, so a
@@ -173,6 +203,7 @@ export const identityService: ServiceDescriptor = {
         { env, db, ...(settings ? { registry: settings } : {}) },
         product.slug,
       ),
+      ...(restoreOn ? { restore: true as const } : {}),
       ...(kinds.length > 0
         ? {
             exchange: {
@@ -180,6 +211,11 @@ export const identityService: ServiceDescriptor = {
               ...(audiences?.google.serverClientId
                 ? {
                     google: { serverClientId: audiences.google.serverClientId },
+                  }
+                : {}),
+              ...(games.includes("pgs") && audiences?.playGames.serverClientId
+                ? {
+                    pgs: { serverClientId: audiences.playGames.serverClientId },
                   }
                 : {}),
             },
@@ -204,6 +240,7 @@ export const identityService: ServiceDescriptor = {
         attach: `${base}/identity/attach`,
         subject: `${base}/identity/subject`,
         signout: `${base}/identity/signout`,
+        ...(restoreOn ? { restore: `${base}/identity/restore` } : {}),
         ...(exchangeOn
           ? {
               nonce: `${base}/identity/nonce`,

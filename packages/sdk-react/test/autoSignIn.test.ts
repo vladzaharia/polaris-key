@@ -562,6 +562,9 @@ describe("the FedCM provider", () => {
   });
 });
 
+const asAuto = (adapter: unknown) =>
+  adapter as { autoSignIn(o?: unknown): Promise<AutoSignInResult> };
+
 describe("through the browser adapter", () => {
   async function adapterRig(
     provider: PlatformIdentityProvider | null,
@@ -633,6 +636,31 @@ describe("through the browser adapter", () => {
     ).autoSignIn({ prompt: "optional" });
     expect(out).toEqual({ kind: "needsSignIn", reason: "signedOut" });
     expect(s.asked).toEqual([]);
+  });
+
+  it("an explicit run that signs nobody in leaves the sign-out flag set", async () => {
+    const s = stub();
+    const { adapter, store } = await adapterRig(s.provider);
+    await adapter.signOut();
+    const a = asAuto(adapter);
+    const out = await a.autoSignIn({ explicit: true, prompt: "optional" });
+    expect(out.kind).toBe("needsSignIn");
+    expect(s.asked.length).toBeGreaterThan(0);
+    expect(await store.explicitSignOut!.get()).toBe(true);
+    expect(await a.autoSignIn()).toEqual({
+      kind: "needsSignIn",
+      reason: "signedOut",
+    });
+  });
+
+  it("an explicit run that signs in clears the sign-out flag", async () => {
+    const s = stub({ silent: SUBJECT_TOKEN, optional: SUBJECT_TOKEN });
+    const { adapter, store } = await adapterRig(s.provider, { tokenOk: true });
+    await adapter.signOut();
+    const a = asAuto(adapter);
+    const out = await a.autoSignIn({ explicit: true, prompt: "optional" });
+    expect(out.kind).toBe("signedIn");
+    expect(await store.explicitSignOut!.get()).toBe(false);
   });
 
   it("a key activation does not clear the sign-out flag", async () => {

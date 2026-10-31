@@ -2054,6 +2054,10 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "nearby": {
           "description": "Whether a signed-in device nearby may approve a sign-in here (identity.nearby). Default true; needs no Cloud Connect.",
           "type": "boolean"
+        },
+        "restore": {
+          "description": "Whether the app may sign a person in again on a new device from a restore key in their platform backup (identity.restore). Default true; set false to opt out.",
+          "type": "boolean"
         }
       }
     },
@@ -15800,7 +15804,7 @@ init_define_PKEY_EMBEDDED_SCHEMAS();
 // ../shared-protocol/dist/identity.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
-// ../shared-protocol/dist/chunk-YR5J7ZYL.js
+// ../shared-protocol/dist/chunk-V2NG57XJ.js
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var DISPLAY_TEXT_STRIP = [
   [0, 31],
@@ -24355,7 +24359,7 @@ function validateIdentityBlock(productRoot, modules, errors, warnings) {
       "product",
       "/identity",
       "invalid_identity",
-      "identity must be an object with keyEntry, terms, redirectPaths, platformSignIn and nearby."
+      "identity must be an object with keyEntry, terms, redirectPaths, platformSignIn, nearby and restore."
     );
     return;
   }
@@ -24366,7 +24370,7 @@ function validateIdentityBlock(productRoot, modules, errors, warnings) {
         "product",
         `/identity/${key}`,
         "invalid_identity",
-        "identity takes only keyEntry, terms, redirectPaths, platformSignIn and nearby."
+        "identity takes only keyEntry, terms, redirectPaths, platformSignIn, nearby and restore."
       );
     }
   }
@@ -24482,6 +24486,15 @@ function validateIdentityBlock(productRoot, modules, errors, warnings) {
       "/identity/nearby",
       "invalid_identity_nearby",
       "identity.nearby must be true or false."
+    );
+  }
+  if (identity.restore !== void 0 && typeof identity.restore !== "boolean") {
+    add4(
+      errors,
+      "product",
+      "/identity/restore",
+      "invalid_identity_restore",
+      "identity.restore must be true or false."
     );
   }
   if (identity.platformSignIn !== void 0)
@@ -24773,7 +24786,8 @@ var IDENTITY_MEMBERS = [
   "terms",
   "redirectPaths",
   "platformSignIn",
-  "nearby"
+  "nearby",
+  "restore"
 ];
 function normalizeIdentityBlock(raw) {
   if (!isRecord6(raw)) return void 0;
@@ -24797,6 +24811,7 @@ function normalizeIdentityBlock(raw) {
   if (Array.isArray(raw.redirectPaths))
     out.redirectPaths = raw.redirectPaths.filter(isString);
   if (typeof raw.nearby === "boolean") out.nearby = raw.nearby;
+  if (typeof raw.restore === "boolean") out.restore = raw.restore;
   const psi = normalizePlatformSignIn(raw.platformSignIn);
   if (psi) out.platformSignIn = psi;
   return Object.keys(out).length > 0 ? out : void 0;

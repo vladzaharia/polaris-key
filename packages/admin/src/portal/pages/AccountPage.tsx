@@ -17,6 +17,10 @@ import {
   packagesVisible,
 } from "../components/account/PackagesCard.js";
 import { SessionsCard } from "../components/account/SessionsCard.js";
+import {
+  DevicesSection,
+  devicesVisible,
+} from "../components/account/DevicesSection.js";
 import { AccountCard as SectionCard } from "../components/account/AccountCard.js";
 import { SegmentedRow } from "../components/account/SegmentedRow.js";
 import { DownloadData } from "../components/DownloadData.js";
@@ -24,6 +28,7 @@ import { DataRow } from "../components/DataRow.js";
 import { StepUpInline } from "../components/account/StepUpInline.js";
 import {
   useCancelAccountDeletion,
+  useAccountDevices,
   useDeleteAccount,
   useExportAccountData,
   usePersonalTokens,
@@ -65,6 +70,7 @@ const SECTIONS: { id: AccountSection; label: string }[] = [
   { id: "methods", label: t("signin.join.methodsLink") },
   { id: "packages", label: t("locker.account.packages") },
   { id: "sessions", label: t("locker.account.sessions") },
+  { id: "devices", label: t("locker.account.devices") },
   { id: "appearance", label: t("locker.appearance.title") },
   { id: "data", label: t("locker.account.yourData") },
 ];
@@ -81,11 +87,19 @@ export function AccountPage({
   useDocumentTitle(t("locker.account.title"));
   const sessions = useSessions();
   const sessionsShown = !sessions.isPending && sessions.data !== null;
+  const accountDevices = useAccountDevices();
+  const hadDevices = React.useRef(false);
+  const devicesShown = devicesVisible(
+    accountDevices,
+    hadDevices,
+    section === "devices",
+  );
   const packages = usePersonalTokens();
   const packagesShown = packagesVisible(packages.data);
   const sections = SECTIONS.filter(
     (s) =>
       (s.id !== "sessions" || sessionsShown) &&
+      (s.id !== "devices" || devicesShown) &&
       (s.id !== "packages" || packagesShown),
   );
   const [current, setCurrent] = React.useState<AccountSection>(
@@ -97,8 +111,13 @@ export function AccountPage({
   // waits until they have settled, scrolls there and moves focus to its heading, once (the
   // product page's pointer row links here).
   const landed = React.useRef(false);
+  // The notice's "Remove this device" link lands on Devices, which appears once its list loads.
   const settled =
-    section === "packages" ? !packages.isPending && !sessions.isPending : true;
+    section === "packages"
+      ? !packages.isPending && !sessions.isPending
+      : section === "devices"
+        ? !accountDevices.isPending && !sessions.isPending
+        : true;
   React.useEffect(() => {
     if (!section || landed.current || !settled) return;
     landed.current = true;
@@ -113,12 +132,13 @@ export function AccountPage({
         !at ||
         at === document.body ||
         (at instanceof HTMLElement && /^H[123]$/.test(at.tagName));
-      if (section === "packages" && refocus && idle)
-        focusSectionHeading("packages");
+      if ((section === "packages" || section === "devices") && refocus && idle)
+        focusSectionHeading(section);
     };
     go(true);
     // The sign-in methods card above fills in a frame later: land again once it has.
-    if (section === "packages") setTimeout(() => go(true), 400);
+    if (section === "packages" || section === "devices")
+      setTimeout(() => go(true), 400);
   }, [section, settled]);
   const pick = (s: AccountSection): void => {
     setCurrent(s);
@@ -203,6 +223,7 @@ export function AccountPage({
           <SignInMethods account={account} params={params} />
           <PackagesCard />
           <SessionsCard />
+          <DevicesSection shown={devicesShown} wanted={section === "devices"} />
           <Appearance />
           <YourData account={account} />
         </div>

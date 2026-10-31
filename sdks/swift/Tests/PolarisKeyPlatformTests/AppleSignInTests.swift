@@ -126,6 +126,79 @@ final class AppleSignInTests: XCTestCase {
         XCTAssertNil(ids.load())
     }
 
+    // ── The router ops (I-48.4a) ─────────────────────────────────────────────────────────────
+
+    private func routed(_ fake: FakeAuthorizer, ids: MemoryUserIDs = MemoryUserIDs()) -> (PlatformHost, EventLog) {
+        let h = PlatformHost(
+            services: fakeServices(appleSignIn: AppleSignIn(authorizer: fake, userIDs: ids)))
+        return (h, EventLog(h.sink))
+    }
+
+    private func call(_ h: PlatformHost, _ q: PlatformObject) -> PlatformObject {
+        decodePlatformJSON(h.call(encodePlatformJSON(q))) ?? [:]
+    }
+
+    func testCapabilityFollowsTheService() {
+        let (h, _) = routed(FakeAuthorizer(.success(grant)))
+        XCTAssertEqual(call(h, ["op": "capabilities"])["appleSignIn"], true)
+        let none = PlatformHost(services: fakeServices())
+        XCTAssertEqual(call(none, ["op": "capabilities"])["appleSignIn"], false)
+        XCTAssertEqual(call(none, ["op": "apple_sign_in", "nonce": "n"])["reason"], "runtime")
+        XCTAssertEqual(call(none, ["op": "apple_forget"])["unsupported"], true)
+    }
+
+    func testSignInEventCarriesTheTokenAndTheUserID() async {
+        let fake = FakeAuthorizer(.success(grant))
+        let (h, log) = routed(fake)
+        let ack = call(h, ["op": "apple_sign_in", "nonce": "bm9uY2U"])
+        let ev = await log.result(ack["req"])
+        XCTAssertEqual(ev["ev"], "apple_sign_in")
+        XCTAssertEqual(ev["ok"], true)
+        XCTAssertEqual(ev["token"], "eyJ.SECRET.token")
+        XCTAssertEqual(ev["userID"], "001234.abcd")
+        // `immediate` defaults to true; the ack itself carries no secret.
+        XCTAssertEqual(fake.calls, [.init(nonce: "bm9uY2U", immediate: true)])
+        XCTAssertNil(ack["token"])
+    }
+
+    func testSignInPassesImmediateFalseForThePlainSheet() async {
+        let fake = FakeAuthorizer(.success(grant))
+        let (h, log) = routed(fake)
+        _ = await log.result(call(h, ["op": "apple_sign_in", "nonce": "n", "immediate": false])["req"])
+        XCTAssertEqual(fake.calls.first?.immediate, false)
+    }
+
+    func testSignInFailuresAreTyped() async {
+        for (failure, code) in [
+            (AppleSignInFailure.cancelled, "cancelled"), (.unavailable("x"), "unavailable"),
+        ] {
+            let (h, log) = routed(FakeAuthorizer(.failure(failure)))
+            let ev = await log.result(call(h, ["op": "apple_sign_in", "nonce": "n"])["req"])
+            XCTAssertEqual(ev["ok"], false)
+            XCTAssertEqual(ev["error"], .string(code))
+            XCTAssertNil(ev["token"])
+        }
+        let (h, _) = routed(FakeAuthorizer(.success(grant)))
+        XCTAssertEqual(call(h, ["op": "apple_sign_in"])["error"], "missing_nonce")
+        XCTAssertEqual(call(h, ["op": "apple_sign_in", "nonce": ""])["error"], "missing_nonce")
+    }
+
+    func testRememberStateAndForget() async {
+        let fake = FakeAuthorizer(.success(grant))
+        let ids = MemoryUserIDs()
+        let (h, log) = routed(fake, ids: ids)
+        var ev = await log.result(call(h, ["op": "apple_credential_state"])["req"])
+        XCTAssertEqual(ev["state"], "none")
+        XCTAssertEqual(call(h, ["op": "apple_remember"])["error"], "missing_user_id")
+        XCTAssertEqual(call(h, ["op": "apple_remember", "userID": "001234.abcd"])["ok"], true)
+        XCTAssertEqual(ids.load(), "001234.abcd")
+        fake.setState(.revoked)
+        ev = await log.result(call(h, ["op": "apple_credential_state"])["req"])
+        XCTAssertEqual(ev["state"], "revoked")
+        XCTAssertEqual(call(h, ["op": "apple_forget"])["ok"], true)
+        XCTAssertNil(ids.load())
+    }
+
     func testTheTokenNeverReachesADescription() {
         for text in [
             grant.description, grant.debugDescription, "\(grant)", String(reflecting: grant),

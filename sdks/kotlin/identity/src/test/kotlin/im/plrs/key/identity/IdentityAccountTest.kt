@@ -159,4 +159,33 @@ class IdentityAccountTest {
             IdentityClient(w.core, opener = AccountOpener { throw IllegalStateException("no browser") }).openAccount(),
         )
     }
+
+    @Test
+    fun aPortalThatIsNotAWebLinkIsUnavailableAndNeverReachesTheOpener() = runBlocking {
+        for (bad in listOf("javascript:alert(1)", "intent://x#Intent;scheme=https;end", "file:///etc/passwd", "http://evil.example/p", "https://u:p@key.plrs.im/x")) {
+            val w = world(withAccount.replace("https://key.plrs.im/#/p/djdl", bad))
+            val opened = mutableListOf<String>()
+            val client = IdentityClient(w.core, opener = AccountOpener { opened += it; true })
+            assertEquals(bad, OpenAccountResult.Unavailable, client.openAccount())
+            assertTrue(opened.isEmpty())
+        }
+    }
+
+    @Test
+    fun anEndpointOutsideTheProductGetsNoRequestAndNoBearer() = runBlocking {
+        val elsewhere = withAccount.replace("https://key.plrs.im/djdl/identity/subject", "https://evil.example/subject")
+            .replace("https://key.plrs.im/djdl/identity/signout", "https://evil.example/signout")
+        val w = world(elsewhere)
+        val client = IdentityClient(w.core)
+        for (call in listOf<suspend () -> Any?>({ client.subject() }, { client.signOut() })) {
+            try {
+                call()
+                fail("expected bad-response")
+            } catch (e: PolarisException) {
+                assertEquals(ErrorCode.badResponse, e.code)
+            }
+        }
+        assertTrue(w.transport.requests().none { it.path == "/subject" || it.path == "/signout" })
+        assertEquals("pkeyt_token", w.store.getToken())
+    }
 }

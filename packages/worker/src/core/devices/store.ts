@@ -551,6 +551,8 @@ export function stmtsDeauthorizeDevice(
   product: string,
   deviceId: string,
   licenseId: string,
+  /** The subject the caller proved the device belongs to; the row is left alone if it changed. */
+  subject?: string,
 ): DbStatement[] {
   // Guarded by the licence the caller proved: a device rebound to another licence between the
   // check and the batch is left alone, and so are its fingerprint and facts.
@@ -558,8 +560,13 @@ export function stmtsDeauthorizeDevice(
                       AND license_id = ? AND status = 'deauthorized')`;
   return [
     {
-      sql: "UPDATE devices SET status = 'deauthorized', seat_no = NULL WHERE product = ? AND device_id = ? AND license_id = ?",
-      params: [product, deviceId, licenseId],
+      // Only an authorized device is removed, so of two concurrent removes exactly one changes a row
+      // (and runs the audit and notice tail).
+      sql: `UPDATE devices SET status = 'deauthorized', seat_no = NULL WHERE product = ? AND device_id = ? AND license_id = ? AND status = 'authorized'${subject === undefined ? "" : " AND subject = ?"}`,
+      params:
+        subject === undefined
+          ? [product, deviceId, licenseId]
+          : [product, deviceId, licenseId, subject],
     },
     {
       sql: `DELETE FROM device_fingerprints WHERE product = ? AND device_id = ? AND ${removed}`,
