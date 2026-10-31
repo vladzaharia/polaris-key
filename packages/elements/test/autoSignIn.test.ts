@@ -90,6 +90,25 @@ describe("the confirm step", () => {
   });
 });
 
+describe("the confirm step without a drawable license line", () => {
+  it("draws no 'License for this device' label over nothing", async () => {
+    const base = input(
+      "SignIn/confirm: Apple shared no email, an existing license",
+    );
+    const el = await draw({ input: base });
+    const root = el.shadowRoot!;
+    expect(
+      root.querySelector('[data-key="signin.consent.licenseLine"]'),
+    ).toBeNull();
+    expect(
+      root.querySelector('[data-key="signin.consent.license"]'),
+    ).toBeNull();
+    expect(
+      root.querySelector('[data-key="signin.consent.alsoGets"]'),
+    ).toBeNull();
+  });
+});
+
 describe("the device limit with no license rows", () => {
   it("with a link: h1, the lede, Replace a device (new window) first, Use another account, Cancel", async () => {
     const el = await draw({

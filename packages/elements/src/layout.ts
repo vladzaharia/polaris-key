@@ -155,6 +155,8 @@ export const KIT_LAYOUTS: Readonly<
     order: [
       "signin.auto.confirm.as",
       "signin.auto.confirm.asApple",
+      "signin.auto.confirm.asGameCenter",
+      "signin.auto.confirm.asPlayGames",
       "signin.consent.license",
       "signin.consent.newLicense",
       "signin.consent.licenseLine",
