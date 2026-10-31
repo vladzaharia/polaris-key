@@ -179,7 +179,7 @@ function device(
     keys,
     vault,
     ...(o.now ? { now: o.now } : {}),
-    ...(o.sessionRootSeconds
+    ...(o.sessionRootSeconds !== undefined
       ? { sessionRootSeconds: o.sessionRootSeconds }
       : {}),
   });
@@ -368,6 +368,34 @@ describe("wrapping to another device", () => {
     );
     await b.engine.removeWrap(B);
     expect(server.wraps.has(B)).toBe(false);
+  });
+});
+
+describe("sessionRootSeconds", () => {
+  const delayFor = async (secs?: number) => {
+    const spy = vi.spyOn(globalThis, "setTimeout");
+    try {
+      const d = device(new FakeRingServer(), A, {
+        ...(secs === undefined ? {} : { sessionRootSeconds: secs }),
+      });
+      await d.engine.create();
+      return spy.mock.calls
+        .map((c) => c[1])
+        .filter((ms) => typeof ms === "number" && ms >= 60_000);
+    } finally {
+      spy.mockRestore();
+    }
+  };
+  it("clamps 901 to 900, keeps 900 and the default", async () => {
+    expect(await delayFor(901)).toContain(900_000);
+    expect(await delayFor(900)).toContain(900_000);
+    expect(await delayFor(60)).toContain(60_000);
+    expect(await delayFor()).toContain(300_000);
+  });
+  it.each([NaN, Infinity, 0, -1])("refuses %s as invalid-options", (v) => {
+    expect(() =>
+      device(new FakeRingServer(), A, { sessionRootSeconds: v }),
+    ).toThrowError(expect.objectContaining({ code: "invalid-options" }));
   });
 });
 

@@ -470,7 +470,11 @@ export interface BrowserAdapterOptions {
   keyring?: {
     deviceKeys?: DeviceKeyPort;
     vault?: RootVault;
-    /** Seconds the root stays in memory as bytes after it was made or recovered. Default 300. */
+    /**
+     * Seconds the root stays in memory as bytes after it was made or recovered. Default 300;
+     * above 900 is clamped to 900, and a non-finite or non-positive value is `invalid-options`
+     * (raised when the ring is first used).
+     */
     sessionRootSeconds?: number;
   };
   /**
