@@ -93,7 +93,7 @@ func _export(t: PKeyTestContext) -> void:
 		t.check("pgs: app id %s is refused" % str(bad), E.play_games_app_id(bad) == "")
 	var meta := E.application_elements("play", true, "123456789012")
 	t.check("pgs: the meta-data names APP_ID", meta.contains("android:name=\"com.google.android.gms.games.APP_ID\""), meta)
-	t.check("pgs: …with a string value (a backslash and a space first)", meta.contains("android:value=\"\\ 123456789012\""), meta)
+	t.check("pgs: …with a string value (backslash-u003 and the digits)", meta.contains("android:value=\"\\u003123456789012\""), meta)
 	var quiet := E.application_elements("direct", true, "1") + E.application_elements("play", false, "1") + E.application_elements("play", true, "")
 	t.check("pgs: …and only for play, opted in, with an id", quiet == "")
 	t.check("pgs: on without an id warns", E.play_games_warnings("play", true, "").size() == 1 and E.play_games_warnings("play", true, "abc").size() == 1)

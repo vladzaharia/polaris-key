@@ -98,13 +98,13 @@ static func play_games_app_id(raw: Variant) -> String:
 
 
 ## The <application> children for `flavor`: the Play Games app id meta-data for an export that opted in
-## with a valid app id, nothing else. The value starts with a backslash and a space so that Android
-## keeps the digits a string (a bare number would be read as an integer, which Play Games rejects);
-## [U] confirm with a real Play Games app.
+## with a valid app id, nothing else. The value is `\u003` plus the digits (the form Google's Unity
+## plugin uses: `\u003` and the first digit are that digit's own escape), so that aapt2 keeps the digits
+## a string with no leading character (a bare number would be an integer, which Play Games rejects).
 static func application_elements(flavor: String, play_games: bool, app_id: String) -> String:
 	if flavor != "play" or not play_games or app_id == "":
 		return ""
-	return "    <meta-data android:name=\"%s\" android:value=\"\\ %s\" />\n" % [PLAY_GAMES_APP_ID_META, app_id]
+	return "    <meta-data android:name=\"%s\" android:value=\"\\u003%s\" />\n" % [PLAY_GAMES_APP_ID_META, app_id]
 
 
 ## Warnings for the Play Games opt-in ("" entries never appear).

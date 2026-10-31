@@ -254,11 +254,26 @@ aab_dex() { # aab_dex <aab> <regex> -> count of dexdump lines matching, over bas
 aab_manifest_has() { # aab_manifest_has <aab> <text> -> yes|no (the AAB manifest is protobuf: its strings are still plain)
   unzip -p "$1" base/manifest/AndroidManifest.xml 2>/dev/null | grep -aq "$2" && echo yes || echo no
 }
+aab_manifest_exact() { # aab_manifest_exact <aab> <digits> -> yes only if the id is stored as \u003<digits> and never as "\ <digits>"
+  python3 - "$1" "$2" <<'PY'
+import sys, zipfile
+data = zipfile.ZipFile(sys.argv[1]).read("base/manifest/AndroidManifest.xml")
+v = sys.argv[2].encode()
+# The protobuf manifest keeps the attribute as written, length-prefixed; aapt2 (`convert` to binary, as
+# bundletool does for the APK) resolves \u003 to the digit, so the installed value is the bare digits.
+good = b"\\u003" + v
+bad = b"\\ " + v
+print("yes" if bytes([len(good)]) + good in data and bad not in data else "no")
+PY
+}
 if [ -f "$OUT/play-v1.aab" ] && [ -f "$OUT/play-games.aab" ]; then
   [ "$(aab_dex "$OUT/play-v1.aab" "Class descriptor *: 'Lcom/google/android/gms/games/")" = 0 ] && ok "play: no Play Games library without the opt-in" || fail "play: Play Games library present without the opt-in"
   [ "$(aab_manifest_has "$OUT/play-v1.aab" com.google.android.gms.games.APP_ID)" = no ] && ok "play: no Play Games APP_ID without the opt-in" || fail "play: APP_ID present without the opt-in"
   [ "$(aab_dex "$OUT/play-games.aab" "Class descriptor *: 'Lcom/google/android/gms/games/PlayGames;'")" = 1 ] && ok "play-games: the Play Games library packaged" || fail "play-games: the Play Games library missing"
   [ "$(aab_manifest_has "$OUT/play-games.aab" com.google.android.gms.games.APP_ID)" = yes ] && ok "play-games: the APP_ID meta-data is in the manifest" || fail "play-games: no APP_ID meta-data"
+  # The exact value (B2): stored as \u003 and the digits, which aapt2 resolves to the digits alone; the old
+  # "\ <digits>" form resolved to a string with a leading space.
+  [ "$(aab_manifest_exact "$OUT/play-games.aab" 123456789012)" = yes ] && ok "play-games: the APP_ID value is \\u003 and the digits (the installed string is the digits alone)" || fail "play-games: the APP_ID value is not \\u003123456789012"
   [ "$(aab_dex "$OUT/play-games.aab" "Class descriptor *: 'Landroidx/credentials/CredentialManager;'")" = 1 ] && ok "play-games: androidx/credentials packaged" || fail "play-games: androidx/credentials missing"
   [ "$(aab_dex "$OUT/play-v1.aab" "Class descriptor *: 'Landroidx/credentials/CredentialManager;'")" = 1 ] && ok "play: androidx/credentials packaged" || fail "play: androidx/credentials missing"
 fi
