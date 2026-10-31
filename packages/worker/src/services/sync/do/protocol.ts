@@ -150,6 +150,8 @@ export type CloudSyncOp =
       clientId: string;
       /** The matched declaration's `maxRecords`. */
       maxRecords: number;
+      /** The person's allowance in bytes: a `chunks` upload's late-charged chunks are held to it. */
+      quotaBytes: number;
       /** The matched declaration's `files.keepRevisions`. */
       keepRevisions: number;
       serverNow: number;
@@ -480,7 +482,7 @@ export type FinalizeCommitOutcome =
   | { ok: true; result: FinalizeResponse }
   | { ok: false; error: "not_found" }
   | { ok: false; error: "revision_conflict"; version: number }
-  | { ok: false; error: "quota_exceeded"; scope: "collection" };
+  | { ok: false; error: "quota_exceeded"; scope: "collection" | "user" };
 
 /**
  * What a download streams. `ssecKey` is the hex of the 32-byte SSE-C key the object is stored

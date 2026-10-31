@@ -291,6 +291,7 @@ describe("the upload path under workerd (U-10.6)", () => {
         deviceId: "d1",
         clientId: "c_AAAAAAAAAAAAAAAAAAAAAA",
         maxRecords: 16,
+        quotaBytes: 1 << 30,
         keepRevisions: 5,
       });
       if (!committed.outcome.ok) throw new Error("not committed");

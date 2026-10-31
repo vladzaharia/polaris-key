@@ -745,6 +745,7 @@ export function fileFinalizeCommit(
         objectKey: fileObjectKey(op, u.uploadId),
         clientId: op.clientId,
         maxRecords: op.maxRecords,
+        quotaBytes: op.quotaBytes,
         keepRevisions: op.keepRevisions,
         ...(sealed(u.enc) && host.store.getMeta(SSEC_KID) !== undefined
           ? { ssecKid: host.store.getMeta(SSEC_KID) as string }

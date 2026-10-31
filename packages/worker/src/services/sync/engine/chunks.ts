@@ -236,6 +236,23 @@ function chargeChunk(store: SyncStore, delta: number): void {
   });
 }
 
+/**
+ * The stored bytes of the chunks an upload names that no file references now and that the upload
+ * did not reserve: a chunk its plan answered `present` whose last reference went afterwards. They
+ * are charged at `finalize` (the first reference), so `finalize` checks them against the quota.
+ */
+export function unreservedChunkBytes(
+  store: SyncStore,
+  upload: UploadRow,
+): number {
+  let extra = 0;
+  for (const r of store.uploadChunks(upload.uploadId)) {
+    const c = store.getChunk(upload.collection, r.chunkId);
+    if (c && c.refs === 0) extra += Math.max(0, c.storedBytes - r.reserved);
+  }
+  return extra;
+}
+
 /** The identity of a stored file version. */
 export interface FileRef {
   collection: string;

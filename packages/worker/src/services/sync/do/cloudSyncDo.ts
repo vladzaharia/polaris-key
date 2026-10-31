@@ -542,6 +542,7 @@ export class CloudSyncDO implements DurableObject {
     if (
       op.op === "fileFinalizeCommit" &&
       (!isName(op.clientId) ||
+        !Number.isSafeInteger(op.quotaBytes) ||
         !Number.isSafeInteger(op.keepRevisions) ||
         op.keepRevisions < 0)
     )
