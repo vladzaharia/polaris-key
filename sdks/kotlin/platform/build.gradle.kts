@@ -86,7 +86,12 @@ dependencies {
     "playImplementation"(libs.androidx.credentials.play.services.auth)
     "playImplementation"(libs.googleid)
 
+    // Background transfers (U-41.3): the worker and its scheduling. `implementation`: no WorkManager type is public.
+    implementation(libs.androidx.work.runtime)
+
     testImplementation(libs.junit)
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
 }

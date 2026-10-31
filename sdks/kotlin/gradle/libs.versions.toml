@@ -28,6 +28,11 @@ playBilling = "9.1.0"
 androidxCredentials = "1.6.0"
 googleid = "1.2.0"
 junit = "4.13.2"
+# WorkManager for :platform's background transfers (U-41.3), exact pin. 2.12.0 is the latest stable: published
+# 2026-09-23 to Google Maven (the .aar's Last-Modified header; 38 days old on 2026-10-31, the floor is 14), and the
+# AAR declares minCompileSdk 35 and minAndroidGradlePluginVersion 8.6.0 (aar-metadata.properties), so it builds under
+# compileSdk 36 and AGP 8.6.1. CoroutineWorker is in work-runtime itself since 2.9.
+androidxWork = "2.12.0"
 robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
 coroutines = "1.11.0"
@@ -82,6 +87,8 @@ androidx-credentials = { module = "androidx.credentials:credentials", version.re
 androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidxCredentials" }
 googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
 play-billing = { module = "com.android.billingclient:billing", version.ref = "playBilling" }
+androidx-work-runtime = { module = "androidx.work:work-runtime", version.ref = "androidxWork" }
+androidx-work-testing = { module = "androidx.work:work-testing", version.ref = "androidxWork" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }
