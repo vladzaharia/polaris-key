@@ -12,13 +12,18 @@
 
 import { serviceRoutes } from "../../core/http/routes.js";
 import {
+  CHUNK_ID_PARAM,
   FILE_PARAMS,
   handleFileBegin,
   handleUploadAbort,
   handleUploadStatus,
 } from "./handlers/files.js";
 import { handleFinalize } from "./handlers/fileFinalize.js";
-import { handleChunkPlan } from "./handlers/fileChunks.js";
+import {
+  handleChunkGet,
+  handleChunkPlan,
+  handleChunkPut,
+} from "./handlers/fileChunks.js";
 import { handleFileGet, handleFileRevisions } from "./handlers/fileGet.js";
 import { handlePartPut, handleUploadPut } from "./handlers/fileUpload.js";
 import { handlePull } from "./handlers/pull.js";
@@ -93,6 +98,31 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
       uploadId: FILE_PARAMS.uploadId,
     },
     handler: (ctx, match) => handleChunkPlan(ctx, match),
+  },
+  // U-37.3: one chunk object (create-only), and the read of a chunk of a collection.
+  {
+    path: "files/:collection/:id/upload/:uploadId/chunks/:chunkId",
+    methods: ["PUT"],
+    auth: { kind: "device" },
+    cors: true,
+    params: {
+      collection: FILE_PARAMS.collection,
+      id: FILE_PARAMS.id,
+      uploadId: FILE_PARAMS.uploadId,
+      chunkId: CHUNK_ID_PARAM,
+    },
+    handler: (ctx, match) => handleChunkPut(ctx, match),
+  },
+  {
+    path: "files/:collection/chunks/:chunkId",
+    methods: ["GET"],
+    auth: { kind: "device" },
+    cors: true,
+    params: {
+      collection: FILE_PARAMS.collection,
+      chunkId: CHUNK_ID_PARAM,
+    },
+    handler: (ctx, match) => handleChunkGet(ctx, match),
   },
   // U-10.7: the commit of an upload.
   {

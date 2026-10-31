@@ -14,7 +14,13 @@
 
 import { SYNC_MAX_OPEN_UPLOADS } from "@polaris-key/protocol/sync";
 import type { UploadStatus } from "@polaris-key/protocol/sync";
-import { missingChunks, planChunks } from "../engine/chunks.js";
+import {
+  chunkObjectKey,
+  missingChunks,
+  planChunks,
+  prepareChunk,
+  storeChunk,
+} from "../engine/chunks.js";
 import {
   checkBegin,
   commitBegin,
@@ -29,6 +35,7 @@ import { markDirty } from "./directory.js";
 import type { SyncStore, UploadRow } from "../engine/types.js";
 import type {
   ChunkPlanOutcome,
+  ChunkPrepareOutcome,
   CloudSyncError,
   CloudSyncOp,
   CloudSyncReply,
@@ -339,6 +346,107 @@ export async function fileChunkPlan(
       }),
     ),
   );
+}
+
+/**
+ * What a chunk `PUT` streams against (U-37.3): the session must be open and in `chunks` mode, and
+ * the plan must have answered the id `missing`. An id it answered `present` (or that landed
+ * already) is `have`: a resend stores nothing.
+ */
+export async function chunkPrepare(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "chunkPrepare" }>,
+): Promise<FileReply> {
+  const s = await liveSession(host, op, true);
+  const answer = (outcome: ChunkPrepareOutcome) =>
+    ok({ op: "chunkPrepare", outcome });
+  if ("error" in s) return answer({ ok: false, error: s.error });
+  if (s.u.mode !== "chunks") return answer({ ok: false, mismatch: true });
+  const p = prepareChunk(host.store, s.u, op.chunkId);
+  if (p.kind === "unplanned") return answer({ ok: false, mismatch: true });
+  if (p.kind === "have") return answer({ ok: true, have: true });
+  const ssecKey = ssecKeyOf(host, s.u.enc);
+  return answer({
+    ok: true,
+    have: false,
+    key: chunkObjectKey(op, op.collection, op.chunkId),
+    bytes: p.storedBytes,
+    ...(ssecKey !== undefined ? { ssecKey } : {}),
+  });
+}
+
+/**
+ * Records a chunk object R2 took. The chunk row is written whatever became of the session while
+ * the bytes were on their way (a row is how the collector finds the object); the session takes the
+ * chunk only if it is still open.
+ */
+export function chunkStored(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "chunkStored" }>,
+): FileReply {
+  host.store.prepare(false);
+  const u = sessionOf(host, op);
+  const open =
+    u !== undefined &&
+    u.state === "open" &&
+    u.mode === "chunks" &&
+    u.expiresAt > op.serverNow &&
+    host.store.getUploadChunk(u.uploadId, op.chunkId) !== undefined;
+  host.store.transaction(() =>
+    storeChunk(
+      host.store,
+      {
+        collection: op.collection,
+        chunkId: op.chunkId,
+        objectKey: chunkObjectKey(op, op.collection, op.chunkId),
+        storedBytes: op.bytes,
+        ...(u !== undefined && sealed(u.enc) ? ssecKidOf(host) : {}),
+        nowMs: op.serverNow,
+      },
+      open ? u : undefined,
+    ),
+  );
+  return ok({
+    op: "chunkStored",
+    outcome: open ? { ok: true } : { ok: false, error: "not_found" },
+  });
+}
+
+/** The key id of the person's SSE-C key, as a spread member, or nothing. */
+function ssecKidOf(host: FileHost): { ssecKid?: string } {
+  const kid = host.store.getMeta(SSEC_KID);
+  return kid !== undefined ? { ssecKid: kid } : {};
+}
+
+/**
+ * The read of a chunk (`GET …/files/{collection}/chunks/{chunkId}`): the key and size from this
+ * object's rows, and only for a chunk some stored file of the collection references. An id that is
+ * unknown, unreferenced (waiting for the collector, or pinned by an upload alone) or another
+ * collection's is `not_found`: the answer is the same for all of them.
+ */
+export function chunkResolve(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "chunkResolve" }>,
+): FileReply {
+  host.store.prepare(false);
+  const none = ok({
+    op: "chunkResolve",
+    outcome: { ok: false, error: "not_found" },
+  });
+  const row = host.store.getChunk(op.collection, op.chunkId);
+  if (!row || row.refs <= 0) return none;
+  const ssec =
+    row.ssecKid !== undefined ? host.store.getSsecKey(row.ssecKid) : undefined;
+  if (row.ssecKid !== undefined && !ssec) return none;
+  return ok({
+    op: "chunkResolve",
+    outcome: {
+      ok: true,
+      key: row.objectKey,
+      size: row.storedBytes,
+      ...(ssec ? { ssecKey: hexEncode(ssec) } : {}),
+    },
+  });
 }
 
 /**

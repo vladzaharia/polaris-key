@@ -181,6 +181,30 @@ export type CloudSyncOp =
       serverNow: number;
     })
   /**
+   * A chunk `PUT` (U-37.3). `chunkPrepare` says whether the plan asked for the chunk and what to
+   * stream against; `chunkStored` records the object after R2 took it; `chunkResolve` is the read
+   * of a chunk (`GET …/chunks/{chunkId}`), answered only for a chunk some file references.
+   */
+  | (DoPin & {
+      op: "chunkPrepare";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      chunkId: string;
+      serverNow: number;
+    })
+  | (DoPin & {
+      op: "chunkStored";
+      collection: string;
+      recordId: string;
+      uploadId: string;
+      chunkId: string;
+      /** The size of the object R2 holds. */
+      bytes: number;
+      serverNow: number;
+    })
+  | (DoPin & { op: "chunkResolve"; collection: string; chunkId: string })
+  /**
    * The file a download streams (U-10.8): the record's live one, or the kept `version` (live or a
    * revision). The object answers the R2 key, the size and the hash from its own rows, and, for a
    * server-mode file under SSE-C, the key to open it with; the path never names a key.
@@ -293,6 +317,9 @@ export type CloudSyncReply =
   | { op: "pull"; outcome: PullOutcome; meter?: OpMeter }
   | { op: "fileBegin"; outcome: FileBeginOutcome }
   | { op: "fileChunkPlan"; outcome: ChunkPlanOutcome }
+  | { op: "chunkPrepare"; outcome: ChunkPrepareOutcome }
+  | { op: "chunkStored"; outcome: FileAbortOutcome }
+  | { op: "chunkResolve"; outcome: ChunkResolveOutcome }
   | { op: "fileStatus"; outcome: FileStatusOutcome }
   | { op: "fileAbort"; outcome: FileAbortOutcome }
   | { op: "filePrepare"; outcome: FilePrepareOutcome }
@@ -326,6 +353,21 @@ export type ChunkPlanOutcome =
   | PlanOutcome
   | { ok: false; error: "not_found" | "upload_expired" }
   | { ok: false; mismatch: true };
+
+/**
+ * What a chunk `PUT` streams against: `have` (the plan answered `present`, or it landed already:
+ * a resend stores nothing), or the key, the exact size and the SSE-C key. `mismatch`: not a
+ * `chunks` session, or an id the plan did not answer `missing`.
+ */
+export type ChunkPrepareOutcome =
+  | { ok: true; have: true }
+  | { ok: true; have: false; key: string; bytes: number; ssecKey?: string }
+  | { ok: false; error: "not_found" | "upload_expired" }
+  | { ok: false; mismatch: true };
+
+export type ChunkResolveOutcome =
+  | { ok: true; key: string; size: number; ssecKey?: string }
+  | { ok: false; error: "not_found" };
 
 /** `404` for a session that is not this record's, is unknown or ended; `410` once it expired. */
 export type FileStatusOutcome =

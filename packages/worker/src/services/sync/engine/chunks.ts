@@ -164,3 +164,61 @@ export function missingChunks(store: SyncStore, uploadId: string): string[] {
 /** Whether a chunk row has any reason to stay: a file names it or an upload pins it. */
 export const chunkInUse = (store: SyncStore, c: StoredChunk): boolean =>
   c.refs > 0 || store.chunkPinned(c.collection, c.chunkId);
+
+/** What the Worker needs to stream a chunk `PUT`: nothing (it landed or is not asked for) or the size to expect. */
+export type ChunkPrepare =
+  | { kind: "unplanned" }
+  | { kind: "have" }
+  | { kind: "send"; storedBytes: number };
+
+/** The `PUT` of `chunkId` against what the plan answered: only an id it answered `missing` is sent. */
+export function prepareChunk(
+  store: SyncStore,
+  upload: UploadRow,
+  chunkId: string,
+): ChunkPrepare {
+  const row = store.getUploadChunk(upload.uploadId, chunkId);
+  if (!row) return { kind: "unplanned" };
+  return row.have
+    ? { kind: "have" }
+    : { kind: "send", storedBytes: row.storedBytes };
+}
+
+export interface StoredInput {
+  collection: string;
+  chunkId: string;
+  objectKey: string;
+  storedBytes: number;
+  ssecKid?: string;
+  nowMs: number;
+}
+
+/**
+ * Records a chunk object that is in R2. The chunk row exists from here on, unreferenced until a
+ * `finalize` names it, and the collector takes it if nothing does. An existing row stays as it is
+ * (same collection and id means the same object). `upload` is the session the bytes came for, or
+ * undefined when it closed meanwhile; the chunk is recorded all the same, so the object is never
+ * left without a row to collect it by.
+ */
+export function storeChunk(
+  store: SyncStore,
+  input: StoredInput,
+  upload: UploadRow | undefined,
+): StoredChunk {
+  const prior = store.getChunk(input.collection, input.chunkId);
+  const row: StoredChunk = prior ?? {
+    collection: input.collection,
+    chunkId: input.chunkId,
+    objectKey: input.objectKey,
+    storedBytes: input.storedBytes,
+    refs: 0,
+    unrefAt: input.nowMs,
+    ...(input.ssecKid !== undefined ? { ssecKid: input.ssecKid } : {}),
+  };
+  if (!prior) store.putChunk(row);
+  if (upload) {
+    const planned = store.getUploadChunk(upload.uploadId, input.chunkId);
+    if (planned) store.putUploadChunk({ ...planned, have: true });
+  }
+  return row;
+}

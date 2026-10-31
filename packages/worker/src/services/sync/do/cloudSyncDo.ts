@@ -37,6 +37,9 @@ import {
 } from "./directory.js";
 import {
   fileAbort,
+  chunkPrepare,
+  chunkResolve,
+  chunkStored,
   fileBegin,
   fileChunkPlan,
   fileFinalizeCommit,
@@ -354,6 +357,8 @@ export class CloudSyncDO implements DurableObject {
         op.op === "absorb" ||
         op.op === "fileBegin" ||
         op.op === "filePart" ||
+        op.op === "fileChunkPlan" ||
+        op.op === "chunkStored" ||
         op.op === "fileFinalizePrepare" ||
         op.op === "fileFinalizeCommit")
     )
@@ -366,6 +371,8 @@ export class CloudSyncDO implements DurableObject {
         return this.pull(op);
       case "fileBegin":
       case "fileChunkPlan":
+      case "chunkPrepare":
+      case "chunkStored":
       case "fileStatus":
       case "fileAbort":
       case "filePrepare":
@@ -374,6 +381,12 @@ export class CloudSyncDO implements DurableObject {
       case "fileFinalizeCommit":
       case "fileFinalizeEnd":
         return this.fileOp(op);
+      case "chunkResolve": {
+        if (!isName(op.collection) || !/^[0-9a-f]{64}$/.test(op.chunkId))
+          return reply({ error: "bad_request" }, 400);
+        const out = chunkResolve(this.fileHost(), op);
+        return reply(out.body, out.status);
+      }
       case "fileResolve":
       case "fileRevisions": {
         if (
@@ -427,6 +440,8 @@ export class CloudSyncDO implements DurableObject {
         op:
           | "fileBegin"
           | "fileChunkPlan"
+          | "chunkPrepare"
+          | "chunkStored"
           | "fileStatus"
           | "fileAbort"
           | "filePrepare"
@@ -485,6 +500,19 @@ export class CloudSyncDO implements DurableObject {
       )
         return reply({ error: "bad_request" }, 400);
       const out = await fileChunkPlan(host, op);
+      return reply(out.body, out.status);
+    }
+    if (op.op === "chunkPrepare" || op.op === "chunkStored") {
+      if (
+        !/^[0-9a-f]{64}$/.test(op.chunkId) ||
+        (op.op === "chunkStored" &&
+          !(Number.isSafeInteger(op.bytes) && op.bytes > 0))
+      )
+        return reply({ error: "bad_request" }, 400);
+      const out =
+        op.op === "chunkPrepare"
+          ? await chunkPrepare(host, op)
+          : chunkStored(host, op);
       return reply(out.body, out.status);
     }
     if (op.op === "filePart") {

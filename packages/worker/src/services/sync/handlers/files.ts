@@ -76,6 +76,9 @@ export const FILE_PARAMS = {
   n: /^[0-9]{1,9}$/,
 } as const;
 
+/** A chunk id: 64 lowercase hex characters (U-37). Not in `FILE_PARAMS`: a route lists only the params its path has. */
+export const CHUNK_ID_PARAM = /^[0-9a-f]{64}$/;
+
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 

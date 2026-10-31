@@ -926,6 +926,8 @@ function concrete(template: string): string {
     collection: "saves",
     uploadId: `up_${"A".repeat(22)}`,
     n: "1",
+    // U-37: a chunk id.
+    chunkId: "a".repeat(64),
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];
