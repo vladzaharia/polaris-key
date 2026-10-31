@@ -54,7 +54,7 @@ export function LastResult({
         <span
           // A long id in the text breaks anywhere; prose breaks between words. The end padding holds the clamp's
           // ellipsis, which Linux Chromium draws past the last full line.
-          className={`line-clamp-2 max-w-64 pe-2 text-xs text-fg-muted${
+          className={`line-clamp-2 max-w-64 pe-4 text-xs text-fg-muted${
             /\S{25,}/.test(c.lastError) ? " break-all" : ""
           }`}
           title={c.lastError}
