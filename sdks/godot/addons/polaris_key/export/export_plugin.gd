@@ -108,12 +108,18 @@ func _get_export_options(platform: EditorExportPlatform) -> Array[Dictionary]:
 			"default_value": "auto",
 			"update_visibility": true,
 		})
+	if p == "ios" or p == "macos":
+		options.append({
+			"option": {"name": Apple.SIGN_IN_OPTION, "type": TYPE_BOOL},
+			"default_value": false,
+			"update_visibility": true,
+		})
 	if p == "macos":
 		options.append_array(N.options())
 	return options
 
 
-func _get_export_option_warning(_platform: EditorExportPlatform, option: String) -> String:
+func _get_export_option_warning(platform: EditorExportPlatform, option: String) -> String:
 	match option:
 		S.OPTION_OUTLET:
 			return S.outlet_warning(str(get_option(S.OPTION_OUTLET)))
@@ -128,6 +134,8 @@ func _get_export_option_warning(_platform: EditorExportPlatform, option: String)
 		Apple.OPTION:
 			var v := _values("ios")
 			return _join([Apple.mode_warning(str(get_option(Apple.OPTION)), _outlet_kind(v)), Apple.min_ios_warning(_preset_string("application/min_ios_version"))])
+		Apple.SIGN_IN_OPTION:
+			return Apple.sign_in_warning(_apple_sign_in(), S.platform_for(platform.get_os_name(), PackedStringArray()))
 		S.OPTION_OUTLET_IDS:
 			var raw = get_option(S.OPTION_OUTLET_IDS)
 			var parsed: Dictionary = S.parse_outlet_ids(raw)
@@ -158,9 +166,23 @@ func _mac_app_store() -> bool:
 	return _outlet_kind(v) == "app-store"
 
 
+## Whether Sign in with Apple's entitlement is asked for (option or env; off by default).
+func _apple_sign_in() -> bool:
+	return N.truthy(_get_or_env(Apple.SIGN_IN_OPTION, Apple.SIGN_IN_ENV, false))
+
+
 func _get_export_options_overrides(platform: EditorExportPlatform) -> Dictionary:
 	var preset := get_export_preset()
-	if preset == null or S.platform_for(platform.get_os_name(), PackedStringArray()) != "macos":
+	if preset == null:
+		return {}
+	var os_name := S.platform_for(platform.get_os_name(), PackedStringArray())
+	if os_name == "ios":
+		# The entitlement rides the preset's own `entitlements/additional` text, which is kept.
+		var fragments := Apple.entitlement_fragments(_apple_sign_in())
+		if fragments.is_empty() or not preset.has(Apple.IOS_ENTITLEMENTS_OPTION):
+			return {}
+		return {Apple.IOS_ENTITLEMENTS_OPTION: Apple.merge_entitlements(str(preset.get(Apple.IOS_ENTITLEMENTS_OPTION)), fragments)}
+	if os_name != "macos":
 		return {}
 	var sp := _sparkle()
 	if not sp["enabled"]:
@@ -216,6 +238,10 @@ func _export_begin(features: PackedStringArray, is_debug: bool, path: String, _f
 	add_file(S.PATH, S.encode(stamp), false)
 	if platform == "ios":
 		_export_apple(v)
+	if platform == "ios" or platform == "macos":
+		var siw := Apple.sign_in_warning(_apple_sign_in(), platform)
+		if siw != "":
+			push_warning("Polaris Key Apple plugin: %s" % siw)
 
 
 ## The iOS switches (PKeyAppleExport): the Background Assets mark in the Info.plist, and the

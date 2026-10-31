@@ -9,6 +9,10 @@
 #   "iOS (sideload)"  outlet altstore, auto
 #                     → no extension target, no App Group, no BA* keys
 #
+# Sign in with Apple (I-48.4b): the store preset sets polaris_key/apple_sign_in=true and carries the
+# com.apple.developer.applesignin entitlement; the sideload preset leaves it off (the default) and
+# carries none.
+#
 #   GODOT_BIN   the 4.5+ editor (default: godot on PATH) with the iOS export templates installed
 #   BUILD=1     also build both projects for the device, unsigned (CODE_SIGNING_ALLOWED=NO)
 #   OUT         the work directory (default: sdks/godot/build/ios_export_check)
@@ -64,7 +68,7 @@ cat >"$OUT/project/main.tscn" <<'EOF'
 
 [node name="Main" type="Node"]
 EOF
-preset() { # <index> <name> <outlet> <export path>
+preset() { # <index> <name> <outlet> <export path> <apple_sign_in: true|false>
   cat <<EOF
 [preset.$1]
 
@@ -97,12 +101,13 @@ application/export_method_debug=1
 application/export_method_release=0
 polaris_key/outlet="$3"
 polaris_key/apple_background_assets="auto"
+polaris_key/apple_sign_in=$5
 
 EOF
 }
 {
-  preset 0 "iOS (store)" "app-store" "$OUT/store/PKeyExportCheck.ipa"
-  preset 1 "iOS (sideload)" "altstore" "$OUT/sideload/PKeyExportCheck.ipa"
+  preset 0 "iOS (store)" "app-store" "$OUT/store/PKeyExportCheck.ipa" true
+  preset 1 "iOS (sideload)" "altstore" "$OUT/sideload/PKeyExportCheck.ipa" false
 } >"$OUT/project/export_presets.cfg"
 mkdir -p "$OUT/store" "$OUT/sideload"
 
@@ -136,6 +141,10 @@ grep -q "$BID.BackgroundDownload" "$OUT/store/PKeyExportCheck.xcodeproj/project.
 [ "$(pb "$S/PKeyExportCheck-Info.plist" BAUsesAppleHosting)" = "true" ] || fail "store: BAUsesAppleHosting"
 grep -q "already patched: no changes" "$OUT/logs/patch-store-again.log" || fail "store: second patch run was not a no-op"
 [ "$before" = "$after" ] || fail "store: second patch run changed files"
+
+# Sign in with Apple: the entitlement is there with the option on, and absent with it off.
+[ "$(pb "$S/PKeyExportCheck.entitlements" "com.apple.developer.applesignin:0")" = "Default" ] || fail "store: apple_sign_in=true did not add the applesignin entitlement"
+[ -z "$(pb "$L/PKeyExportCheck.entitlements" "com.apple.developer.applesignin")" ] || fail "sideload: has the applesignin entitlement with the option off"
 
 # Sideload: none of it.
 [ "$(pb "$L/PKeyExportCheck-Info.plist" PKeyAppleBackgroundAssets)" = "false" ] || fail "sideload: the export plugin did not mark Background Assets off"

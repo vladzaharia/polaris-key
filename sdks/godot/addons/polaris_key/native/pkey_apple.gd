@@ -46,6 +46,9 @@ const NATIVE_CLASS := "PolarisKeyApple"
 ## The AppDistributor deadline (OUTLET_PLATFORM_DATA.deadlineMs; notes/S-06 rule 5).
 const DISTRIBUTOR_DEADLINE := 2.0
 
+## The features that also run on macOS, through the desktop dylib: the Keychain and Sign in with Apple.
+const MACOS_FEATURES := [PKeyConstants.Feature.CORE_STORE, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN]
+
 ## The platform this answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var platform := ""
 ## The native object to call instead of the GDExtension class: anything with
@@ -150,7 +153,7 @@ func unsupported_reason(feature := "") -> String:
 
 func _runs_here(feature: String) -> bool:
 	var p := _platform()
-	return p == PKeyConstants.Platform.IOS or (p == PKeyConstants.Platform.MACOS and feature == PKeyConstants.Feature.CORE_STORE)
+	return p == PKeyConstants.Platform.IOS or (p == PKeyConstants.Platform.MACOS and MACOS_FEATURES.has(feature))
 
 
 func is_available() -> bool:
@@ -192,8 +195,8 @@ func call_sync(q: Dictionary, feature := "") -> Dictionary:
 
 ## One request awaited to its result: a synchronous reply as it is, or the event carrying the
 ## asynchronous reply's `req` ({ok:false, error:"timeout"} after `timeout_s`).
-func call_async(q: Dictionary, wait_s := -1.0) -> Dictionary:
-	var r := call_sync(q)
+func call_async(q: Dictionary, wait_s := -1.0, feature := "") -> Dictionary:
+	var r := call_sync(q, feature)
 	if not r.has("req") or not r.get("ok", false):
 		return r
 	var req := int(r["req"])
@@ -223,9 +226,10 @@ func _key(req: int) -> String:
 ## Drain the native event queue: results go to their awaiting call, the rest become signals.
 ## The number of events drained.
 func poll() -> int:
-	if unsupported_reason() != "":
+	# Polls wherever any call can run (macOS too, for Sign in with Apple's asynchronous ops).
+	if unsupported_reason(PKeyConstants.Feature.CORE_STORE) != "":
 		return 0
-	var r := call_sync({"op": "poll"})
+	var r := call_sync({"op": "poll"}, PKeyConstants.Feature.CORE_STORE)
 	_dropped += int(r.get("dropped", 0))
 	var events = r.get("events", [])
 	if not (events is Array):
@@ -263,7 +267,8 @@ func _process(_delta: float) -> void:
 # ── Typed calls (each a PKeyResult; the native reply is `detail`) ─────────────────────────────
 
 ## The plugin's view of this process: {protocol, platform, appDistributor, appDistributorWeb,
-## managedAssetPacks, backgroundAssetsConfigured, storeKit, keychain, entitlementsForID, appAttest}.
+## managedAssetPacks, backgroundAssetsConfigured, storeKit, keychain, entitlementsForID, appAttest,
+## appleSignIn}.
 func capabilities() -> PKeyResult:
 	return _wrap(PKeyConstants.Feature.OUTLET_DETECT, call_sync({"op": "capabilities"}))
 
@@ -373,6 +378,32 @@ func unwatch_pack(id: String) -> PKeyResult:
 	return await _async(PKeyConstants.Feature.PACKS_TRANSPORT_APPLE, {"op": "packs_unwatch", "id": id})
 
 
+# ── Sign in with Apple (I-48.4b; the Apple provider drives these) ─────────────────────────────
+
+## The one Sign in with Apple sheet over the Worker's `nonce` (set as given). `immediate` asks only
+## for a credential this app already has (the ladder's rung 4); false is the plain account sheet. On
+## success detail.token is the identity token (a secret) and detail.userID Apple's user id; a failure
+## is `platform-error` with detail.error `cancelled` or `unavailable`.
+func apple_sign_in(nonce: String, immediate := true) -> PKeyResult:
+	return await _async(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, {"op": "apple_sign_in", "nonce": nonce, "immediate": immediate}, 300.0)
+
+
+## The stored Apple user id's credential state: detail.state is `authorized`, `revoked`, `notFound`,
+## `transferred`, or `none` (this app never signed in with Apple).
+func apple_credential_state() -> PKeyResult:
+	return await _async(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, {"op": "apple_credential_state"})
+
+
+## Keep Apple's user id for the launch check, once the Worker accepted the token.
+func apple_remember(user_id: String) -> PKeyResult:
+	return _wrap(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, call_sync({"op": "apple_remember", "userID": user_id}, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN))
+
+
+## Forget the stored Apple user id (sign-out).
+func apple_forget() -> PKeyResult:
+	return _wrap(PKeyConstants.Feature.IDENTITY_AUTOSIGNIN, call_sync({"op": "apple_forget"}, PKeyConstants.Feature.IDENTITY_AUTOSIGNIN))
+
+
 # ── App Attest (P6-02; PolarisKey.devices.attest() drives these) ───────────────────────────────
 
 ## Whether App Attest runs here: success with detail.supported, or unsupported `runtime` (off iOS,
@@ -403,7 +434,7 @@ func _async(feature: String, q: Dictionary, wait_s := -1.0) -> PKeyResult:
 	var gate := availability(feature)
 	if not gate.ok:
 		return gate
-	return _wrap(feature, await call_async(q, wait_s))
+	return _wrap(feature, await call_async(q, wait_s, feature))
 
 
 ## A native reply as a PKeyResult: success with the reply as `detail`; `unsupported` with the

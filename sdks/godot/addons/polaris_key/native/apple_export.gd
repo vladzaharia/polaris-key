@@ -17,6 +17,13 @@ extends RefCounted
 ## true. The plist content goes through `add_apple_embedded_platform_plist_content` (4.5+) or
 ## `add_ios_plist_content` (4.4).
 ##
+## Capabilities (I-48.4b, Q-7): `polaris_key/apple_sign_in` (env PKEY_APPLE_SIGN_IN), a boolean that is
+## `off` by default, adds the `com.apple.developer.applesignin` entitlement to an iOS export through
+## the preset's `entitlements/additional` option (the plugin overrides it, keeping the preset's own
+## text). It is off by default because an entitlement the App ID lacks breaks signing. A macOS preset
+## has no such option in Godot: the setting there only warns, and the entitlement goes into the
+## preset's custom entitlements file.
+##
 ## The xcframework is iOS 17.0 (PolarisKeyPlatform's floor), so a preset below 17.0 is warned
 ## about: a framework newer than the app fails to load on the older devices.
 
@@ -27,6 +34,11 @@ const STORE_KINDS := ["app-store", "testflight"]
 const SIDELOAD_KINDS := ["altstore", "altstore-pal", "direct"]
 ## PolarisKeyPlatform's iOS floor, and the xcframework's (sdks/godot/native/ios/build.sh).
 const MIN_IOS := "18.0"
+const SIGN_IN_OPTION := "polaris_key/apple_sign_in"
+const SIGN_IN_ENV := "PKEY_APPLE_SIGN_IN"
+## The iOS preset option whose text lands in the app's .entitlements <dict>.
+const IOS_ENTITLEMENTS_OPTION := "entitlements/additional"
+const ENTITLEMENT_SIGN_IN := "com.apple.developer.applesignin"
 const XCFRAMEWORK := "res://addons/polaris_key/native/ios/pkey_apple.xcframework"
 
 
@@ -49,6 +61,34 @@ static func plist_content(on: bool, bundle_id: String) -> String:
 		lines.append("<key>PKeyAppleAppGroup</key>")
 		lines.append("<string>group.%s</string>" % bundle_id.xml_escape())
 	return "\n".join(lines) + "\n"
+
+
+## The entitlement entries (plist fragments) the switches ask for.
+static func entitlement_fragments(sign_in: bool) -> PackedStringArray:
+	var out := PackedStringArray()
+	if sign_in:
+		out.append("<key>%s</key>\n<array><string>Default</string></array>" % ENTITLEMENT_SIGN_IN)
+	return out
+
+
+## `existing` (the preset's own `entitlements/additional` text) plus the fragments whose key it does
+## not already name. The preset's text is never changed or reordered.
+static func merge_entitlements(existing: String, fragments: PackedStringArray) -> String:
+	var out := existing
+	for f in fragments:
+		var key := f.get_slice("</key>", 0).trim_prefix("<key>")
+		if existing.contains("<key>%s</key>" % key):
+			continue
+		out += ("" if out == "" or out.ends_with("\n") else "\n") + f + "\n"
+	return out
+
+
+## A warning for the sign-in option on a macOS preset ("" otherwise).
+static func sign_in_warning(on: bool, platform: String) -> String:
+	if on and platform == "macos":
+		var why := "Godot's macOS export has no entitlement text option. Add %s to the preset's custom entitlements file."
+		return "%s: %s" % [SIGN_IN_OPTION, why % ENTITLEMENT_SIGN_IN]
+	return ""
 
 
 ## A warning for the option ("" when none).

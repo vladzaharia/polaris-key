@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature outlet.detect core.store packs.transport.apple commerce.receipt devices.attest
+# @pkey-feature outlet.detect core.store packs.transport.apple commerce.receipt devices.attest identity.autosignin
 # The Apple platform plugin's GDScript side (P5-05), headless on every OS:
 #
 #   stubs     PKeyApple without the native class: every call answers Unsupported, reason
@@ -21,8 +21,10 @@ const TOKEN := "6F2C3B1A-0000-4000-8000-00000000C0DE"
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_stubs(t)
 	await _facade(t)
+	await _sign_in_with_apple(t)
 	_keychain(t)
 	_export(t)
+	_export_entitlements(t)
 	return true
 
 
@@ -269,6 +271,82 @@ func _keychain(t: PKeyTestContext) -> void:
 	t.check("keychain: off iOS the preferred store is not the Keychain store", PKeyHeaders.platform() == "ios" or not (PKeyKeychainStore.preferred("diceroll", root) is PKeyKeychainStore))
 	for a in made:
 		a.free()
+
+
+## Sign in with Apple (I-48.4b): the facade's apple_* calls and the provider over the fake plugin.
+func _sign_in_with_apple(t: PKeyTestContext) -> void:
+	var none := _apple("windows")
+	var r: PKeyResult = await none.apple_sign_in("n")
+	t.check("siwa: off iOS and macOS the facade is Unsupported (runtime)", not r.ok and r.code == &"unsupported" and r.detail.get("reason") == "runtime")
+	var mac := _apple("macos")
+	mac.native_class = "PolarisKeyAppleMissingForTests"
+	r = await mac.apple_sign_in("n")
+	t.check("siwa: macOS without the dylib is Unsupported (dependency), not runtime", r.code == &"unsupported" and r.detail.get("reason") == "dependency")
+
+	var fake := PKeyFakeAppleNative.new()
+	var a := _apple("ios", fake)
+	var provider := PKeyAppleProvider.new(a)
+	t.check("siwa: kind apple, no silent mode, a sheet", provider.kind == "apple" and not provider.has_silent() and provider.has_sheet())
+	var silent: Dictionary = await provider.silent("n", "")
+	t.check("siwa: silent is unavailable and never reaches the plugin", silent.has("unavailable") and fake.calls.filter(func(c): return str(c["op"]).begins_with("apple_")).is_empty())
+
+	var got: Dictionary = await provider.sheet("bm9uY2U", "")
+	var sent := fake.calls.filter(func(c): return c["op"] == "apple_sign_in")
+	t.check("siwa: the sheet answers the token and the user id", got.get("token") == "eyJ.apple.token" and got.get("user_id") == "001234.abcd", str(got.keys()))
+	t.check("siwa: the sheet sends the server nonce as it is, immediate", sent.size() == 1 and sent[0]["nonce"] == "bm9uY2U" and sent[0]["immediate"] == true)
+	await provider.provider_row("n2", "")
+	sent = fake.calls.filter(func(c): return c["op"] == "apple_sign_in")
+	t.check("siwa: the form's row is the plain account sheet (immediate false)", sent.size() == 2 and sent[1]["immediate"] == false)
+
+	fake.apple_result = {"ok": false, "error": "cancelled"}
+	got = await provider.sheet("n", "")
+	t.check("siwa: a dismissed sheet is cancelled", got.get("cancelled") == true and not got.has("token"))
+	fake.apple_result = {"ok": false, "error": "unavailable"}
+	got = await provider.sheet("n", "")
+	t.check("siwa: a system failure is unavailable", got.has("unavailable") and not got.has("token"))
+	fake.apple_result = {"ok": true, "userID": "u"}
+	got = await provider.sheet("n", "")
+	t.check("siwa: an answer without a token is unavailable", got.has("unavailable"))
+	fake.apple_supported = false
+	got = await provider.sheet("n", "")
+	t.check("siwa: an unsupported plugin is unavailable", got.has("unavailable"))
+	fake.apple_supported = true
+
+	t.check("siwa: nothing is revoked before a user id is kept", not await provider.credential_revoked())
+	await provider.session_started({"user_id": "001234.abcd"})
+	t.check("siwa: session_started keeps the user id", fake.apple_user_id == "001234.abcd")
+	await provider.session_started({})
+	t.check("siwa: session_started without an id changes nothing", fake.apple_user_id == "001234.abcd")
+	t.check("siwa: an authorized credential is not revoked", not await provider.credential_revoked())
+	fake.apple_state = "notFound"
+	t.check("siwa: not found is not revoked", not await provider.credential_revoked())
+	fake.apple_state = "transferred"
+	t.check("siwa: transferred is not revoked", not await provider.credential_revoked())
+	fake.apple_state = "revoked"
+	t.check("siwa: revoked is revoked", await provider.credential_revoked())
+	provider.sign_out_cleanup()
+	t.check("siwa: sign-out forgets the user id", fake.apple_user_id == "")
+	fake.apple_supported = false
+	t.check("siwa: an unsupported plugin is never revoked", not await provider.credential_revoked())
+	a.free()
+	none.free()
+	mac.free()
+
+
+func _export_entitlements(t: PKeyTestContext) -> void:
+	var ex := PKeyAppleExport
+	var frag := ex.entitlement_fragments(true)
+	var key := "<key>com.apple.developer.applesignin</key>"
+	t.check("export: sign-in off adds no entitlement", ex.entitlement_fragments(false).is_empty())
+	t.check("export: sign-in on adds applesignin", frag.size() == 1 and frag[0].contains(key) and frag[0].contains("<string>Default</string>"))
+	var merged := ex.merge_entitlements("", frag)
+	t.check("export: the entitlement is appended to an empty preset text", merged == frag[0] + "\n", merged)
+	var own := "<key>aps-environment</key><string>production</string>"
+	merged = ex.merge_entitlements(own, frag)
+	t.check("export: the preset's own text is kept first, the entitlement follows", merged.begins_with(own) and merged.count("applesignin") == 1, merged)
+	t.check("export: merging twice adds nothing", ex.merge_entitlements(merged, frag) == merged)
+	t.check("export: the preset's own applesignin is not doubled", ex.merge_entitlements(key + "<array/>", frag) == key + "<array/>")
+	t.check("export: macOS warns, iOS and off do not", ex.sign_in_warning(true, "macos") != "" and ex.sign_in_warning(true, "ios") == "" and ex.sign_in_warning(false, "macos") == "")
 
 
 func _export(t: PKeyTestContext) -> void:
