@@ -21,7 +21,8 @@
  *                  absorbed copy. A tombstone takes the other side's shape and joins as above.
  *
  * Like the settings join it is idempotent: absorbing the same export again, or a fresher export of
- * the same source, converges on the same rows and writes nothing for a row that does not change.
+ * the same source, converges on the same rows and writes nothing for a row that does not change, except that past the
+ * 64-copy cap a repeat can park again a copy the cap forgot.
  * Nothing is refused for budget, quota or `maxRecords` (L8); usage moves with the rows.
  */
 
@@ -438,7 +439,9 @@ function verdictFor(
 ): Verdict {
   const since = store.getEncryptionSince();
   const sealed = isSealedRecord(inc);
-  if (!inc.deleted && !sealed && since !== undefined) return PARK;
+  if (!inc.deleted && !sealed && since !== undefined)
+    // A retry: the survivor already holds this very state, so there is nothing to park.
+    return cur !== undefined && stateKey(cur) === stateKey(inc) ? SKIP : PARK;
   const legacy =
     since !== undefined &&
     cur !== undefined &&

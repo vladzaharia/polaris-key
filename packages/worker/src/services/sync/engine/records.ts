@@ -45,6 +45,7 @@ import {
   liveRecordValue,
   planFields,
   planSet,
+  sealedElements,
   sealedFields,
   tagAdd,
 } from "./recordSets.js";
@@ -93,6 +94,7 @@ export function recordCopy(row: StoredRecord | undefined): SyncServerCopy {
     if (row.kind === "value" && typeof row.value === "string")
       return { ct: row.value, ...base };
     if (row.kind === "fields") return { fields: sealedFields(row), ...base };
+    if (row.kind === "set") return { elements: sealedElements(row), ...base };
   }
   return { value: liveRecordValue(row), ...base };
 }

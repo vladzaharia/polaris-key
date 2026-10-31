@@ -8409,15 +8409,18 @@ yet. SR-1 (isolation) follows U-05.8.
 
 ### Cloud Sync account merge, product deletion (U-05.8)
 
-- **A merge never silently overwrites (S-16 §5.1) and never drops.** The survivor's object absorbs
+- **A merge never silently overwrites (S-16 §5.1) and never drops a row without a trace.** The survivor's object absorbs
   the absorbed subject's by joining each row on its stamp (the later HLC, then clientId; a later
   deletion beats an older value; member cells union under the later clear), and nothing is refused
   for budget or quota: a survivor left over its limits keeps everything and only later growth is
   refused (L8). Only Identity's account merge reaches it: `absorbCloudSync` is called by the store's
   `merge` alone (`test/services/sync/cloudSyncMerge.test.ts` pins the call sites), and the merge itself needs a
-  fresh proof of both accounts.
+  fresh proof of both accounts. Records (U-09) join the same way. A colliding `revision` record is
+  parked, not overwritten, and a person keeps at most 64 parked copies, the oldest forgotten first.
+  A setting that would join a sealed row to a plaintext one is left out and counted in the merge's
+  audit row (U-09.10).
 - **Crash-safe by construction.** Export the absorbed object, absorb (one transaction; the join
-  is idempotent, so a repeat or a fresher export converges and writes nothing), delete the absorbed
+  is idempotent, so a repeat or a fresher export converges and writes nothing for a row that does not change, except that past the 64-copy cap a repeat can park again a copy the cap forgot), delete the absorbed
   object only if it is still at the exported sequence, then merge the directory rows in one batch.
   The data leaves the absorbed object only after the survivor holds it, and a retry is safe at
   every step. A write that lands on the absorbed object meanwhile keeps it alive and is absorbed

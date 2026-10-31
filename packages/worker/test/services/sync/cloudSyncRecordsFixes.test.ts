@@ -494,6 +494,51 @@ describe("F7-R2: a policy conversion keeps the record budget and the quota", () 
   });
 });
 
+describe("F7-B1: a retried absorb of a mixed source writes nothing", () => {
+  it("absorbing the same mixed export twice writes nothing", () => {
+    reset();
+    const src = new MemoryStore();
+    put(
+      src,
+      [mut("c", "p", "set", { value: 1 }), route("revision")],
+      [settingOp("k", "set", { value: 3 }), settingRoute("lastWrite")],
+    );
+    put(src, [
+      mut("c", BLIND(1), "set", { ct: envelope(7) }),
+      route("revision", { sealed: true }),
+    ]);
+    const dst = new MemoryStore();
+    const first = absorb(dst, src);
+    expect(first).toMatchObject({ parked: 0, skipped: 0 });
+    const again = absorb(dst, src);
+    expect(again).toMatchObject({ rows: 0, parked: 0, skipped: 0 });
+    expect(dst.parkedRecords()).toHaveLength(0);
+  });
+});
+
+describe("F7-R3: a conflict copy of a sealed union record carries elements", () => {
+  it("answers elements, not value", () => {
+    reset();
+    const s = new MemoryStore();
+    const SEALED_UNION = route("union", { sealed: true });
+    put(s, [
+      mut("c", BLIND(1), "add", { element: BLIND(2), ct: envelope(5) }),
+      SEALED_UNION,
+    ]);
+    const r = one(
+      s,
+      mut("c", BLIND(1), "delete", { editedHlc: at(-50_000) }),
+      route("merge", { sealed: true }),
+    );
+    expect(r.status).toBe("conflict");
+    const server = (r as unknown as { server: Record<string, unknown> }).server;
+    expect(server.elements).toEqual([
+      expect.objectContaining({ element: BLIND(2) }),
+    ]);
+    expect(server).not.toHaveProperty("value");
+  });
+});
+
 describe("N5 and N6: encryptionSince is fixed by a write, and closes the store to plaintext", () => {
   it("a sealed mutation that wrote nothing does not fix it", () => {
     reset();
