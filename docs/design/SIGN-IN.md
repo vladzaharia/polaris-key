@@ -966,6 +966,14 @@ Sync is on for this Mac" (frame 44). The recommendation shows once; AccountAndLi
 "Not in an account · Add your name and email" row. With Identity off it reads "Keep your license
 safe in Polaris Locker" and opens Polaris Locker instead.
 
+**The web Add channel (UK-42.22).** On the web, **Add your name and email** and, on a license-owned
+refusal, **Sign in to that account** follow discovery. With `identity.deviceChoice` the kit runs the
+form in the page over the device-code channel (`licenseChoice: "app"`, §6.6); the card opens in
+another tab, asks for the code and ends at the approval page, and the kit completes `keep` and
+attaches. Without it, and with Identity off, both open the Polaris Locker card (the key rides in
+`#key=` for a trusted origin only). A host's explicit `addIn` wins. The desktop bridge stays on the
+card until its next version.
+
 **Step 4, Done** (frame 41, D-84). When a license was added or issued now, the body shows the
 success moment (§3.18): the check, h1 "<Product> is yours", the product row "{tier} · in your
 library" and **Start using <Product>**. Otherwise the form closes as soon as the activation lands,
@@ -1889,7 +1897,7 @@ wire change no approved plan carries is a plan-mode change (CLAUDE.md).
 | Device code         | `auth/device/start`, `auth/device/poll` (`ready` + `subject`)                                                                                                                                                                            | Planned (I-04 §2.4, I-08)                                            |
 | Native redirect     | `request` (RFC 9126, answers a `request_uri`), `authorize` and `token` with native redirect URIs                                                                                                                                         | Planned (I-15, I-27 §2.1)                                            |
 | Native exchange     | `POST /<p>/identity/nonce`, then `POST /<p>/identity/token` with the token-exchange grant: token, `confirm`, `choose`, or `interstitial_required` (403, `reason`, `url`, `linkHandle`) (WIRE-CONTRACT-V5 §12.11)                         | Planned (I-13)                                                       |
-| Hints               | `login_hint`, `name_hint`, `purpose` on `authorize`; `scope`, `loginHint`, `nameHint`, `purpose` on `auth/device/start` (§6.6; no SDK sends them)                                                                                        | Planned (I-08)                                                       |
+| Hints               | `login_hint`, `name_hint`, `purpose` on `authorize`; `scope`, `loginHint`, `nameHint`, `purpose` on `auth/device/start` (§6.6; Node, React and Python send them; the device start honours them, UK-42.22)                                                                                        | Planned (I-08)                                                       |
 | DeviceApproval      | `POST /api/device-login/start`, `GET /api/device-login/<id>`, `POST …/lookup`, `POST …/approve`, `step_up_required`                                                                                                                      | Built (PX-W14); UI PX-15                                             |
 | Identity off        | 303 to `/signin?product=&error=identity_disabled`; `403 identity_disabled` on the passthrough context                                                                                                                                    | Built (PX-W17); card PX-14                                           |
 | Sign-out (device)   | `POST /<p>/identity/signout` → `{released}`; SDK Cloud Sync flush                                                                                                                                                                        | Planned (I-09 §2.2, S-17)                                            |
@@ -2003,9 +2011,9 @@ flow record that I-07 and PX-W13 already keep.
 (§3.17, step 4). The kit starts the sign-in with `loginHint` set to the typed email, `nameHint` to
 the typed name and `purpose: "attach"`, and `license_choice=app`. On the wire these are the optional
 `login_hint`, `name_hint` and `purpose: "signin" | "attach"` on `authorize`, and `loginHint`,
-`nameHint` and `purpose` on `auth/device/start` (I-08, I-10a). A hint prefills the card and verifies
-nothing: an email is shown in the email field and never sent a code by itself, a name prefills
-FinishStep for a new account only, `purpose: "attach"` words the header ("Add {product} to your
+`nameHint` and `purpose` on `auth/device/start` (I-08, I-10a). A hint verifies
+nothing: an email is shown in the email field and never sent a code by itself, a name is only the
+Name field's placeholder (a new account types its own), `purpose: "attach"` words the header ("Add {product} to your
 account"), and an invalid hint is ignored. No other flow sends hints; a plain sign-in sends none.
 After the code the kit completes `{kind: "keep"}` with the device token, previews with
 `attach {confirm: false}` and then attaches, so the same `licenseId` gains a `subject`. No signed

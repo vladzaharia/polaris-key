@@ -2,7 +2,7 @@
 title: "Device flow"
 description: "Sign in a client that can't receive a browser redirect: the start route, the user-code page, the explicit approval and the poll."
 type: "concept"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-31"
 sidebar:
   order: 4
 ---
@@ -14,6 +14,17 @@ Four routes under `/<product>/identity/auth/device` share the browser flow's PKC
 ## Start
 
 `POST /<product>/identity/auth/device/start` takes a device id from the body's `deviceId`, the `X-PKey-Device` header or a `device` query parameter, in that order. An optional `deviceName` is the label the sign-in page shows. The Worker normalizes it as every SDK does: controls become spaces or vanish, zero-width and bidi characters are removed, spaces collapse and 64 code points stay. It never rejects a label and echoes the stored one. The limit is 60 requests a minute per address.
+
+Four more members are optional, and an older Worker ignores them:
+
+| Member          | Values               | Effect                                                                                                                                                                  |
+| --------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `loginHint`     | a strict email       | Shown in the card's email field. Anything that is not a strict email is dropped.                                                                                        |
+| `nameHint`      | a label              | Shown as the Name field's placeholder, never a value. Normalized like `deviceName`; dropped when nothing is left.                                                       |
+| `purpose`       | `signin` or `attach` | `attach` words the card as "Add {product} to your account". Any other value is `400 bad_request`.                                                                       |
+| `licenseChoice` | `card` or `app`      | `app` makes the app, not the card, own the license choice (see [Let the app choose the license](/docs/features/sign-in/app-license-choice/)). Any other value is `400`. |
+
+A member of the wrong type is `400 bad_request`. `scope` is still ignored.
 
 ```json title="Output"
 {
@@ -65,13 +76,14 @@ Codes are unique among live flows: if a drawn code is already held, the Worker d
 
 `POST /<product>/identity/auth/device/poll` takes `{ "deviceCode": "<secret>", "deviceId": "<id>" }`. The `deviceId` must equal the one given at start, else `401`, so a stolen code can't be redeemed by another device. The advertised `interval` is enforced: a second poll inside it gets `429` with `{ "status": "slow_down", "interval": 2 }`.
 
-| Status    | Meaning                                                                                                                                            |
-| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pending` | The person hasn't confirmed, signed in or approved yet                                                                                             |
-| `confirm` | See below: the identity is waiting for the device's decision                                                                                       |
-| `ready`   | Carries `token` (a device token, never a cookie), `schemaVersion` and `identity`                                                                   |
-| `error`   | The sign-in did not complete. With `reason: "access_denied"` a person refused; without `reason` it failed after approval and the cause is not said |
-| `timeout` | The code expired or is stale                                                                                                                       |
+| Status    | Meaning                                                                                                                                                                    |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pending` | The person hasn't confirmed, signed in or approved yet                                                                                                                     |
+| `confirm` | See below: the identity is waiting for the device's decision                                                                                                               |
+| `choose`  | Only after a start with `licenseChoice: "app"`: carries `grant`, `expiresIn` and `choices` instead of a token. See [app mode](/docs/features/sign-in/app-license-choice/). |
+| `ready`   | Carries `token` (a device token, never a cookie), `schemaVersion` and `identity`                                                                                           |
+| `error`   | The sign-in did not complete. With `reason: "access_denied"` a person refused; without `reason` it failed after approval and the cause is not said                         |
+| `timeout` | The code expired or is stale                                                                                                                                               |
 
 Every SDK maps the two `error` shapes to two codes:
 
@@ -88,7 +100,7 @@ Show `identity` (`name`, and `email` only when the provider verified it): if som
 
 ## Attach is retired
 
-Attaching a device's anonymous license to the account was an opt-in the device-code holder made. The person approving a sign-in is never told that the starter's license and devices would join their account, so a device-code flow never attaches. A poll that sends `"confirmIdentity": true` is still answered `confirm` with `identity`, but `attachable` is always `false`, and `"attachLicense": true` is read as `false`: the device signs in on the identity's own license and nothing is claimed or merged. The fields stay so deployed SDKs keep working.
+Attaching a device's anonymous license to the account was an opt-in the device-code holder made. The person approving a sign-in is never told that the starter's license and devices would join their account, so the poll never attaches. App mode is the supported way: the approval page names the app and the account, and the app completes `keep`, then attaches. A poll that sends `"confirmIdentity": true` is still answered `confirm` with `identity`, but `attachable` is always `false`, and `"attachLicense": true` is read as `false`: the device signs in on the identity's own license and nothing is claimed or merged. The fields stay so deployed SDKs keep working.
 
 ## Lifetime and limits
 
@@ -105,7 +117,11 @@ The user-code page budget is per network (an IPv4 address or an IPv6 /64). There
 
 ## From an SDK
 
-Node, Python, React, Swift, Kotlin and Godot drive this flow with `signIn.start({ channel: "device-code" })` (Python: `sign_in.start()`). The session holds `userCode`, both URLs, `expiresIn`, `interval` and `deviceName`, and keeps the device code private. `reopen()` opens the complete URL, `cancel()` stops the wait, and `wait()` polls at `interval`, honors `slow_down` and stops at `expiresIn`. It settles `signedIn`, `expired` or `cancelled`. `wait({ once: true })` makes one poll for a host that paces itself. A refusal throws `sign-in-denied` or `sign-in-failed`. See [Node](/docs/build/sdks/node/your-own-ui/#sign-in-and-who-signed-in), [Python](/docs/build/sdks/python/your-own-ui/#sign-in-and-who-signed-in) and [Swift](/docs/build/sdks/swift/).
+Node, Python, React, Swift, Kotlin and Godot drive this flow with `signIn.start({ channel: "device-code" })` (Python: `sign_in.start()`). The session holds `userCode`, both URLs, `expiresIn`, `interval` and `deviceName`, and keeps the device code private. `reopen()` opens the complete URL, `cancel()` stops the wait, and `wait()` polls at `interval`, honors `slow_down` and stops at `expiresIn`. It settles `signedIn`, `expired` or `cancelled`. `wait({ once: true })` makes one poll for a host that paces itself. A refusal throws `sign-in-denied` or `sign-in-failed`.
+
+App mode is built in Node, React and Python; Swift, Kotlin and Godot are in progress. The desktop bridge doesn't carry it yet, so a desktop app's Add goes to the Polaris Locker card.
+
+See [Node](/docs/build/sdks/node/your-own-ui/#sign-in-and-who-signed-in), [Python](/docs/build/sdks/python/your-own-ui/#sign-in-and-who-signed-in) and [Swift](/docs/build/sdks/swift/).
 
 ## Next steps
 
