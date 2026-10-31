@@ -1,6 +1,6 @@
 // The Bonjour ops of the Godot binary entry (CC-14b.4, D-16): browse and advertise `_pkeypeer._tcp`
 // over `BonjourBrowse` and `BonjourListener`, driven by ops and reported as binary events.
-// The pipes (dial, send, close and accepted sockets) are CC-14b.5.
+// CC-14b.5 adds the byte pipes (dial, accepted sockets, send, credit, close).
 //
 // Ops (all synchronous; the input is UTF-8 JSON of at most 4 KiB unless noted; the reply is one
 // status byte: 1 ok, 0 nothing to do, 3 bad input, 4 permission denied, 5 not configured, 6 other
@@ -14,7 +14,21 @@
 //   bj_advertise_start {"instance","txt":[…],"p2p"}  listen on a random port and register the advert
 //   bj_advertise_update {"instance","txt":[…]}       the next epoch or K_disc, same port
 //   bj_advertise_stop
-//   bj_stop_all                                      browse, advert and (CC-14b.5) every pipe
+//   bj_stop_all                                      browse, advert and every pipe
+//
+// Pipes (CC-14b.5; ids are u32, big endian, in the binary ops):
+//
+//   bj_dial   {"instance"}           → 1 ‖ id | 0 unknown instance | 7 too many pipes. Result: bj_open or bj_closed.
+//   bj_send   id ‖ bytes              → 1 queued | 0 unknown or closing | 7 queue full (4 MiB) | 3 bad
+//   bj_credit id ‖ n(u32)             the host has taken n received bytes; reading resumes under 256 KiB unread
+//   bj_admit  id                      the session was admitted: the socket leaves the G7 pre-auth limits
+//   bj_close  id ‖ mode               mode 0: close after what is queued is sent; 1: abort now
+//
+// Pipe events: bj_accepted {"id","remote"} · bj_open {"id"} · bj_data id ‖ bytes ·
+// bj_closed {"id","reason":"eof"|"error"|"refused"|"timeout"|"closed"|"unresolvable"} (not sent for a close
+// the host asked for). The pipe table is at most 64; a received chunk is at most 64 KiB and at most 256 KiB
+// are unread at once per pipe, so a peer that sends faster than the host reads is stopped by TCP, not by
+// memory.
 //
 // Events (kind, UTF-8 JSON payload):
 //
@@ -44,7 +58,12 @@ import Foundation
         static let failed: UInt8 = 6
         static let busy: UInt8 = 7
 
+        public static let maxPipes = 64
+        public static let readWindow = 256 * 1024
+        public static let maxQueuedBytes = 4 * 1024 * 1024
+
         let sink: PlatformEventSink
+        private let allowLoopback: Bool
         private let makeDriver: @Sendable () -> (any BonjourBrowseDriver)?
         private let makeListener: @Sendable (Bool) -> BonjourListener
         private let configurationCheck: @Sendable () -> BonjourBrowseError?
@@ -53,16 +72,21 @@ import Foundation
         private var allowed = Set<String>()
         private var listener: BonjourListener?
         private var generation = 0
+        private var endpoints: [String: BonjourEndpoint] = [:]
+        private var pipes: [UInt32: PipeState] = [:]
+        private var nextId: UInt32 = 0
 
         public init(
             sink: PlatformEventSink,
             makeDriver: @escaping @Sendable () -> (any BonjourBrowseDriver)? = { nil },
-            makeListener: @escaping @Sendable (Bool) -> BonjourListener = { BonjourListener(peerToPeer: $0) },
+            makeListener: (@Sendable (Bool) -> BonjourListener)? = nil, allowLoopback: Bool = false,
             configurationCheck: (@Sendable () -> BonjourBrowseError?)? = nil
         ) {
             self.sink = sink
             self.makeDriver = makeDriver
-            self.makeListener = makeListener
+            self.allowLoopback = allowLoopback
+            self.makeListener =
+                makeListener ?? { BonjourListener(peerToPeer: $0, policy: BonjourDialPolicy(allowLoopback: allowLoopback)) }
             self.configurationCheck = configurationCheck ?? BonjourBrowse.processConfigurationCheck
         }
 
@@ -74,6 +98,11 @@ import Foundation
             ops["bj_advertise_update"] = { [self] in advertiseUpdate($0) }
             ops["bj_advertise_stop"] = { [self] _ in advertiseStop() }
             ops["bj_stop_all"] = { [self] _ in stopAll() }
+            ops["bj_dial"] = { [self] in dial($0) }
+            ops["bj_send"] = { [self] in send($0) }
+            ops["bj_credit"] = { [self] in credit($0) }
+            ops["bj_admit"] = { [self] in admit($0) }
+            ops["bj_close"] = { [self] in close($0) }
         }
 
         // MARK: helpers
@@ -136,8 +165,14 @@ import Foundation
             guard first else { return [Self.busy] }
             do {
                 try b.start(
-                    onUp: { [weak self] f in self?.emit("bj_found", ["instance": f.instance, "txt": f.txt]) },
-                    onDown: { [weak self] n in self?.emit("bj_lost", ["instance": n]) },
+                    onUp: { [weak self] f in
+                        self?.lock.withLock { self?.endpoints[f.instance] = f.endpoint }
+                        self?.emit("bj_found", ["instance": f.instance, "txt": f.txt])
+                    },
+                    onDown: { [weak self] n in
+                        self?.lock.withLock { _ = self?.endpoints.removeValue(forKey: n) }
+                        self?.emit("bj_lost", ["instance": n])
+                    },
                     onError: { [weak self] e in self?.emit("bj_error", ["scope": "browse", "error": Self.name(e)]) })
             } catch let e as BonjourBrowseError {
                 lock.withLock { if browse === b { browse = nil } }
@@ -151,7 +186,10 @@ import Foundation
 
         func browseStop() -> [UInt8] {
             let b = lock.withLock { () -> BonjourBrowse? in
-                defer { browse = nil }
+                defer {
+                    browse = nil
+                    endpoints = [:]
+                }
                 return browse
             }
             b?.stop()
@@ -228,9 +266,16 @@ import Foundation
             }
         }
 
-        /// A socket accepted by the listener. CC-14b.5 routes it to a pipe; until then it is closed.
+        /// A socket accepted by the listener: a pipe id, an event, and a read loop. The socket keeps its
+        /// G7 slot until `bj_admit` (or the 30 s pre-auth close).
         func accepted(_ pipe: NWPipe) {
-            Task { await pipe.close() }
+            guard let state = reserve() else {
+                Task { await pipe.close() }
+                return
+            }
+            state.attach(pipe)
+            emit("bj_accepted", ["id": Int(state.id), "remote": pipe.remoteAddress])
+            run(state)
         }
 
         func advertiseUpdate(_ input: UnsafeBufferPointer<UInt8>) -> [UInt8] {
@@ -253,7 +298,297 @@ import Foundation
         func stopAll() -> [UInt8] {
             _ = browseStop()
             _ = advertiseStop()
+            let all = lock.withLock { () -> [PipeState] in
+                defer { pipes = [:] }
+                return Array(pipes.values)
+            }
+            for p in all { p.abort() }
             return [Self.ok]
+        }
+
+        // MARK: pipes
+
+        /// A table slot and an id, or nil when the table is full.
+        func reserve() -> PipeState? {
+            lock.withLock {
+                guard pipes.count < Self.maxPipes else { return nil }
+                repeat { nextId &+= 1 } while nextId == 0 || pipes[nextId] != nil
+                let state = PipeState(id: nextId)
+                pipes[nextId] = state
+                return state
+            }
+        }
+
+        private func state(_ id: UInt32) -> PipeState? { lock.withLock { pipes[id] } }
+
+        private func forget(_ state: PipeState) {
+            lock.withLock { if pipes[state.id] === state { pipes[state.id] = nil } }
+        }
+
+        private static func id(_ i: UnsafeBufferPointer<UInt8>) -> UInt32? {
+            guard i.count >= 4 else { return nil }
+            return (UInt32(i[0]) << 24) | (UInt32(i[1]) << 16) | (UInt32(i[2]) << 8) | UInt32(i[3])
+        }
+
+        /// A browse row learned outside a browse (tests).
+        func learn(_ instance: String, _ endpoint: BonjourEndpoint) {
+            lock.withLock { endpoints[instance] = endpoint }
+        }
+
+        func dial(_ input: UnsafeBufferPointer<UInt8>) -> [UInt8] {
+            guard let o = Self.object(input), let instance = o["instance"] as? String,
+                BonjourTable.isInstanceName(instance)
+            else { return [Self.badInput] }
+            guard let endpoint = lock.withLock({ endpoints[instance] }) else { return [Self.none] }
+            guard let state = reserve() else { return [Self.busy] }
+            let options = BonjourDialOptions(policy: BonjourDialPolicy(allowLoopback: allowLoopback))
+            Task.detached { [self] in
+                do {
+                    let pipe = try await BonjourPipes.dial(endpoint, options: options)
+                    guard state.attach(pipe) else {
+                        await pipe.close()
+                        return
+                    }
+                    emit("bj_open", ["id": Int(state.id)])
+                    drain(state)  // writes that waited for the connection
+                    run(state)
+                } catch {
+                    if state.finish() {
+                        forget(state)
+                        emit("bj_closed", ["id": Int(state.id), "reason": Self.reason(error)])
+                    }
+                }
+            }
+            return [Self.ok, UInt8(state.id >> 24 & 255), UInt8(state.id >> 16 & 255), UInt8(state.id >> 8 & 255), UInt8(state.id & 255)]
+        }
+
+        static func reason(_ error: Error) -> String {
+            switch error as? BonjourPipeError {
+            case .addressRefused?: return "refused"
+            case .timedOut?: return "timeout"
+            case .unresolvable?: return "unresolvable"
+            case .closed?: return "closed"
+            default: return "error"
+            }
+        }
+
+        /// Read loop of one pipe: pull a chunk, report it, and wait for credit once 256 KiB are unread.
+        private func run(_ state: PipeState) {
+            Task.detached { [self] in
+                var reason = "eof"
+                while true {
+                    await state.waitForCredit()
+                    guard let pipe = state.pipe, !state.isFinished else { return }
+                    do {
+                        guard let chunk = try await pipe.read() else { break }
+                        guard state.received(chunk.count) else { return }
+                        let head = [UInt8(state.id >> 24 & 255), UInt8(state.id >> 16 & 255), UInt8(state.id >> 8 & 255), UInt8(state.id & 255)]
+                        sink.emitBinary("bj_data", head + [UInt8](chunk))
+                    } catch {
+                        reason = "error"
+                        break
+                    }
+                }
+                if state.finish() {
+                    forget(state)
+                    emit("bj_closed", ["id": Int(state.id), "reason": reason])
+                    state.pipe?.shutDown()
+                }
+            }
+        }
+
+        func send(_ input: UnsafeBufferPointer<UInt8>) -> [UInt8] {
+            guard let id = Self.id(input) else { return [Self.badInput] }
+            guard let state = state(id) else { return [Self.none] }
+            let data = Data(input[4...])
+            switch state.enqueue(data) {
+            case .queued:
+                drain(state)
+                return [Self.ok]
+            case .full: return [Self.busy]
+            case .closed: return [Self.none]
+            }
+        }
+
+        /// One writer per pipe, in order. A write failure ends the pipe.
+        private func drain(_ state: PipeState) {
+            guard state.startDrain() else { return }
+            Task.detached { [self] in
+                while let chunk = state.nextChunk() {
+                    do {
+                        try await state.pipe?.write(chunk)
+                        state.sent(chunk.count)
+                    } catch {
+                        if state.finish() {
+                            forget(state)
+                            emit("bj_closed", ["id": Int(state.id), "reason": "error"])
+                            state.pipe?.shutDown()
+                        }
+                        return
+                    }
+                }
+                if state.endDrain() { state.closeNow(); forget(state) }
+            }
+        }
+
+        func credit(_ input: UnsafeBufferPointer<UInt8>) -> [UInt8] {
+            guard input.count == 8, let id = Self.id(input) else { return [Self.badInput] }
+            let n = (Int(input[4]) << 24) | (Int(input[5]) << 16) | (Int(input[6]) << 8) | Int(input[7])
+            guard let state = state(id) else { return [Self.none] }
+            state.credit(n)
+            return [Self.ok]
+        }
+
+        func admit(_ input: UnsafeBufferPointer<UInt8>) -> [UInt8] {
+            guard input.count == 4, let id = Self.id(input) else { return [Self.badInput] }
+            guard let state = state(id) else { return [Self.none] }
+            state.pipe?.markAuthenticated()
+            return [Self.ok]
+        }
+
+        func close(_ input: UnsafeBufferPointer<UInt8>) -> [UInt8] {
+            guard input.count == 5, let id = Self.id(input), input[4] <= 1 else { return [Self.badInput] }
+            guard let state = state(id) else { return [Self.none] }
+            if input[4] == 1 {
+                forget(state)
+                state.abort()
+            } else if state.requestClose() {
+                forget(state)
+            }
+            return [Self.ok]
+        }
+    }
+
+    /// One pipe's state. Everything is behind one lock; nothing is awaited while it is held.
+    final class PipeState: @unchecked Sendable {
+        enum Enqueue { case queued, full, closed }
+
+        let id: UInt32
+        private let lock = NSLock()
+        private(set) var pipe: NWPipe?
+        private var finished = false
+        private var unread = 0
+        private var waiter: CheckedContinuation<Void, Never>?
+        private var queue: [Data] = []
+        private var queuedBytes = 0
+        private var draining = false
+        private var closing = false
+
+        init(id: UInt32) { self.id = id }
+
+        var isFinished: Bool { lock.withLock { finished } }
+
+        /// False when the pipe was already ended (an abort during the dial).
+        @discardableResult
+        func attach(_ p: NWPipe) -> Bool {
+            lock.withLock {
+                guard !finished else { return false }
+                pipe = p
+                return true
+            }
+        }
+
+        /// Ends the pipe once; true for the caller that ended it.
+        func finish() -> Bool {
+            let (first, w) = lock.withLock { () -> (Bool, CheckedContinuation<Void, Never>?) in
+                let was = finished
+                finished = true
+                queue = []
+                queuedBytes = 0
+                defer { waiter = nil }
+                return (!was, waiter)
+            }
+            w?.resume()
+            return first
+        }
+
+        func shutNow() { pipe?.shutDown() }
+
+        func abort() {
+            _ = finish()
+            pipe?.shutDown()
+        }
+
+        func closeNow() {
+            _ = finish()
+            pipe?.shutDown()
+        }
+
+        func waitForCredit() async {
+            await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                let now = lock.withLock { () -> Bool in
+                    if finished || unread < BonjourHost.readWindow { return true }
+                    waiter = c
+                    return false
+                }
+                if now { c.resume() }
+            }
+        }
+
+        /// Count a received chunk; false when the pipe ended meanwhile.
+        func received(_ n: Int) -> Bool {
+            lock.withLock {
+                guard !finished else { return false }
+                unread += n
+                return true
+            }
+        }
+
+        func credit(_ n: Int) {
+            let w = lock.withLock { () -> CheckedContinuation<Void, Never>? in
+                unread = max(0, unread - n)
+                guard unread < BonjourHost.readWindow else { return nil }
+                defer { waiter = nil }
+                return waiter
+            }
+            w?.resume()
+        }
+
+        func enqueue(_ d: Data) -> Enqueue {
+            lock.withLock {
+                guard !finished, !closing else { return .closed }
+                guard queuedBytes + d.count <= BonjourHost.maxQueuedBytes else { return .full }
+                if !d.isEmpty {
+                    queue.append(d)
+                    queuedBytes += d.count
+                }
+                return .queued
+            }
+        }
+
+        func startDrain() -> Bool {
+            lock.withLock {
+                guard !draining, !queue.isEmpty, pipe != nil, !finished else { return false }
+                draining = true
+                return true
+            }
+        }
+
+        func nextChunk() -> Data? {
+            lock.withLock {
+                guard !finished, !queue.isEmpty else { return nil }
+                return queue.removeFirst()
+            }
+        }
+
+        func sent(_ n: Int) { lock.withLock { queuedBytes = max(0, queuedBytes - n) } }
+
+        /// The drain loop is done; true when a close was asked for and nothing is left to send.
+        func endDrain() -> Bool {
+            lock.withLock {
+                draining = false
+                return closing && queue.isEmpty && !finished
+            }
+        }
+
+        /// Close after the queue is sent. True when it can close now (nothing queued and not draining).
+        func requestClose() -> Bool {
+            let now = lock.withLock { () -> Bool in
+                closing = true
+                return queue.isEmpty && !draining
+            }
+            if now { closeNow() }
+            return now
         }
     }
 

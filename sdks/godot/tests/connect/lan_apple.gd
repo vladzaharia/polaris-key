@@ -15,8 +15,12 @@ class FakeBin:
 	var queued: Array = []
 	var reply := {}
 
+	var raw := {}
+
 	func cmd_bin(op: String, data: PackedByteArray) -> PackedByteArray:
 		calls.append([op, data])
+		if raw.has(op):
+			return raw[op]
 		return PackedByteArray([int(reply.get(op, 1))])
 
 	func poll_bin() -> Array:
@@ -57,6 +61,7 @@ func run(t: PKeyTestContext) -> void:
 	_browse(t)
 	_errors(t)
 	_advertise(t)
+	_pipes(t)
 	_export(t)
 	for a in _apples:
 		a.free()
@@ -176,6 +181,106 @@ func _advertise(t: PKeyTestContext) -> void:
 	fake.event("bj_advertise", {"ok": false, "error": "permission_denied"})
 	lane.poll()
 	t.check("advertise: a failed start is reported and the advert is not running", lane.last_error() == "permission_denied" and not lane._advertising)
+
+
+func _id_of(data: PackedByteArray) -> int:
+	return (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3]
+
+
+func _data_event(fake: FakeBin, id: int, bytes: PackedByteArray) -> void:
+	fake.queued.append(["bj_data", PackedByteArray([(id >> 24) & 0xFF, (id >> 16) & 0xFF, (id >> 8) & 0xFF, id & 0xFF]) + bytes])
+
+
+func _pipes(t: PKeyTestContext) -> void:
+	var fake := FakeBin.new()
+	var lane := _lane(fake)
+	fake.raw["bj_dial"] = PackedByteArray([1, 0, 0, 1, 2])
+	var pipe := lane.dial(A)
+	t.check("pipes: dial answers a connecting pipe by its native id", pipe != null and pipe.id() == 258 and not pipe.is_connected_native() and pipe.is_open() and not pipe.is_finished())
+	t.check("pipes: the dial names the instance", fake.json_of("bj_dial") == {"instance": A})
+	t.check("pipes: a write waits natively and is framed id then bytes", pipe.write(PackedByteArray([7, 8])) and fake.calls[-1][0] == "bj_send"
+			and fake.calls[-1][1] == PackedByteArray([0, 0, 1, 2, 7, 8]))
+	fake.queued.append(["bj_open", JSON.stringify({"id": 258}).to_utf8_buffer()])
+	_data_event(fake, 258, PackedByteArray([1, 2, 3]))
+	_data_event(fake, 999, PackedByteArray([9]))
+	lane.poll()
+	t.check("pipes: bj_open connects it and data reaches only its pipe", pipe.is_connected_native() and pipe.buffered() == 3)
+	t.check("pipes: read hands the bytes over and returns the credit", pipe.read() == PackedByteArray([1, 2, 3]) and fake.calls[-1][0] == "bj_credit"
+			and fake.calls[-1][1] == PackedByteArray([0, 0, 1, 2, 0, 0, 0, 3]))
+	var credits := fake.ops().count("bj_credit")
+	pipe.read()
+	t.check("pipes: an empty read returns no credit", fake.ops().count("bj_credit") == credits)
+	fake.reply["bj_send"] = 7
+	t.check("pipes: a full native queue refuses the write", not pipe.write(PackedByteArray([1])))
+	fake.reply["bj_send"] = 1
+	t.check("pipes: an empty write is accepted without a call", pipe.write(PackedByteArray()) and fake.ops().count("bj_send") == 2)
+	_data_event(fake, 258, PackedByteArray([5]))
+	fake.queued.append(["bj_closed", JSON.stringify({"id": 258, "reason": "eof"}).to_utf8_buffer()])
+	lane.poll()
+	t.check("pipes: after eof it reads out what arrived, then is finished", pipe.is_open() and not pipe.is_finished() and not pipe.write(PackedByteArray([1])))
+	pipe.read()
+	t.check("pipes: and is closed once read", not pipe.is_open() and pipe.is_finished() and pipe.end_reason() == "eof" and lane.pipe_count() == 0)
+	# A dial the native side refuses.
+	fake.raw["bj_dial"] = PackedByteArray([0])
+	t.check("pipes: an unknown instance is null", lane.dial(B) == null)
+	fake.raw["bj_dial"] = PackedByteArray([7])
+	t.check("pipes: a full native table is null", lane.dial(B) == null)
+	t.check("pipes: a bad instance name never reaches the native side", lane.dial("x") == null and fake.ops().count("bj_dial") == 3)
+	fake.raw.erase("bj_dial")
+	# An error ends the pipe at once.
+	fake.raw["bj_dial"] = PackedByteArray([1, 0, 0, 0, 5])
+	var errored := lane.dial(A)
+	fake.queued.append(["bj_closed", JSON.stringify({"id": 5, "reason": "error"}).to_utf8_buffer()])
+	lane.poll()
+	t.check("pipes: an error is final", errored.is_finished() and not errored.is_open() and errored.end_reason() == "error")
+	# close and abort.
+	fake.raw["bj_dial"] = PackedByteArray([1, 0, 0, 0, 6])
+	var closing := lane.dial(A)
+	closing.close()
+	t.check("pipes: close lets the native queue drain (mode 0), and the pipe is done", fake.calls[-1][0] == "bj_close" and fake.calls[-1][1] == PackedByteArray([0, 0, 0, 6, 0])
+			and closing.is_finished() and not closing.write(PackedByteArray([1])))
+	fake.raw["bj_dial"] = PackedByteArray([1, 0, 0, 0, 7])
+	var aborted := lane.dial(A)
+	aborted.abort()
+	t.check("pipes: abort drops it (mode 1)", fake.calls[-1][1] == PackedByteArray([0, 0, 0, 7, 1]) and aborted.is_finished() and lane.pipe_count() == 0)
+	# Overflow aborts.
+	fake.raw["bj_dial"] = PackedByteArray([1, 0, 0, 0, 8])
+	var flood := lane.dial(A)
+	flood._on_data(PackedByteArray([0]))
+	var big := PackedByteArray()
+	big.resize(PKeyApplePipe.MAX_IN)
+	flood._on_data(big)
+	t.check("pipes: more than MAX_IN unread aborts the pipe", flood.is_finished() and flood.end_reason() == "overflow")
+	_accepted(t)
+
+
+func _accepted(t: PKeyTestContext) -> void:
+	var fake := FakeBin.new()
+	var lane := _lane(fake)
+	fake.queued.append(["bj_accepted", JSON.stringify({"id": 40, "remote": "192.168.1.9"}).to_utf8_buffer()])
+	lane.poll()
+	t.check("accepted: with no acceptor the socket is aborted natively", fake.calls[-1][0] == "bj_close" and fake.calls[-1][1] == PackedByteArray([0, 0, 0, 40, 1]) and lane.pipe_count() == 0)
+	var got: Array = []
+	lane.set_acceptor(func(p: PKeyApplePipe) -> void: got.append(p))
+	fake.queued.append(["bj_accepted", JSON.stringify({"id": 41, "remote": "192.168.1.9"}).to_utf8_buffer()])
+	fake.queued.append(["bj_accepted", JSON.stringify({"id": 41, "remote": "192.168.1.9"}).to_utf8_buffer()])
+	fake.queued.append(["bj_accepted", JSON.stringify({"id": 0, "remote": "x"}).to_utf8_buffer()])
+	lane.poll()
+	var p: PKeyApplePipe = got[0]
+	t.check("accepted: the acceptor gets one pipe, up already, with the remote address", got.size() == 1 and p.is_connected_native() and p.remote_address() == "192.168.1.9" and p.id() == 41)
+	p.admit()
+	t.check("accepted: admit tells the native side", fake.calls[-1][0] == "bj_admit" and fake.calls[-1][1] == PackedByteArray([0, 0, 0, 41]))
+	for i in PKeyAppleMdns.MAX_PIPES + 10:
+		fake.queued.append(["bj_accepted", JSON.stringify({"id": 100 + i, "remote": "10.0.0.1"}).to_utf8_buffer()])
+	lane.poll()
+	t.check("accepted: the pipe table is bounded; the surplus is aborted natively", lane.pipe_count() == PKeyAppleMdns.MAX_PIPES and fake.ops().count("bj_close") >= 11)
+	lane.close_pipes()
+	t.check("accepted: close_pipes aborts them all", lane.pipe_count() == 0 and p.is_finished())
+	lane.set_acceptor(func(q: PKeyApplePipe) -> void: got.append(q))
+	fake.queued.append(["bj_accepted", JSON.stringify({"id": 300, "remote": "10.0.0.1"}).to_utf8_buffer()])
+	lane.poll()
+	lane.stop()
+	t.check("accepted: stop() ends the pipes and forgets the acceptor", lane.pipe_count() == 0 and got.back().is_finished() and fake.ops().has("bj_stop_all"))
 
 
 func _export(t: PKeyTestContext) -> void:

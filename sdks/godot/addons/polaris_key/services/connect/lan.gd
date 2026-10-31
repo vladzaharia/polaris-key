@@ -227,6 +227,13 @@ func dial(target: Variant) -> PKeyResult:
 	elif target is Dictionary:
 		peer = (target as Dictionary).duplicate(true)
 		want = str(peer.get("device_id", ""))
+	if bool(peer.get("native", false)) and want != "":
+		return await PKeyConnectLanNative.dial(self, peer, want)
+	return await _dial_hosts(peer, want)
+
+
+## Dial a peer by its learned addresses: race them, and run the handshake with the winner.
+func _dial_hosts(peer: Dictionary, want: String) -> PKeyResult:
 	var hosts: Array = []
 	if not peer.is_empty():
 		var all: Array = [peer.get("host", "")]
@@ -302,6 +309,8 @@ func _start() -> PKeyResult:
 	if not listened.ok:
 		return listened
 	_frames(true)
+	if _mdns.has_method("set_acceptor"):
+		_mdns.call("set_acceptor", Callable(self, "_admit_native"))
 	if bool(_o.get("advertise", true)):
 		var r := _rotate()
 		if not r.ok:
@@ -339,6 +348,10 @@ func _shutdown(graceful: bool) -> void:
 	if _browse != null:
 		_browse.stop()
 		_browse = null
+	if _mdns != null and _mdns.has_method("set_acceptor"):
+		_mdns.call("set_acceptor", Callable())
+		if not graceful and _mdns.has_method("close_pipes"):
+			_mdns.call("close_pipes")
 	if _server != null:
 		_server.stop()
 		_server = null
@@ -499,7 +512,8 @@ func _found(f: Dictionary) -> void:
 	for h in f.get("hosts", [f.get("host", "")]):
 		if h is String and _dialable(h) and not hosts.has(h):
 			hosts.append(h)
-	if _stopped or hosts.is_empty():
+	var native := bool(f.get("native", false))
+	if _stopped or (hosts.is_empty() and not native):
 		return
 	var txt := PKeyPeerAdvert.parse_txt(f.get("txt", []))
 	if not txt["ok"] or txt["mode"] != "a":
@@ -519,7 +533,11 @@ func _found(f: Dictionary) -> void:
 			_miss.erase(_miss.keys()[0])
 		_miss[instance] = _now()
 		return
-	var peer := {"device_id": device_id, "host": hosts[0], "hosts": hosts, "port": int(f["port"])}
+	var peer := {"device_id": device_id, "host": hosts[0] if not hosts.is_empty() else "", "hosts": hosts, "port": int(f["port"])}
+	if native:
+		# The OS resolves the address: the peer is dialled by its instance name through the adapter.
+		peer["native"] = true
+		peer["instance"] = instance
 	var had: Variant = _peers.get(device_id)
 	_peers[device_id] = {"peer": peer, "instance": instance}
 	# A new address for a device already known is not a new peer.
@@ -671,7 +689,10 @@ func _on_pending_closed(_code: StringName, _by_peer: bool, pid: int) -> void:
 
 func _on_inbound(session: PKeyConnectSession, pid: int) -> void:
 	if _pending.has(pid):
-		_release(_pending[pid])
+		var admitted: Pending = _pending[pid]
+		if admitted.pipe != null and admitted.pipe.has_method("admit"):
+			admitted.pipe.call("admit")
+		_release(admitted)
 	if _stopped or _count_peer(session.peer_device_id) >= int(_o.get("max_sessions_per_peer", MAX_SESSIONS_PER_PEER)):
 		session.close(PKeyPeerSession.PEER_BUSY)
 		return
@@ -697,7 +718,7 @@ func _on_session_closed(_code: StringName, _by_peer: bool, sid: int) -> void:
 
 
 ## A link and its attachment for `pipe`: {link, attachment}, or {} when the options are refused.
-func _make_link(pipe: PKeyPeerTcpPipe, src: PKeyConnectClient.PeerSource, role: String) -> Dictionary:
+func _make_link(pipe: PKeyPeerPipe, src: PKeyConnectClient.PeerSource, role: String) -> Dictionary:
 	var so := PKeyConnectChannel.session_options(src, {
 		"role": role, "caps": _o.get("caps", ["app/1"]), "label": str(_o.get("label", "")), "ring": Callable(self, "_pushed"),
 		"now": _src.now, "mono": Callable(self, "_mono"), "rekey_messages": _o.get("rekey_messages", PKeyPeerSession.DEFAULT_REKEY_MESSAGES),
@@ -716,6 +737,11 @@ func _make_link(pipe: PKeyPeerTcpPipe, src: PKeyConnectClient.PeerSource, role: 
 	return {"link": link, "attachment": att}
 
 
+## An inbound native pipe (the Apple lane, CC-14b.5): PKeyConnectLanNative holds the code.
+func _admit_native(pipe: PKeyPeerPipe) -> void:
+	PKeyConnectLanNative.admit(self, pipe)
+
+
 # ── dialling ─────────────────────────────────────────────────────────────────────────────────
 
 
@@ -725,10 +751,15 @@ func _dial_once(hosts: Array, port: int, ident: PKeyConnectClient.PeerSource) ->
 	var won := await _race(hosts, port)
 	if not won.has("pipe"):
 		return {"error": PKeyConnectErrors.lan("connect_failed", "The device did not answer."), "host": ""}
-	var made := _make_link(won["pipe"], ident, "initiator")
+	return await _handshake(won["pipe"], ident, won["host"])
+
+
+## Link `pipe` as the initiator and wait for the session: {session}, or {error, host}.
+func _handshake(pipe: PKeyPeerPipe, ident: PKeyConnectClient.PeerSource, host: String) -> Dictionary:
+	var made := _make_link(pipe, ident, "initiator")
 	if made.is_empty():
-		(won["pipe"] as PKeyPeerTcpPipe).abort()
-		return {"error": PKeyConnectErrors.lan("handshake_failed", "The handshake failed."), "host": won["host"]}
+		pipe.abort()
+		return {"error": PKeyConnectErrors.lan("handshake_failed", "The handshake failed."), "host": host}
 	var link: PKeyPeerLink = made["link"]
 	var att: PKeyConnectChannel.Attachment = made["attachment"]
 	link.start()
@@ -741,14 +772,16 @@ func _dial_once(hosts: Array, port: int, ident: PKeyConnectClient.PeerSource) ->
 		# A socket that was reset before the peer admitted us is an address that did not answer.
 		if (opened.detail as Dictionary).get("close_code") == PKeyPeerLink.CONNECTION_LOST:
 			opened = PKeyConnectErrors.lan("connect_failed", "The device did not answer.")
-		return {"error": opened, "host": won["host"]}
+		return {"error": opened, "host": host}
 	var session: PKeyConnectSession = opened.detail
 	if session.is_closed():
 		# Closed while the caller's stack was being cleaned: not a success (R-6G2 N7).
 		link.destroy()
-		return {"error": PKeyConnectErrors.lan("handshake_failed", "The session closed before it could be used."), "host": won["host"]}
+		return {"error": PKeyConnectErrors.lan("handshake_failed", "The session closed before it could be used."), "host": host}
 	_track(session)
 	return {"session": session}
+
+
 
 
 ## Race the addresses (RFC 8305, as the other lanes): first-seen order, at most DIAL_MAX_IN_FLIGHT
@@ -813,6 +846,8 @@ class Pending extends RefCounted:
 	var attachment: PKeyConnectChannel.Attachment
 	var release: Callable
 	var at := 0.0
+	## The native pipe of an inbound socket the OS side counts as unadmitted (null for a TCP socket).
+	var pipe: PKeyPeerPipe
 
 
 ## One connection attempt of a race. The base class has already failed.

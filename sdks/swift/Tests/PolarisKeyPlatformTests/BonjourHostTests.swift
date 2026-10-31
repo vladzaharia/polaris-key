@@ -3,6 +3,7 @@
 // (no network). The live advertise, browse and dial round trip runs only under PKEY_LIVE_BONJOUR=1.
 
 import Foundation
+import Network
 import XCTest
 
 @testable import PolarisKeyPlatform
@@ -26,6 +27,13 @@ import XCTest
         }
 
         func snapshot() -> [BonjourFound] { lock.withLock { snap } }
+    }
+
+    private final class Box: @unchecked Sendable {
+        private let lock = NSLock()
+        private var v = false
+        var value: Bool { lock.withLock { v } }
+        func set() { lock.withLock { v = true } }
     }
 
     private func inst(_ i: Int) -> String {
@@ -158,7 +166,7 @@ import XCTest
 
         func testOpsAreRegisteredInTheSystemTable() {
             let ops = PlatformBinaryOps.system(sink: PlatformEventSink(), environment: [:])
-            for op in ["bj_browse_start", "bj_browse_stop", "bj_accept", "bj_advertise_start", "bj_advertise_update", "bj_advertise_stop", "bj_stop_all"] {
+            for op in ["bj_browse_start", "bj_browse_stop", "bj_accept", "bj_advertise_start", "bj_advertise_update", "bj_advertise_stop", "bj_stop_all", "bj_dial", "bj_send", "bj_credit", "bj_admit", "bj_close"] {
                 XCTAssertNotNil(ops[op], op)
             }
         }
@@ -187,6 +195,141 @@ import XCTest
             _ = run(ops, "bj_stop_all", [])
             XCTAssertTrue(advertised, "\(seen)")
             XCTAssertTrue(seen.contains("bj_found"), "\(seen)")
+        }
+
+        // MARK: pipes (CC-14b.5)
+
+        private func idBytes(_ id: UInt32) -> [UInt8] { [UInt8(id >> 24 & 255), UInt8(id >> 16 & 255), UInt8(id >> 8 & 255), UInt8(id & 255)] }
+
+        func testPipeOpsRefuseBadInputAndUnknownIds() {
+            let m = make()
+            XCTAssertEqual(run(m.ops, "bj_dial", json(["instance": "nope"])), [3])
+            XCTAssertEqual(run(m.ops, "bj_dial", json(["instance": inst(1)])), [0], "not in the browse table")
+            XCTAssertEqual(run(m.ops, "bj_send", [1, 2]), [3])
+            XCTAssertEqual(run(m.ops, "bj_send", idBytes(77) + [1]), [0])
+            XCTAssertEqual(run(m.ops, "bj_credit", idBytes(77)), [3])
+            XCTAssertEqual(run(m.ops, "bj_credit", idBytes(77) + idBytes(5)), [0])
+            XCTAssertEqual(run(m.ops, "bj_admit", [1]), [3])
+            XCTAssertEqual(run(m.ops, "bj_admit", idBytes(77)), [0])
+            XCTAssertEqual(run(m.ops, "bj_close", idBytes(77)), [3])
+            XCTAssertEqual(run(m.ops, "bj_close", idBytes(77) + [2]), [3])
+            XCTAssertEqual(run(m.ops, "bj_close", idBytes(77) + [0]), [0])
+        }
+
+        func testDialOfAnUnresolvableHitReportsClosedAndFreesTheSlot() async throws {
+            let m = make()
+            _ = run(m.ops, "bj_accept", names([1]))
+            _ = run(m.ops, "bj_browse_start", json([:]))
+            m.driver.send(.upserted([row(1)]))  // an endpoint with no network endpoint
+            _ = events(m.sink)
+            let r = run(m.ops, "bj_dial", json(["instance": inst(1)]))
+            XCTAssertEqual(r.count, 5)
+            XCTAssertEqual(r[0], 1)
+            var got: [(String, [String: Any])] = []
+            let end = Date().addingTimeInterval(5)
+            while Date() < end, got.isEmpty {
+                got = events(m.sink)
+                try await Task.sleep(nanoseconds: 20_000_000)
+            }
+            XCTAssertEqual(got.first?.0, "bj_closed")
+            XCTAssertEqual(got.first?.1["reason"] as? String, "unresolvable")
+            XCTAssertEqual(got.first?.1["id"] as? Int, Int(r[1]) << 24 | Int(r[2]) << 16 | Int(r[3]) << 8 | Int(r[4]))
+            // The id is gone.
+            XCTAssertEqual(run(m.ops, "bj_send", Array(r[1...4]) + [1]), [0])
+        }
+
+        func testThePipeTableIsBounded() {
+            let host = BonjourHost(sink: PlatformEventSink(), configurationCheck: { nil })
+            var held: [PipeState] = []
+            for _ in 0..<BonjourHost.maxPipes { held.append(host.reserve()!) }
+            XCTAssertNil(host.reserve())
+            XCTAssertEqual(Set(held.map(\.id)).count, BonjourHost.maxPipes, "ids are unique")
+        }
+
+        func testSendQueueIsBoundedAndEndsWithThePipe() {
+            let s = PipeState(id: 1)
+            let chunk = Data(count: 1 << 20)
+            for _ in 0..<4 { XCTAssertEqual(s.enqueue(chunk), .queued) }
+            XCTAssertEqual(s.enqueue(Data([1])), .full, "4 MiB queued")
+            XCTAssertTrue(s.finish())
+            XCTAssertFalse(s.finish(), "once")
+            XCTAssertEqual(s.enqueue(Data([1])), .closed)
+            XCTAssertFalse(s.received(5))
+        }
+
+        func testReadingPausesAtTheWindowAndResumesOnCredit() async {
+            let s = PipeState(id: 1)
+            XCTAssertTrue(s.received(BonjourHost.readWindow))
+            let resumed = Box()
+            let task = Task {
+                await s.waitForCredit()
+                resumed.set()
+            }
+            try? await Task.sleep(nanoseconds: 100_000_000)
+            XCTAssertFalse(resumed.value, "paused with a full window unread")
+            s.credit(1000)
+            await task.value
+            XCTAssertTrue(resumed.value)
+            // A pipe that ends releases a waiter too.
+            XCTAssertTrue(s.received(BonjourHost.readWindow))
+            let t2 = Task { await s.waitForCredit() }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+            _ = s.finish()
+            await t2.value
+        }
+
+        func testLivePipeRoundTrip() async throws {
+            try XCTSkipUnless(
+                ProcessInfo.processInfo.environment["PKEY_LIVE_BONJOUR"] == "1", "set PKEY_LIVE_BONJOUR=1")
+            let sinkA = PlatformEventSink(), sinkB = PlatformEventSink()
+            let a = BonjourHost(sink: sinkA, allowLoopback: true, configurationCheck: { nil })
+            let b = BonjourHost(sink: sinkB, allowLoopback: true, configurationCheck: { nil })
+            var oa: [String: PlatformBinaryOp] = [:], ob: [String: PlatformBinaryOp] = [:]
+            a.register(into: &oa)
+            b.register(into: &ob)
+            let me = inst(29)
+            _ = run(ob, "bj_accept", names([29]))
+            XCTAssertEqual(run(ob, "bj_browse_start", json([:])), [1])
+            XCTAssertEqual(run(oa, "bj_advertise_start", json(["instance": me, "txt": ["v=1", "m=a"]])), [1])
+            func wait(_ sink: PlatformEventSink, _ kind: String) async throws -> (String, [UInt8])? {
+                let end = Date().addingTimeInterval(20)
+                while Date() < end {
+                    for e in sink.drainBinary() {
+                        if e.0 == kind { return e }
+                        FileHandle.standardError.write(Data("LIVE other event \(e.0) \(String(decoding: e.1.prefix(120), as: UTF8.self))\n".utf8))
+                    }
+                    try await Task.sleep(nanoseconds: 50_000_000)
+                }
+                return nil
+            }
+            let adv = try await wait(sinkA, "bj_advertise")
+            let port = (try JSONSerialization.jsonObject(with: Data(adv!.1)) as! [String: Any])["port"] as! Int
+            // The pipe path over the listener's own port. The OS-resolved dial of the browse hit is
+            // exercised on two Macs; here the same process cannot be relied on to reach itself through
+            // the service (a CGNAT or VPN interface address is refused by the LAN policy, G6).
+            let endpoint = NWEndpoint.hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: UInt16(port))!)
+            b.learn(me, BonjourEndpoint(name: me, network: endpoint))
+            let d = run(ob, "bj_dial", json(["instance": me]))
+            XCTAssertEqual(d.first, 1, "\(d)")
+            let idB = Array(d[1...4])
+            let open = try await wait(sinkB, "bj_open")
+            XCTAssertNotNil(open)
+            let acc = try await wait(sinkA, "bj_accepted")
+            let accJSON = try JSONSerialization.jsonObject(with: Data(acc!.1)) as! [String: Any]
+            let idA = idBytes(UInt32(accJSON["id"] as! Int))
+            XCTAssertEqual(run(oa, "bj_admit", idA), [1])
+            XCTAssertEqual(run(ob, "bj_send", idB + Array("hello".utf8)), [1])
+            let got = try await wait(sinkA, "bj_data")
+            XCTAssertEqual(Array(got!.1.dropFirst(4)), Array("hello".utf8))
+            XCTAssertEqual(run(oa, "bj_credit", idA + [0, 0, 0, 5]), [1])
+            XCTAssertEqual(run(oa, "bj_send", idA + Array("world".utf8)), [1])
+            let back = try await wait(sinkB, "bj_data")
+            XCTAssertEqual(Array(back!.1.dropFirst(4)), Array("world".utf8))
+            XCTAssertEqual(run(ob, "bj_close", idB + [0]), [1])
+            let closed = try await wait(sinkA, "bj_closed")
+            XCTAssertNotNil(closed)
+            _ = run(oa, "bj_stop_all", [])
+            _ = run(ob, "bj_stop_all", [])
         }
     }
 

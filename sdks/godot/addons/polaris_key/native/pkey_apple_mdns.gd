@@ -6,7 +6,9 @@ extends RefCounted
 ## PolarisKeyPlatform/BonjourHost.swift). Pass it to `PKeyConnectLan.start` as the `mdns` option.
 ##
 ## The OS resolves and registers the service, so a browse hit carries no address: the row is
-## {instance, txt, hosts: [], port: 0, native: true}. Dialling and accepted sockets are CC-14b.5.
+## {instance, txt, hosts: [], port: 0, native: true}. `dial(instance)` and the acceptor callback
+## (`set_acceptor`) give `PKeyApplePipe`s (CC-14b.5); this object routes their events and is the only
+## consumer of the `bj_*` binary events.
 ##
 ## The roster filter lives in Swift: `set_accepted(names)` is the list of instance names this device
 ## would accept (the LAN service pushes it whenever the epoch, K_disc or the roster changes), and
@@ -25,6 +27,7 @@ const BIN_NONE := 0
 const BIN_PERMISSION := 4
 const BIN_NOT_CONFIGURED := 5
 const MAX_ROWS := 256
+const MAX_PIPES := 64
 
 var _apple: PKeyApple
 var _tree: SceneTree = null
@@ -41,6 +44,9 @@ var _names_sent := false
 var _frames := false
 ## The instances reported up and not yet down, so a repeat is not a new peer and the table is bounded.
 var _up: Dictionary = {}
+## The native pipes by id, each live until it closes or is released. At most MAX_PIPES.
+var _pipes: Dictionary = {}
+var _acceptor := Callable()
 
 
 ## The lane over `apple` (a PKeyApple, or one over a fake native in tests), else the process's shared
@@ -124,6 +130,9 @@ func poll() -> void:
 		var kind: String = e[0]
 		if not kind.begins_with("bj_"):
 			continue
+		if kind == "bj_data":
+			_data(e[1])
+			continue
 		var j := JSON.new()
 		if j.parse((e[1] as PackedByteArray).get_string_from_utf8()) != OK or not (j.data is Dictionary):
 			continue
@@ -133,6 +142,10 @@ func poll() -> void:
 ## End the browse, the advert and every native socket (sign-out, lock, stop).
 func stop() -> void:
 	_apple.cmd_bin("bj_stop_all", PackedByteArray())
+	for id: int in _pipes.keys():
+		(_pipes[id] as PKeyApplePipe)._on_closed("closed")
+	_pipes = {}
+	_acceptor = Callable()
 	_browsing = false
 	_advertising = false
 	_advert = {}
@@ -160,6 +173,97 @@ func _route(kind: String, d: Dictionary) -> void:
 				_error = str(d.get("error", "unavailable"))
 		"bj_error":
 			_error = str(d.get("error", "unavailable"))
+		"bj_accepted":
+			_accepted(d)
+		"bj_open":
+			var opened: PKeyApplePipe = _pipes.get(int(d.get("id", 0)))
+			if opened != null:
+				opened._on_open()
+		"bj_closed":
+			var id := int(d.get("id", 0))
+			var gone: PKeyApplePipe = _pipes.get(id)
+			if gone != null:
+				gone._on_closed(str(d.get("reason", "error")))
+				_pipes.erase(id)
+
+
+func _data(payload: PackedByteArray) -> void:
+	if payload.size() < 4:
+		return
+	var id := (payload[0] << 24) | (payload[1] << 16) | (payload[2] << 8) | payload[3]
+	var pipe: PKeyApplePipe = _pipes.get(id)
+	if pipe != null:
+		pipe._on_data(payload.slice(4))
+
+
+func _accepted(d: Dictionary) -> void:
+	var id := int(d.get("id", 0))
+	if id <= 0 or _pipes.has(id) or _pipes.size() >= MAX_PIPES or not _acceptor.is_valid():
+		if id > 0 and not _pipes.has(id):
+			close_pipe(id, true)
+		return
+	var pipe := PKeyApplePipe.new(self, id, str(d.get("remote", "")), true)
+	_pipes[id] = pipe
+	_acceptor.call(pipe)
+
+
+## Where accepted pipes go: Callable(pipe: PKeyApplePipe). With none, accepted sockets are closed.
+func set_acceptor(acceptor: Callable) -> void:
+	_acceptor = acceptor
+
+
+## Dial a browse hit by its instance name. A PKeyApplePipe that is connecting (it takes writes, which
+## wait natively), or null when the instance is not in the native table, the table is full or the lane
+## cannot dial. The result arrives as `is_connected_native()`, or the pipe finishes.
+func dial(instance: String) -> PKeyApplePipe:
+	if not PKeyPeerAdvert.is_instance_name(instance) or _pipes.size() >= MAX_PIPES:
+		return null
+	var r := _apple.cmd_bin("bj_dial", JSON.stringify({"instance": instance}).to_utf8_buffer())
+	if r.size() != 5 or r[0] != BIN_OK:
+		return null
+	var id := (r[1] << 24) | (r[2] << 16) | (r[3] << 8) | r[4]
+	var pipe := PKeyApplePipe.new(self, id, "", false)
+	_pipes[id] = pipe
+	_frame_on()
+	return pipe
+
+
+func send(id: int, bytes: PackedByteArray) -> bool:
+	var r := _apple.cmd_bin("bj_send", _id_bytes(id) + bytes)
+	return not r.is_empty() and r[0] == BIN_OK
+
+
+func credit(id: int, n: int) -> void:
+	var tail := PackedByteArray([(n >> 24) & 0xFF, (n >> 16) & 0xFF, (n >> 8) & 0xFF, n & 0xFF])
+	_apple.cmd_bin("bj_credit", _id_bytes(id) + tail)
+
+
+func admit(id: int) -> void:
+	_apple.cmd_bin("bj_admit", _id_bytes(id))
+
+
+func close_pipe(id: int, abort: bool) -> void:
+	_apple.cmd_bin("bj_close", _id_bytes(id) + PackedByteArray([1 if abort else 0]))
+
+
+## Forget a pipe the host closed itself (no event follows).
+func release(id: int) -> void:
+	_pipes.erase(id)
+
+
+## Abort every native pipe now (sign-out, lock). Browse and advert are stopped by their handles.
+func close_pipes() -> void:
+	for id: int in _pipes.keys():
+		(_pipes[id] as PKeyApplePipe).abort()
+	_pipes = {}
+
+
+func pipe_count() -> int:
+	return _pipes.size()
+
+
+static func _id_bytes(id: int) -> PackedByteArray:
+	return PackedByteArray([(id >> 24) & 0xFF, (id >> 16) & 0xFF, (id >> 8) & 0xFF, id & 0xFF])
 
 
 func _found(d: Dictionary) -> void:
