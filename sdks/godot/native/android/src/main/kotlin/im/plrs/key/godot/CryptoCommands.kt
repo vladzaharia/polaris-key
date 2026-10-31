@@ -16,25 +16,26 @@ class CryptoCommands(private val crypto: PlatformCrypto = PlatformCrypto()) {
 
     fun seal(key: ByteArray?, nonce: ByteArray?, aad: ByteArray?, plain: ByteArray?): ByteArray {
         if (key == null || nonce == null || aad == null || plain == null) return status(BAD_INPUT)
-        return guarded { ok(crypto.aesGcmSeal(key, nonce, aad, plain)) }
+        return guarded({ ok(crypto.aesGcmSeal(key, nonce, aad, plain)) }, key)
     }
 
     fun open(key: ByteArray?, nonce: ByteArray?, aad: ByteArray?, sealed: ByteArray?): ByteArray {
         if (key == null || nonce == null || aad == null || sealed == null) return status(BAD_INPUT)
-        return guarded { crypto.aesGcmOpen(key, nonce, aad, sealed)?.let { ok(it) } ?: status(REFUSED) }
+        return guarded({ crypto.aesGcmOpen(key, nonce, aad, sealed)?.let { ok(it) } ?: status(REFUSED) }, key)
     }
 
     fun x25519(privateKey: ByteArray?, peerPublic: ByteArray?): ByteArray {
         if (privateKey == null || peerPublic == null) return status(BAD_INPUT)
-        return guarded { ok(crypto.x25519(privateKey, peerPublic)) }
+        return guarded({ ok(crypto.x25519(privateKey, peerPublic)) }, privateKey)
     }
 
     fun x25519Public(privateKey: ByteArray?): ByteArray {
         if (privateKey == null) return status(BAD_INPUT)
-        return guarded { ok(crypto.x25519Public(privateKey)) }
+        return guarded({ ok(crypto.x25519Public(privateKey)) }, privateKey)
     }
 
-    private fun guarded(block: () -> ByteArray): ByteArray = try {
+    /** Runs [block], then wipes [secret] (the caller's key array, ours to clear) on every path. */
+    private fun guarded(block: () -> ByteArray, secret: ByteArray): ByteArray = try {
         block()
     } catch (e: PlatformCryptoException) {
         status(
@@ -47,6 +48,8 @@ class CryptoCommands(private val crypto: PlatformCrypto = PlatformCrypto()) {
     } catch (e: Exception) {
         // Unknown fault: refuse, and say nothing about the inputs.
         status(REFUSED)
+    } finally {
+        secret.fill(0)
     }
 
     private fun ok(body: ByteArray): ByteArray {

@@ -64,9 +64,10 @@ public class PlatformCrypto(private val sdkInt: Int = Build.VERSION.SDK_INT) {
     public fun x25519(privateKey: ByteArray, peerPublic: ByteArray): ByteArray {
         if (privateKey.size != KEY_BYTES || peerPublic.size != KEY_BYTES) refuse(PlatformCryptoException.BAD_INPUT)
         if (!x25519Supported) refuse(PlatformCryptoException.UNSUPPORTED)
+        val scalar = privateKey.copyOf()
         val out = try {
             val kf = KeyFactory.getInstance("XDH")
-            val priv = kf.generatePrivate(XECPrivateKeySpec(NamedParameterSpec.X25519, privateKey.copyOf()))
+            val priv = kf.generatePrivate(XECPrivateKeySpec(NamedParameterSpec.X25519, scalar))
             val pub = kf.generatePublic(XECPublicKeySpec(NamedParameterSpec.X25519, uCoordinate(peerPublic)))
             val ka = KeyAgreement.getInstance("XDH")
             ka.init(priv)
@@ -75,6 +76,9 @@ public class PlatformCrypto(private val sdkInt: Int = Build.VERSION.SDK_INT) {
         } catch (e: GeneralSecurityException) {
             // A provider that rejects a low-order point does so here; that is the same refusal.
             refuse(PlatformCryptoException.DH_ZERO, e)
+        } finally {
+            // The copy handed to the key spec is ours: wipe it on every path.
+            scalar.fill(0)
         }
         var any = 0
         for (b in out) any = any or b.toInt()

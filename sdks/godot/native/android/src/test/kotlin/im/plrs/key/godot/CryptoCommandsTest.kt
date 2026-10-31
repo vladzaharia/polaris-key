@@ -51,4 +51,26 @@ class CryptoCommandsTest {
         assertArrayEquals(st(CryptoCommands.BAD_INPUT), c24.seal(key, nonce, null, empty))
         assertEquals(1, c24.open(key, nonce, empty, bad).size)
     }
+
+    @Test
+    fun keyArraysAreWipedOnEveryPath() {
+        val zero = ByteArray(32)
+        val peer = ByteArray(32).also { it[0] = 9 }
+        fun key() = ByteArray(32) { 7 }
+        key().let { c33.x25519(it, peer); assertArrayEquals(zero, it) }
+        key().let { c33.x25519(it, ByteArray(32)); assertArrayEquals(zero, it) }
+        key().let { c24.x25519(it, peer); assertArrayEquals(zero, it) }
+        key().let { c33.x25519(it, ByteArray(5)); assertArrayEquals(zero, it) }
+        key().let { c33.x25519Public(it); assertArrayEquals(zero, it) }
+        val nonce = ByteArray(12)
+        key().let { k ->
+            val sealed = c24.seal(k, nonce, ByteArray(0), byteArrayOf(1)).copyOfRange(1, 18)
+            assertArrayEquals(zero, k)
+            key().let { k2 -> c24.open(k2, nonce, ByteArray(0), sealed); assertArrayEquals(zero, k2) }
+            val k3 = key().also { it[0] = 1 }
+            c24.open(k3, nonce, ByteArray(0), sealed)
+            assertArrayEquals(zero, k3)
+        }
+        key().let { c24.seal(it, ByteArray(3), ByteArray(0), ByteArray(0)); assertArrayEquals(zero, it) }
+    }
 }
