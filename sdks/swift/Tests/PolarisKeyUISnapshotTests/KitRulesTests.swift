@@ -488,6 +488,35 @@ final class KitRulesTests: XCTestCase {
         XCTAssertEqual(board.count, 8, "the eight board screens")
     }
 
+    // MARK: Save screens (K.3)
+
+    #if os(macOS)
+        /// Every save-conflict and transfer-status preview lays out, at a regular and an
+        /// accessibility text size, in both schemes: no crash, and a non-empty fitted size. The
+        /// pictures are the simulator baselines (examples/ui/swiftui/run.sh).
+        @MainActor func testSaveScreensLayOutAtEverySize() {
+            let previews = PolarisKeyPreviewState.of(.saveConflict)
+                + PolarisKeyPreviewState.of(.cloudSyncStatus).filter {
+                    ["transferring", "waiting", "transfer-failed"].contains($0.state)
+                }
+            XCTAssertEqual(previews.count, 9)
+            for preview in previews {
+                for size in [DynamicTypeSize.large, .accessibility3, .accessibility5] {
+                    for scheme in [ColorScheme.dark, .light] {
+                        let host = NSHostingView(
+                            rootView: PolarisKeyPreview(preview)
+                                .environment(\.dynamicTypeSize, size)
+                                .environment(\.colorScheme, scheme)
+                                .frame(width: 900, height: 640))
+                        host.frame = NSRect(x: 0, y: 0, width: 900, height: 640)
+                        host.layoutSubtreeIfNeeded()
+                        XCTAssertGreaterThan(host.fittingSize.height, 0, "\(preview.id) \(size)")
+                    }
+                }
+            }
+        }
+    #endif
+
     // MARK: Baselines
 
     static var snapshots: URL {
