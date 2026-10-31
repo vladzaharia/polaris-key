@@ -118,14 +118,17 @@ static func auto_action(result: PKeyAutoSignInResult) -> String:
 	return "form"
 
 
-## The consent step's drawing from the consent view: {email, license_line, also_gets, claims}.
+## The consent step's drawing from the consent view: {email, license_line, anchor, also_gets, claims}.
 ## `license_line` is `existing` when the licence item names an anchor, `new` when it names none and
-## `none` without a licence item; `also_gets` when this is a first sign-in or the consent changed;
-## `claims` are the profile claims to send back with Continue.
+## `none` without a licence item; `anchor` is that licence's `{name, tierName, term, position, limit}`
+## (`position` and `limit` 0 when it has no free seat to name; {} without an anchor); `also_gets` when
+## this is a first sign-in or the consent changed; `claims` are the profile claims to send back with
+## Continue.
 static func consent_step(consent: Dictionary) -> Dictionary:
 	var who = consent.get("as")
 	var email: String = String(who.get("email")) if who is Dictionary and who.get("email") is String else ""
 	var license_line := "none"
+	var anchor := {}
 	var claims: Array = []
 	var items = consent.get("items")
 	for item in (items if items is Array else []):
@@ -133,6 +136,8 @@ static func consent_step(consent: Dictionary) -> Dictionary:
 			continue
 		if item.get("kind") == "license":
 			license_line = "existing" if item.get("anchor") is Dictionary else "new"
+			if item.get("anchor") is Dictionary:
+				anchor = _anchor_of(item["anchor"])
 		elif item.get("kind") == "profile" and item.get("claims") is Array:
 			for c in item["claims"]:
 				if c is String and c != "" and not claims.has(c):
@@ -140,8 +145,21 @@ static func consent_step(consent: Dictionary) -> Dictionary:
 	return {
 		"email": email,
 		"license_line": license_line,
+		"anchor": anchor,
 		"also_gets": PKeyClaims.is_true(consent.get("firstTime")) or PKeyClaims.is_true(consent.get("changed")),
 		"claims": claims,
+	}
+
+
+## An anchor as the step draws it: the Worker's `{name, tierName, term, seat {position, limit} | null}`.
+static func _anchor_of(a: Dictionary) -> Dictionary:
+	var seat = a.get("seat")
+	return {
+		"name": String(a["name"]) if a.get("name") is String else "",
+		"tierName": String(a["tierName"]) if a.get("tierName") is String else "",
+		"term": a.get("term"),
+		"position": int(seat["position"]) if seat is Dictionary and PKeyClaims.is_number(seat.get("position")) else 0,
+		"limit": int(seat["limit"]) if seat is Dictionary and PKeyClaims.is_number(seat.get("limit")) else 0,
 	}
 
 

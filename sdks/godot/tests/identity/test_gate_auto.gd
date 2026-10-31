@@ -8,6 +8,7 @@ extends RefCounted
 
 const B := preload("res://tests/identity/support.gd")
 const X := preload("res://tests/identity/test_exchange.gd")
+const SCEN := preload("res://tests/ui/scenarios.gd")
 
 const GRANT := X.GRANT
 
@@ -40,6 +41,12 @@ func run(t: PKeyTestContext) -> void:
 	await _gate(t)
 	await _opt_out(t)
 	await _row(t)
+	await _steps(t)
+	await _choose(t)
+	await _continue_fails(t)
+	await _race(t)
+	await _limit(t)
+	await _provider_row(t)
 
 
 func _controller(t: PKeyTestContext) -> void:
@@ -279,7 +286,7 @@ func _row(t: PKeyTestContext) -> void:
 	var closed := []
 	dialog.closed.connect(func() -> void: closed.append(true))
 	bed.tokens = [B.json(200, {"status": "confirm", "grant": GRANT, "expiresIn": 300, "consent": X.CONSENT})]
-	await dialog.begin()
+	await dialog.begin_platform()
 	t.check(
 		"row: a confirm is handed to the gate and the dialog closes",
 		answers.size() == 1
@@ -293,7 +300,7 @@ func _row(t: PKeyTestContext) -> void:
 	bed.nonces = [B.json(200, {"nonce": X.NONCE, "expiresIn": 300})]
 	var done := []
 	dialog.finished.connect(func(r: PKeySignInOutcome) -> void: done.append(r))
-	await dialog.begin()
+	await dialog.begin_platform()
 	t.check("row: a token signs in: the dialog ends with a signed-in outcome", done.size() == 1 and done[0].ok and dialog.state == "ended", str(dialog.state))
 	t.check("row: …and the device token is stored", bed.sdk.core.tokens.current() == X.TOKEN_NEW)
 
@@ -301,13 +308,25 @@ func _row(t: PKeyTestContext) -> void:
 	provider.row_answer = {"cancelled": true}
 	bed.nonces = [B.json(200, {"nonce": X.NONCE, "expiresIn": 300})]
 	closed.clear()
-	await dialog.begin()
+	await dialog.begin_platform()
 	await B.until(func() -> bool: return not closed.is_empty(), 300)
 	t.check("row: a dismissed sheet closes the dialog and starts no device code", closed.size() == 1 and bed.flow_requests.is_empty() and bed.sdk.core.tokens.current() == "")
+	# B1: a person who signed out and then dismisses the sheet is still signed out, and the next boot stays quiet.
+	bed.sdk.core.cache.set_explicit_sign_out(true)
+	provider.row_answer = {"cancelled": true}
+	bed.nonces = [B.json(200, {"nonce": X.NONCE, "expiresIn": 300})]
+	closed.clear()
+	await dialog.begin_platform()
+	await B.until(func() -> bool: return not closed.is_empty(), 300)
+	t.check("row: a dismissed sheet after sign-out leaves the sign-out flag set", bed.sdk.core.cache.explicit_sign_out and bed.sdk.core.cache.record()["explicitSignOut"] == true)
+	var silent_before := provider.silent_calls
+	var boot = await bed.sdk.identity.auto_sign_in()
+	t.check("row: …and the next boot does not sign in silently", boot.reason == PKeyAutoSignInResult.REASON_SIGNED_OUT and provider.silent_calls == silent_before and not bed.sdk.core.tokens.has_token())
+	bed.sdk.core.cache.set_explicit_sign_out(false)
 
 	provider.row_answer = {"unavailable": "no account"}
 	bed.nonces = [B.json(200, {"nonce": X.NONCE, "expiresIn": 300})]
-	await dialog.begin()
+	await dialog.begin_platform()
 	await tree.process_frame
 	t.check("row: a platform with nothing to offer falls back to the device code", not bed.flow_requests.is_empty(), str(dialog.state))
 	dialog.queue_free()
@@ -320,8 +339,329 @@ func _row(t: PKeyTestContext) -> void:
 	tree.root.add_child(plain)
 	var rows := provider.row_calls
 	bed.flow_requests.clear()
-	await plain.begin()
+	await plain.begin_platform()
 	t.check("row: desktop keeps the device code and never asks the platform", provider.row_calls == rows and not bed.flow_requests.is_empty())
 	plain.queue_free()
 	await tree.process_frame
+	# begin() on iOS is Polaris Locker's device code: the platform is asked only through begin_platform().
+	var locker := PKeySignInDialog.new()
+	locker.auto_sdk = false
+	locker.sdk = bed.sdk
+	locker.platform_override = "ios"
+	tree.root.add_child(locker)
+	var asked := provider.row_calls
+	bed.flow_requests.clear()
+	await locker.begin()
+	t.check("row: begin() is Polaris Locker's device code even on iOS", provider.row_calls == asked and not bed.flow_requests.is_empty())
+	locker.queue_free()
+	await tree.process_frame
+	bed.free_all()
+
+
+# ── The steps' words, the choice's ways out, Continue's failure, the race, the limit, the provider row ──
+
+
+
+## Every visible label and button text under `n`.
+func _texts(n: Node, out: Array = []) -> Array:
+	for ch in n.get_children():
+		if ch is Control and not (ch as Control).is_visible_in_tree():
+			continue
+		if ch is Label and (ch as Label).text != "":
+			out.append((ch as Label).text)
+		elif ch is Button and (ch as Button).text != "":
+			out.append((ch as Button).text)
+		_texts(ch, out)
+	return out
+
+
+func _no_placeholder(t: PKeyTestContext, what: String, texts: Array) -> void:
+	var bad := texts.filter(func(x: String) -> bool: return x.contains("{") or x.contains("}") or x.contains("  "))
+	t.check("steps: %s draws no raw placeholder or empty argument" % what, bad.is_empty(), str(bad))
+
+
+func _step_in_tree(tree: SceneTree) -> PKeySignInStep:
+	var step := PKeySignInStep.new()
+	step.auto_sdk = false
+	tree.root.add_child(step)
+	return step
+
+
+func _steps(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var step := _step_in_tree(tree)
+	step.step = "confirm"
+	step.email = "ada@mail.io"
+	step.license_line = "existing"
+	step.also_gets = true
+	step.anchor = {"name": "Pro", "tierName": "Pro", "term": "perpetual", "position": 2, "limit": 3}
+	await tree.process_frame
+	await tree.process_frame
+	var texts := _texts(step)
+	var line := ""
+	for x in texts:
+		if String(x).contains("becomes device"):
+			line = x
+	t.check("steps: an existing licence's line names the licence, the term and the seat", line.contains("Pro") and line.contains("Lifetime") and line.contains("becomes device 2 of 3") and line.contains("this "), line)
+	t.check("steps: …under its label, strong, with the account as the subtitle",
+		texts.has("License for this device") and step._license_value.theme_type_variation == &"PKeyStrong" and String(step._lede.text).replace("\u200b", "").contains("ada@mail.io"))
+	_no_placeholder(t, "an existing licence", texts)
+	step.anchor = {"name": "Pro", "tierName": "Pro", "term": 1893456000, "position": 1, "limit": 1}
+	await tree.process_frame
+	t.check("steps: a dated term reads as its date", _texts(step).any(func(x): return String(x).contains("Until 2030-01-01")), str(_texts(step)))
+	step.anchor = {"name": "Pro", "term": "perpetual", "position": 0, "limit": 0}
+	await tree.process_frame
+	texts = _texts(step)
+	t.check("steps: a seat the answer does not know leaves the licence line and its label out", not step._license_group.visible and not texts.has("License for this device"), str(texts))
+	_no_placeholder(t, "an existing licence with no seat", texts)
+	step.license_line = "new"
+	step.anchor = {}
+	await tree.process_frame
+	texts = _texts(step)
+	t.check("steps: a new licence with no tier is the tier-less line", texts.has("Created when you continue") and texts.has("License for this device"), str(texts))
+	_no_placeholder(t, "a new licence", texts)
+	step.tier = "Pro"
+	await tree.process_frame
+	t.check("steps: …and with a tier it names it", _texts(step).any(func(x): return String(x).contains("Pro") and String(x).contains("license, created when you continue")), str(_texts(step)))
+	_no_placeholder(t, "a new licence with a tier", _texts(step))
+	step.email = ""
+	await tree.process_frame
+	t.check("steps: no email is the provider line", _texts(step).has("with your Apple Account"), str(_texts(step)))
+	step.step = "device-limit"
+	step.manage_url = ""
+	await tree.process_frame
+	texts = _texts(step)
+	var product := String(PKeyUiTheme.product_identity()["name"])
+	t.check("steps: the limit with no link names the product and offers Try again", texts.any(func(x): return String(x).contains(product) and String(x).contains("Sign out of")) and texts.has("Try again"), str(texts))
+	_no_placeholder(t, "the device limit with no link", texts)
+	step.manage_url = "https://key.plrs.im/portal"
+	await tree.process_frame
+	texts = _texts(step)
+	t.check("steps: the limit with a link offers Replace a device, with the new-window glyph", texts.has("Replace a device") and step._primary.icon != null, str(texts))
+	_no_placeholder(t, "the device limit with a link", texts)
+	for st in ["link-offer", "link-done", "link-conflict", "nearby-prompt", "nearby-wait", "nearby-done"]:
+		step.step = st
+		step.code = "42"
+		await tree.process_frame
+		_no_placeholder(t, "the %s step" % st, _texts(step))
+	t.check("steps: a step nested in a card draws none of its own", true)
+	step.queue_free()
+	await tree.process_frame
+
+
+func _confirm_gate(bed: B, tree: SceneTree, consent: Dictionary = X.CONSENT) -> PKeyGateView:
+	bed.tokens = [B.json(200, {"status": "confirm", "grant": GRANT, "expiresIn": 300, "consent": consent})]
+	bed.nonces = [B.json(200, {"nonce": X.NONCE, "expiresIn": 300})]
+	var gate := _stage(bed)
+	await _wait(gate)
+	await tree.process_frame
+	return gate
+
+
+func _choose(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var bed := await X.new()._bed(["google"])
+	var provider := FakeProvider.new()
+	bed.sdk.identity.install_platform_provider(provider)
+	var many: Dictionary = SCEN.new().matrix_row("signIn", "LicenseChoice/many").get("input", {}).get("choices", X.VIEW)
+	var full: Dictionary = SCEN.new().matrix_row("signIn", "LicenseChoice/all-full").get("input", {}).get("choices", X.VIEW)
+	bed.choice_answers = {"complete": B.json(200, X.TOKEN_OK), "cancel": B.json(200, {}), "devices": B.json(200, {"licenseId": "lic_full", "devices": [{"id": "d1", "label": "Work laptop", "leastRecent": true}]})}
+	for how in ["other", "key", "escape"]:
+		bed.choice_requests.clear()
+		bed.tokens = [B.json(200, {"status": "choose", "grant": GRANT, "expiresIn": 300, "choices": many})]
+		bed.nonces = [B.json(200, {"nonce": X.NONCE, "expiresIn": 300})]
+		var gate := _stage(bed)
+		await _wait(gate)
+		await tree.process_frame
+		t.check("choose/%s: the choice is on screen with Use another account as its way out" % how,
+			gate.license_choice.visible and gate._auto_state == "choose" and gate.license_choice._secondary.text == "Use another account", gate.license_choice._secondary.text)
+		match how:
+			"other":
+				gate.license_choice.other_account_requested.emit()
+			"key":
+				gate.license_choice.key_requested.emit()
+			"escape":
+				t.check("choose/escape: Escape is handled", gate._cancel())
+		await B.until(func() -> bool: return not bed.choice_requests.is_empty(), 300)
+		await tree.process_frame
+		t.check("choose/%s: the grant is cancelled and the form is back, no dead end" % how,
+			bed.choice_requests.size() == 1 and String(bed.choice_requests[0]["path"]).ends_with("/choice/cancel")
+			and gate.activation.visible and not gate.license_choice.visible and gate._auto_state == "", str(bed.choice_requests))
+		t.check("choose/%s: the focus is on Polaris Locker's sign-in" % how, gate._initial_focus() == gate.activation.locker_sign_in_button())
+		gate.queue_free()
+		await tree.process_frame
+	# Replace a device on a full licence: the devices, then complete with the device to replace.
+	bed.choice_requests.clear()
+	bed.tokens = [B.json(200, {"status": "choose", "grant": GRANT, "expiresIn": 300, "choices": full})]
+	bed.nonces = [B.json(200, {"nonce": X.NONCE, "expiresIn": 300})]
+	var g := _stage(bed)
+	await _wait(g)
+	await tree.process_frame
+	g.license_choice.replace_requested.emit("lic_full")
+	await B.until(func() -> bool: return not g.license_choice.replace_view.is_empty(), 300)
+	t.check("choose/replace: Replace a device opens the devices in place",
+		bed.choice_requests.size() == 1 and String(bed.choice_requests[0]["path"]).ends_with("/choice/devices") and not g.license_choice.replace_view.is_empty())
+	t.check("choose/replace: Escape goes back to the list first", g._cancel() and g.license_choice.replace_view.is_empty() and g._auto_state == "choose")
+	g.license_choice.replace_confirmed.emit("lic_full", {"id": "d1", "label": "Work laptop"})
+	await B.until(func() -> bool: return bed.choice_requests.size() >= 2, 300)
+	var sent: Dictionary = bed.choice_requests[1]["body"] if bed.choice_requests.size() > 1 else {}
+	t.check("choose/replace: Replace and continue completes with the device to replace", sent.get("choice") == {"kind": "license", "licenseId": "lic_full", "replaceDeviceId": "d1"}, str(sent))
+	g.queue_free()
+	await tree.process_frame
+	bed.free_all()
+
+
+func _continue_fails(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var bed := await X.new()._bed(["google"])
+	bed.sdk.identity.install_platform_provider(FakeProvider.new())
+	bed.choice_answers = {"complete": B.json(503, {}), "cancel": B.json(200, {})}
+	var gate := await _confirm_gate(bed, tree)
+	var completes := func() -> int: return bed.choice_requests.filter(func(r): return String(r["path"]).ends_with("/complete")).size()
+	gate._on_auto_primary("confirm")
+	gate._on_auto_primary("confirm")
+	t.check("continue: a second press while one is in flight sends nothing more", completes.call() <= 1 and gate._completing)
+	await B.until(func() -> bool: return not gate._completing, 300)
+	await tree.process_frame
+	t.check("continue: one request was sent for two presses", completes.call() == 1, str(completes.call()))
+	t.check("continue: a failure keeps the step and shows the kit's network line", gate.auto_step.visible and _texts(gate.auto_step).has("Can't reach Polaris Locker. Check your connection and try again."), str(_texts(gate.auto_step)))
+	t.check("continue: the grant is still good: nothing was cancelled", bed.choice_requests.filter(func(r): return String(r["path"]).ends_with("/cancel")).is_empty())
+	t.check("continue: the step is not busy any more", not gate.auto_step.busy)
+	bed.choice_answers = {"complete": B.json(200, X.TOKEN_OK), "cancel": B.json(200, {})}
+	gate._on_auto_primary("confirm")
+	await B.until(func() -> bool: return bed.sdk.core.tokens.current() == X.TOKEN_NEW, 300)
+	t.check("continue: Continue is the retry", bed.sdk.core.tokens.current() == X.TOKEN_NEW and not gate.auto_step.visible)
+	gate.queue_free()
+	await tree.process_frame
+	# An expired grant leaves for the form, says so, and gives the grant up.
+	bed.sdk.core.tokens.clear()
+	bed.choice_requests.clear()
+	bed.choice_answers = {"complete": B.json(401, {"error": "invalid_grant"}), "cancel": B.json(200, {})}
+	gate = await _confirm_gate(bed, tree)
+	gate._on_auto_primary("confirm")
+	await B.until(func() -> bool: return not gate._completing, 300)
+	await tree.process_frame
+	t.check("continue: an expired grant returns to the form with the kit's line",
+		not gate.auto_step.visible and gate.activation.visible and gate.error.contains("expired"), gate.error)
+	gate.queue_free()
+	await tree.process_frame
+	bed.free_all()
+
+
+func _race(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var bed := await X.new()._bed(["google"])
+	var slow := FakeProvider.new()
+	bed.sdk.identity.install_platform_provider(slow)
+	bed.tokens = [B.json(200, {"status": "confirm", "grant": GRANT, "expiresIn": 300, "consent": X.CONSENT})]
+	bed.choice_answers = {"cancel": B.json(200, {})}
+	var gate := _stage(bed)
+	var box := []
+	gate.auto_sign_in_finished.connect(func(r: PKeyAutoSignInResult) -> void: box.append(r))
+	gate.show_state({"status": "needs-activation"})
+	await tree.process_frame
+	await tree.process_frame
+	t.check("race: while the silent rungs run the gate holds a quiet busy state", gate._auto_running or not box.is_empty())
+	# The person opens Sign in by hand before the answer lands.
+	gate.activation.open_mode("sign-in")
+	await B.until(func() -> bool: return not box.is_empty(), 900)
+	await tree.process_frame
+	t.check("race: a late confirm never replaces a manual sign-in", box[0].kind == PKeyAutoSignInResult.KIND_CONFIRM and not gate.auto_step.visible and gate._auto_state == "" and gate.activation.mode == "sign-in")
+	await B.until(func() -> bool: return not bed.choice_requests.is_empty(), 300)
+	t.check("race: …and its grant is given up", bed.choice_requests.size() == 1 and String(bed.choice_requests[0]["path"]).ends_with("/choice/cancel"))
+	gate.queue_free()
+	await tree.process_frame
+	bed.free_all()
+
+
+func _limit(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var bed := await X.new()._bed(["google"])
+	var provider := FakeProvider.new()
+	bed.sdk.identity.install_platform_provider(provider)
+	# No link: Try again runs the sign-in once more.
+	bed.tokens = [B.json(403, {"error": "device_limit"})]
+	bed.nonces = [B.json(200, {"nonce": X.NONCE, "expiresIn": 300})]
+	var gate := _stage(bed)
+	await _wait(gate)
+	await tree.process_frame
+	t.check("limit: with no link the step offers Try again", gate.auto_step.visible and gate.auto_step._primary.text == "Try again", gate.auto_step._primary.text)
+	bed.tokens = [B.json(200, X.TOKEN_OK)]
+	var before := provider.silent_calls
+	gate._on_auto_primary("device-limit")
+	await B.until(func() -> bool: return bed.sdk.core.tokens.current() == X.TOKEN_NEW and gate._auto_state == "", 600)
+	await tree.process_frame
+	t.check("limit: Try again signs in once more, and the step is gone", provider.silent_calls == before + 1 and not gate.auto_step.visible and gate._auto_state == "", "%d/%d vis=%s state=%s tok=%s" % [provider.silent_calls, before, gate.auto_step.visible, gate._auto_state, bed.sdk.core.tokens.current()])
+	gate.queue_free()
+	await tree.process_frame
+	# With a link: coming back from the browser runs the sign-in again, and still full shows the step again.
+	bed.sdk.core.tokens.clear()
+	bed.tokens = [B.json(403, {"error": "device_limit", "manageUrl": "https://key.plrs.im/portal"})]
+	gate = _stage(bed)
+	await _wait(gate)
+	await tree.process_frame
+	gate._replacing = true
+	before = provider.silent_calls
+	gate._notification(MainLoop.NOTIFICATION_APPLICATION_FOCUS_IN)
+	await B.until(func() -> bool: return provider.silent_calls > before and not gate._auto_running, 600)
+	await tree.process_frame
+	t.check("limit: back from Replace the sign-in runs again; still full is the same step", provider.silent_calls == before + 1 and gate._auto_state == "device-limit" and gate.auto_step.visible)
+	# A pad-only device has no browser: the link is a QR code.
+	PKeyUiView.pad_only_override = true
+	gate.refresh_view()
+	await tree.process_frame
+	await tree.process_frame
+	t.check("limit: a pad-only device shows the page as a QR code, with Try again", gate.auto_step._qr.visible and gate.auto_step._qr.text == "https://key.plrs.im/portal" and gate.auto_step._primary.text == "Try again")
+	PKeyUiView.pad_only_override = null
+	gate.queue_free()
+	await tree.process_frame
+	bed.free_all()
+
+
+func _provider_row(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var bed := await X.new()._bed(["apple"])
+	var apple := FakeProvider.new()
+	apple.kind = "apple"
+	apple.row_answer = {"cancelled": true}
+	bed.sdk.identity.install_platform_provider(apple)
+	for where in ["ios", "android", "linux"]:
+		var gate := _stage(bed, false)
+		gate.activation.sign_in_dialog.platform_override = where
+		gate.activation.set_capabilities(PKeyActivationController.capabilities(true, true, false, false))
+		gate.show_state({"status": "needs-activation"})
+		await tree.process_frame
+		await tree.process_frame
+		var panel := gate.activation
+		var kind := PKeyPlatformProviders.row_kind(where)
+		if kind == "":
+			t.check("provider row: desktop has one Sign in and no provider button", not panel._provider.visible and panel._sign_in.text == "Sign in")
+			gate.queue_free()
+			await tree.process_frame
+			continue
+		var label := "Continue with Apple" if where == "ios" else "Continue with Google"
+		t.check("provider row (%s): the platform's button leads: %s" % [where, label], panel._provider.visible and panel._provider.text == label, panel._provider.text)
+		t.check("provider row (%s): Polaris Locker's sign-in is the next row" % where, panel._sign_in.visible and panel._sign_in.text == "Continue with Polaris Locker", panel._sign_in.text)
+		var colours := PKeyProviderButton.colours(kind, PKeyUiTheme.is_dark(gate))
+		var fill := (panel._provider.get_theme_stylebox("normal") as StyleBoxFlat).bg_color
+		t.check("provider row (%s): the provider keeps its own fill, never the accent" % where, fill == colours["fill"], str(fill))
+		t.check("provider row (%s): …and its logo" % where, panel._provider.icon != null)
+		if where == "android":
+			t.check("provider row (android): Google's fill and G come from the generated tokens",
+				PKeyProviderButton.colours("google", true)["fill"] == Color(PKeyKitIcons.GOOGLE_BUTTON["dark"]["fill"]) and PKeyProviderButton.colours("google", false)["fill"] == Color(PKeyKitIcons.GOOGLE_BUTTON["light"]["fill"]))
+		if where == "ios":
+			# A dismissed sheet returns to the form with the focus on the platform's button, and Polaris Locker is one press away.
+			bed.nonces = [B.json(200, {"nonce": X.NONCE, "expiresIn": 300})]
+			panel._provider.grab_focus()
+			panel._provider.pressed.emit()
+			await B.until(func() -> bool: return apple.row_calls > 0 and panel.mode == "main", 300)
+			await tree.process_frame
+			t.check("provider row: a dismissed sheet returns to the form, no device code started", panel.mode == "main" and panel.visible and bed.flow_requests.is_empty())
+			bed.flow_requests.clear()
+			bed.starts = [B.started()]
+			panel._sign_in.pressed.emit()
+			await B.until(func() -> bool: return not bed.flow_requests.is_empty(), 300)
+			t.check("provider row: Continue with Polaris Locker starts the device code", not bed.flow_requests.is_empty() and panel.mode == "sign-in")
+		gate.queue_free()
+		await tree.process_frame
 	bed.free_all()

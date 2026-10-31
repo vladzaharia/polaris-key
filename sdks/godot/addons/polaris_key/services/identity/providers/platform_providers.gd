@@ -40,6 +40,18 @@ static func row_kind(platform: String) -> String:
 	return ""
 
 
+## Whether the form's own button for `platform` can run in this build: Apple's always; Google's only
+## when the Android plugin carries Credential Manager and the Google library (else the button would
+## lead nowhere, and the form keeps Polaris Locker alone).
+static func row_available(platform: String) -> bool:
+	match row_kind(platform):
+		"":
+			return false
+		"google":
+			return bool(detect(platform).get("google", false))
+	return true
+
+
 ## What this build can do right now: the Game Center extension is installed, and the Android plugin
 ## carries Play Games and Credential Manager.
 static func detect(platform: String) -> Dictionary:

@@ -44,6 +44,9 @@ signal platform_answer(result: PKeyAutoSignInResult)
 @export var use_platform_row := true
 ## The platform to pick the row for ("" is this build's; tests set it).
 var platform_override := ""
+## The platform every dialog without its own override answers for ("" is this build's); the test runner
+## pins it so a snapshot reads the same on every host.
+static var default_platform := ""
 ## Lead with the product's identity above the title.
 var show_product := true:
 	set(value):
@@ -395,8 +398,33 @@ func _fit_code() -> void:
 var _fitting := false
 
 
-## Start a sign-in through `sdk.identity.sign_in` and follow it to the end. A coroutine.
-func begin() -> void:
+func _row_platform() -> String:
+	if platform_override != "":
+		return platform_override
+	return default_platform if default_platform != "" else PKeyHeaders.update_platform()
+
+
+## The kind whose own button the form draws here ("apple" on iOS and macOS, "google" on Android when
+## the build carries it), or "" for the device code and the redirect alone.
+func row_kind() -> String:
+	var where := _row_platform()
+	var kind := PKeyPlatformProviders.row_kind(where)
+	if kind == "" or not use_platform_row:
+		return ""
+	if platform_override == "" and default_platform == "" and not PKeyPlatformProviders.row_available(where):
+		return ""
+	return kind
+
+
+## The form's own platform button (Continue with Apple, Continue with Google): the provider's sheet,
+## then the exchange; when the platform has nothing to offer, the device code. A coroutine.
+func begin_platform() -> void:
+	await begin(true)
+
+
+## Start a sign-in through `sdk.identity.sign_in` and follow it to the end: Polaris Locker's device
+## code or redirect, or with `platform` the provider's own sheet first (`begin_platform()`). A coroutine.
+func begin(platform := false) -> void:
 	show_starting()
 	if sdk == null or sdk.get("identity") == null:
 		show_result(PKeySignInOutcome.ended(PKeySignInOutcome.KIND_SERVICE_UNAVAILABLE, PKeyErrors.NOT_CONFIGURED, "No SDK."))
@@ -404,7 +432,7 @@ func begin() -> void:
 	if _session != null:
 		_session.cancel()
 	var identity: PKeyIdentity = sdk.identity
-	if await _platform_row(identity):
+	if platform and await _platform_row(identity):
 		return
 	var session: PKeySignInSession = await identity.sign_in.start({"device_name": device_name, "confirm_identity": confirm_identity})
 	if not is_instance_valid(self):
@@ -417,14 +445,14 @@ func begin() -> void:
 	_follow(session)
 
 
-## On iOS, macOS and Android the form's button is the platform's own (Apple's account sheet, "Sign in
-## with Google"), then the Worker's exchange; anywhere else, or when the platform offers nothing, the
-## device code and the redirect stay. True when this handled the sign-in (it ended, or handed an
+## On iOS, macOS and Android the form has the platform's own button beside Polaris Locker's (Apple's
+## account sheet, "Sign in with Google"), then the Worker's exchange; when the platform offers nothing,
+## the device code and the redirect run instead. True when this handled the sign-in (it ended, or handed an
 ## answer to the gate through `platform_answer`). A coroutine.
 func _platform_row(identity: PKeyIdentity) -> bool:
-	var where := platform_override if platform_override != "" else PKeyHeaders.update_platform()
-	var kind := PKeyPlatformProviders.row_kind(where)
-	if kind == "" or not use_platform_row:
+	var where := _row_platform()
+	var kind := row_kind()
+	if kind == "":
 		return false
 	PKeyPlatformProviders.install(identity, where)
 	var r: PKeyAutoSignInResult = await identity.auto_sign_in({"row": kind, "explicit": true, "device_name": device_name})

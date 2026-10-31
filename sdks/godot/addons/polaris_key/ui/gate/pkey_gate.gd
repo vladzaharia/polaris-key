@@ -121,6 +121,15 @@ var _auto_started := false
 ## "" | "confirm" | "choose" | "device-limit": which automatic sign-in answer the gate is showing.
 var _auto_state := ""
 var _auto_result: PKeyAutoSignInResult = null
+## The silent rungs are running: a quiet thin indicator shows (after 250 ms, for at most 1.5 s).
+var _auto_running := false
+var _auto_bar := true
+## Replace a device opened the browser: the sign-in runs once more when the person is back.
+var _replacing := false
+## Continue (or a choice) is in flight: more presses are ignored.
+var _completing := false
+## After "Use another account" the focus goes to Polaris Locker's sign-in, not the key field.
+var _focus_sign_in := false
 
 
 func _process(_delta: float) -> void:
@@ -219,7 +228,9 @@ func _build() -> void:
 	activation.sign_in_dialog.finished.connect(_on_signed_in)
 	activation.sign_in_dialog.platform_answer.connect(_on_platform_answer)
 	# Sign-in and offline activation take the whole card: the gate re-renders around them.
-	activation.mode_changed.connect(func(_m: String) -> void: refresh_view())
+	activation.mode_changed.connect(func(_m: String) -> void:
+		_focus_sign_in = false
+		refresh_view())
 	_main.add_child(activation)
 	license_choice = PKeyLicenseChoice.new()
 	license_choice.auto_sdk = false
@@ -227,6 +238,10 @@ func _build() -> void:
 	license_choice.visible = false
 	license_choice.chosen.connect(func(selection: Dictionary) -> void: license_chosen.emit(selection))
 	license_choice.chosen.connect(_on_auto_license_chosen)
+	license_choice.replace_requested.connect(_on_auto_replace_requested)
+	license_choice.replace_confirmed.connect(_on_auto_replace_confirmed)
+	license_choice.other_account_requested.connect(_on_auto_other_account)
+	license_choice.key_requested.connect(_on_auto_other_account)
 	_main.add_child(license_choice)
 	auto_step = PKeySignInStep.new()
 	auto_step.visible = false
@@ -342,6 +357,8 @@ func _arrange(m: Dictionary) -> void:
 	_spacer.visible = bleed and not _activation_owns_screen() and not docked_form
 	# A dialog the gate holds fills the page on a phone, docking its own actions to the bottom.
 	activation.size_flags_vertical = Control.SIZE_EXPAND_FILL if bleed and _activation_owns_screen() else Control.SIZE_FILL
+	# ... and so does an automatic sign-in step: its actions dock to the bottom like the other gate screens.
+	auto_step.size_flags_vertical = Control.SIZE_EXPAND_FILL if bleed and _auto_on() else Control.SIZE_FILL
 	if bleed or side_bleed():
 		_card.theme_type_variation = &""
 		if not _card.has_theme_stylebox_override("panel"):
@@ -429,7 +446,12 @@ func _tr_product(t: PKeyUiCopy, key: String) -> String:
 
 
 func _screen_key() -> String:
-	return "%s|%s|%s|%s|%s" % [screen, activation.mode, "limit" if activation.in_limit_view() else "", "net" if network_error else "", "key" if _keying else ""]
+	return "%s|%s|%s|%s|%s|%s" % [screen, activation.mode, "limit" if activation.in_limit_view() else "", "net" if network_error else "", "key" if _keying else "", _auto_state]
+
+
+## An automatic sign-in step opens at its title, with its primary in the first viewport.
+func _opens_at_top() -> bool:
+	return _auto_on()
 
 
 func _render() -> void:
@@ -447,7 +469,8 @@ func _render() -> void:
 	# Loading shows nothing for its first 250 ms, then the identity, a muted label and the shimmer
 	# (DL7); a license check that finishes sooner never flashes a card.
 	var waiting := screen == "loading"
-	set_loading(waiting or _retrying)
+	var ladder := _auto_running and _auto_bar
+	set_loading(waiting or _retrying or ladder)
 	_card.visible = not is_usable and not (waiting and not _loading_due())
 	# Grace lets the game run: no backdrop, no input captured, only the banner strip.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE if is_usable else Control.MOUSE_FILTER_STOP
@@ -458,7 +481,7 @@ func _render() -> void:
 	if ctl["banner"]:
 		banner.show_state(status)
 	_product.refresh()
-	set_process(_retrying or waiting)
+	set_process(_retrying or waiting or ladder)
 	# One state per screen: a rejected key is the activation form with its message inline.
 	var title_key: String = cp["title"]
 	var body_key: String = cp["body"]
@@ -541,6 +564,8 @@ func ensure_focus(force := false) -> bool:
 ## A stop card puts the focus on Try again (or the update action); the form on its first control,
 ## which on a pad-only device is Sign in.
 func _initial_focus() -> Control:
+	if _focus_sign_in and activation.visible and activation.mode == "main" and is_focusable(activation.locker_sign_in_button()):
+		return activation.locker_sign_in_button()
 	if auto_step.visible:
 		return auto_step._initial_focus()
 	if license_choice.visible:
@@ -633,10 +658,21 @@ func _cancel() -> bool:
 		return true
 	if license_choice.visible and license_choice._cancel():
 		return true
+	# The licence choice reached through automatic sign-in: Escape gives the grant up (the form returns).
+	if _auto_state == "choose" and license_choice.visible:
+		_leave_auto_sign_in()
+		return true
 	return activation.visible and activation._cancel()
 
 
 # ── Automatic sign-in (I-48.9) ───────────────────────────────────────────────────────────────
+
+func _notification(what: int) -> void:
+	# Back from Replace a device in the browser: the provider sign-in runs once more (§3.19).
+	if what == NOTIFICATION_APPLICATION_FOCUS_IN and _replacing and _auto_state == "device-limit":
+		_replacing = false
+		start_auto_sign_in(true)
+
 
 func _maybe_start_auto_sign_in() -> void:
 	if screen != "activation" or not auto_sign_in or _auto_started or not _can_auto_sign_in():
@@ -648,24 +684,56 @@ func _can_auto_sign_in() -> bool:
 	return sdk != null and is_instance_valid(sdk) and sdk.get("identity") != null and sdk.get("core") != null and sdk.core.started
 
 
+## The person has started something of their own on the form: Sign in's dialog, an activation, a key
+## typed. A late automatic answer never replaces it.
+func _person_acted() -> bool:
+	return activation.mode != "main" or activation.busy or activation.key_text() != ""
+
+
 ## Run the ladder's silent rungs now (once per gate unless `force`), install this runtime's platform
 ## providers first, and show the answer. A coroutine; `auto_sign_in_finished` carries the result.
+## While it runs the gate shows a quiet thin indicator (after 250 ms, for 1.5 s at most); an answer that
+## arrives after the person has started signing in by hand is dropped, and its grant given up.
 func start_auto_sign_in(force := false) -> void:
 	if (_auto_started and not force) or not _can_auto_sign_in():
 		return
 	_auto_started = true
+	_auto_running = true
+	_auto_bar = true
+	auto_step.busy = _auto_on()
+	refresh_view()
+	get_tree().create_timer(1.5).timeout.connect(func() -> void:
+		if _auto_running and is_instance_valid(self):
+			_auto_bar = false
+			refresh_view())
 	PKeyPlatformProviders.install(sdk.identity)
 	var result: PKeyAutoSignInResult = await sdk.identity.auto_sign_in()
 	if not is_instance_valid(self):
 		return
+	_auto_running = false
+	auto_step.busy = false
+	if not _auto_on() and _person_acted() and PKeyGateController.auto_action(result) in ["confirm", "choose", "device-limit"]:
+		_drop_auto(result)
+		refresh_view()
+		auto_sign_in_finished.emit(result)
+		return
 	await _apply_auto(result)
+	refresh_view()
 	auto_sign_in_finished.emit(result)
+
+
+## Give an automatic answer's grant up without showing it.
+func _drop_auto(result: PKeyAutoSignInResult) -> void:
+	var grant := String(result.pending.get("grant", "")) if result != null else ""
+	if grant != "" and sdk != null and is_instance_valid(sdk):
+		sdk.identity.choice.cancel(grant)
 
 
 func _apply_auto(result: PKeyAutoSignInResult) -> void:
 	_auto_result = result
 	match PKeyGateController.auto_action(result):
 		"signed-in":
+			_end_auto()
 			await sdk.sync(true)
 			show_state(sdk.status())
 		"confirm":
@@ -673,14 +741,37 @@ func _apply_auto(result: PKeyAutoSignInResult) -> void:
 			var shown := PKeyGateController.consent_step(consent)
 			auto_step.email = shown["email"]
 			auto_step.license_line = shown["license_line"]
+			auto_step.anchor = shown["anchor"]
 			auto_step.also_gets = shown["also_gets"]
+			auto_step.error_key = ""
+			auto_step.busy = false
 			_show_auto("confirm")
 		"choose":
 			_auto_state = "choose"
+			license_choice.other_account_link = true
+			_focus_sign_in = false
 			show_license_choice(result.pending.get("view", {}) if result.pending.get("view") is Dictionary else {})
+			ensure_focus(true)
 		"device-limit":
 			auto_step.manage_url = PKeyGateController.manage_link(result)
+			auto_step.busy = false
 			_show_auto("device-limit")
+		_:
+			# Nothing to show: the form (after a step the re-run replaced, back to it).
+			if _auto_state != "":
+				_end_auto()
+				refresh_view()
+
+
+## The automatic sign-in's step is over: nothing of it stays on screen.
+func _end_auto() -> void:
+	_auto_state = ""
+	choosing = false
+	_auto_result = null
+	_replacing = false
+	license_choice.other_account_link = false
+	auto_step.busy = false
+	auto_step.error_key = ""
 
 
 ## The sign-in dialog's platform sign-in (Apple's sheet, Google) ended in something the gate draws.
@@ -690,18 +781,24 @@ func _on_platform_answer(result: PKeyAutoSignInResult) -> void:
 
 func _show_auto(step: String) -> void:
 	_auto_state = step
+	_focus_sign_in = false
 	auto_step.step = step
 	refresh_view()
 	ensure_focus(true)
 
 
-## Continue on the consent step completes the grant with the claims it showed; Replace on the
-## device-limit step opens the Worker's manage page.
+## Continue on the consent step completes the grant with the claims it showed. On the device-limit
+## step, Replace opens the Worker's manage page (the sign-in runs again when the person is back);
+## where there is no link, or no browser, the primary is Try again.
 func _on_auto_primary(step: String) -> void:
 	if step == "device-limit":
 		var url := PKeyGateController.manage_link(_auto_result)
-		if url != "":
+		if url != "" and not PKeyUiView.pad_only():
+			_replacing = true
 			OS.shell_open(url)
+			return
+		if not _auto_running:
+			start_auto_sign_in(true)
 		return
 	if step != "confirm" or _auto_result == null:
 		return
@@ -709,17 +806,24 @@ func _on_auto_primary(step: String) -> void:
 	await _complete_auto(null, {"claims": claims})
 
 
-## Use another account: give the grant up and show the regular form.
+## Use another account: give the grant up and show the regular form, on Polaris Locker's sign-in.
 func _on_auto_secondary(_step: String) -> void:
 	_leave_auto_sign_in()
 
 
+## The licence choice's own "Use another account" (and a key request, which an automatic choice offers
+## as the same way out).
+func _on_auto_other_account() -> void:
+	if _auto_state == "choose":
+		_leave_auto_sign_in()
+
+
 func _leave_auto_sign_in() -> void:
 	var grant := _held_grant()
-	_auto_state = ""
-	choosing = false
-	_auto_result = null
+	_end_auto()
+	_focus_sign_in = true
 	refresh_view()
+	ensure_focus(true)
 	if grant != "" and sdk != null and is_instance_valid(sdk):
 		sdk.identity.choice.cancel(grant)
 
@@ -738,19 +842,52 @@ func _on_auto_license_chosen(selection: Dictionary) -> void:
 	await _complete_auto(choice, null)
 
 
+## Replace a device on a full licence: the licence's devices, in place.
+func _on_auto_replace_requested(license_id: String) -> void:
+	var grant := _held_grant()
+	if _auto_state != "choose" or grant == "" or sdk == null or not is_instance_valid(sdk):
+		return
+	var r: PKeyChoiceResult = await sdk.identity.choice.devices(grant, license_id)
+	if not is_instance_valid(self) or _auto_state != "choose":
+		return
+	if r.ok and not r.view.is_empty():
+		license_choice.open_replace(license_id, r.view)
+	else:
+		license_choice.show_raced()
+
+
+func _on_auto_replace_confirmed(license_id: String, device: Dictionary) -> void:
+	if _auto_state != "choose" or String(device.get("id", "")) == "":
+		return
+	await _complete_auto({"kind": "license", "license_id": license_id, "replace_device_id": String(device["id"])}, null)
+
+
 func _complete_auto(choice: Variant, consent: Variant) -> void:
 	var grant := _held_grant()
-	if grant == "" or sdk == null or not is_instance_valid(sdk):
+	if grant == "" or sdk == null or not is_instance_valid(sdk) or _completing:
 		return
+	_completing = true
+	auto_step.busy = _auto_state == "confirm"
 	var r: PKeyChoiceResult = await sdk.identity.choice.complete(grant, choice, consent)
+	_completing = false
 	if not is_instance_valid(self):
 		return
+	auto_step.busy = false
 	if not r.ok and r.view is Dictionary and r.view.get("choices") is Array:
 		# A refusal the person can fix (a full licence, a choice still due) carries a fresh view.
 		_auto_state = "choose"
+		license_choice.other_account_link = true
 		show_license_choice(r.view)
 		return
-	_auto_state = ""
-	choosing = false
-	_auto_result = null
-	show_state(sdk.status())
+	if not r.ok and _auto_state == "confirm" and r.code != &"invalid_grant":
+		# The grant is still good (the network failed, say): the step stays, with the kit's own error line,
+		# and Continue tries again. The grant is given up only when the person leaves.
+		auto_step.error_key = "core.codes.network.message"
+		return
+	var failure := ""
+	if not r.ok:
+		# The grant expired or was used: back to the form, with the kit's line, and the grant given up.
+		failure = String(catalog().format("core.codes.invalid_grant.message"))
+		sdk.identity.choice.cancel(grant)
+	_end_auto()
+	show_state(sdk.status(), failure)
