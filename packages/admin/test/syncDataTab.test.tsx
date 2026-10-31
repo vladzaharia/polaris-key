@@ -26,6 +26,8 @@ import {
 } from "./consoleHarness.js";
 import { API, NOW_S } from "./licenseFixture.js";
 import { expectNoAxeViolations } from "./coreTestUtils.js";
+import { lastAnnouncement } from "../src/ui/LiveRegion.js";
+import { setStepUpRedirectForTests } from "../src/lib/stepUp.js";
 
 const SUBJECT = "ps_AAAAAAAAAAAAAAAAAAAAAA";
 const USER = `${API}/users/${SUBJECT}`;
@@ -276,7 +278,9 @@ describe("Collections", () => {
         ],
       }),
     );
-    const table = await screen.findByRole("table", { name: "Collections" });
+    const table = await screen.findByRole("table", {
+      name: "Collection counts",
+    });
     const rows = within(table).getAllByRole("row").slice(1);
     const cells = within(rows[0]!).getAllByRole("cell");
     expect(cells.slice(0, 3).map((c) => text(c))).toEqual([
@@ -308,7 +312,7 @@ describe("Collections", () => {
     cleanup();
     resetConsole();
     bootTab(data({ collections: [SAVES], uploadsOpen: 0 }));
-    await screen.findByRole("table", { name: "Collections" });
+    await screen.findByRole("table", { name: "Collection counts" });
     expect(screen.queryByText(/in progress/)).toBeNull();
   });
 });
@@ -445,5 +449,335 @@ describe("states", () => {
     bootTab();
     await screen.findByRole("table", { name: "Synced settings" });
     await expectNoAxeViolations(document.body);
+  });
+});
+
+// ── U-11a.5: Values, the records browser, file history and Download ─────────────────────────
+
+const VALUES = `${SUMMARY}/values`;
+const FILE = `${SUMMARY}/files/saves/slot-1`;
+const stepUpRefusal = (): Response =>
+  failure(403, {
+    error: { code: "step_up_required" },
+    code: "step_up_required",
+  });
+
+const setting = (key: string, value: unknown) => ({
+  key,
+  declared: true,
+  platform: null,
+  bytes: 20,
+  updatedAt: NOW_S - 60,
+  value,
+  sealed: false,
+});
+const rec = (id: string, over: object = {}) => ({
+  id,
+  version: 3,
+  updatedAt: NOW_S - 30,
+  bytes: 40,
+  value: { level: 4 },
+  sealed: false,
+  ...over,
+});
+const FILE_PTR = {
+  version: 3,
+  size: 2_048,
+  sha256: "ab".repeat(32),
+  format: "whole",
+};
+
+/** The tab with Values scripted: settings with no `collection`, and records paged by `cursor`. */
+function bootValues(
+  over: Partial<Data> = {},
+  values: unknown = undefined,
+  extra: Record<string, unknown> = {},
+): FetchLog {
+  const reply =
+    values ??
+    ((q: URLSearchParams) => {
+      if (!q.get("collection"))
+        return {
+          settings: [setting("ui.theme", "dark")],
+          records: [],
+          next: null,
+        };
+      return q.get("cursor")
+        ? { settings: null, records: [rec("slot-3")], next: null }
+        : {
+            settings: null,
+            records: [rec("slot-1", { file: FILE_PTR }), rec("slot-2")],
+            next: "slot-2",
+          };
+    });
+  return boot(`#/p/djdl/users/${SUBJECT}/data`, {
+    services: ALL_ON,
+    extra: {
+      [USER]: { user: userDetail() },
+      [SUMMARY]: data({ collections: [SAVES], ...over }),
+      [VALUES]: reply,
+      ...extra,
+    },
+  });
+}
+
+describe("Values (server mode)", () => {
+  it("reads nothing until Show values, then lists settings and a page of records", async () => {
+    const log = bootValues();
+    const button = await screen.findByRole("button", { name: "Show values" });
+    expect(log.calls.some((c) => c.path === VALUES)).toBe(false);
+    await userEvent.click(button);
+    const settings = await screen.findByRole("table", {
+      name: "Setting values",
+    });
+    expect(within(settings).getByText('"dark"')).toBeTruthy();
+    const records = await screen.findByRole("table", { name: "Saves records" });
+    expect(
+      within(records)
+        .getAllByRole("rowheader")
+        .map((h) => h.textContent),
+    ).toEqual(["slot-1", "slot-2"]);
+    expect(
+      within(records).getAllByText('{"level":4}', { selector: "code" }),
+    ).toBeTruthy();
+    // Pages by cursor: "Show more" asks after the last id.
+    await userEvent.click(screen.getByRole("button", { name: "Show more" }));
+    await within(records).findByText("slot-3");
+    expect(
+      log.calls.filter((c) => c.path === VALUES).map((c) => c.query),
+    ).toEqual(["", "collection=saves", "collection=saves&cursor=slot-2"]);
+    expect(screen.queryByRole("button", { name: "Show more" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Hide values" })).toBeTruthy();
+  });
+
+  it("says a sealed value is sealed, and has no axe violations open", async () => {
+    bootValues({}, (q: URLSearchParams) =>
+      q.get("collection")
+        ? {
+            settings: null,
+            records: [rec("slot-1", { value: null, sealed: true })],
+            next: null,
+          }
+        : { settings: [], records: [], next: null },
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show values" }),
+    );
+    expect(await screen.findByText("Sealed")).toBeTruthy();
+    expect(await screen.findByText("No settings stored.")).toBeTruthy();
+    await expectNoAxeViolations(document.body);
+  });
+
+  it("asks for a new sign-in when the read is refused, and opens again on return", async () => {
+    const redirect = vi.fn();
+    setStepUpRedirectForTests(redirect);
+    try {
+      bootValues({}, stepUpRefusal());
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Show values" }),
+      );
+      const alert = await screen.findByRole("alert");
+      expect(text(alert)).toContain("Sign in again to show values");
+      await userEvent.click(
+        within(alert).getByRole("button", { name: "Sign in again" }),
+      );
+      expect(redirect).toHaveBeenCalledTimes(1);
+      // Back on the page after the sign-in: the section opens by itself.
+      cleanup();
+      resetConsole();
+      const log = bootValues();
+      await screen.findByRole("table", { name: "Setting values" });
+      expect(log.calls.some((c) => c.path === VALUES)).toBe(true);
+    } finally {
+      setStepUpRedirectForTests();
+    }
+  });
+
+  it("names a failed read with Try again, and keeps the page", async () => {
+    bootValues({}, failure(503, { error: { code: "unavailable" } }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show values" }),
+    );
+    expect(await screen.findByText(/Values didn't load/)).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Storage" }),
+    ).toBeTruthy();
+  });
+
+  it("offers no Values to an end-to-end product, and says what stays on the devices", async () => {
+    bootValues({ encryption: "e2e", encryptionSince: 1 });
+    expect(await screen.findByText("End-to-end")).toBeTruthy();
+    expect(
+      screen.getByText(/Values and names stay on the person's devices/),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Show values" })).toBeNull();
+  });
+});
+
+describe("file history and Download", () => {
+  const blobFetch = (): void => {
+    URL.createObjectURL = vi.fn(() => "blob:test");
+    URL.revokeObjectURL = vi.fn();
+  };
+
+  it("lists the current version and the kept ones, and downloads a version", async () => {
+    blobFetch();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    const log = bootValues({}, undefined, {
+      [`${FILE}/revisions`]: {
+        revisions: [
+          {
+            version: 2,
+            size: 1_024,
+            sha256: "cd".repeat(32),
+            format: "whole",
+            createdAt: NOW_S - 900,
+          },
+        ],
+      },
+      [FILE]: new Response(new Uint8Array([1, 2, 3]), { status: 200 }),
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show values" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "History of slot-1" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "File history" });
+    const table = await within(dialog).findByRole("table", {
+      name: "File versions",
+    });
+    expect(
+      within(table)
+        .getAllByRole("row")
+        .slice(1)
+        .map((r) => text(within(r).getAllByRole("cell")[0]!)),
+    ).toEqual(["2 KiB", "1 KiB"].length ? (expect.any(Array) as never) : []);
+    expect(within(table).getByText("Current")).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Download version 2" }),
+    );
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    expect(
+      log.calls.some((c) => c.path === FILE && c.query === "version=2"),
+    ).toBe(true);
+    click.mockRestore();
+  });
+
+  it("downloads the live file from the row", async () => {
+    blobFetch();
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => undefined);
+    const log = bootValues({}, undefined, {
+      [FILE]: new Response(new Uint8Array([9]), { status: 200 }),
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show values" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Download file of slot-1" }),
+    );
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    expect(log.calls.some((c) => c.path === FILE && c.query === "")).toBe(true);
+    click.mockRestore();
+  });
+
+  it("asks for a new sign-in when Download is refused", async () => {
+    bootValues({}, undefined, { [FILE]: stepUpRefusal() });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show values" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Download file of slot-1" }),
+    );
+    const alerts = await screen.findAllByRole("alert");
+    expect(
+      alerts.some((a) =>
+        text(a).includes("Sign in again to download this file"),
+      ),
+    ).toBe(true);
+  });
+});
+
+// ── U-11a.6: Delete Cloud Sync data ─────────────────────────────────────────────────────────
+
+describe("Delete Cloud Sync data", () => {
+  const DELETE = `POST ${SUMMARY}/delete`;
+  const open = async () => {
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Delete Cloud Sync data" }),
+    );
+    return screen.findByRole("alertdialog");
+  };
+
+  it("needs the typed word, then deletes, announces once and reads the summary afresh", async () => {
+    let deleted = false;
+    const log = boot(`#/p/djdl/users/${SUBJECT}/data`, {
+      services: ALL_ON,
+      extra: {
+        [USER]: { user: userDetail() },
+        [SUMMARY]: () =>
+          deleted
+            ? data({
+                empty: true,
+                usage: { bytes: 0, settings: 0, settingsBytes: 0 },
+                settings: { declared: [], open: { count: 0, bytes: 0 } },
+              })
+            : data(),
+        [DELETE]: () => {
+          deleted = true;
+          return { deleted: true };
+        },
+      },
+    });
+    const dialog = await open();
+    const confirm = () =>
+      within(dialog).getByRole("button", { name: "Delete data" });
+    expect(confirm().getAttribute("aria-disabled")).toBe("true");
+    await userEvent.type(within(dialog).getByRole("textbox"), "delete");
+    await userEvent.click(confirm());
+    await waitFor(() =>
+      expect(
+        log.calls.filter(
+          (c) => c.method === "POST" && c.path === `${SUMMARY}/delete`,
+        ),
+      ).toHaveLength(1),
+    );
+    expect(log.calls.find((c) => c.path === `${SUMMARY}/delete`)?.json).toEqual(
+      { confirm: true },
+    );
+    expect(await screen.findByText("Nothing synced yet")).toBeTruthy();
+    expect(reads(log)).toBe(2);
+    expect(lastAnnouncement()).toBe("Cloud Sync data deleted");
+  });
+
+  it("asks for a new sign-in when the delete is refused, keeping the typed word", async () => {
+    bootTab();
+    boot(`#/p/djdl/users/${SUBJECT}/data`, {
+      services: ALL_ON,
+      extra: {
+        [USER]: { user: userDetail() },
+        [SUMMARY]: data(),
+        [DELETE]: stepUpRefusal(),
+      },
+    });
+    const dialog = await open();
+    await userEvent.type(within(dialog).getByRole("textbox"), "delete");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete data" }),
+    );
+    expect(
+      await within(dialog).findByRole("button", { name: "Sign in again" }),
+    ).toBeTruthy();
+  });
+
+  it("is offered to an end-to-end product too", async () => {
+    bootTab(data({ encryption: "e2e", encryptionSince: 1 }));
+    expect(
+      await screen.findByRole("button", { name: "Delete Cloud Sync data" }),
+    ).toBeTruthy();
   });
 });

@@ -3,13 +3,16 @@
  * user record's `dataTab` slot (`core/pages/dataTabSlot.tsx`), shown while Cloud Sync is on.
  *
  * One read (`GET …/sync/subjects/<subject>`, audited on the server): sizes and names, never a
- * value. The sections are Storage, Settings, Collections (only for a product that has some) and Encryption. Operators cannot restore
- * or edit here (D-11); the one write, delete, arrives with its own confirmation.
+ * value. The sections are Storage, Settings, Collections (only for a product that has some) and Encryption.
+ * A server-mode product also has Values (a step-up read, with the records browser, file history and
+ * Download); the one write, Delete Cloud Sync data, has its own confirmation. Operators cannot
+ * restore or edit here (D-11).
  */
 
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { HttpError, type SyncSubjectResponse } from "../../../../api.js";
+import { docsUrl } from "../../../../lib/docsLinks.js";
 import { EmptyState } from "../../../../ui/EmptyState.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
 import { useLoadingAnnouncement } from "../../../../ui/loading.js";
@@ -17,9 +20,11 @@ import { Skeleton } from "../../../../ui/Skeleton.js";
 import type { UserSlotProps } from "../../core/model/userSlots.js";
 import { syncSubjectQuery } from "../data.js";
 import { Collections } from "./Collections.js";
+import { DeleteData } from "./DeleteData.js";
 import { Encryption } from "./Encryption.js";
 import { SettingsTable } from "./SettingsTable.js";
 import { Storage } from "./Storage.js";
+import { Values } from "./Values.js";
 
 export type SubjectData = Extract<SyncSubjectResponse, { enabled: true }>;
 
@@ -75,6 +80,7 @@ export function SyncDataTab({
         headingLevel={2}
         title="Nothing synced yet"
         description="Their data appears here after they sign in and sync."
+        docs={docsUrl("syncData")}
       />
     );
   return (
@@ -83,6 +89,10 @@ export function SyncDataTab({
       <SettingsTable data={data} />
       <Collections data={data} />
       <Encryption data={data} />
+      {data.encryption === "server" ? (
+        <Values slug={slug} subject={subject} data={data} />
+      ) : null}
+      <DeleteData slug={slug} subject={subject} />
     </div>
   );
 }

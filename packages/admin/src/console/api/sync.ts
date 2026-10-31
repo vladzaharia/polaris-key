@@ -2,7 +2,7 @@
  * The sync slice of the console API (P0-32.22): Cloud Sync usage and one person's data summary.
  * Types and the `syncApi` methods live together; `api.ts` re-exports the types and spreads the methods.
  */
-import { call, p } from "./transport.js";
+import { call, enc, p, send } from "./transport.js";
 
 /** `GET …/sync/usage` (U-05.19): counts and bytes only, no person, subject or device. */
 export type SyncUsageResponse =
@@ -109,6 +109,64 @@ export type SyncSubjectResponse =
       ring: SyncSubjectRing | null;
     };
 
+/** A JSON value as the person's device stored it. */
+export type SyncJsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | SyncJsonValue[]
+  | { [k: string]: SyncJsonValue };
+
+/** The pointer to a record's live file (`file` on a record). */
+export interface SyncSubjectFile {
+  version: number;
+  size: number;
+  sha256: string;
+  format: string;
+}
+
+export interface SyncValueSetting {
+  key: string;
+  /** Whether the catalog declares it. */
+  declared: boolean;
+  platform: string | null;
+  bytes: number;
+  /** Epoch seconds. */
+  updatedAt: number;
+  /** `null` when `sealed`. */
+  value: SyncJsonValue | null;
+  sealed: boolean;
+}
+
+export interface SyncValueRecord {
+  id: string;
+  version: number;
+  updatedAt: number;
+  bytes: number;
+  value: SyncJsonValue | null;
+  sealed: boolean;
+  file?: SyncSubjectFile;
+}
+
+/** `GET …/sync/subjects/<subject>/values` (U-11a.2): server mode, after a step-up, audited. */
+export interface SyncValuesResponse {
+  /** Present on the read with no collection. */
+  settings: SyncValueSetting[] | null;
+  records: SyncValueRecord[];
+  /** The `cursor` for the next page, or `null` on the last. */
+  next: string | null;
+}
+
+export interface SyncFileRevision {
+  version: number;
+  size: number;
+  sha256: string;
+  format: string;
+  /** Epoch seconds. */
+  createdAt: number;
+}
+
 export const syncApi = {
   // ── sync: Cloud Sync usage (U-05.19) ───────────────────────────────────────
   /** The Usage page's facts: the aggregate, today's UTC counters, tier labels and limits. */
@@ -118,4 +176,49 @@ export const syncApi = {
     call<SyncSubjectResponse>(
       `${p(slug)}/sync/subjects/${encodeURIComponent(subject)}`,
     ),
+  /** Setting values, or (with `collection`) one page of its records. Needs a recent sign-in. */
+  syncValues: (
+    slug: string,
+    subject: string,
+    q: { collection?: string; cursor?: string } = {},
+  ) => {
+    const params = new URLSearchParams();
+    if (q.collection !== undefined) params.set("collection", q.collection);
+    if (q.cursor !== undefined) params.set("cursor", q.cursor);
+    const qs = params.toString();
+    return call<SyncValuesResponse>(
+      `${p(slug)}/sync/subjects/${enc(subject)}/values${qs ? `?${qs}` : ""}`,
+    );
+  },
+  /** The kept older versions of a record's file, newest first. Needs a recent sign-in. */
+  syncFileRevisions: (
+    slug: string,
+    subject: string,
+    collection: string,
+    id: string,
+  ) =>
+    call<{ revisions: SyncFileRevision[] }>(
+      `${p(slug)}/sync/subjects/${enc(subject)}/files/${enc(collection)}/${enc(id)}/revisions`,
+    ),
+  /** A record's file (the live one, or `version`) as bytes. Needs a recent sign-in. */
+  syncFileDownload: async (
+    slug: string,
+    subject: string,
+    collection: string,
+    id: string,
+    version?: number,
+  ): Promise<Blob> =>
+    (
+      await send(
+        `${p(slug)}/sync/subjects/${enc(subject)}/files/${enc(collection)}/${enc(id)}${
+          version === undefined ? "" : `?version=${version}`
+        }`,
+      )
+    ).blob(),
+  /** Erases the person's Cloud Sync data and key ring. Needs a recent sign-in. */
+  syncDeleteData: (slug: string, subject: string) =>
+    call<{ deleted: true }>(`${p(slug)}/sync/subjects/${enc(subject)}/delete`, {
+      method: "POST",
+      body: JSON.stringify({ confirm: true }),
+    }),
 };

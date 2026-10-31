@@ -81,6 +81,8 @@ const http = createHttpClient<ConsoleOptions>({
 });
 
 export const call = http.call;
+/** The raw response, for a body that is a file. */
+export const send = http.send;
 
 export const enc = encodeURIComponent;
 /** Build a per-product API base. */
