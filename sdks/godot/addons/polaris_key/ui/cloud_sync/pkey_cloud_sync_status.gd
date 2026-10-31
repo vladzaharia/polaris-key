@@ -60,6 +60,7 @@ var _screen: PKeyUiView = null
 var _card: BoxContainer
 var _glyph: TextureRect
 var _text: Label
+var _figures: Label
 var _bar: ProgressBar
 var _action: Button
 var _action_pad: MarginContainer
@@ -93,6 +94,13 @@ func _build() -> void:
 	_glyph = glyph_node(row, "Glyph", "info")
 	_text = label(row, "Status", "PKeyMuted")
 	_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# The label is the live line: a state change is announced once. The byte figures are their own
+	# label, not live, so an update to them is not.
+	if "accessibility_live" in _text:
+		_text.set("accessibility_live", 1)
+	_figures = label(row, "Figures", "PKeyMuted")
+	_figures.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_figures.size_flags_horizontal = Control.SIZE_SHRINK_END
 	# The counted fraction of a transfer: on its own row, the whole width of the strip.
 	_bar = ProgressBar.new()
 	_bar.name = "Progress"
@@ -256,8 +264,9 @@ func _render() -> void:
 			action_key = "common.tryAgain"
 	cat_text(_text, key, args)
 	if st == "transferring" and copy.has("cloudSync.transferProgress"):
-		var figures := String(catalog().format("cloudSync.transferProgress", model.get("args", {})))
-		_text.text = "%s · %s" % [_text.text, figures]
+		cat_text(_figures, "cloudSync.transferProgress", model.get("args", {}))
+	else:
+		cat_text(_figures, "")
 	cat_text(_action, "" if action_key == null else String(action_key), args)
 	_bar.visible = bar
 	_action_pad.visible = _action.visible

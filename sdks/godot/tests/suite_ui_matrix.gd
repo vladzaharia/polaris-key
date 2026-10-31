@@ -232,7 +232,7 @@ static func _view_problems(tree: SceneTree, v: PKeyUiView, entry: Array, preset:
 ## them away to the focused Cancel.
 static func _save_conflict_top_problems(tree: SceneTree, v: PKeyUiView) -> PackedStringArray:
 	var out := PackedStringArray()
-	if not (v is PKeySaveConflict) or (v as PKeySaveConflict).step != "choose" or not v.visible:
+	if not (v is PKeySaveConflict) or not (v as PKeySaveConflict).step in ["choose", "failed"] or not v.visible:
 		return out
 	var sc := v.find_child("Scroll", true, false) as ScrollContainer
 	if sc == null:
@@ -247,7 +247,7 @@ static func _save_conflict_top_problems(tree: SceneTree, v: PKeyUiView) -> Packe
 		for i in 4:
 			await tree.process_frame
 		var top := sc.get_global_rect().position.y - 1.0
-		for n in ["Title", "Local"]:
+		for n in (["Title", "Local"] if c.step == "choose" else ["Title", "Status"]):
 			var node := v.find_child(n, true, false) as Control
 			if node != null and node.visible and node.get_global_rect().position.y < top:
 				out.append("after %s the %s is scrolled out of view (%d/%d)" % [round, n, sc.scroll_vertical, int(sc.get_v_scroll_bar().max_value)])

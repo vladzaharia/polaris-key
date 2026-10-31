@@ -682,7 +682,7 @@
     "sdks/godot/tests/suite_cloud_sync_ui.gd": {
       "gdlint:class-definitions-order": 2,
       "gdlint:max-file-lines": 1,
-      "gdlint:max-line-length": 21
+      "gdlint:max-line-length": 22
     },
     "sdks/godot/tests/suite_conformance.gd": {
       "gdlint:class-definitions-order": 4,

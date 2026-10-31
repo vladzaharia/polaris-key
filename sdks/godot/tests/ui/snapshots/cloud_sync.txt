@@ -28,7 +28,8 @@ Card/Body/Row/Status: Label "Your sync key changed."
 Card/Body/ActionPad/Action: Button "Review" [focus 1]
 == transferring ==
 Card/Body/Row/Glyph: TextureRect
-Card/Body/Row/Status: Label "Syncing saves… · 38 MB of 61 MB"
+Card/Body/Row/Status: Label "Syncing saves…"
+Card/Body/Row/Figures: Label "38 MB of 61 MB"
 Card/Body/Progress: ProgressBar
 == transferring, no figures ==
 Card/Body/Row/Glyph: TextureRect
