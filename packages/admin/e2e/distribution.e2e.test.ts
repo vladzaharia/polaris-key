@@ -346,12 +346,12 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
         .first()
         .click();
       await page
-        .getByRole("dialog", { name: "Set a channel credential" })
+        .getByRole("dialog", { name: "Set a credential" })
         .waitFor();
     });
     await page.getByRole("button", { name: "Set credential…" }).first().click();
     await page
-      .getByRole("dialog", { name: "Set a channel credential" })
+      .getByRole("dialog", { name: "Set a credential" })
       .waitFor();
     await violations(page);
     // The product offers one kind here: it is said, not asked.
