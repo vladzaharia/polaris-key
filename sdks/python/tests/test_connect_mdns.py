@@ -13,6 +13,7 @@ import pytest
 from polaris_key.connect.loop import connect_loop
 from polaris_key.core.peer_mdns import (
     ENTRY_TTL_SECONDS,
+    AddressBook,
     MAX_ADDRS,
     MAX_INSTANCES,
     NEW_WINDOW_SECONDS,
@@ -594,3 +595,24 @@ def test_live_two_adapters_on_this_host_find_each_other() -> None:
     finally:
         run(ah.stop())
         run(bh.stop())
+
+
+def test_mdns_an_address_not_seen_for_five_minutes_lapses_and_frees_its_place() -> None:
+    book = AddressBook()
+    name = INST + ".local"
+    four = ["192.168.1.1", "192.168.1.2", "192.168.1.3", "192.168.1.4"]
+
+    def learn(ip: str, now: float) -> None:
+        book.learn(Record(name, "A", 120, ip), ip, None, now)
+
+    for ip in four:
+        learn(ip, 0.0)
+    # A fifth cannot take a place while the four are held, and a refresh of one of them (the name
+    # stays alive) does not keep the others.
+    learn("192.168.1.5", 60.0)
+    assert book.hosts(name, 60.0) == four
+    learn(four[0], 200.0)
+    later = ENTRY_TTL_SECONDS + 1
+    learn("192.168.1.5", later)
+    assert book.hosts(name, later) == [four[0], "192.168.1.5"]
+    assert book.hosts(name, later + ENTRY_TTL_SECONDS + 1) == []
