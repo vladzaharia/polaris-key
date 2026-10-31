@@ -388,6 +388,11 @@
       "why": "Your license doesn't cover the feature you tried to use.",
       "fix": "Ask the app's developer about adding it, or use a feature your license includes."
     },
+    "entitlement_required": {
+      "page": "license-status",
+      "why": "Your license doesn't include this part of the app.",
+      "fix": "Upgrade your license, then try again, or ask the app's developer."
+    },
     "release-refused": {
       "page": "license-status",
       "entry": "not_entitled",
@@ -1130,6 +1135,11 @@
       "page": "accounts",
       "why": "Your synced data is encrypted, and this device doesn't have the key to open it yet.",
       "fix": "Unlock sync with your recovery code or with another signed-in device."
+    },
+    "sync-file-invalid": {
+      "page": "accounts",
+      "why": "A file synced from your other devices failed its integrity check, so the app didn't use it.",
+      "fix": "Try again. If it keeps happening, open the app on the device that saved the file so it syncs again, or tell the app's developer."
     },
     "recovery-code-invalid": {
       "page": "accounts",
