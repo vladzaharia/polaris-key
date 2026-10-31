@@ -9,7 +9,7 @@
 // @pkey-feature license.manage identity.keyentry
 // @pkey-feature core.presentation identity.account identity.attach
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay
-// @pkey-feature identity.exchange sync.keyring sync.settings sync.files sync.files.delta
+// @pkey-feature identity.exchange sync.keyring sync.settings sync.files sync.files.delta sync.saves
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -1264,8 +1264,8 @@ class TranscriptTest : ConformanceSuite() {
             "cloudsync-first-signin", "cloudsync-hlc-clamp", "cloudsync-members", "cloudsync-migrations",
             "cloudsync-open-settings", "cloudsync-paused", "cloudsync-push-pull", "cloudsync-quota",
             "cloudsync-trust",
-            // U-23.K6: Cloud Sync files and delta files (`sync.files`, `sync.files.delta`); cloudsync-files-single also proves `sync.saves`, so it waits for it.
-            "cloudsync-files-multipart", "cloudsync-files-conflict", "cloudsync-files-expired", "cloudsync-files-limits",
+            // U-23.K6: Cloud Sync files and delta files (`sync.files`, `sync.files.delta`); cloudsync-files-single also proves `sync.saves` (U-22.5).
+            "cloudsync-files-single", "cloudsync-files-multipart", "cloudsync-files-conflict", "cloudsync-files-expired", "cloudsync-files-limits",
             "cloudsync-files-mismatch", "cloudsync-files-quota", "cloudsync-files-revisions", "cloudsync-chunks", "cloudsync-chunks-delta",
             // U-39.9: the key ring (`sync.keyring`).
             "keyring-create", "keyring-wrap", "keyring-wrap-read", "keyring-recovery", "keyring-adopt-reset", "keyring-gate-off", "keyring-sync-off",

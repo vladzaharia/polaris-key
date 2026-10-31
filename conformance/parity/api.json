@@ -3817,9 +3817,7 @@
         "swift": {
           "planned": "U-23"
         },
-        "kotlin": {
-          "planned": "U-23"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "U-23"
         }
@@ -3842,7 +3840,7 @@
           "planned": "U-23"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.list"
         },
         "godot": {
           "planned": "U-23"
@@ -3872,7 +3870,7 @@
           "planned": "U-23"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.read"
         },
         "godot": {
           "planned": "U-23"
@@ -3906,7 +3904,7 @@
           "planned": "U-23"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.write"
         },
         "godot": {
           "planned": "U-23"
@@ -3936,7 +3934,7 @@
           "planned": "U-23"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.delete"
         },
         "godot": {
           "planned": "U-23"
@@ -3966,7 +3964,7 @@
           "planned": "U-23"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.revisions"
         },
         "godot": {
           "planned": "U-23"
@@ -3989,9 +3987,7 @@
         "swift": {
           "planned": "U-23"
         },
-        "kotlin": {
-          "planned": "U-23"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "U-23"
         }
@@ -4014,7 +4010,7 @@
           "planned": "U-23"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.pause"
         },
         "godot": {
           "planned": "U-23"
@@ -4038,7 +4034,7 @@
           "planned": "U-23"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.resume"
         },
         "godot": {
           "planned": "U-23"
@@ -4062,7 +4058,7 @@
           "planned": "U-23"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.cancel"
         },
         "godot": {
           "planned": "U-23"
@@ -4087,7 +4083,8 @@
           "planned": "U-23"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "client.events",
+          "reason": "one event stream on the client (client.events), PolarisEvent.CloudSync"
         },
         "godot": {
           "planned": "U-23"

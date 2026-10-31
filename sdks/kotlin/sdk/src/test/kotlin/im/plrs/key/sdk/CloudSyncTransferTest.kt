@@ -10,6 +10,7 @@ package im.plrs.key.sdk
 
 import com.github.luben.zstd.Zstd
 import im.plrs.key.core.ErrorCode
+import im.plrs.key.core.SYNC_CHUNK_MAX_STORED_BYTES
 import im.plrs.key.core.sync.SyncCrypto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
@@ -290,7 +291,7 @@ class CloudSyncTransferTest {
         assertFalse(e2e.toString().contains(ROOT.joinToString("") { "%02x".format(it) }))
         val srv = ServerFileCodec()
         val id = srv.chunkId(plain)
-        assertEquals("size", (srv.openChunk(id, ByteArray(SERVER_CHUNK_MAX_STORED_BYTES + 1)) as FileOpened.Invalid).reason)
+        assertEquals("size", (srv.openChunk(id, ByteArray(SYNC_CHUNK_MAX_STORED_BYTES + 1)) as FileOpened.Invalid).reason)
         assertEquals("codec", (srv.openChunk(id, byteArrayOf(0, 9, 1)) as FileOpened.Invalid).reason)
         assertEquals("version", (srv.openChunk(id, byteArrayOf(7, 0, 1)) as FileOpened.Invalid).reason)
     }
@@ -703,7 +704,7 @@ class CloudSyncTransferTest {
             dl(data, sink, stored = stored, codec = codec, format = "chunks", size = size)
         s.tamperChunk = { _, o -> o.copyOf().also { it[it.size - 1] = (it[it.size - 1] + 1).toByte() } }
         expect(Reason.FILE_INVALID) { engine(s).download(req(Collected())) }
-        s.tamperChunk = { _, o -> ByteArray(SERVER_CHUNK_MAX_STORED_BYTES + 1) + o }
+        s.tamperChunk = { _, o -> ByteArray(SYNC_CHUNK_MAX_STORED_BYTES + 1) + o }
         expect(Reason.FILE_INVALID, "chunk-size") { engine(s).download(req(Collected())) }
         val keys = s.chunks.keys.toList()
         val other = s.chunks.getValue(keys[1])

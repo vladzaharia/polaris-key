@@ -1,4 +1,5 @@
 // @pkey-feature sync.scenarios
+// @pkey-feature sync.saves
 // @pkey-feature sync.settings config.sync
 // @pkey-feature sync.e2e
 //
@@ -68,13 +69,16 @@ class SyncScenariosTest : ConformanceSuite() {
     }
 
     @Test
-    fun fileRecordCasesAreDeclaredAndSkippedByName() {
-        // The records binding of cloudSync.saves (plans/U-22.5.md): a second family, skipped by name here
-        // until the Kotlin port of the machine's records, putAt, removeAt and onOutcome lands.
+    fun fileRecordCasesReplayInFull() {
+        // The records binding of cloudSync.saves (plans/U-22.5.md): a second family, replayed in full.
         val family = corpus["fileRecordCases"] as JsonObject
-        val names = family["scenarios"].arrayValue!!.map { (it as JsonObject)["name"].stringValue!! }
-        assertEquals("the family has 16 cases; port them with the records binding", 16, names.size)
+        assertEquals(listOf("putAt", "removeAt"), family["calls"].arrayValue!!.map { it.stringValue })
+        assertEquals(listOf("rows", "outcomes"), family["asserts"].arrayValue!!.map { it.stringValue })
+        val cases = family["scenarios"].arrayValue!!.map { it as JsonObject }
+        val names = cases.map { it["name"].stringValue!! }
+        assertEquals(16, names.size)
         assertEquals(names.size, names.toSet().size)
+        for (sc in cases) SyncScenarioDriver(corpus["product"].stringValue!!, sc).run()
     }
 
     @Test

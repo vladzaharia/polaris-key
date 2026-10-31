@@ -41,15 +41,23 @@ internal class MachineRecordResults(private val p: MachineParts) {
     }
 
     private fun other(op: Op, ctx: ResultCtx, rk: String, rebase: Rebase) {
-        if (ctx.r["status"].stringValue == "rejected") core.events.add(SyncEvent.Rejected(op.mutationId, SyncNum.jsString(ctx.r, "code")))
+        if (ctx.r["status"].stringValue == "rejected") {
+            core.events.add(SyncEvent.Rejected(op.mutationId, SyncNum.jsString(ctx.r, "code")))
+            p.records.emitOutcome(op) { RecordOutcome.Rejected(it, SyncNum.jsString(ctx.r, "code")) }
+        }
         if (rk in ctx.part.held) rebase.on = ctx.part.records[rk]?.let { JsonPrimitive(it.version) } ?: JsonPrimitive("*")
     }
 
     private fun recordOk(op: Op, ctx: ResultCtx, rk: String, version: Long, rebase: Rebase) {
         p.rows.noteSealed(ctx.part, version, "r:$rk")
         val value = SyncValues.applyRecordOp(ctx.part.records[rk]?.value, op)
-        if (value != null) ctx.part.records[rk] = SyncRow(value, version)
+        if (op.op == "delete") {
+            ctx.part.records.remove(rk)
+        } else if (value != null) {
+            ctx.part.records[rk] = SyncRow(value, version, file = ctx.part.records[rk]?.file)
+        }
         if (rk in ctx.part.held) rebase.on = JsonPrimitive(version)
+        p.records.emitOutcome(op) { RecordOutcome.Ok(it, version) }
     }
 
     /** The resolution is a NEW mutation on the server's version; N is never resent. */
@@ -60,9 +68,14 @@ internal class MachineRecordResults(private val p: MachineParts) {
         val decl = routing.collection((op.target as OpTarget.Record).collection)
         val policy = decl?.get("policy").stringValue
         val field = decl?.get("field").stringValue
-        val better = decl != null && op.op == "set" && p.rows.decidable(row) && p.pump.clientDecides(policy!!) &&
+        p.records.emitOutcome(op) {
+            RecordOutcome.Conflict(it, if (p.rows.decidable(row)) RecordCopy(row.value ?: JsonNull, row.version, row.file) else null)
+        }
+        // An exact write (`putAt`) is never rebased: its caller decides.
+        val clientResolves = op.ticket == null && decl != null && op.op == "set"
+        val better = clientResolves && p.rows.decidable(row) && p.pump.clientDecides(policy!!) &&
             p.rows.better(policy, p.rows.compared(op.value, field), p.rows.compared(server["value"], field))
-        val keepLocal = decl != null && policy == "revision" && decl["resolve"].stringValue == "keepLocal" && op.op == "set"
+        val keepLocal = clientResolves && policy == "revision" && decl!!["resolve"].stringValue == "keepLocal"
         if (rk in ctx.part.held || better || keepLocal) {
             rebase.on = sv
             rebase.value = op.value

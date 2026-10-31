@@ -80,6 +80,7 @@ internal object SyncValues {
 
     /** One record operation applied to a value. */
     fun applyRecordOp(base: JsonElement?, op: Op): JsonElement? = when (op.op) {
+        "delete" -> null
         "set" -> op.value ?: JsonNull
         "setMember", "removeMember" -> applySettingOp("merge", base, op.op, op.value, op.member)
         "add" -> addTo((base as? JsonArray) ?: JsonArray(emptyList()), op.element!!)

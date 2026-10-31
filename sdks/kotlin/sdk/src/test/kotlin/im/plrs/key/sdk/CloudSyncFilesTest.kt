@@ -69,6 +69,7 @@ class CloudSyncFilesTest {
         val base = "/djdl/sync/files/saves/slot1"
         for (ok in listOf(
             "$base/begin", "$base/finalize", "$base/revisions", base, "$base?version=3", "$base/upload/up_1", "$base/upload/up_1/parts/12",
+            "$base/upload/up_1/parts/1", "$base/upload/up_1/parts/9999",
             "$base/upload/up_1/chunks", "$base/upload/up_1/chunks/$chunk", "/djdl/sync/files/saves/chunks/$chunk",
         )) {
             assertTrue(ok, isFilesPath("djdl", ok))
@@ -76,7 +77,8 @@ class CloudSyncFilesTest {
         for (bad in listOf(
             "/djdl/sync/files/saves/../slot1", "/djdl/sync/files/./slot1/begin", "$base/upload/up_1/parts/x", "$base/upload/up_1/chunks/ABC",
             "$base/other", "$base?version=x", "$base/begin?version=1", "/other/sync/files/saves/slot1", "/djdl/sync/ops", "$base/upload/..",
-            "/djdl/sync/files/saves/slot1/upload/up_1/parts/12345", "//evil.example/djdl/sync/files/saves/slot1",
+            "/djdl/sync/files/saves/slot1/upload/up_1/parts/12345", "$base/upload/up_1/parts/0", "$base/upload/up_1/parts/012",
+            "$base/upload/up_1/parts/10000", "//evil.example/djdl/sync/files/saves/slot1",
         )) {
             assertFalse(bad, isFilesPath("djdl", bad))
         }
@@ -147,6 +149,19 @@ class CloudSyncFilesTest {
         assertEquals("bad_response", (t.getChunk("saves", chunk) as FileReply.Refused).refusal.code)
         assertEquals("bad_response", (t.getFile(target, FileQuery(range = 0 to 10)) as FileReply.Refused).refusal.code)
         assertEquals("bad_response", (t.status(target, "up_1") as FileReply.Refused).refusal.code)
+    }
+
+    @Test
+    fun aRangedReadsErrorBodyIsReadToTheErrorCapNotTheRange() = withServer { server ->
+        // The range asks for 10 bytes; the refusal's body is longer than that and still names its code.
+        val body = """{"error":{"code":"quota_exceeded","message":"${"x".repeat(200)}"},"scope":"user"}"""
+        server.enqueue(MockResponse().setResponseCode(403).setBody(body))
+        val refused = HttpFileTransport(core(server)).getFile(target, FileQuery(range = 0 to 10)) as FileReply.Refused
+        assertEquals(403, refused.refusal.status)
+        assertEquals("quota_exceeded", refused.refusal.code)
+        // A success body past the range is still no answer.
+        server.enqueue(MockResponse().setResponseCode(206).setHeader("Content-Range", "bytes 0-9/100").setBody(Buffer().write(ByteArray(11))))
+        assertEquals("bad_response", (HttpFileTransport(core(server)).getFile(target, FileQuery(range = 0 to 10)) as FileReply.Refused).refusal.code)
     }
 
     @Test

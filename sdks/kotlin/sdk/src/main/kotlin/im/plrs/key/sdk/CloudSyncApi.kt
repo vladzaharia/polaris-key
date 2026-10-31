@@ -43,9 +43,14 @@ import im.plrs.key.config.schemaJson
 import im.plrs.key.config.syncDocument
 import im.plrs.key.config.useSync
 import im.plrs.key.core.CoreContext
+import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.Feature
+import im.plrs.key.core.PolarisException
 import im.plrs.key.core.SYNC_SIGNOUT_FLUSH_MS
 import im.plrs.key.core.ServiceSlug
+import im.plrs.key.core.TransferEvent
+import im.plrs.key.core.Unsupported
+import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.sync.CallResult
 import im.plrs.key.core.sync.ReadResult
 import im.plrs.key.core.sync.SyncDiscovery
@@ -88,6 +93,24 @@ public sealed interface CloudSyncEvent {
     /** The synced data could not be deleted from disk (no values, no path): the app may warn the person. */
     public data object PurgeFailed : CloudSyncEvent
 
+    /** A file transfer moved: [done] of [total] plaintext bytes (the `transferProgress` event). */
+    public data class TransferProgress(val id: String, val done: Long, val total: Long) : CloudSyncEvent {
+        public val type: String get() = TransferEvent.transferprogress
+    }
+
+    /**
+     * A file transfer settled without failing: [state] is `done`, `cancelled` (a state, not a failure) or `conflict`
+     * (settle it with `resolve`); the `transferDone` event.
+     */
+    public data class TransferDone(val id: String, val state: String) : CloudSyncEvent {
+        public val type: String get() = TransferEvent.transferdone
+    }
+
+    /** A file transfer failed with [code] (the `transferFailed` event). */
+    public data class TransferFailed(val id: String, val code: String) : CloudSyncEvent {
+        public val type: String get() = TransferEvent.transferfailed
+    }
+
     public companion object {
         internal fun of(e: SyncEvent): CloudSyncEvent = when (e) {
             is SyncEvent.Change -> Change(e.keys, e.origin)
@@ -120,6 +143,12 @@ public class CloudSyncClient internal constructor(private val api: CloudSyncApi)
 
     /** The recovery-code screen's model. */
     public val recoveryCode: RecoveryCodeModel = RecoveryCodeModel { api.newRecoveryCode() }
+
+    /** Saves: `list`, `read`, `write`, `delete`, `revisions` and `resolve` (U-22.5). A product with no `saves` collection gets the typed N/A. */
+    public val saves: SavesClient get() = api.saves
+
+    /** The save writes in flight (running, paused or waiting on the network). */
+    public fun transfers(): List<SaveTransfer> = api.saves.transfers()
 }
 
 /**
@@ -149,6 +178,10 @@ internal class CloudSyncApi(
     private val forgetRing: suspend () -> Unit,
     private val recovery: suspend () -> String,
     private val cleanup: () -> Unit = {},
+    /** Locks the key ring in memory (its root leaves at once); the pin is removed by [forgetRing]. */
+    private val lockRing: () -> Unit = {},
+    /** The file codec of a collection: end-to-end over the ring's root (refuses `sync-locked` while locked), or the plain server-mode one. */
+    private val fileCodec: (collection: String, e2e: Boolean) -> FileCodec = { _, e2e -> if (e2e) throw lockedError() else ServerFileCodec() },
 ) {
     private sealed interface Work {
         class Identity(val subject: String?) : Work
@@ -172,6 +205,92 @@ internal class CloudSyncApi(
     private var eventTail: Job? = null
 
     private fun host(): CloudSyncHost = hostValue ?: makeHost().also { hostValue = it }
+
+    // ── saves and files (U-22.5) ─────────────────────────────────────────────────────────────────
+
+    private val transferScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val savesLock = Mutex()
+    private var savesBinding: SavesBinding? = null
+
+    private val savesHooks = SavesHooks(
+        progress = { id, done, total -> emit(CloudSyncEvent.TransferProgress(id, done, total)) },
+        settled = { id, result -> emit(settledEvent(id, result)) },
+        readDone = { id, failure ->
+            emit(
+                if (failure ==
+                    null
+                ) {
+                    CloudSyncEvent.TransferDone(id, "done")
+                } else {
+                    CloudSyncEvent.TransferFailed(id, failure.code)
+                },
+            )
+        },
+    )
+
+    internal val saves: SavesClient = SavesClient(transferScope, savesHooks) { savesDeps() }
+
+    private fun settledEvent(id: String, result: SaveResult): CloudSyncEvent = when (result) {
+        is SaveResult.Done, is SaveResult.KeptRemote -> CloudSyncEvent.TransferDone(id, "done")
+        SaveResult.Cancelled -> CloudSyncEvent.TransferDone(id, "cancelled")
+        is SaveResult.Conflict -> CloudSyncEvent.TransferDone(id, "conflict")
+        is SaveResult.Failed -> CloudSyncEvent.TransferFailed(id, result.error.code)
+    }
+
+    private fun noSaves(): PolarisException {
+        val unsupported = Unsupported(Feature.syncSaves, UnsupportedReason.product, "the product declares no saves collection")
+        return PolarisException(
+            ErrorCode.serviceUnavailable,
+            "The product declares no saves collection.",
+            detail = unsupported.detail,
+            unsupported = unsupported,
+        )
+    }
+
+    /** The binding of the host's records and the file transport; built once, on the first use, after the host started. */
+    private inner class SavesBinding(val h: CloudSyncHost) {
+        val records = HostSaveRecords(h)
+        val transport = HttpFileTransport(core) { subject }
+        val engine = FileTransferEngine(transport, FileJournal(h.stateDir), maxRetryAfterSeconds = SAVES_MAX_RETRY_AFTER_SECONDS)
+    }
+
+    private suspend fun savesDeps(): SavesDeps {
+        core.requireService(ServiceSlug.sync, Feature.syncSaves)
+        withContext(dispatcher) { attach() }
+        val h = withContext(dispatcher) { startedHost() } ?: throw PolarisException(ErrorCode.syncFailed, "Cloud Sync is not running.")
+        val decl = h.savesCollection() ?: throw noSaves()
+        val binding = savesLock.withLock {
+            savesBinding?.takeIf { it.h === h } ?: SavesBinding(h).also {
+                it.records.listen()
+                savesBinding = it
+            }
+        }
+        val e2e = h.withMachine { it.encryptionMode() == "e2e" }
+        val codec = fileCodec(SAVES_COLLECTION, e2e)
+        val who = withContext(dispatcher) { subject }
+        val cache = if (decl.delta &&
+            who != null
+        ) {
+            FileChunkCache(chunkCacheDir(h.stateDir, who, SAVES_COLLECTION), chunkCacheBudget(decl.maxBytes))
+        } else {
+            null
+        }
+        return SavesDeps(binding.records, binding.engine, binding.transport, codec, decl.delta, decl.maxBytes, h.appOptions.saveFormatVersion, cache)
+    }
+
+    /**
+     * The person's save transfers go: running writes are cancelled, waiting writes settle as dropped, the transfer journal
+     * and the chunk cache are deleted. Each step is tried whatever the other did; none throws.
+     */
+    private suspend fun purgeSaves() {
+        withContext(NonCancellable) {
+            savesBinding?.records?.dropAll()
+            runCatching { saves.cancelAll() }
+            val dir = hostValue?.stateDir ?: return@withContext
+            runCatching { FileJournal(dir).clear() }
+            runCatching { java.io.File(dir, CLOUD_SYNC_CHUNKS_DIR).deleteRecursively() }
+        }
+    }
 
     private suspend fun startedHost(): CloudSyncHost? = hostValue?.takeIf { it.isStarted() }
 
@@ -241,6 +360,7 @@ internal class CloudSyncApi(
             cleanup()
         }
         scope.coroutineContext[Job]?.cancel()
+        transferScope.coroutineContext[Job]?.cancel()
     }
 
     /** The client's `close()`: stop the host in the background (never blocks the caller). */
@@ -374,6 +494,9 @@ internal class CloudSyncApi(
                     h.flush(SYNC_SIGNOUT_FLUSH_MS.toLong())
                     drainEvents()
                 }
+                // The root leaves memory first (a save codec stops with it), the save transfers go, and the pin goes last.
+                lockRing()
+                purgeSaves()
                 withContext(NonCancellable) { forgetRing() }
                 if (h != null) {
                     h.withMachine { it.signOut() }
@@ -459,7 +582,9 @@ internal class CloudSyncApi(
         forgetJob?.let { return it }
         forgetPending = true
         val job = scope.launch {
+            lockRing()
             if (purgeFirst && subject == null) withContext(NonCancellable) { purge() }
+            purgeSaves()
             val ok = withContext(NonCancellable) {
                 try {
                     forgetRing()

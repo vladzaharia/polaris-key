@@ -16,6 +16,9 @@ import kotlinx.serialization.json.JsonObject
 internal class CloudSyncHostState(val deps: CloudSyncHostDeps, val opts: CloudSyncHostOptions, val dispatcher: CoroutineDispatcher) {
     val file = CloudSyncStateFile(deps.stateDir, deps.product)
     var machine: CloudSyncMachine? = null
+
+    /** The listener for `putAt` / `removeAt` outcomes; it survives a rebuild of the machine. */
+    var outcome: ((im.plrs.key.core.sync.RecordOutcome) -> Unit)? = null
     var detach: (() -> Unit)? = null
 
     /** The catalog compiled into the app: authoritative for every key it names. */

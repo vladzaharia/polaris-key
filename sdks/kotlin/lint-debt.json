@@ -469,7 +469,7 @@
       "detekt:complexity.LongParameterList": 1,
       "detekt:complexity.NestedBlockDepth": 1,
       "detekt:empty-blocks.EmptyFunctionBlock": 1,
-      "detekt:style.MaxLineLength": 3,
+      "detekt:style.MaxLineLength": 2,
       "detekt:style.ThrowsCount": 1,
       "ktlint:standard:max-line-length": 1
     },
@@ -1932,8 +1932,6 @@
       "detekt:complexity.ComplexCondition": 1,
       "detekt:complexity.CyclomaticComplexMethod": 2,
       "detekt:complexity.TooManyFunctions": 1,
-      "detekt:exceptions.RethrowCaughtException": 1,
-      "detekt:style.MagicNumber": 11,
       "detekt:style.MaxLineLength": 1,
       "detekt:style.ReturnCount": 5
     },

@@ -15,6 +15,7 @@
 package im.plrs.key.sdk
 
 import im.plrs.key.core.SYNC_CDC_MAX_BYTES
+import im.plrs.key.core.SYNC_CHUNK_MAX_STORED_BYTES
 import im.plrs.key.core.sync.SyncChunks
 import im.plrs.key.core.sync.SyncCrypto
 import im.plrs.key.core.sync.SyncFileStream
@@ -139,7 +140,7 @@ public class ServerFileCodec(private val decode: ZstdDecode? = libZstdDecode) : 
     override fun openChunk(id: ByteArray, obj: ByteArray): FileOpened {
         val reason: String? = when {
             obj.size < 2 -> "shape"
-            obj.size > SERVER_CHUNK_MAX_STORED_BYTES -> "size"
+            obj.size > SYNC_CHUNK_MAX_STORED_BYTES -> "size"
             (obj[0].toInt() and 0xff) != SERVER_CHUNK_OBJECT_VERSION -> "version"
             (obj[1].toInt() and 0xff) != SyncChunks.CODEC_RAW && (obj[1].toInt() and 0xff) != SyncChunks.CODEC_ZSTD -> "codec"
             else -> null
