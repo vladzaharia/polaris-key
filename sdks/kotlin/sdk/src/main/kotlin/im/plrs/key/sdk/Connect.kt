@@ -57,6 +57,7 @@ import im.plrs.key.core.defaultDeviceKeyStore
 import im.plrs.key.core.jsonInt
 import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
+import im.plrs.key.core.peer.nearby.RequesterSigner
 import im.plrs.key.core.registerDeviceKeys
 import im.plrs.key.core.stringValue
 import im.plrs.key.core.TrustSet
@@ -284,6 +285,16 @@ public class ConnectClient internal constructor(
      * `peer-cert-invalid` for an answer that fails verification.
      */
     public suspend fun identity(refresh: Boolean = false): ConnectIdentity = lock.withLock { loadIdentity(refresh) }
+
+    /**
+     * D's device keys (made when none exist) and its `X-PKey-Device` value, for the vouch of nearby approval
+     * (CC-15). Needs no sign-in, no roster and no Connect.
+     */
+    internal suspend fun nearbySigner(): RequesterSigner = lock.withLock {
+        val p = usePort()
+        ensureKeys(p)
+        RequesterSigner(p, core.deviceId())
+    }
 
     /**
      * The held identity as it stands, verified again now; null when none is held, it does not verify

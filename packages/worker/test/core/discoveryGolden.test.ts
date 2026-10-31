@@ -74,6 +74,10 @@
  * `endpoints.restore` (`<base>/identity/restore`) right after `signout`, while Identity, the
  * product setting `identity.restore` and the launch gate `launch.identityRestore` all allow it (the
  * gate is on in this suite's env). Additive; the identity transcripts pin both.
+ * I-40.8 (WIRE-CONTRACT-V5 §12.11.6) added Identity's `nearby: true` after `keyEntryLimit` and the
+ * endpoints `nearbyStart`, `nearbyApprove` and `nearbyPoll` after `link`, while Identity,
+ * `identity.nearby` and the gate `launch.identityNearby` all serve it (the suite's env turns the
+ * gate on). Additive; the transcripts `nearby-disabled` and `nearby-gate-off` pin the absence.
  */
 
 import { readFileSync } from "node:fs";

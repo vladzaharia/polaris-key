@@ -145,6 +145,25 @@ final class BonjourBrowseTests: XCTestCase {
     }
 
     /// A peer seen before the roster listed it enters the table on `rescan`, with no new browse event.
+    /// CC-15.S3: the nearby requester cannot match an approver by name (it is random), so the result filter
+    /// sees the TXT; an advert it refuses never takes a table slot.
+    func testOnlyAcceptedResultsEnterTheTable() throws {
+        let d = FakeDriver()
+        let l = Log()
+        let b = BonjourBrowse(
+            driver: d, configurationCheck: { nil },
+            acceptFound: { $0.txt.contains("m=v") && $0.txt.contains("h=0123456789abcdef") })
+        try b.start(onUp: { l.add(up: $0) }, onDown: { l.add(down: $0) }, onError: { l.add(err: $0) })
+        d.send(
+            .upserted([
+                found(1, txt: ["v=1", "m=a"]), found(2, txt: ["v=1", "m=v", "h=ffffffffffffffff"]),
+                found(3, txt: ["v=1", "m=v", "h=0123456789abcdef"]),
+            ]))
+        XCTAssertEqual(l.up.map(\.instance), [inst(3)])
+        d.send(.removed([inst(1), inst(3)]))
+        XCTAssertEqual(l.down, [inst(3)], "a name that never entered the table has nothing to withdraw")
+    }
+
     func testRescanAdmitsAPeerSeenBeforeItWasKnown() throws {
         let d = FakeDriver()
         let known = PlatformLock(Set<String>())

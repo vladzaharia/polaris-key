@@ -1,11 +1,16 @@
 // @pkey-feature identity.devicelabel
-// The Worker's run of `conformance/corpus/v2/device-label.json` (WIRE-CONTRACT-V4 §12.7.1,
-// plans/PX-W13.md §4): every row goes through `/device/start` as `deviceName`, and the echo is
-// the row's `expect`, so the Worker normalises exactly as every SDK does.
+// The Worker's run of `conformance/corpus/v2/device-label.json` (WIRE-CONTRACT-V5 §12.7.1,
+// plans/PX-W13.md §4, DEVICE-LABEL-STRIP): every row goes through `/device/start` as `deviceName`, and the echo is
+// the row's `expect`, so the Worker normalises exactly as every SDK does. `helloCases` (§15.6) is
+// the peer protocol's, which the Worker does not speak, so it is not run here.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import {
+  DEVICE_LABEL_SPACE,
+  DEVICE_LABEL_STRIP,
+} from "@polaris-key/protocol/identity";
 import { makeTestDb } from "../../helpers.js";
 import { KvMock } from "../../kvMock.js";
 import { makeEnv, seedProduct } from "../../seed.js";
@@ -33,7 +38,11 @@ const corpus = JSON.parse(
     ),
     "utf8",
   ),
-) as { deviceLabelVersion: number; cases: Row[] };
+) as {
+  deviceLabelVersion: number;
+  ranges: { space: [number, number][]; strip: [number, number][] };
+  cases: Row[];
+};
 
 describe("device-label.json through /device/start", async () => {
   const db = makeTestDb();
@@ -51,7 +60,12 @@ describe("device-label.json through /device/start", async () => {
   );
   const product = (await loadProduct(env, db, "djdl"))!;
 
-  it("is version 1", () => expect(corpus.deviceLabelVersion).toBe(1));
+  it("is version 2", () => expect(corpus.deviceLabelVersion).toBe(2));
+
+  it("normalises with the tables of ranges", () => {
+    expect(DEVICE_LABEL_SPACE).toEqual(corpus.ranges.space);
+    expect(DEVICE_LABEL_STRIP).toEqual(corpus.ranges.strip);
+  });
 
   corpus.cases.forEach((row, i) =>
     it(row.id, async () => {

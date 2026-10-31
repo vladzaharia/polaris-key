@@ -1885,6 +1885,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       "identity.gamecenter",
       "identity.pgs",
       "identity.restore",
+      // identity.nearby is N/A (runtime) here: a browser tab has no mode v handshake and the
+      // renderer holds no device key (I-40.8); the Node runner replays the nearby-* transcripts.
+      "identity.nearby",
     ];
     const expected = TRANSCRIPTS.filter(
       (t) =>

@@ -236,6 +236,8 @@ class RelayLink {
       onRing(jws: string, epoch: number): void;
       onTrust(jws: string): void;
       onRingWanted(): void;
+      /** Would the send queue take `bytes` more? (A forced envelope ignores the answer.) */
+      room(bytes: number): boolean;
       onEstablished(s: ConnectSession): void;
       onEnded(l: RelayLink): void;
     },
@@ -254,10 +256,25 @@ class RelayLink {
       onEvent: (e) => this.#event(e),
     });
     this.#deadline = setTimeout(() => {
-      void this.channel.close("peer_bye");
-      this.finish({ code: "handshake_failed", byPeer: false });
+      void this.channel.close("peer_timeout");
+      this.finish({ code: "peer_timeout", byPeer: false });
     }, handshakeMs);
     this.#deadline.unref();
+  }
+
+  /**
+   * Would a host send of `bytes` fit the queue? If not, this session ends `peer_busy` now and the
+   * answer is true. It runs before the channel encrypts anything: a message dropped after it was
+   * encrypted leaves a gap in the nonces, and the peer then fails the CLOSE as `peer_bad_frame`.
+   */
+  refuses(bytes: number): boolean {
+    if (
+      this.#ended ||
+      this.cb.room(bytes + 128 * (Math.floor(bytes / 60_000) + 1))
+    )
+      return false;
+    this.overflow();
+    return true;
   }
 
   /** The send queue is full: end this session `peer_busy`, and say so to the peer. */
@@ -707,6 +724,12 @@ export class RelayService {
     this.#pingCancel = timer(tick, this.#o.pingMs ?? 25_000);
   }
 
+  /** Would the queue behind the socket take `bytes` more? True when there is no queue (the socket is down). */
+  #room(bytes: number): boolean {
+    const out = this.#out;
+    return !this.#open || out === null || out.queued + bytes <= out.maxBytes;
+  }
+
   #sendEnv(m: Parameters<typeof encodeRelay>[0], force = true): boolean {
     return !this.#open || (this.#out?.send(m, force) ?? true);
   }
@@ -823,6 +846,7 @@ export class RelayService {
       (noise) => this.#sendSession(link, peer, sessionId, noise),
       {
         ...this.#docs.hooks,
+        room: (n) => this.#room(n),
         onEstablished: (s) => {
           if (role === "responder") for (const f of [...this.#onSession]) f(s);
         },

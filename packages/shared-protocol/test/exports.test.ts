@@ -373,6 +373,11 @@ describe("@polaris-key/protocol layout", () => {
     expect(identity.REQUEST_HANDLE_TTL_SECONDS).toBe(600);
     expect(identity.DISPLAY_TEXT_STRIP).toContainEqual([0x202a, 0x202e]);
     expect(identity.DISPLAY_TEXT_SPACE).toContainEqual([0x0009, 0x000d]);
+    // DEVICE-LABEL-STRIP: the device label has its own, wider tables; the manifest rule keeps
+    // the two above.
+    expect(identity.DEVICE_LABEL_SPACE).toContainEqual([0x2800, 0x2800]);
+    expect(identity.DEVICE_LABEL_STRIP).toContainEqual([0xe0000, 0xe0fff]);
+    expect(identity.DISPLAY_TEXT_STRIP).not.toContainEqual([0xe0000, 0xe0fff]);
     // 16 random bytes are 22 base64url characters, and the handle is only ever matched whole.
     expect(
       new RegExp(identity.REQUEST_HANDLE_PATTERN).test(`rq_${"A".repeat(22)}`),

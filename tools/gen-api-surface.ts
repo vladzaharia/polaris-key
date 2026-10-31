@@ -151,6 +151,11 @@ function renderNode(api: Api): string {
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in ${cls}.prototype).toBe(true));`,
       );
+    } else if (r.id.startsWith("cloudConnect.nearby.")) {
+      // Nearby approval (CC-15): request and onRequest live on `cloudConnect.nearby`.
+      lines.push(
+        `it(${q(r.id)}, () => expect(${q(r.name)} in CloudNearby.prototype).toBe(true));`,
+      );
     } else if (r.id.startsWith("identity.choice.")) {
       // The licence choice an app shows itself: licenses, devices, complete, cancel live on `identity.choice`.
       lines.push(
@@ -179,6 +184,7 @@ function renderNode(api: Api): string {
     `import {`,
     `  ChoiceClient,`,
     `  CloudConnect,`,
+    `  CloudNearby,`,
     `  ConfigClient,`,
     `  DeviceCodeSession,`,
     `  EntitlementsClient,`,
@@ -273,6 +279,9 @@ function renderPython(api: Api): string {
       continue; // an instance attribute set in __init__
     } else if (r.handle) {
       attrs.push(`(${q(r.id)}, "ConfigSetting", ${q(r.name)})`);
+    } else if (r.id.startsWith("cloudConnect.nearby.")) {
+      // Nearby approval (CC-15): request and on_request live on `cloud_connect.nearby`.
+      attrs.push(`(${q(r.id)}, "CloudNearby", ${q(r.name)})`);
     } else if (r.id === "identity.signIn") {
       // sign_in is a property on the identity client; start is its one verb.
       attrs.push(`(${q(r.id)}, "IdentityClient", "sign_in")`);
@@ -302,6 +311,7 @@ import pytest
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
+from polaris_key.connect.nearby import CloudNearby
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
@@ -317,6 +327,7 @@ CLASSES = {
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
+    "CloudNearby": CloudNearby,
 }
 
 ${list("ATTRS", attrs)}
@@ -430,6 +441,9 @@ function renderSwift(api: Api): string {
       lines.push(
         `_ = \\${r.name === "events" ? "PolarisKeyClient" : (SWIFT_TYPE[r.ns] ?? "PolarisKeyClient")}.${r.name}  // ${r.id}`,
       );
+    } else if (r.id.startsWith("cloudConnect.nearby.")) {
+      // Nearby approval (CC-15): request and onRequest live on `cloudConnect.nearby`.
+      lines.push(`_ = CloudNearby.${ref}  // ${r.id}`);
     } else if (SWIFT_TYPE[r.ns]) {
       lines.push(`_ = ${SWIFT_TYPE[r.ns]}.${ref}  // ${r.id}`);
     }
@@ -469,6 +483,7 @@ const KOTLIN_TYPE: Record<string, string> = {
   packs: "PacksClient",
   presentation: "PresentationSource",
   cloudConnect: "CloudConnect",
+  CloudNearby: "CloudNearby",
   cloudSync: "CloudSyncClient",
 };
 /** Rows built by the Android and Desktop bootstrap objects (PolarisKeyAndroid, PolarisKeyDesktop): not on the client, and the Android module is not in the JVM build. */
@@ -531,6 +546,7 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.release.ReleaseClient`,
     `import im.plrs.key.sdk.BackendClient`,
     `import im.plrs.key.sdk.CloudConnect`,
+    `import im.plrs.key.sdk.CloudNearby`,
     `import im.plrs.key.sdk.CloudSyncClient`,
     `import im.plrs.key.sdk.CloudSyncHostOptions`,
     `import im.plrs.key.sdk.CommerceClient`,

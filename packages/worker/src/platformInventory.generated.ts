@@ -182,6 +182,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: "LAUNCH_IDENTITY_RESTORE",
   },
   {
+    name: "LAUNCH_IDENTITY_NEARBY",
+    kind: "var",
+    area: "jobs",
+    optional: true,
+    editable: "LAUNCH_IDENTITY_NEARBY",
+  },
+  {
     name: "DELTA_QUEUE",
     kind: "binding",
     area: "jobs",

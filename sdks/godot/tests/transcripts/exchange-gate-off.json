@@ -103,6 +103,7 @@
                     "account": true,
                     "keyEntryLimit": 10,
                     "restore": true,
+                    "nearby": true,
                     "endpoints": {
                       "session": "https://key.plrs.im/djdl/identity/session",
                       "sessionLicense": "https://key.plrs.im/djdl/identity/session/license",
@@ -123,6 +124,9 @@
                       "subject": "https://key.plrs.im/djdl/identity/subject",
                       "signout": "https://key.plrs.im/djdl/identity/signout",
                       "restore": "https://key.plrs.im/djdl/identity/restore",
+                      "nearbyStart": "https://key.plrs.im/djdl/identity/nearby/start",
+                      "nearbyApprove": "https://key.plrs.im/djdl/identity/nearby/approve",
+                      "nearbyPoll": "https://key.plrs.im/djdl/identity/nearby/poll",
                       "accountPortal": "https://key.plrs.im/#/p/djdl"
                     }
                   },

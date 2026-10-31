@@ -159,6 +159,17 @@ export const ErrorCode = {
   connectUnavailable: "connect-unavailable",
   peerCertInvalid: "peer-cert-invalid",
   nearbyPermissionDenied: "nearby-permission-denied",
+  nearbyUnsupported: "nearby-unsupported",
+  peerHandshakeFailed: "peer-handshake-failed",
+  peerClosed: "peer-closed",
+  peerRevoked: "peer_revoked",
+  peerExpired: "peer_expired",
+  peerBadFrame: "peer_bad_frame",
+  peerUnknownCritical: "peer_unknown_critical",
+  peerNotAllowed: "peer_not_allowed",
+  peerBusy: "peer_busy",
+  peerTimeout: "peer_timeout",
+  peerBye: "peer_bye",
   platformError: "platform-error",
   noToken: "no-token",
   mintUnavailable: "mint-unavailable",
@@ -375,6 +386,17 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "connect-unavailable",
   "peer-cert-invalid",
   "nearby-permission-denied",
+  "nearby-unsupported",
+  "peer-handshake-failed",
+  "peer-closed",
+  "peer_revoked",
+  "peer_expired",
+  "peer_bad_frame",
+  "peer_unknown_critical",
+  "peer_not_allowed",
+  "peer_busy",
+  "peer_timeout",
+  "peer_bye",
   "platform-error",
   "no-token",
   "mint-unavailable",
@@ -437,7 +459,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
 ];
 
 /** `wire`: appears in a Worker response body. `client`: raised only by an SDK. `backend`: answered by an SDK's server core to an app's request to its own backend (WIRE-CONTRACT-V4 §14). */
-export type ErrorCodeKind = "wire" | "client" | "backend";
+export type ErrorCodeKind = "wire" | "client" | "backend" | "peer";
 
 /** The registry: every error code and its kind. */
 export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
@@ -593,6 +615,17 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "connect-unavailable": "client",
   "peer-cert-invalid": "client",
   "nearby-permission-denied": "client",
+  "nearby-unsupported": "client",
+  "peer-handshake-failed": "client",
+  "peer-closed": "client",
+  peer_revoked: "peer",
+  peer_expired: "peer",
+  peer_bad_frame: "peer",
+  peer_unknown_critical: "peer",
+  peer_not_allowed: "peer",
+  peer_busy: "peer",
+  peer_timeout: "peer",
+  peer_bye: "peer",
   "platform-error": "client",
   "no-token": "client",
   "mint-unavailable": "client",
@@ -732,6 +765,7 @@ export const Feature = {
   identityAutosignin: "identity.autosignin",
   identityRestore: "identity.restore",
   identityLink: "identity.link",
+  identityNearby: "identity.nearby",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -877,6 +911,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.autosignin",
   "identity.restore",
   "identity.link",
+  "identity.nearby",
   "release.changelog",
   "release.download",
   "release.record",
@@ -1635,7 +1670,7 @@ export const PLAN_MATRIX_VERSION = 2;
 export const SYNC_SCENARIOS_VERSION = 4;
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
-export const DEVICE_LABEL_VERSION = 1;
+export const DEVICE_LABEL_VERSION = 2;
 
 /** `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json. */
 export const PRESENTATION_MATRIX_VERSION = 1;
@@ -2242,6 +2277,14 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
+  "identity.nearby": {
+    status: "na",
+    service: "identity",
+    na: [
+      { runtime: "web", reason: "runtime" },
+      { runtime: "desktop-bridge", reason: "runtime" },
+    ],
+  },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -2427,4 +2470,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "fe7d1851a67f0aea2484df40e05e7db73f0be6a6f9e3c6c72f2d74ad7f596f0e";
+  "ce192d9f27ecdb978d42887fe17ce5f0f94b712672c60b5903a2ad3264c8a849";
