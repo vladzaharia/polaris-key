@@ -29,6 +29,7 @@ import {
   manifestOf,
   plan,
   planPath,
+  planUpload,
   planned,
 } from "./cloudSyncChunksWorld.js";
 
@@ -122,8 +123,7 @@ describe("the plan call", () => {
   it("naming an id again changes nothing", async () => {
     const w = await filesWorld();
     const a = chunkOf(1);
-    const up = await beginChunks(w, "delta", "slot", manifestOf());
-    await planned(w, "delta", "slot", up.uploadId, [a]);
+    const up = await planUpload(w, "slot", [a]);
     const once = reserved(w);
     await planned(w, "delta", "slot", up.uploadId, [a]);
     expect(reserved(w)).toBe(once);

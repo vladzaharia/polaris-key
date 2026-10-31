@@ -15,14 +15,11 @@ import {
   exportCloudSync,
 } from "../../../src/services/sync/do/client.js";
 import { syncProductPurge } from "../../../src/services/sync/productDeletion.js";
-import { hlc, nextId } from "./cloudSyncAbuseWorld.js";
 import {
   SLUG,
-  becomeBob,
   call,
   filesWorld,
   finalize,
-  push,
   rows,
   uploadPath,
   usageOf,
@@ -31,6 +28,15 @@ import {
 import {
   beginChunks,
   chunkOf,
+  closeSessionAfterPut,
+  deleteRecord,
+  holdUpload,
+  planUpload,
+  setClock,
+  survivorOf,
+  fireAlarm,
+  keyOfChunk,
+  personOf,
   manifestOf,
   planned,
   putChunk,
@@ -44,28 +50,16 @@ afterEach(() => vi.useRealTimers());
 
 const DAY = 86_400_000;
 const name = (w: FilesWorld) => `${SLUG}:${w.subject}`;
-const alarm = (w: FilesWorld) => w.ns.fireAlarm(name(w));
-const pin = (w: FilesWorld) => ({ product: SLUG, subject: w.subject });
-const clock = (ms: number) => {
-  if (!vi.isFakeTimers()) vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(ms);
-};
-const keyOf = (w: FilesWorld, collection: string, c: TestChunk) =>
-  `u/${SLUG}/${w.subject}/c/${collection}/${c.id}`;
+const alarm = fireAlarm;
+const pin = personOf;
+const clock = setClock;
+const keyOf = keyOfChunk;
 const chunkRefs = (w: FilesWorld, collection: string, c: TestChunk) =>
   rows(
     w,
     `SELECT refs FROM chunks WHERE collection = '${collection}' AND chunk_id = '${c.id}'`,
   )[0]?.refs;
-const del = (w: FilesWorld, collection: string, id: string) =>
-  push(w, [
-    {
-      mutationId: nextId(),
-      target: { record: [collection, id] },
-      op: "delete",
-      editedHlc: hlc,
-    },
-  ]);
+const del = deleteRecord;
 
 const TWO_DELTA = {
   schemaVersion: 1,
@@ -184,9 +178,7 @@ describe("the collector never deletes a pinned chunk (D-7)", () => {
   it("a chunk stored for an open upload survives the alarm; once the upload is deleted it is collected", async () => {
     const w = await filesWorld();
     const a = chunkOf(1);
-    const up = await beginChunks(w, "delta", "slot", manifestOf());
-    await planned(w, "delta", "slot", up.uploadId, [a]);
-    await putChunk(w, "delta", "slot", up.uploadId, a);
+    const up = await holdUpload(w, "slot", [a]);
     await alarm(w);
     expect(w.r2.has(keyOf(w, "delta", a))).toBe(true);
     expect(
@@ -202,9 +194,7 @@ describe("the collector never deletes a pinned chunk (D-7)", () => {
     clock(NOW * 1000);
     const w = await filesWorld();
     const a = chunkOf(1);
-    const up = await beginChunks(w, "delta", "slot", manifestOf());
-    await planned(w, "delta", "slot", up.uploadId, [a]);
-    await putChunk(w, "delta", "slot", up.uploadId, a);
+    await holdUpload(w, "slot", [a]);
     clock(NOW * 1000 + DAY + 1000);
     await alarm(w);
     expect(w.r2.keys()).toEqual([]);
@@ -230,14 +220,8 @@ describe("the collector never deletes a pinned chunk (D-7)", () => {
   it("a chunk stored for a session that closed meanwhile is collected too", async () => {
     const w = await filesWorld();
     const a = chunkOf(1);
-    const up = await beginChunks(w, "delta", "slot", manifestOf());
-    await planned(w, "delta", "slot", up.uploadId, [a]);
-    const realPut = w.r2.put.bind(w.r2);
-    w.r2.put = (async (...args: Parameters<typeof realPut>) => {
-      const out = await realPut(...args);
-      await call(w, "DELETE", uploadPath("delta", "slot", up.uploadId));
-      return out;
-    }) as typeof w.r2.put;
+    const up = await planUpload(w, "slot", [a]);
+    closeSessionAfterPut(w, "slot", up.uploadId);
     expect((await putChunk(w, "delta", "slot", up.uploadId, a)).status).toBe(
       404,
     );
@@ -334,27 +318,9 @@ describe("export and absorb carry chunks", () => {
     await writeChunked(w, "delta", "slot", manifestOf(1, 150), [a, b]);
     // A chunk nothing references: it does not move.
     const loose = chunkOf(3, 500);
-    const up = await beginChunks(w, "delta", "tmp", manifestOf(2, 151));
-    await planned(w, "delta", "tmp", up.uploadId, [loose]);
-    await putChunk(w, "delta", "tmp", up.uploadId, loose);
+    const up = await holdUpload(w, "tmp", [loose], manifestOf(2, 151));
     await call(w, "DELETE", uploadPath("delta", "tmp", up.uploadId));
-    const alice = pin(w);
-    await becomeBob(w);
-    await push(w, [
-      {
-        mutationId: nextId(),
-        target: { record: ["big", "bobs"] },
-        op: "set",
-        value: 1,
-        editedHlc: hlc,
-      },
-    ]);
-    const bob = {
-      product: SLUG,
-      subject: [...w.ns.instances.keys()]
-        .map((k) => k.split(":")[1]!)
-        .find((s) => s !== alice.subject)!,
-    };
+    const { alice, bob } = await survivorOf(w);
     return { w, alice, bob, a, b, loose };
   }
   const bobDb = (w: FilesWorld, bob: { subject: string }) =>

@@ -264,6 +264,32 @@ function parkedOf(v: unknown): ParkedRecord | null {
 }
 
 const SHA256_RE = /^[0-9a-f]{64}$/;
+
+/** A collection name or record id as the engine writes it. */
+const isKey = (v: unknown): v is string =>
+  typeof v === "string" && KEY_RE.test(v);
+/** A positive store version. */
+const isVersion = (v: unknown): v is number =>
+  Number.isSafeInteger(v) && (v as number) >= 1;
+
+/**
+ * Reads an optional array member of a document into `into`, row by row. `false` when the member is
+ * present and is not an array, or any row fails: a document with one bad row is refused whole.
+ */
+function readList<T>(
+  raw: unknown,
+  parse: (v: unknown) => T | null,
+  into: T[],
+): boolean {
+  if (raw === undefined) return true;
+  if (!Array.isArray(raw)) return false;
+  for (const item of raw) {
+    const row = parse(item);
+    if (!row) return false;
+    into.push(row);
+  }
+  return true;
+}
 /** The key id of an SSE-C key (`ensureSsecKey` in `fileOps.ts`). */
 const SSEC_KID_RE = /^sk_[A-Za-z0-9_-]{16}$/;
 const SUBJECT_RE = /^[A-Za-z0-9_-]{1,256}$/;
@@ -333,8 +359,7 @@ function chunkOf(v: unknown, product: string): StoredChunk | null {
   if (!isObject(v)) return null;
   const safe = product.replace(/[^a-z0-9-]/g, "");
   if (
-    typeof v.collection !== "string" ||
-    !KEY_RE.test(v.collection) ||
+    !isKey(v.collection) ||
     typeof v.chunkId !== "string" ||
     !SHA256_RE.test(v.chunkId) ||
     typeof v.objectKey !== "string" ||
@@ -369,12 +394,9 @@ function chunkOf(v: unknown, product: string): StoredChunk | null {
 function fileChunkOf(v: unknown): FileChunkRef | null {
   if (!isObject(v)) return null;
   if (
-    typeof v.collection !== "string" ||
-    !KEY_RE.test(v.collection) ||
-    typeof v.recordId !== "string" ||
-    !KEY_RE.test(v.recordId) ||
-    !Number.isSafeInteger(v.version) ||
-    (v.version as number) < 1 ||
+    !isKey(v.collection) ||
+    !isKey(v.recordId) ||
+    !isVersion(v.version) ||
     typeof v.chunkId !== "string" ||
     !SHA256_RE.test(v.chunkId)
   )
@@ -382,7 +404,7 @@ function fileChunkOf(v: unknown): FileChunkRef | null {
   return {
     collection: v.collection,
     recordId: v.recordId,
-    version: v.version as number,
+    version: v.version,
     chunkId: v.chunkId,
   };
 }
@@ -431,42 +453,18 @@ export function parseExportDocument(doc: unknown): ParsedExport | null {
   }
   const records: StoredRecord[] = [];
   const parked: ParkedRecord[] = [];
-  for (const [raw, into, parse] of [
-    [doc.records, records, recordOf],
-    [doc.parked, parked, parkedOf],
-  ] as const) {
-    if (raw === undefined) continue;
-    if (!Array.isArray(raw)) return null;
-    for (const item of raw) {
-      const row = parse(item);
-      if (!row) return null;
-      (into as unknown[]).push(row);
-    }
-  }
   const product = typeof doc.product === "string" ? doc.product : "";
   const files: StoredFile[] = [];
-  if (doc.files !== undefined) {
-    if (!Array.isArray(doc.files)) return null;
-    for (const raw of doc.files) {
-      const f = fileOf(raw, product);
-      if (!f) return null;
-      files.push(f);
-    }
-  }
   const chunks: StoredChunk[] = [];
   const fileChunks: FileChunkRef[] = [];
-  for (const [raw, parse, into] of [
-    [doc.chunks, (v: unknown) => chunkOf(v, product), chunks],
-    [doc.fileChunks, fileChunkOf, fileChunks],
-  ] as const) {
-    if (raw === undefined) continue;
-    if (!Array.isArray(raw)) return null;
-    for (const item of raw) {
-      const row = parse(item);
-      if (!row) return null;
-      (into as unknown[]).push(row);
-    }
-  }
+  if (
+    !readList(doc.records, recordOf, records) ||
+    !readList(doc.parked, parkedOf, parked) ||
+    !readList(doc.files, (v) => fileOf(v, product), files) ||
+    !readList(doc.chunks, (v) => chunkOf(v, product), chunks) ||
+    !readList(doc.fileChunks, fileChunkOf, fileChunks)
+  )
+    return null;
   // Every chunk a file names is in the document, and names a file the document holds.
   const have = new Set(chunks.map((c) => `${c.collection}\u0000${c.chunkId}`));
   const fileKeys = new Set(

@@ -44,7 +44,7 @@ import { randomToken } from "../../../platform/random.js";
 import { trustRefusal } from "../../../core/trust/deviceTrust.js";
 import { callCloudSync } from "../do/client.js";
 import type { DoPin } from "../do/protocol.js";
-import { syncTransferPlan } from "../engine/files.js";
+import { syncTransferPlan, type FileLimits } from "../engine/files.js";
 import { isBlinded } from "../engine/sealed.js";
 import { filesLimited, partsLimited } from "../limits.js";
 import {
@@ -237,6 +237,34 @@ export async function withObject<T>(
   return retryable();
 }
 
+/** What the object checks a write against: the device's allowance and the platform's ceilings. */
+export function fileLimits(
+  caller: SyncCaller,
+  ceilings: { bytes: boolean; users: boolean },
+): FileLimits {
+  return {
+    quotaBytes: caller.access.quota.bytes,
+    ...(ceilings.bytes ? { productOverCeiling: true } : {}),
+    ...(ceilings.users ? { usersAtCeiling: true } : {}),
+  };
+}
+
+/**
+ * The collection a call on a live product names, or the response to send: the product is live and
+ * not being erased, its catalog is readable, and the collection is declared.
+ */
+export async function declaredCollection(
+  ctx: ServiceContext,
+  collection: string,
+): Promise<NonNullable<ReturnType<typeof matchCollection>> | Response> {
+  const gone = await liveRefusal(ctx.env, ctx.db, ctx.product.slug);
+  if (gone) return gone;
+  const loaded = await readCatalog(ctx);
+  if (loaded instanceof Response) return loaded;
+  const decl = matchCollection(loaded.catalog, collection);
+  return decl ?? wireError(400, "collection_unknown");
+}
+
 /** The product's active catalog, or a `503` when it cannot be read (it cannot classify). */
 export async function readCatalog(
   ctx: ServiceContext,
@@ -348,11 +376,7 @@ async function fileBegin(
       mode: plan.mode,
       ...(plan.mode === "multipart" ? { partBytes: plan.partBytes } : {}),
       maxRecords: decl.maxRecords,
-      limits: {
-        quotaBytes: c.access.quota.bytes,
-        ...(ceilings.bytes ? { productOverCeiling: true } : {}),
-        ...(ceilings.users ? { usersAtCeiling: true } : {}),
-      },
+      limits: fileLimits(c, ceilings),
       serverNow: ctx.now * 1000,
     }),
   );

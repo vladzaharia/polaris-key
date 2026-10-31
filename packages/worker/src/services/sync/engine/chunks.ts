@@ -161,10 +161,6 @@ export function missingChunks(store: SyncStore, uploadId: string): string[] {
     .map((c) => c.chunkId);
 }
 
-/** Whether a chunk row has any reason to stay: a file names it or an upload pins it. */
-export const chunkInUse = (store: SyncStore, c: StoredChunk): boolean =>
-  c.refs > 0 || store.chunkPinned(c.collection, c.chunkId);
-
 /** What the Worker needs to stream a chunk `PUT`: nothing (it landed or is not asked for) or the size to expect. */
 export type ChunkPrepare =
   | { kind: "unplanned" }

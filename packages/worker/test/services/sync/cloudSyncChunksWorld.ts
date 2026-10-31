@@ -5,12 +5,18 @@
  */
 import { createHash } from "node:crypto";
 import type {
+  StoredChunk,
+  UploadRow,
+} from "../../../src/services/sync/engine/types.js";
+import type {
   BeginFileResponse,
   ChunkPlanResponse,
   FinalizeResponse,
 } from "@polaris-key/protocol/sync";
-import { expect } from "vitest";
+import { expect, vi } from "vitest";
+import { hlc, nextId } from "./cloudSyncAbuseWorld.js";
 import {
+  becomeBob,
   begin,
   beginBody,
   bytesOf,
@@ -18,6 +24,7 @@ import {
   digestHeader,
   filesPath,
   finalize,
+  push,
   putBytes,
   SLUG,
   sha256Hex,
@@ -158,3 +165,146 @@ export function exec(w: FilesWorld, sql: string): void {
 export { call, digestHeader, filesPath };
 export const hashOf = (b: Uint8Array): string =>
   createHash("sha256").update(b).digest("hex");
+
+// ── Shared by the store, engine and collector suites ───────────────────────────────────────────
+
+/** A 64-hex chunk id from a number. */
+export const idOf = (n: number): string => n.toString(16).padStart(64, "0");
+
+/** A chunk row as the object stores it, unreferenced. */
+export function chunkRow(
+  collection: string,
+  n: number,
+  extra: Partial<StoredChunk> = {},
+): StoredChunk {
+  return {
+    collection,
+    chunkId: idOf(n),
+    objectKey: `u/p/s/c/${collection}/${idOf(n)}`,
+    storedBytes: 100 + n,
+    refs: 0,
+    unrefAt: 0,
+    ...extra,
+  };
+}
+
+/** An open `chunks` upload row. */
+export function chunksUpload(
+  uploadId: string,
+  collection = "saves",
+): UploadRow {
+  const base = { baseVersion: null, partBytes: null, multipartId: null };
+  return {
+    ...base,
+    uploadId,
+    collection,
+    recordId: "slot-1",
+    mode: "chunks",
+    format: "chunks",
+    enc: "none",
+    size: 200,
+    sha256: "ab".repeat(32),
+    reservedBytes: 200,
+    deviceId: "d_1",
+    createdAt: 1_000,
+    expiresAt: 5_000,
+    state: "open",
+    resultJson: null,
+  };
+}
+
+// ── Shared by the collector suite ──────────────────────────────────────────────────────────────
+
+/** The R2 key of a chunk object in the person's prefix. */
+export const keyOfChunk = (
+  w: FilesWorld,
+  collection: string,
+  c: TestChunk,
+): string => `u/${SLUG}/${w.subject}/c/${collection}/${c.id}`;
+
+/** Fires the person's object's alarm. */
+export const fireAlarm = (w: FilesWorld): Promise<unknown> =>
+  w.ns.fireAlarm(`${SLUG}:${w.subject}`);
+
+/** The (product, subject) the object is pinned to. */
+export const personOf = (w: FilesWorld) => ({
+  product: SLUG,
+  subject: w.subject,
+});
+
+/** `begin` and the plan call for `chunks` on a record of `delta`: an upload ready for chunk PUTs. */
+export async function planUpload(
+  w: FilesWorld,
+  record: string,
+  chunks: TestChunk[],
+  manifest: Uint8Array = manifestOf(),
+  over: Record<string, unknown> = {},
+) {
+  const up = await beginChunks(w, "delta", record, manifest, over);
+  await planned(w, "delta", record, up.uploadId, chunks);
+  return up;
+}
+
+/** `planUpload`, then every chunk stored: an open upload holding its chunks, not yet finalized. */
+export async function holdUpload(
+  w: FilesWorld,
+  record: string,
+  chunks: TestChunk[],
+  manifest: Uint8Array = manifestOf(),
+) {
+  const up = await planUpload(w, record, chunks, manifest);
+  for (const k of chunks) await putChunk(w, "delta", record, up.uploadId, k);
+  return up;
+}
+
+/** After the next bucket `put` lands, the upload is deleted: the session closes while bytes are in flight. */
+export function closeSessionAfterPut(
+  w: FilesWorld,
+  record: string,
+  uploadId: string,
+): void {
+  const realPut = w.r2.put.bind(w.r2);
+  w.r2.put = (async (...args: Parameters<typeof realPut>) => {
+    const out = await realPut(...args);
+    await call(w, "DELETE", uploadPath("delta", record, uploadId));
+    return out;
+  }) as typeof w.r2.put;
+}
+
+/** A record delete pushed by the world's device. */
+export const deleteRecord = (
+  w: FilesWorld,
+  collection: string,
+  id: string,
+): Promise<unknown> =>
+  push(w, [
+    {
+      mutationId: nextId(),
+      target: { record: [collection, id] },
+      op: "delete",
+      editedHlc: hlc,
+    },
+  ]);
+
+/** Sets the fake `Date` (installed once: the objects captured `Date.now` of the first install). */
+export function setClock(ms: number): void {
+  if (!vi.isFakeTimers()) vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(ms);
+}
+
+/**
+ * The world's device now belongs to Bob, who writes once so his object exists. Returns the two
+ * people's pins: the one who had the data, and the survivor of a merge.
+ */
+export async function survivorOf(w: FilesWorld) {
+  const alice = personOf(w);
+  await becomeBob(w);
+  await deleteRecord(w, "big", "bobs-nothing");
+  const bob = {
+    product: SLUG,
+    subject: [...w.ns.instances.keys()]
+      .map((k) => k.split(":")[1]!)
+      .find((x) => x !== alice.subject)!,
+  };
+  return { alice, bob };
+}

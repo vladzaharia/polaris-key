@@ -14,29 +14,23 @@ import {
   pruneRevisions,
 } from "../../../src/services/sync/engine/fileRows.js";
 import type {
-  StoredChunk,
   StoredFile,
   SyncStore,
   UploadRow,
 } from "../../../src/services/sync/engine/types.js";
 import { fileUsage } from "../../../src/services/sync/engine/usage.js";
 import { SqlTestStore } from "../../cloudSyncSqlTestStore.js";
+import { chunkRow, chunksUpload, idOf } from "./cloudSyncChunksWorld.js";
 
-const ID = (n: number): string => n.toString(16).padStart(64, "0");
+const ID = idOf;
 
 const makers: Record<string, () => SyncStore> = {
   memory: () => new MemoryStore(),
   sql: () => new SqlTestStore(),
 };
 
-const chunk = (n: number, storedBytes = 1000): StoredChunk => ({
-  collection: "saves",
-  chunkId: ID(n),
-  objectKey: `u/p/s/c/saves/${ID(n)}`,
-  storedBytes,
-  refs: 0,
-  unrefAt: 0,
-});
+const chunk = (n: number, storedBytes = 1000) =>
+  chunkRow("saves", n, { storedBytes, objectKey: `u/p/s/c/saves/${ID(n)}` });
 
 const file = (
   recordId: string,
@@ -170,25 +164,7 @@ describe.each(Object.entries(makers))(
   },
 );
 
-const upload = (): UploadRow => ({
-  uploadId: "up_a",
-  collection: "saves",
-  recordId: "slot",
-  baseVersion: null,
-  mode: "chunks",
-  format: "chunks",
-  enc: "none",
-  size: 200,
-  sha256: "ab".repeat(32),
-  partBytes: null,
-  multipartId: null,
-  reservedBytes: 200,
-  deviceId: "d_1",
-  createdAt: 1_000,
-  expiresAt: 5_000,
-  state: "open",
-  resultJson: null,
-});
+const upload = (): UploadRow => chunksUpload("up_a");
 
 describe.each(Object.entries(makers))("the plan: %s store", (_n, make) => {
   it("reserves what no file references and pins every named chunk", () => {

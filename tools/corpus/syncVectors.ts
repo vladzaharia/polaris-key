@@ -2197,6 +2197,21 @@ interface ChunkPairCase {
   zstdNonceHex: string;
 }
 
+/** Throws unless the reference's reading of an object is the verdict the row records. */
+function chunkAgrees(
+  id: string,
+  got: ReturnType<typeof refOpenChunk>,
+  expect: ChunkServerObjectCase["expect"],
+): void {
+  const want =
+    expect.result === "ok"
+      ? got.ok &&
+        toHex(got.plain) === expect.plainHex &&
+        got.codec === expect.codec
+      : !got.ok && got.reason === expect.reason;
+  if (!want) throw new Error(`syncVectors chunk ${id}: reference disagrees`);
+}
+
 function buildChunkCases(): Array<
   ChunkIdCase | ChunkObjectCase | ChunkPairCase | ChunkServerObjectCase
 > {
@@ -2257,14 +2272,11 @@ function buildChunkCases(): Array<
     seal?: ChunkObjectCase["seal"],
     collection = CHUNK_COLL,
   ) => {
-    const got = refOpenChunk(CHUNK_ROOT, collection, idBytes, object);
-    const want =
-      expect.result === "ok"
-        ? got.ok &&
-          toHex(got.plain) === expect.plainHex &&
-          got.codec === expect.codec
-        : !got.ok && got.reason === expect.reason;
-    if (!want) throw new Error(`syncVectors chunk ${id}: reference disagrees`);
+    chunkAgrees(
+      id,
+      refOpenChunk(CHUNK_ROOT, collection, idBytes, object),
+      expect,
+    );
     rows.push({
       id,
       description,
@@ -2448,14 +2460,7 @@ function buildChunkCases(): Array<
     object: Uint8Array,
     expect: ChunkServerObjectCase["expect"],
   ) => {
-    const got = refOpenServerChunk(idBytes, object);
-    const want =
-      expect.result === "ok"
-        ? got.ok &&
-          toHex(got.plain) === expect.plainHex &&
-          got.codec === expect.codec
-        : !got.ok && got.reason === expect.reason;
-    if (!want) throw new Error(`syncVectors chunk ${id}: reference disagrees`);
+    chunkAgrees(id, refOpenServerChunk(idBytes, object), expect);
     rows.push({
       id,
       description,

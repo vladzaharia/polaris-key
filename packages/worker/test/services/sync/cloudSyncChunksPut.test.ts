@@ -26,6 +26,7 @@ import {
   beginChunks,
   chunkOf,
   chunkPath,
+  closeSessionAfterPut,
   digestHeader,
   exec,
   manifestOf,
@@ -226,12 +227,7 @@ describe("PUT …/chunks/{chunkId}", () => {
     const w = await filesWorld();
     const a = chunkOf(1);
     const up = await ready(w, [a]);
-    const realPut = w.r2.put.bind(w.r2);
-    w.r2.put = (async (...args: Parameters<typeof realPut>) => {
-      const out = await realPut(...args);
-      await call(w, "DELETE", uploadPath("delta", "slot", up.uploadId));
-      return out;
-    }) as typeof w.r2.put;
+    closeSessionAfterPut(w, "slot", up.uploadId);
     const res = await putChunk(w, "delta", "slot", up.uploadId, a);
     expect(res.status).toBe(404);
     expect(chunkRow(w, "delta", a.id)).toMatchObject({ refs: 0 });

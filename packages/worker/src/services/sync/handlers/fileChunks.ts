@@ -21,21 +21,23 @@ import {
   type ChunkPlanRequest,
   type ChunkPlanResponse,
 } from "@polaris-key/protocol/sync";
-import { matchCollection } from "@polaris-key/catalog";
 import type { ServiceContext } from "../../../core/registry.js";
 import type { RouteMatch } from "../../../core/http/routes.js";
 import { checksumHex } from "../../../core/assets/blobs.js";
 import { ErrorCode, json, notFound, wireError } from "../../../core/errors.js";
 import { callCloudSync } from "../do/client.js";
+import type { ChunkPlanOutcome } from "../do/protocol.js";
 import {
+  declaredCollection,
   fileCall,
   fileHandler,
-  readCatalog,
+  fileLimits,
   withObject,
   type FileCall,
 } from "./files.js";
+import { contentLength, refuse } from "./fileUpload.js";
 import { fixedLength, parseContentDigest } from "./fileStream.js";
-import { liveRefusal, overCeiling, retryable } from "./common.js";
+import { overCeiling, retryable } from "./common.js";
 
 const NO_STORE = { "cache-control": "no-store" } as const;
 
@@ -90,15 +92,11 @@ async function chunkPlan(
   call: FileCall,
   request: ChunkPlanRequest,
 ): Promise<Response> {
-  const { env, db, product } = ctx;
+  const { env } = ctx;
   const { caller, collection, id } = call;
 
-  const gone = await liveRefusal(env, db, product.slug);
-  if (gone) return gone;
-  const loaded = await readCatalog(ctx);
-  if (loaded instanceof Response) return loaded;
-  const decl = matchCollection(loaded.catalog, collection);
-  if (decl === null) return wireError(400, "collection_unknown");
+  const decl = await declaredCollection(ctx, collection);
+  if (decl instanceof Response) return decl;
   const ceilings = await overCeiling(ctx);
 
   const out = await withObject(ctx, caller, (pin, c) =>
@@ -109,20 +107,21 @@ async function chunkPlan(
       uploadId: match.params.uploadId as string,
       chunks: request.chunks,
       maxBytes: decl.files.maxBytes,
-      limits: {
-        quotaBytes: c.access.quota.bytes,
-        ...(ceilings.bytes ? { productOverCeiling: true } : {}),
-        ...(ceilings.users ? { usersAtCeiling: true } : {}),
-      },
+      limits: fileLimits(c, ceilings),
       serverNow: ctx.now * 1000,
     }),
   );
   if (out instanceof Response) return out;
   const r = out.value.outcome;
-  if (r.ok) {
-    const body: ChunkPlanResponse = { missing: r.missing, present: r.present };
-    return json(body);
-  }
+  if (!r.ok) return planRefusal(r);
+  return json({
+    missing: r.missing,
+    present: r.present,
+  } satisfies ChunkPlanResponse);
+}
+
+/** The answer to a plan call the object refused. */
+function planRefusal(r: Exclude<ChunkPlanOutcome, { ok: true }>): Response {
   if ("mismatch" in r) return wireError(400, "upload_mismatch");
   if (r.error === "upload_expired") return wireError(410, "upload_expired");
   if (r.error === "not_found") return notFound();
@@ -133,20 +132,6 @@ async function chunkPlan(
 }
 
 // ── PUT …/upload/{uploadId}/chunks/{chunkId} ─────────────────────────────────────────────────
-
-/** A non-negative integer `Content-Length`, or null for a missing or malformed one. */
-function contentLength(req: Request): number | null {
-  const raw = req.headers.get("content-length");
-  if (raw === null || !/^[0-9]{1,16}$/.test(raw)) return null;
-  const n = Number(raw);
-  return Number.isSafeInteger(n) ? n : null;
-}
-
-/** The body is never read on a refusal: say so, so the connection is not held for it. */
-async function refuse(req: Request, res: Response): Promise<Response> {
-  await req.body?.cancel().catch(() => undefined);
-  return res;
-}
 
 /**
  * One chunk object, create-only. The order is the part `PUT`'s: the front door, the headers against

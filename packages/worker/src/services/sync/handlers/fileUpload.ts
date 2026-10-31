@@ -46,7 +46,7 @@ const NO_STORE = { "cache-control": "no-store" } as const;
 type Prepared = Extract<FilePrepareOutcome, { ok: true }>;
 
 /** A non-negative integer `Content-Length`, or null for a missing or malformed one. */
-function contentLength(req: Request): number | null {
+export function contentLength(req: Request): number | null {
   const raw = req.headers.get("content-length");
   if (raw === null || !/^[0-9]{1,16}$/.test(raw)) return null;
   const n = Number(raw);
@@ -54,7 +54,7 @@ function contentLength(req: Request): number | null {
 }
 
 /** The body is never read on a refusal: say so, so the connection is not held for it. */
-async function refuse(req: Request, res: Response): Promise<Response> {
+export async function refuse(req: Request, res: Response): Promise<Response> {
   await req.body?.cancel().catch(() => undefined);
   return res;
 }

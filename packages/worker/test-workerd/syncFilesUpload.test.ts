@@ -367,14 +367,16 @@ describe("delta files under workerd (U-37)", () => {
         limits: { quotaBytes: 1_000_000_000 },
         serverNow: NOW,
       });
-      const planned = await callCloudSync<"fileChunkPlan">(env, pin, {
-        op: "fileChunkPlan",
-        ...address,
-        chunks: [[id, object.length]],
-        maxBytes: 10_000_000,
-        limits: { quotaBytes: 1_000_000_000 },
-        serverNow: NOW,
-      });
+      const plan = () =>
+        callCloudSync<"fileChunkPlan">(env, pin, {
+          op: "fileChunkPlan",
+          ...address,
+          chunks: [[id, object.length]],
+          maxBytes: 10_000_000,
+          limits: { quotaBytes: 1_000_000_000 },
+          serverNow: NOW,
+        });
+      const planned = await plan();
       expect(planned.outcome).toEqual({ ok: true, missing: [id], present: [] });
 
       const prepared = await callCloudSync<"chunkPrepare">(
@@ -426,14 +428,7 @@ describe("delta files under workerd (U-37)", () => {
           })
         ).outcome,
       ).toEqual({ ok: true });
-      const again = await callCloudSync<"fileChunkPlan">(env, pin, {
-        op: "fileChunkPlan",
-        ...address,
-        chunks: [[id, object.length]],
-        maxBytes: 10_000_000,
-        limits: { quotaBytes: 1_000_000_000 },
-        serverNow: NOW,
-      });
+      const again = await plan();
       expect(again.outcome).toEqual({
         ok: true,
         missing: [],

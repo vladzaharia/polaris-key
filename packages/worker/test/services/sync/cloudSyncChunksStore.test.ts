@@ -2,48 +2,13 @@
 // `MemoryStore` and the Durable Object's `SqlStore`. Rows only: the rules are `engine/chunks.ts`'s.
 import { describe, expect, it } from "vitest";
 import { MemoryStore } from "../../../src/services/sync/engine/memoryStore.js";
-import type {
-  StoredChunk,
-  SyncStore,
-  UploadRow,
-} from "../../../src/services/sync/engine/types.js";
+import type { SyncStore } from "../../../src/services/sync/engine/types.js";
 import { SqlTestStore } from "../../cloudSyncSqlTestStore.js";
+import { chunkRow, chunksUpload, idOf } from "./cloudSyncChunksWorld.js";
 
-const ID = (n: number): string => n.toString(16).padStart(64, "0");
-
-const chunk = (
-  collection: string,
-  n: number,
-  extra: Partial<StoredChunk> = {},
-): StoredChunk => ({
-  collection,
-  chunkId: ID(n),
-  objectKey: `u/p/s/c/${collection}/${ID(n)}`,
-  storedBytes: 100 + n,
-  refs: 0,
-  unrefAt: 0,
-  ...extra,
-});
-
-const upload = (id: string, collection = "saves"): UploadRow => ({
-  uploadId: id,
-  collection,
-  recordId: "slot-1",
-  baseVersion: null,
-  mode: "chunks",
-  format: "chunks",
-  enc: "none",
-  size: 200,
-  sha256: "ab".repeat(32),
-  partBytes: null,
-  multipartId: null,
-  reservedBytes: 200,
-  deviceId: "d_1",
-  createdAt: 1_000,
-  expiresAt: 5_000,
-  state: "open",
-  resultJson: null,
-});
+const ID = idOf;
+const chunk = chunkRow;
+const upload = chunksUpload;
 
 const makers: Record<string, () => SyncStore> = {
   memory: () => new MemoryStore(),
