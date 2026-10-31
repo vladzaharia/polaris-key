@@ -13,6 +13,7 @@ import im.plrs.key.core.DeviceKeyStorage
 import im.plrs.key.core.DeviceKeyStore
 import im.plrs.key.core.DeviceKeysUnreadableException
 import im.plrs.key.core.ErrorCode
+import im.plrs.key.core.FileDeviceKeyStorage
 import im.plrs.key.core.FileStore
 import im.plrs.key.core.InMemoryDeviceKeyStorage
 import im.plrs.key.core.InMemoryStore
@@ -498,6 +499,29 @@ class SyncKeyringTest {
         r.client.license.deactivate()
         assertNull(r.client.core.token())
         assertNull(roots.inner.get())
+    }
+
+    @Test
+    fun probingForAHeldRootCreatesNoFileOrLock() = runBlocking {
+        val base = tmp.newFolder()
+        val rootDir = java.io.File(base, "absent/pkey/djdl")
+        val storage = FileDeviceKeyStorage(java.io.File(rootDir, "sync-root.bin"))
+        val r = rig(Worker(), newKeys(), storage, tmp.newFolder())
+        assertFalse(r.keyring.holdsState())
+        assertFalse("no directory is created", rootDir.exists())
+        assertFalse("no directory is created", java.io.File(base, "absent").exists())
+        // A directory with no root file: still nothing created.
+        rootDir.mkdirs()
+        assertFalse(r.keyring.holdsState())
+        assertEquals(emptyList<String>(), rootDir.list()!!.toList())
+        // A directory that cannot be listed might hold one: the caller forgets rather than skips.
+        val locked = rootDir.setExecutable(false) && rootDir.setReadable(false)
+        try {
+            if (locked && rootDir.list() == null) assertTrue(r.keyring.holdsState())
+        } finally {
+            rootDir.setReadable(true)
+            rootDir.setExecutable(true)
+        }
     }
 
     /** A root storage that counts writes and removals. */

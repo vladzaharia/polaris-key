@@ -76,6 +76,16 @@ public object PolarisKeyAndroid {
     public fun playPacks(context: Context, android: AndroidOptions = AndroidOptions()): PlayPackTransport =
         PlayPackTransport.create(context.applicationContext, android.playPacks, android.activity, android.confirmPack)
 
+    /** [options] with the Cloud Sync root's storage in this client's store namespace (see [withAndroidKeyring]). */
+    internal fun keyringOptions(
+        context: Context,
+        options: PolarisKeyClientOptions,
+        keys: im.plrs.key.platform.KeyProvider = im.plrs.key.platform.AndroidKeyStoreProvider(context),
+    ): PolarisKeyClientOptions {
+        val namespace = storeNamespace(options.core.productSlug, options.core.baseUrl)
+        return options.withAndroidKeyring(context, namespace, keys)
+    }
+
     /**
      * [options] with every Android edge the host left unset filled in; see the file comment. Usable
      * at once, from any thread: it starts itself (call [create] to wait for the start).
@@ -134,7 +144,7 @@ public object PolarisKeyAndroid {
         val attestation = options.attestation ?: PlayIntegrityAttestation.create(ctx, android.playCloudProjectNumber)
         if (options.attestation == null) AttestationProviders.installed = attestation
         val built = PolarisKeyClient(
-            options.withAndroidKeyring(ctx, namespace).copy(
+            keyringOptions(ctx, options).copy(
                 attestation = attestation,
                 core = core,
                 license = license,

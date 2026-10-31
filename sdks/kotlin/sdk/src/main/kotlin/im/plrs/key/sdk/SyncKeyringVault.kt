@@ -89,6 +89,7 @@ internal class RingVault(private val core: CoreContext, private val options: Key
         val custom = options.rootStorage
         return memoryPin != null || (dir != null && File(dir, SYNC_PIN_FILE).exists()) ||
             when {
+                custom is FileDeviceKeyStorage -> custom.mightHold()
                 custom != null -> guarded({ true }) { custom.get() != null }
                 dir != null -> File(dir, SYNC_ROOT_FILE).exists()
                 else -> guarded({ true }) { roots().get() != null }
