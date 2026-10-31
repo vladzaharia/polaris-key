@@ -16,10 +16,13 @@ export const needsSignIn = isStepUpRequired;
 export function SignInAgain({
   what,
   stashKey,
+  fields,
 }: {
   /** The action, as a verb phrase: "show values", "download this file". */
   what: string;
   stashKey: string;
+  /** Where the operator was (the collection, the open record), put back on return. */
+  fields?: Record<string, string>;
 }): React.ReactElement {
   return (
     <Callout
@@ -30,7 +33,7 @@ export function SignInAgain({
         <Button
           size="sm"
           onClick={() => {
-            stashStepUp(stashKey, "");
+            stashStepUp(stashKey, "", fields);
             startStepUp();
           }}
         >

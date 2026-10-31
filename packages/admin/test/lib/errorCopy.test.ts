@@ -529,6 +529,15 @@ describe("errorCopy: GitHub access", () => {
     });
   });
 
+  it("a step-up refusal asks for a new sign-in, not edit access", () => {
+    const c = errorCopy(
+      api(403, { code: "step_up_required", message: "Sign in again" }),
+      { thing: "Cloud Sync data" },
+    );
+    expect(c.title).toBe("Sign in again to confirm it's you");
+    expect(c.description).toBe("This needs a sign-in from the last 5 minutes.");
+  });
+
   it("a plain 403 in the commerce area says Commerce", () => {
     expect(
       errorCopy(api(403, { code: "forbidden" }), { area: "commerce" })

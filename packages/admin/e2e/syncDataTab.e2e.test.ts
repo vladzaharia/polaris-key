@@ -5,11 +5,12 @@ import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/core/securityHeaders.js";
 import { CORE_ROUTES, USER_SUBJECT } from "./coreFixtures.js";
+import { axe } from "./portalHarness.js";
 import { closeContext } from "./teardown.js";
 
 /**
- * U-11a.5 and U-11a.6: Users → Data with Show values, the records browser, the file history
- * drawer, Download and Delete Cloud Sync data, in real Chromium under the Worker's CSP. Two
+ * U-11a.5, U-11a.6 and U-11a.8: Users → Data with Show values, the records browser, the record
+ * drawer with file history, Download and Delete Cloud Sync data, in real Chromium under the Worker's CSP. Two
  * fixtures (a server-mode product and an end-to-end one), each with settings, a collection with a
  * file that keeps a revision, a key ring and an upload in flight. Each state renders with zero CSP
  * violations and no sideways scroll at 1440, 768, 390 and 320 px, in both themes.
@@ -30,6 +31,13 @@ type Mode = "server" | "e2e";
 let mode: Mode = "server";
 let stepUp: "fresh" | "stale" = "fresh";
 let deleted = false;
+/** How many collections the person has (the picker is a Select from five). */
+let collections = 1;
+/** Long keys and ids, right-to-left text, nested, empty, sealed and 4 GiB: the values that broke the first layout. */
+let messy = false;
+let download: "ok" | "fail" | "slow" = "ok";
+/** The step-up refusal as the Worker words it, with its message. */
+let realBody = false;
 
 const summary = (): unknown => ({
   enabled: true,
@@ -61,18 +69,16 @@ const summary = (): unknown => ({
   },
   collections: deleted
     ? []
-    : [
-        {
-          name: "saves",
-          label: "Saves",
-          records: 3,
-          bytes: 640,
-          files: 2,
-          fileBytes: 2_600_000,
-          revisionBytes: 500_000,
-          lastWriteAt: NOW - 300,
-        },
-      ],
+    : Array.from({ length: collections }, (_, i) => ({
+        name: i === 0 ? "saves" : `saves-${i + 1}`,
+        label: i === 0 ? "Saves" : `Saves ${i + 1}`,
+        records: 3,
+        bytes: 640,
+        files: 2,
+        fileBytes: 2_600_000,
+        revisionBytes: 500_000,
+        lastWriteAt: NOW - 300,
+      })),
   uploadsOpen: deleted ? 0 : 1,
   ring: deleted
     ? null
@@ -84,18 +90,23 @@ const summary = (): unknown => ({
       },
 });
 
-const record = (id: string, withFile: boolean) => ({
+const record = (
+  id: string,
+  withFile: boolean,
+  over: Record<string, unknown> = {},
+) => ({
   id,
   version: 4,
   updatedAt: NOW - 120,
   bytes: 96,
   value: withFile ? null : { level: 4, coins: 1280, name: "A".repeat(220) },
   sealed: false,
+  ...over,
   ...(withFile
     ? {
         file: {
           version: 3,
-          size: 1_300_000,
+          size: messy ? 4 * 1024 ** 3 : 1_300_000,
           sha256: "ab".repeat(32),
           format: "whole",
         },
@@ -133,10 +144,20 @@ async function open(
   width: number,
   m: Mode,
   fresh = true,
+  scenario: {
+    collections?: number;
+    messy?: boolean;
+    download?: "ok" | "fail" | "slow";
+    realBody?: boolean;
+  } = {},
 ): Promise<Page> {
   mode = m;
   stepUp = fresh ? "fresh" : "stale";
   deleted = false;
+  collections = scenario.collections ?? 1;
+  messy = scenario.messy ?? false;
+  download = scenario.download ?? "ok";
+  realBody = scenario.realBody ?? false;
   const ctx = await browser.newContext({
     viewport: { width, height: width >= 1000 ? 900 : 780 },
     colorScheme: theme,
@@ -162,7 +183,15 @@ async function open(
         route.fulfill({
           status: 403,
           json: {
-            error: { code: "step_up_required" },
+            error: {
+              code: "step_up_required",
+              ...(realBody
+                ? {
+                    message:
+                      "Sign in again to confirm it's you. This needs a sign-in from the last 5 minutes.",
+                  }
+                : {}),
+            },
             code: "step_up_required",
           },
         });
@@ -173,11 +202,42 @@ async function open(
           json: collection
             ? {
                 settings: null,
-                records: [record("slot-1", true), record("slot-2", false)],
+                records: messy
+                  ? [
+                      record("slot-1", true),
+                      record("slot-2", false),
+                      record(
+                        "keybindings.custom.profile.default.overrides.0123456789-abcdefghij",
+                        false,
+                        {
+                          value: { deep: { a: [1, 2, { b: "c".repeat(90) }] } },
+                        },
+                      ),
+                      record("שמירה-ראשית", false, {
+                        value: { שם: "מרים", רמה: 12 },
+                      }),
+                      record("zero", false, { value: 0, bytes: 1 }),
+                      record("empty", false, { value: {} }),
+                      record("sealed", false, { value: null, sealed: true }),
+                    ]
+                  : [record("slot-1", true), record("slot-2", false)],
                 next: null,
               }
             : {
                 settings: [
+                  ...(messy
+                    ? [
+                        {
+                          key: "keybindings.custom.profile.default.overrides",
+                          declared: false,
+                          platform: "desktop",
+                          bytes: 400,
+                          updatedAt: NOW - 90,
+                          value: "z".repeat(300),
+                          sealed: false,
+                        },
+                      ]
+                    : []),
                   {
                     key: "ui.theme",
                     declared: true,
@@ -209,14 +269,20 @@ async function open(
                 ],
               },
             });
-      if (path === `${SUMMARY}/files/saves/slot-1`)
-        return gated()
-          ? refuse()
-          : route.fulfill({
-              status: 200,
-              contentType: "application/octet-stream",
-              body: Buffer.from([1, 2, 3]),
-            });
+      if (path === `${SUMMARY}/files/saves/slot-1`) {
+        if (gated()) return refuse();
+        if (download === "fail")
+          return route.fulfill({
+            status: 500,
+            json: { error: { code: "internal_error" } },
+          });
+        if (download === "slow") await new Promise((r) => setTimeout(r, 900));
+        return route.fulfill({
+          status: 200,
+          contentType: "application/octet-stream",
+          body: Buffer.from([1, 2, 3]),
+        });
+      }
       if (path === `${SUMMARY}/delete` && method === "POST") {
         if (gated()) return refuse();
         deleted = true;
@@ -262,8 +328,10 @@ describe("Users → Data: values, files and delete under the Worker's CSP", () =
           .getByRole("heading", { level: 2, name: "Storage" })
           .waitFor();
         await page.getByRole("button", { name: "Show values" }).click();
-        await page.getByRole("table", { name: "Setting values" }).waitFor();
-        await page.getByRole("table", { name: "Saves records" }).waitFor();
+        // A table from 40 rem up, cards (a list) on a phone.
+        const kind = width >= 640 ? "table" : "list";
+        await page.getByRole(kind, { name: "Setting values" }).waitFor();
+        await page.getByRole(kind, { name: "Saves records" }).waitFor();
         await shot(page, `sync-data-values-${theme}-${width}`);
         expect(await reflows(page)).toBe(true);
         expect(await violations(page)).toEqual([]);
@@ -271,17 +339,139 @@ describe("Users → Data: values, files and delete under the Worker's CSP", () =
       });
     }
 
-    it(`the file history drawer and a download (${theme})`, async () => {
+    it(`the record drawer, file history and downloads named <id>-v<n>.bin (${theme})`, async () => {
       const page = await open(theme, 1440, "server");
       await page.getByRole("button", { name: "Show values" }).click();
-      await page.getByRole("button", { name: "History of slot-1" }).click();
-      const drawer = page.getByRole("dialog", { name: "File history" });
+      await page.getByRole("button", { name: "slot-1", exact: true }).click();
+      const drawer = page.getByRole("dialog");
       await drawer.getByRole("table", { name: "File versions" }).waitFor();
       await shot(page, `sync-data-history-${theme}`);
-      const download = page.waitForEvent("download");
+      expect(await axe(page)).toEqual([]);
+      const old = page.waitForEvent("download");
       await drawer.getByRole("button", { name: "Download version 2" }).click();
-      expect((await download).suggestedFilename()).toBe("slot-1-v2");
+      expect((await old).suggestedFilename()).toBe("slot-1-v2.bin");
+      const live = page.waitForEvent("download");
+      await drawer.getByRole("button", { name: "Download version 3" }).click();
+      expect((await live).suggestedFilename()).toBe("slot-1-v3.bin");
       expect(await violations(page)).toEqual([]);
+      await closeContext(page.context());
+    });
+
+    it(`a failed download says what failed, with Try again, in the drawer (${theme})`, async () => {
+      const page = await open(theme, 390, "server", true, { download: "fail" });
+      await page.getByRole("button", { name: "Show values" }).click();
+      await page.getByRole("button", { name: /^slot-1/ }).click();
+      const drawer = page.getByRole("dialog");
+      await drawer.getByRole("button", { name: "Download version 3" }).click();
+      const alert = drawer.getByRole("alert");
+      await alert.getByText("Couldn't download slot-1").waitFor();
+      await alert.getByRole("button", { name: "Try again" }).waitFor();
+      await shot(page, `sync-data-download-error-${theme}`);
+      expect(await axe(page)).toEqual([]);
+      await closeContext(page.context());
+    });
+
+    it(`a slow download shows it is running (${theme})`, async () => {
+      const page = await open(theme, 1440, "server", true, {
+        download: "slow",
+      });
+      await page.getByRole("button", { name: "Show values" }).click();
+      await page.getByRole("button", { name: "slot-1", exact: true }).click();
+      const drawer = page.getByRole("dialog");
+      await drawer.getByRole("button", { name: "Download version 3" }).click();
+      await drawer
+        .getByRole("status")
+        .getByText(/^Downloading/)
+        .waitFor();
+      await shot(page, `sync-data-download-busy-${theme}`);
+      await page.waitForEvent("download");
+      await closeContext(page.context());
+    });
+
+    it(`six collections are picked from a Select, labelled Collection (${theme})`, async () => {
+      for (const width of [1440, 390]) {
+        const page = await open(theme, width, "server", true, {
+          collections: 6,
+        });
+        await page.getByRole("button", { name: "Show values" }).click();
+        const pick = page.getByRole("combobox", { name: "Collection" });
+        await pick.waitFor();
+        await shot(page, `sync-data-collections-6-${theme}-${width}`);
+        await pick.click();
+        await page.getByRole("option", { name: "Saves 4 · 3" }).click();
+        await page
+          .getByRole("table", { name: "Saves 4 records" })
+          .waitFor()
+          .catch(() =>
+            page.getByRole("list", { name: "Saves 4 records" }).waitFor(),
+          );
+        expect(await reflows(page)).toBe(true);
+        expect(await axe(page)).toEqual([]);
+        await closeContext(page.context());
+      }
+    });
+
+    it(`messy values stay readable: long keys, RTL, 4 GiB, clamped to two lines (${theme})`, async () => {
+      for (const [width, rootPx] of [
+        [1440, 16],
+        [1440, 32],
+        [768, 16],
+        [390, 16],
+        [320, 16],
+      ] as const) {
+        const page = await open(theme, width, "server", true, { messy: true });
+        if (rootPx !== 16)
+          await page.evaluate(
+            (px) => (document.documentElement.style.fontSize = `${px}px`),
+            rootPx,
+          );
+        await page.getByRole("button", { name: "Show values" }).click();
+        await page.getByText("שמירה-ראשית").first().waitFor();
+        await shot(page, `sync-data-messy-${theme}-${width}-${rootPx}`);
+        expect(await reflows(page)).toBe(true);
+        // A value is never one character wide, and an id is never cut mid-word.
+        const widths = await page
+          .locator("#sync-data-values code")
+          .evaluateAll((els) =>
+            els.map((e) => e.getBoundingClientRect().width),
+          );
+        expect(Math.min(...widths)).toBeGreaterThan(90);
+        if (width * (16 / rootPx) >= 640) {
+          // A table: the id is one line (the button is at most 2.5 rem tall), never cut mid-word.
+          const slot = page.getByRole("button", {
+            name: "slot-1",
+            exact: true,
+          });
+          const box = (await slot.boundingBox())!;
+          expect(box.height).toBeLessThan(2.5 * rootPx);
+        }
+        expect(await violations(page)).toEqual([]);
+        await closeContext(page.context());
+      }
+    });
+
+    it(`a long value is read whole in the drawer, with Copy (${theme})`, async () => {
+      const page = await open(theme, 1440, "server", true, { messy: true });
+      await page.getByRole("button", { name: "Show values" }).click();
+      await page.getByRole("button", { name: "שמירה-ראשית" }).click();
+      const drawer = page.getByRole("dialog");
+      await drawer.getByRole("button", { name: /^Copy value/ }).waitFor();
+      await shot(page, `sync-data-record-rtl-${theme}`);
+      expect(await axe(page)).toEqual([]);
+      await closeContext(page.context());
+    });
+
+    it(`a delete refused for a stale sign-in asks to sign in, not for edit access (${theme})`, async () => {
+      const page = await open(theme, 1440, "server", false, { realBody: true });
+      await page
+        .getByRole("button", { name: "Delete Cloud Sync data" })
+        .click();
+      const dialog = page.getByRole("alertdialog");
+      await dialog.getByRole("textbox").fill("delete");
+      await dialog.getByRole("button", { name: "Delete data" }).click();
+      await dialog.getByRole("button", { name: "Sign in again" }).waitFor();
+      expect(await dialog.innerText()).not.toContain("edit access");
+      await shot(page, `sync-data-delete-stepup-${theme}`);
       await closeContext(page.context());
     });
 
@@ -320,7 +510,12 @@ describe("Users → Data: values, files and delete under the Worker's CSP", () =
       await shot(page, `sync-data-delete-${theme}`);
       await dialog.getByRole("textbox").fill("delete");
       await dialog.getByRole("button", { name: "Delete data" }).click();
-      await page.getByText("Nothing synced yet").waitFor();
+      const empty = page.getByRole("heading", { name: "Nothing synced yet" });
+      await empty.waitFor();
+      // The trigger is gone: focus lands on the heading that replaced the tab.
+      await page.waitForFunction(
+        () => document.activeElement?.textContent === "Nothing synced yet",
+      );
       await shot(page, `sync-data-deleted-${theme}`);
       expect(await violations(page)).toEqual([]);
       await closeContext(page.context());

@@ -12,9 +12,12 @@ import { DangerAction, DangerZone } from "../../../templates/Settings.js";
 export function DeleteData({
   slug,
   subject,
+  onDeleted,
 }: {
   slug: string;
   subject: string;
+  /** Called once the data is gone: the trigger unmounts with the sections, so focus needs a new home. */
+  onDeleted?: () => void;
 }): React.ReactElement {
   const [open, setOpen] = React.useState(false);
   return (
@@ -48,6 +51,7 @@ export function DeleteData({
         describeError={(e) => errorCopy(e, { thing: "Cloud Sync data" })}
         onConfirm={async () => {
           await mutate("syncDeleteData", slug, subject);
+          onDeleted?.();
           announce("Cloud Sync data deleted");
         }}
       />

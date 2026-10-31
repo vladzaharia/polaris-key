@@ -521,6 +521,15 @@ function bootValues(
   });
 }
 
+/** The tab with no settings and one collection holding exactly these records. */
+function bootRecords(...records: object[]): FetchLog {
+  return bootValues({}, (q: URLSearchParams) =>
+    q.get("collection")
+      ? { settings: null, records, next: null }
+      : { settings: [], records: [], next: null },
+  );
+}
+
 describe("Values (server mode)", () => {
   it("reads nothing until Show values, then lists settings and a page of records", async () => {
     const log = bootValues();
@@ -551,15 +560,7 @@ describe("Values (server mode)", () => {
   });
 
   it("says a sealed value is sealed, and has no axe violations open", async () => {
-    bootValues({}, (q: URLSearchParams) =>
-      q.get("collection")
-        ? {
-            settings: null,
-            records: [rec("slot-1", { value: null, sealed: true })],
-            next: null,
-          }
-        : { settings: [], records: [], next: null },
-    );
+    bootRecords(rec("slot-1", { value: null, sealed: true }));
     await userEvent.click(
       await screen.findByRole("button", { name: "Show values" }),
     );
@@ -614,91 +615,238 @@ describe("Values (server mode)", () => {
   });
 });
 
-describe("file history and Download", () => {
+describe("the record drawer, file history and Download", () => {
   const blobFetch = (): void => {
     URL.createObjectURL = vi.fn(() => "blob:test");
     URL.revokeObjectURL = vi.fn();
   };
-
-  it("lists the current version and the kept ones, and downloads a version", async () => {
-    blobFetch();
-    const click = vi
-      .spyOn(HTMLAnchorElement.prototype, "click")
-      .mockImplementation(() => undefined);
-    const log = bootValues({}, undefined, {
-      [`${FILE}/revisions`]: {
-        revisions: [
-          {
-            version: 2,
-            size: 1_024,
-            sha256: "cd".repeat(32),
-            format: "whole",
-            createdAt: NOW_S - 900,
-          },
-        ],
-      },
-      [FILE]: new Response(new Uint8Array([1, 2, 3]), { status: 200 }),
-    });
+  const openRecord = async (id: string) => {
     await userEvent.click(
       await screen.findByRole("button", { name: "Show values" }),
     );
+    await userEvent.click(await screen.findByRole("button", { name: id }));
+    return screen.findByRole("dialog");
+  };
+  const REVS = {
+    revisions: [
+      {
+        version: 2,
+        size: 1_024,
+        sha256: "cd".repeat(32),
+        format: "whole",
+        createdAt: NOW_S - 900,
+      },
+    ],
+  };
+
+  it("reads a value whole, pretty-printed, with Copy, and RTL strings kept in order", async () => {
+    const rtl = { שם: "מרים", level: 12, long: "x".repeat(300) };
+    bootRecords(rec("slot-1", { value: rtl }));
+    const dialog = await openRecord("slot-1");
+    const pre = dialog.querySelector("pre")!;
+    expect(pre.getAttribute("dir")).toBe("ltr");
+    expect(text(pre)).toContain('  "level": 12');
+    expect(text(pre)).toContain("x".repeat(300));
+    // Every string token is isolated, so the right-to-left words do not reorder the braces.
+    expect(
+      [...pre.querySelectorAll("bdi")].some((b) => b.textContent === '"שם"'),
+    ).toBe(true);
+    expect(
+      within(dialog).getByRole("button", { name: "Copy value of slot-1" }),
+    ).toBeTruthy();
+    expect(text(dialog)).toContain("In Saves");
+  });
+
+  it("clamps a long value to two lines in the row, with no tooltip to read it by", async () => {
+    bootRecords(rec("slot-1", { value: { text: "y".repeat(400) } }));
     await userEvent.click(
-      await screen.findByRole("button", { name: "History of slot-1" }),
+      await screen.findByRole("button", { name: "Show values" }),
     );
-    const dialog = await screen.findByRole("dialog", { name: "File history" });
+    const records = await screen.findByRole("table", { name: "Saves records" });
+    const code = records.querySelector("code")!;
+    expect(code.className).toContain("line-clamp-2");
+    expect(code.getAttribute("title")).toBeNull();
+    expect(text(code).length).toBeGreaterThan(400);
+  });
+
+  /** Saved files: the names the page gave them (the link click is stubbed). */
+  const saved = (): { names: string[]; click: { mockRestore: () => void } } => {
+    blobFetch();
+    const names: string[] = [];
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        names.push(this.download);
+      });
+    return { names, click };
+  };
+
+  it("lists the current version and the kept ones, and saves each as <id>-v<n>.bin", async () => {
+    const { names, click } = saved();
+    const log = bootValues({}, undefined, {
+      [`${FILE}/revisions`]: REVS,
+      [FILE]: () => new Response(new Uint8Array([1, 2, 3]), { status: 200 }),
+    });
+    const dialog = await openRecord("slot-1");
     const table = await within(dialog).findByRole("table", {
       name: "File versions",
     });
-    expect(
-      within(table)
-        .getAllByRole("row")
-        .slice(1)
-        .map((r) => text(within(r).getAllByRole("cell")[0]!)),
-    ).toEqual(["2 KiB", "1 KiB"].length ? (expect.any(Array) as never) : []);
     expect(within(table).getByText("Current")).toBeTruthy();
-    await userEvent.click(
-      within(dialog).getByRole("button", { name: "Download version 2" }),
+    for (const v of ["2", "3"])
+      await userEvent.click(
+        within(dialog).getByRole("button", { name: `Download version ${v}` }),
+      );
+    await waitFor(() =>
+      expect(names).toEqual(["slot-1-v2.bin", "slot-1-v3.bin"]),
     );
-    await waitFor(() => expect(click).toHaveBeenCalled());
     expect(
-      log.calls.some((c) => c.path === FILE && c.query === "version=2"),
-    ).toBe(true);
+      log.calls.filter((c) => c.path === FILE).map((c) => c.query),
+    ).toEqual(["version=2", ""]);
+    await waitFor(() =>
+      expect(lastAnnouncement()).toBe("Downloaded slot-1-v3.bin"),
+    );
     click.mockRestore();
   });
 
-  it("downloads the live file from the row", async () => {
-    blobFetch();
-    const click = vi
-      .spyOn(HTMLAnchorElement.prototype, "click")
-      .mockImplementation(() => undefined);
-    const log = bootValues({}, undefined, {
-      [FILE]: new Response(new Uint8Array([9]), { status: 200 }),
+  it("says what failed with Try again, in the drawer, not a toast", async () => {
+    const { click } = saved();
+    let tries = 0;
+    bootValues({}, undefined, {
+      [`${FILE}/revisions`]: REVS,
+      [FILE]: () =>
+        ++tries === 1
+          ? failure(500, { error: { code: "internal_error" } })
+          : new Response(new Uint8Array([9]), { status: 200 }),
     });
+    const dialog = await openRecord("slot-1");
     await userEvent.click(
-      await screen.findByRole("button", { name: "Show values" }),
+      await within(dialog).findByRole("button", { name: "Download version 3" }),
     );
+    const alert = await within(dialog).findByRole("alert");
+    expect(text(alert)).toContain("Couldn't download slot-1");
     await userEvent.click(
-      await screen.findByRole("button", { name: "Download file of slot-1" }),
+      within(alert).getByRole("button", { name: "Try again" }),
     );
     await waitFor(() => expect(click).toHaveBeenCalled());
-    expect(log.calls.some((c) => c.path === FILE && c.query === "")).toBe(true);
+    expect(tries).toBe(2);
     click.mockRestore();
   });
 
-  it("asks for a new sign-in when Download is refused", async () => {
-    bootValues({}, undefined, { [FILE]: stepUpRefusal() });
+  it("asks for a new sign-in when Download is refused, in the drawer only", async () => {
+    bootValues({}, undefined, {
+      [`${FILE}/revisions`]: REVS,
+      [FILE]: stepUpRefusal(),
+    });
+    const dialog = await openRecord("slot-1");
+    await userEvent.click(
+      await within(dialog).findByRole("button", { name: "Download version 3" }),
+    );
+    expect(text(await within(dialog).findByRole("alert"))).toContain(
+      "Sign in again to download this file",
+    );
+  });
+});
+
+describe("Values: collections, paging, settings and the way back", () => {
+  const fiveCollections = ["a", "b", "c", "d", "e"].map((n) => ({
+    ...SAVES,
+    name: n,
+    label: `Coll ${n}`,
+    records: 2,
+  }));
+
+  it("picks among five or more collections with a Select, counts in the options", async () => {
+    bootValues({ collections: fiveCollections }, (q: URLSearchParams) =>
+      q.get("collection")
+        ? {
+            settings: null,
+            records: [rec(`rec-${q.get("collection")}`)],
+            next: null,
+          }
+        : { settings: [], records: [], next: null },
+    );
     await userEvent.click(
       await screen.findByRole("button", { name: "Show values" }),
     );
+    const select = await screen.findByRole("combobox", { name: "Collection" });
+    expect(text(select)).toContain("Coll a · 2");
+    await userEvent.click(select);
     await userEvent.click(
-      await screen.findByRole("button", { name: "Download file of slot-1" }),
+      await screen.findByRole("option", { name: "Coll d · 2" }),
     );
-    const alerts = await screen.findAllByRole("alert");
+    expect(await screen.findByText("rec-d")).toBeTruthy();
+  });
+
+  it("switches two to four collections with a segmented control", async () => {
+    bootValues({ collections: fiveCollections.slice(0, 3) });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show values" }),
+    );
     expect(
-      alerts.some((a) =>
-        text(a).includes("Sign in again to download this file"),
-      ),
-    ).toBe(true);
+      await screen.findByRole("radiogroup", { name: "Collection" }),
+    ).toBeTruthy();
+  });
+
+  it("shows the settings' values only: the keys' size and age are in Settings above", async () => {
+    bootValues();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show values" }),
+    );
+    const t = await screen.findByRole("table", { name: "Setting values" });
+    expect(
+      within(t)
+        .getAllByRole("columnheader")
+        .map((h) => h.textContent),
+    ).toEqual(["Setting", "Value"]);
+  });
+
+  it("moves focus to a note when the last page loads, and counts what is shown", async () => {
+    bootValues({ collections: [{ ...SAVES, records: 3 }] });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Show values" }),
+    );
+    expect(await screen.findByText("2 of 3")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Show more" }));
+    const note = await screen.findByText("All 3 records shown");
+    await waitFor(() => expect(document.activeElement).toBe(note));
+    expect(lastAnnouncement()).toBe("1 more record");
+  });
+
+  it("lands on the Values heading when back from the sign-in, with the record open again", async () => {
+    const redirect = vi.fn();
+    setStepUpRedirectForTests(redirect);
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    try {
+      bootValues({}, undefined, {
+        [FILE]: stepUpRefusal(),
+        [`${FILE}/revisions`]: { revisions: [] },
+      });
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Show values" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "slot-1" }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.click(
+        await within(dialog).findByRole("button", {
+          name: "Download version 3",
+        }),
+      );
+      await userEvent.click(
+        await within(dialog).findByRole("button", { name: "Sign in again" }),
+      );
+      cleanup();
+      resetConsole();
+      bootValues();
+      const heading = await screen.findByRole("heading", { name: "Values" });
+      await waitFor(() => expect(document.activeElement).toBe(heading));
+      expect(scroll).toHaveBeenCalled();
+      expect(await screen.findByRole("dialog")).toBeTruthy();
+    } finally {
+      setStepUpRedirectForTests();
+    }
   });
 });
 
@@ -749,7 +897,10 @@ describe("Delete Cloud Sync data", () => {
     expect(log.calls.find((c) => c.path === `${SUMMARY}/delete`)?.json).toEqual(
       { confirm: true },
     );
-    expect(await screen.findByText("Nothing synced yet")).toBeTruthy();
+    const empty = await screen.findByRole("heading", {
+      name: "Nothing synced yet",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(empty));
     expect(reads(log)).toBe(2);
     expect(lastAnnouncement()).toBe("Cloud Sync data deleted");
   });
@@ -772,6 +923,11 @@ describe("Delete Cloud Sync data", () => {
     expect(
       await within(dialog).findByRole("button", { name: "Sign in again" }),
     ).toBeTruthy();
+    // The words ask for a sign-in; they never say the operator lacks edit access.
+    expect(text(dialog)).toContain(
+      "This needs a sign-in from the last 5 minutes",
+    );
+    expect(text(dialog)).not.toContain("edit access");
   });
 
   it("is offered to an end-to-end product too", async () => {

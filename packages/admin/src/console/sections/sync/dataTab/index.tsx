@@ -38,6 +38,19 @@ export function SyncDataTab({
   subject,
 }: UserSlotProps): React.ReactElement {
   const q = useQuery(syncSubjectQuery(slug, subject));
+  const root = React.useRef<HTMLDivElement>(null);
+  const [deleted, setDeleted] = React.useState(false);
+  const emptied = q.data?.enabled === true && nothingSynced(q.data);
+  // After a delete the Danger zone's button is gone: focus the heading that replaced the tab.
+  React.useEffect(() => {
+    if (!deleted || !emptied) return;
+    const h = root.current?.querySelector<HTMLElement>("h2");
+    if (h) {
+      h.tabIndex = -1;
+      h.focus();
+    }
+    setDeleted(false);
+  }, [deleted, emptied]);
   useLoadingAnnouncement("Cloud Sync data", q.isPending);
 
   if (q.isPending)
@@ -75,13 +88,15 @@ export function SyncDataTab({
     );
   if (nothingSynced(data))
     return (
-      <EmptyState
-        kind="first-run"
-        headingLevel={2}
-        title="Nothing synced yet"
-        description="Their data appears here after they sign in and sync."
-        docs={docsUrl("syncData")}
-      />
+      <div ref={root}>
+        <EmptyState
+          kind="first-run"
+          headingLevel={2}
+          title="Nothing synced yet"
+          description="Their data appears here after they sign in and sync."
+          docs={docsUrl("syncData")}
+        />
+      </div>
     );
   return (
     <div className="space-y-6">
@@ -92,7 +107,11 @@ export function SyncDataTab({
       {data.encryption === "server" ? (
         <Values slug={slug} subject={subject} data={data} />
       ) : null}
-      <DeleteData slug={slug} subject={subject} />
+      <DeleteData
+        slug={slug}
+        subject={subject}
+        onDeleted={() => setDeleted(true)}
+      />
     </div>
   );
 }

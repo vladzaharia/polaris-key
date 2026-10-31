@@ -2,7 +2,12 @@
  * Users → Data → Values (server mode only): what the person's settings and records hold, read on
  * request. Showing values needs a sign-in from the last 5 minutes and is audited, so the section
  * starts closed and reads nothing until "Show values". A read the Worker refuses for a stale
- * sign-in asks for a new one and, on return, opens again (`stashKey`).
+ * sign-in asks for a new one and, on return, opens again at this section, with the same collection
+ * picked and the same record open (`stashKey`).
+ *
+ * A row clamps its value to two lines (a card on a phone); the record drawer reads it whole.
+ * Names, sizes and ages of the settings are in the Settings section above, so the settings here
+ * show only the value.
  */
 
 import * as React from "react";
@@ -11,9 +16,11 @@ import {
   useQuery,
   type UseQueryResult,
 } from "@tanstack/react-query";
+import { ChevronRight } from "lucide-react";
 import type {
   SyncJsonValue,
   SyncSubjectCollection,
+  SyncSubjectFile,
   SyncValuesResponse,
   SyncValueRecord,
 } from "../../../../api.js";
@@ -21,8 +28,11 @@ import { cn } from "../../../../lib/cn.js";
 import { formatCount, fromSeconds } from "../../../../lib/format.js";
 import { readStash, hasSavedStepUp } from "../../../../lib/stepUp.js";
 import { Button } from "../../../../ui/Button.js";
+import { useNarrowRem } from "../../../../ui/data-table/DataTable.js";
 import { ErrorState } from "../../../../ui/ErrorState.js";
+import { announce } from "../../../../ui/LiveRegion.js";
 import { ScrollTable } from "../../../../ui/ScrollTable.js";
+import { Select } from "../../../../ui/Select.js";
 import { SegmentedControl } from "../../../../ui/SegmentedControl.js";
 import { Skeleton } from "../../../../ui/Skeleton.js";
 import { Timestamp } from "../../../../ui/Timestamp.js";
@@ -31,102 +41,166 @@ import { SettingsSection } from "../../../templates/Settings.js";
 import { syncRecordsQuery, syncValuesQuery } from "../data.js";
 import { formatStorage } from "../pages/usageParts.js";
 import { useFileDownload } from "./Download.js";
-import { FileHistory, type HistoryTarget } from "./FileHistory.js";
+import { RecordDrawer, type RecordTarget } from "./RecordDrawer.js";
 import { needsSignIn, SignInAgain } from "./SignInAgain.js";
+import { ClampedValue } from "./ValueView.js";
 import type { SubjectData } from "./index.js";
+
+/** The phone layout (cards) applies below `sm`, 40 rem of the root font, so enlarged text gets it too. */
+const CARDS_BELOW_REM = 40;
 
 const head = cn(TABLE.headCell, "text-start");
 const headNum = cn(TABLE.headCell, "text-end");
-const cell = cn(TABLE.cell, "py-2 align-top");
+const cell = cn(TABLE.cell, "py-2 align-top border-b border-border");
 const num = cn(cell, "text-end whitespace-nowrap tabular-nums");
-const MAX_SHOWN = 160;
+const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
-/** A value as one line of JSON, cut at `MAX_SHOWN` characters (the full text is the tooltip). */
-function show(v: SyncJsonValue | null): { text: string; whole: string } {
-  const whole = JSON.stringify(v) ?? "null";
-  return {
-    whole,
-    text:
-      whole.length > MAX_SHOWN ? `${whole.slice(0, MAX_SHOWN - 1)}…` : whole,
-  };
-}
-
-function ValueCell({
-  value,
-  sealed,
-  file,
-}: {
+/** One row of values: a setting (name and value) or a record (also size, age and file). */
+interface Row {
+  key: string;
+  name: string;
+  /** A second line under the name (a setting's platform). */
+  sub?: string;
   value: SyncJsonValue | null;
   sealed: boolean;
-  file?: boolean;
-}): React.ReactElement {
-  if (sealed) return <span className="text-fg-muted">Sealed</span>;
-  if (value === null && file)
-    return <span className="text-fg-muted">File only</span>;
-  const v = show(value);
+  /** Records only. */
+  facts?: { bytes: number; updatedAt: number; file?: SyncSubjectFile };
+  open: () => void;
+}
+
+function NameButton({ row }: { row: Row }): React.ReactElement {
   return (
-    <code
-      className="block max-w-[28rem] break-all font-mono text-xs"
-      title={v.whole}
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      onClick={row.open}
+      className="min-h-6 text-start font-mono text-xs text-fg-strong underline-offset-2 [overflow-wrap:anywhere] hover:underline focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2"
     >
-      {v.text}
-    </code>
+      {row.name}
+    </button>
   );
 }
 
-function SettingValues({
-  q,
+/** Rows as a table from `sm` up, and as cards on a phone (EXPERIENCE §6). */
+function ValueRows({
+  label,
+  nameHead,
+  rows,
 }: {
-  q: UseQueryResult<SyncValuesResponse>;
-}): React.ReactElement | null {
-  if (!q.data) return null;
-  const settings = q.data.settings ?? [];
-  if (settings.length === 0)
+  label: string;
+  nameHead: string;
+  rows: readonly Row[];
+}): React.ReactElement {
+  const cards = useNarrowRem(CARDS_BELOW_REM);
+  const facts = rows.some((r) => r.facts);
+  if (cards)
     return (
-      <p className="px-5 py-4 text-sm text-fg-muted">No settings stored.</p>
+      <ul aria-label={label} className="divide-y divide-border">
+        {rows.map((r) => (
+          <li key={r.key}>
+            <button
+              type="button"
+              aria-haspopup="dialog"
+              onClick={r.open}
+              className="flex w-full items-center gap-3 px-5 py-3 text-start focus-visible:outline-2 focus-visible:outline-focus focus-visible:-outline-offset-2"
+            >
+              <span className="min-w-0 flex-1 space-y-1">
+                <span className="block font-mono text-xs text-fg-strong [overflow-wrap:anywhere]">
+                  {r.name}
+                  {r.sub ? (
+                    <span className="block font-sans text-fg-muted">
+                      {r.sub}
+                    </span>
+                  ) : null}
+                </span>
+                <ClampedValue
+                  value={r.value}
+                  sealed={r.sealed}
+                  fileOnly={!!r.facts?.file}
+                />
+                {r.facts ? (
+                  <span className="block text-xs text-fg-muted">
+                    {formatStorage(r.facts.bytes)}
+                    {" · "}
+                    <Timestamp at={fromSeconds(r.facts.updatedAt)} />
+                    {r.facts.file
+                      ? ` · File ${formatStorage(r.facts.file.size)}`
+                      : ""}
+                  </span>
+                ) : null}
+              </span>
+              <ChevronRight
+                aria-hidden
+                className="size-4 shrink-0 text-fg-muted rtl:rotate-180"
+              />
+            </button>
+          </li>
+        ))}
+      </ul>
     );
   return (
-    <ScrollTable label="Setting values" className={TABLE.table}>
+    <ScrollTable label={label} className={TABLE.table}>
       <thead className={TABLE.head}>
         <tr className={TABLE.headRow}>
           <th scope="col" className={head}>
-            Setting
+            {nameHead}
           </th>
           <th scope="col" className={head}>
             Value
           </th>
-          <th scope="col" className={headNum}>
-            Size
-          </th>
-          <th scope="col" className={head}>
-            Updated
-          </th>
+          {facts ? (
+            <>
+              <th scope="col" className={headNum}>
+                Size
+              </th>
+              <th scope="col" className={head}>
+                Updated
+              </th>
+              <th scope="col" className={head}>
+                File
+              </th>
+            </>
+          ) : null}
         </tr>
       </thead>
       <tbody>
-        {settings.map((s) => (
-          <tr key={`${s.key}:${s.platform ?? ""}`} className={TABLE.row}>
+        {rows.map((r) => (
+          <tr key={r.key} className={TABLE.row}>
             <th
               scope="row"
-              className={cn(
-                cell,
-                "text-start font-mono text-xs font-normal text-fg-strong",
-              )}
+              className={cn(cell, "min-w-32 max-w-64 text-start font-normal")}
             >
-              {s.key}
-              {s.platform ? (
-                <span className="block font-sans text-fg-muted">
-                  {s.platform}
-                </span>
+              <NameButton row={r} />
+              {r.sub ? (
+                <span className="block text-xs text-fg-muted">{r.sub}</span>
               ) : null}
             </th>
-            <td className={cell}>
-              <ValueCell value={s.value} sealed={s.sealed} />
+            <td className={cn(cell, "min-w-64")}>
+              <ClampedValue
+                value={r.value}
+                sealed={r.sealed}
+                fileOnly={!!r.facts?.file}
+              />
             </td>
-            <td className={num}>{formatStorage(s.bytes)}</td>
-            <td className={cn(cell, "whitespace-nowrap")}>
-              <Timestamp at={fromSeconds(s.updatedAt)} />
-            </td>
+            {facts ? (
+              <>
+                <td className={num}>
+                  {r.facts ? formatStorage(r.facts.bytes) : null}
+                </td>
+                <td className={cn(cell, "whitespace-nowrap")}>
+                  {r.facts ? (
+                    <Timestamp at={fromSeconds(r.facts.updatedAt)} />
+                  ) : null}
+                </td>
+                <td className={cn(cell, "whitespace-nowrap tabular-nums")}>
+                  {r.facts?.file ? (
+                    formatStorage(r.facts.file.size)
+                  ) : (
+                    <span className="text-fg-muted">None</span>
+                  )}
+                </td>
+              </>
+            ) : null}
           </tr>
         ))}
       </tbody>
@@ -134,33 +208,104 @@ function SettingValues({
   );
 }
 
+function SettingValues({
+  q,
+  onOpen,
+}: {
+  q: UseQueryResult<SyncValuesResponse>;
+  onOpen: (t: RecordTarget) => void;
+}): React.ReactElement | null {
+  if (!q.data) return null;
+  const settings = q.data.settings ?? [];
+  if (settings.length === 0)
+    return (
+      <p className="px-5 py-4 text-sm text-fg-muted">No settings stored.</p>
+    );
+  const rows: Row[] = settings.map((s) => ({
+    key: `${s.key}:${s.platform ?? ""}`,
+    name: s.key,
+    ...(s.platform ? { sub: cap(s.platform) } : {}),
+    value: s.value,
+    sealed: s.sealed,
+    open: () =>
+      onOpen({
+        name: s.key,
+        where: "Settings",
+        bytes: s.bytes,
+        updatedAt: s.updatedAt,
+        value: s.value,
+        sealed: s.sealed,
+      }),
+  }));
+  return <ValueRows label="Setting values" nameHead="Setting" rows={rows} />;
+}
+
 function Records({
   slug,
   subject,
   collection,
   stashKey,
-  onHistory,
-  download,
-  busy,
-  refused,
+  onOpen,
+  reopen,
 }: {
   slug: string;
   subject: string;
   collection: SyncSubjectCollection;
   stashKey: string;
-  onHistory: (t: HistoryTarget) => void;
-  download: (collection: string, id: string, version?: number) => void;
-  busy: string | null;
-  refused: boolean;
+  onOpen: (t: RecordTarget) => void;
+  /** A record to open once it is listed (back from the sign-in). */
+  reopen: string | null;
 }): React.ReactElement {
   const q = useInfiniteQuery(syncRecordsQuery(slug, subject, collection.name));
+  const end = React.useRef<HTMLParagraphElement>(null);
+  const [focusEnd, setFocusEnd] = React.useState(false);
+  const records: SyncValueRecord[] = (q.data?.pages ?? []).flatMap(
+    (p) => p.records,
+  );
+  const target = (r: SyncValueRecord): RecordTarget => ({
+    name: r.id,
+    where: collection.label,
+    collection: collection.name,
+    version: r.version,
+    bytes: r.bytes,
+    updatedAt: r.updatedAt,
+    value: r.value,
+    sealed: r.sealed,
+    ...(r.file ? { file: r.file } : {}),
+  });
+  const reopened = React.useRef(false);
+  React.useEffect(() => {
+    if (reopen === null || reopened.current) return;
+    const r = records.find((x) => x.id === reopen);
+    if (!r) return;
+    reopened.current = true;
+    onOpen(target(r));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [records.length, reopen]);
+  const last = !q.hasNextPage && (q.data?.pages.length ?? 0) > 1;
+  React.useEffect(() => {
+    if (focusEnd && last) {
+      end.current?.focus();
+      setFocusEnd(false);
+    }
+  }, [focusEnd, last]);
+
   if (q.data === undefined && !q.isError)
-    return <Skeleton className="h-24 w-full rounded-lg" />;
+    return (
+      <div role="status">
+        <span className="sr-only">Loading records</span>
+        <Skeleton className="h-24 w-full rounded-lg" />
+      </div>
+    );
   if (q.isError && q.data === undefined)
     return (
       <div className="p-4">
         {needsSignIn(q.error) ? (
-          <SignInAgain what="show records" stashKey={stashKey} />
+          <SignInAgain
+            what="show records"
+            stashKey={stashKey}
+            fields={{ collection: collection.name }}
+          />
         ) : (
           <ErrorState
             error={q.error}
@@ -172,120 +317,70 @@ function Records({
         )}
       </div>
     );
-  const records: SyncValueRecord[] = (q.data?.pages ?? []).flatMap(
-    (p) => p.records,
-  );
+  const rows: Row[] = records.map((r) => ({
+    key: r.id,
+    name: r.id,
+    value: r.value,
+    sealed: r.sealed,
+    facts: {
+      bytes: r.bytes,
+      updatedAt: r.updatedAt,
+      ...(r.file ? { file: r.file } : {}),
+    },
+    open: () => onOpen(target(r)),
+  }));
+  const more = async (): Promise<void> => {
+    const before = records.length;
+    const res = await q.fetchNextPage();
+    const after = (res.data?.pages ?? []).flatMap((p) => p.records).length;
+    if (after > before)
+      announce(
+        `${formatCount(after - before)} more ${after - before === 1 ? "record" : "records"}`,
+      );
+    if (res.hasNextPage === false) setFocusEnd(true);
+  };
   return (
     <>
-      {refused ? (
-        <div className="p-4">
-          <SignInAgain what="download this file" stashKey={stashKey} />
-        </div>
-      ) : null}
       {records.length === 0 ? (
         <p className="px-5 py-4 text-sm text-fg-muted">No records stored.</p>
       ) : (
-        <ScrollTable
+        <ValueRows
           label={`${collection.label} records`}
-          className={TABLE.table}
-        >
-          <thead className={TABLE.head}>
-            <tr className={TABLE.headRow}>
-              <th scope="col" className={head}>
-                Record
-              </th>
-              <th scope="col" className={head}>
-                Value
-              </th>
-              <th scope="col" className={headNum}>
-                Size
-              </th>
-              <th scope="col" className={head}>
-                Updated
-              </th>
-              <th scope="col" className={head}>
-                File
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {records.map((r) => (
-              <tr key={r.id} className={TABLE.row}>
-                <th
-                  scope="row"
-                  className={cn(
-                    cell,
-                    "text-start font-mono text-xs font-normal text-fg-strong break-all",
-                  )}
-                >
-                  {r.id}
-                </th>
-                <td className={cell}>
-                  <ValueCell
-                    value={r.value}
-                    sealed={r.sealed}
-                    file={!!r.file}
-                  />
-                </td>
-                <td className={num}>{formatStorage(r.bytes)}</td>
-                <td className={cn(cell, "whitespace-nowrap")}>
-                  <Timestamp at={fromSeconds(r.updatedAt)} />
-                </td>
-                <td className={cell}>
-                  {r.file ? (
-                    <div className="flex flex-wrap items-center gap-x-2">
-                      <span className="tabular-nums">
-                        {formatStorage(r.file.size)}
-                      </span>
-                      <Button
-                        size="xs"
-                        variant="ghost"
-                        loading={busy === `${collection.name}/${r.id}/`}
-                        aria-label={`Download file of ${r.id}`}
-                        onClick={() => download(collection.name, r.id)}
-                      >
-                        Download
-                      </Button>
-                      <Button
-                        size="xs"
-                        variant="ghost"
-                        aria-label={`History of ${r.id}`}
-                        onClick={() =>
-                          onHistory({
-                            collection: collection.name,
-                            id: r.id,
-                            file: r.file!,
-                          })
-                        }
-                      >
-                        History
-                      </Button>
-                    </div>
-                  ) : (
-                    <span className="text-fg-muted">None</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </ScrollTable>
+          nameHead="Record"
+          rows={rows}
+        />
       )}
       {q.hasNextPage ? (
-        <div className="border-t border-border px-5 py-3">
+        <div className="flex flex-wrap items-center gap-3 border-t border-border px-5 py-3">
           <Button
             size="sm"
             variant="outline"
             loading={q.isFetchingNextPage}
-            onClick={() => void q.fetchNextPage()}
+            onClick={() => void more()}
           >
             Show more
           </Button>
+          <span className="text-sm text-fg-muted">
+            {formatCount(records.length)} of {formatCount(collection.records)}
+          </span>
         </div>
+      ) : last ? (
+        <p
+          ref={end}
+          tabIndex={-1}
+          className="border-t border-border px-5 py-3 text-sm text-fg-muted outline-hidden"
+        >
+          All {formatCount(records.length)} records shown
+        </p>
       ) : null}
       {q.isError ? (
         <div className="px-5 pb-3">
           {needsSignIn(q.error) ? (
-            <SignInAgain what="show more" stashKey={stashKey} />
+            <SignInAgain
+              what="show more"
+              stashKey={stashKey}
+              fields={{ collection: collection.name }}
+            />
           ) : (
             <ErrorState
               error={q.error}
@@ -311,14 +406,28 @@ export function Values({
   data: SubjectData;
 }): React.ReactElement {
   const stashKey = `sync-values:${subject}`;
+  // Back from the sign-in: the saved state, read once here and removed after the first paint.
+  const [back] = React.useState(() => readStash(stashKey, false));
   const [shown, setShown] = React.useState(() => hasSavedStepUp(stashKey));
-  const [picked, setPicked] = React.useState<string | null>(null);
-  const [history, setHistory] = React.useState<HistoryTarget | null>(null);
+  const [picked, setPicked] = React.useState<string | null>(
+    back?.fields.collection ?? null,
+  );
+  const [openTarget, setOpenTarget] = React.useState<RecordTarget | null>(null);
   const files = useFileDownload(slug, subject);
+  const narrow = useNarrowRem(CARDS_BELOW_REM);
   React.useEffect(() => {
-    // Back from the sign-in: the section opens again, once.
+    if (back === null) return;
     readStash(stashKey, true);
-  }, [stashKey]);
+    // Land on this section, not the top of the tab.
+    document
+      .getElementById("sync-data-values")
+      ?.scrollIntoView?.({ block: "start" });
+    const h = document.getElementById("sync-data-values-heading");
+    if (h) {
+      h.tabIndex = -1;
+      h.focus({ preventScroll: true });
+    }
+  }, [back, stashKey]);
 
   const values = useQuery({
     ...syncValuesQuery(slug, subject),
@@ -326,15 +435,41 @@ export function Values({
   });
   const browsable = data.collections.filter((c) => c.records > 0);
   const current = browsable.find((c) => c.name === picked) ?? browsable[0];
+  const stashFields: Record<string, string> = {
+    ...(current ? { collection: current.name } : {}),
+    ...(openTarget?.collection ? { record: openTarget.name } : {}),
+  };
+  const close = (): void => {
+    setOpenTarget(null);
+    files.clear();
+  };
+  const picker =
+    browsable.length < 2 ? null : browsable.length <= 4 && !narrow ? (
+      <SegmentedControl
+        aria-label="Collection"
+        size="sm"
+        wrap
+        value={current?.name ?? ""}
+        onChange={setPicked}
+        options={browsable.map((c) => ({ value: c.name, label: c.label }))}
+      />
+    ) : (
+      <div className="w-full sm:w-64">
+        <Select
+          aria-label="Collection"
+          value={current?.name ?? null}
+          onChange={(v) => v && setPicked(v)}
+          options={browsable.map((c) => ({
+            value: c.name,
+            label: `${c.label} · ${formatCount(c.records)}`,
+          }))}
+        />
+      </div>
+    );
   return (
     <SettingsSection
       id="sync-data-values"
       title="Values"
-      description={
-        shown
-          ? undefined
-          : "Reading them needs a recent sign-in and is recorded in the audit log."
-      }
       actions={
         <Button
           size="sm"
@@ -342,21 +477,30 @@ export function Values({
           aria-expanded={shown}
           onClick={() => {
             setShown((v) => !v);
-            setHistory(null);
+            close();
           }}
         >
-          {shown ? "Hide values" : "Show values"}
+          {shown && values.isSuccess ? "Hide values" : "Show values"}
         </Button>
       }
     >
-      {shown && values.isPending ? (
-        <div className="p-4">
+      {!shown ? (
+        <p className="px-5 py-4 text-sm text-fg-muted">
+          Reading them needs a recent sign-in and is recorded in the audit log.
+        </p>
+      ) : values.isPending ? (
+        <div className="p-4" role="status">
+          <span className="sr-only">Loading values</span>
           <Skeleton className="h-24 w-full rounded-lg" />
         </div>
-      ) : shown && values.isError ? (
+      ) : values.isError ? (
         <div className="p-4">
           {needsSignIn(values.error) ? (
-            <SignInAgain what="show values" stashKey={stashKey} />
+            <SignInAgain
+              what="show values"
+              stashKey={stashKey}
+              fields={stashFields}
+            />
           ) : (
             <ErrorState
               error={values.error}
@@ -367,31 +511,20 @@ export function Values({
             />
           )}
         </div>
-      ) : shown ? (
+      ) : (
         <>
-          <SettingValues q={values} />
+          <SettingValues q={values} onOpen={setOpenTarget} />
           {current ? (
             <div className="border-t border-border">
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
                 <h3 className="text-sm font-semibold text-fg-strong">
                   Records
-                  <span className="ms-2 font-normal text-fg-muted">
+                </h3>
+                {picker ?? (
+                  <span className="text-sm text-fg-muted">
                     {formatCount(current.records)} in {current.label}
                   </span>
-                </h3>
-                {browsable.length > 1 && browsable.length <= 4 ? (
-                  <SegmentedControl
-                    aria-label="Collection"
-                    size="sm"
-                    wrap
-                    value={current.name}
-                    onChange={setPicked}
-                    options={browsable.map((c) => ({
-                      value: c.name,
-                      label: c.label,
-                    }))}
-                  />
-                ) : null}
+                )}
               </div>
               <Records
                 key={current.name}
@@ -399,25 +532,22 @@ export function Values({
                 subject={subject}
                 collection={current}
                 stashKey={stashKey}
-                onHistory={setHistory}
-                download={files.download}
-                busy={files.busy}
-                refused={files.refused}
+                onOpen={setOpenTarget}
+                reopen={back?.fields.record ?? null}
               />
             </div>
           ) : null}
-          <FileHistory
+          <RecordDrawer
             slug={slug}
             subject={subject}
-            target={history}
-            onClose={() => setHistory(null)}
-            download={files.download}
-            busy={files.busy}
-            refused={files.refused}
+            target={openTarget}
+            onClose={close}
+            files={files}
             stashKey={stashKey}
+            stashFields={stashFields}
           />
         </>
-      ) : null}
+      )}
     </SettingsSection>
   );
 }

@@ -79,10 +79,12 @@ recorded in the audit log.
   the recovery code, the devices that open it).
 
 On a product whose Cloud Sync is **Readable by Polaris Key**, **Show values** reads the
-setting values and the records of one collection, a page at a time. A record with a file has
-**Download** and **History**, which lists the older versions the file keeps. Each of these needs a
-sign-in from the last 5 minutes (you are asked to sign in again if it is older) and is recorded in
-the audit log.
+setting values and the records of one collection, a page at a time. A long value is cut to two
+lines in the list; select a setting or record to read it whole and copy it. A record with a file
+also lists its current version and the older ones it keeps, each with **Download** (saved as
+`<id>-v<version>.bin`). Each of these needs a sign-in from the last 5 minutes (you are asked to
+sign in again if it is older) and is recorded in the audit log. Reading values and downloading
+files need edit access to Cloud Sync.
 
 On an **End-to-end** product the values and names stay on the person's devices, so there is
 nothing to show and nothing to download. There is no restore and no edit here.

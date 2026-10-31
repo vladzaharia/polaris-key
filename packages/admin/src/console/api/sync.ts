@@ -200,21 +200,37 @@ export const syncApi = {
     call<{ revisions: SyncFileRevision[] }>(
       `${p(slug)}/sync/subjects/${enc(subject)}/files/${enc(collection)}/${enc(id)}/revisions`,
     ),
-  /** A record's file (the live one, or `version`) as bytes. Needs a recent sign-in. */
+  /**
+   * A record's file (the live one, or `version`) as bytes. Needs a recent sign-in. `onProgress`
+   * hears the bytes read so far and the total (0 when the response does not say).
+   */
   syncFileDownload: async (
     slug: string,
     subject: string,
     collection: string,
     id: string,
     version?: number,
-  ): Promise<Blob> =>
-    (
-      await send(
-        `${p(slug)}/sync/subjects/${enc(subject)}/files/${enc(collection)}/${enc(id)}${
-          version === undefined ? "" : `?version=${version}`
-        }`,
-      )
-    ).blob(),
+    onProgress?: (loaded: number, total: number) => void,
+  ): Promise<Blob> => {
+    const res = await send(
+      `${p(slug)}/sync/subjects/${enc(subject)}/files/${enc(collection)}/${enc(id)}${
+        version === undefined ? "" : `?version=${version}`
+      }`,
+    );
+    if (!onProgress || !res.body) return res.blob();
+    const total = Number(res.headers.get("content-length")) || 0;
+    const reader = res.body.getReader();
+    const chunks: Uint8Array<ArrayBuffer>[] = [];
+    let loaded = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value as Uint8Array<ArrayBuffer>);
+      loaded += value.byteLength;
+      onProgress(loaded, total);
+    }
+    return new Blob(chunks, { type: "application/octet-stream" });
+  },
   /** Erases the person's Cloud Sync data and key ring. Needs a recent sign-in. */
   syncDeleteData: (slug: string, subject: string) =>
     call<{ deleted: true }>(`${p(slug)}/sync/subjects/${enc(subject)}/delete`, {

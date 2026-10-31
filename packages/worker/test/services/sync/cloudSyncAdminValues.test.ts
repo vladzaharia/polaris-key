@@ -358,23 +358,22 @@ describe("delete", () => {
     ]);
   });
 
-  it("leaves one audit row when the object's erase fails (M-1)", async () => {
-    const { w, call, audits } = await withData();
-    vi.spyOn(cloudSyncStore, "delete").mockRejectedValue(new Error("boom"));
-    await expect(
-      call("POST", SLUG, w.subject, "/delete", { json: { confirm: true } }),
-    ).rejects.toThrow("boom");
-    expect((await audits()).map((a) => a.action)).toEqual(["sync.data.delete"]);
-  });
-
-  it("leaves one audit row when the key ring's removal fails (M-1)", async () => {
-    const { w, call, audits } = await withData();
-    vi.spyOn(keyringStore, "delete").mockRejectedValue(new Error("boom"));
-    await expect(
-      call("POST", SLUG, w.subject, "/delete", { json: { confirm: true } }),
-    ).rejects.toThrow("boom");
-    expect((await audits()).map((a) => a.action)).toEqual(["sync.data.delete"]);
-  });
+  it.each([
+    ["the object's erase", () => vi.spyOn(cloudSyncStore, "delete")],
+    ["the key ring's removal", () => vi.spyOn(keyringStore, "delete")],
+  ] as const)(
+    "leaves one audit row when %s fails (M-1)",
+    async (_name, fail) => {
+      const { w, call, audits } = await withData();
+      fail().mockRejectedValue(new Error("boom"));
+      await expect(
+        call("POST", SLUG, w.subject, "/delete", { json: { confirm: true } }),
+      ).rejects.toThrow("boom");
+      expect((await audits()).map((a) => a.action)).toEqual([
+        "sync.data.delete",
+      ]);
+    },
+  );
 
   it("needs a step-up and a confirmation, and is 404 for another product's subject", async () => {
     const { w, call, stale, otherSubject, audits } = await withData();

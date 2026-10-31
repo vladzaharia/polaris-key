@@ -3,7 +3,6 @@
 import * as React from "react";
 import { api } from "../../../../api.js";
 import { announce } from "../../../../ui/LiveRegion.js";
-import { toast } from "../../../../ui/toast.js";
 import { needsSignIn } from "./SignInAgain.js";
 
 /** Saves `blob` as `name` through a temporary link (the response is a file, not a page). */
@@ -19,37 +18,80 @@ function save(blob: Blob, name: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
+export interface DownloadRequest {
+  collection: string;
+  id: string;
+  /** Asks for this kept version; absent asks for the live file. */
+  version?: number;
+  /** The version the file is named for: the live file's current one, or `version`. */
+  label: number;
+}
+
 /**
- * Downloads one file. `refused` is true after the Worker asked for a fresh sign-in (the caller
- * shows `SignInAgain`); any other failure is a toast. `busy` names the file being fetched, so its
- * button reads as working and a second click does nothing.
+ * The saved name. It never carries the record id's own extension (the id is the person's text):
+ * `<id>-v<n>.bin`, for the live file and a kept version alike.
  */
-export function useFileDownload(
-  slug: string,
-  subject: string,
-): {
+export const fileName = (r: DownloadRequest): string =>
+  `${r.id}-v${r.label}.bin`;
+
+export interface DownloadState {
+  /** The file being fetched (`collection/id/label`), so its button reads as working. */
   busy: string | null;
+  /** Bytes read so far and the total (0 when unknown), while `busy`. */
+  progress: { loaded: number; total: number } | null;
+  /** The Worker asked for a fresh sign-in (the caller shows `SignInAgain`). */
   refused: boolean;
-  download: (collection: string, id: string, version?: number) => void;
-} {
+  /** Any other failure: what failed and how to run it again. */
+  failed: { name: string; retry: () => void } | null;
+  download: (r: DownloadRequest) => void;
+  /** Forget a refusal or a failure (the drawer closed). */
+  clear: () => void;
+}
+
+export const downloadKey = (r: DownloadRequest): string =>
+  `${r.collection}/${r.id}/${r.label}`;
+
+export function useFileDownload(slug: string, subject: string): DownloadState {
   const [busy, setBusy] = React.useState<string | null>(null);
+  const [progress, setProgress] =
+    React.useState<DownloadState["progress"]>(null);
   const [refused, setRefused] = React.useState(false);
-  const download = (collection: string, id: string, version?: number): void => {
-    const key = `${collection}/${id}/${version ?? ""}`;
-    if (busy !== null) return;
-    setBusy(key);
+  const [failed, setFailed] = React.useState<DownloadState["failed"]>(null);
+  const running = React.useRef(false);
+  const download = (r: DownloadRequest): void => {
+    if (running.current) return;
+    running.current = true;
+    setBusy(downloadKey(r));
+    setProgress(null);
     setRefused(false);
+    setFailed(null);
+    announce("Download started");
     api
-      .syncFileDownload(slug, subject, collection, id, version)
+      .syncFileDownload(
+        slug,
+        subject,
+        r.collection,
+        r.id,
+        r.version,
+        (loaded, total) => setProgress({ loaded, total }),
+      )
       .then((blob) => {
-        save(blob, version === undefined ? id : `${id}-v${version}`);
-        announce("Download started");
+        save(blob, fileName(r));
+        announce(`Downloaded ${fileName(r)}`);
       })
       .catch((e: unknown) => {
         if (needsSignIn(e)) setRefused(true);
-        else toast.error(e, { context: { thing: "File" } });
+        else setFailed({ name: r.id, retry: () => download(r) });
       })
-      .finally(() => setBusy(null));
+      .finally(() => {
+        running.current = false;
+        setBusy(null);
+        setProgress(null);
+      });
   };
-  return { busy, refused, download };
+  const clear = (): void => {
+    setRefused(false);
+    setFailed(null);
+  };
+  return { busy, progress, refused, failed, download, clear };
 }
