@@ -55,6 +55,13 @@ public enum HostCodec {
         setting + "\u{0}" + member
     }
 
+    /// The id a record goes by on the wire: its blinded name in E2E mode (`codec` given), the id itself
+    /// in server mode. The file routes name a record by this id before any push has sealed it.
+    public static func wireId(_ codec: SyncCodecPort?, _ collection: String, _ id: String) throws -> String {
+        guard let codec else { return id }
+        return try codec.blind(kind: .record, ctx: collection, name: id)
+    }
+
     // MARK: Errors
 
     static func locked() -> PolarisError {
