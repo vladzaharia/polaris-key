@@ -278,7 +278,7 @@ def test_poll_answers_slow_down_and_a_503_keeps_the_request() -> None:
     assert (r.kind, r.reason) == ("denied", "access_denied")
 
 
-def test_a_token_is_stored_as_a_device_code_sign_in_stores_it(tmp_path: Any) -> None:
+def test_a_token_is_stored_unconfirmed_until_the_person_confirms(tmp_path: Any) -> None:
     w = Fake(nearby_discovery(), poll=ok(**TOKEN_ANSWER))
     events: List[Any] = []
     c = client(w, state_dir=str(tmp_path))
@@ -294,10 +294,11 @@ def test_a_token_is_stored_as_a_device_code_sign_in_stores_it(tmp_path: Any) -> 
         "signed_in", SUBJECT, "email", "lic_n1",
     )
     assert c._tokens.current == "pkeyt_nearby_token"
-    assert c._tokens.provenance == "signin" and c._tokens.explicit_sign_out is False
-    assert c.identity._account.stored_subject() == SUBJECT
+    # Unconfirmed (D-21): no sign-in mark, the explicit sign-out stands, no subject and no event yet.
+    assert c._tokens.provenance == "unconfirmed" and c._tokens.explicit_sign_out is True
+    assert c.identity._account.stored_subject() is None
     assert acquired == [1]
-    assert events == [("signed_in", SUBJECT)]
+    assert events == []
     assert "pkeyt_nearby_token" not in repr(r)
 
 

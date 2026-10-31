@@ -60,9 +60,11 @@ TokenSource = Literal["activate", "enroll", "register", "signin", "reacquire"]
 
 #: What a stored token stands for, for the automatic sign-in ladder (I-47.3): only ``signin`` is a
 #: signed-in person's own. A key activation, an enrolment or a device registration is not.
-TokenProvenance = Literal["signin", "register", "key"]
+#: ``unconfirmed`` is a nearby sign-in's token the person has not confirmed (V5 §15.6.1 rule 12):
+#: it is not a sign-in, and a client that starts with it drops the token before any use.
+TokenProvenance = Literal["signin", "register", "key", "unconfirmed"]
 
-_PROVENANCES = ("signin", "register", "key")
+_PROVENANCES = ("signin", "register", "key", "unconfirmed")
 
 
 def provenance_of(source: Optional[str]) -> Optional[TokenProvenance]:
@@ -195,7 +197,11 @@ class TokenManager:
     def load(self) -> None:
         self._token = self._store.get_token()
         self._source = None
-        if self._token is None and self.provenance is not None:
+        if self.provenance == "unconfirmed":
+            # The process ended on the confirm screen: the token goes, locally, before anything
+            # reads it. The explicit sign-out flag is left as it was.
+            self.clear()
+        elif self._token is None and self.provenance is not None:
             self._write_provenance(None)
 
     @property
@@ -225,6 +231,14 @@ class TokenManager:
         ``register``/``enroll``, ``activate`` is a key), and an unknown source or a re-acquire
         leaves the stored provenance alone."""
         prov = provenance_of(source) if provenance is _DEFAULT else provenance
+        if prov == "unconfirmed":
+            # Written BEFORE the token: a crash leaves the old token or the marked one, never a
+            # bare token of an unconfirmed nearby sign-in. The explicit sign-out stays as it was.
+            self._write_provenance("unconfirmed")
+            self._token = token
+            self._source = source
+            self._store.set_token(token)
+            return
         # Crash-safe: cleared first, written last, so a crash between leaves "unknown" (never signin).
         if prov is not None:
             self._write_provenance(None)
@@ -253,6 +267,19 @@ class TokenManager:
             return None
         text = (text or "").strip()
         return text if text in _PROVENANCES else None  # type: ignore[return-value]
+
+    @property
+    def unconfirmed(self) -> bool:
+        """The held token is a nearby sign-in's that the person has not confirmed."""
+        return self._token is not None and self.provenance == "unconfirmed"
+
+    def confirm_sign_in(self) -> None:
+        """The person confirmed the account: the token becomes a plain sign-in and the explicit
+        sign-out state ends."""
+        if self._token is None:
+            return
+        self._write_provenance("signin")
+        self.set_explicit_sign_out(False)
 
     def set_provenance(self, provenance: Optional[TokenProvenance]) -> None:
         """Record that the stored token no longer stands for a signed-in person (a sign-out that

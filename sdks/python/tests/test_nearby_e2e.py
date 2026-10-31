@@ -20,6 +20,7 @@ from polaris_key.core.device_proof import DeviceProof, verify_device_proof
 from polaris_key.identity.nearby import _grant
 from polaris_key.identity.nearby_approver import NearbyAsk
 from polaris_key.identity.sign_in import SignedInIdentity
+from polaris_key.keyring import KeyringError
 
 from helpers import BASE_URL, PRODUCT, make_client
 from nearby_fixtures import memory_keys, until
@@ -315,7 +316,10 @@ def test_a_full_nearby_sign_in_the_poll_signs_d_in(w: World) -> None:
     assert w.d._tokens.current is None
     o = poll_until(s)
     assert (o.subject, o.identity.email) == (SUBJECT, "ada@example.com")
-    assert w.d._tokens.current == D_TOKEN and w.d._tokens.provenance == "signin"
+    assert w.d._tokens.current == D_TOKEN and w.d._tokens.provenance == "unconfirmed"
+    assert w.d.identity._account.stored_subject() is None
+    s.confirm_account()
+    assert w.d._tokens.provenance == "signin"
     assert w.d.identity._account.stored_subject() == SUBJECT
     # The handle is the Worker's and was never on the wire between the devices in a form D could misuse.
     assert w.worker.requests[next(iter(w.worker.requests))]["bearer"] is None
@@ -476,8 +480,10 @@ def test_declining_the_account_leaves_d_locked_and_the_servers_copy_is_still_the
     s, _ = approved_d(w)
     s.decline_account()
     assert w.d.keyring.unlocked is False and s._wrap is None
-    # The normal unlock opens the server's copy later, when the person does confirm.
-    assert w.d.keyring.unlock().kind == "unlocked"
+    # D keeps no token of the account that was declined: the key ring refuses until a sign-in.
+    assert w.d._tokens.current is None
+    with pytest.raises(KeyringError):
+        w.d.keyring.unlock()
 
 
 def test_an_approver_with_no_root_sends_no_wrap_and_d_applies_none(w: World) -> None:

@@ -168,8 +168,24 @@ class IdentityClient:
             and bool(self._nearby_runtime(role)),
             keyring=self._keyring,
             sign_out=self.sign_out,
+            confirm=self._confirm_nearby,
+            drop_local=self._drop_nearby,
         )
         return start_nearby_sign_in(deps, self._deps, **opts)
+
+    def _confirm_nearby(self, subject: str) -> None:
+        """The person confirmed the nearby account: the token is a sign-in (the explicit sign-out ends),
+        the subject is stored and the event goes out, so Cloud Sync and Connect start now and not before
+        (V5 §12.11.5 rule 9)."""
+        self._tokens.confirm_sign_in()
+        self._account.write_subject(subject)
+        self._deps.emit("identity", change="signed_in", subject=subject)
+
+    def _drop_nearby(self) -> None:
+        """An unconfirmed nearby sign-in ended: the token, its mark and the stored identity go, whatever
+        the Worker answered to the sign-out."""
+        self._tokens.clear()
+        self.forget()
 
     def _start_nearby_approver(self, handler: Callable[[Any], None], **opts: Any) -> Any:
         nearby = self._cloud_nearby() if self._cloud_nearby is not None else None

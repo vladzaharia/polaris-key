@@ -354,7 +354,8 @@ class PolarisKeyClient:
                 now=self.core.now,
                 require_identity=lambda: self.core.require_service("identity", Feature.IDENTITY_NEARBY),
                 identity=self._nearby_identity,
-                signed_in=lambda: self.identity.current() is not None,
+                # An unconfirmed nearby sign-in is not a sign-in yet (V5 §15.6.1 rule 12).
+                signed_in=lambda: not self._tokens.unconfirmed and self.identity.current() is not None,
                 signer=self.connect.nearby_signer,
             ),
         )

@@ -153,6 +153,40 @@ def test_the_provenance_survives_a_restart_and_goes_with_the_token(clock, tmp_pa
     again.close()
 
 
+def test_the_unconfirmed_provenance_is_written_before_the_token(tmp_path: Any) -> None:
+    store = InMemoryStore(PRODUCT)
+    c = _licensed(make_client(Worker(discovery()), store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path)))
+    seen = []
+    set_token = store.set_token
+    store.set_token = lambda t: (seen.append(c._tokens.provenance), set_token(t))[1]  # type: ignore[method-assign]
+    c._tokens.set("pkeyt_nearby", "signin", provenance="unconfirmed")
+    assert seen == ["unconfirmed"]
+    # Not a sign-in until confirmed; the explicit sign-out is left as it was; a re-acquire keeps the mark.
+    assert c._tokens.unconfirmed and c.identity.auto_sign_in().reason == "no_credential"
+    c._tokens.set_explicit_sign_out(True)
+    c._tokens.set("pkeyt_rotated", "reacquire")
+    assert c._tokens.provenance == "unconfirmed" and c._tokens.explicit_sign_out is True
+    c._tokens.confirm_sign_in()
+    assert (c._tokens.provenance, c._tokens.explicit_sign_out, c._tokens.unconfirmed) == ("signin", False, False)
+    c.close()
+
+
+def test_an_unconfirmed_token_is_dropped_at_load_and_rung_1_needs_sign_in(tmp_path: Any) -> None:
+    store = InMemoryStore(PRODUCT)
+    w = Worker(discovery())
+    c = make_client(w, store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path))
+    c._tokens.set("pkeyt_nearby", "signin", provenance="unconfirmed")
+    c._tokens.set_explicit_sign_out(True)
+    c.close()
+    # A restart finds the mark: the token goes before anything reads it, and the sign-out reason stays.
+    again = _licensed(make_client(w, store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path)))
+    assert again._tokens.current is None and store.get_token() is None
+    assert again._tokens.provenance is None and again._tokens.explicit_sign_out is True
+    assert again.identity.auto_sign_in().reason == "signed_out"
+    assert not [x for x in w.calls if x["method"] == "POST"]  # the drop was local: the Worker was not told
+    again.close()
+
+
 # ── The explicit sign-out flag ───────────────────────────────────────────────────────
 
 

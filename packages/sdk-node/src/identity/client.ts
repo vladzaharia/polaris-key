@@ -407,7 +407,10 @@ export class IdentityClient {
   }
 
   /** What a nearby sign-in session calls at the person's decision (V5 §15.6.1 rule 12). @internal */
-  get nearbySessionHooks(): Pick<NearbySessionDeps, "confirm" | "dropLocal"> {
+  private get nearbySessionHooks(): Pick<
+    NearbySessionDeps,
+    "confirm" | "dropLocal"
+  > {
     return {
       // Confirmed: the token is a sign-in, the subject is stored and the event goes out, so Sync
       // and Connect start now and not before (V5 §12.11.5 rule 9).

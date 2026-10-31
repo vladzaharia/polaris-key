@@ -435,8 +435,9 @@ class NearbyRoutes:
         return self._signed_in(res, b)
 
     def _signed_in(self, res: httpx.Response, raw: Dict[str, Any]) -> NearbyPollResult:
-        """A token answer, stored as a device-code ``ready`` stores it: the token manager (a sign-in the
-        person started), the persisted subject, the acquisition sync, the ``identity`` event."""
+        """A token answer, stored UNCONFIRMED (the token manager, the identity the confirm screen shows, the
+        acquisition sync); the persisted subject, the explicit-sign-out clear and the ``identity`` event come
+        at :meth:`NearbySignInSession.confirm_account`."""
         answer = parse_token_answer(200, raw)
         if answer.kind != "token":
             raise PolarisError(ErrorCode.BAD_RESPONSE, "nearby poll answered without a complete sign-in.")
@@ -447,12 +448,12 @@ class NearbyRoutes:
         name = shown.get("name") if isinstance(shown.get("name"), str) and shown.get("name") else None
         email = shown.get("email") if isinstance(shown.get("email"), str) and shown.get("email") else None
         identity = SignedInIdentity(name=name, email=email) if (name or email) else None
-        deps.tokens.set(answer.access_token, "signin", person_initiated=True)
+        # Held unconfirmed (V5 §15.6.1 rule 12): not a sign-in, no stored subject and no ``signed_in``
+        # event until the person confirms the account (``NearbySignInSession.confirm_account``), so Cloud
+        # Sync and Connect do not start for an account nobody has accepted.
+        deps.tokens.set(answer.access_token, "signin", provenance="unconfirmed")
         deps.store_identity(identity)
-        if deps.write_subject is not None:
-            deps.write_subject(answer.subject)
         deps.on_acquired()
-        deps.emit("identity", change="signed_in", subject=answer.subject)
         license_id = shown.get("id") if isinstance(shown.get("id"), str) else None
         return NearbyPollResult(
             kind="signed_in",

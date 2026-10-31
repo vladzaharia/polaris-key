@@ -141,7 +141,15 @@ class FakeNearbySession:
             return SignInOutcome(kind=self._outcome)
         return SignInOutcome(kind="signed_in", identity=self._identity, activation=None)
 
+    #: The sign-in ended unconfirmed (D-21): a cancel elsewhere or the 300 s deadline.
+    ended = False
+
+    def end(self) -> None:
+        self.ended = True
+
     def confirm_account(self) -> None:
+        if self.ended:
+            raise PolarisError("sign-in-failed", "The sign-in ended before it was confirmed.")
         self.confirmed += 1
 
     def decline_account(self) -> None:
@@ -221,9 +229,13 @@ class WhenKeys:
     (``None``: at once). A read with a timeout is a tick of a fake clock (``now``), so the 2 s, 3 s and 300 s
     windows pass in no time; a read with none waits for its trigger for a few real seconds."""
 
-    def __init__(self, script: Any, *, end: Optional[BaseException] = None) -> None:
+    def __init__(self, script: Any, *, end: Optional[BaseException] = None, eof: Optional[str] = None) -> None:
         self.script = list(script)
         self.end = end
+        #: The input ends once the script is spent and this text is on the screen (a closed stdin):
+        #: ``eof`` is then set on the reader, as the real ``KeyReader`` sets it.
+        self.eof_when = eof
+        self.eof = False
         self.now = 1000.0
         self.terminal: Any = None
 
@@ -252,6 +264,9 @@ class WhenKeys:
         key = self._next()
         if key is not None:
             return key
+        if self.eof_when is not None and not self.script and self.eof_when in self.screen():
+            self.eof = True
+            return None
         if timeout is None:
             deadline = time.monotonic() + 5
             while time.monotonic() < deadline:

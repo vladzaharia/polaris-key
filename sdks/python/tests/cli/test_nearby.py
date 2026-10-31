@@ -110,6 +110,45 @@ class TestLogin:
         _, out = _login(WhenKeys([("not you, sign out", "esc")]), _Client(nearby_identity(s)))
         assert (s.declined, s.confirmed) == (1, 0)
 
+    def test_nearby_login_eof_on_the_confirm_screen_declines(self) -> None:
+        s = FakeNearbySession([ANA])
+        _, out = _login(WhenKeys([], eof="not you, sign out"), _Client(nearby_identity(s)))
+        assert (s.declined, s.confirmed) == (1, 0)
+        assert (out.code, out.data["state"]) == (EXIT.failed, "declined")
+
+    def test_nearby_login_the_confirm_screen_ends_when_the_session_ends(self) -> None:
+        s = FakeNearbySession([ANA])
+        keys = WhenKeys([])
+        original = keys.read
+
+        def read(timeout: Optional[float] = None) -> Optional[str]:
+            if "not you, sign out" in keys.screen():
+                s.end()  # the 300 s deadline passes while the screen is up
+            return original(timeout)
+
+        keys.read = read  # type: ignore[method-assign]
+        _, out = _login(keys, _Client(nearby_identity(s)))
+        assert (s.confirmed, s.declined) == (0, 0)
+        assert (out.code, out.data["state"]) == (EXIT.failed, "expired")
+        assert "Signed in as" not in "\n".join(out.text)
+
+    def test_nearby_login_confirm_after_the_deadline_shows_expired(self) -> None:
+        s = FakeNearbySession([ANA])
+        keys = WhenKeys([("not you, sign out", "enter")])
+        original = keys.read
+
+        def read(timeout: Optional[float] = None) -> Optional[str]:
+            key = original(timeout)
+            if key == "enter":
+                s.ended = True  # the deadline passes in the same turn as Enter: confirming is refused
+            return key
+
+        keys.read = read  # type: ignore[method-assign]
+        _, out = _login(keys, _Client(nearby_identity(s)))
+        assert s.confirmed == 0
+        assert (out.code, out.data["state"]) == (EXIT.failed, "expired")
+        assert "Signed in as" not in "\n".join(out.text)
+
     def test_several_approvers_are_listed_and_picked_by_number(self) -> None:
         s = FakeNearbySession([ANA, BEN], sign_in_after_choose=False)
         keys = WhenKeys([("2  Ben", "2"), ("Tap this code there", "esc")])
@@ -258,6 +297,16 @@ class TestApprove:
         assert "New phone is signed in" in "\n".join(out.text)
         # The advert stands only while the command runs (D-6): the prompt open, stopped on the way out.
         assert calls == ["on_request:[('prompt', True)]", "stop"]
+
+    def test_devices_approve_eof_denies(self) -> None:
+        ask = FakeAsk()
+        calls: List[str] = []
+        client = _Client(approver_identity(ask, calls=calls))
+        keys = WhenKeys([], eof="choose a code")
+        t = _terminal("devices approve", interactive=True, keys=keys)
+        out = flows.devices(client, t, ["approve"])
+        assert ask.picks == [] and ask.denied == 1 and "stop" in calls
+        assert (out.code, out.data["state"]) == (EXIT.failed, "denied")
 
     @pytest.mark.parametrize("key", ["d", "esc"])
     def test_d_denies_without_picking_esc_denies_quietly_and_both_stop_the_advert(self, key: str) -> None:

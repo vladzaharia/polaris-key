@@ -30,6 +30,7 @@ from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from ...constants_generated import ErrorCode
 from ...core.errors import PolarisError
+from ...identity.sign_in import SignInOutcome
 from ..core.models import SignInModel
 from . import screens
 from .device import run_in_thread
@@ -422,13 +423,20 @@ def login(client: Any, t: Terminal, verb: str = "login") -> Union[Outcome, Fall]
     answer = "decline"
     try:
         with t.device.keys() as keys, t.device.live() as live:
+            live.update(lambda: nearby_login(k, done_view, verb))
             while True:
-                live.update(lambda: nearby_login(k, done_view, verb))
-                key = keys.read(None)
+                # The screen ends with the session (a cancel elsewhere, the 300 s deadline: D-21), and
+                # the end of the input is "no", never a wait.
+                if getattr(session, "ended", False):
+                    answer = "expired"
+                    break
+                key = keys.read(_TICK)
                 if key == "enter":
                     answer = "confirm"
                     break
                 if key in ("n", "esc"):
+                    break
+                if key is None and getattr(keys, "eof", False):
                     break
     except KeyboardInterrupt:
         t.interrupted = True
@@ -436,7 +444,9 @@ def login(client: Any, t: Terminal, verb: str = "login") -> Union[Outcome, Fall]
         try:
             session.confirm_account()
         except Exception:
-            pass  # no channel copy: the device is still signed in and the normal unlock works later
+            # The deadline passed first: the device is signed out, never "signed in".
+            answer = "expired"
+    if answer == "confirm":
         data = {"state": "signedIn", "name": name, "email": email, "attached": None}
         try:
             data["status"] = client.status().status
@@ -444,6 +454,9 @@ def login(client: Any, t: Terminal, verb: str = "login") -> Union[Outcome, Fall]
             pass
         lines = screens._frame(k, verb, k.step("ok", _done_line(k, name, email)))
         return Outcome(EXIT.ok, lines, data)
+    if answer == "expired":
+        gone = SignInModel(headless=False).finished(SignInOutcome(kind="expired"))
+        return Outcome(EXIT.failed, screens.sign_in(k, gone, verb), {"state": "expired", "error": gone.code})
     try:
         session.decline_account()
     except Exception:
@@ -536,9 +549,12 @@ def _run_approval(client: Any, t: Terminal, asks: "queue.Queue[Any]", verb: str)
             ask_view = NearbyApprovalView("ask", device=device, codes=codes)
 
             def press(valid: int) -> Optional[str]:
-                """The next key that means something: a digit up to ``valid``, ``d`` or Esc."""
+                """The next key that means something: a digit up to ``valid``, ``d`` or Esc. The end of
+                the input is a denial (Esc), never a wait."""
                 while True:
                     key = keys.read(None)
+                    if key is None and getattr(keys, "eof", False):
+                        return "esc"
                     if key == "esc" or key == "d":
                         return key
                     if key and key.isdigit() and 1 <= int(key) <= valid:

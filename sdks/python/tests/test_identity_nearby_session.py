@@ -220,12 +220,15 @@ def test_a_token_from_the_poll_is_a_sign_in_stored_as_device_code_stores_it(cloc
     assert o.kind == "signed_in" and o.subject == SUBJECT
     assert (o.activation.license_id, o.identity.email, o.scope) == ("lic_n1", "ada@example.com", "email")
     assert c._tokens.current == "pkeyt_nearby_token"
-    assert c._tokens.provenance == "signin" and c._tokens.explicit_sign_out is False
+    # Held unconfirmed (D-21): not a sign-in, the explicit sign-out stands, no stored subject yet.
+    assert c._tokens.provenance == "unconfirmed" and c._tokens.explicit_sign_out is True
     assert c.identity.current() == {"name": "Ada", "email": "ada@example.com", "activatedAt": None}
-    assert c.identity._account.stored_subject() == SUBJECT
+    assert c.identity._account.stored_subject() is None
     # The LAN side stays open for the wrap until the person confirms the account.
     assert fake.request_obj.closed is False
     s.confirm_account()
+    assert c._tokens.provenance == "signin" and c._tokens.explicit_sign_out is False
+    assert c.identity._account.stored_subject() == SUBJECT
     assert fake.request_obj.calls[-1] == "confirm_account"
 
 
@@ -523,3 +526,207 @@ def test_no_key_ring_means_the_wrap_is_dropped(clock) -> None:
     c, fake, s = with_wrap(None)
     s.wait()
     assert s.confirm_account() is None
+
+
+# ── D-21 / C4-G1: the sign-in is unconfirmed until the person confirms ──────────────────────
+
+
+class _FakeTimer:
+    """``threading.Timer`` by hand: the interval it was armed with, fired on demand."""
+
+    armed: List["_FakeTimer"] = []
+
+    def __init__(self, interval: float, fn: Callable[[], None]) -> None:
+        self.interval, self.fn, self.cancelled, self.daemon = interval, fn, False, False
+        _FakeTimer.armed.append(self)
+
+    def start(self) -> None:
+        pass
+
+    def cancel(self) -> None:
+        self.cancelled = True
+
+    def fire(self) -> None:
+        if not self.cancelled:
+            self.fn()
+
+
+@pytest.fixture
+def fake_timer(monkeypatch: pytest.MonkeyPatch) -> List[_FakeTimer]:
+    import threading
+
+    _FakeTimer.armed = []
+    monkeypatch.setattr(threading, "Timer", _FakeTimer)
+    return _FakeTimer.armed
+
+
+def _signouts(w: Any) -> List[Any]:
+    return [x for x in w.calls if x["path"].endswith("/signout")]
+
+
+def _gated_poll() -> Any:
+    """A poll answer the test releases by hand, so a decline can land while the poll is in flight."""
+    import threading
+
+    entered, release = threading.Event(), threading.Event()
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        entered.set()
+        assert release.wait(5)
+        return TOKEN
+
+    return handler, entered, release
+
+
+def test_a_decline_before_or_during_the_poll_never_leaves_a_token(clock) -> None:
+    import threading
+
+    # Before the poll: wait() answers cancelled and no token was ever stored.
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
+    c, fake, s = session(w)
+    s.decline_account()
+    assert s.wait().kind == "cancelled" and c._tokens.current is None
+    assert not [x for x in w.nearby_calls() if x["path"].endswith("/poll")]
+
+    # In flight: the token lands after the decline, and is discarded at once.
+    handler, entered, release = _gated_poll()
+    w2 = Fake(nearby_discovery(), start=START, poll=handler, signout=ok(released=False))
+    c2, fake2, s2 = session(w2)
+    out: List[Any] = []
+    t = threading.Thread(target=lambda: out.append(s2.wait(once=True)))
+    t.start()
+    assert entered.wait(5)
+    s2.decline_account()
+    release.set()
+    t.join(5)
+    assert out[0].kind == "cancelled"
+    assert c2._tokens.current is None and c2._tokens.provenance is None
+    assert len(_signouts(w2)) == 1
+    assert c2.identity._account.stored_subject() is None
+    with pytest.raises(PolarisError):
+        s2.confirm_account()
+
+
+def test_a_second_wait_after_signed_in_returns_the_same_outcome_and_keeps_the_lan_open(clock) -> None:
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN)
+    c, fake, s = session(w)
+    first = s.wait()
+    polls = len([x for x in w.nearby_calls() if x["path"].endswith("/poll")])
+    assert first.kind == "signed_in"
+    assert s.wait() is first and s.wait(once=True) is first
+    assert len([x for x in w.nearby_calls() if x["path"].endswith("/poll")]) == polls
+    assert fake.request_obj.closed is False
+    assert c._tokens.current is not None
+
+
+def test_decline_when_sign_out_fails_still_leaves_no_token(clock) -> None:
+    for how in ("decline", "timeout"):
+        w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=httpx.Response(500, json={}))
+        c, fake, s = session(w)
+        armed: List[_FakeTimer] = []
+        _FakeTimer.armed = armed
+        import threading
+
+        real = threading.Timer
+        threading.Timer = _FakeTimer  # type: ignore[misc,assignment]
+        try:
+            assert s.wait().kind == "signed_in"
+            if how == "decline":
+                s.decline_account()
+            else:
+                armed[-1].fire()
+        finally:
+            threading.Timer = real  # type: ignore[misc]
+        assert len(_signouts(w)) == 1
+        assert c._tokens.current is None and c._tokens.provenance is None
+        assert c.identity.auto_sign_in().kind == "needs_sign_in"
+
+
+def test_cancel_or_close_before_confirm_signs_the_device_out(clock) -> None:
+    for end in ("cancel", "close"):
+        w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
+        c, fake, s = session(w)
+        assert s.wait().kind == "signed_in" and c._tokens.current is not None
+        ended: List[int] = []
+        s.on_end(lambda: ended.append(1))
+        getattr(s, end)()
+        assert c._tokens.current is None and len(_signouts(w)) == 1
+        assert s.ended is True and ended == [1]
+        with pytest.raises(PolarisError):
+            s.confirm_account()
+
+    # The poll lands after the cancel: discarded the same way.
+    import threading
+
+    handler, entered, release = _gated_poll()
+    w2 = Fake(nearby_discovery(), start=START, poll=handler, signout=ok(released=False))
+    c2, fake2, s2 = session(w2)
+    out: List[Any] = []
+    t = threading.Thread(target=lambda: out.append(s2.wait(once=True)))
+    t.start()
+    assert entered.wait(5)
+    s2.cancel()
+    release.set()
+    t.join(5)
+    assert out[0].kind == "cancelled" and c2._tokens.current is None and len(_signouts(w2)) == 1
+
+
+def test_the_confirm_screen_times_out_and_signs_the_device_out(clock, fake_timer: List[_FakeTimer]) -> None:
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
+    c, fake, s = session(w)
+    assert s.wait().kind == "signed_in"
+    # Armed for expires_in seconds, as a daemon, from the moment wait() answered.
+    assert [(t.interval, t.daemon) for t in fake_timer] == [(300, True)]
+    ended: List[int] = []
+    s.on_end(lambda: ended.append(1))
+    assert c._tokens.current is not None and not s.ended
+    fake_timer[-1].fire()
+    assert s.ended and ended == [1]
+    assert c._tokens.current is None and len(_signouts(w)) == 1
+    assert fake.request_obj.calls[-2:] == ["decline_account", "close"]
+    with pytest.raises(PolarisError):
+        s.confirm_account()
+
+
+def test_confirming_cancels_the_deadline(clock, fake_timer: List[_FakeTimer]) -> None:
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
+    c, fake, s = session(w)
+    assert s.wait().kind == "signed_in"
+    s.confirm_account()
+    assert fake_timer[-1].cancelled
+    fake_timer[-1].fire()
+    assert not s.ended and c._tokens.current is not None and _signouts(w) == []
+
+
+def test_a_peer_closing_after_approval_keeps_the_sign_in_awaiting_confirm(clock) -> None:
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
+    c, fake, s = session(w)
+    assert s.wait().kind == "signed_in"
+    fake.request_obj.close()  # M closed the LAN session after `approved`
+    assert not s.ended and c._tokens.current is not None and _signouts(w) == []
+    s.confirm_account()
+    assert c._tokens.provenance == "signin"
+
+
+def test_cloud_sync_and_the_signed_in_event_wait_for_confirm_account(clock) -> None:
+    w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
+    c, fake, s = session(w)
+    events: List[Any] = []
+    c.events.subscribe(lambda e: events.append((e.get("change"), e.get("subject"))), ["identity"])
+    assert s.wait().kind == "signed_in"
+    assert c._tokens.unconfirmed is True
+    assert c.identity._account.stored_subject() is None and events == []
+    s.confirm_account()
+    assert c._tokens.unconfirmed is False
+    assert c.identity._account.stored_subject() == SUBJECT and events == [("signed_in", SUBJECT)]
+
+    # A decline before confirm: no stored subject, no signed_in event, no Sync flush.
+    w2 = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
+    c2, fake2, s2 = session(w2)
+    seen: List[Any] = []
+    c2.events.subscribe(lambda e: seen.append(e.get("change")), ["identity"])
+    assert s2.wait().kind == "signed_in"
+    s2.decline_account()
+    assert c2.identity._account.stored_subject() is None
+    assert "signed_in" not in seen
+    assert not [x for x in w2.calls if "/sync" in x["path"]]

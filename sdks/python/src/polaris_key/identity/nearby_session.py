@@ -29,6 +29,16 @@ here prints or keeps the handle, the proofs, the code, the token or a wrap in a 
 Worker). After ``signed_in`` the LAN request stays open until :meth:`confirm_account`,
 :meth:`decline_account`, :meth:`close` or its own 300 s end, so a wrap sent just after the approval is not
 lost.
+
+UNCONFIRMED UNTIL :meth:`confirm_account` (V5 §15.6.1 rule 12, D-21). The token is held under the
+``unconfirmed`` provenance: not a sign-in, dropped at the next start, and the stored subject and the
+``signed_in`` identity event (so Cloud Sync and Connect) wait for the confirmation. A decline, a
+:meth:`cancel`/:meth:`close`, or the ``expires_in``-second screen deadline (a daemon timer, counted from
+the moment :meth:`wait` answered ``signed_in``) ends it: the wrap and every held record are dropped, the
+device signs out as a best effort, and the token goes locally whatever the Worker answered. A ``signed_in``
+poll that lands after such an end does the same at once. The LAN peer closing after ``approved`` is NOT an
+end (rule 8: the server copy is the fallback, and M's CLI stops its listener right after approving).
+:attr:`ended` / :meth:`on_end` let a screen leave. :meth:`wait` keeps its first terminal outcome.
 """
 
 from __future__ import annotations
@@ -102,6 +112,12 @@ class NearbyDeps:
     creds: Callable[[], NearbyCredentials]
     nearby: Callable[[], Any]
     supported: Callable[[str], bool]
+    #: The person confirmed the account: the token becomes a sign-in, the subject is stored and the
+    #: ``signed_in`` identity event is raised (Cloud Sync and Connect start only now).
+    confirm: Callable[[str], Any]
+    #: Drop the unconfirmed sign-in locally whatever the Worker answered: the token, its mark and the
+    #: stored identity.
+    drop_local: Callable[[], Any]
     #: ``client.keyring``, where the approver's ``KEYRING_WRAP`` is adopted (``None``: it is dropped).
     keyring: Optional[Callable[[], Any]] = None
     #: ``identity.sign_out``: a declined account signs the device out again (V5 §15.6.1 rule 12).
@@ -129,6 +145,8 @@ class NearbySignInSession:
         device_name: Optional[str],
         keyring: Optional[Callable[[], Any]] = None,
         sign_out: Optional[Callable[[], Any]] = None,
+        confirm: Callable[[str], Any],
+        drop_local: Callable[[], Any],
     ) -> None:
         self.__started = started
         self._request = request
@@ -153,6 +171,18 @@ class NearbySignInSession:
         self._on_wrap: List[Callable[[str], None]] = []
         self._signed_in = False
         self._confirmed = False
+        #: The person's confirmation has begun: the deadline and an end no longer discard (``_confirmed``
+        #: follows once the held records are handed over, so a wrap in them is taken here, not off-thread).
+        self._confirming = False
+        self._confirm = confirm
+        self._drop_local = drop_local
+        self._subject: Optional[str] = None
+        self._ended = False
+        self._on_end: List[Callable[[], None]] = []
+        self._deadline: Optional[threading.Timer] = None
+        self._final: Optional[Any] = None  # the first terminal outcome (a SignInOutcome or an exception)
+        self._wait_lock = threading.Lock()
+        self._discard_lock = threading.Lock()
         #: The key ring's answer to the channel copy of the wrap (``None`` until one was adopted).
         self.keyring_result: Optional[Any] = None
         self._closed = False
@@ -205,9 +235,104 @@ class NearbySignInSession:
     # ── The Worker's say ────────────────────────────────────────────────────────────
     def cancel(self) -> None:
         """Stop. A running ``wait`` answers ``cancelled``; the LAN side closes and the request simply
-        lapses on the Worker."""
-        self._cancelled.set()
+        lapses on the Worker. After ``signed_in`` and before the confirmation it also signs the device out
+        (D-21)."""
         self.close()
+
+    @property
+    def ended(self) -> bool:
+        """True once the sign-in ended unconfirmed (a decline, a cancel or close, the screen deadline)."""
+        return self._ended
+
+    def on_end(self, fn: Callable[[], None]) -> Callable[[], None]:
+        """Call ``fn`` once when the sign-in ends unconfirmed, so a screen can leave (on whichever thread
+        ended it; keep it short). Called at once when it already ended. Returns the unsubscribe."""
+        with self._lock:
+            if not self._ended:
+                self._on_end.append(fn)
+
+                def off() -> None:
+                    with self._lock:
+                        if fn in self._on_end:
+                            self._on_end.remove(fn)
+
+                return off
+        try:
+            fn()
+        except Exception:
+            pass
+        return lambda: None
+
+    def _halt(self) -> None:
+        """The end of this sign-in: no further poll is honoured, the deadline stops, listeners hear of it
+        (once, and only while unconfirmed)."""
+        self._cancelled.set()
+        timer, self._deadline = self._deadline, None
+        if timer is not None:
+            timer.cancel()
+        with self._lock:
+            if self._ended or self._confirming:
+                return
+            self._ended = True
+            listeners, self._on_end = self._on_end, []
+        for fn in listeners:
+            try:
+                fn()
+            except Exception:
+                pass
+
+    def _arm_deadline(self) -> None:
+        """The confirm screen's deadline: ``expires_in`` seconds from the moment the poll answered, on a
+        monotonic timer."""
+        timer = threading.Timer(float(self.expires_in), self._on_deadline)
+        timer.daemon = True
+        self._deadline = timer
+        timer.start()
+
+    def _on_deadline(self) -> None:
+        if self._confirming:
+            return
+        self._halt()
+        self._discard()
+
+    def _discard(self) -> None:
+        """The one end path for an unconfirmed sign-in; idempotent and serialized. The held wrap is
+        dropped, the LAN request declines and closes, the Worker is asked to sign out as a best effort,
+        and whatever it answered the token, its mark and the stored identity go."""
+        with self._discard_lock:
+            with self._lock:
+                self._wrap = None
+            try:
+                self._request.decline_account()
+            except Exception:
+                pass
+            self._close_lan()
+            if not self._signed_in:
+                return
+            if self._sign_out is not None:
+                try:
+                    self._sign_out()
+                except Exception:
+                    pass
+            try:
+                self._drop_local()
+            except Exception:
+                pass
+            self._signed_in = False
+
+    def _settled(self) -> SignInOutcome:
+        f = self._final
+        if isinstance(f, BaseException):
+            raise f
+        return f  # type: ignore[no-any-return]
+
+    def _end_ok(self, outcome: SignInOutcome) -> SignInOutcome:
+        self._final = outcome
+        return outcome
+
+    def _fail(self, error: BaseException) -> BaseException:
+        self._final = error
+        return error
 
     def wait(
         self,
@@ -220,7 +345,16 @@ class NearbySignInSession:
         exactly once and may answer ``pending`` (``interval``; ``slow_down`` when the Worker asked for a
         longer one). A denial raises ``sign-in-denied``; a failure ``sign-in-failed`` or the Worker's own
         code. ``timeout`` (seconds) raises :class:`TimeoutError`. ``cancel_token`` is a
-        :class:`threading.Event` another thread may set."""
+        :class:`threading.Event` another thread may set. The first terminal outcome (a sign-in, an expiry, a
+        refusal) is kept: a later call gets the same one, with no poll (the token is handed over once)."""
+        with self._wait_lock:
+            if self._final is not None:
+                return self._settled()
+            return self._wait(timeout, once, cancel_token)
+
+    def _wait(
+        self, timeout: Optional[float], once: bool, cancel_token: Optional[threading.Event]
+    ) -> SignInOutcome:
         deps = self._deps
         deps.ctx.require_service("identity", Feature.IDENTITY_NEARBY)
         deadline = None if timeout is None else time.time() + timeout
@@ -234,8 +368,8 @@ class NearbySignInSession:
                 return SignInOutcome(kind=CANCELLED)
             if not once:
                 if deps.ctx.now() >= self.expires_at:
-                    self.close()
-                    return SignInOutcome(kind=EXPIRED)
+                    self._close_lan()
+                    return self._end_ok(SignInOutcome(kind=EXPIRED))
                 delay = max(float(self.interval), hold, 1.0)
                 hold = 0.0
                 if deadline is not None and time.time() + delay > deadline:
@@ -247,8 +381,8 @@ class NearbySignInSession:
                 if stopped():
                     return SignInOutcome(kind=CANCELLED)
                 if deps.ctx.now() >= self.expires_at:
-                    self.close()
-                    return SignInOutcome(kind=EXPIRED)
+                    self._close_lan()
+                    return self._end_ok(SignInOutcome(kind=EXPIRED))
             try:
                 r = self._routes.poll(self._creds(), self.__started)
             except PolarisError as e:
@@ -257,35 +391,50 @@ class NearbySignInSession:
                 raise
             if isinstance(r, NearbyUnavailable):
                 # The operator's gate went off while the person was waiting.
-                self.close()
-                raise _unsupported(
-                    UnsupportedReason.PRODUCT, "nearby sign-in is no longer served", ErrorCode.SERVICE_UNAVAILABLE
+                self._close_lan()
+                raise self._fail(
+                    _unsupported(
+                        UnsupportedReason.PRODUCT,
+                        "nearby sign-in is no longer served",
+                        ErrorCode.SERVICE_UNAVAILABLE,
+                    )
                 )
             kind = getattr(r, "kind", None)
             if kind == "refused":
-                self.close()
-                raise PolarisError(
-                    r.code if r.code else ErrorCode.SIGN_IN_FAILED,
-                    "nearby sign-in was refused.",
-                    status=r.status,
+                self._close_lan()
+                raise self._fail(
+                    PolarisError(
+                        r.code if r.code else ErrorCode.SIGN_IN_FAILED,
+                        "nearby sign-in was refused.",
+                        status=r.status,
+                    )
                 )
             if kind == "signed_in":
+                # The routes stored the token (unconfirmed). A decline or cancel that got in before this
+                # answer discards it at once; nothing is handed to the caller (D-21).
                 self._signed_in = True
-                return SignInOutcome(
-                    kind=SIGNED_IN,
-                    subject=r.subject,
-                    activation=SignInActivation(license_id=r.license_id or deps.license_id()),
-                    identity=r.identity,
-                    scope=r.scope,
+                self._subject = r.subject
+                if self._cancelled.is_set():
+                    self._discard()
+                    return SignInOutcome(kind=CANCELLED)
+                self._arm_deadline()
+                return self._end_ok(
+                    SignInOutcome(
+                        kind=SIGNED_IN,
+                        subject=r.subject,
+                        activation=SignInActivation(license_id=r.license_id or deps.license_id()),
+                        identity=r.identity,
+                        scope=r.scope,
+                    )
                 )
             if stopped():
                 return SignInOutcome(kind=CANCELLED)
             if kind == "timeout":
-                self.close()
-                return SignInOutcome(kind=EXPIRED)
+                self._close_lan()
+                return self._end_ok(SignInOutcome(kind=EXPIRED))
             if kind == "denied":
-                self.close()
-                raise PolarisError(ErrorCode.SIGN_IN_DENIED, "nearby sign-in was refused.")
+                self._close_lan()
+                raise self._fail(PolarisError(ErrorCode.SIGN_IN_DENIED, "nearby sign-in was refused."))
             if kind == "retry":
                 hold = float(min(r.retry_after_seconds or self.interval, _MAX_RETRY_AFTER))
             elif kind == "slow_down":
@@ -315,16 +464,31 @@ class NearbySignInSession:
         came over the channel: nothing is applied then, and the normal ``keyring.unlock()`` opens the
         server's copy later. Raises ``sign-in-failed`` before the poll has signed this device in: there is
         no account to confirm yet, and nothing is released."""
-        if not self._signed_in:
+        if self._ended:
+            raise PolarisError(ErrorCode.SIGN_IN_FAILED, "The sign-in ended before it was confirmed.")
+        if not self._signed_in or self._subject is None:
             raise PolarisError(ErrorCode.SIGN_IN_FAILED, "Nothing to confirm: the device is not signed in.")
+        with self._lock:
+            first = not self._confirming
+            self._confirming = True
+        timer, self._deadline = self._deadline, None
+        if timer is not None:
+            timer.cancel()
+        if first:
+            try:
+                self._confirm(self._subject)
+            except BaseException:
+                with self._lock:
+                    self._confirming = False
+                raise
         try:
             # The engine hands over the records it held, on this thread, before this returns.
             self._request.confirm_account()
         except Exception:
             pass  # the chosen session is gone: no records, the server copy is the fallback
-        # Only now is a wrap that arrives later taken as it comes (``_on_record``).
         with self._lock:
             self._confirmed = True
+        # A wrap that arrives later is taken as it comes (``_on_record``).
         return self._apply_wrap()
 
     @property
@@ -376,18 +540,18 @@ class NearbySignInSession:
         """The person said "not you" (or the screen timed out): every held record is dropped, the LAN
         session closes and the device signs out again (V5 §15.6.1 rule 12: it keeps no key and no token of
         an account that is not theirs). Safe to call more than once."""
-        with self._lock:
-            self._wrap = None
-        try:
-            self._request.decline_account()
-        finally:
-            self.close()
-            if self._signed_in and self._sign_out is not None:
-                self._signed_in = False
-                self._sign_out()
+        self._halt()
+        self._discard()
 
     def close(self) -> None:
-        """Close the LAN side. Idempotent; a failure to close is not an error."""
+        """End the session: the LAN side closes (idempotent; a failure to close is not an error). After
+        ``signed_in`` and before the confirmation this is an end like a decline: the device signs out."""
+        self._halt()
+        self._close_lan()
+        if self._signed_in and not self._confirming:
+            self._discard()
+
+    def _close_lan(self) -> None:
         with self._lock:
             if self._closed:
                 return
@@ -457,4 +621,6 @@ def start_nearby_sign_in(
         device_name=label,
         keyring=nd.keyring,
         sign_out=nd.sign_out,
+        confirm=nd.confirm,
+        drop_local=nd.drop_local,
     )
