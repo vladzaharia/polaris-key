@@ -117,6 +117,7 @@ def _auto_step_view(ctx: Context, auto: Mapping[str, Any], args: Mapping[str, An
         "provider": provider,
         "tier": account.get("tier"),
         "code": auto.get("code"),
+        "device": auto.get("device") if isinstance(auto.get("device"), str) else None,
         "approvers": list(auto["approvers"]) if isinstance(auto.get("approvers"), (list, tuple)) else None,
     }
 

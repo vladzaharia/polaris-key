@@ -69,13 +69,18 @@ def test_ask_draws_the_three_codes_as_buttons_and_deny_is_the_other() -> None:
     assert plain(spec.title) == "Let Kitchen iPad sign in?"
     assert [b.key for b in spec.buttons] == ["nearby.code.1", "nearby.code.2", "nearby.code.3", "signin.approve.deny"]
     assert [b.text for b in spec.buttons[:3]] == ["111 111", "482 913", "777 777"]
-    assert all(b.role == "secondary" for b in spec.buttons)  # choosing the matching code is the action: none is filled
+    # Choosing the matching code is the action: none is filled. Deny is a text control apart from the codes
+    # (UXR-47 N6), and the codes are in the mono face like the requester's tile.
+    assert [b.role for b in spec.buttons] == ["secondary", "secondary", "secondary", "quiet"]
+    assert [b.mono for b in spec.buttons] == [True, True, True, False]
 
 
 def test_choose_draws_the_licenses_and_a_new_one_and_has_no_second_step() -> None:
     spec = _spec(_approval("choose", device="Kitchen iPad", choices=["Pro", "Harbor Audio team"], create=True))
-    assert [b.key for b in spec.buttons] == ["nearby.choice.1", "nearby.choice.2", "nearby.choice.create"]
+    # One tap per license, then Deny: leaving the choice answers Deny, as at the codes (UXR-47 B1).
+    assert [b.key for b in spec.buttons] == ["nearby.choice.1", "nearby.choice.2", "nearby.choice.create", "signin.approve.deny"]
     assert spec.buttons[2].text == COPY("signin.choice.create") and "Use this license" not in [b.text for b in spec.buttons]
+    assert COPY("common.cancel") not in [b.text for b in spec.buttons]
 
 
 def test_an_unnamed_device_is_the_new_device_in_a_sentence_and_at_its_start() -> None:
@@ -88,7 +93,10 @@ def test_the_nearby_wait_shows_its_code_in_the_code_block_with_a_code_instead() 
     wait = ui_signin.sign_in_view(context_of(with_defaults({"signIn": {"presentation": "inline", "replace": "browser", "channel": "browser"}, "autoSignIn": {"step": "nearby-wait", "code": "482 913"}})))
     spec = _spec(wait)
     assert spec.code is not None and spec.code.value == "482 913" and spec.progress == -1.0
-    assert [b.text for b in spec.buttons] == [COPY("signin.nearby.code")] and spec.buttons[0].role == "primary"
+    # The person's job is on the other device: the way out of nearby is a text control, never the filled one (B4).
+    assert [b.text for b in spec.buttons] == [COPY("signin.nearby.code")] and spec.buttons[0].role == "quiet"
+    # No second label over the code tile (B3), and the wait says what it waits for.
+    assert spec.code.label == "" and spec.progress_label == COPY("signin.cli.nearbyWaiting")
 
 
 def test_several_approvers_are_buttons_before_a_code_is_chosen() -> None:
@@ -285,12 +293,14 @@ def test_a_lone_approver_is_chosen_after_3_s_its_code_is_shown_and_continue_conf
     session = r.started()
     assert r.client.identity.available_calls == ["requester"] and session is not None
     session.approvers = [approver()]
-    r.tick()  # the approver answers: its 3 s start here
+    r.tick()  # the approver answers: its 3 s start here, and its row shows meanwhile (UXR-47 N1)
+    assert r.shown == "SignIn.nearby-wait" and [b.key for b in r.spec.buttons if b.key.startswith("nearby.pick.")] == ["nearby.pick.1"]
     r.tick(2.9)
-    assert session.chosen == [] and r.shown == "SignInHandoff.starting"  # the 3 s window has not ended
+    assert session.chosen == [] and r.shown == "SignIn.nearby-wait"  # the 3 s window has not ended
     r.tick(0.2)
-    pump(r.app, lambda: r.shown == "SignIn.nearby-wait")
+    pump(r.app, lambda: session.chosen == ["a1"] and r.spec.code is not None)
     assert session.chosen == ["a1"] and r.spec.code.value == "482 913"
+    assert any("on Ana's laptop." in plain(b) for b in r.spec.body)  # the code screen names the device (N1)
     assert r.texts() == [COPY("common.cancel"), COPY("signin.nearby.code")]
     session.finish.set()  # the person tapped the code on the other device
     r.until("SignIn.nearby-done")
@@ -521,6 +531,44 @@ def test_deny_never_picks_and_cancel_stops_the_advert(kit_app, page):
     q.kit.bridge.invoke("common.cancel", "")
     kit_app.processEvents()
     assert waiting.calls == ["on_request", "stop"]
+
+
+def test_leaving_the_codes_or_the_license_choice_answers_deny(kit_app, page):
+    """UXR-47 B1: one rule for every kit. Closing the page at the codes denies (no route), and at the license
+    choice it is the answer's own cancel, so the new device is not left waiting until the request expires."""
+    ask = FakeAsk()
+    p = page(FakeApproverClient(ask))
+    pump(kit_app, lambda: shown(p) == "NearbyApproval.ask")
+    p.close()
+    assert ask.denied == 1 and ask.picks == []
+    cancelled: List[int] = []
+    view = {"choices": [{"id": "lic_1", "tierName": "Pro", "name": None, "state": "free"}], "create": None}
+    step = SimpleNamespace(kind="choose", choices=view, choose=lambda c: SimpleNamespace(kind="approved"), cancel=lambda: (cancelled.append(1), SimpleNamespace(kind="denied"))[1])
+    q = page(FakeApproverClient(FakeAsk(step)))
+    pump(kit_app, lambda: shown(q) == "NearbyApproval.ask")
+    q.kit.bridge.invoke("nearby.code.1", "")
+    pump(kit_app, lambda: shown(q) == "NearbyApproval.choose")
+    q.close()
+    pump(kit_app, lambda: cancelled == [1])
+
+
+def test_the_waiting_entry_says_what_it_waits_for_and_outcomes_carry_a_mark(kit_app, page):
+    """UXR-47 N5 and N7: the entry has a waiting line and the busy indicator; an outcome has its tone."""
+    q = page(FakeApproverClient(None))
+    spec = q.kit.bridge.screen_spec
+    assert COPY("signin.cli.approveWaiting") in spec.body and spec.progress == -1.0
+    assert [b.text for b in spec.buttons] == [COPY("common.cancel")]
+    for kind, mark in (("approved", "ok"), ("mismatch", "warn"), ("expired", "warn"), ("denied", "")):
+        p = page(FakeApproverClient(FakeAsk(SimpleNamespace(kind=kind))))
+        pump(kit_app, lambda: shown(p) == "NearbyApproval.ask")
+        p.kit.bridge.invoke("nearby.code.1", "")
+        pump(kit_app, lambda k=kind: shown(p) == f"NearbyApproval.{k}")
+        assert p.kit.bridge.screen_spec.title_mark == mark
+    mismatch = page(FakeApproverClient(FakeAsk(SimpleNamespace(kind="mismatch"))))
+    pump(kit_app, lambda: shown(mismatch) == "NearbyApproval.ask")
+    mismatch.kit.bridge.invoke("nearby.code.1", "")
+    pump(kit_app, lambda: shown(mismatch) == "NearbyApproval.mismatch")
+    assert "Start again on New phone." in [plain(b) for b in mismatch.kit.bridge.screen_spec.body]
 
 
 def test_the_license_choice_is_buttons_and_the_last_row_creates_one(kit_app, page):

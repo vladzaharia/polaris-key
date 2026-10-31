@@ -35,6 +35,17 @@ _NEARBY_HEADINGS = frozenset(
         "signin.nearby.chooseTitle signin.nearby.menu signin.approve.deniedDone"
     ).split()
 )
+#: NearbyApproval's outcomes that carry a mark before the title: the check for the one that worked, the
+#: triangle for the ones that did not (UXR-47 N7). Denied is the person's own choice and carries none.
+_OUTCOME_MARKS = {
+    "approved": "ok",
+    "mismatch": "warn",
+    "not-nearby": "warn",
+    "expired": "warn",
+    "device-limit": "warn",
+    "account-required": "warn",
+    "rate-limited": "warn",
+}
 #: Nearby's controls that are not named like a verb: "Use a code instead", "Not you?", Deny (I-47.14).
 _NEARBY_BUTTONS = frozenset(("signin.nearby.code", "signin.nearby.notYou", "signin.approve.deny"))
 _ACTION_KEYS = frozenset(key for keys in ACTION_KEYS.values() for key in keys)
@@ -55,7 +66,7 @@ _QUIET = frozenset(
      "common.dismiss", "update.later", "update.skipVersion", "common.cancel", "common.back",
      "update.allChanges", "update.whatsNew", "signin.choice.keyInstead", "signin.handoff.useCode",
      "paywall.redeem", "signin.none.otherAccount", "signin.replace.back", "signin.nearby.code",
-     "signin.nearby.notYou")
+     "signin.nearby.notYou", "signin.approve.deny")
 
 )
 #: Keys the Qt kit never draws: the provider logo row and the passkey and email rows need a
@@ -108,6 +119,9 @@ _ROW_FRAGMENTS = frozenset(
         "settings.search settings.advanced signin.choice.devices"
     ).split()
 )
+#: Controls that are never the one filled action, alone or not: a way out of a pane, the way out of nearby sign-in
+#: ("Use a code instead", UXR-47 B4: the person's job is on the other device) and Deny, which refuses.
+_NEVER_FILLED = frozenset(("common.back", "signin.nearby.code", "signin.approve.deny"))
 #: Components whose lone action is not the screen's primary (a dismissal, a banner's own control).
 _NOT_FILLED = frozenset(("Toast", "GraceBanner"))
 #: The screens whose heading and sentences name the tier the host passes (``tier``): without one a
@@ -155,6 +169,8 @@ class Button:
     busy: bool = False
     #: The control leaves the app (UI-KITS §1.5 rule 11): drawn with the new-window glyph.
     external: bool = False
+    #: The label is data to compare by eye with another device (a code to tap): drawn in the mono face.
+    mono: bool = False
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -164,6 +180,7 @@ class Button:
             "action": self.action or "",
             "busy": self.busy,
             "external": self.external,
+            "mono": self.mono,
         }
 
 
@@ -269,6 +286,10 @@ class ScreenSpec:
     loading: bool = False
     #: The title is in danger only when the screen itself failed; a wrong input marks its field.
     title_tone: str = ""
+    #: A mark before the title for an outcome: ``ok`` (a check) or ``warn`` (a triangle); ``""``: none.
+    title_mark: str = ""
+    #: What a wait with no count is waiting for, under the shimmer; ``""``: nothing to say.
+    progress_label: str = ""
     fields: List[Field] = field(default_factory=list)
     focus: str = ""
     #: The attribution (UI-KITS §1.6): ``""`` (off), ``"line"`` or ``"badge"``, with its text.
@@ -308,6 +329,8 @@ class ScreenSpec:
             "hero": self.hero,
             "loading": self.loading,
             "titleTone": self.title_tone,
+            "titleMark": self.title_mark,
+            "progressLabel": self.progress_label,
             "fields": [f.as_dict() for f in self.fields],
             "focus": self.focus,
             "poweredBy": self.powered_by,
@@ -333,7 +356,8 @@ def _code_block(view: View, copy: Copy, args: Mapping[str, Any], data: Optional[
     """The device-code view's block, or ``None`` on any other screen. The nearby wait shows its code in
     the same block, with nothing to copy, count down or scan: the person taps it on the other device."""
     if view.component == "SignIn" and view.state == "nearby-wait" and args.get("code"):
-        return Code(label=copy("part.code.label"), value=str(args["code"]))
+        # No label over the tile: a second label there suggests a code to type (UXR-47 B3).
+        return Code(label="", value=str(args["code"]))
     if view.component != "SignInHandoff" or view.state != "code" or not args.get("code"):
         return None
     dc = data.device_code if data is not None else {}
@@ -369,7 +393,7 @@ def _nearby_buttons(view: View, copy: Copy, args: Mapping[str, Any]) -> List[But
     on the approving device, the licenses it can give, and the approvers the new device can ask. Their
     keys are ``nearby.code.N``, ``nearby.choice.N`` / ``nearby.choice.create`` and ``nearby.pick.N``."""
     if view.component == "NearbyApproval" and view.state == "ask":
-        return [Button(f"nearby.code.{i}", str(code), "secondary") for i, code in enumerate(args.get("codes") or (), 1)]
+        return [Button(f"nearby.code.{i}", str(code), "secondary", mono=True) for i, code in enumerate(args.get("codes") or (), 1)]
     if view.component == "NearbyApproval" and view.state == "choose":
         out = [Button(f"nearby.choice.{i}", bidi_isolate(str(name)), "secondary") for i, name in enumerate(args.get("choices") or (), 1)]
         if args.get("create"):
@@ -484,6 +508,11 @@ def build_spec(
             continue
         if view.component == "NearbyApproval" and key == "signin.choice.continue":
             continue  # the licenses are the choices; there is no second step
+        if key == "signin.nearby.body" and view.state == "nearby-wait" and args.get("device"):
+            text = copy("signin.nearby.bodyOn", **args)  # the chosen device is named
+            body.append(text)
+            keyed[key] = text
+            continue
         if key == "signin.nearby.match" and view.state == "nearby-wait" and not args.get("code"):
             continue  # "Tap this code there:" waits for a code: the approvers are listed before one is chosen
         nearby_title = key in _NEARBY_HEADINGS if view.component == "NearbyApproval" else key == "signin.nearby.done"
@@ -566,6 +595,10 @@ def build_spec(
     ) or (
         # Waiting for the browser, or for a code: a wait with no count is the shimmer, never a made-up bar.
         view.component in ("SignIn", "SignInHandoff") and view.state in ("handoff", "waiting", "starting", "finishing", "nearby-wait")
+    ) or (
+        view.component == "NearbyApproval" and view.state == "entry" and "signin.cli.approveWaiting" in view.copy
+    ) or (
+        view.component == "NearbyApproval" and view.state == "entry" and "common.working" in view.copy
     ):
         progress = -1.0  # the 2 px shimmer: honest, no percentage is invented (DL7)
     else:
@@ -584,7 +617,7 @@ def build_spec(
         not any(b.role == "primary" for b in buttons)
         and len(buttons) == 1
         and view.component not in _NOT_FILLED
-        and buttons[0].key != "common.back"  # a way out of a pane is never its one filled action
+        and buttons[0].key not in _NEVER_FILLED
     ):
         only = buttons[0]
         buttons = [Button(only.key, only.text, "primary")]
@@ -603,7 +636,7 @@ def build_spec(
     actions = {key: action for action, keys in ACTION_KEYS.items() for key in keys}
     # A button the kit adds for the model's primary names its action only if the view lists it.
     buttons = [
-        Button(b.key, b.text, b.role, actions.get(b.key) if actions.get(b.key) in view.actions else None, busy_primary and b.role == "primary", b.key in _LEAVES)
+        Button(b.key, b.text, b.role, actions.get(b.key) if actions.get(b.key) in view.actions else None, busy_primary and b.role == "primary", b.key in _LEAVES, b.mono)
         for b in buttons
     ]
     isolated_product = bidi_isolate(product) if product else ""
@@ -636,6 +669,8 @@ def build_spec(
         hero=view.component == "Welcome",
         loading=loading,
         title_tone="danger" if view.decisions.tone == "danger" and not on_field else "",
+        title_mark=_OUTCOME_MARKS.get(view.state, "") if view.component == "NearbyApproval" else "",
+        progress_label=copy("signin.cli.nearbyWaiting") if view.component == "SignIn" and view.state == "nearby-wait" else "",
         fields=fields,
         focus=view.decisions.focus or "",
         powered_by=attribution,

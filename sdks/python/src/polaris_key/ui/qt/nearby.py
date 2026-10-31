@@ -233,9 +233,15 @@ class NearbyApproval:
         if self.platform is not None:
             data["platform"] = dict(self.platform)
         view = ui_signin.nearby_approval_view(context_of({k: v for k, v in data.items() if v is not None}))
-        # Cancel leaves a screen that is waiting on the person or on a device; an outcome has Done.
-        if self.step in ("entry", "ask", "choose"):
-            view = with_copy(view, "common.cancel")
+        # Cancel leaves the screen that waits for a device to ask and answers nothing. At the codes and at the
+        # license choice, leaving answers Deny (the view's own Deny: one rule for every kit, UXR-47 B1); an
+        # outcome has Done. The waiting entry says what it waits for and shows the busy indicator (N5).
+        if self.step == "entry":
+            view = with_copy(view, "common.cancel", "signin.cli.approveWaiting")
+        elif self.step == "working":
+            view = with_copy(view, "common.working")
+        elif self.step == "mismatch":
+            view = with_copy(view, "signin.nearby.expiredBody")  # how to go on, as the terminal's closing line
         return view, None
 
     def redraw(self) -> None:
@@ -286,7 +292,7 @@ class NearbyApproval:
         """Deny: before a code was picked it is "none of these match" (no route is called); at the license
         choice it is the answer's own cancel."""
         if self.choose_step is not None:
-            step = self.choose_step
+            step, self.choose_step = self.choose_step, None
             self.step = "working"
             self._work(step.cancel, self._stepped)
             return
@@ -368,14 +374,32 @@ class NearbyApproval:
     def leave(self, then: Optional[Callable[[], None]] = None) -> None:
         """Done or Cancel: the advert's prompt closes (nothing is left listening that the host did not ask
         for) and the host's ``on_exit`` runs (or ``then``, where the control leads elsewhere)."""
+        self._deny_on_leave()
         self._open = False
-        self.ask = self.choose_step = None
         self.approver.leave()
         target = then or self._on_exit
         if target is not None:
             target()
 
+    def _deny_on_leave(self) -> None:
+        """Leaving the codes or the license choice any other way than a button (a closed window) is Deny too:
+        before a code was picked it is local, at the license choice it is the answer's own cancel."""
+        ask, step = self.ask, self.choose_step
+        self.ask = self.choose_step = None
+        if step is not None:
+            threading.Thread(target=lambda: self._quiet(step.cancel), daemon=True, name="polaris-key-nearby").start()
+        elif ask is not None and self.step == "ask":
+            self._quiet(ask.deny)
+
+    @staticmethod
+    def _quiet(fn: Callable[[], Any]) -> None:
+        try:
+            fn()
+        except Exception:
+            pass
+
     def close(self) -> None:
+        self._deny_on_leave()
         self._closed = True
         self._open = False
         self.approver.leave()

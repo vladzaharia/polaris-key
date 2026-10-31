@@ -111,6 +111,8 @@ class _Session:
         self.choosing = False
         self.code: Optional[str] = None
         self.labels: Tuple[str, ...] = ()
+        #: The cleaned name of the approver that was chosen (the code screen names it).
+        self.device: Optional[str] = None
         self.result: Any = None
 
 
@@ -380,6 +382,8 @@ class GateFlow:
         auto: Dict[str, Any] = {"step": "nearby-wait"}
         if s.code:
             auto["code"] = s.code
+            if s.device:
+                auto["device"] = s.device
         else:
             auto["approvers"] = list(s.labels)
         view = ui_signin.sign_in_view(context_of(self._input(signIn=sign, autoSignIn=auto)))
@@ -668,7 +672,7 @@ class GateFlow:
                 self._nearby_choose(session, found[0])
         else:
             session.lone_since = None
-        labels = tuple(clean_label(str(getattr(a, "label", None) or getattr(a, "platform", None) or "")) for a in found) if len(found) >= 2 else ()
+        labels = tuple(clean_label(str(getattr(a, "label", None) or getattr(a, "platform", None) or "")) for a in found)
         if labels != session.labels:
             session.labels = labels
             session.phase = "pick" if labels else "looking"
@@ -687,12 +691,14 @@ class GateFlow:
         if session.choosing or session.code is not None:
             return
         session.choosing = True
+        session.device = clean_label(str(getattr(approver, "label", None) or getattr(approver, "platform", None) or "")) or None
 
         def done(code: Any, error: Optional[BaseException]) -> None:
             if session is not self.session:
                 return
             session.choosing = False
             if error is not None:
+                session.device = None
                 return  # the device left: stay on the list
             session.code, session.phase = str(code), "waiting"
             self._nearby_timer.stop()

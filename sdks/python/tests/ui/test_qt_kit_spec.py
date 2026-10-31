@@ -214,7 +214,12 @@ def test_at_most_one_filled_control(component, state):
     spec = _spec(component, state, product="Tidewater Studio")
     assert sum(b.role == "primary" for b in spec.buttons) <= 1
     if len(spec.buttons) == 1 and component not in ("Toast", "GraceBanner"):
-        assert spec.buttons[0].role == "primary"
+        # Never the filled one, alone or not: a way out of a pane, "Use a code instead" while the person's job
+        # is on the other device (UXR-47 B4), and Deny (N6).
+        if spec.buttons[0].key in ("common.back", "signin.nearby.code", "signin.approve.deny"):
+            assert spec.buttons[0].role != "primary"
+        else:
+            assert spec.buttons[0].role == "primary"
 
 
 def test_a_busy_activate_keeps_its_label_and_adds_the_indicator():
