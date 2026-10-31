@@ -63,9 +63,15 @@ class TestLogin:
         assert calls == ["available:requester", "start"]
         assert s.chosen == ["a1"]
         # The code, the a11y line and the key hints were on the screen while the poll waited.
-        assert "482 913" in shown and "Code to tap: 482 913" in shown and "c use a code instead" in shown
+        assert "482 913" in shown and "c use a code instead" in shown
+        # The code once, naming the device; its screen reader line is its a11y name, never a second row (UXR-47 B3).
+        assert shown.count("482 913") == 1 and "Code to tap" not in shown
+        assert "on Ana's laptop." in shown
+        assert "Waiting…" in shown and "approve it on the other device" not in shown
         assert "browser" not in shown.split("Signed in as")[0]
-        assert "Signed in as mara@fennick.studio" in shown and "n not you?" in shown
+        assert "Signed in as mara@fennick.studio" in shown and "n or Esc not you, sign out" in shown
+        # Still held: the active mark, not the check; the check is the committed frame after Enter (UXR-47 B2).
+        assert "◆  Signed in as" in shown
         assert (out.code, out.data["state"]) == (EXIT.ok, "signedIn")
         assert (s.confirmed, s.declined) == (1, 0)
 
@@ -92,7 +98,7 @@ class TestLogin:
 
     def test_n_is_not_you_the_held_records_are_dropped_the_device_signs_out_and_the_exit_is_1(self) -> None:
         s = FakeNearbySession([ANA])
-        t, out = _login(WhenKeys([("n not you?", "n")]), _Client(nearby_identity(s)))
+        t, out = _login(WhenKeys([("not you, sign out", "n")]), _Client(nearby_identity(s)))
         assert (s.declined, s.confirmed) == (1, 0)
         assert (out.code, out.data["state"]) == (EXIT.failed, "declined")
         shown = _screen(t) + "\n".join(out.text)
@@ -101,23 +107,32 @@ class TestLogin:
 
     def test_esc_at_the_confirmation_is_not_a_confirmation(self) -> None:
         s = FakeNearbySession([ANA])
-        _, out = _login(WhenKeys([("n not you?", "esc")]), _Client(nearby_identity(s)))
+        _, out = _login(WhenKeys([("not you, sign out", "esc")]), _Client(nearby_identity(s)))
         assert (s.declined, s.confirmed) == (1, 0)
 
     def test_several_approvers_are_listed_and_picked_by_number(self) -> None:
         s = FakeNearbySession([ANA, BEN], sign_in_after_choose=False)
-        keys = WhenKeys([("2  Ben", "2"), ("Code to tap", "esc")])
+        keys = WhenKeys([("2  Ben", "2"), ("Tap this code there", "esc")])
         t, _ = _login(keys, _Client(nearby_identity(s)))
         shown = _screen(t)
         assert "1  Ana's laptop" in shown and "2  Ben's phone" in shown
+        # The hint shows the real range (UXR-47 B5).
+        assert "1-2 choose a device" in shown and "1-9" not in shown
         assert s.chosen == ["a2"]
+
+    def test_a_lone_approver_shows_its_row_during_the_wait_and_1_skips_it(self) -> None:
+        s = FakeNearbySession([ANA], sign_in_after_choose=False)
+        keys = WhenKeys([("1  Ana", "1"), ("Tap this code there", "esc")])
+        t, _ = _login(keys, _Client(nearby_identity(s)))
+        shown = _screen(t)
+        assert "1 choose this device" in shown and s.chosen == ["a1"]
 
     def test_c_uses_a_code_instead_nearby_is_cancelled_and_the_device_code_sign_in_runs(self) -> None:
         s = FakeNearbySession([ANA], sign_in_after_choose=False)
         ran: List[str] = []
         code = FakeSession(behave=lambda token: (ran.append("wait"), signed_in(after=0.3)(token))[1])
         client = _Client(nearby_identity(s, device_code=code))
-        t, out = _login(WhenKeys([("Code to tap", "c")]), client)
+        t, out = _login(WhenKeys([("Tap this code there", "c")]), client)
         assert s.cancelled and ran == ["wait"]
         assert out.data["state"] == "signedIn"
         # The regular sign-in went to the code view (`c`), not to the browser.
@@ -126,7 +141,7 @@ class TestLogin:
     def test_esc_cancels_without_an_error_and_ctrl_c_is_an_interrupt(self) -> None:
         for end, code in ((None, EXIT.failed), (KeyboardInterrupt(), EXIT.interrupted)):
             s = FakeNearbySession([ANA], sign_in_after_choose=False)
-            keys = WhenKeys([("Code to tap", "esc")] if end is None else [], end=end)
+            keys = WhenKeys([("Tap this code there", "esc")] if end is None else [], end=end)
             t, out = _login(keys, _Client(nearby_identity(s)))
             assert s.cancelled and out.code == code
             assert "✗" not in _screen(t)
@@ -197,14 +212,14 @@ class TestMacOS:
     def test_it_explains_first_and_remembers_that_a_browse_worked(self, tmp_path: Path) -> None:
         s = FakeNearbySession([ANA], sign_in_after_choose=False)
         client = _Client(nearby_identity(s), str(tmp_path))
-        t, _ = _login_on("darwin", WhenKeys([("Enter continue", "enter"), ("Code to tap", "esc")]), client)
+        t, _ = _login_on("darwin", WhenKeys([("Enter continue", "enter"), ("Tap this code there", "esc")]), client)
         shown = _screen(t)
         assert "Sign in with your phone" in shown and "allow Tidewater Studio to find devices on your network" in shown
         assert s.chosen == ["a1"]
         assert (tmp_path / "nearby-browsed").read_text(encoding="utf-8") == "1\n"
         # The next run starts at once: no explanation.
         again = FakeNearbySession([ANA], sign_in_after_choose=False)
-        t2, _ = _login_on("darwin", WhenKeys([("Code to tap", "esc")]), _Client(nearby_identity(again), str(tmp_path)))
+        t2, _ = _login_on("darwin", WhenKeys([("Tap this code there", "esc")]), _Client(nearby_identity(again), str(tmp_path)))
         assert "Sign in with your phone" not in _screen(t2) and again.chosen == ["a1"]
 
     def test_not_now_goes_to_the_regular_sign_in_and_starts_nothing(self, tmp_path: Path) -> None:
@@ -236,7 +251,7 @@ class TestApprove:
         t, out, calls = self._run(ask, [("choose a code", "4"), (None, "x"), (None, "3")])
         shown = _screen(t)
         assert "Let New phone sign in?" in shown
-        for line in ("1  111 111", "2  482 913", "3  777 777", "1-3 choose a code · d deny"):
+        for line in ("1  111 111", "2  482 913", "3  777 777", "1-3 choose a code · d or Esc deny"):
             assert line in shown
         assert ask.picks == ["777 777"]
         assert (out.code, out.data["state"]) == (EXIT.ok, "approved")

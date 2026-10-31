@@ -70,8 +70,8 @@ _TICK = 0.08
 @dataclass(frozen=True)
 class NearbyLoginView:
     """``login``'s nearby states. ``state``: ``prompt`` (SignIn nearby-prompt), ``looking``, ``pick`` (several
-    devices answered) and ``wait`` (nearby-wait: the code to tap), ``done`` (nearby-done: the account), or
-    ``signed-out`` ("Not you?" answered)."""
+    devices answered, or the one that did, before it is chosen) and ``wait`` (nearby-wait: the code to tap),
+    ``done`` (nearby-done: the account, still held), or ``signed-out`` ("Not you?" answered)."""
 
     state: str
     #: The cleaned labels of the approvers, in the order they are numbered.
@@ -79,6 +79,8 @@ class NearbyLoginView:
     code: Optional[str] = None
     name: Optional[str] = None
     email: Optional[str] = None
+    #: ``wait``: the cleaned name of the device whose approval is awaited (the one the person chose).
+    device: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -125,24 +127,31 @@ def nearby_login(k: Kit, v: NearbyLoginView, verb: str = "login", *, frame: int 
         for i, label in enumerate(v.approvers[:9], 1):
             body += _row(k, i, [k.d(clean(label), "device")])
         body += screens._gap(k)
-        end, hints = k.hint_string("signin.cli.nearbyPickKeys"), True
+        shown = min(len(v.approvers), 9)
+        if shown == 1:
+            end, hints = k.hint_string("signin.cli.nearbyPickOneKeys"), True
+        else:
+            end, hints = k.hint_string("signin.cli.nearbyPickKeys", n=shown), True
     elif v.state == "wait":
         code = v.code or ""
         body += k.step("active", [k.t("signin.nearby.title", "strong")])
-        body += [replace(ln, keep=True) for ln in k.body([k.t("signin.nearby.body", app=k.inline_product)])]
+        if v.device:
+            lede = k.t("signin.nearby.bodyOn", app=k.inline_product, device=clean(v.device))
+        else:
+            lede = k.t("signin.nearby.body", app=k.inline_product)
+        body += [replace(ln, keep=True) for ln in k.body([lede])]
         body += k.body([k.t("signin.nearby.match")])
+        # The code's screen reader line (a11y.nearbyCode) is its a11y name, never a visible row: a terminal
+        # has no hidden channel, and the code is already on screen (UXR-47 B3).
         body += screens._code_rows(k, code)
-        # The same line a screen reader hears (a11y.nearbyCode).
-        body += k.body([k.t("a11y.nearbyCode", "muted", code=code)])
-        body += screens._gap(k)
-        body += screens._wait_line(k, "signin.approve.waiting", frame)
+        body += screens._wait_line(k, "signin.cli.nearbyWaiting", frame)
         end, hints = k.hint_string("signin.cli.nearbyKey"), True
     elif v.state == "done":
         who = (v.email or v.name or "").strip()
         if v.email:
-            body += k.step("ok", k.units("signin.nearby.done", "strong", email=clean(v.email)))
+            body += k.step("active", k.units("signin.nearby.done", "strong", email=clean(v.email)))
         else:
-            body += k.step("ok", [k.t("account.holder", name=clean(who) or k.product)])
+            body += k.step("active", [k.t("account.holder", name=clean(who) or k.product)])
         end, hints = k.hint_string("signin.cli.nearbyDoneKeys"), True
     elif v.state == "signed-out":
         body += k.step("done", [k.t("cli.logout.done", "strong", product=k.inline_product)])
@@ -170,8 +179,8 @@ def nearby_approval(k: Kit, v: NearbyApprovalView, verb: str = "devices approve"
         if v.state == "working":
             body += screens._wait_line(k, "common.working", frame)
         else:
-            body += k.body([k.t("signin.nearby.askBody")])
             body += k.body([k.t("signin.approve.warning", "muted")])
+            body += k.body([k.t("signin.nearby.askBody")])
             body += screens._gap(k)
             for i, code in enumerate(v.codes, 1):
                 body += _row(k, i, [k.d(code, "code", nobreak=True)])
@@ -185,13 +194,16 @@ def nearby_approval(k: Kit, v: NearbyApprovalView, verb: str = "devices approve"
         if v.create:
             body += _row(k, len(v.choices) + 1, [k.t("signin.choice.create")])
         body += screens._gap(k)
-        end, hints = k.hint_string("signin.cli.approveChooseKeys"), True
+        total = len(v.choices) + (1 if v.create else 0)
+        if total == 1:
+            end, hints = k.hint_string("signin.cli.approveChooseOneKeys"), True
+        else:
+            end, hints = k.hint_string("signin.cli.approveChooseKeys", n=total), True
     elif v.state == "approved":
         body += k.step("ok", [k.t("signin.nearby.approved", "strong", device=title_device)])
-        end = [k.t("common.done", "muted")]
     elif v.state == "mismatch":
         body += k.step("warn", [k.t("signin.nearby.mismatch", "strong", device=device)])
-        end = [k.t("cli.nothingChanged", "muted")]
+        end = [k.t("signin.nearby.expiredBody", "muted", device=device)]
     elif v.state == "denied":
         # The person's own choice, like a cancel (DL7): no mark that reads as a failure.
         end = [k.t("signin.approve.deniedDone", "muted")]
@@ -210,11 +222,11 @@ def nearby_approval(k: Kit, v: NearbyApprovalView, verb: str = "devices approve"
         body += k.body([k.t("signin.nearby.rateLimitedBody", device=device)])
     elif v.state == "account-required":
         body += k.step("warn", [k.t("core.codes.account_required.title", "strong")])
-        body += k.body([k.t("core.codes.account_required.message")])
-        body += screens._fixes(k, [("login", "cli.verb.login")])
+        # "Sign in" once: the title says why, the command row says what to run.
+        body += screens._fixes(k, [("login", "signin.key.signIn")])
     elif v.state == "unsupported":
-        body += k.step("warn", [k.t("signin.cli.approveUnsupported", "strong")])
-        end = [k.t("cli.nothingChanged", "muted")]
+        body += k.step("warn", [k.t("signin.cli.approveUnsupportedTitle", "strong")])
+        end = [k.t("signin.cli.approveUnsupported", "muted")]
     else:  # cancelled, timeout
         end = [k.t("cli.nothingChanged", "muted")]
     return screens._frame(k, verb, body, end, hints)
@@ -307,6 +319,7 @@ def login(client: Any, t: Terminal, verb: str = "login") -> Union[Outcome, Fall]
     started = t.clock()
     lone_since: Optional[float] = None
     code: Optional[str] = None
+    chosen: Optional[str] = None
     choosing = False
 
     def approvers() -> List[Any]:
@@ -319,20 +332,22 @@ def login(client: Any, t: Terminal, verb: str = "login") -> Union[Outcome, Fall]
         return clean(getattr(a, "label", None) or getattr(a, "platform", None) or "").strip() or k.s("part.newDevice")
 
     def choose(a: Any) -> None:
-        nonlocal code, choosing
+        nonlocal code, choosing, chosen
         if choosing or code is not None:
             return
         choosing = True
+        chosen = label(a)
         try:
             code = str(session.choose(a.id))
         except Exception:
             choosing = False  # the device left: stay on the list
+            chosen = None
 
     def view() -> NearbyLoginView:
         found = approvers()
         if code is not None:
-            return NearbyLoginView("wait", code=code)
-        if len(found) >= 2:
+            return NearbyLoginView("wait", code=code, device=chosen)
+        if len(found) >= 1:
             return NearbyLoginView("pick", approvers=tuple(label(a) for a in found))
         return NearbyLoginView("looking")
 
@@ -427,7 +442,7 @@ def login(client: Any, t: Terminal, verb: str = "login") -> Union[Outcome, Fall]
             data["status"] = client.status().status
         except Exception:
             pass
-        lines = screens._frame(k, verb, k.step("ok", _done_line(k, name, email)), [k.t("common.done", "muted")])
+        lines = screens._frame(k, verb, k.step("ok", _done_line(k, name, email)))
         return Outcome(EXIT.ok, lines, data)
     try:
         session.decline_account()

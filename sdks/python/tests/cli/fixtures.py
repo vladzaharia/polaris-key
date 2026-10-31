@@ -175,8 +175,9 @@ FIXTURES: Tuple[Fixture, ...] = (
     # ── SignIn nearby (I-47.13): login looks for the person's other devices first ──
     Fixture("SignIn", "nearby-prompt", "login", lambda k: nearby_login(k, NearbyLoginView("prompt"), "login")),
     Fixture("SignIn", "nearby-wait", "login", lambda k: nearby_login(k, NearbyLoginView("looking"), "login", frame=2), "looking"),
-    Fixture("SignIn", "nearby-wait", "login", lambda k: nearby_login(k, NearbyLoginView("pick", approvers=("Ana’s laptop", "Ben’s phone")), "login"), "pick"),
-    Fixture("SignIn", "nearby-wait", "login", lambda k: nearby_login(k, NearbyLoginView("wait", code="482 913"), "login", frame=2)),
+    Fixture("SignIn", "nearby-wait", "login", lambda k: nearby_login(k, NearbyLoginView("pick", approvers=("Ana's laptop", "Ben's phone")), "login"), "pick"),
+    Fixture("SignIn", "nearby-wait", "login", lambda k: nearby_login(k, NearbyLoginView("pick", approvers=("Ana's laptop",)), "login"), "pick-one"),
+    Fixture("SignIn", "nearby-wait", "login", lambda k: nearby_login(k, NearbyLoginView("wait", code="482 913", device="Ana's laptop"), "login", frame=2)),
     Fixture("SignIn", "nearby-done", "login", lambda k: nearby_login(k, NearbyLoginView("done", name="Mara Fennick", email="mara@fennick.studio"), "login")),
     Fixture("SignIn", "nearby-done", "login", lambda k: nearby_login(k, NearbyLoginView("signed-out"), "login"), "signed-out"),
     # ── NearbyApproval: devices approve ──
@@ -189,7 +190,7 @@ FIXTURES: Tuple[Fixture, ...] = (
     Fixture("NearbyApproval", "not-nearby", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("not-nearby", device="New phone"))),
     Fixture("NearbyApproval", "expired", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("expired", device="New phone"))),
     Fixture("NearbyApproval", "device-limit", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("device-limit", device="New phone"))),
-    Fixture("NearbyApproval", "choose", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("choose", device="New phone", choices=("Pro", "Team"), create=True))),
+    Fixture("NearbyApproval", "choose", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("choose", device="New phone", choices=("Pro", "Harbor Audio team"), create=True))),
     Fixture("NearbyApproval", "account-required", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("account-required"))),
     Fixture("NearbyApproval", "rate-limited", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("rate-limited", device="New phone"))),
     # ── Activate ──

@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="112" viewBox="0 0 705.6 112" role="img" aria-label="NearbyApproval, entry, terminal, dark theme">
-<rect width="705.6" height="112" rx="12" fill="#101114" stroke="#26282e"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="705.6" height="95.2" viewBox="0 0 705.6 95.2" role="img" aria-label="NearbyApproval, entry, terminal, dark theme">
+<rect width="705.6" height="95.2" rx="12" fill="#101114" stroke="#26282e"/>
 <g font-family="JetBrains Mono, ui-monospace, monospace" font-size="14" xml:space="preserve">
 <rect x="42" y="14" width="151.2" height="16.8" fill="#26847a"/>
 <rect x="20.5" y="22.4" width="1" height="8.4" fill="#d7dae0"/>
@@ -8,10 +8,8 @@
 <text x="201.6" y="26.6" textLength="142.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">· devices approve</text>
 <rect x="20.5" y="30.8" width="1" height="16.8" fill="#d7dae0"/>
 <text x="21" y="60.2" text-anchor="middle" fill="#e5c07b">▲</text>
-<text x="42" y="60.2" textLength="646.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Polaris Locker can&#x27;t approve nearby sign-ins from this computer. Sign in with</text>
-<rect x="20.5" y="64.4" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="77" textLength="226.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">a code on the other device.</text>
-<rect x="20.5" y="81.2" width="1" height="8.4" fill="#d7dae0"/>
-<rect x="20.5" y="89.1" width="4.7" height="1" fill="#d7dae0"/>
-<text x="42" y="93.8" textLength="134.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Nothing changed.</text>
+<text x="42" y="60.2" textLength="268.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Can&#x27;t approve from this computer</text>
+<rect x="20.5" y="64.4" width="1" height="8.4" fill="#d7dae0"/>
+<rect x="20.5" y="72.3" width="4.7" height="1" fill="#d7dae0"/>
+<text x="42" y="77" textLength="336" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Sign in with a code on the other device.</text>
 </g></svg>

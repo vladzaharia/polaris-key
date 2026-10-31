@@ -756,7 +756,7 @@ class PolarisKeyApp(App):
         elif v.state == "denied":
             out.append(_text(t("signin.approve.deniedDone"), classes="pk-muted"))
         elif v.state == "mismatch":
-            out += [self._refusal(t("signin.nearby.mismatch", device=device))]
+            out += [self._refusal(t("signin.nearby.mismatch", device=device)), _text(t("signin.nearby.expiredBody", device=device), classes="pk-muted")]
         elif v.state == "not-nearby":
             out += [self._refusal(t("signin.nearby.notNearby", device=title_device)), _text(t("signin.nearby.notNearbyBody", device=device), classes="pk-muted")]
         elif v.state == "expired":
@@ -768,7 +768,7 @@ class PolarisKeyApp(App):
         elif v.state == "account-required":
             out += [self._refusal(t("core.codes.account_required.title")), _text(t("core.codes.account_required.message"), classes="pk-muted")]
         elif v.state == "unsupported":
-            out.append(self._refusal(t("signin.cli.approveUnsupported")))
+            out += [self._refusal(t("signin.cli.approveUnsupportedTitle")), _text(t("signin.cli.approveUnsupported"), classes="pk-muted")]
         return out + [self._actions(done), self._note()]
 
     def _approval_set(self, view: NearbyApprovalView, *, stop: bool = False) -> None:

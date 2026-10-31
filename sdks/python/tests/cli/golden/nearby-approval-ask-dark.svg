@@ -10,11 +10,11 @@
 <text x="21" y="60.2" text-anchor="middle" fill="#72cabe">◆</text>
 <text x="42" y="60.2" textLength="184.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Let New phone sign in?</text>
 <rect x="20.5" y="64.4" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="77" textLength="184.8" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Tap the code it shows.</text>
+<text x="42" y="77" textLength="596.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Only approve if you started this yourself, on a device in front of you.</text>
 <rect x="20.5" y="81.2" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="93.8" textLength="596.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Only approve if you started this yourself, on a device in front of you.</text>
+<text x="42" y="93.8" textLength="579.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Nobody from Polaris Locker or a developer will ever ask you for this.</text>
 <rect x="20.5" y="98" width="1" height="16.8" fill="#d7dae0"/>
-<text x="42" y="110.6" textLength="579.6" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Nobody from Polaris Locker or a developer will ever ask you for this.</text>
+<text x="42" y="110.6" textLength="210" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">Choose the code it shows.</text>
 <rect x="20.5" y="114.8" width="1" height="16.8" fill="#d7dae0"/>
 <rect x="20.5" y="131.6" width="1" height="16.8" fill="#d7dae0"/>
 <text x="42" y="144.2" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">1</text>
@@ -31,7 +31,5 @@
 <text x="42" y="211.4" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">1-3</text>
 <text x="75.6" y="211.4" textLength="126" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">choose a code ·</text>
 <text x="210" y="211.4" textLength="8.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">d</text>
-<text x="226.8" y="211.4" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">deny ·</text>
-<text x="285.6" y="211.4" textLength="25.2" lengthAdjust="spacingAndGlyphs" fill="#d7dae0" font-weight="600">Esc</text>
-<text x="319.2" y="211.4" textLength="50.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">cancel</text>
+<text x="226.8" y="211.4" textLength="92.4" lengthAdjust="spacingAndGlyphs" fill="#d7dae0">or Esc deny</text>
 </g></svg>
