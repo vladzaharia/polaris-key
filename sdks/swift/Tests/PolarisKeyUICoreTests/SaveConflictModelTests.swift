@@ -52,7 +52,7 @@ final class SaveConflictModelTests: XCTestCase {
         await m.keep(.both)
         XCTAssertEqual(m.step, .choose, "nothing to copy")
         await m.keep(.remote)
-        XCTAssertTrue(m.screen.shows("saveConflict.keptDeleted"))
+        XCTAssertTrue(m.screen.shows("saveConflict.keptDeletedTitle"))
     }
 
     func testAnAbsentRemoteIsNotADeletion() throws {
@@ -79,8 +79,8 @@ final class SaveConflictModelTests: XCTestCase {
         XCTAssertEqual(applied, [.local])
         XCTAssertEqual(kept, .local)
         XCTAssertEqual(m.screen.stateName, "kept")
-        XCTAssertTrue(m.screen.shows("saveConflict.keptLocal"))
-        XCTAssertFalse(m.screen.shows("saveConflict.keptRemote"))
+        XCTAssertTrue(m.screen.shows("saveConflict.keptLocalTitle"))
+        XCTAssertFalse(m.screen.shows("saveConflict.keptRemoteTitle"))
         XCTAssertEqual(m.screen.actions, [])
     }
 
@@ -92,12 +92,43 @@ final class SaveConflictModelTests: XCTestCase {
         XCTAssertEqual(m.screen.stateName, "failed")
         XCTAssertTrue(m.screen.shows("saveConflict.failed"))
         XCTAssertFalse(m.screen.copyKeys.contains { $0.hasPrefix("saveConflict.kept") })
-        XCTAssertEqual(m.screen.actions, [.cancel, .retry])
+        XCTAssertEqual(m.screen.actions, [.cancel, .chooseAgain, .retry])
         await m.retry()
         let applied = await calls.all
         XCTAssertEqual(applied, [.remote, .remote])
         XCTAssertEqual(m.screen.stateName, "kept")
-        XCTAssertTrue(m.screen.shows("saveConflict.keptRemote"))
+        XCTAssertTrue(m.screen.shows("saveConflict.keptRemoteTitle"))
+    }
+
+    func testChooseAgainReturnsToTheChoicesAndAppliesNothing() async {
+        let calls = Calls(failFirst: true)
+        let m = SaveConflictModel(
+            conflict: conflict(), host: SaveConflictHost { try await calls.try($0) })
+        var told = 0
+        m.onChooseAgain = { told += 1 }
+        m.chooseAgain()  // not failed: ignored
+        XCTAssertEqual(told, 0)
+        await m.keep(.remote)
+        m.chooseAgain()
+        XCTAssertEqual(told, 1)
+        XCTAssertEqual(m.screen.stateName, "choose")
+        let applied = await calls.all
+        XCTAssertEqual(applied, [.remote])
+    }
+
+    func testNewerTagsOneCardAndIsIgnoredAfterADeletion() {
+        var c = conflict()
+        c.newer = .remote
+        c.bothAvailable = true
+        let m = SaveConflictModel(conflict: c)
+        XCTAssertTrue(m.screen.shows("saveConflict.newerOther"))
+        XCTAssertFalse(m.screen.shows("saveConflict.newerThis"))
+        var gone = KitSaveConflict(
+            step: .choose, local: c.local, remoteDeleted: true, bothAvailable: true, newer: .local)
+        XCTAssertFalse(SaveConflictModel(conflict: gone).screen.copyKeys.contains { $0.hasPrefix("saveConflict.newer") })
+        gone.step = .kept
+        gone.keep = .both  // reads as local after a deletion
+        XCTAssertTrue(SaveConflictModel(conflict: gone).screen.shows("saveConflict.keptLocalTitle"))
     }
 
     func testCancelAndDoneAreOnlyForTheirSteps() async {

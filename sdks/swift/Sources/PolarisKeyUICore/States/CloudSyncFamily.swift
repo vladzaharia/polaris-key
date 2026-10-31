@@ -189,32 +189,41 @@ extension KitStates {
     ///     with its reason (`KitSaveConflictScreen.disabledActions`), and not offered as an action;
     ///   - a deleted other copy has its own title and lede, `Delete it here too` replaces Keep the
     ///     other, and Keep both goes;
-    ///   - while a choice runs no control is offered, and `kept` names the choice made.
+    ///   - Newer tags the version the app names and chooses nothing; never with one version;
+    ///   - while a choice runs no control is offered (busy), `kept` titles the choice made, and
+    ///     `failed` offers Try again, Choose again and Cancel with none filled.
     public static func saveConflict(_ i: KitInputs) -> KitScreen<SaveConflictState> {
         let c = Ctx(i)
         guard i.closedServices.contains(.sync), let s = i.saveConflict else { return .hidden }
         let gone = s.remoteDeleted
+        // Only one save exists after a deletion elsewhere, so the title stays the deleted one.
+        let situation = c.line(gone ? "saveConflict.deletedTitle" : "saveConflict.title")
         switch s.step {
         case .keeping:
-            return KitScreen(.keeping, [c.line("saveConflict.title"), c.line("saveConflict.keeping")])
-        case .kept:
-            let key: String
-            switch s.keep == .remote && gone ? "deleted" : (s.keep?.rawValue ?? "local") {
-            case "remote": key = "saveConflict.keptRemote"
-            case "both": key = "saveConflict.keptBoth"
-            case "deleted": key = "saveConflict.keptDeleted"
-            default: key = "saveConflict.keptLocal"
-            }
             return KitScreen(
-                .kept, [c.line("saveConflict.title"), c.line(key), c.line("common.done")])
+                .keeping, [situation, c.line("saveConflict.keeping"), c.line("a11y.busy")])
+        case .kept:
+            // The title is the result. Deleted with `both` reads as local.
+            let title: String
+            switch gone && s.keep == .remote ? "deleted" : (gone ? "local" : (s.keep?.rawValue ?? "local")) {
+            case "remote": title = "saveConflict.keptRemoteTitle"
+            case "both": title = "saveConflict.keptBothTitle"
+            case "deleted": title = "saveConflict.keptDeletedTitle"
+            default: title = "saveConflict.keptLocalTitle"
+            }
+            var lines = [c.line(title)]
+            if !gone && s.keep == .both { lines.append(c.line("saveConflict.keptCopy")) }
+            lines.append(c.line("common.done"))
+            return KitScreen(.kept, lines)
         case .failed:
-            // Both copies are as they were. Try again repeats the choice, so the heading (not
-            // Try again) takes focus.
+            // Nothing is filled: Try again repeats the choice, Choose again returns to the
+            // versions, Cancel leaves. The heading takes focus.
             return KitScreen(
                 .failed,
                 [
-                    c.line("saveConflict.title"), c.line("saveConflict.failed"),
-                    c.line("common.tryAgain"), c.line("common.cancel"),
+                    situation, c.line(gone ? "saveConflict.failedDeleted" : "saveConflict.failed"),
+                    c.line("common.tryAgain"), c.line("saveConflict.chooseAgain"),
+                    c.line("common.cancel"),
                 ])
         case .choose:
             let both = !gone && s.bothAvailable == true
@@ -226,6 +235,7 @@ extension KitStates {
             if let when = s.local?.when {
                 lines.append(c.line("saveConflict.savedThis", ["when": .text(when)]))
             }
+            if !gone && s.newer == .local { lines.append(c.line("saveConflict.newerThis")) }
             if gone {
                 lines.append(c.line("saveConflict.deletedElsewhere"))
             } else if let device = s.remote?.device {
@@ -236,6 +246,7 @@ extension KitStates {
             if !gone, let when = s.remote?.when {
                 lines.append(c.line("saveConflict.savedOther", ["when": .text(when)]))
             }
+            if !gone && s.newer == .remote { lines.append(c.line("saveConflict.newerOther")) }
             lines.append(c.line("saveConflict.keepThis"))
             lines.append(c.line(gone ? "saveConflict.acceptDelete" : "saveConflict.keepOther"))
             if !gone { lines.append(c.line("saveConflict.keepBoth")) }

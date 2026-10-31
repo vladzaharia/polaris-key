@@ -801,6 +801,31 @@ extension PolarisKeyPreviewState {
                     step: .choose, local: thisCopy, remoteDeleted: true, bothAvailable: true)
             }),
         .init(
+            .saveConflict, "choose", variant: "newer",
+            base {
+                $0.saveConflict = KitSaveConflict(
+                    step: .choose, local: thisCopy, remote: otherCopy, bothAvailable: true,
+                    newer: .remote)
+            }),
+        .init(
+            .saveConflict, "keeping", variant: "deleted",
+            base {
+                $0.saveConflict = KitSaveConflict(
+                    step: .keeping, local: thisCopy, remoteDeleted: true, keep: .remote)
+            }),
+        .init(
+            .saveConflict, "kept", variant: "both",
+            base {
+                $0.saveConflict = KitSaveConflict(
+                    step: .kept, local: thisCopy, remote: otherCopy, keep: .both)
+            }),
+        .init(
+            .saveConflict, "failed", variant: "deleted",
+            base {
+                $0.saveConflict = KitSaveConflict(
+                    step: .failed, local: thisCopy, remoteDeleted: true, keep: .remote)
+            }),
+        .init(
             .saveConflict, "keeping",
             base {
                 $0.saveConflict = KitSaveConflict(
