@@ -136,9 +136,10 @@ public struct SignInView: View {
         }
     }
 
-    /// The confirm step's subtitle: the account, or the Apple Account when no email was shared.
+    /// The confirm step's subtitle: the model's one `signin.auto.confirm.as*` line (the email, or the
+    /// exchange's Apple Account, Game Center or Play Games), taken by prefix.
     static func subtitle(_ screen: KitScreen<SignInState>) -> CopyLine? {
-        screen.line("signin.auto.confirm.as") ?? screen.line("signin.auto.confirm.asApple")
+        screen.copy.first { $0.key.hasPrefix("signin.auto.confirm.as") }
     }
 
     /// The method a provider or row names in a failure's sentence.
