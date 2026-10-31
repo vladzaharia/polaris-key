@@ -392,11 +392,49 @@ describe("sessionRootSeconds", () => {
     expect(await delayFor(60)).toContain(60_000);
     expect(await delayFor()).toContain(300_000);
   });
-  it.each([NaN, Infinity, 0, -1])("refuses %s as invalid-options", (v) => {
-    expect(() =>
-      device(new FakeRingServer(), A, { sessionRootSeconds: v }),
-    ).toThrowError(expect.objectContaining({ code: "invalid-options" }));
-  });
+  it.each([NaN, Infinity, 0, -1, "600" as unknown as number])(
+    "an invalid sessionRootSeconds (%s) is raised by the ring verbs, before any request",
+    async (v) => {
+      const server = new FakeRingServer();
+      const d = device(server, A, { sessionRootSeconds: v }); // construction does not throw
+      const bad = { code: "invalid-options" };
+      for (const f of [
+        () => d.engine.status(),
+        () => d.engine.inspect(),
+        () => d.engine.create(),
+        () => d.engine.reset(),
+        () => d.engine.adoptPrevious(),
+        () => d.engine.recover("X"),
+        () => d.engine.getRecoveryBlob(),
+        () => d.engine.setRecoveryCode(),
+        () => d.engine.wrapTo(B, new Uint8Array(32)),
+        () => d.engine.removeWrap(B),
+        () =>
+          d.engine.acceptRingChange({ ringId: "r", epoch: 1, rootKid: "0" }),
+      ])
+        await expect(f()).rejects.toMatchObject(bad);
+      expect(server.log).toEqual([]);
+    },
+  );
+  it.each([NaN, Infinity, 0, -1, "600" as unknown as number])(
+    "sign-out removes the stored root and its pin when sessionRootSeconds is invalid (%s)",
+    async (v) => {
+      const server = new FakeRingServer();
+      const vault = memoryRootVault();
+      await device(server, A, { vault }).engine.create();
+      expect(await vault.get()).not.toBeNull();
+      const bad = device(server, A, { vault, sessionRootSeconds: v });
+      const lazy = lazyKeyring(async () => bad.engine);
+      server.log.length = 0;
+      await lazy.forget();
+      expect(await vault.get()).toBeNull();
+      expect(await vault.getPin()).toBeNull();
+      await expect(lazy.create()).rejects.toMatchObject({
+        code: "invalid-options",
+      });
+      expect(server.log).toEqual([]);
+    },
+  );
 });
 
 describe("the root in the browser", () => {
@@ -751,6 +789,269 @@ describe("the pin: a changed ring is never adopted silently", () => {
     expect(a.engine.hasRoot()).toBe(false);
     expect(await vault.get()).toBeNull();
     expect(await vault.getPin()).toBeNull();
+  });
+});
+
+// ── K0-FIX: a root or pin that cannot be read is not absent (K1-D1 rules 3-5) ────────────────
+
+describe("the root store faults", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /** A signed-in browser on IndexedDB, then a Worker ring that another device reset. */
+  async function setup(name: string) {
+    const fdb = await import("fake-indexeddb");
+    const idb = new fdb.IDBFactory();
+    const server = new FakeRingServer();
+    const vault = indexedDbRootVault(name, idb);
+    const victim = device(server, A, { vault });
+    const made = await victim.engine.create();
+    const oldKid = server.ring!.rootKid;
+    const attacker = device(server, B);
+    await attacker.engine.reset();
+    await attacker.engine.wrapTo(A, (await victim.keys.publicKeys())!.agreeKey);
+    const reopen = () =>
+      device(server, A, {
+        keys: victim.keys,
+        vault: indexedDbRootVault(name, idb),
+      });
+    return { fdb, idb, server, vault, victim, made, oldKid, reopen };
+  }
+  const plant = async (
+    idb: IDBFactory,
+    name: string,
+    key: string,
+    value: unknown,
+  ) =>
+    new Promise<void>((res, rej) => {
+      const req = idb.open(name, 1);
+      req.onsuccess = () => {
+        const tx = req.result.transaction("root", "readwrite");
+        if (value === undefined) tx.objectStore("root").delete(key);
+        else tx.objectStore("root").put(value, key);
+        tx.oncomplete = () => {
+          req.result.close();
+          res();
+        };
+        tx.onerror = () => rej(tx.error);
+      };
+    });
+
+  it("a stored root that cannot be read is not an absent root", async () => {
+    const t = await setup("t-fault-root");
+    // Control: a healthy store answers ring-changed.
+    expect((await t.reopen().engine.status()).state).toBe("ring-changed");
+    // A read transaction that fails.
+    const tx = vi
+      .spyOn(t.fdb.IDBDatabase.prototype, "transaction")
+      .mockImplementation(() => {
+        throw new Error("lost connection");
+      });
+    const dh = vi.spyOn(t.victim.keys, "dh");
+    const r = t.reopen();
+    await expect(r.engine.status()).rejects.toMatchObject({
+      code: "store-failed",
+    });
+    expect(dh).not.toHaveBeenCalled();
+    expect(r.engine.hasRoot()).toBe(false);
+    tx.mockRestore();
+    // open() itself failing is a read fault too.
+    const broken = new t.fdb.IDBFactory();
+    vi.spyOn(broken, "open").mockImplementation(() => {
+      throw new Error("VersionError");
+    });
+    const o = device(t.server, A, {
+      keys: t.victim.keys,
+      vault: indexedDbRootVault("t-fault-root", broken),
+    });
+    await expect(o.engine.status()).rejects.toMatchObject({
+      code: "store-failed",
+    });
+    expect(dh).not.toHaveBeenCalled();
+    // Nothing was written: the root and the pin are still there and still pin the old ring.
+    expect((await indexedDbRootVault("t-fault-root", t.idb).get())!.kid).toBe(
+      t.oldKid,
+    );
+    expect((await t.reopen().engine.status()).state).toBe("ring-changed");
+  });
+
+  it("a pin that cannot be read is not an absent pin", async () => {
+    const t = await setup("t-fault-pin");
+    const realGet = t.fdb.IDBObjectStore.prototype.get;
+    vi.spyOn(t.fdb.IDBObjectStore.prototype, "get").mockImplementation(
+      function (this: IDBObjectStore, key: IDBValidKey | IDBKeyRange) {
+        if (key === "pin") throw new Error("pin unreadable");
+        return realGet.call(this, key);
+      } as never,
+    );
+    const dh = vi.spyOn(t.victim.keys, "dh");
+    await expect(t.reopen().engine.status()).rejects.toMatchObject({
+      code: "store-failed",
+    });
+    expect(dh).not.toHaveBeenCalled();
+  });
+
+  it("a present root that is not a usable key is device-keys-unreadable with no pin, and the pinned ring's own wrap replaces it with a pin", async () => {
+    const name = "t-bad-root";
+    const fdb = await import("fake-indexeddb");
+    const idb = new fdb.IDBFactory();
+    const server = new FakeRingServer();
+    const a = device(server, A, { vault: indexedDbRootVault(name, idb) });
+    await a.engine.create();
+    const mk = () =>
+      device(server, A, {
+        keys: a.keys,
+        vault: indexedDbRootVault(name, idb),
+      });
+    await plant(idb, name, "current", { v: 2, junk: true });
+    // A pin stands: the pinned ring's own wrap replaces the unusable root.
+    expect((await mk().engine.status()).state).toBe("unlocked");
+    expect((await indexedDbRootVault(name, idb).get())!.kid).toBe(
+      server.ring!.rootKid,
+    );
+    // No pin: unknown is not absent. Nothing is written.
+    await plant(idb, name, "current", { v: 2, junk: true });
+    await plant(idb, name, "pin", undefined);
+    const dh = vi.spyOn(a.keys, "dh");
+    await expect(mk().engine.status()).rejects.toMatchObject({
+      code: "device-keys-unreadable",
+    });
+    expect(dh).not.toHaveBeenCalled();
+    expect(await indexedDbRootVault(name, idb).getPin()).toBeNull();
+    vi.restoreAllMocks();
+  });
+
+  it("a stored handle whose kid is not the record's kid is device-keys-unreadable", async () => {
+    const name = "t-planted";
+    const fdb = await import("fake-indexeddb");
+    const idb = new fdb.IDBFactory();
+    const server = new FakeRingServer();
+    const a = device(server, A, { vault: indexedDbRootVault(name, idb) });
+    await a.engine.create();
+    const planted = await crypto.subtle.importKey(
+      "raw",
+      crypto.getRandomValues(new Uint8Array(32)),
+      "HKDF",
+      false,
+      ["deriveBits"],
+    );
+    await plant(idb, name, "current", {
+      v: 1,
+      ringId: server.ring!.ringId,
+      epoch: 1,
+      kid: server.ring!.rootKid,
+      key: planted,
+    });
+    await plant(idb, name, "pin", undefined);
+    const fresh = indexedDbRootVault(name, idb);
+    await expect(fresh.get()).rejects.toMatchObject({
+      code: "device-keys-unreadable",
+    });
+    await expect(
+      device(server, A, { keys: a.keys, vault: fresh }).engine.status(),
+    ).rejects.toMatchObject({ code: "device-keys-unreadable" });
+  });
+
+  it("the recovery code still unlocks while the root store faults", async () => {
+    const t = await setup("t-fault-recover");
+    const fresh = await device(
+      t.server,
+      "DEVICECCCCCCCCCCCCCCCCCCCCCCCCCC",
+    ).engine.reset();
+    vi.spyOn(t.fdb.IDBDatabase.prototype, "transaction").mockImplementation(
+      () => {
+        throw new Error("lost connection");
+      },
+    );
+    const r = t.reopen();
+    await expect(r.engine.status()).rejects.toMatchObject({
+      code: "store-failed",
+    });
+    const s = await r.engine.recover(fresh.recoveryCode);
+    expect(s.state).toBe("unlocked");
+    expect(r.engine.hasRoot()).toBe(true);
+  });
+
+  it("forget keeps the pin and throws when the root cannot be removed", async () => {
+    const t = await setup("t-fault-forget");
+    const bytes = (
+      t.victim.engine as unknown as {
+        session: { bytes: Uint8Array };
+      }
+    ).session.bytes;
+    expect(bytes.some((b) => b !== 0)).toBe(true);
+    const real = t.fdb.IDBDatabase.prototype.transaction;
+    vi.spyOn(t.fdb.IDBDatabase.prototype, "transaction").mockImplementation(
+      function (this: IDBDatabase, store: never, mode: IDBTransactionMode) {
+        if (mode === "readwrite") throw new Error("write refused");
+        return real.call(this, store, mode);
+      } as never,
+    );
+    await expect(t.victim.engine.forget()).rejects.toMatchObject({
+      code: "store-failed",
+    });
+    vi.restoreAllMocks();
+    const check = indexedDbRootVault("t-fault-forget", t.idb);
+    expect(await check.get()).not.toBeNull();
+    expect(await check.getPin()).not.toBeNull();
+    expect(t.victim.engine.hasRoot()).toBe(false);
+    expect(bytes.every((b) => b === 0)).toBe(true);
+  });
+
+  it("ring-changed zeroes the session bytes and wrapTo then refuses", async () => {
+    const server = new FakeRingServer();
+    const a = device(server, A);
+    await a.engine.create();
+    const bytes = (a.engine as unknown as { session: { bytes: Uint8Array } })
+      .session.bytes;
+    await device(server, B).engine.reset();
+    expect((await a.engine.status()).state).toBe("ring-changed");
+    expect(bytes.every((b) => b === 0)).toBe(true);
+    await expect(
+      a.engine.wrapTo(B, new Uint8Array(32).fill(9)),
+    ).rejects.toBeInstanceOf(UnsupportedError);
+  });
+});
+
+describe("the root kept across a reset", () => {
+  it("the previous root is zeroed when its own session window ends", async () => {
+    vi.useFakeTimers();
+    const server = new FakeRingServer();
+    const a = device(server, A, {
+      sessionRootSeconds: 30,
+      now: () => Date.now(),
+    });
+    await a.engine.create();
+    vi.advanceTimersByTime(10_000);
+    await a.engine.reset();
+    const prev = (
+      a.engine as unknown as {
+        previous: { bytes: Uint8Array } | null;
+      }
+    ).previous!;
+    expect(prev.bytes.some((b) => b !== 0)).toBe(true);
+    vi.advanceTimersByTime(21_000);
+    expect((a.engine as unknown as { previous: unknown }).previous).toBeNull();
+    expect(prev.bytes.every((b) => b === 0)).toBe(true);
+    await expect(a.engine.adoptPrevious()).rejects.toBeInstanceOf(
+      UnsupportedError,
+    );
+  });
+
+  it("adoptPrevious refuses once the window has passed even if no timer ran", async () => {
+    let now = 1_000_000;
+    const server = new FakeRingServer();
+    const a = device(server, A, { sessionRootSeconds: 30, now: () => now });
+    await a.engine.create();
+    now += 20_000;
+    await a.engine.reset(); // the old root's window ends at +30 s, the new session's at +50 s
+    now += 11_000;
+    await a.engine.setRecoveryCode(); // the new session is still inside its own window
+    await expect(a.engine.adoptPrevious()).rejects.toBeInstanceOf(
+      UnsupportedError,
+    );
+    expect(server.ring!.adopted).toEqual([]);
   });
 });
 

@@ -11,6 +11,10 @@
 //  - the recovery code only inside the call that makes or reads it. It is returned once, never
 //    stored, never logged, never in an error.
 //
+// A root or pin that cannot be read is an error, never an absent record: a read that faults is
+// `store-failed`, and nothing is opened, written or pinned on top of it. Sign-out removes the
+// root before the pin and keeps the pin when the root cannot be removed.
+//
 // A browser unlocks only with the recovery code (Q8). A browser whose device keys die with the
 // page (WebKit when it keeps nothing of an X25519 key) cannot create or reset a ring, because the
 // Worker wants registered keys for the ring's own wrap; it unlocks with the code, holds the root
@@ -235,11 +239,14 @@ export class RingEngine implements KeyringClient {
     until: number;
     timer: ReturnType<typeof setTimeout> | null;
   } | null = null;
+  /** The old root kept across a reset, for adopting: it ends with the window it came from. */
   private previous: {
     ringId: string;
     epoch: number;
     kid: Uint8Array;
     bytes: Uint8Array;
+    until: number;
+    timer: ReturnType<typeof setTimeout> | null;
   } | null = null;
   private recoveryBlob: {
     ringId: string;
@@ -249,11 +256,24 @@ export class RingEngine implements KeyringClient {
   } | null = null;
 
   private readonly sessionRootMs: number;
+  /** An invalid `sessionRootSeconds`, raised by the ring verbs (not by lock or forget). */
+  private readonly optionError: PolarisError | null = null;
 
   constructor(private readonly o: RingEngineOptions) {
     this.p = o.crypto ?? webCryptoSyncPort;
     this.now = o.now ?? (() => Date.now());
-    this.sessionRootMs = sessionRootWindow(o.sessionRootSeconds) * 1000;
+    let secs = DEFAULT_SESSION_ROOT_SECONDS;
+    try {
+      secs = sessionRootWindow(o.sessionRootSeconds);
+    } catch (e) {
+      this.optionError = e as PolarisError;
+    }
+    this.sessionRootMs = secs * 1000;
+  }
+
+  /** Every verb except lock, forget, hasRoot, subscribe and codec starts here, before any request. */
+  private guard(): void {
+    if (this.optionError) throw this.optionError;
   }
 
   // ── State ──────────────────────────────────────────────────────────────────────────────────
@@ -355,7 +375,10 @@ export class RingEngine implements KeyringClient {
   }
 
   private dropPrevious(): void {
-    this.previous?.bytes.fill(0);
+    const p = this.previous;
+    if (!p) return;
+    if (p.timer) clearTimeout(p.timer);
+    p.bytes.fill(0);
     this.previous = null;
   }
 
@@ -424,6 +447,7 @@ export class RingEngine implements KeyringClient {
 
   /** The ring and this device's wrap as the Worker holds them. Unlocks nothing. */
   async inspect(): Promise<RingDetail> {
+    this.guard();
     const { ring, wrap } = await this.read();
     return {
       ring,
@@ -432,6 +456,7 @@ export class RingEngine implements KeyringClient {
   }
 
   async status(): Promise<RingStatus> {
+    this.guard();
     const { ring, wrap } = await this.read();
     const { vault, persistence, canCreate } = await this.where();
     if (!ring) {
@@ -439,12 +464,30 @@ export class RingEngine implements KeyringClient {
       // sign-out does. A ring that comes back is compared with the pin below.
       return this.shape("none", null, persistence, canCreate);
     }
-    const have = await vault.get();
-    const pin = (await vault.getPin()) ?? (have ? pinOfRoot(have) : null);
+    // The pin first, then the root. A read that faults ends here (`store-failed`): nothing is
+    // opened or written on top of a store that could not be read.
+    const stored = await vault.getPin();
+    let have: StoredRoot | null = null;
+    try {
+      have = await vault.get();
+    } catch (e) {
+      // A root that is there but unusable counts as no root only under a standing pin: the
+      // pinned ring's own wrap may replace it (the same kid is the same root).
+      if (
+        !(
+          stored &&
+          e instanceof PolarisError &&
+          e.code === "device-keys-unreadable"
+        )
+      )
+        throw e;
+    }
+    const pin = stored ?? (have ? pinOfRoot(have) : null);
     if (pin && !pinMatches(pin, ring)) {
       // A different ring (another id, epoch or root kid) is never adopted silently. The stored
       // root stays as it is; the machine is told this device holds no root for the served ring.
       this.setHeld(false);
+      this.dropSession();
       return this.shape("ring-changed", ring, persistence, canCreate, {
         pinned: identityOf(pin),
         served: identityOf(ring),
@@ -457,22 +500,31 @@ export class RingEngine implements KeyringClient {
       have.epoch === ring.epoch &&
       have.kid === ring.rootKid
     ) {
-      if (!(await vault.getPin())) await vault.putPin(pinOfRoot(have));
+      if (!stored) await vault.putPin(pinOfRoot(have));
       this.setHeld(true);
       return this.shape("unlocked", ring, persistence, canCreate);
     }
     // Not the current ring's root: nothing held is current any more.
-    if (have) this.setHeld(false);
+    if (have) {
+      this.setHeld(false);
+      this.dropSession();
+    }
     if (wrap && canCreate && (await this.openOwnWrap(ring, wrap)))
       return this.shape("unlocked", ring, persistence, canCreate);
     return this.shape("locked", ring, persistence, canCreate);
   }
 
   async acceptRingChange(confirmed: RingIdentity): Promise<RingStatus> {
+    this.guard();
     const { ring, wrap } = await this.read();
     const { vault, persistence, canCreate } = await this.where();
     if (!ring) return this.shape("none", null, persistence, canCreate);
-    const pin = await vault.getPin();
+    // A pin that cannot be read does not block a confirmed accept; the report anchors on the
+    // identity the person confirmed.
+    const pin = await vault.getPin().catch((e: unknown) => {
+      if (e instanceof PolarisError && e.code === "store-failed") return null;
+      throw e;
+    });
     // An accept holds only for the ring the person was shown. A ring that moved since is
     // reported again, and nothing is opened or replaced.
     const changed = (): RingStatus =>
@@ -483,6 +535,7 @@ export class RingEngine implements KeyringClient {
       });
     if (!pinMatches(identityPin(confirmed), ring)) {
       this.setHeld(false);
+      this.dropSession();
       return changed();
     }
     // The stored root and the pin change only once this device's wrap for the served ring
@@ -491,6 +544,7 @@ export class RingEngine implements KeyringClient {
     if (wrap && canCreate && (await this.openOwnWrap(ring, wrap)))
       return this.shape("unlocked", ring, persistence, canCreate);
     this.setHeld(false);
+    this.dropSession();
     return changed();
   }
 
@@ -652,10 +706,12 @@ export class RingEngine implements KeyringClient {
   }
 
   async create(): Promise<RingCode> {
+    this.guard();
     return this.make("devices/keyring");
   }
 
   async reset(): Promise<RingCode> {
+    this.guard();
     // The ring being replaced stays readable for 30 days if this session still holds its root.
     const old =
       this.session && this.now() < this.session.until ? this.session : null;
@@ -665,12 +721,23 @@ export class RingEngine implements KeyringClient {
           epoch: old.epoch,
           kid: old.kid.slice(),
           bytes: old.bytes.slice(),
+          until: old.until,
+          timer: null as ReturnType<typeof setTimeout> | null,
         }
       : null;
     try {
       const out = await this.make("devices/keyring/reset");
       this.dropPrevious();
-      this.previous = keep;
+      if (keep) {
+        // The copy ends with the window it came from.
+        const left = keep.until - this.now();
+        if (left <= 0) keep.bytes.fill(0);
+        else {
+          keep.timer = setTimeout(() => this.dropPrevious(), left);
+          (keep.timer as { unref?: () => void }).unref?.();
+          this.previous = keep;
+        }
+      }
       return out;
     } catch (e) {
       keep?.bytes.fill(0);
@@ -679,22 +746,25 @@ export class RingEngine implements KeyringClient {
   }
 
   async adoptPrevious(): Promise<void> {
+    this.guard();
+    const cur = this.sessionRoot();
     const from = this.previous;
-    if (!from)
+    if (from && this.now() >= from.until) this.dropPrevious();
+    const held = this.previous;
+    if (!held)
       throw this.unsupported_(
         "No earlier root is held in this session, so nothing can be adopted.",
       );
-    const cur = this.sessionRoot();
     const ct = await sealAdopt(
       this.p,
       cur.bytes,
-      { fromRingId: from.ringId, epoch: from.epoch, kid: from.kid },
-      from.bytes,
+      { fromRingId: held.ringId, epoch: held.epoch, kid: held.kid },
+      held.bytes,
     );
     const res = await this.call("devices/keyring/adopt", "POST", {
-      fromRingId: from.ringId,
-      epoch: from.epoch,
-      kid: hex(from.kid),
+      fromRingId: held.ringId,
+      epoch: held.epoch,
+      kid: hex(held.kid),
       ct: b64(ct),
     });
     if (!res.ok) throw await refusal(res);
@@ -703,6 +773,7 @@ export class RingEngine implements KeyringClient {
   // ── Recovery ───────────────────────────────────────────────────────────────────────────────
 
   async recover(codeText: string): Promise<RingStatus> {
+    this.guard();
     // The checksum first: a mistyped code costs no request, and the server allows 5 a day.
     const code = await parseRecoveryCode(this.p, codeText);
     if (!code)
@@ -756,6 +827,7 @@ export class RingEngine implements KeyringClient {
 
   /** `GET /<p>/devices/keyring/recovery`: the sealed blob, 5 a day per device. Opens nothing. */
   async getRecoveryBlob(): Promise<{ ct: string; epoch: number; kid: string }> {
+    this.guard();
     const res = await this.call("devices/keyring/recovery", "GET");
     if (!res.ok) throw await refusal(res);
     const b = (await res.json().catch(() => null)) as Record<
@@ -799,6 +871,7 @@ export class RingEngine implements KeyringClient {
   }
 
   async setRecoveryCode(): Promise<RingCode> {
+    this.guard();
     const s = this.sessionRoot();
     const code = newRecoveryCode(this.p);
     try {
@@ -857,6 +930,7 @@ export class RingEngine implements KeyringClient {
   }
 
   async wrapTo(deviceId: string, agreeKey: string | Uint8Array): Promise<void> {
+    this.guard();
     const s = this.sessionRoot();
     const agree = typeof agreeKey === "string" ? unb64(agreeKey) : agreeKey;
     if (!agree || agree.length !== 32)
@@ -868,6 +942,7 @@ export class RingEngine implements KeyringClient {
   }
 
   async removeWrap(deviceId: string): Promise<void> {
+    this.guard();
     const res = await this.call(
       `devices/keyring/wraps/${encodeURIComponent(deviceId)}`,
       "DELETE",
@@ -879,12 +954,14 @@ export class RingEngine implements KeyringClient {
     this.dropSession();
     this.dropPrevious();
     this.recoveryBlob = null;
-    await this.o.vault.clear();
+    // Held state goes before the durable delete, which can now throw.
     await this.memory.clear();
     this.setHeld(false);
+    await this.o.vault.clear();
   }
 
   async forget(): Promise<void> {
+    // The root first, the pin last: when the root cannot be removed this throws with the pin kept.
     await this.lock();
     await this.o.vault.clearPin();
     await this.memory.clearPin();

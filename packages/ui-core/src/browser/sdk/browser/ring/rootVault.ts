@@ -2,6 +2,11 @@
 // non-extractable HKDF key; Q8). The record holds a `CryptoKey`, never the bytes: structured clone
 // stores the key object, and script on the page can derive from it but cannot read it back.
 //
+// A root or pin that cannot be read is an error, never an absent record: a read fault is
+// `store-failed`, a record that is there but not a usable root is `device-keys-unreadable`, and a
+// delete that fails inside an opened database throws, so sign-out never reports a root gone that
+// is still stored.
+//
 // A vault that cannot keep a record (no IndexedDB, or an engine that accepts the write and keeps
 // nothing, as WebKit does for some keys) reports "memory" and holds the record for the page's
 // life. The engine also picks the memory vault when the device keys are memory-only: a browser
@@ -10,12 +15,14 @@
 
 import {
   deriveChunkIdKey,
+  deriveKid,
   deriveCollKey,
   deriveNamesKey,
   webCryptoSyncPort,
   type SyncCryptoPort,
 } from "@polaris-key/client-core/sync";
 import type { RingPersistence } from "../../core/keyring.js";
+import { PolarisError } from "../../core/types.js";
 
 /** What the vault keeps for the current ring's root. */
 export interface StoredRoot {
@@ -124,49 +131,104 @@ function validRoot(rec: unknown): rec is StoredRoot {
   );
 }
 
+const storeFailed = (what: string): PolarisError =>
+  new PolarisError("store-failed", `The key ring store could not ${what}.`);
+
 /**
  * IndexedDB vault `name` (one per product). A write is read back; a store that keeps nothing
- * degrades this vault to memory for the rest of the page, and `persistence()` says so.
+ * degrades this vault to memory for the rest of the page, and `persistence()` says so. A read
+ * that faults is `store-failed` (it never reads as an absent record), and a failed delete in an
+ * opened database throws.
  */
 export function indexedDbRootVault(
   name: string,
   idb: IDBFactory | undefined = (globalThis as { indexedDB?: IDBFactory })
     .indexedDB,
+  base: SyncCryptoPort = webCryptoSyncPort,
 ): RootVault {
   const mem = memoryRootVault();
   let degraded = idb === undefined;
   let db: Promise<IDBDatabase> | null = null;
   const open = (): Promise<IDBDatabase> => {
-    db ??= new Promise((res, rej) => {
+    db ??= new Promise<IDBDatabase>((res, rej) => {
       const req = idb!.open(name, 1);
       req.onupgradeneeded = () => req.result.createObjectStore(STORE);
       req.onsuccess = () => res(req.result);
       req.onerror = () => rej(req.error ?? new Error("indexeddb"));
       req.onblocked = () => rej(new Error("indexeddb blocked"));
     });
+    // A failed open is not cached: the next call opens again.
+    db.catch(() => {
+      db = null;
+    });
     return db;
   };
-  const read = async (): Promise<unknown> =>
-    inTx(await open(), "readonly", (st) => st.get(RECORD));
+  const read = async (key: string): Promise<unknown> =>
+    inTx(await open(), "readonly", (st) => st.get(key));
+  /** Reads `key`; a fault is `store-failed` and drops the cached connection. */
+  const readChecked = async (key: string): Promise<unknown> => {
+    try {
+      return await read(key);
+    } catch {
+      db = null;
+      throw storeFailed("read the stored value");
+    }
+  };
+  /** Deletes `key`. Silent only when no database can be opened; a failed delete throws. */
+  const remove = async (key: string): Promise<void> => {
+    if (idb === undefined) return;
+    let d: IDBDatabase;
+    try {
+      d = await open();
+    } catch {
+      return; // nothing in the store is reachable: root and pin stay together
+    }
+    try {
+      await inTx(d, "readwrite", (st) => st.delete(key));
+    } catch {
+      throw storeFailed("remove the stored value");
+    }
+  };
   return {
     persistence: () => (degraded ? "memory" : "durable"),
     async get() {
       if (degraded) return mem.get();
+      const rec = await readChecked(RECORD);
+      if (rec === undefined || rec === null) return null;
+      if (!validRoot(rec))
+        throw new PolarisError(
+          "device-keys-unreadable",
+          "The stored key ring root is not a usable key.",
+        );
+      // The record's kid is checked against the handle itself: a key planted under the ring's
+      // triple does not read as that ring's root.
+      let derived: string;
       try {
-        const rec = await read();
-        // A record that exists but is not a usable root is dropped: it can only be a stale or
-        // damaged copy, and a root is re-obtained from the ring, never repaired here.
-        return validRoot(rec) ? rec : null;
+        derived = hexOf(await deriveKid(portOver(rec.key, base), ROOT_IKM));
       } catch {
-        degraded = true;
-        return mem.get();
+        throw new PolarisError(
+          "device-keys-unreadable",
+          "The stored key ring root is not a usable key.",
+        );
       }
+      if (derived !== rec.kid)
+        throw new PolarisError(
+          "device-keys-unreadable",
+          "The stored key ring root is not the key it names.",
+        );
+      return {
+        v: 1,
+        ringId: rec.ringId,
+        epoch: rec.epoch,
+        kid: rec.kid,
+        key: rec.key,
+      };
     },
     async put(rec) {
       if (!degraded) {
         try {
           await inTx(await open(), "readwrite", (st) => st.put(rec, RECORD));
-          if (validRoot(await read())) return;
+          if (validRoot(await read(RECORD))) return;
         } catch {
           // fall through to memory
         }
@@ -176,22 +238,12 @@ export function indexedDbRootVault(
     },
     async clear() {
       await mem.clear();
-      if (idb === undefined) return;
-      try {
-        await inTx(await open(), "readwrite", (st) => st.delete(RECORD));
-      } catch {
-        // nothing durable to clear
-      }
+      await remove(RECORD);
     },
     async getPin() {
       if (degraded) return mem.getPin();
-      try {
-        const rec = await inTx(await open(), "readonly", (st) => st.get(PIN));
-        return validPin(rec) ? rec : null;
-      } catch {
-        degraded = true;
-        return mem.getPin();
-      }
+      const rec = await readChecked(PIN);
+      return validPin(rec) ? rec : null;
     },
     async putPin(p) {
       // The memory copy always follows, so a store that keeps nothing still pins for the page.
@@ -204,13 +256,8 @@ export function indexedDbRootVault(
       }
     },
     async clearPin() {
+      await remove(PIN);
       await mem.clearPin();
-      if (idb === undefined) return;
-      try {
-        await inTx(await open(), "readwrite", (st) => st.delete(PIN));
-      } catch {
-        // nothing durable to clear
-      }
     },
   };
 }
@@ -228,6 +275,8 @@ export function importRootHandle(
 // ── Derived keys for the codec ───────────────────────────────────────────────────────────────
 
 const ROOT_IKM = new Uint8Array(32);
+const hexOf = (b: Uint8Array): string =>
+  [...b].map((x) => x.toString(16).padStart(2, "0")).join("");
 
 /** A port whose HKDF from the sentinel root input runs on the handle, never on bytes. */
 function portOver(handle: CryptoKey, base: SyncCryptoPort): SyncCryptoPort {
