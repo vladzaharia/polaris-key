@@ -29,6 +29,34 @@ export function holderOf(state: PolarisState): { email: string } | undefined {
   return { email: typeof p.email === "string" ? p.email : "" };
 }
 
+/** The refusal kinds a key return (LK-SKIP) can leave in the license slot when `token` refuses
+ *  the redeem: the activation refusals a typed key meets (`device_limit`, `key_entry_limit`,
+ *  `license_owned`). */
+const KEY_RETURN_REFUSALS: readonly string[] = [
+  "deviceLimit",
+  "keyEntryLimit",
+  "licenseOwned",
+];
+
+/** True when the license slot holds a refusal the person has not seen, that a key return left
+ *  while the gate shows no step: the gate then opens the key step, which draws the refusal
+ *  (DeviceLimit with its manage link, the entries, the owned notice) from `details`. A refusal
+ *  the person left (`dismissed`) never reopens it. */
+export function keyReturnRefusal(
+  state: PolarisState,
+  dismissed: unknown,
+): boolean {
+  const e = state.error.license as ErrorLike | null | undefined;
+  return (
+    state.phase !== "loading" &&
+    state.status === "needs-activation" &&
+    !!e &&
+    e !== dismissed &&
+    e.activation !== undefined &&
+    KEY_RETURN_REFUSALS.includes(e.activation.kind)
+  );
+}
+
 /** The error fields the gate needs to map a refusal to an input state. */
 export interface ErrorLike {
   code?: string;

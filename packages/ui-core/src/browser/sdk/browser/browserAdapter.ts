@@ -2381,6 +2381,15 @@ export class BrowserAdapter implements PolarisAdapter {
           this.noteSubject(outcome.subject);
           if (redirect) this.linkFor_ = outcome.subject ?? "";
         }
+        if (outcome.kind === "activated") {
+          // A key return (LK-SKIP): a key activation with no account. No link offer follows (the
+          // person chose to go without one) and Cloud Sync, which follows an account, is told
+          // there is none. The app starts at once.
+          this.linkFor_ = undefined;
+          this.applyBearer({ busy: noBusy(), error: noErrors() });
+          this.syncFollowsSession(false);
+          return outcome;
+        }
         this.applyBearer({ busy: noBusy(), error: noErrors() });
         if (outcome.kind === "signedIn") await this.setExplicitSignOut(false);
         if (outcome.kind !== "signedIn") return outcome;
@@ -2397,7 +2406,13 @@ export class BrowserAdapter implements PolarisAdapter {
         return { ...outcome, subject };
       },
       onFailed: (error) => {
-        this.fail("identity", error);
+        // A key return is refused as `license/activate` would refuse it (device limit, key entry
+        // limit, license owned): the typed refusal stands in the license slot, where the gate's
+        // refusal steps read it.
+        this.fail(
+          error.activation !== undefined ? "license" : "identity",
+          error,
+        );
       },
       onStopped: () => this.setBusy("identity", false),
     };

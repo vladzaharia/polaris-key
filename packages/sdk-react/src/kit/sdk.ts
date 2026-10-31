@@ -24,6 +24,7 @@ import {
   armTab,
   disarmTab,
   gateInput,
+  keyReturnRefusal,
   openManage,
   type GateStep,
 } from "@polaris-key/ui-core/browser";
@@ -104,6 +105,8 @@ export function useSdkGate(
   // The refusal the person left behind: leaving the step, or editing the key, clears it (DL7),
   // and the key they typed stays in the field.
   const [dismissed, setDismissed] = useState<unknown>(null);
+  const dismissedRef = useRef<unknown>(null);
+  dismissedRef.current = dismissed;
   const [opener, setOpener] = useState<string | null>(null);
   const errorRef = useRef<unknown>(null);
   errorRef.current = state.error.license;
@@ -273,6 +276,19 @@ export function useSdkGate(
       }
     }
   }, [state.status, state.phase]);
+  // A key return the Worker refused at `token` (device limit, key entries, owned) leaves a typed
+  // refusal in the license slot with no step to draw it: the key step shows it, with the manage
+  // link and the counts it carried (LK-SKIP). A refusal the person left never reopens it.
+  const licenseError = state.error.license;
+  useEffect(() => {
+    if (
+      stepRef.current === "home" &&
+      !activating.current &&
+      keyReturnRefusal(state, dismissedRef.current)
+    )
+      enter("activate", "signin.key.differentKey");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [licenseError, state.status, state.phase]);
   // Automatic sign-in: once at boot, when the page needs one and the product can sign in. What
   // it found steps the gate into the in-app form (a confirm, the license list, the device
   // limit); a sign-in that landed moves the license state by itself.

@@ -1,6 +1,6 @@
 // @vitest-environment node
 //
-// @pkey-feature identity.devicecode identity.redirect.web identity.signin.hints identity.toggle
+// @pkey-feature identity.devicecode identity.redirect.web identity.signin.hints identity.toggle identity.keyreturn
 //
 // I-10a.10: `signIn.start` / `signIn.complete` through the ADAPTERS (the transcript replayer
 // drives the bearer engine; this is what the adapter adds): the device-code session and the web
@@ -64,6 +64,8 @@ interface Server {
   /** What the next device poll answers. */
   poll: Array<{ status: number; body: unknown }>;
   startStatus: number;
+  /** Overrides the token endpoint's answer (a key return, or its refusal). */
+  token?: { status: number; body: unknown };
 }
 
 async function server(): Promise<Server> {
@@ -145,6 +147,7 @@ async function server(): Promise<Server> {
         return json(next.body, next.status);
       }
       case "/acme/identity/token":
+        if (s.token) return json(s.token.body, s.token.status);
         return json({
           access_token: "pkeyt_redirect",
           scope: "profile email",
@@ -342,6 +345,101 @@ describe("bearer: web redirect", () => {
       code: "sign-in-failed",
     });
     expect(s.seen.length).toBe(before);
+  });
+
+  describe("a key return (LK-SKIP.6b)", () => {
+    const KEY_BODY = {
+      access_token: "pkeyt_key",
+      scope: "",
+      subject: null,
+      schemaVersion: 1,
+      device: {},
+      license: { id: "lic_1" },
+      via: "key",
+      keyEntries: { used: 1, limit: 10 },
+    };
+
+    /** Start a redirect (opted in, or not), let the token endpoint answer `token`, redeem. */
+    async function redeem(
+      token: { status: number; body: unknown },
+      keyReturn = true,
+    ) {
+      const s = await server();
+      s.token = token;
+      const adapter = await bearer(s);
+      const session = await adapter.signIn.start({
+        channel: "redirect",
+        redirectUri: REDIRECT,
+        ...(keyReturn ? { keyReturn } : {}),
+      });
+      const url = new URL(session.authorizeUrl);
+      const result = session
+        .complete(callback(url.searchParams.get("state")!))
+        .then(
+          (value) => ({ value }),
+          (error: unknown) => ({ error }),
+        );
+      return { adapter, url, result: await result };
+    }
+
+    it("sends key_return=allow and settles activated: a key activation with no account", async () => {
+      const { adapter, url, result } = await redeem({
+        status: 200,
+        body: KEY_BODY,
+      });
+      expect(url.search.endsWith("key_return=allow")).toBe(true);
+      expect(result).toEqual({
+        value: {
+          kind: "activated",
+          subject: null,
+          activation: { licenseId: "lic_1" },
+          keyEntries: { used: 1, limit: 10 },
+        },
+      });
+      expect(adapter.snapshot().status).toBe("ok");
+      expect(adapter.snapshot().busy.identity).toBe(false);
+      expect(adapter.snapshot().error.identity).toBeNull();
+    });
+
+    it("a via key answer without the opt-in is malformed", async () => {
+      const { result } = await redeem({ status: 200, body: KEY_BODY }, false);
+      expect(result).toMatchObject({ error: { code: "bad_response" } });
+    });
+
+    it("license_owned at token is the owned refusal: the typed activation with signInUrl, in the license slot", async () => {
+      const signInUrl = "https://key.plrs.im/signin?product=acme";
+      const { adapter, result } = await redeem({
+        status: 403,
+        body: { error: "license_owned", signInUrl },
+      });
+      expect(result).toMatchObject({
+        error: {
+          code: "license_owned",
+          wireCode: "license_owned",
+          activation: { kind: "licenseOwned", signInUrl },
+        },
+      });
+      const snap = adapter.snapshot();
+      expect(snap.error.license).toMatchObject({
+        activation: { kind: "licenseOwned", signInUrl },
+      });
+      expect(snap.error.identity).toBeNull();
+      expect(snap.busy.identity).toBe(false);
+    });
+
+    it("device_limit at token carries limit, deviceCount and manageUrl", async () => {
+      const manageUrl = "https://key.plrs.im/activate?product=acme";
+      const { result } = await redeem({
+        status: 403,
+        body: { error: "device_limit", limit: 1, deviceCount: 1, manageUrl },
+      });
+      expect(result).toMatchObject({
+        error: {
+          activation: { kind: "deviceLimit", limit: 1, deviceCount: 1 },
+          manageUrl,
+        },
+      });
+    });
   });
 
   it("after the navigation back, signIn.complete(url) finishes from the stash on a fresh page", async () => {

@@ -540,10 +540,7 @@ async function startKeyReturn(
       },
     },
     async (s) => {
-      const res = await navigate(
-        s,
-        authorizePath({ key_return: "allow", scope: null }),
-      );
+      const res = await navigate(s, authorizePath({ key_return: "allow" }));
       expect(res.status).toBe(303);
       out.binder = binderOf(res);
       out.handle = handleOf(res);
