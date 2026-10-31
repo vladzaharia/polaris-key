@@ -1584,7 +1584,14 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     // identity.gamecenter and identity.pgs are N/A on the web (parity.json), so exchange-gamecenter-*,
     // exchange-pgs-* and link-game are skipped through the manifest.
-    const naHere = ["ui.cli.portal", "identity.gamecenter", "identity.pgs"];
+    // identity.restore is N/A too (a browser has no platform backup item; parity.json, I-49), so
+    // restore-* and discovery-identity-restore are skipped.
+    const naHere = [
+      "ui.cli.portal",
+      "identity.gamecenter",
+      "identity.pgs",
+      "identity.restore",
+    ];
     const expected = TRANSCRIPTS.filter(
       (t) =>
         !t.features.some((f) => plannedHere.includes(f) || naHere.includes(f)),
