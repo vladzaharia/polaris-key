@@ -12,6 +12,7 @@ import {
   SLUG,
   begin,
   beginBody,
+  breakLimiter,
   bytesOf,
   call,
   errorCode,
@@ -36,6 +37,7 @@ import {
   planned,
   putChunk,
   putManifest,
+  writeChunked,
   type TestChunk,
 } from "./cloudSyncChunksWorld.js";
 
@@ -379,5 +381,45 @@ describe("a manifest PUT that lands after its session left open", () => {
     );
     expect(got.status).toBe(200);
     expect(new Uint8Array(await got.arrayBuffer())).toEqual(manifest);
+  });
+});
+
+const planOf = (w: FilesWorld, uploadId: string, chunks: TestChunk[]) =>
+  plan(
+    w,
+    "delta",
+    "slot",
+    uploadId,
+    chunks.map((k) => [k.id, k.object.length]),
+  );
+
+describe("the chunk routes under a limiter that cannot be read (D-22)", () => {
+  // Lands with part B of the F3 fix round (`rateLimitCheck`: writes refuse 503 when the limiter is
+  // unreadable). Until that is on the branch the limiter fails open, so this case is skipped:
+  // enable it when B merges.
+  it.skip("the plan and a chunk PUT refuse with 503 when the limiter cannot be read, with no object or R2 call, and a chunk GET proceeds", async () => {
+    const w = await filesWorld();
+    const held = chunkOf(1);
+    await writeChunked(w, "delta", "old", manifestOf(1), [held]);
+    const fresh = chunkOf(2);
+    const up = await beginChunks(w, "delta", "slot", manifestOf(2));
+    await planned(w, "delta", "slot", up.uploadId, [fresh]);
+    const calls = vi.spyOn(w.ns, "get");
+    const put = vi.spyOn(w.r2, "put");
+    breakLimiter(w);
+    const before = calls.mock.calls.length;
+    const plan = await planOf(w, up.uploadId, [fresh]);
+    expect(plan.status).toBe(503);
+    expect(
+      (await putChunk(w, "delta", "slot", up.uploadId, fresh)).status,
+    ).toBe(503);
+    expect(put).not.toHaveBeenCalled();
+    expect(calls.mock.calls.length).toBe(before);
+    const read = await call(
+      w,
+      "GET",
+      `/${SLUG}/sync/files/delta/chunks/${held.id}`,
+    );
+    expect(read.status).toBe(200);
   });
 });

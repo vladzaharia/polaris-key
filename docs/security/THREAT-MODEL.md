@@ -8851,20 +8851,27 @@ and T25; those numbers are taken (the envelope AAD, the cost of files), so they 
   accepted only for an id the plan answered `missing`, create-only, so a stored object is never
   replaced; a plan call names at most 1,024 distinct ids, an upload at most 16,384, and the
   declared sizes plus the manifest are held to the collection's `files.maxBytes`; the plan, the
-  `PUT` and the chunk `GET` share the device's 600 requests a minute; the plan reserves the stored
-  bytes of every named chunk no file references, so concurrent uploads cannot overshoot the
-  quota, and a chunk is charged once however many files and revisions name it and given back when
-  the last reference goes. The collector (the alarm) deletes a chunk only when its count is 0 and
-  no upload pins it: the plan pins every id it answers, `present` or `missing`, until `finalize`,
-  `DELETE` or expiry, so a chunk a client was told is present cannot be deleted before its
-  `finalize` (D-7). The count is taken at `finalize`, released by a revision pruned, a record
-  deleted or a copy a merge left dead, and never goes below 0; the object is deleted before its
-  row, so a failed delete is retried and a row never outlives a missing object. An erasure
-  deletes every object the rows name and then sweeps `u/<p>/<s>/` (the chunk prefix included) and
-  the prefixes of subjects merged into it. Residual: after an account merge a chunk both people
-  held exists twice under two prefixes until the erasure; an object stored with no row (a crash
-  between the store and the row) is found by a later `PUT` of other bytes under the same key and
-  refused, and goes at the erasure.
+  `PUT` and the chunk `GET` share the device's 600 requests a minute, and when the limiter cannot
+  be read the plan and the `PUT` answer `503` while the `GET` proceeds. The plan reserves the
+  stored bytes of every named chunk no file references, a chunk is charged once however many
+  files and revisions name it and given back when the last reference goes, and `finalize`
+  charges a chunk its upload did not reserve (one whose last reference went after the plan) only
+  if it fits the person's quota, else `403 quota_exceeded` and the upload ends; so no finalized
+  file takes a person past their quota. The collector (the alarm) deletes a chunk only when its
+  count is 0 and no upload pins it: the plan pins every id it answers, `present` or `missing`,
+  until `finalize`, `DELETE` or expiry, so a chunk a client was told is present cannot be deleted
+  before its `finalize` (D-7). After `DELETE`, expiry or a refused `finalize` the alarm runs at
+  once. The count is taken at `finalize`, released by a revision pruned, a record deleted or a
+  copy a merge left dead, and never goes below 0. The collector marks a batch before it deletes
+  the objects, and drops a row only after the store confirmed the delete; a marked chunk is
+  answered `missing` and a `PUT` stores it again, so a delete that took effect but did not answer
+  never leaves a `present` answer for a missing object. An erasure shreds the SSE-C keys, deletes
+  the objects the file and upload rows name, then sweeps `u/<p>/<s>/` (every chunk object
+  included) and the prefixes of subjects merged into it, a page at a time. Residual: after an
+  account merge a chunk both people held exists twice under two prefixes until the survivor's
+  erasure, at most the absorbed person's referenced chunk bytes for each merge; an object stored
+  with no row (a crash between the store and the row) is found by a later `PUT` of other bytes
+  under the same key and refused, and goes at the erasure.
 
 ### The account override layer (U-03, U-27)
 
