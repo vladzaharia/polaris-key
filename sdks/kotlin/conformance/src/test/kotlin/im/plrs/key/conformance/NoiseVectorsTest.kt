@@ -173,14 +173,15 @@ class NoiseVectorsTest : ConformanceSuite() {
     @Test
     fun everyHandshakeByteForByteWithRekey() {
         val all = list(v, "handshakes")
-        assertEquals(listOf("a", "p", "v"), all.map { it.s("mode") }.sorted())
+        assertEquals(listOf("a", "c", "p", "v"), all.map { it.s("mode") }.sorted())
         val f = Failures("noise handshakes")
         for (h in all) {
             val id = h.s("id")
             val m = mode(h.s("mode"))
             f.equal(h.s("protocol"), peerNoiseProtocol(m)) { "$id protocol" }
             f.equal(h.s("prologue"), hex(peerPrologue(h.s("slug"), m))) { "$id prologue" }
-            if (h.sOrNull("psk") != null) {
+            // Mode c: the PSK is the contact secret itself (V5 15.5), not derived from a discovery key.
+            if (h.sOrNull("psk") != null && m != PeerMode.c) {
                 // HKDF(salt empty, ikm discovery key, info), V5 15.5; the vector's key is SHA-256 of a label.
                 val kDisc = sha256("pkey-peer/1 noise vector k_disc".toByteArray())
                 f.equal(h.s("psk"), hex(peerPsk(kDisc, h.s("slug")))) { "$id psk" }
@@ -235,7 +236,7 @@ class NoiseVectorsTest : ConformanceSuite() {
     @Test
     fun everyFailureRowFailsWhereAndWhyTheCorpusSays() {
         val rows = list(v, "failures")
-        assertEquals(15, rows.size)
+        assertEquals(19, rows.size)
         val f = Failures("noise failures")
         for (r in rows) {
             val id = r.s("id")

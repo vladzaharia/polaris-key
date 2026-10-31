@@ -459,6 +459,8 @@ public actor PolarisKeyClient {
     public func discover() async -> DiscoveryResult {
         let result = await core.discover()
         cloudSyncApi.attachSoon()
+        // `interAccount` may have moved: links follow the document (§15.10 "Gates").
+        connect.notifyContacts()
         return result
     }
 

@@ -43,6 +43,45 @@ public struct RegisteredDeviceKeys: Sendable, Equatable, Codable {
     }
 }
 
+/// One inter-account link as it rests in the record (WIRE-CONTRACT-V5 §15.10). `secret` and `agreeKey` are
+/// canonical base64url of 32 bytes; the secret is key material of the same standing as K_disc.
+package struct ConnectContactRow: Codable, Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible,
+    CustomReflectable
+{
+    package var agreeKey: String
+    package var secret: String
+    package var label: String?
+    package var cats: [String]
+    package var createdAt: Int
+    /// The host's local "advertise and keep a relay room for this contact" choice.
+    package var reachable: Bool
+    /// Unix seconds when a re-pair stored this contact pending; nil for a held one.
+    package var pendingSince: Int?
+
+    package init(
+        agreeKey: String, secret: String, label: String?, cats: [String], createdAt: Int, reachable: Bool,
+        pendingSince: Int? = nil
+    ) {
+        self.agreeKey = agreeKey
+        self.secret = secret
+        self.label = label
+        self.cats = cats
+        self.createdAt = createdAt
+        self.reachable = reachable
+        self.pendingSince = pendingSince
+    }
+
+    package var description: String { "ConnectContactRow(redacted)" }
+    package var debugDescription: String { description }
+    package var customMirror: Mirror { Mirror(self, children: [], displayStyle: .struct) }
+
+    /// A row that breaks a rule makes the whole record unusable (a hand-edited item is not trusted).
+    package var valid: Bool {
+        PeerContacts.key32(agreeKey) != nil && PeerContacts.key32(secret) != nil && cats.count <= maxContactCats
+            && Set(cats).count == cats.count && cats.allSatisfy { !$0.isEmpty && $0.utf8.count <= 32 }
+    }
+}
+
 /// What the store keeps. Internal: hosts read `ConnectIdentity`.
 package struct ConnectRecord: Codable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
     CustomReflectable
@@ -61,11 +100,14 @@ package struct ConnectRecord: Codable, Equatable, CustomStringConvertible, Custo
     /// the next identity fetch (CC-11.4; `keysStale` in Node's record). Nil when false, and then
     /// absent from the stored item.
     package var keysStale: Bool?
+    /// The inter-account links this device holds for the product, in held order (§15.10). Absent when none.
+    package var contacts: [ConnectContactRow]?
 
     package init(
         ring: String, certificate: String, discKeys: [String], registered: RegisteredDeviceKeys?, storedAt: Int,
-        prevFirstSeen: Int? = nil, keysStale: Bool? = nil
+        prevFirstSeen: Int? = nil, keysStale: Bool? = nil, contacts: [ConnectContactRow]? = nil
     ) {
+        self.contacts = (contacts ?? []).isEmpty ? nil : contacts
         self.keysStale = keysStale == true ? true : nil
         self.prevFirstSeen = prevFirstSeen
         self.ring = ring
@@ -119,7 +161,8 @@ public final class ConnectStateStore: @unchecked Sendable {
         }
         guard let blob else { return nil }
         guard let r = try? JSONDecoder().decode(ConnectRecord.self, from: blob),
-            r.v == ConnectRecord.version
+            r.v == ConnectRecord.version, (r.contacts ?? []).allSatisfy(\.valid),
+            (r.contacts ?? []).count <= maxContactSecrets
         else { throw ConnectStateError.unreadable }
         return r
     }

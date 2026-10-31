@@ -446,6 +446,9 @@ function renderSwift(api: Api): string {
       lines.push(
         `_ = \\${r.name === "events" ? "PolarisKeyClient" : (SWIFT_TYPE[r.ns] ?? "PolarisKeyClient")}.${r.name}  // ${r.id}`,
       );
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
+      lines.push(`_ = CloudLinks.${ref}  // ${r.id}`);
     } else if (SWIFT_TYPE[r.ns]) {
       lines.push(`_ = ${SWIFT_TYPE[r.ns]}.${ref}  // ${r.id}`);
     }
@@ -523,6 +526,9 @@ function renderKotlin(api: Api): string {
       lines.push(`PolarisKeyClient::${r.name}  // ${r.id}`); // an extension function
     } else if (r.handle) {
       continue; // Kotlin has no setting handle until U-07 (a StateFlow today)
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
+      lines.push(`CloudLinks::${r.name}  // ${r.id}`);
     } else if (KOTLIN_TYPE[r.ns]) {
       lines.push(`${KOTLIN_TYPE[r.ns]}::${r.name}  // ${r.id}`);
     }
@@ -547,6 +553,7 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.release.ReleaseClient`,
     `import im.plrs.key.sdk.BackendClient`,
     `import im.plrs.key.sdk.CloudConnect`,
+    `import im.plrs.key.sdk.CloudLinks`,
     `import im.plrs.key.sdk.CloudSyncClient`,
     `import im.plrs.key.sdk.CloudSyncHostOptions`,
     `import im.plrs.key.sdk.CommerceClient`,

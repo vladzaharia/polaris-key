@@ -30,6 +30,7 @@ import im.plrs.key.core.Base64Url
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.peer.LinkHandlers
 import im.plrs.key.core.peer.NoiseRole
+import im.plrs.key.core.peer.PeerChannel
 import im.plrs.key.core.peer.PeerCloseCode
 import im.plrs.key.core.peer.PeerLinkPort
 import im.plrs.key.core.peer.RELAY_MAX_MESSAGE
@@ -304,12 +305,21 @@ internal fun okHttpOpener(client: OkHttpClient? = null, openSeconds: Double = 15
 
 private class HeldIdentity(val at: Long, val source: PeerSource)
 
+/** What a [RelayLink] needs of the room it rides in: the account room ([RelayService]) or a contact room. */
+internal interface RelayRoomPort {
+    fun sendSession(peer: ByteArray, session: Long, noise: ByteArray)
+
+    fun hasRoom(n: Int): Boolean
+
+    fun linkEnded(link: RelayLink)
+}
+
 internal class RelayService(
     private val src: LanSource,
     private val ticket: suspend () -> RelayGrant,
     private val o: RelayOptions = RelayOptions(),
     scope: CoroutineScope? = null,
-) {
+) : RelayRoomPort {
     private val ownsScope = scope == null
     private val scope: CoroutineScope = scope ?: CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val opener: RelayOpener = o.opener ?: okHttpOpener(null, o.openSeconds)
@@ -832,13 +842,13 @@ internal class RelayService(
         assertRelayMode("a")
         synchronized(lock) {
             if (links.size >= o.maxSessions) return null
-            val link = RelayLink(this, peer, sessionId, key, role, base, handlers, o.handshakeSeconds, scope)
+            val link = RelayLink(this, peer, sessionId, key, role, { send, onEvent -> base.channel(role, send, onEvent) }, handlers, o.handshakeSeconds, scope)
             links[key] = link
             return link
         }
     }
 
-    internal fun linkEnded(link: RelayLink) {
+    override fun linkEnded(link: RelayLink) {
         synchronized(lock) {
             if (links[link.key] === link) links.remove(link.key)
             endedKeys.addLast(link.key)
@@ -866,7 +876,7 @@ internal class RelayService(
         for (l in all) l.lost()
     }
 
-    internal fun sendSession(peer: ByteArray, session: Long, noise: ByteArray) {
+    override fun sendSession(peer: ByteArray, session: Long, noise: ByteArray) {
         // Handshake and PONG envelopes are not held to the outbox cap (they must go out); a session that
         // keeps asking for them while the box is over twice the cap is closed instead.
         val q = outbox
@@ -880,7 +890,7 @@ internal class RelayService(
         sendEnv(RelayMessage.Send(peer, session, noise))
     }
 
-    internal fun hasRoom(n: Int): Boolean = outbox?.roomFor(n) == true
+    override fun hasRoom(n: Int): Boolean = outbox?.roomFor(n) == true
 
     // -- identity and documents --------------------------------------------------------------------
 
@@ -958,15 +968,17 @@ internal class RelayService(
  * that sends faster than the host reads ends with `peer_busy` at the byte caps (G10).
  */
 internal class RelayLink(
-    private val svc: RelayService,
+    private val svc: RelayRoomPort,
     val peer: ByteArray,
     val sessionId: Long,
     val key: String,
     private val role: NoiseRole,
-    base: ChannelBase,
+    channelFor: (send: (ByteArray) -> Unit, onEvent: (SessionEvent) -> Unit) -> PeerChannel,
     private val handlers: LinkHandlers<ConnectSession>,
     handshakeSeconds: Double,
     private val scope: CoroutineScope,
+    /** A contact-room session (mode c): the peer is named by the contact's key, not by a certificate's device id. */
+    private val contact: Boolean = false,
 ) : PeerLinkPort {
     @Volatile
     var ended = false
@@ -978,7 +990,7 @@ internal class RelayLink(
     private var wake: Job? = null
     private var deadline: Job? = null
     val opened: CompletableDeferred<ConnectSession> = CompletableDeferred()
-    val channel = base.channel(role, { svc.sendSession(peer, sessionId, it) }, ::onEvent)
+    val channel = channelFor({ svc.sendSession(peer, sessionId, it) }, ::onEvent)
 
     override val remoteAddress: String = "relay"
 
@@ -1061,9 +1073,10 @@ internal class RelayLink(
     private fun onEvent(e: SessionEvent) {
         when (e) {
             is SessionEvent.Established -> {
-                val id = e.peerDeviceId ?: return
+                // A contact room speaks aliases: the pin on the contact's key names the peer, not a device id.
+                val id = if (contact) (if (e.contactIndex == null) return else null) else (e.peerDeviceId ?: return)
                 // The certificate, not the room's stamp, names the peer; they must agree (G8).
-                if (id != Base64Url.encode(peer)) {
+                if (id != null && id != Base64Url.encode(peer)) {
                     why = RelayErrorReason.wrong_peer
                     scope.launch { channel.close(PeerCloseCode.peer_bye) }
                     finish(SessionEvent.Closed(HANDSHAKE, false))
@@ -1084,6 +1097,8 @@ internal class RelayLink(
             SessionEvent.RingWanted -> handlers.onRingWanted()
 
             is SessionEvent.Sas -> Unit
+
+            is SessionEvent.Contact -> Unit
 
             is SessionEvent.Closed -> finish(if (lostAlready && !e.byPeer) SessionEvent.Closed("connection_lost", false) else e)
         }
