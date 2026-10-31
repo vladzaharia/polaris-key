@@ -38,11 +38,15 @@ export interface Exchange {
     headers: Record<string, string>;
     requiredHeaders: string[];
     body: RequestBody | null;
+    /** Raw request bytes, base64; set only when `body` is null and asserted exact (U-10.3). */
+    bodyBase64?: string;
   };
   response: {
     status: number;
     headers: Record<string, string>;
     body: string | JsonValue;
+    /** Raw response bytes, base64; set only when `body` is "" and served byte for byte (U-10.3). */
+    bodyBase64?: string;
   };
   capture?: Record<string, string>;
 }
@@ -180,6 +184,8 @@ export interface ArrivedRequest {
   /** Lowercased names. */
   headers: Record<string, string>;
   body: string | null;
+  /** The request's raw bytes; null for a GET or HEAD. */
+  bytes?: Uint8Array | null;
 }
 
 export class ReplayServer {
@@ -267,7 +273,14 @@ export class ReplayServer {
       if (req.headers[name.toLowerCase()] === undefined)
         out.push(`required header ${name}: missing`);
     const hasBody = req.body !== null && req.body.length > 0;
-    if (expected.body === null) {
+    if (expected.bodyBase64 !== undefined) {
+      // Raw bytes (a file `PUT`): asserted exact.
+      const want = Buffer.from(expected.bodyBase64, "base64");
+      if (!req.bytes || Buffer.compare(want, Buffer.from(req.bytes)) !== 0)
+        out.push(
+          `body: expected ${want.length} bytes, got ${req.bytes ? req.bytes.length : 0} (not the recorded bytes)`,
+        );
+    } else if (expected.body === null) {
       if (hasBody)
         out.push(`body: expected none, got ${req.body!.slice(0, 120)}`);
     } else if (!hasBody) {
@@ -378,10 +391,11 @@ export class ReplayServer {
     request.headers.forEach((value, name) => {
       headers[name.toLowerCase()] = value;
     });
-    const body =
+    const bytes =
       request.method === "GET" || request.method === "HEAD"
         ? null
-        : await request.text();
+        : new Uint8Array(await request.arrayBuffer());
+    const body = bytes === null ? null : new TextDecoder().decode(bytes);
     if (url.origin !== origin) {
       this.failures.push(`request to a foreign origin: ${url.href}`);
       return new Response("replay: foreign origin", { status: 599 });
@@ -391,11 +405,17 @@ export class ReplayServer {
       path: url.pathname + url.search,
       headers,
       body,
+      bytes,
     });
     if (!item)
       return new Response("replay: no matching exchange", { status: 599 });
-    const text = ReplayServer.bodyText(item);
     const nullBody = [101, 204, 205, 304].includes(item.response.status);
+    if (item.response.bodyBase64 !== undefined)
+      return new Response(
+        nullBody ? null : Buffer.from(item.response.bodyBase64, "base64"),
+        { status: item.response.status, headers: item.response.headers },
+      );
+    const text = ReplayServer.bodyText(item);
     return new Response(nullBody || text === "" ? null : text, {
       status: item.response.status,
       headers: item.response.headers,

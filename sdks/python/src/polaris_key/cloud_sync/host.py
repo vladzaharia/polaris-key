@@ -83,6 +83,10 @@ _EMPTY_CATALOG: Obj = {"schemaVersion": 0, "entries": []}
 _SYNC_KEY = re.compile(SYNC_KEY_PATTERN)
 
 
+#: The collection ``cloud_sync.saves`` writes to: a ``revision`` collection the machine holds.
+_SAVES_DECL: Obj = {"name": "saves", "policy": "revision", "resolve": "keepServer"}
+
+
 @dataclass
 class CloudSyncHostOptions:
     """What app code sets. Never read from the Worker."""
@@ -95,6 +99,9 @@ class CloudSyncHostOptions:
     catalog: Optional[Mapping[str, Any]] = None
     #: Renames the app declares (old name to current name). Never taken from a served body.
     aliases: Optional[Mapping[str, str]] = None
+    #: ``cloud_sync.saves``: the app's ``saves`` collection settings (all optional): ``delta`` (default
+    #: ``True``), ``max_bytes`` (default 32 MiB) and ``save_format_version`` (absent: no check).
+    saves: Optional[Mapping[str, Any]] = None
 
 
 @dataclass
@@ -196,6 +203,24 @@ class CloudSyncHost:
         self._building = False
         #: The thread running a pump (or a purge's final emit): it may not wait on itself.
         self._pump_thread: Optional[int] = None
+        #: The listener for ``put_at`` / ``remove_at`` outcomes; survives a rebuild of the machine.
+        self._outcome: Optional[Callable[[Obj], None]] = None
+
+    def on_outcome(self, fn: Optional[Callable[[Obj], None]]) -> None:
+        """The one listener for the machine's ``put_at`` / ``remove_at`` outcomes (kept across rebuilds)."""
+        self._outcome = fn
+        if self._machine is not None:
+            self._machine.on_outcome(fn)
+
+    @property
+    def saves_options(self) -> Obj:
+        """The ``saves`` settings the app gave, with defaults."""
+        o = dict(self._opts.saves or {})
+        return {
+            "delta": bool(o.get("delta", True)),
+            "max_bytes": o.get("max_bytes"),
+            "save_format_version": o.get("save_format_version"),
+        }
 
     # ── basics ───────────────────────────────────────────────────────────────────────────────
 
@@ -292,7 +317,7 @@ class CloudSyncHost:
         m = CloudSyncMachine(
             {
                 "product": self._deps.ctx.product,
-                "catalog": {"settings": self._routes},
+                "catalog": {"settings": self._routes, "collections": [dict(_SAVES_DECL)]},
                 "document": document,
                 "now": self._now(),
                 "encryption": self._opts.encryption,
@@ -302,6 +327,7 @@ class CloudSyncHost:
             persisted,
         )
         self._machine = m
+        m.on_outcome(self._outcome)
         self._apply_discovery(m)
         self._building = True
         try:

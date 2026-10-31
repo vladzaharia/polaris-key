@@ -46,6 +46,7 @@
 // Nothing here touches licence state. No module reachable from `gate.ts`, `store.ts` or
 // `verify.ts` imports this one (`test/cloudSyncIsolation.test.ts`, T5).
 
+import { isBlindedName } from "./sync/blind.js";
 import {
   SYNC_CLIENT_ID_PATTERN as PROTOCOL_SYNC_CLIENT_ID_PATTERN,
   SYNC_DEBOUNCE_MS as PROTOCOL_SYNC_DEBOUNCE_MS,
@@ -163,7 +164,8 @@ export type SyncOpName =
   | "setMember"
   | "removeMember"
   | "add"
-  | "remove";
+  | "remove"
+  | "delete";
 
 /** A mutation as the push body carries it. */
 export interface WireMutation {
@@ -190,6 +192,9 @@ export interface JournalOp extends WireMutation {
   /** Refused with `quota_exceeded` or `entitlement_required`: kept, still read, not sent, and
    *  re-sent as a new mutation (same `editedHlc`) when the quota grows or at sign-in. */
   parked?: ParkReason;
+  /** The id `putAt` / `removeAt` returned: the op is exact (never coalesced, never rebased) and its
+   *  outcome is reported to `onOutcome` under this id, whatever `mutationId` a renumbering gives it. */
+  ticket?: number;
 }
 
 /** A setting held in the local partition. */
@@ -200,9 +205,49 @@ export interface DeviceSetting {
   preContact?: true;
 }
 
+/** A record's file pointer (§13.4, U-10): the stored bytes, not the value. */
+export interface RecordFile {
+  version: number;
+  size: number;
+  sha256: string;
+  format: "whole" | "chunks";
+}
+
+/** One cloud row of a collection, as `records()` lists it. */
+export interface RecordRow {
+  id: string;
+  value: Json;
+  version: number;
+  file: RecordFile | null;
+}
+
+/** The result of one `putAt` / `removeAt`, reported once to the `onOutcome` listener. */
+export type RecordOutcome =
+  | { mutationId: number; status: "ok"; version: number }
+  | {
+      mutationId: number;
+      status: "conflict";
+      /** The server's copy; null when the host could not read it. */
+      server: { value: Json; version: number; file: RecordFile | null } | null;
+    }
+  | { mutationId: number; status: "rejected"; code: string }
+  | { mutationId: number; status: "dropped" };
+
+type OutcomeBody = RecordOutcome extends infer T
+  ? T extends unknown
+    ? Omit<T, "mutationId">
+    : never
+  : never;
+
+export type PutAtResult =
+  | { ok: true; mutationId: number }
+  | { ok: false; error: string };
+
 interface Versioned {
   value: Json;
   version: number;
+  /** A record's file pointer; absent when the record has no file. */
+  file?: RecordFile;
   /** E2E: a `ct` the host could not open, or a plaintext row at or above `encryptionSince`. */
   bad?: true;
   /** E2E: the host-mapped `seq` of a plaintext row, judged against the partition's current
@@ -225,6 +270,9 @@ interface Partition {
   signedOutAt: number | null;
   /** The last `quota.bytes − usage.bytes` a 200 carried; a larger one re-sends quota-parked ops. */
   headroom: number | null;
+  /** The last ticket `putAt` / `removeAt` handed out; separate from `nextMutationId`, so a
+   *  renumbering never makes a new ticket equal a pending one. */
+  nextTicket?: number;
   /** E2E: the store sequence from which every row is sealed. Only ever lowered (the least of
    *  every value served), and never above `sealedFloor`. */
   encryptionSince?: number;
@@ -542,9 +590,36 @@ function applyRecordOp(
       return (Array.isArray(base) ? base : []).filter(
         (x) => !jsonEqual(x, op.element),
       );
+    case "delete":
+      return undefined;
     default:
       return base;
   }
+}
+
+/** `{file}` for a well-formed pointer, else nothing (a row keeps `file` only when present). */
+const fileMark = (v: unknown): { file?: RecordFile } => {
+  const file = fileOf(v);
+  return file ? { file } : {};
+};
+
+/** A well-formed file pointer, or undefined. */
+function fileOf(v: unknown): RecordFile | undefined {
+  if (!isObject(v as Json)) return undefined;
+  const f = v as { [k: string]: Json };
+  if (
+    typeof f.version !== "number" ||
+    typeof f.size !== "number" ||
+    typeof f.sha256 !== "string" ||
+    (f.format !== "whole" && f.format !== "chunks")
+  )
+    return undefined;
+  return {
+    version: f.version,
+    size: f.size,
+    sha256: f.sha256,
+    format: f.format,
+  };
 }
 
 const recordKey = (c: string, id: string): string => `${c}/${id}`;
@@ -570,7 +645,7 @@ function newPartition(clientId: string | null): Partition {
 
 /** The wire form of a journalled mutation (journal-only marks stripped). */
 export function wireOf(op: JournalOp): WireMutation {
-  const { preContact: _p, moved: _m, parked: _k, ...wire } = op;
+  const { preContact: _p, moved: _m, parked: _k, ticket: _t, ...wire } = op;
   return clone(wire);
 }
 
@@ -608,6 +683,7 @@ export class CloudSyncMachine {
   private paused = false;
   private outbox: SyncRequest[] = [];
   private events: SyncEvent[] = [];
+  private outcome: ((o: RecordOutcome) => void) | null = null;
 
   constructor(opts: CloudSyncOptions, persisted?: CloudSyncPersisted) {
     this.product = opts.product;
@@ -791,7 +867,9 @@ export class CloudSyncMachine {
       if (this.inFlightTouches(rk)) {
         p.held[rk] = clone(value);
       } else {
-        const queued = p.pending.find(isRecord);
+        const queued = p.pending.find(
+          (o) => isRecord(o) && o.ticket === undefined,
+        );
         if (queued) queued.value = clone(value);
         else
           this.enqueue(p, {
@@ -846,6 +924,84 @@ export class CloudSyncMachine {
     }
     this.kick();
     return { ok: true };
+  }
+
+  /** The cloud rows of a collection a person can read, by id: the snapshot as last pulled or
+   *  acknowledged, without pending edits. A file-only row has `value: null`. */
+  records(collection: string): RecordRow[] {
+    if (this.s.subject === null) return [];
+    const p = this.active();
+    const prefix = `${collection}/`;
+    const out: RecordRow[] = [];
+    for (const rk of Object.keys(p.records).sort(byteOrder)) {
+      if (!rk.startsWith(prefix)) continue;
+      const row = p.records[rk]!;
+      if (this.rowUnreadable(row)) continue;
+      out.push({
+        id: rk.slice(prefix.length),
+        value: clone(row.value),
+        version: row.version,
+        file: row.file ? { ...row.file } : null,
+      });
+    }
+    return out;
+  }
+
+  /** Write a `revision` record at exactly `baseVersion`: a new mutation, never coalesced with a
+   *  queued edit and never rebased on a conflict. Its outcome goes to `onOutcome`. */
+  putAt(
+    collection: string,
+    id: string,
+    value: Json,
+    baseVersion: number | "*",
+  ): PutAtResult {
+    return this.exactOp(collection, id, baseVersion, {
+      op: "set",
+      value: clone(value),
+    });
+  }
+
+  /** Delete a `revision` record at exactly `baseVersion` (removes its file, §13.8.1). */
+  removeAt(
+    collection: string,
+    id: string,
+    baseVersion: number | "*",
+  ): PutAtResult {
+    return this.exactOp(collection, id, baseVersion, { op: "delete" });
+  }
+
+  /** The listener for `putAt` / `removeAt` outcomes: once per call, when its result arrives or on
+   *  sign-out. It must not call the machine. `null` removes it. */
+  onOutcome(fn: ((o: RecordOutcome) => void) | null): void {
+    this.outcome = fn;
+  }
+
+  private exactOp(
+    collection: string,
+    id: string,
+    baseVersion: number | "*",
+    body: { op: "set"; value: Json } | { op: "delete" },
+  ): PutAtResult {
+    const decl = this.collection(collection);
+    if (!decl || decl.policy !== "revision")
+      return { ok: false, error: "collection-unknown" };
+    if (this.s.subject === null) return { ok: false, error: "signed-out" };
+    const p = this.active();
+    const op = this.enqueue(p, {
+      target: { record: [collection, id] },
+      ...body,
+      baseVersion,
+    });
+    const ticket = p.nextTicket ?? 1;
+    p.nextTicket = ticket + 1;
+    op.ticket = ticket;
+    this.kick();
+    return { ok: true, mutationId: ticket };
+  }
+
+  private emitOutcome(op: JournalOp, o: OutcomeBody): void {
+    if (op.ticket === undefined) return;
+    this.outcome?.({ ...o, mutationId: op.ticket } as RecordOutcome);
   }
 
   /** Add to a `union` record (an OR-set). */
@@ -1795,13 +1951,19 @@ export class CloudSyncMachine {
           : Array.isArray(c.record) && c.record.length === 2
             ? `r:${recordKey(String(c.record[0]), String(c.record[1]))}`
             : "";
-      const bad = this.rowBad(
-        p,
-        latchKey,
-        c.version,
-        opened.changes?.[i],
-        req.cursor,
-      );
+      // A record with a file and no value carries nothing to judge (§13.4): a good row, null value.
+      // Only when nothing was sealed (no `ct`, host verdict not invalid) and, in E2E mode, only
+      // under a blinded id: a plain id there is not a save the host could have placed.
+      const fileOnly =
+        c.value === undefined &&
+        c.ct === undefined &&
+        opened.changes?.[i]?.invalid !== true &&
+        Array.isArray(c.record) &&
+        fileOf(c.file) !== undefined &&
+        (!this.requiresE2e() || isBlindedName(String(c.record[1])));
+      const bad = fileOnly
+        ? {}
+        : this.rowBad(p, latchKey, c.version, opened.changes?.[i], req.cursor);
       if (typeof c.setting === "string") {
         p.settings[c.setting] = {
           value: clone(c.value ?? null),
@@ -1813,6 +1975,7 @@ export class CloudSyncMachine {
         p.records[recordKey(String(c.record[0]), String(c.record[1]))] = {
           value: clone(c.value ?? null),
           version: c.version,
+          ...fileMark(c.file),
           ...bad,
         };
     }
@@ -1886,10 +2049,16 @@ export class CloudSyncMachine {
     cursor: number,
   ): Versioned {
     const version = server.version as number;
+    const fileOnly =
+      server.value === undefined &&
+      server.ct === undefined &&
+      open?.invalid !== true &&
+      fileOf(server.file) !== undefined;
     return {
       value: clone(server.value ?? null),
       version,
-      ...this.rowBad(p, latchKey, version, open, cursor),
+      ...fileMark(server.file),
+      ...(fileOnly ? {} : this.rowBad(p, latchKey, version, open, cursor)),
     };
   }
 
@@ -2019,8 +2188,15 @@ export class CloudSyncMachine {
     if (status === "ok" && typeof r.version === "number") {
       this.noteSealed(p, r.version, `r:${rk}`);
       const value = applyRecordOp(p.records[rk]?.value, op);
-      if (value !== undefined) p.records[rk] = { value, version: r.version };
+      if (op.op === "delete") delete p.records[rk];
+      else if (value !== undefined)
+        p.records[rk] = {
+          value,
+          version: r.version,
+          ...fileMark(p.records[rk]?.file),
+        };
       if (rk in p.held) rebaseOn = r.version;
+      this.emitOutcome(op, { status: "ok", version: r.version });
     } else if (status === "conflict" && isObject(r.server)) {
       const server = r.server;
       if (typeof server.version === "number") {
@@ -2033,8 +2209,19 @@ export class CloudSyncMachine {
         ));
         // Rule 2: the resolution is a NEW mutation on the server's version; N is never resent.
         // Only `revision` resolves on the device; every other policy took the server's copy.
+        this.emitOutcome(op, {
+          status: "conflict",
+          server: decidable(sbad)
+            ? {
+                value: clone(sbad.value),
+                version: sbad.version,
+                file: sbad.file ? { ...sbad.file } : null,
+              }
+            : null,
+        });
         if (rk in p.held) rebaseOn = server.version;
         else if (
+          op.ticket === undefined &&
           decl &&
           op.op === "set" &&
           decidable(sbad) &&
@@ -2049,6 +2236,7 @@ export class CloudSyncMachine {
           rebaseOn = server.version;
           rebaseValue = op.value;
         } else if (
+          op.ticket === undefined &&
           decl?.policy === "revision" &&
           decl.resolve === "keepLocal" &&
           op.op === "set"
@@ -2058,12 +2246,14 @@ export class CloudSyncMachine {
         }
       }
     } else {
-      if (status === "rejected")
+      if (status === "rejected") {
         this.events.push({
           type: "rejected",
           mutationId: op.mutationId,
           code: String(r.code),
         });
+        this.emitOutcome(op, { status: "rejected", code: String(r.code) });
+      }
       if (rk in p.held) rebaseOn = p.records[rk]?.version ?? "*";
     }
     if (rebaseOn !== null) {
@@ -2103,6 +2293,10 @@ export class CloudSyncMachine {
     this.commitAllDrafts();
     const before = this.valueMap();
     const p = this.active();
+    // An exact write is not retried across a sign-out: its caller is told, and the op goes.
+    for (const op of p.pending.filter((o) => o.ticket !== undefined))
+      this.emitOutcome(op, { status: "dropped" });
+    p.pending = p.pending.filter((o) => o.ticket === undefined);
     const unsynced = p.pending.length + Object.keys(p.held).length;
     if (discard) {
       p.pending = [];
