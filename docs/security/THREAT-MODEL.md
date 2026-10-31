@@ -7343,8 +7343,11 @@ name, email, csrf, exp, authAt, stepUpAt?}` and no `groups` or `sub`. `aid` and 
   `core/rbac/principal.ts`): strong, the platform-admin group in `groups_json`, and `asserted_at`
   within `ADMIN_SESSION_TTL_SECONDS` (8 h) of now (an `asserted_at` more than 60 s in the future is
   not fresh). Any missing value denies. `asserted_at` is written only in the same `UPDATE` as
-  `groups_json` (`recordLinkGroups`, `recordLinkAssertion`), never by a sign-in that does not
-  rewrite them, so it is not `last_used_at` and a path that skips the groups cannot extend a stale
+  the groups. On the console IdP's own issuer that is the console sign-in's (`recordLinkGroups`:
+  the ID token's `groups`, no claims, `asserted_connection_id = console-idp`). A connection's
+  sign-in, and an I-17 platform claim on a strong link there, write nothing on that link, whatever
+  the claim map, because the link does not record which client asserted its facts. A sign-in that
+  does not rewrite them never refreshes them, so it is not `last_used_at` and a path that skips the groups cannot extend a stale
   group. `consoleSubject` offers the stored groups only while that holds (else `[]` and
   `root: false`), and a v2 session's principal takes `root` from it; the 8 h bound still applies to
   a session kept open after the group was removed at the IdP.
@@ -7603,9 +7606,11 @@ computed on every request (`core/rbac/ruleGrants.ts`), never stored:
 - A link counts for 8 h from `asserted_at`, the root rule's bound. A stale, future or missing
   value grants nothing, so removing a person at the IdP ends the grant at their next sign-in or
   after 8 h. Every sign-in rewrites groups, claims, `asserted_at` and the connection in one
-  statement, so a dropped group or claim cannot outlive the sign-in that dropped it, and a
+  statement, except on the console IdP's own issuer, where only the console sign-in writes. A
+  connection sharing that issuer writes nothing there, so its own rules never match that link,
+  and `console-idp` rules see only the console sign-in's facts. So a dropped group or claim cannot outlive the sign-in that dropped it, and a
   sign-in that maps neither still refreshes `asserted_at`. The console IdP has no claim map, so
-  its sign-in stores no claims.
+  its sign-in stores no claims, so a `console-idp` claim rule never matches.
 - A `domain` rule matches only an address the IdP marked verified, on a domain still enforced for
   the connection. An address confirmed by an email code is not passed to the matcher.
 - A connection that stops qualifying (disabled, audience narrowed, issuer off the allowlist) grants
@@ -10965,7 +10970,8 @@ plans/I-27.md §6: one row per threat, each written by the package that builds i
   come only from the claims a connection's claim map names, in an ID token the one client verified
   (signature, `iss`, exact `aud` and `azp`, nonce, freshness). Groups are capped at 100 names, each
   a printable name; claims are kept only for the names the map lists under `claims[]`. Both are
-  replaced at every sign-in through the link, in one `UPDATE` (`groups_json`, `claims_json`), and
+  replaced at every sign-in through the link, in one `UPDATE` (`groups_json`, `claims_json`; on the
+  console IdP's own issuer a connection writes neither, see Slice 2b), and
   every group or claim rule names its connection, so one IdP's `groups` never satisfies a rule
   written for another. A connection's `name`, `picture` and `birthdate` feed only the sign-in's
   imported profile and are never stored on the link.

@@ -107,6 +107,8 @@ they match, on top of the roles they hold.
 - **Operator connections.** Only a connection a Superadmin has marked for operators can anchor a
   rule. A domain rule needs a domain that is verified and enforced on that connection, and counts
   only an address the identity provider marked verified.
+  A rule on the console identity provider matches groups and domains, not claims. A connection that
+  uses the console identity provider's issuer anchors no rule; use Console identity provider.
 - **Staying current.** A rule is checked on every request and stored nowhere. A person who is
   removed from the group at the identity provider, or whose connection is disabled, loses the
   grant at their next sign-in, or after 8 hours at most. For that reason rule-granted roles are not
