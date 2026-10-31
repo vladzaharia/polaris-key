@@ -628,9 +628,8 @@
       "note": "A browser or renderer has no sockets; the relay is its only path, and the host's Node SDK does the rest. CC-19.9: <LinkPairing> and useLinkPairing draw the pairing window over a driver (linkPairingDriver(client.cloudConnect.links) of the host's Node SDK, or any LinkPairingDriver); the sockets and the contact store stay the host's."
     },
     "connect.transfer": {
-      "status": "planned",
-      "wp": "CC-20",
-      "note": "CC-20 builds the transfer. CC-19.9: <TransferOffer> and useTransferOffer ship the D-8 consent prompt over a TransferOfferDriver."
+      "status": "implemented",
+      "note": "adapter.cloudConnect.transfer (ui-core browser/connect transfer.ts and xferStore.ts, CC-20.4; WIRE-CONTRACT-V5 §15.11), mode a over the relay only (a page cannot pair, D-14): send(peer, source, {name, type, chunk, signal, id, onStart}) for a device id or an open session, from a Blob (a File is one), a ReadableStream or bytes (streams are spooled and hashed first); onOffer(handler) decides each offer (no handler, a refusal, an error or an unusable sink declines; the answer is {blob}, {stream} or {file: FileSystemFileHandle}, so nothing downloads on its own); onResult(fn); cancel(id); maxSize; purge(). Sessions list xfer/1 by default; client-core's XferEndpoint runs the machine over ConnectSession.xferPort(). Partial transfers live in one IndexedDB database per product (named by the derived reference only; 24 h, 8 per peer, 64 in all, room from navigator.storage.estimate() set aside at the accept and enforced on each write), are removed on sign-out, deactivation and leave(), and reach the host's sink only after the hash matched. Only the tab that owns the relay session transfers; another tab's send is a LanError elsewhere. The engine loads with the relay on the first start() (the React size budgets hold). The peer-matrix xfer rows run in conformance/runners/browser/peerMatrix.browser.test.ts; test/connectTransfer.test.ts (@pkey-feature connect.transfer) is the two-session test over the relay fixture. CC-19.9: <TransferOffer> and useTransferOffer ship the D-8 consent prompt over a TransferOfferDriver."
     },
     "connect.app": {
       "status": "implemented",

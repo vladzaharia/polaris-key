@@ -264,6 +264,9 @@ export class PeerDocs {
   }
 }
 
+/** The capabilities a session lists by default: the app channel and Direct Transfer (§15.11). */
+export const DEFAULT_CAPS: readonly string[] = ["app/1", "xfer/1"];
+
 /** What the relay tells every `PeerChannel` it builds. */
 export function channelBase(
   id: PeerIdentity,
@@ -282,7 +285,7 @@ export function channelBase(
     slug: id.slug,
     staticKey: handle,
     account: peerAccount(id, ring),
-    caps: o.caps ?? ["app/1"],
+    caps: o.caps ?? DEFAULT_CAPS,
     hello: { label: o.label, platform: "web", app: id.slug },
     ports: peerPorts(id, handle),
     now,

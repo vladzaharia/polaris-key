@@ -2315,7 +2315,7 @@ export class BrowserAdapter implements PolarisAdapter {
     if (!b) return (this.connect_ = unsupportedConnect(COOKIE_DETAIL));
     const o = this.connectOptions ?? {};
     const name = `pkey-connect-${storeNamespace(this.product, this.base)}`;
-    return (this.connect_ = lazyConnect(
+    const lazy = lazyConnect(
       { now: () => this.clock(), lockName: `pkey-connect:${name}` },
       async () =>
         (await import("./connect/create.js")).createBrowserConnect({
@@ -2331,7 +2331,17 @@ export class BrowserAdapter implements PolarisAdapter {
           },
           deviceKeys: () => this.deviceKeyPort(),
         }),
-    ));
+    );
+    // Leaving the roster takes the half-received transfers with it (CC-20.4).
+    const leave = lazy.leave.bind(lazy);
+    lazy.leave = async () => {
+      try {
+        await leave();
+      } finally {
+        await this.cloud_?.transfer.purge().catch(() => undefined);
+      }
+    };
+    return (this.connect_ = lazy);
   }
 
   /**
@@ -2343,7 +2353,10 @@ export class BrowserAdapter implements PolarisAdapter {
     if (this.cloud_) return this.cloud_;
     if (!this.bearer)
       return (this.cloud_ = unsupportedCloudConnect("runtime", COOKIE_DETAIL));
-    const cloud = (this.cloud_ = createCloudConnect(this.connect));
+    const cloud = (this.cloud_ = createCloudConnect(
+      this.connect,
+      `pkey-xfer-${storeNamespace(this.product, this.base)}`,
+    ));
     // Connect stops before the server hears of the sign-out, within a bound (D-12): a session
     // must not outlive the roster it was admitted under, and a stuck stop cannot hold sign-out.
     this.bearer.onBeforeSignOut(() => stopCloudConnectForSignOut(cloud));
@@ -2373,6 +2386,8 @@ export class BrowserAdapter implements PolarisAdapter {
           .catch(() => undefined);
         // The relay stops first: a session must not outlive the roster it was admitted under.
         await this.cloudConnect.stop().catch(() => undefined);
+        // Half-received transfers are the peer's bytes: they leave with the roster.
+        await this.cloudConnect.transfer.purge().catch(() => undefined);
         await this.connect.leave();
       }
     }
