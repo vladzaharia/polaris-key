@@ -19,9 +19,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PolarisError } from "@polaris-key/client-core";
 import type { PolarisKeyClient } from "../../src/client.js";
 import {
+  ConnectSession,
   PartialStore,
   TransferError,
-  type ConnectSession,
   type IncomingOffer,
   type TransferEvent,
 } from "../../src/connect/index.js";
@@ -397,6 +397,88 @@ describe.each([
     counted.mockRestore();
   });
 
+  it("a kept partial that vanished before the resume starts the transfer afresh, without ending the process", async () => {
+    const w = await make();
+    const size = 600_000;
+    w.a.cloudConnect.transfer.onOffer(() => ({ saveTo: join(w.out, "r.bin") }));
+    let writes = 0;
+    const real = PartialStore.prototype.write;
+    vi.spyOn(PartialStore.prototype, "write").mockImplementation(
+      async function (this: PartialStore, ...args) {
+        await real.apply(this, args);
+        if (++writes === 4) void w.inn.at(-1)!.close();
+      },
+    );
+    let id = "";
+    await expect(
+      w.b.cloudConnect.transfer.send(A, content(size), {
+        chunk: 4096,
+        onStart: (t) => (id = t.id),
+      }),
+    ).rejects.toMatchObject({ code: "peer-closed" });
+    await until(() => partsOf(w, w.a).length === 2);
+    vi.restoreAllMocks();
+    // The new session lists the partial when it is taken in; it is gone by the time of the offer
+    // (another session finished or cancelled it).
+    await w.b.cloudConnect.transfer.send(A, content(size), {
+      chunk: 4096,
+      id,
+      onStart: () => {
+        for (const f of partsOf(w, w.a))
+          rmSync(join(transferRoot(w, w.a), "p", f));
+      },
+    });
+    expect(readFileSync(join(w.out, "r.bin"))).toEqual(
+      Buffer.from(content(size)),
+    );
+  });
+
+  it("accepted offers are reserved: together they cannot pass the quota", async () => {
+    const w = await make();
+    w.a.cloudConnect.transfer.quotaBytes = 250_000;
+    let asked = 0;
+    w.a.cloudConnect.transfer.onOffer(() => {
+      asked++;
+      return { saveTo: join(w.out, `q${asked}`) };
+    });
+    // The senders hold their CHUNK records back, so the accepted transfers stay open.
+    let open!: () => void;
+    const gate = new Promise<void>((r) => (open = r));
+    const orig = ConnectSession.prototype.xferPort;
+    vi.spyOn(ConnectSession.prototype, "xferPort").mockImplementation(function (
+      this: ConnectSession,
+    ) {
+      const port = orig.call(this);
+      if (port !== null && this.role === "initiator") {
+        const send = port.send;
+        port.send = (type, body) =>
+          type === 0x0022
+            ? gate.then(() => send(type, body))
+            : send(type, body);
+      }
+      return port;
+    });
+    const t = w.b.cloudConnect.transfer;
+    const s1 = await w.b.cloudConnect.open(A);
+    const s2 = await w.b.cloudConnect.open(A);
+    const s3 = await w.b.cloudConnect.open(A);
+    const sends: Promise<unknown>[] = [];
+    for (const [i, s] of [s1, s2, s3].entries()) {
+      const p = t.send(s, content(100_001 + i), { name: `f${i}` });
+      p.catch(() => undefined);
+      sends.push(p);
+      if (i < 2) {
+        await until(() => asked === i + 1);
+        await sleep(40);
+      }
+    }
+    await expect(sends[2]).rejects.toMatchObject({ reason: "quota" });
+    open();
+    await sends[0];
+    await sends[1];
+    expect(readdirSync(w.out).sort()).toEqual(["q1", "q2"]);
+  });
+
   it("sign-out removes the partial files", async () => {
     const w = await make();
     w.a.cloudConnect.transfer.onOffer(() => ({ saveTo: join(w.out, "f") }));
@@ -533,6 +615,35 @@ describe("the partial store", () => {
       readdirSync(join(root, "p")).filter((f) => f.endsWith(".part")),
     ).toHaveLength(3);
     expect(existsSync(join(root, "p", `${refs[0]}.part`))).toBe(false);
+  });
+
+  it("refuses a write past the quota, counts promises in free(), and never evicts a held partial", async () => {
+    const s = new PartialStore(root, { quotaBytes: 100, maxFiles: 2 });
+    await s.ready();
+    s.reserve("t1", 60);
+    expect(s.free()).toBe(40);
+    s.release("t1");
+    expect(s.free()).toBe(100);
+    await s.create(ref, key, meta(ref));
+    await expect(s.write(ref, 0, content(101))).rejects.toThrow("quota");
+    await s.write(ref, 0, content(10));
+    const r2 = "cd".repeat(32);
+    const r3 = "ef".repeat(32);
+    await s.create(r2, key, meta(r2));
+    // Both files are open (held): a third cannot take either one's place.
+    await expect(s.create(r3, key, meta(r3))).rejects.toThrow("full");
+    await s.keep(ref);
+    await s.create(r3, key, meta(r3));
+    expect(existsSync(join(root, "p", `${r2}.part`))).toBe(true);
+    expect(existsSync(join(root, "p", `${ref}.part`))).toBe(false);
+  });
+
+  it("a purge starts a new generation", async () => {
+    const s = new PartialStore(root);
+    await s.ready();
+    const g = s.generation;
+    await s.purgeAll();
+    expect(s.generation).toBe(g + 1);
   });
 
   it("purges one peer's partials and, on request, everything", async () => {

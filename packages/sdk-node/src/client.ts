@@ -374,6 +374,11 @@ export class PolarisKeyClient {
       },
       join(this.core.dirs.state, "transfer"),
     );
+    // A device the roster dropped leaves nothing half-sent behind (§15.11).
+    this.connect.onRosterRemoved = (keys) => {
+      for (const k of keys)
+        void this.cloudConnect.transfer.purgePeer(k).catch(() => undefined);
+    };
     this.cloudSyncHost = new CloudSyncHost(
       {
         ctx: this.core,

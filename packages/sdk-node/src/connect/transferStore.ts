@@ -94,19 +94,33 @@ export class TransferStoreError extends Error {
 export class PartialStore {
   readonly #root: string;
   readonly #now: () => number;
-  readonly #quota: number;
+  #quota: number;
   readonly #maxFiles: number;
   #ready: Promise<void> | null = null;
   readonly #handles = new Map<string, FileHandle>();
   /** Every `.part` on disk and its size, kept current by the writes. */
   readonly #sizes = new Map<string, number>();
   #disk: number | null = null;
+  /** Bytes promised to accepted transfers: token -> size, and the partial each one writes. */
+  readonly #reserved = new Map<string, { size: number; ref: string | null }>();
+  #sweeper: NodeJS.Timeout | null = null;
+  #gen = 0;
 
   constructor(root: string, o: StoreOptions = {}) {
     this.#root = resolve(root);
     this.#now = o.now ?? Date.now;
     this.#quota = o.quotaBytes ?? TRANSFER_QUOTA_BYTES;
     this.#maxFiles = o.maxFiles ?? TRANSFER_MAX_FILES;
+  }
+
+  /** Bumped by `purgeAll`: an effect begun under an older generation must not touch the store. */
+  get generation(): number {
+    return this.#gen;
+  }
+
+  /** Change the byte bound (tests, hosts with a smaller disk budget). */
+  setQuota(bytes: number): void {
+    this.#quota = bytes;
   }
 
   get root(): string {
@@ -190,18 +204,70 @@ export class PartialStore {
     this.#disk = await statfs(this.#root)
       .then((s) => Number(s.bavail) * Number(s.bsize))
       .catch(() => null);
-    while (this.#sizes.size > this.#maxFiles) await this.#evictOldest();
+    while (this.#sizes.size > this.#maxFiles && (await this.#evictOldest()));
   }
 
-  async #evictOldest(): Promise<void> {
+  /**
+   * Remove the oldest partial nobody holds (no open file, no reservation). False when every one is
+   * held: the caller then refuses rather than take another transfer's file.
+   */
+  async #evictOldest(): Promise<boolean> {
+    const bound = new Set(
+      [...this.#reserved.values()].map((r) => r.ref).filter((r) => r !== null),
+    );
     let oldest: { ref: string; at: number } | null = null;
     for (const ref of this.#sizes.keys()) {
+      if (this.#handles.has(ref) || bound.has(ref)) continue;
       const st = await stat(this.#part(ref)).catch(() => null);
       const at = st?.mtimeMs ?? 0;
       if (oldest === null || at < oldest.at) oldest = { ref, at };
     }
-    if (oldest !== null) await this.#drop(oldest.ref);
-    else this.#sizes.clear();
+    if (oldest === null) return false;
+    await this.#drop(oldest.ref);
+    return true;
+  }
+
+  /** Drop expired partials nobody holds and look at the volume again. Also runs hourly. */
+  async sweep(): Promise<void> {
+    if (this.#ready === null) return;
+    await this.ready();
+    const now = this.#now();
+    for (const ref of [...this.#sizes.keys()]) {
+      if (this.#handles.has(ref)) continue;
+      const st = await stat(this.#part(ref)).catch(() => null);
+      if (st === null || now - st.mtimeMs > XFER_PARTIAL_SECONDS * 1000)
+        await this.#drop(ref);
+    }
+    this.#disk = await statfs(this.#root)
+      .then((x) => Number(x.bavail) * Number(x.bsize))
+      .catch(() => this.#disk);
+  }
+
+  /** Sweep every hour while the process runs (the timer does not keep it alive). */
+  startSweeper(): void {
+    if (this.#sweeper !== null) return;
+    this.#sweeper = setInterval(
+      () => void this.sweep().catch(() => undefined),
+      3_600_000,
+    );
+    this.#sweeper.unref();
+  }
+
+  // ── reservations ───────────────────────────────────────────────────────────
+
+  /** Promise `size` bytes to an accepted transfer; `free()` counts it at once. */
+  reserve(token: string, size: number): void {
+    this.#reserved.set(token, { size, ref: null });
+  }
+
+  /** The partial this transfer writes (its bytes are inside the reservation, not counted twice). */
+  bind(token: string, ref: string): void {
+    const r = this.#reserved.get(token);
+    if (r !== undefined) r.ref = ref;
+  }
+
+  release(token: string): void {
+    this.#reserved.delete(token);
   }
 
   async #readMeta(ref: string): Promise<Meta | null> {
@@ -260,13 +326,31 @@ export class PartialStore {
     return m === null ? null : { id: m.id, sha256: m.sha256 };
   }
 
-  /** Bytes the store can still take (partial files counted), or null when unknown. */
+  /**
+   * Bytes the store can still take, or null when unknown: the quota less the partials not bound to
+   * an accepted transfer, less what every accepted transfer has been promised, and the volume's
+   * free space less the reserve and what is promised but not yet written.
+   */
   free(): number | null {
+    const bound = new Set<string>();
+    let promised = 0;
+    let unwrittenPromise = 0;
+    for (const r of this.#reserved.values()) {
+      promised += r.size;
+      if (r.ref !== null) bound.add(r.ref);
+      unwrittenPromise += Math.max(
+        0,
+        r.size - (r.ref === null ? 0 : (this.#sizes.get(r.ref) ?? 0)),
+      );
+    }
     let used = 0;
-    for (const n of this.#sizes.values()) used += n;
-    const room = Math.max(0, this.#quota - used);
+    for (const [ref, n] of this.#sizes) if (!bound.has(ref)) used += n;
+    const room = Math.max(0, this.#quota - used - promised);
     if (this.#disk === null) return room;
-    return Math.min(room, Math.max(0, this.#disk - DISK_RESERVE));
+    return Math.min(
+      room,
+      Math.max(0, this.#disk - DISK_RESERVE - unwrittenPromise),
+    );
   }
 
   // ── effects ────────────────────────────────────────────────────────────────
@@ -277,7 +361,9 @@ export class PartialStore {
     p: XferPartial,
   ): Promise<void> {
     await this.ready();
-    while (this.#sizes.size >= this.#maxFiles) await this.#evictOldest();
+    while (this.#sizes.size >= this.#maxFiles)
+      if (!(await this.#evictOldest()))
+        throw new TransferStoreError("the store is full");
     await this.#drop(ref);
     const meta: Meta = {
       v: 1,
@@ -309,6 +395,19 @@ export class PartialStore {
   }
 
   async write(ref: string, offset: number, data: Uint8Array): Promise<void> {
+    // The bound holds at the write, not only at the offer: nothing grows the store past the quota
+    // or into the volume's reserve.
+    const growth = Math.max(
+      0,
+      offset + data.length - (this.#sizes.get(ref) ?? 0),
+    );
+    let total = 0;
+    for (const n of this.#sizes.values()) total += n;
+    if (
+      total + growth > this.#quota ||
+      (this.#disk !== null && this.#disk - growth < DISK_RESERVE)
+    )
+      throw new TransferStoreError("quota");
     const fh = await this.#handle(ref);
     let at = 0;
     while (at < data.length) {
@@ -414,6 +513,8 @@ export class PartialStore {
       await fh.close().catch(() => undefined);
     this.#handles.clear();
     this.#sizes.clear();
+    this.#reserved.clear();
+    this.#gen++;
     this.#ready = null;
     await rm(this.#root, { recursive: true, force: true });
   }

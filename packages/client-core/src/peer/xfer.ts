@@ -814,13 +814,22 @@ export class XferMachine {
     const m = this.parts.find((p) => p.id === t.id && p.sha256 === t.sha);
     let offset = 0;
     let hash = new Sha256();
-    if (m !== undefined && this.resumable(t, m)) {
-      const read = Math.min(m.reread ?? m.bytes, m.bytes);
+    let resume = m !== undefined && this.resumable(t, m);
+    if (resume) {
+      const read = Math.min(m!.reread ?? m!.bytes, m!.bytes);
       const want = Math.min(Math.floor(read / t.chunk) * t.chunk, t.size);
       if (this.o.rehash !== undefined && want > 0) {
-        offset = want;
-        hash = this.o.rehash(m.ref, offset);
+        // The store could not re-read the kept bytes (the file is gone or short): no resume, a
+        // fresh start at 0 over a new partial.
+        try {
+          hash = this.o.rehash(m!.ref, want);
+          offset = want;
+        } catch {
+          resume = false;
+        }
       }
+    }
+    if (resume && m !== undefined) {
       t.partial = m.ref;
       this.eff({ truncate: m.ref, to: offset });
       m.bytes = offset;
