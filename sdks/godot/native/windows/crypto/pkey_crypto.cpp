@@ -4,6 +4,8 @@
 //
 //   aes_gcm_seal(key, nonce, aad, plain)     status byte, then ciphertext and the 16-byte tag
 //   aes_gcm_open(key, nonce, aad, sealed)    status byte, then the plaintext
+//   x25519_public(private_key)               status byte, then the 32-byte public key
+//   x25519(private_key, peer_public)         status byte, then the 32-byte shared secret
 //
 // AES-256-GCM on CNG (BCrypt, BCRYPT_CHAIN_MODE_GCM): a 32-byte key, a 12-byte nonce and a 16-byte
 // tag. Every method answers a PackedByteArray whose first byte is the status:
@@ -12,6 +14,12 @@
 //   provider or the GCM mode is not there)   3 bad input (a length is wrong, or the message is
 //   larger than one Noise message)
 //
+// X25519 (CC-14b.7) is Monocypher 4.0.3's crypto_x25519_public_key and crypto_x25519 (RFC 7748,
+// constant time, the scalar clamped inside; nothing else of Monocypher is called). CNG has no
+// X25519 on every supported Windows. A shared secret that is all zero (a low-order peer key, in any
+// spelling) is refused: status 0, no bytes (`dh_zero`). The private key is read in place and the
+// local copies of results are wiped.
+//
 // Every BCrypt handle, and the key object the provider keeps the key schedule in, is released on
 // every path (the guard below), the key object is zeroed first, and a failed open zeroes the
 // buffer it decrypted into. Nothing here logs, prints or keeps a key or a plaintext. A
@@ -19,6 +27,8 @@
 #include "pkey_win_common.h"
 
 #include <bcrypt.h>
+
+#include "monocypher.h"
 
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -39,6 +49,7 @@ constexpr uint8_t kBadInput = 3;
 constexpr int64_t kKeyBytes = 32;
 constexpr int64_t kNonceBytes = 12;
 constexpr int64_t kTagBytes = 16;
+constexpr int64_t kCurveBytes = 32;
 // One Noise message is at most 65,535 bytes, so one AEAD call carries at most that, tag included.
 constexpr int64_t kMaxAead = 65535;
 
@@ -46,6 +57,15 @@ PackedByteArray status_only(uint8_t status) {
   PackedByteArray r;
   r.resize(1);
   r.ptrw()[0] = status;
+  return r;
+}
+
+PackedByteArray ok_with(const uint8_t *bytes, int64_t n) {
+  PackedByteArray r;
+  r.resize(1 + n);
+  uint8_t *w = r.ptrw();
+  w[0] = kOk;
+  memcpy(w + 1, bytes, (size_t)n);
   return r;
 }
 
@@ -106,6 +126,8 @@ class PKeyWinCryptoNative : public RefCounted {
   static void _bind_methods() {
     ClassDB::bind_method(D_METHOD("aes_gcm_seal", "key", "nonce", "aad", "plain"), &PKeyWinCryptoNative::aes_gcm_seal);
     ClassDB::bind_method(D_METHOD("aes_gcm_open", "key", "nonce", "aad", "sealed"), &PKeyWinCryptoNative::aes_gcm_open);
+    ClassDB::bind_method(D_METHOD("x25519_public", "private_key"), &PKeyWinCryptoNative::x25519_public);
+    ClassDB::bind_method(D_METHOD("x25519", "private_key", "peer_public"), &PKeyWinCryptoNative::x25519);
   }
 
  public:
@@ -176,6 +198,27 @@ class PKeyWinCryptoNative : public RefCounted {
       if (n > 0) SecureZeroMemory(plain, (SIZE_T)n);
       return status_only(kRefused);
     }
+    return out;
+  }
+
+  PackedByteArray x25519_public(const PackedByteArray &private_key) {
+    if (private_key.size() != kCurveBytes) return status_only(kBadInput);
+    uint8_t pub[kCurveBytes];
+    crypto_x25519_public_key(pub, private_key.ptr());
+    PackedByteArray out = ok_with(pub, kCurveBytes);
+    SecureZeroMemory(pub, sizeof(pub));
+    return out;
+  }
+
+  PackedByteArray x25519(const PackedByteArray &private_key, const PackedByteArray &peer_public) {
+    if (private_key.size() != kCurveBytes || peer_public.size() != kCurveBytes) return status_only(kBadInput);
+    uint8_t shared[kCurveBytes];
+    crypto_x25519(shared, private_key.ptr(), peer_public.ptr());
+    // Constant-time test for an all-zero output: the peer key was of small order (RFC 7748 6.1).
+    uint8_t any = 0;
+    for (int64_t i = 0; i < kCurveBytes; i++) any |= shared[i];
+    PackedByteArray out = any == 0 ? status_only(kRefused) : ok_with(shared, kCurveBytes);
+    SecureZeroMemory(shared, sizeof(shared));
     return out;
   }
 };

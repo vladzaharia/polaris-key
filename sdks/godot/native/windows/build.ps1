@@ -4,7 +4,8 @@
   Velopack launcher shim, and stages them with their runtime DLLs.
 
 .DESCRIPTION
-  1. fetch_deps.sh (through Git Bash) puts deps.env's godot-cpp, velopack_libc and WinSparkle under
+  1. fetch_deps.sh (through Git Bash) puts deps.env's godot-cpp, velopack_libc, WinSparkle and
+     Monocypher (compiled into pkey_win.dll) under
      -Deps, each checked against its pin;
   2. SCons >= 4.11 builds godot-cpp (template_release, x86_64, the 4.4 API, exceptions on) and
      pkey_win.dll with MSVC (notes/S-11 §8 step 1). Caching -Deps\godot-cpp (it holds the SCons
@@ -42,7 +43,7 @@ Get-Content (Join-Path $native "deps.env") | Where-Object { $_ -match '^([A-Z0-9
 # 1. Inputs (Git Bash runs the same fetch script as macOS).
 $bash = (Get-Command bash -ErrorAction SilentlyContinue).Source
 if (-not $bash) { $bash = "$env:ProgramFiles\Git\bin\bash.exe" }
-& $bash (Join-Path $native "fetch_deps.sh").Replace("\", "/") $Deps.Replace("\", "/") godot-cpp velopack winsparkle
+& $bash (Join-Path $native "fetch_deps.sh").Replace("\", "/") $Deps.Replace("\", "/") godot-cpp velopack winsparkle monocypher
 if ($LASTEXITCODE -ne 0) { throw "fetch_deps.sh failed" }
 
 # 2. godot-cpp and pkey_win.dll.
@@ -54,7 +55,7 @@ if (-not $scons -or [version]$scons -lt [version]"4.11") {
 $t0 = Get-Date
 Push-Location $here
 try {
-  & python -m SCons -Q "godot_cpp=$Deps\godot-cpp" "velopack=$Deps\velopack" platform=windows target=template_release arch=x86_64 "api_version=$($pins.GODOT_CPP_API)" disable_exceptions=no use_mingw=no "-j$Jobs"
+  & python -m SCons -Q "godot_cpp=$Deps\godot-cpp" "velopack=$Deps\velopack" "monocypher=$Deps\monocypher" platform=windows target=template_release arch=x86_64 "api_version=$($pins.GODOT_CPP_API)" disable_exceptions=no use_mingw=no "-j$Jobs"
   if ($LASTEXITCODE -ne 0) { throw "scons failed" }
 } finally { Pop-Location }
 Write-Host ("build.ps1: pkey_win.dll in {0:N0} s" -f ((Get-Date) - $t0).TotalSeconds)
@@ -72,6 +73,7 @@ if (-not $SkipShim) {
 
 # 4. Stage.
 Copy-Item (Join-Path $here "bin\pkey_win.dll"), (Join-Path $here "pkey_win.gdextension") $Out -Force
+Copy-Item (Join-Path $native "THIRD_PARTY_NOTICES") (Join-Path $Out "THIRD_PARTY_NOTICES") -Force
 Copy-Item "$Deps\velopack\lib\velopack_libc_win_x64_msvc.dll" (Join-Path $Out "velopack_libc.dll") -Force
 Copy-Item "$Deps\winsparkle\x64\Release\WinSparkle.dll" $Out -Force
 $shim = Join-Path $here "velopack\shim\target\release\pkey_velopack_shim.exe"

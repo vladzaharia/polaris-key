@@ -103,7 +103,7 @@ function JCheck([string]$name, [string]$case, [string]$event, [string]$expr) {
   Check $name $ok ($last | Out-String).Trim()
 }
 
-# 0. The crypto stage (CC-14b.6, .7): the built DLL's AES-256-GCM (CNG)
+# 0. The crypto stage (CC-14b.6, .7): the built DLL's AES-256-GCM (CNG) and X25519 (Monocypher)
 # against the corpus known answers, in the editor, through the adapter the lane selector probes.
 # The DLL is installed into the SDK project (addons/polaris_key/native/bin is git-ignored).
 if ($Stage -eq "crypto") {
@@ -123,7 +123,7 @@ Get-Content "$Work\logs\crypto-tests.log" | Select-String -Pattern "crypto_win|r
 Copy-Item "$sdk\build\logs\*" "$Work\logs" -Recurse -Force -ErrorAction SilentlyContinue
 Check "crypto: the editor run of crypto_win passed" ($code -eq 0)
 $log = Get-Content "$Work\logs\crypto-tests.log" -Raw
-Check "crypto: the real DLL ran (class registered, CNG lane)" (($log -match "PASS PKeyWinCryptoNative is registered") -and ($log -match "real: Windows CNG AES-256-GCM"))
+Check "crypto: the real DLL ran (class registered, CNG and Monocypher lanes)" (($log -match "PASS PKeyWinCryptoNative is registered") -and ($log -match "real: Windows CNG AES-256-GCM") -and ($log -match "real: Monocypher X25519"))
 Check "crypto: no failed check" (($log -notmatch "(?m)^FAIL ") -and ($log -match "failed=0"))
 Phase ""
 Stop-Run
