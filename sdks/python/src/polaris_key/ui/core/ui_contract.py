@@ -87,6 +87,7 @@ ACTIONS: Tuple[str, ...] = (
     "keep-local",
     "keep-remote",
     "keep-both",
+    "choose-again",
 )
 
 # The controls whose catalog keys perform an action.  Views derive actions from their copy so a
@@ -125,6 +126,7 @@ ACTION_KEYS: Mapping[str, Tuple[str, ...]] = {
     "keep-local": ("saveConflict.keepThis",),
     "keep-remote": ("saveConflict.keepOther", "saveConflict.acceptDelete"),
     "keep-both": ("saveConflict.keepBoth",),
+    "choose-again": ("saveConflict.chooseAgain",),
 }
 
 # The product services and their transitive dependency rule.  This deliberately mirrors

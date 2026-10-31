@@ -2392,25 +2392,55 @@ msgstr "Alle Speicherplätze sind belegt. Löschen Sie einen Spielstand, um beid
 msgid "saveConflict.keeping"
 msgstr "Ihre Wahl wird übernommen…"
 
-#. Kept this device's save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptLocal"
-msgstr "Spielstand dieses Geräts behalten."
+#. Newer
+#. SaveConflict: tag on this device's card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerThis"
+msgstr "Neuer"
 
-#. Kept the other save.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptRemote"
-msgstr "Anderen Spielstand behalten."
+#. Newer
+#. SaveConflict: tag on the other card when the app says that version was saved later. Never a choice.
+msgid "saveConflict.newerOther"
+msgstr "Neuer"
 
-#. Kept both. The other is saved as a copy.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptBoth"
-msgstr "Beide behalten. Der andere ist als Kopie gespeichert."
+#. Choose again
+#. SaveConflict: after a failed choice, back to the two versions and the choices. Nothing is applied.
+msgid "saveConflict.chooseAgain"
+msgstr "Erneut wählen"
 
-#. The save is deleted.
-#. SaveConflict: the choice was applied.
-msgid "saveConflict.keptDeleted"
-msgstr "Der Spielstand ist gelöscht."
+#. macos: Choose Again
+msgctxt "macos"
+msgid "saveConflict.chooseAgain"
+msgstr "Erneut wählen"
+
+#. Couldn't keep your choice. Your save is unchanged.
+#. SaveConflict: the choice failed after the other copy was deleted; only this device's save exists.
+msgid "saveConflict.failedDeleted"
+msgstr "Ihre Wahl konnte nicht übernommen werden. Ihr Spielstand ist unverändert."
+
+#. Kept this device's version
+#. SaveConflict: result title after Keep this device's version.
+msgid "saveConflict.keptLocalTitle"
+msgstr "Version dieses Geräts behalten"
+
+#. Kept the other version
+#. SaveConflict: result title after Keep the other version.
+msgid "saveConflict.keptRemoteTitle"
+msgstr "Andere Version behalten"
+
+#. Kept both versions
+#. SaveConflict: result title after Keep both.
+msgid "saveConflict.keptBothTitle"
+msgstr "Beide Versionen behalten"
+
+#. The other version is saved as a copy.
+#. SaveConflict: under Kept both versions, where the other version went.
+msgid "saveConflict.keptCopy"
+msgstr "Die andere Version ist als Kopie gespeichert."
+
+#. Save deleted
+#. SaveConflict: result title after Delete it here too.
+msgid "saveConflict.keptDeletedTitle"
+msgstr "Spielstand gelöscht"
 
 #. Couldn't keep your choice. Both saves are unchanged.
 #. SaveConflict: applying the choice failed; Try again repeats it.

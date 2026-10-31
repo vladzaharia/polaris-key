@@ -1433,27 +1433,37 @@
             "saveConflict.acceptDelete",
             "saveConflict.keepBoth",
             "saveConflict.bothFull",
+            "saveConflict.newerThis",
+            "saveConflict.newerOther",
             "common.cancel"
           ]
         },
         "keeping": {
-          "copy": ["saveConflict.title", "saveConflict.keeping"]
+          "copy": [
+            "saveConflict.title",
+            "saveConflict.deletedTitle",
+            "saveConflict.keeping",
+            "a11y.busy"
+          ]
         },
         "kept": {
           "copy": [
-            "saveConflict.title",
-            "saveConflict.keptLocal",
-            "saveConflict.keptRemote",
-            "saveConflict.keptBoth",
-            "saveConflict.keptDeleted",
+            "saveConflict.keptLocalTitle",
+            "saveConflict.keptRemoteTitle",
+            "saveConflict.keptBothTitle",
+            "saveConflict.keptDeletedTitle",
+            "saveConflict.keptCopy",
             "common.done"
           ]
         },
         "failed": {
           "copy": [
             "saveConflict.title",
+            "saveConflict.deletedTitle",
             "saveConflict.failed",
+            "saveConflict.failedDeleted",
             "common.tryAgain",
+            "saveConflict.chooseAgain",
             "common.cancel"
           ]
         }
