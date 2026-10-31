@@ -82,6 +82,8 @@ import {
 import { pgsScope } from "../providers/playGames.js";
 import {
   gameKindsOn,
+  PGS_RETRY_AFTER_SECONDS,
+  PgsBudgetError,
   servedTokenType,
   verifySubjectToken,
   type SubjectIdentity,
@@ -389,6 +391,15 @@ async function link(
         },
       );
     } catch (e) {
+      if (e instanceof PgsBudgetError) {
+        const res = noStore(
+          wireError(429, "rate_limited", {
+            retryAfter: PGS_RETRY_AFTER_SECONDS,
+          }),
+        );
+        res.headers.set("retry-after", String(PGS_RETRY_AFTER_SECONDS));
+        return res;
+      }
       if (e instanceof OidcNetworkError)
         return noStore(wireError(503, "unavailable"));
       return refused();

@@ -244,7 +244,7 @@ describe("redeemAndVerify", () => {
     const before = calls.length;
     expect(await run(fetchImpl)).toEqual({
       ok: false,
-      reason: "invalid_grant",
+      reason: "rate_limited",
       detail: "rate_limited",
     });
     expect(calls).toHaveLength(before);
@@ -266,6 +266,7 @@ describe("redeemAndVerify", () => {
     } as unknown as Env["RL"];
     expect(await run(fetchImpl)).toMatchObject({
       ok: false,
+      reason: "rate_limited",
       detail: "rate_limited",
     });
     expect(calls).toHaveLength(0);

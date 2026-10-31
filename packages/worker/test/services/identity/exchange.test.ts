@@ -226,6 +226,7 @@ async function exchange(
 ): Promise<{
   status: number;
   text: string;
+  retryAfter: string | null;
   body: Record<string, unknown>;
   keys: Keys;
   nonce: string;
@@ -256,6 +257,7 @@ async function exchange(
   return {
     status: res.status,
     text,
+    retryAfter: res.headers.get("retry-after"),
     body: text.startsWith("{") ? (JSON.parse(text) as never) : {},
     keys,
     nonce,
@@ -1112,6 +1114,20 @@ describe("Game Center and Play Games on the exchange (I-14.8)", () => {
       reason: "unavailable",
     });
     expect((await pgsExchange()).status).toBe(503);
+  });
+
+  it("pgsRedeemBudget answers rate_limited with Retry-After", async () => {
+    pgsIs();
+    vi.mocked(verifyPlayGamesCode).mockResolvedValue({
+      ok: false,
+      reason: "rate_limited",
+    });
+    const r = await pgsExchange();
+    expect(r.status).toBe(429);
+    expect(r.body).toMatchObject({ error: "rate_limited", retryAfter: 60 });
+    expect(r.retryAfter).toBe("60");
+    // Not the refused-code answer, and not the outage answer.
+    expect(r.text).not.toContain("invalid_grant");
   });
 
   it("Identity off is 404 for a game type", async () => {
