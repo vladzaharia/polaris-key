@@ -6,7 +6,7 @@ deprecated aliases).
 
 ## Unreleased
 
-- **Key ring pin.** With no stored pin, `client.keyring` treats the stored root's ring, epoch and key id as the pin, so a served ring that differs answers `ringChanged` and the stored root is kept. An unreadable pin or root answers `store-failed` or `device-keys-unreadable`, and `forget()` removes the pin after the root.
+- **Key ring pin.** With no stored pin, `client.keyring` treats the stored root's ring, epoch and key id as the pin, so a served ring that differs answers `ringChanged` and the stored root is kept. `acceptRingChange` and recovery read neither the pin nor the stored root, so a confirmed accept works over an unreadable record. Otherwise an unreadable pin or root answers `store-failed` or `device-keys-unreadable`, and `forget()` removes the pin after the root.
 
 - **Synced-file primitives (U-23.S1).** `SyncCdc` (the `fastcdc-2016-nc1` chunker, streaming), `SyncChunks` (chunk ids and `pkey-sync-chunk/1` objects, both codecs; a codec 1 object needs the caller's `ZstdDecode`) and `SyncManifest` (`pkey-sync-chunks/1`) in `PolarisKeyCore`, proven by the `cdcCases`, `cdcEditCases`, `deltaCases`, `chunkCases` and `manifestCases` vector sections.
 

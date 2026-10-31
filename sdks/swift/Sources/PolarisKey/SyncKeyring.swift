@@ -450,8 +450,9 @@ public actor SyncKeyring: CustomReflectable {
         let gen = forgetGeneration
         let state = try await read()
         guard let ring = state.ring else { return .locked(reason: .noRing) }
-        // The pin, else the stored root's triple: a stored root is the pin when none is stored.
-        let anchor = try await anchorForUnlock()
+        // With no accept: the pin, else the stored root's triple (a stored root is the pin when
+        // none is stored). A confirmed accept stands on its own, so it reads neither.
+        let anchor = accept == nil ? try await anchorForUnlock() : nil
         // An accept holds only for the ring the person was shown; a ring that moved since is
         // reported again, not adopted.
         let expected = accept ?? anchor

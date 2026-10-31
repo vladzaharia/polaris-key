@@ -669,6 +669,24 @@ final class SyncKeyringTests: XCTestCase {
         XCTAssertTrue(k.codec.locked)
     }
 
+    func testAConfirmedAcceptWorksOverAnUnreadableRoot() async throws {
+        let r = try await reinstallSetup()
+        let served = SyncRingPin(ringId: r.second.ringId, epoch: 1, rootKid: r.second.rootKid)
+        // An undecodable stored root.
+        let junk = FaultyVault(Data("not a record".utf8))
+        let r1 = Reinstall(server: r.server, keys: r.keys, roots: RingRootStore(vault: junk), first: r.first, second: r.second)
+        let k1 = try await reinstalled(r1, store: InMemoryStore(productSlug: "djdl", deviceId: "dev_a"))
+        let ok = try await k1.acceptRingChange(confirmed: served)
+        XCTAssertEqual(ok, .unlocked(ringId: r.second.ringId, epoch: 1))
+        // A pin that cannot be read.
+        let r2 = try await reinstallSetup()
+        let served2 = SyncRingPin(ringId: r2.second.ringId, epoch: 1, rootKid: r2.second.rootKid)
+        let inner = InMemoryStore(productSlug: "djdl", deviceId: "dev_a")
+        let k2 = try await reinstalled(r2, store: RecordsStore(inner, mode: .pinReadFails))
+        let ok2 = try await k2.acceptRingChange(confirmed: served2)
+        XCTAssertEqual(ok2, .unlocked(ringId: r2.second.ringId, epoch: 1))
+    }
+
     func testForgetKeepsThePinWhenTheRootCannotBeRemoved() async throws {
         let server = RingServer()
         let a = try await device("a", server: server)
