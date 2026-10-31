@@ -289,24 +289,25 @@ export function renderGd(x: Extract, t: Tables): string {
 class_name PKeyNfcData
 extends RefCounted
 ## The Unicode ${x.unicodeVersion} tables behind PKeyNfc (NFC; WIRE-CONTRACT-V5 §15.6, CC-14 D-20).
-## Hangul syllables are algorithmic and are not listed.
+## Hangul syllables are algorithmic and are not listed. Plain Arrays of int: a packed-array
+## constructor is not a constant expression in GDScript; PKeyNfc packs them on first use.
 
 const UNICODE_VERSION := "${x.unicodeVersion}"
 
 ## Canonical combining classes, non-zero only: ${ccc.length / 3} runs of (first, last, class).
-const CCC := PackedInt32Array([
+const CCC: Array = [
 ${wrap(ccc)}
-])
+]
 
 ## Full canonical decompositions: ${t.decomp.size} entries of (code point, length, parts...).
-const DECOMP := PackedInt32Array([
+const DECOMP: Array = [
 ${wrap(decomp)}
-])
+]
 
 ## Primary composites: ${triples.length} triples of (first, second, composite), sorted by (first, second).
-const COMPOSE := PackedInt32Array([
+const COMPOSE: Array = [
 ${wrap(compose)}
-])
+]
 `;
 }
 

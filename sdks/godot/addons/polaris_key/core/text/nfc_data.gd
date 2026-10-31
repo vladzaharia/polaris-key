@@ -8,12 +8,13 @@
 class_name PKeyNfcData
 extends RefCounted
 ## The Unicode 16.0.0 tables behind PKeyNfc (NFC; WIRE-CONTRACT-V5 §15.6, CC-14 D-20).
-## Hangul syllables are algorithmic and are not listed.
+## Hangul syllables are algorithmic and are not listed. Plain Arrays of int: a packed-array
+## constructor is not a constant expression in GDScript; PKeyNfc packs them on first use.
 
 const UNICODE_VERSION := "16.0.0"
 
 ## Canonical combining classes, non-zero only: 393 runs of (first, last, class).
-const CCC := PackedInt32Array([
+const CCC: Array = [
 	768, 788, 230, 789, 789, 232, 790, 793, 220, 794, 794, 232, 795, 795, 216, 796, 800, 220, 801,
 	802, 202, 803, 806, 220, 807, 808, 202, 809, 819, 220, 820, 824, 1, 825, 828, 220, 829, 836,
 	230, 837, 837, 240, 838, 838, 230, 839, 841, 220, 842, 844, 230, 845, 846, 220, 848, 850, 230,
@@ -87,10 +88,10 @@ const CCC := PackedInt32Array([
 	230, 123184, 123190, 230, 123566, 123566, 230, 123628, 123631, 230, 124140, 124141, 232,
 	124142, 124142, 220, 124143, 124143, 230, 124398, 124398, 230, 124399, 124399, 220, 125136,
 	125142, 220, 125252, 125257, 230, 125258, 125258, 7,
-])
+]
 
 ## Full canonical decompositions: 2081 entries of (code point, length, parts...).
-const DECOMP := PackedInt32Array([
+const DECOMP: Array = [
 	192, 2, 65, 768, 193, 2, 65, 769, 194, 2, 65, 770, 195, 2, 65, 771, 196, 2, 65, 776, 197, 2,
 	65, 778, 199, 2, 67, 807, 200, 2, 69, 768, 201, 2, 69, 769, 202, 2, 69, 770, 203, 2, 69, 776,
 	204, 2, 73, 768, 205, 2, 73, 769, 206, 2, 73, 770, 207, 2, 73, 776, 209, 2, 78, 771, 210, 2,
@@ -525,10 +526,10 @@ const DECOMP := PackedInt32Array([
 	195088, 1, 172238, 195089, 1, 19704, 195090, 1, 172293, 195091, 1, 172558, 195092, 1, 172689,
 	195093, 1, 40635, 195094, 1, 19798, 195095, 1, 40697, 195096, 1, 40702, 195097, 1, 40709,
 	195098, 1, 40719, 195099, 1, 40726, 195100, 1, 40763, 195101, 1, 173568,
-])
+]
 
 ## Primary composites: 961 triples of (first, second, composite), sorted by (first, second).
-const COMPOSE := PackedInt32Array([
+const COMPOSE: Array = [
 	60, 824, 8814, 61, 824, 8800, 62, 824, 8815, 65, 768, 192, 65, 769, 193, 65, 770, 194, 65,
 	771, 195, 65, 772, 256, 65, 774, 258, 65, 775, 550, 65, 776, 196, 65, 777, 7842, 65, 778, 197,
 	65, 780, 461, 65, 783, 512, 65, 785, 514, 65, 803, 7840, 65, 805, 7680, 65, 808, 260, 66, 775,
@@ -700,4 +701,4 @@ const COMPOSE := PackedInt32Array([
 	90399, 90403, 90398, 90400, 90405, 90398, 90409, 90402, 90401, 90399, 90406, 90401, 90400,
 	90408, 90402, 90399, 90407, 90409, 90399, 90404, 93539, 93543, 93545, 93543, 93543, 93544,
 	93545, 93543, 93546,
-])
+]
