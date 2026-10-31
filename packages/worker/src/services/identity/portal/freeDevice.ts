@@ -246,9 +246,23 @@ export async function freeAccountDevice(
 ): Promise<FreeDeviceResult> {
   const plan = await planFreeAccountDevice(...args);
   if (!plan.ok) return plan;
-  await args[2].batch(plan.statements);
+  // Two concurrent removes both pass the checks; only the one whose UPDATE changed the row runs
+  // the tail, so there is one audit row and one notice.
+  if (!(await commitRemoval(args[2], plan.statements))) {
+    return { ok: true, device: plan.device };
+  }
   await plan.finish();
   return { ok: true, device: plan.device };
+}
+
+/** Run a removal's statements; whether the first (the deauthorize UPDATE) changed a row. */
+async function commitRemoval(
+  db: Db,
+  statements: DbStatement[],
+): Promise<boolean> {
+  if (db.batchChanges) return (await db.batchChanges(statements))[0] === 1;
+  await db.batch(statements);
+  return true;
 }
 
 /** `devices.license_id` of a device bound to no licence. */
@@ -286,7 +300,12 @@ export async function freeLicenselessDevice(
   // Charged after ownership is proven, like the licence route.
   const limited = await chargeRemoval(req, env, actor.accountId, product, now);
   if (limited) return limited;
-  await db.batch(stmtsDeauthorizeDevice(product, deviceId, NO_LICENSE));
+  const changed = await commitRemoval(
+    db,
+    stmtsDeauthorizeDevice(product, deviceId, NO_LICENSE, subject),
+  );
+  // Lost the race to a concurrent remove: it ran the tail, the device is gone.
+  if (!changed) return { ok: false, reason: "not_found" };
   await releaseAccountDevice(req, env, db, actor, product, device, now);
   return { ok: true, device };
 }

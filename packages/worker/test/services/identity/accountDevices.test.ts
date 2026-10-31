@@ -143,6 +143,14 @@ function call(
   );
 }
 
+async function adaWithPixel() {
+  const c = await ctx();
+  const ada = await session(c, "ada@example.com");
+  await bind(c, ada.accountId, "djdl", "sub-ada");
+  await device(c, "djdl", "mine", "sub-ada", { label: "Pixel 9" });
+  return { c, ada };
+}
+
 const status = (c: Ctx, product: string, id: string) =>
   c.db.first<{ status: string }>(
     "SELECT status FROM devices WHERE product = ? AND device_id = ?",
@@ -216,10 +224,7 @@ describe("GET /api/me/devices", () => {
 
 describe("DELETE /api/me/devices/<product>/<deviceId>", () => {
   it("removes the caller's licence-less device, audits it and emails the account", async () => {
-    const c = await ctx();
-    const ada = await session(c, "ada@example.com");
-    await bind(c, ada.accountId, "djdl", "sub-ada");
-    await device(c, "djdl", "mine", "sub-ada", { label: "Pixel 9" });
+    const { c, ada } = await adaWithPixel();
     const res = await call(c, ada, "DELETE", "/api/me/devices/djdl/mine");
     expect(res.status).toBe(200);
     expect((await status(c, "djdl", "mine"))!.status).toBe("deauthorized");
@@ -230,6 +235,21 @@ describe("DELETE /api/me/devices/<product>/<deviceId>", () => {
     expect(audit?.target_id).toBe("mine");
     expect(c.sent.length).toBeGreaterThan(0);
     expect(c.sent.some((m) => m.text.includes("Pixel 9"))).toBe(true);
+  });
+
+  it("two concurrent removes of one device write one audit row and send one notice", async () => {
+    const { c, ada } = await adaWithPixel();
+    const [r1, r2] = await Promise.all([
+      call(c, ada, "DELETE", "/api/me/devices/djdl/mine"),
+      call(c, ada, "DELETE", "/api/me/devices/djdl/mine"),
+    ]);
+    expect([r1.status, r2.status].sort()).toEqual([200, 404]);
+    const audits = await c.db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM portal_audit WHERE account_id = ? AND action = 'portal.device.disconnect'",
+      ada.accountId,
+    );
+    expect(audits!.n).toBe(1);
+    expect(c.sent.filter((m) => m.text.includes("Pixel 9"))).toHaveLength(1);
   });
 
   it("answers 404 for another account's device and leaves it", async () => {
