@@ -333,7 +333,7 @@ import PolarisKeyCore
             let reason = o.relay ? cloudConnectRelayWanted(await discovery()) : "host"
             guard gen == generation else { throw CancellationError() }
             let relayOn = reason == nil
-            let src = ConnectLanSource.client(connect, now: now, applyTrust: applyTrust)
+            let src = watch(ConnectLanSource.client(connect, now: now, applyTrust: applyTrust))
             if o.lan {
                 do {
                     let svc = try await ConnectLanService.start(src, options: o.lanOptions)
@@ -487,6 +487,35 @@ import PolarisKeyCore
         }
 
         private func untrack(_ id: ObjectIdentifier) { sessions[id] = nil }
+
+        /// A roster this device stores, pushed or fetched, is checked against every open session.
+        func watch(_ source: ConnectLanSource) -> ConnectLanSource {
+            var src = source
+            if let adopt = src.adoptRing {
+                src.adoptRing = { [weak self] jws in
+                    let r = await adopt(jws)
+                    if r.stored, let self { await self.rosterStored() }
+                    return r
+                }
+            }
+            if let refresh = src.refresh {
+                src.refresh = { [weak self] in
+                    try await refresh()
+                    if let self { await self.rosterStored() }
+                }
+            }
+            return src
+        }
+
+        /// Admits every open session again against the roster now held: a session with a device the
+        /// roster no longer lists ends `peer_revoked`. A roster that only adds devices keeps them all.
+        func rosterStored() async {
+            guard let held = await connect.held() else { return }
+            let listed = Set(held.ring.devices.map(\.deviceId))
+            for s in Array(sessions.values) where !listed.contains(s.peerDeviceId) {
+                await s.closeRevoked()
+            }
+        }
 
         func open(_ deviceId: String, relay relayOpt: Bool, lanAttempt attempt: TimeInterval?) async throws
             -> ConnectSession

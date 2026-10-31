@@ -113,7 +113,7 @@ public struct PeerChannelOptions: Sendable {
 
 /// Bytes the link may hold for a pipe that is not taking them (S5): beyond this the peer is closed with
 /// `peer_busy`. A roster device that sends PINGs and never reads would otherwise grow the buffer forever.
-public let peerLinkWriteMaxBytes = 8 * 1024 * 1024
+public let peerLinkWriteMaxBytes = 4 * 1024 * 1024
 
 public actor PeerLink: CustomStringConvertible, CustomReflectable {
     public static let handshakeFrameMax = 16_384
@@ -139,6 +139,7 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
     private var pauseWaiters: [CheckedContinuation<Void, Never>] = []
     private let backlog: LockedValue<Int>
     private let overflowHook: LockedValue<(@Sendable () -> Void)?>
+    private let drainHook = LockedValue<(@Sendable () -> Void)?>(nil)
     private var overflowed = false
     private var openedResult: Result<PeerEstablished, PeerLinkRefused>?
     private var openedWaiters: [CheckedContinuation<Result<PeerEstablished, PeerLinkRefused>, Never>] = []
@@ -192,11 +193,13 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         // The writer drains in order and closes the pipe once the link ends, so a CLOSE record is
         // flushed before the pipe goes.
         let p = pipe
+        let dh = drainHook
         Task {
             for await d in ostream {
                 bl.with { $0 = max(0, $0 - d.count - 2) }
                 guard let f = try? PeerFrame.encode(d) else { continue }
                 try? await p.write(f)
+                if bl.current == 0 { dh.current?() }
             }
             await p.close()
         }
@@ -227,6 +230,12 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         overflowed = true
         await pipe.close()
     }
+
+    /// Bytes queued for the pipe that its writer has not taken yet.
+    public nonisolated var writeBacklog: Int { backlog.current }
+
+    /// Runs on the writer's task each time it has written everything queued so far.
+    public nonisolated func onWriteDrained(_ f: @escaping @Sendable () -> Void) { drainHook.set(f) }
 
     public nonisolated var description: String { "PeerLink()" }
     public nonisolated var customMirror: Mirror { Mirror(self, children: [:]) }
