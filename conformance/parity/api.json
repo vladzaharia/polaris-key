@@ -3752,7 +3752,8 @@
           "planned": "U-06"
         },
         "react": {
-          "planned": "U-20"
+          "spelling": "BrowserAdapterOptions.cloudSync.encryption",
+          "reason": "an adapter option (app code, default e2e), not a provider prop"
         },
         "swift": {
           "spelling": "CloudSyncOptions(encryption:)",
