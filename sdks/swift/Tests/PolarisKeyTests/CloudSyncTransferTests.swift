@@ -303,7 +303,7 @@ final class CloudSyncTransferTests: XCTestCase {
         XCTAssertFalse("\(e2e)".contains(hexOf(root)))
         XCTAssertEqual(Mirror(reflecting: e2e).children.count, 0)
         let id = srv.chunkId(plain)
-        XCTAssertEqual(srv.openChunk(id: id, object: Data(count: serverChunkMaxStoredBytes + 1)), .invalid("size"))
+        XCTAssertEqual(srv.openChunk(id: id, object: Data(count: SYNC_CHUNK_MAX_STORED_BYTES + 1)), .invalid("size"))
         XCTAssertEqual(srv.openChunk(id: id, object: Data([0, 9, 1])), .invalid("codec"))
         XCTAssertEqual(srv.openChunk(id: id, object: Data([7, 0, 1])), .invalid("version"))
     }
@@ -798,7 +798,7 @@ final class CloudSyncTransferTests: XCTestCase {
         }
         let sink = Collected()
         await expect(.fileInvalid) { try await self.engine(s).download(request(sink)) }
-        s.tamperChunk = { _, o in Data(count: serverChunkMaxStoredBytes + 1) + o }
+        s.tamperChunk = { _, o in Data(count: SYNC_CHUNK_MAX_STORED_BYTES + 1) + o }
         await expect(.fileInvalid, "chunk-size") { try await self.engine(s).download(request(Collected())) }
         let keys = Array(s.chunks.keys)
         let other = s.chunks[keys[1]]!

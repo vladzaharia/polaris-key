@@ -15,8 +15,6 @@ import PolarisKeyCore
 public let cloudSyncChunksDirName = "cloud-sync-chunks"
 /// The least a cache is allowed to hold (D-9).
 public let chunkCacheMinBytes = 256 * 1024 * 1024
-/// The most one stored chunk object is (D-5: 1 MiB plus 30).
-public let serverChunkMaxStoredBytes = SYNC_CDC_MAX_BYTES + 30
 
 public struct ChunkCacheError: Error, Sendable, Equatable {
     public let what: String
@@ -135,7 +133,7 @@ public final class FileChunkCache: ChunkCache, @unchecked Sendable {
             }
             guard let attrs = try? FileManager.default.attributesOfItem(atPath: p.path),
                 attrs[.type] as? FileAttributeType == .typeRegular, let size = attrs[.size] as? Int,
-                size <= serverChunkMaxStoredBytes
+                size <= SYNC_CHUNK_MAX_STORED_BYTES
             else {
                 try? FileManager.default.removeItem(at: p)
                 continue
@@ -180,7 +178,7 @@ public final class FileChunkCache: ChunkCache, @unchecked Sendable {
         try lock.withLock {
             _ = load()
             drop(id)
-            if object.count > maxBytes || object.count > serverChunkMaxStoredBytes { return }
+            if object.count > maxBytes || object.count > SYNC_CHUNK_MAX_STORED_BYTES { return }
             try cloudSyncWriteAtomic(object, to: path(id))
             var idx = load()
             idx.append((id, object.count))

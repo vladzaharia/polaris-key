@@ -22,7 +22,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Node | `node` | 108 | 15 | 14 | 0 |
 | React | `web`, `desktop-bridge` | 104 | 24 | 9 | 0 |
 | Python | `python` | 94 | 15 | 28 | 0 |
-| Swift | `macos`, `ios` | 109 | 10 | 17 | 1 |
+| Swift | `macos`, `ios` | 111 | 10 | 15 | 1 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 104 | 9 | 24 | 0 |
 | Kotlin | `android`, `jvm` | 110 | 9 | 17 | 1 |
 
@@ -83,8 +83,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
 | `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.records` | cloudSync.collection(name): records of any collection with put, update, compare-and-set and union merge | transcripts | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
-| `sync.files` | cloudSync files: single and multipart upload, resume, progress and ranged download | transcripts | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
-| `sync.files.delta` | cloudSync file delta: content-defined chunks, only the missing chunks travel | `sync-vectors.json` `cdcCases` + transcripts | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
+| `sync.files` | cloudSync files: single and multipart upload, resume, progress and ranged download | transcripts | planned (U-22) | planned (U-22) | planned (U-22) | ✓ | planned (U-23) | planned (U-23) | — |
+| `sync.files.delta` | cloudSync file delta: content-defined chunks, only the missing chunks travel | `sync-vectors.json` `cdcCases` + transcripts | planned (U-22) | planned (U-22) | planned (U-22) | ✓ | planned (U-23) | planned (U-23) | — |
 | `sync.e2e.recovery` | The recovery code, and the platform backup of the root where the OS has one | `sync-vectors.json` `recoveryCodeCases` + transcripts (U-36) | planned (U-38) | planned (U-20) | planned (U-06) | planned (U-39) | planned (U-40) | planned (U-39) | web, node, python, jvm, windows, linux: runtime |
 | `sync.transfer.background` | Background transfer: an upload or download that continues when the app is suspended | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (U-41) | planned (U-41); N/A (web: runtime) | planned (U-41); N/A (jvm: runtime) | web, desktop-bridge, node, python, jvm: runtime |
 | `sync.e2e` | End-to-end encrypted Cloud Sync on the client: envelope, blinding, root wrap and the encryption-mode machine | `sync-vectors.json` + `sync-scenarios.json` + transcripts (U-33) | ✓ | ✓ | planned (U-06) | ✓ | ✓ | ✓ | — |

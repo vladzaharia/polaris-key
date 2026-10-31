@@ -491,12 +491,12 @@
       "wp": "U-23"
     },
     "sync.files": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "note": "CloudSyncFileTransport (PolarisKey/CloudSyncFiles.swift) is the engine's FileTransport over the device bearer: a closed allow-list of the file routes (key charset, 64-hex chunk ids, no dot segments, only version=<digits> as a query), no redirect followed, JSON read to 1 MiB, error bodies to 64 KiB, a ranged GET to the range asked and a chunk to SYNC_CHUNK_MAX_STORED_BYTES, a deadline that grows with the body, Content-Digest on every PUT and Retry-After as seconds or a date capped at 3,600 before any integer conversion (a 503 unavailable from a down limiter backs off like a 429). CloudSyncFilesTests; the cloudsync-files-* transcripts replay in TranscriptTests (cloudsync-files-single also proves sync.saves and waits for it)."
     },
     "sync.files.delta": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "note": "The chunks mode over the same transport (planChunks, putChunk, getChunk, the manifest through putSingle; the chunk-size cap is the generated SYNC_CHUNK_MAX_STORED_BYTES) and the S4 engine; a present chunk that became missing is sent again. The cloudsync-chunks and cloudsync-chunks-delta transcripts replay in TranscriptTests."
     },
     "sync.e2e.recovery": {
       "status": "planned",

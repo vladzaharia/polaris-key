@@ -10,6 +10,7 @@
 // (a best-effort report does exactly that), so a thrown mismatch could vanish. Every problem is
 // RECORDED and answered with a 599, and `endStep()` fails with the full list.
 
+import CryptoKit
 import Foundation
 import PolarisKeyCore
 
@@ -66,11 +67,15 @@ struct Transcript: Decodable, Sendable {
         var headers: [String: String]
         var requiredHeaders: [String]
         var body: RequestBody?
+        /// Raw request bytes (a file `PUT`), asserted exact (U-10.3).
+        var bodyBase64: String?
     }
     struct Response: Decodable, Sendable {
         var status: Int
         var headers: [String: String]
         var body: JSONValue
+        /// Raw response bytes, served byte for byte (U-10.3).
+        var bodyBase64: String?
     }
     struct Exchange: Decodable, Sendable {
         var request: Request
@@ -289,7 +294,12 @@ actor ReplayServer {
             out.append("required header \(name): missing")
         }
         let hasBody = (body?.count ?? 0) > 0
-        if let want = expected.body {
+        if let b64 = expected.bodyBase64 {
+            if Data(base64Encoded: b64) != (body ?? Data()) {
+                let want = Data(base64Encoded: b64)?.count ?? -1
+                out.append("body: expected \(want) bytes, got \(body?.count ?? 0) (not the recorded bytes)")
+            }
+        } else if let want = expected.body {
             guard hasBody, let body else {
                 out.append("body: expected a JSON body, got none")
                 return out
@@ -551,7 +561,9 @@ struct ReplayTransport: PolarisTransport {
             return PolarisResponse(status: 599, body: Data("replay: no matching exchange".utf8))
         }
         let body: Data
-        if case .string(let text) = item.response.body {
+        if let b64 = item.response.bodyBase64, let raw = Data(base64Encoded: b64) {
+            body = raw
+        } else if case .string(let text) = item.response.body {
             body = Data(text.utf8)
         } else {
             body = (try? JSONEncoder().encode(item.response.body)) ?? Data()
@@ -593,11 +605,15 @@ final class HeaderTap: PolarisTransport, @unchecked Sendable {
     private let inner: any PolarisTransport
     private let lock = NSLock()
     private var last: [String: String] = [:]
+    private var statusValue = 0
     init(_ inner: any PolarisTransport) { self.inner = inner }
     var lastHeaders: [String: String] { lock.withLock { last } }
+    /// The last answer's HTTP status.
+    var lastStatus: Int { lock.withLock { statusValue } }
     func send(_ request: PolarisRequest) async throws -> PolarisResponse {
         lock.withLock { last = [:] }
         let r = try await inner.send(request)
+        lock.withLock { statusValue = r.status }
         lock.withLock { last = Dictionary(uniqueKeysWithValues: r.headers.map { ($0.key.lowercased(), $0.value) }) }
         return r
     }
@@ -718,6 +734,15 @@ enum CloudSyncReplay {
             if let s = c.objectValue?["setting"]?.stringValue { names.append(s) }
         }
         out["settings"] = .array(names.sorted().map(JSONValue.string))
+        func recordRef(_ v: JSONValue) -> String? {
+            guard case .array(let pair)? = v.objectValue?["record"], pair.count == 2,
+                let c = pair[0].stringValue, let i = pair[1].stringValue
+            else { return nil }
+            return "\(c)/\(i)"
+        }
+        out["records"] = .array((b["changes"]?.arrayValue ?? []).compactMap(recordRef).sorted().map(JSONValue.string))
+        out["deletedRecords"] = .array(
+            (b["tombstones"]?.arrayValue ?? []).compactMap(recordRef).sorted().map(JSONValue.string))
         if let q = b["quota"]?.objectValue {
             if let bytes = q["bytes"], bytes.doubleValue != nil { out["quotaBytes"] = bytes }
             if let f = q["files"]?.boolValue { out["files"] = .bool(f) }
@@ -756,5 +781,141 @@ enum CloudSyncReplay {
                 PolarisRequest(
                     url: url, method: req.method, headers: await core.headers(extra), body: body))
         }
+    }
+}
+
+// ── Cloud Sync files (U-23.S6, `sync.files`, `sync.saves`, `sync.files.delta`) ──────────────
+
+/// `cloudSyncFile` and `cloudSyncChunk` (WIRE-CONTRACT-V5 section 13.2 and 13.8): one file call each, through
+/// `CloudSyncFileTransport` (the bearer, the X-PKey headers, the path allow-list, `Content-Digest`). The
+/// recording draws the upload id, so a call that names one takes it from the recorded path (or, for `finalize`,
+/// the recorded body); the body of a `PUT` is the recorded bytes, its digest is computed here. The JSON bodies of
+/// `begin` and `plan` are the recorded ones: the engine's own construction of them is proven by
+/// `CloudSyncTransferTests`.
+enum CloudSyncFilesReplay {
+    private static func recordedUploadId(_ step: Transcript.Step) -> String? {
+        guard let item = step.exchanges.items.first else { return nil }
+        let parts = item.request.path.split(separator: "?")[0].split(separator: "/")
+        if let at = parts.firstIndex(of: "upload"), at + 1 < parts.count { return String(parts[at + 1]) }
+        return item.request.body?.json.objectValue?["uploadId"]?.stringValue
+    }
+
+    private static func recordedBytes(_ step: Transcript.Step) -> Data? {
+        step.exchanges.items.first?.request.bodyBase64.flatMap { Data(base64Encoded: $0) }
+    }
+
+    /// The digest a `PUT` declares, as the recording has it. A mismatch recording sends bytes that are not the
+    /// ones the digest names (that is the case), so the declared hash is the recorded one; the bytes' own is
+    /// the fallback.
+    private static func declaredSha(_ step: Transcript.Step, _ body: Data?) -> String {
+        if let h = step.exchanges.items.first?.request.headers["content-digest"],
+            h.hasPrefix("sha-256=:"), h.hasSuffix(":"),
+            let raw = Data(base64Encoded: String(h.dropFirst(9).dropLast()))
+        {
+            return raw.map { String(format: "%02x", $0) }.joined()
+        }
+        return hex(body ?? Data())
+    }
+
+    private static func recordedJSON(_ step: Transcript.Step) -> JSONValue? {
+        step.exchanges.items.first?.request.body?.json
+    }
+
+    private static func hex(_ d: Data) -> String { SHA256.hash(data: d).map { String(format: "%02x", $0) }.joined() }
+
+    static func run(
+        _ client: PolarisKeyClient, step: Transcript.Step, tap: HeaderTap, into out: inout [String: JSONValue]
+    ) async throws {
+        let core = client.core
+        let transport = CloudSyncFileTransport(
+            product: core.product, baseUrl: core.endpoints.baseUrl, transport: tap,
+            headers: { await core.headers() }, token: { await core.token }, timeoutSeconds: 0)
+        let args = step.args
+        let op = args["op"]?.stringValue ?? ""
+        let target = FileTarget(
+            collection: args["collection"]?.stringValue ?? "", record: args["id"]?.stringValue ?? "")
+        let upload = recordedUploadId(step) ?? ""
+        let body = recordedBytes(step)
+        var refusal: FileRefusal?
+        func note<T: Sendable>(_ r: FileReply<T>) -> T? {
+            switch r {
+            case .ok(let v): return v
+            case .refused(let f):
+                refusal = f
+                return nil
+            }
+        }
+        switch op {
+        case "begin":
+            if let v = note(try await transport.begin(target, request: recordedJSON(step) ?? .null))?.objectValue {
+                for k in ["mode", "partBytes"] { if let x = v[k] { out[k] = x } }
+            }
+        case "status":
+            if let v = note(try await transport.status(target, uploadId: upload))?.objectValue {
+                for k in ["mode", "size", "received", "missing"] { if let x = v[k] { out[k] = x } }
+            }
+        case "put", "putManifest":
+            _ = note(
+                try await transport.putSingle(
+                    target, uploadId: upload, body: body ?? Data(), sha256: declaredSha(step, body)))
+        case "part":
+            _ = note(
+                try await transport.putPart(
+                    target, uploadId: upload, n: args["part"]?.intValue ?? 0, body: body ?? Data(),
+                    sha256: declaredSha(step, body)))
+        case "putChunk":
+            _ = note(
+                try await transport.putChunk(
+                    target, uploadId: upload, chunkId: args["chunk"]?.stringValue ?? "", body: body ?? Data(),
+                    sha256: declaredSha(step, body)))
+        case "abort":
+            _ = note(try await transport.abort(target, uploadId: upload))
+        case "plan":
+            let reply = try await transport.planChunks(target, uploadId: upload, request: recordedJSON(step) ?? .null)
+            if let v = note(reply)?.objectValue {
+                // The format sorts both: ids ascending, `present` by id.
+                func key(_ x: JSONValue) -> String { x.stringValue ?? x.arrayValue?.first?.stringValue ?? "" }
+                if case .array(let ids)? = v["missing"] { out["missing"] = .array(ids.sorted { key($0) < key($1) }) }
+                if case .array(let pairs)? = v["present"] {
+                    out["present"] = .array(pairs.sorted { key($0) < key($1) })
+                }
+            }
+        case "finalize":
+            let request: JSONValue = .object(["uploadId": .string(upload)])
+            if let v = note(try await transport.finalize(target, request: request))?.objectValue {
+                for k in ["version", "size", "sha256", "format"] { if let x = v[k] { out[k] = x } }
+            }
+        case "download", "downloadManifest":
+            let query = FileQuery(version: args["version"]?.intValue)
+            if let file = note(try await transport.getFile(target, query: query)) {
+                out["size"] = .int(file.data.count)
+                out["sha256"] = .string(hex(file.data))
+            }
+        case "getChunk":
+            let chunk = args["chunk"]?.stringValue ?? ""
+            if let data = note(try await transport.getChunk(collection: target.collection, chunkId: chunk)) {
+                out["size"] = .int(data.count)
+                out["sha256"] = .string(hex(data))
+            }
+        case "revisions":
+            if let v = note(try await transport.revisions(target))?.objectValue {
+                let list = v["revisions"]?.arrayValue ?? []
+                out["versions"] = .array(list.compactMap { $0.objectValue?["version"] })
+                let formats = Set(list.compactMap { $0.objectValue?["format"]?.stringValue })
+                out["formats"] = .array(formats.sorted().map(JSONValue.string))
+            }
+        default:
+            throw ReplayError("unknown \(step.action) op: \(op)")
+        }
+        out["status"] = .int(tap.lastStatus)
+        guard let refusal else {
+            out["result"] = .string("ok")
+            return
+        }
+        out["result"] = .string("refused")
+        out["code"] = .string(refusal.code)
+        if let missing = refusal.body?.objectValue?["missing"] { out["missing"] = missing }
+        if let sv = refusal.body?.objectValue?["server"]?.objectValue?["version"] { out["serverVersion"] = sv }
+        if let after = refusal.retryAfterSeconds { out["retryAfter"] = .int(Int(after.rounded())) }
     }
 }
