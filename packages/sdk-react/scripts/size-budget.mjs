@@ -70,6 +70,10 @@ const KB = 1000;
  * polaris-key-gate 71.2 -> 76.0 KB and provider+use-license 89.5 -> 94.0 KB (owner, 2026-10-28:
  * size matters, but not to the point of hard optimizations): measured about 70.7 and 89.5. The
  * budgets still catch a large regression; ordinary feature growth no longer needs a lazy split.
+ *
+ * provider+use-license 94.0 -> 95.5 KB (integration CP2, 2026-10-31): measured 94.4 after the
+ * nearby sign-in, the inter-account link and the Direct Transfer clients joined the provider's
+ * engine. Same rule: ordinary feature growth, no lazy split.
  */
 export const BUDGETS = JSON.parse(
   readFileSync(join(here, "size-budget.json"), "utf8"),
