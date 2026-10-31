@@ -62,6 +62,8 @@ var _glyph: TextureRect
 var _text: Label
 var _bar: ProgressBar
 var _action: Button
+var _action_pad: MarginContainer
+var _row: HBoxContainer
 
 
 static func input(st: String, signed: bool, review: bool, on: bool, extra := {}) -> Dictionary:
@@ -86,6 +88,7 @@ func _build() -> void:
 	_card = columns(card_panel("Card", false), "Body")
 	_card_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var row := hbox(_card, "Row")
+	_row = row
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_glyph = glyph_node(row, "Glyph", "info")
 	_text = label(row, "Status", "PKeyMuted")
@@ -103,7 +106,12 @@ func _build() -> void:
 	_bar.set_meta(FREE_HEIGHT_META, true)
 	_card.add_child(_bar)
 	# A quiet action: the state is what the strip says, the button only a way on.
-	_action = button(_card, "Action", _on_action, "PKeyLink")
+	# In a margin of its own, so a failed transfer's Try again can line up with the words.
+	_action_pad = MarginContainer.new()
+	_action_pad.name = "ActionPad"
+	_action_pad.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_card.add_child(_action_pad)
+	_action = button(_action_pad, "Action", _on_action, "PKeyLink")
 
 
 func _ready() -> void:
@@ -252,6 +260,7 @@ func _render() -> void:
 		_text.text = "%s · %s" % [_text.text, figures]
 	cat_text(_action, "" if action_key == null else String(action_key), args)
 	_bar.visible = bar
+	_action_pad.visible = _action.visible
 	if bar:
 		var held := transfer_fraction >= 0.0
 		if held:
@@ -262,8 +271,11 @@ func _render() -> void:
 			_hold_still(_bar)
 	_glyph.set_meta(&"pkey_glyph", {
 		"synced": "success", "syncing": "info", "offline": "cloud_off", "conflict": "warning", "error": "warning",
-		"locked": "lock", "ring-changed": "warning", "transferring": "info", "waiting": "cloud_off", "transfer-failed": "warning",
+		"locked": "lock", "ring-changed": "warning", "transferring": "info", "waiting": "info", "transfer-failed": "warning",
 	}.get(st, "info"))
+	# Waiting for a connection is the offline glyph; power and the app in the background are not offline.
+	if st == "waiting" and copy.has("cloudSync.waitingNetwork"):
+		_glyph.set_meta(&"pkey_glyph", "cloud_off")
 
 
 func _arrange(m: Dictionary) -> void:
@@ -273,6 +285,13 @@ func _arrange(m: Dictionary) -> void:
 	_action.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	super(m)
 	size_glyph(_glyph, 20.0, get_theme_color("font_color", "PKeyWarning") if state in ["conflict", "error", "ring-changed", "transfer-failed"] else get_theme_color("font_color", "PKeyMuted"))
+	# Try again after a failed transfer lines up with the words, not under the glyph.
+	var indent := 0
+	if state == "transfer-failed":
+		indent = roundi(_glyph.get_combined_minimum_size().x + float(_row.get_theme_constant("separation")))
+	var rtl := _row.is_layout_rtl()
+	_action_pad.add_theme_constant_override("margin_left", 0 if rtl else indent)
+	_action_pad.add_theme_constant_override("margin_right", indent if rtl else 0)
 
 
 func _apply_width(width: float) -> void:

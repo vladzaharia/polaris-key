@@ -808,7 +808,7 @@ func _ux_round(t: PKeyTestContext) -> void:
 
 const MATRIX_PATH := "res://tests/corpus/v2/ui-matrix.json"
 ## The labels of the controls a save screen offers, by copy key.
-const BUTTON_KEYS := ["saveConflict.keepThis", "saveConflict.keepOther", "saveConflict.acceptDelete", "saveConflict.keepBoth", "common.cancel", "common.done", "common.tryAgain"]
+const BUTTON_KEYS := ["saveConflict.keepThis", "saveConflict.keepOther", "saveConflict.acceptDelete", "saveConflict.keepBoth", "common.cancel", "common.done", "common.tryAgain", "saveConflict.chooseAgain"]
 
 
 ## Build the scene a `saveConflict` row names, from the row's own input.
@@ -828,6 +828,7 @@ func _scene_for(row: Dictionary) -> Control:
 			s.remote_device = String(c["remote"].get("device", ""))
 		s.both_available = c.get("bothAvailable") == true
 		s.keep = String(c.get("keep", ""))
+		s.newer = String(c.get("newer", ""))
 		s.step = String(c["step"])
 		s.refresh_view()
 		return s
@@ -877,7 +878,7 @@ static func _violation(must_not: Variant, state: String, shown: Array, actions: 
 func _saves_rows(t: PKeyTestContext) -> void:
 	var m = PKeyTestFixtures.read_json(MATRIX_PATH)
 	var rows: Array = m["saveConflict"]
-	t.check("saves: the saveConflict family has rows to run", rows.size() >= 17, str(rows.size()))
+	t.check("saves: the saveConflict family has rows to run", rows.size() >= 23, str(rows.size()))
 	var catalog = null
 	for locale in ["en", "de", "ja"]:
 		TranslationServer.set_locale(locale)
@@ -909,6 +910,9 @@ func _saves_rows(t: PKeyTestContext) -> void:
 				device = PKeyUiTheme.isolate((v as PKeySaveConflict).remote_device.strip_edges())
 			var expected: Array = []
 			for k in copy:
+				# a11y copy names a control for a screen reader; it draws no words.
+				if String(k).begins_with("a11y."):
+					continue
 				var args: Dictionary = key_args.get(k, model.get("args", {})).duplicate()
 				if args.has("device"):
 					args["device"] = device
@@ -936,7 +940,7 @@ func _saves_rows(t: PKeyTestContext) -> void:
 				# The controls offered are the model's actions, and a disabled one is never one of them.
 				var offered := 0
 				for n in drawn:
-					if n is Button and not (n as Button).disabled and (n as Button).text != catalog.format("common.cancel", {}) and (n as Button).text != catalog.format("common.done", {}) and (n as Button).text != catalog.format("common.tryAgain", {}):
+					if n is Button and not (n as Button).disabled and (n as Button).text != catalog.format("common.cancel", {}) and (n as Button).text != catalog.format("common.done", {}) and (n as Button).text != catalog.format("common.tryAgain", {}) and (n as Button).text != catalog.format("saveConflict.chooseAgain", {}):
 						offered += 1
 				var model_actions := 0
 				for a in acts:
@@ -952,6 +956,9 @@ func _saves_rows(t: PKeyTestContext) -> void:
 			if must_not is Dictionary and must_not.has("copy") and v.visible:
 				# Never "Synced" while a transfer is pending, in words as well as in keys.
 				for k in must_not["copy"]:
+					# Newer's two keys read the same: a drawn "Newer" is the other key's when that is the model's.
+					if k in ["saveConflict.newerThis", "saveConflict.newerOther"] and (copy.has("saveConflict.newerThis") or copy.has("saveConflict.newerOther")):
+						continue
 					for n in drawn:
 						if String(n.text) == String(catalog.format(k, {"time": "2 min ago"})):
 							hit = "drawn %s" % k
@@ -1066,7 +1073,13 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	var kd := _buttons(kept)
 	var finished: Array = []
 	kept.done.connect(func() -> void: finished.append(1))
-	t.check("saves: kept names the choice that was made, and Done takes the focus", (kept.find_child("Status", true, false) as Label).text == "Kept the other save." and kept._initial_focus() == kd["Done"] and kd.size() == 1)
+	t.check("saves: kept titles itself with the choice that was made, and Done takes the focus", (kept.find_child("Title", true, false) as Label).text == "Kept the other version" and not (kept.find_child("Status", true, false) as Label).visible and kept._initial_focus() == kd["Done"] and kd.size() == 1)
+	var mark := kept.find_child("Mark", true, false) as TextureRect
+	t.check("saves: kept draws the success mark in the success colour above its title", mark.visible and mark.texture != null and mark.modulate == kept._success_colour() and mark.get_index() < (kept.find_child("Title", true, false) as Label).get_index(), str(mark.modulate))
+	var both_kept: PKeySaveConflict = _sc.save_conflict("kept-both")
+	await _frames(3)
+	t.check("saves: keeping both says where the other version went", (both_kept.find_child("Title", true, false) as Label).text == "Kept both versions" and (both_kept.find_child("Status", true, false) as Label).text == "The other version is saved as a copy.")
+	_free(both_kept)
 	kept._cancel()
 	t.check("saves: Escape on kept is Done", finished == [1])
 	_free(kept)
@@ -1078,7 +1091,38 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	(fl["TryAgain"] as Button).pressed.emit()
 	t.check("saves: failed leaves both saves as they were, never says kept, and Try again repeats the choice", (failed.find_child("Status", true, false) as Label).text == PKeyUiView.catalog().format("saveConflict.failed", {}) and again == ["local"] and not (failed.model["copy"] as Array).has("saveConflict.keptLocal"))
 	t.check("saves: failed focuses Cancel (the TV lands on a safe control) and Try again is not filled", failed._initial_focus() == fl["Cancel"] and (fl["TryAgain"] as Button).theme_type_variation != &"PKeyPrimary")
+	var chosen: Array = []
+	failed.choose_again_requested.connect(func() -> void: chosen.append(1))
+	(fl["ChooseAgain"] as Button).pressed.emit()
+	var primaries_failed := 0
+	for n in fl.values():
+		primaries_failed += 1 if (n as Button).theme_type_variation == &"PKeyPrimary" else 0
+	t.check("saves: failed offers Try again, Choose again and Cancel in that order, none filled, and Choose again asks the host", chosen == [1] and primaries_failed == 0 and failed._actions.get_child(failed._actions.get_children().find(fl["TryAgain"]) + 1) == fl["ChooseAgain"] and _last_visible(failed._actions) == fl["Cancel"])
 	_free(failed)
+	var failed_gone: PKeySaveConflict = _sc.save_conflict("failed-deleted")
+	await _frames(3)
+	t.check("saves: failed after a deletion keeps the deletion's title and says the save is unchanged", (failed_gone.find_child("Title", true, false) as Label).text == "This save was deleted elsewhere" and (failed_gone.find_child("Status", true, false) as Label).text == "Couldn't keep your choice. Your save is unchanged.", (failed_gone.find_child("Title", true, false) as Label).text)
+	_free(failed_gone)
+	# Newer tags the named card and nothing else: no fill, no focus change, no reorder.
+	var plain_choose: PKeySaveConflict = _sc.save_conflict("choose")
+	var newer_remote: PKeySaveConflict = _sc.save_conflict("newer-remote")
+	await _frames(3)
+	var nl := newer_remote.find_child("Local", true, false) as Control
+	var nr := newer_remote.find_child("Remote", true, false) as Control
+	t.check("saves: Newer tags the other version's card only", not (nl.find_child("Newer", true, false) as Label).visible and (nr.find_child("Newer", true, false) as Label).visible and (nr.find_child("Newer", true, false) as Label).text == "Newer")
+	var nb := _buttons(newer_remote)
+	var pb := _buttons(plain_choose)
+	var same := nb.keys() == pb.keys() and newer_remote._initial_focus().name == plain_choose._initial_focus().name
+	for k in nb:
+		same = same and (nb[k] as Button).theme_type_variation == (pb[k] as Button).theme_type_variation
+	t.check("saves: Newer never fills, focuses or reorders anything", same and nl.get_index() < nr.get_index())
+	_free(newer_remote)
+	_free(plain_choose)
+	var newer_gone: PKeySaveConflict = _sc.save_conflict("deleted")
+	newer_gone.newer = "local"
+	await _frames(3)
+	t.check("saves: with one version there is no Newer tag", not (newer_gone.find_child("Local", true, false).find_child("Newer", true, false) as Label).visible and not (newer_gone.find_child("Remote", true, false).find_child("Newer", true, false) as Label).visible)
+	_free(newer_gone)
 	# TV focus: a pad only. The screen takes the focus onto Cancel, and a direction reaches the choices.
 	PKeyUiView.pad_only_override = true
 	var tv: PKeySaveConflict = _sc.save_conflict("choose")
@@ -1107,12 +1151,22 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	var waiting: PKeyCloudSyncStatus = _sc.cloud_sync("waiting-battery")
 	await _frames(3)
 	t.check("strip: waiting names what it waits for, with no bar and no Synced", (waiting.find_child("Status", true, false) as Label).text == "Waiting for power" and not waiting._bar.visible and not waiting._action.visible)
+	t.check("strip: waiting for power is the info glyph, not offline", waiting._glyph.get_meta(&"pkey_glyph") == "info")
 	_free(waiting)
+	var waiting_net: PKeyCloudSyncStatus = _sc.cloud_sync("waiting")
+	await _frames(3)
+	t.check("strip: waiting for a connection is the offline glyph", waiting_net._glyph.get_meta(&"pkey_glyph") == "cloud_off")
+	_free(waiting_net)
+	var waiting_bg: PKeyCloudSyncStatus = _sc.cloud_sync("waiting-background")
+	await _frames(3)
+	t.check("strip: waiting for the app is the info glyph, not offline", waiting_bg._glyph.get_meta(&"pkey_glyph") == "info")
+	_free(waiting_bg)
 	var bad: PKeyCloudSyncStatus = _sc.cloud_sync("transfer-failed")
 	await _frames(3)
 	var retried: Array = []
 	bad.retry_requested.connect(func() -> void: retried.append(1))
 	t.check("strip: a failed transfer says so and Try again is secondary", (bad.find_child("Status", true, false) as Label).text == "Couldn't sync your saves." and bad._action.text == "Try again" and bad._action.theme_type_variation == &"PKeyLink")
+	t.check("strip: Try again lines up with the words", is_equal_approx(bad._action.global_position.x, bad._text.global_position.x), "%s %s" % [bad._action.global_position.x, bad._text.global_position.x])
 	bad._action.pressed.emit()
 	t.check("strip: Try again asks the game", retried == [1])
 	_free(bad)

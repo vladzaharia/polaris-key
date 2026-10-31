@@ -679,6 +679,11 @@
       "gdlint:function-variable-name": 1,
       "gdlint:max-line-length": 5
     },
+    "sdks/godot/tests/suite_cloud_sync_ui.gd": {
+      "gdlint:class-definitions-order": 2,
+      "gdlint:max-file-lines": 1,
+      "gdlint:max-line-length": 21
+    },
     "sdks/godot/tests/suite_conformance.gd": {
       "gdlint:class-definitions-order": 4,
       "gdlint:max-file-lines": 1,
@@ -800,7 +805,7 @@
     "sdks/godot/tests/ui/scenarios.gd": {
       "gdlint:class-definitions-order": 2,
       "gdlint:max-file-lines": 1,
-      "gdlint:max-line-length": 29,
+      "gdlint:max-line-length": 30,
       "gdlint:max-public-methods": 1
     },
     "sdks/godot/tests/update/support.gd": {

@@ -14,8 +14,10 @@ extends PKeyUiView
 ## reading order, never docked. When the other copy was deleted (`remote_deleted`) the screen has
 ## its own title and lede, one card, and **Delete it here too** (drawn in the danger colour) in
 ## place of Keep the other; Keep both goes. A choice is applied once: `keeping` offers nothing,
-## `kept` names the choice that was made, and `failed` keeps both saves as they were (Try again
-## repeats the choice; the first focus is Cancel, never a control that overwrites).
+## `kept` titles itself with the choice that was made under a success mark (Keep both adds where the
+## other went), and `failed` keeps both saves as they were: Try again repeats the choice, Choose again
+## returns to the versions, Cancel leaves; none is filled and the first focus is Cancel, never a
+## control that overwrites. `newer` tags the card the app names with **Newer**; it chooses nothing.
 ##
 ## Not bound to a live client: the host sets `step` and the display-ready fields, and connects the
 ## signals. `model` is the ui-core view of the state, so a binding reads it rather than redoing it.
@@ -27,6 +29,8 @@ signal keep_requested(keep: String)
 signal retry_requested(keep: String)
 ## Cancel (or Escape): leave the conflict as it is.
 signal cancelled()
+## Choose again, after a failure: back to the versions and the choices. Nothing was applied.
+signal choose_again_requested()
 ## Done, after `kept`.
 signal done()
 
@@ -60,6 +64,13 @@ signal done()
 	set(value):
 		remote_deleted = value
 		refresh_view()
+## The version the app knows was saved later: "local", "remote" or "" (unsaid). Tags that card
+## "Newer" on the choose step; it never fills, focuses or reorders anything, and is ignored when the
+## other copy was deleted.
+@export var newer := "":
+	set(value):
+		newer = value
+		refresh_view()
 ## A free slot of the 16 is left for Keep both. Without it (or unsaid) Keep both is disabled.
 @export var both_available := false:
 	set(value):
@@ -75,14 +86,17 @@ var model: Dictionary = {}
 var _product: PKeyProductHeader
 var _cols: BoxContainer
 var _body: VBoxContainer
+var _mark: TextureRect
 var _title: Label
 var _lede: Label
 var _cards: BoxContainer
 var _local_card: PanelContainer
 var _local_who: Label
+var _local_newer: Label
 var _local_when: Label
 var _remote_card: PanelContainer
 var _remote_who: Label
+var _remote_newer: Label
 var _remote_when: Label
 var _status_row: HBoxContainer
 var _status_glyph: TextureRect
@@ -94,7 +108,12 @@ var _keep_both: Button
 var _both_full: Label
 var _done_button: Button
 var _retry: Button
+var _choose_again: Button
 var _cancel_button: Button
+## The person has moved the focus (a direction, Tab or a pad press) since the screen opened. Until
+## then a host update or a resize must not scroll the versions away to the focused Cancel.
+var _moved := false
+var _seen_state := ""
 
 
 func _build() -> void:
@@ -104,6 +123,9 @@ func _build() -> void:
 	_product = product_header(body, "Product")
 	_product.card = true
 	var head := vbox(body, "Head", "PKeyTight")
+	# The success mark of `kept`: decorative, above the result title.
+	_mark = glyph_node(head, "Mark", "success")
+	_mark.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_title = label(head, "Title", "PKeyTitle")
 	_cols = columns(body, "Columns")
 	var left := vbox(_cols, "Left", "PKeyStack")
@@ -114,10 +136,12 @@ func _build() -> void:
 	_lede = label(left, "Lede", "PKeyMuted")
 	_cards = columns(left, "Cards")
 	_local_card = _save_card(_cards, "Local")
-	_local_who = _local_card.get_node("Words/Who")
+	_local_who = _local_card.get_node("Words/Head/Who")
+	_local_newer = _local_card.get_node("Words/Head/Newer")
 	_local_when = _local_card.get_node("Words/When")
 	_remote_card = _save_card(_cards, "Remote")
-	_remote_who = _remote_card.get_node("Words/Who")
+	_remote_who = _remote_card.get_node("Words/Head/Who")
+	_remote_newer = _remote_card.get_node("Words/Head/Newer")
 	_remote_when = _remote_card.get_node("Words/When")
 	var st := glyph_label(left, "Status", "info", "PKeyMuted")
 	_status_row = st["row"]
@@ -135,8 +159,9 @@ func _build() -> void:
 	_done_button = button(_actions, "Done", _on_done, "PKeyPrimary")
 	# Try again repeats an overwrite or a deletion: secondary, never the filled control.
 	_retry = button(_actions, "TryAgain", _on_retry)
+	_choose_again = button(_actions, "ChooseAgain", _on_choose_again)
 	_cancel_button = button(_actions, "Cancel", _on_cancel, "PKeyLink")
-	for b in [_keep_local, _keep_remote, _keep_both, _done_button, _retry, _cancel_button]:
+	for b in [_keep_local, _keep_remote, _keep_both, _done_button, _retry, _choose_again, _cancel_button]:
 		(b as Button).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
@@ -149,7 +174,14 @@ func _save_card(parent: Node, node_name: String) -> PanelContainer:
 	p.set_meta(AUTO_HIDE_META, true)
 	parent.add_child(p)
 	var words := vbox(p, "Words", "PKeyTight")
-	label(words, "Who", "PKeyStrong")
+	# Who, and the Newer tag when the app names this version (a tag, never a control).
+	var head := hbox(words, "Head")
+	var who := label(head, "Who", "PKeyStrong")
+	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var tag := label(head, "Newer", "PKeyBadge")
+	tag.autowrap_mode = TextServer.AUTOWRAP_OFF
+	tag.size_flags_horizontal = Control.SIZE_SHRINK_END
+	tag.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	label(words, "When", "PKeyMuted")
 	return p
 
@@ -185,6 +217,7 @@ func _arrange(m: Dictionary) -> void:
 	_fit_choices()
 	_product.visible = squeeze_level() < 1
 	size_glyph(_status_glyph, 20.0, get_theme_color("font_color", "PKeyError" if step == "failed" else "PKeyMuted"))
+	size_glyph(_mark, 32.0, _success_colour())
 	_style_delete(_keep_remote, remote_deleted)
 	_body.theme_type_variation = &"PKeyTight" if squeeze_level() >= 2 else &"PKeyStack"
 
@@ -194,6 +227,11 @@ func _apply_width(width: float) -> void:
 		super(width)
 		return
 	super(minf(role("card_width_wide" if two_pane_fits() else "card_width"), content_room().x))
+
+
+## The success colour of the running scheme.
+func _success_colour() -> Color:
+	return PKeyBrand.Dark.SUCCESS if PKeyUiTheme.is_dark(self) else PKeyBrand.Light.SUCCESS
 
 
 ## "Delete it here too" in the danger colour, outlined and never filled: the choices stay unfilled.
@@ -228,7 +266,7 @@ func _choice_room() -> float:
 
 func _fit_choices() -> void:
 	var room := _choice_room()
-	for b in [_keep_local, _keep_remote, _keep_both, _done_button, _retry, _cancel_button]:
+	for b in [_keep_local, _keep_remote, _keep_both, _done_button, _retry, _choose_again, _cancel_button]:
 		_fit_label(b as Button, room)
 
 
@@ -238,16 +276,10 @@ func _layout_stale() -> bool:
 	if not (is_inside_tree() and is_visible_in_tree()):
 		return false
 	var room := _choice_room()
-	for b in [_keep_local, _keep_remote, _keep_both, _done_button, _retry, _cancel_button]:
+	for b in [_keep_local, _keep_remote, _keep_both, _done_button, _retry, _choose_again, _cancel_button]:
 		if (b as Button).visible and (b as Button).custom_minimum_size.x > room + 0.5:
 			return true
 	return false
-
-
-## The person has moved the focus (a direction, Tab or a pad press) since the screen opened. Until
-## then a host update or a resize must not scroll the versions away to the focused Cancel.
-var _moved := false
-var _seen_state := ""
 
 
 func _input(event: InputEvent) -> void:
@@ -263,7 +295,7 @@ func _input(event: InputEvent) -> void:
 func _reveal_focus() -> void:
 	var f := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
 	var first: Control = null
-	for c in [_keep_local, _keep_remote, _keep_both, _done_button, _retry, _cancel_button]:
+	for c in [_keep_local, _keep_remote, _keep_both, _done_button, _retry, _choose_again, _cancel_button]:
 		if is_focusable(c):
 			first = c
 			break
@@ -280,7 +312,8 @@ func _screen_key() -> String:
 
 
 func _render() -> void:
-	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SaveConflict", PKeySaveConflict.input(step, local_when, remote_when, remote_device, remote_deleted, both_available, keep, sync_on))
+	var inp := PKeySaveConflict.input(step, local_when, remote_when, remote_device, remote_deleted, both_available, keep, sync_on, newer)
+	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SaveConflict", inp)
 	var state: String = model.get("state", "hidden")
 	visible = state != "hidden"
 	if state != _seen_state:
@@ -291,9 +324,17 @@ func _render() -> void:
 	var key_args: Dictionary = model.get("keyArgs", {})
 	var args := {"device": PKeyUiTheme.isolate(remote_device.strip_edges())}
 	var choose := state == "choose"
-	var gone := copy.has("saveConflict.deletedTitle")
-	cat_text(_title, ("saveConflict.deletedTitle" if gone else "saveConflict.title") if visible else "")
+	var gone := copy.has("saveConflict.deletedTitle") or copy.has("saveConflict.keptDeletedTitle") or copy.has("saveConflict.failedDeleted")
+	# The title is the situation's, or the result once the choice is applied.
+	var title_key := ""
+	for k in copy:
+		var ks := String(k)
+		if ks == "saveConflict.title" or ks == "saveConflict.deletedTitle" or (ks.begins_with("saveConflict.kept") and ks.ends_with("Title")):
+			title_key = ks
+	cat_text(_title, title_key if visible else "")
 	cat_text(_lede, ("saveConflict.deletedLede" if gone else "saveConflict.lede") if choose else "")
+	# The success mark is decorative and belongs to `kept` only.
+	_mark.visible = state == "kept"
 	# The two copies: whose they are, and when each was saved.
 	_local_card.visible = choose
 	_remote_card.visible = choose
@@ -302,22 +343,22 @@ func _render() -> void:
 	var who_key := "saveConflict.deletedElsewhere" if gone else ("saveConflict.otherDevice" if copy.has("saveConflict.otherDevice") else "saveConflict.otherUnknown")
 	cat_text(_remote_when, "saveConflict.savedOther" if copy.has("saveConflict.savedOther") else "", key_args.get("saveConflict.savedOther", {}))
 	cat_text(_remote_who, who_key if choose else "", args)
-	# The way on for the state.
+	cat_text(_local_newer, "saveConflict.newerThis" if copy.has("saveConflict.newerThis") else "")
+	cat_text(_remote_newer, "saveConflict.newerOther" if copy.has("saveConflict.newerOther") else "")
+	# The line under the title: the progress, the failure or where the other version went.
 	var status_key := ""
 	match state:
 		"keeping":
 			status_key = "saveConflict.keeping"
 		"failed":
-			status_key = "saveConflict.failed"
+			status_key = "saveConflict.failedDeleted" if copy.has("saveConflict.failedDeleted") else "saveConflict.failed"
 		"kept":
-			for k in ["saveConflict.keptLocal", "saveConflict.keptRemote", "saveConflict.keptBoth", "saveConflict.keptDeleted"]:
-				if copy.has(k):
-					status_key = k
+			status_key = "saveConflict.keptCopy" if copy.has("saveConflict.keptCopy") else ""
 	cat_text(_status, status_key)
-	_status_glyph.set_meta(&"pkey_glyph", {"failed": "warning", "kept": "success"}.get(state, "info"))
-	_status_glyph.visible = _status.visible and state != "keeping"
+	_status_glyph.set_meta(&"pkey_glyph", "warning")
+	_status_glyph.visible = _status.visible and state == "failed"
 	_status.theme_type_variation = &"PKeyError" if state == "failed" else &"PKeyMuted"
-	fx_error("saveConflict.failed" if state == "failed" else "")
+	fx_error("saveConflict.failedDeleted" if copy.has("saveConflict.failedDeleted") else ("saveConflict.failed" if state == "failed" else ""))
 	cat_text(_keep_local, "saveConflict.keepThis" if choose else "")
 	cat_text(_keep_remote, ("saveConflict.acceptDelete" if gone else "saveConflict.keepOther") if choose else "")
 	cat_text(_keep_both, "saveConflict.keepBoth" if copy.has("saveConflict.keepBoth") else "")
@@ -327,14 +368,18 @@ func _render() -> void:
 	cat_text(_both_full, "saveConflict.bothFull" if copy.has("saveConflict.bothFull") else "")
 	cat_text(_done_button, "common.done" if state == "kept" else "")
 	cat_text(_retry, "common.tryAgain" if state == "failed" else "")
+	cat_text(_choose_again, "saveConflict.chooseAgain" if copy.has("saveConflict.chooseAgain") else "")
 	cat_text(_cancel_button, "common.cancel" if copy.has("common.cancel") else "")
 	_actions.visible = state != "keeping" and state != "hidden"
 	set_loading(state == "keeping")
+	# The busy bar is named for a screen reader (the model's a11y.busy); it draws no words.
+	if _loading_bar != null and copy.has("a11y.busy"):
+		name_for_reader(_loading_bar, String(catalog().format("a11y.busy", {})))
 	set_process(state == "keeping")
 
 
 ## The model input of a state (ui-matrix `saveConflict`).
-static func input(p_step: String, p_local_when := "", p_remote_when := "", p_device := "", p_deleted := false, p_both := false, p_keep := "", p_sync_on := true) -> Dictionary:
+static func input(p_step: String, p_local_when := "", p_remote_when := "", p_device := "", p_deleted := false, p_both := false, p_keep := "", p_sync_on := true, p_newer := "") -> Dictionary:
 	var c := {"step": p_step}
 	var local := {}
 	if p_local_when != "":
@@ -353,6 +398,8 @@ static func input(p_step: String, p_local_when := "", p_remote_when := "", p_dev
 		c["bothAvailable"] = true
 	if p_keep != "":
 		c["keep"] = p_keep
+	if p_newer != "":
+		c["newer"] = p_newer
 	var out := {"saveConflict": c}
 	if not p_sync_on:
 		out["services"] = ["license", "config", "release", "distribution", "update", "identity"]
@@ -371,7 +418,7 @@ func _initial_focus() -> Control:
 
 
 func _focus_chain() -> Array:
-	return [_keep_local, _keep_remote, _keep_both, _done_button, _retry, _cancel_button]
+	return [_keep_local, _keep_remote, _keep_both, _done_button, _retry, _choose_again, _cancel_button]
 
 
 func _cancel() -> bool:
@@ -404,6 +451,10 @@ func _on_keep_both() -> void:
 
 func _on_retry() -> void:
 	retry_requested.emit(keep)
+
+
+func _on_choose_again() -> void:
+	choose_again_requested.emit()
 
 
 func _on_done() -> void:

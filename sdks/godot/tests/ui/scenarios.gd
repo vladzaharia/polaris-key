@@ -186,7 +186,7 @@ func all() -> Array:
 	for c in [["synced", "synced"], ["syncing", "syncing"], ["offline", "offline"], ["conflict, Review offered", "conflict"], ["error", "error"], ["error: signed out", "signed-out"], ["locked", "locked"], ["ring changed", "ring-changed"], ["transferring", "transferring"], ["transferring, no figures", "transferring-plain"], ["waiting for a connection", "waiting"], ["waiting for power", "waiting-battery"], ["waiting for the app", "waiting-background"], ["transfer failed", "transfer-failed"]]:
 		out.append(["cloud_sync", c[0], cloud_sync.bind(c[1])])
 	# ── PKeySaveConflict (ui-matrix `saveConflict`, K.5): every state the model has.
-	for c in [["choose", "choose"], ["choose: the other device is not known", "unknown-device"], ["choose: every slot in use", "slots-full"], ["choose: the other copy was deleted", "deleted"], ["keeping", "keeping"], ["kept: this device", "kept-local"], ["kept: the other copy", "kept-remote"], ["kept: both", "kept-both"], ["kept: the deletion", "kept-deleted"], ["failed", "failed"], ["hidden", "hidden"]]:
+	for c in [["choose", "choose"], ["choose: the other device is not known", "unknown-device"], ["choose: every slot in use", "slots-full"], ["choose: the other copy was deleted", "deleted"], ["choose: the other version is newer", "newer-remote"], ["choose: this device's version is newer", "newer-local"], ["keeping", "keeping"], ["keeping: after a deletion elsewhere", "keeping-deleted"], ["kept: this device", "kept-local"], ["kept: the other copy", "kept-remote"], ["kept: both", "kept-both"], ["kept: the deletion", "kept-deleted"], ["kept: this device after a deletion elsewhere", "kept-local-deleted"], ["failed", "failed"], ["failed: after a deletion elsewhere", "failed-deleted"], ["hidden", "hidden"]]:
 		out.append(["save_conflict", c[0], save_conflict.bind(c[1])])
 	# ── The Cloud Sync screens (ui-matrix `cloudSync`, U-42.5): every state the model has.
 	for c in ["code", "code, typed", "invalid", "working", "failed", "start-over-failed", "no-code", "start-over", "hidden"]:
@@ -629,9 +629,23 @@ func save_conflict(kind: String) -> Control:
 			s.both_available = false
 		"deleted":
 			s.remote_deleted = true
+		"newer-remote", "newer-local":
+			s.newer = kind.trim_prefix("newer-")
 		"keeping":
 			s.step = "keeping"
 			s.keep = "local"
+		"keeping-deleted":
+			s.remote_deleted = true
+			s.step = "keeping"
+			s.keep = "remote"
+		"kept-local-deleted":
+			s.remote_deleted = true
+			s.step = "kept"
+			s.keep = "local"
+		"failed-deleted":
+			s.remote_deleted = true
+			s.step = "failed"
+			s.keep = "remote"
 		"kept-local", "kept-remote", "kept-both":
 			s.step = "kept"
 			s.keep = kind.trim_prefix("kept-")

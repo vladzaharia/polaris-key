@@ -3,9 +3,9 @@ Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Head/Title: Label "Two versions of this save"
 Card/Scroll/Body/Columns/Left/Lede: Label "Choose the one to keep. Nothing is deleted until you do."
-Card/Scroll/Body/Columns/Left/Cards/Local/Words/Who: Label "Version on this device"
+Card/Scroll/Body/Columns/Left/Cards/Local/Words/Head/Who: Label "Version on this device"
 Card/Scroll/Body/Columns/Left/Cards/Local/Words/When: Label "Saved today, 14:02"
-Card/Scroll/Body/Columns/Left/Cards/Remote/Words/Who: Label "Version on \u2068Maya’s Steam Deck\u2069"
+Card/Scroll/Body/Columns/Left/Cards/Remote/Words/Head/Who: Label "Version on \u2068Maya’s Steam Deck\u2069"
 Card/Scroll/Body/Columns/Left/Cards/Remote/Words/When: Label "Saved yesterday, 21:40"
 Card/Scroll/Body/Columns/Right/Actions/KeepThis: Button "Keep this device's version" [focus 1]
 Card/Scroll/Body/Columns/Right/Actions/KeepOther: Button "Keep the other version" [focus 2]
@@ -16,9 +16,9 @@ Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Head/Title: Label "Two versions of this save"
 Card/Scroll/Body/Columns/Left/Lede: Label "Choose the one to keep. Nothing is deleted until you do."
-Card/Scroll/Body/Columns/Left/Cards/Local/Words/Who: Label "Version on this device"
+Card/Scroll/Body/Columns/Left/Cards/Local/Words/Head/Who: Label "Version on this device"
 Card/Scroll/Body/Columns/Left/Cards/Local/Words/When: Label "Saved today, 14:02"
-Card/Scroll/Body/Columns/Left/Cards/Remote/Words/Who: Label "Version on another device"
+Card/Scroll/Body/Columns/Left/Cards/Remote/Words/Head/Who: Label "Version on another device"
 Card/Scroll/Body/Columns/Left/Cards/Remote/Words/When: Label "Saved yesterday, 21:40"
 Card/Scroll/Body/Columns/Right/Actions/KeepThis: Button "Keep this device's version" [focus 1]
 Card/Scroll/Body/Columns/Right/Actions/KeepOther: Button "Keep the other version" [focus 2]
@@ -29,9 +29,9 @@ Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Head/Title: Label "Two versions of this save"
 Card/Scroll/Body/Columns/Left/Lede: Label "Choose the one to keep. Nothing is deleted until you do."
-Card/Scroll/Body/Columns/Left/Cards/Local/Words/Who: Label "Version on this device"
+Card/Scroll/Body/Columns/Left/Cards/Local/Words/Head/Who: Label "Version on this device"
 Card/Scroll/Body/Columns/Left/Cards/Local/Words/When: Label "Saved today, 14:02"
-Card/Scroll/Body/Columns/Left/Cards/Remote/Words/Who: Label "Version on \u2068Maya’s Steam Deck\u2069"
+Card/Scroll/Body/Columns/Left/Cards/Remote/Words/Head/Who: Label "Version on \u2068Maya’s Steam Deck\u2069"
 Card/Scroll/Body/Columns/Left/Cards/Remote/Words/When: Label "Saved yesterday, 21:40"
 Card/Scroll/Body/Columns/Right/Actions/KeepThis: Button "Keep this device's version" [focus 1]
 Card/Scroll/Body/Columns/Right/Actions/KeepOther: Button "Keep the other version" [focus 2]
@@ -43,44 +43,80 @@ Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Head/Title: Label "This save was deleted elsewhere"
 Card/Scroll/Body/Columns/Left/Lede: Label "Keep it on this device, or delete it here too."
-Card/Scroll/Body/Columns/Left/Cards/Local/Words/Who: Label "Version on this device"
+Card/Scroll/Body/Columns/Left/Cards/Local/Words/Head/Who: Label "Version on this device"
 Card/Scroll/Body/Columns/Left/Cards/Local/Words/When: Label "Saved today, 14:02"
-Card/Scroll/Body/Columns/Left/Cards/Remote/Words/Who: Label "Deleted on another device"
+Card/Scroll/Body/Columns/Left/Cards/Remote/Words/Head/Who: Label "Deleted on another device"
 Card/Scroll/Body/Columns/Right/Actions/KeepThis: Button "Keep this device's version" [focus 1]
 Card/Scroll/Body/Columns/Right/Actions/KeepOther: Button "Delete it here too" [focus 2]
 Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 3]
+== choose: the other version is newer ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Head/Title: Label "Two versions of this save"
+Card/Scroll/Body/Columns/Left/Lede: Label "Choose the one to keep. Nothing is deleted until you do."
+Card/Scroll/Body/Columns/Left/Cards/Local/Words/Head/Who: Label "Version on this device"
+Card/Scroll/Body/Columns/Left/Cards/Local/Words/When: Label "Saved today, 14:02"
+Card/Scroll/Body/Columns/Left/Cards/Remote/Words/Head/Who: Label "Version on \u2068Maya’s Steam Deck\u2069"
+Card/Scroll/Body/Columns/Left/Cards/Remote/Words/Head/Newer: Label "Newer"
+Card/Scroll/Body/Columns/Left/Cards/Remote/Words/When: Label "Saved yesterday, 21:40"
+Card/Scroll/Body/Columns/Right/Actions/KeepThis: Button "Keep this device's version" [focus 1]
+Card/Scroll/Body/Columns/Right/Actions/KeepOther: Button "Keep the other version" [focus 2]
+Card/Scroll/Body/Columns/Right/Actions/KeepBoth: Button "Keep both" [focus 3]
+Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 4]
+== choose: this device's version is newer ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Head/Title: Label "Two versions of this save"
+Card/Scroll/Body/Columns/Left/Lede: Label "Choose the one to keep. Nothing is deleted until you do."
+Card/Scroll/Body/Columns/Left/Cards/Local/Words/Head/Who: Label "Version on this device"
+Card/Scroll/Body/Columns/Left/Cards/Local/Words/Head/Newer: Label "Newer"
+Card/Scroll/Body/Columns/Left/Cards/Local/Words/When: Label "Saved today, 14:02"
+Card/Scroll/Body/Columns/Left/Cards/Remote/Words/Head/Who: Label "Version on \u2068Maya’s Steam Deck\u2069"
+Card/Scroll/Body/Columns/Left/Cards/Remote/Words/When: Label "Saved yesterday, 21:40"
+Card/Scroll/Body/Columns/Right/Actions/KeepThis: Button "Keep this device's version" [focus 1]
+Card/Scroll/Body/Columns/Right/Actions/KeepOther: Button "Keep the other version" [focus 2]
+Card/Scroll/Body/Columns/Right/Actions/KeepBoth: Button "Keep both" [focus 3]
+Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 4]
 == keeping ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Head/Title: Label "Two versions of this save"
 Card/Scroll/Body/Columns/Left/StatusRow/Status: Label "Keeping your choice…"
+== keeping: after a deletion elsewhere ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Head/Title: Label "This save was deleted elsewhere"
+Card/Scroll/Body/Columns/Left/StatusRow/Status: Label "Keeping your choice…"
 == kept: this device ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Two versions of this save"
-Card/Scroll/Body/Columns/Left/StatusRow/StatusGlyph: TextureRect
-Card/Scroll/Body/Columns/Left/StatusRow/Status: Label "Kept this device's save."
+Card/Scroll/Body/Head/Mark: TextureRect
+Card/Scroll/Body/Head/Title: Label "Kept this device's version"
 Card/Scroll/Body/Columns/Right/Actions/Done: Button "Done" [focus 1]
 == kept: the other copy ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Two versions of this save"
-Card/Scroll/Body/Columns/Left/StatusRow/StatusGlyph: TextureRect
-Card/Scroll/Body/Columns/Left/StatusRow/Status: Label "Kept the other save."
+Card/Scroll/Body/Head/Mark: TextureRect
+Card/Scroll/Body/Head/Title: Label "Kept the other version"
 Card/Scroll/Body/Columns/Right/Actions/Done: Button "Done" [focus 1]
 == kept: both ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Two versions of this save"
-Card/Scroll/Body/Columns/Left/StatusRow/StatusGlyph: TextureRect
-Card/Scroll/Body/Columns/Left/StatusRow/Status: Label "Kept both. The other is saved as a copy."
+Card/Scroll/Body/Head/Mark: TextureRect
+Card/Scroll/Body/Head/Title: Label "Kept both versions"
+Card/Scroll/Body/Columns/Left/StatusRow/Status: Label "The other version is saved as a copy."
 Card/Scroll/Body/Columns/Right/Actions/Done: Button "Done" [focus 1]
 == kept: the deletion ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Two versions of this save"
-Card/Scroll/Body/Columns/Left/StatusRow/StatusGlyph: TextureRect
-Card/Scroll/Body/Columns/Left/StatusRow/Status: Label "The save is deleted."
+Card/Scroll/Body/Head/Mark: TextureRect
+Card/Scroll/Body/Head/Title: Label "Save deleted"
+Card/Scroll/Body/Columns/Right/Actions/Done: Button "Done" [focus 1]
+== kept: this device after a deletion elsewhere ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Head/Mark: TextureRect
+Card/Scroll/Body/Head/Title: Label "Kept this device's version"
 Card/Scroll/Body/Columns/Right/Actions/Done: Button "Done" [focus 1]
 == failed ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
@@ -89,7 +125,17 @@ Card/Scroll/Body/Head/Title: Label "Two versions of this save"
 Card/Scroll/Body/Columns/Left/StatusRow/StatusGlyph: TextureRect
 Card/Scroll/Body/Columns/Left/StatusRow/Status: Label "Couldn't keep your choice. Both saves are unchanged."
 Card/Scroll/Body/Columns/Right/Actions/TryAgain: Button "Try again" [focus 1]
-Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 2]
+Card/Scroll/Body/Columns/Right/Actions/ChooseAgain: Button "Choose again" [focus 2]
+Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 3]
+== failed: after a deletion elsewhere ==
+Card/Scroll/Body/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Head/Title: Label "This save was deleted elsewhere"
+Card/Scroll/Body/Columns/Left/StatusRow/StatusGlyph: TextureRect
+Card/Scroll/Body/Columns/Left/StatusRow/Status: Label "Couldn't keep your choice. Your save is unchanged."
+Card/Scroll/Body/Columns/Right/Actions/TryAgain: Button "Try again" [focus 1]
+Card/Scroll/Body/Columns/Right/Actions/ChooseAgain: Button "Choose again" [focus 2]
+Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 3]
 == hidden ==
 <hidden>
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"

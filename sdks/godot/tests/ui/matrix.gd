@@ -389,9 +389,12 @@ const SCREENS := [
 	["save_conflict.unknown_device", "save_conflict", "choose: the other device is not known", "full"],
 	["save_conflict.slots_full", "save_conflict", "choose: every slot in use", "full"],
 	["save_conflict.deleted", "save_conflict", "choose: the other copy was deleted", "full"],
+	["save_conflict.newer", "save_conflict", "choose: the other version is newer", "full"],
 	["save_conflict.keeping", "save_conflict", "keeping", "full"],
+	["save_conflict.keeping_deleted", "save_conflict", "keeping: after a deletion elsewhere", "full"],
 	["save_conflict.kept", "save_conflict", "kept: both", "full"],
 	["save_conflict.failed", "save_conflict", "failed", "full"],
+	["save_conflict.failed_deleted", "save_conflict", "failed: after a deletion elsewhere", "full"],
 	# TV focus: a pad only, no pointer. The first focus is Cancel, never a control that overwrites.
 	["save_conflict.pad", "save_conflict", "choose: every slot in use", "full", "pad"],
 	["save_conflict.failed_pad", "save_conflict", "failed", "full", "pad"],

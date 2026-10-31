@@ -496,8 +496,11 @@ key ring calls on `PolarisKey.keyring` through `PKeyCloudSyncController` unless 
   `background`) and `transfer-failed` (a secondary **Try again**, signal `retry_requested`). None of
   them ever says synced.
 - **`PKeySaveConflict`.** The same save changed on two devices (not bound to a live client yet: set
-  `step`, `local_when`, `remote_when`, `remote_device`, `remote_deleted`, `both_available`, `keep`
-  and connect the signals). It offers **Keep this device's version**, **Keep the other version** and
+  `step`, `local_when`, `remote_when`, `remote_device`, `remote_deleted`, `both_available`, `keep`,
+  `newer` and connect the signals). `newer` (`"local"` or `"remote"`, from your own metadata) tags that
+  card **Newer**; it chooses nothing and never shows when the other copy was deleted. Once applied it
+  titles itself with the result under a success mark; a failure offers **Try again**, **Choose
+  again** (`choose_again_requested()`: set `step` back to `"choose"`) and **Cancel**, none filled. It offers **Keep this device's version**, **Keep the other version** and
   **Keep both** as one unfilled column, none the default; the first focus is **Cancel**. **Keep both**
   stays on screen, disabled with its reason, while all 16 save slots are in use. When the other copy
   was deleted it has its own title and lede and **Delete it here too** in place of the other two.
