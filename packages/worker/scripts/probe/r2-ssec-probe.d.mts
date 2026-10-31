@@ -4,7 +4,7 @@ export interface ProbeCheck {
   detail?: string;
 }
 export interface SsecReport {
-  verdict: "supported" | "fallback";
+  verdict: "supported" | "unsupported";
   supported: boolean;
   checks: ProbeCheck[];
 }

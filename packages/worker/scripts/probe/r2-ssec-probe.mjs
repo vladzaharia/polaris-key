@@ -1,16 +1,20 @@
-// The R2 SSE-C probe (U-10.1; plans/U-10-U-11a-slices.md §2.8, D-8).
+// The R2 SSE-C probe (U-10.1; plans/U-10-U-11a-slices.md §2.8, D-8; U-44 F4).
 //
-// Cloud Sync wants to keep a server-mode file under a customer-provided key (`ssecKey`), kept in
-// the DO's `ssec_keys` table and shredded with the person's data. Whether R2 accepts `ssecKey`
-// on every call the file path makes is a fact about R2, not something the code can assume, so
-// this module asks it. It runs against any object shaped like an `R2Bucket`: miniflare's in the
+// Cloud Sync keeps a server-mode file under a customer-provided key (`ssecKey`), one random key
+// per person, kept in the person's object (`ssec_keys`) and shredded with the person's data.
+// Whether R2 accepts and enforces `ssecKey` on every call the file path makes is a fact about R2,
+// not something the code can assume, so this module asks it, call by call: the key as the 64
+// character hex string the code sends on every keyed call (with one raw-buffer cross-check), the
+// metadata and checksum read of `head`, whole and ranged `get`, the create-only `put`, multipart
+// through resumed handles, `list`, and the `delete` and `abort` that run after the key is shredded
+// (they send no key). It runs against any object shaped like an `R2Bucket`: miniflare's in the
 // workerd lane (`test-workerd/syncFilesR2.test.ts`) and a real bucket through
 // `scripts/probe/r2-ssec.mjs`.
 //
-// The verdict is binary and drives D-8:
-//   `supported`  every check passed: the DO stores an SSE-C key per file (`ssec_keys`);
-//   `fallback`   any check failed: server-mode files are sealed as `pkey-sync-file/1` under the
-//                same per-principal key instead (plan §1.8). Neither path changes the wire.
+// The verdict is binary:
+//   `supported`    every check passed: `launch.syncFiles` may be turned on;
+//   `unsupported`  any check failed: `launch.syncFiles` stays off. There is no unsealed path for a
+//                  server-mode file; any other storage path is its own work package and review.
 //
 // A check passes only when the key does real work, so a bucket that accepts the option and
 // ignores it fails: an object stored under a key must refuse a read with no key or a wrong one.
@@ -94,11 +98,11 @@ async function refuses(f) {
 
 /**
  * @typedef {{ name: string; ok: boolean; detail?: string }} ProbeCheck
- * @typedef {{ verdict: "supported" | "fallback"; supported: boolean; checks: ProbeCheck[] }} SsecReport
+ * @typedef {{ verdict: "supported" | "unsupported"; supported: boolean; checks: ProbeCheck[] }} SsecReport
  */
 
 /**
- * Ask a bucket whether SSE-C works on put, get, `createMultipartUpload` and `uploadPart`.
+ * Ask a bucket whether SSE-C works on every call the file path makes.
  * @param {R2Bucket} bucket
  * @param {{ prefix?: string }} [options]
  * @returns {Promise<SsecReport>}
@@ -108,11 +112,12 @@ export async function probeSsec(bucket, options = {}) {
   const keyBytes = random(SSEC_KEY_BYTES);
   const otherBytes = random(SSEC_KEY_BYTES);
   const keyHex = hex(keyBytes);
-  const secrets = [keyHex, hex(otherBytes)];
-  const key = keyBytes.buffer.slice(0);
-  const other = otherBytes.buffer.slice(0);
+  const otherHex = hex(otherBytes);
+  const secrets = [keyHex, otherHex];
+  const keyBuffer = keyBytes.buffer.slice(0);
   /** @type {ProbeCheck[]} */
   const checks = [];
+  /** @type {string[]} */
   const written = [];
   /** @type {R2MultipartUpload | undefined} */
   let open;
@@ -130,18 +135,27 @@ export async function probeSsec(bucket, options = {}) {
   const must = (cond, why) => {
     if (!cond) throw new Error(why);
   };
+  /** @param {R2ObjectBody | null} got @param {Uint8Array} want @param {string} what */
+  const mustRead = async (got, want, what) => {
+    must(got !== null, `${what} found nothing`);
+    must(
+      same(new Uint8Array(await got.arrayBuffer()), want),
+      `${what} returned other bytes`,
+    );
+  };
 
   const body = random(2048);
   const bodyHash = await digestStreamSha256(body);
-
-  // 1. put: a streamed body with the `sha256` option and a key (D-7: the Worker streams the
-  //    bytes, R2 verifies the digest).
   const single = `${prefix}single`;
   written.push(single);
+
+  // 1. put: a streamed body with the `sha256` option, the hex key and the create-only condition
+  //    (D-7: the Worker streams the bytes, R2 verifies the digest).
   await check("put", async () => {
     const obj = await bucket.put(single, bodyOf(body), {
       sha256: bodyHash,
-      ssecKey: key,
+      ssecKey: keyHex,
+      onlyIf: { etagDoesNotMatch: "*" },
     });
     must(obj !== null, "put answered null");
     must(obj.size === body.length, "put stored the wrong size");
@@ -150,14 +164,41 @@ export async function probeSsec(bucket, options = {}) {
       "the stored object carries no ssecKeyMd5, so the key was ignored",
     );
   });
-
-  // 2. get: the right key returns the bytes, and the key does real work.
-  await check("get", async () => {
-    const got = await bucket.get(single, { ssecKey: key });
-    must(got !== null, "get with the key found nothing");
+  // The resend of a landed PUT: the same create-only put answers null, it does not throw.
+  await check("put-create-only", async () => {
+    const again = await bucket.put(single, bodyOf(body), {
+      sha256: bodyHash,
+      ssecKey: keyHex,
+      onlyIf: { etagDoesNotMatch: "*" },
+    });
+    must(again === null, "a second create-only put was not refused with null");
+  });
+  // 2. head: no key, and the stored checksum finalize and the resend read.
+  await check("head", async () => {
+    const h = await bucket.head(single);
+    must(h !== null, "head found nothing");
+    must(h.size === body.length, "head answered the wrong size");
+  });
+  await check("head-checksum", async () => {
+    const h = await bucket.head(single);
+    must(h !== null, "head found nothing");
+    const sum = h.checksums?.sha256;
+    must(sum !== undefined, "head carries no stored sha256");
     must(
-      same(new Uint8Array(await got.arrayBuffer()), body),
-      "get with the key returned other bytes",
+      same(new Uint8Array(sum), bodyHash),
+      "head's stored sha256 is not the body's",
+    );
+  });
+
+  // 3. get: whole and ranged, the hex key, and the key does real work.
+  await check("get", async () => {
+    await mustRead(await bucket.get(single, { ssecKey: keyHex }), body, "get");
+  });
+  await check("get-key-as-buffer", async () => {
+    await mustRead(
+      await bucket.get(single, { ssecKey: keyBuffer }),
+      body,
+      "get with the raw key",
     );
   });
   await check("get-without-key-refused", async () => {
@@ -165,40 +206,61 @@ export async function probeSsec(bucket, options = {}) {
     must(r === "refused", `get with no key was ${r}`);
   });
   await check("get-wrong-key-refused", async () => {
-    const r = await refuses(() => bucket.get(single, { ssecKey: other }));
+    const r = await refuses(() => bucket.get(single, { ssecKey: otherHex }));
     must(r === "refused", `get with a wrong key was ${r}`);
   });
-  await check("get-key-as-hex", async () => {
-    const got = await bucket.get(single, { ssecKey: keyHex });
-    must(got !== null, "get with the hex key found nothing");
-    must(
-      same(new Uint8Array(await got.arrayBuffer()), body),
-      "get with the hex key returned other bytes",
+  await check("ranged-get", async () => {
+    await mustRead(
+      await bucket.get(single, {
+        ssecKey: keyHex,
+        range: { offset: 100, length: 50 },
+      }),
+      body.subarray(100, 150),
+      "ranged get",
+    );
+    await mustRead(
+      await bucket.get(single, {
+        ssecKey: keyHex,
+        range: { offset: body.length - 50, length: 50 },
+      }),
+      body.subarray(body.length - 50),
+      "ranged get to the last byte",
     );
   });
+  await check("ranged-get-without-key-refused", async () => {
+    const r = await refuses(() =>
+      bucket.get(single, { range: { offset: 100, length: 50 } }),
+    );
+    must(r === "refused", `ranged get with no key was ${r}`);
+  });
 
-  // 3. multipart: `createMultipartUpload` and `uploadPart` take the key, `complete` yields an
-  //    object only that key opens. One part, so the 5 MiB minimum of a non-final part does not
-  //    apply; the part is hashed with `DigestStream` as the Worker does.
+  // 4. multipart, through resumed handles as the Worker uses them. One part, so the 5 MiB
+  //    minimum of a non-final part does not apply; the part is hashed with `DigestStream`.
   const multi = `${prefix}multi`;
   written.push(multi);
   const part = random(4096);
+  /** @type {string | undefined} */
+  let uploadId;
   await check("createMultipartUpload", async () => {
-    open = await bucket.createMultipartUpload(multi, { ssecKey: key });
+    open = await bucket.createMultipartUpload(multi, { ssecKey: keyHex });
+    uploadId = open.uploadId;
     must(open.uploadId.length > 0, "no upload id");
   });
   /** @type {R2UploadedPart | undefined} */
   let uploaded;
   await check("uploadPart", async () => {
-    must(open !== undefined, "no multipart upload to add a part to");
+    must(uploadId !== undefined, "no multipart upload to add a part to");
     const hash = await digestStreamSha256(part);
     must(hash.length === 32, "DigestStream returned a short digest");
-    uploaded = await open.uploadPart(1, bodyOf(part), { ssecKey: key });
+    const handle = bucket.resumeMultipartUpload(multi, uploadId);
+    uploaded = await handle.uploadPart(1, bodyOf(part), { ssecKey: keyHex });
     must(uploaded.partNumber === 1, "uploadPart answered another part number");
   });
   await check("complete", async () => {
-    must(open !== undefined && uploaded !== undefined, "no uploaded part");
-    const obj = await open.complete([uploaded]);
+    must(uploadId !== undefined && uploaded !== undefined, "no uploaded part");
+    const obj = await bucket
+      .resumeMultipartUpload(multi, uploadId)
+      .complete([uploaded]);
     open = undefined;
     must(obj.size === part.length, "complete stored the wrong size");
     must(
@@ -206,15 +268,66 @@ export async function probeSsec(bucket, options = {}) {
       "the completed object carries no ssecKeyMd5",
     );
   });
+  await check("multipart-head", async () => {
+    const h = await bucket.head(multi);
+    must(h !== null, "head of the multipart object found nothing");
+    must(h.size === part.length, "head answered the wrong size");
+    return h.checksums?.sha256 ? undefined : "no stored sha256 (recorded)";
+  });
   await check("multipart-get", async () => {
-    const got = await bucket.get(multi, { ssecKey: key });
-    must(got !== null, "get of the multipart object found nothing");
-    must(
-      same(new Uint8Array(await got.arrayBuffer()), part),
-      "get of the multipart object returned other bytes",
+    await mustRead(
+      await bucket.get(multi, { ssecKey: keyHex }),
+      part,
+      "get of the multipart object",
     );
     const r = await refuses(() => bucket.get(multi));
     must(r === "refused", `get of the multipart object with no key was ${r}`);
+  });
+
+  // 5. abort with no key, as the erasure does after the key is shredded.
+  const aborted = `${prefix}aborted`;
+  /** @type {string | undefined} */
+  let abortId;
+  await check("abort", async () => {
+    const up = await bucket.createMultipartUpload(aborted, { ssecKey: keyHex });
+    abortId = up.uploadId;
+    await bucket
+      .resumeMultipartUpload(aborted, abortId)
+      .uploadPart(1, bodyOf(part), { ssecKey: keyHex });
+    await bucket.resumeMultipartUpload(aborted, abortId).abort();
+    const left = await bucket.list({ prefix: aborted });
+    must(
+      left.objects.length === 0,
+      "an aborted upload left an object in the listing",
+    );
+  });
+  // R2's answer to a second abort, recorded for a later change (not a verdict input).
+  await check("abort-again", async () => {
+    if (abortId === undefined) return "no upload to abort again";
+    try {
+      await bucket.resumeMultipartUpload(aborted, abortId).abort();
+      return "second abort resolved";
+    } catch (err) {
+      return `second abort threw: ${describe(err, secrets)}`;
+    }
+  });
+
+  // 6. list and delete with no key, as the erasure does.
+  await check("list", async () => {
+    const listed = await bucket.list({ prefix });
+    const names = listed.objects.map((o) => o.key);
+    must(
+      names.includes(single) && names.includes(multi),
+      "list did not return the stored objects",
+    );
+  });
+  await check("delete", async () => {
+    await bucket.delete([single, multi]);
+    must((await bucket.head(single)) === null, "delete left the single object");
+    must(
+      (await bucket.head(multi)) === null,
+      "delete left the multipart object",
+    );
   });
 
   // Clean up. Failures here are not a verdict, and the probe prefix is throwaway.
@@ -230,5 +343,9 @@ export async function probeSsec(bucket, options = {}) {
   }
 
   const supported = checks.every((c) => c.ok);
-  return { verdict: supported ? "supported" : "fallback", supported, checks };
+  return {
+    verdict: supported ? "supported" : "unsupported",
+    supported,
+    checks,
+  };
 }

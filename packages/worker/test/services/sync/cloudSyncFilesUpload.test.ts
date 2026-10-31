@@ -18,6 +18,7 @@ import {
   begin,
   beginBody,
   breakLimiter,
+  r2Writes,
   bytesOf,
   call,
   digestHeader,
@@ -93,6 +94,64 @@ const bodyOf = async (w: FilesWorld, key: string): Promise<Uint8Array> => {
   if (!obj || !("arrayBuffer" in obj)) throw new Error(`no object at ${key}`);
   return new Uint8Array(await obj.arrayBuffer());
 };
+
+describe("the person's key", () => {
+  it("a server-mode file is stored only under the person's key, in single and multipart mode", async () => {
+    const w = await filesWorld();
+    const small = bytesOf(100);
+    const big = bytesOf(20 * MIB);
+    const one = await opened(w, "saves", "s1", small);
+    expect(
+      (await putBytes(w, uploadPath("saves", "s1", one.uploadId), small))
+        .status,
+    ).toBe(204);
+    const many = await opened(w, "big", "m1", big);
+    for (let n = 1; n <= Math.ceil(big.length / many.partBytes!); n++)
+      expect(
+        (
+          await putBytes(
+            w,
+            partPath("big", "m1", many.uploadId, n),
+            big.subarray(
+              (n - 1) * many.partBytes!,
+              Math.min(n * many.partBytes!, big.length),
+            ),
+          )
+        ).status,
+      ).toBe(204);
+    for (const [c, id, up] of [
+      ["saves", "s1", one],
+      ["big", "m1", many],
+    ] as const)
+      expect((await finalize(w, c, id, up.uploadId)).status).toBe(200);
+    const keys = w.r2.keys();
+    expect(keys.length).toBe(2);
+    const personKey = w.r2.ssecOf(keys[0] as string);
+    expect(personKey).toMatch(/^[0-9a-f]{64}$/);
+    for (const k of keys) {
+      expect(w.r2.ssecOf(k)).toBe(personKey);
+      await expect(w.r2.get(k)).rejects.toThrow();
+    }
+
+    // An end-to-end file is ciphertext already and carries no key.
+    const e2e = await filesWorld({
+      catalog: {
+        schemaVersion: 1,
+        entries: [],
+        cloudSync: { collections: [{ name: "saves", template: "saves" }] },
+      },
+    });
+    const blinded = `x:${"A".repeat(43)}`;
+    const sealed = bytesOf(100);
+    const up = await opened(e2e, "saves", blinded, sealed, { enc: "e2e" });
+    expect(
+      (await putBytes(e2e, uploadPath("saves", blinded, up.uploadId), sealed))
+        .status,
+    ).toBe(204);
+    expect(e2e.r2.keys().length).toBe(1);
+    expect(e2e.r2.ssecOf(e2e.r2.keys()[0] as string)).toBeUndefined();
+  });
+});
 
 describe("PUT …/upload/{uploadId}: a single upload", () => {
   it("stores the bytes at the session's key, verified, and records part 1", async () => {
@@ -508,9 +567,28 @@ describe("the byte routes' front door", () => {
     ).toBe(204);
   });
 
-  it("limiter down: it fails open", async () => {
+  it("a part PUT and a single PUT refuse with 503 when the limiter cannot be read, with no R2 call", async () => {
     const { w, bytes, up } = await single(100);
-    breakLimiter(w);
+    const big = await opened(w, "saves", "m1", bytesOf(9 * MIB));
+    const restore = breakLimiter(w);
+    const refused: Response[] = [];
+    const writes = await r2Writes(w, async () => {
+      refused.push(
+        await putBytes(w, uploadPath("saves", "s1", up.uploadId), bytes),
+        await putBytes(
+          w,
+          partPath("saves", "m1", big.uploadId, 1),
+          bytesOf(8 * MIB),
+        ),
+      );
+    });
+    for (const res of refused) {
+      expect([res.status, await errorCode(res)]).toEqual([503, "unavailable"]);
+      expect(res.headers.get("retry-after")).toBe("5");
+    }
+    expect(writes).toBe(0);
+    expect(w.r2.keys()).toEqual([]);
+    restore();
     expect(
       (await putBytes(w, uploadPath("saves", "s1", up.uploadId), bytes)).status,
     ).toBe(204);

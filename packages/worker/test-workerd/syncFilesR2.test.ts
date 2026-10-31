@@ -3,7 +3,7 @@
 //
 // The file path (plans/U-10-U-11a-slices.md D-7) streams a body into `put(key, {sha256})`, hashes
 // each multipart part with `DigestStream`, and may keep a customer-provided key (`ssecKey`) per
-// file (D-8). This lane runs those calls against the real binding, and runs the SSE-C probe the
+// person (D-8). This lane runs those calls against the real binding, and runs the SSE-C probe the
 // staging script runs against a real bucket (`scripts/probe/r2-ssec.mjs`), so the answer to "does
 // R2 accept SSE-C" is recorded here and not assumed.
 
@@ -70,23 +70,33 @@ describe("the SYNC_FILES binding (workerd)", () => {
   });
 
   it(
-    "answers the SSE-C probe on put, get, createMultipartUpload and uploadPart",
+    "the SSE-C probe asks R2 about every call the file path makes",
     R2_LANE,
     async () => {
       const report = await probeSsec(bucket());
       expect(report.checks.map((c) => c.name)).toEqual([
         "put",
+        "put-create-only",
+        "head",
+        "head-checksum",
         "get",
+        "get-key-as-buffer",
         "get-without-key-refused",
         "get-wrong-key-refused",
-        "get-key-as-hex",
+        "ranged-get",
+        "ranged-get-without-key-refused",
         "createMultipartUpload",
         "uploadPart",
         "complete",
+        "multipart-head",
         "multipart-get",
+        "abort",
+        "abort-again",
+        "list",
+        "delete",
       ]);
       expect(report.supported).toBe(report.checks.every((c) => c.ok));
-      // Recorded 2026-10-29 (miniflare in the pinned pool): the binding ACCEPTS `ssecKey` on put,
+      // Recorded 2026-10-29, widened 2026-10-31 for the ranged-read refusal (miniflare in the pinned pool): the binding ACCEPTS `ssecKey` on put,
       // get, `createMultipartUpload`, `uploadPart` and `complete` (those calls and the key-bearing
       // reads pass), but it does not ENFORCE it: the stored object carries no `ssecKeyMd5`, and a
       // read with no key or a wrong one is served. So miniflare proves the calls are shaped right
@@ -97,10 +107,11 @@ describe("the SYNC_FILES binding (workerd)", () => {
         "put",
         "get-without-key-refused",
         "get-wrong-key-refused",
+        "ranged-get-without-key-refused",
         "complete",
         "multipart-get",
       ]);
-      expect(report.verdict).toBe("fallback");
+      expect(report.verdict).toBe("unsupported");
       // The probe leaves nothing behind.
       expect((await bucket().list({ prefix: "probe/" })).objects).toEqual([]);
     },

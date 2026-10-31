@@ -25,7 +25,6 @@ import {
   checkBegin,
   commitBegin,
   commitFinalize,
-  FILE_SSEC,
   FINALIZE_LEASE_MS,
   fileObjectKey,
   finalizeLease,
@@ -133,7 +132,7 @@ export async function discard(
 const SSEC_KID = "ssec_kid";
 
 /** Whether an upload of this `enc` is stored under the person's SSE-C key. */
-const sealed = (enc: UploadRow["enc"]): boolean => FILE_SSEC && enc === "none";
+const sealed = (enc: UploadRow["enc"]): boolean => enc === "none";
 
 /**
  * The person's SSE-C key id, made on first use: a random 256-bit key kept in `ssec_keys` and shredded

@@ -11,8 +11,9 @@
  *
  *   1. The file routes' front door (`fileCall`): the gate, the principal, the limiter. A whole-file
  *      `GET` is one of 30 transfers a device an hour; a request for one byte range is one of 600
- *      requests a minute. A range that turns out to be the whole file is charged as the transfer it
- *      is (step 4), so `Range: bytes=0-` is no way round the hourly limit.
+ *      requests a minute. A ranged request answered with the whole file (a range that covers it, or an
+ *      `If-Range` that does not match) is charged as the transfer it is (step 4), so neither is a
+ *      way round the hourly limit.
  *   2. `?version=` is a positive integer, else `400 bad_request`.
  *   3. The object resolves the file from its own rows: the R2 key, the size and the hash. The
  *      request names a record and a version and nothing else; no key, prefix or bucket is ever read
@@ -115,8 +116,12 @@ export async function handleFileGet(
     headers.delete("content-disposition");
     return new Response(null, { status: 416, headers });
   }
-  // A range that is the whole file is a whole-file transfer: it spends the hourly allowance too.
-  if (range && range.offset === 0 && range.length === file.size) {
+  // A whole-file answer is a transfer: it spends the hourly allowance too, whether the range
+  // covers the file or an `If-Range` mismatch dropped it (a ranged request is on the minute bucket).
+  if (
+    ranged &&
+    (range === null || (range.offset === 0 && range.length === file.size))
+  ) {
     const limited = await filesLimited(
       env,
       product.slug,

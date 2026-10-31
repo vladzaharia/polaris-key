@@ -21,7 +21,9 @@ import {
   beginBody,
   bytesOf,
   call,
+  breakLimiter,
   errorCode,
+  r2Writes,
   filesWorld,
   finalize,
   push,
@@ -130,6 +132,24 @@ async function putRecord(
     version?: number;
   };
 }
+
+describe("POST …/finalize: the limiter", () => {
+  it("finalize refuses with 503 when the limiter cannot be read and completes once it can", async () => {
+    const { w, up } = await pinnedSingle(100);
+    const restore = breakLimiter(w);
+    let res!: Response;
+    const writes = await r2Writes(w, async () => {
+      res = await finalize(w, "saves", "s1", up.uploadId);
+    });
+    expect([res.status, await errorCode(res)]).toEqual([503, "unavailable"]);
+    expect(res.headers.get("retry-after")).toBe("5");
+    expect(writes).toBe(0);
+    expect(rows(w, "SELECT 1 FROM files")).toEqual([]);
+    restore();
+    await finalized(await finalize(w, "saves", "s1", up.uploadId));
+    expect(rows(w, "SELECT 1 FROM files").length).toBe(1);
+  });
+});
 
 describe("POST …/finalize: a single upload", () => {
   it("makes the file the record's: a new version, the bytes charged, the reservation released", async () => {

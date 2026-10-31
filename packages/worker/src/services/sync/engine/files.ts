@@ -65,15 +65,6 @@ export function syncTransferPlan(size: number, delta: boolean): TransferPlan {
   return { mode: "multipart", partBytes, parts: Math.ceil(size / partBytes) };
 }
 
-/**
- * Whether server-mode files (`enc: "none"`) are stored under a per-person SSE-C key (D-8): `true`
- * until the staging probe (`scripts/probe/r2-ssec.mjs`, U-10.W) says R2 refuses `ssecKey` on the
- * paths a file takes, when the plan's fallback (sealing the stream as `pkey-sync-file/1`) replaces
- * it. Neither changes the wire. End-to-end files (`enc: "e2e"`) are ciphertext already and never
- * take it.
- */
-export const FILE_SSEC = true;
-
 /** The R2 key of an upload's object. Only ever built here, from the pin and a session id. */
 export const fileObjectKey = (
   pin: { product: string; subject: string },

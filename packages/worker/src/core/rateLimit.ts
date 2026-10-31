@@ -296,8 +296,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   syncPull: "open",
   // The Cloud Sync file routes (U-10): `begin` and whole-file `GET` per device an hour, parts,
   // chunks, status and ranged reads per device a minute. The same reasoning as the push: a live
-  // device token and a principal, a cost budget, nothing secret behind it, and the person's
-  // object bounds the work.
+  // device token and a principal, a cost budget, nothing secret behind it. These two rows are the
+  // READS' mode: the write calls (begin, PUT, chunk plan, finalize) refuse when the limiter cannot
+  // be read, in `services/sync/limits.ts` (`rateLimitCheck`, 503 unavailable), because they
+  // create R2 state the person's object does not meter operation by operation.
   syncFilesDevice: "open",
   syncParts: "open",
 };
@@ -356,16 +358,18 @@ export function rateLimitShard(product: string, rl: RateLimit): string {
 }
 
 /**
- * Returns true if the call is within the limit (and counts it), false if it should 429. With
- * `peek`, answers the same without counting.
+ * The limiter's three answers: within the limit (and counted), over it, or unreadable (a throw,
+ * a non-2xx, a malformed body). With `peek`, answers the same without counting. A caller that
+ * must refuse when the limiter is down (the Cloud Sync file writes) reads `unavailable` itself;
+ * `rateLimitOk` applies the bucket's fail mode for everyone else.
  */
-export async function rateLimitOk(
+export async function rateLimitCheck(
   env: Env,
   product: string,
   rl: RateLimit,
   now: number,
   peek = false,
-): Promise<boolean> {
+): Promise<"ok" | "limited" | "unavailable"> {
   try {
     const stub = env.RL.get(env.RL.idFromName(rateLimitShard(product, rl)));
     const res = await stub.fetch("https://rl/check", {
@@ -381,20 +385,38 @@ export async function rateLimitOk(
     });
     // A non-2xx (or an HTML error page from the runtime) must not reach `res.json()` — that
     // destructure was itself one of the unhandled throws.
-    if (!res.ok) return failModeFor(rl.bucket) === "open";
+    if (!res.ok) return "unavailable";
     const body: unknown = await res.json();
     if (
       typeof body !== "object" ||
       body === null ||
       typeof (body as { ok?: unknown }).ok !== "boolean"
     ) {
-      return failModeFor(rl.bucket) === "open";
+      return "unavailable";
     }
-    return (body as { ok: boolean }).ok;
+    return (body as { ok: boolean }).ok ? "ok" : "limited";
   } catch {
     // DO reset (every deploy), overload, colo error, or a malformed body.
-    return failModeFor(rl.bucket) === "open";
+    return "unavailable";
   }
+}
+
+/**
+ * Returns true if the call is within the limit (and counts it), false if it should 429. With
+ * `peek`, answers the same without counting. When the limiter cannot be read the bucket's
+ * `FAIL_MODE` decides.
+ */
+export async function rateLimitOk(
+  env: Env,
+  product: string,
+  rl: RateLimit,
+  now: number,
+  peek = false,
+): Promise<boolean> {
+  const r = await rateLimitCheck(env, product, rl, now, peek);
+  return (
+    r === "ok" || (r === "unavailable" && failModeFor(rl.bucket) === "open")
+  );
 }
 
 /**
