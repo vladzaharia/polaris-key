@@ -181,7 +181,7 @@
     },
     "identity.devicelabel": {
       "status": "implemented",
-      "note": "PX-W13: PKeyDeviceLabel.normalize (UTF-32, one character per code point), PKeyOptions.device_name and send_device_name, the model-else-OS default, on sign_in.start, activation and registration; PKeySignInSession.device_name is the echo, and PKeySignInDialog shows it under the code. A per-call name wins; opting out is send_device_name = false (an exported String cannot be null)."
+      "note": "PX-W13: PKeyDeviceLabel.normalize (UTF-32, one character per code point), and PKeyDeviceLabel.clean_hello for a peer HELLO (§15.6: NFC over PKeyNfc and generated Unicode 16.0 tables, CC-14 D-20; the corpus helloCases run), PKeyOptions.device_name and send_device_name, the model-else-OS default, on sign_in.start, activation and registration; PKeySignInSession.device_name is the echo, and PKeySignInDialog shows it under the code. A per-call name wins; opting out is send_device_name = false (an exported String cannot be null)."
     },
     "identity.toggle": {
       "status": "implemented",

@@ -156,7 +156,8 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 
 ## Every device-label.json `cases` row through PKeyDeviceLabel.normalize ("" is the corpus's null), the
 ## fixed point of each expectation, and the two range tables against `ranges`. `helloCases` (§15.6)
-## need an NFC Godot lacks, so they are present but skipped by name until CC-14.
+## go through PKeyDeviceLabel.clean_hello (steps 1 and 2, NFC over PKeyNfc, steps 3 to 5), with the
+## same fixed point.
 func _device_label_cases(t: PKeyTestContext, corpus: Dictionary) -> void:
 	t.check("deviceLabelVersion", corpus.get("deviceLabelVersion") is float and int(corpus["deviceLabelVersion"]) == PKeyConstants.DEVICE_LABEL_VERSION, str(corpus.get("deviceLabelVersion")))
 	t.check("DEVICE_LABEL_VERSION is 2", PKeyConstants.DEVICE_LABEL_VERSION == 2, str(PKeyConstants.DEVICE_LABEL_VERSION))
@@ -173,7 +174,13 @@ func _device_label_cases(t: PKeyTestContext, corpus: Dictionary) -> void:
 		t.check("device-label %s fixed point" % row["id"], again == want, "%s -> %s" % [JSON.stringify(want), JSON.stringify(again)])
 	t.check("device-label: at least 20 rows", rows.size() >= 20, str(rows.size()))
 	var hello := _section(t, corpus, "helloCases")
-	t.info("device-label helloCases: %d rows skipped (NFC; CC-14)" % hello.size())
+	for row in hello:
+		var hello_want: String = "" if row["expect"] == null else String(row["expect"])
+		var hello_got := PKeyDeviceLabel.clean_hello(String(row["raw"]))
+		t.check("device-label %s" % row["id"], hello_got == hello_want, "%s -> %s, want %s" % [JSON.stringify(row["raw"]), JSON.stringify(hello_got), JSON.stringify(hello_want)])
+		var hello_again := PKeyDeviceLabel.clean_hello(hello_want)
+		t.check("device-label %s fixed point" % row["id"], hello_again == hello_want, "%s -> %s" % [JSON.stringify(hello_want), JSON.stringify(hello_again)])
+	t.check("device-label: helloCases has at least 11 rows", hello.size() >= 11, str(hello.size()))
 
 
 static func _same_ranges(want: Array, got: Array) -> bool:
