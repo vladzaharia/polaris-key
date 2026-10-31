@@ -1652,6 +1652,9 @@ public let SYNC_CHUNK_FORMAT = "pkey-sync-chunk/1"
 /// Cloud Sync: `SYNC_CHUNK_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.8.3, `@polaris-key/protocol/sync`).
 public let SYNC_CHUNK_ID_PATTERN = "^[0-9a-f]{64}$"
 
+/// Cloud Sync: `SYNC_CHUNK_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.3 (U-37), `@polaris-key/protocol/sync`).
+public let SYNC_CHUNK_MAX_STORED_BYTES = 1048606
+
 /// Cloud Sync: `SYNC_CHUNK_PLAN_MAX_IDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
 public let SYNC_CHUNK_PLAN_MAX_IDS = 1024
 
@@ -1705,6 +1708,9 @@ public let SYNC_KID_PATTERN = "^[0-9a-f]{32}$"
 
 /// Cloud Sync: `SYNC_MANIFEST_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
 public let SYNC_MANIFEST_FORMAT = "pkey-sync-chunks/1"
+
+/// Cloud Sync: `SYNC_MANIFEST_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.1 (U-37), `@polaris-key/protocol/sync`).
+public let SYNC_MANIFEST_MAX_STORED_BYTES = 786576
 
 /// Cloud Sync: `SYNC_MAX_CHUNKS_PER_FILE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
 public let SYNC_MAX_CHUNKS_PER_FILE = 16384

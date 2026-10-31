@@ -118,6 +118,10 @@ export const SYNC_CHUNK_REQUESTS_PER_MINUTE = 600;
 export const SYNC_MAX_CHUNKS_PER_FILE = 16_384;
 /** §13.8.2: chunk ids in one plan call. */
 export const SYNC_CHUNK_PLAN_MAX_IDS = 1024;
+/** §13.8.3 (U-37): the largest stored chunk object, 1 MiB of body plus the 30 bytes of the E2E layout; server mode uses the same cap. */
+export const SYNC_CHUNK_MAX_STORED_BYTES = 1_048_606;
+/** §13.8.1 (U-37): the largest stored manifest of a `chunks` file: 64 + 48 * 16,384 plus the 80 bytes of a sealed stream. */
+export const SYNC_MANIFEST_MAX_STORED_BYTES = 786_576;
 
 /** §13.8.3: the content-defined chunker's minimum chunk size (64 KiB). */
 export const SYNC_CDC_MIN_BYTES = 65_536;

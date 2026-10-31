@@ -507,6 +507,8 @@ describe("@polaris-key/protocol layout", () => {
     expect(sync.SYNC_MAX_OPEN_UPLOADS).toBe(4);
     expect(sync.SYNC_MAX_CHUNKS_PER_FILE).toBe(16_384);
     expect(sync.SYNC_CHUNK_PLAN_MAX_IDS).toBe(1024);
+    expect(sync.SYNC_CHUNK_MAX_STORED_BYTES).toBe(1_048_606);
+    expect(sync.SYNC_MANIFEST_MAX_STORED_BYTES).toBe(786_576);
     expect(sync.SYNC_CDC_MIN_BYTES).toBe(64 * 1024);
     expect(sync.SYNC_CDC_AVG_BYTES).toBe(256 * 1024);
     expect(sync.SYNC_CDC_MAX_BYTES).toBe(1024 * 1024);

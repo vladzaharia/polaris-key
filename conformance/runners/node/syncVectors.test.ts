@@ -295,6 +295,13 @@ type ChunkRow =
       expect: Verdict<{ plainHex: string; codec: number }>;
     }
   | {
+      kind: "server-object";
+      id: string;
+      idHex: string;
+      objectHex: string;
+      expect: Verdict<{ plainHex: string; codec: number }>;
+    }
+  | {
       kind: "pair";
       id: string;
       rootHex: string;
@@ -642,10 +649,67 @@ describe("sync-vectors.json: cdcCases", () => {
   }
 });
 
+// U-37.0: the server-mode chunk object (§13.8.3, `0x00 ‖ codec ‖ body`, the id the plain SHA-256).
+// No client-core reader exists on this branch yet (U-22.2's `serverFileCodec` is the SDK side), so
+// the runner reads the object by the written order of checks: this is the table's own proof.
+const SERVER_CHUNK_MAX_STORED = 1_048_606;
+const SERVER_CHUNK_MAX_PLAIN = 1_048_576;
+function frameContentSize(f: Uint8Array): number | null {
+  if (
+    f.length < 6 ||
+    f[0] !== 0x28 ||
+    f[1] !== 0xb5 ||
+    f[2] !== 0x2f ||
+    f[3] !== 0xfd
+  )
+    return null;
+  const d = f[4]!;
+  const flag = d >>> 6;
+  const single = (d >>> 5) & 1;
+  const at = 5 + (single === 1 ? 0 : 1) + [0, 1, 2, 4][d & 3]!;
+  const width = flag === 0 ? (single === 1 ? 1 : 0) : [0, 2, 4, 8][flag]!;
+  if (width === 0 || f.length < at + width) return null;
+  let v = 0;
+  for (let i = width - 1; i >= 0; i--) v = v * 256 + f[at + i]!;
+  return flag === 1 ? v + 256 : v;
+}
+async function openServerChunk(
+  id: Uint8Array,
+  object: Uint8Array,
+): Promise<
+  { ok: true; plain: Uint8Array; codec: number } | { ok: false; reason: string }
+> {
+  if (object.length < 2) return { ok: false, reason: "shape" };
+  if (object.length > SERVER_CHUNK_MAX_STORED)
+    return { ok: false, reason: "size" };
+  if (object[0] !== 0) return { ok: false, reason: "version" };
+  const codec = object[1]!;
+  if (codec !== 0 && codec !== 1) return { ok: false, reason: "codec" };
+  const body = object.subarray(2);
+  let plain = body;
+  if (codec === 1) {
+    const size = frameContentSize(body);
+    if (size === null) return { ok: false, reason: "decode" };
+    if (size > SERVER_CHUNK_MAX_PLAIN) return { ok: false, reason: "size" };
+    try {
+      plain = await zstdDecode(body, size);
+    } catch {
+      return { ok: false, reason: "decode" };
+    }
+    if (plain.length !== size) return { ok: false, reason: "decode" };
+  }
+  if (plain.length > SERVER_CHUNK_MAX_PLAIN)
+    return { ok: false, reason: "size" };
+  if (hex(await port.sha256(plain)) !== hex(id))
+    return { ok: false, reason: "id" };
+  return { ok: true, plain, codec };
+}
+
 describe("sync-vectors.json: chunkCases", () => {
   for (const c of vectors.chunkCases) {
     it(c.id, async () => {
-      const root = unhex(c.rootHex);
+      const root =
+        c.kind === "server-object" ? new Uint8Array(0) : unhex(c.rootHex);
       if (c.kind === "id") {
         const plain = unhex(c.plainHex);
         expect(await chunkIdHex(port, root, c.collection, plain)).toBe(
@@ -654,6 +718,22 @@ describe("sync-vectors.json: chunkCases", () => {
         expect(await chunkIdHex(port, null, c.collection, plain)).toBe(
           c.serverIdHex,
         );
+        return;
+      }
+      if (c.kind === "server-object") {
+        const opened = await openServerChunk(
+          unhex(c.idHex),
+          unhex(c.objectHex),
+        );
+        if (c.expect.result === "ok") {
+          expect(opened.ok).toBe(true);
+          if (opened.ok) {
+            expect(hex(opened.plain)).toBe(c.expect.plainHex);
+            expect(opened.codec).toBe(c.expect.codec);
+          }
+        } else {
+          expect(opened).toEqual({ ok: false, reason: c.expect.reason });
+        }
         return;
       }
       if (c.kind === "pair") {

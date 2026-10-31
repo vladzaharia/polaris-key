@@ -57,6 +57,8 @@ import {
   refOpenChunk,
   refParseManifest,
   refSealChunk,
+  refSealServerChunk,
+  refOpenServerChunk,
   refSealChunkWithNonce,
   refStream,
   REF_FILE,
@@ -2169,6 +2171,18 @@ interface ChunkObjectCase {
     | { result: "invalid"; reason: string };
 }
 
+/** Server mode (U-37): `0x00 ‖ codec ‖ body`, no key, the id the plain SHA-256. Appended after the E2E rows. */
+interface ChunkServerObjectCase {
+  id: string;
+  description: string;
+  kind: "server-object";
+  idHex: string;
+  objectHex: string;
+  expect:
+    | { result: "ok"; plainHex: string; codec: number }
+    | { result: "invalid"; reason: string };
+}
+
 interface ChunkPairCase {
   id: string;
   description: string;
@@ -2184,9 +2198,11 @@ interface ChunkPairCase {
 }
 
 function buildChunkCases(): Array<
-  ChunkIdCase | ChunkObjectCase | ChunkPairCase
+  ChunkIdCase | ChunkObjectCase | ChunkPairCase | ChunkServerObjectCase
 > {
-  const rows: Array<ChunkIdCase | ChunkObjectCase | ChunkPairCase> = [];
+  const rows: Array<
+    ChunkIdCase | ChunkObjectCase | ChunkPairCase | ChunkServerObjectCase
+  > = [];
   const idRow = (id: string, description: string, plain: Uint8Array) => {
     rows.push({
       id,
@@ -2422,6 +2438,101 @@ function buildChunkCases(): Array<
     rawNonceHex: toHex(nonceRaw),
     zstdNonceHex: toHex(nonceZstd),
   });
+
+  // Server mode (U-37.0, §13.8.3): appended, so the rows above keep their place.
+  const idPlainA = refChunkId(null, CHUNK_COLL, plainA);
+  const srv = (
+    id: string,
+    description: string,
+    idBytes: Uint8Array,
+    object: Uint8Array,
+    expect: ChunkServerObjectCase["expect"],
+  ) => {
+    const got = refOpenServerChunk(idBytes, object);
+    const want =
+      expect.result === "ok"
+        ? got.ok &&
+          toHex(got.plain) === expect.plainHex &&
+          got.codec === expect.codec
+        : !got.ok && got.reason === expect.reason;
+    if (!want) throw new Error(`syncVectors chunk ${id}: reference disagrees`);
+    rows.push({
+      id,
+      description,
+      kind: "server-object",
+      idHex: toHex(idBytes),
+      objectHex: toHex(object),
+      expect,
+    });
+  };
+  const srvRaw = refSealServerChunk(REF_CODEC_RAW, plainA);
+  srv(
+    "server-object-raw",
+    "Server mode, codec 0: 0x00, 0x00, then the chunk as it is; the id is the plain SHA-256.",
+    idPlainA,
+    srvRaw,
+    { result: "ok", plainHex: toHex(plainA), codec: 0 },
+  );
+  srv(
+    "server-object-zstd",
+    "Server mode, codec 1: one zstd frame with its content size (here raw blocks); a reader decodes both codecs.",
+    idPlainA,
+    refSealServerChunk(REF_CODEC_ZSTD, refZstdRawFrame(plainA)),
+    { result: "ok", plainHex: toHex(plainA), codec: 1 },
+  );
+  srv(
+    "server-refuse-shape",
+    "One byte: not even a version and a codec.",
+    idPlainA,
+    srvRaw.subarray(0, 1),
+    { result: "invalid", reason: "shape" },
+  );
+  srv(
+    "server-refuse-version",
+    "Version byte 0x01 is the E2E layout: a server-mode reader refuses it.",
+    idPlainA,
+    (() => {
+      const c = new Uint8Array(srvRaw);
+      c[0] = 1;
+      return c;
+    })(),
+    { result: "invalid", reason: "version" },
+  );
+  srv(
+    "server-refuse-codec",
+    "Codec 2 is unknown.",
+    idPlainA,
+    (() => {
+      const c = new Uint8Array(srvRaw);
+      c[1] = 2;
+      return c;
+    })(),
+    { result: "invalid", reason: "codec" },
+  );
+  srv(
+    "server-refuse-decode-garbage",
+    "Codec 1 whose body is not a zstd frame.",
+    idPlainA,
+    refSealServerChunk(REF_CODEC_ZSTD, plainA),
+    { result: "invalid", reason: "decode" },
+  );
+  srv(
+    "server-refuse-size-declared",
+    "Codec 1 whose frame declares 2 MiB: refused before decoding (max is 1 MiB).",
+    idPlainA,
+    refSealServerChunk(
+      REF_CODEC_ZSTD,
+      Uint8Array.of(0x28, 0xb5, 0x2f, 0xfd, 0x80, 0x00, 0x00, 0x00, 0x20, 0x00),
+    ),
+    { result: "invalid", reason: "size" },
+  );
+  srv(
+    "server-refuse-id-mismatch",
+    "A body that is not the chunk the id names: it opens, and its SHA-256 differs from the id.",
+    idPlainA,
+    refSealServerChunk(REF_CODEC_RAW, plainB),
+    { result: "invalid", reason: "id" },
+  );
   return rows;
 }
 
