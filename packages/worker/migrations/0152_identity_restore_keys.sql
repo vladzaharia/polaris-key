@@ -2,7 +2,7 @@
 -- app on one new device sign in again without asking, from a secret the person's own platform
 -- backup (iCloud Keychain, Block Store) carries. One row per (product, device).
 --
---   id           `rk_` + 22 base64url characters: the public half, safe to log.
+--   id           `rk_` + 22 base64url characters: the public half, safe to log (the key is (product, id), R11-05).
 --   secret_hash  HMAC(KEY_HASH_PEPPER, "restore:" + secret), hex. The secret is shown once, to the device
 --                that enrols, and never stored: a database leak confirms no guess.
 --   subject      the pairwise subject the device was signed in as when it enrolled (never an account id).
@@ -18,13 +18,14 @@
 -- (TABLE_OWNERS). No foreign keys, no cascades (R11-01). Expand-only: a Worker built before this
 -- migration never names them. Rollback: scripts/rollback/0152_identity_restore_keys.down.sql.
 CREATE TABLE IF NOT EXISTS identity_restore_keys (
-  id          TEXT PRIMARY KEY,
+  id          TEXT NOT NULL,
   product     TEXT NOT NULL,
   device_id   TEXT NOT NULL,
   subject     TEXT NOT NULL,
   secret_hash TEXT NOT NULL,
   created_at  INTEGER NOT NULL,
   checked_at  INTEGER NOT NULL,
+  PRIMARY KEY (product, id),
   UNIQUE (product, device_id)
 );
 CREATE INDEX IF NOT EXISTS identity_restore_keys_subject
