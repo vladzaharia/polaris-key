@@ -44,6 +44,8 @@ export function outcomeOf(r: AutoSignInResult): AutoOutcome | null {
         claims,
         input: {
           ...(c.as.email ? { email: c.as.email } : {}),
+          // The exchange that made the grant: names the provider when no email was shared.
+          ...(c.as.provider ? { kind: c.as.provider } : {}),
           license: a ? "existing" : "new",
           alsoGets: c.firstTime || c.changed,
           ...(a
