@@ -6502,12 +6502,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "planned": "CC-19"
-        },
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -6524,12 +6520,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "planned": "CC-19"
-        },
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     },
@@ -6540,12 +6532,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "planned": "CC-19"
-        },
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -6562,12 +6550,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "planned": "CC-19"
-        },
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -6588,12 +6572,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "planned": "CC-19"
-        },
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -6614,12 +6594,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "planned": "CC-19"
-        },
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client",
       "args": [
@@ -6636,12 +6612,8 @@
       "sdks": {
         "node": {},
         "python": {},
-        "swift": {
-          "planned": "CC-19"
-        },
-        "kotlin": {
-          "planned": "CC-19"
-        }
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     }
