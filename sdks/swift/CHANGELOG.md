@@ -7,6 +7,7 @@ deprecated aliases).
 ## Unreleased
 
 - **File transfer engine (U-23.S4).** `FileTransferEngine` (uploads in `single`, `multipart` and `chunks` modes, whole and chunked downloads) over a `FileTransport` port, with `JournalStore` (`MemoryJournal`, `FileJournal`: a file named by the SHA-256 of the transfer id, 0600, out of backup, resumes after a kill), `ChunkCache` (`MemoryChunkCache`, `FileChunkCache`: hex ids only, LRU, out of backup), and the `E2eFileCodec` / `ServerFileCodec` (codec 1 chunks decode through the vendored libzstd). Up to four parts or chunks in flight; a failed check is `TransferError.fileInvalid`, `polarisError.code == sync-file-invalid`. Not wired to HTTP yet (U-23.S5).
+- **Relay `Retry-After` is capped before conversion.** Retry-After values from the relay are capped at one hour before they are converted to whole seconds; an unreadable value reads as absent.
 
 - **Synced-file primitives (U-23.S1).** `SyncCdc` (the `fastcdc-2016-nc1` chunker, streaming), `SyncChunks` (chunk ids and `pkey-sync-chunk/1` objects, both codecs; a codec 1 object needs the caller's `ZstdDecode`) and `SyncManifest` (`pkey-sync-chunks/1`) in `PolarisKeyCore`, proven by the `cdcCases`, `cdcEditCases`, `deltaCases`, `chunkCases` and `manifestCases` vector sections.
 

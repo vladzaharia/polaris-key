@@ -35,7 +35,7 @@ from ..core.peer_link import LinkHandlers
 from ..core.peer_relay_codec import RELAY_MAX_MESSAGE, decode_relay, encode_relay
 from ..core.peer_session import Closed, Established, PeerSession, Record, RingReceived, RingWanted, TrustUnverified
 from .channel import ConnectNotice, PeerDocs, PeerDocsSource, channel_base
-from .client import PeerSource, RelayGrant
+from .client import RELAY_MAX_RETRY_AFTER_S, PeerSource, RelayGrant
 from .errors import RELAY_PROTOCOL, RelayError
 from .lan import LanSource
 from .pacer import Outbox, Pacer
@@ -57,7 +57,7 @@ __all__ = [
 
 #: The only PeerSession mode that may cross the relay (G16).
 RELAY_MODES = ("a",)
-MAX_RETRY_AFTER_S = 3600
+MAX_RETRY_AFTER_S = RELAY_MAX_RETRY_AFTER_S
 #: After this many attempts that never opened, the status is ``unavailable`` and retries slow down.
 UNAVAILABLE_AFTER = 5
 UNAVAILABLE_RETRY_S = 300.0
