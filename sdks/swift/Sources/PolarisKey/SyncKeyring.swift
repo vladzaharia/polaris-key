@@ -16,8 +16,9 @@
 //  - The first root this client acquires (create, recover, unlock) pins `{ringId, epoch, rootKid}`
 //    in the Core store (no secret). A served ring or wrap that differs is never opened: `unlock()`
 //    answers `ringChanged`, and only the recovery code (`recover`) or an explicit
-//    `acceptRingChange(confirmed:)` re-pins. `forget()` drops the pin and the Keychain root; the
-//    release hook calls it. The stored root is used only while it matches the pin.
+//    `acceptRingChange(confirmed:)` re-pins. `forget()` drops the Keychain root, then the pin; the
+//    release hook calls it. The stored root is used only while it matches the pin. With no pin, a
+//    stored root is the pin.
 //  - An iCloud Keychain backup of the root is a later slice (U-39.5).
 
 import Foundation
@@ -350,11 +351,11 @@ public actor SyncKeyring: CustomReflectable {
         // N-2: a root being acquired when this runs is not stored after it.
         forgetGeneration += 1
         lock()
+        // The root goes first and the pin last: a stored root never outlives its pin. A root that
+        // cannot be removed keeps the pin and throws.
+        try roots().clear()
         memoryPin = nil
-        var failure: Error?
-        do { try roots().clear() } catch { failure = error }
-        do { try await core.store.writeRecordChecked(Self.pinRecord, nil) } catch { failure = failure ?? error }
-        if let failure { throw failure }
+        try await core.store.writeRecordChecked(Self.pinRecord, nil)
     }
 
     private func keyPort() throws -> any DeviceKeyPort {
@@ -393,6 +394,29 @@ public actor SyncKeyring: CustomReflectable {
         return memoryPin
     }
 
+    /// The pin for `unlock`. A read that fails is `store-failed`; a record that decodes badly or
+    /// names another product is absent. With no pin, the stored root's `{ringId, epoch, kid}`
+    /// stands in for it (an unreadable record is `device-keys-unreadable`, a faulting store
+    /// `store-failed`). Nothing is written.
+    private func anchorForUnlock() async throws -> SyncRingPin? {
+        let data: Data?
+        do { data = try await core.store.readRecordChecked(Self.pinRecord) } catch {
+            throw PolarisError(code: ErrorCode.storeFailed, message: "The key ring pin could not be read.")
+        }
+        if let data, let r = try? JSONDecoder().decode(PinRecord.self, from: data), r.product == core.product {
+            return SyncRingPin(ringId: r.ringId, epoch: r.epoch, rootKid: r.rootKid)
+        }
+        if let m = memoryPin { return m }
+        let stored: StoredRingRoot?
+        do { stored = try roots().load() } catch RingRootStoreError.unreadable {
+            throw PolarisError(
+                code: ErrorCode.deviceKeysUnreadable, message: "The stored key ring root could not be read.")
+        } catch {
+            throw PolarisError(code: ErrorCode.storeFailed, message: "The stored key ring root could not be read.")
+        }
+        return stored.map { SyncRingPin(ringId: $0.ringId, epoch: $0.epoch, rootKid: $0.kid) }
+    }
+
     private func writePin(_ p: SyncRingPin) async throws {
         memoryPin = p
         let rec = PinRecord(product: core.product, ringId: p.ringId, epoch: p.epoch, rootKid: p.rootKid)
@@ -426,14 +450,15 @@ public actor SyncKeyring: CustomReflectable {
         let gen = forgetGeneration
         let state = try await read()
         guard let ring = state.ring else { return .locked(reason: .noRing) }
-        let pinned = await pin()
+        // The pin, else the stored root's triple: a stored root is the pin when none is stored.
+        let anchor = try await anchorForUnlock()
         // An accept holds only for the ring the person was shown; a ring that moved since is
         // reported again, not adopted.
-        let expected = accept ?? pinned
+        let expected = accept ?? anchor
         let served = SyncRingPin(ringId: ring.ringId, epoch: ring.epoch, rootKid: ring.rootKid)
         if let expected, expected != served {
             return .ringChanged(
-                pinned: pinned ?? expected, served: served, createdAt: ring.createdAt, by: state.wrap?.by)
+                pinned: anchor ?? expected, served: served, createdAt: ring.createdAt, by: state.wrap?.by)
         }
         guard let kid = unhex(ring.rootKid) else { return .locked(reason: .unusableWrap) }
         if let h = memory.held, h.ringId == ring.ringId, h.epoch == ring.epoch, same(h.kid, kid) {

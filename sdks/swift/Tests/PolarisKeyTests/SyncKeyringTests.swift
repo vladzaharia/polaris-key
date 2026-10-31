@@ -141,6 +141,60 @@ private final class Listener: SyncRootListener, @unchecked Sendable {
     var values: [Bool] { lock.withLock { seen } }
 }
 
+/// A Core store with the records the test chooses: normal, the protocol's default records (none
+/// kept), or a pin that cannot be read.
+private actor RecordsStore: Store {
+    enum Mode { case normal, defaultRecords, pinReadFails }
+    let inner: InMemoryStore
+    let mode: Mode
+    init(_ inner: InMemoryStore, mode: Mode) {
+        self.inner = inner
+        self.mode = mode
+    }
+    func getToken() async throws -> String? { try await inner.getToken() }
+    func setToken(_ token: String) async throws { try await inner.setToken(token) }
+    func clearToken() async throws { try await inner.clearToken() }
+    func getDeviceId() async throws -> String { try await inner.getDeviceId() }
+    func readCache() async -> CacheRecord? { await inner.readCache() }
+    func writeCache(_ record: CacheRecord) async throws { try await inner.writeCache(record) }
+    func clearCache() async throws { try await inner.clearCache() }
+    func readRecord(_ name: String) async -> Data? { mode == .defaultRecords ? nil : await inner.readRecord(name) }
+    func writeRecord(_ name: String, _ data: Data?) async {
+        if mode != .defaultRecords { await inner.writeRecord(name, data) }
+    }
+    func readRecordChecked(_ name: String) async throws -> Data? {
+        if mode == .pinReadFails && name == "sync-ring-pin" { throw StoreError.io(path: "pin", code: 5) }
+        return await readRecord(name)
+    }
+    func writeRecordChecked(_ name: String, _ data: Data?) async throws { await writeRecord(name, data) }
+}
+
+/// A root vault that can fault on read or delete, or hold bytes that are not a root record.
+private final class FaultyVault: DeviceKeyVault, @unchecked Sendable {
+    private let lock = NSLock()
+    private var blob: Data?
+    var failRead = false
+    var failDelete = false
+    init(_ blob: Data? = nil) { self.blob = blob }
+    var current: Data? { lock.withLock { blob } }
+    func read() throws -> Data? {
+        if failRead { throw DeviceKeyError.keychain(-25308) }
+        return lock.withLock { blob }
+    }
+    func insert(_ b: Data) throws -> Bool {
+        lock.withLock {
+            if blob != nil { return false }
+            blob = b
+            return true
+        }
+    }
+    func upsert(_ b: Data) throws { lock.withLock { blob = b } }
+    func delete() throws {
+        if failDelete { throw DeviceKeyError.keychain(-25308) }
+        lock.withLock { blob = nil }
+    }
+}
+
 final class SyncKeyringTests: XCTestCase {
     private struct Device {
         let keyring: SyncKeyring
@@ -476,5 +530,168 @@ final class SyncKeyringTests: XCTestCase {
         XCTAssertFalse(a.keyring.unlocked)
         let pin = await a.core.store.readRecord("sync-ring-pin")
         XCTAssertNil(pin, "the pin was written after the forget")
+    }
+
+    // ── K1-D1: with no pin, a stored root is the pin ─────────────────────────────────────
+
+    /// Ring 1 on device a (root in `roots`), then another device resets to ring 2 and wraps it to a.
+    private struct Reinstall {
+        let server: RingServer
+        let keys: DeviceKeyStore
+        let roots: RingRootStore
+        let first: SyncCreatedRing
+        let second: SyncCreatedRing
+    }
+
+    private func reinstallSetup() async throws -> Reinstall {
+        let server = RingServer()
+        let a = try await device("a", server: server)
+        let first = try await a.keyring.create()
+        let d = try await device("d", server: server)
+        let second = try await d.keyring.reset()
+        try await d.keyring.wrapTo(deviceId: a.id, agreeKey: try await a.keys.ensure().agreeKey)
+        return Reinstall(server: server, keys: a.keys, roots: a.roots, first: first, second: second)
+    }
+
+    private func reinstalled(_ r: Reinstall, store: any Store) async throws -> SyncKeyring {
+        try await store.setToken("pkeyt_a")
+        let core = try CoreContext(
+            options: CoreOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0", pinnedKeys: [:],
+                trustRefresh: false, store: store, transport: r.server))
+        try await core.start()
+        return SyncKeyring(core: core, options: SyncKeyringOptions(keys: r.keys, rootStore: r.roots))
+    }
+
+    func testAStoredRootIsThePinWhenNoPinIsStored() async throws {
+        for variant in 0..<3 {
+            let r = try await reinstallSetup()
+            let before = try XCTUnwrap(try r.roots.load())
+            let inner = InMemoryStore(productSlug: "djdl", deviceId: "dev_a")
+            let store: any Store
+            switch variant {
+            case 0: store = inner  // the pin record is gone
+            case 1:
+                await inner.writeRecord("sync-ring-pin", Data("{".utf8))  // a pin that decodes badly
+                store = inner
+            default: store = RecordsStore(inner, mode: .defaultRecords)  // a host Store with no records
+            }
+            let k = try await reinstalled(r, store: store)
+            let out = try await k.unlock()
+            guard case .ringChanged(let pinned, let served, _, _) = out else { return XCTFail("\(variant): \(out)") }
+            XCTAssertEqual(pinned, SyncRingPin(ringId: r.first.ringId, epoch: 1, rootKid: r.first.rootKid))
+            XCTAssertEqual(served.ringId, r.second.ringId)
+            XCTAssertEqual(try r.roots.load(), before, "the stored root was replaced (\(variant))")
+            XCTAssertTrue(k.codec.locked)
+            let pinRec = await inner.readRecord("sync-ring-pin")
+            XCTAssertEqual(pinRec, variant == 1 ? Data("{".utf8) : nil, "a pin was written (\(variant))")
+        }
+    }
+
+    func testAStoredRootThatMatchesTheServedRingIsHeldAndRepinned() async throws {
+        let server = RingServer()
+        let a = try await device("a", server: server)
+        let made = try await a.keyring.create()
+        let inner = InMemoryStore(productSlug: "djdl", deviceId: "dev_a")
+        let k = try await reinstalled(
+            Reinstall(server: server, keys: a.keys, roots: a.roots, first: made, second: made), store: inner)
+        let out = try await k.unlock()
+        XCTAssertEqual(out, .unlocked(ringId: made.ringId, epoch: 1))
+        XCTAssertEqual(k.codec.kid, made.rootKid)
+        let pin = await k.pin()
+        XCTAssertEqual(pin, SyncRingPin(ringId: made.ringId, epoch: 1, rootKid: made.rootKid))
+        let rec = await inner.readRecord("sync-ring-pin")
+        XCTAssertNotNil(rec)
+    }
+
+    func testAStoredRootIsReplacedOnlyByAConfirmedAcceptOrTheRecoveryCode() async throws {
+        // A confirmed accept of the served ring.
+        let r = try await reinstallSetup()
+        let k = try await reinstalled(r, store: InMemoryStore(productSlug: "djdl", deviceId: "dev_a"))
+        guard case .ringChanged(_, let served, _, _) = try await k.unlock() else { return XCTFail("changed") }
+        XCTAssertEqual(try r.roots.load()?.ringId, r.first.ringId)
+        let ok = try await k.acceptRingChange(confirmed: served)
+        XCTAssertEqual(ok, .unlocked(ringId: r.second.ringId, epoch: 1))
+        XCTAssertEqual(try r.roots.load()?.ringId, r.second.ringId)
+        let pin = await k.pin()
+        XCTAssertEqual(pin, served)
+        // The recovery code of the served ring.
+        let r2 = try await reinstallSetup()
+        let k2 = try await reinstalled(r2, store: InMemoryStore(productSlug: "djdl", deviceId: "dev_a"))
+        guard case .ringChanged = try await k2.unlock() else { return XCTFail("changed") }
+        XCTAssertEqual(try r2.roots.load()?.ringId, r2.first.ringId)
+        let done = try await k2.recover(r2.second.recoveryCode!)
+        XCTAssertEqual(done.ringId, r2.second.ringId)
+        XCTAssertEqual(try r2.roots.load()?.ringId, r2.second.ringId)
+    }
+
+    func testAStoredRootThatCannotBeReadIsNotAbsent() async throws {
+        let server = RingServer()
+        let a = try await device("a", server: server)
+        let made = try await a.keyring.create()
+        let good = try XCTUnwrap(try a.roots.load())
+        let blob = try JSONEncoder().encode(good)
+        // The vault faults on read: store-failed, nothing written.
+        let faulty = FaultyVault(blob)
+        faulty.failRead = true
+        let inner = InMemoryStore(productSlug: "djdl", deviceId: "dev_a")
+        var r = Reinstall(server: server, keys: a.keys, roots: RingRootStore(vault: faulty), first: made, second: made)
+        var k = try await reinstalled(r, store: inner)
+        do {
+            _ = try await k.unlock()
+            XCTFail("a faulting vault")
+        } catch { XCTAssertEqual(code(error), ErrorCode.storeFailed) }
+        XCTAssertEqual(faulty.current, blob)
+        // A record that is present but cannot be decoded: device-keys-unreadable, nothing written.
+        let junk = FaultyVault(Data("not a record".utf8))
+        r = Reinstall(server: server, keys: a.keys, roots: RingRootStore(vault: junk), first: made, second: made)
+        k = try await reinstalled(r, store: inner)
+        do {
+            _ = try await k.unlock()
+            XCTFail("an undecodable record")
+        } catch { XCTAssertEqual(code(error), ErrorCode.deviceKeysUnreadable) }
+        XCTAssertEqual(junk.current, Data("not a record".utf8))
+        let pinRec = await inner.readRecord("sync-ring-pin")
+        XCTAssertNil(pinRec)
+        XCTAssertTrue(k.codec.locked)
+    }
+
+    func testAPinThatCannotBeReadIsNotAbsent() async throws {
+        let r = try await reinstallSetup()
+        let before = try XCTUnwrap(try r.roots.load())
+        let inner = InMemoryStore(productSlug: "djdl", deviceId: "dev_a")
+        let k = try await reinstalled(r, store: RecordsStore(inner, mode: .pinReadFails))
+        do {
+            _ = try await k.unlock()
+            XCTFail("an unreadable pin")
+        } catch { XCTAssertEqual(code(error), ErrorCode.storeFailed) }
+        XCTAssertEqual(try r.roots.load(), before)
+        XCTAssertTrue(k.codec.locked)
+    }
+
+    func testForgetKeepsThePinWhenTheRootCannotBeRemoved() async throws {
+        let server = RingServer()
+        let a = try await device("a", server: server)
+        let vault = FaultyVault()
+        let k = SyncKeyring(
+            core: a.core, options: SyncKeyringOptions(keys: a.keys, rootStore: RingRootStore(vault: vault)))
+        let made = try await k.create()
+        XCTAssertNotNil(vault.current)
+        vault.failDelete = true
+        do {
+            try await k.forget()
+            XCTFail("a root that cannot be removed")
+        } catch {}
+        let pin = await k.pin()
+        XCTAssertEqual(pin?.ringId, made.ringId, "the pin was dropped while the root stayed")
+        let rec = await a.store.readRecord("sync-ring-pin")
+        XCTAssertNotNil(rec)
+        XCTAssertNotNil(vault.current)
+        // Once the root can go, the pin goes after it.
+        vault.failDelete = false
+        try await k.forget()
+        XCTAssertNil(vault.current)
+        let gone = await a.store.readRecord("sync-ring-pin")
+        XCTAssertNil(gone)
     }
 }
