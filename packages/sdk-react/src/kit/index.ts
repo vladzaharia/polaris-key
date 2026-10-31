@@ -14,9 +14,11 @@
 import type { ComponentName } from "@polaris-key/ui-core";
 
 import { kitComponent } from "./kitComponent.js";
+import { connectScreen } from "./connectLazy.js";
 import { holderScreen } from "./holdersLazy.js";
 import { syncScreen } from "./syncLazy.js";
 import type { ActivateDoneProps, AddToAccountProps } from "./holders.js";
+import type { LinkPairingProps, TransferOfferProps } from "./connect.js";
 import type {
   RecoveryCodeProps,
   RingChangeProps,
@@ -104,5 +106,20 @@ export {
   type UseAddToAccountOptions,
 } from "./holderHooks.js";
 export type { ActivateDoneProps, AddToAccountProps } from "./holders.js";
+// Inter-account links and direct-transfer offers (CC-19.9): pair with someone nearby, and the
+// prompt for what a contact offers. They load on demand; the hooks are the headless half.
+export const LinkPairing = connectScreen<LinkPairingProps>("LinkPairing");
+export const TransferOffer = connectScreen<TransferOfferProps>("TransferOffer");
+export {
+  linkPairingDriver,
+  useLinkPairing,
+  useTransferOffer,
+  type LinksLike,
+  type UseLinkPairing,
+  type UseLinkPairingOptions,
+  type UseTransferOffer,
+  type UseTransferOfferOptions,
+} from "./connectHooks.js";
+export type { LinkPairingProps, TransferOfferProps } from "./connect.js";
 export const ChannelPicker = c("ChannelPicker");
 export const Toast = c("Toast");

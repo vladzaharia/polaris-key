@@ -12,6 +12,7 @@ export const CONNECT_LAYOUTS: Readonly<Record<ConnectScreenName, Layout>> = {
     kind: "screen",
     header: "compact",
     controls: [],
+    titles: ["linkPairing.waiting"],
     content: [
       "linkPairing.searching",
       "a11y.linkCode",
@@ -29,6 +30,13 @@ export const CONNECT_LAYOUTS: Readonly<Record<ConnectScreenName, Layout>> = {
   TransferOffer: {
     kind: "screen",
     header: "compact",
+    titles: [
+      "transferOffer.ask",
+      "transferOffer.askUnnamed",
+      "transferOffer.receiving",
+      "transferOffer.done",
+      "transferOffer.failed",
+    ],
     controls: [
       "transferOffer.accept",
       "transferOffer.decline",
