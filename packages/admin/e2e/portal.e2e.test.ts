@@ -1156,7 +1156,7 @@ describe("main flows", () => {
     });
     await done
       .getByText(
-        "Its 2 devices came with it. Sign in on them to turn on Cloud Sync.",
+        "Its 2 devices came with it. Sign in on them to turn on syncing.",
       )
       .waitFor();
     await shoot(o.page, "activate-done-devices-desktop-dark");

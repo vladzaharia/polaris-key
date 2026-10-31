@@ -284,6 +284,8 @@ export const FORM_FACTORS = [
 const CLDR_ORDER = ["zero", "one", "two", "few", "many", "other"] as const;
 
 /** English values must not use these (S-19 and AGENTS rule 4: license, device, tier). */
+/** LOCKER-FEATURE-NAMES §3: developer feature names never show to a user (kit copy, core copy). */
+const DEV_NAMES = /Cloud Sync|Cloud Connect|Direct Transfer/;
 const BANNED_EN = /\b(licences?|grants?|retry|machines?|plans?)\b/i;
 
 const KEY_PATTERN = /^[a-z][A-Za-z0-9]*(\.[a-z][A-Za-z0-9]*)+$/;
@@ -805,12 +807,21 @@ export function validateKitCopy(src: KitCopySources): string[] {
       );
     if (!msg.note.trim()) errors.push(`${where}: note is empty`);
     const texts: [string, string][] = [[where, msg.value]];
+    if (DEV_NAMES.test(msg.note))
+      errors.push(
+        `${where}: the note names a developer feature (${DEV_NAMES.exec(msg.note)![0]}); say what it does`,
+      );
     for (const [platform, v] of Object.entries(msg.variants ?? {}))
       texts.push([`${where} (${platform})`, v]);
     const shape = shapeOf(where, msg.value, "en", errors);
     if (shape) enShapes.set(key, shape);
     for (const [w, text] of texts) {
       errors.push(...checkText(w, text));
+      const dev = DEV_NAMES.exec(text);
+      if (dev)
+        errors.push(
+          `${w}: "${dev[0]}" is a developer name; users see a plain label (LOCKER-FEATURE-NAMES §1)`,
+        );
       const banned = BANNED_EN.exec(text);
       // The one sanctioned "grant": the portal's License source for a license issued at sign-in
       // (owner polish 2026-10-07; the glossary names it, concepts.md).
@@ -866,6 +877,10 @@ export function validateKitCopy(src: KitCopySources): string[] {
         continue;
       }
       errors.push(...checkText(where, value));
+      if (DEV_NAMES.test(value))
+        errors.push(
+          `${where}: "${DEV_NAMES.exec(value)![0]}" is a developer name`,
+        );
       const shape = shapeOf(where, value, locale, errors);
       const enShape = enShapes.get(key);
       if (shape && enShape && !sameArgs(shape, enShape))
@@ -877,6 +892,14 @@ export function validateKitCopy(src: KitCopySources): string[] {
         errors.push(`${where}: "${BRAND}" must appear exactly as in English`);
     }
   }
+
+  // Core copy reaches every SDK and Help: no developer names in any locale.
+  for (const locale of Object.keys(src.core))
+    for (const [k, v] of Object.entries(coreTable(src, locale)))
+      if (DEV_NAMES.test(v))
+        errors.push(
+          `core ${locale} ${k}: "${DEV_NAMES.exec(v)![0]}" is a developer name`,
+        );
 
   // The glossary covers every pack.
   for (const [term, byLocale] of Object.entries(glossary.terms))

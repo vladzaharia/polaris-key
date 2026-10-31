@@ -311,8 +311,8 @@
     <string name="activate_recommend_title">%1$sをアカウントに保存</string>
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">おすすめ</string>
-    <!-- ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">クラウド同期で、設定とセーブデータをすべてのデバイスに保てます</string>
+    <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
+    <string name="activate_recommend_sync">設定と保存データをすべてのデバイスで同じに保てます</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
     <string name="activate_recommend_recover">キーやこのデバイスを失ってもライセンスを取り戻せます</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
@@ -330,8 +330,8 @@
     <string name="activate_attach_fine">ブラウザーでこのメールアドレスにコードを送ります。%1$sにはコードは見えません。</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$sがアカウントに入りました</string>
-    <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
-    <string name="activate_attach_syncOn">この%1$sでクラウド同期がオンになりました。ほかのデバイスでもサインインすると同期されます。</string>
+    <!-- AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
+    <string name="activate_attach_syncOn">この%1$sで同期がオンになりました。ほかのデバイスでもサインインすると同期されます。</string>
     <!-- AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form. -->
     <string name="activate_attach_failed">このライセンスを追加できませんでした。しばらくしてからもう一度お試しください。</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
@@ -661,8 +661,8 @@
     <string name="account_keyOnly">ライセンスキーでアクティベート済み</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
     <string name="account_devices">デバイス</string>
-    <!-- AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term. -->
-    <string name="account_cloudSync">クラウド同期</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows. -->
+    <string name="account_cloudSync">デバイス間の同期</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Group header. -->
     <string name="account_updates">アップデート</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Switch label. -->
@@ -752,7 +752,7 @@
     <string name="cloudSync_error">同期できませんでした。後でもう一度お試しください。</string>
     <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
     <string name="cloudSync_signedOut">サインアウトしています。</string>
-    <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
+    <!-- CloudSyncStatus: a small sync status. Syncing needs an account. -->
     <string name="cloudSync_signIn">サインインして同期</string>
     <string name="cloudSync_signIn__macos">サインインして同期</string>
     <!-- CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it. -->
@@ -1938,7 +1938,7 @@
     <string name="signin_consent_deny">許可しない</string>
     <string name="signin_consent_deny__macos">許可しない</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_consent_cloudSync">クラウド同期</string>
+    <string name="signin_consent_cloudSync">同期された設定とデータ</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="signin_consent_newLicense">新規：%1$sライセンス（続けると作成されます）</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

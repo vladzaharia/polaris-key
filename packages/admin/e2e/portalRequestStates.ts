@@ -387,7 +387,7 @@ export const REQUEST_STATES: ShippedState[] = [
     routes: { ...signedOutRoutes(VIEW), "POST /api/key/preview": preview({}) },
     ready: async (p) => {
       await keyStep(p, "Keep Diceroll in an account");
-      await p.getByText("Cloud Sync keeps your settings").waitFor();
+      await p.getByText("Keep your settings and saved data").waitFor();
     },
   },
   {

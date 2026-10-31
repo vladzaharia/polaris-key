@@ -429,7 +429,7 @@ const DEFAULTS := {
 	"account_holder": "Signed in as %s",
 	"account_key_only": "Activated with a license key",
 	"account_devices": "Devices",
-	"account_cloud_sync": "Cloud Sync",
+	"account_cloud_sync": "Sync Across Devices",
 	"account_updates": "Updates",
 	"account_auto_update": "Update automatically",
 	"account_channel": "Release channel",

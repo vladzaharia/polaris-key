@@ -315,8 +315,8 @@
     <string name="activate_recommend_title">Tieni %1$s nel tuo account</string>
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">Consigliato</string>
-    <!-- ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">La sincronizzazione cloud mantiene impostazioni e salvataggi su ogni dispositivo</string>
+    <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
+    <string name="activate_recommend_sync">Mantieni impostazioni e dati salvati uguali su ogni dispositivo</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
     <string name="activate_recommend_recover">Riavere la licenza se perdi la chiave o questo dispositivo</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
@@ -334,8 +334,8 @@
     <string name="activate_attach_fine">Inviamo un codice a questa e-mail nel browser. %1$s non lo vede mai.</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$s è nel tuo account</string>
-    <!-- AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
-    <string name="activate_attach_syncOn">La sincronizzazione cloud è attiva su questo %1$s. Accedi sugli altri dispositivi per sincronizzare anche quelli.</string>
+    <!-- AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
+    <string name="activate_attach_syncOn">La sincronizzazione è attiva su questo %1$s. Accedi sugli altri dispositivi per sincronizzare anche quelli.</string>
     <!-- AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form. -->
     <string name="activate_attach_failed">Impossibile aggiungere questa licenza. Riprova tra un momento.</string>
     <!-- ActivateDone: the license was sent to an email and no account holds it yet. Arguments: {maskedEmail} = the email with its middle hidden, such as a•••@example.com (never translated). Arguments: 1=maskedEmail. -->
@@ -671,8 +671,8 @@
     <string name="account_keyOnly">Attivato con una chiave di licenza</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
     <string name="account_devices">Dispositivi</string>
-    <!-- AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term. -->
-    <string name="account_cloudSync">Sincronizzazione cloud</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows. -->
+    <string name="account_cloudSync">Sincronizzazione tra dispositivi</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Group header. -->
     <string name="account_updates">Aggiornamenti</string>
     <!-- AccountAndLicense: the settings pane for the license and account. Switch label. -->
@@ -762,7 +762,7 @@
     <string name="cloudSync_error">Impossibile sincronizzare. Riprova più tardi.</string>
     <!-- CloudSyncStatus: a small sync status. Shown instead of the error line when nobody is signed in, with Sign in to sync beside it. -->
     <string name="cloudSync_signedOut">Sei disconnesso.</string>
-    <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
+    <!-- CloudSyncStatus: a small sync status. Syncing needs an account. -->
     <string name="cloudSync_signIn">Accedi per sincronizzare</string>
     <string name="cloudSync_signIn__macos">Accedi per sincronizzare</string>
     <!-- CloudSyncStatus: a small sync status. This device has no key for the synced data yet; Unlock sync sits beside it. -->
@@ -1958,7 +1958,7 @@
     <string name="signin_consent_deny">Non consentire</string>
     <string name="signin_consent_deny__macos">Non consentire</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). -->
-    <string name="signin_consent_cloudSync">Sincronizzazione cloud</string>
+    <string name="signin_consent_cloudSync">Impostazioni e dati sincronizzati</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
     <string name="signin_consent_newLicense">Nuova: licenza %1$s, creata quando continui</string>
     <!-- PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->

@@ -141,7 +141,7 @@ describe("product page on today's data (PX-04)", () => {
       const items = within(nav)
         .getAllByRole("link")
         .map((a) => a.textContent);
-      expect(items).not.toContain("Cloud Sync");
+      expect(items).not.toContain("Sync Across Devices");
       expect(items).not.toContain("Packages");
       expect(items).not.toContain("Help");
     }
@@ -160,7 +160,7 @@ describe("product page on today's data (PX-04)", () => {
       expect(pill.textContent).toBe("2");
       expect(pill.getAttribute("data-tone")).toBe("neutral");
     }
-    expect(document.body.textContent).not.toMatch(/Cloud Sync/);
+    expect(document.body.textContent).not.toMatch(/Sync Across Devices/);
     expect(await axeViolations()).toEqual([]);
   });
 
@@ -1163,9 +1163,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     const dialog = await openRemove("Remove Mossgarden from your library?");
     expect(within(dialog).getByText("Its devices keep working.")).toBeTruthy();
     expect(
-      within(dialog).getByText(
-        "The devices you signed in on stop syncing it with Cloud Sync.",
-      ),
+      within(dialog).getByText("The devices you signed in on stop syncing it."),
     ).toBeTruthy();
     expect(
       within(dialog).getByText(
@@ -1186,7 +1184,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/"));
   });
 
-  it("a floating key Mara added: anyone with the key can add it; Keep it changes nothing; no Cloud Sync line without the service", async () => {
+  it("a floating key Mara added: anyone with the key can add it; Keep it changes nothing; no sync line without the service", async () => {
     window.history.replaceState(null, "", "/#/p/mossgarden");
     const added = license({
       product: "mossgarden",
@@ -1203,7 +1201,7 @@ describe("licence origins and Remove from my library (PX-23)", () => {
         "It won't be in an account: anyone with the key can add it, and it won't come back to this account by itself.",
       ),
     ).toBeTruthy();
-    expect(within(dialog).queryByText(/Cloud Sync/)).toBeNull();
+    expect(within(dialog).queryByText(/stop syncing/)).toBeNull();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Keep it" }),
     );

@@ -855,10 +855,10 @@ msgstr "Guarde {product} na sua conta"
 msgid "activate.recommend.badge"
 msgstr "Recomendado"
 
-#. Cloud Sync keeps your settings and saves on every device
-#. ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them.
+#. Keep your settings and saved data the same on every device
+#. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "A sincronização na nuvem mantém suas configurações e seus saves em todos os dispositivos"
+msgstr "Mantenha suas configurações e dados salvos iguais em todos os dispositivos"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -905,10 +905,10 @@ msgstr "Enviamos um código para este e-mail no navegador. {product} nunca o vê
 msgid "activate.attach.done"
 msgstr "{product} está na sua conta"
 
-#. Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.
-#. AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone).
+#. Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too.
+#. AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone).
 msgid "activate.attach.syncOn"
-msgstr "A sincronização na nuvem está ativada neste {deviceKind}. Entre nos seus outros dispositivos para sincronizá-los também."
+msgstr "A sincronização está ativada neste {deviceKind}. Entre nos seus outros dispositivos para sincronizá-los também."
 
 #. Couldn't add this license. Try again in a moment.
 #. AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form.
@@ -1817,10 +1817,10 @@ msgstr "Ativado com uma chave de licença"
 msgid "account.devices"
 msgstr "Dispositivos"
 
-#. Cloud Sync
-#. AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term.
+#. Sync Across Devices
+#. AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows.
 msgid "account.cloudSync"
-msgstr "Sincronização na nuvem"
+msgstr "Sincronização entre dispositivos"
 
 #. Updates
 #. AccountAndLicense: the settings pane for the license and account. Group header.
@@ -2058,7 +2058,7 @@ msgid "cloudSync.signedOut"
 msgstr "Você saiu da conta."
 
 #. Sign in to sync
-#. CloudSyncStatus: a small sync status. Cloud Sync needs an account.
+#. CloudSyncStatus: a small sync status. Syncing needs an account.
 msgid "cloudSync.signIn"
 msgstr "Entrar para sincronizar"
 
@@ -5207,10 +5207,10 @@ msgctxt "macos"
 msgid "signin.consent.deny"
 msgstr "Não permitir"
 
-#. Cloud Sync
+#. Your synced settings and data
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.consent.cloudSync"
-msgstr "Sincronização na nuvem"
+msgstr "Suas configurações e dados sincronizados"
 
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).

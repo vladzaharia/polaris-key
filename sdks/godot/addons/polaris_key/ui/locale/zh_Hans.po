@@ -851,10 +851,10 @@ msgstr "将{product}保存到你的账户"
 msgid "activate.recommend.badge"
 msgstr "推荐"
 
-#. Cloud Sync keeps your settings and saves on every device
-#. ActivateDone: a reason line, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. The first words are a lead-in; the kit may style them.
+#. Keep your settings and saved data the same on every device
+#. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "云同步会在每台设备上保留你的设置和存档"
+msgstr "让你的设置和存档在每台设备上保持一致"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -901,10 +901,10 @@ msgstr "我们会在浏览器中向这个电子邮件发送验证码。{product}
 msgid "activate.attach.done"
 msgstr "{product}已在你的账户中"
 
-#. Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.
-#. AddToAccount: added, shown only when the product has Cloud Sync. Cloud Sync is a feature name; use the glossary term. Arguments: {deviceKind} = the device kind already worded (computer, phone).
+#. Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too.
+#. AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone).
 msgid "activate.attach.syncOn"
-msgstr "这台{deviceKind}已开启云同步。在其他设备上登录即可一并同步。"
+msgstr "这台{deviceKind}已开启同步。在其他设备上登录即可一并同步。"
 
 #. Couldn't add this license. Try again in a moment.
 #. AddToAccount: adding failed on a server error. Not about the email, so the person stays on the form.
@@ -1807,10 +1807,10 @@ msgstr "已通过许可证密钥激活"
 msgid "account.devices"
 msgstr "设备"
 
-#. Cloud Sync
-#. AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term.
+#. Sync Across Devices
+#. AccountAndLicense: the settings pane for the license and account. Row label. The feature's label (LOCKER-FEATURE-NAMES §1); the developer name never shows.
 msgid "account.cloudSync"
-msgstr "云同步"
+msgstr "跨设备同步"
 
 #. Updates
 #. AccountAndLicense: the settings pane for the license and account. Group header.
@@ -2048,7 +2048,7 @@ msgid "cloudSync.signedOut"
 msgstr "你已退出登录。"
 
 #. Sign in to sync
-#. CloudSyncStatus: a small sync status. Cloud Sync needs an account.
+#. CloudSyncStatus: a small sync status. Syncing needs an account.
 msgid "cloudSync.signIn"
 msgstr "登录以同步"
 
@@ -5187,10 +5187,10 @@ msgctxt "macos"
 msgid "signin.consent.deny"
 msgstr "不允许"
 
-#. Cloud Sync
+#. Your synced settings and data
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9).
 msgid "signin.consent.cloudSync"
-msgstr "云同步"
+msgstr "你已同步的设置和数据"
 
 #. New: {tier} license, created when you continue
 #. PX-14a: the app card (SIGN-IN.md §3.6 to §3.9). Arguments: {tier} = the tier's name (never translated).

@@ -473,7 +473,7 @@ describe("AddToAccount", () => {
     );
   });
 
-  it("added names Cloud Sync only when the product has it", () => {
+  it("added names syncing only when the product has it", () => {
     const withSync = render(
       <AddToAccount
         input={
@@ -485,7 +485,7 @@ describe("AddToAccount", () => {
       />,
     );
     expect(withSync.container.textContent).toContain(
-      "Cloud Sync is on for this computer",
+      "Syncing is on for this computer",
     );
     cleanup();
     const without = render(
@@ -499,7 +499,7 @@ describe("AddToAccount", () => {
         }
       />,
     );
-    expect(without.container.textContent).not.toContain("Cloud Sync");
+    expect(without.container.textContent).not.toContain("Syncing is on");
   });
 });
 

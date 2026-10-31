@@ -174,7 +174,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Keep {product} in your account",
     "activate.recommend.badge": "Recommended",
     "activate.recommend.sync":
-      "Cloud Sync keeps your settings and saves on every device",
+      "Keep your settings and saved data the same on every device",
     "activate.recommend.recover":
       "Get your license back if you lose the key or this device",
     "activate.recommend.devices":
@@ -189,7 +189,7 @@ export const KIT_COPY: Readonly<
       "We send a code to this email in your browser. {product} never sees it.",
     "activate.attach.done": "{product} is in your account",
     "activate.attach.syncOn":
-      "Cloud Sync is on for this {deviceKind}. Sign in on your other devices to sync them too.",
+      "Syncing is on for this {deviceKind}. Sign in on your other devices to sync them too.",
     "activate.attach.failed":
       "Couldn't add this license. Try again in a moment.",
     "activate.waiting":
@@ -357,7 +357,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "Signed in as {name}",
     "account.keyOnly": "Activated with a license key",
     "account.devices": "Devices",
-    "account.cloudSync": "Cloud Sync",
+    "account.cloudSync": "Sync Across Devices",
     "account.updates": "Updates",
     "account.autoUpdate": "Update automatically",
     "account.channel": "Release channel",
@@ -1051,7 +1051,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "on {device}",
     "signin.thisBrowser": "this browser",
     "signin.consent.deny": "Don't allow",
-    "signin.consent.cloudSync": "Cloud Sync",
+    "signin.consent.cloudSync": "Your synced settings and data",
     "signin.consent.newLicense":
       "New: {tier} license, created when you continue",
     "signin.key.upgradeTitle": "Keep {product} in an account",
@@ -1977,7 +1977,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "{product} in Ihrem Konto behalten",
     "activate.recommend.badge": "Empfohlen",
     "activate.recommend.sync":
-      "Die Cloud-Synchronisierung hält Ihre Einstellungen und Spielstände auf jedem Gerät aktuell",
+      "Halten Sie Ihre Einstellungen und gespeicherten Daten auf jedem Gerät gleich",
     "activate.recommend.recover":
       "Ihre Lizenz zurückholen, wenn Sie den Schlüssel oder dieses Gerät verlieren",
     "activate.recommend.devices":
@@ -1993,7 +1993,7 @@ export const KIT_COPY: Readonly<
       "Wir senden einen Code an diese E-Mail in Ihrem Browser. {product} sieht ihn nie.",
     "activate.attach.done": "{product} ist in Ihrem Konto",
     "activate.attach.syncOn":
-      "Die Cloud-Synchronisierung ist für dieses {deviceKind} aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren.",
+      "Die Synchronisierung ist für dieses {deviceKind} aktiv. Melden Sie sich auf Ihren anderen Geräten an, um auch sie zu synchronisieren.",
     "activate.attach.failed":
       "Die Lizenz konnte nicht hinzugefügt werden. Versuchen Sie es gleich noch einmal.",
     "activate.waiting":
@@ -2173,7 +2173,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "Angemeldet als {name}",
     "account.keyOnly": "Mit einem Lizenzschlüssel aktiviert",
     "account.devices": "Geräte",
-    "account.cloudSync": "Cloud-Synchronisierung",
+    "account.cloudSync": "Synchronisierung auf allen Geräten",
     "account.updates": "Updates",
     "account.autoUpdate": "Automatisch aktualisieren",
     "account.channel": "Release-Kanal",
@@ -2934,7 +2934,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "auf {device}",
     "signin.thisBrowser": "diesen Browser",
     "signin.consent.deny": "Nicht erlauben",
-    "signin.consent.cloudSync": "Cloud-Synchronisierung",
+    "signin.consent.cloudSync": "Ihre synchronisierten Einstellungen und Daten",
     "signin.consent.newLicense":
       "Neu: {tier}-Lizenz, wird beim Fortfahren erstellt",
     "signin.key.upgradeTitle": "{product} in einem Konto behalten",
@@ -3894,7 +3894,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Gardez {product} dans votre compte",
     "activate.recommend.badge": "Recommandé",
     "activate.recommend.sync":
-      "La synchronisation cloud conserve vos réglages et vos sauvegardes sur chaque appareil",
+      "Gardez vos réglages et données enregistrées identiques sur chaque appareil",
     "activate.recommend.recover":
       "Récupérez votre licence si vous perdez la clé ou cet appareil",
     "activate.recommend.devices":
@@ -3910,7 +3910,7 @@ export const KIT_COPY: Readonly<
       "Nous envoyons un code à cet e-mail dans votre navigateur. {product} ne le voit jamais.",
     "activate.attach.done": "{product} est dans votre compte",
     "activate.attach.syncOn":
-      "La synchronisation cloud est activée sur cet {deviceKind}. Connectez-vous sur vos autres appareils pour les synchroniser aussi.",
+      "La synchronisation est activée sur cet {deviceKind}. Connectez-vous sur vos autres appareils pour les synchroniser aussi.",
     "activate.attach.failed":
       "Impossible d’ajouter cette licence. Réessayez dans un instant.",
     "activate.waiting":
@@ -4087,7 +4087,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "Connecté en tant que {name}",
     "account.keyOnly": "Activé avec une clé de licence",
     "account.devices": "Appareils",
-    "account.cloudSync": "Synchronisation cloud",
+    "account.cloudSync": "Synchronisation entre appareils",
     "account.updates": "Mises à jour",
     "account.autoUpdate": "Mettre à jour automatiquement",
     "account.channel": "Canal de publication",
@@ -4835,7 +4835,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "sur {device}",
     "signin.thisBrowser": "ce navigateur",
     "signin.consent.deny": "Ne pas autoriser",
-    "signin.consent.cloudSync": "Synchronisation cloud",
+    "signin.consent.cloudSync": "Vos réglages et données synchronisés",
     "signin.consent.newLicense":
       "Nouvelle licence {tier}, créée lorsque vous continuez",
     "signin.key.upgradeTitle": "Gardez {product} dans un compte",
@@ -5794,7 +5794,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Conserva {product} en tu cuenta",
     "activate.recommend.badge": "Recomendado",
     "activate.recommend.sync":
-      "La sincronización en la nube mantiene tus ajustes y partidas en todos tus dispositivos",
+      "Mantén tus ajustes y datos guardados iguales en todos tus dispositivos",
     "activate.recommend.recover":
       "Recupera tu licencia si pierdes la clave o este dispositivo",
     "activate.recommend.devices":
@@ -5809,7 +5809,7 @@ export const KIT_COPY: Readonly<
       "Enviamos un código a este correo en tu navegador. {product} nunca lo ve.",
     "activate.attach.done": "{product} está en tu cuenta",
     "activate.attach.syncOn":
-      "La sincronización en la nube está activada en este {deviceKind}. Inicia sesión en tus otros dispositivos para sincronizarlos también.",
+      "La sincronización está activada en este {deviceKind}. Inicia sesión en tus otros dispositivos para sincronizarlos también.",
     "activate.attach.failed":
       "No se pudo añadir esta licencia. Inténtalo de nuevo en un momento.",
     "activate.waiting":
@@ -5984,7 +5984,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "Sesión iniciada como {name}",
     "account.keyOnly": "Activado con una clave de licencia",
     "account.devices": "Dispositivos",
-    "account.cloudSync": "Sincronización en la nube",
+    "account.cloudSync": "Sincronización entre dispositivos",
     "account.updates": "Actualizaciones",
     "account.autoUpdate": "Actualizar automáticamente",
     "account.channel": "Canal de versiones",
@@ -6727,7 +6727,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "en {device}",
     "signin.thisBrowser": "este navegador",
     "signin.consent.deny": "No permitir",
-    "signin.consent.cloudSync": "Sincronización en la nube",
+    "signin.consent.cloudSync": "Tus ajustes y datos sincronizados",
     "signin.consent.newLicense": "Nueva: licencia {tier}, se crea al continuar",
     "signin.key.upgradeTitle": "Guarda {product} en una cuenta",
     "signin.key.upgradeLede":
@@ -7685,7 +7685,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Guarde {product} na sua conta",
     "activate.recommend.badge": "Recomendado",
     "activate.recommend.sync":
-      "A sincronização na nuvem mantém suas configurações e seus saves em todos os dispositivos",
+      "Mantenha suas configurações e dados salvos iguais em todos os dispositivos",
     "activate.recommend.recover":
       "Recupere sua licença se perder a chave ou este dispositivo",
     "activate.recommend.devices":
@@ -7701,7 +7701,7 @@ export const KIT_COPY: Readonly<
       "Enviamos um código para este e-mail no navegador. {product} nunca o vê.",
     "activate.attach.done": "{product} está na sua conta",
     "activate.attach.syncOn":
-      "A sincronização na nuvem está ativada neste {deviceKind}. Entre nos seus outros dispositivos para sincronizá-los também.",
+      "A sincronização está ativada neste {deviceKind}. Entre nos seus outros dispositivos para sincronizá-los também.",
     "activate.attach.failed":
       "Não foi possível adicionar esta licença. Tente novamente em instantes.",
     "activate.waiting":
@@ -7878,7 +7878,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "Conectado como {name}",
     "account.keyOnly": "Ativado com uma chave de licença",
     "account.devices": "Dispositivos",
-    "account.cloudSync": "Sincronização na nuvem",
+    "account.cloudSync": "Sincronização entre dispositivos",
     "account.updates": "Atualizações",
     "account.autoUpdate": "Atualizar automaticamente",
     "account.channel": "Canal de lançamento",
@@ -8607,7 +8607,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "em {device}",
     "signin.thisBrowser": "este navegador",
     "signin.consent.deny": "Não permitir",
-    "signin.consent.cloudSync": "Sincronização na nuvem",
+    "signin.consent.cloudSync": "Suas configurações e dados sincronizados",
     "signin.consent.newLicense": "Nova: licença {tier}, criada ao continuar",
     "signin.key.upgradeTitle": "Guarde {product} em uma conta",
     "signin.key.upgradeLede":
@@ -9539,7 +9539,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Tieni {product} nel tuo account",
     "activate.recommend.badge": "Consigliato",
     "activate.recommend.sync":
-      "La sincronizzazione cloud mantiene impostazioni e salvataggi su ogni dispositivo",
+      "Mantieni impostazioni e dati salvati uguali su ogni dispositivo",
     "activate.recommend.recover":
       "Riavere la licenza se perdi la chiave o questo dispositivo",
     "activate.recommend.devices":
@@ -9554,7 +9554,7 @@ export const KIT_COPY: Readonly<
       "Inviamo un codice a questa e-mail nel browser. {product} non lo vede mai.",
     "activate.attach.done": "{product} è nel tuo account",
     "activate.attach.syncOn":
-      "La sincronizzazione cloud è attiva su questo {deviceKind}. Accedi sugli altri dispositivi per sincronizzare anche quelli.",
+      "La sincronizzazione è attiva su questo {deviceKind}. Accedi sugli altri dispositivi per sincronizzare anche quelli.",
     "activate.attach.failed":
       "Impossibile aggiungere questa licenza. Riprova tra un momento.",
     "activate.waiting":
@@ -9728,7 +9728,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "Accesso effettuato come {name}",
     "account.keyOnly": "Attivato con una chiave di licenza",
     "account.devices": "Dispositivi",
-    "account.cloudSync": "Sincronizzazione cloud",
+    "account.cloudSync": "Sincronizzazione tra dispositivi",
     "account.updates": "Aggiornamenti",
     "account.autoUpdate": "Aggiorna automaticamente",
     "account.channel": "Canale di rilascio",
@@ -10461,7 +10461,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "su {device}",
     "signin.thisBrowser": "questo browser",
     "signin.consent.deny": "Non consentire",
-    "signin.consent.cloudSync": "Sincronizzazione cloud",
+    "signin.consent.cloudSync": "Impostazioni e dati sincronizzati",
     "signin.consent.newLicense":
       "Nuova: licenza {tier}, creata quando continui",
     "signin.key.upgradeTitle": "Conserva {product} in un account",
@@ -11413,7 +11413,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "{product}をアカウントに保存",
     "activate.recommend.badge": "おすすめ",
     "activate.recommend.sync":
-      "クラウド同期で、設定とセーブデータをすべてのデバイスに保てます",
+      "設定と保存データをすべてのデバイスで同じに保てます",
     "activate.recommend.recover":
       "キーやこのデバイスを失ってもライセンスを取り戻せます",
     "activate.recommend.devices":
@@ -11428,7 +11428,7 @@ export const KIT_COPY: Readonly<
       "ブラウザーでこのメールアドレスにコードを送ります。{product}にはコードは見えません。",
     "activate.attach.done": "{product}がアカウントに入りました",
     "activate.attach.syncOn":
-      "この{deviceKind}でクラウド同期がオンになりました。ほかのデバイスでもサインインすると同期されます。",
+      "この{deviceKind}で同期がオンになりました。ほかのデバイスでもサインインすると同期されます。",
     "activate.attach.failed":
       "このライセンスを追加できませんでした。しばらくしてからもう一度お試しください。",
     "activate.waiting":
@@ -11608,7 +11608,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "{name}としてサインイン中",
     "account.keyOnly": "ライセンスキーでアクティベート済み",
     "account.devices": "デバイス",
-    "account.cloudSync": "クラウド同期",
+    "account.cloudSync": "デバイス間の同期",
     "account.updates": "アップデート",
     "account.autoUpdate": "自動的にアップデート",
     "account.channel": "リリースチャンネル",
@@ -12349,7 +12349,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "{device} で",
     "signin.thisBrowser": "このブラウザ",
     "signin.consent.deny": "許可しない",
-    "signin.consent.cloudSync": "クラウド同期",
+    "signin.consent.cloudSync": "同期された設定とデータ",
     "signin.consent.newLicense":
       "新規：{tier}ライセンス（続けると作成されます）",
     "signin.key.upgradeTitle": "{product} をアカウントに保管",
@@ -13306,7 +13306,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "{product}을(를) 계정에 보관하세요",
     "activate.recommend.badge": "추천",
     "activate.recommend.sync":
-      "클라우드 동기화로 설정과 저장 데이터를 모든 기기에서 유지하세요",
+      "설정과 저장 데이터를 모든 기기에서 똑같이 유지하세요",
     "activate.recommend.recover": "키나 이 기기를 잃어도 라이선스를 되찾으세요",
     "activate.recommend.devices":
       "{developer}에게 묻지 않고 직접 새 기기로 옮기세요",
@@ -13321,7 +13321,7 @@ export const KIT_COPY: Readonly<
       "브라우저에서 이 이메일로 코드를 보냅니다. {product}은(는) 코드를 보지 못합니다.",
     "activate.attach.done": "{product}이(가) 계정에 있습니다",
     "activate.attach.syncOn":
-      "이 {deviceKind}에서 클라우드 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다.",
+      "이 {deviceKind}에서 동기화가 켜졌습니다. 다른 기기에서도 로그인하면 동기화됩니다.",
     "activate.attach.failed":
       "이 라이선스를 추가하지 못했어요. 잠시 후 다시 시도하세요.",
     "activate.waiting":
@@ -13492,7 +13492,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "{name} 님으로 로그인됨",
     "account.keyOnly": "라이선스 키로 활성화됨",
     "account.devices": "기기",
-    "account.cloudSync": "클라우드 동기화",
+    "account.cloudSync": "기기 간 동기화",
     "account.updates": "업데이트",
     "account.autoUpdate": "자동으로 업데이트",
     "account.channel": "릴리스 채널",
@@ -14194,7 +14194,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "{device}에서",
     "signin.thisBrowser": "이 브라우저",
     "signin.consent.deny": "허용 안 함",
-    "signin.consent.cloudSync": "클라우드 동기화",
+    "signin.consent.cloudSync": "동기화된 설정과 데이터",
     "signin.consent.newLicense": "새 {tier} 라이선스: 계속하면 생성돼요",
     "signin.key.upgradeTitle": "{product}을(를) 계정에 보관",
     "signin.key.upgradeLede":
@@ -15108,7 +15108,7 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · 这台{deviceKind}是第 {n} 台设备，共 {limit} 台。",
     "activate.recommend.title": "将{product}保存到你的账户",
     "activate.recommend.badge": "推荐",
-    "activate.recommend.sync": "云同步会在每台设备上保留你的设置和存档",
+    "activate.recommend.sync": "让你的设置和存档在每台设备上保持一致",
     "activate.recommend.recover": "丢失密钥或这台设备后，可找回你的许可证",
     "activate.recommend.devices": "无需联系{developer}，自己就能迁移到新设备",
     "activate.recommend.action": "添加姓名和电子邮件",
@@ -15121,7 +15121,7 @@ export const KIT_COPY: Readonly<
       "我们会在浏览器中向这个电子邮件发送验证码。{product}看不到它。",
     "activate.attach.done": "{product}已在你的账户中",
     "activate.attach.syncOn":
-      "这台{deviceKind}已开启云同步。在其他设备上登录即可一并同步。",
+      "这台{deviceKind}已开启同步。在其他设备上登录即可一并同步。",
     "activate.attach.failed": "无法添加此许可证。请稍后重试。",
     "activate.waiting":
       "这个许可证已发送到 {maskedEmail}。用该电子邮件登录，即可保存到你的账户。",
@@ -15275,7 +15275,7 @@ export const KIT_COPY: Readonly<
     "account.holder": "已登录为{name}",
     "account.keyOnly": "已通过许可证密钥激活",
     "account.devices": "设备",
-    "account.cloudSync": "云同步",
+    "account.cloudSync": "跨设备同步",
     "account.updates": "更新",
     "account.autoUpdate": "自动更新",
     "account.channel": "发布渠道",
@@ -15926,7 +15926,7 @@ export const KIT_COPY: Readonly<
     "signin.header.onDevice": "在 {device} 上",
     "signin.thisBrowser": "此浏览器",
     "signin.consent.deny": "不允许",
-    "signin.consent.cloudSync": "云同步",
+    "signin.consent.cloudSync": "你已同步的设置和数据",
     "signin.consent.newLicense": "新：{tier}许可证，继续后创建",
     "signin.key.upgradeTitle": "将 {product} 保存在账户中",
     "signin.key.upgradeLede":
