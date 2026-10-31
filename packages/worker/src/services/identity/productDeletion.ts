@@ -38,7 +38,7 @@ const PRODUCT_KEYED = [
  * account link, and the scope prefix each one builds (`providers/gameCenter.ts`,
  * `providers/playGames.ts`, `passthrough/link.ts`). Each is unique across live products.
  */
-const SCOPE_SETTINGS = [
+export const SCOPE_SETTINGS = [
   ["identity.platformSignIn.apple.teamId", "apple-team:"],
   ["identity.platformSignIn.playGames.applicationId", "pgs-app:"],
   ["identity.platformSignIn.google.serverClientId", "google-client:"],

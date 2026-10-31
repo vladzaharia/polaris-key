@@ -78,6 +78,7 @@ import {
 } from "./restore/subjectStore.js";
 
 import { identityProductDeletion } from "./productDeletion.js";
+import { identityScopeRelease } from "./scopeRelease.js";
 
 export const identityService: ServiceDescriptor = {
   slug: "identity",
@@ -87,6 +88,7 @@ export const identityService: ServiceDescriptor = {
   contributes: {
     manifest: identityManifest,
     productDeletion: identityProductDeletion,
+    scopeRelease: identityScopeRelease,
     // LX-26: the licence-holder hooks, so License's creation path and every account-email
     // verification reach them (`core/licensing/licenseHolders.ts`).
     licenseHolders: licenseHolderHooks,

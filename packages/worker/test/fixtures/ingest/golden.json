@@ -1,10 +1,48 @@
 {
   "1-link-full": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}"
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}"
       ],
       "ci_publishers": [
         {
@@ -268,7 +306,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
           ]
         },
         {
@@ -494,6 +532,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [],
       "ci_publishers": [
         {
@@ -902,10 +941,48 @@
   },
   "2-link-minimal": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}"
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}"
       ],
       "dist_access": [
         {
@@ -978,7 +1055,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\"]"
           ]
         }
       ],
@@ -1141,6 +1218,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [],
       "dist_access": [
         {
@@ -1368,10 +1446,48 @@
   },
   "3-resync-unchanged": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}"
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}"
       ],
       "ci_publishers": [
         {
@@ -1619,7 +1735,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
           ]
         }
       ],
@@ -1855,6 +1971,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [],
       "ci_publishers": [
         {
@@ -2219,12 +2336,50 @@
   },
   "4-resync-changed": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"licensed\\\"\",\"{\\\"effective\\\":\\\"licensed\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"licensed\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE COALESCE((SELECT access_source FROM release_config WHERE product = ?), 'manifest') = 'manifest'\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"update.metadataAccess\",null,\"update.metadataAccess set from the manifest at 0123456789ab: \\\"public\\\" → \\\"licensed\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"{\\\"effective\\\":\\\"licensed\\\"}\",\"resync\",null,\"update.metadataAccess\",\"acme\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE COALESCE((SELECT compat_source FROM products WHERE slug = ?), 'manifest') = 'manifest'\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"release.compatWindow\",null,\"release.compatWindow set from the manifest at 0123456789ab: {\\\"min\\\":\\\"1.0.0\\\",\\\"max\\\":\\\"9.0.0\\\"} → {\\\"min\\\":\\\"1.1.0\\\",\\\"max\\\":\\\"9.0.0\\\"}\",\"{\\\"effective\\\":{\\\"min\\\":\\\"1.0.0\\\",\\\"max\\\":\\\"9.0.0\\\"}}\",\"{\\\"effective\\\":{\\\"min\\\":\\\"1.1.0\\\",\\\"max\\\":\\\"9.0.0\\\"}}\",\"resync\",null,\"release.compatWindow\",\"acme\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"config.catalog\",null,\"config.catalog published from the manifest as v2 at 0123456789ab\",null,null,\"resync\",null,\"config.catalog\",\"acme\",\"config.catalog\",1700000060]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"core.name\",null,\"core.name set from the manifest at 0123456789ab: \\\"Acme\\\" → \\\"Acme Two\\\"\",\"{\\\"effective\\\":\\\"Acme\\\"}\",\"{\\\"effective\\\":\\\"Acme Two\\\"}\",\"resync\",null,\"core.name\",\"acme\",\"core.name\",1700000060]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"license.defaults.deviceLimit\",null,\"license.defaults.deviceLimit set from the manifest at 0123456789ab: 3 → 4\",\"{\\\"effective\\\":3}\",\"{\\\"effective\\\":4}\",\"resync\",null,\"license.defaults.deviceLimit\",\"acme\",\"license.defaults.deviceLimit\",1700000060]}",
@@ -2528,7 +2683,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
           ]
         }
       ],
@@ -2769,6 +2924,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [
         {
           "product": "acme",
@@ -3433,10 +3589,48 @@
   },
   "5-resync-claims": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"licensed\\\"\",\"{\\\"effective\\\":\\\"licensed\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"licensed\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"identity.oidc\",null,\"identity.oidc set from the manifest at 0123456789ab: {\\\"provider\\\":\\\"custom\\\",\\\"issuer\\\":\\\"https://id.example\\\",\\\"clientId\\\":\\\"acme-client\\\",\\\"clientSecretSecret\\\":\\\"OIDC_SECRET__ACME\\\",\\\"redirectUris\\\":[\\\"https://acme.example/cb\\\"],\\\"groupRoleMap\\\":{\\\"acme-admins\\\":{\\\"role\\\"... → {\\\"provider\\\":\\\"custom\\\",\\\"issuer\\\":\\\"https://id.example\\\",\\\"clientId\\\":\\\"acme-client-2\\\",\\\"clientSecretSecret\\\":\\\"OIDC_SECRET__ACME\\\",\\\"redirectUris\\\":[\\\"https://acme.example/cb\\\",\\\"https://acme.example/cb2\\\"],\\\"groupRo...\",\"{\\\"effective\\\":{\\\"provider\\\":\\\"custom\\\",\\\"issuer\\\":\\\"https://id.example\\\",\\\"clientId\\\":\\\"acme-client\\\",\\\"clientSecretSecret\\\":\\\"OIDC_SECRET__ACME\\\",\\\"redirectUris\\\":[\\\"https://acme.example/cb\\\"],\\\"groupRoleMap\\\":{\\\"acme-admins\\\":{\\\"role\\\":\\\"admin\\\"}}}}\",\"{\\\"effective\\\":{\\\"provider\\\":\\\"custom\\\",\\\"issuer\\\":\\\"https://id.example\\\",\\\"clientId\\\":\\\"acme-client-2\\\",\\\"clientSecretSecret\\\":\\\"OIDC_SECRET__ACME\\\",\\\"redirectUris\\\":[\\\"https://acme.example/cb\\\",\\\"https://acme.example/cb2\\\"],\\\"groupRoleMap\\\":{\\\"acme-admins\\\":{\\\"role\\\":\\\"admin\\\"}}}}\",\"resync\",null,\"identity.oidc\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"identity.provisioning\",null,\"identity.provisioning set from the manifest at 0123456789ab: [{\\\"claim\\\":\\\"plan\\\",\\\"entitlementKey\\\":\\\"pro\\\",\\\"entitlementValue\\\":true,\\\"secretKey\\\":null,\\\"secretUrlTemplate\\\":null,\\\"allowedHosts\\\":null}] → [{\\\"claim\\\":\\\"plan\\\",\\\"entitlementKey\\\":\\\"pro\\\",\\\"entitlementValue\\\":false,\\\"secretKey\\\":null,\\\"secretUrlTemplate\\\":null,\\\"allowedHosts\\\":null}]\",\"{\\\"effective\\\":[{\\\"claim\\\":\\\"plan\\\",\\\"entitlementKey\\\":\\\"pro\\\",\\\"entitlementValue\\\":true,\\\"secretKey\\\":null,\\\"secretUrlTemplate\\\":null,\\\"allowedHosts\\\":null}]}\",\"{\\\"effective\\\":[{\\\"claim\\\":\\\"plan\\\",\\\"entitlementKey\\\":\\\"pro\\\",\\\"entitlementValue\\\":false,\\\"secretKey\\\":null,\\\"secretUrlTemplate\\\":null,\\\"allowedHosts\\\":null}]}\",\"resync\",null,\"identity.provisioning\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"release.betaBranch\",null,\"release.betaBranch set from the manifest at 0123456789ab: \\\"main\\\" → \\\"dev\\\"\",\"{\\\"effective\\\":\\\"main\\\"}\",\"{\\\"effective\\\":\\\"dev\\\"}\",\"resync\",null,\"release.betaBranch\"]}",
@@ -3696,7 +3890,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
           ]
         }
       ],
@@ -3865,6 +4059,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [
         {
           "product": "acme",
@@ -4411,10 +4606,48 @@
   },
   "6a-resync-drop-unused": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"profile\",\"standard\",null,\"Profile standard removed by the manifest\",null,null,\"resync\",null,\"config.profiles\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"tier\",\"free\",null,\"Tier free removed by the manifest\",null,null,\"resync\",null,\"license.tiers\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"tier\",\"pro\",null,\"Tier pro changed by the manifest\",null,null,\"resync\",null,\"license.tiers\"]}"
@@ -4665,7 +4898,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
           ]
         }
       ],
@@ -4880,6 +5113,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [
         {
           "product": "acme",
@@ -5336,10 +5570,48 @@
   },
   "8-resync-break-glass": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000100,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000100,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000100,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000100,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000100,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000100,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000100,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))\",\"params\":[\"acme\",\"aud_<id>\",1700000100,\"resync\",\"Manifest resync\",null,\"setting.breakGlass.end\",\"setting\",\"core.web.origins\",null,\"Break-glass claim on core.web.origins expired at 2023-11-14T22:13:30.000Z\",null,null,\"system\",null,\"core.web.origins\",\"acme\",\"core.web.origins\",1700000100]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))\",\"params\":[\"acme\",\"aud_<id>\",1700000100,\"resync\",\"Manifest resync\",null,\"setting.breakGlass.end\",\"setting\",\"license.defaults.deviceLimit\",null,\"Break-glass claim on license.defaults.deviceLimit ended: the manifest changed it at 0123456789ab\",null,null,\"system\",null,\"license.defaults.deviceLimit\",\"acme\",\"license.defaults.deviceLimit\",1700000100]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))\",\"params\":[\"acme\",\"aud_<id>\",1700000100,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"license.defaults.deviceLimit\",null,\"license.defaults.deviceLimit set from the manifest at 0123456789ab: 3 → 9\",\"{\\\"effective\\\":3}\",\"{\\\"effective\\\":9}\",\"resync\",null,\"license.defaults.deviceLimit\",\"acme\",\"license.defaults.deviceLimit\",1700000100]}"
@@ -5600,7 +5872,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
           ]
         }
       ],
@@ -5832,6 +6104,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [
         {
           "product": "acme",
@@ -6283,11 +6556,49 @@
   },
   "9-resync-off-license": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE COALESCE((SELECT services_source FROM products WHERE slug = ?), 'manifest') = 'manifest'\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"core.services\",null,\"core.services set from the manifest at 0123456789ab: {\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"com... → {\\\"license\\\":{\\\"enabled\\\":false},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"co...\",\"{\\\"effective\\\":{\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"commerce\\\":{\\\"enabled\\\":false},\\\"connect\\\":{\\\"enabled\\\":false}}}\",\"{\\\"effective\\\":{\\\"license\\\":{\\\"enabled\\\":false},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"commerce\\\":{\\\"enabled\\\":false},\\\"connect\\\":{\\\"enabled\\\":false}}}\",\"resync\",null,\"core.services\",\"acme\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"tier\",\"free\",null,\"Tier free removed by the manifest\",null,null,\"resync\",null,\"license.tiers\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"tier\",\"pro\",null,\"Tier pro changed by the manifest\",null,null,\"resync\",null,\"license.tiers\"]}"
       ],
@@ -6537,7 +6848,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
           ]
         }
       ],
@@ -6759,6 +7070,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [
         {
           "product": "acme",
@@ -7160,11 +7472,49 @@
   },
   "9-resync-off-config": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE COALESCE((SELECT services_source FROM products WHERE slug = ?), 'manifest') = 'manifest'\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"core.services\",null,\"core.services set from the manifest at 0123456789ab: {\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"com... → {\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":false},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"co...\",\"{\\\"effective\\\":{\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"commerce\\\":{\\\"enabled\\\":false},\\\"connect\\\":{\\\"enabled\\\":false}}}\",\"{\\\"effective\\\":{\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":false},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"commerce\\\":{\\\"enabled\\\":false},\\\"connect\\\":{\\\"enabled\\\":false}}}\",\"resync\",null,\"core.services\",\"acme\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"tier\",\"free\",null,\"Tier free removed by the manifest\",null,null,\"resync\",null,\"license.tiers\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"tier\",\"pro\",null,\"Tier pro changed by the manifest\",null,null,\"resync\",null,\"license.tiers\"]}"
       ],
@@ -7414,7 +7764,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
           ]
         }
       ],
@@ -7636,6 +7986,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [
         {
           "product": "acme",
@@ -8037,11 +8388,49 @@
   },
   "9-resync-off-identity": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE COALESCE((SELECT services_source FROM products WHERE slug = ?), 'manifest') = 'manifest'\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"core.services\",null,\"core.services set from the manifest at 0123456789ab: {\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"com... → {\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":false},\\\"sync\\\":{\\\"enabled\\\":false},\\\"co...\",\"{\\\"effective\\\":{\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"commerce\\\":{\\\"enabled\\\":false},\\\"connect\\\":{\\\"enabled\\\":false}}}\",\"{\\\"effective\\\":{\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":false},\\\"sync\\\":{\\\"enabled\\\":false},\\\"commerce\\\":{\\\"enabled\\\":false},\\\"connect\\\":{\\\"enabled\\\":false}}}\",\"resync\",null,\"core.services\",\"acme\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"tier\",\"free\",null,\"Tier free removed by the manifest\",null,null,\"resync\",null,\"license.tiers\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"tier\",\"pro\",null,\"Tier pro changed by the manifest\",null,null,\"resync\",null,\"license.tiers\"]}"
       ],
@@ -8291,7 +8680,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\"]"
           ]
         }
       ],
@@ -8513,6 +8902,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [
         {
           "product": "acme",
@@ -8914,11 +9304,49 @@
   },
   "9-resync-off-distribution": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\",\\\"identity.keyEntry.claimByKey\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE COALESCE((SELECT services_source FROM products WHERE slug = ?), 'manifest') = 'manifest'\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"core.services\",null,\"core.services set from the manifest at 0123456789ab: {\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"com... → {\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":false},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"co...\",\"{\\\"effective\\\":{\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":true},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"commerce\\\":{\\\"enabled\\\":false},\\\"connect\\\":{\\\"enabled\\\":false}}}\",\"{\\\"effective\\\":{\\\"license\\\":{\\\"enabled\\\":true},\\\"config\\\":{\\\"enabled\\\":true},\\\"release\\\":{\\\"enabled\\\":true},\\\"distribution\\\":{\\\"enabled\\\":false},\\\"update\\\":{\\\"enabled\\\":false},\\\"identity\\\":{\\\"enabled\\\":true},\\\"sync\\\":{\\\"enabled\\\":false},\\\"commerce\\\":{\\\"enabled\\\":false},\\\"connect\\\":{\\\"enabled\\\":false}}}\",\"resync\",null,\"core.services\",\"acme\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000060,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"tier\",\"free\",null,\"Tier free removed by the manifest\",null,null,\"resync\",null,\"license.tiers\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\",\"params\":[\"acme\",\"aud_<id>\",1700000060,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"tier\",\"pro\",null,\"Tier pro changed by the manifest\",null,null,\"resync\",null,\"license.tiers\"]}"
       ],
@@ -9027,7 +9455,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\",\"identity.keyEntry.claimByKey\"]"
           ]
         }
       ],
@@ -9249,6 +9677,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [
         {
           "product": "acme",
@@ -9589,11 +10018,49 @@
   },
   "10a-link-existing": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "acme",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "acme",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "acme",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"acme\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"acme\",\"aud_<id>\",1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"acme\",\"app\",\"public\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE COALESCE((SELECT compat_source FROM products WHERE slug = ?), 'manifest') = 'manifest'\",\"params\":[\"acme\",\"aud_<id>\",1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"release.compatWindow\",null,\"release.compatWindow set from the manifest at 0123456789ab: {\\\"min\\\":\\\"0.0.0\\\",\\\"max\\\":\\\"99.0.0\\\"} → {\\\"min\\\":\\\"1.0.0\\\",\\\"max\\\":\\\"9.0.0\\\"}\",\"{\\\"effective\\\":{\\\"min\\\":\\\"0.0.0\\\",\\\"max\\\":\\\"99.0.0\\\"}}\",\"{\\\"effective\\\":{\\\"min\\\":\\\"1.0.0\\\",\\\"max\\\":\\\"9.0.0\\\"}}\",\"resync\",null,\"release.compatWindow\",\"acme\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"acme\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"acme\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"acme\",\"identity.platformSignIn.playGames.applicationId\",null,null]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"config.catalog\",null,\"config.catalog published from the manifest as v2 at 0123456789ab\",null,null,\"resync\",null,\"config.catalog\",\"acme\",\"config.catalog\",1700000000]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"core.name\",null,\"core.name set from the manifest at 0123456789ab: \\\"acme\\\" → \\\"Acme\\\"\",\"{\\\"effective\\\":\\\"acme\\\"}\",\"{\\\"effective\\\":\\\"Acme\\\"}\",\"resync\",null,\"core.name\",\"acme\",\"core.name\",1700000000]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))\",\"params\":[\"acme\",\"aud_<id>\",1700000000,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"license.defaults.deviceLimit\",null,\"license.defaults.deviceLimit set from the manifest at 0123456789ab: 5 → 3\",\"{\\\"effective\\\":5}\",\"{\\\"effective\\\":3}\",\"resync\",null,\"license.defaults.deviceLimit\",\"acme\",\"license.defaults.deviceLimit\",1700000000]}",
@@ -9684,7 +10151,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "acme",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\"]"
           ]
         }
       ],
@@ -9907,6 +10374,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [
         {
           "product": "acme",
@@ -10416,10 +10884,48 @@
   },
   "11a-deploy-first": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "polaris-key",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "polaris-key",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "polaris-key",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000001,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"polaris-key\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000001,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"polaris-key\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000001,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"polaris-key\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"polaris-key\",\"aud_<id>\",1700000001,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"polaris-key\",\"app\",\"public\"]}"
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"polaris-key\",\"aud_<id>\",1700000001,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"polaris-key\",\"app\",\"public\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"polaris-key\",\"aud_<id>\",1700000001,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"polaris-key\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"polaris-key\",\"aud_<id>\",1700000001,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"polaris-key\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"polaris-key\",\"aud_<id>\",1700000001,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"polaris-key\",\"identity.platformSignIn.playGames.applicationId\",null,null]}"
       ],
       "ci_publishers": [
         {
@@ -10577,7 +11083,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "polaris-key",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\"]"
           ]
         }
       ],
@@ -11288,6 +11794,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [],
       "ci_publishers": [
         {
@@ -11966,10 +12473,48 @@
   },
   "11b-deploy-relink": {
     "writes": {
+      "account_links": [
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "google-client:",
+            "polaris-key",
+            "identity.platformSignIn.google.serverClientId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "apple-team:",
+            "polaris-key",
+            "identity.platformSignIn.apple.teamId",
+            null,
+            null
+          ]
+        },
+        {
+          "table": "account_links",
+          "sql": "DELETE FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted'))",
+          "params": [
+            "pgs-app:",
+            "polaris-key",
+            "identity.platformSignIn.playGames.applicationId",
+            null,
+            null
+          ]
+        }
+      ],
       "audit": [
-        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000100,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"polaris-key\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\"]\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000100,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"polaris-key\",\"[\\\"identity.oidc.syncTierOnSignIn\\\",\\\"identity.keyEntry.limit\\\",\\\"identity.terms\\\",\\\"identity.redirectPaths\\\",\\\"identity.platformSignIn.google.serverClientId\\\",\\\"identity.platformSignIn.google.clientIds\\\",\\\"identity.platformSignIn.apple.teamId\\\",\\\"identity.platformSignIn.apple.bundleIds\\\",\\\"identity.platformSignIn.gameCenter\\\",\\\"identity.platformSignIn.playGames.applicationId\\\",\\\"identity.platformSignIn.playGames.serverClientId\\\",\\\"identity.nearby\\\",\\\"identity.restore\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT (product), ('aud_' || lower(hex(randomblob(9)))), ?, ?, ?, ?, ?, ?, (key), ?, (key || ' cleared from the manifest: ' || value_json || ' → default'), ?, ?, ?, ?, ? FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))\",\"params\":[1700000100,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",null,null,null,null,null,null,\"polaris-key\",\"[\\\"licensing.entitlementModel\\\",\\\"licensing.entitlementHolder\\\",\\\"licensing.clampGraceToExpiry\\\",\\\"licensing.anchorPolicy\\\",\\\"licensing.reanchor\\\",\\\"licensing.refundGraceHours\\\",\\\"licensing.dunningGraceDays\\\"]\"]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (? || json_quote(mode) || ?), (json_object('effective', mode)), ?, ?, ?, ? FROM dist_access WHERE product = ? AND deliverable_id = ? AND source = 'manifest' AND mode IS NOT ?\",\"params\":[\"polaris-key\",\"aud_<id>\",1700000100,\"resync\",\"Manifest resync\",null,\"setting.resync\",\"setting\",\"distribution.access\",null,\"distribution.access set from the manifest: \",\" → \\\"public\\\"\",\"{\\\"effective\\\":\\\"public\\\"}\",\"resync\",null,\"distribution.access\",\"polaris-key\",\"app\",\"public\"]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"polaris-key\",\"aud_<id>\",1700000100,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.apple.teamId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"apple-team:\",\"polaris-key\",\"identity.platformSignIn.apple.teamId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"polaris-key\",\"aud_<id>\",1700000100,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.google.serverClientId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"google-client:\",\"polaris-key\",\"identity.platformSignIn.google.serverClientId\",null,null]}",
+        "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM account_links WHERE tenant_scope IN (SELECT ? || json_extract(s.value_json, '$') AS scope FROM product_settings s WHERE s.product = ? AND s.key = ? AND (? IS NULL OR s.value_json <> ?) AND (s.source = 'manifest') AND NOT EXISTS ( SELECT 1 FROM product_settings o JOIN products p ON p.slug = o.product WHERE o.key = s.key AND o.product != s.product AND lower(o.value_json) = lower(s.value_json) AND COALESCE(p.status, 'active') != 'deleted')))\",\"params\":[\"polaris-key\",\"aud_<id>\",1700000100,null,\"Polaris Key\",null,\"identity.scope_links.cleared\",\"setting\",\"identity.platformSignIn.playGames.applicationId\",null,\"Developer-scoped sign-in links were removed because the setting that scopes them changed; a later product that claims the same scope links again\",null,null,null,null,null,\"pgs-app:\",\"polaris-key\",\"identity.platformSignIn.playGames.applicationId\",null,null]}",
         "{\"table\":\"audit\",\"sql\":\"INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, parent_id, summary, before_json, after_json, origin, reason, setting_key) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM product_settings WHERE product = ? AND key = ? AND source = 'console' AND (expires_at IS NULL OR expires_at > ?))\",\"params\":[\"polaris-key\",\"aud_<id>\",1700000100,\"deploy\",\"Deploy hook\",null,\"setting.breakGlass.end\",\"setting\",\"core.web.origins\",null,\"Break-glass claim on core.web.origins expired at 2023-11-14T22:13:25.000Z; the manifest's value applies: []\",null,null,\"system\",null,\"core.web.origins\",\"polaris-key\",\"core.web.origins\",1700000100]}"
       ],
       "ci_publishers": [
@@ -12133,7 +12678,7 @@
           "sql": "DELETE FROM product_settings WHERE product = ? AND source = 'manifest' AND key IN (SELECT value FROM json_each(?))",
           "params": [
             "polaris-key",
-            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.nearby\",\"identity.restore\"]"
+            "[\"identity.oidc.syncTierOnSignIn\",\"identity.keyEntry.limit\",\"identity.terms\",\"identity.redirectPaths\",\"identity.platformSignIn.google.serverClientId\",\"identity.platformSignIn.google.clientIds\",\"identity.platformSignIn.apple.teamId\",\"identity.platformSignIn.apple.bundleIds\",\"identity.platformSignIn.gameCenter\",\"identity.platformSignIn.playGames.applicationId\",\"identity.platformSignIn.playGames.serverClientId\",\"identity.nearby\",\"identity.restore\"]"
           ]
         },
         {
@@ -12861,6 +13406,7 @@
       ]
     },
     "state": {
+      "account_links": [],
       "audit": [
         {
           "product": "polaris-key",

@@ -55,6 +55,7 @@ import {
   type WriteRefusal,
 } from "./settings/write.js";
 import { tryParseJson } from "../platform/json.js";
+import { scopeReleaseStatements } from "./contributions.js";
 import { jsonList, jsonListArg } from "./sqlIn.js";
 
 /** The product facts the row store needs: who it is, when it was registered, how it is linked. */
@@ -257,7 +258,15 @@ export function manifestRowSettingStatements(
     }
     if (!fitsValueSpec(def.value, value)) continue;
     const json = JSON.stringify(value);
+    // Unless a console claim holds the row, the upsert below replaces the stored value.
     out.push(
+      ...scopeReleaseStatements({
+        product,
+        key: def.key,
+        next: json,
+        now,
+        when: { sql: `NOT ${CLAIMED}`, params: [product, def.key, now] },
+      }),
       auditStatement(
         {
           product,
@@ -304,6 +313,20 @@ export function manifestRowSettingStatements(
   }
   if (undeclared.length > 0) {
     const inList = jsonList();
+    // Only the manifest-sourced rows go (below), so only their values are released.
+    for (const key of undeclared)
+      out.push(
+        ...scopeReleaseStatements({
+          product,
+          key,
+          next: null,
+          now,
+          when: {
+            sql: `s.source = 'manifest'`,
+            params: [],
+          },
+        }),
+      );
     out.push(
       auditStatement(
         {
