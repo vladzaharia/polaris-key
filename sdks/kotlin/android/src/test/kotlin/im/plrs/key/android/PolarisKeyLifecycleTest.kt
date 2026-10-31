@@ -21,6 +21,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -124,6 +125,10 @@ class PolarisKeyLifecycleCloudSyncTest {
         else -> respond(404)
     }
 
+    // Disabled 2026-10-31 under the load rule (owner 2026-10-26): it fails only on the Linux CI runners, again after
+    // the signed-in wait (CI run 41199288150: the machine stays Local, state not Idle). It passes locally.
+    // Re-enable once it is diagnosed on Linux (_lead/flaky-disabled.md).
+    @Ignore("2026-10-31: fails on Linux CI runners only; see _lead/flaky-disabled.md")
     @Test
     fun theLastActivityStoppingFlushesBoundedAndTheStateLivesUnderNoBackup() {
         val mirror = kotlinx.serialization.json.Json.parseToJsonElement(
