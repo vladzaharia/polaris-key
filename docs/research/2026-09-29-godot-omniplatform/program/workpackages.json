@@ -10176,7 +10176,7 @@
         "docs/research/2026-10-07-dx-consolidation/audits/identity.md"
       ],
       "brief": "wp/ST-34-admin-scope-personal-tokens-pkey-login.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "ST-35",
@@ -19100,7 +19100,7 @@
       "optional": false,
       "refs": ["plans/CC-01-cloud-connect.md §4", "plans/CC-01.md §4"],
       "brief": "wp/CC-16-console-section.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "CC-17",
