@@ -288,6 +288,9 @@ export class SavesApi implements BrowserSaves {
   #engine: TransferEngine | null = null;
   readonly #active = new Map<string, SaveTransfer>();
   readonly #conflicts = new Map<string, SaveConflict>();
+  /** Bumped by every purge: a call that began before one never builds on, or records into, what the
+   *  purge deleted. */
+  #gen = 0;
   readonly #listeners = new Set<(e: SaveTransferEvent | null) => void>();
 
   constructor(deps: BrowserSavesDeps) {
@@ -348,9 +351,11 @@ export class SavesApi implements BrowserSaves {
     metadata: Meta,
     opts: WriteOptions = {},
   ): Promise<SaveTransfer> {
+    const gen = this.#gen;
     const client = await this.#client(true);
     return this.#track(
       client.write(id, bytes, metadata, this.#progress(`saves:${id}`, opts)),
+      gen,
     );
   }
 
@@ -361,6 +366,7 @@ export class SavesApi implements BrowserSaves {
     bytes: Uint8Array | RangedSource,
     opts: WriteOptions = {},
   ): Promise<SaveTransfer> {
+    const gen = this.#gen;
     const client = await this.#client(true);
     return this.#track(
       client.resolve(
@@ -369,6 +375,7 @@ export class SavesApi implements BrowserSaves {
         bytes,
         this.#progress(`saves:${conflict.id}`, opts),
       ),
+      gen,
     );
   }
 
@@ -403,6 +410,7 @@ export class SavesApi implements BrowserSaves {
   /** The person's data is gone: cancel what runs, settle waiting writes, delete the journal and
    *  the chunk cache, and close the files layer. Each step is tried whatever the other did. */
   async purge(): Promise<void> {
+    this.#gen++;
     const running = [...this.#active.values()];
     this.#active.clear();
     this.#conflicts.clear();
@@ -457,7 +465,10 @@ export class SavesApi implements BrowserSaves {
 
   async #client(write = false): Promise<SavesClient> {
     const d = this.#d;
+    const gen = this.#gen;
+    const purged = (): SavesError => new SavesError("rejected", "signed-out");
     await d.attach();
+    if (gen !== this.#gen) throw purged();
     if (!d.host.started) throw new SavesError("rejected", "sync-not-started");
     if (write && !d.host.isWriter)
       throw new SavesError("rejected", SAVES_NOT_WRITER);
@@ -465,6 +476,8 @@ export class SavesApi implements BrowserSaves {
     const codec: FileCodec = e2e
       ? await e2eCodec(d)
       : serverFileCodec(webCryptoSyncPort);
+    // A purge that ran while this waited wins: no files layer is built for the person who left.
+    if (gen !== this.#gen) throw purged();
     const o = d.host.savesOptions;
     const { files, engine } = this.#filesLayer();
     return new SavesClient({
@@ -482,7 +495,11 @@ export class SavesApi implements BrowserSaves {
   }
 
   /** Register a write, emit its events, and drop it from `transfers()` when it settles. */
-  #track(t: SaveTransfer): SaveTransfer {
+  #track(t: SaveTransfer, gen: number): SaveTransfer {
+    if (gen !== this.#gen) {
+      void t.cancel().catch(() => undefined);
+      return t;
+    }
     this.#active.set(t.id, t);
     this.#emit(null);
     void t.done.then((o: SaveOutcome) => {

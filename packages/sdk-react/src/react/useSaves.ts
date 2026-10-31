@@ -53,6 +53,14 @@ export function useSaves(): UseSaves {
     client.unsupported,
   );
   const live = useRef(true);
+  // The person left (sign-out, another person): their list is not shown to the next one.
+  useEffect(
+    () =>
+      client.onEvents((events) => {
+        if (events.some((e) => e.type === "signedOut")) setSaves(null);
+      }),
+    [client],
+  );
   useEffect(() => {
     live.current = true;
     return () => {

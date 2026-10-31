@@ -53,7 +53,11 @@ describe("useSaves", () => {
       onTransfers: () => () => undefined,
     } as unknown as BrowserSaves;
     const { result } = renderHook(() => useSaves(), {
-      wrapper: wrap({ saves, unsupported: null }),
+      wrapper: wrap({
+        saves,
+        unsupported: null,
+        onEvents: () => () => undefined,
+      }),
     });
     expect(result.current.saves).toBeNull();
     await act(async () => void (await result.current.list()));
@@ -64,6 +68,26 @@ describe("useSaves", () => {
       finish({ state: "cancelled" });
     });
     await waitFor(() => expect(result.current.saves).toEqual([SUMMARY]));
+  });
+
+  it("drops the list when the person signs out", async () => {
+    let emit: (e: unknown[]) => void = () => undefined;
+    const saves = {
+      list: vi.fn(async () => [SUMMARY]),
+      transfers: () => [],
+      onTransfers: () => () => undefined,
+    } as unknown as BrowserSaves;
+    const { result } = renderHook(() => useSaves(), {
+      wrapper: wrap({
+        saves,
+        unsupported: null,
+        onEvents: (l: (e: unknown[]) => void) => ((emit = l), () => undefined),
+      }),
+    });
+    await act(async () => void (await result.current.list()));
+    expect(result.current.saves).toEqual([SUMMARY]);
+    act(() => emit([{ type: "signedOut", reason: "subjectChanged" }]));
+    expect(result.current.saves).toBeNull();
   });
 
   it("surfaces the typed unsupported where Cloud Sync cannot run", async () => {

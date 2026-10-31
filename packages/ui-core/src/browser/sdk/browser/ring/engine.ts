@@ -561,7 +561,10 @@ export class RingEngine implements KeyringClient {
       key: await importRootHandle(root),
     };
     const vault = await this.vault();
+    // A codec built for the root being replaced stops with it, whether or not a root was held.
+    this.rootGen++;
     await vault.put(rec);
+    this.rootGen++;
     // The first root acquired (create, recover or unwrap) pins its ring; a later one re-pins.
     await vault.putPin(identityPin({ ringId, epoch, rootKid }));
     this.dropSession();

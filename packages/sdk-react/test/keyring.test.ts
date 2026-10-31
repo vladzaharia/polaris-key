@@ -476,6 +476,44 @@ describe("the root in the browser", () => {
     expect(await a.engine.fileCodec("saves")).toBeNull();
   });
 
+  it("a codec built for a root stops when another root is accepted while one is held (SAVES.R)", async () => {
+    const server = new FakeRingServer();
+    const a = device(server, A);
+    await a.engine.create();
+    const codec = (await a.engine.fileCodec("saves"))!;
+    const plain = Uint8Array.from({ length: 32 }, (_, i) => i);
+    const id = await codec.chunkId(plain);
+    const pieces = async function* () {
+      for (let i = 0; i < 4; i++) yield plain;
+    };
+    const running = codec.sealStream(pieces());
+    await running.next();
+    const root = await rootOfWrap(server, a);
+    const ring = server.ring!;
+    await (
+      a.engine as unknown as {
+        accept(
+          r: Uint8Array,
+          i: string,
+          e: number,
+          k: string,
+        ): Promise<boolean>;
+      }
+    ).accept(root, ring.ringId, ring.epoch, ring.rootKid);
+    expect(a.engine.hasRoot()).toBe(true);
+    await expect(codec.sealChunk(id, plain)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+    await expect(running.next()).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+    // A codec built after it works.
+    const fresh = (await a.engine.fileCodec("saves"))!;
+    await expect(fresh.sealChunk(id, plain)).resolves.toBeInstanceOf(
+      Uint8Array,
+    );
+  });
+
   it("lock() forgets the root and tells subscribers", async () => {
     const server = new FakeRingServer();
     const a = device(server, A);

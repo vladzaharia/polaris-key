@@ -504,6 +504,20 @@ describe("cloudSync.saves in the browser host", () => {
     });
   });
 
+  it("a purge wins over a call that began before it: no files layer is rebuilt, no conflict re-added", async () => {
+    const r = await rig();
+    await r.saves.list();
+    const racing = r.saves.write("slot1", bytes(500), { n: 1 }).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    await r.saves.purge();
+    expect(await racing).toMatchObject({ detail: "signed-out" });
+    expect(r.saves.conflicts()).toEqual([]);
+    expect(r.saves.transfers()).toEqual([]);
+    await r.host.close();
+  });
+
   it("is the typed unsupported on a transport that cannot run Cloud Sync", async () => {
     const u = unsupportedCloudSync("runtime", "no sync here");
     await expect(u.saves.list()).rejects.toMatchObject({
