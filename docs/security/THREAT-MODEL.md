@@ -8568,6 +8568,49 @@ every `ct` is `encryption_mismatch` and discovery says nothing of E2E.
   compare values; the client decides the better one. A client that ignores the rule can write a
   worse value, which harms only that person's own data. Field policies are not anti-cheat.
 
+### Cloud Sync delta files: T31 and T32 (U-37)
+
+A collection that declares `files.delta` stores a large file as a manifest over content-defined
+chunks (WIRE-CONTRACT-V5 §13.8.3). The Worker never reads a chunk or a manifest: it checks length
+and digest only, and a reader checks every chunk id against the plaintext. The routes are the file
+routes' (`/<p>/sync/files/…`, device bearer, `404` unless `launch.syncFiles` is on). The
+conversations are recorded in the `cloudsync-chunks*` transcripts. The plan labelled these rows T24
+and T25; those numbers are taken (the envelope AAD, the cost of files), so they are T31 and T32.
+
+- **T31, chunk equality inside one person's collection.** Deduplication means the Worker learns
+  which chunks repeat: that two versions of a save, or two records, share data, and each chunk's
+  stored size (the plaintext length plus 2 bytes in server mode, plus 30 in end-to-end mode), so
+  the cut points of a file are visible. This is the price of sending only what changed. Controls:
+  a chunk is deduplicated per person and per collection and never across either (the row key is
+  the collection and the id, and so is the R2 key, `u/<p>/<s>/c/<collection>/<id>`), so one person
+  can never learn that another stores a chunk, and a chunk is never shared between collections;
+  the plan call and the chunk `GET` answer only from the authenticated person's own object, and
+  an id that is unknown, unreferenced or another collection's is the same `404`, so there is no
+  existence oracle; in end-to-end mode the id is a keyed hash under `K_cid(c)`, a key the Worker
+  never holds, so it cannot confirm a guessed plaintext against the ids it stores. Residual: equality
+  and size inside one collection, to the Worker and to anyone who can read its storage. A collection
+  with `files.delta: false` has none of it, and server mode already gives the Worker the plaintext.
+- **T32, the caps and the collector.** What bounds a hostile or buggy client: a stored chunk is at
+  most `SYNC_CHUNK_MAX_STORED_BYTES` (1,048,606) and the `PUT` must match the size the plan
+  declared and the `Content-Digest`, or nothing is stored (`400 upload_mismatch`); a `PUT` is
+  accepted only for an id the plan answered `missing`, create-only, so a stored object is never
+  replaced; a plan call names at most 1,024 distinct ids, an upload at most 16,384, and the
+  declared sizes plus the manifest are held to the collection's `files.maxBytes`; the plan, the
+  `PUT` and the chunk `GET` share the device's 600 requests a minute; the plan reserves the stored
+  bytes of every named chunk no file references, so concurrent uploads cannot overshoot the
+  quota, and a chunk is charged once however many files and revisions name it and given back when
+  the last reference goes. The collector (the alarm) deletes a chunk only when its count is 0 and
+  no upload pins it: the plan pins every id it answers, `present` or `missing`, until `finalize`,
+  `DELETE` or expiry, so a chunk a client was told is present cannot be deleted before its
+  `finalize` (D-7). The count is taken at `finalize`, released by a revision pruned, a record
+  deleted or a copy a merge left dead, and never goes below 0; the object is deleted before its
+  row, so a failed delete is retried and a row never outlives a missing object. An erasure
+  deletes every object the rows name and then sweeps `u/<p>/<s>/` (the chunk prefix included) and
+  the prefixes of subjects merged into it. Residual: after an account merge a chunk both people
+  held exists twice under two prefixes until the erasure; an object stored with no row (a crash
+  between the store and the row) is found by a later `PUT` of other bytes under the same key and
+  refused, and goes at the erasure.
+
 ### The account override layer (U-03, U-27)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the
