@@ -55,7 +55,7 @@ from ..core.peer_xfer import (
 )
 from ..core.peer_xfer_endpoint import XferEndpoint, XferEvents
 from .errors import LanError
-from .transfer_store import PartialStore
+from .transfer_store import DEFAULT_QUOTA_BYTES, PartialStore
 
 __all__ = [
     "Accept",
@@ -301,7 +301,9 @@ class Transfer:
         now: Optional[Callable[[], float]] = None,
         timer: Optional[Callable[[Callable[[], None], float], Callable[[], None]]] = None,
         links: Optional[Callable[[], List[str]]] = None,
+        quota_bytes: int = DEFAULT_QUOTA_BYTES,
     ) -> None:
+        self._quota = quota_bytes
         self._state_dir = state_dir
         self._open_peer = open_peer
         base = time.time() - time.monotonic()
@@ -560,7 +562,7 @@ class Transfer:
             if self._store is None or self._store_dir != root:
                 if not create and not os.path.isdir(root):
                     return None
-                self._store = PartialStore(root)
+                self._store = PartialStore(root, quota_bytes=self._quota)
                 self._store_dir = root
             return self._store
 

@@ -28,10 +28,12 @@ from typing import Any, BinaryIO, Callable, Dict, List, Optional
 
 from ..core.peer_xfer import XFER_PARTIAL_SECONDS
 
-__all__ = ["FREE_RESERVE_BYTES", "PartialStore", "peer_tag"]
+__all__ = ["DEFAULT_QUOTA_BYTES", "FREE_RESERVE_BYTES", "PartialStore", "peer_tag"]
 
 #: Bytes of free space the store leaves alone when it answers the quota check.
-FREE_RESERVE_BYTES = 64 * 1024 * 1024
+FREE_RESERVE_BYTES = 256 * 1024 * 1024
+#: The most the kept and promised partial files may hold together (host-configurable).
+DEFAULT_QUOTA_BYTES = 4 * 1024 * 1024 * 1024
 _REF = re.compile(r"[0-9a-f]{64}\Z")
 _INDEX = "index.json"
 _BLOCK = 1024 * 1024
@@ -42,6 +44,13 @@ Json = Dict[str, Any]
 def peer_tag(peer_key: bytes) -> str:
     """The index's name for a peer: a hash, so the file holds no key."""
     return hashlib.sha256(b"pkey-xfer/1 peer\x00" + bytes(peer_key)).hexdigest()
+
+
+def _open_nofollow(path: str, mode: str) -> BinaryIO:
+    """Open an existing partial without following a symbolic link where the platform can refuse one."""
+    flags = os.O_RDONLY if mode == "rb" else os.O_RDWR
+    fd = os.open(path, flags | getattr(os, "O_NOFOLLOW", 0))
+    return os.fdopen(fd, mode)  # type: ignore[return-value]
 
 
 def _chmod(path: str, mode: int) -> None:
@@ -59,7 +68,10 @@ class StoreRefused(OSError):
 class PartialStore:
     """One directory of partial files. Thread-safe. ``clock`` is epoch seconds."""
 
-    def __init__(self, directory: str, clock: Callable[[], float] = time.time) -> None:
+    def __init__(
+        self, directory: str, clock: Callable[[], float] = time.time, quota_bytes: int = DEFAULT_QUOTA_BYTES
+    ) -> None:
+        self._quota = quota_bytes
         self._dir = directory
         self._clock = clock
         self._lock = threading.RLock()
@@ -170,7 +182,7 @@ class PartialStore:
             if f is not None:
                 f.flush()
             left = offset
-            with open(self._path(ref), "rb") as r:
+            with _open_nofollow(self._path(ref), "rb") as r:
                 while left > 0:
                     b = r.read(min(_BLOCK, left))
                     if not b:
@@ -184,17 +196,37 @@ class PartialStore:
     def _promised_bytes(self, skip: Optional[str] = None) -> int:
         return sum(max(0, v[0] - v[1]) for r, v in self._promised.items() if r != skip)
 
+    def _held_bytes(self) -> int:
+        n = 0
+        for ref in self._idx:
+            try:
+                n += os.stat(self._path(ref)).st_size
+            except OSError:
+                pass
+        return n
+
     def free(self) -> int:
-        """Bytes the store can take: the disk's free space after the reserve and after what the live
-        transfers have been promised and not yet written."""
+        """Bytes the store can take: the smaller of the disk's free space after the reserve and the store's
+        quota after the bytes kept, both less what the live transfers have been promised and not yet written."""
         with self._lock:
             self._ensure()
-            return max(0, shutil.disk_usage(self._dir).free - FREE_RESERVE_BYTES - self._promised_bytes())
+            p = self._promised_bytes()
+            disk = shutil.disk_usage(self._dir).free - FREE_RESERVE_BYTES - p
+            return max(0, min(disk, self._quota - self._held_bytes() - p))
 
     def _reserve(self, ref: str, size: int, have: int) -> None:
         """Promise ``size - have`` more bytes to ``ref``, or refuse when the rest would not fit."""
         need = max(0, size - have)
-        room = shutil.disk_usage(self._dir).free - FREE_RESERVE_BYTES - self._promised_bytes(skip=ref)
+        p = self._promised_bytes(skip=ref)
+        own = 0
+        try:
+            own = os.stat(self._path(ref)).st_size if ref in self._idx else 0
+        except OSError:
+            pass
+        room = min(
+            shutil.disk_usage(self._dir).free - FREE_RESERVE_BYTES - p,
+            self._quota - (self._held_bytes() - own) - p - have,
+        )
         if need > room:
             raise StoreRefused(errno.ENOSPC, "not enough room for the transfer")
         self._promised[ref] = [size, have]
@@ -253,7 +285,7 @@ class PartialStore:
                 if owner is not None:
                     self._claims[ref] = owner
                 self._close(ref)
-                fd = os.open(self._path(ref), os.O_RDWR | os.O_CREAT | os.O_TRUNC, 0o600)
+                fd = os.open(self._path(ref), os.O_RDWR | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o600)
                 os.close(fd)
                 _chmod(self._path(ref), 0o600)
                 self._idx[ref] = {
@@ -275,7 +307,7 @@ class PartialStore:
                 if owner is not None:
                     self._claims[ref] = owner
                 self._close(ref)
-                with open(self._path(ref), "r+b") as f:
+                with _open_nofollow(self._path(ref), "r+b") as f:
                     f.truncate(effect["to"])
                 self._idx[ref]["at"] = self._clock()
             elif "keep" in effect:
@@ -307,7 +339,7 @@ class PartialStore:
             try:
                 with open(tmp, "wb") as w:
                     if ref is not None:
-                        with open(self._path(ref), "rb") as r:
+                        with _open_nofollow(self._path(ref), "rb") as r:
                             shutil.copyfileobj(r, w, _BLOCK)
                     w.flush()
                     os.fsync(w.fileno())
@@ -406,7 +438,7 @@ class PartialStore:
     def _handle(self, ref: str) -> BinaryIO:
         f = self._open.get(ref)
         if f is None:
-            f = open(self._path(ref), "r+b")
+            f = _open_nofollow(self._path(ref), "r+b")
             self._open[ref] = f
         return f
 

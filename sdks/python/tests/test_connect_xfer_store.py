@@ -142,9 +142,9 @@ def test_free_space_leaves_a_reserve(tmp_path: Path, monkeypatch: pytest.MonkeyP
     from collections import namedtuple
 
     U = namedtuple("U", "total used free")
-    monkeypatch.setattr(shutil, "disk_usage", lambda p: U(10**9, 0, 10**8))
+    monkeypatch.setattr(shutil, "disk_usage", lambda p: U(10**12, 0, 512 * 1024 * 1024))
     s = _make(tmp_path, Clock())
-    assert s.free() == 10**8 - 64 * 1024 * 1024
+    assert s.free() == 256 * 1024 * 1024
     monkeypatch.setattr(shutil, "disk_usage", lambda p: U(10**9, 0, 1000))
     assert s.free() == 0
 
@@ -233,3 +233,47 @@ def test_no_late_effect_recreates_what_a_purge_removed(tmp_path: Path) -> None:
     with pytest.raises(StoreRefused):
         s.apply(KEY, {"create": ref}, META, epoch=e2)
     s.apply(KEY, {"create": ref}, META, epoch=s.epoch(KEY))  # a session that starts afterwards is fine
+
+
+def test_accepted_transfers_cannot_pass_the_quota_or_the_disk_reserve(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from polaris_key.connect.transfer_store import DEFAULT_QUOTA_BYTES, FREE_RESERVE_BYTES, StoreRefused
+
+    assert DEFAULT_QUOTA_BYTES == 4 * 1024**3 and FREE_RESERVE_BYTES == 256 * 1024**2
+    # plenty of disk: the 4 GiB quota binds, across four accepted transfers
+    _usage(monkeypatch, 10**13)
+    s = PartialStore(str(tmp_path / "transfers"), Clock())
+    big = {**META, "size": 1024**3}
+    owners = [object() for _ in range(5)]
+    keys = [bytes([i]) * 32 for i in range(5)]
+    for i in range(4):
+        s.apply(keys[i], {"create": xfer_partial_path(keys[i], ID, SHA)}, big, owner=owners[i])
+    assert s.free() == 0
+    with pytest.raises(StoreRefused):
+        s.apply(keys[4], {"create": xfer_partial_path(keys[4], ID, SHA)}, {**META, "size": 1}, owner=owners[4])
+    # a host-set quota is honoured, and the disk reserve binds when the disk is tight
+    small = PartialStore(str(tmp_path / "t2"), Clock(), quota_bytes=1000)
+    assert small.free() == 1000
+    with pytest.raises(StoreRefused):
+        small.apply(KEY, {"create": xfer_partial_path(KEY, ID, SHA)}, {**META, "size": 1001}, owner=object())
+    _usage(monkeypatch, FREE_RESERVE_BYTES + 10)
+    tight = PartialStore(str(tmp_path / "t3"), Clock())
+    with pytest.raises(StoreRefused):
+        tight.apply(KEY, {"create": xfer_partial_path(KEY, ID, SHA)}, {**META, "size": 11}, owner=object())
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="symbolic links")
+def test_a_symbolic_link_in_place_of_a_partial_is_not_followed(tmp_path: Path) -> None:
+    s = _make(tmp_path, Clock())
+    ref = xfer_partial_path(KEY, ID, SHA)
+    s.apply(KEY, {"create": ref}, META)
+    target = tmp_path / "elsewhere"
+    target.write_bytes(b"secret")
+    os.unlink(tmp_path / "transfers" / ref)
+    os.symlink(target, tmp_path / "transfers" / ref)
+    with pytest.raises(OSError):
+        s.apply(KEY, {"write": ref, "offset": 0, "data": b"x"})
+    with pytest.raises(OSError):
+        s.rehash(ref, 3)
+    assert target.read_bytes() == b"secret"
