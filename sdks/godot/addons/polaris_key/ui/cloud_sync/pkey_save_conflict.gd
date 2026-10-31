@@ -123,7 +123,8 @@ func _build() -> void:
 	_status_row = st["row"]
 	_status_glyph = st["glyph"]
 	_status = st["label"]
-	loading_bar(right)
+	# The busy bar sits with the status line: the actions column is empty while a choice is applied.
+	loading_bar(left)
 	# One column in reading order: the choices, Keep both's reason right under it, then Cancel.
 	_actions = actions_row(right, "Actions", BoxContainer.ALIGNMENT_BEGIN)
 	_actions.set_meta(&"pkey_force_stack", true)
@@ -177,8 +178,8 @@ func _arrange(m: Dictionary) -> void:
 	var two := two_pane_fits()
 	set_columns(_cols, two)
 	# The two copies sit side by side while the column holds both, else stacked.
+	# The copies stack, in the same order as the choices they map to.
 	set_columns(_cards, false)
-	_cards.vertical = squeeze_level() >= 1 or not two
 	_cols.get_child(0).size_flags_stretch_ratio = 1.0
 	super(m)
 	_fit_choices()
@@ -196,6 +197,8 @@ func _apply_width(width: float) -> void:
 
 
 ## "Delete it here too" in the danger colour, outlined and never filled: the choices stay unfilled.
+## It keeps the shape and fill the other choices draw with (Keep this's resolved style) and changes
+## the border and the ink only.
 func _style_delete(b: Button, on: bool) -> void:
 	var colour := get_theme_color(&"font_color", &"PKeyError")
 	for item in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
@@ -204,7 +207,7 @@ func _style_delete(b: Button, on: bool) -> void:
 		else:
 			b.remove_theme_color_override(item)
 	for item in ["normal", "hover", "pressed"]:
-		var base := b.get_theme_stylebox(item, &"Button" if b.theme_type_variation == &"" else b.theme_type_variation)
+		var base := _keep_local.get_theme_stylebox(item)
 		if on and base is StyleBoxFlat:
 			var box := (base as StyleBoxFlat).duplicate() as StyleBoxFlat
 			box.border_color = colour
@@ -241,6 +244,37 @@ func _layout_stale() -> bool:
 	return false
 
 
+## The person has moved the focus (a direction, Tab or a pad press) since the screen opened. Until
+## then a host update or a resize must not scroll the versions away to the focused Cancel.
+var _moved := false
+var _seen_state := ""
+
+
+func _input(event: InputEvent) -> void:
+	super(event)
+	for a in ["ui_up", "ui_down", "ui_left", "ui_right", "ui_focus_next", "ui_focus_prev"]:
+		if event.is_action_pressed(a):
+			_moved = true
+
+
+## Keep the title and both copies in view until the person moves the focus; once they have, the
+## focus is kept in view, and reaching the first choice brings the top back (the copies cannot take
+## the focus, so this is how a pad scrolls up to them).
+func _reveal_focus() -> void:
+	var f := get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	var first: Control = null
+	for c in [_keep_local, _keep_remote, _keep_both, _done_button, _retry, _cancel_button]:
+		if is_focusable(c):
+			first = c
+			break
+	if String(model.get("state", "")) != "choose" or (_moved and f != null and f != first):
+		super()
+		return
+	for sc in _scrolls:
+		if (sc as ScrollContainer).vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+			(sc as ScrollContainer).scroll_vertical = 0
+
+
 func _screen_key() -> String:
 	return "%s|%s" % [model.get("state", ""), sync_on]
 
@@ -249,6 +283,9 @@ func _render() -> void:
 	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SaveConflict", PKeySaveConflict.input(step, local_when, remote_when, remote_device, remote_deleted, both_available, keep, sync_on))
 	var state: String = model.get("state", "hidden")
 	visible = state != "hidden"
+	if state != _seen_state:
+		_seen_state = state
+		_moved = false
 	_product.refresh()
 	var copy: Array = model.get("copy", [])
 	var key_args: Dictionary = model.get("keyArgs", {})

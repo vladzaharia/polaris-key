@@ -16,6 +16,7 @@ extends RefCounted
 #   godot --headless --path sdks/godot -- --pkey-test cloud_sync_ui
 
 const SCENARIOS := preload("res://tests/ui/scenarios.gd")
+const MATRIX := preload("res://tests/ui/matrix.gd")
 ## Fixture text in the code's own shape, never a real code.
 const CODE := "AB3D-9FGH-JK4M-NP5Q-RS6T-VW7X-YZ80-1C2E"
 const RING := {"ring_id": "rg_AAAAAAAAAAAAAAAAAAAAAA", "epoch": 2, "root_kid": "00112233445566778899aabbccddeeff"}
@@ -971,6 +972,17 @@ func _saves_rows(t: PKeyTestContext) -> void:
 	t.check("saves: Must-not passes a clean choice", _violation(gone_wrong, "choose", [], ["keep-local"]) == "")
 
 
+static func _contrast(a: Color, b: Color) -> float:
+	var la := _lum(a)
+	var lb := _lum(b)
+	return (maxf(la, lb) + 0.05) / (minf(la, lb) + 0.05)
+
+
+static func _lum(c: Color) -> float:
+	var l := c.srgb_to_linear()
+	return 0.2126 * l.r + 0.7152 * l.g + 0.0722 * l.b
+
+
 func _saves_behaviour(t: PKeyTestContext) -> void:
 	TranslationServer.set_locale("en")
 	# Nothing is the default: no filled control, the first focus is Cancel, and a choice is one press.
@@ -1017,11 +1029,33 @@ func _saves_behaviour(t: PKeyTestContext) -> void:
 	t.check("saves: Delete it here too is its own button and Keep both goes", (gb["KeepOther"] as Button).text == "Delete it here too" and not gb.has("KeepBoth"))
 	t.check("saves: Delete it here too is outlined in the danger colour, never filled", (gb["KeepOther"] as Button).theme_type_variation != &"PKeyPrimary" and (gb["KeepOther"] as Button).has_theme_color_override(&"font_color"))
 	_free(gone)
+	# It keeps the shape and fill of the other choices, and its words read, in both schemes.
+	var mx = MATRIX.new()
+	mx.use_locale("en")
+	for scheme in ["dark", "light"]:
+		var st: Dictionary = await mx.stage(_tree(), ["save_conflict.deleted", "save_conflict", "choose: the other copy was deleted", "full"], Vector2i(1280, 720), 1.0, null, scheme)
+		var d: PKeySaveConflict = st["view"]
+		await _frames(4)
+		var db := _buttons(d)
+		var del := db["KeepOther"] as Button
+		var keep := db["KeepThis"] as Button
+		var dbox := del.get_theme_stylebox(&"normal") as StyleBoxFlat
+		var kbox := keep.get_theme_stylebox(&"normal") as StyleBoxFlat
+		t.check("saves (%s): Delete it here too has the other choices' corner radius and fill" % scheme, dbox != null and kbox != null and dbox.corner_radius_top_left == kbox.corner_radius_top_left and dbox.bg_color == kbox.bg_color and dbox.border_color != kbox.border_color, "%s %s" % [dbox, kbox])
+		var ratio := _contrast(del.get_theme_color(&"font_color"), kbox.bg_color if kbox != null else Color.BLACK)
+		t.check("saves (%s): Delete it here too reads at 4.5:1 or better" % scheme, ratio >= 4.5, "%.2f font %s fill %s" % [ratio, del.get_theme_color(&"font_color"), kbox.bg_color])
+		(st["vp"] as Node).free()
+		await _frames(1)
+	PKeyUiTheme.reset()
+	PKeyUiTheme.reduce_motion_mode = "on"
 	# Keeping offers nothing; kept names the choice and Done; failed focuses Cancel and Try again repeats.
 	var keeping: PKeySaveConflict = _sc.save_conflict("keeping")
 	await _frames(3)
 	var kb := _buttons(keeping)
 	t.check("saves: while a choice is applied nothing is offered", kb.is_empty() and keeping._initial_focus() == null)
+	await _tree().create_timer(0.4).timeout
+	keeping._process(0.0)
+	t.check("saves: while a choice is applied the busy bar shows with real width", keeping._loading_bar.visible and keeping._loading_bar.size.x > 20.0, str(keeping._loading_bar.size))
 	var gate := [0]
 	keeping.cancelled.connect(func() -> void: gate[0] += 1)
 	keeping._cancel()
