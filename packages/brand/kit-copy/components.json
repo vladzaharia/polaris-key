@@ -1524,6 +1524,100 @@
           "copy": ["updateProgress.downloading", "toast.undo"]
         }
       }
+    },
+    "LinkPairing": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "open": {
+          "copy": [
+            "linkPairing.title",
+            "linkPairing.openBody",
+            "linkPairing.searching",
+            "common.cancel"
+          ]
+        },
+        "code": {
+          "copy": [
+            "linkPairing.codeTitle",
+            "linkPairing.codeBody",
+            "a11y.linkCode",
+            "linkPairing.reported",
+            "linkPairing.reportedUnnamed",
+            "linkPairing.shares",
+            "linkPairing.sharesNone",
+            "linkPairing.confirm",
+            "linkPairing.decline"
+          ]
+        },
+        "confirm": {
+          "copy": [
+            "linkPairing.waiting",
+            "a11y.linkCode",
+            "linkPairing.reported",
+            "linkPairing.reportedUnnamed",
+            "linkPairing.shares",
+            "linkPairing.sharesNone",
+            "common.cancel"
+          ]
+        },
+        "linked": {
+          "copy": [
+            "linkPairing.linkedTitle",
+            "linkPairing.linkedBody",
+            "linkPairing.linkedWith",
+            "linkPairing.shares",
+            "linkPairing.sharesNone",
+            "common.done"
+          ]
+        },
+        "failed": {
+          "copy": [
+            "linkPairing.failedTitle",
+            "linkPairing.failedDeclined",
+            "linkPairing.failedTimeout",
+            "linkPairing.failedFull",
+            "linkPairing.failedClosed",
+            "common.tryAgain",
+            "common.done"
+          ]
+        },
+        "unavailable": {
+          "copy": [
+            "core.codes.connect_links_disabled.title",
+            "core.codes.connect_links_disabled.message",
+            "common.done"
+          ]
+        }
+      }
+    },
+    "TransferOffer": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "ask": {
+          "copy": [
+            "transferOffer.ask",
+            "transferOffer.askUnnamed",
+            "transferOffer.askBody",
+            "transferOffer.accept",
+            "transferOffer.decline"
+          ]
+        },
+        "receiving": {
+          "copy": ["transferOffer.receiving", "common.cancel"]
+        },
+        "done": {
+          "copy": ["transferOffer.done", "common.done"]
+        },
+        "failed": {
+          "copy": [
+            "transferOffer.failed",
+            "transferOffer.failedBody",
+            "common.done"
+          ]
+        }
+      }
     }
   }
 }

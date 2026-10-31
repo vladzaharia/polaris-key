@@ -6,6 +6,7 @@ import pytest
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
+from polaris_key.connect.links import CloudLinks
 from polaris_key.connect.nearby import CloudNearby
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.auto_sign_in import NearbyNamespace
@@ -26,6 +27,7 @@ CLASSES = {
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
+    "CloudLinks": CloudLinks,
     "CloudNearby": CloudNearby,
 }
 
@@ -128,6 +130,13 @@ ATTRS = [
     ("identity.signIn.session.declineAccount", "NearbySignInSession", "decline_account"),
     ("identity.signIn.session.wrap", "NearbySignInSession", "wrap"),
     ("identity.signIn.session.onWrap", "NearbySignInSession", "on_wrap"),
+    ("cloudConnect.links.pair", "CloudLinks", "pair"),
+    ("cloudConnect.links.list", "CloudLinks", "list"),
+    ("cloudConnect.links.remove", "CloudLinks", "remove"),
+    ("cloudConnect.links.setReachable", "CloudLinks", "set_reachable"),
+    ("cloudConnect.links.open", "CloudLinks", "open"),
+    ("cloudConnect.links.onLink", "CloudLinks", "on_link"),
+    ("cloudConnect.links.interAccount", "CloudLinks", "inter_account"),
 ]
 OPTION_PARAMS = [
     ("options.productSlug", "product_slug"),

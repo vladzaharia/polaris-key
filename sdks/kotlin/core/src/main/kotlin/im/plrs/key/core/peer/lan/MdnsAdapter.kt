@@ -5,6 +5,8 @@
 
 package im.plrs.key.core.peer.lan
 
+import javax.net.SocketFactory
+
 /** An advert to publish: [instance] is `p1-` plus 16 base32 characters; [txt] are `key=value` entries. */
 public class MdnsAdvert(public val instance: String, public val port: Int, public val txt: List<String>) {
     override fun toString(): String = "MdnsAdvert(port=$port)"
@@ -18,6 +20,11 @@ public data class MdnsFound(
     val txt: List<String>,
     /** The addresses learned for the name, at most four, [host] first; a link-local one carries its `%zone`. A dial tries them in order. */
     val hosts: List<String> = listOf(host),
+    /**
+     * Opens the sockets a dial uses for this advert. Null (the JVM) means the default route; Android passes
+     * the found network's factory, so a dial never leaves through a VPN route.
+     */
+    val socketFactory: SocketFactory? = null,
 )
 
 /** What `advertise` and `browse` return. [stop] may be called twice. */

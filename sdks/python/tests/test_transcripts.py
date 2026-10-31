@@ -69,7 +69,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature update.feed release.record update.decide
 # @pkey-feature packs.apply.chunk commerce.receipt
 # @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
-# @pkey-feature license.manage
+# @pkey-feature license.manage connect.links
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
 # @pkey-feature identity.redirect.web identity.choice identity.signin.hints identity.devicecode.choice
@@ -234,13 +234,15 @@ def _connect_step(client: PolarisKeyClient, step: Dict[str, Any], session: Dict[
     return out
 
 
-def _relay_ticket_step(client: PolarisKeyClient) -> Dict[str, Any]:
+def _relay_ticket_step(client: PolarisKeyClient, contact: Any = None) -> Dict[str, Any]:
     """``client.connect.relay_ticket()`` (CC-10.4, ``connect.relay``). A refusal reads as ``result:
     "refused"`` with the status, the Worker's code and, where it answers them, ``retryAfter`` and ``scope``."""
     out: Dict[str, Any] = {}
     try:
-        g = client.connect.relay_ticket()
+        g = client.connect.relay_ticket(contact)
         out["result"] = "ok"
+        if contact is not None:
+            out["room"] = g.room
         out["protocol"] = g.protocol
         out["url"] = g.url
         out["expiresIn"] = g.expires_at - int(time.time())
@@ -367,6 +369,8 @@ def _act(
         return _relay_ticket_step(client)
     if action in ("nearbyStart", "nearbyPoll", "nearbyApprove"):
         return _nearby_step(client, store, step, session)
+    if action == "relayTicketContact":
+        return _relay_ticket_step(client, (str(args["room"]), str(args["rid"])))
     # D-6: the recorded action names map onto the session (`sign_in.start`, `wait`).
     if action == "beginSignIn":
         try:
@@ -464,6 +468,8 @@ def _act(
         out["nearbyEndpoints"] = frag is not None and all(
             n in frag["endpoints"] for n in ("nearbyStart", "nearbyApprove", "nearbyPoll")
         )
+        # connect.links (CC-19): the cached services.connect.interAccount the SDK gates links on.
+        out["interAccount"] = client.cloud_connect.links.inter_account()
     elif action == "sync":
         r = client.sync(force=args.get("force") is True)
         out["applied"] = r.applied

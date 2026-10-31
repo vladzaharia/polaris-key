@@ -630,7 +630,11 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────────
-    public suspend fun discover(): DiscoveryResult = core.discover().also { cloudSyncImpl.noteDiscovery() }
+    public suspend fun discover(): DiscoveryResult = core.discover().also {
+        cloudSyncImpl.noteDiscovery()
+        // `interAccount` may have moved: links follow the document (section 15.10 "Gates").
+        connect.notifyContacts()
+    }
 
     // ── Presentation (core.presentation, plans/HA-13.md) ────────────────────────────────────────
     /**

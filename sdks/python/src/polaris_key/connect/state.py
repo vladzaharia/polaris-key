@@ -20,12 +20,15 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
+from ..core.b64url import b64url_decode
+from ..core.peer_contact import MAX_CONTACT_CATS, MAX_CONTACTS, MAX_PENDING_CONTACTS
 from ..devices.keys import DeviceKeyStorage, FileDeviceKeyStorage, InMemoryDeviceKeyStorage
 
 __all__ = [
     "CONNECT_STATE_SCHEMA",
     "CONNECT_STATE_FILE",
     "ConnectStateRecord",
+    "ContactRow",
     "parse_connect_state",
     "connect_storage",
     "keys_after_ring",
@@ -35,10 +38,90 @@ CONNECT_STATE_SCHEMA = "pkey.connect.v1"
 CONNECT_STATE_FILE = "pkey.connect.v1.json"
 
 _KEY = re.compile(r"[A-Za-z0-9_-]{43}\Z")
+_CAT = re.compile(r"[a-z0-9-]{1,32}\Z")
+
+
+def _key32(v: Any) -> bool:
+    if not isinstance(v, str) or _KEY.match(v) is None:
+        return False
+    try:
+        return len(b64url_decode(v)) == 32
+    except ValueError:
+        return False
 
 
 def _is_int(v: Any) -> bool:
     return isinstance(v, int) and not isinstance(v, bool)
+
+
+@dataclass(frozen=True)
+class ContactRow:
+    """One contact as it rests in the record (WIRE-CONTRACT-V5 §15.10). ``secret`` and ``agree_key`` are
+    canonical base64url of 32 bytes; the secret is key material and is in no ``repr``."""
+
+    agree_key: str
+    secret: str = field(repr=False)
+    cats: Tuple[str, ...]
+    created_at: int
+    #: The host's local "advertise and keep a relay room for this contact" choice.
+    reachable: bool
+    label: Optional[str] = None
+    #: Unix seconds when a re-pair stored this contact pending; ``None`` for a held one.
+    pending_since: Optional[int] = None
+
+    def __repr__(self) -> str:
+        return "<ContactRow%s>" % (" pending" if self.pending_since is not None else "")
+
+    def __reduce__(self) -> Any:
+        raise TypeError("a contact row cannot be pickled")
+
+    def to_json(self) -> Dict[str, Any]:
+        d: Dict[str, Any] = {"agreeKey": self.agree_key, "secret": self.secret}
+        if self.label is not None:
+            d["label"] = self.label
+        d["cats"] = list(self.cats)
+        d["createdAt"] = self.created_at
+        d["reachable"] = self.reachable
+        if self.pending_since is not None:
+            d["pendingSince"] = self.pending_since
+        return d
+
+
+def _parse_contacts(v: Any) -> Optional[Tuple[ContactRow, ...]]:
+    if not isinstance(v, list) or len(v) > MAX_CONTACTS + MAX_PENDING_CONTACTS:
+        return None
+    out = []
+    for r in v:
+        if not isinstance(r, dict) or not _key32(r.get("agreeKey")) or not _key32(r.get("secret")):
+            return None
+        cats = r.get("cats")
+        if (
+            not isinstance(cats, list)
+            or len(cats) > MAX_CONTACT_CATS
+            or not all(isinstance(c, str) and _CAT.match(c) for c in cats)
+            or len(set(cats)) != len(cats)
+        ):
+            return None
+        label = r.get("label")
+        if label is not None and not isinstance(label, str):
+            return None
+        if not _is_int(r.get("createdAt")) or not isinstance(r.get("reachable"), bool):
+            return None
+        ps = r.get("pendingSince")
+        if ps is not None and not _is_int(ps):
+            return None
+        out.append(
+            ContactRow(
+                agree_key=r["agreeKey"],
+                secret=r["secret"],
+                cats=tuple(cats),
+                created_at=r["createdAt"],
+                reachable=r["reachable"],
+                label=label,
+                pending_since=ps,
+            )
+        )
+    return tuple(out)
 
 
 @dataclass(frozen=True)
@@ -65,6 +148,9 @@ class ConnectStateRecord:
     #: A pushed roster removed a device, so K_disc was replaced at the Worker and this copy is stale
     #: until the next identity fetch (CC-10.4, ``keysStale`` in Node's record). Absent when false.
     keys_stale: bool = False
+    #: The inter-account links this device holds for the product (§15.10), in the order they are held.
+    #: Each carries a contact secret: key material of the same standing as K_disc. Never in a ``repr``.
+    contacts: Tuple[ContactRow, ...] = field(repr=False, default=())
 
     def __reduce__(self) -> Any:
         raise TypeError("a Cloud Connect state record cannot be pickled")
@@ -85,6 +171,8 @@ class ConnectStateRecord:
         }
         if self.keys_stale:
             doc["keysStale"] = True
+        if self.contacts:
+            doc["contacts"] = [c.to_json() for c in self.contacts]
         return json.dumps(doc, separators=(",", ":")).encode("utf-8")
 
 
@@ -112,6 +200,12 @@ def parse_connect_state(raw: bytes) -> Optional[ConnectStateRecord]:
         or not _is_int(v.get("storedAt"))
     ):
         return None
+    contacts: Tuple[ContactRow, ...] = ()
+    if "contacts" in v:
+        parsed = _parse_contacts(v["contacts"])
+        if parsed is None:
+            return None
+        contacts = parsed
     registered = None
     if reg is not None:
         if (
@@ -132,6 +226,7 @@ def parse_connect_state(raw: bytes) -> Optional[ConnectStateRecord]:
         registered=registered,
         stored_at=v["storedAt"],
         keys_stale=v.get("keysStale") is True,
+        contacts=contacts,
     )
 
 

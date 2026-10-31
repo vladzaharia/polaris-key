@@ -105,6 +105,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   // I-14.12b: the per-product budget of Play Games code redemptions, each an outbound call to
   // Google; an outage refuses (the exchange answers its one invalid_grant).
   pgsRedeem: "closed",
+  // CC-19.3: contact tickets, 30 an hour per device (V5 §15.7); a lost counter refuses.
+  connectContactTicket: "closed",
   // I-40.4: nearby approval `start` writes one single-use record per call (per client network).
   identityNearbyStart: "closed",
   // I-40.5: `approve` is per approving device; the subject budget is charged on decisions only.

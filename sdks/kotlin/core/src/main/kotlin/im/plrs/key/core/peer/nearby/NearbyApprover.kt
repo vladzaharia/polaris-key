@@ -292,6 +292,12 @@ public class NearbyApproverOptions(
 ) {
     override fun toString(): String = "NearbyApproverOptions"
 
+    /** These options with another discovery adapter (the platform's, on Android). */
+    public fun withMdns(mdns: MdnsAdapter?): NearbyApproverOptions = NearbyApproverOptions(
+        prompt, background, label, onNotice, onStopped, mdns, host, allowLoopback, interfaces, handshakeSeconds, renewSeconds,
+        keepOpenSeconds, requestWaitSeconds, maxSessions, maxPendingPerAddress, timer, mono, random, platform,
+    )
+
     public companion object {
         internal const val HANDSHAKE_WINDOW_SECONDS: Double = 30.0
         internal const val RENEW_SECONDS: Double = 300.0

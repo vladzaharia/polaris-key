@@ -17,7 +17,7 @@
 // @pkey-feature core.presentation
 // @pkey-feature ui.cli.portal
 // @pkey-feature sync.keyring
-// @pkey-feature connect.relay
+// @pkey-feature connect.relay connect.links
 // @pkey-feature sync.settings
 // @pkey-feature identity.nearby
 //
@@ -1022,6 +1022,8 @@ async function act(
       out.presentation = client.presentation() as JsonValue;
       // ui.cli.portal (DISC-01): the core.portal member the client holds after this discovery.
       out.portal = client.portal() as JsonValue;
+      // connect.links (CC-19): the cached `services.connect.interAccount` the SDK gates links on.
+      out.interAccount = client.cloudConnect.links.interAccount();
       break;
     case "sync": {
       const r = await client.sync({ force: step.args.force === true });
@@ -1066,6 +1068,34 @@ async function act(
           if (e.retryAfterSeconds !== undefined)
             out.retryAfter = e.retryAfterSeconds;
           if (e.scope !== undefined) out.scope = e.scope;
+        } else if (e instanceof PolarisError) {
+          out.status = e.status ?? null;
+          out.code = e.code;
+        } else throw e;
+      }
+      break;
+    }
+    case "relayTicketContact": {
+      // CC-19: `client.connect.relayTicket({room, rid})`, the body sent as given. A refusal reads
+      // as `result: "refused"` like `relayTicket`; an answer without the `room` echo is the typed
+      // `contact_unsupported`.
+      try {
+        const g = await client.connect.relayTicket({
+          room: String(step.args.room),
+          rid: String(step.args.rid),
+        });
+        out.result = "ok";
+        out.room = g.room ?? null;
+        out.protocol = g.protocol;
+        out.url = g.url;
+        out.expiresIn = g.expiresAt - Math.floor(Date.now() / 1000);
+      } catch (e) {
+        out.result = "refused";
+        if (e instanceof RelayError) {
+          out.status = e.status ?? null;
+          out.code = e.code;
+          if (e.retryAfterSeconds !== undefined)
+            out.retryAfter = e.retryAfterSeconds;
         } else if (e instanceof PolarisError) {
           out.status = e.status ?? null;
           out.code = e.code;

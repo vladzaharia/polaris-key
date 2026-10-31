@@ -244,6 +244,7 @@ class ErrorCode:
     RELAY_DISABLED: Final = "relay_disabled"
     RELAY_PAUSED: Final = "relay_paused"
     RELAY_QUOTA_EXCEEDED: Final = "relay_quota_exceeded"
+    CONNECT_LINKS_DISABLED: Final = "connect_links_disabled"
     RELAY_TICKET_INVALID: Final = "relay_ticket_invalid"
     DEVICE_LIMIT: Final = "device_limit"
     KEY_ENTRY_LIMIT: Final = "key_entry_limit"
@@ -470,6 +471,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -698,6 +700,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "relay_disabled": "wire",
         "relay_paused": "wire",
         "relay_quota_exceeded": "wire",
+        "connect_links_disabled": "wire",
         "relay_ticket_invalid": "wire",
         "device_limit": "wire",
         "key_entry_limit": "wire",
@@ -2529,7 +2532,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "connect.protocol": CapabilityRow("implemented", "connect", ()),
         "connect.lan": CapabilityRow("implemented", "connect", ()),
         "connect.relay": CapabilityRow("implemented", "connect", ()),
-        "connect.links": CapabilityRow("planned", "connect", ()),
+        "connect.links": CapabilityRow("implemented", "connect", ()),
         "connect.transfer": CapabilityRow("planned", "connect", ()),
         "connect.app": CapabilityRow("implemented", "connect", ()),
         "devices.fingerprint": CapabilityRow("implemented", "core", ()),
@@ -2626,4 +2629,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "960c0a9698c191250346a0f0e810f20a340450ddbba88c868c6b48f14c66c0b5"
+CAPABILITY_DIGEST: Final[str] = "005137afcbb9d267aa09534f94a4bbfb43d00a9a5aec33191aa3349174a9f4f7"

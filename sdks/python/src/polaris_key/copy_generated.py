@@ -61,6 +61,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "relay_disabled": CopyEntry("Remote connection is off", "Remote connection is off for this app. Your devices connect only on the same network."),
         "relay_paused": CopyEntry("Remote connection paused", "Remote connection is paused for now. Try again later."),
         "relay_quota_exceeded": CopyEntry("Remote connection limit reached", "It resets soon. Devices on the same network still connect."),
+        "connect_links_disabled": CopyEntry("Pairing is off", "Pairing with other people is off for this app. Your own devices still connect."),
         "relay_ticket_invalid": CopyEntry("Connection expired", "The connection request expired. Try again."),
         "device_limit": CopyEntry("Device limit reached", "This license is already on all its devices. Replace a device to use it here."),
         "key_entry_limit": CopyEntry("No key entries left", "This key has no entries left. Add it to your account and sign in instead."),

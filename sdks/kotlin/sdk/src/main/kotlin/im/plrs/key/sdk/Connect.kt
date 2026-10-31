@@ -49,6 +49,7 @@ import im.plrs.key.core.RingResult
 import im.plrs.key.core.RuntimeFamily
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.StoreException
+import im.plrs.key.core.peer.MAX_CONTACT_SECRETS
 import im.plrs.key.core.Unsupported
 import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.arrayValue
@@ -71,6 +72,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 
 /** The Worker keeps the previous K_disc for 24 hours after a bump (section 15.4). */
 public const val PREV_DISC_KEY_SECONDS: Long = 86_400
@@ -189,6 +191,8 @@ internal class ConnectStateRecord(
     val storedAt: Long,
     /** A pushed roster removed a device, so K_disc was replaced at the Worker and this copy is stale until the next identity fetch. */
     val keysStale: Boolean = false,
+    /** The inter-account links this device holds (section 15.10), in held order. Each carries a secret. */
+    val contacts: List<ContactRow> = emptyList(),
 ) {
     override fun toString(): String = "ConnectStateRecord(redacted)"
 
@@ -208,7 +212,8 @@ internal class ConnectStateRecord(
                 JsonNull
             },
             "storedAt" to jsonInt(storedAt),
-        ) + if (keysStale) mapOf("keysStale" to JsonPrimitive(true)) else emptyMap(),
+        ) + (if (keysStale) mapOf("keysStale" to JsonPrimitive(true)) else emptyMap()) +
+            (if (contacts.isNotEmpty()) mapOf("contacts" to JsonArray(contacts.map(::contactJson))) else emptyMap()),
     ).toString().toByteArray(Charsets.UTF_8)
 
     companion object {
@@ -242,7 +247,44 @@ internal class ConnectStateRecord(
                 registeredAgree = ra,
                 storedAt = v["storedAt"].longValue ?: return null,
                 keysStale = v["keysStale"].boolValue == true,
+                contacts = contactsOf(v["contacts"]) ?: return null,
             )
+        }
+
+        private fun contactJson(c: ContactRow): JsonObject = JsonObject(
+            mapOf(
+                "agreeKey" to JsonPrimitive(c.agreeKey),
+                "secret" to JsonPrimitive(c.secret),
+                "label" to (c.label?.let { JsonPrimitive(it) } ?: JsonNull),
+                "cats" to JsonArray(c.cats.map { JsonPrimitive(it) }),
+                "createdAt" to jsonInt(c.createdAt),
+                "reachable" to JsonPrimitive(c.reachable),
+                "pendingSince" to (c.pendingSince?.let { jsonInt(it) } ?: JsonNull),
+            ),
+        )
+
+        /** The contact rows of a record, or null when any row breaks a rule (the record is then unusable). */
+        private fun contactsOf(e: kotlinx.serialization.json.JsonElement?): List<ContactRow>? {
+            if (e == null || e is JsonNull) return emptyList()
+            val list = e.arrayValue ?: return null
+            if (list.size > MAX_CONTACT_SECRETS) return null
+            val out = list.map { r ->
+                val o = r.objectValue ?: return null
+                val labelEl = o["label"]
+                val label = if (labelEl == null || labelEl is JsonNull) null else labelEl.stringValue ?: return null
+                val pendEl = o["pendingSince"]
+                val pending = if (pendEl == null || pendEl is JsonNull) null else pendEl.longValue ?: return null
+                ContactRow(
+                    agreeKey = o["agreeKey"].stringValue ?: return null,
+                    secret = o["secret"].stringValue ?: return null,
+                    label = label,
+                    cats = o["cats"].arrayValue?.map { it.stringValue ?: return null } ?: return null,
+                    createdAt = o["createdAt"].longValue ?: return null,
+                    reachable = o["reachable"].boolValue ?: return null,
+                    pendingSince = pending,
+                )
+            }
+            return out.takeIf { rows -> rows.all { it.valid() } }
         }
     }
 }
@@ -348,16 +390,32 @@ public class ConnectClient internal constructor(
      * `ticket_invalid` for an answer not in the contract shape) and [PolarisException] for `no-token`
      * and the Worker's other refusals. A new ticket every call; the ticket is in no log, string or error (G13).
      */
-    public suspend fun relayTicket(): RelayGrant {
+    public suspend fun relayTicket(): RelayGrant = ticketCall(null)
+
+    /**
+     * The same for a contact room (section 15.7): the request body is `{"room":"c","rid":...}` and the answer
+     * must echo `room: "c"`, else the Worker predates contact rooms ([RelayErrorReason.contact_unsupported]). The
+     * body is sent as given: the Worker is the judge of it. A refusal while links are off is
+     * [RelayErrorReason.links_disabled] (403).
+     */
+    public suspend fun relayTicket(room: String, rid: String): RelayGrant =
+        ticketCall(JsonObject(mapOf("room" to JsonPrimitive(room), "rid" to JsonPrimitive(rid))).toString())
+
+    private suspend fun ticketCall(body: String?): RelayGrant {
         // The Worker answers `device_keys_required` for a device with no registered keys and 404 when
         // the operator's launch gate is off; identity() is what registers and checks discovery.
         val token = requireToken()
+        val headers = if (body == null) {
+            mapOf("authorization" to "Bearer $token")
+        } else {
+            mapOf("authorization" to "Bearer $token", "content-type" to "application/json")
+        }
         val res = core.request(
-            core.endpoints.url("connect/relay/ticket"), method = "POST",
-            headers = mapOf("authorization" to "Bearer $token"),
+            core.endpoints.url("connect/relay/ticket"), method = "POST", headers = headers,
+            body = body?.toByteArray(Charsets.UTF_8),
         )
         if (!res.isOk) throw ticketRefusal(res)
-        return grant(res.text)
+        return grant(res.text, body != null)
     }
 
     private fun ticketRefusal(res: PolarisResponse): PolarisException {
@@ -368,6 +426,7 @@ public class ConnectClient internal constructor(
             RelayException(reason, message, retryAfterSeconds = retry, scope = scope, httpStatus = res.status)
         return when (wire) {
             ErrorCode.relayDisabled -> relay(RelayErrorReason.disabled, "This product has its relay off.")
+            ErrorCode.connectLinksDisabled -> relay(RelayErrorReason.links_disabled, "This product has links between accounts off.")
             ErrorCode.relayPaused -> relay(RelayErrorReason.paused, "The relay is paused; try again later.")
             ErrorCode.relayQuotaExceeded -> {
                 val scope = when (JsonText.parseOrNull(res.text).objectValue?.get("scope").stringValue) {
@@ -389,9 +448,15 @@ public class ConnectClient internal constructor(
      * The ticket answer, shape-checked and bound to this Worker: the ticket goes only to the Worker's
      * own host over `wss:` and only for the protocol this client speaks.
      */
-    private fun grant(text: String): RelayGrant {
+    private fun grant(text: String, contact: Boolean = false): RelayGrant {
         fun bad(): Nothing = throw RelayException(RelayErrorReason.ticket_invalid, "The relay ticket answer is not in the contract shape.")
         val o = JsonText.parseOrNull(text).objectValue ?: bad()
+        // A contact request is answered with `room: "c"` echoed (section 15.7); an older Worker ignores the body
+        // and hands out an account ticket, which must not be used for a contact room.
+        if (contact && o["room"].stringValue != "c") {
+            throw RelayException(RelayErrorReason.contact_unsupported, "This Worker does not serve contact rooms.")
+        }
+        if (!contact && "room" in o) bad()
         val ticket = o["ticket"].stringValue
         val url = o["url"].stringValue
         val expires = o["expiresAt"].longValue
@@ -458,7 +523,7 @@ public class ConnectClient internal constructor(
             product = held.product, deviceId = held.deviceId, ring = jws, certificate = held.certificate,
             discKeys = keys, prevUntil = if (keys.size == 2) held.prevUntil else null, epoch = ring.epoch,
             registeredSign = held.registeredSign, registeredAgree = held.registeredAgree, storedAt = now,
-            keysStale = removed || held.keysStale,
+            keysStale = removed || held.keysStale, contacts = held.contacts,
         )
         try {
             store().put(rec.encode())
@@ -497,9 +562,99 @@ public class ConnectClient internal constructor(
                 if (held == null) return@withLock
                 held.fill(0)
             }
-            // The record goes; a sealer shared with the device keys is never destroyed with it.
-            // A record that cannot be deleted throws, and sign-out stops (fail closed).
+            // The record goes, the links with it; a sealer shared with the device keys is never destroyed with
+            // it. A record that cannot be deleted throws, and sign-out stops (fail closed).
             s.deleteRecord()
+            notifyContacts()
+        } catch (e: StoreException) {
+            throw storeError(e)
+        } catch (e: DeviceKeysUnreadableException) {
+            throw storeError(e)
+        }
+    }
+
+    // ── Contacts (inter-account links, section 15.10) ────────────────────────────────────────
+
+    private val contactListeners = java.util.concurrent.CopyOnWriteArrayList<() -> Unit>()
+
+    /**
+     * The cached discovery answer `services.connect.interAccount` (sections 15.9 and 15.10 "Gates"): true only
+     * while the product's setting, `launch.connectLinks` and the service are on. It never fetches: false while no
+     * document is held.
+     */
+    public suspend fun interAccount(): Boolean {
+        val f = core.discoveryDocument()?.services?.get(ServiceSlug.connect) ?: return false
+        return f.enabled && (f.extras["interAccount"] as? JsonPrimitive)?.booleanOrNull == true
+    }
+
+    /** Called when the contacts changed or the `interAccount` answer may have. Returns the unsubscribe. */
+    internal fun onContactsChanged(fn: () -> Unit): () -> Unit {
+        contactListeners += fn
+        return { contactListeners -= fn }
+    }
+
+    /** Tell the listeners the contacts or the gate moved. */
+    public fun notifyContacts() {
+        for (f in contactListeners.toList()) {
+            try {
+                f()
+            } catch (e: Exception) {
+                // a host's listener cannot stop the others
+            }
+        }
+    }
+
+    /**
+     * The contact rows held for this device, pending ones that lapsed (24 h) dropped. Empty without a held
+     * identity. The rows carry secrets: they stay inside the SDK.
+     */
+    internal suspend fun contactRows(): List<ContactRow> = lock.withLock {
+        val held = load() ?: return@withLock emptyList()
+        val kept = dropStaleRows(held.contacts, core.now())
+        if (kept.size != held.contacts.size) writeContacts(held, kept)
+        kept
+    }
+
+    /**
+     * Change the contact rows under the state lock: [fn] gets the current rows and the time and returns the new
+     * rows, or null for no change. Throws [LanException] `no_identity` without a held identity. Returns the rows
+     * as they are after.
+     */
+    internal suspend fun updateContacts(fn: (List<ContactRow>, Long) -> List<ContactRow>?): List<ContactRow> {
+        val after = lock.withLock {
+            val held = load() ?: throw LanException(LanErrorReason.no_identity, "No Cloud Connect identity is held; call identity() first.")
+            val now = core.now()
+            val base = dropStaleRows(held.contacts, now)
+            val next = fn(base, now) ?: return@withLock base to false
+            writeContacts(held, next)
+            next to true
+        }
+        if (after.second) notifyContacts()
+        return after.first
+    }
+
+    /** The live contacts in trial order, decoded; empty while the gate is off. The caller wipes them. */
+    internal suspend fun liveContacts(): List<LiveContact> {
+        if (!interAccount()) return emptyList()
+        return trialOrderOf(contactRows())
+    }
+
+    /** The product slug this client is for. */
+    internal fun productSlug(): String = core.product
+
+    /** This device's agreeKey, 43 base64url characters (a public key). */
+    internal suspend fun ownAgreeKey(): String {
+        val pub = lock.withLock { port }?.publicKeys() ?: throw LanException(LanErrorReason.no_keys, "The device keys are not held.")
+        return pub.agreeKey
+    }
+
+    private suspend fun writeContacts(h: ConnectStateRecord, rows: List<ContactRow>) {
+        val rec = ConnectStateRecord(
+            h.product, h.deviceId, h.ring, h.certificate, h.discKeys, h.prevUntil, h.epoch, h.registeredSign, h.registeredAgree,
+            h.storedAt, h.keysStale, rows,
+        )
+        try {
+            store().put(rec.encode())
         } catch (e: StoreException) {
             throw storeError(e)
         } catch (e: DeviceKeysUnreadableException) {
@@ -611,6 +766,8 @@ public class ConnectClient internal constructor(
             product = core.product, deviceId = core.deviceId(), ring = a.ring, certificate = a.certificate,
             discKeys = keys, prevUntil = prevUntil, epoch = ring.epoch,
             registeredSign = mine.signKey, registeredAgree = mine.agreeKey, storedAt = now,
+            // The links are the device's own and outlive a roster refresh.
+            contacts = held?.contacts.orEmpty(),
         )
         return rec to view(rec, ring, cert)
     }

@@ -30,6 +30,8 @@ export const ErrorCode = {
   RelayPaused: "relay_paused",
   /** CC-07.3: the person's day or the product's month is spent (429, body `scope`). */
   RelayQuotaExceeded: "relay_quota_exceeded",
+  /** CC-19.3: a contact-room ticket while the inter-account setting, `launch.connectLinks` or the service is off (403). */
+  ConnectLinksDisabled: "connect_links_disabled",
   /** CC-07.3: the relay ticket is missing, malformed, expired, spent or not for this caller (401). */
   RelayTicketInvalid: "relay_ticket_invalid",
   BadRequest: "bad_request",

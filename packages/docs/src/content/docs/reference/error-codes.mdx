@@ -11,7 +11,7 @@ shape for "no such product", "service not enabled", and "no such route" (hide-do
 17 protocol codes; the worker enum maps each to its response site.
 
 Every code, wire, client and backend, is registered in `conformance/parity/errors.json`
-(222 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
+(223 codes), and `pnpm gen constants` generates each SDK's `ErrorCode` constants
 from it. A new code needs an entry there first.
 
 ## Protocol codes (`@polaris-key/protocol/core`)
@@ -48,6 +48,7 @@ from it. A new code needs an entry there first.
 | `relay_disabled` | `ErrorCode.RelayDisabled` | [Help](/docs/help/messages/other/#relay_disabled) |
 | `relay_paused` | `ErrorCode.RelayPaused` | [Help](/docs/help/messages/other/#relay_paused) |
 | `relay_quota_exceeded` | `ErrorCode.RelayQuotaExceeded` | [Help](/docs/help/messages/other/#relay_quota_exceeded) |
+| `connect_links_disabled` | `ErrorCode.ConnectLinksDisabled` | developer only |
 | `relay_ticket_invalid` | `ErrorCode.RelayTicketInvalid` | [Help](/docs/help/messages/other/#relay_ticket_invalid) |
 | `bad_request` | `ErrorCode.BadRequest` | developer only |
 | `not_found` | `ErrorCode.NotFound` | [Help](/docs/help/messages/other/#not_found) |

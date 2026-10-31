@@ -131,25 +131,12 @@ public object PolarisKeyAndroid {
                 methods = if (u.methods == DEFAULT_METHODS) FlavorAndroid.methods else u.methods,
             )
         }
-        val p = options.packs
-        val packs = PacksOptions(
-            contentStamp = p.contentStamp,
-            // Play's pack locations are read when the pack facet starts (off the main thread), not here.
-            embedded = LazyList { p.embedded + playPacks(ctx, android).installed() },
-            axes = p.axes,
-            engine = p.engine,
-            memBudget = p.memBudget,
-            // Null: `<store directory>/packs`, i.e. `noBackupFilesDir/pkey/<product>/packs`, resolved
-            // when the facet starts. The pack store needs java.nio.file, which arrives on API 26; below that the
-            // facet answers UnsupportedException(runtime) (PacksClient.start), never a crash.
-            dir = p.dir,
-            handlers = p.handlers,
-            objectTransport = p.objectTransport,
-        )
+        val packs = androidPacks(ctx, android, options.packs)
         // devices.attest (SP-K04): Play Integrity, unless the host brought its own provider. Installed
         // process-wide too, so supports(devices.attest) answers `outlet` on a build that cannot attest.
         val attestation = options.attestation ?: PlayIntegrityAttestation.create(ctx, android.playCloudProjectNumber)
         if (options.attestation == null) AttestationProviders.installed = attestation
+        installConnectPlatform(ctx) // the LAN edge, process-wide like the attestation
         val built = PolarisKeyClient(
             keyringOptions(ctx, options).copy(
                 attestation = attestation,
@@ -157,7 +144,7 @@ public object PolarisKeyAndroid {
                 license = license,
                 // Android has no default device-key store in the umbrella: without one the platform
                 // `exchange` (auto sign-in rungs 3 and 4) answers Unavailable(noDeviceKeys).
-                connect = options.connect.copy(deviceKeys = options.connect.deviceKeys ?: androidDeviceKeyStore(ctx, product)),
+                connect = options.connect.withAndroidDefaults(ctx, product),
                 factsSource = options.factsSource ?: AndroidDeviceFactsSource(ctx),
                 update = update,
                 packs = packs,
@@ -168,6 +155,21 @@ public object PolarisKeyAndroid {
         built.identity.installPlatformBackup(AndroidPlatformBackupStore(ctx), restore = android.restore)
         return built.also { it.startInBackground() } // Warm the start now; a call that needs the state waits for it.
     }
+
+    private fun androidPacks(ctx: Context, android: AndroidOptions, p: PacksOptions): PacksOptions = PacksOptions(
+        contentStamp = p.contentStamp,
+        // Play's pack locations are read when the pack facet starts (off the main thread), not here.
+        embedded = LazyList { p.embedded + playPacks(ctx, android).installed() },
+        axes = p.axes,
+        engine = p.engine,
+        memBudget = p.memBudget,
+        // Null: `<store directory>/packs`, i.e. `noBackupFilesDir/pkey/<product>/packs`, resolved
+        // when the facet starts. The pack store needs java.nio.file, which arrives on API 26; below that the
+        // facet answers UnsupportedException(runtime) (PacksClient.start), never a crash.
+        dir = p.dir,
+        handlers = p.handlers,
+        objectTransport = p.objectTransport,
+    )
 
     /** [client], then `start()`: returns once the device id, token and cached documents are loaded. */
     public suspend fun create(context: Context, options: PolarisKeyClientOptions, android: AndroidOptions = AndroidOptions()): PolarisKeyClient =

@@ -97,6 +97,10 @@
       "title": "Limit für Fernverbindungen erreicht",
       "message": "Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin."
     },
+    "connect_links_disabled": {
+      "title": "Verknüpfung aus",
+      "message": "Das Verknüpfen mit anderen Personen ist für diese App ausgeschaltet. Deine eigenen Geräte verbinden sich weiterhin."
+    },
     "relay_ticket_invalid": {
       "title": "Verbindung abgelaufen",
       "message": "Die Verbindungsanfrage ist abgelaufen. Versuchen Sie es erneut."

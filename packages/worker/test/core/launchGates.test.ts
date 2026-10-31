@@ -28,6 +28,7 @@ type Gate =
   | "LAUNCH_RELAY"
   | "LAUNCH_IDENTITY_RESTORE"
   | "LAUNCH_GAME_SIGN_IN"
+  | "LAUNCH_CONNECT_LINKS"
   | "LAUNCH_IDENTITY_NEARBY";
 
 interface W {
@@ -219,6 +220,7 @@ describe("launch gates, as settings", () => {
     ["launch.relay", "LAUNCH_RELAY"],
     ["launch.identityRestore", "LAUNCH_IDENTITY_RESTORE"],
     ["launch.gameSignIn", "LAUNCH_GAME_SIGN_IN"],
+    ["launch.connectLinks", "LAUNCH_CONNECT_LINKS"],
     ["launch.identityNearby", "LAUNCH_IDENTITY_NEARBY"],
   ] as const;
 

@@ -179,6 +179,11 @@ function renderNode(api: Api): string {
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in CloudNearby.prototype).toBe(true));`,
       );
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloudConnect.links`.
+      lines.push(
+        `it(${q(r.id)}, () => expect(${q(r.name)} in CloudLinks.prototype).toBe(true));`,
+      );
     } else if (r.id.startsWith("identity.choice.")) {
       // The licence choice an app shows itself: licenses, devices, complete, cancel live on `identity.choice`.
       lines.push(
@@ -207,6 +212,7 @@ function renderNode(api: Api): string {
     `import {`,
     `  ChoiceClient,`,
     `  CloudConnect,`,
+    `  CloudLinks,`,
     `  CloudNearby,`,
     `  ConfigClient,`,
     `  DeviceCodeSession,`,
@@ -318,6 +324,9 @@ function renderPython(api: Api): string {
       attrs.push(
         `(${q(r.id)}, ${q(NEARBY_SESSION.has(leafOf(r.id)) ? "NearbySignInSession" : "SignInSession")}, ${q(r.name)})`,
       );
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloud_connect.links`.
+      attrs.push(`(${q(r.id)}, "CloudLinks", ${q(r.name)})`);
     } else if (PY_CLASS[r.ns]) {
       attrs.push(`(${q(r.id)}, ${q(PY_CLASS[r.ns]!)}, ${q(r.name)})`);
     }
@@ -340,6 +349,7 @@ import pytest
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
+from polaris_key.connect.links import CloudLinks
 from polaris_key.connect.nearby import CloudNearby
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.auto_sign_in import NearbyNamespace
@@ -360,6 +370,7 @@ CLASSES = {
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
+    "CloudLinks": CloudLinks,
     "CloudNearby": CloudNearby,
 }
 
@@ -474,6 +485,9 @@ function renderSwift(api: Api): string {
       lines.push(
         `_ = \\${r.name === "events" ? "PolarisKeyClient" : (SWIFT_TYPE[r.ns] ?? "PolarisKeyClient")}.${r.name}  // ${r.id}`,
       );
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
+      lines.push(`_ = CloudLinks.${ref}  // ${r.id}`);
     } else if (r.id.startsWith("cloudConnect.nearby.")) {
       // Nearby approval (CC-15): request and onRequest live on `cloudConnect.nearby`.
       lines.push(`_ = CloudNearby.${ref}  // ${r.id}`);
@@ -555,6 +569,9 @@ function renderKotlin(api: Api): string {
       lines.push(`PolarisKeyClient::${r.name}  // ${r.id}`); // an extension function
     } else if (r.handle) {
       continue; // Kotlin has no setting handle until U-07 (a StateFlow today)
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
+      lines.push(`CloudLinks::${r.name}  // ${r.id}`);
     } else if (KOTLIN_TYPE[r.ns]) {
       lines.push(`${KOTLIN_TYPE[r.ns]}::${r.name}  // ${r.id}`);
     }
@@ -579,6 +596,7 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.release.ReleaseClient`,
     `import im.plrs.key.sdk.BackendClient`,
     `import im.plrs.key.sdk.CloudConnect`,
+    `import im.plrs.key.sdk.CloudLinks`,
     `import im.plrs.key.sdk.CloudNearby`,
     `import im.plrs.key.sdk.CloudSyncClient`,
     `import im.plrs.key.sdk.CloudSyncHostOptions`,

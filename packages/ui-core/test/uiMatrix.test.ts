@@ -61,6 +61,7 @@ describe(`${MATRIX_FILE}: the version`, () => {
       ...Object.keys(FAMILIES),
       "cloudSync",
       "saveConflict",
+      "connect",
       "theme",
       "i18n",
     ])
@@ -76,6 +77,8 @@ for (const [family, feature] of Object.entries({
   // U-22.K0: the save screens (SaveConflict, CloudSyncStatus's transfer states). Same: ui-core only
   // until the native kits learn them (U-23 K.3 to K.5).
   saveConflict: "ui.settings",
+  // CC-19.9: the inter-account screens, also only ui-core's until the native kits take them.
+  connect: "ui.settings",
 })) {
   const rows = matrix[family] as Row[];
   describe(`${MATRIX_FILE} ${family} (${feature})`, () => {
@@ -322,7 +325,7 @@ function unfilled(view: View): Record<string, string[]> {
 }
 
 describe(`${MATRIX_FILE} no raw placeholder`, () => {
-  const rows = [...Object.keys(FAMILIES), "cloudSync"].flatMap(
+  const rows = [...Object.keys(FAMILIES), "cloudSync", "connect"].flatMap(
     (family) => matrix[family] as Row[],
   );
   const seen: Record<string, Record<string, string[]>> = {};

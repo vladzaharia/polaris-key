@@ -2475,6 +2475,16 @@
       "reason": "internal: the nearby HTTP routes under the sign-in and approver sessions (I-47.4); no host calls it, and approve refuses a call without a matched pick"
     },
     {
+      "sdk": "node",
+      "path": "cloudConnect.links",
+      "reason": "the accessor of the links namespace (cloudConnect.links.pair, .list, .remove, .open, .onLink); not a verb"
+    },
+    {
+      "sdk": "python",
+      "path": "cloudConnect.links",
+      "reason": "the accessor of the links namespace (cloud_connect.links.pair, .list, .remove, .open, .onLink); not a verb"
+    },
+    {
       "sdk": "python",
       "path": "cloudConnect.nearby",
       "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .on_request); not a verb"
@@ -7515,6 +7525,128 @@
           "planned": "I-48",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
         }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.links.pair",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.list",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.links.remove",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.setReachable",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "reachable",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.open",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.onLink",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.interAccount",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
       },
       "layer": "client"
     }

@@ -45,6 +45,10 @@ public struct PeerLinkHandlers: Sendable {
     public var onRingWanted: (@Sendable () -> Void)?
     public var onClosed: (@Sendable (PeerLinkClosed) -> Void)?
     public var onEnded: (@Sendable () -> Void)?
+    /// Mode p with an exchange: the peer's valid `CONTACT` and the new contact secret.
+    public var onContact: (@Sendable (_ secret: Data, _ body: ContactBody, _ pending: Bool) -> Void)?
+    /// Modes v and p: the code both screens show.
+    public var onSas: (@Sendable (_ code: Int, _ display: String) -> Void)?
     /// Modes v and p (CC-15): the host owns the session. Every event of the channel but `closed` goes here
     /// (`established` included, with no certificate behind it), the handshake window ends at `established`,
     /// and `opened()` is not used. `onClosed` still says how the link ended.
@@ -55,8 +59,12 @@ public struct PeerLinkHandlers: Sendable {
         onRecord: (@Sendable (Int, Data) -> Void)? = nil, onRing: (@Sendable (String, Int) -> Void)? = nil,
         onTrust: (@Sendable (String) -> Void)? = nil, onRingWanted: (@Sendable () -> Void)? = nil,
         onClosed: (@Sendable (PeerLinkClosed) -> Void)? = nil, onEnded: (@Sendable () -> Void)? = nil,
+        onContact: (@Sendable (Data, ContactBody, Bool) -> Void)? = nil,
+        onSas: (@Sendable (Int, String) -> Void)? = nil,
         onSession: (@Sendable (PeerSessionEvent) -> Void)? = nil
     ) {
+        self.onContact = onContact
+        self.onSas = onSas
         self.onEstablished = onEstablished
         self.onRecord = onRecord
         self.onRing = onRing
@@ -78,6 +86,8 @@ public struct PeerChannelOptions: Sendable {
     public var caps: [String]
     public var hello: (label: String?, platform: String, app: String, maxMessage: Int?)
     public var mode: PeerNoiseMode
+    public var contacts: [PeerContactLink]
+    public var exchange: PeerContactOffer?
     public var now: (@Sendable () -> Int)?
     public var mono: (@Sendable () -> TimeInterval)?
     public var rekeyMessages: Int
@@ -90,6 +100,7 @@ public struct PeerChannelOptions: Sendable {
         role: PeerChannel.Role, slug: String, staticKey: any PeerNoiseStaticKey, account: PeerAccountContext? = nil,
         admission: HandshakeLimiter? = nil, caps: [String] = [],
         hello: (label: String?, platform: String, app: String, maxMessage: Int?), mode: PeerNoiseMode = .a,
+        contacts: [PeerContactLink] = [], exchange: PeerContactOffer? = nil,
         now: (@Sendable () -> Int)? = nil, mono: (@Sendable () -> TimeInterval)? = nil,
         rekeyMessages: Int = 1 << 20, rekeySeconds: TimeInterval = 3600, holdSas: Bool = false,
         random: (@Sendable (Int) -> Data)? = nil
@@ -102,6 +113,8 @@ public struct PeerChannelOptions: Sendable {
         self.caps = caps
         self.hello = hello
         self.mode = mode
+        self.contacts = contacts
+        self.exchange = exchange
         self.now = now
         self.mono = mono
         self.rekeyMessages = rekeyMessages
@@ -178,7 +191,7 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         self.inbound = econt
         channel = try PeerChannel(
             role: o.role, slug: o.slug, staticKey: o.staticKey, account: o.account, admission: o.admission,
-            caps: o.caps, hello: o.hello,
+            caps: o.caps, contacts: o.contacts, exchange: o.exchange, hello: o.hello,
             send: { d in
                 ocont.yield(d)
                 if bl.with({
@@ -374,7 +387,7 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
         }
         switch e {
         case .established(let est):
-            guard est.peerDeviceId != nil else { return }
+            guard est.peerDeviceId != nil || est.contactIndex != nil else { return }
             deadline?.cancel()
             deadline = nil
             open = true
@@ -382,14 +395,16 @@ public actor PeerLink: CustomStringConvertible, CustomReflectable {
             resolve(.success(est))
         case .record(let t, let b):
             handlers.onRecord?(t, b)
+        case .contact(let secret, let body, let pending):
+            handlers.onContact?(secret, body, pending)
         case .ring(let j, let n):
             handlers.onRing?(j, n)
         case .trustUnverified(let j):
             handlers.onTrust?(j)
         case .ringWanted:
             handlers.onRingWanted?()
-        case .sas:
-            break
+        case .sas(let code, let display):
+            handlers.onSas?(code, display)
         case .closed(let reason, let byPeer):
             finish(
                 PeerLinkClosed(

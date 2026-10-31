@@ -1017,7 +1017,14 @@
       "service": "connect",
       "proof": [
         {
-          "kind": "unit"
+          "kind": "transcript",
+          "wp": "CC-19"
+        },
+        {
+          "kind": "corpus",
+          "file": "peer-matrix.json",
+          "family": "contact",
+          "wp": "CC-19"
         }
       ],
       "allowedNa": [

@@ -24,11 +24,12 @@ import concurrent.futures
 import threading
 import time
 from collections import deque
-from typing import Any, Callable, Deque, List, NamedTuple, Optional
+from typing import Any, Callable, Deque, List, NamedTuple, Optional, Sequence
 
 from ..core.errors import PolarisError
 from ..core.peer_link import LinkHandlers, LinkRefused, SocketLink
 from ..core.peer_session import Closed, Established, PeerHello
+from .contacts import ContactRef
 from .errors import LanError
 
 __all__ = [
@@ -114,9 +115,13 @@ class ConnectSession:
         remote_address: str,
         path: str = "lan",
         budget: Optional[QueueBudget] = None,
+        contact: Optional[ContactRef] = None,
     ) -> None:
         self._link = link
         self.peer_device_id = peer_device_id
+        #: The link a mode-``c`` session runs over (§15.10); ``None`` for the person's own devices. A
+        #: contact session names no device: ``peer_device_id`` is empty.
+        self.contact = contact
         self.caps = tuple(caps)
         self.hello = hello
         self.role = role
@@ -134,7 +139,8 @@ class ConnectSession:
         self._on_close: List[Callable[[SessionClosed], None]] = []
 
     def __repr__(self) -> str:
-        return "<ConnectSession peer=%s path=%s role=%s>" % (self.peer_device_id, self.path, self.role)
+        who = "contact=%s" % self.contact.id if self.contact is not None else "peer=%s" % self.peer_device_id
+        return "<ConnectSession %s path=%s role=%s>" % (who, self.path, self.role)
 
     def __reduce__(self) -> Any:
         raise TypeError("a session cannot be pickled")
@@ -225,8 +231,9 @@ class ConnectSession:
             pass
 
     def close(self, code: str = "peer_bye") -> None:
-        """Close with ``peer_bye`` (or ``peer_busy``); the CLOSE record is sent first."""
-        if code not in ("peer_bye", "peer_busy"):
+        """Close with ``peer_bye`` (or ``peer_busy``); the CLOSE record is sent first. ``peer_revoked`` is
+        what a deleted contact's open sessions hear (§15.10)."""
+        if code not in ("peer_bye", "peer_busy", "peer_revoked"):
             raise ValueError("close code")
         try:
             self._link.close(code)
@@ -331,15 +338,25 @@ def session_handlers(
     on_ended: Optional[Callable[[], None]] = None,
     budget: Optional[QueueBudget] = None,
     path: str = "lan",
+    contacts: Optional[Sequence[ContactRef]] = None,
 ) -> LinkHandlers:
     """The link callbacks that make a :class:`ConnectSession`: it is built when the peer is admitted,
     APP records are routed to it, and the link's close ends it."""
     box: List[Optional[ConnectSession]] = [None]
 
     def established(link: SocketLink, e: Established) -> ConnectSession:
-        assert e.peer_device_id is not None
+        ref = contacts[e.contact_index] if contacts is not None and e.contact_index is not None else None
+        assert e.peer_device_id is not None or ref is not None
         s = ConnectSession(
-            link, e.peer_device_id, e.caps, e.hello, role, link.remote_address, path=path, budget=budget
+            link,
+            e.peer_device_id or "",
+            e.caps,
+            e.hello,
+            role,
+            link.remote_address,
+            path=path,
+            budget=budget,
+            contact=ref,
         )
         s.peer_static = e.remote_static
         box[0] = s

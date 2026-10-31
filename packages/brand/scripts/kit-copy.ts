@@ -111,6 +111,8 @@ export const KEY_NAMESPACES = [
   "recoveryCode",
   "ringChange",
   "saveConflict",
+  "linkPairing",
+  "transferOffer",
   "about",
   "channel",
   "toast",
@@ -191,6 +193,9 @@ export const COMPONENTS = [
   "RecoveryCode",
   "RingChange",
   "SaveConflict",
+  // Inter-account links and direct-transfer offers (CC-19.9): ui-core CONNECT_SCREENS.
+  "LinkPairing",
+  "TransferOffer",
   "About",
   "ChannelPicker",
   "Toast",
@@ -294,8 +299,7 @@ const DEV_NAMES =
  * in one section nav, settings pane or set of card titles is Title Case in English. Sentences (a
  * task, statement or question title, a button, link, menu item, value, body) stay sentence case, so
  * the sync screen titles are not listed. Other locales keep their own capitalization and get no
- * such check. The pairing screens' two names ("Pair with Someone Nearby", "Paired") join this list
- * with CC-19's copy.
+ * such check. The pairing screens' two names ("Pair with Someone Nearby", "Paired") are listed.
  */
 const TITLE_CASE_KEYS: ReadonlySet<string> = new Set([
   "account.title",
@@ -312,6 +316,8 @@ const TITLE_CASE_KEYS: ReadonlySet<string> = new Set([
   "license.title",
   "account.devices",
   "account.updates",
+  "linkPairing.title",
+  "linkPairing.linkedTitle",
 ]);
 const BANNED_EN = /\b(licences?|grants?|retry|machines?|plans?)\b/i;
 

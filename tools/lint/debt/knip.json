@@ -632,6 +632,9 @@
     "tools/corpus/config.ts": {
       "knip:files": 1
     },
+    "tools/corpus/contact.ts": {
+      "knip:files": 1
+    },
     "tools/corpus/content-fixture.ts": {
       "knip:files": 1
     },
@@ -703,6 +706,9 @@
     },
     "tools/corpus/reference/config.ts": {
       "knip:exports": 1
+    },
+    "tools/corpus/reference/contact.ts": {
+      "knip:files": 1
     },
     "tools/corpus/reference/content.ts": {
       "knip:files": 1

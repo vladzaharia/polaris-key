@@ -226,6 +226,33 @@ export const LAUNCH_GATES: readonly SettingDef[] = [
     storage: { kind: "scalar", storedAs: "LAUNCH_GAME_SIGN_IN" },
   }),
   setting({
+    key: "launch.connectLinks",
+    aliases: ["LAUNCH_CONNECT_LINKS"],
+    scope: "platform",
+    service: "platform",
+    area: "launch",
+    label: "Launch gate: links between accounts",
+    description:
+      "Serves contact-room relay tickets and rooms, and lets discovery report that links between accounts are available. Off answers connect_links_disabled to a contact ticket, reports it unavailable, and an open contact room closes at its next minute. A product also needs Cloud Connect on and its own cloudConnect.interAccount setting on.",
+    keywords: ["launch", "links", "contacts", "inter-account", "rollout"],
+    docs: PLATFORM_DOCS,
+    value: { kind: "switch" },
+    defaultValue: "off",
+    merge: "policy",
+    policyBound: "lock",
+    widensWhen: "on",
+    varName: "LAUNCH_CONNECT_LINKS",
+    precedence: "ceiling",
+    ownership: "operator",
+    confirm: { on: "L1", off: "L0" },
+    // The ticket route and discovery read it; the contact room checks it on every upgrade and alarm.
+    readers: [
+      "services/connect/relay/access.ts",
+      "services/connect/do/relayDo.ts",
+    ],
+    storage: { kind: "scalar", storedAs: "LAUNCH_CONNECT_LINKS" },
+  }),
+  setting({
     key: "launch.identityNearby",
     aliases: ["LAUNCH_IDENTITY_NEARBY"],
     scope: "platform",

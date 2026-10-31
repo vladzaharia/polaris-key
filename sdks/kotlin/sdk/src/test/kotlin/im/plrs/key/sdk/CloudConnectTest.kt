@@ -15,6 +15,7 @@ import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.DeviceKeyStore
 import im.plrs.key.core.InMemoryDeviceKeyStorage
 import im.plrs.key.core.InMemoryStore
+import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisRequest
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.jsonInt
@@ -342,6 +343,71 @@ class CloudConnectTest {
         assertEquals(LanErrorReason.permission_denied, (st.lanError as LanException).reason)
         until { c.cloudConnect.status().relay == "open" }
         assertTrue(c.cloudConnect.status().running)
+    }
+
+    private class FakePlatform(override val mdns: MdnsAdapter?, var verdict: LocalNetworkVerdict = LocalNetworkVerdict.Ok) : ConnectPlatform {
+        override suspend fun localNetwork(): LocalNetworkVerdict = verdict
+    }
+
+    /** Run [block] as Android with [platform] installed (the JVM stands in), and put both back. */
+    private fun <T> asAndroid(platform: ConnectPlatform?, block: () -> T): T {
+        ConnectPlatforms.android = true
+        ConnectPlatforms.installed = platform
+        try {
+            return block()
+        } finally {
+            ConnectPlatforms.android = im.plrs.key.core.RuntimeFamily.isAndroid
+            ConnectPlatforms.installed = null
+        }
+    }
+
+    private fun androidOptions(w: World) = CloudConnectOptions(
+        lanOptions = LanOptions(allowLoopback = true, host = "127.0.0.1"),
+        lanAttemptSeconds = 4.0,
+    ).also { it.relayOptions = RelayOptions(opener = w.room::opener, sleep = ManualSleep(), random = { 0.5 }, pingSeconds = 1000.0) }
+
+    @Test
+    fun androidUsesTheInstalledPlatformWhenTheHostBroughtNoAdapter() = runBlocking {
+        val w = World()
+        val c = w.client(w.a)
+        asAndroid(FakePlatform(w.net)) { runBlocking { c.cloudConnect.start(androidOptions(w)) } }
+        val st = c.cloudConnect.status()
+        assertEquals("on", st.lan)
+        assertNull(st.lanReason)
+        assertEquals(1, w.net.adverts.size)
+    }
+
+    @Test
+    fun androidWithoutAnAdapterAnswersUnsupportedAndTheRelayStillWorks() = runBlocking {
+        for (platform in listOf(null, FakePlatform(null))) {
+            val w = World()
+            val c = w.client(w.a)
+            asAndroid(platform) { runBlocking { c.cloudConnect.start(androidOptions(w)) } }
+            val st = c.cloudConnect.status()
+            assertEquals("off", st.lan)
+            assertEquals("unsupported", st.lanReason)
+            until { c.cloudConnect.status().relay == "open" }
+        }
+    }
+
+    @Test
+    fun androidMapsTheLocalNetworkPermissionToItsRegisteredCodes() = runBlocking {
+        val denied = World()
+        val c1 = denied.client(denied.a)
+        asAndroid(FakePlatform(denied.net, LocalNetworkVerdict.Denied)) { runBlocking { c1.cloudConnect.start(androidOptions(denied)) } }
+        val e1 = c1.cloudConnect.status().lanError as LanException
+        assertEquals(LanErrorReason.permission_denied, e1.reason)
+        assertEquals("nearby-permission-denied", e1.code)
+        assertTrue(denied.net.adverts.isEmpty())
+
+        val missing = World()
+        val c2 = missing.client(missing.a)
+        asAndroid(FakePlatform(missing.net, LocalNetworkVerdict.NotDeclared)) { runBlocking { c2.cloudConnect.start(androidOptions(missing)) } }
+        val e2 = c2.cloudConnect.status().lanError as PolarisException
+        assertEquals("not-configured", e2.code)
+        assertTrue(missing.net.adverts.isEmpty())
+        // The relay keeps working either way.
+        until { c2.cloudConnect.status().relay == "open" }
     }
 
     @Test

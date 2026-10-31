@@ -204,11 +204,12 @@ public fun hkdfSha256(salt: ByteArray, ikm: ByteArray, info: ByteArray, length: 
 
 // -- Protocol names, prologue, PSK (15.5) --------------------------------------------------------
 
-/** The three channel modes of `pkey-peer/1`. */
-public enum class PeerMode(public val wire: String) { a("a"), v("v"), p("p") }
+/** The channel modes of `pkey-peer/1`: `a` account, `v` approver, `p` pair, `c` contact (section 15.10). */
+public enum class PeerMode(public val wire: String) { a("a"), v("v"), p("p"), c("c") }
 
-/** The Noise protocol name of a mode: XXpsk0 for `a` (R-1), plain XX for `v` and `p`. */
-public fun peerNoiseProtocol(mode: PeerMode): String = if (mode == PeerMode.a) "Noise_XXpsk0_25519_AESGCM_SHA256" else "Noise_XX_25519_AESGCM_SHA256"
+/** The Noise protocol name of a mode: XXpsk0 for `a` (R-1) and for the contact mode `c`, plain XX for `v` and `p`. */
+public fun peerNoiseProtocol(mode: PeerMode): String =
+    if (mode == PeerMode.a || mode == PeerMode.c) "Noise_XXpsk0_25519_AESGCM_SHA256" else "Noise_XX_25519_AESGCM_SHA256"
 
 /** `"pkey-peer/1" 0x00 slug 0x00 mode 0x00`. */
 public fun peerPrologue(slug: String, mode: PeerMode): ByteArray =

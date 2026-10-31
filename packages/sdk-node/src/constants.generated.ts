@@ -28,6 +28,7 @@ export const ErrorCode = {
   relayDisabled: "relay_disabled",
   relayPaused: "relay_paused",
   relayQuotaExceeded: "relay_quota_exceeded",
+  connectLinksDisabled: "connect_links_disabled",
   relayTicketInvalid: "relay_ticket_invalid",
   deviceLimit: "device_limit",
   keyEntryLimit: "key_entry_limit",
@@ -255,6 +256,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "relay_disabled",
   "relay_paused",
   "relay_quota_exceeded",
+  "connect_links_disabled",
   "relay_ticket_invalid",
   "device_limit",
   "key_entry_limit",
@@ -484,6 +486,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   relay_disabled: "wire",
   relay_paused: "wire",
   relay_quota_exceeded: "wire",
+  connect_links_disabled: "wire",
   relay_ticket_invalid: "wire",
   device_limit: "wire",
   key_entry_limit: "wire",
@@ -2147,7 +2150,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "connect.protocol": { status: "implemented", service: "connect", na: [] },
   "connect.lan": { status: "implemented", service: "connect", na: [] },
   "connect.relay": { status: "implemented", service: "connect", na: [] },
-  "connect.links": { status: "planned", service: "connect", na: [] },
+  "connect.links": { status: "implemented", service: "connect", na: [] },
   "connect.transfer": { status: "planned", service: "connect", na: [] },
   "connect.app": { status: "implemented", service: "connect", na: [] },
   "devices.fingerprint": { status: "implemented", service: "core", na: [] },
@@ -2340,4 +2343,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "12bf421c070023633daab5784c29a897605bea16b90f00bea1c6f35e9c795966";
+  "054bf7648c36c1e5df14a30df74deea1c21a714290c82d1d084da7f2cbbbecc9";

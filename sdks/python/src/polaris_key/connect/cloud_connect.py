@@ -9,6 +9,8 @@ over the identity client, the LAN service, the relay and the sessions they open.
 - ``open(device_id)``: a session to one device, LAN first, the relay after a bounded LAN attempt;
 - ``on_channel(fn)``: sessions other devices opened to this one, on either path;
 - ``stop()``: close the sessions, the relay and the LAN service;
+- ``links``: inter-account links (CC-19): ``pair()``, ``list()``, ``remove()``, ``open()``, ``on_link()``;
+  off unless discovery says ``interAccount``.
 - ``nearby``: approval of a device with no sign-in by a signed-in device nearby (mode ``v``, CC-15):
   ``nearby.request()`` on the new device, ``nearby.on_request()`` on the approver.
 
@@ -25,7 +27,8 @@ Rules this module keeps:
 - the relay stays off, with no socket and no ticket asked for, when the host turned it off (``relay=False``
   at start, or per call) and when discovery says so: ``services.connect.relay`` is false, or the ticket
   endpoint is null (G21). ``status().relay_reason`` says which;
-- the relay carries mode ``a`` only; modes ``v`` and ``p`` are not reachable through this API;
+- the account relay carries mode ``a`` only; modes ``v`` and ``p`` are not reachable through this API, and
+  mode ``c`` runs over contact rooms (contact_relay.py) that only ``links`` opens;
 - an inbound session with no ``on_channel`` listener is closed (G9);
 - a failure on one path is never swallowed: when no path works the last typed error is raised
   (:class:`~polaris_key.connect.errors.LanError` or :class:`~polaris_key.connect.errors.RelayError`).
@@ -41,11 +44,13 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Mapping, Optional
 from ..core.b64url import b64url_encode
 from .client import ConnectClient, ConnectDevice
 from .errors import LanError, RelayError
+from .links import CloudLinks
 from .loop import connect_loop
 from .nearby import CloudNearby, NearbyDeps
 
 if TYPE_CHECKING:  # the transports import asyncio and sockets: only when Connect starts
     from .channel import ConnectNotice
+    from .contact_relay import ContactRelay
     from .lan import LanService
     from .relay import RelayService
     from .session import ConnectSession
@@ -137,6 +142,14 @@ class CloudConnect:
         self._gate: Any = None
         # A roster this device stores re-admits every open session (§15.6).
         connect.on_roster(self._readmit)
+        self._contact_relay: Optional["ContactRelay"] = None
+        self._links = CloudLinks(self, connect)
+
+    @property
+    def links(self) -> CloudLinks:
+        """Inter-account links (CC-19): ``pair``, ``list``, ``remove``, ``set_reachable``, ``open``,
+        ``on_link``."""
+        return self._links
 
     def __repr__(self) -> str:
         return "<CloudConnect running=%s>" % self._running
@@ -237,7 +250,10 @@ class CloudConnect:
                     self._lan_failed = e
                     if not relay_on:
                         raise
+            contact_relay: Optional["ContactRelay"] = None
             if relay_on:
+                from .contact_relay import ContactRelay, ContactRelaySource
+
                 ro = (
                     relay_opt
                     if isinstance(relay_opt, RelayOptions)
@@ -248,8 +264,19 @@ class CloudConnect:
                 self._unsub.append(relay.on_session(self._inbound))
                 self._unsub.append(relay.on_notice(self._notice))
                 relay.start()
+                # The contact rooms (§15.7) ride the same options. A device with no links keeps no room;
+                # the list is read again whenever it changes.
+                contact_relay = ContactRelay(
+                    ContactRelaySource(src, lambda rid: self._connect.relay_ticket(("c", rid))), ro
+                )
+                self._contact_relay = contact_relay
+                try:
+                    await contact_relay.start()
+                except Exception:
+                    pass
             else:
                 self._relay_reason = reason
+            self._links.attach(self._lan, contact_relay, self._lan_attempt, relay_on)
             self._running = True
 
     def stop(self) -> None:
@@ -271,16 +298,17 @@ class CloudConnect:
 
     def _force_stop(self) -> None:
         with self._lock:
-            lan, relay = self._lan, self._relay
-            self._lan = self._relay = None
+            lan, relay, croom = self._lan, self._relay, self._contact_relay
+            self._lan = self._relay = self._contact_relay = None
             self._running = False
             unsub, self._unsub = self._unsub, []
+        self._links.detach_sync()
         for u in unsub:
             try:
                 u()
             except Exception:
                 pass
-        for svc in (lan, relay):
+        for svc in (lan, relay, croom):
             if svc is not None:
                 try:
                     svc.abort()
@@ -298,15 +326,16 @@ class CloudConnect:
             for u in self._unsub:
                 u()
             self._unsub.clear()
-            lan, relay = self._lan, self._relay
-            self._lan = self._relay = None
+            lan, relay, croom = self._lan, self._relay, self._contact_relay
+            self._lan = self._relay = self._contact_relay = None
+            await self._links.detach()
             for s in list(self._sessions):
                 try:
                     s.close()
                 except Exception:
                     pass
             self._sessions.clear()
-            for svc in (lan, relay):
+            for svc in (lan, relay, croom):
                 if svc is not None:
                     try:
                         await svc.stop()

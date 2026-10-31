@@ -8967,6 +8967,156 @@
       "value": "Download my data first",
       "role": "button",
       "note": "Your data (Account and each product page); catalog-ised in BUG-E3 (B-094)."
+    },
+    "linkPairing.title": {
+      "value": "Pair with Someone Nearby",
+      "role": "title",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device."
+    },
+    "linkPairing.openBody": {
+      "value": "Ask them to open this on their device. Stay close, on the same network.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Both people open this on their own device."
+    },
+    "linkPairing.searching": {
+      "value": "Looking for nearby devices…",
+      "role": "label",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code."
+    },
+    "linkPairing.codeTitle": {
+      "value": "Compare the code",
+      "role": "title",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare."
+    },
+    "linkPairing.codeBody": {
+      "value": "Both screens must show this code.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms."
+    },
+    "linkPairing.reported": {
+      "value": "Reported by the device: {device}",
+      "role": "label",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Arguments: {device} = the label the other device sent. Nothing authenticates it: any device on the network can send any label, so the line says it is reported, not verified."
+    },
+    "linkPairing.reportedUnnamed": {
+      "value": "The device gave no name",
+      "role": "label",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Used when the other device sent no label."
+    },
+    "linkPairing.shares": {
+      "value": "Each of you shares",
+      "role": "label",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Heading above the data categories both people approve; always shown before the confirm button."
+    },
+    "linkPairing.sharesNone": {
+      "value": "Nothing is shared yet.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Used when the app asks for no data categories."
+    },
+    "linkPairing.confirm": {
+      "value": "Codes match",
+      "role": "button",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Confirms the code matches. The link is made when the other person does the same."
+    },
+    "linkPairing.decline": {
+      "value": "Not a match",
+      "role": "button",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Declines: the session closes and nothing is stored."
+    },
+    "linkPairing.waiting": {
+      "value": "Waiting for them to confirm",
+      "role": "title",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet."
+    },
+    "linkPairing.linkedTitle": {
+      "value": "Paired",
+      "role": "title",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices."
+    },
+    "linkPairing.linkedBody": {
+      "value": "You can now connect without a code.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made."
+    },
+    "linkPairing.linkedWith": {
+      "value": "Paired with {device}.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label."
+    },
+    "linkPairing.failedTitle": {
+      "value": "Couldn’t pair",
+      "role": "title",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link."
+    },
+    "linkPairing.failedDeclined": {
+      "value": "Someone said no. Nothing was paired.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code."
+    },
+    "linkPairing.failedTimeout": {
+      "value": "Time ran out before you both confirmed. Nothing was paired.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first."
+    },
+    "linkPairing.failedFull": {
+      "value": "One of you has no room for another pairing. Remove one, then try again.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links."
+    },
+    "linkPairing.failedClosed": {
+      "value": "The connection closed. Nothing was paired.",
+      "role": "body",
+      "note": "LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended."
+    },
+    "a11y.linkCode": {
+      "value": "Pairing code {code}",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit."
+    },
+    "transferOffer.ask": {
+      "value": "{device} wants to send you {name}",
+      "role": "title",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose."
+    },
+    "transferOffer.askUnnamed": {
+      "value": "A paired device wants to send you {name}",
+      "role": "title",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends."
+    },
+    "transferOffer.askBody": {
+      "value": "Only accept what you expect.",
+      "role": "body",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title."
+    },
+    "transferOffer.accept": {
+      "value": "Accept",
+      "role": "button",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer."
+    },
+    "transferOffer.decline": {
+      "value": "Decline",
+      "role": "button",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Declines the offer; nothing is received."
+    },
+    "transferOffer.receiving": {
+      "value": "Receiving {name}",
+      "role": "title",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what is being received."
+    },
+    "transferOffer.done": {
+      "value": "Received {name}",
+      "role": "title",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was received."
+    },
+    "transferOffer.failed": {
+      "value": "Couldn’t receive {name}",
+      "role": "title",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was not received."
+    },
+    "transferOffer.failedBody": {
+      "value": "Nothing was saved.",
+      "role": "body",
+      "note": "TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title."
     }
   }
 }

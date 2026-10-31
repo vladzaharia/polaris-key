@@ -12,6 +12,7 @@ import type {
   SyncScreenName,
 } from "@polaris-key/ui-core";
 
+import { CONNECT_LAYOUTS } from "./connectLayouts.js";
 import { SYNC_LAYOUTS } from "./syncLayouts.js";
 
 export { SYNC_LAYOUTS };
@@ -573,7 +574,13 @@ export const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
 
 /** Every component's layout. */
 export const LAYOUTS: Readonly<Record<ScreenName, Layout>> =
-  /* @__PURE__ */ Object.assign({}, KIT_LAYOUTS, SYNC_LAYOUTS, HOLDER_LAYOUTS);
+  /* @__PURE__ */ Object.assign(
+    {},
+    KIT_LAYOUTS,
+    SYNC_LAYOUTS,
+    HOLDER_LAYOUTS,
+    CONNECT_LAYOUTS,
+  );
 
 /** A key that titles its screen or section. */
 export function isTitleKey(key: string, layout: Layout): boolean {
@@ -614,6 +621,8 @@ export const TAGS: Readonly<Record<ScreenName, string>> = {
   SaveConflict: "pk-save-conflict",
   ActivateDone: "pk-activate-done",
   AddToAccount: "pk-add-to-account",
+  LinkPairing: "pk-link-pairing",
+  TransferOffer: "pk-transfer-offer",
 };
 
 // ── Dialog controls (UK-06.6) ────────────────────────────────────────────────────────────────

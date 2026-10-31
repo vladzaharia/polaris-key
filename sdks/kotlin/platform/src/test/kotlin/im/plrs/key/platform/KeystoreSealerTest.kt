@@ -1,6 +1,5 @@
 package im.plrs.key.platform
 
-import javax.crypto.Cipher
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -11,6 +10,7 @@ import org.junit.Assert.fail
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import javax.crypto.Cipher
 
 /** CC-26.5: the Keystore AES-GCM wrapper of the device keys' record. */
 @RunWith(RobolectricTestRunner::class)
@@ -108,5 +108,12 @@ class KeystoreSealerTest {
         }
         assertEquals(created, keys.created)
         assertArrayEquals(secret, s.open(blob, ctx))
+    }
+
+    @Test
+    fun theConnectStateHasItsOwnAlias() {
+        val all = setOf(KeystoreSealer.aliasFor("diceroll"), KeystoreSealer.rootAliasFor("diceroll"), KeystoreSealer.connectAliasFor("diceroll"))
+        assertEquals(3, all.size)
+        assertEquals("pkey:diceroll:connect", KeystoreSealer.connectAliasFor("diceroll"))
     }
 }

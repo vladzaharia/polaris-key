@@ -32,6 +32,7 @@ public enum ErrorCode {
     public static let relayDisabled = "relay_disabled"
     public static let relayPaused = "relay_paused"
     public static let relayQuotaExceeded = "relay_quota_exceeded"
+    public static let connectLinksDisabled = "connect_links_disabled"
     public static let relayTicketInvalid = "relay_ticket_invalid"
     public static let deviceLimit = "device_limit"
     public static let keyEntryLimit = "key_entry_limit"
@@ -258,6 +259,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -484,6 +486,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "relay_disabled": "wire",
     "relay_paused": "wire",
     "relay_quota_exceeded": "wire",
+    "connect_links_disabled": "wire",
     "relay_ticket_invalid": "wire",
     "device_limit": "wire",
     "key_entry_limit": "wire",
@@ -2047,7 +2050,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "connect.protocol": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.lan": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.relay": CapabilityRow(status: "implemented", service: "connect", na: []),
-    "connect.links": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.links": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.transfer": CapabilityRow(status: "planned", service: "connect", na: []),
     "connect.app": CapabilityRow(status: "implemented", service: "connect", na: []),
     "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -2143,4 +2146,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "0f90e48d89d2949e813c58b7b1ed3dcdbb87e33fd0717f6a9d05b7aa8af91956"
+public let CAPABILITY_DIGEST = "118d2c540d158c94a5554aeb45f48c7635571d2d532c03b28bd419c17c7b4c20"

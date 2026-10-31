@@ -953,6 +953,18 @@ public actor ConnectRelayService: CustomStringConvertible, CustomReflectable {
 
 // MARK: - Sessions over the room
 
+/// A room that carries sessions: the account room (`ConnectRelayService`) or a contact room
+/// (`ConnectContactRoom`).
+protocol RelayRoom: AnyObject, Sendable {
+    func sendSession(peer: Data, session: UInt32, noise: Data) async
+    func hasRoom(_ n: Int) async -> Bool
+    /// Holds `n` bytes of queue room until `release`; false when the queue has no room for it.
+    func reserve(_ n: Int) async -> Bool
+    func release(_ n: Int) async
+}
+
+extension ConnectRelayService: RelayRoom {}
+
 final class RelayLinkEntry: @unchecked Sendable {
     let peer: Data
     let session: UInt32
@@ -980,7 +992,7 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
         var bytes = 0
         var waiter: CheckedContinuation<Data?, Never>?
         var closed = false
-        var svc: ConnectRelayService?
+        var svc: (any RelayRoom)?
         var peer = Data()
         var session: UInt32 = 0
         /// Queue room the service holds for this session's encrypted-but-unqueued records.
@@ -992,7 +1004,7 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
     var onOverflow: (@Sendable () -> Void)?
     var remoteAddress: String { "relay" }
 
-    func attach(svc: ConnectRelayService, peer: Data, session: UInt32) {
+    func attach(svc: any RelayRoom, peer: Data, session: UInt32) {
         state.with {
             $0.svc = svc
             $0.peer = peer
@@ -1032,7 +1044,7 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
 
     /// Gives the service back the room held for this session's records.
     func releaseReserved() {
-        let (svc, n) = state.with { s -> (ConnectRelayService?, Int) in
+        let (svc, n) = state.with { s -> ((any RelayRoom)?, Int) in
             defer { s.reserved = 0 }
             return (s.svc, s.reserved)
         }
@@ -1082,7 +1094,7 @@ final class RelayPipe: PeerBytePipe, @unchecked Sendable {
 /// What a `ConnectSession` needs of its link, with the relay's queue check before anything is encrypted.
 struct RelayLinkFacade: ConnectSessionLink {
     let link: PeerLink
-    let svc: ConnectRelayService
+    let svc: any RelayRoom
     let pipe: RelayPipe
 
     func sendRecord(type: Int, body: Data) async throws {

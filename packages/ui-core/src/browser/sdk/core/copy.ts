@@ -94,6 +94,7 @@ const FR: CopyBundle = {
     relay_paused: "Connexion à distance en pause",
     relay_quota_exceeded: "Limite de connexion à distance atteinte",
     relay_ticket_invalid: "Connexion expirée",
+    connect_links_disabled: "Liaison désactivée",
     licenseDisabled: "Licence désactivée",
     license_disabled: "Licence désactivée",
     licenseExpired: "Licence expirée",
@@ -211,6 +212,8 @@ const FR: CopyBundle = {
     relay_quota_exceeded:
       "Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.",
     relay_ticket_invalid: "La demande de connexion a expiré. Réessayez.",
+    connect_links_disabled:
+      "La liaison avec d'autres personnes est désactivée pour cette app. Tes propres appareils se connectent toujours.",
     license_disabled:
       "Cette licence a été désactivée. Contactez le développeur.",
     license_unusable:

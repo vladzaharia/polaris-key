@@ -38,6 +38,7 @@ import {
 } from "@polaris-key/client-core/peer";
 import {
   base64UrlDecode,
+  base64UrlEncodeBytes,
   isCanonicalB64url,
   type TrustSet,
 } from "@polaris-key/jws";
@@ -77,6 +78,16 @@ import {
   type RelaySource,
 } from "./relay.js";
 import { LanError } from "./session.js";
+import {
+  contactId,
+  dropStaleRows,
+  promoteRow,
+  storeRow,
+  trialOrderOf,
+  type LiveContact,
+} from "./contacts.js";
+import type { ContactRelaySource } from "./contactRelay.js";
+import type { PairSource } from "./pairing.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
@@ -85,6 +96,7 @@ import {
   CONNECT_STATE_FILE,
   CONNECT_STATE_SCHEMA,
   type ConnectStateRecord,
+  type ContactRow,
 } from "./state.js";
 
 /** The Worker keeps the previous K_disc for 24 hours after a bump (§15.4). */
@@ -142,6 +154,12 @@ export interface ConnectDeps {
   /** Verify a trust manifest a peer pushed against the usable pins and apply it (the same
    *  custodian as the Worker's own manifest). */
   applyTrust?: (jws: string) => Promise<TrustApplication>;
+  /**
+   * The cached discovery answer `services.connect.interAccount` (§15.9, §15.10 "Gates"): true only
+   * while the product's setting, `launch.connectLinks` and the service are on. Without it links
+   * are off. It never fetches.
+   */
+  interAccount?: () => boolean;
 }
 
 /** A refusal of the identity answer: `peer-cert-invalid` when a certificate or roster failed
@@ -309,6 +327,18 @@ export class ConnectClient {
       refresh: async () => {
         await this.identity({ refresh: true });
       },
+      contacts: () => this.liveContacts(),
+      onContacts: (fn) => this.onContactsChanged(fn),
+      contactEstablished: async (ref) => {
+        // The first handshake under a pending contact passed the pin: it replaces the held one.
+        await this.updateContacts((rows) =>
+          rows.some(
+            (r) => r.pendingSince !== undefined && r.agreeKey === ref.agreeKey,
+          )
+            ? promoteRow(rows, ref.agreeKey)
+            : null,
+        );
+      },
       adoptRing: (jws) => this.adoptRing(jws),
       applyTrust: (jws) =>
         this.deps.applyTrust === undefined
@@ -363,12 +393,18 @@ export class ConnectClient {
   }
 
   /**
-   * `POST /<p>/connect/relay/ticket`: a single-use `pkeyrt_` ticket for the WebSocket. Throws
-   * `RelayError`: `disabled`, `paused` (with `retryAfterSeconds`), `quota` (with the `scope`),
-   * `ticket_invalid` (a ticket that is not in the contract shape), `unavailable`; and
-   * `PolarisError` for `no-token` and the Worker's other refusals.
+   * `POST /<p>/connect/relay/ticket`: a single-use `pkeyrt_` ticket for the WebSocket. With a
+   * `contact` body (`{room: "c", rid}`, §15.7) it is a ticket for that contact room; the answer
+   * must echo `room: "c"`, else the Worker predates contact rooms and `contact_unsupported` is
+   * thrown. The body is sent as given: the Worker is the judge of it. Throws `RelayError`:
+   * `disabled`, `paused` (with `retryAfterSeconds`), `quota` (with the `scope`), `links_disabled`
+   * (contact tickets only), `ticket_invalid` (a ticket that is not in the contract shape),
+   * `unavailable`; and `PolarisError` for `no-token` and the Worker's other refusals.
    */
-  async relayTicket(): Promise<RelayGrant> {
+  async relayTicket(contact?: {
+    room: string;
+    rid: string;
+  }): Promise<RelayGrant> {
     // The Worker answers `device_keys_required` for a device without registered keys, and 404
     // when the operator's launch gate is off; identity() is what registers and checks discovery.
     const token = this.#requireToken();
@@ -377,7 +413,15 @@ export class ConnectClient {
       this.ctx.url("connect/relay/ticket"),
       {
         method: "POST",
-        headers: this.ctx.headers({ authorization: `Bearer ${token}` }),
+        headers: this.ctx.headers({
+          authorization: `Bearer ${token}`,
+          ...(contact !== undefined
+            ? { "content-type": "application/json" }
+            : {}),
+        }),
+        ...(contact !== undefined
+          ? { body: JSON.stringify({ room: contact.room, rid: contact.rid }) }
+          : {}),
       },
       what,
     );
@@ -394,6 +438,12 @@ export class ConnectClient {
         throw new RelayError(
           "disabled",
           "This product has its relay off.",
+          retry,
+        );
+      if (wire === ErrorCode.connectLinksDisabled)
+        throw new RelayError(
+          "links_disabled",
+          "This product has links between accounts off.",
           retry,
         );
       if (wire === ErrorCode.relayPaused)
@@ -417,12 +467,15 @@ export class ConnectClient {
         );
       throw errorFrom(c, what);
     }
-    return this.#grant(await readJson<unknown>(res, what));
+    return this.#grant(
+      await readJson<unknown>(res, what),
+      contact !== undefined,
+    );
   }
 
   /** The ticket answer, shape-checked, and bound to this Worker: the ticket goes only to the
    *  Worker's own host over `wss:` and only for the protocol this client speaks. */
-  #grant(body: unknown): RelayGrant {
+  #grant(body: unknown, contact = false): RelayGrant {
     const bad = (): never => {
       throw new RelayError(
         "ticket_invalid",
@@ -430,6 +483,14 @@ export class ConnectClient {
       );
     };
     if (!isRecord(body)) return bad();
+    // A contact request is answered with `room: "c"` echoed (§15.7); an older Worker ignores the
+    // body and hands out an account ticket, which must not be used for a contact room.
+    if (contact && body.room !== "c")
+      throw new RelayError(
+        "contact_unsupported",
+        "This Worker does not serve contact rooms.",
+      );
+    if (!contact && body.room !== undefined) return bad();
     const { ticket, url, protocol, expiresAt } = body;
     if (
       typeof ticket !== "string" ||
@@ -449,7 +510,13 @@ export class ConnectClient {
       return bad();
     }
     if (target.protocol !== "wss:" || target.host !== home.host) return bad();
-    return { ticket, url, protocol, expiresAt };
+    return {
+      ticket,
+      url,
+      protocol,
+      expiresAt,
+      ...(contact ? { room: "c" as const } : {}),
+    };
   }
 
   /**
@@ -547,7 +614,138 @@ export class ConnectClient {
       } catch (e) {
         throw this.#storeError(e);
       }
+      // The links went with the record: adverts, rooms and open sessions follow.
+      queueMicrotask(() => this.notifyContacts());
     });
+  }
+
+  // ── Contacts (inter-account links, §15.10) ──────────────────────────────────────────────────
+
+  /** The cached `interAccount` answer of discovery; false while none is known. @internal */
+  interAccount(): boolean {
+    return this.deps.interAccount?.() === true;
+  }
+
+  /**
+   * The contact rows held for this device, pending ones that lapsed (24 h) dropped. Empty without
+   * a held identity. The rows carry secrets: they stay inside the SDK. @internal
+   */
+  contactRows(): Promise<ContactRow[]> {
+    return this.#serial(async () => {
+      const held = await this.#load();
+      if (held === null || held.contacts === undefined) return [];
+      const kept = dropStaleRows(held.contacts, this.ctx.now());
+      if (kept.length !== held.contacts.length)
+        await this.#writeContacts(held, kept);
+      return kept;
+    });
+  }
+
+  /**
+   * Change the contact rows under the state lock: `fn` gets the current rows and the time and
+   * returns the new rows, or null for no change. Throws `LanError` `no_identity` without a held
+   * identity. Resolves with the rows as they are after. @internal
+   */
+  updateContacts(
+    fn: (rows: ContactRow[], now: number) => ContactRow[] | null,
+  ): Promise<ContactRow[]> {
+    return this.#serial(async () => {
+      const held = await this.#load();
+      if (held === null)
+        throw new LanError(
+          "no_identity",
+          "No Cloud Connect identity is held; call identity() first.",
+        );
+      const now = this.ctx.now();
+      const base = dropStaleRows(held.contacts ?? [], now);
+      const next = fn(base, now);
+      if (next === null) return base;
+      await this.#writeContacts(held, next);
+      queueMicrotask(() => this.notifyContacts());
+      return next;
+    });
+  }
+
+  readonly #onContacts = new Set<() => void>();
+
+  /** Called when the contacts changed or the `interAccount` answer may have. @internal */
+  onContactsChanged(fn: () => void): () => void {
+    this.#onContacts.add(fn);
+    return () => this.#onContacts.delete(fn);
+  }
+
+  /** Tell the listeners the contacts or the gate moved. @internal */
+  notifyContacts(): void {
+    for (const f of [...this.#onContacts]) {
+      try {
+        f();
+      } catch {
+        // a host's listener cannot stop the others
+      }
+    }
+  }
+
+  /** What pairing reads of this client (§15.10). @internal */
+  pairSource(): PairSource {
+    return {
+      slug: this.ctx.product,
+      now: () => this.ctx.now(),
+      agreeKey: async () =>
+        base64UrlEncodeBytes((await this.lanSource().load()).agreePublic),
+      held: async () =>
+        (await this.contactRows())
+          .filter((r) => r.pendingSince === undefined)
+          .map((r) => r.agreeKey),
+      store: async (c) => {
+        let pending = false;
+        let full = false;
+        await this.updateContacts((rows, now) => {
+          const v = storeRow(rows, c, now);
+          if (!v.ok) {
+            full = true;
+            return null;
+          }
+          pending = v.pending;
+          return v.rows;
+        });
+        return full
+          ? { stored: false, reason: "full" }
+          : { stored: true, pending, id: contactId(c.agreeKey) };
+      },
+      allowed: () => this.interAccount(),
+    };
+  }
+
+  /** What the contact relay reads: the LAN source plus a contact ticket. @internal */
+  contactRelaySource(): ContactRelaySource {
+    return {
+      ...this.lanSource(),
+      contactTicket: (rid) => this.relayTicket({ room: "c", rid }),
+    };
+  }
+
+  /** The live contacts in trial order, decoded; `[]` while the gate is off. The caller wipes them. @internal */
+  async liveContacts(): Promise<LiveContact[]> {
+    if (!this.interAccount()) return [];
+    return trialOrderOf(await this.contactRows());
+  }
+
+  async #writeContacts(
+    held: ConnectStateRecord,
+    rows: readonly ContactRow[],
+  ): Promise<void> {
+    const { contacts: _drop, ...rest } = held;
+    const rec: ConnectStateRecord = {
+      ...rest,
+      ...(rows.length > 0 ? { contacts: [...rows] } : {}),
+    };
+    try {
+      await (
+        await this.#store()
+      ).update(() => Buffer.from(JSON.stringify(rec), "utf8"));
+    } catch (e) {
+      throw this.#storeError(e);
+    }
   }
 
   // ── Identity ────────────────────────────────────────────────────────────────────────────────
@@ -669,6 +867,8 @@ export class ConnectClient {
       epoch: ring.epoch,
       registered: { signKey: mine.signKey, agreeKey: mine.agreeKey },
       storedAt: now,
+      // The links are the device's own and outlive a roster refresh.
+      ...(held?.contacts !== undefined ? { contacts: held.contacts } : {}),
     };
     return { rec, view: this.#view(rec, ring, cert), ring };
   }

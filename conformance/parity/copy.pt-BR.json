@@ -97,6 +97,10 @@
       "title": "Limite de conexão remota atingido",
       "message": "Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando."
     },
+    "connect_links_disabled": {
+      "title": "Vínculo desativado",
+      "message": "O vínculo com outras pessoas está desativado neste app. Seus próprios dispositivos continuam se conectando."
+    },
     "relay_ticket_invalid": {
       "title": "Conexão expirada",
       "message": "O pedido de conexão expirou. Tente novamente."

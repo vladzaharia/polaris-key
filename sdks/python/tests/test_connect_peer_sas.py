@@ -279,6 +279,20 @@ def test_a_release_runs_once_and_a_closed_session_frees_its_slot() -> None:
     assert lim.begin() is not None and lim.begin() is None
 
 
+def test_a_peer_close_frees_the_responder_slot() -> None:
+    # R-6K N5: the slot is released when the peer sends CLOSE, not only on the responder's own close.
+    lim = HandshakeLimiter(99, 1)
+    m = Side("v", "responder", admission=lim)
+    d = Side("v", "initiator")
+    d.s.start()
+    pump(d, m)
+    assert lim.begin() is None
+    d.s.close()
+    pump(d, m)
+    assert [e.by_peer for e in m.of(Closed)] == [True]
+    assert lim.begin() is not None
+
+
 def test_the_code_deadline_ends_an_unconfirmed_session() -> None:
     d, m = Side("v", "initiator"), Side("v", "responder")
     d.s.start()

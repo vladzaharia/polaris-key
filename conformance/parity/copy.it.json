@@ -97,6 +97,10 @@
       "title": "Limite di connessione remota raggiunto",
       "message": "Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque."
     },
+    "connect_links_disabled": {
+      "title": "Collegamento disattivato",
+      "message": "Il collegamento con altre persone è disattivato per questa app. I tuoi dispositivi si collegano ancora."
+    },
     "relay_ticket_invalid": {
       "title": "Connessione scaduta",
       "message": "La richiesta di connessione è scaduta. Riprova."

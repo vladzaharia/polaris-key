@@ -34,6 +34,7 @@ public object ErrorCode {
     public const val relayDisabled: String = "relay_disabled"
     public const val relayPaused: String = "relay_paused"
     public const val relayQuotaExceeded: String = "relay_quota_exceeded"
+    public const val connectLinksDisabled: String = "connect_links_disabled"
     public const val relayTicketInvalid: String = "relay_ticket_invalid"
     public const val deviceLimit: String = "device_limit"
     public const val keyEntryLimit: String = "key_entry_limit"
@@ -260,6 +261,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -486,6 +488,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "relay_disabled" to "wire",
     "relay_paused" to "wire",
     "relay_quota_exceeded" to "wire",
+    "connect_links_disabled" to "wire",
     "relay_ticket_invalid" to "wire",
     "device_limit" to "wire",
     "key_entry_limit" to "wire",
@@ -2069,7 +2072,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "connect.protocol" to CapabilityRow("implemented", "connect", listOf()),
     "connect.lan" to CapabilityRow("planned", "connect", listOf()),
     "connect.relay" to CapabilityRow("implemented", "connect", listOf()),
-    "connect.links" to CapabilityRow("planned", "connect", listOf()),
+    "connect.links" to CapabilityRow("implemented", "connect", listOf()),
     "connect.transfer" to CapabilityRow("planned", "connect", listOf()),
     "connect.app" to CapabilityRow("implemented", "connect", listOf()),
     "devices.fingerprint" to CapabilityRow("implemented", "core", listOf()),
@@ -2165,4 +2168,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "75bd1277db0aed7b504b8b435e64a12ece6ecc1cb36a9d5347f02297f89f77a8"
+public const val CAPABILITY_DIGEST: String = "a36186338f1cf5c17972bf61106cb4c479abef622aa7f2476bc4635639b02ee4"
