@@ -418,7 +418,7 @@ exports[`notice templates: copy > newDeviceSignIn: subject and plain text 1`] = 
   "subject": "A new device signed in to your Polaris Locker account",
   "text": "A new device signed in to your Polaris Locker account
 
-Mara's MacBook Pro signed in from Lisbon, Portugal. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+Mara's MacBook Pro signed in from Lisbon, Portugal. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 
 Open Polaris Locker: https://key.plrs.im/#/account/sessions
 

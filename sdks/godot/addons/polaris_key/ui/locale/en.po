@@ -853,10 +853,10 @@ msgstr "Keep {product} in your account"
 msgid "activate.recommend.badge"
 msgstr "Recommended"
 
-#. Keep your settings and saved data the same on every device
+#. Sync your settings across your devices
 #. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "Keep your settings and saved data the same on every device"
+msgstr "Sync your settings across your devices"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -2082,10 +2082,10 @@ msgstr "Unlock Sync"
 msgid "cloudSync.ringChanged"
 msgstr "Your sync key changed."
 
-#. Unlock Your Synced Data
+#. Unlock your synced data
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
 msgid "unlockSync.title"
-msgstr "Unlock Your Synced Data"
+msgstr "Unlock your synced data"
 
 #. Enter the recovery code you saved for your Polaris Locker account.
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
@@ -2132,10 +2132,10 @@ msgstr "Couldn't start over. Check your connection and try again."
 msgid "unlockSync.noCode"
 msgstr "This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over."
 
-#. Start Over?
+#. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
 msgid "unlockSync.startOverTitle"
-msgstr "Start Over?"
+msgstr "Start over?"
 
 #. Your current synced data will be lost. Start over only if you can't find your recovery code.
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The warning on the confirmation: a new sync key leaves the data under the old key unreadable (T22).
@@ -2152,10 +2152,10 @@ msgctxt "macos"
 msgid "unlockSync.startOverConfirm"
 msgstr "Start Over"
 
-#. Save Your Recovery Code
+#. Save your recovery code
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
 msgid "recoveryCode.title"
-msgstr "Save Your Recovery Code"
+msgstr "Save your recovery code"
 
 #. You'll need it to unlock your synced data on a new device. It's shown only once.
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
@@ -2182,10 +2182,10 @@ msgstr "Copy Code"
 msgid "recoveryCode.saved"
 msgstr "I've saved my recovery code"
 
-#. Your Sync Key Changed
+#. Your sync key changed
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.title"
-msgstr "Your Sync Key Changed"
+msgstr "Your sync key changed"
 
 #. {device} set up a new key for your synced data.
 #. RingChange: confirm a changed sync key (U-42). Arguments: {device} = the name of the device that set the key up (changed.by), as the kit shows device names.
@@ -2287,10 +2287,10 @@ msgstr "Copy Diagnostics"
 msgid "about.diagnosticsCopied"
 msgstr "Diagnostics copied"
 
-#. Release channel
+#. Release Channel
 #. ChannelPicker: the release channel choice.
 msgid "channel.title"
-msgstr "Release channel"
+msgstr "Release Channel"
 
 #. {store} sets the channel.
 #. ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam).
@@ -3967,10 +3967,10 @@ msgstr "{device} was replaced by {newDevice} when you signed in to {product} on 
 msgid "signin.mail.newDevice.subject"
 msgstr "A new device signed in to your Polaris Locker account"
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
-msgstr "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in."
+msgstr "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In."
 
 #. Open Polaris Locker
 #. Security email (SIGN-IN.md §3.15).
@@ -5856,10 +5856,10 @@ msgstr "This device could not be set up for sync. Update the app and try again."
 msgid "core.codes.device_keys_required.title"
 msgstr "Device not set up to connect"
 
-#. This device has not been set up to connect with your others. Update the app and try again.
+#. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "This device has not been set up to connect with your others. Update the app and try again."
+msgstr "Update the app and try again."
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5896,10 +5896,10 @@ msgstr "Remote connection is paused for now. Try again later."
 msgid "core.codes.relay_quota_exceeded.title"
 msgstr "Remote connection limit reached"
 
-#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
-msgstr "The remote connection limit is used up. It resets soon. Devices on the same network still connect."
+msgstr "It resets soon. Devices on the same network still connect."
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7136,10 +7136,10 @@ msgstr "Couldn't save on this device. Check storage and try again."
 msgid "core.codes.connect-unavailable.title"
 msgstr "Nearby devices unavailable"
 
-#. Nearby devices aren't available for this app on this device.
+#. This app can't use them on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
-msgstr "Nearby devices aren't available for this app on this device."
+msgstr "This app can't use them on this device."
 
 #. Device not verified
 #. Core copy (conformance/parity/copy.en.json, codes).

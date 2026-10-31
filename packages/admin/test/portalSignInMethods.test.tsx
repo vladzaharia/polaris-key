@@ -29,7 +29,7 @@ import {
 
 /**
  * Account v2 (PX-13; PORTAL.md §4.26): Sign-in methods on PX-W12's API (connect, disconnect with
- * step-up, the last-method guard, Hide My Email), passkeys on I-16's, and Where you're signed in
+ * step-up, the last-method guard, Hide My Email), passkeys on I-16's, and Where You're Signed In
  * on I-07's account sessions.
  */
 
@@ -208,7 +208,7 @@ function routes(
 }
 
 async function methodsRegion(): Promise<HTMLElement> {
-  const region = await screen.findByRole("region", { name: "Sign-in methods" });
+  const region = await screen.findByRole("region", { name: "Sign-In Methods" });
   await within(region).findByRole("heading", { name: "Accounts" });
   return region;
 }
@@ -785,7 +785,7 @@ describe("Sign-in methods (PX-13)", () => {
     mockFetch(signedIn());
     renderPortal();
     const region = await screen.findByRole("region", {
-      name: "Sign-in methods",
+      name: "Sign-In Methods",
     });
     expect(await within(region).findByText(ACCOUNT.email)).toBeTruthy();
     expect(
@@ -1017,7 +1017,7 @@ describe("step-up ways and returns (PX-13 review)", () => {
   });
 });
 
-describe("Where you're signed in (PX-13 on I-07)", () => {
+describe("Where You're Signed In (PX-13 on I-07)", () => {
   it("marks this browser and signs another out, focus to the section", async () => {
     let sessions = SESSIONS;
     mockFetch(
@@ -1031,7 +1031,7 @@ describe("Where you're signed in (PX-13 on I-07)", () => {
     );
     renderPortal();
     const region = await screen.findByRole("region", {
-      name: "Where you're signed in",
+      name: "Where You're Signed In",
     });
     await within(region).findByText("This browser");
     expect(
@@ -1047,7 +1047,7 @@ describe("Where you're signed in (PX-13 on I-07)", () => {
     );
     const nav = screen.getByRole("navigation", { name: "On this page" });
     expect(
-      within(nav).getByRole("link", { name: "Where you're signed in" }),
+      within(nav).getByRole("link", { name: "Where You're Signed In" }),
     ).toBeTruthy();
     expect(await axeViolations()).toEqual([]);
     await userEvent.click(buttons[0]!);
@@ -1055,7 +1055,7 @@ describe("Where you're signed in (PX-13 on I-07)", () => {
       await screen.findByText("Chrome on Android was signed out"),
     ).toBeTruthy();
     const heading = within(region).getByRole("heading", {
-      name: "Where you're signed in",
+      name: "Where You're Signed In",
     });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     await waitFor(() =>
@@ -1077,7 +1077,7 @@ describe("Where you're signed in (PX-13 on I-07)", () => {
     );
     renderPortal();
     const region = await screen.findByRole("region", {
-      name: "Where you're signed in",
+      name: "Where You're Signed In",
     });
     await userEvent.click(
       await within(region).findByRole("button", {
@@ -1115,7 +1115,7 @@ describe("Where you're signed in (PX-13 on I-07)", () => {
       expect(fetchedRequests()).toContain("GET /api/sessions"),
     );
     expect(
-      screen.queryByRole("region", { name: "Where you're signed in" }),
+      screen.queryByRole("region", { name: "Where You're Signed In" }),
     ).toBeNull();
   });
 });

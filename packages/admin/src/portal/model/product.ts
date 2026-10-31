@@ -63,7 +63,7 @@ export const SECTION_LABEL: Record<ProductSection, string> = {
   devices: t("account.devices"),
   package: t("locker.account.packages"),
   help: t("locker.shell.helpLink"),
-  data: t("locker.product.yourData"),
+  data: t("locker.account.yourData"),
 };
 
 /**

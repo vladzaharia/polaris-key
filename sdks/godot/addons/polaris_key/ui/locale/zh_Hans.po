@@ -851,10 +851,10 @@ msgstr "将{product}保存到你的账户"
 msgid "activate.recommend.badge"
 msgstr "推荐"
 
-#. Keep your settings and saved data the same on every device
+#. Sync your settings across your devices
 #. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "让你的设置和存档在每台设备上保持一致"
+msgstr "让你的设置在每台设备上保持一致"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -2077,7 +2077,7 @@ msgstr "解锁同步"
 msgid "cloudSync.ringChanged"
 msgstr "你的同步密钥已更改。"
 
-#. Unlock Your Synced Data
+#. Unlock your synced data
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
 msgid "unlockSync.title"
 msgstr "解锁已同步的数据"
@@ -2127,7 +2127,7 @@ msgstr "无法重新开始。请检查网络连接后重试。"
 msgid "unlockSync.noCode"
 msgstr "此账户没有恢复码。请在仍已登录且已解锁的设备上选择“新恢复码”。否则请重新开始。"
 
-#. Start Over?
+#. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
 msgid "unlockSync.startOverTitle"
 msgstr "重新开始？"
@@ -2147,7 +2147,7 @@ msgctxt "macos"
 msgid "unlockSync.startOverConfirm"
 msgstr "重新开始"
 
-#. Save Your Recovery Code
+#. Save your recovery code
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
 msgid "recoveryCode.title"
 msgstr "保存你的恢复码"
@@ -2177,7 +2177,7 @@ msgstr "复制恢复码"
 msgid "recoveryCode.saved"
 msgstr "我已保存恢复码"
 
-#. Your Sync Key Changed
+#. Your sync key changed
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.title"
 msgstr "你的同步密钥已更改"
@@ -2282,7 +2282,7 @@ msgstr "复制诊断信息"
 msgid "about.diagnosticsCopied"
 msgstr "诊断信息已复制"
 
-#. Release channel
+#. Release Channel
 #. ChannelPicker: the release channel choice.
 msgid "channel.title"
 msgstr "发布渠道"
@@ -3957,7 +3957,7 @@ msgstr "你于{date}登录{product}时，{device}已被{newDevice}替换。如�
 msgid "signin.mail.newDevice.subject"
 msgstr "有新设备登录了你的Polaris Locker账户"
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
 msgstr "{device}于{date}从{place}登录。如果这不是你本人操作，请在Polaris Locker的“你的登录位置”中将其退出登录。"
@@ -5843,10 +5843,10 @@ msgstr "无法为同步设置此设备。请更新应用后重试。"
 msgid "core.codes.device_keys_required.title"
 msgstr "设备未设置连接"
 
-#. This device has not been set up to connect with your others. Update the app and try again.
+#. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "此设备尚未设置为与你的其他设备连接。请更新应用后重试。"
+msgstr "请更新应用后重试。"
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5883,10 +5883,10 @@ msgstr "远程连接暂时暂停。请稍后重试。"
 msgid "core.codes.relay_quota_exceeded.title"
 msgstr "已达远程连接用量上限"
 
-#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
-msgstr "远程连接用量已用完，即将重置。同一网络下的设备仍可连接。"
+msgstr "即将重置。同一网络下的设备仍可连接。"
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7123,10 +7123,10 @@ msgstr "无法保存到此设备。请检查存储空间后重试。"
 msgid "core.codes.connect-unavailable.title"
 msgstr "无法使用附近的设备"
 
-#. Nearby devices aren't available for this app on this device.
+#. This app can't use them on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
-msgstr "此设备上的此应用无法连接附近的设备。"
+msgstr "此设备上的此应用无法使用。"
 
 #. Device not verified
 #. Core copy (conformance/parity/copy.en.json, codes).

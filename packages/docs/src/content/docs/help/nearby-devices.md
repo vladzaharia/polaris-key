@@ -16,7 +16,7 @@ Only you. A device appears only if it is signed in to your account in the same a
 
 ## Remote Connection
 
-When your devices aren't on the same network, **Remote Connection** connects them through Polaris Locker. It can't read what passes.
+When your devices aren't on the same network, **Remote Connection** connects them through Polaris Locker.
 
 ## The permission prompt
 
@@ -32,7 +32,7 @@ The app still works without it. It uses Remote Connection instead, when the deve
 
 ## Remove a device
 
-Removing a device stops it seeing your other devices, and them seeing it.
+A removed device stops seeing your other devices, and they stop seeing it.
 
 1. Sign in at [polaris.locker](https://polaris.locker).
 2. Open the app's page and find **Devices**.
@@ -42,4 +42,4 @@ See [Your devices](/docs/help/devices/) for what else changes when you remove on
 
 ## Undo
 
-Open the app on that device and activate it or sign in again. It joins again.
+Open the app on that device and activate it or sign in again. It connects to your other devices again.

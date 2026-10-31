@@ -79,7 +79,7 @@
     },
     "device_keys_required": {
       "title": "Dispositivo não configurado para conectar",
-      "message": "Este dispositivo não foi configurado para se conectar aos seus outros. Atualize o app e tente novamente."
+      "message": "Atualize o app e tente novamente."
     },
     "ring_too_large": {
       "title": "Dispositivos demais",
@@ -95,7 +95,7 @@
     },
     "relay_quota_exceeded": {
       "title": "Limite de conexão remota atingido",
-      "message": "O limite de conexão remota acabou. Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando."
+      "message": "Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando."
     },
     "relay_ticket_invalid": {
       "title": "Conexão expirada",
@@ -591,7 +591,7 @@
     },
     "connect-unavailable": {
       "title": "Dispositivos próximos indisponíveis",
-      "message": "A conexão com dispositivos próximos não está disponível para este app neste dispositivo."
+      "message": "Este app não pode usá-los neste dispositivo."
     },
     "peer-cert-invalid": {
       "title": "Dispositivo não verificado",

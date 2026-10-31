@@ -88,11 +88,11 @@ const FR: CopyBundle = {
     device_limit: "Limite d’appareils atteinte",
     key_entry_limit: "Aucune saisie restante",
     device_keys_invalid: "Appareil non configuré",
-    device_keys_required: "Appareil non lié",
+    device_keys_required: "Appareil non configuré pour se connecter",
     ring_too_large: "Trop d'appareils",
     relay_disabled: "Connexion à distance désactivée",
     relay_paused: "Connexion à distance en pause",
-    relay_quota_exceeded: "Limite à distance atteinte",
+    relay_quota_exceeded: "Limite de connexion à distance atteinte",
     relay_ticket_invalid: "Connexion expirée",
     licenseDisabled: "Licence désactivée",
     license_disabled: "Licence désactivée",
@@ -169,7 +169,7 @@ const FR: CopyBundle = {
     writes_paused:
       "La synchronisation est en pause un instant. Vos modifications sont conservées et seront synchronisées plus tard.",
     encryption_mismatch:
-      "L’app et le service de synchronisation ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.",
+      "L’app et Polaris Locker ne s’accordent pas sur le chiffrement. Mettez l’app à jour et réessayez.",
     upload_expired: "L’envoi a pris trop de temps et a été annulé. Réessayez.",
     upload_incomplete: "Une partie du fichier n’est pas arrivée. Réessayez.",
     file_too_large:
@@ -195,16 +195,15 @@ const FR: CopyBundle = {
       "Cette clé n’a plus de saisies disponibles. Ajoutez-la à votre compte et connectez-vous à la place.",
     device_keys_invalid:
       "Cet appareil n’a pas pu être configuré pour la synchronisation. Mettez l’app à jour et réessayez.",
-    device_keys_required:
-      "Cet appareil n'a pas été configuré pour se lier à vos autres appareils. Mettez à jour l'app et réessayez.",
+    device_keys_required: "Mettez à jour l'app et réessayez.",
     ring_too_large:
-      "Ce compte compte plus d'appareils liés que l'on ne peut en connecter. Retirez-en un et réessayez.",
+      "Ce compte compte plus d'appareils que l'on ne peut en connecter. Retirez-en un et réessayez.",
     relay_disabled:
       "La connexion à distance est désactivée pour cette app. Vos appareils se connectent uniquement sur le même réseau.",
     relay_paused:
       "La connexion à distance est en pause pour le moment. Réessayez plus tard.",
     relay_quota_exceeded:
-      "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.",
+      "Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.",
     relay_ticket_invalid: "La demande de connexion a expiré. Réessayez.",
     license_disabled:
       "Cette licence a été désactivée. Contactez le développeur.",

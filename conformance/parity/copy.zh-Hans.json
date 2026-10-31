@@ -79,7 +79,7 @@
     },
     "device_keys_required": {
       "title": "设备未设置连接",
-      "message": "此设备尚未设置为与你的其他设备连接。请更新应用后重试。"
+      "message": "请更新应用后重试。"
     },
     "ring_too_large": {
       "title": "设备过多",
@@ -95,7 +95,7 @@
     },
     "relay_quota_exceeded": {
       "title": "已达远程连接用量上限",
-      "message": "远程连接用量已用完，即将重置。同一网络下的设备仍可连接。"
+      "message": "即将重置。同一网络下的设备仍可连接。"
     },
     "relay_ticket_invalid": {
       "title": "连接已过期",
@@ -591,7 +591,7 @@
     },
     "connect-unavailable": {
       "title": "无法使用附近的设备",
-      "message": "此设备上的此应用无法连接附近的设备。"
+      "message": "此设备上的此应用无法使用。"
     },
     "peer-cert-invalid": {
       "title": "无法验证设备",

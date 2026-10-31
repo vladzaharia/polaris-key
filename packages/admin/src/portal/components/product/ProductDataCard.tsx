@@ -49,7 +49,7 @@ export function ProductDataCard({
   const [removing, setRemoving] = React.useState(false);
   return (
     // "Your data": the page already names the product (the mockup's card says only this).
-    <SectionCard id="data" title={t("locker.product.yourData")}>
+    <SectionCard id="data" title={t("locker.account.yourData")}>
       <div className="space-y-5">
         <DownloadData
           title={YOUR_DATA_COPY["yourData.product.copy.title"]}

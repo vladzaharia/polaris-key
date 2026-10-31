@@ -475,7 +475,7 @@ describe("product page on today's data (PX-04)", () => {
     expect(
       within(get).getAllByRole("button", { name: /Copy SHA-256/ }).length,
     ).toBeGreaterThan(0);
-    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    const news = screen.getByRole("region", { name: "What's New" });
     expect(
       within(news).getByText("New Photo Mode with free camera."),
     ).toBeTruthy();
@@ -1606,7 +1606,7 @@ describe("product identity card (PX-13; §4.20, §3.1)", () => {
     renderPortal();
     await page();
     const card = await screen.findByRole("region", {
-      name: "Sign in to Nightfall",
+      name: "Sign In to Nightfall",
     });
     expect(
       within(card).getByText(
@@ -1639,7 +1639,7 @@ describe("product identity card (PX-13; §4.20, §3.1)", () => {
         screen.getByRole("region", { name: "Devices" }).textContent,
       ).toMatch(/of 3 in use/),
     );
-    expect(screen.queryByRole("region", { name: /^Sign in to/ })).toBeNull();
+    expect(screen.queryByRole("region", { name: /^Sign In to/ })).toBeNull();
   });
 });
 
@@ -1664,7 +1664,7 @@ describe("What's new reads its notes as Markdown (owner polish 2026-10-07)", () 
     mockFetch(withNotes(NOTES));
     renderPortal();
     await page();
-    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    const news = screen.getByRole("region", { name: "What's New" });
     // Formatted: a heading under the card's h2, bold, a safe link out.
     expect(
       within(news).getByRole("heading", { level: 3, name: "Highlights" }),
@@ -1717,7 +1717,7 @@ describe("What's new reads its notes as Markdown (owner polish 2026-10-07)", () 
       mockFetch(withNotes(NOTES));
       renderPortal();
       await page();
-      const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+      const news = screen.getByRole("region", { name: "What's New" });
       await userEvent.click(
         within(news).getByRole("button", { name: "Show full notes" }),
       );
@@ -1734,7 +1734,7 @@ describe("What's new reads its notes as Markdown (owner polish 2026-10-07)", () 
     mockFetch(withNotes("Faster *preset* browser."));
     renderPortal();
     await page();
-    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    const news = screen.getByRole("region", { name: "What's New" });
     expect(within(news).getByText("preset").tagName).toBe("EM");
     expect(
       within(news).queryByRole("button", { name: "Show full notes" }),
@@ -1951,7 +1951,7 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
           .map((l) => l.textContent),
       ).not.toContain("Get It");
     // The License card leads the main column, with What's new, not the rail.
-    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    const news = screen.getByRole("region", { name: "What's New" });
     expect(card.parentElement!.parentElement).toBe(
       news.parentElement!.parentElement,
     );
@@ -1968,7 +1968,7 @@ describe("the section nav follows the page as it scrolls (owner polish 2026-10-0
     renderPortal();
     await page();
     const help = await screen.findByRole("region", { name: "Help" });
-    const news = screen.getByRole("region", { name: "What's new in 1.4.2" });
+    const news = screen.getByRole("region", { name: "What's New" });
     const license = screen.getByRole("region", { name: "License" });
     // In the main column with What's new, after it; not in the licence's side column.
     const column = (el: HTMLElement) => el.parentElement!;

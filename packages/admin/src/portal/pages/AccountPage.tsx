@@ -62,7 +62,7 @@ import { formatDayTime } from "../date.js";
  */
 const SECTIONS: { id: AccountSection; label: string }[] = [
   { id: "profile", label: t("profile.title") },
-  { id: "methods", label: t("signin.join.methodsLink") },
+  { id: "methods", label: t("locker.account.methods") },
   { id: "packages", label: t("locker.account.packages") },
   { id: "sessions", label: t("locker.account.sessions") },
   { id: "appearance", label: t("locker.appearance.title") },

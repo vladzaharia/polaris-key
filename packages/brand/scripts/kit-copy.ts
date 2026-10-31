@@ -288,29 +288,28 @@ const CLDR_ORDER = ["zero", "one", "two", "few", "many", "other"] as const;
 const DEV_NAMES =
   /Cloud Sync|Cloud Connect|Direct Transfer|Connect unavailable|Remote connect\b/;
 /**
- * LOCKER-FEATURE-NAMES §2 rule 1 (D-5): English only, these keys are Title Case so a list of labels
- * never mixes cases. Other locales keep their own capitalization and get no such check.
+ * LOCKER-FEATURE-NAMES §2 (owner's case rule, 2026-10-31): a feature label is a NAME, so every name
+ * in one section nav, settings pane or set of card titles is Title Case in English. Sentences (a
+ * task, statement or question title, a button, link, menu item, value, body) stay sentence case, so
+ * the sync screen titles are not listed. Other locales keep their own capitalization and get no
+ * such check. The pairing screens' two names ("Pair with Someone Nearby", "Paired") join this list
+ * with CC-19's copy.
  */
 const TITLE_CASE_KEYS: ReadonlySet<string> = new Set([
   "account.title",
   "account.cloudSync",
   "account.autoUpdate",
   "account.channel",
+  "channel.title",
   "account.managedSettings",
   "getIt.heading",
   "locker.product.whatsNew",
-  "locker.product.yourData",
+  "locker.account.yourData",
+  "locker.account.sessions",
+  "locker.account.methods",
   "license.title",
   "account.devices",
   "account.updates",
-]);
-/** Feature components whose argument-free `title` keys are Title Case as well. */
-const TITLE_CASE_NAMESPACES: ReadonlySet<string> = new Set([
-  "unlockSync",
-  "recoveryCode",
-  "ringChange",
-  "saveConflict",
-  "linkPairing",
 ]);
 const BANNED_EN = /\b(licences?|grants?|retry|machines?|plans?)\b/i;
 
@@ -833,13 +832,7 @@ export function validateKitCopy(src: KitCopySources): string[] {
       );
     if (!msg.note.trim()) errors.push(`${where}: note is empty`);
     const texts: [string, string][] = [[where, msg.value]];
-    if (
-      (TITLE_CASE_KEYS.has(key) ||
-        (TITLE_CASE_NAMESPACES.has(ns) &&
-          msg.role === "title" &&
-          !msg.value.includes("{"))) &&
-      msg.value !== titleCase(msg.value)
-    )
+    if (TITLE_CASE_KEYS.has(key) && msg.value !== titleCase(msg.value))
       errors.push(
         `${where}: a feature label or section title is Title Case in English ("${titleCase(msg.value)}")`,
       );

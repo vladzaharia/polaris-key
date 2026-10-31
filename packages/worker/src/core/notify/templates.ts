@@ -658,7 +658,7 @@ export function newDeviceSignInNotice(input: {
     subject: "A new device signed in to your Polaris Locker account", // signin.mail.newDevice.subject
     paragraphs: [
       // signin.mail.newDevice.body
-      `${device} signed in${when}${where}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.`,
+      `${device} signed in${when}${where}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.`,
     ],
     action: {
       label: "Open Polaris Locker", // signin.mail.open

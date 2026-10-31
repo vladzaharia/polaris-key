@@ -36,7 +36,12 @@ export function WhatsNew({
   return (
     <SectionCard
       id="new"
-      title={t("releaseNotes.title", { product: latest.version })}
+      title={t("locker.product.whatsNew")}
+      aside={
+        <p className="max-w-full pt-1 text-end text-xs text-fg-muted">
+          {latest.version}
+        </p>
+      }
     >
       {notes && notes.summary.length ? (
         <div data-notes="" className="text-md text-fg">

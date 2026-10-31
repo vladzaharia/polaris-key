@@ -1,7 +1,7 @@
 == code ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Unlock Your Synced Data"
+Card/Scroll/Body/Head/Title: Label "Unlock your synced data"
 Card/Scroll/Body/Columns/Left/Words/Lede: Label "Enter the recovery code you saved for your Polaris Locker account."
 Card/Scroll/Body/Columns/Left/NoAsk: Label "No one will ever ask for this code. Enter it only in the app."
 Card/Scroll/Body/Columns/Right/Field/FieldLabel: Label "Recovery code"
@@ -13,7 +13,7 @@ Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 5]
 == code, typed ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Unlock Your Synced Data"
+Card/Scroll/Body/Head/Title: Label "Unlock your synced data"
 Card/Scroll/Body/Columns/Left/Words/Lede: Label "Enter the recovery code you saved for your Polaris Locker account."
 Card/Scroll/Body/Columns/Left/NoAsk: Label "No one will ever ask for this code. Enter it only in the app."
 Card/Scroll/Body/Columns/Right/Field/FieldLabel: Label "Recovery code"
@@ -25,7 +25,7 @@ Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 5]
 == invalid ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Unlock Your Synced Data"
+Card/Scroll/Body/Head/Title: Label "Unlock your synced data"
 Card/Scroll/Body/Columns/Left/Words/Lede: Label "Enter the recovery code you saved for your Polaris Locker account."
 Card/Scroll/Body/Columns/Left/NoAsk: Label "No one will ever ask for this code. Enter it only in the app."
 Card/Scroll/Body/Columns/Right/Field/FieldLabel: Label "Recovery code"
@@ -38,12 +38,12 @@ Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 5]
 == working ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Unlock Your Synced Data"
+Card/Scroll/Body/Head/Title: Label "Unlock your synced data"
 Card/Scroll/Body/Columns/Left/Words/Status: Label "Working…"
 == failed ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Unlock Your Synced Data"
+Card/Scroll/Body/Head/Title: Label "Unlock your synced data"
 Card/Scroll/Body/Columns/Left/Words/WarningRow/WarningGlyph: TextureRect
 Card/Scroll/Body/Columns/Left/Words/WarningRow/Warning: Label "Couldn't unlock. Check your connection and try again."
 Card/Scroll/Body/Columns/Right/Actions/Primary: Button "Try again" [focus 1]
@@ -51,7 +51,7 @@ Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 2]
 == start-over-failed ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Unlock Your Synced Data"
+Card/Scroll/Body/Head/Title: Label "Unlock your synced data"
 Card/Scroll/Body/Columns/Left/Words/WarningRow/WarningGlyph: TextureRect
 Card/Scroll/Body/Columns/Left/Words/WarningRow/Warning: Label "Couldn't start over. Check your connection and try again."
 Card/Scroll/Body/Columns/Right/Actions/Primary: Button "Try again" [focus 1]
@@ -59,14 +59,14 @@ Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 2]
 == no-code ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Unlock Your Synced Data"
+Card/Scroll/Body/Head/Title: Label "Unlock your synced data"
 Card/Scroll/Body/Columns/Left/Words/Lede: Label "This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over."
 Card/Scroll/Body/Columns/Right/Actions/Primary: Button "Start over" [focus 1]
 Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 2]
 == start-over ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Start Over?"
+Card/Scroll/Body/Head/Title: Label "Start over?"
 Card/Scroll/Body/Columns/Left/Words/WarningRow/Warning: Label "Your current synced data will be lost. Start over only if you can't find your recovery code."
 Card/Scroll/Body/Columns/Right/Actions/ConfirmStartOver: Button "Start over" [focus 1]
 Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 2]

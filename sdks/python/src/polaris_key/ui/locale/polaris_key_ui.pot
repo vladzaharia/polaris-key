@@ -852,7 +852,7 @@ msgstr ""
 msgid "activate.recommend.badge"
 msgstr ""
 
-#. Keep your settings and saved data the same on every device
+#. Sync your settings across your devices
 #. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
 msgstr ""
@@ -2081,7 +2081,7 @@ msgstr ""
 msgid "cloudSync.ringChanged"
 msgstr ""
 
-#. Unlock Your Synced Data
+#. Unlock your synced data
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
 msgid "unlockSync.title"
 msgstr ""
@@ -2131,7 +2131,7 @@ msgstr ""
 msgid "unlockSync.noCode"
 msgstr ""
 
-#. Start Over?
+#. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
 msgid "unlockSync.startOverTitle"
 msgstr ""
@@ -2151,7 +2151,7 @@ msgctxt "macos"
 msgid "unlockSync.startOverConfirm"
 msgstr ""
 
-#. Save Your Recovery Code
+#. Save your recovery code
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
 msgid "recoveryCode.title"
 msgstr ""
@@ -2181,7 +2181,7 @@ msgstr ""
 msgid "recoveryCode.saved"
 msgstr ""
 
-#. Your Sync Key Changed
+#. Your sync key changed
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.title"
 msgstr ""
@@ -2286,7 +2286,7 @@ msgstr ""
 msgid "about.diagnosticsCopied"
 msgstr ""
 
-#. Release channel
+#. Release Channel
 #. ChannelPicker: the release channel choice.
 msgid "channel.title"
 msgstr ""
@@ -3966,7 +3966,7 @@ msgstr ""
 msgid "signin.mail.newDevice.subject"
 msgstr ""
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
 msgstr ""
@@ -5860,7 +5860,7 @@ msgstr ""
 msgid "core.codes.device_keys_required.title"
 msgstr ""
 
-#. This device has not been set up to connect with your others. Update the app and try again.
+#. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
 msgstr ""
@@ -5900,7 +5900,7 @@ msgstr ""
 msgid "core.codes.relay_quota_exceeded.title"
 msgstr ""
 
-#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr ""
@@ -7140,7 +7140,7 @@ msgstr ""
 msgid "core.codes.connect-unavailable.title"
 msgstr ""
 
-#. Nearby devices aren't available for this app on this device.
+#. This app can't use them on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
 msgstr ""

@@ -312,7 +312,7 @@
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">おすすめ</string>
     <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">設定と保存データをすべてのデバイスで同じに保てます</string>
+    <string name="activate_recommend_sync">設定をすべてのデバイスで同じに保てます</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
     <string name="activate_recommend_recover">キーやこのデバイスを失ってもライセンスを取り戻せます</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
@@ -2192,9 +2192,9 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_invalid_message">このデバイスを同期用に設定できませんでした。アプリを更新して、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_title">デバイスを接続する設定が済んでいません</string>
+    <string name="core_codes_device_keys_required_title">接続の設定が済んでいません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">このデバイスは、ほかのデバイスと接続する設定が済んでいません。アプリを更新して、もう一度お試しください。</string>
+    <string name="core_codes_device_keys_required_message">アプリを更新して、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">デバイスが多すぎます</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2210,7 +2210,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_quota_exceeded_title">リモート接続の上限に達しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_message">リモート接続の上限を使い切りました。まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。</string>
+    <string name="core_codes_relay_quota_exceeded_message">まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">接続の期限が切れました</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2706,7 +2706,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_connect_unavailable_title">近くのデバイスは利用できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_message">このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。</string>
+    <string name="core_codes_connect_unavailable_message">このデバイスでは、このアプリで利用できません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_title">デバイスを確認できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

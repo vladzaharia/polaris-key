@@ -312,7 +312,7 @@
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">推荐</string>
     <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">让你的设置和存档在每台设备上保持一致</string>
+    <string name="activate_recommend_sync">让你的设置在每台设备上保持一致</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
     <string name="activate_recommend_recover">丢失密钥或这台设备后，可找回你的许可证</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
@@ -2194,7 +2194,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_required_title">设备未设置连接</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">此设备尚未设置为与你的其他设备连接。请更新应用后重试。</string>
+    <string name="core_codes_device_keys_required_message">请更新应用后重试。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">设备过多</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2210,7 +2210,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_quota_exceeded_title">已达远程连接用量上限</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_message">远程连接用量已用完，即将重置。同一网络下的设备仍可连接。</string>
+    <string name="core_codes_relay_quota_exceeded_message">即将重置。同一网络下的设备仍可连接。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">连接已过期</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2706,7 +2706,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_connect_unavailable_title">无法使用附近的设备</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_message">此设备上的此应用无法连接附近的设备。</string>
+    <string name="core_codes_connect_unavailable_message">此设备上的此应用无法使用。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_title">无法验证设备</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

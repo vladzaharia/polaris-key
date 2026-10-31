@@ -102,8 +102,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   device_keys_required: {
     title: "Device not set up to connect",
-    message:
-      "This device has not been set up to connect with your others. Update the app and try again.",
+    message: "Update the app and try again.",
   },
   ring_too_large: {
     title: "Too many devices",
@@ -121,8 +120,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   relay_quota_exceeded: {
     title: "Remote connection limit reached",
-    message:
-      "The remote connection limit is used up. It resets soon. Devices on the same network still connect.",
+    message: "It resets soon. Devices on the same network still connect.",
   },
   relay_ticket_invalid: {
     title: "Connection expired",
@@ -668,7 +666,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   "connect-unavailable": {
     title: "Nearby devices unavailable",
-    message: "Nearby devices aren't available for this app on this device.",
+    message: "This app can't use them on this device.",
   },
   "peer-cert-invalid": {
     title: "Device not verified",

@@ -1,7 +1,7 @@
 == confirm ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Your Sync Key Changed"
+Card/Scroll/Body/Head/Title: Label "Your sync key changed"
 Card/Scroll/Body/Columns/Left/Words/BodyText: Label "\u2068Maya’s MacBook\u2069 set up a new key for your synced data."
 Card/Scroll/Body/Columns/Left/Words/WarningRow/WarningGlyph: TextureRect
 Card/Scroll/Body/Columns/Left/Words/WarningRow/Warning: Label "Choose “That was me” only if you did this. If not, use your recovery code."
@@ -11,7 +11,7 @@ Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 3]
 == no device named ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Your Sync Key Changed"
+Card/Scroll/Body/Head/Title: Label "Your sync key changed"
 Card/Scroll/Body/Columns/Left/Words/BodyText: Label "A device set up a new key for your synced data."
 Card/Scroll/Body/Columns/Left/Words/WarningRow/WarningGlyph: TextureRect
 Card/Scroll/Body/Columns/Left/Words/WarningRow/Warning: Label "Choose “That was me” only if you did this. If not, use your recovery code."
@@ -21,7 +21,7 @@ Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 3]
 == nothing served ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Your Sync Key Changed"
+Card/Scroll/Body/Head/Title: Label "Your sync key changed"
 Card/Scroll/Body/Columns/Left/Words/BodyText: Label "\u2068Maya’s MacBook\u2069 set up a new key for your synced data."
 Card/Scroll/Body/Columns/Left/Words/WarningRow/WarningGlyph: TextureRect
 Card/Scroll/Body/Columns/Left/Words/WarningRow/Warning: Label "Unlock with your recovery code to keep syncing."
@@ -30,7 +30,7 @@ Card/Scroll/Body/Columns/Right/Actions/Cancel: Button "Cancel" [focus 2]
 == failed ==
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
-Card/Scroll/Body/Head/Title: Label "Your Sync Key Changed"
+Card/Scroll/Body/Head/Title: Label "Your sync key changed"
 Card/Scroll/Body/Columns/Left/Words/BodyText: Label "\u2068Maya’s MacBook\u2069 set up a new key for your synced data."
 Card/Scroll/Body/Columns/Left/Words/WarningRow/WarningGlyph: TextureRect
 Card/Scroll/Body/Columns/Left/Words/WarningRow/Warning: Label "Choose “That was me” only if you did this. If not, use your recovery code."

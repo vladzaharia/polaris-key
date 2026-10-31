@@ -853,10 +853,10 @@ msgstr "{product} in Ihrem Konto behalten"
 msgid "activate.recommend.badge"
 msgstr "Empfohlen"
 
-#. Keep your settings and saved data the same on every device
+#. Sync your settings across your devices
 #. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "Halten Sie Ihre Einstellungen und gespeicherten Daten auf jedem Gerät gleich"
+msgstr "Ihre Einstellungen auf jedem Gerät gleich halten"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -2082,7 +2082,7 @@ msgstr "Synchronisierung entsperren"
 msgid "cloudSync.ringChanged"
 msgstr "Ihr Synchronisierungsschlüssel hat sich geändert."
 
-#. Unlock Your Synced Data
+#. Unlock your synced data
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
 msgid "unlockSync.title"
 msgstr "Synchronisierte Daten entsperren"
@@ -2132,7 +2132,7 @@ msgstr "Neu beginnen fehlgeschlagen. Prüfen Sie die Verbindung und versuchen Si
 msgid "unlockSync.noCode"
 msgstr "Dieses Konto hat keinen Wiederherstellungscode. Wählen Sie auf einem Gerät, das noch angemeldet und entsperrt ist, „Neuer Wiederherstellungscode“. Andernfalls beginnen Sie neu."
 
-#. Start Over?
+#. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
 msgid "unlockSync.startOverTitle"
 msgstr "Neu beginnen?"
@@ -2152,7 +2152,7 @@ msgctxt "macos"
 msgid "unlockSync.startOverConfirm"
 msgstr "Neu beginnen"
 
-#. Save Your Recovery Code
+#. Save your recovery code
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
 msgid "recoveryCode.title"
 msgstr "Wiederherstellungscode speichern"
@@ -2182,7 +2182,7 @@ msgstr "Code kopieren"
 msgid "recoveryCode.saved"
 msgstr "Ich habe meinen Wiederherstellungscode gespeichert"
 
-#. Your Sync Key Changed
+#. Your sync key changed
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.title"
 msgstr "Ihr Synchronisierungsschlüssel hat sich geändert"
@@ -2287,7 +2287,7 @@ msgstr "Diagnosedaten kopieren"
 msgid "about.diagnosticsCopied"
 msgstr "Diagnosedaten kopiert"
 
-#. Release channel
+#. Release Channel
 #. ChannelPicker: the release channel choice.
 msgid "channel.title"
 msgstr "Release-Kanal"
@@ -3967,7 +3967,7 @@ msgstr "{device} wurde durch {newDevice} ersetzt, als Sie sich am {date} bei {pr
 msgid "signin.mail.newDevice.subject"
 msgstr "Ein neues Gerät hat sich bei Ihrem Polaris Locker-Konto angemeldet"
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
 msgstr "{device} hat sich am {date} von {place} aus angemeldet. Falls Sie das nicht waren, melden Sie das Gerät in Polaris Locker unter „Wo Sie angemeldet sind“ ab."
@@ -5849,17 +5849,17 @@ msgstr "Gerät nicht eingerichtet"
 #. This device could not be set up for sync. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_invalid.message"
-msgstr "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut."
+msgstr "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisieren Sie die App und versuchen Sie es erneut."
 
 #. Device not set up to connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.title"
 msgstr "Gerät nicht zum Verbinden eingerichtet"
 
-#. This device has not been set up to connect with your others. Update the app and try again.
+#. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "Dieses Gerät wurde nicht zum Verbinden mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut."
+msgstr "Aktualisieren Sie die App und versuchen Sie es erneut."
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5869,7 +5869,7 @@ msgstr "Zu viele Geräte"
 #. This account has more devices than can be connected. Remove one and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.ring_too_large.message"
-msgstr "Dieses Konto hat mehr Geräte, als verbunden werden können. Entferne eines und versuche es erneut."
+msgstr "Dieses Konto hat mehr Geräte, als verbunden werden können. Entfernen Sie eines und versuchen Sie es erneut."
 
 #. Remote connection is off
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5879,7 +5879,7 @@ msgstr "Fernverbindung aus"
 #. Remote connection is off for this app. Your devices connect only on the same network.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_disabled.message"
-msgstr "Die Fernverbindung ist für diese App ausgeschaltet. Deine Geräte verbinden sich nur im selben Netzwerk."
+msgstr "Die Fernverbindung ist für diese App ausgeschaltet. Ihre Geräte verbinden sich nur im selben Netzwerk."
 
 #. Remote connection paused
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5889,17 +5889,17 @@ msgstr "Fernverbindung pausiert"
 #. Remote connection is paused for now. Try again later.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_paused.message"
-msgstr "Die Fernverbindung ist vorübergehend pausiert. Versuche es später erneut."
+msgstr "Die Fernverbindung ist vorübergehend pausiert. Versuchen Sie es später erneut."
 
 #. Remote connection limit reached
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.title"
 msgstr "Limit für Fernverbindungen erreicht"
 
-#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
-msgstr "Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin."
+msgstr "Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin."
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5909,7 +5909,7 @@ msgstr "Verbindung abgelaufen"
 #. The connection request expired. Try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_ticket_invalid.message"
-msgstr "Die Verbindungsanfrage ist abgelaufen. Versuche es erneut."
+msgstr "Die Verbindungsanfrage ist abgelaufen. Versuchen Sie es erneut."
 
 #. No key entries left
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7136,10 +7136,10 @@ msgstr "Auf diesem Gerät konnte nichts gespeichert werden. Prüfen Sie den Spei
 msgid "core.codes.connect-unavailable.title"
 msgstr "Geräte in der Nähe nicht verfügbar"
 
-#. Nearby devices aren't available for this app on this device.
+#. This app can't use them on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
-msgstr "Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar."
+msgstr "Diese App kann sie auf diesem Gerät nicht nutzen."
 
 #. Device not verified
 #. Core copy (conformance/parity/copy.en.json, codes).

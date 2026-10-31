@@ -173,8 +173,7 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · this {deviceKind} is device {n} of {limit}.",
     "activate.recommend.title": "Keep {product} in your account",
     "activate.recommend.badge": "Recommended",
-    "activate.recommend.sync":
-      "Keep your settings and saved data the same on every device",
+    "activate.recommend.sync": "Sync your settings across your devices",
     "activate.recommend.recover":
       "Get your license back if you lose the key or this device",
     "activate.recommend.devices":
@@ -404,7 +403,7 @@ export const KIT_COPY: Readonly<
     "cloudSync.locked": "Sync is locked.",
     "cloudSync.unlock": "Unlock sync",
     "cloudSync.ringChanged": "Your sync key changed.",
-    "unlockSync.title": "Unlock Your Synced Data",
+    "unlockSync.title": "Unlock your synced data",
     "unlockSync.lede":
       "Enter the recovery code you saved for your Polaris Locker account.",
     "unlockSync.field": "Recovery code",
@@ -417,18 +416,18 @@ export const KIT_COPY: Readonly<
       "Couldn't start over. Check your connection and try again.",
     "unlockSync.noCode":
       "This account has no recovery code. On a device that's still signed in and unlocked, choose New recovery code. Otherwise, start over.",
-    "unlockSync.startOverTitle": "Start Over?",
+    "unlockSync.startOverTitle": "Start over?",
     "unlockSync.startOverWarning":
       "Your current synced data will be lost. Start over only if you can't find your recovery code.",
     "unlockSync.startOverConfirm": "Start over",
-    "recoveryCode.title": "Save Your Recovery Code",
+    "recoveryCode.title": "Save your recovery code",
     "recoveryCode.lede":
       "You'll need it to unlock your synced data on a new device. It's shown only once.",
     "recoveryCode.noAsk":
       "No one will ever ask for this code. Enter it only in the app.",
     "recoveryCode.copy": "Copy code",
     "recoveryCode.saved": "I've saved my recovery code",
-    "ringChange.title": "Your Sync Key Changed",
+    "ringChange.title": "Your sync key changed",
     "ringChange.body": "{device} set up a new key for your synced data.",
     "ringChange.bodyUnknown": "A device set up a new key for your synced data.",
     "ringChange.warning":
@@ -447,7 +446,7 @@ export const KIT_COPY: Readonly<
     "about.licenses": "Open-source licenses",
     "about.copyDiagnostics": "Copy diagnostics",
     "about.diagnosticsCopied": "Diagnostics copied",
-    "channel.title": "Release channel",
+    "channel.title": "Release Channel",
     "channel.locked": "{store} sets the channel.",
     "channel.lockedLicense": "Your license includes this channel only.",
     "toast.undo": "Undo",
@@ -785,7 +784,7 @@ export const KIT_COPY: Readonly<
     "signin.mail.newDevice.subject":
       "A new device signed in to your Polaris Locker account",
     "signin.mail.newDevice.body":
-      "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.",
+      "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.",
     "signin.mail.open": "Open Polaris Locker",
     "signin.code.label": "6-digit code",
     "cli.group.license": "License",
@@ -1203,8 +1202,7 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.message":
       "This device could not be set up for sync. Update the app and try again.",
     "core.codes.device_keys_required.title": "Device not set up to connect",
-    "core.codes.device_keys_required.message":
-      "This device has not been set up to connect with your others. Update the app and try again.",
+    "core.codes.device_keys_required.message": "Update the app and try again.",
     "core.codes.ring_too_large.title": "Too many devices",
     "core.codes.ring_too_large.message":
       "This account has more devices than can be connected. Remove one and try again.",
@@ -1216,7 +1214,7 @@ export const KIT_COPY: Readonly<
       "Remote connection is paused for now. Try again later.",
     "core.codes.relay_quota_exceeded.title": "Remote connection limit reached",
     "core.codes.relay_quota_exceeded.message":
-      "The remote connection limit is used up. It resets soon. Devices on the same network still connect.",
+      "It resets soon. Devices on the same network still connect.",
     "core.codes.relay_ticket_invalid.title": "Connection expired",
     "core.codes.relay_ticket_invalid.message":
       "The connection request expired. Try again.",
@@ -1573,7 +1571,7 @@ export const KIT_COPY: Readonly<
       "Couldn't save on this device. Check storage and try again.",
     "core.codes.connect-unavailable.title": "Nearby devices unavailable",
     "core.codes.connect-unavailable.message":
-      "Nearby devices aren't available for this app on this device.",
+      "This app can't use them on this device.",
     "core.codes.peer-cert-invalid.title": "Device not verified",
     "core.codes.peer-cert-invalid.message":
       "This device couldn't be verified. Try again.",
@@ -1977,7 +1975,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "{product} in Ihrem Konto behalten",
     "activate.recommend.badge": "Empfohlen",
     "activate.recommend.sync":
-      "Halten Sie Ihre Einstellungen und gespeicherten Daten auf jedem Gerät gleich",
+      "Ihre Einstellungen auf jedem Gerät gleich halten",
     "activate.recommend.recover":
       "Ihre Lizenz zurückholen, wenn Sie den Schlüssel oder dieses Gerät verlieren",
     "activate.recommend.devices":
@@ -3096,27 +3094,27 @@ export const KIT_COPY: Readonly<
       "Diese Lizenz hat ihr Gerätelimit bereits erreicht. Ersetzen Sie ein Gerät, um sie hier zu verwenden.",
     "core.codes.device_keys_invalid.title": "Gerät nicht eingerichtet",
     "core.codes.device_keys_invalid.message":
-      "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut.",
+      "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisieren Sie die App und versuchen Sie es erneut.",
     "core.codes.device_keys_required.title":
       "Gerät nicht zum Verbinden eingerichtet",
     "core.codes.device_keys_required.message":
-      "Dieses Gerät wurde nicht zum Verbinden mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut.",
+      "Aktualisieren Sie die App und versuchen Sie es erneut.",
     "core.codes.ring_too_large.title": "Zu viele Geräte",
     "core.codes.ring_too_large.message":
-      "Dieses Konto hat mehr Geräte, als verbunden werden können. Entferne eines und versuche es erneut.",
+      "Dieses Konto hat mehr Geräte, als verbunden werden können. Entfernen Sie eines und versuchen Sie es erneut.",
     "core.codes.relay_disabled.title": "Fernverbindung aus",
     "core.codes.relay_disabled.message":
-      "Die Fernverbindung ist für diese App ausgeschaltet. Deine Geräte verbinden sich nur im selben Netzwerk.",
+      "Die Fernverbindung ist für diese App ausgeschaltet. Ihre Geräte verbinden sich nur im selben Netzwerk.",
     "core.codes.relay_paused.title": "Fernverbindung pausiert",
     "core.codes.relay_paused.message":
-      "Die Fernverbindung ist vorübergehend pausiert. Versuche es später erneut.",
+      "Die Fernverbindung ist vorübergehend pausiert. Versuchen Sie es später erneut.",
     "core.codes.relay_quota_exceeded.title":
       "Limit für Fernverbindungen erreicht",
     "core.codes.relay_quota_exceeded.message":
-      "Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.",
+      "Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.",
     "core.codes.relay_ticket_invalid.title": "Verbindung abgelaufen",
     "core.codes.relay_ticket_invalid.message":
-      "Die Verbindungsanfrage ist abgelaufen. Versuche es erneut.",
+      "Die Verbindungsanfrage ist abgelaufen. Versuchen Sie es erneut.",
     "core.codes.key_entry_limit.title": "Keine Schlüsseleingaben mehr",
     "core.codes.key_entry_limit.message":
       "Für diesen Schlüssel sind keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu und melden Sie sich stattdessen an.",
@@ -3491,7 +3489,7 @@ export const KIT_COPY: Readonly<
     "core.codes.connect-unavailable.title":
       "Geräte in der Nähe nicht verfügbar",
     "core.codes.connect-unavailable.message":
-      "Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar.",
+      "Diese App kann sie auf diesem Gerät nicht nutzen.",
     "core.codes.peer-cert-invalid.title": "Gerät nicht bestätigt",
     "core.codes.peer-cert-invalid.message":
       "Dieses Gerät konnte nicht bestätigt werden. Versuchen Sie es erneut.",
@@ -3897,7 +3895,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Gardez {product} dans votre compte",
     "activate.recommend.badge": "Recommandé",
     "activate.recommend.sync":
-      "Gardez vos réglages et données enregistrées identiques sur chaque appareil",
+      "Gardez vos réglages identiques sur chaque appareil",
     "activate.recommend.recover":
       "Récupérez votre licence si vous perdez la clé ou cet appareil",
     "activate.recommend.devices":
@@ -5004,7 +5002,7 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_required.title":
       "Appareil non configuré pour se connecter",
     "core.codes.device_keys_required.message":
-      "Cet appareil n'a pas été configuré pour se connecter à vos autres appareils. Mettez à jour l'app et réessayez.",
+      "Mettez à jour l'app et réessayez.",
     "core.codes.ring_too_large.title": "Trop d'appareils",
     "core.codes.ring_too_large.message":
       "Ce compte compte plus d'appareils que l'on ne peut en connecter. Retirez-en un et réessayez.",
@@ -5017,7 +5015,7 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title":
       "Limite de connexion à distance atteinte",
     "core.codes.relay_quota_exceeded.message":
-      "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.",
+      "Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.",
     "core.codes.relay_ticket_invalid.title": "Connexion expirée",
     "core.codes.relay_ticket_invalid.message":
       "La demande de connexion a expiré. Réessayez.",
@@ -5396,7 +5394,7 @@ export const KIT_COPY: Readonly<
     "core.codes.connect-unavailable.title":
       "Appareils à proximité indisponibles",
     "core.codes.connect-unavailable.message":
-      "La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil.",
+      "Cette app ne peut pas les utiliser sur cet appareil.",
     "core.codes.peer-cert-invalid.title": "Appareil non vérifié",
     "core.codes.peer-cert-invalid.message":
       "Cet appareil n'a pas pu être vérifié. Réessayez.",
@@ -5800,7 +5798,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Conserva {product} en tu cuenta",
     "activate.recommend.badge": "Recomendado",
     "activate.recommend.sync":
-      "Mantén tus ajustes y datos guardados iguales en todos tus dispositivos",
+      "Mantén tus ajustes iguales en todos tus dispositivos",
     "activate.recommend.recover":
       "Recupera tu licencia si pierdes la clave o este dispositivo",
     "activate.recommend.devices":
@@ -6894,7 +6892,7 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_required.title":
       "Dispositivo no configurado para conectarse",
     "core.codes.device_keys_required.message":
-      "Este dispositivo no se ha configurado para conectarse con los demás. Actualiza la app e inténtalo de nuevo.",
+      "Actualiza la app e inténtalo de nuevo.",
     "core.codes.ring_too_large.title": "Demasiados dispositivos",
     "core.codes.ring_too_large.message":
       "Esta cuenta tiene más dispositivos de los que se pueden conectar. Quita uno e inténtalo de nuevo.",
@@ -6907,7 +6905,7 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title":
       "Límite de conexión remota alcanzado",
     "core.codes.relay_quota_exceeded.message":
-      "Se agotó el límite de conexión remota. Se restablece pronto. Los dispositivos de la misma red siguen conectándose.",
+      "Se restablece pronto. Los dispositivos de la misma red siguen conectándose.",
     "core.codes.relay_ticket_invalid.title": "Conexión caducada",
     "core.codes.relay_ticket_invalid.message":
       "La solicitud de conexión caducó. Inténtalo de nuevo.",
@@ -7290,7 +7288,7 @@ export const KIT_COPY: Readonly<
     "core.codes.connect-unavailable.title":
       "Dispositivos cercanos no disponibles",
     "core.codes.connect-unavailable.message":
-      "La conexión con dispositivos cercanos no está disponible para esta app en este dispositivo.",
+      "Esta app no puede usarlos en este dispositivo.",
     "core.codes.peer-cert-invalid.title": "Dispositivo no verificado",
     "core.codes.peer-cert-invalid.message":
       "No se pudo verificar este dispositivo. Inténtalo de nuevo.",
@@ -7694,7 +7692,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Guarde {product} na sua conta",
     "activate.recommend.badge": "Recomendado",
     "activate.recommend.sync":
-      "Mantenha suas configurações e dados salvos iguais em todos os dispositivos",
+      "Mantenha suas configurações iguais em todos os dispositivos",
     "activate.recommend.recover":
       "Recupere sua licença se perder a chave ou este dispositivo",
     "activate.recommend.devices":
@@ -8772,7 +8770,7 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_required.title":
       "Dispositivo não configurado para conectar",
     "core.codes.device_keys_required.message":
-      "Este dispositivo não foi configurado para se conectar aos seus outros. Atualize o app e tente novamente.",
+      "Atualize o app e tente novamente.",
     "core.codes.ring_too_large.title": "Dispositivos demais",
     "core.codes.ring_too_large.message":
       "Esta conta tem mais dispositivos do que é possível conectar. Remova um e tente novamente.",
@@ -8785,7 +8783,7 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title":
       "Limite de conexão remota atingido",
     "core.codes.relay_quota_exceeded.message":
-      "O limite de conexão remota acabou. Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando.",
+      "Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando.",
     "core.codes.relay_ticket_invalid.title": "Conexão expirada",
     "core.codes.relay_ticket_invalid.message":
       "O pedido de conexão expirou. Tente novamente.",
@@ -9152,7 +9150,7 @@ export const KIT_COPY: Readonly<
     "core.codes.connect-unavailable.title":
       "Dispositivos próximos indisponíveis",
     "core.codes.connect-unavailable.message":
-      "A conexão com dispositivos próximos não está disponível para este app neste dispositivo.",
+      "Este app não pode usá-los neste dispositivo.",
     "core.codes.peer-cert-invalid.title": "Dispositivo não verificado",
     "core.codes.peer-cert-invalid.message":
       "Não foi possível verificar este dispositivo. Tente novamente.",
@@ -9551,7 +9549,7 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Tieni {product} nel tuo account",
     "activate.recommend.badge": "Consigliato",
     "activate.recommend.sync":
-      "Mantieni impostazioni e dati salvati uguali su ogni dispositivo",
+      "Mantieni le impostazioni uguali su ogni dispositivo",
     "activate.recommend.recover":
       "Riavere la licenza se perdi la chiave o questo dispositivo",
     "activate.recommend.devices":
@@ -10634,8 +10632,7 @@ export const KIT_COPY: Readonly<
       "Non è stato possibile configurare questo dispositivo per la sincronizzazione. Aggiorna l’app e riprova.",
     "core.codes.device_keys_required.title":
       "Dispositivo non configurato per connettersi",
-    "core.codes.device_keys_required.message":
-      "Questo dispositivo non è stato configurato per connettersi agli altri. Aggiorna l'app e riprova.",
+    "core.codes.device_keys_required.message": "Aggiorna l'app e riprova.",
     "core.codes.ring_too_large.title": "Troppi dispositivi",
     "core.codes.ring_too_large.message":
       "Questo account ha più dispositivi di quanti se ne possano connettere. Rimuovine uno e riprova.",
@@ -10648,7 +10645,7 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_quota_exceeded.title":
       "Limite di connessione remota raggiunto",
     "core.codes.relay_quota_exceeded.message":
-      "Il limite della connessione remota è esaurito. Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque.",
+      "Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque.",
     "core.codes.relay_ticket_invalid.title": "Connessione scaduta",
     "core.codes.relay_ticket_invalid.message":
       "La richiesta di connessione è scaduta. Riprova.",
@@ -11025,7 +11022,7 @@ export const KIT_COPY: Readonly<
     "core.codes.connect-unavailable.title":
       "Dispositivi nelle vicinanze non disponibili",
     "core.codes.connect-unavailable.message":
-      "La connessione ai dispositivi vicini non è disponibile per questa app su questo dispositivo.",
+      "Questa app non può usarli su questo dispositivo.",
     "core.codes.peer-cert-invalid.title": "Dispositivo non verificato",
     "core.codes.peer-cert-invalid.message":
       "Impossibile verificare questo dispositivo. Riprova.",
@@ -11427,8 +11424,7 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · この{deviceKind}は{limit}台中{n}台目のデバイスです。",
     "activate.recommend.title": "{product}をアカウントに保存",
     "activate.recommend.badge": "おすすめ",
-    "activate.recommend.sync":
-      "設定と保存データをすべてのデバイスで同じに保てます",
+    "activate.recommend.sync": "設定をすべてのデバイスで同じに保てます",
     "activate.recommend.recover":
       "キーやこのデバイスを失ってもライセンスを取り戻せます",
     "activate.recommend.devices":
@@ -12524,10 +12520,9 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.title": "デバイスを設定できません",
     "core.codes.device_keys_invalid.message":
       "このデバイスを同期用に設定できませんでした。アプリを更新して、もう一度お試しください。",
-    "core.codes.device_keys_required.title":
-      "デバイスを接続する設定が済んでいません",
+    "core.codes.device_keys_required.title": "接続の設定が済んでいません",
     "core.codes.device_keys_required.message":
-      "このデバイスは、ほかのデバイスと接続する設定が済んでいません。アプリを更新して、もう一度お試しください。",
+      "アプリを更新して、もう一度お試しください。",
     "core.codes.ring_too_large.title": "デバイスが多すぎます",
     "core.codes.ring_too_large.message":
       "このアカウントのデバイスが、接続できる数を超えています。1台削除してから、もう一度お試しください。",
@@ -12539,7 +12534,7 @@ export const KIT_COPY: Readonly<
       "リモート接続は現在一時停止中です。しばらくしてからもう一度お試しください。",
     "core.codes.relay_quota_exceeded.title": "リモート接続の上限に達しました",
     "core.codes.relay_quota_exceeded.message":
-      "リモート接続の上限を使い切りました。まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。",
+      "まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。",
     "core.codes.relay_ticket_invalid.title": "接続の期限が切れました",
     "core.codes.relay_ticket_invalid.message":
       "接続リクエストの期限が切れました。もう一度お試しください。",
@@ -12917,7 +12912,7 @@ export const KIT_COPY: Readonly<
       "このデバイスに保存できませんでした。ストレージを確認して、もう一度お試しください。",
     "core.codes.connect-unavailable.title": "近くのデバイスは利用できません",
     "core.codes.connect-unavailable.message":
-      "このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。",
+      "このデバイスでは、このアプリで利用できません。",
     "core.codes.peer-cert-invalid.title": "デバイスを確認できません",
     "core.codes.peer-cert-invalid.message":
       "このデバイスを確認できませんでした。もう一度お試しください。",
@@ -13321,8 +13316,7 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · 이 {deviceKind}은(는) {limit}대 중 {n}번째 기기입니다.",
     "activate.recommend.title": "{product}을(를) 계정에 보관하세요",
     "activate.recommend.badge": "추천",
-    "activate.recommend.sync":
-      "설정과 저장 데이터를 모든 기기에서 똑같이 유지하세요",
+    "activate.recommend.sync": "설정을 모든 기기에서 똑같이 유지하세요",
     "activate.recommend.recover": "키나 이 기기를 잃어도 라이선스를 되찾으세요",
     "activate.recommend.devices":
       "{developer}에게 묻지 않고 직접 새 기기로 옮기세요",
@@ -14361,7 +14355,7 @@ export const KIT_COPY: Readonly<
       "이 기기를 동기화용으로 설정하지 못했어요. 앱을 업데이트한 뒤 다시 시도하세요.",
     "core.codes.device_keys_required.title": "기기를 연결하도록 설정되지 않음",
     "core.codes.device_keys_required.message":
-      "이 기기는 다른 기기와 연결하도록 설정되지 않았습니다. 앱을 업데이트한 후 다시 시도하세요.",
+      "앱을 업데이트한 후 다시 시도하세요.",
     "core.codes.ring_too_large.title": "기기가 너무 많음",
     "core.codes.ring_too_large.message":
       "이 계정에 연결된 기기가 연결 가능한 수보다 많습니다. 하나를 제거한 후 다시 시도하세요.",
@@ -14373,7 +14367,7 @@ export const KIT_COPY: Readonly<
       "원격 연결이 잠시 중지되었습니다. 나중에 다시 시도하세요.",
     "core.codes.relay_quota_exceeded.title": "원격 연결 한도 도달",
     "core.codes.relay_quota_exceeded.message":
-      "원격 연결 한도를 모두 사용했습니다. 곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다.",
+      "곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다.",
     "core.codes.relay_ticket_invalid.title": "연결 만료",
     "core.codes.relay_ticket_invalid.message":
       "연결 요청이 만료되었습니다. 다시 시도하세요.",
@@ -14734,7 +14728,7 @@ export const KIT_COPY: Readonly<
       "이 기기에 저장하지 못했어요. 저장 공간을 확인하고 다시 시도하세요.",
     "core.codes.connect-unavailable.title": "근처 기기를 사용할 수 없음",
     "core.codes.connect-unavailable.message":
-      "이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다.",
+      "이 기기에서는 이 앱이 사용할 수 없습니다.",
     "core.codes.peer-cert-invalid.title": "기기를 확인할 수 없음",
     "core.codes.peer-cert-invalid.message":
       "이 기기를 확인할 수 없습니다. 다시 시도하세요.",
@@ -15124,7 +15118,7 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · 这台{deviceKind}是第 {n} 台设备，共 {limit} 台。",
     "activate.recommend.title": "将{product}保存到你的账户",
     "activate.recommend.badge": "推荐",
-    "activate.recommend.sync": "让你的设置和存档在每台设备上保持一致",
+    "activate.recommend.sync": "让你的设置在每台设备上保持一致",
     "activate.recommend.recover": "丢失密钥或这台设备后，可找回你的许可证",
     "activate.recommend.devices": "无需联系{developer}，自己就能迁移到新设备",
     "activate.recommend.action": "添加姓名和电子邮件",
@@ -16079,8 +16073,7 @@ export const KIT_COPY: Readonly<
     "core.codes.device_keys_invalid.message":
       "无法为同步设置此设备。请更新应用后重试。",
     "core.codes.device_keys_required.title": "设备未设置连接",
-    "core.codes.device_keys_required.message":
-      "此设备尚未设置为与你的其他设备连接。请更新应用后重试。",
+    "core.codes.device_keys_required.message": "请更新应用后重试。",
     "core.codes.ring_too_large.title": "设备过多",
     "core.codes.ring_too_large.message":
       "此账户的设备超出了可连接的数量。请移除一台后重试。",
@@ -16091,7 +16084,7 @@ export const KIT_COPY: Readonly<
     "core.codes.relay_paused.message": "远程连接暂时暂停。请稍后重试。",
     "core.codes.relay_quota_exceeded.title": "已达远程连接用量上限",
     "core.codes.relay_quota_exceeded.message":
-      "远程连接用量已用完，即将重置。同一网络下的设备仍可连接。",
+      "即将重置。同一网络下的设备仍可连接。",
     "core.codes.relay_ticket_invalid.title": "连接已过期",
     "core.codes.relay_ticket_invalid.message": "连接请求已过期。请重试。",
     "core.codes.key_entry_limit.title": "密钥已无剩余输入次数",
@@ -16414,8 +16407,7 @@ export const KIT_COPY: Readonly<
     "core.codes.store-failed.message":
       "无法保存到此设备。请检查存储空间后重试。",
     "core.codes.connect-unavailable.title": "无法使用附近的设备",
-    "core.codes.connect-unavailable.message":
-      "此设备上的此应用无法连接附近的设备。",
+    "core.codes.connect-unavailable.message": "此设备上的此应用无法使用。",
     "core.codes.peer-cert-invalid.title": "无法验证设备",
     "core.codes.peer-cert-invalid.message": "无法验证此设备。请重试。",
     "core.codes.nearby-permission-denied.title": "本地网络已被阻止",

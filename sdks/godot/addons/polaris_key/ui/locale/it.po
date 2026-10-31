@@ -855,10 +855,10 @@ msgstr "Tieni {product} nel tuo account"
 msgid "activate.recommend.badge"
 msgstr "Consigliato"
 
-#. Keep your settings and saved data the same on every device
+#. Sync your settings across your devices
 #. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "Mantieni impostazioni e dati salvati uguali su ogni dispositivo"
+msgstr "Mantieni le impostazioni uguali su ogni dispositivo"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -2087,7 +2087,7 @@ msgstr "Sblocca la sincronizzazione"
 msgid "cloudSync.ringChanged"
 msgstr "La tua chiave di sincronizzazione è cambiata."
 
-#. Unlock Your Synced Data
+#. Unlock your synced data
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
 msgid "unlockSync.title"
 msgstr "Sblocca i tuoi dati sincronizzati"
@@ -2137,7 +2137,7 @@ msgstr "Impossibile ricominciare. Controlla la connessione e riprova."
 msgid "unlockSync.noCode"
 msgstr "Questo account non ha un codice di recupero. Su un dispositivo ancora connesso e sbloccato, scegli «Nuovo codice di recupero». Altrimenti, ricomincia."
 
-#. Start Over?
+#. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
 msgid "unlockSync.startOverTitle"
 msgstr "Ricominciare da capo?"
@@ -2157,7 +2157,7 @@ msgctxt "macos"
 msgid "unlockSync.startOverConfirm"
 msgstr "Ricomincia da capo"
 
-#. Save Your Recovery Code
+#. Save your recovery code
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
 msgid "recoveryCode.title"
 msgstr "Salva il tuo codice di recupero"
@@ -2187,7 +2187,7 @@ msgstr "Copia codice"
 msgid "recoveryCode.saved"
 msgstr "Ho salvato il mio codice di recupero"
 
-#. Your Sync Key Changed
+#. Your sync key changed
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.title"
 msgstr "La tua chiave di sincronizzazione è cambiata"
@@ -2292,7 +2292,7 @@ msgstr "Copia diagnostica"
 msgid "about.diagnosticsCopied"
 msgstr "Diagnostica copiata"
 
-#. Release channel
+#. Release Channel
 #. ChannelPicker: the release channel choice.
 msgid "channel.title"
 msgstr "Canale di rilascio"
@@ -3977,7 +3977,7 @@ msgstr "{device} è stato sostituito da {newDevice} quando hai effettuato l'acce
 msgid "signin.mail.newDevice.subject"
 msgstr "Un nuovo dispositivo ha effettuato l'accesso al tuo account Polaris Locker"
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
 msgstr "{device} ha effettuato l'accesso il {date} da {place}. Se non sei stato tu, disconnettilo in Polaris Locker nella sezione Dove hai effettuato l'accesso."
@@ -5869,10 +5869,10 @@ msgstr "Non è stato possibile configurare questo dispositivo per la sincronizza
 msgid "core.codes.device_keys_required.title"
 msgstr "Dispositivo non configurato per connettersi"
 
-#. This device has not been set up to connect with your others. Update the app and try again.
+#. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "Questo dispositivo non è stato configurato per connettersi agli altri. Aggiorna l'app e riprova."
+msgstr "Aggiorna l'app e riprova."
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5909,10 +5909,10 @@ msgstr "La connessione remota è in pausa per ora. Riprova più tardi."
 msgid "core.codes.relay_quota_exceeded.title"
 msgstr "Limite di connessione remota raggiunto"
 
-#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
-msgstr "Il limite della connessione remota è esaurito. Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque."
+msgstr "Si azzera a breve. I dispositivi sulla stessa rete si connettono comunque."
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7149,10 +7149,10 @@ msgstr "Impossibile salvare su questo dispositivo. Controlla lo spazio di archiv
 msgid "core.codes.connect-unavailable.title"
 msgstr "Dispositivi nelle vicinanze non disponibili"
 
-#. Nearby devices aren't available for this app on this device.
+#. This app can't use them on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
-msgstr "La connessione ai dispositivi vicini non è disponibile per questa app su questo dispositivo."
+msgstr "Questa app non può usarli su questo dispositivo."
 
 #. Device not verified
 #. Core copy (conformance/parity/copy.en.json, codes).

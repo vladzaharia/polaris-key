@@ -776,7 +776,7 @@ describe("Account → Sign-in methods (PX-13, §4.26)", () => {
     });
     try {
       await h1(o.page, "Account");
-      const region = o.page.getByRole("region", { name: "Sign-in methods" });
+      const region = o.page.getByRole("region", { name: "Sign-In Methods" });
       await region.getByRole("button", { name: "Disconnect Steam" }).click();
       await region
         .getByRole("heading", { name: "Disconnect Steam?" })
@@ -856,7 +856,7 @@ describe("Account → Sign-in methods: Make primary and Rename (PX-W19)", () => 
     });
     try {
       await h1(o.page, "Account");
-      const region = o.page.getByRole("region", { name: "Sign-in methods" });
+      const region = o.page.getByRole("region", { name: "Sign-In Methods" });
       await region.getByText(/Found 2 products/).waitFor();
       await region.getByText(/Found 1 product\b/).waitFor();
       await shoot(o.page, "account-methods-w19-desktop-dark");
@@ -895,7 +895,7 @@ describe("Account → Sign-in methods: Make primary and Rename (PX-W19)", () => 
     });
     try {
       await h1(o.page, "Account");
-      const region = o.page.getByRole("region", { name: "Sign-in methods" });
+      const region = o.page.getByRole("region", { name: "Sign-In Methods" });
       await region
         .getByRole("button", { name: "Make mara.f@proton.me primary" })
         .click();
@@ -1398,7 +1398,7 @@ describe("product page, owner polish 2026-10-07", () => {
     it(`What's new: Markdown formatted, a summary, the full notes in place, focus kept (${reducedMotion})`, async () => {
       const o = await open("three", "/#/p/nightfall", { reducedMotion });
       await h1(o.page, "Nightfall");
-      const news = o.page.getByRole("region", { name: "What's new in 1.4.2" });
+      const news = o.page.getByRole("region", { name: "What's New" });
       await news
         .getByRole("heading", { level: 3, name: "Highlights" })
         .waitFor();

@@ -807,9 +807,7 @@ describe("AccountUpgrade on the key step (§3.9)", () => {
       name: "Keep Diceroll in an account",
     });
     expect(
-      screen.getByText(
-        "Keep your settings and saved data the same on every device",
-      ),
+      screen.getByText("Sync your settings across your devices"),
     ).toBeTruthy();
     expect(
       screen.getByText(

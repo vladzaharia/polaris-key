@@ -79,7 +79,7 @@
     },
     "device_keys_required": {
       "title": "기기를 연결하도록 설정되지 않음",
-      "message": "이 기기는 다른 기기와 연결하도록 설정되지 않았습니다. 앱을 업데이트한 후 다시 시도하세요."
+      "message": "앱을 업데이트한 후 다시 시도하세요."
     },
     "ring_too_large": {
       "title": "기기가 너무 많음",
@@ -95,7 +95,7 @@
     },
     "relay_quota_exceeded": {
       "title": "원격 연결 한도 도달",
-      "message": "원격 연결 한도를 모두 사용했습니다. 곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다."
+      "message": "곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다."
     },
     "relay_ticket_invalid": {
       "title": "연결 만료",
@@ -591,7 +591,7 @@
     },
     "connect-unavailable": {
       "title": "근처 기기를 사용할 수 없음",
-      "message": "이 기기에서는 이 앱의 근처 기기 연결을 사용할 수 없습니다."
+      "message": "이 기기에서는 이 앱이 사용할 수 없습니다."
     },
     "peer-cert-invalid": {
       "title": "기기를 확인할 수 없음",

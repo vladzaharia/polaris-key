@@ -1843,7 +1843,7 @@ keys (`conformance/parity/copy.en.json`) for refusal codes instead of duplicatin
 | `signin.mail.replaced.subject`       | {product} signed out on {device}                                                                                                                                                              |
 | `signin.mail.replaced.body`          | {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Locker and check your devices. |
 | `signin.mail.newDevice.subject`      | A new device signed in to your Polaris Locker account                                                                                                                                         |
-| `signin.mail.newDevice.body`         | {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.                                                                    |
+| `signin.mail.newDevice.body`         | {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.                                                                    |
 | `signin.mail.open`                   | Open Polaris Locker                                                                                                                                                                           |
 | `signin.code.label`                  | 6-digit code                                                                                                                                                                                  |
 

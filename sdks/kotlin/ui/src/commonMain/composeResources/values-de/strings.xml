@@ -314,7 +314,7 @@
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">Empfohlen</string>
     <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">Halten Sie Ihre Einstellungen und gespeicherten Daten auf jedem Gerät gleich</string>
+    <string name="activate_recommend_sync">Ihre Einstellungen auf jedem Gerät gleich halten</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
     <string name="activate_recommend_recover">Ihre Lizenz zurückholen, wenn Sie den Schlüssel oder dieses Gerät verlieren</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
@@ -2203,31 +2203,31 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_invalid_title">Gerät nicht eingerichtet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_invalid_message">Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut.</string>
+    <string name="core_codes_device_keys_invalid_message">Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisieren Sie die App und versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_required_title">Gerät nicht zum Verbinden eingerichtet</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">Dieses Gerät wurde nicht zum Verbinden mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut.</string>
+    <string name="core_codes_device_keys_required_message">Aktualisieren Sie die App und versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">Zu viele Geräte</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_ring_too_large_message">Dieses Konto hat mehr Geräte, als verbunden werden können. Entferne eines und versuche es erneut.</string>
+    <string name="core_codes_ring_too_large_message">Dieses Konto hat mehr Geräte, als verbunden werden können. Entfernen Sie eines und versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_disabled_title">Fernverbindung aus</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_disabled_message">Die Fernverbindung ist für diese App ausgeschaltet. Deine Geräte verbinden sich nur im selben Netzwerk.</string>
+    <string name="core_codes_relay_disabled_message">Die Fernverbindung ist für diese App ausgeschaltet. Ihre Geräte verbinden sich nur im selben Netzwerk.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_paused_title">Fernverbindung pausiert</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_paused_message">Die Fernverbindung ist vorübergehend pausiert. Versuche es später erneut.</string>
+    <string name="core_codes_relay_paused_message">Die Fernverbindung ist vorübergehend pausiert. Versuchen Sie es später erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_quota_exceeded_title">Limit für Fernverbindungen erreicht</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_message">Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.</string>
+    <string name="core_codes_relay_quota_exceeded_message">Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">Verbindung abgelaufen</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_ticket_invalid_message">Die Verbindungsanfrage ist abgelaufen. Versuche es erneut.</string>
+    <string name="core_codes_relay_ticket_invalid_message">Die Verbindungsanfrage ist abgelaufen. Versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_key_entry_limit_title">Keine Schlüsseleingaben mehr</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2719,7 +2719,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_connect_unavailable_title">Geräte in der Nähe nicht verfügbar</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_message">Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar.</string>
+    <string name="core_codes_connect_unavailable_message">Diese App kann sie auf diesem Gerät nicht nutzen.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_title">Gerät nicht bestätigt</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

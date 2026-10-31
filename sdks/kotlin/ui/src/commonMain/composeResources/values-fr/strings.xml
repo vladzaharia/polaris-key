@@ -316,7 +316,7 @@
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">Recommandé</string>
     <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">Gardez vos réglages et données enregistrées identiques sur chaque appareil</string>
+    <string name="activate_recommend_sync">Gardez vos réglages identiques sur chaque appareil</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
     <string name="activate_recommend_recover">Récupérez votre licence si vous perdez la clé ou cet appareil</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
@@ -2220,7 +2220,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_keys_required_title">Appareil non configuré pour se connecter</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_device_keys_required_message">Cet appareil n'a pas été configuré pour se connecter à vos autres appareils. Mettez à jour l'app et réessayez.</string>
+    <string name="core_codes_device_keys_required_message">Mettez à jour l'app et réessayez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_ring_too_large_title">Trop d'appareils</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2236,7 +2236,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_quota_exceeded_title">Limite de connexion à distance atteinte</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_relay_quota_exceeded_message">La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.</string>
+    <string name="core_codes_relay_quota_exceeded_message">Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">Connexion expirée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2732,7 +2732,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_connect_unavailable_title">Appareils à proximité indisponibles</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_connect_unavailable_message">La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil.</string>
+    <string name="core_codes_connect_unavailable_message">Cette app ne peut pas les utiliser sur cet appareil.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_peer_cert_invalid_title">Appareil non vérifié</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

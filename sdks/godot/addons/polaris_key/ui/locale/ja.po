@@ -851,10 +851,10 @@ msgstr "{product}をアカウントに保存"
 msgid "activate.recommend.badge"
 msgstr "おすすめ"
 
-#. Keep your settings and saved data the same on every device
+#. Sync your settings across your devices
 #. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "設定と保存データをすべてのデバイスで同じに保てます"
+msgstr "設定をすべてのデバイスで同じに保てます"
 
 #. Get your license back if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
@@ -2077,7 +2077,7 @@ msgstr "同期のロックを解除"
 msgid "cloudSync.ringChanged"
 msgstr "同期キーが変更されました。"
 
-#. Unlock Your Synced Data
+#. Unlock your synced data
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it.
 msgid "unlockSync.title"
 msgstr "同期したデータのロックを解除"
@@ -2127,7 +2127,7 @@ msgstr "やり直せませんでした。接続を確認して、もう一度お
 msgid "unlockSync.noCode"
 msgstr "このアカウントにはリカバリーコードがありません。サインインしたままロック解除されている端末で「新しいリカバリーコード」を選ぶか、そうでなければ最初からやり直してください。"
 
-#. Start Over?
+#. Start over?
 #. UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title.
 msgid "unlockSync.startOverTitle"
 msgstr "最初からやり直しますか？"
@@ -2147,7 +2147,7 @@ msgctxt "macos"
 msgid "unlockSync.startOverConfirm"
 msgstr "最初からやり直す"
 
-#. Save Your Recovery Code
+#. Save your recovery code
 #. RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy.
 msgid "recoveryCode.title"
 msgstr "リカバリーコードを保存"
@@ -2177,7 +2177,7 @@ msgstr "コードをコピー"
 msgid "recoveryCode.saved"
 msgstr "リカバリーコードを保存しました"
 
-#. Your Sync Key Changed
+#. Your sync key changed
 #. RingChange: confirm a changed sync key (U-42).
 msgid "ringChange.title"
 msgstr "同期キーが変更されました"
@@ -2282,7 +2282,7 @@ msgstr "診断情報をコピー"
 msgid "about.diagnosticsCopied"
 msgstr "診断情報をコピーしました"
 
-#. Release channel
+#. Release Channel
 #. ChannelPicker: the release channel choice.
 msgid "channel.title"
 msgstr "リリースチャンネル"
@@ -3957,7 +3957,7 @@ msgstr "{date}に{product}にサインインした際、{device}は{newDevice}�
 msgid "signin.mail.newDevice.subject"
 msgstr "Polaris Lockerアカウントに新しいデバイスがサインインしました"
 
-#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.
 #. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
 msgid "signin.mail.newDevice.body"
 msgstr "{date}に{place}から{device}がサインインしました。心当たりがない場合は、Polaris Lockerの「サインイン中のデバイス」からサインアウトしてください。"
@@ -5841,12 +5841,12 @@ msgstr "このデバイスを同期用に設定できませんでした。アプ
 #. Device not set up to connect
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.title"
-msgstr "デバイスを接続する設定が済んでいません"
+msgstr "接続の設定が済んでいません"
 
-#. This device has not been set up to connect with your others. Update the app and try again.
+#. Update the app and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_keys_required.message"
-msgstr "このデバイスは、ほかのデバイスと接続する設定が済んでいません。アプリを更新して、もう一度お試しください。"
+msgstr "アプリを更新して、もう一度お試しください。"
 
 #. Too many devices
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -5883,10 +5883,10 @@ msgstr "リモート接続は現在一時停止中です。しばらくしてか
 msgid "core.codes.relay_quota_exceeded.title"
 msgstr "リモート接続の上限に達しました"
 
-#. The remote connection limit is used up. It resets soon. Devices on the same network still connect.
+#. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
-msgstr "リモート接続の上限を使い切りました。まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。"
+msgstr "まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。"
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7123,10 +7123,10 @@ msgstr "このデバイスに保存できませんでした。ストレージを
 msgid "core.codes.connect-unavailable.title"
 msgstr "近くのデバイスは利用できません"
 
-#. Nearby devices aren't available for this app on this device.
+#. This app can't use them on this device.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.connect-unavailable.message"
-msgstr "このデバイスでは、このアプリの近くのデバイスとの接続を利用できません。"
+msgstr "このデバイスでは、このアプリで利用できません。"
 
 #. Device not verified
 #. Core copy (conformance/parity/copy.en.json, codes).

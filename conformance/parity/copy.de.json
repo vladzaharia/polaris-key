@@ -75,31 +75,31 @@
     },
     "device_keys_invalid": {
       "title": "Gerät nicht eingerichtet",
-      "message": "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisiere die App und versuche es erneut."
+      "message": "Dieses Gerät konnte nicht für die Synchronisierung eingerichtet werden. Aktualisieren Sie die App und versuchen Sie es erneut."
     },
     "device_keys_required": {
       "title": "Gerät nicht zum Verbinden eingerichtet",
-      "message": "Dieses Gerät wurde nicht zum Verbinden mit deinen anderen eingerichtet. Aktualisiere die App und versuche es erneut."
+      "message": "Aktualisieren Sie die App und versuchen Sie es erneut."
     },
     "ring_too_large": {
       "title": "Zu viele Geräte",
-      "message": "Dieses Konto hat mehr Geräte, als verbunden werden können. Entferne eines und versuche es erneut."
+      "message": "Dieses Konto hat mehr Geräte, als verbunden werden können. Entfernen Sie eines und versuchen Sie es erneut."
     },
     "relay_disabled": {
       "title": "Fernverbindung aus",
-      "message": "Die Fernverbindung ist für diese App ausgeschaltet. Deine Geräte verbinden sich nur im selben Netzwerk."
+      "message": "Die Fernverbindung ist für diese App ausgeschaltet. Ihre Geräte verbinden sich nur im selben Netzwerk."
     },
     "relay_paused": {
       "title": "Fernverbindung pausiert",
-      "message": "Die Fernverbindung ist vorübergehend pausiert. Versuche es später erneut."
+      "message": "Die Fernverbindung ist vorübergehend pausiert. Versuchen Sie es später erneut."
     },
     "relay_quota_exceeded": {
       "title": "Limit für Fernverbindungen erreicht",
-      "message": "Das Limit für Fernverbindungen ist aufgebraucht. Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin."
+      "message": "Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin."
     },
     "relay_ticket_invalid": {
       "title": "Verbindung abgelaufen",
-      "message": "Die Verbindungsanfrage ist abgelaufen. Versuche es erneut."
+      "message": "Die Verbindungsanfrage ist abgelaufen. Versuchen Sie es erneut."
     },
     "key_entry_limit": {
       "title": "Keine Schlüsseleingaben mehr",
@@ -591,7 +591,7 @@
     },
     "connect-unavailable": {
       "title": "Geräte in der Nähe nicht verfügbar",
-      "message": "Die Verbindung zu Geräten in der Nähe ist für diese App auf diesem Gerät nicht verfügbar."
+      "message": "Diese App kann sie auf diesem Gerät nicht nutzen."
     },
     "peer-cert-invalid": {
       "title": "Gerät nicht bestätigt",

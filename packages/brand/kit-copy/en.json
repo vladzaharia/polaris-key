@@ -653,7 +653,7 @@
       "note": "ActivateDone: the badge on the recommendation card."
     },
     "activate.recommend.sync": {
-      "value": "Keep your settings and saved data the same on every device",
+      "value": "Sync your settings across your devices",
       "role": "body",
       "note": "ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them."
     },
@@ -1688,7 +1688,7 @@
       "note": "CloudSyncStatus: a small sync status. The synced data's key is not the one this device knew; Review sits beside it and opens RingChange."
     },
     "unlockSync.title": {
-      "value": "Unlock Your Synced Data",
+      "value": "Unlock your synced data",
       "role": "title",
       "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it."
     },
@@ -1733,7 +1733,7 @@
       "note": "UnlockSync: the account has no recovery code, so unlocking cannot work; Start over is the way on."
     },
     "unlockSync.startOverTitle": {
-      "value": "Start Over?",
+      "value": "Start over?",
       "role": "title",
       "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's title."
     },
@@ -1748,7 +1748,7 @@
       "note": "UnlockSync: unlock the synced data with the recovery code (U-42). Nearby unlock does not ship in v0.10.0, so no string offers it. The confirmation's destructive action."
     },
     "recoveryCode.title": {
-      "value": "Save Your Recovery Code",
+      "value": "Save your recovery code",
       "role": "title",
       "note": "RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy."
     },
@@ -1773,7 +1773,7 @@
       "note": "RecoveryCode: shows the new recovery code once (U-42). The code itself is never copy. A checkbox; Done is hidden until it is checked."
     },
     "ringChange.title": {
-      "value": "Your Sync Key Changed",
+      "value": "Your sync key changed",
       "role": "title",
       "note": "RingChange: confirm a changed sync key (U-42)."
     },
@@ -1853,7 +1853,7 @@
       "note": "About: product and build information."
     },
     "channel.title": {
-      "value": "Release channel",
+      "value": "Release Channel",
       "role": "title",
       "note": "ChannelPicker: the release channel choice."
     },
@@ -3249,7 +3249,7 @@
       "note": "Security email (SIGN-IN.md §3.15)."
     },
     "signin.mail.newDevice.body": {
-      "value": "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where you're signed in.",
+      "value": "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Locker under Where You're Signed In.",
       "role": "body",
       "note": "Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country)."
     },
@@ -5614,9 +5614,9 @@
       "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
     },
     "locker.account.sessions": {
-      "value": "Where you're signed in",
+      "value": "Where You're Signed In",
       "role": "label",
-      "note": "Account page (Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
+      "note": "Account page: the section label in the nav and its card title (a name in a Title Case list; Account sections, Appearance, Delete account); moved from the portal's components (P0-36)."
     },
     "locker.appearance.title": {
       "value": "Appearance",
@@ -6099,19 +6099,19 @@
       "note": "Discover page; moved from the portal's components (P0-36)."
     },
     "locker.account.yourData": {
-      "value": "Your data",
+      "value": "Your Data",
       "role": "label",
-      "note": "Account page; moved from the portal's components (P0-36)."
+      "note": "Account page and product page: the section label in the nav and its card title (a name in a Title Case list; owner's case rule, LOCKER-FEATURE-NAMES §2)."
+    },
+    "locker.account.methods": {
+      "value": "Sign-In Methods",
+      "role": "label",
+      "note": "Account page: the section label in the nav and its card title (a name in a Title Case list). The link and menu item to it keep signin.join.methodsLink in sentence case."
     },
     "locker.product.whatsNew": {
       "value": "What's New",
       "role": "label",
-      "note": "Product page: the section label in the page's nav (a feature-label list is Title Case; the update prompt keeps update.whatsNew in sentence case)."
-    },
-    "locker.product.yourData": {
-      "value": "Your Data",
-      "role": "label",
-      "note": "Product page: the section label in the page's nav and its card title (Title Case list; the Account page keeps locker.account.yourData in sentence case)."
+      "note": "Product page: the section label in the page's nav and its card title, with the newest version in the card's meta slot (a name in a Title Case list; the update prompt keeps update.whatsNew in sentence case)."
     },
     "locker.account.menuLabel": {
       "value": "Account: {name}",
@@ -7749,7 +7749,7 @@
       "note": "Portal shell, library and product pages (P0-36)."
     },
     "locker.notFound.addEmail": {
-      "value": "Add an email in Account → Sign-in methods",
+      "value": "Add an email in Account → Sign-In Methods",
       "role": "button",
       "note": "Portal shell, library and product pages (P0-36)."
     },
@@ -7964,9 +7964,9 @@
       "note": "Portal shell, library and product pages (P0-36)."
     },
     "locker.identity.title": {
-      "value": "Sign in to {product}",
+      "value": "Sign In to {product}",
       "role": "title",
-      "note": "Portal shell, library and product pages (P0-36)."
+      "note": "Portal shell, library and product pages (P0-36): the product page's sign-in card title, a name in the page's Title Case card list."
     },
     "locker.identity.body": {
       "value": "{product} signs you in with your Polaris Locker account.",
@@ -8489,7 +8489,7 @@
       "note": "Library strip: other ways to get a license (P0-36, PX-35)."
     },
     "locker.missing.addInMethods": {
-      "value": "Add it in Sign-in methods",
+      "value": "Add it in Sign-In Methods",
       "role": "button",
       "note": "Library strip: other ways to get a license (P0-36, PX-35)."
     },

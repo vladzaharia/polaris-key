@@ -79,7 +79,7 @@
     },
     "device_keys_required": {
       "title": "Appareil non configuré pour se connecter",
-      "message": "Cet appareil n'a pas été configuré pour se connecter à vos autres appareils. Mettez à jour l'app et réessayez."
+      "message": "Mettez à jour l'app et réessayez."
     },
     "ring_too_large": {
       "title": "Trop d'appareils",
@@ -95,7 +95,7 @@
     },
     "relay_quota_exceeded": {
       "title": "Limite de connexion à distance atteinte",
-      "message": "La limite de connexion à distance est épuisée. Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
+      "message": "Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
     },
     "relay_ticket_invalid": {
       "title": "Connexion expirée",
@@ -591,7 +591,7 @@
     },
     "connect-unavailable": {
       "title": "Appareils à proximité indisponibles",
-      "message": "La connexion aux appareils proches n'est pas disponible pour cette app sur cet appareil."
+      "message": "Cette app ne peut pas les utiliser sur cet appareil."
     },
     "peer-cert-invalid": {
       "title": "Appareil non vérifié",
