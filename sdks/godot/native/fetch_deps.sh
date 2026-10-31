@@ -120,19 +120,30 @@ for dep in "$@"; do
       ;;
     monocypher)
       d="$DIR/monocypher"
-      if [ ! -f "$d/monocypher.c" ] || [ ! -f "$d/monocypher.h" ]; then
+      tgz="$d/monocypher-$MONOCYPHER_VERSION.tar.gz"
+      # The archive is kept beside the sources, so a cache hit is verified like a fresh download:
+      # both pinned digests are checked and the sources are extracted from it on every run.
+      if [ ! -f "$tgz" ]; then
         fetch "$MONOCYPHER_URL" "$MONOCYPHER_SHA256" monocypher.tar.gz
-        got="$(sha512_of "$WORK/monocypher.tar.gz")"
-        if [ "$got" != "$MONOCYPHER_SHA512" ]; then
-          echo "fetch_deps: monocypher.tar.gz has SHA-512 $got, deps.env pins $MONOCYPHER_SHA512" >&2
-          exit 1
-        fi
-        rm -rf "$d" "$WORK/mc"
-        mkdir -p "$d" "$WORK/mc"
-        tar -xzf "$WORK/monocypher.tar.gz" -C "$WORK/mc"
-        cp "$WORK/mc/monocypher-$MONOCYPHER_VERSION/src/monocypher.c" "$WORK/mc/monocypher-$MONOCYPHER_VERSION/src/monocypher.h" "$WORK/mc/monocypher-$MONOCYPHER_VERSION/LICENCE.md" "$d/"
+        rm -rf "$d"
+        mkdir -p "$d"
+        cp "$WORK/monocypher.tar.gz" "$tgz"
       fi
-      echo "fetch_deps: Monocypher $MONOCYPHER_VERSION in $d"
+      got="$(sha256_of "$tgz")"
+      if [ "$got" != "$MONOCYPHER_SHA256" ]; then
+        echo "fetch_deps: monocypher archive has SHA-256 $got, deps.env pins $MONOCYPHER_SHA256" >&2
+        exit 1
+      fi
+      got="$(sha512_of "$tgz")"
+      if [ "$got" != "$MONOCYPHER_SHA512" ]; then
+        echo "fetch_deps: monocypher archive has SHA-512 $got, deps.env pins $MONOCYPHER_SHA512" >&2
+        exit 1
+      fi
+      rm -rf "$WORK/mc"
+      mkdir -p "$WORK/mc"
+      tar -xzf "$tgz" -C "$WORK/mc"
+      cp "$WORK/mc/monocypher-$MONOCYPHER_VERSION/src/monocypher.c" "$WORK/mc/monocypher-$MONOCYPHER_VERSION/src/monocypher.h" "$WORK/mc/monocypher-$MONOCYPHER_VERSION/LICENCE.md" "$d/"
+      echo "fetch_deps: Monocypher $MONOCYPHER_VERSION in $d (SHA-256 and SHA-512 verified)"
       ;;
     *)
       echo "fetch_deps: unknown dependency $dep" >&2
