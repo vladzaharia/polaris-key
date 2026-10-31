@@ -175,7 +175,7 @@
     "identity.oidc": {
       "status": "planned",
       "wp": "I-15",
-      "note": "Only through a host-supplied sign-in closure, as in Swift; no work package gives the Kotlin SDK its own browser sign-in (P6-07)."
+      "note": "The redirect sign-in (IdentityRedirect, the sign-in session), exchange, license choice and account calls are in :identity; a host-supplied closure still drives the browser."
     },
     "identity.devicecode": {
       "status": "implemented"

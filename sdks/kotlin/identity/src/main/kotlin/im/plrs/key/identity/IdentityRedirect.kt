@@ -68,7 +68,9 @@ public enum class CallbackFailure(public val wire: String) {
 
 public sealed interface CallbackResult {
     /** The code to redeem. */
-    public data class Code(val code: String) : CallbackResult
+    public data class Code(val code: String) : CallbackResult {
+        override fun toString(): String = "Code(code=[redacted])"
+    }
 
     /** The person pressed Cancel on the card (`error=access_denied`). */
     public data object Cancelled : CallbackResult

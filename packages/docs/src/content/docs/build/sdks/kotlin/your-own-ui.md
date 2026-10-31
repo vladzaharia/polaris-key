@@ -4,7 +4,7 @@ description: "Draw your own screens on the Kotlin SDK: the state model, each cal
 sidebar:
   order: 2
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-10-28"
 sdks: ["kotlin"]
 lanes: ["library"]
 ---
@@ -104,6 +104,10 @@ suspend fun activate(client: PolarisKeyClient, key: String): Refusal? {
             message,
             link = r.manageUrl?.let { ManageLink.withReturn(ManageLink.withKey(it, key), "myapp://activated") },
         )
+        // The key has no entries left; nothing was wiped. Offer the link, or sign-in.
+        is ActivationResult.KeyEntryLimit -> Refusal(message, link = r.manageUrl)
+        // The license is in an account and a key never moves it: sign in.
+        is ActivationResult.LicenseOwned -> Refusal(message, link = r.signInUrl)
         is ActivationResult.RateLimited -> Refusal(message, retryAfterSeconds = r.retryAfterSeconds)
         else -> Refusal(message)
     }
@@ -159,8 +163,145 @@ suspend fun signIn(client: PolarisKeyClient, show: (code: String, address: Strin
 the token is stored and the first sync is done. `getLicenseUser()` is the pairwise subject only (it
 ships after `0.9.3`); the person's name and email are planned. Anyone holding the code can finish
 the sign-in elsewhere, so say who signed in. Sign-in needs the Identity service; with it off, every
-call throws `service-unavailable` before any request. `client.deactivate()` signs this device out and
-asks the server to stop counting it.
+call throws `service-unavailable` before any request.
+`session.reopen()` opens the page through the `opener` you gave `SignInOptions` (or the client's) and answers whether it did. A Deny on the Polaris Locker approval page throws `SignInError`
+with `code == ErrorCode.signInDenied`; a failure after approval throws `sign-in-failed`.
+
+### Redirect sign-in
+
+A host that opens a browser and receives its redirect (an app with a link on an `https:` address it
+registered) uses `SignInChannel.Redirect`. The session is single use: keep it until the browser
+returns.
+
+```kotlin
+import im.plrs.key.identity.SignInChannel
+import im.plrs.key.identity.SignInOptions
+import im.plrs.key.identity.SignInOutcome
+import im.plrs.key.identity.SignInSession
+import im.plrs.key.sdk.PolarisKeyClient
+
+suspend fun begin(client: PolarisKeyClient): SignInSession =
+    client.identity.signIn.start(
+        SignInOptions(
+            channel = SignInChannel.Redirect,
+            redirectUri = "https://app.example/auth/callback",
+            licenseChoice = "app",
+        ),
+    )
+
+// Open session.authorizeUrl in the browser; pass the URL it lands on back here.
+suspend fun finish(session: SignInSession, callbackUrl: String): String? =
+    when (val outcome = session.complete(callbackUrl)) {
+        is SignInOutcome.SignedIn -> outcome.subject
+        is SignInOutcome.Choose -> null // run the license choice, below
+        else -> null // cancelled
+    }
+```
+
+`complete` checks `state` and the issuer before it sends anything. A refusal throws a `SignInError`
+under the Worker's code (`invalid_grant`, `rate_limited` with `retryAfterSeconds`,
+`sign-in-failed`) and leaves the device's token alone. A second call with the same callback is
+refused without a request.
+
+### The license choice
+
+With `licenseChoice = "app"`, a person who holds licenses settles `SignInOutcome.Choose` with a
+short-lived `grant`. No token is stored until you finish with `client.identity.choice`. A refusal
+is a `ChoiceResult.Refused` with its `code`, not a throw:
+
+```kotlin
+import im.plrs.key.identity.ChoiceResult
+import im.plrs.key.identity.LicenseChoice
+import im.plrs.key.identity.SignInOutcome
+import im.plrs.key.sdk.PolarisKeyClient
+
+suspend fun choose(client: PolarisKeyClient, choose: SignInOutcome.Choose): String {
+    val choice = client.identity.choice
+    val view = when (val r = choice.licenses(choose.grant)) {
+        is ChoiceResult.Ok -> r.value
+        is ChoiceResult.Refused -> return r.code
+    }
+    val first = view.licenseIds.firstOrNull() ?: run {
+        choice.cancel(choose.grant)
+        return "No license to use."
+    }
+    return when (val done = choice.complete(choose.grant, LicenseChoice.License(first))) {
+        is ChoiceResult.Ok -> done.value.licenseId ?: "Signed in."
+        // device_limit leaves the grant open and carries manageUrl and a fresh view.
+        is ChoiceResult.Refused -> done.manageUrl ?: done.signInUrl ?: done.code
+    }
+}
+```
+
+The grant lives 300 seconds and is a credential: `SignInOutcome.Choose` prints it as `[redacted]`,
+so keep it out of your own logs too. `choice.devices(grant, licenseId)` lists the devices on a full
+license for **Replace a device**, and the choices are `LicenseChoice.License(id, replaceDeviceId)`,
+`Keep`, `Create` and `Key(key)`.
+
+In Compose, `rememberLicenseChoiceState` holds the choice for you: choosing, Replace a device, the
+refusals and the expired grant. You draw its `ui` flow and call `choose`, `replace`, `keep`, `create`,
+`enterKey`, `back` and `cancel`. It returns null when the Worker's `choices` is not a view; the card
+chooses then. The grant is never saved with the instance state, so a process death ends the choice
+and the person signs in again. `PolarisLicenseChoiceState` in `:ui-core` is the same holder with no
+Compose.
+
+```kotlin desktop
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import im.plrs.key.identity.SignInOutcome
+import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.ui.PolarisLicenseChoiceUi
+import im.plrs.key.ui.rememberLicenseChoiceState
+
+@Composable
+fun ChoiceHost(client: PolarisKeyClient, choose: SignInOutcome.Choose, onDone: () -> Unit) {
+    val state = rememberLicenseChoiceState(choose, client) { onDone() } ?: return
+    val ui by state.ui.collectAsState()
+    Column {
+        when (val now = ui) {
+            is PolarisLicenseChoiceUi.Choosing ->
+                now.view.licenseIds.forEach { id -> Button(onClick = { state.choose(id) }) { Text(id) } }
+            is PolarisLicenseChoiceUi.Replacing ->
+                now.devices.deviceIds.forEach { id -> Button(onClick = { state.replace(id) }) { Text(id) } }
+            is PolarisLicenseChoiceUi.Done -> Text("Signed in.")
+            PolarisLicenseChoiceUi.Expired -> Text("The sign-in expired. Sign in again.")
+            PolarisLicenseChoiceUi.Cancelled -> Text("Sign-in cancelled.")
+            is PolarisLicenseChoiceUi.Failed -> Button(onClick = { state.retry() }) { Text(now.message) }
+        }
+    }
+}
+```
+
+### The account
+
+```kotlin
+import im.plrs.key.identity.AttachResult
+import im.plrs.key.identity.SignOutResult
+import im.plrs.key.identity.SubjectResult
+import im.plrs.key.sdk.PolarisKeyClient
+
+suspend fun account(client: PolarisKeyClient): String? {
+    val subject = (client.identity.subject() as? SubjectResult.Subject)?.subject // "ps_…" or null
+    if (client.identity.attach(confirm = false) is AttachResult.Confirm) {
+        client.identity.attach(confirm = true)
+    }
+    client.identity.openAccount() // Polaris Locker, through the opener
+    return when (val out = client.identity.signOut()) {
+        is SignOutResult.SignedOut -> if (out.released) "Activate again to continue." else subject
+        SignOutResult.Unavailable -> subject
+    }
+}
+```
+
+`attach(confirm = false)` previews and writes nothing; `confirm = true` adds the device's license to
+the account. A refusal (`account_required`, `license_owned`) is `AttachResult.Refused`. `signOut()`
+removes the device token only when `released` is true; a device activated by a key keeps its
+license. `openAccount()` answers `NotOpened(url)` when there is no opener: show the link or a QR
+code. `client.deactivate()` frees the device itself.
 
 ## Status, offline and refresh
 

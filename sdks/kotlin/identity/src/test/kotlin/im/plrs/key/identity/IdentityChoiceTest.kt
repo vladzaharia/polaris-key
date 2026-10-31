@@ -166,4 +166,16 @@ class IdentityChoiceTest {
         val choose = SignInOutcome.Choose(grant, 300.0, kotlinx.serialization.json.JsonObject(emptyMap()))
         assertFalse(choose.toString().contains(grant))
     }
+
+    @Test
+    fun aRouteOutsideTheProductGetsNoRequest() = runBlocking {
+        val w = world(endpoints = """"choiceComplete":"https://evil.example/complete"""")
+        try {
+            w.client.choice.complete(grant, LicenseChoice.Keep)
+            fail("expected bad-response")
+        } catch (e: PolarisException) {
+            assertEquals(ErrorCode.badResponse, e.code)
+        }
+        assertTrue(w.transport.requests().none { it.path == "/complete" })
+    }
 }
