@@ -411,7 +411,7 @@ portal(
       <span class="kr">${icon("check")}Key recognised · Tonebox · Acme</span>
       <h2 id="adh">Add Tonebox to your account?</h2>
       <div class="pterms"><span class="pill">Pro</span><span>Never expires · up to 3 devices · macOS, iOS</span></div>
-      <div class="carry">${icon("laptop")}<div><b>It's on 2 devices already</b><span>They keep working and come with it. Sign in on them to turn on Cloud Sync.</span></div></div>
+      <div class="carry">${icon("laptop")}<div><b>It's on 2 devices already</b><span>They keep working and come with it. Sign in on them to turn on syncing.</span></div></div>
       <div class="kecho mono">pkey_tonebox_…cY4w <a href="#">Change key</a></div>
       <div class="pdf">${B("Back", "btn-secondary")}${B("Add Tonebox", "btn-primary")}</div>
     </div></div></div>`,
@@ -428,7 +428,7 @@ portal(
      <div class="plrow"><div class="plt"><b>Tonebox</b><div class="tl"><span class="pill">Free</span><span>1 of 1 device</span></div><div class="lm">From Acme · Lifetime</div>${meter(1, 1)}</div></div>
    </section>
    <section class="lcard"><header><h2>Devices</h2><span class="muted">Pro · Key ending B1cY4w</span></header>
-     ${dev("Lena's MacBook Pro", "macOS 26 · last used 4 minutes ago", "Signed in · Cloud Sync on")}
+     ${dev("Lena's MacBook Pro", "macOS 26 · last used 4 minutes ago", "Signed in · Sync on")}
      ${dev("Studio iMac", "macOS 26 · last used yesterday", "Entered the key · sign in to sync")}
    </section>`,
 );

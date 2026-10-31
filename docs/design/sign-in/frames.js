@@ -344,7 +344,7 @@
       ${chosen("Tidewater Studio Pro", "Lifetime · this Mac becomes device 3 of 3")}
       <div class="group-label">Tidewater Studio will also get</div>
       <div class="items">
-        <div class="item">${I.cloud}<div class="in">Cloud Sync</div><div class="im">Your presets, templates and preferences</div></div>
+        <div class="item">${I.cloud}<div class="in">Sync Across Devices</div><div class="im">Your presets, templates and preferences</div></div>
         <div class="item">${I.user}<div class="in">Your profile and email</div><div class="im">Mara Fennick, your picture · mara@fennick.studio</div></div>
       </div>
       <p class="small">It gets its own id for you, and won't see your other products or how you sign in.</p>
@@ -1310,7 +1310,7 @@
   );
   const reasons = (os) => `<div class="reco">
       <div class="rh"><b>${T(os, "Keep Tidewater Studio in Your Account", "Keep Tidewater Studio in your account")}</b><span class="tag new">Recommended</span></div>
-      <div class="rl">${syncI}<div><b>Cloud Sync</b> keeps your presets and settings on every device</div></div>
+      <div class="rl">${syncI}<div>Keep your presets and settings the same on every device</div></div>
       <div class="rl">${I.key}<div><b>Get your license back</b> if you lose the key or this Mac</div></div>
       <div class="rl">${I.laptop}<div><b>Move it to a new device</b> yourself, without asking Harbor Audio</div></div>
       ${db("secondary", T(os, "Add Your Name and Email", "Add your name and email"))}
@@ -1385,7 +1385,7 @@
       <h2 class="big">Tidewater Studio is in your account</h2>
       <p>Pro · Lifetime · the same license, on the same 1 of 3 devices.</p>
       <div class="person dk-person"><div class="avatar">MF</div><div><div class="n">Mara Fennick</div><div class="e">mara@fennick.studio</div></div></div>
-      <div class="notice info">${syncI}<span>Cloud Sync is on for this Mac. Sign in on your other devices to sync them too.</span></div>
+      <div class="notice info">${syncI}<span>Syncing is on for this Mac. Sign in on your other devices to sync them too.</span></div>
       ${db("primary xl", "Start Using Tidewater Studio")}`,
         ),
       }),
@@ -1456,7 +1456,7 @@
       <p class="lede">Pro · Yearly, until 2 Feb 2027 · this iPhone is device 1 of 3.</p>
       <div class="reco">
         <div class="rh"><b>Keep Saltwind in your account</b><span class="tag new">Recommended</span></div>
-        <div class="rl">${syncI}<div><b>Cloud Sync</b> keeps your routes and logbook on every device</div></div>
+        <div class="rl">${syncI}<div>Keep your routes and logbook the same on every device</div></div>
         <div class="rl">${I.key}<div><b>Get your license back</b> if you lose the key or this iPhone</div></div>
         <div class="rl">${I.phone}<div><b>Move it to a new device</b> yourself</div></div>
         ${btn("secondary", "Add your name and email")}
@@ -1479,7 +1479,7 @@
     body: `<div class="keycard"><div class="icon">${art.nightfall}</div><div style="flex:1"><div class="ln" style="color:var(--pk-text-strong);font-weight:500">Nightfall · Standard</div><div class="small mono">pkey_nightfall_…Tz4g</div></div><span class="tag new">Key works</span></div>
       <h1>Keep Nightfall in an account</h1>
       <div class="reco flat">
-        <div class="rl">${syncI}<div><b>Cloud Sync</b> keeps your saves on every device</div></div>
+        <div class="rl">${syncI}<div>Keep your saves the same on every device</div></div>
         <div class="rl">${I.key}<div><b>Get your license back</b> if you lose the key</div></div>
         <div class="rl">${I.desktop}<div><b>Move it to a new device</b> yourself</div></div>
       </div>
