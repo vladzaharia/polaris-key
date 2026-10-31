@@ -65,7 +65,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature license.manage
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
-# @pkey-feature identity.redirect.web identity.choice identity.signin.hints
+# @pkey-feature identity.redirect.web identity.choice identity.signin.hints identity.devicecode.choice
 # @pkey-feature sync.keyring connect.identity connect.relay sync.settings
 
 from __future__ import annotations
@@ -270,7 +270,16 @@ def _act(
     # D-6: the recorded action names map onto the session (`sign_in.start`, `wait`).
     if action == "beginSignIn":
         try:
-            p = client.identity.sign_in.start(device_name=args.get("deviceName"))
+            opts: Dict[str, Any] = {"device_name": args.get("deviceName")}
+            for wire, kw in (
+                ("loginHint", "login_hint"),
+                ("nameHint", "name_hint"),
+                ("purpose", "purpose"),
+                ("licenseChoice", "license_choice"),
+            ):
+                if isinstance(args.get(wire), str):
+                    opts[kw] = args[wire]
+            p = client.identity.sign_in.start(**opts)
         except PolarisError as e:
             # identity-disabled: the refusal is the step's result.
             out["result"] = e.code
@@ -945,10 +954,19 @@ def _uses_account(t: Dict[str, Any]) -> bool:
     return any(s["action"] in ("subject", "signOut", "attach") for s in t["steps"])
 
 
+def _asks_device_choice(t: Dict[str, Any]) -> bool:
+    """Does this transcript start a device-code sign-in that asks ``licenseChoice: "app"``?
+    (UK-42.22: discovery then carries ``deviceChoice``, the SDK's gate for sending the member.)"""
+    return any(
+        s["action"] == "beginSignIn" and s["args"].get("licenseChoice") == "app"
+        for s in t["steps"]
+    )
+
+
 def _standard_discovery(t: Dict[str, Any]) -> Dict[str, Any]:
     """The Worker's standard discovery document, for a transcript that loads none itself."""
     base = f"{t['baseUrl']}/{t['product']}"
-    if _uses_account(t) or _uses_redirect(t):
+    if _uses_account(t) or _uses_redirect(t) or _asks_device_choice(t):
         choice = any(
             "/identity/choice/" in x["request"]["path"]
             for s in t["steps"]
@@ -965,6 +983,7 @@ def _standard_discovery(t: Dict[str, Any]) -> Dict[str, Any]:
                     "enabled": True,
                     "configured": True,
                     "account": True,
+                    **({"deviceChoice": True} if _asks_device_choice(t) else {}),
                     "issuer": _redirect_issuer(t),
                     "endpoints": {
                         "subject": f"{base}/identity/subject",
@@ -1030,6 +1049,8 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
     services = t["initial"].get("services")
     if services is None and u is not None:
         services = ["release", "distribution", "update"]
+    if services is None and _asks_device_choice(t):
+        services = ["license", "config", "identity"]
     if services is not None:
         kwargs["expected_services"] = services
     if u is not None:
@@ -1089,7 +1110,7 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
         **kwargs,
     )
     client.devices.fingerprint = lambda: FINGERPRINT  # type: ignore[method-assign]
-    if _uses_redirect(t):
+    if _uses_redirect(t) or _asks_device_choice(t):
         # The redirect recordings pin the token exchange alone. The acquisition sync a sign-in
         # raises (trust fetch, documents, report) is pinned by the sync transcripts.
         client.identity._deps.on_acquired = lambda: None
