@@ -238,10 +238,13 @@ export class ConnectSession {
   peerStatic: Uint8Array | null = null;
 
   /** Close with `peer_bye` (or another code); resolves when the socket is down. */
-  async close(
-    code: "peer_bye" | "peer_busy" | "peer_revoked" = "peer_bye",
-  ): Promise<void> {
+  async close(code: "peer_bye" | "peer_busy" = "peer_bye"): Promise<void> {
     await this.#link.channel.close(code);
+  }
+
+  /** The roster no longer lists the peer: close `peer_revoked`. @internal */
+  async revoke(): Promise<void> {
+    await this.#link.channel.close("peer_revoked");
   }
 
   /** @internal */

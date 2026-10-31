@@ -314,7 +314,7 @@ export class CloudConnect {
         (d) =>
           d.deviceId === s.peerDeviceId && (key === null || d.agreeKey === key),
       );
-      if (!listed) void s.close("peer_revoked").catch(() => undefined);
+      if (!listed) void s.revoke().catch(() => undefined);
     }
   }
 
