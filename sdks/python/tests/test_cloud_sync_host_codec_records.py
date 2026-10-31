@@ -95,7 +95,18 @@ def test_the_body_is_not_changed() -> None:
 
 @pytest.mark.parametrize(
     "ref",
-    [[], ["saves"], ["saves", ""], ["", "a"], ["saves", "a\0b"], ["sa\0ves", "a"], ["$settings", "a"], ["$x", "a"], ["saves", 7], "saves/a"],
+    [
+        [],
+        ["saves"],
+        ["saves", ""],
+        ["", "a"],
+        ["saves", "a\0b"],
+        ["sa\0ves", "a"],
+        ["$settings", "a"],
+        ["$x", "a"],
+        ["saves", 7],
+        "saves/a",
+    ],
 )
 def test_a_malformed_reference_is_refused(ref: Any) -> None:
     refused({"mutationId": 1, "target": {"record": ref}, "op": "set", "value": 1})
@@ -170,7 +181,18 @@ def test_the_settings_namespace_an_empty_id_and_a_missing_id_never_open() -> Non
 
 def test_a_plaintext_record_row_is_legacy_and_claims_are_stripped() -> None:
     out, opened = open_pull(
-        {"changes": [{"record": ["saves", "old"], "value": {"hp": 1}, "version": 3, "sealed": True, "seq": 99, "invalid": True}]},
+        {
+            "changes": [
+                {
+                    "record": ["saves", "old"],
+                    "value": {"hp": 1},
+                    "version": 3,
+                    "sealed": True,
+                    "seq": 99,
+                    "invalid": True,
+                }
+            ]
+        },
         C,
     )
     assert out["changes"][0] == {"record": ["saves", "old"], "value": {"hp": 1}, "version": 3}
@@ -192,7 +214,15 @@ def test_a_record_tombstone_maps_back_only_for_a_held_record() -> None:
     w = wire_id()
     t = {"record": ["saves", w], "editedHlc": "h"}
     out, _ = open_pull(
-        {"tombstones": [t, {"record": ["saves", wire_id("slot-2")]}, {"record": ["other", w]}, {"setting": "x:abc"}, "junk"]},
+        {
+            "tombstones": [
+                t,
+                {"record": ["saves", wire_id("slot-2")]},
+                {"record": ["other", w]},
+                {"setting": "x:abc"},
+                "junk",
+            ]
+        },
         C,
         record_keys=[("saves", ID), ("$bad", "x"), ("saves", "")],
     )
@@ -206,7 +236,8 @@ def test_a_record_tombstone_maps_back_only_for_a_held_record() -> None:
 
 def test_a_conflict_copy_opens_under_the_mutations_own_record() -> None:
     mutations = [rec(1, ID, "set", baseVersion=3)]
-    body = {"results": [{"mutationId": 1, "status": "conflict", "server": {"ct": seal_ct("saves", ID, {"hp": 5}), "version": 9}}]}
+    server = {"ct": seal_ct("saves", ID, {"hp": 5}), "version": 9}
+    body = {"results": [{"mutationId": 1, "status": "conflict", "server": server}]}
     out, opened = open_pull(body, C, mutations=mutations)
     assert out["results"][0]["server"] == {"value": {"hp": 5}, "version": 9}
     assert opened["conflicts"] == {1: {"sealed": True}}
@@ -237,7 +268,15 @@ def test_a_plaintext_conflict_copy_is_legacy_and_a_setting_copy_still_opens_as_a
     )
     assert opened["conflicts"] == {1: {"seq": 2}}
     out, opened = open_pull(
-        {"results": [{"mutationId": 1, "status": "conflict", "server": {"ct": seal_ct("$settings", "audio.volume", 0.3), "version": 2}}]},
+        {
+            "results": [
+                {
+                    "mutationId": 1,
+                    "status": "conflict",
+                    "server": {"ct": seal_ct("$settings", "audio.volume", 0.3), "version": 2},
+                }
+            ]
+        },
         C,
         mutations=[{"mutationId": 1, "target": {"setting": "audio.volume", "scope": "user"}, "op": "set", "value": 1}],
     )
@@ -250,7 +289,7 @@ def test_what_push_sends_for_a_value_pull_reads_back() -> None:
     assert out["changes"][0]["record"] == ["saves", ID] and out["changes"][0]["value"] == [1, 2]
 
 
-# ── the corpus rows ──────────────────────────────────────────────────────────────────────────────
+# -- the corpus rows ------------------------------------------------------------
 
 _PATH = Path(__file__).resolve().parents[3] / "conformance" / "corpus" / "v2" / "sync-vectors.json"
 ROWS = [c for c in json.loads(_PATH.read_text(encoding="utf-8"))["envelopeCases"] if "record" in c]
