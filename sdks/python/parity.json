@@ -191,9 +191,8 @@
       "note": "Play Games runs only on Android."
     },
     "identity.autosignin": {
-      "status": "planned",
-      "wp": "I-47",
-      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-47)."
+      "status": "implemented",
+      "note": "I-47: client.identity.auto_sign_in() (the ladder of plan-auto-sign-in §1, over the exchange rungs and nearby) with the session's confirm_account, decline_account, wrap and on_wrap; the terminal kit's login runs it first."
     },
     "identity.link": {
       "status": "na",
@@ -202,9 +201,8 @@
       "note": "No OS account to offer a link from (I-43)."
     },
     "identity.nearby": {
-      "status": "planned",
-      "wp": "I-47",
-      "note": "Nearby approval (I-40.8 transcripts, I-47). The Node conformance runner replays the nearby-* transcripts with a reference client (I-40.9). The LAN half is in (CC-15.P1 to P4: client.cloud_connect.nearby.request and on_request, the vouch rows of peer-matrix.json run in tests/test_connect_conformance.py); the routes and the kit screens follow in I-47."
+      "status": "implemented",
+      "note": "I-47: both devices. D: identity.sign_in.start(channel='nearby') (approvers, on_approvers, choose, code, result, wait, confirm_account, decline_account, wrap, on_wrap) over the nearbyStart and nearbyPoll routes; M: identity.nearby.available and on_request (the approver, approve with the matched pick, the license choice). The six nearby-* transcripts replay in tests/test_transcripts.py (the reference client plays both devices), and the vouch rows of peer-matrix.json run in tests/test_connect_conformance.py. Kits: the terminal's login (nearby first) and devices approve, the Textual entry and the Qt SignIn states and NearbyApproval."
     },
     "identity.keyentry": {
       "status": "implemented",

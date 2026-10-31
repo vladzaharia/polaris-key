@@ -2506,9 +2506,9 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.exchange": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.gamecenter": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
-        "identity.autosignin": CapabilityRow("planned", "identity", ()),
+        "identity.autosignin": CapabilityRow("implemented", "identity", ()),
         "identity.link": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
-        "identity.nearby": CapabilityRow("planned", "identity", ()),
+        "identity.nearby": CapabilityRow("implemented", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -2577,4 +2577,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "a9b8800263135da1ab35a457f9b4eb512c1ae74076887c5b8b2af83f142f1c5b"
+CAPABILITY_DIGEST: Final[str] = "ae4fc8e3c5c8d702674f6adc98400f4f78ab4a21b9127146f5110141e2df4149"

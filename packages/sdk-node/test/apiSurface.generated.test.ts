@@ -9,6 +9,7 @@ import {
   EntitlementsClient,
   IdentityClient,
   LicenseClient,
+  NearbySignInSession,
   PolarisKeyClient,
   RedirectSession,
   type ConfigSetting,
@@ -33,6 +34,8 @@ export type Surface = [
   ConfigSetting["sync"],
   PolarisKeyClient["events"],
   NonNullable<Options["cloudSync"]>["encryption"],
+  IdentityClient["nearby"]["available"],
+  IdentityClient["nearby"]["onRequest"],
 ];
 
 it("client.create", () =>
@@ -88,6 +91,8 @@ it("identity.choice.complete", () =>
   expect("complete" in ChoiceClient.prototype).toBe(true));
 it("identity.choice.cancel", () =>
   expect("cancel" in ChoiceClient.prototype).toBe(true));
+it("identity.autoSignIn", () =>
+  expect("autoSignIn" in IdentityClient.prototype).toBe(true));
 it("identity.useLicenseChoice", () =>
   expect("choice" in IdentityClient.prototype).toBe(true));
 it("identity.attachLicense", () =>
@@ -198,6 +203,26 @@ it("cloudConnect.nearby.request", () =>
   expect("request" in CloudNearby.prototype).toBe(true));
 it("cloudConnect.nearby.onRequest", () =>
   expect("onRequest" in CloudNearby.prototype).toBe(true));
+it("identity.signIn.session.approvers", () =>
+  expect("approvers" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.onApprovers", () =>
+  expect("onApprovers" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.code", () =>
+  expect("code" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.result", () =>
+  expect("result" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.onResult", () =>
+  expect("onResult" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.choose", () =>
+  expect("choose" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.confirmAccount", () =>
+  expect("confirmAccount" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.declineAccount", () =>
+  expect("declineAccount" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.wrap", () =>
+  expect("wrap" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.onWrap", () =>
+  expect("onWrap" in NearbySignInSession.prototype).toBe(true));
 it("removed: config.getConfig", () =>
   expect("getConfig" in ConfigClient.prototype).toBe(false));
 it("removed: PolarisKeyClient.getConfig", () =>

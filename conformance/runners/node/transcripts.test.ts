@@ -19,6 +19,7 @@
 // @pkey-feature sync.keyring
 // @pkey-feature connect.relay
 // @pkey-feature sync.settings
+// @pkey-feature identity.nearby
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,

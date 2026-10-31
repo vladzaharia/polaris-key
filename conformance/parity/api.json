@@ -3501,18 +3501,12 @@
       ],
       "returns": "json",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
-        },
+        "node": {},
         "react": {
           "planned": "I-46",
           "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
         },
-        "python": {
-          "planned": "I-47",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
-        },
+        "python": {},
         "swift": {
           "labels": ["_"]
         },
@@ -6513,14 +6507,8 @@
       ],
       "returns": "bool",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
@@ -6552,14 +6540,8 @@
       ],
       "returns": "json",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
@@ -6581,14 +6563,8 @@
       "feature": "identity.nearby",
       "returns": "json",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
@@ -6615,14 +6591,8 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
@@ -6644,14 +6614,8 @@
       "feature": "identity.nearby",
       "returns": "string",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
@@ -6673,14 +6637,8 @@
       "feature": "identity.nearby",
       "returns": "string",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
@@ -6707,14 +6665,8 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
@@ -6742,14 +6694,8 @@
       ],
       "returns": "json",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
@@ -6771,14 +6717,8 @@
       "feature": "identity.nearby",
       "returns": "json",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
@@ -6799,14 +6739,8 @@
       "kind": "method",
       "feature": "identity.nearby",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
@@ -6828,14 +6762,8 @@
       "feature": "identity.nearby",
       "returns": "string",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
@@ -6862,14 +6790,8 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
-        "python": {
-          "planned": "I-47",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
-        },
+        "node": {},
+        "python": {},
         "swift": {
           "planned": "I-44",
           "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"

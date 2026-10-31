@@ -2159,13 +2159,13 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [{ runtime: "node", reason: "runtime" }],
   },
-  "identity.autosignin": { status: "planned", service: "identity", na: [] },
+  "identity.autosignin": { status: "implemented", service: "identity", na: [] },
   "identity.link": {
     status: "na",
     service: "identity",
     na: [{ runtime: "node", reason: "runtime" }],
   },
-  "identity.nearby": { status: "planned", service: "identity", na: [] },
+  "identity.nearby": { status: "implemented", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -2290,4 +2290,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "92b3dd09f0266425e8c09c2e389146ffb6f04013758d3d0b646c56ebf96e6f33";
+  "eb139fef9b63ba90104875f0fa9a0fed60892b0515390352105d1f74189ffca8";

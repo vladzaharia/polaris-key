@@ -1,4 +1,4 @@
-# @pkey-feature connect.identity connect.protocol
+# @pkey-feature connect.identity connect.protocol identity.nearby
 """``cases.json`` sections ``peerCertCases``, ``ringCases`` and ``peerAdmissionCases`` (WIRE-CONTRACT-V5
 §15.2, §15.3) through the Python verifiers, and the ``vouch`` section of ``peer-matrix.json`` (§15.6.1)
 through the Python vouch codecs. Mirrors the Node runner's Cloud Connect suites."""

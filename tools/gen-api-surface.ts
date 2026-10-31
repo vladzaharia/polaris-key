@@ -101,6 +101,21 @@ function rowsFor(api: Api, sdk: Sdk): Row[] {
 }
 
 const q = (s: string): string => JSON.stringify(s);
+
+/** The `identity.signIn.session` members only the nearby session (D, I-47) has; the device-code and redirect sessions do not. */
+const NEARBY_SESSION = new Set([
+  "approvers",
+  "onApprovers",
+  "code",
+  "result",
+  "onResult",
+  "choose",
+  "confirmAccount",
+  "declineAccount",
+  "wrap",
+  "onWrap",
+]);
+const leafOf = (id: string): string => id.split(".").pop()!;
 const BANNER = (c: string): string =>
   `${c} GENERATED FILE — do not edit by hand. Source: conformance/parity/api.json; regenerate with \`pnpm gen api\`.`;
 
@@ -144,10 +159,18 @@ function renderNode(api: Api): string {
       lines.push(
         `it(${q(r.id)}, () => expect("signIn" in IdentityClient.prototype).toBe(true));`,
       );
+    } else if (r.id.startsWith("identity.nearby.")) {
+      // M's side of nearby approval (I-47): `available` and `onRequest` live on the client's `nearby` member.
+      types.push(`IdentityClient["nearby"][${q(r.name)}]`);
     } else if (r.id.startsWith("identity.signIn.session.")) {
-      // The sessions `signIn.start` answers: device code (wait, reopen, cancel), redirect (complete, cancel).
+      // The sessions `signIn.start` answers: device code (wait, reopen, cancel), redirect (complete, cancel),
+      // nearby (D: approvers, choose, code, confirmAccount ...).
       const cls =
-        r.name === "complete" ? "RedirectSession" : "DeviceCodeSession";
+        r.name === "complete"
+          ? "RedirectSession"
+          : NEARBY_SESSION.has(leafOf(r.id))
+            ? "NearbySignInSession"
+            : "DeviceCodeSession";
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in ${cls}.prototype).toBe(true));`,
       );
@@ -190,6 +213,7 @@ function renderNode(api: Api): string {
     `  EntitlementsClient,`,
     `  IdentityClient,`,
     `  LicenseClient,`,
+    `  NearbySignInSession,`,
     `  PolarisKeyClient,`,
     `  RedirectSession,`,
     `  type ConfigSetting,`,
@@ -287,8 +311,13 @@ function renderPython(api: Api): string {
       attrs.push(`(${q(r.id)}, "IdentityClient", "sign_in")`);
     } else if (r.id === "identity.signIn.start") {
       attrs.push(`(${q(r.id)}, "SignInNamespace", "start")`);
+    } else if (r.id.startsWith("identity.nearby.")) {
+      // M's side of nearby approval (I-47): `available` and `on_request` live on `identity.nearby`.
+      attrs.push(`(${q(r.id)}, "NearbyNamespace", ${q(r.name)})`);
     } else if (r.id.startsWith("identity.signIn.session.")) {
-      attrs.push(`(${q(r.id)}, "SignInSession", ${q(r.name)})`);
+      attrs.push(
+        `(${q(r.id)}, ${q(NEARBY_SESSION.has(leafOf(r.id)) ? "NearbySignInSession" : "SignInSession")}, ${q(r.name)})`,
+      );
     } else if (PY_CLASS[r.ns]) {
       attrs.push(`(${q(r.id)}, ${q(PY_CLASS[r.ns]!)}, ${q(r.name)})`);
     }
@@ -313,6 +342,8 @@ from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
 from polaris_key.connect.nearby import CloudNearby
 from polaris_key.identity.client import IdentityClient
+from polaris_key.identity.auto_sign_in import NearbyNamespace
+from polaris_key.identity.nearby_session import NearbySignInSession
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
 from polaris_key.license.entitlements import EntitlementsClient
@@ -324,6 +355,8 @@ CLASSES = {
     "IdentityClient": IdentityClient,
     "SignInNamespace": SignInNamespace,
     "SignInSession": SignInSession,
+    "NearbyNamespace": NearbyNamespace,
+    "NearbySignInSession": NearbySignInSession,
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,

@@ -147,6 +147,116 @@ export async function signIn(client: PolarisKeyClient, signal: AbortSignal) {
 throws `sign-in-denied`; a failure after approval throws `sign-in-failed`. Sign-in needs the Identity
 service; with it off, `signIn.start` throws `service-unavailable` before any request.
 
+### Signing in without a click
+
+`identity.autoSignIn()` is the question to ask first. It never throws, starts nothing and sends no
+request:
+
+```ts
+import type { PolarisKeyClient } from "@polaris-key/node";
+
+export async function first(client: PolarisKeyClient): Promise<string> {
+  const result = await client.identity.autoSignIn();
+  switch (result.kind) {
+    case "signedIn":
+      return "signed in"; // this device already holds a token that a sign-in produced
+    case "needsSignIn":
+      // "signed_out": the person signed out on purpose, so start nothing on your own.
+      // "no_credential": show your sign-in.
+      return result.reason;
+    case "unavailable":
+      return result.code; // this product runs no Identity
+  }
+}
+```
+
+Node has no platform identity, so the ladder is its first rung and its last: a stored sign-in, or the
+regular sign-in below. The options (`prompt`, `licenseChoice`, `deviceName`) exist so a call written
+for another SDK compiles; none changes what Node does. Nearby approval is not part of the call: your
+sign-in form starts it, as in the next section.
+
+### Nearby sign-in
+
+A device with no browser at hand can ask a signed-in device on the same network to approve it. The
+new device (D) lists the devices that answer, the person picks one, D shows a code, and the person
+taps the same code on the other device. Ask first; it is `false` when Identity is off, the product
+serves no nearby approval, or this runtime cannot browse the network:
+
+```ts
+import type { NearbySignInSession, PolarisKeyClient } from "@polaris-key/node";
+
+export async function signInNearby(
+  client: PolarisKeyClient,
+  signal: AbortSignal,
+) {
+  if (!(await client.identity.nearby.available({ role: "requester" })))
+    return "use-a-code";
+
+  const session: NearbySignInSession = await client.identity.signIn.start({
+    channel: "nearby",
+    signal,
+  });
+  // Labels come from an unverified peer: show them as text, never as a claim of who is there.
+  const off = session.onApprovers((list) => {
+    const only = list[0];
+    if (list.length === 1 && only && session.code === null) {
+      void session
+        .choose(only.id)
+        .then(({ code }) => console.log(`Tap ${code} on ${only.label}`));
+    }
+  });
+  try {
+    const result = await session.wait({ signal }); // signedIn | expired | cancelled
+    if (result.kind !== "signedIn") return result.kind;
+  } finally {
+    off();
+  }
+  // Show who signed in. Nothing the other device sends is acted on until the person says it is theirs.
+  await session.confirmAccount(); // or session.declineAccount(): the device signs out again
+  return "signedIn";
+}
+```
+
+The poll decides the outcome; the other device's answer (`session.result`) is display only. A refusal
+throws `sign-in-denied`. `session.wrap` and `onWrap` report the key ring's wrap that the approver
+sends once, for a product with Cloud Sync. A kit hands over to the device code when no device answers within 2 seconds, and picks a lone device after 3.
+
+The signed-in device (M) advertises only while the person has "Approve a nearby device" open:
+
+```ts
+import type { NearbyApprovalStep, PolarisKeyClient } from "@polaris-key/node";
+
+export async function approveNearby(
+  client: PolarisKeyClient,
+  tapped: (
+    codes: readonly string[],
+    device: string | null,
+  ) => Promise<string | null>,
+) {
+  const handle = await client.identity.nearby.onRequest(
+    async (ask) => {
+      const code = await tapped(ask.codes, ask.device); // three codes: tap the one D shows
+      if (code === null) return void (await ask.deny()); // none of them: nothing is approved
+      let step: NearbyApprovalStep = await ask.pick(code);
+      while (step.kind === "choose") {
+        // The license goes to the new device by the person's choice, one tap per license.
+        const free = step.choices.choices.find((c) => c.state === "free");
+        step = free
+          ? await step.choose({ kind: "license", licenseId: free.id })
+          : await step.cancel(); // declining here is a deny
+      }
+      console.log(step.kind); // approved, mismatch, not-nearby, denied, expired, device-limit, ...
+    },
+    { prompt: true, label: "Ana's laptop" },
+  );
+  return handle; // handle.stop() when the screen closes: nothing is left listening
+}
+```
+
+Leaving the screen at the codes or at the license choice is Deny, in every kit. A wrong tap is not
+an approval: the session closes and the new device is told. `onRequest` throws `account_required`
+while signed out, and the typed unsupported result where nearby approval is not served.
+
 ### Redirect sign-in
 
 A host that opens a browser and receives its redirect (a desktop app with a registered `https:`
