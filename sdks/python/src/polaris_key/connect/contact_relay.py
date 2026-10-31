@@ -54,6 +54,8 @@ from .session import ConnectSession, session_handlers
 __all__ = ["ContactRelay", "ContactRelaySource", "ContactRoom"]
 
 MAX_ROOM_SESSIONS = 4
+#: First messages held before ``MEMBERS`` names the peer (WIRE-CONTRACT-V5 section 15.7).
+MAX_DEFERRED = 8
 #: Contact tickets are limited to 30 an hour per device (§15.7): back off in minutes.
 BACKOFF_BASE_S = 5.0
 BACKOFF_MAX_S = 600.0
@@ -113,6 +115,8 @@ class ContactRoom:
         self._pong_at = 0.0
         self._own: Optional[bytes] = None
         self._peer_alias: Optional[bytes] = None
+        #: Messages that arrived before ``MEMBERS``: (from, session, noise), at most ``MAX_DEFERRED``.
+        self._deferred: List[Tuple[bytes, int, bytes]] = []
         self._links: Dict[str, RelayLink] = {}
         self._ended: Deque[str] = deque(maxlen=ENDED_MEMORY)
         self._waiters: List["asyncio.Future[None]"] = []
@@ -392,6 +396,7 @@ class ContactRoom:
                 self._ws = None
             self._outbox = self._pacer = None
             self._peer_alias = None
+            self._deferred = []
             self._lose_links()
         return code
 
@@ -453,6 +458,9 @@ class ContactRoom:
             self._peer_alias = next((d for d in m["devices"] if bytes(d) != own), None)
             for f in list(self._on_members):
                 f()
+            held, self._deferred = self._deferred, []
+            for frm, sess, noise in held:
+                await self._recv(frm, sess, noise, False)
         elif op == "gone":
             if self._peer_alias is not None and bytes(self._peer_alias) == bytes(m["device"]):
                 self._peer_alias = None
@@ -482,7 +490,7 @@ class ContactRoom:
 
     # -- sessions -----------------------------------------------------------------------------------
 
-    async def _recv(self, frm: bytes, session: int, noise: bytes) -> None:
+    async def _recv(self, frm: bytes, session: int, noise: bytes, can_defer: bool = True) -> None:
         frm = bytes(frm)
         key = "%s:%d" % (frm.hex(), session)
         known = self._links.get(key)
@@ -495,8 +503,15 @@ class ContactRoom:
         # The room stamps ``from``; one that is this device's own alias cannot be the peer.
         if frm == own:
             return
-        if self._peer_alias is None:
-            self._peer_alias = frm
+        # The peer is whom MEMBERS says, never whom a first message claims: hold it (bounded) until MEMBERS.
+        peer = self._peer_alias
+        if peer is None:
+            if can_defer and len(self._deferred) < MAX_DEFERRED:
+                self._deferred.append((frm, session, noise))
+                self._send_env({"op": "list"})
+            return
+        if bytes(peer) != frm:
+            return
         ident = await self._identity(quiet=True)
         if ident is None or self._stopped or not self._open:
             return
