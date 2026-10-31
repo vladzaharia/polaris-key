@@ -47,6 +47,8 @@ const MAX_QUEUED_MESSAGES = 256;
 export const QUEUE_PAUSE_BYTES = 4 * 1024 * 1024;
 export const QUEUE_RESUME_BYTES = 1024 * 1024;
 export const QUEUE_MAX_BYTES = 8 * 1024 * 1024;
+/** Bytes the socket may hold unsent for a peer that does not read, before the link ends `peer_busy`. */
+export const WRITE_MAX_BYTES = 4 * 1024 * 1024;
 
 export type LanErrorReason =
   | "no_identity"
@@ -333,8 +335,9 @@ export class SocketLink {
     this.channel = new PeerChannel({
       ...o.channel,
       send: (noise) => {
-        if (!socket.destroyed && !socket.writableEnded)
-          socket.write(encodeFrame(noise));
+        if (socket.destroyed || socket.writableEnded) return;
+        socket.write(encodeFrame(noise));
+        if (socket.writableLength > WRITE_MAX_BYTES) this.#unread();
       },
       onEvent: (e) => this.#event(e),
     });
@@ -434,6 +437,14 @@ export class SocketLink {
     // the channel's `closed` event ends the link.
     if (!this.#up) this.#finish({ code, byPeer: false });
     void this.channel.close(code === "handshake_failed" ? "peer_bye" : code);
+  }
+
+  /** The peer is not reading and the socket holds too much: end `peer_busy` and drop the socket
+   *  at once (no CLOSE, because nobody is reading it). */
+  #unread(): void {
+    if (this.#ended) return;
+    this.#finish({ code: "peer_busy", byPeer: false });
+    this.#o.socket.destroy();
   }
 
   #finish(c: SessionClosed): void {
