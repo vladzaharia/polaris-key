@@ -75,10 +75,17 @@ package struct ConnectContactRow: Codable, Equatable, Sendable, CustomStringConv
     package var debugDescription: String { description }
     package var customMirror: Mirror { Mirror(self, children: [], displayStyle: .struct) }
 
+    /// One category: `^[a-z0-9-]{1,32}$`, as in Node and Python.
+    package static func validCat(_ s: String) -> Bool {
+        let u = s.utf8
+        return !u.isEmpty && u.count <= 32
+            && u.allSatisfy { ($0 >= 0x61 && $0 <= 0x7a) || ($0 >= 0x30 && $0 <= 0x39) || $0 == 0x2d }
+    }
+
     /// A row that breaks a rule makes the whole record unusable (a hand-edited item is not trusted).
     package var valid: Bool {
         PeerContacts.key32(agreeKey) != nil && PeerContacts.key32(secret) != nil && cats.count <= maxContactCats
-            && Set(cats).count == cats.count && cats.allSatisfy { !$0.isEmpty && $0.utf8.count <= 32 }
+            && Set(cats).count == cats.count && cats.allSatisfy(ConnectContactRow.validCat)
     }
 }
 

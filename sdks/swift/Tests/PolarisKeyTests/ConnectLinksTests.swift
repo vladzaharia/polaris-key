@@ -602,6 +602,19 @@ import XCTest
             ) { XCTAssertEqual($0 as? ConnectStateError, .unreadable) }
         }
 
+        func testACategoryOutsideTheRuleMakesTheRecordUnusable() throws {
+            // `^[a-z0-9-]{1,32}$`, as in Node, Python and Kotlin: upper case, a space, a dot and a non-ASCII letter fail.
+            let key = Base64URL.encode(Data(repeating: 7, count: 32))
+            func row(_ cats: [String]) -> ConnectContactRow {
+                ConnectContactRow(
+                    agreeKey: key, secret: key, label: nil, cats: cats, createdAt: 1, reachable: true)
+            }
+            XCTAssertTrue(row(["photos", "a-b-9"]).valid)
+            for bad in ["Photos", "a b", "a.b", "caf\u{e9}", "", String(repeating: "a", count: 33)] {
+                XCTAssertFalse(row([bad]).valid, bad)
+            }
+        }
+
         func testPairAndOpenAreTheTypedNAWhileLinksAreOff() async throws {
             let c = try await client()
             let off = await c.cloudConnect.links.interAccount()

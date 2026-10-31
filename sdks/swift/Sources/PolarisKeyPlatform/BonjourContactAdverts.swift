@@ -33,9 +33,11 @@ public func bonjourTxtBytes(_ entries: [String]) -> Data {
         private final class Slot {
             var ref: DNSServiceRef?
             let name: String
+            let port: UInt16
             let onWithdrawn: @Sendable (String) -> Void
-            init(name: String, onWithdrawn: @escaping @Sendable (String) -> Void) {
+            init(name: String, port: UInt16, onWithdrawn: @escaping @Sendable (String) -> Void) {
                 self.name = name
+                self.port = port
                 self.onWithdrawn = onWithdrawn
             }
         }
@@ -52,12 +54,14 @@ public func bonjourTxtBytes(_ entries: [String]) -> Data {
         public func update(_ adverts: [BonjourAdvert], port: UInt16) {
             lock.withLock {
                 let want = Set(adverts.map(\.instance))
-                for (name, slot) in slots where !want.contains(name) {
+                // A registration is kept by name AND port: a listener that restarted on another port
+                // withdraws the old one and registers the name again.
+                for (name, slot) in slots where !want.contains(name) || slot.port != port {
                     release(slot)
                     slots[name] = nil
                 }
                 for a in adverts where slots[a.instance] == nil {
-                    let slot = Slot(name: a.instance, onWithdrawn: onWithdrawn)
+                    let slot = Slot(name: a.instance, port: port, onWithdrawn: onWithdrawn)
                     let txt = bonjourTxtBytes(a.txt)
                     let ctx = Unmanaged.passRetained(slot).toOpaque()
                     var ref: DNSServiceRef?
@@ -93,12 +97,18 @@ public func bonjourTxtBytes(_ entries: [String]) -> Data {
 
         public var names: [String] { lock.withLock { slots.keys.sorted() } }
 
+        /// The port each live name is registered on (for tests).
+        package var ports: [String: UInt16] { lock.withLock { slots.mapValues(\.port) } }
+
         private func release(_ slot: Slot) {
             if let r = slot.ref {
                 DNSServiceRefDeallocate(r)
                 slot.ref = nil
             }
-            Unmanaged.passUnretained(slot).release()  // balances `passRetained` in `update`
+            // Balances `passRetained` in `update`, after the callbacks the daemon already queued: the queue is
+            // serial, so this runs behind them and none of them sees a freed slot.
+            let bits = UInt(bitPattern: Unmanaged.passUnretained(slot).toOpaque())
+            queue.async { Unmanaged<Slot>.fromOpaque(UnsafeRawPointer(bitPattern: bits)!).release() }
         }
     }
 #endif
