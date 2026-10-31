@@ -270,7 +270,7 @@
     },
     "packages/sdk-react/src/kit/index.ts": {
       "knip:exports": 8,
-      "knip:types": 8
+      "knip:types": 9
     },
     "packages/sdk-react/src/license/index.ts": {
       "knip:files": 1

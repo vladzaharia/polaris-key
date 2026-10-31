@@ -26,6 +26,13 @@
  */
 
 import type { SyncJson } from "@polaris-key/protocol/sync";
+import {
+  importRecordFiles,
+  recordKey,
+  type ChunkImport,
+  type FileMode,
+  type FilesByRecord,
+} from "./absorbFiles.js";
 import { compareStamps } from "./hlc.js";
 import { clampRemovedCells, liveElements } from "./recordSets.js";
 import { accountParked, accountRecord, canonicalJson } from "./usage.js";
@@ -55,6 +62,15 @@ export interface AbsorbRecordsInput {
   recordPolicies?: ReadonlyMap<string, RecordJoin>;
   /** Epoch seconds, stamped on a copy this absorb parks. */
   now: number;
+  /**
+   * The incoming live files and revisions by record (`absorbFiles.ts`). An entry is removed once its
+   * record is joined, so what is left when every record has been is a file with no record.
+   */
+  files?: FilesByRecord;
+  /** The SSE-C keys the incoming files reference. */
+  ssecKeys?: ReadonlyMap<string, Uint8Array>;
+  /** The chunks the incoming files name (U-37). */
+  chunkImport?: ChunkImport;
 }
 
 export interface AbsorbRecordsOutcome {
@@ -477,6 +493,41 @@ export function absorbRecords(
         rows++;
         parked++;
       }
+    }
+    // The record's files follow what became of it.
+    const key = recordKey(inc.collection, inc.id);
+    const incoming = input.files?.get(key);
+    if (incoming) {
+      input.files?.delete(key);
+      const final = store.getRecord(inc.collection, inc.id);
+      let mode: FileMode;
+      if (verdict.kind === "park") mode = "parked";
+      else if (!final || final.deleted) mode = "dead";
+      else if (
+        verdict.kind === "write" &&
+        (cur === undefined || stateKey(verdict.next) === stateKey(inc))
+      )
+        mode = "wins";
+      else mode = "behind";
+      const since = store.getEncryptionSince();
+      const legacy =
+        since !== undefined &&
+        final !== undefined &&
+        final.version < since &&
+        final.value !== null;
+      if (
+        importRecordFiles(
+          store,
+          mode,
+          inc.collection,
+          inc.id,
+          incoming,
+          input.ssecKeys ?? new Map(),
+          !legacy,
+          input.chunkImport,
+        )
+      )
+        rows++;
     }
   }
   // Copies an earlier merge parked on the absorbed side travel with the rest of its data.

@@ -1187,6 +1187,9 @@ const SYNC_CHUNK_FORMAT := "pkey-sync-chunk/1"
 ## Cloud Sync: `SYNC_CHUNK_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.8.3, `@polaris-key/protocol/sync`).
 const SYNC_CHUNK_ID_PATTERN := "^[0-9a-f]{64}$"
 
+## Cloud Sync: `SYNC_CHUNK_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.3 (U-37), `@polaris-key/protocol/sync`).
+const SYNC_CHUNK_MAX_STORED_BYTES := 1048606
+
 ## Cloud Sync: `SYNC_CHUNK_PLAN_MAX_IDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
 const SYNC_CHUNK_PLAN_MAX_IDS := 1024
 
@@ -1240,6 +1243,9 @@ const SYNC_KID_PATTERN := "^[0-9a-f]{32}$"
 
 ## Cloud Sync: `SYNC_MANIFEST_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
 const SYNC_MANIFEST_FORMAT := "pkey-sync-chunks/1"
+
+## Cloud Sync: `SYNC_MANIFEST_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.1 (U-37), `@polaris-key/protocol/sync`).
+const SYNC_MANIFEST_MAX_STORED_BYTES := 786576
 
 ## Cloud Sync: `SYNC_MAX_CHUNKS_PER_FILE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
 const SYNC_MAX_CHUNKS_PER_FILE := 16384
@@ -1491,7 +1497,7 @@ static func capabilities() -> Dictionary:
 		"sync.files.delta": {"status": "planned", "service": "sync", "na": []},
 		"sync.e2e.recovery": {"status": "planned", "service": "sync", "na": []},
 		"sync.transfer.background": {"status": "planned", "service": "sync", "na": [{"runtime": "web", "reason": "runtime"}]},
-		"sync.e2e": {"status": "planned", "service": "sync", "na": []},
+		"sync.e2e": {"status": "implemented", "service": "sync", "na": []},
 		"connect.identity": {"status": "planned", "service": "connect", "na": []},
 		"connect.noise": {"status": "planned", "service": "connect", "na": []},
 		"connect.protocol": {"status": "planned", "service": "connect", "na": []},
@@ -1591,4 +1597,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "9b4f55fdd8f58fd7ba6f2acd801417d2be5dfe92c940f737b31077b9cf7bc9bf"
+const CAPABILITY_DIGEST := "e46916ac8f7e0e0ed7e61e883888556f584ec2d591f0852de34cf6a460293825"

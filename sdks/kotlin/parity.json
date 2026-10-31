@@ -593,8 +593,8 @@
       ]
     },
     "sync.e2e": {
-      "status": "planned",
-      "wp": "U-07"
+      "status": "implemented",
+      "note": "Settings seal and open through :core's CloudSyncMachine in E2E mode (the app's cloudSync encryption option, default e2e; never read from the Worker) over the key ring; guard (b) judges a conflict's server copy against the push's own cursor (X-1). :conformance's SyncScenariosTest replays every e2e scenario, e2e-conflict-plaintext-copy-refused included, and SyncVectorsTest the vectors, on JCA and on Tink."
     },
     "connect.identity": {
       "status": "implemented",

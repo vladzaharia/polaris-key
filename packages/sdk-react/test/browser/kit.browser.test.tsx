@@ -77,6 +77,7 @@ const FAMILIES = [
   "settings",
   "paywall",
   "cloudSync",
+  "saveConflict",
   "holders",
 ] as const;
 
@@ -282,6 +283,7 @@ const COMPONENTS = {
   UnlockSync: kitComponent("UnlockSync"),
   RecoveryCode: kitComponent("RecoveryCode"),
   RingChange: kitComponent("RingChange"),
+  SaveConflict: kitComponent("SaveConflict"),
 } as unknown as Record<
   string,
   (p: Kit.KitProps & { children?: ReactNode; code?: string }) => ReactNode
@@ -817,3 +819,137 @@ describe("the React kit in the launch locales", () => {
             if (h1) expect(getComputedStyle(h1).fontWeight).toBe("600");
           });
 });
+
+// ── The save screens (U-22.KF, UX review K.UX 1-5) ─────────────────────────────────────────
+// The choices are one run in reading order, undocked, so at every §7.1 row nothing overlaps and
+// every control and card answers a hit at its own centre; the transfer bar has a width; a failed
+// choice focuses the heading, never Try again.
+
+const SAVE_SIZES: Size[] = [
+  { label: "390", width: 390, height: 844 },
+  { label: "844x390", width: 844, height: 390 },
+  { label: "640x360", width: 640, height: 360 },
+  { label: "1440", width: 1440, height: 900 },
+  { label: "390-text200", width: 390, height: 844, rootPx: 32 },
+  { label: "1440-text200", width: 1440, height: 900, rootPx: 32 },
+  { label: "1280-zoom400", width: 320, height: 256 },
+];
+const SAVE_ROWS = {
+  choose: "SaveConflict/choose: the two copies and the three choices",
+  full: "SaveConflict/choose: Keep both is disabled while every slot is in use",
+  deleted: "SaveConflict/choose: the other copy was deleted",
+  failed: "SaveConflict/failed: both saves are unchanged",
+  counted: "CloudSyncStatus/transferring: how much is done, and never Synced",
+  unknown: "CloudSyncStatus/transferring: saves are syncing",
+};
+
+/** Every control and card answers a hit at its own centre (scrolled into view first). */
+function unreachable(kit: Element): string[] {
+  const out: string[] = [];
+  for (const el of kit.querySelectorAll(
+    "button, [data-part=save-card], [role=progressbar]",
+  )) {
+    if (!visible(el)) continue;
+    el.scrollIntoView({ block: "center", inline: "nearest" });
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(
+      r.left + r.width / 2,
+      r.top + r.height / 2,
+    );
+    if (!hit || !(el === hit || el.contains(hit)))
+      out.push(
+        `${describeEl(el)} is covered by ${hit ? describeEl(hit) : "nothing"}`,
+      );
+  }
+  return out;
+}
+
+describe("the save screens at the §7.1 sizes", () => {
+  for (const [name, row] of Object.entries(SAVE_ROWS).filter(([n]) =>
+    ["choose", "full", "deleted", "failed"].includes(n),
+  ))
+    for (const size of SAVE_SIZES)
+      for (const scheme of SCHEMES)
+        it(`${name} ${size.label} ${scheme}`, async () => {
+          await check(
+            { id: `SaveConflict.${name}`, row },
+            scheme,
+            size,
+            "polaris-key",
+          );
+          const kit = document.querySelector<HTMLElement>(".pk-root")!;
+          expect(unreachable(kit).join("\n")).toBe("");
+          const h1 = kit.querySelector("h1")!;
+          expect(h1).not.toBeNull();
+          // Focus lands on the heading, on the choice and on a failed one alike.
+          expect(
+            document.activeElement === h1 ||
+              h1.contains(document.activeElement),
+          ).toBe(true);
+          if (name === "failed") return;
+          // One block in reading order: the choices stack in one column, the reason sits under
+          // Keep both, Cancel last; no two controls overlap.
+          const rects = (key: string) =>
+            kit.querySelector(`[data-key="${key}"]`)?.getBoundingClientRect();
+          const keys = [
+            "saveConflict.keepThis",
+            deleted(name)
+              ? "saveConflict.acceptDelete"
+              : "saveConflict.keepOther",
+            ...(deleted(name) ? [] : ["saveConflict.keepBoth"]),
+            ...(name === "full" ? ["saveConflict.bothFull"] : []),
+            "common.cancel",
+          ];
+          let prev: DOMRect | undefined;
+          for (const key of keys) {
+            const r = rects(key);
+            expect(r, key).toBeDefined();
+            if (prev) {
+              expect(
+                r!.top,
+                `${key} sits below the one before`,
+              ).toBeGreaterThanOrEqual(prev.bottom - 1);
+              expect(
+                Math.abs(r!.left - rects(keys[0]!)!.left),
+                `${key} stays on the first choice's side`,
+              ).toBeLessThanOrEqual(size.width / 2);
+            }
+            prev = r!;
+          }
+          const first = rects("saveConflict.keepThis")!;
+          const second = rects(keys[1]!)!;
+          expect(Math.abs(first.left - second.left)).toBeLessThanOrEqual(1);
+          const actions = kit.querySelector<HTMLElement>('[data-dock="none"]')!;
+          expect(getComputedStyle(actions).position).toBe("static");
+        });
+
+  for (const [name, row] of Object.entries(SAVE_ROWS).filter(([n]) =>
+    ["counted", "unknown"].includes(n),
+  ))
+    for (const size of SAVE_SIZES.filter((s) =>
+      ["390", "844x390", "1440", "1280-zoom400"].includes(s.label),
+    ))
+      for (const scheme of SCHEMES)
+        it(`transfer ${name} ${size.label} ${scheme}`, async () => {
+          await check(
+            { id: `CloudSyncStatus.${name}`, row },
+            scheme,
+            size,
+            "polaris-key",
+          );
+          const kit = document.querySelector<HTMLElement>(".pk-root")!;
+          const bar = kit.querySelector<HTMLElement>('[role="progressbar"]')!;
+          expect(
+            bar.getBoundingClientRect().width,
+            "the bar has a width",
+          ).toBeGreaterThan(0);
+          // The label first, then its figures.
+          const text = kit.textContent ?? "";
+          if (name === "counted")
+            expect(text.indexOf("Syncing saves")).toBeLessThan(
+              text.indexOf("38 MB of 61 MB"),
+            );
+        });
+});
+
+const deleted = (name: string): boolean => name === "deleted";

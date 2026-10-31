@@ -1673,6 +1673,9 @@ public let SYNC_CHUNK_FORMAT = "pkey-sync-chunk/1"
 /// Cloud Sync: `SYNC_CHUNK_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.8.3, `@polaris-key/protocol/sync`).
 public let SYNC_CHUNK_ID_PATTERN = "^[0-9a-f]{64}$"
 
+/// Cloud Sync: `SYNC_CHUNK_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.3 (U-37), `@polaris-key/protocol/sync`).
+public let SYNC_CHUNK_MAX_STORED_BYTES = 1048606
+
 /// Cloud Sync: `SYNC_CHUNK_PLAN_MAX_IDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
 public let SYNC_CHUNK_PLAN_MAX_IDS = 1024
 
@@ -1726,6 +1729,9 @@ public let SYNC_KID_PATTERN = "^[0-9a-f]{32}$"
 
 /// Cloud Sync: `SYNC_MANIFEST_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
 public let SYNC_MANIFEST_FORMAT = "pkey-sync-chunks/1"
+
+/// Cloud Sync: `SYNC_MANIFEST_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.1 (U-37), `@polaris-key/protocol/sync`).
+public let SYNC_MANIFEST_MAX_STORED_BYTES = 786576
 
 /// Cloud Sync: `SYNC_MAX_CHUNKS_PER_FILE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
 public let SYNC_MAX_CHUNKS_PER_FILE = 16384
@@ -1998,7 +2004,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.files.delta": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.e2e.recovery": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.transfer.background": CapabilityRow(status: "planned", service: "sync", na: []),
-    "sync.e2e": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.e2e": CapabilityRow(status: "implemented", service: "sync", na: []),
     "connect.identity": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.noise": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.protocol": CapabilityRow(status: "implemented", service: "connect", na: []),
@@ -2098,4 +2104,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "ba0f04dd272228292f228d73e2b7a32a356e95b4e595c572ecab6eade0d695eb"
+public let CAPABILITY_DIGEST = "5a3256c645492e0dad0353c610cbf75fd934df7afbba3573d4a73e0dd7a11341"

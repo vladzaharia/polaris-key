@@ -85,13 +85,22 @@ export async function callCloudSync<O extends CloudSyncOp["op"]>(
   return body as Extract<CloudSyncReply, { op: O }>;
 }
 
-/** Everything the person's object holds, or `null` when it was never written. */
+/**
+ * Everything the person's object holds, or `null` when it was never written. `forMerge` is an
+ * account merge's export: it also carries what the survivor needs to keep the files opening (their
+ * R2 keys and SSE-C keys), which a person's own export never does.
+ */
 export async function exportCloudSync(
   env: Pick<Env, "CLOUD_SYNC">,
   pin: DoPin,
+  opts: { forMerge?: boolean } = {},
 ): Promise<ExportDocument | null> {
-  return (await callCloudSync<"exportAll">(env, pin, { op: "exportAll" }))
-    .document;
+  return (
+    await callCloudSync<"exportAll">(env, pin, {
+      op: "exportAll",
+      ...(opts.forMerge ? { forMerge: true } : {}),
+    })
+  ).document;
 }
 
 /**

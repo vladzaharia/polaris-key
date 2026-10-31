@@ -32,10 +32,12 @@ export const COMPONENTS = [
   "About",
   "ChannelPicker",
   "Toast",
-  // The Cloud Sync screens (ui-matrix.json `cloudSync`, U-42); see SyncScreenName.
+  // The Cloud Sync screens (ui-matrix.json `cloudSync`, U-42) and SaveConflict (`saveConflict`,
+  // U-22.K); see SyncScreenName.
   "UnlockSync",
   "RecoveryCode",
   "RingChange",
+  "SaveConflict",
 ] as const;
 export type ComponentName = (typeof COMPONENTS)[number];
 
@@ -43,7 +45,11 @@ export type ComponentName = (typeof COMPONENTS)[number];
  * The Cloud Sync screens (ui-matrix.json `cloudSync` family, U-42): components of the web kits that
  * load on demand. A type only: no runtime list rides in a kit's first load.
  */
-export type SyncScreenName = "UnlockSync" | "RecoveryCode" | "RingChange";
+export type SyncScreenName =
+  | "UnlockSync"
+  | "RecoveryCode"
+  | "RingChange"
+  | "SaveConflict";
 
 /**
  * The two screens activation without an account adds (ui-matrix.json `holders` family, UK-42): the
@@ -76,6 +82,9 @@ export const ACTIONS = [
   "accept-ring-change",
   "use-recovery-code",
   "copy-code",
+  "keep-local",
+  "keep-remote",
+  "keep-both",
 ] as const;
 export type Action = (typeof ACTIONS)[number];
 
@@ -112,6 +121,9 @@ export const ACTION_KEYS: Readonly<Record<Action, readonly string[]>> = {
   "accept-ring-change": ["ringChange.accept"],
   "use-recovery-code": ["ringChange.useCode"],
   "copy-code": ["recoveryCode.copy"],
+  "keep-local": ["saveConflict.keepThis"],
+  "keep-remote": ["saveConflict.keepOther", "saveConflict.acceptDelete"],
+  "keep-both": ["saveConflict.keepBoth"],
 };
 
 /** The opt-in services (tools/services.json), and what each requires (ST-38's closure rule). */

@@ -639,7 +639,7 @@ function fakeWorker(over: { partBytes?: number } = {}) {
         uploadId: id,
         mode,
         ...(mode === "multipart" ? { partBytes: over.partBytes } : {}),
-        expiresAt: Math.floor(Date.now() / 1000) + 3600,
+        expiresAt: Date.now() + 3_600_000,
       });
     }
     const up = /^slot-1\/upload\/([^/]+)(\/.*)?$/.exec(p);
@@ -653,7 +653,7 @@ function fakeWorker(over: { partBytes?: number } = {}) {
           size: u.size,
           ...(u.partBytes ? { partBytes: u.partBytes } : {}),
           received: [...u.parts.keys()],
-          expiresAt: Math.floor(Date.now() / 1000) + 3600,
+          expiresAt: Date.now() + 3_600_000,
         });
       if (s.method === "DELETE") {
         uploads.delete(up[1]!);

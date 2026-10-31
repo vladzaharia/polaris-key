@@ -98,6 +98,13 @@ export function fileUsage(u: StoreUsage): {
   };
 }
 
+/** Adds `delta` (may be negative) to the reservation, never below zero. */
+export function moveReserved(store: SyncStore, delta: number): void {
+  const usage = store.getUsage();
+  const next = Math.max(0, fileUsage(usage).reservedBytes + delta);
+  store.setUsage({ ...usage, reservedBytes: next });
+}
+
 /** `u` without any file counter that is zero: the shape a store with no file has always had. */
 export function compactUsage(u: StoreUsage): StoreUsage {
   const { files, fileBytes, revisionBytes, reservedBytes, ...rest } = u;

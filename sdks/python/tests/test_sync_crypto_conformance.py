@@ -235,8 +235,46 @@ def test_cdc_emits_copies() -> None:
     assert first[0] == bytes(4096)
 
 
+_SERVER_CHUNK_MAX_STORED = 1_048_606
+
+
+def _open_server_chunk(chunk_id: bytes, obj: bytes) -> Dict[str, Any]:
+    """The reference reader of a server-mode chunk object (WIRE-CONTRACT-V5 section 13.8; U-37): the
+    Worker stores the object as a version byte 0, a codec byte and the body. Not SDK surface (an SDK
+    reads server-mode chunks through its transfer engine); this is the corpus table's own proof, in
+    the written order of checks, as the Node runner has it."""
+    if len(obj) < 2:
+        return {"ok": False, "reason": "shape"}
+    if len(obj) > _SERVER_CHUNK_MAX_STORED:
+        return {"ok": False, "reason": "size"}
+    if obj[0] != 0:
+        return {"ok": False, "reason": "version"}
+    codec = obj[1]
+    if codec not in (0, 1):
+        return {"ok": False, "reason": "codec"}
+    plain = obj[2:]
+    if codec == 1:
+        decoded = sf.decode_zstd_chunk(plain, _ZSTD)
+        if isinstance(decoded, str):
+            return {"ok": False, "reason": decoded}
+        plain = decoded
+    if len(plain) > sf.SYNC_CDC_MAX_BYTES:
+        return {"ok": False, "reason": "size"}
+    if hashlib.sha256(plain).digest() != bytes(chunk_id):
+        return {"ok": False, "reason": "id"}
+    return {"ok": True, "plain": plain, "codec": codec}
+
+
 @pytest.mark.parametrize("c", V["chunkCases"], ids=ids(V["chunkCases"]))
 def test_chunk(c: Dict[str, Any]) -> None:
+    if c["kind"] == "server-object":
+        got = _open_server_chunk(H(c["idHex"]), H(c["objectHex"]))
+        want = c["expect"]
+        if want["result"] == "ok":
+            assert got["ok"] and got["plain"].hex() == want["plainHex"] and got["codec"] == want["codec"]
+        else:
+            assert not got["ok"] and got["reason"] == want["reason"]
+        return
     root = H(c["rootHex"])
     if c["kind"] == "id":
         plain = H(c["plainHex"])

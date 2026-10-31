@@ -8668,6 +8668,71 @@ it carries no quota or subject. Rows are S-17 §5.14's.
   carry no Cloud Sync data; a pull never returns an operator layer. `syncAccess` never widens access
   in `legacy` mode.
 
+### Cloud Sync files: T9, T11 and T25 (U-10)
+
+A record may carry one file (WIRE-CONTRACT-V5 §13.2, §13.8). The routes sit under
+`/<p>/sync/files/{collection}/{id}`, take the device bearer, and answer `404` unless the Worker has
+`SYNC_FILES` and the launch gate `launch.syncFiles` is on. The conversations are recorded in the
+`cloudsync-files-*` transcripts. The Worker never reads a file's content: it checks size and
+SHA-256 only. Bytes are the app's data (ciphertext in end-to-end mode) and are never served as a
+page.
+
+- **T9 (amended), no way to the bytes except through the Worker.** A download is
+  `application/octet-stream`, `Content-Disposition: attachment`, `nosniff`, `no-store`. No public,
+  presigned or `r2.dev` URL exists. The R2 key comes from the person's object (its session and file
+  rows), never from the path, a header or a body, and the object is addressed by the authenticated
+  principal, so one person cannot ask for another's bytes. A record with no such file, a deleted
+  one, a file waiting to be collected and a parked one are `404`.
+- **T25, cost abuse: quota, reservation and limits.** `begin` reserves the declared size against
+  the person's allowance (the licence's `pkey.cloudSync.bytes`, clamped to the platform ceiling)
+  and both ceilings, so concurrent uploads cannot overshoot: the reservation is released at
+  finalize (and the bytes charged), at abort, and at expiry. A person has at most 4 open uploads (`429 rate_limited`).
+  A device gets 30 file transfers an hour (a `begin` or a whole-file `GET`) and 600 other file
+  requests a minute. Size is checked against the collection's `files.maxBytes` before an object is
+  touched. Quota never deletes.
+- **Compare-and-swap at finalize.** `begin` records `baseVersion`; `finalize` re-checks it inside
+  the person's object, so any write since is `409 revision_conflict` with the server's version and
+  the upload ends (its bytes are deleted, its reservation released). Two devices cannot both win,
+  and a stale writer cannot overwrite silently. `finalize` is idempotent per `uploadId`, and a
+  repeat charges nothing.
+- **Streamed SHA-256.** A single `PUT` goes to R2 create-only with the declared `sha256`, so R2
+  refuses bytes that do not hash to it and nothing is stored. A part is hashed on its way to R2 and
+  compared with its `Content-Digest`; a part that does not verify is forgotten. `finalize` streams
+  the assembled object through SHA-256 (no buffering) and checks size and hash against `begin`: a
+  mismatch is `400 upload_mismatch`, deletes the object and releases the reservation. The hash is
+  of what is stored, so in end-to-end mode the server never sees a plaintext hash.
+- **T11 (amended), shredding with SSE-C per person.** Server-mode files (`enc: "none"`) are stored
+  under a random SSE-C key per person, kept in the person's object, so deleting the object's rows
+  makes every R2 copy unreadable. End-to-end files are ciphertext and take no SSE-C key. The flag
+  `FILE_SSEC` (`services/sync/engine/files.ts`) is `true` pending the staging probe
+  (U-10.W) of whether R2 accepts `ssecKey` on the paths a file takes; if it
+  does not, the plan's fallback seals the stream with the person's key instead. Neither changes the
+  wire.
+- **Expiry: lazy, then the alarm.** An upload lives 24 hours. The first call that finds a session
+  expired answers `410 upload_expired` and ends it; the object's alarm also aborts expired sessions
+  (and their multipart uploads) and deletes the orphan objects, versions past `keepRevisions`, and
+  files whose record was deleted. An R2 lifecycle rule aborts incomplete multipart uploads after a
+  day (RUNBOOK).
+- **Erasure order.** A person's, product's or account's erasure first deletes the SSE-C keys (the
+  bytes are unreadable whatever happens next), then every object the rows name and the sessions'
+  multipart uploads, then sweeps the prefix `u/<p>/<s>/` and the prefixes of subjects merged into
+  it, then clears the object's storage. An R2 failure keeps the rows and answers a retryable error,
+  so the erasure is repeated. An object merged away owns nothing.
+- **A merge export carries R2 keys.** An account merge hands the survivor the absorbed object's
+  files with their R2 keys, the SSE-C keys they reference and the subjects already folded in, so
+  the survivor owns and can sweep and shred them. This export is the Worker's internal merge
+  document; a person's own export carries pointers only (version, size, hash, format), never a key.
+  Dead files are not exported.
+- **Residual (accepted; U-44 rules on it), the upload limiters fail open.** If the rate limiter
+  object is down, the file limits (30 transfers an hour, 600 requests a minute) allow the request,
+  as the push limits do (L10). The caller is authenticated and signed in, and the person's object
+  still bounds the work with the reservation, the open-uploads cap and the quota, so the exposure
+  is request volume from an authenticated device during a limiter outage. Closing it would turn a
+  limiter outage into a Cloud Sync outage.
+- **Tests:** `test/services/sync/cloudSyncFiles{Begin,Upload,Finalize,Get,Gc,Store}.test.ts`,
+  `cloudSyncDeletion.test.ts`, `cloudSyncMergeRecords.test.ts`, the `cloudsync-files-*`
+  transcripts.
+
 ### The key ring: T21 to T23 (U-36)
 
 The key ring (`/<p>/devices/keyring`, WIRE-CONTRACT-V5 §13.11.2) holds, per product and pairwise
@@ -8787,6 +8852,49 @@ every `ct` is `encryption_mismatch` and discovery says nothing of E2E.
 - **T19, `max` and `min`.** In E2E mode the server holds a compare-and-swap register and cannot
   compare values; the client decides the better one. A client that ignores the rule can write a
   worse value, which harms only that person's own data. Field policies are not anti-cheat.
+
+### Cloud Sync delta files: T31 and T32 (U-37)
+
+A collection that declares `files.delta` stores a large file as a manifest over content-defined
+chunks (WIRE-CONTRACT-V5 §13.8.3). The Worker never reads a chunk or a manifest: it checks length
+and digest only, and a reader checks every chunk id against the plaintext. The routes are the file
+routes' (`/<p>/sync/files/…`, device bearer, `404` unless `launch.syncFiles` is on). The
+conversations are recorded in the `cloudsync-chunks*` transcripts. The plan labelled these rows T24
+and T25; those numbers are taken (the envelope AAD, the cost of files), so they are T31 and T32.
+
+- **T31, chunk equality inside one person's collection.** Deduplication means the Worker learns
+  which chunks repeat: that two versions of a save, or two records, share data, and each chunk's
+  stored size (the plaintext length plus 2 bytes in server mode, plus 30 in end-to-end mode), so
+  the cut points of a file are visible. This is the price of sending only what changed. Controls:
+  a chunk is deduplicated per person and per collection and never across either (the row key is
+  the collection and the id, and so is the R2 key, `u/<p>/<s>/c/<collection>/<id>`), so one person
+  can never learn that another stores a chunk, and a chunk is never shared between collections;
+  the plan call and the chunk `GET` answer only from the authenticated person's own object, and
+  an id that is unknown, unreferenced or another collection's is the same `404`, so there is no
+  existence oracle; in end-to-end mode the id is a keyed hash under `K_cid(c)`, a key the Worker
+  never holds, so it cannot confirm a guessed plaintext against the ids it stores. Residual: equality
+  and size inside one collection, to the Worker and to anyone who can read its storage. A collection
+  with `files.delta: false` has none of it, and server mode already gives the Worker the plaintext.
+- **T32, the caps and the collector.** What bounds a hostile or buggy client: a stored chunk is at
+  most `SYNC_CHUNK_MAX_STORED_BYTES` (1,048,606) and the `PUT` must match the size the plan
+  declared and the `Content-Digest`, or nothing is stored (`400 upload_mismatch`); a `PUT` is
+  accepted only for an id the plan answered `missing`, create-only, so a stored object is never
+  replaced; a plan call names at most 1,024 distinct ids, an upload at most 16,384, and the
+  declared sizes plus the manifest are held to the collection's `files.maxBytes`; the plan, the
+  `PUT` and the chunk `GET` share the device's 600 requests a minute; the plan reserves the stored
+  bytes of every named chunk no file references, so concurrent uploads cannot overshoot the
+  quota, and a chunk is charged once however many files and revisions name it and given back when
+  the last reference goes. The collector (the alarm) deletes a chunk only when its count is 0 and
+  no upload pins it: the plan pins every id it answers, `present` or `missing`, until `finalize`,
+  `DELETE` or expiry, so a chunk a client was told is present cannot be deleted before its
+  `finalize` (D-7). The count is taken at `finalize`, released by a revision pruned, a record
+  deleted or a copy a merge left dead, and never goes below 0; the object is deleted before its
+  row, so a failed delete is retried and a row never outlives a missing object. An erasure
+  deletes every object the rows name and then sweeps `u/<p>/<s>/` (the chunk prefix included) and
+  the prefixes of subjects merged into it. Residual: after an account merge a chunk both people
+  held exists twice under two prefixes until the erasure; an object stored with no row (a crash
+  between the store and the row) is found by a later `PUT` of other bytes under the same key and
+  refused, and goes at the erasure.
 
 ### The account override layer (U-03, U-27)
 

@@ -6,7 +6,7 @@ import { lazy, Suspense, type ComponentType, type ReactNode } from "react";
 
 import type * as Screens from "./syncScreens.js";
 
-type Name = "UnlockSync" | "RecoveryCode" | "RingChange";
+type Name = "UnlockSync" | "RecoveryCode" | "RingChange" | "SaveConflict";
 
 /** A screen of `syncScreens.tsx`, imported the first time it is drawn. */
 export function syncScreen<P>(name: Name): (props: P) => ReactNode {

@@ -59,7 +59,8 @@ private struct FileVectors: Decodable {
             let codec: Int
             let bodyHex: String
         }
-        let id, kind, rootHex, collection: String
+        let id, kind: String
+        let rootHex, collection: String?
         let plainHex, e2eIdHex, serverIdHex, idHex, objectHex: String?
         let seal: Seal?
         let expect: Expect?
@@ -183,6 +184,30 @@ private let zstd: SyncChunks.ZstdDecode = { frame, size in
     Data(try LibZstd().decode([UInt8](frame), size: size))
 }
 
+/// The reference reader of a server-mode chunk object (WIRE-CONTRACT-V5 §13.8, U-37): version byte
+/// 0, a codec byte, then the body, read in the written order of checks. Not SDK surface (an SDK
+/// reads server-mode chunks through its transfer engine); this is the corpus table's own proof, as
+/// the Node runner has it.
+private func openServerChunk(id: Data, object: Data) -> SyncChunks.Opened {
+    let maxStored = 1_048_606
+    let o = [UInt8](object)
+    if o.count < 2 { return .invalid(.shape) }
+    if o.count > maxStored { return .invalid(.size) }
+    if o[0] != 0 { return .invalid(.version) }
+    let codec = o[1]
+    if codec != 0 && codec != 1 { return .invalid(.codec) }
+    var plain = Data(o[2...])
+    if codec == 1 {
+        guard let size = SyncChunks.zstdContentSize(plain) else { return .invalid(.decode) }
+        if size > SYNC_CDC_MAX_BYTES { return .invalid(.size) }
+        guard let out = try? zstd(plain, size), out.count == size else { return .invalid(.decode) }
+        plain = out
+    }
+    if plain.count > SYNC_CDC_MAX_BYTES { return .invalid(.size) }
+    if Data(SHA256.hash(data: plain)) != id { return .invalid(.id) }
+    return .ok(plain: plain, codec: codec)
+}
+
 @Suite("Synced-file primitives (sync-vectors.json)")
 struct SyncFileVectorsTests {
     @Test(arguments: corpus.cdcCases.map(\.id))
@@ -207,12 +232,23 @@ struct SyncFileVectorsTests {
     @Test(arguments: corpus.chunkCases.map(\.id))
     func chunk(id: String) throws {
         let c = corpus.chunkCases.first { $0.id == id }!
-        let root = hex(c.rootHex)
+        if c.kind == "server-object" {
+            let got = openServerChunk(id: hex(c.idHex!), object: hex(c.objectHex!))
+            let e = c.expect!
+            if e.result == "ok" {
+                #expect(got == .ok(plain: hex(e.plainHex!), codec: UInt8(e.codec!)))
+            } else {
+                #expect(got.reason?.rawValue == e.reason)
+            }
+            return
+        }
+        let root = hex(c.rootHex!)
+        let collection = c.collection!
         switch c.kind {
         case "id":
             let plain = hex(c.plainHex!)
-            #expect(SyncChunks.chunkIdHex(root: root, collection: c.collection, plain: plain) == c.e2eIdHex)
-            #expect(SyncChunks.chunkIdHex(root: nil, collection: c.collection, plain: plain) == c.serverIdHex)
+            #expect(SyncChunks.chunkIdHex(root: root, collection: collection, plain: plain) == c.e2eIdHex)
+            #expect(SyncChunks.chunkIdHex(root: nil, collection: collection, plain: plain) == c.serverIdHex)
         case "pair":
             #expect(c.rawNonceHex != c.zstdNonceHex)
             for (obj, nonce, codec) in [
@@ -221,12 +257,12 @@ struct SyncFileVectorsTests {
                 let bytes = hex(obj)
                 #expect(hexString(bytes.subdata(in: 2..<14)) == nonce)
                 let o = SyncChunks.open(
-                    root: root, collection: c.collection, id: hex(c.idHex!), object: bytes, decode: zstd)
+                    root: root, collection: collection, id: hex(c.idHex!), object: bytes, decode: zstd)
                 #expect(o == .ok(plain: hex(c.plainHex!), codec: codec))
             }
         default:
             let opened = SyncChunks.open(
-                root: root, collection: c.collection, id: hex(c.idHex!), object: hex(c.objectHex!),
+                root: root, collection: collection, id: hex(c.idHex!), object: hex(c.objectHex!),
                 decode: zstd)
             let e = c.expect!
             if e.result == "ok" {
@@ -236,7 +272,7 @@ struct SyncFileVectorsTests {
             }
             if let s = c.seal {
                 let object = try SyncChunks.seal(
-                    root: root, collection: c.collection, id: hex(c.idHex!), codec: UInt8(s.codec),
+                    root: root, collection: collection, id: hex(c.idHex!), codec: UInt8(s.codec),
                     body: hex(s.bodyHex))
                 #expect(hexString(object) == c.objectHex)
             }

@@ -93,7 +93,8 @@ describe("sync product aggregate (U-05.9)", () => {
     expect(row).toMatchObject({
       bytes: 2100,
       users: 4,
-      settings_bytes: 2100,
+      // U-10.11: the total holds the kept revisions, so settings are what is left of it.
+      settings_bytes: 2095,
       record_bytes: 0,
       file_bytes: 0,
       revision_bytes: 5,
@@ -104,7 +105,7 @@ describe("sync product aggregate (U-05.9)", () => {
         { tierId: "free", people: 3, bytes: 1300, medianBytes: 300, over80: 1 },
         { tierId: "pro", people: 1, bytes: 800, medianBytes: 800, over80: 1 },
       ],
-      byKind: { settings: 2100, records: 0, files: 0, revisions: 5 },
+      byKind: { settings: 2095, records: 0, files: 0, revisions: 5 },
       byPlatform: [
         { platform: "ios", peopleThisWeek: 1, lastSyncAt: NOW },
         { platform: "macos", peopleThisWeek: 2, lastSyncAt: NOW },

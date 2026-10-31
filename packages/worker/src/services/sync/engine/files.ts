@@ -21,6 +21,8 @@ import {
   type FinalizeResponse,
   type SyncUploadMode,
 } from "@polaris-key/protocol/sync";
+import { refFileChunks } from "./chunks.js";
+import { pruneRevisions } from "./fileRows.js";
 import { formatHlc } from "./hlc.js";
 import { casMismatch } from "./records.js";
 import type {
@@ -29,7 +31,7 @@ import type {
   SyncStore,
   UploadRow,
 } from "./types.js";
-import { accountRecord, fileUsage } from "./usage.js";
+import { accountRecord, fileUsage, moveReserved } from "./usage.js";
 
 // ── The transfer plan (§13.8.1) ──────────────────────────────────────────────────────────────
 
@@ -63,6 +65,15 @@ export function syncTransferPlan(size: number, delta: boolean): TransferPlan {
   return { mode: "multipart", partBytes, parts: Math.ceil(size / partBytes) };
 }
 
+/**
+ * Whether server-mode files (`enc: "none"`) are stored under a per-person SSE-C key (D-8): `true`
+ * until the staging probe (`scripts/probe/r2-ssec.mjs`, U-10.W) says R2 refuses `ssecKey` on the
+ * paths a file takes, when the plan's fallback (sealing the stream as `pkey-sync-file/1`) replaces
+ * it. Neither changes the wire. End-to-end files (`enc: "e2e"`) are ciphertext already and never
+ * take it.
+ */
+export const FILE_SSEC = true;
+
 /** The R2 key of an upload's object. Only ever built here, from the pin and a session id. */
 export const fileObjectKey = (
   pin: { product: string; subject: string },
@@ -85,8 +96,8 @@ export interface BeginInput {
   collection: string;
   recordId: string;
   request: BeginFileRequest;
-  /** `single` or `multipart` (the chunks mode is U-37). */
-  mode: Extract<SyncUploadMode, "single" | "multipart">;
+  /** `single`, `multipart` or `chunks` (U-37: the manifest goes up as a `single` object). */
+  mode: SyncUploadMode;
   partBytes: number | null;
   /** The matched declaration's `maxRecords`: a `begin` that would create a record counts against it. */
   maxRecords: number;
@@ -181,12 +192,7 @@ export function commitBegin(store: SyncStore, upload: UploadRow): void {
   moveReserved(store, upload.reservedBytes);
 }
 
-/** Adds `delta` (may be negative) to the reservation, never below zero. */
-export function moveReserved(store: SyncStore, delta: number): void {
-  const usage = store.getUsage();
-  const next = Math.max(0, fileUsage(usage).reservedBytes + delta);
-  store.setUsage({ ...usage, reservedBytes: next });
-}
+export { moveReserved };
 
 /**
  * Ends a session without a file: releases its reservation exactly once (`reservedBytes` goes to 0
@@ -196,6 +202,8 @@ export function moveReserved(store: SyncStore, delta: number): void {
 export function releaseUpload(store: SyncStore, upload: UploadRow): UploadRow {
   if (upload.state === "done") return upload;
   if (upload.reservedBytes > 0) moveReserved(store, -upload.reservedBytes);
+  // The chunks the upload named are no longer pinned: the collector may take the unreferenced ones.
+  store.deleteUploadChunks(upload.uploadId);
   const ended: UploadRow = { ...upload, state: "aborted", reservedBytes: 0 };
   store.putUpload(ended);
   return ended;
@@ -246,6 +254,10 @@ export interface FinalizeInput {
   /** The write's clock owner: a clientId-shaped name derived from the device (the file routes carry none). */
   clientId: string;
   maxRecords: number;
+  /** The matched declaration's `files.keepRevisions`: the older versions the record keeps. */
+  keepRevisions: number;
+  /** The key id of the SSE-C key the object is stored under (`ssec_keys`), when it is. */
+  ssecKid?: string;
   nowMs: number;
 }
 
@@ -258,7 +270,8 @@ export type FinalizeCommit =
  * The commit of a verified upload: a record write (GF2). It re-checks `begin`'s `baseVersion`
  * against the record as it is now (GF3: any write in between is a conflict), takes the next store
  * sequence as the record's `version` and the file's, makes the stored file the live one (the
- * previous live file stays as a revision), charges its bytes and releases the reservation. A
+ * previous live file stays as a revision, and revisions past `keepRevisions` are retired), charges
+ * its bytes and releases the reservation. A
  * create-only `finalize` of a missing record makes a record with no value. The session becomes
  * `done` and keeps the answer, so a repeat of `finalize` replays it and charges nothing.
  *
@@ -309,11 +322,30 @@ export function commitFinalize(
     size: upload.size,
     sha256: upload.sha256,
     status: "live",
+    ...(input.ssecKid !== undefined ? { ssecKid: input.ssecKid } : {}),
     createdAt: input.nowMs,
     clientId: input.clientId,
   };
   store.putFile(file);
   accountFile(store, before, file, upload.reservedBytes);
+  // A delta file names the chunks its upload planned: each gets a reference (and the first one
+  // charges the chunk), then the upload lets go of its pins. Before the prune below, so a chunk
+  // the new version shares with an older one is never released and charged again.
+  if (upload.mode === "chunks") {
+    refFileChunks(
+      store,
+      file,
+      store.uploadChunks(upload.uploadId).map((c) => c.chunkId),
+    );
+    store.deleteUploadChunks(upload.uploadId);
+  }
+  // The older versions beyond `keepRevisions` die with this write; the alarm frees their bytes.
+  pruneRevisions(
+    store,
+    upload.collection,
+    upload.recordId,
+    input.keepRevisions,
+  );
 
   const result: FinalizeResponse = {
     version,

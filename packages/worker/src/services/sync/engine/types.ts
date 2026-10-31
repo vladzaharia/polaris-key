@@ -160,9 +160,10 @@ export interface ParkedRecord {
 
 /**
  * Where a stored file stands (schema v4, U-10): `live` is the one a record points at, `revision`
- * an older version kept for `keepRevisions`, `parked` a file of a record an account merge parked.
+ * an older version kept for `keepRevisions`, `parked` a file of a record an account merge parked,
+ * `dead` one nothing points at: the alarm deletes its object, then the row (no quota is held).
  */
-export type FileStatus = "live" | "revision" | "parked";
+export type FileStatus = "live" | "revision" | "parked" | "dead";
 
 /**
  * One stored file of a record (U-10). `version` is the store sequence of the `finalize` that
@@ -221,6 +222,45 @@ export interface UploadPart {
   n: number;
   etag: string;
   bytes: number;
+}
+
+/**
+ * One stored chunk of a collection (schema v5, U-37; WIRE-CONTRACT-V5 §13.8.3). The key is
+ * (collection, chunkId): chunks are deduplicated per person and per collection and never across
+ * either. `refs` is how many file rows (live, revision or parked) name the chunk; `storedBytes`
+ * is the object's size, charged once while `refs` is above 0. `objectKey` is the R2 key, only ever
+ * read from here (an absorbed chunk keeps the absorbed subject's prefix). `unrefAt` is epoch ms,
+ * or 0 when unknown. `ssecKid` names the SSE-C key of a server-mode object.
+ */
+export interface StoredChunk {
+  collection: string;
+  chunkId: string;
+  objectKey: string;
+  storedBytes: number;
+  refs: number;
+  unrefAt: number;
+  ssecKid?: string;
+}
+
+/** The chunks a stored file names, one row per (file version, distinct chunk id). */
+export interface FileChunkRef {
+  collection: string;
+  recordId: string;
+  version: number;
+  chunkId: string;
+}
+
+/**
+ * A chunk an open upload has named in a plan call. `have` is true once the object is stored (the
+ * plan answered `present`, or its `PUT` landed). `reserved` is the quota the plan reserved for it.
+ * While the row exists the chunk is pinned: the collector never deletes it (D-7).
+ */
+export interface UploadChunk {
+  uploadId: string;
+  chunkId: string;
+  storedBytes: number;
+  have: boolean;
+  reserved: number;
 }
 
 /** A removed `merge` field cell, named by where it lives and the clock of its removal. */
@@ -374,6 +414,10 @@ export interface SyncStore {
   filesOf(collection: string, recordId: string): StoredFile[];
   /** Every file row, in (collection, recordId, version) order. */
   allFiles(): StoredFile[];
+  /** The file rows in one status, oldest `version` first, at most `limit` (the alarm's work list). */
+  filesWithStatus(status: FileStatus, limit: number): StoredFile[];
+  /** Whether a file row that is not `dead` names this R2 key (the alarm never deletes such an object). */
+  fileKeyInUse(objectKey: string): boolean;
   getUpload(uploadId: string): UploadRow | undefined;
   /** Inserts or replaces the session. */
   putUpload(row: UploadRow): void;
@@ -383,6 +427,10 @@ export interface SyncStore {
   openUploads(nowMs: number): UploadRow[];
   /** Sessions with `expiresAt <= nowMs`, whatever their state, oldest first, at most `limit`. */
   expiredUploads(nowMs: number, limit: number): UploadRow[];
+  /** The earliest `expiresAt` of any session (the alarm's next date for collecting them), if there is one. */
+  nextUploadExpiry(): number | undefined;
+  /** Every session, whatever its state (an erasure or a merge's delete clears them from R2). */
+  allUploads(): UploadRow[];
   getParts(uploadId: string): UploadPart[];
   /** Inserts or replaces part `n` of the session. */
   putPart(row: UploadPart): void;
@@ -394,6 +442,37 @@ export interface SyncStore {
   deleteSsecKey(kid: string): void;
   /** Every `[kid, key]` pair, for an absorb or an export of the files that reference them. */
   allSsecKeys(): [string, Uint8Array][];
+
+  // ---- chunks (schema v5, U-37) ---------------------------------------------------------------
+
+  getChunk(collection: string, chunkId: string): StoredChunk | undefined;
+  putChunk(row: StoredChunk): void;
+  deleteChunk(collection: string, chunkId: string): void;
+  /** Every chunk row, in (collection, chunkId) order. */
+  allChunks(): StoredChunk[];
+  /**
+   * Chunks the collector may delete: `refs` 0 and no upload pins them (D-7), oldest `unrefAt`
+   * first, at most `limit` (the alarm's work list).
+   */
+  collectableChunks(limit: number): StoredChunk[];
+  /** Whether an upload (any state) has named this chunk in its collection and not yet let go of it. */
+  chunkPinned(collection: string, chunkId: string): boolean;
+  /** The distinct chunk ids a stored file names, in id order. */
+  fileChunkIds(collection: string, recordId: string, version: number): string[];
+  putFileChunks(
+    collection: string,
+    recordId: string,
+    version: number,
+    chunkIds: readonly string[],
+  ): void;
+  deleteFileChunks(collection: string, recordId: string, version: number): void;
+  /** Every file-to-chunk row, in (collection, recordId, version, chunkId) order. */
+  allFileChunks(): FileChunkRef[];
+  getUploadChunk(uploadId: string, chunkId: string): UploadChunk | undefined;
+  putUploadChunk(row: UploadChunk): void;
+  uploadChunks(uploadId: string): UploadChunk[];
+  /** Lets go of every chunk an upload pinned. */
+  deleteUploadChunks(uploadId: string): void;
 }
 
 /**

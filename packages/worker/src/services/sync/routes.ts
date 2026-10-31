@@ -6,18 +6,25 @@
  * U-05.12 adds the pull, `GET /<p>/sync` (path `""`). Every route takes the device bearer and is
  * unsigned; `auth: device` is declared here and enforced in the handler (`handlers/common.ts`).
  * U-05.13 adds the push, `POST /<p>/sync/ops`. U-10 adds the file routes under
- * `files/{collection}/{id}`; every one answers `404` while the launch gate `launch.syncFiles` is off
+ * `files/{collection}/{id}` (upload U-10.5 to .7, download and revisions U-10.8); every one answers `404` while the launch gate `launch.syncFiles` is off
  * (`handlers/files.ts`). A path no row matches is `null` (Core's not-found).
  */
 
 import { serviceRoutes } from "../../core/http/routes.js";
 import {
+  CHUNK_ID_PARAM,
   FILE_PARAMS,
   handleFileBegin,
   handleUploadAbort,
   handleUploadStatus,
 } from "./handlers/files.js";
 import { handleFinalize } from "./handlers/fileFinalize.js";
+import {
+  handleChunkGet,
+  handleChunkPlan,
+  handleChunkPut,
+} from "./handlers/fileChunks.js";
+import { handleFileGet, handleFileRevisions } from "./handlers/fileGet.js";
 import { handlePartPut, handleUploadPut } from "./handlers/fileUpload.js";
 import { handlePull } from "./handlers/pull.js";
 import { handlePush } from "./handlers/push.js";
@@ -79,6 +86,44 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
     params: FILE_PARAMS,
     handler: (ctx, match) => handlePartPut(ctx, match),
   },
+  // U-37.2: the plan call of a `chunks` upload.
+  {
+    path: "files/:collection/:id/upload/:uploadId/chunks",
+    methods: ["POST"],
+    auth: { kind: "device" },
+    cors: true,
+    params: {
+      collection: FILE_PARAMS.collection,
+      id: FILE_PARAMS.id,
+      uploadId: FILE_PARAMS.uploadId,
+    },
+    handler: (ctx, match) => handleChunkPlan(ctx, match),
+  },
+  // U-37.3: one chunk object (create-only), and the read of a chunk of a collection.
+  {
+    path: "files/:collection/:id/upload/:uploadId/chunks/:chunkId",
+    methods: ["PUT"],
+    auth: { kind: "device" },
+    cors: true,
+    params: {
+      collection: FILE_PARAMS.collection,
+      id: FILE_PARAMS.id,
+      uploadId: FILE_PARAMS.uploadId,
+      chunkId: CHUNK_ID_PARAM,
+    },
+    handler: (ctx, match) => handleChunkPut(ctx, match),
+  },
+  {
+    path: "files/:collection/chunks/:chunkId",
+    methods: ["GET"],
+    auth: { kind: "device" },
+    cors: true,
+    params: {
+      collection: FILE_PARAMS.collection,
+      chunkId: CHUNK_ID_PARAM,
+    },
+    handler: (ctx, match) => handleChunkGet(ctx, match),
+  },
   // U-10.7: the commit of an upload.
   {
     path: "files/:collection/:id/finalize",
@@ -87,5 +132,22 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
     cors: true,
     params: { collection: FILE_PARAMS.collection, id: FILE_PARAMS.id },
     handler: (ctx, match) => handleFinalize(ctx, match),
+  },
+  // U-10.8: the stored file (the live one, or a kept `?version=`), and the kept older versions.
+  {
+    path: "files/:collection/:id",
+    methods: ["GET"],
+    auth: { kind: "device" },
+    cors: true,
+    params: { collection: FILE_PARAMS.collection, id: FILE_PARAMS.id },
+    handler: (ctx, match) => handleFileGet(ctx, match),
+  },
+  {
+    path: "files/:collection/:id/revisions",
+    methods: ["GET"],
+    auth: { kind: "device" },
+    cors: true,
+    params: { collection: FILE_PARAMS.collection, id: FILE_PARAMS.id },
+    handler: (ctx, match) => handleFileRevisions(ctx, match),
   },
 ]);

@@ -27,7 +27,7 @@
  *   delete  the object (its alarm, then its storage), then the subject's row.
  *   export  the subject's directory counters and the object's full dump (live rows, tombstones,
  *           dormant platform rows, member cells, client bindings).
- *   size    the directory's `bytes + revision_bytes`, what the person's data takes on the Users
+ *   size    the directory's `bytes` (files and their revisions are inside it), what the person's data takes on the Users
  *           page (I-12); until the directory has the row (its first write has not been flushed),
  *           the object's own total.
  */
@@ -56,7 +56,11 @@ async function absorbObject(
   to: string,
 ): Promise<number> {
   for (let round = 0; round < ABSORB_ROUNDS; round++) {
-    const doc = await exportCloudSync(env, { product, subject: from });
+    const doc = await exportCloudSync(
+      env,
+      { product, subject: from },
+      { forMerge: true },
+    );
     if (!doc) return 0;
     const { skipped } = await absorbCloudSync(
       env,
@@ -85,6 +89,7 @@ interface DirectoryRow {
   records: number;
   record_bytes: number;
   files: number;
+  file_bytes: number;
   revision_bytes: number;
   quota_bytes: number;
   tier_id: string | null;
@@ -120,12 +125,13 @@ export const cloudSyncStore: SubjectStore = {
     await db.batch([
       {
         sql: `INSERT INTO sync_directory
-                (product, subject, bytes, settings, records, record_bytes, files, revision_bytes,
-                 quota_bytes, tier_id, platform, last_active_at, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (product, subject, bytes, settings, records, record_bytes, files, file_bytes,
+                 revision_bytes, quota_bytes, tier_id, platform, last_active_at, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT (product, subject) DO UPDATE SET
                 bytes = excluded.bytes, settings = excluded.settings, records = excluded.records,
-                record_bytes = excluded.record_bytes, files = excluded.files, revision_bytes = excluded.revision_bytes,
+                record_bytes = excluded.record_bytes, files = excluded.files, file_bytes = excluded.file_bytes,
+                revision_bytes = excluded.revision_bytes,
                 quota_bytes = excluded.quota_bytes, tier_id = excluded.tier_id,
                 platform = excluded.platform, last_active_at = excluded.last_active_at,
                 updated_at = excluded.updated_at`,
@@ -137,6 +143,7 @@ export const cloudSyncStore: SubjectStore = {
           a.records + (s?.records ?? 0),
           a.record_bytes + (s?.record_bytes ?? 0),
           a.files + (s?.files ?? 0),
+          a.file_bytes + (s?.file_bytes ?? 0),
           a.revision_bytes + (s?.revision_bytes ?? 0),
           Math.max(a.quota_bytes, s?.quota_bytes ?? 0),
           aLater
@@ -183,6 +190,7 @@ export const cloudSyncStore: SubjectStore = {
             records: r.records,
             recordBytes: r.record_bytes,
             files: r.files,
+            fileBytes: r.file_bytes,
             revisionBytes: r.revision_bytes,
             quotaBytes: r.quota_bytes,
             tierId: r.tier_id,
@@ -196,7 +204,7 @@ export const cloudSyncStore: SubjectStore = {
 
   async size({ db, env }, { product, subject }) {
     const r = await db.first<{ n: number }>(
-      "SELECT bytes + revision_bytes AS n FROM sync_directory WHERE product = ? AND subject = ?",
+      "SELECT bytes AS n FROM sync_directory WHERE product = ? AND subject = ?",
       product,
       subject,
     );

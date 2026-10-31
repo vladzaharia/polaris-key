@@ -1914,6 +1914,10 @@
       "detekt:style.MagicNumber": 6,
       "detekt:style.ReturnCount": 3
     },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncChunkCache.kt": {
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.ReturnCount": 1
+    },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncHost.kt": {
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:style.MaxLineLength": 1
@@ -1921,9 +1925,30 @@
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncHostPump.kt": {
       "detekt:complexity.TooManyFunctions": 1
     },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncJournal.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:style.ThrowsCount": 2
+    },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncStateFile.kt": {
       "detekt:exceptions.SwallowedException": 1,
       "detekt:exceptions.TooGenericExceptionCaught": 1
+    },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncTransfer.kt": {
+      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.CyclomaticComplexMethod": 2,
+      "detekt:complexity.LongParameterList": 4,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 5,
+      "detekt:exceptions.TooGenericExceptionCaught": 2,
+      "detekt:style.MagicNumber": 3,
+      "detekt:style.ReturnCount": 2,
+      "detekt:style.ThrowsCount": 6
+    },
+    "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncTransferCodec.kt": {
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 6,
+      "detekt:style.ReturnCount": 1
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudSyncTransport.kt": {
       "detekt:style.ReturnCount": 1
@@ -2059,6 +2084,10 @@
       "detekt:complexity.CyclomaticComplexMethod": 1,
       "detekt:exceptions.SwallowedException": 2,
       "ktlint:standard:function-naming": 1
+    },
+    "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/CloudSyncTransferTest.kt": {
+      "detekt:complexity.LongParameterList": 1,
+      "detekt:style.ReturnCount": 9
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/CommerceAttestTest.kt": {
       "detekt:style.MaxLineLength": 5,

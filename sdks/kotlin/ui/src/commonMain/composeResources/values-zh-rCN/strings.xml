@@ -828,6 +828,64 @@
     <!-- RingChange: confirm a changed sync key (U-42). Opens UnlockSync. -->
     <string name="ringChange_useCode">使用恢复码</string>
     <string name="ringChange_useCode__macos">使用恢复码</string>
+    <!-- CloudSyncStatus: a small sync status. Saves are uploading or downloading; never shown with Synced. -->
+    <string name="cloudSync_transferring">正在同步存档…</string>
+    <!-- CloudSyncStatus: how much of the transfer is done. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
+    <string name="cloudSync_transferProgress">%1$s / %2$s</string>
+    <!-- CloudSyncStatus: a small sync status. A transfer is paused until the network is back. -->
+    <string name="cloudSync_waitingNetwork">正在等待连接</string>
+    <!-- CloudSyncStatus: a small sync status. A transfer is paused until the device is charging or has enough battery. -->
+    <string name="cloudSync_waitingBattery">正在等待电源</string>
+    <!-- CloudSyncStatus: a small sync status. The system paused a transfer while the app is in the background. -->
+    <string name="cloudSync_waitingBackground">已暂停，打开应用后继续</string>
+    <!-- CloudSyncStatus: a small sync status. A transfer failed; Try again sits beside it. -->
+    <string name="cloudSync_transferFailed">无法同步存档。</string>
+    <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
+    <string name="saveConflict_title">此存档有两个版本</string>
+    <!-- SaveConflict: the same save changed on two devices; the person picks one. -->
+    <string name="saveConflict_lede">选择要保留的一个。在此之前不会删除任何内容。</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedTitle">此存档已在别处删除</string>
+    <!-- SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too. -->
+    <string name="saveConflict_deletedLede">保留在此设备上，或在此也删除。</string>
+    <!-- SaveConflict: heading of the card for the copy on this device. -->
+    <string name="saveConflict_thisDevice">此设备上的版本</string>
+    <!-- SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”). Arguments: 1=when. -->
+    <string name="saveConflict_savedThis">%1$s保存</string>
+    <!-- SaveConflict: when the other copy was saved. Arguments: {when} = a time already formatted by the platform (“yesterday, 21:40”). Arguments: 1=when. -->
+    <string name="saveConflict_savedOther">%1$s保存</string>
+    <!-- SaveConflict: heading of the card for the copy on another device. Arguments: {device} = the device's name, someone's own text. Arguments: 1=device. -->
+    <string name="saveConflict_otherDevice">%1$s上的版本</string>
+    <!-- SaveConflict: heading of the card for the other copy when the device is not known. -->
+    <string name="saveConflict_otherUnknown">另一台设备上的版本</string>
+    <!-- SaveConflict: the other copy no longer exists; there is nothing to compare. -->
+    <string name="saveConflict_deletedElsewhere">已在另一台设备上删除</string>
+    <!-- SaveConflict: keep the copy on this device and replace the other. -->
+    <string name="saveConflict_keepThis">保留此设备的版本</string>
+    <string name="saveConflict_keepThis__macos">保留此设备的版本</string>
+    <!-- SaveConflict: keep the other copy and replace the one on this device. -->
+    <string name="saveConflict_keepOther">保留另一个版本</string>
+    <string name="saveConflict_keepOther__macos">保留另一个版本</string>
+    <!-- SaveConflict: the other copy was deleted; remove the one on this device as well. -->
+    <string name="saveConflict_acceptDelete">在此也删除</string>
+    <string name="saveConflict_acceptDelete__macos">在此也删除</string>
+    <!-- SaveConflict: keep both; the other copy is saved under a new name. Disabled while every save slot is in use. -->
+    <string name="saveConflict_keepBoth">两个都保留</string>
+    <string name="saveConflict_keepBoth__macos">两个都保留</string>
+    <!-- SaveConflict: why Keep both is disabled. Shown beside the disabled control. -->
+    <string name="saveConflict_bothFull">存档位已全部占用。删除一个存档后才能两个都保留。</string>
+    <!-- SaveConflict: the choice is being applied. -->
+    <string name="saveConflict_keeping">正在应用你的选择…</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptLocal">已保留此设备的存档。</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptRemote">已保留另一个存档。</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptBoth">两个都已保留。另一个已另存为副本。</string>
+    <!-- SaveConflict: the choice was applied. -->
+    <string name="saveConflict_keptDeleted">存档已删除。</string>
+    <!-- SaveConflict: applying the choice failed; Try again repeats it. -->
+    <string name="saveConflict_failed">无法应用你的选择。两个存档均未更改。</string>
     <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="about_title">关于%1$s</string>
     <!-- About: product and build information. The bare section label in a navigation list; the product name is not repeated. -->

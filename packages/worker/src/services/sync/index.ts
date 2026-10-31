@@ -17,7 +17,8 @@
  * U-04 landed the slug, the descriptor, its settings slice and its discovery fragment. U-05 serves
  * the device routes under `/<p>/sync` (pull and push) from the per-principal Durable Object, and
  * the fragment names them; records are U-09's (`collections` turns true when the catalog declares
- * one) and files on records U-10's, so those stay off. An
+ * one) and files on records U-10's (`saves` and `files` turn on with the file store and the
+ * operator's gate `launch.syncFiles`, U-10.9). An
  * SDK uses an endpoint only when discovery names it (WIRE-CONTRACT-V4 §13.5).
  */
 
@@ -29,7 +30,11 @@ import { getActiveSchema } from "../../core/products/store.js";
 import { SYNC_SETTINGS_SLICE } from "./settings.js";
 
 import { handleSyncAdmin } from "./admin/index.js";
-import { catalogDeclaresCollections, syncMode } from "./handlers/common.js";
+import {
+  catalogDeclaresCollections,
+  fileStoreOn,
+  syncMode,
+} from "./handlers/common.js";
 import { syncKeyring } from "./keyring.js";
 import { syncIntegration } from "./integration.js";
 import { syncProductDeletion, syncProductPurge } from "./productDeletion.js";
@@ -80,16 +85,19 @@ export const syncService: ServiceDescriptor = {
     // one collection.
     const active = await getActiveSchema(db, product.slug);
     const mode = await syncMode(env, db, product.slug, active);
+    // U-10 (§13.5, GF6): `saves` and `files` are on, and `endpoints.files` named, only while the
+    // Worker has a file store and the operator's launch gate `launch.syncFiles` is on.
+    const files = await fileStoreOn(env, db);
     return {
       enabled: true,
       settings: true,
       collections: catalogDeclaresCollections(active),
-      saves: false,
+      saves: files,
       ...(mode.advertise !== undefined ? { encryption: mode.advertise } : {}),
       endpoints: {
         pull: `${base}/sync`,
         push: `${base}/sync/ops`,
-        files: null,
+        files: files ? `${base}/sync/files` : null,
         ...(mode.advertise === "e2e"
           ? { keyring: `${base}/devices/keyring` }
           : {}),

@@ -6,6 +6,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { R2Mock, asR2 } from "../../r2Mock.js";
 import {
   type MutationResult,
   type SyncMutation,
@@ -154,7 +155,9 @@ describe("CloudSyncDO: lazy schema", () => {
     });
     const inst = ns.instance(nameOf(P, ALICE));
     expect(tables(ns, nameOf(P, ALICE))).toEqual([
+      "chunks",
       "clients",
+      "file_chunks",
       "files",
       "meta",
       "parked_records",
@@ -165,6 +168,7 @@ describe("CloudSyncDO: lazy schema", () => {
       "settings",
       "ssec_keys",
       "tombstones",
+      "upload_chunks",
       "upload_parts",
       "uploads",
     ]);
@@ -234,14 +238,14 @@ describe("CloudSyncDO: lazy schema", () => {
   });
 });
 
-describe("CloudSyncDO: schema v4 (files, U-10.4)", () => {
+describe("CloudSyncDO: schema v4 (files, U-10.4) and v5 (chunks, U-37.1)", () => {
   const request = (op: Record<string, unknown>) =>
     new Request("https://do/", {
       method: "POST",
       body: JSON.stringify({ product: P, subject: ALICE, ...op }),
     });
 
-  it("migrates a v3 object on its first read, with the file tables empty, and refuses v5", async () => {
+  it("migrates a v3 object on its first read, with the file and chunk tables empty, and refuses v6", async () => {
     const storage = new DoStorageMock();
     for (const step of MIGRATIONS.slice(0, 3))
       for (const stmt of step) storage.sql.exec(stmt);
@@ -258,13 +262,21 @@ describe("CloudSyncDO: schema v4 (files, U-10.4)", () => {
       storage.sql.db
         .prepare("SELECT value FROM meta WHERE key = 'schema_version'")
         .get(),
-    ).toEqual({ value: "4" });
+    ).toEqual({ value: "5" });
     expect(
-      rowCounts(storage, ["files", "uploads", "upload_parts", "ssec_keys"]),
-    ).toEqual([0, 0, 0, 0]);
+      rowCounts(storage, [
+        "files",
+        "uploads",
+        "upload_parts",
+        "ssec_keys",
+        "chunks",
+        "file_chunks",
+        "upload_chunks",
+      ]),
+    ).toEqual([0, 0, 0, 0, 0, 0, 0]);
     // Written by a build with a schema this one does not know: refused, left as it is.
     storage.sql.exec(
-      "UPDATE meta SET value = '5' WHERE key = 'schema_version'",
+      "UPDATE meta SET value = '6' WHERE key = 'schema_version'",
     );
     const refused = await obj.fetch(request({ op: "usage" }));
     expect(refused.status).toBe(500);
@@ -273,11 +285,35 @@ describe("CloudSyncDO: schema v4 (files, U-10.4)", () => {
       storage.sql.db
         .prepare("SELECT value FROM meta WHERE key = 'schema_version'")
         .get(),
+    ).toEqual({ value: "6" });
+  });
+
+  it("migrates a v4 object with files in it to v5, keeping every row", async () => {
+    const storage = new DoStorageMock();
+    for (const step of MIGRATIONS.slice(0, 4))
+      for (const stmt of step) storage.sql.exec(stmt);
+    storage.sql.exec(
+      `INSERT INTO meta (key, value) VALUES ('schema_version', '4'), ('product', '${P}'), ('subject', '${ALICE}');
+       INSERT INTO files VALUES ('c', 'r', 1, 'u/p/s/o/x', 'whole', 'none', 5, '${"ab".repeat(32)}', 'live', NULL, 1, 'c1');`,
+    );
+    const obj = new CloudSyncDO(
+      { storage } as unknown as DurableObjectState,
+      {} as Env,
+    );
+    expect((await obj.fetch(request({ op: "usage" }))).status).toBe(200);
+    expect(
+      storage.sql.db
+        .prepare("SELECT value FROM meta WHERE key = 'schema_version'")
+        .get(),
     ).toEqual({ value: "5" });
+    expect(rowCounts(storage, ["files", "chunks"])).toEqual([1, 0]);
   });
 
   it("an erased object keeps no file row, upload or SSE-C key", async () => {
-    const ns = new CloudSyncNamespaceMock();
+    // U-10.10: an erasure that holds files deletes their objects first, so it needs the file store.
+    const ns = new CloudSyncNamespaceMock({}, {
+      SYNC_FILES: asR2(new R2Mock()),
+    } as never);
     ids = 1;
     await push(ns, ALICE, [mut("a", "set", { value: 1 })], [LAST_WRITE]);
     const db = ns.instance(nameOf(P, ALICE)).storage.sql.db;

@@ -136,6 +136,7 @@ __all__ = [
     "SYNC_CDC_MIN_BYTES",
     "SYNC_CHUNK_FORMAT",
     "SYNC_CHUNK_ID_PATTERN",
+    "SYNC_CHUNK_MAX_STORED_BYTES",
     "SYNC_CHUNK_PLAN_MAX_IDS",
     "SYNC_CHUNK_REQUESTS_PER_MINUTE",
     "SYNC_CLIENT_ID_PATTERN",
@@ -154,6 +155,7 @@ __all__ = [
     "SYNC_KEY_PATTERN",
     "SYNC_KID_PATTERN",
     "SYNC_MANIFEST_FORMAT",
+    "SYNC_MANIFEST_MAX_STORED_BYTES",
     "SYNC_MAX_CHUNKS_PER_FILE",
     "SYNC_MAX_CLOCK_SKEW_MS",
     "SYNC_MAX_MERGE_MEMBERS",
@@ -2072,6 +2074,10 @@ SYNC_CHUNK_FORMAT: Final[str] = "pkey-sync-chunk/1"
 SYNC_CHUNK_ID_PATTERN: Final[str] = "^[0-9a-f]{64}$"
 
 
+#: Cloud Sync: `SYNC_CHUNK_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.3 (U-37), `@polaris-key/protocol/sync`).
+SYNC_CHUNK_MAX_STORED_BYTES: Final[int] = 1048606
+
+
 #: Cloud Sync: `SYNC_CHUNK_PLAN_MAX_IDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).
 SYNC_CHUNK_PLAN_MAX_IDS: Final[int] = 1024
 
@@ -2142,6 +2148,10 @@ SYNC_KID_PATTERN: Final[str] = "^[0-9a-f]{32}$"
 
 #: Cloud Sync: `SYNC_MANIFEST_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`).
 SYNC_MANIFEST_FORMAT: Final[str] = "pkey-sync-chunks/1"
+
+
+#: Cloud Sync: `SYNC_MANIFEST_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.1 (U-37), `@polaris-key/protocol/sync`).
+SYNC_MANIFEST_MAX_STORED_BYTES: Final[int] = 786576
 
 
 #: Cloud Sync: `SYNC_MAX_CHUNKS_PER_FILE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`).

@@ -1857,7 +1857,7 @@ export class CloudSyncMachine {
     latchKey: string,
     version: number,
     open: OpenedRow | undefined,
-    cursor?: number,
+    cursor: number,
   ): { bad?: true; plain?: number } {
     if (!this.requiresE2e()) return {};
     if (open?.invalid === true) return { bad: true };
@@ -1871,10 +1871,7 @@ export class CloudSyncMachine {
     if (latchKey !== "" && p.sealedKeys?.[latchKey] === true)
       return { bad: true };
     // Guard (b): legacy only if the request's cursor was still below the boundary.
-    if (
-      cursor !== undefined &&
-      (p.encryptionSince === undefined || cursor >= p.encryptionSince)
-    )
+    if (p.encryptionSince === undefined || cursor >= p.encryptionSince)
       return { bad: true };
     return { plain: open.seq };
   }

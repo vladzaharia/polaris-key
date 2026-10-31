@@ -46,7 +46,7 @@ const NO_STORE = { "cache-control": "no-store" } as const;
 type Prepared = Extract<FilePrepareOutcome, { ok: true }>;
 
 /** A non-negative integer `Content-Length`, or null for a missing or malformed one. */
-function contentLength(req: Request): number | null {
+export function contentLength(req: Request): number | null {
   const raw = req.headers.get("content-length");
   if (raw === null || !/^[0-9]{1,16}$/.test(raw)) return null;
   const n = Number(raw);
@@ -54,7 +54,7 @@ function contentLength(req: Request): number | null {
 }
 
 /** The body is never read on a refusal: say so, so the connection is not held for it. */
-async function refuse(req: Request, res: Response): Promise<Response> {
+export async function refuse(req: Request, res: Response): Promise<Response> {
   await req.body?.cancel().catch(() => undefined);
   return res;
 }
@@ -95,8 +95,9 @@ async function session(
     return out.error === "upload_expired"
       ? wireError(410, "upload_expired")
       : notFound();
-  // The route against the session's mode: a part belongs to a multipart session, the whole to a single one.
-  if ((part === null) !== (out.mode === "single"))
+  // The route against the session's mode: a part belongs to a multipart session, the whole to a
+  // single one, and a `chunks` session's manifest goes up as a single object (§13.8.1).
+  if ((part === null) === (out.mode === "multipart"))
     return wireError(400, "upload_mismatch");
   return { prep: out, call: { ...call, caller: prepared.caller } };
 }
@@ -152,6 +153,8 @@ export async function handleUploadPut(
     const put = await bucket.put(prep.key, body, {
       sha256: prep.sha256,
       onlyIf: new Headers({ "If-None-Match": "*" }),
+      // A server-mode file is stored under the person's key (SSE-C, D-8).
+      ...(prep.ssecKey !== undefined ? { ssecKey: prep.ssecKey } : {}),
     });
     if (put !== null) etag = put.etag;
     else {
@@ -210,7 +213,11 @@ export async function handlePartPut(
     const hashed = hashBody(req.body as ReadableStream<Uint8Array>);
     const uploaded = await bucket
       .resumeMultipartUpload(prep.key, prep.multipartId as string)
-      .uploadPart(n, fixedLength(hashed.stream, expected));
+      .uploadPart(
+        n,
+        fixedLength(hashed.stream, expected),
+        prep.ssecKey !== undefined ? { ssecKey: prep.ssecKey } : undefined,
+      );
     if ((await hashed.digest) !== digest) {
       await forget();
       return wireError(400, "upload_mismatch");

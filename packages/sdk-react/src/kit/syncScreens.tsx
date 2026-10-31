@@ -30,6 +30,7 @@ export type { SyncScreenProps };
 const UnlockSync_ = kitComponent("UnlockSync");
 const RecoveryCode_ = kitComponent("RecoveryCode");
 const RingChange_ = kitComponent("RingChange");
+const SaveConflict_ = kitComponent("SaveConflict");
 
 type Step = NonNullable<UiInput["unlockSync"]>["step"];
 
@@ -299,6 +300,49 @@ function DrivenRing(props: RingChangeProps & { ring: Ring }): ReactNode {
             if (!busy) onCancel?.();
             break;
         }
+      }}
+    />
+  );
+}
+
+// ── SaveConflict ─────────────────────────────────────────────────────────────────────────────
+
+/** The copy the person keeps: this device's, the other, or both (the other as a copy). */
+export type SaveKeep = "local" | "remote" | "both";
+
+export interface SaveConflictProps extends SyncScreenProps {
+  /** A choice was made (the host applies it and moves `input.saveConflict.step` on). */
+  onKeep?: (keep: SaveKeep) => void;
+  /** Try again, after a choice failed. */
+  onRetry?: () => void;
+  /** Cancel (or Escape): the conflict stays as it was. */
+  onCancel?: () => void;
+  /** Done, after the choice was kept. */
+  onDone?: () => void;
+}
+
+const KEEPS: Readonly<Record<string, SaveKeep>> = {
+  "saveConflict.keepThis": "local",
+  "saveConflict.keepOther": "remote",
+  "saveConflict.acceptDelete": "remote",
+  "saveConflict.keepBoth": "both",
+};
+
+/** The same save changed on two devices: pick the copy to keep. The plain part today, driven by
+ *  `input.saveConflict`; the binding to the saves client follows U-22.7. With no conflict in the
+ *  input it draws nothing. */
+export function SaveConflict(props: SaveConflictProps): ReactNode {
+  const { onKeep, onRetry, onCancel, onDone, ...rest } = props;
+  return (
+    <SaveConflict_
+      {...rest}
+      onAction={(a) => {
+        rest.onAction?.(a);
+        const keep = KEEPS[a.key];
+        if (keep) onKeep?.(keep);
+        else if (a.key === "common.tryAgain") onRetry?.();
+        else if (a.key === "common.cancel") onCancel?.();
+        else if (a.key === "common.done") onDone?.();
       }}
     />
   );

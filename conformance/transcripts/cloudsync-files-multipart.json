@@ -1,0 +1,313 @@
+{
+  "transcriptVersion": 1,
+  "id": "cloudsync-files-multipart",
+  "description": "A multipart session (§13.8.1): a file one byte over 16 MiB gets mode multipart with 8 MiB parts, so its third part is one byte. Part 3 is sent, the resume answer lists it, finalize answers 409 upload_incomplete with the missing parts 1 and 2, and the abort answers 204 and ends the session (the status is then 404).",
+  "features": ["sync.files"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_sU3jSHcr9MI_3ptYM9P91zMtsLw_lBmMwzjTa2Jsm1k",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "cloudSyncFile",
+      "note": "17 MiB declared; the bytes are never all sent here.",
+      "args": {
+        "op": "begin",
+        "collection": "docs",
+        "id": "big",
+        "size": 16777217
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/files/docs/big/begin",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": {
+                  "size": 16777217,
+                  "sha256": "abababababababababababababababababababababababababababababababab",
+                  "format": "whole",
+                  "enc": "none"
+                },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "uploadId": "up_fPx2poyZMlJFFhSF8g3iaQ",
+                "mode": "multipart",
+                "partBytes": 8388608,
+                "expiresAt": 1700086400000
+              }
+            },
+            "capture": { "uploadId": "$.uploadId" }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "status": 200,
+        "mode": "multipart",
+        "partBytes": 8388608
+      }
+    },
+    {
+      "action": "cloudSyncFile",
+      "note": "The last part, one byte.",
+      "args": {
+        "op": "part",
+        "collection": "docs",
+        "id": "big",
+        "part": 3,
+        "size": 1
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "PUT",
+              "path": "/djdl/sync/files/docs/big/upload/up_fPx2poyZMlJFFhSF8g3iaQ/parts/3",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}",
+                "content-digest": "sha-256=:CE/tCLl4r019GWp0RqhrWACeY2thHbFiEbZamq3/KcU=:",
+                "content-type": "application/octet-stream"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": null,
+              "bodyBase64": "Aw=="
+            },
+            "response": {
+              "status": 204,
+              "headers": { "cache-control": "no-store" },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "result": "ok", "status": 204 }
+    },
+    {
+      "action": "cloudSyncFile",
+      "note": "Resume: only part 3 is there.",
+      "args": { "op": "status", "collection": "docs", "id": "big" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync/files/docs/big/upload/up_fPx2poyZMlJFFhSF8g3iaQ",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "mode": "multipart",
+                "size": 16777217,
+                "partBytes": 8388608,
+                "received": [3],
+                "expiresAt": 1700086400000
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "status": 200,
+        "mode": "multipart",
+        "size": 16777217,
+        "received": [3]
+      }
+    },
+    {
+      "action": "cloudSyncFile",
+      "note": "Parts 1 and 2 are missing.",
+      "args": { "op": "finalize", "collection": "docs", "id": "big" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/sync/files/docs/big/finalize",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "uploadId": "up_fPx2poyZMlJFFhSF8g3iaQ" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 409,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": { "code": "upload_incomplete" },
+                "missing": [1, 2]
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "status": 409,
+        "code": "upload_incomplete",
+        "missing": [1, 2]
+      }
+    },
+    {
+      "action": "cloudSyncFile",
+      "note": "Abort: the session ends, the reservation is released.",
+      "args": { "op": "abort", "collection": "docs", "id": "big" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "DELETE",
+              "path": "/djdl/sync/files/docs/big/upload/up_fPx2poyZMlJFFhSF8g3iaQ",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 204,
+              "headers": { "cache-control": "no-store" },
+              "body": ""
+            }
+          }
+        ]
+      },
+      "expect": { "result": "ok", "status": 204 }
+    },
+    {
+      "action": "cloudSyncFile",
+      "note": "The session is gone.",
+      "args": { "op": "status", "collection": "docs", "id": "big" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/sync/files/docs/big/upload/up_fPx2poyZMlJFFhSF8g3iaQ",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 404,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": "not_found" }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 404 }
+    }
+  ]
+}

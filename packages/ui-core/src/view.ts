@@ -122,6 +122,8 @@ export interface ViewSpec<S> {
   copy: readonly (string | false | null | undefined)[];
   /** Actions with no copy key of their own (`replace-in-browser`). */
   extraActions?: readonly Action[];
+  /** Actions of a control drawn disabled: its label is copy, but the view does not offer it. */
+  disabledActions?: readonly Action[];
   args?: Record<string, string | number | undefined>;
   /** The arguments a key takes instead of `args` (`View.keyArgs`). */
   keyArgs?: Record<string, Record<string, string | number | undefined>>;
@@ -157,7 +159,9 @@ export function makeView<C extends ScreenName, S extends string>(
     component,
     state: spec.state,
     copy,
-    actions: actionsFor(copy, spec.extraActions),
+    actions: actionsFor(copy, spec.extraActions).filter(
+      (x) => !spec.disabledActions?.includes(x),
+    ),
     args,
     ...(keyArgs ? { keyArgs } : {}),
     isolate: [

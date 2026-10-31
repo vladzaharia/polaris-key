@@ -94,6 +94,7 @@ function contentFor(c: RenderCtx): TemplateResult | typeof nothing {
     case "UnlockSync":
     case "RecoveryCode":
     case "RingChange":
+    case "SaveConflict":
       return syncContent(c);
     case "Activate": {
       const verdict = [
@@ -227,6 +228,9 @@ function progressFor(c: RenderCtx): TemplateResult | typeof nothing {
     )
       return progressBar(c, e.done / e.total);
   }
+  // A transfer's bar is determinate only with counted bytes (DL7).
+  if (view.component === "CloudSyncStatus" && view.state === "transferring")
+    return progressBar(c, input.cloudSync?.transfer?.fraction);
   const p = input.update?.progress;
   if (
     (view.component === "UpdatePrompt" && view.state === "downloading") ||
@@ -577,7 +581,7 @@ function statusGlyph(view: View): TemplateResult | typeof nothing {
         ? GLYPHS.offline()
         : s === "synced"
           ? GLYPHS.success()
-          : s === "syncing"
+          : s === "syncing" || s === "transferring"
             ? nothing
             : GLYPHS.warning();
   return nothing;
@@ -596,7 +600,9 @@ function statusOf(view: View): string {
     // A sync that failed for want of a sign-in is neutral, not a fault (DL6).
     return view.decisions.tone === "neutral"
       ? "neutral"
-      : view.state === "conflict" || view.state === "error"
+      : view.state === "conflict" ||
+          view.state === "error" ||
+          view.state === "transfer-failed"
         ? "warning"
         : view.state === "synced"
           ? "success"
@@ -651,7 +657,10 @@ function strip(
 /** A small status inside the host's layout. */
 function inline(c: RenderCtx, layout: Layout): TemplateResult {
   const p = placeKeys(c.view, layout);
-  const lines = [...p.titles, ...p.meta, ...p.body];
+  // The label first, then its figures: view.copy is sorted, the layout's meta list is the order.
+  const order = layout.meta ?? [];
+  const meta = [...p.meta].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const lines = [...p.titles, ...meta, ...p.body];
   return html`<div
     class="inline-status"
     part="status"

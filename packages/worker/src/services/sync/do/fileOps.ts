@@ -15,9 +15,17 @@
 import { SYNC_MAX_OPEN_UPLOADS } from "@polaris-key/protocol/sync";
 import type { UploadStatus } from "@polaris-key/protocol/sync";
 import {
+  chunkObjectKey,
+  missingChunks,
+  planChunks,
+  prepareChunk,
+  storeChunk,
+} from "../engine/chunks.js";
+import {
   checkBegin,
   commitBegin,
   commitFinalize,
+  FILE_SSEC,
   FINALIZE_LEASE_MS,
   fileObjectKey,
   finalizeLease,
@@ -26,6 +34,8 @@ import {
 import { markDirty } from "./directory.js";
 import type { SyncStore, UploadRow } from "../engine/types.js";
 import type {
+  ChunkPlanOutcome,
+  ChunkPrepareOutcome,
   CloudSyncError,
   CloudSyncOp,
   CloudSyncReply,
@@ -35,6 +45,8 @@ import type {
   FinalizePrepareOutcome,
 } from "./protocol.js";
 import type { FinalizeResponse } from "@polaris-key/protocol/sync";
+import { hexEncode } from "../../../platform/bytes.js";
+import { randomBytes, randomToken } from "../../../platform/random.js";
 import type { SqlStore } from "./sqlStore.js";
 
 /** What an operation hands back to `fetch`: a body in the object's protocol and a status. */
@@ -59,6 +71,9 @@ const refuse = (code: CloudSyncError["error"], status: number): FileReply => ({
   body: { error: code },
   status,
 });
+
+/** `meta` flag: this object has had an upload or a file, so its R2 prefix may hold objects. */
+export const FILES_USED = "files_used";
 
 /** The first write: makes the schema and pins the pair, in one transaction. */
 function pinned(host: FileHost, pin: DoPin): void {
@@ -101,7 +116,7 @@ async function dropObjects(
  * session whose R2 cleanup failed stays as it is, reserved, and is tried again; so the quota never
  * goes back to a person while bytes of theirs may still sit in the bucket.
  */
-async function discard(
+export async function discard(
   host: FileHost,
   pin: DoPin,
   u: UploadRow,
@@ -110,6 +125,39 @@ async function discard(
   if (!(await dropObjects(host, pin, u))) return false;
   host.store.transaction(() => releaseUpload(host.store, u));
   return true;
+}
+
+// ── SSE-C (D-8) ──────────────────────────────────────────────────────────────────────────────
+
+/** `meta` key naming the person's current SSE-C key (`ssec_keys.kid`). */
+const SSEC_KID = "ssec_kid";
+
+/** Whether an upload of this `enc` is stored under the person's SSE-C key. */
+const sealed = (enc: UploadRow["enc"]): boolean => FILE_SSEC && enc === "none";
+
+/**
+ * The person's SSE-C key id, made on first use: a random 256-bit key kept in `ssec_keys` and shredded
+ * with the person's data (`deleteAll`). One key per person; every server-mode file of theirs
+ * references it by `files.ssec_kid`, so an absorb carries the keys its files need.
+ */
+function ensureSsecKey(host: FileHost): string {
+  const have = host.store.getMeta(SSEC_KID);
+  if (have !== undefined && host.store.getSsecKey(have)) return have;
+  const kid = `sk_${randomToken(12)}`;
+  const key = randomBytes(32);
+  host.store.transaction(() => {
+    host.store.putSsecKey(kid, key);
+    host.store.setMeta(SSEC_KID, kid);
+  });
+  return kid;
+}
+
+/** The hex of the key an upload of this `enc` is stored under, or undefined when it takes none. */
+function ssecKeyOf(host: FileHost, enc: UploadRow["enc"]): string | undefined {
+  if (!sealed(enc)) return undefined;
+  const kid = host.store.getMeta(SSEC_KID);
+  const key = kid === undefined ? undefined : host.store.getSsecKey(kid);
+  return key ? hexEncode(key) : undefined;
 }
 
 /** Collects expired sessions (a few at a time): finished or ended ones are just forgotten. */
@@ -149,18 +197,25 @@ export function fileBegin(
     });
     if (!out.ok) return ok({ op: "fileBegin", outcome: out });
     const upload: UploadRow = { ...out.upload };
+    if (sealed(upload.enc)) ensureSsecKey(host);
     if (upload.mode === "multipart") {
       if (!host.bucket) return refuse("unavailable", 503);
       try {
+        const ssecKey = ssecKeyOf(host, upload.enc);
         const created = await host.bucket.createMultipartUpload(
           fileObjectKey(op, upload.uploadId),
+          ssecKey !== undefined ? { ssecKey } : undefined,
         );
         upload.multipartId = created.uploadId;
       } catch {
         return refuse("unavailable", 503);
       }
     }
-    host.store.transaction(() => commitBegin(host.store, upload));
+    host.store.transaction(() => {
+      commitBegin(host.store, upload);
+      // An erasure and a merge's delete look in R2 only for a person who ever used it.
+      host.store.setMeta(FILES_USED, "1");
+    });
     return ok({
       op: "fileBegin",
       outcome: {
@@ -196,9 +251,10 @@ function statusOf(host: FileHost, u: UploadRow): UploadStatus {
     size: u.size,
     ...(u.partBytes !== null ? { partBytes: u.partBytes } : {}),
     // A single `PUT` is part 1, so a client that lost the answer can see whether it landed.
-    ...(u.mode === "multipart" || u.mode === "single"
-      ? { received: parts }
-      : {}),
+    // A `chunks` upload's manifest is its part 1, and its resume answer lists the chunks it lacks.
+    ...(u.mode === "chunks"
+      ? { received: parts, missing: missingChunks(host.store, u.uploadId) }
+      : { received: parts }),
     expiresAt: u.expiresAt,
   };
 }
@@ -267,6 +323,133 @@ export function fileAbort(
 }
 
 /**
+ * The plan call of a `chunks` upload (U-37.2). The session must be open and in `chunks` mode; the
+ * answer and the pins are `engine/chunks.ts`'s, applied in one transaction.
+ */
+export async function fileChunkPlan(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "fileChunkPlan" }>,
+): Promise<FileReply> {
+  const s = await liveSession(host, op, true);
+  const answer = (outcome: ChunkPlanOutcome) =>
+    ok({ op: "fileChunkPlan", outcome });
+  if ("error" in s) return answer({ ok: false, error: s.error });
+  if (s.u.mode !== "chunks") return answer({ ok: false, mismatch: true });
+  const upload = s.u;
+  return answer(
+    host.store.transaction(() =>
+      planChunks(host.store, {
+        upload,
+        chunks: op.chunks,
+        maxBytes: op.maxBytes,
+        limits: op.limits,
+      }),
+    ),
+  );
+}
+
+/**
+ * What a chunk `PUT` streams against (U-37.3): the session must be open and in `chunks` mode, and
+ * the plan must have answered the id `missing`. An id it answered `present` (or that landed
+ * already) is `have`: a resend stores nothing.
+ */
+export async function chunkPrepare(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "chunkPrepare" }>,
+): Promise<FileReply> {
+  const s = await liveSession(host, op, true);
+  const answer = (outcome: ChunkPrepareOutcome) =>
+    ok({ op: "chunkPrepare", outcome });
+  if ("error" in s) return answer({ ok: false, error: s.error });
+  if (s.u.mode !== "chunks") return answer({ ok: false, mismatch: true });
+  const p = prepareChunk(host.store, s.u, op.chunkId);
+  if (p.kind === "unplanned") return answer({ ok: false, mismatch: true });
+  if (p.kind === "have") return answer({ ok: true, have: true });
+  const ssecKey = ssecKeyOf(host, s.u.enc);
+  return answer({
+    ok: true,
+    have: false,
+    key: chunkObjectKey(op, op.collection, op.chunkId),
+    bytes: p.storedBytes,
+    ...(ssecKey !== undefined ? { ssecKey } : {}),
+  });
+}
+
+/**
+ * Records a chunk object R2 took. The chunk row is written whatever became of the session while
+ * the bytes were on their way (a row is how the collector finds the object); the session takes the
+ * chunk only if it is still open.
+ */
+export function chunkStored(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "chunkStored" }>,
+): FileReply {
+  host.store.prepare(false);
+  const u = sessionOf(host, op);
+  const open =
+    u !== undefined &&
+    u.state === "open" &&
+    u.mode === "chunks" &&
+    u.expiresAt > op.serverNow &&
+    host.store.getUploadChunk(u.uploadId, op.chunkId) !== undefined;
+  host.store.transaction(() =>
+    storeChunk(
+      host.store,
+      {
+        collection: op.collection,
+        chunkId: op.chunkId,
+        objectKey: chunkObjectKey(op, op.collection, op.chunkId),
+        storedBytes: op.bytes,
+        ...(u !== undefined && sealed(u.enc) ? ssecKidOf(host) : {}),
+        nowMs: op.serverNow,
+      },
+      open ? u : undefined,
+    ),
+  );
+  return ok({
+    op: "chunkStored",
+    outcome: open ? { ok: true } : { ok: false, error: "not_found" },
+  });
+}
+
+/** The key id of the person's SSE-C key, as a spread member, or nothing. */
+function ssecKidOf(host: FileHost): { ssecKid?: string } {
+  const kid = host.store.getMeta(SSEC_KID);
+  return kid !== undefined ? { ssecKid: kid } : {};
+}
+
+/**
+ * The read of a chunk (`GET …/files/{collection}/chunks/{chunkId}`): the key and size from this
+ * object's rows, and only for a chunk some stored file of the collection references. An id that is
+ * unknown, unreferenced (waiting for the collector, or pinned by an upload alone) or another
+ * collection's is `not_found`: the answer is the same for all of them.
+ */
+export function chunkResolve(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "chunkResolve" }>,
+): FileReply {
+  host.store.prepare(false);
+  const none = ok({
+    op: "chunkResolve",
+    outcome: { ok: false, error: "not_found" },
+  });
+  const row = host.store.getChunk(op.collection, op.chunkId);
+  if (!row || row.refs <= 0) return none;
+  const ssec =
+    row.ssecKid !== undefined ? host.store.getSsecKey(row.ssecKid) : undefined;
+  if (row.ssecKid !== undefined && !ssec) return none;
+  return ok({
+    op: "chunkResolve",
+    outcome: {
+      ok: true,
+      key: row.objectKey,
+      size: row.storedBytes,
+      ...(ssec ? { ssecKey: hexEncode(ssec) } : {}),
+    },
+  });
+}
+
+/**
  * The session a byte request streams against. Only an `open` session takes bytes: one that is
  * finishing, done or ended is `not_found`, and one past its 24 hours is collected here and answers
  * `upload_expired`, exactly as the resume call does.
@@ -291,6 +474,9 @@ export async function filePrepare(
               ? Math.ceil(s.u.size / s.u.partBytes)
               : 1,
           multipartId: s.u.multipartId,
+          ...(ssecKeyOf(host, s.u.enc) !== undefined
+            ? { ssecKey: ssecKeyOf(host, s.u.enc) as string }
+            : {}),
         };
   return ok({ op: "filePrepare", outcome });
 }
@@ -323,6 +509,71 @@ export function filePart(
       });
   });
   return ok({ op: "filePart", outcome: { ok: true } });
+}
+
+// ── download and revisions (U-10.8) ──────────────────────────────────────────────────────────
+
+/**
+ * The file a download streams: the record's live one, or the kept `version` (live or a revision).
+ * A parked file belongs to no live record, and a dead one is waiting to be collected: neither is
+ * served. The key comes from the row, never from the request.
+ */
+export function fileResolve(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "fileResolve" }>,
+): FileReply {
+  host.store.prepare(false);
+  const row =
+    op.version === undefined
+      ? host.store.liveFile(op.collection, op.recordId)
+      : host.store.getFile(op.collection, op.recordId, op.version);
+  if (!row || (row.status !== "live" && row.status !== "revision"))
+    return ok({
+      op: "fileResolve",
+      outcome: { ok: false, error: "not_found" },
+    });
+  const ssec =
+    row.ssecKid !== undefined ? host.store.getSsecKey(row.ssecKid) : undefined;
+  // A file under a key the object no longer holds cannot be opened: it is gone, not unreadable.
+  if (row.ssecKid !== undefined && !ssec)
+    return ok({
+      op: "fileResolve",
+      outcome: { ok: false, error: "not_found" },
+    });
+  return ok({
+    op: "fileResolve",
+    outcome: {
+      ok: true,
+      file: {
+        key: row.objectKey,
+        version: row.version,
+        size: row.size,
+        sha256: row.sha256,
+        format: row.format,
+        ...(ssec ? { ssecKey: hexEncode(ssec) } : {}),
+      },
+    },
+  });
+}
+
+/** The kept older versions of a record's file, newest first. The live file is not one of them. */
+export function fileRevisions(
+  host: FileHost,
+  op: Extract<CloudSyncOp, { op: "fileRevisions" }>,
+): FileReply {
+  host.store.prepare(false);
+  const revisions = host.store
+    .filesOf(op.collection, op.recordId)
+    .filter((f) => f.status === "revision")
+    .sort((a, b) => b.version - a.version)
+    .map((f) => ({
+      version: f.version,
+      size: f.size,
+      sha256: f.sha256,
+      format: f.format,
+      createdAt: f.createdAt,
+    }));
+  return ok({ op: "fileRevisions", outcome: { ok: true, revisions } });
 }
 
 // ── finalize (U-10.7) ────────────────────────────────────────────────────────────────────────
@@ -404,6 +655,11 @@ export function fileFinalizePrepare(
       finalizeLease(u) + FINALIZE_LEASE_MS > op.serverNow
     )
       return answer({ ok: false, busy: true });
+    // A delta file: every chunk the plan named must be stored (the ids go back to be sent again),
+    // then the manifest, which is part 1.
+    const lost =
+      u.mode === "chunks" ? missingChunks(host.store, u.uploadId) : [];
+    if (lost.length > 0) return answer({ ok: false, missing: lost });
     const missing = missingParts(host, u);
     if (missing.length > 0) return answer({ ok: false, missing });
     const sealed = await sealObject(host, op, u);
@@ -432,6 +688,9 @@ export function fileFinalizePrepare(
         size: u.size,
         sha256: u.sha256,
         mode: u.mode,
+        ...(ssecKeyOf(host, u.enc) !== undefined
+          ? { ssecKey: ssecKeyOf(host, u.enc) as string }
+          : {}),
       },
     });
   });
@@ -471,6 +730,10 @@ export function fileFinalizeCommit(
         objectKey: fileObjectKey(op, u.uploadId),
         clientId: op.clientId,
         maxRecords: op.maxRecords,
+        keepRevisions: op.keepRevisions,
+        ...(sealed(u.enc) && host.store.getMeta(SSEC_KID) !== undefined
+          ? { ssecKid: host.store.getMeta(SSEC_KID) as string }
+          : {}),
         nowMs: op.serverNow,
       });
       if (committed.ok) markDirty(host.store);

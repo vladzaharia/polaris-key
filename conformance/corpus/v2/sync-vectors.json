@@ -3370,6 +3370,78 @@
       "zstdObjectHex": "0101f656cd18001073a731b40ce011af21b68a2ea1f4c7c9026e480504a9188df779a036022cfb78b9a394b5bf2b7c5566a03c0c3a86de10516b2f4f222d4a2bca605c203d8248c866370e5696afe33b7bb3b51eea0aa4b635438c823b1ee882ae8ca4279627f82fc20c1a916ef46b6f14e4adfa6ceb96ed9a824a71a90b4775efbfa52c9782a2c4dbc1e70d29c3372c5064c7988d61b78f7a529ba63ead8a5ff8445a1ecfe5ba3235c14a8508f7533451c8ffda3fe895f88d0b9949d7372d0ba107fcc317c603922a4b9cddc9927e9472795dd0dfc478b36c871f8b5305769e5fd1923fe94a027def951c3566305ef2bce831ae778c46a8b41bcb7ad4b76dbab8d3412da2085efe980c065d0305f24baf35ac710e5eccfeecff1e29911d34ac60d5c574dd61306c3749fad3c97b214f72f800bcd737d3950a881ba9ec00172adf1354969dc627bfbcea79542619247688a32996",
       "rawNonceHex": "1092fb61522fe502c74e836d",
       "zstdNonceHex": "f656cd18001073a731b40ce0"
+    },
+    {
+      "id": "server-object-raw",
+      "description": "Server mode, codec 0: 0x00, 0x00, then the chunk as it is; the id is the plain SHA-256.",
+      "kind": "server-object",
+      "idHex": "79e74ba12b0453a8236e270163b5e4a9dc88fe3c70e65239789f2d88ad190dd5",
+      "objectHex": "0000b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a",
+      "expect": {
+        "result": "ok",
+        "plainHex": "b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a",
+        "codec": 0
+      }
+    },
+    {
+      "id": "server-object-zstd",
+      "description": "Server mode, codec 1: one zstd frame with its content size (here raw blocks); a reader decodes both codecs.",
+      "kind": "server-object",
+      "idHex": "79e74ba12b0453a8236e270163b5e4a9dc88fe3c70e65239789f2d88ad190dd5",
+      "objectHex": "000128b52ffd602c00610900b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a",
+      "expect": {
+        "result": "ok",
+        "plainHex": "b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a",
+        "codec": 1
+      }
+    },
+    {
+      "id": "server-refuse-shape",
+      "description": "One byte: not even a version and a codec.",
+      "kind": "server-object",
+      "idHex": "79e74ba12b0453a8236e270163b5e4a9dc88fe3c70e65239789f2d88ad190dd5",
+      "objectHex": "00",
+      "expect": { "result": "invalid", "reason": "shape" }
+    },
+    {
+      "id": "server-refuse-version",
+      "description": "Version byte 0x01 is the E2E layout: a server-mode reader refuses it.",
+      "kind": "server-object",
+      "idHex": "79e74ba12b0453a8236e270163b5e4a9dc88fe3c70e65239789f2d88ad190dd5",
+      "objectHex": "0100b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a",
+      "expect": { "result": "invalid", "reason": "version" }
+    },
+    {
+      "id": "server-refuse-codec",
+      "description": "Codec 2 is unknown.",
+      "kind": "server-object",
+      "idHex": "79e74ba12b0453a8236e270163b5e4a9dc88fe3c70e65239789f2d88ad190dd5",
+      "objectHex": "0002b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a",
+      "expect": { "result": "invalid", "reason": "codec" }
+    },
+    {
+      "id": "server-refuse-decode-garbage",
+      "description": "Codec 1 whose body is not a zstd frame.",
+      "kind": "server-object",
+      "idHex": "79e74ba12b0453a8236e270163b5e4a9dc88fe3c70e65239789f2d88ad190dd5",
+      "objectHex": "0001b3cf1d913a1b30d52ef251d76a841208f55dabf00b41ed688b08bad5765ec1a2cdfef0607e4c67cd7412a5ccfd4860b0488d23e9d37c19573cb8a5630513b43be574e64caab57005cc15496ed73a55c6429b0bb40a16c97049295845b4655f36f12a55a65c3d5d9b4e25eb430ebdbaa694d121a6a48d37f61f10efc7ee98cdc6883321732043c7b8c292fd48c8729a250400f30d4d7be92536645e39e8957ed70ad02b512c826e98cc1d7a63d1e5e07964db1ec8fcc50de955eb34cb1714608f034375ce5fd3ec85e67d045126c7f689c9a4a892ee9a4df7a683850c0952c3d4be20dc95fa8c267517539f2b139499cf6696e4ca3cf91f1a306dd39fd754dd09c28560d5cb2c927c0d7a06e049e55a634d754434e618dd21cb44006eae8f08ff0aba7fb3271a64b70f75015a",
+      "expect": { "result": "invalid", "reason": "decode" }
+    },
+    {
+      "id": "server-refuse-size-declared",
+      "description": "Codec 1 whose frame declares 2 MiB: refused before decoding (max is 1 MiB).",
+      "kind": "server-object",
+      "idHex": "79e74ba12b0453a8236e270163b5e4a9dc88fe3c70e65239789f2d88ad190dd5",
+      "objectHex": "000128b52ffd800000002000",
+      "expect": { "result": "invalid", "reason": "size" }
+    },
+    {
+      "id": "server-refuse-id-mismatch",
+      "description": "A body that is not the chunk the id names: it opens, and its SHA-256 differs from the id.",
+      "kind": "server-object",
+      "idHex": "79e74ba12b0453a8236e270163b5e4a9dc88fe3c70e65239789f2d88ad190dd5",
+      "objectHex": "000020eaf1ca20",
+      "expect": { "result": "invalid", "reason": "id" }
     }
   ],
   "fileStreamCases": [

@@ -28,6 +28,8 @@ interface Stored {
   customMetadata: Record<string, string>;
   /** As R2 stores it: `{}` when the put sent none (every object before HA-01). */
   httpMetadata: R2HTTPMetadata;
+  /** The customer-provided key (SSE-C) the object was stored under, as lowercase hex. */
+  ssec?: string;
 }
 
 const CHUNK = 7_919; // an odd prime, so chunk boundaries never align with anything meaningful
@@ -107,6 +109,24 @@ function conditionHolds(
   return true;
 }
 
+/** An SSE-C key as the binding takes it (a hex string or the 32 bytes), as lowercase hex. */
+function ssecHex(v: unknown): string | undefined {
+  if (v === undefined || v === null) return undefined;
+  if (typeof v === "string") return v.toLowerCase();
+  return toHexOrBuf(v).toString("hex");
+}
+
+/**
+ * R2's SSE-C rule: an object stored under a key opens only with that key, and a read that sends a
+ * key for an object stored without one is refused too. Metadata (`head`) needs no key.
+ */
+function checkSsec(stored: string | undefined, sent: unknown): void {
+  if (stored !== ssecHex(sent))
+    throw new Error(
+      "R2Mock: the encryption parameters are not valid for this object",
+    );
+}
+
 /** `R2PutOptions.httpMetadata` (an object or `Headers`) as R2 stores it. */
 function httpMetadataOf(
   v: R2HTTPMetadata | Headers | undefined,
@@ -144,6 +164,14 @@ export class R2Mock {
       customMetadata: s.customMetadata,
       httpMetadata: { ...s.httpMetadata },
       storageClass: "Standard",
+      // R2 reports the key's MD5 (base64) on an SSE-C object, never the key.
+      ...(s.ssec
+        ? {
+            ssecKeyMd5: createHash("md5")
+              .update(Buffer.from(s.ssec, "hex"))
+              .digest("base64"),
+          }
+        : {}),
       ...(range ? { range } : {}),
       writeHttpMetadata: () => undefined,
     } as unknown as R2Object;
@@ -160,6 +188,7 @@ export class R2Mock {
   ): Promise<R2ObjectBody | R2Object | null> {
     const s = this.store.get(key);
     if (!s) return null;
+    checkSsec(s.ssec, options?.ssecKey);
     if (!conditionHolds(s, options?.onlyIf)) return this.meta(key, s);
     let bytes = s.bytes;
     let range: R2Range | undefined;
@@ -229,6 +258,9 @@ export class R2Mock {
       customMetadata: options?.customMetadata ?? {},
       httpMetadata: httpMetadataOf(options?.httpMetadata),
       ...(sha256 ? { sha256 } : {}),
+      ...(options?.ssecKey !== undefined
+        ? { ssec: ssecHex(options.ssecKey) as string }
+        : {}),
     };
     this.store.set(key, stored);
     return this.meta(key, stored);
@@ -266,6 +298,7 @@ export class R2Mock {
       key: string;
       parts: Map<number, { bytes: Uint8Array; etag: string }>;
       httpMetadata: R2HTTPMetadata;
+      ssec?: string;
     }
   >();
   /** R2's smallest part but the last; a test may lower it (never in production code). */
@@ -280,6 +313,9 @@ export class R2Mock {
       key,
       parts: new Map(),
       httpMetadata: httpMetadataOf(options?.httpMetadata),
+      ...(options?.ssecKey !== undefined
+        ? { ssec: ssecHex(options.ssecKey) as string }
+        : {}),
     });
     return this.resumeMultipartUpload(key, uploadId);
   }
@@ -300,8 +336,13 @@ export class R2Mock {
     return {
       key,
       uploadId,
-      async uploadPart(partNumber: number, value: unknown) {
+      async uploadPart(
+        partNumber: number,
+        value: unknown,
+        options?: R2UploadPartOptions,
+      ) {
         const u = open();
+        checkSsec(u.ssec, options?.ssecKey);
         if (partNumber < 1 || partNumber > 10_000)
           throw new Error("R2Mock: part number out of range");
         const bytes = await readAll(value);
@@ -347,6 +388,7 @@ export class R2Mock {
           md5: ab(createHash("md5").update(bytes).digest()),
           customMetadata: {},
           httpMetadata: u.httpMetadata,
+          ...(u.ssec !== undefined ? { ssec: u.ssec } : {}),
         };
         self.store.set(key, stored);
         return self.meta(key, stored);
@@ -389,6 +431,16 @@ export class R2Mock {
       etag: randomBytes(16).toString("hex"),
       ...(opts.keepChecksum ? {} : { sha256: undefined }),
     });
+  }
+
+  /** The SSE-C key (lowercase hex) an object is stored under, if any (test introspection). */
+  ssecOf(key: string): string | undefined {
+    return this.store.get(key)?.ssec;
+  }
+
+  /** The stored bytes of an object, whatever key it needs (test introspection). */
+  raw(key: string): Uint8Array | undefined {
+    return this.store.get(key)?.bytes;
   }
 
   has(key: string): boolean {

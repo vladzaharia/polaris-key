@@ -53,6 +53,7 @@ const FAMILIES = [
   "settings",
   "paywall",
   "cloudSync",
+  "saveConflict",
   "holders",
 ] as const;
 
@@ -527,4 +528,122 @@ describe("the recovery code (U-42.2)", () => {
     );
     expect((await focused("RecoveryCode", "show"))?.tagName).toBe("H1");
   });
+});
+
+// ── The save screens (U-22.KF, UX review K.UX 1-5) ─────────────────────────────────────────
+// The choices are one undocked run in reading order, so at the short, large-text and zoomed rows
+// nothing overlaps and every control and card answers a hit at its own centre; the transfer bar
+// has a width; a failed choice focuses the heading.
+
+describe("the save screens", () => {
+  afterEach(() => {
+    document.documentElement.style.fontSize = "";
+  });
+  const SIZES_SAVE = [
+    { label: "390", width: 390, height: 844, font: "" },
+    { label: "844x390", width: 844, height: 390, font: "" },
+    { label: "640x360", width: 640, height: 360, font: "" },
+    { label: "1440", width: 1440, height: 900, font: "" },
+    { label: "390-text200", width: 390, height: 844, font: "200%" },
+    { label: "1440-text200", width: 1440, height: 900, font: "200%" },
+    { label: "zoom400", width: 320, height: 256, font: "" },
+  ];
+  const rows = (
+    matrix as unknown as { saveConflict: Row[]; cloudSync: Row[] }
+  ).saveConflict.concat((matrix as unknown as { cloudSync: Row[] }).cloudSync);
+  const named = (n: string) => rows.find((r) => r.name === n)!;
+  const CHOOSE = [
+    ["choose", "SaveConflict/choose: the two copies and the three choices"],
+    [
+      "full",
+      "SaveConflict/choose: Keep both is disabled while every slot is in use",
+    ],
+    ["deleted", "SaveConflict/choose: the other copy was deleted"],
+  ] as const;
+
+  for (const size of SIZES_SAVE)
+    for (const [name, rowName] of CHOOSE)
+      it(`${name} at ${size.label}: one undocked block, in order, nothing covered`, async () => {
+        await page.viewport(size.width, size.height);
+        document.documentElement.style.fontSize = size.font;
+        const el = await mount(named(rowName), "dark", size.height, true);
+        const root = el.shadowRoot!;
+        const at = (key: string) =>
+          root.querySelector(`[data-key="${key}"]`)?.getBoundingClientRect();
+        const keys = [
+          "saveConflict.keepThis",
+          name === "deleted"
+            ? "saveConflict.acceptDelete"
+            : "saveConflict.keepOther",
+          ...(name === "deleted" ? [] : ["saveConflict.keepBoth"]),
+          ...(name === "full" ? ["saveConflict.bothFull"] : []),
+          "common.cancel",
+        ];
+        let prev: DOMRect | undefined;
+        for (const key of keys) {
+          const r = at(key);
+          expect(r, key).toBeDefined();
+          if (prev)
+            expect(
+              r!.top,
+              `${key} below the one before`,
+            ).toBeGreaterThanOrEqual(prev.bottom - 1);
+          prev = r;
+        }
+        // The two choices share a column: the other never moves under the "this device" card.
+        expect(
+          Math.abs(at(keys[0]!)!.left - at(keys[1]!)!.left),
+        ).toBeLessThanOrEqual(1);
+        expect(
+          getComputedStyle(root.querySelector('[data-dock="none"]')!).position,
+        ).toBe("static");
+        for (const node of root.querySelectorAll(
+          "button, [data-part=save-card]",
+        )) {
+          node.scrollIntoView({ block: "center" });
+          const r = node.getBoundingClientRect();
+          const hit = root.elementFromPoint(
+            r.left + r.width / 2,
+            r.top + r.height / 2,
+          );
+          expect(
+            hit && (node === hit || node.contains(hit)),
+            `${node.getAttribute("data-key") ?? "card"} is hit at its centre`,
+          ).toBe(true);
+        }
+      });
+
+  it("a failed choice focuses the heading, never Try again", async () => {
+    await page.viewport(390, 844);
+    const el = await mount(
+      named("SaveConflict/failed: both saves are unchanged"),
+      "dark",
+      844,
+      true,
+    );
+    await new Promise((res) => setTimeout(res, 50));
+    const active = el.shadowRoot!.activeElement;
+    expect(active?.tagName).toBe("H1");
+  });
+
+  for (const size of SIZES_SAVE.filter((s) =>
+    ["390", "844x390", "1440", "zoom400"].includes(s.label),
+  ))
+    it(`the transfer bar has a width at ${size.label}, the label before its figures`, async () => {
+      await page.viewport(size.width, size.height);
+      const el = await mount(
+        named(
+          "CloudSyncStatus/transferring: how much is done, and never Synced",
+        ),
+        "dark",
+        size.height,
+      );
+      const root = el.shadowRoot!;
+      const bar = root.querySelector('[role="progressbar"]')!;
+      expect(bar.getBoundingClientRect().width).toBeGreaterThan(0);
+      const text = root.textContent ?? "";
+      expect(text.indexOf("Syncing saves")).toBeLessThan(
+        text.indexOf("38 MB of 61 MB"),
+      );
+    });
 });

@@ -83,7 +83,9 @@ const partPath = (c: string, id: string, uploadId: string, n: number) =>
   `${uploadPath(c, id, uploadId)}/parts/${n}`;
 
 const bodyOf = async (w: FilesWorld, key: string): Promise<Uint8Array> => {
-  const obj = await w.r2.get(key);
+  // A server-mode object is stored under the person's SSE-C key (U-10.10).
+  const ssecKey = w.r2.ssecOf(key);
+  const obj = await w.r2.get(key, ssecKey ? { ssecKey } : undefined);
   if (!obj || !("arrayBuffer" in obj)) throw new Error(`no object at ${key}`);
   return new Uint8Array(await obj.arrayBuffer());
 };

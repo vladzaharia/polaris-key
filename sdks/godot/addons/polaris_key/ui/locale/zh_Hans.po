@@ -2257,6 +2257,161 @@ msgctxt "macos"
 msgid "ringChange.useCode"
 msgstr "使用恢复码"
 
+#. Syncing saves…
+#. CloudSyncStatus: a small sync status. Saves are uploading or downloading; never shown with Synced.
+msgid "cloudSync.transferring"
+msgstr "正在同步存档…"
+
+#. {size} of {total}
+#. CloudSyncStatus: how much of the transfer is done. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
+msgid "cloudSync.transferProgress"
+msgstr "{size} / {total}"
+
+#. Waiting for a connection
+#. CloudSyncStatus: a small sync status. A transfer is paused until the network is back.
+msgid "cloudSync.waitingNetwork"
+msgstr "正在等待连接"
+
+#. Waiting for power
+#. CloudSyncStatus: a small sync status. A transfer is paused until the device is charging or has enough battery.
+msgid "cloudSync.waitingBattery"
+msgstr "正在等待电源"
+
+#. Paused until you open the app
+#. CloudSyncStatus: a small sync status. The system paused a transfer while the app is in the background.
+msgid "cloudSync.waitingBackground"
+msgstr "已暂停，打开应用后继续"
+
+#. Couldn't sync your saves.
+#. CloudSyncStatus: a small sync status. A transfer failed; Try again sits beside it.
+msgid "cloudSync.transferFailed"
+msgstr "无法同步存档。"
+
+#. Two versions of this save
+#. SaveConflict: the same save changed on two devices; the person picks one.
+msgid "saveConflict.title"
+msgstr "此存档有两个版本"
+
+#. Choose the one to keep. Nothing is deleted until you do.
+#. SaveConflict: the same save changed on two devices; the person picks one.
+msgid "saveConflict.lede"
+msgstr "选择要保留的一个。在此之前不会删除任何内容。"
+
+#. This save was deleted elsewhere
+#. SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too.
+msgid "saveConflict.deletedTitle"
+msgstr "此存档已在别处删除"
+
+#. Keep it on this device, or delete it here too.
+#. SaveConflict: the other copy was deleted on another device; the person keeps this one or deletes it too.
+msgid "saveConflict.deletedLede"
+msgstr "保留在此设备上，或在此也删除。"
+
+#. Version on this device
+#. SaveConflict: heading of the card for the copy on this device.
+msgid "saveConflict.thisDevice"
+msgstr "此设备上的版本"
+
+#. Saved {when}
+#. SaveConflict: when the copy on this device was saved. Arguments: {when} = a time already formatted by the platform (“today, 14:02”).
+msgid "saveConflict.savedThis"
+msgstr "{when}保存"
+
+#. Saved {when}
+#. SaveConflict: when the other copy was saved. Arguments: {when} = a time already formatted by the platform (“yesterday, 21:40”).
+msgid "saveConflict.savedOther"
+msgstr "{when}保存"
+
+#. Version on {device}
+#. SaveConflict: heading of the card for the copy on another device. Arguments: {device} = the device's name, someone's own text.
+msgid "saveConflict.otherDevice"
+msgstr "{device}上的版本"
+
+#. Version on another device
+#. SaveConflict: heading of the card for the other copy when the device is not known.
+msgid "saveConflict.otherUnknown"
+msgstr "另一台设备上的版本"
+
+#. Deleted on another device
+#. SaveConflict: the other copy no longer exists; there is nothing to compare.
+msgid "saveConflict.deletedElsewhere"
+msgstr "已在另一台设备上删除"
+
+#. Keep this device's version
+#. SaveConflict: keep the copy on this device and replace the other.
+msgid "saveConflict.keepThis"
+msgstr "保留此设备的版本"
+
+#. macos: Keep This Device's Version
+msgctxt "macos"
+msgid "saveConflict.keepThis"
+msgstr "保留此设备的版本"
+
+#. Keep the other version
+#. SaveConflict: keep the other copy and replace the one on this device.
+msgid "saveConflict.keepOther"
+msgstr "保留另一个版本"
+
+#. macos: Keep the Other Version
+msgctxt "macos"
+msgid "saveConflict.keepOther"
+msgstr "保留另一个版本"
+
+#. Delete it here too
+#. SaveConflict: the other copy was deleted; remove the one on this device as well.
+msgid "saveConflict.acceptDelete"
+msgstr "在此也删除"
+
+#. macos: Delete It Here Too
+msgctxt "macos"
+msgid "saveConflict.acceptDelete"
+msgstr "在此也删除"
+
+#. Keep both
+#. SaveConflict: keep both; the other copy is saved under a new name. Disabled while every save slot is in use.
+msgid "saveConflict.keepBoth"
+msgstr "两个都保留"
+
+#. macos: Keep Both
+msgctxt "macos"
+msgid "saveConflict.keepBoth"
+msgstr "两个都保留"
+
+#. All save slots are in use. Delete a save to keep both.
+#. SaveConflict: why Keep both is disabled. Shown beside the disabled control.
+msgid "saveConflict.bothFull"
+msgstr "存档位已全部占用。删除一个存档后才能两个都保留。"
+
+#. Keeping your choice…
+#. SaveConflict: the choice is being applied.
+msgid "saveConflict.keeping"
+msgstr "正在应用你的选择…"
+
+#. Kept this device's save.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptLocal"
+msgstr "已保留此设备的存档。"
+
+#. Kept the other save.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptRemote"
+msgstr "已保留另一个存档。"
+
+#. Kept both. The other is saved as a copy.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptBoth"
+msgstr "两个都已保留。另一个已另存为副本。"
+
+#. The save is deleted.
+#. SaveConflict: the choice was applied.
+msgid "saveConflict.keptDeleted"
+msgstr "存档已删除。"
+
+#. Couldn't keep your choice. Both saves are unchanged.
+#. SaveConflict: applying the choice failed; Try again repeats it.
+msgid "saveConflict.failed"
+msgstr "无法应用你的选择。两个存档均未更改。"
+
 #. About {product}
 #. About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated).
 msgid "about.title"

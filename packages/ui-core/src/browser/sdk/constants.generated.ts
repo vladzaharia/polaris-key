@@ -1770,6 +1770,9 @@ export const SYNC_CHUNK_FORMAT = "pkey-sync-chunk/1";
 /** Cloud Sync: `SYNC_CHUNK_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.8.3, `@polaris-key/protocol/sync`). */
 export const SYNC_CHUNK_ID_PATTERN = "^[0-9a-f]{64}$";
 
+/** Cloud Sync: `SYNC_CHUNK_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.3 (U-37), `@polaris-key/protocol/sync`). */
+export const SYNC_CHUNK_MAX_STORED_BYTES = 1048606;
+
 /** Cloud Sync: `SYNC_CHUNK_PLAN_MAX_IDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
 export const SYNC_CHUNK_PLAN_MAX_IDS = 1024;
 
@@ -1823,6 +1826,9 @@ export const SYNC_KID_PATTERN = "^[0-9a-f]{32}$";
 
 /** Cloud Sync: `SYNC_MANIFEST_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
 export const SYNC_MANIFEST_FORMAT = "pkey-sync-chunks/1";
+
+/** Cloud Sync: `SYNC_MANIFEST_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.1 (U-37), `@polaris-key/protocol/sync`). */
+export const SYNC_MANIFEST_MAX_STORED_BYTES = 786576;
 
 /** Cloud Sync: `SYNC_MAX_CHUNKS_PER_FILE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
 export const SYNC_MAX_CHUNKS_PER_FILE = 16384;
@@ -2099,7 +2105,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "config.mirror": { status: "implemented", service: "config", na: [] },
   "config.local": { status: "implemented", service: "sdk", na: [] },
   "config.sync": { status: "implemented", service: "sync", na: [] },
-  "sync.scenarios": { status: "planned", service: "sync", na: [] },
+  "sync.scenarios": { status: "implemented", service: "sync", na: [] },
   "sync.settings": { status: "implemented", service: "sync", na: [] },
   "sync.conflict": { status: "planned", service: "sync", na: [] },
   "sync.saves": { status: "planned", service: "sync", na: [] },
@@ -2116,7 +2122,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "sync.e2e": { status: "planned", service: "sync", na: [] },
+  "sync.e2e": { status: "implemented", service: "sync", na: [] },
   "connect.identity": { status: "implemented", service: "connect", na: [] },
   "connect.noise": { status: "implemented", service: "connect", na: [] },
   "connect.protocol": { status: "implemented", service: "connect", na: [] },
@@ -2411,4 +2417,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "0ec677f8cd352a90d7da51381d1efc2c192360f0bae394bc125b0ca1d429b3a9";
+  "fb4f3fb77f1fb8ba5c870c180ecf219d323f20b538c560f9463c784e2f77d03f";

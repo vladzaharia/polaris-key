@@ -466,8 +466,22 @@ export const KIT_LAYOUTS: Readonly<
   CloudSyncStatus: {
     kind: "inline",
     header: "none",
-    controls: ["cloudSync.signIn", "cloudSync.unlock", "common.review"],
-    meta: ["cloudSync.synced", "cloudSync.syncing", "cloudSync.offline"],
+    controls: [
+      "cloudSync.signIn",
+      "cloudSync.unlock",
+      "common.review",
+      "common.tryAgain",
+    ],
+    meta: [
+      "cloudSync.synced",
+      "cloudSync.syncing",
+      "cloudSync.offline",
+      "cloudSync.transferring",
+      "cloudSync.transferProgress",
+      "cloudSync.waitingNetwork",
+      "cloudSync.waitingBattery",
+      "cloudSync.waitingBackground",
+    ],
   },
   About: {
     kind: "pane",
@@ -586,6 +600,7 @@ export const TAGS: Readonly<Record<ScreenName, string>> = {
   UnlockSync: "pk-unlock-sync",
   RecoveryCode: "pk-recovery-code",
   RingChange: "pk-ring-change",
+  SaveConflict: "pk-save-conflict",
   ActivateDone: "pk-activate-done",
   AddToAccount: "pk-add-to-account",
 };

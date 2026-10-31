@@ -565,6 +565,8 @@ export function button(
     detail?: Record<string, unknown>;
     /** The control leaves the app (a Replace that runs in the browser): the new-window glyph. */
     external?: boolean;
+    /** The id of the text that says why a disabled control is unavailable. */
+    describedBy?: string;
   } = {},
 ): ReactNode {
   // The refusal step's manage link leaves the app too (refusal.ts): the key step's title as its
@@ -626,7 +628,7 @@ function plainButton(
       data-provider={google ? "google" : undefined}
       aria-disabled={extra.busy || extra.disabled ? "true" : undefined}
       aria-label={extra.label}
-      aria-describedby={hintId}
+      aria-describedby={hintId ?? extra.describedBy}
       onClick={() => {
         if (!extra.busy && !extra.disabled) c.act(key, extra.detail);
       }}

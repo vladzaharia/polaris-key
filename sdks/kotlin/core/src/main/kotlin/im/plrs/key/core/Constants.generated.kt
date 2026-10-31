@@ -1713,6 +1713,9 @@ public const val SYNC_CHUNK_FORMAT: String = "pkey-sync-chunk/1"
 /** Cloud Sync: `SYNC_CHUNK_ID_PATTERN` (WIRE-CONTRACT-V4 §8, §13.8.3, `@polaris-key/protocol/sync`). */
 public const val SYNC_CHUNK_ID_PATTERN: String = "^[0-9a-f]{64}\$"
 
+/** Cloud Sync: `SYNC_CHUNK_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.3 (U-37), `@polaris-key/protocol/sync`). */
+public const val SYNC_CHUNK_MAX_STORED_BYTES: Int = 1048606
+
 /** Cloud Sync: `SYNC_CHUNK_PLAN_MAX_IDS` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
 public const val SYNC_CHUNK_PLAN_MAX_IDS: Int = 1024
 
@@ -1766,6 +1769,9 @@ public const val SYNC_KID_PATTERN: String = "^[0-9a-f]{32}\$"
 
 /** Cloud Sync: `SYNC_MANIFEST_FORMAT` (WIRE-CONTRACT-V4 §13.8.3, `@polaris-key/protocol/sync`). */
 public const val SYNC_MANIFEST_FORMAT: String = "pkey-sync-chunks/1"
+
+/** Cloud Sync: `SYNC_MANIFEST_MAX_STORED_BYTES` (WIRE-CONTRACT-V4 §13.8.1 (U-37), `@polaris-key/protocol/sync`). */
+public const val SYNC_MANIFEST_MAX_STORED_BYTES: Int = 786576
 
 /** Cloud Sync: `SYNC_MAX_CHUNKS_PER_FILE` (WIRE-CONTRACT-V4 §13.8.2, `@polaris-key/protocol/sync`). */
 public const val SYNC_MAX_CHUNKS_PER_FILE: Int = 16384
@@ -2020,7 +2026,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "sync.files.delta" to CapabilityRow("planned", "sync", listOf()),
     "sync.e2e.recovery" to CapabilityRow("planned", "sync", listOf()),
     "sync.transfer.background" to CapabilityRow("planned", "sync", listOf(CapabilityNa("jvm", "runtime"))),
-    "sync.e2e" to CapabilityRow("planned", "sync", listOf()),
+    "sync.e2e" to CapabilityRow("implemented", "sync", listOf()),
     "connect.identity" to CapabilityRow("implemented", "connect", listOf()),
     "connect.noise" to CapabilityRow("implemented", "connect", listOf()),
     "connect.protocol" to CapabilityRow("implemented", "connect", listOf()),
@@ -2120,4 +2126,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "b6dae240aa7a46be0739865e9736a6c31d9f47c22ce788f06fe0279488377584"
+public const val CAPABILITY_DIGEST: String = "d1b430bbc19376fa7b42087fc08ab1ded7600b3b02cd9f69a548aefec2e43962"

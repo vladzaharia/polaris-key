@@ -803,18 +803,56 @@ export function refOpenChunk(
   if (body === null) return fail("auth");
   if (toHex(refChunkNonce(key, codec, body)) !== toHex(nonce))
     return fail("nonce");
+  const plain = refChunkPlain(codec, body);
+  if (!(plain instanceof Uint8Array)) return fail(plain);
+  if (toHex(refChunkId(root, collection, plain)) !== toHex(id))
+    return fail("id");
+  return { ok: true, plain, codec };
+}
+
+/** The chunk a body carries under its codec, or why it cannot be read: `decode` or `size` (§13.8.3). */
+function refChunkPlain(
+  codec: number,
+  body: Uint8Array,
+): Uint8Array | "decode" | "size" {
   let plain: Uint8Array;
   if (codec === REF_CODEC_RAW) {
     plain = body;
   } else {
     const z = refZstdUnraw(body, REF_CDC.max);
-    if (z === "size") return fail("size");
-    if (z === null) return fail("decode");
+    if (z === "size") return "size";
+    if (z === null) return "decode";
     plain = z;
   }
-  if (plain.length > REF_CDC.max) return fail("size");
-  if (toHex(refChunkId(root, collection, plain)) !== toHex(id))
-    return fail("id");
+  return plain.length > REF_CDC.max ? "size" : plain;
+}
+
+/** The server-mode chunk object (U-37, §13.8.3): `0x00 ‖ codec ‖ body`, the id being the plain SHA-256. */
+export const REF_SERVER_CHUNK_VERSION = 0x00;
+/** The largest stored chunk object of either mode (`SYNC_CHUNK_MAX_STORED_BYTES`). */
+export const REF_CHUNK_MAX_STORED = 1_048_606;
+
+export function refSealServerChunk(
+  codec: number,
+  body: Uint8Array,
+): Uint8Array {
+  return cat(Uint8Array.of(REF_SERVER_CHUNK_VERSION, codec), body);
+}
+
+/** Opens a server-mode chunk object under its id; the checks run in the order of §13.8.3. */
+export function refOpenServerChunk(
+  id: Uint8Array,
+  obj: Uint8Array,
+): RefChunkOpen {
+  const fail = (reason: ChunkInvalid): RefChunkOpen => ({ ok: false, reason });
+  if (obj.length < 2) return fail("shape");
+  if (obj.length > REF_CHUNK_MAX_STORED) return fail("size");
+  if (obj[0] !== REF_SERVER_CHUNK_VERSION) return fail("version");
+  const codec = obj[1]!;
+  if (codec !== REF_CODEC_RAW && codec !== REF_CODEC_ZSTD) return fail("codec");
+  const plain = refChunkPlain(codec, obj.subarray(2));
+  if (!(plain instanceof Uint8Array)) return fail(plain);
+  if (toHex(refChunkId(null, "", plain)) !== toHex(id)) return fail("id");
   return { ok: true, plain, codec };
 }
 

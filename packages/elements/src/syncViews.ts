@@ -203,11 +203,105 @@ function codeBlock(c: RenderCtx, code: string): Out {
   </div>`;
 }
 
+/** One copy of the save, as a card: whose it is and when it was saved. */
+function saveCard(
+  c: RenderCtx,
+  side: "local" | "remote",
+  keys: { who: string; when: string },
+): Out {
+  return html`<li class="save-card" data-part="save-card" data-side=${side}>
+    <span class="label" data-key=${keys.who}>${text(c, keys.who)}</span>
+    ${shown(c, keys.when)
+      ? html`<span class="meta" data-key=${keys.when}
+          >${text(c, keys.when)}</span
+        >`
+      : nothing}
+  </li>`;
+}
+
+const KEPT_KEYS = [
+  "saveConflict.keptLocal",
+  "saveConflict.keptRemote",
+  "saveConflict.keptBoth",
+  "saveConflict.keptDeleted",
+];
+
+/** SaveConflict: the two copies, then the way on for each state. The choices are plain buttons
+ *  with no filled one (nothing is the default); Keep both stays on screen, unavailable and
+ *  described by its reason, while every slot is in use. */
+function saveConflictContent(c: RenderCtx): Out {
+  const state = c.view.state;
+  if (state === "choose") {
+    const gone = shown(c, "saveConflict.deletedElsewhere");
+    const full = shown(c, "saveConflict.bothFull");
+    return html`<ul class="save-cards" data-part="save-cards">
+        ${saveCard(c, "local", {
+          who: "saveConflict.thisDevice",
+          when: "saveConflict.savedThis",
+        })}
+        ${saveCard(c, "remote", {
+          who: gone
+            ? "saveConflict.deletedElsewhere"
+            : shown(c, "saveConflict.otherDevice")
+              ? "saveConflict.otherDevice"
+              : "saveConflict.otherUnknown",
+          when: "saveConflict.savedOther",
+        })}
+      </ul>
+      <div
+        class="actions"
+        part="actions"
+        data-part="actions"
+        data-layout="stack"
+        data-dock="none"
+        role="group"
+        aria-labelledby="pk-title"
+      >
+        ${button(c, "saveConflict.keepThis", "secondary")}
+        ${gone
+          ? button(c, "saveConflict.acceptDelete", "danger")
+          : button(c, "saveConflict.keepOther", "secondary")}
+        ${shown(c, "saveConflict.keepBoth")
+          ? button(c, "saveConflict.keepBoth", "secondary", {
+              disabled: full,
+              describedBy: full ? "pk-both-full" : undefined,
+            })
+          : nothing}
+        ${full
+          ? html`<p
+              class="body note"
+              id="pk-both-full"
+              data-key="saveConflict.bothFull"
+            >
+              ${text(c, "saveConflict.bothFull")}
+            </p>`
+          : nothing}
+        ${button(c, "common.cancel", "link")}
+      </div>`;
+  }
+  if (state === "keeping")
+    return html`<p class="body" role="status" data-key="saveConflict.keeping">
+      ${text(c, "saveConflict.keeping")}
+    </p>`;
+  if (state === "kept") {
+    const key = KEPT_KEYS.find((k) => shown(c, k));
+    return html`${key
+      ? html`<p class="body" role="status" data-key=${key}>${text(c, key)}</p>`
+      : nothing}${row(c, ["common.done"])}`;
+  }
+  return html`${callout(c, ["saveConflict.failed"])}${row(
+    c,
+    ["common.tryAgain", "common.cancel"],
+    { quiet: true },
+  )}`;
+}
+
 /** UnlockSync, RecoveryCode and RingChange draw their fields and actions here. `c.code` is the
  *  recovery code the host handed RecoveryCode (it is in no input). */
 export function syncContent(c: RenderCtx): Out {
   const { view } = c;
   if (view.component === "UnlockSync") return unlockContent(c);
+  if (view.component === "SaveConflict") return saveConflictContent(c);
   if (view.component === "RecoveryCode")
     return html`${codeBlock(c, c.code ?? "")}${noAsk(c)}
     ${shown(c, "recoveryCode.saved")

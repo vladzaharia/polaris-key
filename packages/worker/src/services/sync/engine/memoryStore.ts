@@ -7,13 +7,17 @@ import type { SyncScope } from "@polaris-key/protocol/sync";
 import { compareRemoved, recordsDump, settingId } from "./store.js";
 import type {
   ClientRecord,
+  FileChunkRef,
+  FileStatus,
   ParkedRecord,
   RemovedField,
+  StoredChunk,
   StoredFile,
   StoredRecord,
   StoredSetting,
   StoreUsage,
   SyncStore,
+  UploadChunk,
   UploadPart,
   UploadRow,
 } from "./types.js";
@@ -98,6 +102,9 @@ export class MemoryStore implements SyncStore {
   private uploads = new Map<string, UploadRow>();
   private parts = new Map<string, UploadPart>();
   private ssec = new Map<string, Uint8Array>();
+  private chunks = new Map<string, StoredChunk>();
+  private fileChunks = new Map<string, FileChunkRef>();
+  private uploadChunkRows = new Map<string, UploadChunk>();
 
   constructor(private readonly clock: () => number = () => Date.now() / 1000) {}
 
@@ -132,9 +139,21 @@ export class MemoryStore implements SyncStore {
     const ssec = new Map(
       [...this.ssec].map(([k, v]) => [k, v.slice()] as const),
     );
+    const chunks = new Map(
+      [...this.chunks].map(([k, v]) => [k, { ...v }] as const),
+    );
+    const fileChunks = new Map(
+      [...this.fileChunks].map(([k, v]) => [k, { ...v }] as const),
+    );
+    const uploadChunkRows = new Map(
+      [...this.uploadChunkRows].map(([k, v]) => [k, { ...v }] as const),
+    );
     try {
       return fn();
     } catch (e) {
+      this.chunks = chunks;
+      this.fileChunks = fileChunks;
+      this.uploadChunkRows = uploadChunkRows;
       this.seq = seq;
       this.usage = usage;
       this.watermark = watermark;
@@ -450,6 +469,19 @@ export class MemoryStore implements SyncStore {
       .map(([, f]) => ({ ...f }));
   }
 
+  filesWithStatus(status: FileStatus, limit: number): StoredFile[] {
+    return this.allFiles()
+      .filter((f) => f.status === status)
+      .sort((a, b) => a.version - b.version)
+      .slice(0, limit);
+  }
+
+  fileKeyInUse(objectKey: string): boolean {
+    for (const f of this.files.values())
+      if (f.objectKey === objectKey && f.status !== "dead") return true;
+    return false;
+  }
+
   getUpload(uploadId: string): UploadRow | undefined {
     const u = this.uploads.get(uploadId);
     return u ? { ...u } : undefined;
@@ -461,6 +493,7 @@ export class MemoryStore implements SyncStore {
 
   deleteUpload(uploadId: string): void {
     this.uploads.delete(uploadId);
+    this.deleteUploadChunks(uploadId);
     for (const k of [...this.parts.keys()])
       if (this.parts.get(k)?.uploadId === uploadId) this.parts.delete(k);
   }
@@ -477,6 +510,17 @@ export class MemoryStore implements SyncStore {
           a.createdAt - b.createdAt || (a.uploadId < b.uploadId ? -1 : 1),
       )
       .map((u) => ({ ...u }));
+  }
+
+  nextUploadExpiry(): number | undefined {
+    let min: number | undefined;
+    for (const u of this.uploads.values())
+      if (min === undefined || u.expiresAt < min) min = u.expiresAt;
+    return min;
+  }
+
+  allUploads(): UploadRow[] {
+    return [...this.uploads.values()].map((u) => ({ ...u }));
   }
 
   expiredUploads(nowMs: number, limit: number): UploadRow[] {
@@ -523,6 +567,134 @@ export class MemoryStore implements SyncStore {
       .map(([k, v]) => [k, v.slice()]);
   }
 
+  // ---- chunks (U-37) ------------------------------------------------------------------------
+
+  getChunk(collection: string, chunkId: string): StoredChunk | undefined {
+    const c = this.chunks.get(`${collection}\u0000${chunkId}`);
+    return c ? { ...c } : undefined;
+  }
+
+  putChunk(row: StoredChunk): void {
+    this.chunks.set(`${row.collection}\u0000${row.chunkId}`, { ...row });
+  }
+
+  deleteChunk(collection: string, chunkId: string): void {
+    this.chunks.delete(`${collection}\u0000${chunkId}`);
+  }
+
+  allChunks(): StoredChunk[] {
+    return [...this.chunks.values()]
+      .map((c) => ({ ...c }))
+      .sort((a, b) =>
+        a.collection === b.collection
+          ? a.chunkId < b.chunkId
+            ? -1
+            : 1
+          : a.collection < b.collection
+            ? -1
+            : 1,
+      );
+  }
+
+  collectableChunks(limit: number): StoredChunk[] {
+    return this.allChunks()
+      .filter((c) => c.refs === 0 && !this.chunkPinned(c.collection, c.chunkId))
+      .sort((a, b) => a.unrefAt - b.unrefAt)
+      .slice(0, limit);
+  }
+
+  chunkPinned(collection: string, chunkId: string): boolean {
+    for (const r of this.uploadChunkRows.values())
+      if (
+        r.chunkId === chunkId &&
+        this.uploads.get(r.uploadId)?.collection === collection
+      )
+        return true;
+    return false;
+  }
+
+  fileChunkIds(
+    collection: string,
+    recordId: string,
+    version: number,
+  ): string[] {
+    return [...this.fileChunks.values()]
+      .filter(
+        (r) =>
+          r.collection === collection &&
+          r.recordId === recordId &&
+          r.version === version,
+      )
+      .map((r) => r.chunkId)
+      .sort();
+  }
+
+  putFileChunks(
+    collection: string,
+    recordId: string,
+    version: number,
+    chunkIds: readonly string[],
+  ): void {
+    for (const chunkId of chunkIds)
+      this.fileChunks.set(
+        `${collection}\u0000${recordId}\u0000${version}\u0000${chunkId}`,
+        { collection, recordId, version, chunkId },
+      );
+  }
+
+  deleteFileChunks(
+    collection: string,
+    recordId: string,
+    version: number,
+  ): void {
+    for (const [k, r] of this.fileChunks)
+      if (
+        r.collection === collection &&
+        r.recordId === recordId &&
+        r.version === version
+      )
+        this.fileChunks.delete(k);
+  }
+
+  allFileChunks(): FileChunkRef[] {
+    return [...this.fileChunks.values()]
+      .map((r) => ({ ...r }))
+      .sort(
+        (a, b) =>
+          (a.collection < b.collection
+            ? -1
+            : a.collection > b.collection
+              ? 1
+              : 0) ||
+          (a.recordId < b.recordId ? -1 : a.recordId > b.recordId ? 1 : 0) ||
+          a.version - b.version ||
+          (a.chunkId < b.chunkId ? -1 : a.chunkId > b.chunkId ? 1 : 0),
+      );
+  }
+
+  getUploadChunk(uploadId: string, chunkId: string): UploadChunk | undefined {
+    const c = this.uploadChunkRows.get(`${uploadId}\u0000${chunkId}`);
+    return c ? { ...c } : undefined;
+  }
+
+  putUploadChunk(row: UploadChunk): void {
+    this.uploadChunkRows.set(`${row.uploadId}\u0000${row.chunkId}`, {
+      ...row,
+    });
+  }
+
+  uploadChunks(uploadId: string): UploadChunk[] {
+    return [...this.uploadChunkRows.values()]
+      .filter((c) => c.uploadId === uploadId)
+      .map((c) => ({ ...c }))
+      .sort((a, b) => (a.chunkId < b.chunkId ? -1 : 1));
+  }
+
+  deleteUploadChunks(uploadId: string): void {
+    for (const [k, c] of this.uploadChunkRows)
+      if (c.uploadId === uploadId) this.uploadChunkRows.delete(k);
+  }
+
   /** Sets the sequence (a test seeding a store from a pull's cursor). */
   setSeq(seq: number): void {
     this.seq = seq;
@@ -558,6 +730,7 @@ export class MemoryStore implements SyncStore {
         ? { parked: [...this.parked].sort(([a], [b]) => (a < b ? -1 : 1)) }
         : {}),
       ...(this.files.size > 0 ? { files: this.allFiles() } : {}),
+      ...(this.chunks.size > 0 ? { chunks: this.allChunks() } : {}),
       ...(this.uploads.size > 0
         ? {
             uploads: [...this.uploads.values()].sort((a, b) =>

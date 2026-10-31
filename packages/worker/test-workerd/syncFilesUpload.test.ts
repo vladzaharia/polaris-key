@@ -8,13 +8,18 @@
 // into `put` and `uploadPart`. R2 needs the length up front, so the order of the two matters, and
 // only workerd shows whether it is right.
 
-import { env, runInDurableObject } from "cloudflare:test";
+import {
+  env,
+  runDurableObjectAlarm,
+  runInDurableObject,
+} from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   callCloudSync,
   cloudSyncObjectName,
 } from "../src/services/sync/do/client.js";
 import { streamSha256 } from "../src/core/assets/blobs.js";
+import { chunkObjectKey } from "../src/services/sync/engine/chunks.js";
 import { fileObjectKey } from "../src/services/sync/engine/files.js";
 import {
   fixedLength,
@@ -286,6 +291,7 @@ describe("the upload path under workerd (U-10.6)", () => {
         deviceId: "d1",
         clientId: "c_AAAAAAAAAAAAAAAAAAAAAA",
         maxRecords: 16,
+        keepRevisions: 5,
       });
       if (!committed.outcome.ok) throw new Error("not committed");
       expect(committed.outcome.result).toMatchObject({
@@ -321,6 +327,134 @@ describe("the upload path under workerd (U-10.6)", () => {
       const u = await callCloudSync<"usage">(env, pin, { op: "usage" });
       expect(u.usage).toMatchObject({ files: 1, fileBytes: file.length });
       expect(u.usage.reservedBytes ?? 0).toBe(0);
+    },
+  );
+});
+
+describe("delta files under workerd (U-37)", () => {
+  const chunkRoute = (
+    pin: { product: string; subject: string },
+    over: Record<string, unknown>,
+  ) => ({ ...pin, serverNow: NOW, ...over });
+
+  it(
+    "plans a chunk, stores it create-only in the real bucket under the person's prefix, answers it present, and the alarm collects it once the upload is gone",
+    R2_LANE,
+    async () => {
+      const pin = { product: PRODUCT, subject: "sub_chunks" };
+      const uploadId = "up_DDDDDDDDDDDDDDDDDDDDDD";
+      const chunk = bytesOf(5000, 9);
+      const object = new Uint8Array(chunk.length + 2);
+      object.set(chunk, 2);
+      const id = await sha256Hex(chunk);
+      const manifest = bytesOf(200, 5);
+      const address = { collection: "delta", recordId: "slot-1", uploadId };
+
+      await callCloudSync<"fileBegin">(env, pin, {
+        op: "fileBegin",
+        uploadId,
+        deviceId: "d1",
+        collection: "delta",
+        recordId: "slot-1",
+        request: {
+          size: manifest.length,
+          sha256: await sha256Hex(manifest),
+          format: "chunks",
+          enc: "none",
+        },
+        mode: "chunks",
+        maxRecords: 16,
+        limits: { quotaBytes: 1_000_000_000 },
+        serverNow: NOW,
+      });
+      const plan = () =>
+        callCloudSync<"fileChunkPlan">(env, pin, {
+          op: "fileChunkPlan",
+          ...address,
+          chunks: [[id, object.length]],
+          maxBytes: 10_000_000,
+          limits: { quotaBytes: 1_000_000_000 },
+          serverNow: NOW,
+        });
+      const planned = await plan();
+      expect(planned.outcome).toEqual({ ok: true, missing: [id], present: [] });
+
+      const prepared = await callCloudSync<"chunkPrepare">(
+        env,
+        pin,
+        chunkRoute(pin, {
+          op: "chunkPrepare",
+          ...address,
+          chunkId: id,
+        }) as never,
+      );
+      if (!prepared.outcome.ok || prepared.outcome.have)
+        throw new Error("not prepared");
+      const key = chunkObjectKey(pin, "delta", id);
+      expect(prepared.outcome.key).toBe(key);
+      expect(prepared.outcome.bytes).toBe(object.length);
+
+      // The Worker's own streaming: hashed, fixed-length, create-only, under the person's SSE-C key.
+      const hashed = hashBody(chunked(object));
+      const stored = await bucket().put(
+        key,
+        fixedLength(hashed.stream, object.length),
+        {
+          sha256: await sha256Hex(object),
+          onlyIf: new Headers({ "If-None-Match": "*" }),
+          ...(prepared.outcome.ssecKey !== undefined
+            ? { ssecKey: prepared.outcome.ssecKey }
+            : {}),
+        },
+      );
+      expect(stored?.size).toBe(object.length);
+      // A second create-only put finds it there.
+      expect(
+        await bucket().put(key, object, {
+          onlyIf: new Headers({ "If-None-Match": "*" }),
+          ...(prepared.outcome.ssecKey !== undefined
+            ? { ssecKey: prepared.outcome.ssecKey }
+            : {}),
+        }),
+      ).toBeNull();
+      expect(
+        (
+          await callCloudSync<"chunkStored">(env, pin, {
+            op: "chunkStored",
+            ...address,
+            chunkId: id,
+            bytes: object.length,
+            serverNow: NOW,
+          })
+        ).outcome,
+      ).toEqual({ ok: true });
+      const again = await plan();
+      expect(again.outcome).toEqual({
+        ok: true,
+        missing: [],
+        present: [[id, object.length]],
+      });
+
+      // Pinned by the open upload: an alarm leaves it. Once the upload is aborted, the alarm
+      // deletes the object and the row.
+      const stub = env.CLOUD_SYNC.get(
+        env.CLOUD_SYNC.idFromName(cloudSyncObjectName(pin)),
+      );
+      await runDurableObjectAlarm(stub);
+      expect(await bucket().head(key)).not.toBeNull();
+      await callCloudSync<"fileAbort">(env, pin, {
+        op: "fileAbort",
+        ...address,
+        serverNow: NOW,
+      });
+      await runDurableObjectAlarm(stub);
+      expect(await bucket().head(key)).toBeNull();
+      const rows = await runInDurableObject(
+        stub,
+        async (_o, state) =>
+          state.storage.sql.exec("SELECT COUNT(*) AS n FROM chunks").one().n,
+      );
+      expect(rows).toBe(0);
     },
   );
 });

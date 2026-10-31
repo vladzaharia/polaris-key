@@ -1,4 +1,5 @@
 /// <reference types="@cloudflare/workers-types" />
+import { SYNC_CHUNK_PLAN_MAX_IDS } from "@polaris-key/protocol/sync";
 import { D1Db } from "../../../db/d1.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -19,10 +20,13 @@ import type {
   CloudSyncOp,
   CloudSyncReply,
   ExportDocument,
+  ExportedChunk,
+  ExportedFile,
   ExportedRecord,
   WireMigrations,
 } from "./protocol.js";
 import {
+  chunkImportOf,
   parseExportDocument,
   parsePolicies,
   parseRecordPolicies,
@@ -37,18 +41,34 @@ import {
 } from "./directory.js";
 import {
   fileAbort,
+  chunkPrepare,
+  chunkResolve,
+  chunkStored,
   fileBegin,
+  fileChunkPlan,
   fileFinalizeCommit,
   fileFinalizeEnd,
   fileFinalizePrepare,
   filePart,
   filePrepare,
+  fileResolve,
+  fileRevisions,
   fileStatus,
   type FileHost,
 } from "./fileOps.js";
+import {
+  absorbedFrom,
+  collectFileGarbage,
+  eraseFileObjects,
+  hasCollectableChunks,
+  noteAbsorbed,
+  releaseForMerge,
+} from "./fileGc.js";
+import { FILES_USED } from "./fileOps.js";
 import { fileStoreOf } from "./client.js";
 import { SCHEMA_VERSION, SqlStore } from "./sqlStore.js";
 import { knownPlatform } from "../../../core/devices/platformFamily.js";
+import { hexEncode } from "../../../platform/bytes.js";
 
 // One person's Cloud Sync store for one product (U-05.6; plans/U-05-slices.md §2). The Worker
 // classifies a push (catalog, quota, pause, trust) and this object applies it with the engine's
@@ -129,6 +149,14 @@ export const ERASED_RETENTION_MS = 86_400_000;
 /** The D1 batch gets this long inside the alarm's concurrency block (well under the 30 s limit). */
 export const FLUSH_TIMEOUT_MS = 10_000;
 
+/** The file operations after which the alarm may owe a new date. */
+const SCHEDULES_ALARM: ReadonlySet<string> = new Set([
+  "fileBegin",
+  "fileAbort",
+  "fileFinalizeCommit",
+  "fileFinalizeEnd",
+]);
+
 /** Seams for tests; production passes none. */
 export interface CloudSyncDoOptions {
   /**
@@ -167,7 +195,7 @@ export class CloudSyncDO implements DurableObject {
    * the runtime retries with backoff; the object stays owed until D1 took the batch, and the
    * batch is idempotent (`buildFlush`). The runtime gives up after a few retries: the object is
    * then still dirty with no alarm set, and the next accepted write schedules one again
-   * (`scheduleFlush` sets an alarm whenever none is pending).
+   * (`scheduleAlarm` sets an alarm whenever none is pending).
    *
    * An absorbed object (account merge) does no housekeeping and no flush: it only waits out its
    * marker's retention, then erases itself.
@@ -207,8 +235,14 @@ export class CloudSyncDO implements DurableObject {
           Math.floor(nowMs / 1000) - IDLE_RETENTION_SECONDS,
         );
       });
+      // Files: expired uploads and files nothing points at leave R2 (it never throws: a failure
+      // is a retry date).
+      const gc = await collectFileGarbage(this.fileHost(), pin, nowMs);
       const flush = buildFlush(this.store, pin, this.store.getUsage(), nowMs);
-      if (!flush) return;
+      if (!flush) {
+        await this.scheduleAlarm(gc.retryAt);
+        return;
+      }
       this.ctx.storage.transactionSync(() => flush.begin());
       const handle = this.db();
       // The directory upsert is the batch's last statement and writes a row only while the
@@ -229,8 +263,8 @@ export class CloudSyncDO implements DurableObject {
         return;
       }
       this.ctx.storage.transactionSync(() => flush.commit(nowMs));
-      // Writes that landed between retries are owed to the next window.
-      await this.scheduleFlush();
+      // Writes that landed between retries are owed to the next window; files owe the next date.
+      await this.scheduleAlarm(gc.retryAt);
     });
   }
 
@@ -257,19 +291,40 @@ export class CloudSyncDO implements DurableObject {
   }
 
   /**
-   * Schedules the flush if one is due and none is already set. Best effort: the write it follows
-   * is committed, so a failing `setAlarm` is logged and never fails the request. The object stays
-   * dirty and the next write (or alarm retry) schedules again.
+   * Schedules the next alarm: the directory flush when one is due, and the collection of files
+   * (dead files at once, else the earliest upload expiry; `gcRetryAt` when a pass could not finish).
+   * An alarm already set at that time or earlier stays. Best effort: the write it follows is
+   * committed, so a failing `setAlarm` is never an error of the request. The object stays owed and
+   * the next accepted write (or alarm retry) schedules again.
    */
-  private async scheduleFlush(): Promise<void> {
+  private async scheduleAlarm(gcRetryAt?: number): Promise<void> {
     try {
-      const at = flushDueAt(this.store, this.now());
+      const nowMs = this.now();
+      const flush = flushDueAt(this.store, nowMs);
+      const gc = this.gcDueAt(nowMs, gcRetryAt);
+      const at =
+        flush === null ? gc : gc === null ? flush : Math.min(flush, gc);
       if (at === null) return;
-      if ((await this.ctx.storage.getAlarm()) !== null) return;
+      const set = await this.ctx.storage.getAlarm();
+      if (set !== null && set <= at) return;
       await this.ctx.storage.setAlarm(at);
     } catch {
-      // No logging in src (R12): the push has committed, and the next accepted write reschedules.
+      // No logging in src (R12): the request has committed, and the next accepted write reschedules.
     }
+  }
+
+  /** When the files next need the alarm: now for dead files, else the earliest upload expiry. */
+  private gcDueAt(nowMs: number, retryAt?: number): number | null {
+    if (retryAt !== undefined) return retryAt;
+    if (this.store.filesWithStatus("dead", 1).length > 0) return nowMs;
+    if (hasCollectableChunks(this.store)) return nowMs;
+    const expiry = this.store.nextUploadExpiry();
+    return expiry === undefined ? null : Math.max(nowMs, expiry);
+  }
+
+  /** What the file operations need from the object. */
+  private fileHost(): FileHost {
+    return { store: this.store, ctx: this.ctx, bucket: this.bucket() };
   }
 
   private pinned(): { product: string; subject: string } | null {
@@ -308,6 +363,8 @@ export class CloudSyncDO implements DurableObject {
         op.op === "absorb" ||
         op.op === "fileBegin" ||
         op.op === "filePart" ||
+        op.op === "fileChunkPlan" ||
+        op.op === "chunkStored" ||
         op.op === "fileFinalizePrepare" ||
         op.op === "fileFinalizeCommit")
     )
@@ -319,6 +376,9 @@ export class CloudSyncDO implements DurableObject {
       case "pull":
         return this.pull(op);
       case "fileBegin":
+      case "fileChunkPlan":
+      case "chunkPrepare":
+      case "chunkStored":
       case "fileStatus":
       case "fileAbort":
       case "filePrepare":
@@ -327,6 +387,29 @@ export class CloudSyncDO implements DurableObject {
       case "fileFinalizeCommit":
       case "fileFinalizeEnd":
         return this.fileOp(op);
+      case "chunkResolve": {
+        if (!isName(op.collection) || !/^[0-9a-f]{64}$/.test(op.chunkId))
+          return reply({ error: "bad_request" }, 400);
+        const out = chunkResolve(this.fileHost(), op);
+        return reply(out.body, out.status);
+      }
+      case "fileResolve":
+      case "fileRevisions": {
+        if (
+          !isName(op.collection) ||
+          !isName(op.recordId) ||
+          (op.op === "fileResolve" &&
+            op.version !== undefined &&
+            !(Number.isSafeInteger(op.version) && op.version >= 1))
+        )
+          return reply({ error: "bad_request" }, 400);
+        const host = this.fileHost();
+        const out =
+          op.op === "fileResolve"
+            ? fileResolve(host, op)
+            : fileRevisions(host, op);
+        return reply(out.body, out.status);
+      }
       case "usage": {
         this.migrateIfBehind();
         return reply({
@@ -346,7 +429,7 @@ export class CloudSyncDO implements DurableObject {
             this.store.getMeta("absorbed_into") !== undefined ||
             this.store.getMeta("erased_at") !== undefined
               ? null
-              : this.exportAll(op),
+              : this.exportAll(op, op.forMerge === true),
         });
       case "absorb":
         return this.absorb(op);
@@ -364,6 +447,9 @@ export class CloudSyncDO implements DurableObject {
       {
         op:
           | "fileBegin"
+          | "fileChunkPlan"
+          | "chunkPrepare"
+          | "chunkStored"
           | "fileStatus"
           | "fileAbort"
           | "filePrepare"
@@ -382,11 +468,7 @@ export class CloudSyncDO implements DurableObject {
         : isName(op.uploadId)) &&
       typeof op.serverNow === "number";
     if (!named) return reply({ error: "bad_request" }, 400);
-    const host: FileHost = {
-      store: this.store,
-      ctx: this.ctx,
-      bucket: this.bucket(),
-    };
+    const host = this.fileHost();
     if (op.op === "fileBegin") {
       const r = op.request;
       if (
@@ -395,12 +477,52 @@ export class CloudSyncDO implements DurableObject {
         !Number.isSafeInteger(r.size) ||
         r.size < 0 ||
         typeof r.sha256 !== "string" ||
-        !(op.mode === "single" || op.mode === "multipart") ||
+        !(
+          op.mode === "single" ||
+          op.mode === "multipart" ||
+          op.mode === "chunks"
+        ) ||
         !isFileLimits(op.limits) ||
         typeof op.maxRecords !== "number"
       )
         return reply({ error: "bad_request" }, 400);
       const out = await fileBegin(host, op);
+      // The new session expires in 24 hours: the alarm owes a date for it.
+      if (out.status === 200) await this.scheduleAlarm();
+      return reply(out.body, out.status);
+    }
+    if (op.op === "fileChunkPlan") {
+      if (
+        !Array.isArray(op.chunks) ||
+        op.chunks.length < 1 ||
+        op.chunks.length > SYNC_CHUNK_PLAN_MAX_IDS ||
+        !op.chunks.every(
+          (c) =>
+            Array.isArray(c) &&
+            c.length === 2 &&
+            typeof c[0] === "string" &&
+            typeof c[1] === "number",
+        ) ||
+        typeof op.maxBytes !== "number" ||
+        !isFileLimits(op.limits)
+      )
+        return reply({ error: "bad_request" }, 400);
+      const out = await fileChunkPlan(host, op);
+      return reply(out.body, out.status);
+    }
+    if (op.op === "chunkPrepare" || op.op === "chunkStored") {
+      if (
+        !/^[0-9a-f]{64}$/.test(op.chunkId) ||
+        (op.op === "chunkStored" &&
+          !(Number.isSafeInteger(op.bytes) && op.bytes > 0))
+      )
+        return reply({ error: "bad_request" }, 400);
+      const out =
+        op.op === "chunkPrepare"
+          ? await chunkPrepare(host, op)
+          : chunkStored(host, op);
+      // A chunk stored for a session that closed has no pin: the alarm owes its collection.
+      if (op.op === "chunkStored") await this.scheduleAlarm();
       return reply(out.body, out.status);
     }
     if (op.op === "filePart") {
@@ -414,7 +536,12 @@ export class CloudSyncDO implements DurableObject {
       const out = filePart(host, op);
       return reply(out.body, out.status);
     }
-    if (op.op === "fileFinalizeCommit" && !isName(op.clientId))
+    if (
+      op.op === "fileFinalizeCommit" &&
+      (!isName(op.clientId) ||
+        !Number.isSafeInteger(op.keepRevisions) ||
+        op.keepRevisions < 0)
+    )
       return reply({ error: "bad_request" }, 400);
     const out =
       op.op === "fileStatus"
@@ -428,8 +555,9 @@ export class CloudSyncDO implements DurableObject {
               : op.op === "fileFinalizeEnd"
                 ? await fileFinalizeEnd(host, op)
                 : await fileAbort(host, op);
-    // A finalize moved the directory's numbers: a flush is due.
-    if (out.dirty) await this.scheduleFlush();
+    // A finalize moved the directory's numbers (a flush is due), and a begin, an abort and a
+    // finalize change what the alarm collects (an upload's expiry, a file that died).
+    if (out.dirty || SCHEDULES_ALARM.has(op.op)) await this.scheduleAlarm();
     return reply(out.body, out.status);
   }
 
@@ -467,6 +595,11 @@ export class CloudSyncDO implements DurableObject {
         // unmarked empty one that a late push could rebuild into an orphan.
         this.writeMarker(op);
       }
+      // What does not move to the survivor leaves R2 first: open uploads and dead files (the live
+      // files, revisions and parked files are the survivor's now). A failure is retryable; the
+      // marker refuses every write meanwhile, so the retry finds the same rows.
+      if (!(await releaseForMerge(this.fileHost(), op)))
+        return objectError("unavailable", 503);
       // The cleanup alarm is set BEFORE the wipe, so a marker never exists without an alarm that
       // erases it. A failed `setAlarm` is a retryable failure
       // (the merge retries the delete) and not a marker that lives forever. The due time comes
@@ -496,6 +629,13 @@ export class CloudSyncDO implements DurableObject {
     // The erasure: everything goes, and a marker (the pin and a time, no data) stays for a day, so
     // a push that was already on its way refuses instead of rebuilding the object. The cleanup
     // alarm goes first, so a marker never exists without one; a failure is retryable.
+    // Every object of the person's leaves R2 first (the SSE-C keys, then the bytes, then a sweep of
+    // their prefix and of the subjects merged into them). A failure keeps the rows: the caller
+    // retries the erasure.
+    const cleaned = await this.ctx.blockConcurrencyWhile(() =>
+      eraseFileObjects(this.fileHost(), op),
+    );
+    if (!cleaned) return objectError("unavailable", 503);
     await this.eraseSelf();
     const at = this.now();
     try {
@@ -589,7 +729,7 @@ export class CloudSyncDO implements DurableObject {
         });
       return out;
     });
-    if (outcome.ok) await this.scheduleFlush();
+    if (outcome.ok) await this.scheduleAlarm();
     return reply({ op: "push", outcome, meter: this.store.takeMeter() });
   }
 
@@ -622,6 +762,7 @@ export class CloudSyncDO implements DurableObject {
       parsed.settings.length === 0 &&
       parsed.records.length === 0 &&
       parsed.parked.length === 0 &&
+      parsed.files.length === 0 &&
       parsed.clients.length === 0
     )
       return reply({
@@ -644,6 +785,9 @@ export class CloudSyncDO implements DurableObject {
             clients: parsed.clients,
             records: parsed.records,
             parked: parsed.parked,
+            files: parsed.files,
+            ssecKeys: parsed.ssecKeys,
+            chunkImport: chunkImportOf(parsed),
             fromSubject: doc.subject,
             ...(parsed.encryptionSince !== undefined
               ? { encryptionSince: parsed.encryptionSince }
@@ -653,6 +797,11 @@ export class CloudSyncDO implements DurableObject {
             ...(recordPolicies ? { recordPolicies } : {}),
           }),
         );
+        // The survivor owns the files now, so it must be able to sweep the prefixes they sit in.
+        if (parsed.files.length > 0 || parsed.absorbedFrom.length > 0) {
+          noteAbsorbed(this.fileHost(), [doc.subject, ...parsed.absorbedFrom]);
+          this.store.setMeta(FILES_USED, "1");
+        }
         changed = out.rows + out.clients;
         skipped = out.skipped;
         if (changed > 0) markDirty(this.store);
@@ -662,7 +811,7 @@ export class CloudSyncDO implements DurableObject {
       this.store.reset();
       throw e;
     }
-    if (changed > 0) await this.scheduleFlush();
+    if (changed > 0) await this.scheduleAlarm();
     return reply({
       op: "absorb",
       changed,
@@ -727,10 +876,13 @@ export class CloudSyncDO implements DurableObject {
     });
   }
 
-  private exportAll(op: {
-    product: string;
-    subject: string;
-  }): ExportDocument | null {
+  private exportAll(
+    op: {
+      product: string;
+      subject: string;
+    },
+    forMerge: boolean,
+  ): ExportDocument | null {
     this.migrateIfBehind();
     if (!this.pinned()) return null;
     return {
@@ -748,7 +900,56 @@ export class CloudSyncDO implements DurableObject {
         ...(members ? { members: [...members] } : {}),
       })),
       ...this.exportRecords(),
+      ...this.exportFiles(forMerge),
       clients: this.store.clients(),
+    };
+  }
+
+  /**
+   * The files, as JSON. A person's own export carries the pointers; a merge's also the R2 keys,
+   * the SSE-C keys the files reference and the subjects already folded in. Dead files are not
+   * exported: nothing points at them.
+   */
+  private exportFiles(
+    forMerge: boolean,
+  ): Pick<
+    ExportDocument,
+    "files" | "chunks" | "fileChunks" | "ssecKeys" | "absorbedFrom"
+  > {
+    const rows = this.store.allFiles().filter((f) => f.status !== "dead");
+    const files = rows.map((f): ExportedFile => {
+      const { objectKey, ssecKid, clientId, ...pointer } = f;
+      return forMerge ? f : pointer;
+    });
+    // The chunks some file references (a chunk with none does not move: it is collected). A
+    // person's own export counts them; a merge's also carries the R2 keys and which file names which.
+    const chunkRows = this.store.allChunks().filter((c) => c.refs > 0);
+    const chunks = chunkRows.map((c): ExportedChunk => {
+      const { objectKey, ssecKid, unrefAt, ...pointer } = c;
+      void unrefAt;
+      return forMerge
+        ? { ...pointer, objectKey, ...(ssecKid ? { ssecKid } : {}) }
+        : pointer;
+    });
+    const kids = [
+      ...new Set([
+        ...rows.flatMap((f) => (f.ssecKid ? [f.ssecKid] : [])),
+        ...chunkRows.flatMap((c) => (c.ssecKid ? [c.ssecKid] : [])),
+      ]),
+    ];
+    const ssecKeys: [string, string][] = [];
+    for (const kid of kids) {
+      const key = this.store.getSsecKey(kid);
+      if (key) ssecKeys.push([kid, hexEncode(key)]);
+    }
+    const from = forMerge ? absorbedFrom(this.fileHost()) : [];
+    const fileChunks = forMerge ? this.store.allFileChunks() : [];
+    return {
+      ...(files.length > 0 ? { files } : {}),
+      ...(chunks.length > 0 ? { chunks } : {}),
+      ...(fileChunks.length > 0 ? { fileChunks } : {}),
+      ...(forMerge && ssecKeys.length > 0 ? { ssecKeys } : {}),
+      ...(forMerge && from.length > 0 ? { absorbedFrom: from } : {}),
     };
   }
 

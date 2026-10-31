@@ -30,6 +30,11 @@
 import type { SyncJson } from "@polaris-key/protocol/sync";
 import { compareStamps } from "./hlc.js";
 import {
+  groupFiles,
+  importRecordFiles,
+  type ChunkImport,
+} from "./absorbFiles.js";
+import {
   absorbRecords,
   isSealedRecord,
   type RecordJoin,
@@ -43,6 +48,7 @@ import type {
   ParkedRecord,
   SettingPolicy,
   Stamp,
+  StoredFile,
   StoredRecord,
   StoredSetting,
   SyncStore,
@@ -60,6 +66,11 @@ export interface AbsorbInput {
   encryptionSince?: number;
   /** Copies an earlier merge parked on the absorbed side; they travel to the survivor. */
   parked?: readonly ParkedRecord[];
+  /** The absorbed person's files (live, kept revisions, parked copies'), with the SSE-C keys they reference (U-10.10). */
+  files?: readonly StoredFile[];
+  ssecKeys?: ReadonlyMap<string, Uint8Array>;
+  /** The chunks those files name (U-37). */
+  chunkImport?: ChunkImport;
   /** The absorbed subject: the owner of a record copy this absorb parks. */
   fromSubject?: string;
   /** The declaration of a concrete record collection, where the caller knows it. */
@@ -253,9 +264,14 @@ export function absorbSettings(
   const records = input.records ?? [];
   const sealedRecords = records.filter(isSealedRecord);
   const plainRecords = records.filter((r) => !isSealedRecord(r));
+  const grouped = groupFiles(input.files ?? []);
+  const ssecKeys = input.ssecKeys ?? new Map<string, Uint8Array>();
   const recordInput = {
     fromSubject: input.fromSubject ?? "",
     now: input.now ?? Math.floor(Date.now() / 1000),
+    files: grouped.byRecord,
+    ssecKeys,
+    ...(input.chunkImport ? { chunkImport: input.chunkImport } : {}),
     ...(input.recordPolicies ? { recordPolicies: input.recordPolicies } : {}),
   };
 
@@ -295,5 +311,34 @@ export function absorbSettings(
   rows += last.rows + sealedRecs.rows;
   skipped += last.skipped;
   parked += sealedRecs.parked;
+
+  // Files of a parked copy travel with it; files whose record the export does not hold have
+  // nothing to point at, so they die (their bytes are deleted, not left in R2).
+  const byCopy = new Map<string, StoredFile[]>();
+  for (const f of grouped.parked)
+    byCopy.set(`${f.collection}\u0000${f.recordId}`, [
+      ...(byCopy.get(`${f.collection}\u0000${f.recordId}`) ?? []),
+      f,
+    ]);
+  for (const [mode, groups] of [
+    ["parked", byCopy],
+    ["dead", grouped.byRecord],
+  ] as const)
+    for (const rows_ of groups.values()) {
+      const first = rows_[0] as StoredFile;
+      if (
+        importRecordFiles(
+          store,
+          mode,
+          first.collection,
+          first.recordId,
+          rows_,
+          ssecKeys,
+          true,
+          input.chunkImport,
+        )
+      )
+        rows++;
+    }
   return { rows, clients, parked, skipped };
 }
