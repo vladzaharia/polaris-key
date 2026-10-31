@@ -663,7 +663,7 @@ async function renderApproval(
       // Keyed on the settled account, not the request: a start that fell back to card mode
       // (no account the Worker can name) signs in to a licence only.
       (flow.appChoice === true && flow.appAccount
-        ? // TODO(DNI): shownAppName; `app.app.name` is the display-checked name today.
+        ? // `app.app.name` is the checked name: `approvalApp` takes it from `shownAppName`.
           `<p>${escapeHtml(dev)} will be signed in to your Polaris Locker account for ${escapeHtml(isolate(app.app.name))}.</p>`
         : "") +
       (flow.userCode

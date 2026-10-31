@@ -142,6 +142,27 @@ describe("the new-device security notice on an app-mode device-code bind (R1-07)
       }
     }));
 
+  it("names the app by its checked name", () =>
+    pinned("uk-42-22f-notice", async () => {
+      const w = await platformIdentityWorld();
+      // A stored name that fails the display rules reads as the slug in the mail.
+      await w.db.run(
+        "UPDATE products SET name = ? WHERE slug = ?",
+        "Steam",
+        PRODUCT,
+      );
+      const sent = mailbox(w);
+      const { started } = await signedIn(w);
+      const res = await poll(w, started, T0 + 5);
+      expect(((await res.json()) as { status: string }).status).toBe("ready");
+      const got = notices(sent);
+      expect(got.length).toBeGreaterThan(0);
+      for (const m of got) {
+        expect(m.subject).toBe(`${PRODUCT} signed in on Living room TV`);
+        expect(m.text).not.toContain("Steam");
+      }
+    }));
+
   it("is sent when choice/complete binds over a device grant", () =>
     pinned("uk-42-22f-notice", async () => {
       const w = await noGrantWorld();
