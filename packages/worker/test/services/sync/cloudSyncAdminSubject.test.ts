@@ -221,7 +221,7 @@ describe("GET sync/subjects/<subject>: server mode", () => {
       ],
     });
     await pushed([mut("ui.theme", "set", { value: "dark" })]);
-    // Before the records and files tables exist the declared collections read as empty.
+    // Before anything is written to them the declared collections read as empty.
     const before = (await (await get(SLUG, w.subject)).json()) as {
       collections: { name: string; label: string; records: number }[];
       uploadsOpen: number;
@@ -235,21 +235,19 @@ describe("GET sync/subjects/<subject>: server mode", () => {
 
     const sql = objectSql(w);
     sql.exec(`
-      CREATE TABLE records (collection TEXT, id TEXT, version INTEGER, hlc TEXT, client_id TEXT,
-        value_json TEXT, kind TEXT, deleted INTEGER, PRIMARY KEY (collection, id));
-      INSERT INTO records VALUES
+      INSERT INTO records (collection, id, version, hlc, client_id, value_json, kind, deleted) VALUES
         ('saves', 'slot-1', 1, '000000000064:0000', 'c', '"aaaa"', 'value', 0),
         ('saves', 'slot-2', 2, '0000000000c8:0000', 'c', '"bbbb"', 'value', 0),
         ('saves', 'slot-3', 3, '0000001e8480:0000', 'c', '"gone"', 'value', 1),
         ('legacy', 'x', 4, '0000000f4240:0000', 'c', '1', 'value', 0);
-      CREATE TABLE files (collection TEXT, record_id TEXT, version INTEGER, object_key TEXT,
-        size INTEGER, status TEXT, PRIMARY KEY (collection, record_id, version));
-      INSERT INTO files VALUES
-        ('saves', 'slot-1', 1, 'k1', 1000, 'live'),
-        ('saves', 'slot-2', 1, 'k2', 2000, 'live'),
-        ('saves', 'slot-1', 0, 'k0', 500, 'revision');
-      CREATE TABLE uploads (upload_id TEXT PRIMARY KEY, state TEXT);
-      INSERT INTO uploads VALUES ('u1', 'open'), ('u2', 'done'), ('u3', 'open');
+      INSERT INTO files (collection, record_id, version, object_key, format, enc, size, sha256, status, created_at, client_id) VALUES
+        ('saves', 'slot-1', 1, 'k1', 'raw', 'none', 1000, 'h', 'live', 0, 'c'),
+        ('saves', 'slot-2', 1, 'k2', 'raw', 'none', 2000, 'h', 'live', 0, 'c'),
+        ('saves', 'slot-1', 0, 'k0', 'raw', 'none', 500, 'h', 'revision', 0, 'c');
+      INSERT INTO uploads (upload_id, collection, record_id, mode, format, enc, size, sha256, reserved_bytes, device_id, created_at, expires_at, state) VALUES
+        ('u1', 'saves', 'slot-1', 'new', 'raw', 'none', 1, 'h', 1, 'd', 0, 1, 'open'),
+        ('u2', 'saves', 'slot-1', 'new', 'raw', 'none', 1, 'h', 1, 'd', 0, 1, 'done'),
+        ('u3', 'saves', 'slot-1', 'new', 'raw', 'none', 1, 'h', 1, 'd', 0, 1, 'open');
     `);
     const res = await get(SLUG, w.subject);
     const text = await res.text();
@@ -297,7 +295,8 @@ describe("GET sync/subjects/<subject>: server mode", () => {
     const { w, get, pushed } = await adminWorld();
     await pushed([mut("ui.theme", "set", { value: "dark" })]);
     objectSql(w).exec(
-      `CREATE TABLE records (a TEXT); INSERT INTO records VALUES ('x');
+      `DROP TABLE records; DROP TABLE uploads;
+       CREATE TABLE records (a TEXT); INSERT INTO records VALUES ('x');
        CREATE TABLE uploads (a TEXT);`,
     );
     const body = (await (await get(SLUG, w.subject)).json()) as {
