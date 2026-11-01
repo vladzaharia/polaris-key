@@ -126,6 +126,7 @@ public class NearbySignInSession internal constructor(
     private var final: Result<SignInOutcome>? = null
     private var signedIn = false
     private var confirming = false
+    private val confirmLock = Mutex()
     private var confirmed = false
     private var endedFlag = false
     private var token: String? = null
@@ -235,6 +236,17 @@ public class NearbySignInSession internal constructor(
         return won
     }
 
+    /** The poll stored the token (unconfirmed): this session owns it from here, whatever happens to the wait. */
+    private fun tokenStored(tok: String, subj: String) {
+        val late = synchronized(lock) {
+            signedIn = true
+            subject = subj
+            token = tok
+            cancelled
+        }
+        if (late) scope.launch { discard() }
+    }
+
     /** The confirm screen's deadline: [expiresIn] seconds from the moment the poll answered, on a monotonic timer. */
     private fun armDeadline() {
         val fire = {
@@ -330,7 +342,12 @@ public class NearbySignInSession internal constructor(
                 return SignInOutcome.Cancelled
             }
             val p = try {
-                client.nearbyRoutes.poll(started)
+                client.nearbyRoutes.poll(started, ::tokenStored)
+            } catch (e: CancellationException) {
+                // A wait cancelled after the token was stored: the sign-in still ends (the deadline, or an
+                // earlier cancel, discards it).
+                if (synchronized(lock) { signedIn }) armDeadline()
+                throw e
             } catch (e: PolarisException) {
                 if (!once && (e.code == ErrorCode.networkError || e.code == ErrorCode.serverError)) {
                     // Ride out a transient failure at the current interval, or the Worker's Retry-After.
@@ -497,7 +514,9 @@ public class NearbySignInSession internal constructor(
      * the records M sent, the stored subject is written and the `signedIn` event goes out. Throws when the device is not
      * signed in, or when the sign-in ended first. A failure here leaves the sign-in unconfirmed and retryable.
      */
-    public suspend fun confirmAccount() {
+    public suspend fun confirmAccount(): Unit = confirmLock.withLock { confirmOnce() }
+
+    private suspend fun confirmOnce() {
         val (tok, subj, first) = synchronized(lock) {
             if (endedFlag) throw PolarisException(ErrorCode.signInFailed, "The sign-in ended before it was confirmed.")
             val s = subject
@@ -561,6 +580,8 @@ public class NearbySignInSession internal constructor(
      * (rule 12). Safe to call more than once.
      */
     public suspend fun declineAccount() {
+        // A confirmed (or confirming) sign-in is the person's: a late decline leaves it alone.
+        if (synchronized(lock) { confirming || confirmed }) return
         halt()
         discard()
     }
