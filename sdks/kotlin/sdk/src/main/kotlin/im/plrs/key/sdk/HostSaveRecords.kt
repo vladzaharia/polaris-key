@@ -7,6 +7,7 @@ package im.plrs.key.sdk
 
 import im.plrs.key.core.sync.HostCodec
 import im.plrs.key.core.sync.PutAtResult
+import im.plrs.key.core.sync.RecordFile
 import im.plrs.key.core.sync.RecordOutcome
 import im.plrs.key.core.sync.RecordRow
 import im.plrs.key.core.sync.SyncBlind
@@ -95,8 +96,8 @@ internal class HostSaveRecords(private val host: CloudSyncHost) : SaveRecords {
         }
     }
 
-    override suspend fun set(id: String, value: JsonObject, baseVersion: JsonElement): SaveSetResult =
-        await(id) { it.putAt(SAVES_COLLECTION, id, value, baseVersion) }
+    override suspend fun set(id: String, value: JsonObject, baseVersion: JsonElement, file: RecordFile?): SaveSetResult =
+        await(id) { it.putAt(SAVES_COLLECTION, id, value, baseVersion, file) }
 
     override suspend fun delete(id: String, baseVersion: Long): SaveSetResult =
         await(id) { it.removeAt(SAVES_COLLECTION, id, JsonPrimitive(baseVersion)) }

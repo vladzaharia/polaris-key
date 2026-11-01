@@ -36,6 +36,8 @@ internal class Op(
     var value: JsonElement? = null,
     val member: String? = null,
     val element: JsonElement? = null,
+    /** `setField` and `removeField` on a `merge` record (§13.3). */
+    val field: String? = null,
 ) {
     var editedHlc: String? = null
     var baseVersion: JsonElement? = null
@@ -47,6 +49,9 @@ internal class Op(
     /** The id `putAt` / `removeAt` returned: the op is exact (never coalesced, never rebased) and its outcome is reported under it. */
     var ticket: Long? = null
 
+    /** The pointer `putAt` was given (the one the save's finalize returned): the row adopts it when the op is acknowledged `ok`. Never sent. */
+    var file: RecordFile? = null
+
     /** The journal form (every mark), or the wire form when [wire] is true. */
     fun toJson(wire: Boolean = false): JsonObject = buildJsonObject {
         put("mutationId", mutationId)
@@ -54,6 +59,7 @@ internal class Op(
         put("op", op)
         value?.let { put("value", it) }
         member?.let { put("member", it) }
+        field?.let { put("field", it) }
         element?.let { put("element", it) }
         editedHlc?.let { put("editedHlc", it) }
         baseVersion?.let { put("baseVersion", it) }
@@ -63,11 +69,12 @@ internal class Op(
             if (moved) put("moved", true)
             parked?.let { put("parked", it) }
             ticket?.let { put("ticket", it) }
+            file?.let { put("file", it.toJson()) }
         }
     }
 
     /** A copy for a re-send: no mutation id and no `parked` mark (the id is assigned on enqueue). */
-    fun resend(keepParked: Boolean = false): Op = Op(0, target, op, value, member, element).also {
+    fun resend(keepParked: Boolean = false): Op = Op(0, target, op, value, member, element, field).also {
         if (keepParked) it.parked = parked
         it.editedHlc = editedHlc
         it.baseVersion = baseVersion
@@ -75,6 +82,7 @@ internal class Op(
         it.preContact = preContact
         it.moved = moved
         it.ticket = ticket
+        it.file = file
     }
 
     fun withMarks(marks: Marks): Op = also {

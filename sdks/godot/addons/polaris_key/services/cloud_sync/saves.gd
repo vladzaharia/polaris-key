@@ -44,6 +44,9 @@ extends RefCounted
 ## GDScript AES-GCM runs about 1 s per MiB), at most 32 MiB each. iOS and Android wait for the native lanes
 ## (CC-14b, `sync.saves` is N/A there): every call answers the typed `unsupported` refusal.
 
+## The transfers, the held conflicts or the last failure changed (K.5T): the save screens redraw on it.
+signal changed()
+
 const Transfer := preload("res://addons/polaris_key/services/cloud_sync/transfer.gd")
 const Handle := preload("res://addons/polaris_key/services/cloud_sync/transfer_handle.gd")
 const Codecs := preload("res://addons/polaris_key/services/cloud_sync/transfer_codec.gd")
@@ -54,6 +57,10 @@ const BINDING_KEY := "$file"
 const DEFAULT_MAX_BYTES := 33554432
 ## How long `purge` waits for cancelled transfers to settle.
 const PURGE_WAIT_MS := 5000
+
+## id -> the conflict a write ended with that nobody has settled or dismissed (`conflicts()`).
+var _conflicts: Dictionary = {}
+var _last_failed := false
 
 
 static func sealed_gen_of(sealed: Array) -> Variant:
@@ -99,6 +106,23 @@ func _supported() -> bool:
 
 func transfers() -> Array:
 	return _live.duplicate()
+
+
+## The conflicts a write ended with that nobody has settled or dismissed yet, oldest first. Each is the
+## `conflict` of the write's outcome, the argument `resolve` takes.
+func conflicts() -> Array:
+	return _conflicts.values()
+
+
+## Forget a conflict without settling it. Both copies stay as they were.
+func dismiss_conflict(id: String) -> void:
+	if _conflicts.erase(id):
+		changed.emit()
+
+
+## The last write to end failed, and no write has started since (a cancelled write is not a failure).
+func last_failed() -> bool:
+	return _last_failed
 
 
 # ── Results ─────────────────────────────────────────────────────────────────────────────────────
@@ -377,7 +401,9 @@ func resolve(conflict: Dictionary, keep: String, bytes: PackedByteArray, opts: D
 	if keep != "local" and keep != "both":
 		return _tracked(Handle.settled(id, {"state": "failed", "error": _err("invalid-save", "keep")}))
 	var sv: Variant = conflict.get("server_version")
-	var mode: Variant = {"copy": true} if keep == "both" else {"base_version": sv if sv != null else "*"}
+	# A copy the server no longer holds is replaced on "record must not exist".
+	var must_not_exist: bool = conflict.get("remote") == null or sv == null or int(sv) == 0
+	var mode: Variant = {"copy": true} if keep == "both" else {"base_version": "*" if must_not_exist else sv}
 	return _run(id, bytes, conflict["local"]["metadata"], opts, mode)
 
 
@@ -424,9 +450,12 @@ func _run(id: String, bytes: PackedByteArray, metadata: Dictionary, opts: Dictio
 
 ## Register a handle: it is in `transfers()` until it settles, and its end is an event.
 func _tracked(t: PKeyTransfer) -> PKeyTransfer:
+	# A write that starts ends the last failure (a write that is already over sets it again if it failed).
+	_last_failed = false
 	if t.outcome == null:
 		_live.append(t)
 		t.finished.connect(_on_finished.bind(t), CONNECT_ONE_SHOT)
+		changed.emit()
 	else:
 		_note_outcome(t)
 	return t
@@ -439,10 +468,18 @@ func _on_finished(_out: Dictionary, t: PKeyTransfer) -> void:
 
 func _note_outcome(t: PKeyTransfer) -> void:
 	var out: Dictionary = t.outcome
-	if out["state"] == "failed":
+	var state := String(out["state"])
+	if state == "conflict":
+		var c: Dictionary = out["conflict"]
+		_conflicts[String(c["id"])] = c
+	elif state == "done" and out.has("id"):
+		_conflicts.erase(String(out["id"]))
+	if state == "failed":
+		_last_failed = true
 		_emit({"type": PKeyConstants.TransferEvent.TRANSFERFAILED, "id": t.id, "code": out["error"]["code"]})
 	else:
 		_emit({"type": PKeyConstants.TransferEvent.TRANSFERDONE, "id": t.id, "state": out["state"]})
+	changed.emit()
 
 
 func _emit(event: Dictionary) -> void:
@@ -513,6 +550,7 @@ func _attempt(
 	var on_progress := func(done: int, total: int) -> void:
 		progress["done"] = done
 		progress["total"] = total
+		changed.emit()
 		if caller_progress is Callable:
 			(caller_progress as Callable).call(done, total)
 		_emit({"type": PKeyConstants.TransferEvent.TRANSFERPROGRESS, "id": transfer_id, "done": done, "total": total})
@@ -562,7 +600,7 @@ func _attempt(
 	var value := metadata.duplicate(true)
 	if _e2e():
 		value[BINDING_KEY] = {"sha256": file["sha256"], "size": file["size"], "format": file["format"]}
-	var set_r: Dictionary = await records.set_record(target_id, value, int(file["version"]), hard)
+	var set_r: Dictionary = await records.set_record(target_id, value, int(file["version"]), hard, file)
 	if set_r["ok"]:
 		var done := {"state": "done", "id": id, "version": set_r["version"], "file": file}
 		if target_id != id:
@@ -599,13 +637,32 @@ func _free_id(id: String) -> Variant:
 
 
 func _conflict(id: String, metadata: Dictionary, size: int, server_version: Variant, known: Variant, has_known: bool) -> Dictionary:
-	var rec: Variant = known if has_known else _d["records"].get_record(id)
 	var slots: int = _d["records"].list().size()
-	var rv: Variant = rec["version"] if rec != null else server_version
+	# The server's answer wins. `known` is the copy a rejected set carried (null: deleted). A file begin
+	# answers only a version, and the cached row stands in for it only while it is that very version; a
+	# stale row is never presented as the server's copy.
+	var remote: Variant = null
+	var rv: Variant = null
+	if has_known:
+		remote = _summary(known) if known != null else null
+		rv = known["version"] if known != null else server_version
+	elif server_version == null:
+		var cached: Variant = _d["records"].get_record(id)
+		remote = _summary(cached) if cached != null else null
+		rv = cached["version"] if cached != null else null
+	elif int(server_version) == 0:
+		rv = 0
+	else:
+		var row: Variant = _d["records"].get_record(id)
+		if row != null and int(row["version"]) == int(server_version):
+			remote = _summary(row)
+		else:
+			remote = {"id": id, "version": int(server_version), "metadata": {}, "file": null, "newer_format": false}
+		rv = int(server_version)
 	return {"state": "conflict", "conflict": {
 		"id": id,
 		"local": {"metadata": metadata, "size": size},
-		"remote": _summary(rec) if rec != null else null,
+		"remote": remote,
 		"server_version": rv,
 		"both_available": slots < PKeyConstants.SYNC_SAVE_SLOTS,
 	}}
@@ -616,6 +673,9 @@ func _conflict(id: String, metadata: Dictionary, size: int, server_version: Vari
 func purge() -> void:
 	var running := _live.duplicate()
 	_live.clear()
+	_conflicts.clear()
+	_last_failed = false
+	changed.emit()
 	_d["records"].drop_all()
 	# Cancel is asked of each and waited for a bounded time: a transfer stuck in a call must not hold up
 	# the sign-out.

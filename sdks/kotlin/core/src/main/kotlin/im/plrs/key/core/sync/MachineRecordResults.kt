@@ -54,7 +54,7 @@ internal class MachineRecordResults(private val p: MachineParts) {
         if (op.op == "delete") {
             ctx.part.records.remove(rk)
         } else if (value != null) {
-            ctx.part.records[rk] = SyncRow(value, version, file = ctx.part.records[rk]?.file)
+            ctx.part.records[rk] = SyncRow(value, version, file = op.file ?: ctx.part.records[rk]?.file)
         }
         if (rk in ctx.part.held) rebase.on = JsonPrimitive(version)
         p.records.emitOutcome(op) { RecordOutcome.Ok(it, version) }

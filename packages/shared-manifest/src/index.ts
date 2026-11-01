@@ -339,6 +339,17 @@ export const IDENTITY_TERMS_VERSION_RE = /^[A-Za-z0-9._-]{1,32}$/;
 export const MAX_IDENTITY_REDIRECT_PATHS = 16;
 /** `identity.redirectPaths`: each path at most this many characters. */
 export const MAX_IDENTITY_REDIRECT_PATH_LENGTH = 256;
+/** `identity.nativeRedirect.schemes`: at most this many registered URL schemes (plans/I-15.md §3). */
+export const MAX_NATIVE_REDIRECT_SCHEMES = 4;
+/** `identity.nativeRedirect.claimedPaths`: at most this many claimed HTTPS paths. */
+export const MAX_NATIVE_REDIRECT_CLAIMED_PATHS = 8;
+/**
+ * `identity.nativeRedirect.schemes` entries: a lower-case scheme (RFC 3986) in reverse-DNS form,
+ * so it holds a `.` (RFC 8252 §7.1), at most 64 characters, and never the platform's own `im.plrs.`
+ * or `locker.polaris.` prefixes.
+ */
+export const NATIVE_REDIRECT_SCHEME_RE =
+  /^(?!im\.plrs\.)(?!locker\.polaris\.)(?=.*\.)[a-z][a-z0-9+.-]{0,63}$/;
 /** `identity.platformSignIn.google`: a Google OAuth client id (CC-01 auto sign-in, D-A1). */
 export const GOOGLE_CLIENT_ID_RE =
   /^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$/;
@@ -388,6 +399,16 @@ export interface ManifestIdentity {
   terms?: { version: string; url?: string };
   /** Web-redirect callback paths, matched exactly against `web.origins` (I-08). */
   redirectPaths?: string[];
+  /**
+   * The native redirect classes beyond the default loopback (I-15; WIRE-CONTRACT-V5 §12.12):
+   * `loopback` (default true), registered reverse-DNS URL `schemes`, and `claimedPaths` on a
+   * `web.origins` origin.
+   */
+  nativeRedirect?: {
+    loopback?: boolean;
+    schemes?: string[];
+    claimedPaths?: string[];
+  };
   /**
    * The native audiences the Worker verifies a platform sign-in against (CC-01, D-A1). The Worker
    * unions the App Store and TestFlight outlets' bundle ids into `apple.bundleIds`.
@@ -6588,7 +6609,7 @@ function validateIdentityBlock(
       "product",
       "/identity",
       "invalid_identity",
-      "identity must be an object with keyEntry, terms, redirectPaths, platformSignIn, nearby and restore.",
+      "identity must be an object with keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby and restore.",
     );
     return;
   }
@@ -6599,7 +6620,7 @@ function validateIdentityBlock(
         "product",
         `/identity/${key}`,
         "invalid_identity",
-        "identity takes only keyEntry, terms, redirectPaths, platformSignIn, nearby and restore.",
+        "identity takes only keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby and restore.",
       );
     }
   }
@@ -6727,6 +6748,15 @@ function validateIdentityBlock(
     }
   }
 
+  if (identity.nativeRedirect !== undefined)
+    validateNativeRedirect(
+      identity.nativeRedirect,
+      paths,
+      productRoot,
+      errors,
+      warnings,
+    );
+
   if (identity.nearby !== undefined && typeof identity.nearby !== "boolean") {
     add(
       errors,
@@ -6747,6 +6777,154 @@ function validateIdentityBlock(
   }
   if (identity.platformSignIn !== undefined)
     validatePlatformSignIn(identity.platformSignIn, errors);
+}
+
+/**
+ * `identity.nativeRedirect` (I-15; plans/I-15.md §3): loopback on or off, the registered URL
+ * schemes and the claimed HTTPS paths. Each `add` has literal arguments (the generated
+ * validation-codes page lists them).
+ */
+function validateNativeRedirect(
+  nr: unknown,
+  redirectPaths: unknown,
+  productRoot: Record<string, unknown>,
+  errors: ValidationMessage[],
+  warnings: ValidationMessage[],
+): void {
+  if (!isRecord(nr)) {
+    add(
+      errors,
+      "product",
+      "/identity/nativeRedirect",
+      "invalid_identity_native_redirect",
+      "identity.nativeRedirect must be an object with loopback, schemes and claimedPaths.",
+    );
+    return;
+  }
+  for (const key of Object.keys(nr)) {
+    if (key !== "loopback" && key !== "schemes" && key !== "claimedPaths") {
+      add(
+        errors,
+        "product",
+        `/identity/nativeRedirect/${key}`,
+        "invalid_identity_native_redirect",
+        "identity.nativeRedirect takes only loopback, schemes and claimedPaths.",
+      );
+    }
+  }
+  if (nr.loopback !== undefined && typeof nr.loopback !== "boolean") {
+    add(
+      errors,
+      "product",
+      "/identity/nativeRedirect/loopback",
+      "invalid_identity_native_redirect",
+      "identity.nativeRedirect.loopback must be true or false.",
+    );
+  }
+
+  const schemes = nr.schemes;
+  if (schemes !== undefined) {
+    if (!Array.isArray(schemes)) {
+      add(
+        errors,
+        "product",
+        "/identity/nativeRedirect/schemes",
+        "invalid_identity_native_redirect",
+        "identity.nativeRedirect.schemes must be an array.",
+      );
+    } else {
+      if (schemes.length > MAX_NATIVE_REDIRECT_SCHEMES) {
+        add(
+          errors,
+          "product",
+          "/identity/nativeRedirect/schemes",
+          "invalid_identity_redirect_scheme",
+          `identity.nativeRedirect.schemes takes at most ${MAX_NATIVE_REDIRECT_SCHEMES} schemes.`,
+        );
+      }
+      const seen = new Set<string>();
+      for (const [i, scheme] of schemes.entries()) {
+        const problem =
+          typeof scheme !== "string"
+            ? "must be strings"
+            : !NATIVE_REDIRECT_SCHEME_RE.test(scheme)
+              ? "must be reverse-DNS schemes of lower-case letters, digits, +, . and - (at least one dot, at most 64 characters, not starting im.plrs. or locker.polaris.)"
+              : seen.has(scheme)
+                ? "must not repeat an earlier entry"
+                : null;
+        if (problem) {
+          add(
+            errors,
+            "product",
+            `/identity/nativeRedirect/schemes/${i}`,
+            "invalid_identity_redirect_scheme",
+            `identity.nativeRedirect.schemes entries ${problem}.`,
+          );
+        }
+        if (typeof scheme === "string") seen.add(scheme);
+      }
+    }
+  }
+
+  const claimed = nr.claimedPaths;
+  if (claimed !== undefined) {
+    if (
+      !Array.isArray(claimed) ||
+      claimed.length > MAX_NATIVE_REDIRECT_CLAIMED_PATHS
+    ) {
+      add(
+        errors,
+        "product",
+        "/identity/nativeRedirect/claimedPaths",
+        "invalid_identity_claimed_paths",
+        `identity.nativeRedirect.claimedPaths must be an array of at most ${MAX_NATIVE_REDIRECT_CLAIMED_PATHS} paths.`,
+      );
+    } else {
+      const seen = new Set<string>();
+      for (const [i, path] of claimed.entries()) {
+        const problem =
+          identityRedirectPathProblem(path) ??
+          (seen.has(path as string)
+            ? "must not repeat an earlier entry"
+            : null);
+        if (problem) {
+          add(
+            errors,
+            "product",
+            `/identity/nativeRedirect/claimedPaths/${i}`,
+            "invalid_identity_claimed_paths",
+            `identity.nativeRedirect.claimedPaths entries ${problem}.`,
+          );
+        }
+        if (typeof path === "string") seen.add(path);
+      }
+      if (
+        Array.isArray(redirectPaths) &&
+        claimed.some((c) => redirectPaths.includes(c))
+      ) {
+        add(
+          errors,
+          "product",
+          "/identity/nativeRedirect/claimedPaths",
+          "identity_claimed_paths_overlap_redirect",
+          "identity.nativeRedirect.claimedPaths must not repeat an identity.redirectPaths entry: a path is either a web callback or an app link.",
+        );
+      }
+      const origins = asRecord(productRoot.web).origins;
+      if (
+        claimed.length > 0 &&
+        !(Array.isArray(origins) && origins.length > 0)
+      ) {
+        add(
+          warnings,
+          "product",
+          "/identity/nativeRedirect/claimedPaths",
+          "identity_claimed_paths_without_origins",
+          "identity.nativeRedirect.claimedPaths needs at least one web.origins entry: a claimed redirect URI is an origin from web.origins and one of these paths.",
+        );
+      }
+    }
+  }
 }
 
 /**
@@ -7109,6 +7287,7 @@ const IDENTITY_MEMBERS: readonly string[] = [
   "keyEntry",
   "terms",
   "redirectPaths",
+  "nativeRedirect",
   "platformSignIn",
   "nearby",
   "restore",
@@ -7142,6 +7321,16 @@ function normalizeIdentityBlock(raw: unknown): ManifestIdentity | undefined {
   }
   if (Array.isArray(raw.redirectPaths))
     out.redirectPaths = raw.redirectPaths.filter(isString);
+  if (isRecord(raw.nativeRedirect)) {
+    const nr: NonNullable<ManifestIdentity["nativeRedirect"]> = {};
+    if (typeof raw.nativeRedirect.loopback === "boolean")
+      nr.loopback = raw.nativeRedirect.loopback;
+    if (Array.isArray(raw.nativeRedirect.schemes))
+      nr.schemes = raw.nativeRedirect.schemes.filter(isString);
+    if (Array.isArray(raw.nativeRedirect.claimedPaths))
+      nr.claimedPaths = raw.nativeRedirect.claimedPaths.filter(isString);
+    if (Object.keys(nr).length > 0) out.nativeRedirect = nr;
+  }
   if (typeof raw.nearby === "boolean") out.nearby = raw.nearby;
   if (typeof raw.restore === "boolean") out.restore = raw.restore;
   const psi = normalizePlatformSignIn(raw.platformSignIn);

@@ -6668,6 +6668,16 @@ msgstr "登录无法返回应用"
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "该应用的登录设置不正确，因此在此处停止以保护你的账户。请告知其开发者。"
 
+#. Sign-in link expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.title"
+msgstr "登录链接已过期"
+
+#. This sign-in link has expired. Go back to {product} and start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.message"
+msgstr "此登录链接已过期。请返回 {product} 重新开始。"
+
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"
@@ -7467,6 +7477,16 @@ msgstr "代码已过期"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-expired.message"
 msgstr "代码在登录完成前已过期。请重新开始。"
+
+#. Browser sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.title"
+msgstr "无法通过浏览器登录"
+
+#. Sign-in could not open a browser here. Use a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.message"
+msgstr "此处无法打开浏览器登录。请改用代码。"
 
 #. Sign-in declined
 #. Core copy (conformance/parity/copy.en.json, codes).

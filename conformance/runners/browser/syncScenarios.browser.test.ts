@@ -29,6 +29,7 @@ import {
   type CloudSyncOptions,
   type Json,
   type OpenedBody,
+  type RecordFile,
   type RecordOutcome,
   type SyncResponse,
 } from "@polaris-key/client-core/cloud-sync";
@@ -104,6 +105,7 @@ function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
         args[1] as string,
         args[2] as Json,
         args[3] as number | "*",
+        args[4] as RecordFile | undefined,
       );
     case "removeAt":
       return m.removeAt(

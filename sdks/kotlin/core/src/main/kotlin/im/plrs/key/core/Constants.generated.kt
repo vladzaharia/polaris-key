@@ -63,6 +63,7 @@ public object ErrorCode {
     public const val unsupportedGrantType: String = "unsupported_grant_type"
     public const val invalidScope: String = "invalid_scope"
     public const val redirectUriMismatch: String = "redirect_uri_mismatch"
+    public const val invalidRequestUri: String = "invalid_request_uri"
     public const val licenseChoiceRequired: String = "license_choice_required"
     public const val interstitialRequired: String = "interstitial_required"
     public const val notNearby: String = "not_nearby"
@@ -143,6 +144,7 @@ public object ErrorCode {
     public const val serverError: String = "server-error"
     public const val cancelled: String = "cancelled"
     public const val signInExpired: String = "sign-in-expired"
+    public const val redirectUnavailable: String = "redirect-unavailable"
     public const val signInDenied: String = "sign-in-denied"
     public const val signInUnavailable: String = "sign-in-unavailable"
     public const val platformIdentityUnavailable: String = "platform-identity-unavailable"
@@ -292,6 +294,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "unsupported_grant_type",
     "invalid_scope",
     "redirect_uri_mismatch",
+    "invalid_request_uri",
     "license_choice_required",
     "interstitial_required",
     "not_nearby",
@@ -372,6 +375,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "server-error",
     "cancelled",
     "sign-in-expired",
+    "redirect-unavailable",
     "sign-in-denied",
     "sign-in-unavailable",
     "platform-identity-unavailable",
@@ -521,6 +525,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "unsupported_grant_type" to "wire",
     "invalid_scope" to "wire",
     "redirect_uri_mismatch" to "wire",
+    "invalid_request_uri" to "wire",
     "license_choice_required" to "wire",
     "interstitial_required" to "wire",
     "not_nearby" to "wire",
@@ -601,6 +606,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "server-error" to "client",
     "cancelled" to "client",
     "sign-in-expired" to "client",
+    "redirect-unavailable" to "client",
     "sign-in-denied" to "client",
     "sign-in-unavailable" to "client",
     "platform-identity-unavailable" to "client",
@@ -766,6 +772,7 @@ public object Feature {
     public const val identityAttach: String = "identity.attach"
     public const val identityAccount: String = "identity.account"
     public const val identityRedirectWeb: String = "identity.redirect.web"
+    public const val identityRedirectNative: String = "identity.redirect.native"
     public const val identityChoice: String = "identity.choice"
     public const val identityDevicecodeChoice: String = "identity.devicecode.choice"
     public const val identitySigninHints: String = "identity.signin.hints"
@@ -911,6 +918,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.attach",
     "identity.account",
     "identity.redirect.web",
+    "identity.redirect.native",
     "identity.choice",
     "identity.devicecode.choice",
     "identity.signin.hints",
@@ -2096,6 +2104,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.attach" to CapabilityRow("implemented", "identity", listOf()),
     "identity.account" to CapabilityRow("implemented", "identity", listOf()),
     "identity.redirect.web" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.redirect.native" to CapabilityRow("planned", "identity", listOf()),
     "identity.choice" to CapabilityRow("implemented", "identity", listOf()),
     "identity.devicecode.choice" to CapabilityRow("implemented", "identity", listOf()),
     "identity.signin.hints" to CapabilityRow("implemented", "identity", listOf()),
@@ -2174,4 +2183,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "b94e67bc469fd088823a6728867fae1e00b2084cd8c42b511faa018ce7e65369"
+public const val CAPABILITY_DIGEST: String = "bd8a405e9fd5549964856c24bf86eba84d724e89e16d3136bcedb324a9d48584"

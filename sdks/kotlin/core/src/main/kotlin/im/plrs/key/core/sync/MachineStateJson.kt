@@ -129,6 +129,7 @@ public object MachineStateJson {
                 o["value"],
                 o["member"].stringValue,
                 o["element"],
+                o["field"].stringValue,
             )
         op.editedHlc = o["editedHlc"].stringValue
         op.baseVersion = o["baseVersion"]
@@ -137,6 +138,7 @@ public object MachineStateJson {
         op.moved = o["moved"].boolValue == true
         op.parked = o["parked"].stringValue
         op.ticket = o["ticket"].longValue
+        op.file = RecordFile.of(o["file"])
         return op
     }
 }

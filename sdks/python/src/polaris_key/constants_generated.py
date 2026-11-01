@@ -273,6 +273,7 @@ class ErrorCode:
     UNSUPPORTED_GRANT_TYPE: Final = "unsupported_grant_type"
     INVALID_SCOPE: Final = "invalid_scope"
     REDIRECT_URI_MISMATCH: Final = "redirect_uri_mismatch"
+    INVALID_REQUEST_URI: Final = "invalid_request_uri"
     LICENSE_CHOICE_REQUIRED: Final = "license_choice_required"
     INTERSTITIAL_REQUIRED: Final = "interstitial_required"
     NOT_NEARBY: Final = "not_nearby"
@@ -353,6 +354,7 @@ class ErrorCode:
     SERVER_ERROR: Final = "server-error"
     CANCELLED: Final = "cancelled"
     SIGN_IN_EXPIRED: Final = "sign-in-expired"
+    REDIRECT_UNAVAILABLE: Final = "redirect-unavailable"
     SIGN_IN_DENIED: Final = "sign-in-denied"
     SIGN_IN_UNAVAILABLE: Final = "sign-in-unavailable"
     PLATFORM_IDENTITY_UNAVAILABLE: Final = "platform-identity-unavailable"
@@ -502,6 +504,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "unsupported_grant_type",
     "invalid_scope",
     "redirect_uri_mismatch",
+    "invalid_request_uri",
     "license_choice_required",
     "interstitial_required",
     "not_nearby",
@@ -582,6 +585,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "server-error",
     "cancelled",
     "sign-in-expired",
+    "redirect-unavailable",
     "sign-in-denied",
     "sign-in-unavailable",
     "platform-identity-unavailable",
@@ -733,6 +737,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "unsupported_grant_type": "wire",
         "invalid_scope": "wire",
         "redirect_uri_mismatch": "wire",
+        "invalid_request_uri": "wire",
         "license_choice_required": "wire",
         "interstitial_required": "wire",
         "not_nearby": "wire",
@@ -813,6 +818,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "server-error": "client",
         "cancelled": "client",
         "sign-in-expired": "client",
+        "redirect-unavailable": "client",
         "sign-in-denied": "client",
         "sign-in-unavailable": "client",
         "platform-identity-unavailable": "client",
@@ -981,6 +987,7 @@ class Feature:
     IDENTITY_ATTACH: Final = "identity.attach"
     IDENTITY_ACCOUNT: Final = "identity.account"
     IDENTITY_REDIRECT_WEB: Final = "identity.redirect.web"
+    IDENTITY_REDIRECT_NATIVE: Final = "identity.redirect.native"
     IDENTITY_CHOICE: Final = "identity.choice"
     IDENTITY_DEVICECODE_CHOICE: Final = "identity.devicecode.choice"
     IDENTITY_SIGNIN_HINTS: Final = "identity.signin.hints"
@@ -1126,6 +1133,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.attach",
     "identity.account",
     "identity.redirect.web",
+    "identity.redirect.native",
     "identity.choice",
     "identity.devicecode.choice",
     "identity.signin.hints",
@@ -2556,6 +2564,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.attach": CapabilityRow("implemented", "identity", ()),
         "identity.account": CapabilityRow("implemented", "identity", ()),
         "identity.redirect.web": CapabilityRow("implemented", "identity", ()),
+        "identity.redirect.native": CapabilityRow("planned", "identity", ()),
         "identity.choice": CapabilityRow("implemented", "identity", ()),
         "identity.devicecode.choice": CapabilityRow("implemented", "identity", ()),
         "identity.signin.hints": CapabilityRow("implemented", "identity", ()),
@@ -2635,4 +2644,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "fcc325eec3fe75d99d2d241bac6860695cbd4ff2fd61f27f4659be07e7f48fd6"
+CAPABILITY_DIGEST: Final[str] = "54a086615f29e7acb6d94601b9409de2d2056e06710440569ee9f0ff81d1d26d"

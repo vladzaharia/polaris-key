@@ -35,6 +35,8 @@ class FakeFiles:
 	var chunks := {}
 	var seq := 0
 	var calls: Array[String] = []
+	## The baseVersion of each begin, in order.
+	var bases: Array = []
 	var aborted: Array[String] = []
 	var puts: Array[PackedByteArray] = []
 	## Awaited before a GET lands.
@@ -51,6 +53,7 @@ class FakeFiles:
 		calls.append("begin")
 		var cur: int = records[target["record"]]["version"] if records.has(target["record"]) else 0
 		var base: Variant = r.get("baseVersion")
+		bases.append(base)
 		if base != null and not ((base is String and base == "*" and cur == 0) or (not (base is String) and int(base) == cur)):
 			return Transfer.reply_fail(409, "revision_conflict", -1.0, {"server": {"version": cur}})
 		seq += 1
@@ -172,6 +175,7 @@ class FakeRecords:
 	var hold_set := false
 	var release_set := false
 	var set_calls := 0
+	var set_files: Array = []
 	var rejected_code := ""
 
 	func _init(f: FakeFiles) -> void:
@@ -199,14 +203,20 @@ class FakeRecords:
 				out.append(_row(w, files.records[w]))
 		return out
 
+	## While set, get_record answers this device's stale cache instead of the server's row.
+	var stale_row: Variant = null
+
 	func get_record(id: String) -> Variant:
+		if stale_row != null:
+			return stale_row
 		var w := wire_id(id) if not ring.locked else id
 		if not files.records.has(w) or files.records[w]["value"] == null:
 			return null
 		return _row(w, files.records[w])
 
-	func set_record(id: String, value: Dictionary, base_version: Variant, cancel: Variant = null) -> Dictionary:
+	func set_record(id: String, value: Dictionary, base_version: Variant, cancel: Variant = null, file: Variant = null) -> Dictionary:
 		set_calls += 1
+		set_files.append(file)
 		var tree := Engine.get_main_loop() as SceneTree
 		while hold_set and not release_set:
 			if cancel != null and cancel.cancelled:
@@ -528,6 +538,30 @@ func _conflicts(t: PKeyTestContext) -> void:
 		raced["files"].records[raced["records"].wire_id("s")]["version"] += 5
 	var race: Dictionary = await _write(raced, "s", _noise(30), {"n": 2})
 	t.check("conflict: a metadata set that finds a newer record is a conflict with the server's copy", race["state"] == "conflict" and race["conflict"]["remote"] != null, str(race))
+	# the conflict describes the server's version, not this device's cached copy
+	var two = _rig(false)
+	await _write(two, "s", _noise(30), {"n": 1})
+	var cached: Dictionary = two["records"].get_record("s")
+	two["files"].records[two["records"].wire_id("s")]["version"] = 40
+	two["records"].stale_row = cached
+	var theirs: Dictionary = await _write(two, "s", _noise(30), {"n": 2}, {"base_version": cached["version"]})
+	t.check("conflict: the server's version wins over this device's cached copy", theirs["state"] == "conflict" and theirs["conflict"]["server_version"] == 40 and theirs["conflict"]["remote"]["version"] == 40, str(theirs))
+	var kept_mine: Dictionary = await two["saves"].resolve(theirs["conflict"], "local", _noise(30)).wait()
+	t.check("resolve local after another device's write succeeds", kept_mine["state"] == "done", str(kept_mine))
+	two["records"].stale_row = null
+	var again: Dictionary = await _write(two, "s", _noise(30), {"n": 3})
+	t.check("a write after resolving does not repeat the conflict", again["state"] == "done", str(again))
+	# a save deleted elsewhere: no remote, and keeping this device's save uses the must-not-exist precondition
+	var gone = _rig(false)
+	await _write(gone, "s", _noise(30), {"n": 1})
+	var old_row: Dictionary = gone["records"].get_record("s")
+	gone["files"].records.erase(gone["records"].wire_id("s"))
+	gone["records"].stale_row = old_row
+	var del: Dictionary = await _write(gone, "s", _noise(30), {"n": 2})
+	t.check("conflict: a save deleted elsewhere has no remote", del["state"] == "conflict" and del["conflict"]["remote"] == null and del["conflict"]["server_version"] == 0, str(del))
+	gone["records"].stale_row = null
+	var kept_gone: Dictionary = await gone["saves"].resolve(del["conflict"], "local", _noise(30)).wait()
+	t.check("resolve local after a deletion elsewhere sends *", kept_gone["state"] == "done" and gone["files"].bases.back() == "*", str(kept_gone))
 	# a rejected set
 	var rej = _rig(false)
 	rej["records"].rejected_code = "quota_exceeded"
@@ -959,6 +993,11 @@ func _records_binding(t: PKeyTestContext) -> void:
 	t.check("records: a rejection carries its code", denied == {"ok": false, "reason": "rejected", "code": "quota_exceeded"}, str(denied))
 	var created: Dictionary = await records.set_record("fresh", {"a": 1}, "*")
 	t.check("records: create-only with * creates", created["ok"] and created["version"] == 1)
+	var pointer := {"version": 1, "size": 7, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "format": "whole"}
+	var with_file: Dictionary = await records.set_record("fresh2", {"a": 1}, "*", null, pointer)
+	t.check("records: a write that gives the finalized pointer lists its file at once (no pull)", with_file["ok"] and records.get_record("fresh2")["file"] == pointer and records.list().any(func(r: Dictionary) -> bool: return r["id"] == "fresh2" and r["file"] == pointer), str(records.get_record("fresh2")))
+	t.check("records: the pointer is never sent", not pushes.back()["mutations"][0].has("file"), str(pushes.back()))
+	t.check("records: without a pointer a new row has no file", records.get_record("fresh")["file"] == null)
 	var gone: Dictionary = await records.delete_record("fresh", 1)
 	t.check("records: remove_at deletes at the exact version and the row goes", gone["ok"] and records.get_record("fresh") == null, str(gone))
 
@@ -1131,9 +1170,9 @@ func _through_the_sdk(t: PKeyTestContext) -> void:
 	t.check("sdk: the handle is listed while it runs", sdk.cloud_sync.transfers().size() == 1 and sdk.cloud_sync.transfers()[0] == h or h.outcome != null)
 	var out := await h.wait()
 	t.check("sdk: the write is done at the record version the Worker answered", out["state"] == "done" and out["version"] == 2 and Types.json_equal(worker.value, {"chapter": "two", "formatVersion": 1}) and worker.data == data, "%s | %s | %s" % [str(out), str(worker.value), worker.data == data])
-	# The acknowledged row has no file pointer until the next pull names it (it keeps only the prior row's).
+	# The acknowledged row takes the pointer finalize returned, so it lists its file before any pull.
 	var before_pull = await saves.list()
-	t.check("sdk: the acknowledged row is listed at once, its file named by the next pull", before_pull.ok and before_pull.detail.size() == 1 and before_pull.detail[0]["file"] == null)
+	t.check("sdk: the acknowledged row is listed at once with its new file, before any pull", before_pull.ok and before_pull.detail.size() == 1 and before_pull.detail[0]["file"] != null and before_pull.detail[0]["file"]["size"] == out["file"]["size"] and before_pull.detail[0]["file"]["sha256"] == out["file"]["sha256"], str(before_pull.detail))
 	var machine = sdk.cloud_sync.host.machine()
 	machine.set_network("offline")
 	machine.set_network("online")

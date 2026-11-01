@@ -504,6 +504,11 @@
         "file": "sdks/godot/addons/polaris_key/services/identity/sign_in_session.gd"
       },
       {
+        "ns": "identity",
+        "type": "PKeyIdentityExchange",
+        "file": "sdks/godot/addons/polaris_key/services/identity/exchange.gd"
+      },
+      {
         "ns": "devices",
         "file": "sdks/godot/addons/polaris_key/services/devices.gd"
       },
@@ -1971,6 +1976,16 @@
     },
     {
       "sdk": "godot",
+      "path": "identity.exchange",
+      "reason": "the exchange primitive under identity.autoSignIn (I-48.3), which carries the row; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.nonce",
+      "reason": "the exchange primitive under identity.autoSignIn (I-48.3), which carries the row; not an app verb"
+    },
+    {
+      "sdk": "godot",
       "path": "identity.install_platform_provider",
       "reason": "wiring: installs, lists and clears the platform sign-in providers the ladder and sign_out() use (the platform adapters call it); apps sign in with auto_sign_in() or exchange.exchange()"
     },
@@ -2487,22 +2502,22 @@
     {
       "sdk": "node",
       "path": "cloudConnect.transfer",
-      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb. CC-20.8 owns the verb rows"
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
     },
     {
       "sdk": "python",
       "path": "cloudConnect.transfer",
-      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb. CC-20.8 owns the verb rows"
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
     },
     {
       "sdk": "kotlin",
       "path": "cloudConnect.transfer",
-      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb. CC-20.8 owns the verb rows"
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
     },
     {
       "sdk": "swift",
       "path": "cloudConnect.transfer",
-      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb. CC-20.8 owns the verb rows"
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
     },
     {
       "sdk": "python",
@@ -3575,9 +3590,7 @@
           "spelling": "ChoiceClient.complete"
         },
         "godot": {
-          "spelling": "PKeyIdentityChoice.complete",
-          "planned": "I-48",
-          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
+          "spelling": "PKeyIdentityChoice.complete"
         }
       },
       "layer": "client"
@@ -3638,9 +3651,7 @@
         },
         "kotlin": {},
         "godot": {
-          "spelling": "PKeyIdentity.auto_sign_in",
-          "planned": "I-48",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+          "spelling": "PKeyIdentity.auto_sign_in"
         }
       },
       "layer": "client"
@@ -7164,6 +7175,11 @@
       "feature": "identity.nearby",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "adapter.nearby.request",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the new device; the host holds the session"
+        },
         "python": {},
         "swift": {},
         "kotlin": {
@@ -7184,6 +7200,11 @@
       "feature": "identity.nearby",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "adapter.nearby.approver",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the signed-in device; open while its screen is"
+        },
         "python": {},
         "swift": {},
         "kotlin": {
@@ -7215,6 +7236,11 @@
       "returns": "bool",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "adapter.supports",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): supports('identity.nearby'); a v4 host answers reason version"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7248,6 +7274,11 @@
       "returns": "json",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "adapter.nearby.approver",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the signed-in device; asks arrive as pushed state, one ask id each"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7271,6 +7302,11 @@
       "returns": "json",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.state.approvers",
+          "shape": "property",
+          "reason": "desktop bridge v5 (I-47b): the requester session (adapter.nearby.request)"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7299,6 +7335,11 @@
       ],
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.subscribe",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7322,6 +7363,11 @@
       "returns": "string",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.state.code",
+          "shape": "property",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7345,6 +7391,11 @@
       "returns": "string",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.phase",
+          "shape": "property",
+          "reason": "desktop bridge v5 (I-47b): the requester session's phase"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7373,6 +7424,11 @@
       ],
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.subscribe",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7402,6 +7458,11 @@
       "returns": "json",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.choose",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7425,6 +7486,11 @@
       "returns": "json",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.confirm",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7447,6 +7513,11 @@
       "feature": "identity.nearby",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.decline",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7470,6 +7541,9 @@
       "returns": "string",
       "sdks": {
         "node": {},
+        "react": {
+          "reason": "desktop bridge v5 (I-47b): the key-ring wrap stays in the host and never crosses IPC (D-2)"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7498,6 +7572,9 @@
       ],
       "sdks": {
         "node": {},
+        "react": {
+          "reason": "desktop bridge v5 (I-47b): the key-ring wrap stays in the host and never crosses IPC (D-2)"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7633,6 +7710,168 @@
         "python": {},
         "swift": {},
         "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.transfer.send",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_", "source", "options"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.send",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "peer",
+          "type": "string"
+        },
+        {
+          "name": "source",
+          "type": "json"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.onOffer",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.onOffer",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "handler",
+          "type": "listener"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.onResult",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.onResult",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.cancel",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.cancel",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.accept",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "python": {
+          "spelling": "IncomingOffer.accept"
+        },
+        "kotlin": {
+          "spelling": "TransferOffer.accept"
+        },
+        "react": {
+          "spelling": "TransferOfferDriver.accept",
+          "shape": "method",
+          "reason": "the offer prompt's driver carries the answer (the kit's useTransferOffer is a kit subpath hook)"
+        },
+        "node": {
+          "spelling": "cloudConnect.transfer.onOffer",
+          "reason": "the handler's return value is the answer: { saveTo } accepts, \"decline\" declines"
+        },
+        "swift": {
+          "spelling": "TransferDecision.accept",
+          "reason": "the handler returns the decision"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.transfer.decline",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "python": {
+          "spelling": "IncomingOffer.decline"
+        },
+        "kotlin": {
+          "spelling": "TransferOffer.decline"
+        },
+        "react": {
+          "spelling": "TransferOfferDriver.decline",
+          "shape": "method",
+          "reason": "the offer prompt's driver carries the answer (the kit's useTransferOffer is a kit subpath hook)"
+        },
+        "node": {
+          "spelling": "cloudConnect.transfer.onOffer",
+          "reason": "the handler's return value is the answer: { saveTo } accepts, \"decline\" declines"
+        },
+        "swift": {
+          "spelling": "TransferDecision.decline",
+          "reason": "the handler returns the decision"
+        }
       },
       "layer": "client"
     }

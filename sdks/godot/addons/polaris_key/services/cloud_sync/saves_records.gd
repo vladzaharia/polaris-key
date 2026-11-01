@@ -5,7 +5,7 @@ extends RefCounted
 ##   wire_id(id)               the id a record travels under: blinded in end-to-end mode (§13.10.2), else `id`
 ##   list()                    [{id, version, value: Dictionary, file: Dictionary | null}] by id
 ##   get_record(id)            one record or null
-##   set_record(id, value, base_version, cancel?)    {ok: true, version} | {ok: false, reason: "conflict",
+##   set_record(id, value, base_version, cancel?, file?)    {ok: true, version} | {ok: false, reason: "conflict",
 ##                             server: record | null} | {ok: false, reason: "rejected", code} |
 ##                             {ok: false, reason: "aborted"}
 ##   delete_record(id, base_version)                 the same, without the cancel
@@ -147,9 +147,10 @@ static func _with_id(r: Dictionary, id: String) -> Dictionary:
 
 
 ## `cancel` is a Transfer.Cancel: when its flag is set the wait ends with `aborted` (a pause does not
-## set this one; only the handle's cancel does).
-func set_record(id: String, value: Dictionary, base_version: Variant, cancel: Variant = null) -> Dictionary:
-	return _with_id(await _wait(func(m: Object) -> Dictionary: return m.put_at(COLLECTION, id, value, base_version), cancel), id)
+## set this one; only the handle's cancel does). `file` is the pointer `finalize` returned: an
+## acknowledged set adopts it on the row.
+func set_record(id: String, value: Dictionary, base_version: Variant, cancel: Variant = null, file: Variant = null) -> Dictionary:
+	return _with_id(await _wait(func(m: Object) -> Dictionary: return m.put_at(COLLECTION, id, value, base_version, file), cancel), id)
 
 
 func delete_record(id: String, base_version: int) -> Dictionary:

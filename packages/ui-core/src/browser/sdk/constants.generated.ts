@@ -57,6 +57,7 @@ export const ErrorCode = {
   unsupportedGrantType: "unsupported_grant_type",
   invalidScope: "invalid_scope",
   redirectUriMismatch: "redirect_uri_mismatch",
+  invalidRequestUri: "invalid_request_uri",
   licenseChoiceRequired: "license_choice_required",
   interstitialRequired: "interstitial_required",
   notNearby: "not_nearby",
@@ -137,6 +138,7 @@ export const ErrorCode = {
   serverError: "server-error",
   cancelled: "cancelled",
   signInExpired: "sign-in-expired",
+  redirectUnavailable: "redirect-unavailable",
   signInDenied: "sign-in-denied",
   signInUnavailable: "sign-in-unavailable",
   platformIdentityUnavailable: "platform-identity-unavailable",
@@ -287,6 +289,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "unsupported_grant_type",
   "invalid_scope",
   "redirect_uri_mismatch",
+  "invalid_request_uri",
   "license_choice_required",
   "interstitial_required",
   "not_nearby",
@@ -367,6 +370,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "server-error",
   "cancelled",
   "sign-in-expired",
+  "redirect-unavailable",
   "sign-in-denied",
   "sign-in-unavailable",
   "platform-identity-unavailable",
@@ -519,6 +523,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   unsupported_grant_type: "wire",
   invalid_scope: "wire",
   redirect_uri_mismatch: "wire",
+  invalid_request_uri: "wire",
   license_choice_required: "wire",
   interstitial_required: "wire",
   not_nearby: "wire",
@@ -599,6 +604,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "server-error": "client",
   cancelled: "client",
   "sign-in-expired": "client",
+  "redirect-unavailable": "client",
   "sign-in-denied": "client",
   "sign-in-unavailable": "client",
   "platform-identity-unavailable": "client",
@@ -764,6 +770,7 @@ export const Feature = {
   identityAttach: "identity.attach",
   identityAccount: "identity.account",
   identityRedirectWeb: "identity.redirect.web",
+  identityRedirectNative: "identity.redirect.native",
   identityChoice: "identity.choice",
   identityDevicecodeChoice: "identity.devicecode.choice",
   identitySigninHints: "identity.signin.hints",
@@ -910,6 +917,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.attach",
   "identity.account",
   "identity.redirect.web",
+  "identity.redirect.native",
   "identity.choice",
   "identity.devicecode.choice",
   "identity.signin.hints",
@@ -2239,6 +2247,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [],
   },
+  "identity.redirect.native": {
+    status: "planned",
+    service: "identity",
+    na: [],
+  },
   "identity.choice": { status: "implemented", service: "identity", na: [] },
   "identity.devicecode.choice": {
     status: "implemented",
@@ -2287,12 +2300,9 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
   "identity.nearby": {
-    status: "na",
+    status: "implemented",
     service: "identity",
-    na: [
-      { runtime: "web", reason: "runtime" },
-      { runtime: "desktop-bridge", reason: "runtime" },
-    ],
+    na: [{ runtime: "web", reason: "runtime" }],
   },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
@@ -2479,4 +2489,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "0a3f37ba67ef6729d04fce09992c81b6a339c062989ad954c2dd26d206a70bac";
+  "590aed02f959a93b5db1c1c959efef691e101c4923e250fe43d81c87b89df6ba";

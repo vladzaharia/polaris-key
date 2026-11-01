@@ -5,7 +5,9 @@
 import type { BrowserSaves, SaveTransferEvent } from "../../core/cloudSync.js";
 import type { BrowserSavesDeps, SavesApi } from "./saves.js";
 
-export function lazySaves(deps: () => BrowserSavesDeps): BrowserSaves {
+export function lazySaves(
+  deps: () => BrowserSavesDeps,
+): BrowserSaves & { built(): boolean } {
   let loading: Promise<SavesApi> | null = null;
   let real: SavesApi | null = null;
   const listeners = new Set<(e: SaveTransferEvent | null) => void>();
@@ -27,6 +29,7 @@ export function lazySaves(deps: () => BrowserSavesDeps): BrowserSaves {
       (err) => ((loading = null), Promise.reject(err)),
     ));
   return {
+    built: () => real?.built ?? false,
     list: async () => (await ready()).list(),
     read: async (id, o) => (await ready()).read(id, o),
     write: async (id, b, m, o) => (await ready()).write(id, b, m, o),

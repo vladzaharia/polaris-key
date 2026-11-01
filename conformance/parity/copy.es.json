@@ -209,6 +209,10 @@
       "title": "El inicio de sesión no puede volver a la app",
       "message": "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador."
     },
+    "invalid_request_uri": {
+      "title": "El enlace de inicio de sesión caducó",
+      "message": "Este enlace de inicio de sesión caducó. Vuelve a {product} y empieza de nuevo."
+    },
     "license_choice_required": {
       "title": "Elige una licencia",
       "message": "Elige qué licencia usa este dispositivo y continúa."
@@ -528,6 +532,10 @@
     "sign-in-expired": {
       "title": "Código caducado",
       "message": "El código caducó antes de terminar el inicio de sesión. Vuelve a empezar."
+    },
+    "redirect-unavailable": {
+      "title": "Inicio de sesión en el navegador no disponible",
+      "message": "El inicio de sesión no pudo abrir un navegador aquí. Usa un código en su lugar."
     },
     "sign-in-denied": {
       "title": "Inicio de sesión rechazado",

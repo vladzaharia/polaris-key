@@ -34,6 +34,7 @@ export const CUSTOMER_ROUTE_KINDS: ReadonlySet<string> = new Set([
   "portalDownload",
   "portalMedia",
   "signInEntry",
+  "signInReturn",
   "deviceEntry",
   "deviceApprove",
   // Help (LK-09, D7): `docs` is confined to `customerDocsPath` below, not served whole.
@@ -264,6 +265,9 @@ export function oldCustomerUrlRedirect(
     case "signInEntry":
       if (url.searchParams.has("request")) return null;
       permanent = true;
+      break;
+    case "signInReturn":
+      permanent = false;
       break;
     case "deviceEntry":
       permanent = true;

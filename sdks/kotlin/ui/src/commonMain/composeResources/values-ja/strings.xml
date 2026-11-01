@@ -2515,6 +2515,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_redirect_uri_mismatch_message">このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_request_uri_title">サインインリンクの有効期限切れ</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_invalid_request_uri_message">このサインインリンクは有効期限が切れました。%1$s に戻って、もう一度始めてください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">ライセンスを選択</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">このデバイスで使うライセンスを選んでから続行してください。</string>
@@ -2834,6 +2838,10 @@
     <string name="core_codes_sign_in_expired_title">コードの有効期限切れ</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_expired_message">サインインが完了する前にコードの有効期限が切れました。もう一度やり直してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_title">ブラウザでサインインできません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_message">ここではブラウザを開けませんでした。代わりにコードを使ってください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_denied_title">サインインが拒否されました</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

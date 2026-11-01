@@ -43,6 +43,7 @@ import {
   type SaveOutcome,
   type SaveRead,
   type SaveRecord,
+  type SaveFileRef,
   type SaveRecords,
   type SaveSetResult,
   type SaveSummary,
@@ -82,6 +83,8 @@ export interface BrowserSavesDeps {
   locks: BrowserFilesDeps["locks"];
   /** Starts the host and signs the machine in (the API's attach). */
   attach: () => Promise<void>;
+  /** The person the session's token is for now, or null when not known: it scopes the chunk cache. */
+  subject?: () => string | null;
   /** Test seams, handed to the files layer. */
   files?: Pick<BrowserFilesDeps, "store" | "sleep">;
 }
@@ -212,9 +215,17 @@ export class MachineRecords implements SaveRecords {
     value: Meta,
     baseVersion: number | "*",
     cancel?: AbortSignal,
+    file?: SaveFileRef,
   ): Promise<SaveSetResult> {
     const r = await this.#wait(
-      () => this.#host.machine.putAt(SAVES_COLLECTION, id, value, baseVersion),
+      () =>
+        this.#host.machine.putAt(
+          SAVES_COLLECTION,
+          id,
+          value,
+          baseVersion,
+          file,
+        ),
       cancel,
     );
     return r.ok === false && r.reason === "conflict" && r.server !== null
@@ -286,6 +297,10 @@ export class SavesApi implements BrowserSaves {
   readonly #records: MachineRecords;
   #files: BrowserFiles | null = null;
   #engine: TransferEngine | null = null;
+  /** The person the last call used the chunk cache for: the one a purge removes (never another's). */
+  #subject: string | null = null;
+  /** True once this page built a files layer (a later purge is then person-scoped). */
+  #built = false;
   readonly #active = new Map<string, SaveTransfer>();
   readonly #conflicts = new Map<string, SaveConflict>();
   /** Bumped by every purge: a call that began before one never builds on, or records into, what the
@@ -411,6 +426,8 @@ export class SavesApi implements BrowserSaves {
    *  the chunk cache, and close the files layer. Each step is tried whatever the other did. */
   async purge(): Promise<void> {
     this.#gen++;
+    const subject = this.#subject;
+    this.#subject = null;
     const running = [...this.#active.values()];
     this.#active.clear();
     this.#conflicts.clear();
@@ -419,7 +436,7 @@ export class SavesApi implements BrowserSaves {
     this.#files = null;
     this.#engine = null;
     await Promise.all(running.map((t) => t.cancel().catch(() => undefined)));
-    await files?.purge().catch(() => undefined);
+    await files?.purge(subject ?? "").catch(() => undefined);
     this.#emit(null);
   }
 
@@ -446,6 +463,11 @@ export class SavesApi implements BrowserSaves {
     };
   }
 
+  /** Whether this page ever built the files layer; if not, a purge knows no person's cache. */
+  get built(): boolean {
+    return this.#built;
+  }
+
   #filesLayer(): { files: BrowserFiles; engine: TransferEngine } {
     if (this.#files === null || this.#engine === null) {
       const d = this.#d;
@@ -459,6 +481,7 @@ export class SavesApi implements BrowserSaves {
         ...d.files,
       });
       this.#engine = lockedEngine(this.#files);
+      this.#built = true;
     }
     return { files: this.#files, engine: this.#engine };
   }
@@ -480,13 +503,15 @@ export class SavesApi implements BrowserSaves {
     if (gen !== this.#gen) throw purged();
     const o = d.host.savesOptions;
     const { files, engine } = this.#filesLayer();
+    const subject = d.subject?.() ?? null;
+    this.#subject = subject;
     return new SavesClient({
       records: this.#records,
       engine,
       transport: files.transport,
       codec,
       delta: o.delta,
-      ...(o.delta ? { cache: files.cache } : {}),
+      ...(o.delta ? { cache: files.cacheFor(subject ?? "") } : {}),
       ...(o.maxBytes !== undefined ? { maxBytes: o.maxBytes } : {}),
       ...(o.saveFormatVersion !== undefined
         ? { saveFormatVersion: o.saveFormatVersion }

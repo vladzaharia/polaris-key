@@ -412,7 +412,7 @@ extension CloudSyncMachine {
             if op.op == .delete {
                 s.partitions[name]!.records.removeValue(forKey: rk)
             } else if let value = syncApplyRecordOp(prior?.value, op) {
-                s.partitions[name]!.records[rk] = SyncRow(value: value, version: version, file: prior?.file)
+                s.partitions[name]!.records[rk] = SyncRow(value: value, version: version, file: op.file ?? prior?.file)
             }
             if s.partitions[name]!.held[rk] != nil { (rebaseOn, hasRebase) = (version, true) }
             emitOutcome(op, .ok(version: version))

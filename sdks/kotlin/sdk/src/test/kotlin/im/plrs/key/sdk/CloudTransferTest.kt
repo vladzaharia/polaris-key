@@ -238,7 +238,7 @@ internal class CloudTransferTest {
         val h = a.transfer.send(r.sa, src)
         val offer = offers.receive()
         waitFor("the third read") { src.offsets.size >= 3 }
-        b.transfer.cancel(r.sb, offer.id)
+        b.transfer.cancel(offer.id)
         src.release.complete(Unit)
         try {
             h.await()

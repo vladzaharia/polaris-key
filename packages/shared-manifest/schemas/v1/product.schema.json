@@ -797,6 +797,38 @@
             "pattern": "^(?!.*//)(?!.*\\.\\.)/[^?#*\\u0000-\\u0020\\u007f]*$"
           }
         },
+        "nativeRedirect": {
+          "type": "object",
+          "description": "Native sign-in redirect classes (identity.nativeRedirect.*; WIRE-CONTRACT-V5 section 12.12). Loopback needs no registration and is on unless false; a registered scheme or a claimed HTTPS path is accepted only when listed here.",
+          "additionalProperties": false,
+          "properties": {
+            "loopback": {
+              "type": "boolean",
+              "description": "Whether a desktop app may sign in on a loopback address (identity.nativeRedirect.loopback). Default true."
+            },
+            "schemes": {
+              "type": "array",
+              "description": "Registered reverse-DNS URL schemes (identity.nativeRedirect.schemes), up to 4 unique, each with a dot and at most 64 characters, never im.plrs. or locker.polaris.. The redirect URI is the scheme plus :/pkey/callback.",
+              "maxItems": 4,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^(?!im\\.plrs\\.)(?!locker\\.polaris\\.)(?=.*\\.)[a-z][a-z0-9+.-]{0,63}$"
+              }
+            },
+            "claimedPaths": {
+              "type": "array",
+              "description": "Claimed HTTPS paths (identity.nativeRedirect.claimedPaths): a redirect URI is a web.origins origin plus one of these paths. Up to 8 unique paths, each rooted at /, at most 256 characters, with no ?, #, *, // or ..; needs web.origins (identity_claimed_paths_without_origins) and cannot repeat an identity.redirectPaths entry (identity_claimed_paths_overlap_redirect).",
+              "maxItems": 8,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "maxLength": 256,
+                "pattern": "^(?!.*//)(?!.*\\.\\.)/[^?#*\\u0000-\\u0020\\u007f]*$"
+              }
+            }
+          }
+        },
         "platformSignIn": {
           "type": "object",
           "description": "The native audiences a platform sign-in is verified against (identity.platformSignIn.*). Apple bundle ids are unioned with the App Store and TestFlight outlets' bundle ids.",

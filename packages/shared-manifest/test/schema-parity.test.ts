@@ -169,6 +169,12 @@ function base(): Docs {
         keyEntry: { limit: 10, claimByKey: false },
         terms: { version: "2026-10", url: "https://acme.example/terms" },
         redirectPaths: ["/auth/callback"],
+        // I-15.2: the native redirect classes.
+        nativeRedirect: {
+          loopback: true,
+          schemes: ["com.acme.app"],
+          claimedPaths: ["/open"],
+        },
         // I-42.1: the native audiences and the nearby switch.
         platformSignIn: {
           google: {
@@ -1316,6 +1322,71 @@ const MUTATIONS: Mutation[] = [
     schema: "rejects",
     mutate: (d) =>
       (p(d).identity.redirectPaths = ["/auth/callback", "/auth/callback"]),
+  },
+  // I-15.2: identity.nativeRedirect (plans/I-15.md §3).
+  {
+    code: "invalid_identity_native_redirect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect = ["loopback"]),
+  },
+  {
+    code: "invalid_identity_native_redirect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect.loopback = "yes"),
+  },
+  {
+    code: "invalid_identity_native_redirect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect.localhost = true),
+  },
+  {
+    code: "invalid_identity_redirect_scheme",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect.schemes = ["tidewater"]),
+  },
+  {
+    code: "invalid_identity_redirect_scheme",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.nativeRedirect.schemes = ["locker.polaris.app"]),
+  },
+  {
+    code: "invalid_identity_redirect_scheme",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.nativeRedirect.schemes = ["com.acme.app", "com.acme.app"]),
+  },
+  {
+    code: "invalid_identity_claimed_paths",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect.claimedPaths = ["open"]),
+  },
+  {
+    code: "invalid_identity_claimed_paths",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect.claimedPaths = ["/a/../b"]),
+  },
+  {
+    // A claimed path cannot also be a web callback; the schema cannot compare two members.
+    code: "identity_claimed_paths_overlap_redirect",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) =>
+      (p(d).identity.nativeRedirect.claimedPaths = ["/auth/callback"]),
+  },
+  {
+    code: "identity_claimed_paths_without_origins",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => delete p(d).web,
   },
   // I-42.1: identity.platformSignIn and identity.nearby (plans/CC-01-auto-sign-in.md §2.6).
   {

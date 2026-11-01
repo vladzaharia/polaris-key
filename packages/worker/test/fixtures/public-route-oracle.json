@@ -30782,7 +30782,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "core HEAD /djdl/.well-known/polaris.json": {
     "status": 405,
@@ -30889,7 +30889,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "core HEAD /djdl/.well-known/polaris.json/": {
     "status": 405,
@@ -30996,7 +30996,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "core HEAD /djdl/.well-known/polaris.json?x=1": {
     "status": 405,
@@ -40919,6 +40919,63 @@
     "cookies": [],
     "body": "32:97af5772e08c551c"
   },
+  "cors GET /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors GET+origin /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors OPTIONS+origin+preflight /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors GET+other /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors OPTIONS+other+preflight /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors OPTIONS /djdl/identity/request": {
+    "status": 405,
+    "headers": {
+      "content-type": "text/plain;charset=UTF-8"
+    },
+    "cookies": [],
+    "body": "18:e3933184560739b7"
+  },
+  "cors POST+body+origin /djdl/identity/request": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json",
+      "cache-control": "no-store"
+    },
+    "cookies": [],
+    "body": "82:2dea2b202a0486e1"
+  },
   "cors GET /djdl/identity/restore": {
     "status": 405,
     "headers": {
@@ -43837,7 +43894,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "cors GET+origin /djdl/.well-known/polaris.json": {
     "status": 200,
@@ -43849,7 +43906,7 @@
       "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "cors OPTIONS+origin+preflight /djdl/.well-known/polaris.json": {
     "status": 204,
@@ -43871,7 +43928,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "cors OPTIONS+other+preflight /djdl/.well-known/polaris.json": {
     "status": 204,
@@ -43908,7 +43965,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "cors GET+origin /djdl/.well-known/polaris.json/": {
     "status": 200,
@@ -43920,7 +43977,7 @@
       "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "cors OPTIONS+origin+preflight /djdl/.well-known/polaris.json/": {
     "status": 204,
@@ -43942,7 +43999,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "cors OPTIONS+other+preflight /djdl/.well-known/polaris.json/": {
     "status": 204,
@@ -43979,7 +44036,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "cors GET+origin /djdl/.well-known/polaris.json?x=1": {
     "status": 200,
@@ -43991,7 +44048,7 @@
       "access-control-expose-headers": "ETag, Content-Range, Accept-Ranges, Content-Length, Repr-Digest, Retry-After"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "cors OPTIONS+origin+preflight /djdl/.well-known/polaris.json?x=1": {
     "status": 204,
@@ -44013,7 +44070,7 @@
       "vary": "Origin"
     },
     "cookies": [],
-    "body": "5318:5ad57cda522d4dbf"
+    "body": "5489:7409df41d903276f"
   },
   "cors OPTIONS+other+preflight /djdl/.well-known/polaris.json?x=1": {
     "status": 204,

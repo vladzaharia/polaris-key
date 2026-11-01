@@ -50,14 +50,19 @@ public struct KitGateOptions: Sendable, Equatable {
     public var integrator: KitIntegrator?
     /// Run `identity.autoSignIn()` once at boot (silent rungs only). Off: the gate never tries it.
     public var autoSignIn: Bool
+    /// Offer "Sign in with your phone" (nearby sign-in) at boot when the ladder found no credential and the
+    /// product serves it. Off by default: the developer opts in (CC-01-auto-sign-in D-A14). The host can also call
+    /// `offerNearby()` from its own button.
+    public var nearbySignIn: Bool
 
     public init(
         keyEntry: Bool = true, offlineActivation: Bool = false, trial: Bool = false,
         restore: Bool = false, enroll: Bool = false,
         signInPresentation: KitSignInPresentation = .inline, replace: KitReplaceMode = .inline,
-        integrator: KitIntegrator? = nil, autoSignIn: Bool = true
+        integrator: KitIntegrator? = nil, autoSignIn: Bool = true, nearbySignIn: Bool = false
     ) {
         self.autoSignIn = autoSignIn
+        self.nearbySignIn = nearbySignIn
         self.keyEntry = keyEntry
         self.offlineActivation = offlineActivation
         self.trial = trial
@@ -202,7 +207,14 @@ public final class PolarisKeyGateModel {
     public private(set) var offlineRequestCode: String = ""
     /// Automatic sign-in's step, drawn in the sign-in form's body. The host (or the nearby
     /// protocol, CC-15) sets it; nil is the plain form.
-    public var autoSignIn: KitAutoSignIn? { didSet { rebuild() } }
+    public var autoSignIn: KitAutoSignIn? {
+        didSet {
+            rebuild()
+            nearbyStepChanged()
+        }
+    }
+    /// The approvers D lists while the nearby wait is open (labels cleaned); the person taps one.
+    public private(set) var nearbyApprovers: [NearbyApproverEntry] = []
     /// The provider the person signed in with, named in the auto steps ("Apple", "Google").
     public var signInProvider: String? { didSet { rebuild() } }
     /// The sign-in request in flight, or nil.
@@ -274,6 +286,10 @@ public final class PolarisKeyGateModel {
     /// provider sign-in runs once more (KFA decision e).
     private var replaceOpened = false
     private var ladderStarted = false
+    /// The nearby sign-in this form runs, until it ends.
+    @ObservationIgnored private var nearbySession: NearbySignInSession?
+    @ObservationIgnored private var nearbyTask: Task<Void, Never>?
+    @ObservationIgnored private var nearbyRemovers: [@Sendable () -> Void] = []
 
     /// A live model over `client`.
     public init(
@@ -619,6 +635,7 @@ public final class PolarisKeyGateModel {
     /// names what the person picked, for a failure's sentence.
     public func beginSignIn(method: String? = nil, code: Bool = false) {
         guard let client else { return }
+        endNearby()
         // A fresh request replaces a choice whose grant lapsed.
         choice = nil
         dropLimit()
@@ -695,6 +712,7 @@ public final class PolarisKeyGateModel {
 
     /// Cancel the sign-in: the form returns to its first step; nothing binds.
     public func cancelSignIn() {
+        endNearby()
         dropConsent()
         dropLimit()
         if let held = choice {
@@ -913,6 +931,182 @@ public final class PolarisKeyGateModel {
         ladderStarted = true
         guard let result = try? await client.identity.autoSignIn() else { return }
         await present(result, kind: rowProvider.kind, personStarted: false)
+        // Nobody signed in and the person did not sign out: the developer may offer the phone.
+        if options.nearbySignIn, case .needsSignIn(_, .noCredential) = result { await offerNearby() }
+    }
+
+    // MARK: Nearby sign-in (D; CC-01-auto-sign-in, I-44.12)
+
+    private static let nearbySteps: Set<KitAutoSignInStep> = [.nearbyPrompt, .nearbyWait, .nearbyDone]
+
+    /// Show "Sign in with your phone" (the step before the OS asks for Local Network access) when this
+    /// device can look for nearby devices and the product serves it. Nothing starts until the person taps
+    /// Continue (`nearbyContinue()`), on macOS too (D-A14).
+    public func offerNearby() async {
+        guard let client, nearbySession == nil, await client.identity.nearbyAvailable() else { return }
+        guard license.map({ !Self.usable($0) }) ?? true else { return }
+        signInError = nil
+        pending = nil
+        if signIn == nil || signIn?.outcome == .signedIn {
+            signIn = KitSignIn(
+                presentation: options.signInPresentation, replace: options.replace, channel: .browser)
+        }
+        route = .signIn
+        autoSignIn = KitAutoSignIn(step: .nearbyPrompt)
+        announce(signInScreen.copy.first)
+    }
+
+    /// "Continue" on the prompt: start the sign-in and wait for the person to choose a device.
+    public func nearbyContinue() async {
+        guard let client, nearbySession == nil, inputs.autoSignIn?.step == .nearbyPrompt else { return }
+        autoSignIn = KitAutoSignIn(step: .nearbyWait)
+        announce(signInScreen.copy.first)
+        do {
+            let session = try await client.identity.signIn.startNearby()
+            guard inputs.autoSignIn?.step == .nearbyWait else {
+                // The person left while the request started.
+                session.cancel()
+                return
+            }
+            nearbySession = session
+            nearbyRemovers = [
+                session.onApprovers { [weak self] list in
+                    Task { @MainActor in self?.nearbyApprovers = list }
+                },
+                session.onEnd { [weak self, weak session] in
+                    Task { @MainActor in
+                        guard let self, let session, self.nearbySession === session else { return }
+                        self.nearbyFailed(code: ErrorCode.signInExpired)
+                    }
+                },
+            ]
+            Task { [weak self] in
+                let list = await session.approvers()
+                self?.nearbyApprovers = list
+            }
+            nearbyTask = Task { [weak self] in await self?.nearbyWait(session) }
+        } catch {
+            nearbyFailed(code: Self.signInCode(error))
+        }
+    }
+
+    private func nearbyWait(_ session: NearbySignInSession) async {
+        do {
+            switch try await session.wait() {
+            case .signedIn(let ready):
+                guard nearbySession === session else { return }
+                // The account for the person to confirm; nothing is signed in until they do.
+                nearbyReady = ready
+                autoSignIn = KitAutoSignIn(
+                    step: .nearbyDone, email: ready.identity?.email ?? ready.identity?.name)
+                announce(signInScreen.copy.first)
+            case .expired:
+                if nearbySession === session { nearbyFailed(code: ErrorCode.signInExpired) }
+            default: break
+            }
+        } catch is CancellationError {
+        } catch {
+            if nearbySession === session { nearbyFailed(code: Self.signInCode(error)) }
+        }
+    }
+
+    /// The person tapped a device on the list: its code shows, to tap on that device.
+    public func nearbyChoose(_ id: String) async {
+        guard let session = nearbySession, inputs.autoSignIn?.step == .nearbyWait,
+            inputs.autoSignIn?.code == nil
+        else { return }
+        do {
+            let code = try await session.choose(id)
+            guard nearbySession === session else { return }
+            autoSignIn = KitAutoSignIn(step: .nearbyWait, code: code)
+            announce(signInScreen.copy.first)
+        } catch {
+            nearbyFailed(code: Self.signInCode(error))
+        }
+    }
+
+    /// "Not now" on the prompt: the methods.
+    public func nearbyNotNow() {
+        autoSignIn = nil
+        showMethods()
+    }
+
+    /// "Use a code instead" on the wait: the nearby request is cancelled and the code sign-in starts.
+    public func nearbyUseCode() {
+        endNearby()
+        beginSignIn(code: true)
+    }
+
+    /// "Continue" on the done step: the person says the account is theirs. Only now is the device signed in.
+    public func nearbyConfirm() async {
+        guard let session = nearbySession, let ready = nearbyReady,
+            inputs.autoSignIn?.step == .nearbyDone
+        else { return }
+        pending = .signIn
+        rebuild()
+        do {
+            try await session.confirmAccount()
+        } catch {
+            // The confirmation failed or came too late: never "signed in".
+            pending = nil
+            session.cancel()
+            nearbyFailed(code: ErrorCode.signInExpired)
+            return
+        }
+        pending = nil
+        endNearby()
+        await finishAuto(ready, personStarted: true)
+    }
+
+    /// "Not you?" on the done step: the held records are dropped and the device signs out.
+    public func nearbyNotYou() async {
+        guard let session = nearbySession else { return }
+        nearbyForget()
+        await session.declineAccount()
+        autoSignIn = nil
+        showMethods()
+    }
+
+    private func nearbyFailed(code: String) {
+        endNearby()
+        pending = nil
+        signInError = KitError(code: code)
+        if signIn == nil {
+            signIn = KitSignIn(
+                presentation: options.signInPresentation, replace: options.replace, channel: .browser)
+        }
+        route = .signIn
+        rebuild()
+        announce(signInScreen.copy.first)
+    }
+
+    @ObservationIgnored private var nearbyReady: SignInReady?
+
+    private func nearbyForget() {
+        for remove in nearbyRemovers { remove() }
+        nearbyRemovers = []
+        nearbyTask?.cancel()
+        nearbyTask = nil
+        nearbySession = nil
+        nearbyReady = nil
+        nearbyApprovers = []
+    }
+
+    /// Leaving the nearby steps by any route is a cancel: the request closes, and a signed-in but
+    /// unconfirmed device signs out again.
+    private func endNearby() {
+        let session = nearbySession
+        nearbyForget()
+        session?.cancel()
+        if let step = inputs.autoSignIn?.step, Self.nearbySteps.contains(step) { autoSignIn = nil }
+    }
+
+    private func nearbyStepChanged() {
+        guard nearbySession != nil else { return }
+        if let step = autoSignIn?.step, Self.nearbySteps.contains(step) { return }
+        let session = nearbySession
+        nearbyForget()
+        session?.cancel()
     }
 
     /// The kit's v7 auto sign-in states for what the ladder (or the provider row's exchange)
@@ -1157,6 +1351,7 @@ public final class PolarisKeyGateModel {
     /// nonce, then the exchange. The person started it, so it clears the sign-out flag.
     public func signInWithProvider() {
         guard let client else { return }
+        endNearby()
         let provider = rowProvider
         let kind = provider.kind
         let name = Self.providerName(kind)

@@ -48,13 +48,16 @@ export interface BrowserFiles {
   readonly engine: TransferEngine;
   readonly journal: JournalStore;
   readonly cache: ChunkCache;
+  /** The chunk cache of one person (a purge of another leaves it be). */
+  cacheFor(scope: string): ChunkCache;
   readonly store: FilesStore;
   /** The Web Lock name of the one writer. */
   readonly lockName: string;
   /** Run `fn` as the one writer; it waits while another tab holds the lock. */
   exclusive<T>(fn: () => Promise<T>): Promise<T>;
-  /** Delete the journal, the chunk cache and the writer's identity (with the person). */
-  purge(): Promise<void>;
+  /** Delete the journal, the chunk cache and the writer's identity (with the person). With a scope,
+   *  only that person's chunks; without, everything. */
+  purge(scope?: string): Promise<void>;
   /** True once `purge()` ran: the journal refuses and the cache answers nothing, so a transfer
    *  still running cannot reopen the deleted database. Build a new layer for the next person. */
   readonly purged: boolean;
@@ -81,12 +84,13 @@ export function createBrowserFiles(d: BrowserFilesDeps): BrowserFiles {
       purged ? Promise.reject(gone()) : store.journal.delete(id),
     list: () => (purged ? Promise.reject(gone()) : store.journal.list()),
   };
-  const cache: ChunkCache = {
-    get: async (id) => (purged ? null : store.cache.get(id)),
-    put: async (id, o) => (purged ? undefined : store.cache.put(id, o)),
-    delete: async (id) => (purged ? undefined : store.cache.delete(id)),
-    clear: async () => (purged ? undefined : store.cache.clear()),
-  };
+  const guard = (c: () => ChunkCache): ChunkCache => ({
+    get: async (id) => (purged ? null : c().get(id)),
+    put: async (id, o) => (purged ? undefined : c().put(id, o)),
+    delete: async (id) => (purged ? undefined : c().delete(id)),
+    clear: async () => (purged ? undefined : c().clear()),
+  });
+  const cache = guard(() => store.cache);
   const transport = new BrowserFileTransport({
     product: d.product,
     request: d.fileFetch,
@@ -103,6 +107,7 @@ export function createBrowserFiles(d: BrowserFilesDeps): BrowserFiles {
     engine,
     journal,
     cache,
+    cacheFor: (scope) => guard(() => store.scoped(scope)),
     store,
     lockName,
     exclusive: <T>(fn: () => Promise<T>): Promise<T> =>
@@ -120,9 +125,9 @@ export function createBrowserFiles(d: BrowserFilesDeps): BrowserFiles {
     get purged() {
       return purged;
     },
-    purge: () => {
+    purge: (scope) => {
       purged = true;
-      return store.purge();
+      return store.purge(scope);
     },
   };
 }

@@ -1399,6 +1399,20 @@
       "note": "I-08 (WIRE-CONTRACT-V4 §12.4, §12.5): the SDK builds the authorize URL (response_type=code, client_id, redirect_uri, state, an S256 code_challenge, scope) for a navigation, keeps the PKCE verifier and state, checks state and iss on the way back, and redeems the code at token with a form body, getting the browser device token. Cancel and every redirect error map to cancelled and sign-in-failed. Pinned by redirect-web-happy.json and redirect-web-errors.json (the browser's own requests are `browser` steps no SDK asserts); I-10a (Node, React, Python; React is the primary consumer) and I-10b (Swift, Godot, Kotlin) implement it."
     },
     {
+      "id": "identity.redirect.native",
+      "family": "devices",
+      "title": "Native redirect sign-in: a pushed request, then the code redeemed from the pushing device",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "I-15b"
+        }
+      ],
+      "allowedNa": [],
+      "note": "I-15 (WIRE-CONTRACT-V5 §12.4, §12.12): a native app pushes its request at request (a form: the authorize parameters, a loopback, registered-scheme or claimed-HTTPS redirect_uri, the device label, an optional return_uri), opens authorize with the request_uri it gets in the system browser (ASWebAuthenticationSession, Auth Tab, Custom Tabs or the desktop browser), and redeems the code at token from the device that pushed it, with its PKCE verifier and the same redirect URI. The loopback class returns the card's handle (request=) for the return page. Pinned by redirect-native-loopback.json, redirect-native-scheme.json, redirect-native-choose-app.json, redirect-native-errors.json and locker-redirect-native.json; until I-15b implements it the row is planned and no SDK replays them."
+    },
+    {
       "id": "identity.choice",
       "family": "devices",
       "title": "Licence choice in the app: the choice.* primitives over a pending sign-in grant",
@@ -1743,14 +1757,9 @@
           "runtime": "web",
           "reason": "runtime",
           "why": "A browser tab cannot show or take part in the mode v handshake that carries the request handle between two nearby devices, and holds no device key of its own."
-        },
-        {
-          "runtime": "desktop-bridge",
-          "reason": "runtime",
-          "why": "The renderer holds no device key; the host would play either device."
         }
       ],
-      "note": "I-40 (WIRE-CONTRACT-V5 §12.11.5, §12.11.6): with discovery's nearby member and the nearbyStart, nearbyApprove and nearbyPoll endpoints, a device with no way to sign in (D) posts its keys and a pkey-proof/1 nearby-start proof and gets a request handle; a signed-in device nearby (M), over the mode v handshake, posts approve with the handle, D's keys and its own proof, and D's poll collects the device token once. Pinned by the nearby-* transcripts (I-40.8); the Node conformance runner replays them with a reference client that plays both devices (I-40.9). I-44 (Swift), I-45 (Kotlin), I-47 (Node, Python) and I-48 (Godot) implement it; the web has no handshake to carry the request. Node and Python implement it as of I-47.15: both devices (the session and the approver) with the license choice, the six nearby-* transcripts replayed by each generic runner, the vouch rows run beside them, and the terminal and Qt kit screens; Deny is the one way out of the codes and of the license choice."
+      "note": "I-40 (WIRE-CONTRACT-V5 §12.11.5, §12.11.6): with discovery's nearby member and the nearbyStart, nearbyApprove and nearbyPoll endpoints, a device with no way to sign in (D) posts its keys and a pkey-proof/1 nearby-start proof and gets a request handle; a signed-in device nearby (M), over the mode v handshake, posts approve with the handle, D's keys and its own proof, and D's poll collects the device token once. Pinned by the nearby-* transcripts (I-40.8); the Node conformance runner replays them with a reference client that plays both devices (I-40.9). I-44 (Swift), I-45 (Kotlin), I-47 (Node, Python) and I-48 (Godot) implement it; the web has no handshake to carry the request. React implements it on the desktop bridge as of I-47b (bridge v5: the host plays either device, the renderer sees only an ask id, the cleaned device label and the codes; a v4 host answers the typed unsupported, reason version). Node and Python implement it as of I-47.15: both devices (the session and the approver) with the license choice, the six nearby-* transcripts replayed by each generic runner, the vouch rows run beside them, and the terminal and Qt kit screens; Deny is the one way out of the codes and of the license choice."
     },
     {
       "id": "release.changelog",

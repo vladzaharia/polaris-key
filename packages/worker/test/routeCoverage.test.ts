@@ -98,6 +98,8 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
 const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   // The platform device-code entry pages: a code typed here finds its product's page.
   signInEntry: [["/signin", ["get"]]],
+  // I-15 (§12.12): the hosted desktop ReturnStep on the customer host.
+  signInReturn: [["/signin/return", ["get"]]],
   // F-37.1b: the key host's hops into Polaris Locker.
   lockerLink: [
     ["/approve", ["get"]],
@@ -827,6 +829,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/choose",
   // I-08: `authorize` is a browser navigation to the card; only `token` is a page's `fetch`.
   "/{product}/identity/authorize",
+  // I-15.4: the pushed request is called by a native client, never a page's `fetch`.
+  "/{product}/identity/request",
   // CC-07.3: a WebSocket upgrade, which has no preflight; the single-use ticket is the credential.
   "/{product}/connect/relay",
   "/{product}/config/mint/{mintId}/auth",

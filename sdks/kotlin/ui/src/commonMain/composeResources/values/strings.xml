@@ -2528,6 +2528,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_redirect_uri_mismatch_message">This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_request_uri_title">Sign-in link expired</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_invalid_request_uri_message">This sign-in link has expired. Go back to %1$s and start again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">Choose a license</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">Choose which license this device uses, then continue.</string>
@@ -2847,6 +2851,10 @@
     <string name="core_codes_sign_in_expired_title">Code expired</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_expired_message">The code expired before sign-in finished. Start again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_title">Browser sign-in unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_message">Sign-in could not open a browser here. Use a code instead.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_denied_title">Sign-in declined</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

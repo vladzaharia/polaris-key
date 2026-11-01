@@ -100,6 +100,7 @@ private class Cloud(private val e2e: Boolean) :
     override suspend fun begin(target: FileTarget, request: JsonObject): FileReply<JsonObject> {
         val rec = records[target.record]
         val base = request["baseVersion"]
+        bases.add(base)
         val stale = if (base is JsonPrimitive && base.isString) rec != null else base?.longValue != (rec?.version ?: -1L)
         if (stale && base != null) {
             val server = buildJsonObject { put("version", rec?.version ?: 0) }
@@ -201,9 +202,19 @@ private class Cloud(private val e2e: Boolean) :
 
     override suspend fun list(): List<SaveRecord> = records.mapNotNull { (w, r) -> saved(w, r) }
 
-    override suspend fun get(id: String): SaveRecord? = records[wireId(id)]?.let { saved(wireId(id), it) }
+    /** While set, `get` answers this device's stale cache instead of the server's row. */
+    var cache: ((String) -> SaveRecord?)? = null
 
-    override suspend fun set(id: String, value: JsonObject, baseVersion: JsonElement): SaveSetResult {
+    override suspend fun get(id: String): SaveRecord? = cache?.invoke(id) ?: records[wireId(id)]?.let { saved(wireId(id), it) }
+
+    /** The `baseVersion` of each `begin`, in order. */
+    val bases = CopyOnWriteArrayList<JsonElement?>()
+
+    /** The pointer each `set` was given, in order. */
+    val setFiles = CopyOnWriteArrayList<RecordFile?>()
+
+    override suspend fun set(id: String, value: JsonObject, baseVersion: JsonElement, file: RecordFile?): SaveSetResult {
+        setFiles.add(file)
         val wire = wireId(id)
         idsByWire[wire] = id
         val rec = records[wire] ?: Rec(0, null, null).also { records[wire] = it }
@@ -271,6 +282,19 @@ class CloudSyncSavesClientTest {
     }
 
     @Test
+    fun theMetadataWriteCarriesTheFinalizedPointerSoTheNewFileListsAtOnce() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        val done = saves.writeAs("slot1", bytes(300), Meta("one", 3), MetaSerializer).result() as SaveResult.Done
+        // The machine adopts this pointer on ok; without it the new row would list no file until a pull.
+        val given = cloud.setFiles.single()!!
+        assertEquals(done.file.version, given.version)
+        assertEquals(done.file.size, given.size)
+        assertEquals(done.file.sha256, given.sha256)
+        assertEquals(done.file.format, given.format)
+    }
+
+    @Test
     fun anE2eSaveIsStoredSealedAndBoundToItsMetadata() = runBlocking {
         val cloud = Cloud(e2e = true)
         val saves = client(cloud, e2e = true)
@@ -306,8 +330,8 @@ class CloudSyncSavesClientTest {
     fun aRecordWithAMalformedBindingFailsAndOneWithoutAFileHasNone() = runBlocking {
         val cloud = Cloud(e2e = true)
         val saves = client(cloud, e2e = true)
-        cloud.set("bad", buildJsonObject { put(SAVE_FILE_BINDING_KEY, "nope") }, JsonPrimitive(0))
-        cloud.set("plain", meta("x"), JsonPrimitive(0))
+        cloud.set("bad", buildJsonObject { put(SAVE_FILE_BINDING_KEY, "nope") }, JsonPrimitive(0), null)
+        cloud.set("plain", meta("x"), JsonPrimitive(0), null)
         try {
             saves.read("bad")
             fail("malformed binding")
@@ -374,6 +398,44 @@ class CloudSyncSavesClientTest {
         val local = saves.resolve(conflict, SaveKeep.LOCAL, bytes(120, 3)).result()
         assertTrue(local is SaveResult.Done)
         assertArrayEquals(bytes(120, 3), (saves.read("s") as SaveRead.Ok).bytes)
+    }
+
+    @Test
+    fun aConflictDescribesTheServersVersionNotTheCachedCopy() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        assertTrue(saves.write("s", bytes(100), meta("old")).result() is SaveResult.Done)
+        val stale = cloud.get("s")
+        val first = stale!!.version
+        // Another device wrote on top; this device's cache still holds the first row.
+        cloud.records.values.single().let {
+            it.version += 40
+            it.value = buildJsonObject { put("chapter", "theirs") }
+        }
+        cloud.cache = { stale }
+        val conflict = (saves.write("s", bytes(120, 3), meta("mine"), baseVersion = first).result() as SaveResult.Conflict).conflict
+        val serverVersion = cloud.records.values.single().version
+        assertEquals(serverVersion, conflict.serverVersion)
+        assertEquals(serverVersion, conflict.remote!!.version)
+        // Keeping this device's version succeeds, and the next write does not repeat the conflict.
+        assertTrue(saves.resolve(conflict, SaveKeep.LOCAL, bytes(120, 3)).result() is SaveResult.Done)
+        cloud.cache = null
+        assertTrue(saves.write("s", bytes(90, 4), meta("again")).result() is SaveResult.Done)
+    }
+
+    @Test
+    fun aSaveDeletedElsewhereHasNoRemoteAndKeepMineUsesMustNotExist() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        assertTrue(saves.write("s", bytes(100), meta("old")).result() is SaveResult.Done)
+        val stale = cloud.get("s")
+        cloud.records.clear()
+        cloud.cache = { stale }
+        val conflict = (saves.write("s", bytes(120, 3), meta("mine")).result() as SaveResult.Conflict).conflict
+        assertNull(conflict.remote)
+        assertEquals(0L, conflict.serverVersion)
+        assertTrue(saves.resolve(conflict, SaveKeep.LOCAL, bytes(120, 3)).result() is SaveResult.Done)
+        assertEquals(JsonPrimitive("*"), cloud.bases.last())
     }
 
     @Test

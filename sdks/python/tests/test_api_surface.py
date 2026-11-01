@@ -8,6 +8,7 @@ from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
 from polaris_key.connect.links import CloudLinks
 from polaris_key.connect.nearby import CloudNearby
+from polaris_key.connect.transfer import IncomingOffer, Transfer
 from polaris_key.identity.client import IdentityClient
 from polaris_key.identity.auto_sign_in import NearbyNamespace
 from polaris_key.identity.nearby_session import NearbySignInSession
@@ -29,6 +30,8 @@ CLASSES = {
     "CloudConnect": CloudConnect,
     "CloudLinks": CloudLinks,
     "CloudNearby": CloudNearby,
+    "IncomingOffer": IncomingOffer,
+    "Transfer": Transfer,
 }
 
 ATTRS = [
@@ -137,6 +140,12 @@ ATTRS = [
     ("cloudConnect.links.open", "CloudLinks", "open"),
     ("cloudConnect.links.onLink", "CloudLinks", "on_link"),
     ("cloudConnect.links.interAccount", "CloudLinks", "inter_account"),
+    ("cloudConnect.transfer.send", "Transfer", "send"),
+    ("cloudConnect.transfer.onOffer", "Transfer", "on_offer"),
+    ("cloudConnect.transfer.onResult", "Transfer", "on_result"),
+    ("cloudConnect.transfer.cancel", "Transfer", "cancel"),
+    ("cloudConnect.transfer.accept", "IncomingOffer", "accept"),
+    ("cloudConnect.transfer.decline", "IncomingOffer", "decline"),
 ]
 OPTION_PARAMS = [
     ("options.productSlug", "product_slug"),

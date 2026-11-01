@@ -181,6 +181,11 @@
       "wp": "I-15b",
       "note": "LK-SKIP.8: the opt-in, the via rule and the activated outcome, with the replayer."
     },
+    "identity.redirect.native": {
+      "status": "planned",
+      "wp": "I-15b",
+      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
+    },
     "identity.exchange": {
       "status": "na",
       "runtime": ["python"],

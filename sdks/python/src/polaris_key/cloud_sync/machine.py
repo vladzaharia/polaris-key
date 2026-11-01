@@ -224,8 +224,14 @@ def _apply_record_op(base: Any, op: Obj) -> Any:
     name = op["op"]
     if name == "set":
         return _clone(op.get("value"))
-    if name in ("setMember", "removeMember"):
-        return apply_setting_op("merge", base, op)
+    if name == "setField":
+        o = dict(base) if _is_object(base) else {}
+        o[op["field"]] = _clone(op.get("value"))
+        return o
+    if name == "removeField":
+        o = dict(base) if _is_object(base) else {}
+        o.pop(op["field"], None)
+        return o
     if name == "add":
         arr = list(base) if isinstance(base, list) else []
         if not any(json_equal(x, op.get("element")) for x in arr):
@@ -283,7 +289,7 @@ def _new_partition(client_id: Optional[str]) -> Obj:
     }
 
 
-_JOURNAL_ONLY = ("preContact", "moved", "parked", "ticket")
+_JOURNAL_ONLY = ("preContact", "moved", "parked", "ticket", "file")
 
 
 def wire_of(op: Obj) -> Obj:
@@ -531,24 +537,24 @@ class CloudSyncMachine:
                 current = rec["value"] if rec is not None else None
                 cur: Obj = current if isinstance(current, dict) else {}
                 nxt: Obj = value if isinstance(value, dict) else {}
-                for member in _sorted(nxt):
-                    if member not in cur or not json_equal(cur[member], nxt[member]):
+                for field in _sorted(nxt):
+                    if field not in cur or not json_equal(cur[field], nxt[field]):
                         self._enqueue(
                             p,
                             {
                                 "target": target,
-                                "op": "setMember",
-                                "member": member,
-                                "value": _clone(nxt[member]),
+                                "op": "setField",
+                                "field": field,
+                                "value": _clone(nxt[field]),
                                 "editedHlc": edited,
                                 **marks,
                             },
                         )
-                for member in _sorted(cur):
-                    if member not in nxt:
+                for field in _sorted(cur):
+                    if field not in nxt:
                         self._enqueue(
                             p,
-                            {"target": target, "op": "removeMember", "member": member, "editedHlc": edited, **marks},
+                            {"target": target, "op": "removeField", "field": field, "editedHlc": edited, **marks},
                         )
             else:
                 queued = (
@@ -590,10 +596,14 @@ class CloudSyncMachine:
             )
         return out
 
-    def put_at(self, collection: str, record_id: str, value: Json, base_version: Any) -> CallResult:
+    def put_at(
+        self, collection: str, record_id: str, value: Json, base_version: Any, file: Optional[Obj] = None
+    ) -> CallResult:
         """Write a ``revision`` record at exactly ``base_version``: a new mutation, never coalesced
-        with a queued edit and never rebased on a conflict. Its outcome goes to :meth:`on_outcome`."""
-        return self._exact_op(collection, record_id, base_version, {"op": "set", "value": _clone(value)})
+        with a queued edit and never rebased on a conflict. Its outcome goes to :meth:`on_outcome`.
+        ``file`` is the pointer the save's finalize returned: on ``ok`` the row takes it with the new
+        version; without one the row keeps its prior file."""
+        return self._exact_op(collection, record_id, base_version, {"op": "set", "value": _clone(value)}, file)
 
     def remove_at(self, collection: str, record_id: str, base_version: Any) -> CallResult:
         """Delete a ``revision`` record at exactly ``base_version`` (removes its file)."""
@@ -604,7 +614,9 @@ class CloudSyncMachine:
         arrives or on sign-out. It must not call the machine. ``None`` removes it."""
         self._outcome = fn
 
-    def _exact_op(self, collection: str, record_id: str, base_version: Any, body: Obj) -> CallResult:
+    def _exact_op(
+        self, collection: str, record_id: str, base_version: Any, body: Obj, file: Optional[Obj] = None
+    ) -> CallResult:
         decl = self._collection(collection)
         if decl is None or decl["policy"] != "revision":
             return _fail("collection-unknown")
@@ -617,6 +629,9 @@ class CloudSyncMachine:
         ticket = p.get("nextTicket", 1)
         p["nextTicket"] = ticket + 1
         op["ticket"] = ticket
+        pointer = _file_of(file)
+        if pointer is not None:
+            op["file"] = pointer
         self._kick()
         return {"ok": True, "mutationId": ticket}
 
@@ -1644,7 +1659,7 @@ class CloudSyncMachine:
                 p["records"][rk] = {
                     "value": value,
                     "version": r["version"],
-                    **_file_mark(prior.get("file") if prior else None),
+                    **_file_mark(op.get("file") or (prior.get("file") if prior else None)),
                 }
             if rk in p["held"]:
                 rebase_on, has_rebase = r["version"], True

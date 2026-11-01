@@ -239,8 +239,8 @@
       "knip:unlisted": 1
     },
     "packages/sdk-node/src/connect/index.ts": {
-      "knip:exports": 4,
-      "knip:types": 8
+      "knip:exports": 3,
+      "knip:types": 2
     },
     "packages/sdk-node/src/electron/preload.ts": {
       "knip:unlisted": 1

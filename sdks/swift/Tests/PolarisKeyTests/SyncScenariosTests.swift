@@ -185,7 +185,7 @@ final class SyncScenariosTests: XCTestCase {
         XCTAssertEqual(family?["calls"], .array([.string("putAt"), .string("removeAt")]))
         XCTAssertEqual(family?["asserts"], .array([.string("rows"), .string("outcomes")]))
         let scenarios = f.fileRecordScenarios
-        XCTAssertEqual(scenarios.count, 16)
+        XCTAssertEqual(scenarios.count, 19)
         for sc in scenarios {
             try runScenario(
                 sc, name: sc["name"]?.stringValue ?? "?", make: Self.makeMachine, product: f.root["product"] ?? .null)
@@ -365,7 +365,9 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
             }
         }
         switch name {
-        case "putAt": return ticket(machine.putAt(str(0), str(1), a[2], baseVersion: base(3)))
+        case "putAt":
+            return ticket(
+                machine.putAt(str(0), str(1), a[2], baseVersion: base(3), file: a.count > 4 ? SyncFilePointer(json: a[4]) : nil))
         case "removeAt": return ticket(machine.removeAt(str(0), str(1), baseVersion: base(2)))
         default: return plain(name, a)
         }

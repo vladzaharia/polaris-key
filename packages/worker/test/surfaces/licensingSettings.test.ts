@@ -744,6 +744,10 @@ describe("the settings API refuses what the registry refuses", () => {
       // I-09: the identity block's live row-backed settings (claimByKey since ST-14).
       "identity.keyEntry.claimByKey",
       "identity.keyEntry.limit",
+      // I-15.2: the native redirect classes.
+      "identity.nativeRedirect.claimedPaths",
+      "identity.nativeRedirect.loopback",
+      "identity.nativeRedirect.schemes",
       "identity.nearby",
       "identity.oidc.syncTierOnSignIn",
       // I-42.2: the platform sign-in audiences.

@@ -22,6 +22,11 @@ export const XFER_CONSENT_SECONDS = 120;
 export const XFER_IDLE_SECONDS = 60;
 export const XFER_PARTIAL_SECONDS = 86_400;
 export const XFER_MAX_PARTIALS_PER_PEER = 8;
+/** How long a receiver remembers a delivered (peer, id, sha256), and how many per peer: as long as a partial lives. */
+export const XFER_DELIVERED_SECONDS = 86_400;
+export const XFER_MAX_DELIVERED_PER_PEER = 64;
+/** The most peers one memory keeps entries for; the least recently used peer goes first. */
+export const XFER_MAX_DELIVERED_PEERS = 256;
 export const XFER_ENDED_IDS = 64;
 export const XFER_CHUNK_HEAD = 24;
 export const XFER_CAP = "xfer/1";
@@ -334,7 +339,9 @@ export type XferPartialEffect =
   | { write: string; offset: number; data: Uint8Array };
 
 export type XferResult =
-  | { id: string; outcome: "delivered" }
+  /** `again`: a re-offer of content this device had already delivered, answered as done; the host
+   *  is told nothing and no content moves. */
+  | { id: string; outcome: "delivered"; again?: true }
   | { id: string; outcome: "cancelled"; reason: XferReason }
   | { id: string; outcome: "closed" };
 
@@ -349,6 +356,77 @@ export interface XferOut {
   refused?: "busy";
   /** A late record for an ended id, dropped without effect. */
   drop?: true;
+}
+
+/**
+ * What a receiver remembers of the transfers it delivered to one peer key, so a re-offer (the
+ * sender did not see the final `DONE`) is answered as done and not received again. Times are the
+ * machine's clock, in seconds.
+ */
+export interface XferDelivered {
+  has(id: string, sha256: string, size: number, at: number): boolean;
+  add(id: string, sha256: string, size: number, at: number): void;
+}
+
+/**
+ * The delivered memory of a process, bounded: per peer key the last `XFER_MAX_DELIVERED_PER_PEER`
+ * entries, each for `XFER_DELIVERED_SECONDS`; at most `XFER_MAX_DELIVERED_PEERS` peer keys. It
+ * holds ids and hashes only, never content, a name or a path, and is lost with the process.
+ */
+export class XferDeliveredMemory {
+  private peers = new Map<
+    string,
+    Array<{ id: string; sha256: string; size: number; at: number }>
+  >();
+
+  /** The view of one peer key (32 raw bytes) for a machine's `delivered` option. */
+  forPeer(peerKey: Uint8Array): XferDelivered {
+    const key = Array.from(peerKey, (b) =>
+      b.toString(16).padStart(2, "0"),
+    ).join("");
+    return {
+      has: (id, sha256, size, at) => {
+        const rows = this.fresh(key, at);
+        return rows.some(
+          (r) => r.id === id && r.sha256 === sha256 && r.size === size,
+        );
+      },
+      add: (id, sha256, size, at) => {
+        const rows = this.fresh(key, at);
+        rows.push({ id, sha256, size, at });
+        while (rows.length > XFER_MAX_DELIVERED_PER_PEER) rows.shift();
+        // Most recently used peer last.
+        this.peers.delete(key);
+        this.peers.set(key, rows);
+        while (this.peers.size > XFER_MAX_DELIVERED_PEERS)
+          this.peers.delete(this.peers.keys().next().value as string);
+      },
+    };
+  }
+
+  /** Forget one peer key (a link deleted, a device left the roster). */
+  forget(peerKey: Uint8Array): void {
+    this.peers.delete(
+      Array.from(peerKey, (b) => b.toString(16).padStart(2, "0")).join(""),
+    );
+  }
+
+  /** Forget everything (sign-out). */
+  clear(): void {
+    this.peers.clear();
+  }
+
+  private fresh(
+    key: string,
+    at: number,
+  ): Array<{ id: string; sha256: string; size: number; at: number }> {
+    const rows = (this.peers.get(key) ?? []).filter(
+      (r) => at - r.at <= XFER_DELIVERED_SECONDS && at >= r.at,
+    );
+    if (rows.length > 0) this.peers.set(key, rows);
+    else this.peers.delete(key);
+    return rows;
+  }
 }
 
 export interface XferMachineOptions {
@@ -370,6 +448,8 @@ export interface XferMachineOptions {
   peerKey: Uint8Array;
   /** The kept partials of this peer key. */
   partials?: readonly XferPartial[];
+  /** The delivered memory of this peer key. Without it every re-offer is received again. */
+  delivered?: XferDelivered;
   /**
    * A hasher fed with the first `offset` bytes of a kept partial, which the store has re-read
    * (`offset` is a multiple of the chunk size not above the bytes re-read). Without it a resume
@@ -401,6 +481,8 @@ interface Tr {
   ackEnd: number;
   seekable: boolean;
   full: boolean;
+  /** A re-offer of delivered content: only the tail is read, nothing is stored or reported. */
+  again?: boolean;
 }
 
 interface Ended {
@@ -622,6 +704,8 @@ export class XferMachine {
   /** A transfer the host was never told about (still asking) reports no result. */
   private result(t: Tr, r: XferResult): void {
     if (t.st === "asking") return;
+    // A re-offer answered from the memory reports only its own `delivered`, flagged.
+    if (t.again === true && r.outcome !== "delivered") return;
     this.out.results.push(r);
   }
 
@@ -775,6 +859,12 @@ export class XferMachine {
       (f.cat === undefined || !(this.o.categories ?? []).includes(f.cat))
     )
       return refuse("category");
+    // Content this device already delivered to this peer needs no room and no new consent: it is
+    // answered as done, reading at most the last chunk again.
+    if (this.o.delivered?.has(f.id, f.sha256, f.size, this.clock) === true) {
+      t.again = true;
+      return this.acceptAgain(t);
+    }
     // Step 6: size and quota; a resume counts only the bytes still to come.
     const limit = this.o.hostLimit ?? null;
     if (limit !== null && f.size > limit) return refuse("size");
@@ -795,6 +885,18 @@ export class XferMachine {
       return;
     }
     this.accept(t);
+  }
+
+  /** `ACCEPT` at the last chunk boundary of delivered content; the tail is read and dropped. */
+  private acceptAgain(t: Tr): void {
+    const offset = Math.floor(t.size / t.chunk) * t.chunk;
+    this.tr.set(t.id, t);
+    t.recv = offset;
+    t.ackedEnd = offset;
+    t.st = "active";
+    t.accepted = true;
+    t.since = this.clock;
+    this.send({ t: "ACCEPT", id: t.id, offset });
   }
 
   private resumable(
@@ -940,7 +1042,7 @@ export class XferMachine {
       return this.fault();
     const data = body.subarray(XFER_CHUNK_HEAD);
     const end = v.offset + v.length;
-    t.hash!.update(data);
+    t.hash?.update(data);
     const offset = t.recv;
     t.recv = end;
     t.sinceAck += 1;
@@ -980,10 +1082,18 @@ export class XferMachine {
       this.end(t, true);
     };
     if (t.recv < t.size) return cancel("size");
+    if (t.again === true) {
+      if (sha !== t.sha) return cancel("hash");
+      this.send({ t: "DONE", id: t.id });
+      this.result(t, { id: t.id, outcome: "delivered", again: true });
+      this.end(t, false);
+      return;
+    }
     if (sha !== t.sha || hexOf(t.hash!.digest()) !== t.sha)
       return cancel("hash");
     this.send({ t: "DONE", id: t.id });
     if (t.partial !== undefined) this.eff({ finalize: t.partial });
+    this.o.delivered?.add(t.id, t.sha, t.size, this.clock);
     this.result(t, { id: t.id, outcome: "delivered" });
     this.end(t, false);
   }

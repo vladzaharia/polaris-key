@@ -6,11 +6,18 @@
 // a conflict that reports the server copy, and the journal and chunk cache going with the person.
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { TransferEvent } from "../src/constants.generated.js";
+import { chunkCachePersonDir } from "../src/cloudSync/chunkCache.js";
 import {
   PRODUCT,
   SUBJECT,
@@ -239,6 +246,44 @@ describe("cloudSync.saves", () => {
     client.close();
   });
 
+  it("lists the new file at once after a write, with no echo of the record in the push reply", async () => {
+    const { w } = savesWorld();
+    const push = w.push;
+    w.push = (body) => ({ ...push(body), changes: [] });
+    const { client } = await signedIn(w);
+    const first = bytes(300, 1);
+    const out1 = await (
+      await client.cloudSync.saves.write("slot-1", first, { chapter: "one" })
+    ).done;
+    expect(out1).toMatchObject({ state: "done" });
+    const list1 = await client.cloudSync.saves.list();
+    expect(list1).toEqual([
+      expect.objectContaining({
+        id: "slot-1",
+        file: expect.objectContaining({ size: 300, sha256: sha(first) }),
+      }),
+    ]);
+
+    const second = bytes(500, 2);
+    const out2 = await (
+      await client.cloudSync.saves.write(
+        "slot-1",
+        second,
+        { chapter: "two" },
+        { baseVersion: out1.state === "done" ? (out1.version ?? 0) : 0 },
+      )
+    ).done;
+    expect(out2).toMatchObject({ state: "done" });
+    const read = await client.cloudSync.saves.read("slot-1");
+    expect(read).toMatchObject({ ok: true, metadata: { chapter: "two" } });
+    expect(
+      read.ok &&
+        read.bytes &&
+        Buffer.from(read.bytes).equals(Buffer.from(second)),
+    ).toBe(true);
+    client.close();
+  });
+
   it("reports a stale write as a conflict that carries the server copy", async () => {
     const { w, rows } = savesWorld();
     rows.set("slot-1", {
@@ -311,8 +356,7 @@ describe("cloudSync.saves", () => {
       const walk = (d: string): void => {
         for (const e of readdirSync(d, { withFileTypes: true })) {
           if (e.isDirectory()) {
-            if (/^cloud-sync-(transfers|chunks)$/.test(e.name))
-              found.push(e.name);
+            if (/^cloud-sync-transfers$/.test(e.name)) found.push(e.name);
             walk(join(d, e.name));
           }
         }
@@ -320,6 +364,15 @@ describe("cloudSync.saves", () => {
       walk(stateDir);
       return found;
     };
+    // Two people on one device: each has a chunk cache directory.
+    const state = (client as unknown as { core: { dirs: { state: string } } })
+      .core.dirs.state;
+    const mine = chunkCachePersonDir(state, SUBJECT);
+    const theirs = chunkCachePersonDir(state, "someone-else");
+    for (const d of [mine, theirs]) {
+      mkdirSync(join(d, "c"), { recursive: true });
+      writeFileSync(join(d, "c", "x"), "x");
+    }
     // A parked transfer: the journal directory exists until the person goes.
     const t = await client.cloudSync.saves.write("slot-1", bytes(100), {});
     await t.done;
@@ -328,6 +381,9 @@ describe("cloudSync.saves", () => {
       client as unknown as { cloudSyncApi: { beforeSignOut(): Promise<void> } }
     ).cloudSyncApi.beforeSignOut();
     expect(dirs()).toEqual([]);
+    // Only the leaving person's chunks go; the other person's stay.
+    expect(existsSync(mine)).toBe(false);
+    expect(existsSync(join(theirs, "c", "x"))).toBe(true);
     expect(existsSync(stateDir)).toBe(true);
     client.close();
   });

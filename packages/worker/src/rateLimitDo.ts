@@ -30,6 +30,8 @@ interface CheckRequest {
   now: number;
   /** Read the counter without counting this call. */
   peek?: boolean;
+  /** How many units this call counts for (a whole number, 1 when absent): a byte budget charges by size. */
+  cost?: number;
 }
 
 interface Counter {
@@ -58,7 +60,7 @@ export class RateLimitDO implements DurableObject {
   ) {}
 
   async fetch(request: Request): Promise<Response> {
-    const { bucket, id, limit, windowSec, now, peek } =
+    const { bucket, id, limit, windowSec, now, peek, cost } =
       (await request.json()) as CheckRequest;
     // A `windowSec` of 0 would divide by zero (a permanent lockout, an uncollectable key).
     if (
@@ -68,7 +70,9 @@ export class RateLimitDO implements DurableObject {
       limit < 0 ||
       !Number.isInteger(windowSec) ||
       windowSec < 1 ||
-      !Number.isFinite(now)
+      !Number.isFinite(now) ||
+      (cost !== undefined &&
+        (!Number.isInteger(cost) || cost < 1 || cost > 1_000_000))
     )
       return new Response(JSON.stringify({ error: "bad_request" }), {
         status: 400,
@@ -89,7 +93,7 @@ export class RateLimitDO implements DurableObject {
     } else if (peek === true) {
       ok = true;
     } else {
-      counter.count += 1;
+      counter.count += cost ?? 1;
       counter.expiresAt = (window + 1) * windowSec;
       await this.state.storage.put(key, counter);
       await this.ensureSweepScheduled();

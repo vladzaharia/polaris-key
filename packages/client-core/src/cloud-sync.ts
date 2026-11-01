@@ -163,6 +163,8 @@ export type SyncOpName =
   | "clear"
   | "setMember"
   | "removeMember"
+  | "setField"
+  | "removeField"
   | "add"
   | "remove"
   | "delete";
@@ -174,6 +176,8 @@ export interface WireMutation {
   op: SyncOpName;
   value?: Json;
   member?: string;
+  /** `setField` and `removeField` on a `merge` record (§13.3). */
+  field?: string;
   element?: Json;
   observedSeq?: number;
   editedHlc?: string;
@@ -195,6 +199,9 @@ export interface JournalOp extends WireMutation {
   /** The id `putAt` / `removeAt` returned: the op is exact (never coalesced, never rebased) and its
    *  outcome is reported to `onOutcome` under this id, whatever `mutationId` a renumbering gives it. */
   ticket?: number;
+  /** The file pointer `putAt` was given (the one the save's finalize returned): the row adopts it
+   *  when the op is acknowledged `ok`. Never sent. */
+  file?: RecordFile;
 }
 
 /** A setting held in the local partition. */
@@ -577,9 +584,16 @@ function applyRecordOp(
   switch (op.op) {
     case "set":
       return clone(op.value as Json);
-    case "setMember":
-    case "removeMember":
-      return applySettingOp("merge", base, op);
+    case "setField": {
+      const o = isObject(base) ? { ...base } : {};
+      o[op.field as string] = clone(op.value as Json);
+      return o;
+    }
+    case "removeField": {
+      const o = isObject(base) ? { ...base } : {};
+      delete o[op.field as string];
+      return o;
+    }
     case "add": {
       const arr = Array.isArray(base) ? [...base] : [];
       if (!arr.some((x) => jsonEqual(x, op.element)))
@@ -645,7 +659,14 @@ function newPartition(clientId: string | null): Partition {
 
 /** The wire form of a journalled mutation (journal-only marks stripped). */
 export function wireOf(op: JournalOp): WireMutation {
-  const { preContact: _p, moved: _m, parked: _k, ticket: _t, ...wire } = op;
+  const {
+    preContact: _p,
+    moved: _m,
+    parked: _k,
+    ticket: _t,
+    file: _f,
+    ...wire
+  } = op;
   return clone(wire);
 }
 
@@ -852,7 +873,7 @@ export class CloudSyncMachine {
   }
 
   /** Write a record: compare-and-swap for `revision` (rule 3), a stamped `set` for `lastWrite`,
-   *  `max` and `min`, member operations for `merge`. */
+   *  `max` and `min`, field operations for `merge`. */
   put(collection: string, id: string, value: Json): CallResult {
     const decl = this.collection(collection);
     if (!decl || decl.policy === "union")
@@ -886,22 +907,22 @@ export class CloudSyncMachine {
         const current = this.record(collection, id)?.value;
         const cur = isObject(current) ? current : {};
         const next = isObject(value) ? value : {};
-        for (const member of Object.keys(next).sort(byteOrder))
-          if (!(member in cur) || !jsonEqual(cur[member], next[member]))
+        for (const field of Object.keys(next).sort(byteOrder))
+          if (!(field in cur) || !jsonEqual(cur[field], next[field]))
             this.enqueue(p, {
               target,
-              op: "setMember",
-              member,
-              value: clone(next[member] as Json),
+              op: "setField",
+              field,
+              value: clone(next[field] as Json),
               editedHlc,
               ...marks,
             });
-        for (const member of Object.keys(cur).sort(byteOrder))
-          if (!(member in next))
+        for (const field of Object.keys(cur).sort(byteOrder))
+          if (!(field in next))
             this.enqueue(p, {
               target,
-              op: "removeMember",
-              member,
+              op: "removeField",
+              field,
               editedHlc,
               ...marks,
             });
@@ -948,17 +969,23 @@ export class CloudSyncMachine {
   }
 
   /** Write a `revision` record at exactly `baseVersion`: a new mutation, never coalesced with a
-   *  queued edit and never rebased on a conflict. Its outcome goes to `onOutcome`. */
+   *  queued edit and never rebased on a conflict. Its outcome goes to `onOutcome`. `file` is the
+   *  pointer the save's finalize returned: on `ok` the row takes it with the new version; without
+   *  one the row keeps its prior file. */
   putAt(
     collection: string,
     id: string,
     value: Json,
     baseVersion: number | "*",
+    file?: RecordFile,
   ): PutAtResult {
-    return this.exactOp(collection, id, baseVersion, {
-      op: "set",
-      value: clone(value),
-    });
+    return this.exactOp(
+      collection,
+      id,
+      baseVersion,
+      { op: "set", value: clone(value) },
+      file,
+    );
   }
 
   /** Delete a `revision` record at exactly `baseVersion` (removes its file, §13.8.1). */
@@ -981,6 +1008,7 @@ export class CloudSyncMachine {
     id: string,
     baseVersion: number | "*",
     body: { op: "set"; value: Json } | { op: "delete" },
+    file?: RecordFile,
   ): PutAtResult {
     const decl = this.collection(collection);
     if (!decl || decl.policy !== "revision")
@@ -995,6 +1023,8 @@ export class CloudSyncMachine {
     const ticket = p.nextTicket ?? 1;
     p.nextTicket = ticket + 1;
     op.ticket = ticket;
+    const pointer = fileOf(file);
+    if (pointer) op.file = pointer;
     this.kick();
     return { ok: true, mutationId: ticket };
   }
@@ -2193,7 +2223,7 @@ export class CloudSyncMachine {
         p.records[rk] = {
           value,
           version: r.version,
-          ...fileMark(p.records[rk]?.file),
+          ...fileMark(op.file ?? p.records[rk]?.file),
         };
       if (rk in p.held) rebaseOn = r.version;
       this.emitOutcome(op, { status: "ok", version: r.version });

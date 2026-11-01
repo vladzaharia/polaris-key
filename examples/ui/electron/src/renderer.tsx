@@ -4,7 +4,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { PolarisKeyProvider } from "@polaris-key/react";
-import { PolarisKeyGate } from "@polaris-key/react/kit";
+import {
+  NearbyApprover,
+  NearbySignIn,
+  PolarisKeyGate,
+} from "@polaris-key/react/kit";
 import "@polaris-key/react/fonts.css";
 import "@polaris-key/react/styles.css";
 import "./app.css";
@@ -13,6 +17,16 @@ import "./app.css";
 const CHROMES = ["windows", "macos", "linux"] as const;
 const forced = new URLSearchParams(location.search).get("platform");
 const platform = CHROMES.find((c) => c === forced) ?? "auto";
+// The nearby e2e opens one nearby sign-in screen on its own (main passes ?screen=).
+const screen = new URLSearchParams(location.search).get("screen");
+
+function Nearby({ which }: { which: string }) {
+  return which === "nearby-approver" ? (
+    <NearbyApprover theme={{ platform }} />
+  ) : (
+    <NearbySignIn theme={{ platform }} prompt={false} deviceName="Studio PC" />
+  );
+}
 
 function App() {
   return (
@@ -32,9 +46,13 @@ createRoot(document.getElementById("root")!).render(
         version: __APP_VERSION__,
       }}
     >
-      <PolarisKeyGate theme={{ platform }}>
-        <App />
-      </PolarisKeyGate>
+      {screen === "nearby-signin" || screen === "nearby-approver" ? (
+        <Nearby which={screen} />
+      ) : (
+        <PolarisKeyGate theme={{ platform }}>
+          <App />
+        </PolarisKeyGate>
+      )}
     </PolarisKeyProvider>
   </StrictMode>,
 );

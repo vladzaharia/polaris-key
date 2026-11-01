@@ -6694,6 +6694,16 @@ msgstr "El inicio de sesión no puede volver a la app"
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador."
 
+#. Sign-in link expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.title"
+msgstr "El enlace de inicio de sesión caducó"
+
+#. This sign-in link has expired. Go back to {product} and start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.message"
+msgstr "Este enlace de inicio de sesión caducó. Vuelve a {product} y empieza de nuevo."
+
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"
@@ -7493,6 +7503,16 @@ msgstr "Código caducado"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-expired.message"
 msgstr "El código caducó antes de terminar el inicio de sesión. Vuelve a empezar."
+
+#. Browser sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.title"
+msgstr "Inicio de sesión en el navegador no disponible"
+
+#. Sign-in could not open a browser here. Use a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.message"
+msgstr "El inicio de sesión no pudo abrir un navegador aquí. Usa un código en su lugar."
 
 #. Sign-in declined
 #. Core copy (conformance/parity/copy.en.json, codes).

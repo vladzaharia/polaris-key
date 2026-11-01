@@ -10,7 +10,10 @@ extends RefCounted
 # `str()` or status. Everything runs on an in-memory room and a clock the test moves; a last group runs the
 # real `WebSocketPeer` against a local `TCPServer` and `WebSocketPeer.accept_stream` server and proves the
 # close codes 4001, 4003, 4008 and 4009 arrive, that a text frame and an oversize message are refused, and
-# that only a `wss:` URL opens by default.
+# that only a `wss:` URL opens by default. A last case (CC-14.N5) runs a loopback TLS server with a
+# self-signed certificate and proves a `wss:` URL whose certificate does not verify is refused: the socket
+# never opens, the server never receives the upgrade request (the ticket rides in it) and the service never
+# opens, while the same server opens for a client that was handed that certificate.
 
 const ID_A := "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH"
 const ID_B := "HHHHGGGGFFFFEEEEDDDDCCCCBBBBAAAA"
@@ -103,6 +106,7 @@ func run(t: PKeyTestContext) -> void:
 	await _stop(t)
 	await _misc(t)
 	await _real_socket(t)
+	await _bad_certificate(t)
 	# Let every stopped loop run out before the suite ends.
 	await _frames(30)
 
@@ -730,3 +734,112 @@ func _real_socket(t: PKeyTestContext) -> void:
 	var probe := TCPServer.new()
 	t.check("real: the local server's port is released", probe.listen(port, "127.0.0.1") == OK)
 	probe.stop()
+
+
+# ── a wss URL whose certificate does not verify (CC-14.N5) ───────────────────────────────────
+
+
+## A loopback TLS server with the given key and certificate. Each accepted socket gets a TLS handshake and,
+## once that holds, a WebSocket handshake. `upgrades` counts the connections whose WebSocket upgrade completed (the request carries the ticket).
+class TlsRoom extends RefCounted:
+	var server := TCPServer.new()
+	var options: TLSOptions
+	var peers: Array = []
+	var accepted := 0
+	var tls_up := 0
+	var upgrades := 0
+
+
+	func start(key: CryptoKey, cert: X509Certificate) -> int:
+		options = TLSOptions.server(key, cert)
+		return server.get_local_port() if server.listen(0, "127.0.0.1") == OK else 0
+
+
+	func tick() -> void:
+		while server.is_connection_available():
+			var tls := StreamPeerTLS.new()
+			if tls.accept_stream(server.take_connection(), options) == OK:
+				peers.append({"tls": tls, "ws": null})
+				accepted += 1
+		for p: Dictionary in peers:
+			var tls: StreamPeerTLS = p["tls"]
+			# Once the WebSocket owns the stream it polls it; before that, poll only a live handshake.
+			var live: bool = tls.get_status() == StreamPeerTLS.STATUS_CONNECTED or tls.get_status() == StreamPeerTLS.STATUS_HANDSHAKING
+			if p["ws"] == null and live:
+				tls.poll()
+			if tls.get_status() == StreamPeerTLS.STATUS_CONNECTED and p["ws"] == null:
+				tls_up += 1
+				var ws := WebSocketPeer.new()
+				ws.supported_protocols = PackedStringArray([PKeyConnectRelay.PROTOCOL])
+				ws.accept_stream(tls)
+				p["ws"] = ws
+			if p["ws"] != null and live:
+				var ws2: WebSocketPeer = p["ws"]
+				ws2.poll()
+				if ws2.get_ready_state() == WebSocketPeer.STATE_OPEN and not p.has("seen"):
+					p["seen"] = true
+					upgrades += 1
+
+
+	func stop() -> void:
+		for p: Dictionary in peers:
+			if p["ws"] != null:
+				(p["ws"] as WebSocketPeer).close()
+			else:
+				(p["tls"] as StreamPeerTLS).disconnect_from_stream()
+		server.stop()
+
+
+func _bad_certificate(t: PKeyTestContext) -> void:
+	var crypto := Crypto.new()
+	var key := crypto.generate_rsa(2048)
+	var cert := crypto.generate_self_signed_certificate(key, "CN=127.0.0.1,O=pkey-test,C=US", "20200101000000", "20990101000000")
+	var room := TlsRoom.new()
+	var port := room.start(key, cert)
+	if not t.check("N5: a loopback TLS server listens", port > 0):
+		return
+	var tree := _tree()
+	var pump := func() -> void: room.tick()
+	tree.process_frame.connect(pump)
+	var url := "wss://127.0.0.1:%d/relay" % port
+	var ticket := "pkeyrt_" + "b".repeat(32)
+	# The real opener, no `allow_ws`, the system's roots: a self-signed certificate does not verify.
+	var sock := PKeyConnectRelay.open_ws(url, [PKeyConnectRelay.PROTOCOL, ticket])
+	if not t.check("N5: the opener starts a socket for a wss URL", sock != null):
+		tree.process_frame.disconnect(pump)
+		room.stop()
+		return
+	var opened := false
+	var closed := await _until_ms(func() -> bool:
+		sock.poll()
+		opened = opened or sock.state() == PKeyConnectRelay.Socket.OPEN
+		return sock.state() == PKeyConnectRelay.Socket.CLOSED, 10000)
+	await _frames(10)
+	t.check("N5: a certificate that does not verify is refused: the socket closes and never opens", closed and not opened)
+	t.check("N5: and nothing was read from or sent over it", sock.recv() == null and not sock.send(PackedByteArray([1])))
+	var seen := "%d accepted, %d up, %d upgrades" % [room.accepted, room.tls_up, room.upgrades]
+	t.check("N5: the server never received the WebSocket upgrade request that carries the ticket", room.accepted >= 1 and room.upgrades == 0, seen)
+	# The service on top of it: every attempt is refused, no attempt opens, and each one asked for a new ticket.
+	var env := Env.new()
+	env.source = _source()
+	var tickets := Tickets.new()
+	tickets.url = url
+	var svc := PKeyConnectRelay.new(env.src(), Callable(tickets, "next"), {"tree": tree, "backoff_base": 0.02, "backoff_max": 0.05, "backoff_min": 0.01, "open_seconds": 3.0})
+	svc.start()
+	var retried := await _until_ms(func() -> bool: return tickets.issued >= 2, 15000)
+	t.check("N5: the service never opens over a certificate that does not verify, and retries", retried and not svc.is_open() and room.upgrades == 0, str(svc.status()))
+	svc.stop()
+	await _frames(10)
+	# The control: the same server opens for a client that was handed its certificate, so the refusals above
+	# are the certificate check and not a broken server.
+	var good := WebSocketPeer.new()
+	good.supported_protocols = PackedStringArray([PKeyConnectRelay.PROTOCOL])
+	good.connect_to_url(url, TLSOptions.client(cert))
+	var reached := await _until_ms(func() -> bool:
+		good.poll()
+		return good.get_ready_state() == WebSocketPeer.STATE_OPEN, 10000)
+	t.check("N5 control: the same server opens for a client that trusts its certificate", reached and room.upgrades >= 1, "%d accepted, %d up, %d upgrades" % [room.accepted, room.tls_up, room.upgrades])
+	good.close()
+	await _frames(10)
+	tree.process_frame.disconnect(pump)
+	room.stop()

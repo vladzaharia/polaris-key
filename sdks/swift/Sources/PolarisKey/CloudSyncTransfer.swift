@@ -381,8 +381,10 @@ public final class FileTransferEngine: Sendable {
         try verifySource(req)
         // Read before anything is sent: an unreadable record stops the transfer untouched.
         let resume = try await loadRecord(req)
-        return try await restarting(id: req.id) { first in
-            try await UploadRun(engine: self, req: req, resume: first ? resume : nil).go()
+        return try await TransferScope.$id.withValue(req.id) {
+            try await restarting(id: req.id) { first in
+                try await UploadRun(engine: self, req: req, resume: first ? resume : nil).go()
+            }
         }
     }
 
@@ -395,18 +397,24 @@ public final class FileTransferEngine: Sendable {
         // earlier run only tells which server upload to release.
         try await releasePrior(req.id)
         let cut = try self.cut(req)
-        return try await restarting(id: req.id) { _ in try await ChunkedRun(engine: self, req: req, cut: cut).go() }
+        return try await TransferScope.$id.withValue(req.id) {
+            try await restarting(id: req.id) { _ in try await ChunkedRun(engine: self, req: req, cut: cut).go() }
+        }
     }
 
     /// Fetch one file and write its plaintext to `req.sink`. Returns when every check has passed; a throw
     /// (`.fileInvalid` for anything the server could have altered) leaves the sink's contents unusable,
     /// and the host discards them.
     public func download(_ req: DownloadRequest) async throws {
-        try await DownloadRun(engine: self, req: req).go()
+        try await TransferScope.$id.withValue("download:\(req.collection)/\(req.record)") {
+            try await DownloadRun(engine: self, req: req).go()
+        }
     }
 
     /// Drop a transfer: abort the server's upload (best effort) and forget the record.
     public func cancel(id: String) async {
+        // A background transport stops this transfer's tasks and spool files first, whatever the journal holds.
+        if let c = transport as? any TransferTaskCancelling { await c.cancelTasks(transferId: id) }
         guard let raw = journal.get(id) else { return }
         guard let rec = try? parseJournalRecord(raw) else { return }  // stays for the build that wrote it
         await abortQuietly(FileTarget(collection: rec.collection, record: rec.record), rec.uploadId)

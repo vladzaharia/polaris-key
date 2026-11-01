@@ -121,6 +121,68 @@ export const REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$";
 /** §12.7.2: how long a request handle lives, equal to the sign-in flow's own lifetime. */
 export const REQUEST_HANDLE_TTL_SECONDS = 600;
 
+/**
+ * §12.12: a pushed authorization request's URI, `urn:ietf:params:oauth:request_uri:` and 16 random
+ * bytes in base64url (RFC 9126).
+ */
+export const REQUEST_URI_PATTERN =
+  "^urn:ietf:params:oauth:request_uri:[A-Za-z0-9_-]{22}$";
+
+/** §12.12: how long a pushed request lives, or until Continue or Cancel takes it (RFC 9126 `expires_in`). */
+export const PUSHED_REQUEST_TTL_SECONDS = 600;
+
+/** §12.12: the one path of the loopback and scheme redirect URIs (RFC 8252 §7). */
+export const NATIVE_REDIRECT_PATH = "/pkey/callback";
+
+/** §12.12: how a native redirect URI reaches the app. A web redirect is never one of these. */
+export type NativeRedirectClass = "loopback" | "scheme" | "claimed";
+
+/**
+ * §12.12: `POST /<p>/identity/request`, form-encoded. The §12.4 `authorize` parameters (each as
+ * there; `redirect_uri` is a native one) plus the device label and an optional return URI. Needs
+ * `X-PKey-Device`.
+ */
+export interface PushedRequestParams {
+  response_type: "code";
+  client_id: string;
+  redirect_uri: string;
+  state: string;
+  code_challenge: string;
+  code_challenge_method: "S256";
+  scope?: string;
+  nonce?: string;
+  login_hint?: string;
+  name_hint?: string;
+  purpose?: AuthorizePurpose;
+  license_choice?: AuthorizeLicenseChoice;
+  key_return?: "allow";
+  /** The device label (§12.7.1), cleaned like `deviceName` on `token`. */
+  device_name?: string;
+  /** A registered scheme's redirect URI for ReturnStep's "Return to <App>". It never carries a code. */
+  return_uri?: string;
+}
+
+/** §12.12: the `201` answer of `POST /<p>/identity/request`. `no-store`, no CORS. */
+export interface PushedRequestResponse {
+  /** {@link REQUEST_URI_PATTERN}. The only parameter besides `client_id` that `authorize` then takes. */
+  request_uri: string;
+  /** {@link PUSHED_REQUEST_TTL_SECONDS}. */
+  expires_in: number;
+}
+
+/**
+ * §12.6: `nativeRedirect` in the identity discovery fragment, present only while `request` is
+ * served. `schemes` and `claimedHttps` hold the full registered redirect URIs.
+ */
+export interface NativeRedirectDiscovery {
+  /** `identity.nativeRedirect.loopback` (default true). */
+  loopback: boolean;
+  /** `<scheme>:/pkey/callback` for each registered scheme. */
+  schemes: string[];
+  /** `https://<origin><path>` for each registered claimed path on each web origin. */
+  claimedHttps: string[];
+}
+
 /** The kind of client a sign-in request came from (§12.7.2). */
 export type ClientKind = "web" | "native" | "device";
 
@@ -174,6 +236,12 @@ export interface SignInRequestView {
    * this request. Absent otherwise, so every earlier answer stays byte-identical.
    */
   keyReturn?: true;
+  /**
+   * I-15 (§12.7.2): on a native request only, the class of its redirect URI and the pushed
+   * `return_uri`. Absent on every other request.
+   */
+  redirect?: NativeRedirectClass;
+  returnUri?: string | null;
 }
 
 /** One line of what an app gets when the person continues (§12.7.3). */
@@ -433,6 +501,8 @@ export interface IdentityDiscovery {
   nearby?: true;
   /** UK-42.22 (§12.10.1): the device-code poll answers `choose` to a start that asked `licenseChoice: "app"`. */
   deviceChoice?: true;
+  /** I-15 (§12.12): the native redirect classes the product accepts through `request`. Present only while `request` is served. */
+  nativeRedirect?: NativeRedirectDiscovery;
   /** I-49 (§12.11.8): silent restore is served; the `restore` endpoint comes with it. */
   restore?: true;
   endpoints: {
@@ -449,6 +519,10 @@ export interface IdentityDiscovery {
     authorize?: string;
     /** I-08 (§12.5): the OAuth-shaped token endpoint (form-encoded, CORS for `web.origins`). */
     token?: string;
+    /** I-15 (§12.12): the pushed authorization request. Present only with `nativeRedirect`. */
+    request?: string;
+    /** I-15 (§12.12): the customer-host page a loopback listener answers `303` to. Present with `request`. */
+    signinReturn?: string;
     /** I-08b (§12.5): the pending sign-in grant's four routes. Present only when the licence choice is served. */
     choiceLicenses?: string;
     choiceDevices?: string;

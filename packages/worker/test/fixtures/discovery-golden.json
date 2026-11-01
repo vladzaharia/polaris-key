@@ -220,6 +220,11 @@
         "keyEntryLimit": 10,
         "restore": true,
         "nearby": true,
+        "nativeRedirect": {
+          "loopback": true,
+          "schemes": [],
+          "claimedHttps": []
+        },
         "endpoints": {
           "session": "https://key.plrs.im/full/identity/session",
           "sessionLicense": "https://key.plrs.im/full/identity/session/license",
@@ -232,6 +237,8 @@
           "authDevicePoll": "https://key.plrs.im/full/identity/auth/device/poll",
           "authorize": "https://key.plrs.im/full/identity/authorize",
           "token": "https://key.plrs.im/full/identity/token",
+          "request": "https://key.plrs.im/full/identity/request",
+          "signinReturn": "https://key.plrs.im/signin/return",
           "choiceLicenses": "https://key.plrs.im/full/identity/choice/licenses",
           "choiceDevices": "https://key.plrs.im/full/identity/choice/devices",
           "choiceComplete": "https://key.plrs.im/full/identity/choice/complete",

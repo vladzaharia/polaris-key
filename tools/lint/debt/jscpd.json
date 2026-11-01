@@ -54,7 +54,7 @@
       "jscpd:duplicate": 3
     },
     "conformance/runners/node/transcripts.test.ts": {
-      "jscpd:duplicate": 28
+      "jscpd:duplicate": 27
     },
     "examples/node-electron/src/main.ts": {
       "jscpd:duplicate": 1
@@ -1845,7 +1845,7 @@
       "jscpd:duplicate": 3
     },
     "packages/sdk-node/test/electronBridge.test.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 11
     },
     "packages/sdk-node/test/electronHardening.test.ts": {
       "jscpd:duplicate": 1
@@ -1956,7 +1956,7 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-react/src/kit/connectLazy.tsx": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/sdk-react/src/kit/desktopCss.ts": {
       "jscpd:duplicate": 1
@@ -1965,6 +1965,9 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/src/kit/holdersLazy.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/src/kit/nearbyLazy.tsx": {
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/src/kit/rows.tsx": {
@@ -2034,16 +2037,19 @@
       "jscpd:duplicate": 8
     },
     "packages/sdk-react/test/browser/connect.browser.test.tsx": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 13
     },
     "packages/sdk-react/test/browser/holders.browser.test.tsx": {
       "jscpd:duplicate": 10
     },
     "packages/sdk-react/test/browser/kit.browser.test.tsx": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/sdk-react/test/browser/motion.browser.test.tsx": {
       "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/browser/nearby.browser.test.tsx": {
+      "jscpd:duplicate": 4
     },
     "packages/sdk-react/test/browser/polish.browser.test.tsx": {
       "jscpd:duplicate": 11
@@ -2100,7 +2106,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/desktopAdapter.test.ts": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 9
     },
     "packages/sdk-react/test/desktopIdentity.test.tsx": {
       "jscpd:duplicate": 1
@@ -2202,7 +2208,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/transcripts.test.ts": {
-      "jscpd:duplicate": 28
+      "jscpd:duplicate": 27
     },
     "packages/sdk-react/test/trustCustody.test.ts": {
       "jscpd:duplicate": 2
@@ -4743,7 +4749,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/transcripts/scenarios/redirect.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 6
     },
     "packages/worker/test/transcripts/scenarios/release.ts": {
       "jscpd:duplicate": 4
@@ -4947,7 +4953,7 @@
       "jscpd:duplicate": 1
     },
     "tools/sync-scenarios.ts": {
-      "jscpd:duplicate": 25
+      "jscpd:duplicate": 32
     },
     "tools/ui-matrix.ts": {
       "jscpd:duplicate": 18

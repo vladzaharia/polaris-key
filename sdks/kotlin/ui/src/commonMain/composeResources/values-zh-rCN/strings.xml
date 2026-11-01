@@ -2515,6 +2515,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_redirect_uri_mismatch_message">该应用的登录设置不正确，因此在此处停止以保护你的账户。请告知其开发者。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_request_uri_title">登录链接已过期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_invalid_request_uri_message">此登录链接已过期。请返回 %1$s 重新开始。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">选择许可证</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">选择此设备使用的许可证，然后继续。</string>
@@ -2834,6 +2838,10 @@
     <string name="core_codes_sign_in_expired_title">代码已过期</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_expired_message">代码在登录完成前已过期。请重新开始。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_title">无法通过浏览器登录</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_message">此处无法打开浏览器登录。请改用代码。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_denied_title">登录被拒绝</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

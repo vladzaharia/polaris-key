@@ -61,6 +61,7 @@ public enum ErrorCode {
     public static let unsupportedGrantType = "unsupported_grant_type"
     public static let invalidScope = "invalid_scope"
     public static let redirectUriMismatch = "redirect_uri_mismatch"
+    public static let invalidRequestUri = "invalid_request_uri"
     public static let licenseChoiceRequired = "license_choice_required"
     public static let interstitialRequired = "interstitial_required"
     public static let notNearby = "not_nearby"
@@ -141,6 +142,7 @@ public enum ErrorCode {
     public static let serverError = "server-error"
     public static let cancelled = "cancelled"
     public static let signInExpired = "sign-in-expired"
+    public static let redirectUnavailable = "redirect-unavailable"
     public static let signInDenied = "sign-in-denied"
     public static let signInUnavailable = "sign-in-unavailable"
     public static let platformIdentityUnavailable = "platform-identity-unavailable"
@@ -290,6 +292,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "unsupported_grant_type",
     "invalid_scope",
     "redirect_uri_mismatch",
+    "invalid_request_uri",
     "license_choice_required",
     "interstitial_required",
     "not_nearby",
@@ -370,6 +373,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "server-error",
     "cancelled",
     "sign-in-expired",
+    "redirect-unavailable",
     "sign-in-denied",
     "sign-in-unavailable",
     "platform-identity-unavailable",
@@ -519,6 +523,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "unsupported_grant_type": "wire",
     "invalid_scope": "wire",
     "redirect_uri_mismatch": "wire",
+    "invalid_request_uri": "wire",
     "license_choice_required": "wire",
     "interstitial_required": "wire",
     "not_nearby": "wire",
@@ -599,6 +604,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "server-error": "client",
     "cancelled": "client",
     "sign-in-expired": "client",
+    "redirect-unavailable": "client",
     "sign-in-denied": "client",
     "sign-in-unavailable": "client",
     "platform-identity-unavailable": "client",
@@ -764,6 +770,7 @@ public enum Feature {
     public static let identityAttach = "identity.attach"
     public static let identityAccount = "identity.account"
     public static let identityRedirectWeb = "identity.redirect.web"
+    public static let identityRedirectNative = "identity.redirect.native"
     public static let identityChoice = "identity.choice"
     public static let identityDevicecodeChoice = "identity.devicecode.choice"
     public static let identitySigninHints = "identity.signin.hints"
@@ -909,6 +916,7 @@ public let FEATURE_VALUES: [String] = [
     "identity.attach",
     "identity.account",
     "identity.redirect.web",
+    "identity.redirect.native",
     "identity.choice",
     "identity.devicecode.choice",
     "identity.signin.hints",
@@ -2074,6 +2082,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.attach": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.account": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.redirect.web": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.redirect.native": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.devicecode.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
@@ -2152,4 +2161,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "a0618a7da80830dcecf407f08e72981fb7493bf1a7ac511ce6ea22afd8c84fd0"
+public let CAPABILITY_DIGEST = "d025a8b146ee20961c85b56673f8052523f7533425031a8322674af78fc411df"

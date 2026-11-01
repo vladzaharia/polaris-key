@@ -18,6 +18,7 @@ import {
   SYNC_MAX_VALUE_BYTES,
   jsonBytes,
   relaunch,
+  wireOf,
   type CloudSyncOptions,
   type Json,
   type SyncRequest,
@@ -603,12 +604,12 @@ describe("record field policies (D4)", () => {
     });
   });
 
-  it("sends member operations for a merge record", () => {
+  it("sends field operations for a merge record", () => {
     const { m } = started();
     m.put("prefs", "main", { a: 1, b: 2 });
     expect(mutations(m.takeRequests())).toEqual([
-      expect.objectContaining({ op: "setMember", member: "a", value: 1 }),
-      expect.objectContaining({ op: "setMember", member: "b", value: 2 }),
+      expect.objectContaining({ op: "setField", field: "a", value: 1 }),
+      expect.objectContaining({ op: "setField", field: "b", value: 2 }),
     ]);
     expect(m.record("prefs", "main")).toEqual({
       value: { a: 1, b: 2 },
@@ -650,5 +651,28 @@ describe("the constants are @polaris-key/protocol/sync's (U-05.1)", () => {
     expect(SYNC_MAX_MUTATIONS).toBe(100);
     expect(SYNC_MAX_CLOCK_SKEW_MS).toBe(300_000);
     expect(SYNC_HLC_PATTERN.source).toBe("^[0-9a-f]{12}:[0-9a-f]{4}$");
+  });
+});
+
+describe("putAt file pointer", () => {
+  it("is journal-only: wireOf strips it", () => {
+    const file = {
+      version: 3,
+      size: 10,
+      sha256: "a".repeat(64),
+      format: "whole" as const,
+    };
+    const wire = wireOf({
+      mutationId: 1,
+      target: { record: ["saves", "x"] },
+      op: "set",
+      value: 1,
+      baseVersion: "*",
+      ticket: 1,
+      file,
+    });
+    expect(wire).not.toHaveProperty("file");
+    expect(wire).not.toHaveProperty("ticket");
+    expect(wire).toMatchObject({ mutationId: 1, baseVersion: "*" });
   });
 });

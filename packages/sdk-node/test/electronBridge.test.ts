@@ -28,6 +28,7 @@ import {
   PolarisKeyClient,
   type PolarisKeyClientOptions,
 } from "../src/client.js";
+import { PolarisEventEmitter } from "../src/core/events.js";
 import {
   DEFAULT_INVOKE_VERBS,
   bridgeActivation,
@@ -115,11 +116,11 @@ async function setup(
   return { ...seeded, license, ipc, handle, bridge: typed };
 }
 
-describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
+describe("PolarisBridge v5 over IPC (SP-N10, SP-31)", () => {
   it("serves the gate state with the capability map", async () => {
     const { bridge } = await setup();
-    expect(POLARIS_BRIDGE_VERSION).toBe(4);
-    expect(bridge.version).toBe(4);
+    expect(POLARIS_BRIDGE_VERSION).toBe(6);
+    expect(bridge.version).toBe(6);
     const s = await bridge.getSyncState();
     expect(s.activation).toBe("token");
     expect((s.doc as { licenseId: string }).licenseId).toBe("lic_parity");
@@ -643,6 +644,9 @@ describe("PolarisBridge v4 over IPC (SP-N10, SP-31)", () => {
     // so the scan cannot read these three; they are the adapter's account calls.
     for (const m of ["subject", "attach", "openAccount"])
       calls.add(`identity.${m}`);
+    // UK-42.22.7: the adapter's `choiceCall(method, args)` passes the method as a variable too.
+    for (const m of ["licenses", "devices", "complete", "cancel"])
+      calls.add(`identity.choice.${m}`);
     expect([...calls].sort()).toEqual([...DEFAULT_INVOKE_VERBS].sort());
   });
 });
@@ -1199,13 +1203,13 @@ describe("PolarisBridge v4 verbs round-trip through the preload (SP-31)", () => 
     ).rejects.toMatchObject({ code: "invoke-not-allowed" });
   });
 
-  it("subscribe answers {version: 4}", async () => {
+  it("subscribe answers {version: 6}", async () => {
     const { ipc } = await setup();
     expect(
       await ipc.ipcRenderer.invoke(
         channelOf(DEFAULT_BRIDGE_CHANNEL, "subscribe"),
       ),
-    ).toEqual({ ok: true, value: { version: 4 } });
+    ).toEqual({ ok: true, value: { version: 6 } });
   });
 
   it("pollSignIn's ok carries the identity the host's poll knew", async () => {
@@ -1875,5 +1879,519 @@ describe("SafeStorageStore (SP-N11)", () => {
     expect(await b.status()).toMatchObject({
       degraded: { reason: "keyring-error" },
     });
+  });
+});
+
+// ── v5 (I-47b): automatic and nearby sign-in over the bridge ─────────────────────────────────
+
+// @pkey-feature identity.autosignin identity.nearby
+describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
+  // Secrets the SDK's own objects carry. None may appear in any reply or push.
+  const SECRETS = [
+    "REQ_SECRET_ID",
+    "WRAP_SECRET",
+    "TOKEN_SECRET",
+    "SDK_APPROVER_ID",
+  ];
+
+  const ends: (() => void)[] = [];
+  function fakeAsk(over: Partial<{ pick: unknown; deny: unknown }> = {}) {
+    const pick = vi.fn(async (_code: string) => ({ kind: "approved" }));
+    const deny = vi.fn(async () => undefined);
+    const ask = {
+      device: "Ana's phone",
+      platform: "ios",
+      codes: ["111 111", "222 222", "333 333"] as const,
+      pick: (over.pick as typeof pick) ?? pick,
+      deny: (over.deny as typeof deny) ?? deny,
+      onEnd: (f: () => void) => {
+        ends.push(f);
+        return () => undefined;
+      },
+      // Secrets a spread would leak:
+      requestId: "REQ_SECRET_ID",
+      wrap: "WRAP_SECRET",
+    };
+    return { ask, pick, deny };
+  }
+
+  function fakeSession() {
+    const approverCbs = new Set<(l: unknown[]) => void>();
+    const list = [
+      { id: "SDK_APPROVER_ID", label: "Ben's Mac", platform: "macos" },
+    ];
+    const session = {
+      approvers: list as unknown[],
+      token: "TOKEN_SECRET",
+      onApprovers: (f: (l: unknown[]) => void) => {
+        approverCbs.add(f);
+        return () => approverCbs.delete(f);
+      },
+      onResult: () => () => undefined,
+      choose: vi.fn(async () => ({ code: "482 913" })),
+      wait: vi.fn(async () => ({
+        kind: "signedIn",
+        subject: "ps_x",
+        activation: { licenseId: null },
+        identity: { email: "ana@example.test" },
+      })),
+      cancel: vi.fn(),
+      confirmAccount: vi.fn(async () => undefined),
+      declineAccount: vi.fn(async () => undefined),
+    };
+    return session;
+  }
+
+  function fake() {
+    const events = new PolarisEventEmitter();
+    const stop = vi.fn(async () => undefined);
+    let handler: ((a: unknown) => void) | null = null;
+    const session = fakeSession();
+    const identity = {
+      autoSignIn: vi.fn(async () => ({
+        kind: "signedIn",
+        via: "stored",
+        subject: "ps_1",
+        activation: { licenseId: "lic_1" },
+      })),
+      signIn: { start: vi.fn(async () => session) },
+      nearby: {
+        onRequest: vi.fn(async (h: (a: unknown) => void) => {
+          handler = h;
+          return { stop };
+        }),
+      },
+      signOut: vi.fn(async () => {
+        events.emit("identity", { kind: "signedOut", released: false });
+        return { released: false };
+      }),
+    };
+    const client = {
+      events,
+      identity,
+      getSyncState: () => ({ state: "licensed" }),
+      capabilities: () => ({}),
+      config: { entries: () => null, localValues: () => ({}) },
+      presentation: () => null,
+      presentationSource: () => ({ subscribe: () => () => undefined }),
+    } as unknown as PolarisKeyClient;
+    return {
+      client,
+      identity,
+      session,
+      stop,
+      ask: (a: unknown) => handler!(a),
+    };
+  }
+
+  function host() {
+    const f = fake();
+    const ipc = ipcPair();
+    const handle = exposePolarisBridge(f.client, {
+      ipcMain: ipc.ipcMain,
+      allowSender: allowApp,
+    });
+    // The preload object IS a v5 PolarisBridge (assignability pinned here).
+    const bridge: PolarisBridge = createPreloadBridge(ipc.ipcRenderer);
+    const states: Record<string, unknown>[] = [];
+    bridge.on("stateChanged", (s) => states.push(s as never));
+    /** A call as another window (id 8) would make it. */
+    const asOther = async (method: string, ...args: unknown[]) =>
+      (await ipc.handlers.get(
+        channelOf(DEFAULT_BRIDGE_CHANNEL, method as never),
+      )!(
+        {
+          sender: { id: 8, send() {}, mainFrame: { url: "app://main" } },
+          senderFrame: { url: "app://main" },
+        },
+        ...args,
+      )) as { ok: boolean; code?: string };
+    return { ...f, ipc, handle, bridge, states, asOther };
+  }
+
+  const askIdOf = (states: Record<string, unknown>[]): string => {
+    const last = states[states.length - 1] as {
+      nearby: { approver: { asks: { askId: string }[] } };
+    };
+    return last.nearby.approver.asks[0]!.askId;
+  };
+
+  it("registers all eleven v5 methods and answers version 6", async () => {
+    const { bridge, ipc } = host();
+    expect(bridge.version).toBe(6);
+    for (const m of [
+      "autoSignIn",
+      "nearbyStart",
+      "nearbyChoose",
+      "nearbyConfirm",
+      "nearbyDecline",
+      "nearbyCancel",
+      "approverStart",
+      "approverStop",
+      "approverPick",
+      "approverDeny",
+      "approverChoose",
+    ])
+      expect(
+        ipc.handlers.has(channelOf(DEFAULT_BRIDGE_CHANNEL, m as never)),
+      ).toBe(true);
+  });
+
+  it("refuses a foreign sender on every v5 method", async () => {
+    const { ipc, identity } = host();
+    ipc.deny();
+    const calls: [string, unknown[]][] = [
+      ["autoSignIn", []],
+      ["nearbyStart", []],
+      ["nearbyChoose", ["s", "a"]],
+      ["nearbyConfirm", ["s"]],
+      ["nearbyDecline", ["s"]],
+      ["nearbyCancel", ["s"]],
+      ["approverStart", []],
+      ["approverStop", []],
+      ["approverPick", ["a", "111 111"]],
+      ["approverDeny", ["a"]],
+      ["approverChoose", ["a", { kind: "create" }]],
+    ];
+    for (const [m, args] of calls) {
+      const r = (await ipc.ipcRenderer.invoke(
+        channelOf(DEFAULT_BRIDGE_CHANNEL, m as never),
+        ...args,
+      )) as { ok: boolean; code: string };
+      expect(r, m).toMatchObject({ ok: false, code: "sender-refused" });
+    }
+    expect(identity.autoSignIn).not.toHaveBeenCalled();
+    expect(identity.signIn.start).not.toHaveBeenCalled();
+    expect(identity.nearby.onRequest).not.toHaveBeenCalled();
+  });
+
+  it("maps autoSignIn to plain fields", async () => {
+    const { bridge, identity } = host();
+    const r = await bridge.autoSignIn!({
+      prompt: "none",
+      licenseChoice: "app",
+    });
+    expect(r).toEqual({
+      kind: "signedIn",
+      via: "stored",
+      subject: "ps_1",
+      activation: { licenseId: "lic_1" },
+    });
+    expect(identity.autoSignIn).toHaveBeenCalledWith({
+      prompt: "none",
+      licenseChoice: "app",
+    });
+  });
+
+  it("approves only through a fresh askId and the host's own pick", async () => {
+    const { bridge, ask, states, asOther } = host();
+    await bridge.approverStart!();
+    const a = fakeAsk();
+    ask(a.ask);
+    const askId = askIdOf(states);
+    expect(askId).toMatch(/^[0-9a-f]{32}$/);
+
+    // Nothing approves without a pick: an unknown id, another window's call, or a code that is
+    // not one of the three never reaches the SDK's pick.
+    await expect(bridge.approverPick!("nope", "111 111")).rejects.toMatchObject(
+      {
+        code: "invalid-argument",
+      },
+    );
+    expect(await asOther("approverPick", askId, "111 111")).toMatchObject({
+      ok: false,
+      code: "invalid-argument",
+    });
+    await expect(bridge.approverPick!(askId, "999 999")).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+    expect(a.pick).not.toHaveBeenCalled();
+
+    expect(await bridge.approverPick!(askId, "222 222")).toEqual({
+      kind: "approved",
+    });
+    expect(a.pick).toHaveBeenCalledExactlyOnceWith("222 222");
+
+    // Single use: the same askId is spent.
+    await expect(bridge.approverPick!(askId, "222 222")).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+    await expect(bridge.approverDeny!(askId)).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+    expect(a.pick).toHaveBeenCalledTimes(1);
+  });
+
+  it("deny closes the ask without a pick", async () => {
+    const { bridge, ask, states } = host();
+    await bridge.approverStart!();
+    const a = fakeAsk();
+    ask(a.ask);
+    await bridge.approverDeny!(askIdOf(states));
+    expect(a.deny).toHaveBeenCalledTimes(1);
+    expect(a.pick).not.toHaveBeenCalled();
+    expect(
+      (states[states.length - 1] as { nearby: { approver: { asks: [] } } })
+        .nearby.approver.asks,
+    ).toEqual([]);
+  });
+
+  it("offers a licence choice once and only the licences offered", async () => {
+    const { bridge, ask, states } = host();
+    await bridge.approverStart!();
+    const choose = vi.fn(async () => ({ kind: "approved" }));
+    const cancel = vi.fn(async () => ({ kind: "denied" }));
+    const a = fakeAsk({
+      pick: async () => ({
+        kind: "choose",
+        choices: {
+          state: "choose",
+          choices: [{ id: "lic_a", name: null, tierName: "Pro" }],
+        },
+        choose,
+        cancel,
+      }),
+    });
+    ask(a.ask);
+    const askId = askIdOf(states);
+    expect(await bridge.approverPick!(askId, "111 111")).toEqual({
+      kind: "choose",
+      choices: [{ licenseId: "lic_a", name: "Pro" }],
+    });
+    await expect(
+      bridge.approverChoose!(askId, { kind: "license", licenseId: "lic_x" }),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+    expect(choose).not.toHaveBeenCalled();
+    expect(
+      await bridge.approverChoose!(askId, {
+        kind: "license",
+        licenseId: "lic_a",
+      }),
+    ).toEqual({ kind: "approved" });
+    expect(choose).toHaveBeenCalledWith({
+      kind: "license",
+      licenseId: "lic_a",
+    });
+    await expect(
+      bridge.approverChoose!(askId, { kind: "create" }),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+  });
+
+  it("tears the approver down on stop, sign-out and close", async () => {
+    for (const how of ["stop", "signOut", "close", "event"] as const) {
+      const h = host();
+      await h.bridge.approverStart!();
+      const a = fakeAsk();
+      h.ask(a.ask);
+      const askId = askIdOf(h.states);
+      if (how === "stop") await h.bridge.approverStop!();
+      else if (how === "signOut") await h.bridge.signOut();
+      else if (how === "close") h.handle.close();
+      else
+        h.client.events.emit("identity", {
+          kind: "signedOut",
+          released: false,
+        });
+      expect(h.stop, how).toHaveBeenCalledTimes(1);
+      expect(a.deny, how).toHaveBeenCalledTimes(1);
+      expect(a.pick).not.toHaveBeenCalled();
+      if (how !== "close")
+        await expect(
+          h.bridge.approverPick!(askId, "111 111"),
+        ).rejects.toMatchObject({
+          code: "invalid-argument",
+        });
+    }
+  });
+
+  it("tears down when the window is destroyed or stops passing allowSender", async () => {
+    const h = host();
+    await h.bridge.approverStart!();
+    const a = fakeAsk();
+    h.ask(a.ask);
+    // The window navigated off the app: the next push finds it refused.
+    h.ipc.sender.mainFrame = { url: "https://evil.test" };
+    h.ask(fakeAsk().ask);
+    expect(h.stop).toHaveBeenCalledTimes(1);
+    expect(a.deny).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows one approver per host", async () => {
+    const h = host();
+    await h.bridge.approverStart!();
+    expect(await h.asOther("approverStart")).toMatchObject({
+      ok: false,
+      code: "busy",
+    });
+    expect(h.identity.nearby.onRequest).toHaveBeenCalledTimes(1);
+    // A second start from the owner is idempotent.
+    await h.bridge.approverStart!();
+    expect(h.identity.nearby.onRequest).toHaveBeenCalledTimes(1);
+  });
+
+  it("walks the requester through choose, confirm and done", async () => {
+    const { bridge, session, states, asOther } = host();
+    const s = await bridge.nearbyStart!({ deviceName: "Desk" });
+    expect(s.phase).toBe("choose-approver");
+    expect(s.approvers).toHaveLength(1);
+    expect(s.approvers[0]!.id).not.toBe("SDK_APPROVER_ID");
+    // Another window's session id is refused.
+    expect(
+      await asOther("nearbyChoose", s.sessionId, s.approvers[0]!.id),
+    ).toMatchObject({
+      ok: false,
+      code: "invalid-argument",
+    });
+    await expect(bridge.nearbyConfirm!(s.sessionId)).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+    const c = await bridge.nearbyChoose!(s.sessionId, s.approvers[0]!.id);
+    expect(c).toMatchObject({ phase: "waiting", code: "482 913" });
+    expect(session.choose).toHaveBeenCalledWith("SDK_APPROVER_ID");
+    await vi.waitFor(() =>
+      expect(
+        (
+          states[states.length - 1] as {
+            nearby: { requester?: { phase: string } };
+          }
+        ).nearby.requester?.phase,
+      ).toBe("confirm-account"),
+    );
+    expect(
+      (
+        states[states.length - 1] as {
+          nearby: { requester: { email: string } };
+        }
+      ).nearby.requester.email,
+    ).toBe("ana@example.test");
+    // The confirmation is the person's: never before the account shows.
+    expect(session.confirmAccount).not.toHaveBeenCalled();
+    expect(await bridge.nearbyConfirm!(s.sessionId)).toMatchObject({
+      phase: "done",
+    });
+    expect(session.confirmAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("a declined account signs the device out through the SDK", async () => {
+    const { bridge, session, states } = host();
+    const s = await bridge.nearbyStart!();
+    await bridge.nearbyChoose!(s.sessionId, s.approvers[0]!.id);
+    await vi.waitFor(() =>
+      expect(
+        (
+          states[states.length - 1] as {
+            nearby: { requester?: { phase: string } };
+          }
+        ).nearby.requester?.phase,
+      ).toBe("confirm-account"),
+    );
+    expect(await bridge.nearbyDecline!(s.sessionId)).toMatchObject({
+      phase: "cancelled",
+    });
+    expect(session.declineAccount).toHaveBeenCalledTimes(1);
+    expect(session.confirmAccount).not.toHaveBeenCalled();
+  });
+
+  it("cancels the requester on sign-out", async () => {
+    const { bridge, session } = host();
+    const s = await bridge.nearbyStart!();
+    await bridge.signOut();
+    expect(session.cancel).toHaveBeenCalled();
+    await expect(
+      bridge.nearbyChoose!(s.sessionId, s.approvers[0]!.id),
+    ).rejects.toMatchObject({ code: "invalid-argument" });
+  });
+
+  it("puts no token, key, request id or wrap in any reply or push", async () => {
+    const h = host();
+    const seen: unknown[] = [];
+    seen.push(await h.bridge.autoSignIn!());
+    const s = await h.bridge.nearbyStart!();
+    seen.push(s);
+    seen.push(await h.bridge.nearbyChoose!(s.sessionId, s.approvers[0]!.id));
+    seen.push(await h.bridge.approverStart!());
+    const a = fakeAsk();
+    h.ask(a.ask);
+    seen.push(await h.bridge.getSyncState());
+    seen.push(await h.bridge.approverPick!(askIdOf(h.states), "333 333"));
+    seen.push(...h.states);
+    const text = JSON.stringify(seen);
+    for (const secret of SECRETS) expect(text).not.toContain(secret);
+    expect(text).not.toMatch(/requestId|wrap|token/i);
+  });
+  it("holds a confirming phase so confirm and decline cannot both land", async () => {
+    const { bridge, session, states } = host();
+    let release!: () => void;
+    session.confirmAccount.mockImplementation(
+      () => new Promise<undefined>((r) => (release = () => r(undefined))),
+    );
+    const s = await bridge.nearbyStart!();
+    await bridge.nearbyChoose!(s.sessionId, s.approvers[0]!.id);
+    await vi.waitFor(() =>
+      expect(
+        (
+          states[states.length - 1] as {
+            nearby: { requester?: { phase: string } };
+          }
+        ).nearby.requester?.phase,
+      ).toBe("confirm-account"),
+    );
+    const first = bridge.nearbyConfirm!(s.sessionId);
+    await expect(bridge.nearbyDecline!(s.sessionId)).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+    await expect(bridge.nearbyConfirm!(s.sessionId)).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+    // A sign-out while the confirmation is in flight ends the requester; it never turns "done".
+    await bridge.signOut();
+    release();
+    expect(await first).toMatchObject({ phase: "cancelled" });
+    expect(session.declineAccount).not.toHaveBeenCalled();
+  });
+
+  it("drops an ask from the list when its session ends", async () => {
+    const { bridge, ask, states } = host();
+    ends.length = 0;
+    await bridge.approverStart!();
+    const a = fakeAsk();
+    ask(a.ask);
+    const askId = askIdOf(states);
+    ends[0]!();
+    expect(
+      (states[states.length - 1] as { nearby: { approver: { asks: [] } } })
+        .nearby.approver.asks,
+    ).toEqual([]);
+    await expect(bridge.approverPick!(askId, "111 111")).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+  });
+
+  it("tells the first window when a second window replaces its requester", async () => {
+    const { bridge, states, asOther } = host();
+    const s = await bridge.nearbyStart!();
+    expect(s.phase).toBe("choose-approver");
+    expect(await asOther("nearbyStart")).toMatchObject({ ok: true });
+    const last = states[states.length - 1] as {
+      nearby: { requester?: { phase: string } };
+    };
+    expect(last.nearby.requester?.phase).toBe("cancelled");
+    await expect(bridge.nearbyCancel!(s.sessionId)).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+  });
+
+  it("bounds the device name at the bridge", async () => {
+    const { bridge, identity } = host();
+    await bridge.nearbyStart!({ deviceName: "x".repeat(300) });
+    const used = (
+      identity.signIn.start.mock.calls[0] as unknown as [{ deviceName: string }]
+    )[0].deviceName;
+    expect([...used].length).toBe(64);
+    await bridge.autoSignIn!({ deviceName: "y".repeat(300) });
+    const o = (
+      identity.autoSignIn.mock.calls[0] as unknown as [{ deviceName: string }]
+    )[0];
+    expect([...o.deviceName].length).toBe(64);
   });
 });

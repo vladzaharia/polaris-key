@@ -54,6 +54,8 @@ import { readPlatformSignIn } from "./platformSignIn.js";
 import { gameKindsOn } from "./passthrough/subjectToken.js";
 import { keyEntryLimit } from "../../core/licensing/keyEntries.js";
 import { accountPortalUrl } from "../../core/licensing/manageUrl.js";
+import { customerOrigin } from "../../core/hosts.js";
+import { nativeRedirectDiscovery } from "./passthrough/redirectUri.js";
 import { licenseHolderHooks } from "./accounts/holders.js";
 import {
   STOREFRONT_ACTIVATIONS_LISTENER,
@@ -229,6 +231,11 @@ export const identityService: ServiceDescriptor = {
           }
         : {}),
       ...(nearbyOn ? { nearby: true as const } : {}),
+      // I-15 (§12.6, §12.12): the native redirect classes, named while `request` is served.
+      nativeRedirect: await nativeRedirectDiscovery(
+        { env, db, ...(settings ? { registry: settings } : {}) },
+        product,
+      ),
       endpoints: {
         session: `${base}/identity/session`,
         sessionLicense: `${base}/identity/session/license`,
@@ -241,6 +248,9 @@ export const identityService: ServiceDescriptor = {
         authDevicePoll: `${base}/identity/auth/device/poll`,
         authorize: `${base}/identity/authorize`,
         token: `${base}/identity/token`,
+        request: `${base}/identity/request`,
+        // The customer-host page a loopback listener answers `303` to (§12.9 rule 2).
+        signinReturn: `${customerOrigin(env, base) ?? new URL(base).origin}/signin/return`,
         choiceLicenses: `${base}/identity/choice/licenses`,
         choiceDevices: `${base}/identity/choice/devices`,
         choiceComplete: `${base}/identity/choice/complete`,

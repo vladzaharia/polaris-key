@@ -209,6 +209,10 @@
       "title": "Anmeldung kann nicht zur App zurückkehren",
       "message": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler."
     },
+    "invalid_request_uri": {
+      "title": "Anmeldelink abgelaufen",
+      "message": "Dieser Anmeldelink ist abgelaufen. Gehen Sie zurück zu {product} und beginnen Sie erneut."
+    },
     "license_choice_required": {
       "title": "Lizenz wählen",
       "message": "Wählen Sie, welche Lizenz dieses Gerät verwendet, und fahren Sie dann fort."
@@ -528,6 +532,10 @@
     "sign-in-expired": {
       "title": "Code abgelaufen",
       "message": "Der Code ist abgelaufen, bevor die Anmeldung abgeschlossen wurde. Beginnen Sie erneut."
+    },
+    "redirect-unavailable": {
+      "title": "Anmeldung im Browser nicht möglich",
+      "message": "Die Anmeldung konnte hier keinen Browser öffnen. Verwenden Sie stattdessen einen Code."
     },
     "sign-in-denied": {
       "title": "Anmeldung abgelehnt",

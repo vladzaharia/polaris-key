@@ -106,6 +106,13 @@ export class BridgeDeviceCodeSession implements DeviceCodeSignInSession {
         }
         continue;
       }
+      if (r.kind === "choose")
+        return {
+          kind: "choose",
+          grant: r.grant,
+          expiresIn: r.expiresIn,
+          choices: r.choices,
+        };
       if (r.kind === "ok") return this.#hooks.onSignedIn(r.identity);
       if (r.kind === "expired") {
         this.#hooks.onStopped();

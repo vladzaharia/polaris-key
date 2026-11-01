@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 117 | 16 | 8 | 0 |
-| React | `web`, `desktop-bridge` | 111 | 26 | 4 | 0 |
-| Python | `python` | 106 | 16 | 19 | 0 |
-| Swift | `macos`, `ios` | 117 | 10 | 13 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 116 | 9 | 16 | 0 |
-| Kotlin | `android`, `jvm` | 118 | 9 | 13 | 1 |
+| Node | `node` | 117 | 16 | 9 | 0 |
+| React | `web`, `desktop-bridge` | 112 | 25 | 5 | 0 |
+| Python | `python` | 106 | 16 | 20 | 0 |
+| Swift | `macos`, `ios` | 117 | 10 | 14 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 118 | 9 | 15 | 0 |
+| Kotlin | `android`, `jvm` | 118 | 9 | 14 | 1 |
 
 ## Core
 
@@ -96,7 +96,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `connect.identity` | Device certificates and rings: verify, key choice and admission | `cases.json` `peerCertCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `connect.noise` | Noise_XX_25519_AESGCM_SHA256 and its primitives | `noise-vectors.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `connect.protocol` | pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes | `peer-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit + `peer-matrix.json` `lanAddresses` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (CC-14b) | planned (CC-12b) | web, desktop-bridge: runtime |
+| `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit + `peer-matrix.json` `lanAddresses` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | planned (CC-12b) | web, desktop-bridge: runtime |
 | `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `connect.links` | Inter-account links: mode p pairing and contacts | transcripts + `peer-matrix.json` `contact` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (CC-19) | ✓ | web, desktop-bridge: runtime |
 | `connect.transfer` | Direct Transfer: data between Cloud Connect peers | `peer-matrix.json` `xfer` | ✓ | ✓ | ✓ | ✓ | planned (CC-20) | ✓ | — |
@@ -121,6 +121,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.attach` | Attach: add the device's licence to the account signed in on it, with a preview | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.account` | The account on the device: subject(), signOut() and openAccount() | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.redirect.web` | Web redirect sign-in: authorize with PKCE, then the code redeemed at token | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `identity.redirect.native` | Native redirect sign-in: a pushed request, then the code redeemed from the pushing device | transcripts | planned (I-15b) | planned (I-15b) | planned (I-15b) | planned (I-15b) | planned (I-15b) | planned (I-15b) | — |
 | `identity.choice` | Licence choice in the app: the choice.* primitives over a pending sign-in grant | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.devicecode.choice` | Device-code sign-in with the hints and the licence choice in the app (the choose poll answer) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
@@ -128,10 +129,10 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.exchange` | Platform sign-in: a Google or Apple ID token for a device token (the exchange) | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | ✓ | ✓; N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 | `identity.gamecenter` | Platform sign-in: a Game Center identity-verification token for a device token (the exchange) | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓ | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm: runtime |
 | `identity.pgs` | Platform sign-in: a Play Games server auth code for a device token (the exchange) | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (macos: runtime); N/A (ios: runtime); N/A (web: runtime) | ✓; N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm: runtime |
-| `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | ✓ | ✓ | ✓ | ✓ | planned (I-48) | ✓ | — |
+| `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.restore` | Silent restore: a new device of the same person signs in from the platform backup | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓ | planned (I-49); N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, web, jvm, windows, linux, desktop-bridge: runtime |
 | `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
-| `identity.nearby` | Nearby approval: a signed-in device approves a device that cannot sign itself in | transcripts + `peer-matrix.json` `vouch` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | planned (I-44) | planned (I-48); N/A (web: runtime) | planned (I-45) | web, desktop-bridge: runtime |
+| `identity.nearby` | Nearby approval: a signed-in device approves a device that cannot sign itself in | transcripts + `peer-matrix.json` `vouch` | ✓ | ✓; N/A (web: runtime) | ✓ | planned (I-44) | planned (I-48); N/A (web: runtime) | planned (I-45) | web: runtime |
 
 ## Release and update
 

@@ -223,6 +223,12 @@ const RULES: { id: string; title: string; ref: string }[] = [
     ref: "plans/U-01b.md §2.5 (Import)",
   },
   {
+    id: "record-merge-fields",
+    title:
+      "A merge record sends one setField or removeField per changed field, never a whole value; another device's field arrives in the pull",
+    ref: "WIRE-CONTRACT-V5 §13.3 (U-09.11)",
+  },
+  {
     id: "record-field-policy",
     title:
       "A lastWrite, max or min record is a stamped set the server resolves; on conflict the client takes the server copy and enqueues nothing",
@@ -508,6 +514,34 @@ const stamped = (
   target: { record: [collection, rid] },
   op: "set",
   value,
+  editedHlc: h,
+});
+const setField = (
+  id: number,
+  collection: string,
+  rid: string,
+  field: string,
+  value: J,
+  h: string,
+): Obj => ({
+  mutationId: id,
+  target: { record: [collection, rid] },
+  op: "setField",
+  field,
+  value,
+  editedHlc: h,
+});
+const removeField = (
+  id: number,
+  collection: string,
+  rid: string,
+  field: string,
+  h: string,
+): Obj => ({
+  mutationId: id,
+  target: { record: [collection, rid] },
+  op: "removeField",
+  field,
   editedHlc: h,
 });
 const j = (
@@ -3607,6 +3641,118 @@ function scenarios(): Scenario[] {
     ],
   );
 
+  // ── U-09.11 (appended to version 4; WIRE-CONTRACT-V5 §13.3) ─────────────────────────────────
+
+  const MERGE_CATALOG: Obj = {
+    settings: CATALOG.settings!,
+    collections: [
+      ...(CATALOG.collections as Obj[]),
+      { name: "profile", policy: "merge" },
+    ],
+  };
+  s.push({
+    name: "record-merge-fields",
+    description:
+      "A record in a merge collection sends one setField per changed field and one removeField per dropped field, each stamped, never a whole value; a field another device wrote arrives with the cloud copy.",
+    rules: ["record-merge-fields"],
+    wp: "U-09.11",
+    init: init({ catalog: MERGE_CATALOG }),
+    steps: [
+      assert({ requests: [pullReq(0, C1)] }),
+      respond(
+        pullBody({
+          serverNow: T0,
+          cursor: 3,
+          changes: [
+            recChange("profile", "main", { name: "A", color: "red" }, 2),
+          ],
+        }),
+      ),
+      local(
+        "put",
+        ["profile", "main", { name: "A", color: "blue", level: 2 }],
+        {
+          ok: true,
+        },
+      ),
+      assert({
+        requests: [
+          pushReq(C1, 3, [
+            setField(1, "profile", "main", "color", "blue", hlc(T0)),
+            setField(2, "profile", "main", "level", 2, hlc(T0)),
+          ]),
+        ],
+        records: {
+          "profile/main": val(
+            { name: "A", color: "blue", level: 2 },
+            "pending",
+          ),
+        },
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 5,
+          lastMutationId: 2,
+          results: [ok(1, 3), ok(2, 4)],
+          changes: [
+            recChange(
+              "profile",
+              "main",
+              { name: "A", color: "blue", level: 2, mood: "calm" },
+              4,
+            ),
+          ],
+        }),
+      ),
+      assert({
+        records: {
+          "profile/main": val(
+            { name: "A", color: "blue", level: 2, mood: "calm" },
+            "cloud",
+          ),
+        },
+        status: st("idle", 0),
+      }),
+      advance(1000),
+      local("put", ["profile", "main", { name: "A", level: 2, mood: "calm" }], {
+        ok: true,
+      }),
+      assert({
+        requests: [
+          pushReq(C1, 5, [
+            removeField(3, "profile", "main", "color", hlc(T0 + 1000)),
+          ]),
+        ],
+        records: {
+          "profile/main": val({ name: "A", level: 2, mood: "calm" }, "pending"),
+        },
+      }),
+      respond(
+        pushBody({
+          serverNow: T0 + 1000,
+          cursor: 6,
+          lastMutationId: 3,
+          results: [ok(3, 6)],
+          changes: [
+            recChange(
+              "profile",
+              "main",
+              { name: "A", level: 2, mood: "calm" },
+              6,
+            ),
+          ],
+        }),
+      ),
+      assert({
+        records: {
+          "profile/main": val({ name: "A", level: 2, mood: "calm" }, "cloud"),
+        },
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
   return s;
 }
 
@@ -4533,6 +4679,113 @@ function fileRecordCases(): Scenario[] {
     ],
   });
 
+  add({
+    name: "put-at-file-pointer-create",
+    description:
+      "putAt given the pointer finalize returned: the request carries no file, the journal holds it beside the ticket, and after ok a new row lists that file with the new version.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9),
+      local("putAt", ["progress", "fresh", { level: 1 }, "*", F2], {
+        ok: true,
+        mutationId: 1,
+      }),
+      assert({
+        requests: [
+          pushReq(C1, 9, [put(1, "progress", "fresh", { level: 1 }, "*")]),
+        ],
+        journal: {
+          [ALICE]: partition(C1, 2, 9, [
+            ticketed(
+              { ...put(1, "progress", "fresh", { level: 1 }, "*"), file: F2 },
+              1,
+            ),
+          ]),
+        },
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 1,
+          results: [ok(1, 10)],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(1, 10)],
+        ...rowsAre([rowOf("fresh", { level: 1 }, 10, F2)]),
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-file-pointer-update",
+    description:
+      "putAt given a newer pointer on a row that has a file: after ok the row holds the new pointer, not the old one.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9, [recF("progress", "main", { level: 3 }, 7, F1)]),
+      local("putAt", ["progress", "main", { level: 4 }, 7, F2], {
+        ok: true,
+        mutationId: 1,
+      }),
+      assert({
+        requests: [
+          pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)]),
+        ],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 1,
+          results: [ok(1, 8)],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(1, 8)],
+        ...rowsAre([rowOf("main", { level: 4 }, 8, F2)]),
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
+  add({
+    name: "put-at-without-pointer-keeps-file",
+    description:
+      "putAt with no pointer on a row that has a file: after ok the row keeps the prior file.",
+    rules: rule,
+    init: init(),
+    steps: [
+      ...started(9, [recF("progress", "main", { level: 3 }, 7, F1)]),
+      local("putAt", ["progress", "main", { level: 4 }, 7], {
+        ok: true,
+        mutationId: 1,
+      }),
+      assert({
+        requests: [
+          pushReq(C1, 9, [put(1, "progress", "main", { level: 4 }, 7)]),
+        ],
+      }),
+      respond(
+        pushBody({
+          serverNow: T0,
+          cursor: 10,
+          lastMutationId: 1,
+          results: [ok(1, 8)],
+        }),
+      ),
+      assert({
+        outcomes: [outOk(1, 8)],
+        ...rowsAre([rowOf("main", { level: 4 }, 8, F1)]),
+        status: st("idle", 0),
+      }),
+    ],
+  });
+
   return s;
 }
 
@@ -4573,7 +4826,7 @@ export function buildSyncScenarios(): Obj {
   const file: Obj = {
     syncScenariosVersion: SYNC_SCENARIOS_VERSION,
     description:
-      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Version 3 adds the end-to-end policy: `init.encryption` and `init.hasRoot`, the `root` step (the device gains or loses the ring's root), `respond.opened` (what the host codec found for each opened row; the fake transport itself speaks plaintext) and the `encryptionSince` assert. Literal data, not generated by an implementation. `fileRecordCases` (appended with the records binding of cloudSync.saves, plans/U-22.5.md) is a second family run by the same steps: its `calls` add `putAt` and `removeAt`, its `asserts` add `rows` (a collection's cloud rows, as `records(collection)` lists them) and `outcomes` (what `onOutcome` reported since the previous assert); its rows keep the pull's `file` pointer. A runner without the binding skips the family by name.",
+      "Cloud Sync client behaviour, outside the wire contract (WIRE-CONTRACT-V4 §11.5, plans/U-01.md §4.1 as amended by plans/U-01b.md §4). Each scenario starts from `init` (when `legacyLocal` is not null, the client first imports it as its legacy `config.local` store) and runs its steps in order against a fake clock and a fake transport: `local` calls the SDK, `advance` moves the clock (firing debounce commits and the sign-out deadline), `network` goes online or offline, `respond` answers the one request in flight, `signIn`, `signOut` and `relaunch` act on the device, and `assert` compares the listed views. `requests` and `events` are what was sent and emitted since the previous assert. `settingCases` pins the setting routes a host derives from catalog entries (`syncedSettings`) and the user-block issues a publish reports. Version 3 adds the end-to-end policy: `init.encryption` and `init.hasRoot`, the `root` step (the device gains or loses the ring's root), `respond.opened` (what the host codec found for each opened row; the fake transport itself speaks plaintext) and the `encryptionSince` assert. Literal data, not generated by an implementation. `fileRecordCases` (appended with the records binding of cloudSync.saves, plans/U-22.5.md) is a second family run by the same steps: its `calls` add `putAt` and `removeAt`, its `asserts` add `rows` (a collection's cloud rows, as `records(collection)` lists them) and `outcomes` (what `onOutcome` reported since the previous assert); its rows keep the pull's `file` pointer, and `putAt` takes an optional fifth argument, the file pointer the save's finalize returned, which an acknowledged `ok` adopts. A runner without the binding skips the family by name.",
     product: PRODUCT,
     constants: {
       debounceMs: 2000,

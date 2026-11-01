@@ -111,6 +111,25 @@ export function inspectTables(all: All, hasSchema: boolean): InspectTables {
       c.revisionBytes = Number(r.rb ?? 0);
     }
   }
+  // Chunk bytes only kept revisions name are revision bytes (U-37): a delta file's own `size` is
+  // its manifest alone.
+  if (has("chunks", "collection", "chunk_id", "stored_bytes", "refs")) {
+    for (const r of all<{ collection: string; b: number | null }>(
+      `SELECT c.collection AS collection, SUM(c.stored_bytes) AS b FROM chunks c
+        WHERE c.refs > 0 AND EXISTS (
+                SELECT 1 FROM file_chunks fc JOIN files f ON f.collection = fc.collection
+                   AND f.record_id = fc.record_id AND f.version = fc.version
+                 WHERE fc.collection = c.collection AND fc.chunk_id = c.chunk_id
+                   AND f.status IN ('revision', 'parked'))
+          AND NOT EXISTS (
+                SELECT 1 FROM file_chunks fc JOIN files f ON f.collection = fc.collection
+                   AND f.record_id = fc.record_id AND f.version = fc.version
+                 WHERE fc.collection = c.collection AND fc.chunk_id = c.chunk_id
+                   AND f.status = 'live')
+        GROUP BY c.collection`,
+    ))
+      entry(r.collection).revisionBytes += Number(r.b ?? 0);
+  }
   let uploadsOpen = 0;
   if (has("uploads", "state"))
     uploadsOpen = Number(

@@ -6694,6 +6694,16 @@ msgstr "Não foi possível voltar ao app"
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
 
+#. Sign-in link expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.title"
+msgstr "Link de login expirado"
+
+#. This sign-in link has expired. Go back to {product} and start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.message"
+msgstr "Este link de login expirou. Volte para {product} e comece de novo."
+
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"
@@ -7493,6 +7503,16 @@ msgstr "Código expirado"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-expired.message"
 msgstr "O código expirou antes de o acesso ser concluído. Comece de novo."
+
+#. Browser sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.title"
+msgstr "Login pelo navegador indisponível"
+
+#. Sign-in could not open a browser here. Use a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.message"
+msgstr "O login não conseguiu abrir um navegador aqui. Use um código."
 
 #. Sign-in declined
 #. Core copy (conformance/parity/copy.en.json, codes).

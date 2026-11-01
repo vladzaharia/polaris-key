@@ -209,6 +209,10 @@
       "title": "L'accesso non può tornare all'app",
       "message": "L'accesso di questa app non è configurato correttamente, quindi si è fermato qui per proteggere il tuo account. Avvisa il suo sviluppatore."
     },
+    "invalid_request_uri": {
+      "title": "Link di accesso scaduto",
+      "message": "Questo link di accesso è scaduto. Torna a {product} e ricomincia."
+    },
     "license_choice_required": {
       "title": "Scegli una licenza",
       "message": "Scegli quale licenza deve usare questo dispositivo, poi continua."
@@ -528,6 +532,10 @@
     "sign-in-expired": {
       "title": "Codice scaduto",
       "message": "Il codice è scaduto prima del completamento dell'accesso. Ricomincia."
+    },
+    "redirect-unavailable": {
+      "title": "Accesso dal browser non disponibile",
+      "message": "L'accesso non ha potuto aprire un browser qui. Usa invece un codice."
     },
     "sign-in-denied": {
       "title": "Accesso rifiutato",

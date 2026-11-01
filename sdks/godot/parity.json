@@ -215,6 +215,11 @@
       "wp": "I-15b",
       "note": "LK-SKIP.11: the opt-in, the via rule and the activated outcome, with the replayer."
     },
+    "identity.redirect.native": {
+      "status": "planned",
+      "wp": "I-15b",
+      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
+    },
     "identity.exchange": {
       "status": "implemented",
       "except": [
@@ -278,16 +283,21 @@
       "note": "I-48.7a/.7b: Play Games on Android (play flavour). The plugin's pgs_code op asks Play Games v2 for a server auth code (requestServerSideAccess) when the player is already signed in and never starts Play Games' sign-in; pgs_sign_in is the sign-in form's row. PKeyPgsProvider hands the code to the ladder as the exchange's subject token. The Play Games library and the APP_ID meta-data arrive only with the export opt-in polaris_key/play_games (off by default), compileOnly in the AAR, so a game that does not sign in through Play Games ships none. The three exchange-pgs transcripts are replayed. A live requestServerSideAccess answer needs a Play Games app (owner)."
     },
     "identity.autosignin": {
-      "status": "planned",
-      "wp": "I-48",
-      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-48)."
+      "status": "implemented",
+      "note": "I-48: PolarisKey.identity.auto_sign_in(opts) walks the ladder in order and answers a PKeyAutoSignInResult of kind signed_in, confirm (completed through identity.choice.complete(grant, choice, consent)), choose, needs_sign_in (reason, link_handle), device_limit or unavailable. Rung 1 is a stored sign-in token; rung 2 (silent restore) is I-49 and skipped; rung 3 asks each installed platform provider silently over a fresh nonce and exchanges; rung 4 shows the provider's one account sheet when prompt is optional. Providers are PKeyPlatformIdentityProvider objects, installed by the gate and the sign-in dialog or by PKeyPlatformProviders.install(PolarisKey.identity): Sign in with Apple, Credential Manager, Play Games and Game Center, and FedCM on web; desktop Linux and Windows have none, so the ladder ends at needs_sign_in there. A sign-out sets the explicit-sign-out flag and the ladder stops until the person signs in again; the ladder's own exchange never lowers it. sync_key is present or needed from PolarisKey.keyring when a key ring is configured, else null. Proven by tests/identity/{test_auto_sign_in,test_gate_auto,test_fedcm}.gd, tests/native/test_google.gd, the exchange-* transcripts replayed in suite_transcripts, and the native Apple suite. The link offer and nearby approval are separate rows (identity.link, identity.nearby), still planned."
     },
     "identity.restore": {
       "status": "planned",
       "wp": "I-49",
       "except": [
-        { "runtime": "linux", "reason": "runtime" },
-        { "runtime": "windows", "reason": "runtime" }
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        }
       ],
       "note": "Rung 2 over the pkp_call bk_* ops on the native Apple and Android lanes (I-49.13 to I-49.15)."
     },
@@ -774,9 +784,14 @@
       "note": "Frames and FrameReader, records and RecordAssembler (chain at most 18, 1 MiB, critical and mode rules), relay envelopes, adverts, SAS, handshake payloads and the HELLO label rule, the peer session (mode a: admission against the held roster, HELLO first, CLOSE, PING, RING, REKEY, 30 s, peer_expired, the PSK trial; modes v and p with commit-reveal SAS and the HandshakeLimiter), PKeyPeerLink and PKeyPeerPump over the pipe port, ConnectSession and Channel (APP types 0x0100-0x7FFF only, byte caps G10, pushed RING and TRUST, G11 and G12), pushed trust through PKeyTrust.accept_peer. tests/connect/{bytes,codecs,session_a,session_sas,link,session,trust_accept_peer}.gd over peer-matrix.json. No Godot web test lane: web runs the same code, untested."
     },
     "connect.lan": {
-      "status": "planned",
-      "wp": "CC-14b",
-      "note": "Built and tested on desktop (PKeyMdns, PKeyConnectLan, PKeyLanAddress over every lanAddresses and mdnsAnswers row; tests/connect/{mdns,mdns_packet,lan_address,lan}.gd), and left planned until CC-14b: the native lanes make it work on mobile (the LAN is off there with reason unsupported) and in Apple's Bonjour on macOS. Querier-only: where port 5353 cannot be bound (macOS always, Godot sets no SO_REUSEPORT) the device finds others and others do not find it; it hears them through the unicast answers RFC 6762 section 6.7 owes a legacy query, so a peer whose responder answers only multicast cannot be heard, and status().lan says querier_only. A responder answers a legacy query by unicast only from a source port of 1024 or more, with every record at TTL 10, and ignores every datagram from outside the private blocks of its interfaces. Godot lists no netmask, so the on-link test is the private block (10/8, 172.16/12, 192.168/16), not the subnet: a host elsewhere in the block that can route UDP to port 5353 and knows a roster name can fill that name's four address slots (denial of discovery) or cost one blind connect, never a trusted address; a phone's mobile-data interfaces are dropped by name. PacketPeerUDP reports no destination, so a unicast response cannot be told from a multicast one. IPv4 sockets only: IPv6 peers are reached through the listener's dual-stack socket, learned from IPv4 and ULA records, and link-local addresses (they need a zone) are skipped. CC-14b.F flips it, except web (relay only)."
+      "status": "implemented",
+      "note": "PKeyConnectLan over PKeyMdns, PKeyLanAddress and the OS lanes (PKeyAppleMdns, PKeyAndroidMdns), driven by PolarisKey.cloud_connect: every lanAddresses and mdnsAnswers row (tests/connect/{mdns,mdns_packet,lan_address,lan}.gd). Discovery by runtime: iOS and macOS use Apple's Bonjour (CC-14b.4, .5: browse, advertise and the pipes through the binary entry); Android uses NsdManager (CC-14b.9: the nsd_* ops, ACCESS_LOCAL_NETWORK from Android 17 answers nearby-permission-denied); Windows and Linux use the GDScript mDNS querier and responder. PolarisKey.cloud_connect picks the OS lane where the build has the native bridge and falls back to GDScript on desktop; a mobile build without the bridge, and web, report the LAN off with reason unsupported (web is relay only, so web is N/A). A host can hand in its own lane as lan.mdns. Querier-only: where port 5353 cannot be bound (macOS always, Godot sets no SO_REUSEPORT) the device finds others and others do not find it; it hears them through the unicast answers RFC 6762 section 6.7 owes a legacy query, so a peer whose responder answers only multicast cannot be heard, and status().lan says querier_only. A responder answers a legacy query by unicast only from a source port of 1024 or more, with every record at TTL 10, and ignores every datagram from outside the private blocks of its interfaces. Godot lists no netmask, so the on-link test is the private block (10/8, 172.16/12, 192.168/16), not the subnet: a host elsewhere in the block that can route UDP to port 5353 and knows a roster name can fill that name's four address slots (denial of discovery) or cost one blind connect, never a trusted address; a phone's mobile-data interfaces are dropped by name. PacketPeerUDP reports no destination, so a unicast response cannot be told from a multicast one. IPv4 sockets only: IPv6 peers are reached through the listener's dual-stack socket, learned from IPv4 and ULA records, and link-local addresses (they need a zone) are skipped. Residuals owed to the owner: the Apple, Android and Windows native lanes are unit-tested over fakes and the Swift, Kotlin and CI builds, not yet on devices (OS-5 two Macs, OS-6 the Android 16 and 17 phones, a Windows runner for the CNG and Monocypher crypto stage and the 5353 probe); the GDScript responder on Windows and Linux awaits the CC-13.1 and CC-13.2 device runs.",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ]
     },
     "connect.relay": {
       "status": "implemented",

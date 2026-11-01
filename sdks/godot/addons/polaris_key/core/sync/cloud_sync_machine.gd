@@ -30,7 +30,7 @@ const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const Canonical := preload("res://addons/polaris_key/core/sync/canonical_json.gd")
 
 const LOCAL_PARTITION := Types.LOCAL_PARTITION
-const _JOURNAL_ONLY := ["preContact", "moved", "parked", "ticket"]
+const _JOURNAL_ONLY := ["preContact", "moved", "parked", "ticket", "file"]
 
 var _product: String
 var _catalog: Dictionary
@@ -541,9 +541,10 @@ func record_keys() -> Array:
 
 ## Write a `revision` record at exactly `base_version`: a new mutation, never coalesced with a queued
 ## edit and never rebased on a conflict. `{ok: true, mutationId: ticket}`; the outcome goes to
-## `on_outcome`.
-func put_at(collection: String, record_id: String, value: Variant, base_version: Variant) -> Dictionary:
-	return _exact_op(collection, record_id, base_version, {"op": "set", "value": Types.clone(value)})
+## `on_outcome`. `file` is the pointer the save's finalize returned: on `ok` the row takes it with the
+## new version; without one the row keeps its prior file.
+func put_at(collection: String, record_id: String, value: Variant, base_version: Variant, file: Variant = null) -> Dictionary:
+	return _exact_op(collection, record_id, base_version, {"op": "set", "value": Types.clone(value)}, file)
 
 
 ## Delete a `revision` record at exactly `base_version` (removes its file).
@@ -557,7 +558,7 @@ func on_outcome(fn: Callable) -> void:
 	_outcome = fn
 
 
-func _exact_op(collection: String, record_id: String, base_version: Variant, body: Dictionary) -> Dictionary:
+func _exact_op(collection: String, record_id: String, base_version: Variant, body: Dictionary, file: Variant = null) -> Dictionary:
 	var decl: Variant = _collection(collection)
 	if decl == null or decl["policy"] != "revision":
 		return Types.fail("collection-unknown")
@@ -571,6 +572,9 @@ func _exact_op(collection: String, record_id: String, base_version: Variant, bod
 	var ticket: int = int(p.get("nextTicket", 1))
 	p["nextTicket"] = ticket + 1
 	full["ticket"] = ticket
+	var pointer: Variant = _file_of(file)
+	if pointer != null:
+		full["file"] = pointer
 	_kick()
 	return {"ok": true, "mutationId": ticket}
 
@@ -1753,7 +1757,7 @@ func _result(p: Dictionary, op: Dictionary, r: Dictionary, overrides: Dictionary
 		if op["op"] == "delete":
 			p["records"].erase(rk)
 		elif not Types.is_absent(rv):
-			p["records"][rk] = _merged({"value": rv, "version": r["version"]}, _file_mark(prior_r.get("file") if prior_r != null else null))
+			p["records"][rk] = _merged({"value": rv, "version": r["version"]}, _file_mark(op["file"] if op.has("file") else (prior_r.get("file") if prior_r != null else null)))
 		if p["held"].has(rk):
 			rebase_on = r["version"]
 			has_rebase = true

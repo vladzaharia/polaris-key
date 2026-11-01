@@ -28,7 +28,7 @@ import type {
   RangedSource,
   SaveConflict as SaveConflictInfo,
 } from "@polaris-key/client-core/sync";
-import { useBoundConflict } from "./saveScreens.js";
+import { useBoundConflict, type ConflictDescription } from "./saveScreens.js";
 
 export type { SyncScreenProps };
 
@@ -317,10 +317,14 @@ export type SaveKeep = "local" | "remote" | "both";
 
 export interface SaveConflictProps extends SyncScreenProps {
   /** The local copy's bytes, for Keep this and Keep both (the host holds them; none is needed to
-   *  keep the other copy). Used when the screen follows the saves client itself. */
+   *  keep the other copy). Used when the screen follows the saves client itself; without it
+   *  those two choices cannot run (a warning says so in development). */
   bytes?: (
     conflict: SaveConflictInfo,
   ) => Uint8Array | RangedSource | Promise<Uint8Array | RangedSource>;
+  /** What the app knows about the two copies, for the cards: each copy's time (`when`), the other
+   *  device's name, and which is `newer`, from its own metadata. The saves hold none of these. */
+  describe?: (conflict: SaveConflictInfo) => ConflictDescription;
   /** A choice was made (the host applies it and moves `input.saveConflict.step` on). */
   onKeep?: (keep: SaveKeep) => void;
   /** Choose again, after a choice failed: the host sets the step back to `choose`. Nothing is
@@ -328,7 +332,7 @@ export interface SaveConflictProps extends SyncScreenProps {
   onChooseAgain?: () => void;
   /** Try again, after a choice failed. */
   onRetry?: () => void;
-  /** Cancel (or Escape): the conflict stays as it was. */
+  /** Cancel (or Escape): the conflict stays pending, so the Cloud Sync strip keeps asking. */
   onCancel?: () => void;
   /** Done, after the choice was kept. */
   onDone?: () => void;
@@ -342,35 +346,70 @@ const KEEPS: Readonly<Record<string, SaveKeep>> = {
 };
 
 /** The same save changed on two devices: pick the copy to keep. Given `input.saveConflict` it is
- *  the plain part and the host drives it; given none, inside `<PolarisKeyProvider>`, it follows
- *  the first conflict `adapter.cloudSync.saves` holds and settles it with `resolve` (the local
- *  copy's bytes come from `bytes`). With no conflict it draws nothing. */
+ *  the plain part and the host drives it; inside `<PolarisKeyProvider>` with a conflict pending,
+ *  it follows the first conflict `adapter.cloudSync.saves` holds and settles it with `resolve`
+ *  (the local copy's bytes come from `bytes`, the cards' times from `describe`; a host
+ *  `input.saveConflict` is merged over them). With no conflict it draws nothing. On close, focus
+ *  returns to what held it and `onDismiss` is called. */
 export function SaveConflict(props: SaveConflictProps): ReactNode {
-  const { onKeep, onRetry, onChooseAgain, onCancel, onDone, bytes, ...rest } =
-    props;
-  const bound = useBoundConflict(rest.input, bytes);
+  const {
+    onKeep,
+    onRetry,
+    onChooseAgain,
+    onCancel,
+    onDone,
+    bytes,
+    describe,
+    ...rest
+  } = props;
+  const bound = useBoundConflict(rest.input, bytes, describe);
+  // Focus goes back to what held it when the screen opened (the dialog does so itself).
+  const opener = useRef<HTMLElement | null>(null);
+  const shown = bound.input !== undefined;
+  if (shown && opener.current === null && typeof document !== "undefined") {
+    const a = document.activeElement;
+    if (a && a !== document.body) opener.current = a as HTMLElement;
+  }
+  useEffect(() => {
+    if (shown) return;
+    const o = opener.current;
+    opener.current = null;
+    if (o?.isConnected) o.focus({ preventScroll: true });
+  }, [shown]);
+  const input = bound.input
+    ? bound.input
+    : bound.on
+      ? { ...rest.input, saveConflict: undefined }
+      : undefined;
   return (
     <SaveConflict_
       {...rest}
-      {...(bound.input ? { input: bound.input } : {})}
+      {...(input ? { input } : {})}
       onAction={(a) => {
         rest.onAction?.(a);
         const keep = KEEPS[a.key];
         if (keep) {
           onKeep?.(keep);
-          if (bound.input) bound.onKeep(keep);
+          if (bound.on) bound.onKeep(keep);
         } else if (a.key === "common.tryAgain") {
           onRetry?.();
-          if (bound.input) bound.onRetry();
+          if (bound.on) bound.onRetry();
         } else if (a.key === "saveConflict.chooseAgain") {
           onChooseAgain?.();
-          if (bound.input) bound.onChooseAgain();
+          if (bound.on) bound.onChooseAgain();
         } else if (a.key === "common.cancel") {
           onCancel?.();
-          if (bound.input) bound.onCancel();
+          if (bound.on) {
+            bound.onCancel();
+            // The dialog unmounts with the screen, before it could call this itself.
+            rest.onDismiss?.();
+          }
         } else if (a.key === "common.done") {
           onDone?.();
-          if (bound.input) bound.onDone();
+          if (bound.on) {
+            bound.onDone();
+            rest.onDismiss?.();
+          }
         }
       }}
     />

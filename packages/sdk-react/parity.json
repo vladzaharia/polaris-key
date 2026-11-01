@@ -224,11 +224,11 @@
     },
     "identity.choice": {
       "status": "implemented",
-      "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. The desktop renderer never holds a grant (the bridge's device-code sign-in never answers choose, so licenseChoice only rides as a hint), so its calls are a typed unsupported (runtime); a cookie page refuses the same way."
+      "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. On the desktop, bridge v6 (UK-42.22.7) runs the same four calls over invoke(identity, choice.*) with an opaque ref the host bound to the window, the Worker's grant staying in the host; a host below v6 answers the typed unsupported (version). A cookie page refuses the typed unsupported."
     },
     "identity.devicecode.choice": {
       "status": "implemented",
-      "note": "UK-42.22.5: beginSignIn sends licenseChoice app only when discovery has deviceChoice and the four choice* endpoints; pollSignIn and waitForSignIn answer status choose (grant, choices, expiresIn) and the device-code session's wait() settles kind choose with no token. The desktop bridge (UK-42.22.7) is not yet wired."
+      "note": "UK-42.22.5: beginSignIn sends licenseChoice app only when discovery has deviceChoice and the four choice* endpoints; pollSignIn and waitForSignIn answer status choose (grant, choices, expiresIn) and the device-code session's wait() settles kind choose with no token. The desktop bridge (UK-42.22.7, protocol v6) answers choose from pollSignIn with an opaque ref; below v6 licenseChoice app is the typed unsupported (version) and discovery reads without deviceChoice."
     },
     "identity.signin.hints": {
       "status": "implemented",
@@ -237,6 +237,11 @@
     "identity.keyreturn": {
       "status": "implemented",
       "note": "LK-SKIP.6b: bearer mode. signIn.start({channel: \"redirect\", redirectUri, keyReturn: true}) appends key_return=allow and signIn.complete settles an activated outcome (the key's license, subject null, keyEntries) for a via: \"key\" answer, stored as a key activation. The kits start the app at once (no ActivateDone; AccountAndLicense shows Not in an account from the license's profile). A token refusal (device_limit, key_entry_limit, license_owned) carries the typed activation with limit, deviceCount, manageUrl and keyEntries and opens the key step. Both redirect-web-key-return transcripts replay. The desktop renderer signs in by device code only, so its redirect is the same typed unsupported (runtime) as identity.redirect.web."
+    },
+    "identity.redirect.native": {
+      "status": "planned",
+      "wp": "I-15b",
+      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
     },
     "identity.exchange": {
       "status": "implemented",
@@ -263,7 +268,7 @@
     },
     "identity.autosignin": {
       "status": "implemented",
-      "note": "I-46: usePolarisAuth().autoSignIn() runs the ladder (a stored token, the provider silently through FedCM, its chooser only with prompt optional); a result, never a throw. The gate runs it once at boot and Provider autoSignIn={false} turns it off. The desktop bridge and a local adapter hold no platform sign-in and answer unavailable (runtime); the gate stays on Welcome. test/autoSignIn.test.ts runs it against a scripted Worker."
+      "note": "I-46: usePolarisAuth().autoSignIn() runs the ladder (a stored token, the provider silently through FedCM, its chooser only with prompt optional); a result, never a throw. The gate runs it once at boot and Provider autoSignIn={false} turns it off. A local adapter holds no platform sign-in and answers unavailable (runtime). On the desktop bridge (v5, I-47b) the host runs the stored-token rung and answers signedIn or needsSignIn; a v4 host answers unavailable (runtime); the gate stays on Welcome. test/autoSignIn.test.ts runs it against a scripted Worker."
     },
     "identity.restore": {
       "status": "na",
@@ -283,10 +288,15 @@
       "note": "I-46.13: `link.offer()`, `accept()` (the held handle, else one provider prompt), `decline()` (sha256(issuer ‖ sub) in IndexedDB), lazy after a redirect sign-in; the kit's link-offer, link-done and link-conflict steps over the app. Replays I-43.3's link-* transcripts."
     },
     "identity.nearby": {
-      "status": "na",
-      "runtime": ["web", "desktop-bridge"],
-      "reason": "runtime",
-      "note": "No mode v handshake in a browser tab, and the renderer holds no device key (I-40)."
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "note": "No mode v handshake in a browser tab, and the page holds no device key (I-40)."
+        }
+      ],
+      "note": "I-47b: on the desktop bridge (v5) the host plays either device. adapter.nearby.request() is the new device (D) and adapter.nearby.approver() the signed-in one (M); the kit draws them as <NearbySignIn> and <NearbyApproval>. The renderer holds an ask id, never a request id, key or token. A v4 host answers the typed unsupported (reason version). test/desktopAdapter.test.ts and test/kitNearby.test.tsx."
     },
     "identity.keyentry": {
       "status": "implemented",

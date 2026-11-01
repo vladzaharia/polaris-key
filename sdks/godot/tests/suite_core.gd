@@ -19,6 +19,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 		var script = load(path)
 		if not t.check("group %s loads" % name, script is GDScript and script.can_instantiate(), path):
 			continue
+		t.info("group %s starting" % name)  # names the group a crashing template run stopped in
 		var started := Time.get_ticks_msec()
 		await script.new().run(t)
 		t.info("group %s finished in %d ms" % [name, Time.get_ticks_msec() - started])

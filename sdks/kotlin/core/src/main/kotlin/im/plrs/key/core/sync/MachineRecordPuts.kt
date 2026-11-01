@@ -32,12 +32,12 @@ internal class MachineRecordPuts(private val p: MachineParts) {
         val edited = p.journal.tickHlc()
         val cur = SyncValues.objectOf(p.records.record(target.collection, target.id)?.value)
         val nxt = SyncValues.objectOf(value)
-        for (member in nxt.keys.sorted()) {
-            if (member !in cur || !SyncJson.jsonEqual(cur[member], nxt[member])) {
-                p.journal.enqueue(part, stamp(Op(0, target, "setMember", nxt[member], member), edited))
+        for (field in nxt.keys.sorted()) {
+            if (field !in cur || !SyncJson.jsonEqual(cur[field], nxt[field])) {
+                p.journal.enqueue(part, stamp(Op(0, target, "setField", nxt[field], field = field), edited))
             }
         }
-        for (member in cur.keys.sorted().filter { it !in nxt }) p.journal.enqueue(part, stamp(Op(0, target, "removeMember", null, member), edited))
+        for (field in cur.keys.sorted().filter { it !in nxt }) p.journal.enqueue(part, stamp(Op(0, target, "removeField", null, field = field), edited))
     }
 
     fun stamped(part: SyncPartition, rk: String, target: OpTarget.Record, value: JsonElement) {

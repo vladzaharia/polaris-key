@@ -999,4 +999,36 @@ describe("the save screens at the §7.1 sizes", () => {
         });
 });
 
+describe("the Cloud Sync strip in a flex app bar", () => {
+  for (const size of SAVE_SIZES.filter((s) =>
+    ["390", "1280"].includes(s.label),
+  ))
+    it(`keeps its width and its Try again on screen at ${size.label}`, async () => {
+      await page.viewport(size.width, size.height);
+      document.body.style.margin = "0";
+      host = document.createElement("div");
+      document.body.append(host);
+      root = createRoot(host);
+      root.render(
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <b>App</b>
+          <Kit.CloudSyncStatus
+            input={{ cloudSync: { state: "transfer-failed" } }}
+            theme={{ product: PRODUCT, colorScheme: "light" }}
+          />
+        </div>,
+      );
+      await new Promise((r) => setTimeout(r, 200));
+      const strip = host.querySelector<HTMLElement>(".pk-root")!;
+      expect(
+        strip.getBoundingClientRect().width,
+        "not collapsed",
+      ).toBeGreaterThan(120);
+      const retry = host.querySelector('[data-key="common.tryAgain"]')!;
+      expect(retry.getBoundingClientRect().right).toBeLessThanOrEqual(
+        size.width,
+      );
+    });
+});
+
 const deleted = (name: string): boolean => name === "deleted";

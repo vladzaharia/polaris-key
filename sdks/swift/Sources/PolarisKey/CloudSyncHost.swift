@@ -51,11 +51,16 @@ public struct CloudSyncOptions: Sendable {
     public var aliases: [String: String]
     /// `cloudSync.saves`: the app's `saves` collection settings (all optional).
     public var saves: SavesOptions
+    /// Carry the bulk bodies of a save transfer on a background `URLSession` (`pkey.sync.<product>`), so it
+    /// goes on while the app is suspended (U-41). Apple platforms only; off by default. The app delegate then
+    /// calls `PolarisKeyClient.handleBackgroundEvents(identifier:completion:)`.
+    public var backgroundTransfers: Bool
 
     public init(
         encryption: SyncEncryption = .e2e, catalog: JSONValue? = nil, aliases: [String: String] = [:],
-        saves: SavesOptions = SavesOptions()
+        saves: SavesOptions = SavesOptions(), backgroundTransfers: Bool = false
     ) {
+        self.backgroundTransfers = backgroundTransfers
         self.encryption = encryption
         self.catalog = catalog
         self.aliases = aliases
@@ -265,10 +270,10 @@ public actor CloudSyncHost {
     /// settle it, so a caller can be waiting on the ticket before its outcome exists.
     func putAt(
         _ collection: String, _ id: String, _ value: JSONValue, base: SyncBase,
-        onTicket: (@Sendable (Int) -> Void)? = nil
+        file: SyncFilePointer? = nil, onTicket: (@Sendable (Int) -> Void)? = nil
     ) -> SyncTicketResult {
         guard let m = machine else { return .failed("signed-out") }
-        let r = m.putAt(collection, id, value, baseVersion: base)
+        let r = m.putAt(collection, id, value, baseVersion: base, file: file)
         if case .ticket(let t) = r { onTicket?(t) }
         return r
     }
