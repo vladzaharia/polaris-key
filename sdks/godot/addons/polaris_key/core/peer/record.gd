@@ -17,6 +17,9 @@ const MAX_RECORD_BODY := 65535 - 16 - 3
 ## = 17, plus one.
 const MAX_CHAIN_RECORDS := 18
 const FLAG_MORE := 1
+## An open MORE chain in modes v and p (section 15.6.1): their messages are a HELLO, the SAS records, a
+## VOUCH_REQ and the held Sync records, all far under this, and the peer is not yet verified (CC-15 N7).
+const MAX_VP_CHAIN_BYTES := 16384
 
 const CLOSE_BAD_FRAME := &"peer_bad_frame"
 const CLOSE_UNKNOWN_CRITICAL := &"peer_unknown_critical"
@@ -151,10 +154,13 @@ class Assembler extends RefCounted:
 	## Checks 3 to 5 for a type in the table: the mode, the running size over 1 MiB and the chain's
 	## record count. The corpus (`more-empty-parts`) accepts an empty MORE record, so the record
 	## count is what bounds the work.
-	func _late_refusal(row: Array, body_size: int) -> StringName:
+	func _late_refusal(row: Array, body_size: int, more: bool) -> StringName:
 		if _mode.length() != 1 or not (row[3] as String).contains(_mode):
 			return PKeyPeerRecord.CLOSE_NOT_ALLOWED
 		if _size + body_size > PKeyPeerRecord.MAX_MESSAGE or _parts.size() >= PKeyPeerRecord.MAX_CHAIN_RECORDS:
+			return PKeyPeerRecord.CLOSE_BAD_FRAME
+		# A chain in mode v or p is at most 16 KiB: the peer is not yet verified (N7).
+		if (more or _open_type >= 0) and (_mode == "v" or _mode == "p") and _size + body_size > PKeyPeerRecord.MAX_VP_CHAIN_BYTES:
 			return PKeyPeerRecord.CLOSE_BAD_FRAME
 		return &""
 
@@ -172,7 +178,7 @@ class Assembler extends RefCounted:
 		var row := PKeyPeerRecord.row_of(type)
 		if row.is_empty():
 			return _unknown(type, more)
-		refused = _late_refusal(row, body.size())
+		refused = _late_refusal(row, body.size(), more)
 		if refused != &"":
 			return _close(refused)
 		_parts.append(body)
