@@ -396,14 +396,18 @@ public class CoreContext(options: CoreOptions) {
         provenance: TokenProvenance? = TokenProvenance.of(source),
     ) {
         ensureStarted()
-        // Another token replaces an unconfirmed one: the mark goes first, so a crash never leaves a mark over a bare token.
-        if (source != TokenSource.reacquire && unconfirmedMemory) clearUnconfirmedMark()
         // Crash-safe: cleared first, written last, so a crash between leaves "unknown" (never signin).
         if (provenance != null) writeProvenance(null)
         onStore { store.setToken(token) }
         lock.withLock {
             tokenValue = token
             tokenSourceValue = source
+        }
+        // Another token replaces an unconfirmed one: the mark goes after the new token is in, so a failed store
+        // leaves the old token with its mark. A crash between leaves the mark over the new token, which a start drops.
+        if (source != TokenSource.reacquire && unconfirmedMemory) {
+            io { unconfirmedSlot.write("") }
+            unconfirmedMemory = false
         }
         if (provenance != null) writeProvenance(provenance)
         if (personInitiated) setExplicitSignOut(false)
