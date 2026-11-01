@@ -22,8 +22,8 @@ export const XFER_CONSENT_SECONDS = 120;
 export const XFER_IDLE_SECONDS = 60;
 export const XFER_PARTIAL_SECONDS = 86_400;
 export const XFER_MAX_PARTIALS_PER_PEER = 8;
-/** How long a receiver remembers a delivered (peer, id, sha256), and how many per peer (CC-20.F). */
-export const XFER_DELIVERED_SECONDS = XFER_PARTIAL_SECONDS;
+/** How long a receiver remembers a delivered (peer, id, sha256), and how many per peer: as long as a partial lives. */
+export const XFER_DELIVERED_SECONDS = 86_400;
 export const XFER_MAX_DELIVERED_PER_PEER = 64;
 /** The most peers one memory keeps entries for; the least recently used peer goes first. */
 export const XFER_MAX_DELIVERED_PEERS = 256;
