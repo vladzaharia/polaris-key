@@ -11,10 +11,9 @@ extends RefCounted
 ##
 ## HELLO display data from a peer that is not yet verified (modes v and p) is cleaned the same way
 ## wherever it is read (section 15.6): `platform` is shown as sent only when it is up to 32 of
-## `[A-Za-z0-9 ._+-]`, otherwise "Unknown"; `app` and `label` get the device-label cleaning (section
-## 12.7.1) and 64 code points, and `app` is "Unknown" when nothing is left. A HELLO in mode v or p
-## is at most 4 KiB. Godot has no Unicode normalisation, so the NFC step Node applies first is not
-## done (a decomposed accent is shown as sent), and U+FFFD, which is what a JSON `\u0000` escape
+## `[A-Za-z0-9 ._+-]`, otherwise "Unknown"; `app` and `label` get the HELLO cleaning (section 15.6:
+## `PKeyDeviceLabel.clean_hello`, with NFC) and 64 code points, and `app` is "Unknown" when nothing is
+## left. A HELLO in mode v or p is at most 4 KiB. U+FFFD, which is what a JSON `\u0000` escape
 ## becomes here (V3 section 10), is dropped from display data so that it vanishes as in Node.
 
 const MAX_HANDSHAKE_PAYLOAD := 8192
@@ -37,6 +36,13 @@ static func _static_init() -> void:
 static func parse_strict_object(bytes: PackedByteArray) -> Variant:
 	var r := _parse(bytes)
 	return r["value"] if r["ok"] else null
+
+
+## Strict JSON like `parse_strict_object`, with the pointers of the numbers that are no wire integer:
+## {value: Dictionary, non_wire_integers}, or null unless the bytes are an object.
+static func parse_object_scanned(bytes: PackedByteArray) -> Variant:
+	var r := _parse(bytes)
+	return r if r["ok"] else null
 
 
 ## Judge one handshake payload: message 1, or message 2 or 3 in a mode ("a", "v" or "p").
@@ -107,9 +113,10 @@ static func clean_platform(raw: String) -> String:
 	return raw if PKeyClaims.matches_whole_re(_platform_re, raw) else UNKNOWN_DISPLAY
 
 
-## The device-label cleaning (section 12.7.1) of display data; "" when nothing is left.
+## The HELLO cleaning of section 15.6 (section 12.7.1 steps 1 and 2, NFC, then steps 3 to 5) of display
+## data; "" when nothing is left.
 static func clean_label(raw: String) -> String:
-	return PKeyDeviceLabel.normalize(raw.replace(char(0xFFFD), ""))
+	return PKeyDeviceLabel.clean_hello(raw.replace(char(0xFFFD), ""))
 
 
 ## The app name, cleaned like a label; "Unknown" when nothing is left.
