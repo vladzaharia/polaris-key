@@ -303,7 +303,11 @@ final class TransferTests: XCTestCase {
         let b = await side(p.b)
         let out = b.dir.appendingPathComponent("empty.bin")
         accept(b.transfer, to: out)
+        let receipts = LockedValue<[TransferReceipt]>([])
+        b.transfer.onResult { r in receipts.with { $0.append(r) } }
         _ = try await a.transfer.send(over: p.a, source: .data(Data()))
+        // The sender returns when the receiver answered; the empty file is made when the receiver reports it.
+        await eventually("receipt") { !receipts.current.isEmpty }
         XCTAssertEqual(try Data(contentsOf: out), Data())
     }
 
@@ -592,6 +596,66 @@ final class TransferTests: XCTestCase {
         XCTAssertEqual(aResults.current, [.cancelled(id: id, reason: .hash)])
         await epB.current!.idle()
         XCTAssertEqual(xferFiles(dirB), [])
+    }
+
+    func testAClaimIsNotReleasedAheadOfTheWritesQueuedBeforeIt() async throws {
+        // The receiver's file work lags (a loaded machine): every write takes a while, and the sender's DONE
+        // arrives while most of them are still queued. The reservation must outlive them, or they fail as not owned.
+        let key = Data(repeating: 7, count: 32)
+        let store = XferStore(directory: tempDir().appendingPathComponent("xfer"))
+        let tk = store.begin(peer: key)
+        let id = Base64URL.encode(Data(repeating: 9, count: 16))
+        let data = content(50_000)
+        let sha = xferHex(
+            {
+                var h = SHA256()
+                h.update(data: data)
+                return h
+            }())
+        let log = LockedValue<[String]>([])
+        let aResults = LockedValue<[XferResult]>([])
+        let bResults = LockedValue<[XferResult]>([])
+        let epA = LockedValue<XferEndpoint?>(nil)
+        let epB = LockedValue<XferEndpoint?>(nil)
+        let events = { (r: LockedValue<[XferResult]>, ep: LockedValue<XferEndpoint?>) in
+            XferEvents(
+                ask: { a in ep.current?.consent(id: a.id, accept: true) }, withdraw: { _ in },
+                result: { x in r.with { $0.append(x) } }, refused: { _ in }, error: { e in log.with { $0.append("error \(e)") } })
+        }
+        epA.set(
+            XferEndpoint(
+                options: XferMachineOptions(mode: .a, caps: [xferCap], maxMessage: 1 << 20, handler: nil, peerKey: key),
+                ports: XferEndpointPorts(
+                    send: { t, b in epB.current?.receive(type: t, body: b) }, close: { _ in },
+                    read: { _, off, len in xferContent(off, off + len) }, apply: { _ in }),
+                events: events(aResults, epA)))
+        epB.set(
+            XferEndpoint(
+                options: XferMachineOptions(
+                    mode: .a, caps: [xferCap], maxMessage: 1 << 20, handler: { _ in .ask }, peerKey: key),
+                ports: XferEndpointPorts(
+                    send: { t, b in epA.current?.receive(type: t, body: b) }, close: { _ in },
+                    read: { _, _, _ in Data() },
+                    apply: { op in
+                        switch op.effect {
+                        case .create:
+                            try store.make(op.meta!, tk)
+                        case .write(let ref, let off, let d):
+                            try await Task.sleep(nanoseconds: 40_000_000)
+                            try store.write(ref, offset: off, data: d, token: tk)
+                            log.with { $0.append("write") }
+                        case .finalize: log.with { $0.append("finalize") }
+                        default: break
+                        }
+                    },
+                    account: { op in
+                        if case .finalize = op.effect { log.with { $0.append("release") } }
+                    }),
+                events: events(bResults, epB)))
+        try epA.current!.offer(XferOfferArgs(id: id, size: 50_000, chunk: 10_000, sha256: sha))
+        await eventually("both ended") { !bResults.current.isEmpty && !aResults.current.isEmpty }
+        XCTAssertEqual(aResults.current, [.delivered(id: id)])
+        XCTAssertEqual(log.current, Array(repeating: "write", count: 5) + ["finalize", "release"])
     }
 
     // MARK: Names
