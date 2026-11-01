@@ -32,6 +32,7 @@
 import type { FileRevisionsResponse } from "@polaris-key/protocol/sync";
 import { audit } from "../../../core/audit.js";
 import { appSecurityHeaders } from "../../../core/securityHeaders.js";
+import { rateLimitOk } from "../../../core/rateLimit.js";
 import {
   AdminBodyError,
   adminJson,
@@ -86,6 +87,59 @@ async function guard(
       { maxAgeSeconds: STEP_UP_MAX_AGE_SECONDS },
     );
   return { catalogJson: schemaRow?.catalog_json };
+}
+
+/** Downloads a minute and MiB an hour, per signed-in session (U-11a.F). */
+export const DOWNLOAD_PER_MINUTE = 60;
+export const DOWNLOAD_MIB_PER_HOUR = 2048;
+const MIB = 1024 * 1024;
+
+const slowDown = (windowSec: number, now: number): Response => {
+  const res = err(429, "rate_limited", "Too many downloads. Try again later.");
+  res.headers.set("retry-after", String(windowSec - (now % windowSec)));
+  return res;
+};
+
+/**
+ * The download budget: null while the session is within it. The count is charged first; the byte
+ * budget is read before the file is fetched and charged by the file's size, so one file may end
+ * a window a little over, and the next is refused until the window ends.
+ */
+async function overDownloadBudget(
+  ctx: SyncAdminContext,
+  size: number | null,
+): Promise<Response | null> {
+  const { env, now, session } = ctx;
+  const id = session.principal?.memberId ?? session.sub;
+  const minute = { limit: DOWNLOAD_PER_MINUTE, windowSec: 60 };
+  const hour = { limit: DOWNLOAD_MIB_PER_HOUR, windowSec: 3600 };
+  if (size === null) {
+    if (
+      !(await rateLimitOk(
+        env,
+        "_admin",
+        { bucket: "adminSyncDownload", id, ...minute },
+        now,
+      ))
+    )
+      return slowDown(minute.windowSec, now);
+    if (
+      !(await rateLimitOk(
+        env,
+        "_admin",
+        { bucket: "adminSyncDownloadMiB", id, ...hour },
+        now,
+        true,
+      ))
+    )
+      return slowDown(hour.windowSec, now);
+    return null;
+  }
+  const cost = Math.max(1, Math.ceil(size / MIB));
+  const bytes = { bucket: "adminSyncDownloadMiB", id, ...hour, cost };
+  return (await rateLimitOk(env, "_admin", bytes, now))
+    ? null
+    : slowDown(hour.windowSec, now);
 }
 
 const seconds = (ms: number): number => Math.floor(ms / 1000);
@@ -197,6 +251,8 @@ export async function handleFile(
       return adminJson(body);
     }
 
+    const refused = await overDownloadBudget(ctx, null);
+    if (refused) return refused;
     const resolved = await callCloudSync<"fileResolve">(env, pin, {
       op: "fileResolve",
       collection,
@@ -205,6 +261,8 @@ export async function handleFile(
     });
     const out = resolved.outcome;
     if (!out.ok) return notFound();
+    const over = await overDownloadBudget(ctx, out.file.size);
+    if (over) return over;
     const bucket = env.SYNC_FILES as R2Bucket | undefined;
     if (!bucket) return unavailable();
     let obj: R2ObjectBody | R2Object | null;

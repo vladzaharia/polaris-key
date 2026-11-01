@@ -4,6 +4,7 @@ import { D1Db } from "../../../db/d1.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { absorbSettings } from "../engine/absorb.js";
+import { reportedUsage } from "../engine/chunks.js";
 import { applyPull, collectTombstones } from "../engine/pull.js";
 import { applyPush } from "../engine/push.js";
 import type { FileLimits } from "../engine/files.js";
@@ -241,7 +242,12 @@ export class CloudSyncDO implements DurableObject {
       // Files: expired uploads and files nothing points at leave R2 (it never throws: a failure
       // is a retry date).
       const gc = await collectFileGarbage(this.fileHost(), pin, nowMs);
-      const flush = buildFlush(this.store, pin, this.store.getUsage(), nowMs);
+      const flush = buildFlush(
+        this.store,
+        pin,
+        reportedUsage(this.store, this.store.getUsage()),
+        nowMs,
+      );
       if (!flush) {
         await this.scheduleAlarm(gc.retryAt);
         return;
@@ -875,7 +881,7 @@ export class CloudSyncDO implements DurableObject {
       op: "inspect",
       seq: this.store.currentSeq(),
       empty: this.store.isEmpty(),
-      usage: this.store.getUsage(),
+      usage: reportedUsage(this.store, this.store.getUsage()),
       encryptionSince: gone ? null : (this.store.getEncryptionSince() ?? null),
       settings: gone
         ? []

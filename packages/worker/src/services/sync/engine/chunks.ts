@@ -25,8 +25,8 @@ import {
   type SyncChunkRef,
 } from "@polaris-key/protocol/sync";
 import type { FileLimits } from "./files.js";
-import type { StoredChunk, SyncStore, UploadRow } from "./types.js";
-import { fileUsage, moveReserved } from "./usage.js";
+import type { StoredChunk, StoreUsage, SyncStore, UploadRow } from "./types.js";
+import { compactUsage, fileUsage, moveReserved } from "./usage.js";
 
 /** The smallest stored chunk object: server mode is `0x00 codec` and one byte; E2E adds 12 + 16 + 1. */
 export const CHUNK_MIN_STORED_BYTES = { none: 3, e2e: 31 } as const;
@@ -319,4 +319,42 @@ export function unrefFileChunks(
   }
   store.deleteFileChunks(file.collection, file.recordId, file.version);
   return freed;
+}
+
+/**
+ * The stored bytes of the chunks that only kept revisions or parked copies name (no live file does).
+ * `fileBytes` holds every chunk's bytes (a chunk is charged once, whichever file names it), so a
+ * report that splits live from kept bytes moves these across: `revisionBytes` counts them, not 0.
+ * The quota's `bytes` is unchanged. A read for reports (the directory flush, the console's usage),
+ * never a counter the engine writes.
+ */
+export function revisionOnlyChunkBytes(store: SyncStore): number {
+  const live = new Set<string>();
+  const kept = new Set<string>();
+  const status = new Map<string, string>();
+  for (const f of store.allFiles())
+    status.set(`${f.collection}\0${f.recordId}\0${f.version}`, f.status);
+  for (const r of store.allFileChunks()) {
+    const st = status.get(`${r.collection}\0${r.recordId}\0${r.version}`);
+    if (st === undefined || st === "dead") continue;
+    (st === "live" ? live : kept).add(`${r.collection}\0${r.chunkId}`);
+  }
+  let bytes = 0;
+  for (const c of store.allChunks()) {
+    const k = `${c.collection}\0${c.chunkId}`;
+    if (c.refs > 0 && kept.has(k) && !live.has(k)) bytes += c.storedBytes;
+  }
+  return bytes;
+}
+
+/** `usage` as reports show it: the chunk bytes only revisions name move from `fileBytes` to `revisionBytes`. */
+export function reportedUsage(store: SyncStore, usage: StoreUsage): StoreUsage {
+  const f = fileUsage(usage);
+  const moved = Math.min(f.fileBytes, revisionOnlyChunkBytes(store));
+  if (moved === 0) return usage;
+  return compactUsage({
+    ...usage,
+    fileBytes: f.fileBytes - moved,
+    revisionBytes: f.revisionBytes + moved,
+  });
 }
