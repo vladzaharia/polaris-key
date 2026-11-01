@@ -170,7 +170,7 @@ static func open_range(coll_key: PackedByteArray, kid: PackedByteArray, read: Ca
 		var sealed: Variant = _fetch(read, HEADER_BYTES + i * whole, seg_len + TAG_BYTES)
 		if sealed == null:
 			return _bad("size")
-		var plain: Variant = PKeySyncAesGcm.open(key, _nonce(i, is_last), sealed, parsed["header"])
+		var plain: Variant = PKeySyncAead.open(key, _nonce(i, is_last), sealed, parsed["header"])
 		if plain == null:
 			return _bad("auth")
 		var from := maxi(start, i * SEGMENT_BYTES) - i * SEGMENT_BYTES
@@ -262,7 +262,7 @@ class Sealer:
 		return seg
 
 	func _seal(plain: PackedByteArray, last: bool) -> PackedByteArray:
-		var sealed := PKeySyncAesGcm.seal(_key, PKeySyncFileStream._nonce(_index, last), plain, header)
+		var sealed := PKeySyncAead.seal(_key, PKeySyncFileStream._nonce(_index, last), plain, header)
 		if sealed.is_empty():
 			error = "invalid"
 			return PackedByteArray()
@@ -305,7 +305,7 @@ class Opener:
 		var whole := PKeySyncFileStream.SEGMENT_BYTES + PKeySyncFileStream.TAG_BYTES
 		# One byte beyond a whole segment proves the segment is not the last.
 		while _buf.size() > whole:
-			var plain: Variant = PKeySyncAesGcm.open(_key, PKeySyncFileStream._nonce(_index, false), _buf.slice(0, whole), _header)
+			var plain: Variant = PKeySyncAead.open(_key, PKeySyncFileStream._nonce(_index, false), _buf.slice(0, whole), _header)
 			if plain == null:
 				error = "auth"
 				return out
@@ -341,7 +341,7 @@ class Opener:
 		if _buf.size() == PKeySyncFileStream.TAG_BYTES and _index > 0:
 			error = "size"
 			return PackedByteArray()
-		var plain: Variant = PKeySyncAesGcm.open(_key, PKeySyncFileStream._nonce(_index, true), _buf, _header)
+		var plain: Variant = PKeySyncAead.open(_key, PKeySyncFileStream._nonce(_index, true), _buf, _header)
 		_buf = PackedByteArray()
 		if plain == null:
 			error = "auth"

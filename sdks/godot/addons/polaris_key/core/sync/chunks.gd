@@ -80,7 +80,7 @@ static func seal(root: PackedByteArray, collection: String, id: PackedByteArray,
 	var nonce := _synthetic_nonce(key, codec, body)
 	if nonce.is_empty():
 		return PackedByteArray()
-	var ct := PKeySyncAesGcm.seal(key, nonce, body, aad)
+	var ct := PKeySyncAead.seal(key, nonce, body, aad)
 	if ct.is_empty():
 		return PackedByteArray()
 	var out := aad.slice(0, 2)
@@ -141,7 +141,7 @@ static func open(root: PackedByteArray, collection: String, id: PackedByteArray,
 	aad.append_array(id)
 	var key := _chunk_key(root, collection, id)
 	var nonce := object.slice(2, 2 + NONCE_BYTES)
-	var opened: Variant = PKeySyncAesGcm.open(key, nonce, object.slice(2 + NONCE_BYTES), aad)
+	var opened: Variant = PKeySyncAead.open(key, nonce, object.slice(2 + NONCE_BYTES), aad)
 	if opened == null:
 		return _bad("auth")
 	var body: PackedByteArray = opened
