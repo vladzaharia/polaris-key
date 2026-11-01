@@ -124,7 +124,9 @@ class CloudLinks:
             found[0] = any(contact_id(r.agree_key) == id for r in rows)
             if not found[0]:
                 return None
-            return [dataclasses.replace(r, reachable=bool(reachable)) if contact_id(r.agree_key) == id else r for r in rows]
+            return [
+                dataclasses.replace(r, reachable=bool(reachable)) if contact_id(r.agree_key) == id else r for r in rows
+            ]
 
         self._connect.update_contacts(fn)
         return found[0]
@@ -168,7 +170,11 @@ class CloudLinks:
         return await LinkPairing.start(self._connect.pair_source(), o)
 
     def open(
-        self, id: str, *, relay: bool = True, lan_attempt_seconds: Optional[float] = None  # noqa: A002
+        self,
+        id: str,
+        *,
+        relay: bool = True,
+        lan_attempt_seconds: Optional[float] = None,  # noqa: A002
     ) -> "ConnectSession":
         """A session to a contact: LAN first when it was seen on the network, the contact relay after a
         failed or timed-out LAN attempt (unless ``relay=False``). A pending contact (a re-pair) is tried
@@ -185,7 +191,9 @@ class CloudLinks:
         lan, rel = self._lan, self._relay
         if lan is None and rel is None:
             raise LanError("not_started", "Cloud Connect is not started.")
-        rows = [r for r in await loop.run_in_executor(None, self._connect.contact_rows) if contact_id(r.agree_key) == cid]
+        rows = [
+            r for r in await loop.run_in_executor(None, self._connect.contact_rows) if contact_id(r.agree_key) == cid
+        ]
         if not rows:
             raise LanError("unknown_peer", "That is not a link on this device.")
         # The newest secret first: the pending one of a re-pair, then the held one.

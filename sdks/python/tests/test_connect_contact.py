@@ -508,7 +508,7 @@ def test_a_contact_responder_without_a_limiter_is_refused() -> None:
 
 
 def _pairing(held_a: Any = (), held_b: Any = (), cats_a: Any = ("docs",), cats_b: Any = ("docs", "notes")) -> Any:
-    (pa, ua), (pb, ub) = _x25519(), _x25519()
+    (_, ua), (_, ub) = _x25519(), _x25519()
     ka, kb = b64url_encode(ua), b64url_encode(ub)
     a = End(
         "initiator",

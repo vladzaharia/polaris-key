@@ -6,18 +6,17 @@ Mirrors Node's ``test/connect/links.test.ts`` (the gate, pairing, the LAN sessio
 from __future__ import annotations
 
 import time
-from typing import Any, Callable, List
+from typing import Any, List
 
 import pytest
 from helpers import make_client
-from test_connect_identity import SUB, FakeWorker, _tokened
+from test_connect_identity import FakeWorker, _tokened
 from test_connect_lan import Network, until
 
 from polaris_key.core.caps import UnsupportedError
 
 
 def _dev(w: FakeWorker, tmp_path: Any, name: str, inter: bool) -> Any:
-    from helpers import PRODUCT
 
     st = _tokened()
     c = make_client(w, store=st, state_dir=str(tmp_path / name), expected_services=["license", "config", "connect"])

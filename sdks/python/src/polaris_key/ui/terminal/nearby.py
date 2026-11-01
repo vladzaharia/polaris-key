@@ -22,10 +22,9 @@ from __future__ import annotations
 
 import os
 import queue
-import sys
 import threading
-import time
 from dataclasses import dataclass, replace
+from functools import partial
 from typing import Any, List, Optional, Sequence, Tuple, Union
 
 from ...constants_generated import ErrorCode
@@ -37,7 +36,7 @@ from .device import run_in_thread
 from .exit import EXIT
 from .flows import Outcome, Terminal, _cancelled, _code_of, _error_outcome
 from .parts import Kit
-from .text import DROP, Line, Span, clean
+from .text import Line, Span, clean
 
 __all__ = [
     "APPROVE_S",
@@ -368,7 +367,7 @@ def login(client: Any, t: Terminal, verb: str = "login") -> Union[Outcome, Fall]
                             choose(found[0])
                     else:
                         lone_since = None
-                live.update(lambda v=view(), f=frame: nearby_login(k, v, verb, frame=f))
+                live.update(partial(nearby_login, k, view(), verb, frame=frame))
                 frame += 1
                 key = keys.read(_TICK)
                 if key == "esc":
@@ -487,7 +486,10 @@ def _usage(t: Terminal) -> Outcome:
     command = f"{k.prog} devices approve"
     message = k.s("cli.approve.needsPerson", command=command)
     lines = screens._frame(
-        k, "devices approve", k.step("fail", [k.t("cli.help.usage", "strong")]) + k.body([Span(message, (), None, "key:cli.approve.needsPerson")])
+        k,
+        "devices approve",
+        k.step("fail", [k.t("cli.help.usage", "strong")])
+        + k.body([Span(message, (), None, "key:cli.approve.needsPerson")]),
     )
     return Outcome(EXIT.usage, lines, {"error": "usage", "usage": command, "message": message})
 
@@ -540,7 +542,7 @@ def _run_approval(client: Any, t: Terminal, asks: "queue.Queue[Any]", verb: str)
                     pass
                 if t.clock() - started >= APPROVE_S:
                     return done(NearbyApprovalView("timeout"), EXIT.failed, {"state": "timeout"})
-                live.update(lambda f=frame: nearby_approval(k, NearbyApprovalView("entry"), verb, frame=f))
+                live.update(partial(nearby_approval, k, NearbyApprovalView("entry"), verb, frame=frame))
                 frame += 1
                 if keys.read(_TICK) == "esc":
                     return done(NearbyApprovalView("cancelled"), EXIT.failed, {"state": "cancelled"})
@@ -573,7 +575,7 @@ def _run_approval(client: Any, t: Terminal, asks: "queue.Queue[Any]", verb: str)
                 names = tuple((c.get("name") or c.get("tierName") or "") for c in free)
                 create = (step.choices or {}).get("create") is not None
                 choose_view = NearbyApprovalView("choose", device=device, choices=names, create=create)
-                live.update(lambda v=choose_view: nearby_approval(k, v, verb))
+                live.update(partial(nearby_approval, k, choose_view, verb))
                 total = len(names) + (1 if create else 0)
                 choice = press(total)
                 if choice in ("esc", "d") or total == 0:
@@ -589,7 +591,11 @@ def _run_approval(client: Any, t: Terminal, asks: "queue.Queue[Any]", verb: str)
                 ask.deny()
         except Exception:
             pass
-        return _cancelled(t, nearby_approval(k, NearbyApprovalView("denied" if ask is not None else "cancelled"), verb), {"state": "cancelled"})
+        return _cancelled(
+            t,
+            nearby_approval(k, NearbyApprovalView("denied" if ask is not None else "cancelled"), verb),
+            {"state": "cancelled"},
+        )
     except PolarisError as e:
         return _error_outcome(t, _code_of(client, e), verb)
     kind = step.kind

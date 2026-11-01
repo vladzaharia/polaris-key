@@ -25,7 +25,6 @@ from ..core.peer_contact import (
     StoredContact,
     contact_trial_order,
     drop_stale_pending,
-    promote_contact,
     store_contact,
 )
 from .state import ContactRow

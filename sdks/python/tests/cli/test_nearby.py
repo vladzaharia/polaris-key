@@ -20,7 +20,16 @@ from polaris_key.ui.terminal import flows
 from polaris_key.ui.terminal.exit import EXIT
 from polaris_key.ui.terminal.nearby import APPROVE_S, LISTEN_S, LONE_S
 
-from .fake_session import FakeAsk, FakeNearbySession, FakeSession, WhenKeys, approver, approver_identity, nearby_identity, signed_in
+from .fake_session import (
+    FakeAsk,
+    FakeNearbySession,
+    FakeSession,
+    WhenKeys,
+    approver,
+    approver_identity,
+    nearby_identity,
+    signed_in,
+)
 from .test_cli_contract import _terminal, plain
 
 ANA = approver("a1", "Ana's laptop")
@@ -233,7 +242,9 @@ class TestLogin:
                 raise PolarisError(code, "nope")
             return FakeSession(behave=signed_in(after=0))
 
-        identity = SimpleNamespace(nearby=SimpleNamespace(available=lambda *, role: True), sign_in=SimpleNamespace(start=start))
+        identity = SimpleNamespace(
+            nearby=SimpleNamespace(available=lambda *, role: True), sign_in=SimpleNamespace(start=start)
+        )
         _, out = _login(WhenKeys([]), _Client(identity))
         assert out.code == EXIT.ok
 
@@ -258,7 +269,9 @@ class TestMacOS:
         assert (tmp_path / "nearby-browsed").read_text(encoding="utf-8") == "1\n"
         # The next run starts at once: no explanation.
         again = FakeNearbySession([ANA], sign_in_after_choose=False)
-        t2, _ = _login_on("darwin", WhenKeys([("Tap this code there", "esc")]), _Client(nearby_identity(again), str(tmp_path)))
+        t2, _ = _login_on(
+            "darwin", WhenKeys([("Tap this code there", "esc")]), _Client(nearby_identity(again), str(tmp_path))
+        )
         assert "Sign in with your phone" not in _screen(t2) and again.chosen == ["a1"]
 
     def test_not_now_goes_to_the_regular_sign_in_and_starts_nothing(self, tmp_path: Path) -> None:
@@ -276,7 +289,14 @@ def _login_on(platform: str, keys: WhenKeys, client: Any) -> Any:
 
 
 class TestApprove:
-    def _run(self, ask: Optional[FakeAsk], script: Any, *, raises_: Optional[BaseException] = None, end: Optional[BaseException] = None) -> Any:
+    def _run(
+        self,
+        ask: Optional[FakeAsk],
+        script: Any,
+        *,
+        raises_: Optional[BaseException] = None,
+        end: Optional[BaseException] = None,
+    ) -> Any:
         calls: List[str] = []
         client = _Client(approver_identity(ask, raises_=raises_, calls=calls))
         keys = WhenKeys(script, end=end)
@@ -374,7 +394,9 @@ class TestApprove:
         for bad in ("\x1b]52", "\x1b[2J", "‮", "\x07"):
             assert bad not in raw, repr(bad)
 
-    def test_it_waits_300_s_for_a_device_to_ask_then_stops_with_nothing_changed_and_esc_stops_sooner(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_it_waits_300_s_for_a_device_to_ask_then_stops_with_nothing_changed_and_esc_stops_sooner(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         t, out, calls = self._run(None, [("Waiting for a device to ask", "esc")])
         assert out.data["state"] == "cancelled" and "stop" in calls
         assert "Waiting for a device to ask" in _screen(t) and "Esc stop" in _screen(t)
@@ -396,7 +418,11 @@ class TestApprove:
             last = json.loads(t.device.out.getvalue().splitlines()[-1])
             assert last["error"] == "usage" and last["exit"] == 2
 
-    @pytest.mark.parametrize("code,state", [("nearby-unsupported", "unsupported"), ("account_required", "account-required")])
-    def test_an_unsupported_runtime_and_a_signed_out_device_are_typed_results_not_crashes(self, code: str, state: str) -> None:
+    @pytest.mark.parametrize(
+        "code,state", [("nearby-unsupported", "unsupported"), ("account_required", "account-required")]
+    )
+    def test_an_unsupported_runtime_and_a_signed_out_device_are_typed_results_not_crashes(
+        self, code: str, state: str
+    ) -> None:
         _, out, _ = self._run(None, [], raises_=PolarisError(code, "x"))
         assert out.data == {"state": state} and out.code == EXIT.failed

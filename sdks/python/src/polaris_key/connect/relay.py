@@ -870,7 +870,7 @@ class RelayLink:
 
     def __init__(
         self,
-        svc: RelayService,
+        svc: Any,  # a RelayService, or a ContactRoom (the same link surface)
         peer: bytes,
         session_id: int,
         key: str,

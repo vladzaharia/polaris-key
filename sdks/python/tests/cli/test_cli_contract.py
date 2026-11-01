@@ -35,7 +35,17 @@ from polaris_key.ui.terminal.env import detect
 from polaris_key.ui.terminal.exit import EXIT
 from polaris_key.ui.terminal.flows import Terminal
 
-from .fake_session import FakeAsk, FakeNearbySession, FakeSession, WhenKeys, approver, approver_identity, nearby_identity, raises, sign_in_of
+from .fake_session import (
+    FakeAsk,
+    FakeNearbySession,
+    FakeSession,
+    WhenKeys,
+    approver,
+    approver_identity,
+    nearby_identity,
+    raises,
+    sign_in_of,
+)
 from .fixtures import kit
 from .golden_support import env
 
@@ -365,11 +375,19 @@ SITUATIONS: Dict[str, Callable[[Terminal], Any]] = {
     "network": lambda t: flows.devices(SimpleNamespace(product="tidewater", list_devices=_offline), t, ["list"]),
     "key-refused": lambda t: flows.activate(_ActivateClient(ActivationUnauthorized()), t, KEY),
     "device-limit": lambda t: flows.activate(
-        _ActivateClient(ActivationDeviceLimit(limit=3, deviceCount=3, manage_url="https://polaris.locker/#/p/tidewater/devices")), t, KEY
+        _ActivateClient(
+            ActivationDeviceLimit(limit=3, deviceCount=3, manage_url="https://polaris.locker/#/p/tidewater/devices")
+        ),
+        t,
+        KEY,
     ),
-    "secret-hidden": lambda t: flows.secret(SimpleNamespace(config=SimpleNamespace(get_secret=lambda k: "s3cr3t")), t, ["api_key"]),
+    "secret-hidden": lambda t: flows.secret(
+        SimpleNamespace(config=SimpleNamespace(get_secret=lambda k: "s3cr3t")), t, ["api_key"]
+    ),
     "mint-hidden": lambda t: flows.mint(
-        SimpleNamespace(config=SimpleNamespace(mint_token=lambda r: SimpleNamespace(token="tok_live", expiresAt=1))), t, ["cdn"]
+        SimpleNamespace(config=SimpleNamespace(mint_token=lambda r: SimpleNamespace(token="tok_live", expiresAt=1))),
+        t,
+        ["cdn"],
     ),
     "usage": lambda t: flows.devices(SimpleNamespace(product="tidewater"), t, ["rename"]),
     "interrupt": lambda t: flows.activate(_ActivateClient(), t, None),
@@ -383,9 +401,15 @@ SITUATIONS: Dict[str, Callable[[Terminal], Any]] = {
     "approve-approved": lambda t: flows.devices(_Approver(FakeAsk(SimpleNamespace(kind="approved"))), t, ["approve"]),
     "approve-mismatch": lambda t: flows.devices(_Approver(FakeAsk(SimpleNamespace(kind="mismatch"))), t, ["approve"]),
     "approve-denied": lambda t: flows.devices(_Approver(FakeAsk()), t, ["approve"]),
-    "approve-not-nearby": lambda t: flows.devices(_Approver(FakeAsk(SimpleNamespace(kind="not-nearby"))), t, ["approve"]),
-    "approve-unsupported": lambda t: flows.devices(_Approver(raises_=PolarisError("nearby-unsupported", "no nearby here")), t, ["approve"]),
-    "approve-account-required": lambda t: flows.devices(_Approver(raises_=PolarisError("account_required", "signed out")), t, ["approve"]),
+    "approve-not-nearby": lambda t: flows.devices(
+        _Approver(FakeAsk(SimpleNamespace(kind="not-nearby"))), t, ["approve"]
+    ),
+    "approve-unsupported": lambda t: flows.devices(
+        _Approver(raises_=PolarisError("nearby-unsupported", "no nearby here")), t, ["approve"]
+    ),
+    "approve-account-required": lambda t: flows.devices(
+        _Approver(raises_=PolarisError("account_required", "signed out")), t, ["approve"]
+    ),
     # Both sides need a person: --json is refused before anything starts.
     "approve-json": lambda t: flows.devices(_Approver(FakeAsk()), t, ["approve"]),
 }

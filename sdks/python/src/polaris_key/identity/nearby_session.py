@@ -47,7 +47,7 @@ import math
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, cast
 
 from ..constants_generated import ErrorCode, Feature, UnsupportedReason
 from ..core.caps import Unsupported, UnsupportedError
@@ -336,7 +336,7 @@ class NearbySignInSession:
         f = self._final
         if isinstance(f, BaseException):
             raise f
-        return f  # type: ignore[no-any-return]
+        return cast(SignInOutcome, f)
 
     def _end_ok(self, outcome: SignInOutcome) -> SignInOutcome:
         self._final = outcome

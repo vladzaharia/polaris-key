@@ -6,8 +6,8 @@ makes applicable, against a fake server (``transcript_replay.ReplayServer``, an
 request.
 
 Which transcripts run is DATA: a transcript for a feature this SDK has not implemented is
-skipped, and starts running the moment the manifest claims it. The SDK clock is ``time.time`` pinned to each step's ``now``: the recorded documents
-were signed at a fixed instant and expire an hour later.
+skipped, and starts running the moment the manifest claims it. The SDK clock is ``time.time`` pinned to
+each step's ``now``: the recorded documents were signed at a fixed instant and expire an hour later.
 
 ``updateDecide`` (plans/P3-01.md §5, §6) is ``client.update.decide(channel=…, staged=…,
 skip_version=…)``, and its ``expect`` keys are the ``UpdateCheck``'s own (``channel``,
@@ -73,7 +73,8 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
 # @pkey-feature identity.redirect.web identity.choice identity.signin.hints identity.devicecode.choice
-# @pkey-feature sync.keyring connect.identity connect.relay sync.settings sync.files sync.files.delta sync.saves identity.nearby
+# @pkey-feature sync.keyring connect.identity connect.relay sync.settings
+# @pkey-feature sync.files sync.files.delta sync.saves identity.nearby
 
 from __future__ import annotations
 
@@ -328,7 +329,9 @@ def _nearby_step(
         else:
             m = NearbyCredentials(str(args["approverDeviceId"]), keys("approverKeyLabel"), str(args["approverToken"]))
             dk = d.keys.ensure()
-            agree = _FixtureKeys(str(args["agreeKeyLabel"])).ensure().agree_key if "agreeKeyLabel" in args else dk.agree_key
+            agree = (
+                _FixtureKeys(str(args["agreeKeyLabel"])).ensure().agree_key if "agreeKeyLabel" in args else dk.agree_key
+            )
             started = session.get("nearbyStarted")
             request = args.get("request") or (started.request if started is not None else None)
             # The replay vouches for what the recording sent (it may carry other keys than D's): the permit

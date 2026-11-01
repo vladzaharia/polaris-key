@@ -8,13 +8,11 @@ import asyncio
 
 import httpx
 import pytest
+from helpers import BASE_URL, PRODUCT, TOKEN, TRUST, mock_client, routes, sign_config, sign_license
 
 import polaris_key
 from polaris_key import AsyncClient
 from polaris_key.devices.store import InMemoryStore
-
-from test_identity_mint import clock  # noqa: F401
-from helpers import BASE_URL, PRODUCT, TOKEN, TRUST, mock_client, routes, sign_config, sign_license
 
 
 def _handler(poll_answers=None):
