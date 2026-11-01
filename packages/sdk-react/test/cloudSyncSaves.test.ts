@@ -9,7 +9,11 @@
 
 import { IDBFactory } from "fake-indexeddb";
 import { describe, expect, it, vi } from "vitest";
-import { rangedBytes } from "@polaris-key/client-core/sync";
+import {
+  rangedBytes,
+  serverFileCodec,
+  webCryptoSyncPort,
+} from "@polaris-key/client-core/sync";
 import {
   BrowserCloudSyncApi,
   importMarker,
@@ -518,6 +522,63 @@ describe("cloudSync.saves in the browser host", () => {
     expect(await racing).toMatchObject({ detail: "signed-out" });
     expect(r.saves.conflicts()).toEqual([]);
     expect(r.saves.transfers()).toEqual([]);
+    await r.host.close();
+  });
+
+  it("a purge while the codec is being built leaves no files layer", async () => {
+    const r = await rig({ mode: "e2e" });
+    let built: (c: unknown) => void = () => undefined;
+    let asked = false;
+    // The ring answers the file codec late: the purge lands in between.
+    (r.ring as unknown as { fileCodec: unknown }).fileCodec = () => {
+      asked = true;
+      return new Promise((res) => (built = res));
+    };
+    const listing = r.saves.list().then(
+      () => null,
+      (e: unknown) => e,
+    );
+    await vi.waitFor(() => expect(asked).toBe(true));
+    await r.saves.purge();
+    built(serverFileCodec(webCryptoSyncPort));
+    expect(await listing).toMatchObject({ detail: "signed-out" });
+    expect(r.saves.built).toBe(false);
+    expect((await r.idb.databases()).map((d) => d.name)).not.toContain(
+      filesDbName(DB),
+    );
+    await r.host.close();
+  });
+
+  it("a write begun before a purge is cancelled", async () => {
+    const r = await rig();
+    let held: SavesApi | null = null;
+    let leave = false;
+    // The person leaves after the write's client is built and before the write is registered.
+    held = new SavesApi({
+      host: r.host,
+      keyring: { codec: () => null },
+      product: PRODUCT,
+      dbName: DB,
+      fileFetch: r.world.files,
+      locks: r.locks,
+      attach: () => r.api.attach(),
+      subject: () => {
+        if (leave) void held!.purge();
+        return SUBJECT;
+      },
+      files: { store: filesStore(filesDbName(DB), undefined, r.idb) },
+    });
+    await held.list();
+    leave = true;
+    const t = await held.write("slot1", bytes(500), { n: 1 });
+    // Registered nowhere and cancelled at once: a write left running would wait on what the
+    // purge deleted.
+    try {
+      expect(held.transfers()).toEqual([]);
+    } finally {
+      void t.cancel().catch(() => undefined);
+    }
+    expect((await t.done).state).toBe("cancelled");
     await r.host.close();
   });
 

@@ -478,6 +478,35 @@ describe("cloudSync.saves", () => {
     expect(client.cloudSync.transfers()).toEqual([]);
   });
 
+  it("purge cancels a running write", async () => {
+    const { w } = savesWorld();
+    const inner = w.fetch;
+    let putting = false;
+    // The upload's bytes never land: the write is running when the person leaves.
+    w.fetch = (async (input: string | URL, init?: RequestInit) => {
+      if (init?.method === "PUT" && String(input).includes("/upload/")) {
+        putting = true;
+        return new Promise<Response>((_, reject) => {
+          const stop = (): void =>
+            reject(new DOMException("aborted", "AbortError"));
+          if (init.signal?.aborted) stop();
+          else init.signal?.addEventListener("abort", stop, { once: true });
+        });
+      }
+      return inner(input, init);
+    }) as typeof fetch;
+    const { client } = await signedIn(w);
+    const t = await client.cloudSync.saves.write("slot-1", bytes(100), {});
+    await vi.waitFor(() => expect(putting).toBe(true));
+    expect(client.cloudSync.transfers()).toHaveLength(1);
+    await (
+      client as unknown as { cloudSyncApi: { beforeSignOut(): Promise<void> } }
+    ).cloudSyncApi.beforeSignOut();
+    expect(await t.done).toEqual({ state: "cancelled" });
+    expect(client.cloudSync.transfers()).toEqual([]);
+    client.close();
+  });
+
   it("purges the save transfers before the ring is forgotten", async () => {
     const { w } = savesWorld();
     const { client, stateDir } = await signedIn(w);
