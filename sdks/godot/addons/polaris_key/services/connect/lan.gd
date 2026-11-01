@@ -179,6 +179,11 @@ func _on_notice(n: Dictionary) -> void:
 
 
 ## The TCP port this listen uses.
+## The discovery lane this service runs on (shared with nearby approval).
+func lane() -> Object:
+	return _mdns
+
+
 func port() -> int:
 	return _port
 

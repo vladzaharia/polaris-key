@@ -11,7 +11,7 @@ extends RefCounted
 ## Rules this file keeps:
 ##  - D connects out and never listens. It browses `_pkeypeer._tcp` for `m=v` with the product tag of the
 ##    current or the previous epoch (handed to the lane as `tags`, and checked again here), and judges
-##    every address by the mode-a rule (`PKeyPeerDialRace`);
+##    every address by the mode-a rule (`PKeyPeerLanGate`);
 ##  - at most 4 approvers are dialled at once, picked at random and never in arrival order, each with a
 ##    one-time X25519 key that is wiped when the handshake ends. A session that ends before the choice
 ##    is replaced while the request lives (3 tries per advert);
@@ -35,7 +35,7 @@ extends RefCounted
 ## PKeyResult holding {port, device_id}: D's device key store and its `X-PKey-Device` value)}. `options`:
 ## `request` (the `nr_` handle), `label`, `expires_in`, `mdns` (a lane), `pump`, `tree`, `allow_loopback`,
 ## `handshake_seconds`, `mono`, `random`, `drive` (false: the host calls `tick()`), and for tests `dial`
-## (Callable(candidate) -> a coroutine answering a pipe or null) and `connector` (see PKeyPeerDialRace).
+## (Callable(candidate) -> a coroutine answering a pipe or null) and `connector` (see PKeyPeerLanGate).
 ##
 ## Signals are observers: `approvers_changed(list)` ({id, label, platform} each), `result(status)`
 ## (display only; the host's poll is the authority), `record(record_type, body)` (Sync records, once the
@@ -81,6 +81,7 @@ var _answered := false
 var _expires_at := 0.0
 var _redial_at := -1.0
 var _driven := false
+var _lan_gate: PKeyPeerLanGate
 
 
 static func _static_init() -> void:
@@ -298,7 +299,7 @@ func _found(f: Dictionary) -> void:
 	var native := bool(f.get("native", false))
 	var hosts: Array = []
 	for h in f.get("hosts", [f.get("host", "")]):
-		if h is String and PKeyPeerDialRace.dialable(h, _loopback()) and not hosts.has(h):
+		if h is String and _gate().dialable(h) and not hosts.has(h):
 			hosts.append(h)
 	if hosts.is_empty() and not native:
 		return
@@ -386,10 +387,7 @@ func _open_pipe(c: Dictionary) -> PKeyPeerPipe:
 		return await (custom as Callable).call(c.duplicate(true))
 	if bool(c["native"]):
 		return await _open_native(str(c["instance"]))
-	var won := await PKeyPeerDialRace.race(_tree, c["hosts"], int(c["port"]), {
-		"allow_loopback": _loopback(), "mono": Callable(self, "_mono"), "connector": _o.get("connector", Callable()),
-		"cancelled": Callable(self, "_dial_cancelled"),
-	})
+	var won := await _gate().race(c["hosts"], int(c["port"]), Callable(self, "_dial_cancelled"))
 	return won.get("pipe")
 
 
@@ -399,7 +397,7 @@ func _open_native(instance: String) -> PKeyPeerPipe:
 	var pipe: PKeyPeerPipe = _mdns.call("dial", instance)
 	if pipe == null:
 		return null
-	var deadline := _mono() + PKeyPeerDialRace.DIAL_SECONDS
+	var deadline := _mono() + PKeyPeerLanGate.DIAL_SECONDS
 	while not _ended and not pipe.is_finished() and not pipe.call("is_connected_native") and _mono() < deadline:
 		await _tree.process_frame
 	if not _ended and not pipe.is_finished() and pipe.call("is_connected_native"):
@@ -538,6 +536,15 @@ func _stop(why: StringName) -> void:
 func _label() -> String:
 	var label: Variant = _o.get("label")
 	return label if label is String else ""
+
+
+## The mode-a address rules and the dial race (one gate for every LAN lane), made once.
+func _gate() -> PKeyPeerLanGate:
+	if _lan_gate == null:
+		_lan_gate = PKeyPeerLanGate.new({
+			"allow_loopback": _loopback(), "mono": Callable(self, "_mono"), "connector": _o.get("connector", Callable()), "tree": _tree,
+		})
+	return _lan_gate
 
 
 func _loopback() -> bool:

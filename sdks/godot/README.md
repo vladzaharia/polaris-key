@@ -1073,6 +1073,42 @@ check is the private block, not the subnet, because Godot lists no netmask. `con
 in `parity.json` for all of these, except web; the native lanes are unit-tested over fakes and the
 native builds, and their device runs are the owner's checks.
 
+### Nearby approval (`PolarisKey.cloud_connect.nearby`)
+
+A device with no way to sign in (D) can be approved by a signed-in device (M) on the same network, with a code both
+screens show. It is gated by the Identity service's discovery, never by Connect, and it works with Connect stopped.
+The calls carry the vouch over the LAN and call no route: your app calls `nearby/start`, `poll` and `approve` and gives
+the answers to the handles. Deciding handlers are methods; observers are signals.
+
+```gdscript
+# M, signed in: advertise while "Approve a nearby device" is open.
+func _on_approval(approval: PKeyPeerNearbyApprover.Approval) -> void:
+	show_codes(approval.label, approval.platform, approval.codes)   # the person picks the code D shows
+	# on the pick: var picked := await approval.pick(code); call nearby/approve with picked.detail,
+	# then approval.finish({http = status, body = text, discovery_nearby = true})
+
+func approve_screen_opened() -> void:
+	var r := await PolarisKey.cloud_connect.nearby.on_request(_on_approval, {prompt = true})
+
+# D, no sign-in: list the approvers and let the person tap one.
+func ask(request_handle: String) -> void:
+	var r := await PolarisKey.cloud_connect.nearby.request({request = request_handle, label = "Living room"})
+	if r.ok:
+		var req: PKeyNearbyRequest = r.detail
+		req.approvers_changed.connect(show_list)
+		# on a tap: var shown := await req.choose(id); show shown.detail.code
+```
+
+- `request(options)` answers a `PKeyNearbyRequest` (`approvers()`, `choose(id)`, `confirm_account()`,
+  `decline_account()`, `close()`, and the signals `approvers_changed`, `result`, `record`, `closed`).
+  `on_request(handler, options)` answers the running approver (`stop()`, `pause()`, `resume()`, `set_prompt(open)`,
+  `reopen()`, and the signals `notice` and `stopped`). Both answer `service-unavailable` for a product that serves no
+  nearby approval, and `nearby-permission-denied` when the local-network permission is refused.
+- `nearby-unsupported` on web, below Android 14, on an older native binding, and for M on a lane that others cannot find
+  (querier only). M also answers `account_required` while signed out.
+- Signing out stops every advert and request (after Connect, before its state is forgotten). `identity.nearby` stays
+  `planned` in `parity.json` until the sign-in flows on top of these calls land.
+
 ## Cloud Sync settings (`PolarisKey.cloud_sync`)
 
 With Cloud Sync on and a person signed in, the

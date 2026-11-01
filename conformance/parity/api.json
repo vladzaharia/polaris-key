@@ -7184,6 +7184,9 @@
         "swift": {},
         "kotlin": {
           "spelling": "CloudNearby.request"
+        },
+        "godot": {
+          "spelling": "PKeyCloudNearby.request"
         }
       },
       "layer": "client",
@@ -7209,6 +7212,9 @@
         "swift": {},
         "kotlin": {
           "spelling": "CloudNearby.onRequest"
+        },
+        "godot": {
+          "spelling": "PKeyCloudNearby.on_request"
         }
       },
       "layer": "client",
