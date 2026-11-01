@@ -1,5 +1,6 @@
 package im.plrs.key.platform
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
@@ -26,11 +27,24 @@ public class Subnet(address: InetAddress, public val prefix: Int) {
     override fun toString(): String = "Subnet(/$prefix)"
 }
 
-/** The subnets a [Network] is connected to, from its link properties (CC-12b.2). */
+/**
+ * The subnets a [Network] is connected to, from its link properties (CC-12b.2). Reading them needs
+ * ACCESS_NETWORK_STATE, which this library does not declare (the app decides): without it the answer is
+ * no subnets, and no subnet holds any host, so no address is dialled.
+ */
 public object NetworkSubnets {
+    // ACCESS_NETWORK_STATE is the app's to declare (no permission in the AAR); a refusal is caught below. Lint cannot see
+    // that for a normal permission.
+    @SuppressLint("MissingPermission")
+    @Suppress("SwallowedException")
     public fun of(context: Context, network: Network): List<Subnet> {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return emptyList()
-        val props = cm.getLinkProperties(network) ?: return emptyList()
+        val props = try {
+            cm.getLinkProperties(network)
+        } catch (e: SecurityException) {
+            // The app did not declare ACCESS_NETWORK_STATE.
+            null
+        } ?: return emptyList()
         return props.linkAddresses.map { Subnet(it.address, it.prefixLength) }
     }
 

@@ -428,14 +428,26 @@ describe.each([
     ).rejects.toMatchObject({ code: "peer-closed" });
     await until(() => partsOf(w, w.a).length === 2);
     // The same transfer again takes the partial over while the old chain is still held.
+    let takenOver = false;
+    const realTruncate = PartialStore.prototype.truncate;
+    const takeover = vi
+      .spyOn(PartialStore.prototype, "truncate")
+      .mockImplementation(async function (this: PartialStore, ...args) {
+        await realTruncate.apply(this, args);
+        takenOver = true;
+      });
     const second = w.b.cloudConnect.transfer.send(A, content(size), {
       chunk,
       id,
     });
-    await sleep(50);
+    // Release the old chain only once the new session has taken the partial over (its truncate
+    // landed). A fixed delay let a slow machine release it first, and the old session's next
+    // write then legitimately landed before any takeover.
+    await until(() => takenOver);
     release();
     await second;
     spy.mockRestore();
+    takeover.mockRestore();
     expect(readFileSync(join(w.out, "big.bin"))).toEqual(
       Buffer.from(content(size)),
     );

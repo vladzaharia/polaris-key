@@ -1,5 +1,6 @@
 package im.plrs.key.platform
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Network
 import android.net.nsd.NsdManager
@@ -233,6 +234,8 @@ private class RealNsdApi(context: Context) : NsdApi {
 
     override fun stopDiscovery(token: Any) = nsd.stopServiceDiscovery(token as NsdManager.DiscoveryListener)
 
+    // Only reached through PeerNsd.watch, which refuses below MIN_SDK (API 34).
+    @SuppressLint("NewApi")
     override fun watch(
         instance: String,
         type: String,
@@ -267,6 +270,7 @@ private class RealNsdApi(context: Context) : NsdApi {
         return callback
     }
 
+    @SuppressLint("NewApi")
     override fun unwatch(token: Any) = nsd.unregisterServiceInfoCallback(token as NsdManager.ServiceInfoCallback)
 }
 

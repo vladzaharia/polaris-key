@@ -248,7 +248,7 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
     view: "cloud_sync/pkey_save_conflict",
     model: "SaveConflict",
     shows:
-      "The same save changed on two devices: two cards say whose copy is whose and when each was saved, and the person picks Keep this device's version, Keep the other version, Keep both or Cancel. Nothing is chosen for them, and it follows the saves of Cloud Sync",
+      "The same save changed on two devices: two cards say whose copy is whose and when each was saved, then Keep this device's version, Keep the other version, Keep both (needs a free slot, otherwise disabled with its reason) and Cancel. The kit never settles it for the person, and it follows the saves of Cloud Sync",
   },
   About: {
     view: "about/pkey_about",

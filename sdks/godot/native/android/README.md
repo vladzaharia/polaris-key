@@ -51,7 +51,7 @@ the main source set, over `:platform`'s `PeerNsd` (API 34 and later). Discovery 
 GDScript sockets and the advert names the port of the GDScript listener. Events (`nsd_found`,
 `nsd_lost`, `nsd_advert`, `nsd_error`) ride `poll`, coalesced per instance. Names outside the
 `nsd_accept` set are dropped before they take a slot. From Android 17 an app that targets it needs
-`ACCESS_LOCAL_NETWORK` (both exports declare it); without it advertise and browse answer
+`ACCESS_LOCAL_NETWORK` (both exports declare it, with `ACCESS_NETWORK_STATE`, which the subnet check needs); without it advertise and browse answer
 `permission_denied`. `addons/polaris_key/native/pkey_android_mdns.gd` (`PKeyAndroidMdns`) is the
 GDScript adapter.
 

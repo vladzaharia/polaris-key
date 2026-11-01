@@ -252,7 +252,8 @@ describe("a ReadableStream over the relay", () => {
     });
     expect(started[0]).toMatchObject({ size: 2_500_000, sha256: sha(body) });
     await until(() => r.got.some((e) => e.outcome === "delivered"));
-    expect(Buffer.concat(parts)).toEqual(Buffer.from(body));
+    // Byte-for-byte, but not through toEqual: its element-wise walk of 2.5 MB takes seconds on a slow runner.
+    expect(Buffer.concat(parts).equals(Buffer.from(body))).toBe(true);
   });
 });
 

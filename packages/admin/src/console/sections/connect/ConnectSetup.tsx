@@ -44,6 +44,7 @@ import { formatBinaryBytes } from "../sync/pages/SyncData.js";
 
 export const CONNECT_AREA = "cloudConnect";
 const RELAY = "cloudConnect.relay.enabled";
+const INTER_ACCOUNT = "cloudConnect.interAccount";
 const CEILING = "cloudConnect.ceiling.relayBytes";
 const DEFAULT_QUOTA = "cloudConnect.quota.defaultRelayBytes";
 const PAUSED = "cloudConnect.relayPaused";
@@ -151,7 +152,7 @@ export function ConnectSetupPage({
             area={CONNECT_AREA}
             id="connect-relay"
             title="Relay limits"
-            keys={[RELAY]}
+            keys={[RELAY, INTER_ACCOUNT]}
             errorThing="Cloud Connect settings"
             readOnlyVisible
             copy={{
@@ -162,6 +163,14 @@ export function ConnectSetupPage({
                         "Devices on different networks stop connecting. Devices on the same network keep connecting.",
                       ]
                     : [],
+              },
+              [INTER_ACCOUNT]: {
+                consequences: (to) =>
+                  to === true
+                    ? [
+                        "Devices signed in to different accounts can connect, once the platform has links between accounts on.",
+                      ]
+                    : ["Devices connect only to those of their own account."],
               },
             }}
           />
