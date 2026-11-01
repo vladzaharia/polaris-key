@@ -195,7 +195,7 @@
     },
     "identity.gamecenter": {
       "status": "implemented",
-      "note": "PolarisKeyGameCenter (I-44.5, standalone): GameCenterIdentity checks the local player is signed in (authenticateHandler, never presenting Game Center's view) and scopedIDsArePersistent(), takes fetchItemsForIdentityVerificationSignature() and encodes the gc1. token (GameCenterToken, V5 §12.11.7) over a GameCenterPlayerPort; ExchangeKind.gamecenter sends subject_token_type urn:polaris-key:token-type:gamecenter-signature; GameCenterSignInProvider (opt-in product PolarisKeyGameCenterSignIn; the umbrella links no GameKit) is the autoSignIn provider. Replayed against exchange-gamecenter-* (TranscriptTests) with a fake player; link-game waits on identity.link. The signature hash and timestamp unit are unconfirmed on a real device (owner step)."
+      "note": "PolarisKeyGameCenter (I-44.5, standalone): GameCenterIdentity checks the local player is signed in (authenticateHandler, never presenting Game Center's view) and scopedIDsArePersistent(), takes fetchItemsForIdentityVerificationSignature() and encodes the gc1. token (GameCenterToken, V5 §12.11.7) over a GameCenterPlayerPort; ExchangeKind.gamecenter sends subject_token_type urn:polaris-key:token-type:gamecenter-signature; GameCenterSignInProvider (opt-in product PolarisKeyGameCenterSignIn; the umbrella links no GameKit) is the autoSignIn provider. Replayed against exchange-gamecenter-* (TranscriptTests) with a fake player; The signature hash and timestamp unit are unconfirmed on a real device (owner step)."
     },
     "identity.pgs": {
       "status": "na",
@@ -212,9 +212,8 @@
       "note": "Rung 2 of autoSignIn() (PolarisKeyIdentity/Restore.swift): the restore grant over the PlatformBackupStore item (the umbrella's RestoreBackup.swift adapter), enrolment after every completed sign-in and once a day on rung 1, sign-out deletion (DELETE restore queued for the next launch, the synchronizable item, the signed-out flag), AutoSignInOptions.restore and backupAccessGroup (I-49.9). The restore-* transcripts and discovery-identity-restore are replayed (I-49.10)."
     },
     "identity.link": {
-      "status": "planned",
-      "wp": "I-44",
-      "note": "Link offer (I-43.3 transcripts, I-44)."
+      "status": "implemented",
+      "note": "client.identity.link (PolarisKeyIdentity/Link.swift, I-44.10; WIRE-CONTRACT-V5 section 12.11.4): pending, offer() (GET link with the device token), accept(linkHandle:) (POST link with the held handle, else one provider sheet over a fresh nonce; proof purpose link by the device key), decline() and dismiss(). The offer opens only after a sign-in this device started (SignInReady.sameDevice: a redirect, native or not, or a licence choice that redirect left); a device-code, exchange, nearby or restore sign-in never opens it, and without one offer() and accept() answer unavailable with no request. The handle an exchange left is held in memory for its lifetime and spent by the attempt that uses it, except by step_up_required. A decline is sha256(issuer + sub) in the Store's local record link-declined (the hash only); a declined account gets unavailable with no request, and a link_conflict is remembered the same way. Refusals are typed (step_up_required, link_conflict, not_found, invalid_grant). The link-offer and link-errors transcripts replay in TranscriptTests; link-game replays its Game Center half (its Play Games step is Android only). LinkTests maps the rules."
     },
     "identity.nearby": {
       "status": "implemented",

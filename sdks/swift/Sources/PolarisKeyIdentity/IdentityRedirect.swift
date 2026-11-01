@@ -548,9 +548,14 @@ extension IdentityClient {
             redirectUri: pending.redirectUri, code: code, deviceName: label)
         let response: PolarisResponse
         do {
+            // A device that already holds its token presents it to its own product, as the web
+            // client does: the Worker then knows the device and keeps the licence it runs on.
+            var headers = ["content-type": IdentityRedirect.tokenContentType]
+            if let held = await core.token, pending.tokenEndpoint.hasPrefix(core.endpoints.url("").absoluteString) {
+                headers["authorization"] = "Bearer \(held)"
+            }
             response = try await core.request(
-                url, method: "POST", headers: ["content-type": IdentityRedirect.tokenContentType],
-                body: Data(form.utf8))
+                url, method: "POST", headers: headers, body: Data(form.utf8))
         } catch let error as PolarisError where error.code == PolarisError.localOnly {
             throw error
         } catch {
@@ -605,6 +610,7 @@ extension IdentityClient {
                     message: "the token endpoint asked for a licence choice this sign-in did not request.")
             }
             let lifetime = wholeSeconds(expiresIn) ?? 0
+            linkChoicePending(grant: grant)
             return .choose(
                 PendingSignIn(
                     grant: grant, expiresIn: lifetime, expiresAt: await core.now() + lifetime,
@@ -619,10 +625,11 @@ extension IdentityClient {
             announceSubject(subject, previous: previous)
             notifyIdentity(IdentityChange(kind: IdentityChange.signedIn, subject: subject))
             await restoreSignInCompleted()
+            linkOpen(subject: subject)
             return .ready(
                 SignInReady(
                     identity: nil, attached: nil, subject: subject, scope: scope,
-                    licenseId: license?["id"]?.stringValue))
+                    licenseId: license?["id"]?.stringValue, sameDevice: true))
         }
     }
 }

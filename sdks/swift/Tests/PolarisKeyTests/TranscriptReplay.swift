@@ -523,6 +523,23 @@ actor ReplayServer {
                     ]),
                 ]))
         }
+        // The link transcripts (identity.link) exchange, sign in through the browser, then read and post
+        // the link: the fragment names the exchange member, the redirect routes, the nonce and the link.
+        if transcript.features.contains("identity.link") {
+            redirectEndpoints["nonce"] = .string("\(base)/identity/nonce")
+            redirectEndpoints["link"] = .string("\(base)/identity/link")
+            return try? JSONEncoder().encode(
+                JSONValue.object([
+                    "product": .string(transcript.product),
+                    "services": .object([
+                        "identity": .object([
+                            "enabled": .bool(true), "configured": .bool(true), "issuer": .string(issuer),
+                            "exchange": .object(["kinds": .array(["apple", "gamecenter"].map(JSONValue.string))]),
+                            "endpoints": .object(redirectEndpoints),
+                        ])
+                    ]),
+                ]))
+        }
         if usesRedirect {
             var fields: [String: JSONValue] = [
                 "enabled": .bool(true), "configured": .bool(true),

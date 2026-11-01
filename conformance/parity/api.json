@@ -3749,8 +3749,7 @@
           "shape": "hook"
         },
         "swift": {
-          "planned": "I-44",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "LinkNamespace.offer"
         },
         "kotlin": {
           "planned": "I-45",
@@ -3774,8 +3773,8 @@
           "shape": "hook"
         },
         "swift": {
-          "planned": "I-44",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "LinkNamespace.accept",
+          "labels": ["linkHandle"]
         },
         "kotlin": {
           "planned": "I-45",
@@ -3805,8 +3804,7 @@
           "shape": "hook"
         },
         "swift": {
-          "planned": "I-44",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "spelling": "LinkNamespace.decline"
         },
         "kotlin": {
           "planned": "I-45",
