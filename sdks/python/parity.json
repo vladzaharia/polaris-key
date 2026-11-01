@@ -177,9 +177,8 @@
       "status": "implemented"
     },
     "identity.keyreturn": {
-      "status": "planned",
-      "wp": "I-15b",
-      "note": "LK-SKIP.8: the opt-in, the via rule and the activated outcome, with the replayer."
+      "status": "implemented",
+      "note": "LK-SKIP.8: identity.sign_in.start(channel=\"redirect\", key_return=True) sends key_return=allow last (web authorize request and native push; off by default, and the UI kits leave it off until a kit renders the outcome). With the opt-in a via:\"key\" token answer settles an activated outcome (the token stored as a key activation, the stored subject cleared, subject_changed and never signed_in; strict parse, malformed without the opt-in); license_owned and key_entry_limit raise SignInError with details. The three redirect-web-key-return* transcripts are replayed in tests/test_transcripts.py; tests/test_identity_key_return.py maps each rule."
     },
     "identity.redirect.native": {
       "status": "implemented",

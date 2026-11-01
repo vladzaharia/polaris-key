@@ -129,6 +129,7 @@ class IdentityClient:
             emit=emit or (lambda *a, **k: None),
             load_discovery=discover,
             write_subject=self._account.write_subject,
+            stored_subject=self._account.stored_subject,
         )
         self._sign_in = SignInNamespace(
             self._start_sign_in,
