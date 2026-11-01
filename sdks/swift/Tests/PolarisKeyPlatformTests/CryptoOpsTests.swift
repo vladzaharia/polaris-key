@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import XCTest
 
@@ -104,6 +105,41 @@ final class CryptoOpsTests: XCTestCase {
         let sealed = call("cx_seal", gcmInput(key, nonce, [], plain))
         XCTAssertEqual(sealed.count, 1 + plain.count + 16)
         XCTAssertEqual(call("cx_open", gcmInput(key, nonce, [], Array(sealed.dropFirst()))), [1] + plain)
+    }
+
+    /// The sync entry answers (GM.1): an empty message, an empty AAD, a refused tag, and one 1 MiB
+    /// message with 64 KiB of AAD, the largest call the sync facade hands a lane, with a pinned digest.
+    func testSyncAnswers() {
+        let zeroKey = [UInt8](repeating: 0, count: 32)
+        let zeroNonce = [UInt8](repeating: 0, count: 12)
+        let emptySealed = hex("530f8afbc74536b9a963b4f1c4cb738b")
+        XCTAssertEqual(call("cx_seal", gcmInput(zeroKey, zeroNonce, [], [])), [1] + emptySealed)
+        XCTAssertEqual(call("cx_open", gcmInput(zeroKey, zeroNonce, [], emptySealed)), [1])
+        var tampered = emptySealed
+        tampered[0] ^= 1
+        XCTAssertEqual(call("cx_open", gcmInput(zeroKey, zeroNonce, [], tampered)), [0])
+
+        let key = (0..<32).map { UInt8($0) }
+        let nonce = (0..<12).map { UInt8(0xA0 + $0) }
+        let aad = Array("pkey-sync-kat".utf8)
+        let plain = (0..<(1 << 20)).map { UInt8(truncatingIfNeeded: $0 &* 31 &+ 7) }
+        let reply = call("cx_seal", gcmInput(key, nonce, aad, plain))
+        XCTAssertEqual(reply.count, 1 + plain.count + 16)
+        XCTAssertEqual(reply.first, 1)
+        let sealed = Array(reply.dropFirst())
+        XCTAssertEqual(
+            SHA256.hash(data: sealed).map { String(format: "%02x", $0) }.joined(),
+            "20985c5839f5d4ccc63675c2e97146b4e8de8c720a4536b93b8f36b9fa50d672")
+        XCTAssertEqual(call("cx_open", gcmInput(key, nonce, aad, sealed)), [1] + plain)
+        var flipped = sealed
+        flipped[flipped.count - 1] ^= 1
+        XCTAssertEqual(call("cx_open", gcmInput(key, nonce, aad, flipped)), [0])
+
+        // The entry bound: the largest call the facade hands over (1 MiB, 64 KiB of AAD) is taken.
+        let bigAad = [UInt8](repeating: 0x5A, count: 64 * 1024)
+        let big = call("cx_seal", gcmInput(key, nonce, bigAad, plain))
+        XCTAssertEqual(big.count, 1 + plain.count + 16)
+        XCTAssertEqual(call("cx_open", gcmInput(key, nonce, bigAad, Array(big.dropFirst()))), [1] + plain)
     }
 
     func testOpsAreRegisteredWithoutTheSelftestSwitch() {
