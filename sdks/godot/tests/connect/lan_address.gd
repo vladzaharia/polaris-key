@@ -16,12 +16,30 @@ const MDNS_ROWS := 37
 
 func run(t: PKeyTestContext) -> void:
 	var j := JSON.new()
-	if not t.check("peer-matrix.json parses", j.parse(FileAccess.get_file_as_string(MATRIX)) == OK and j.data is Dictionary):
+	# Godot 4.4 drops a NUL from a String, so the raw text swaps each \u0000 for a private-use marker
+	# and the rows are judged as bytes with the marker turned back into NUL.
+	var raw := FileAccess.get_file_as_string(MATRIX).replace("\\u0000", "\\ue000")
+	if not t.check("peer-matrix.json parses", j.parse(raw) == OK and j.data is Dictionary):
 		return
 	var m: Dictionary = j.data
 	_lan_rows(t, m.get("lanAddresses"))
 	_extra(t)
 	_mdns_rows(t, m.get("mdnsAnswers"))
+
+
+## The row's address as bytes, each marker character (U+E000) as a NUL byte.
+func _with_nul(text: String) -> PackedByteArray:
+	var out := PackedByteArray()
+	var b := text.to_utf8_buffer()
+	var i := 0
+	while i < b.size():
+		if i + 2 < b.size() and b[i] == 0xee and b[i + 1] == 0x80 and b[i + 2] == 0x80:
+			out.append(0)
+			i += 3
+		else:
+			out.append(b[i])
+			i += 1
+	return out
 
 
 func _lan_rows(t: PKeyTestContext, section: Variant) -> void:
@@ -33,7 +51,7 @@ func _lan_rows(t: PKeyTestContext, section: Variant) -> void:
 	var good := 0
 	for row in rows:
 		var local: Variant = row.get("local")
-		var v := PKeyLanAddress.verdict(row["remote"], local, row["allowLoopback"])
+		var v := PKeyLanAddress.verdict_bytes(_with_nul(row["remote"]), local, row["allowLoopback"])
 		var group: Variant = PKeyLanAddress.group_key(v["key"])
 		var ok: bool = v["dial"] == row["dial"] and v["key"] == row["key"] and group == row.get("group")
 		if row["dial"]:

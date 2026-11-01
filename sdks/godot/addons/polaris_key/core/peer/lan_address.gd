@@ -61,6 +61,15 @@ static func verdict(remote: String, local: Variant, allow_loopback: bool) -> Dic
 	return accept if _same_slash64(g, local) else refuse
 
 
+## `verdict` for address text that arrives as bytes. A NUL byte is never part of an address and is
+## refused here: a GDScript String cannot carry one on every engine (4.4 drops it, so the text would
+## be judged without it), which is why a caller that holds bytes must judge them through this entry.
+static func verdict_bytes(remote: PackedByteArray, local: Variant, allow_loopback: bool) -> Dictionary:
+	if remote.has(0):
+		return {"dial": false, "key": null}
+	return verdict(remote.get_string_from_utf8(), local, allow_loopback)
+
+
 ## The key of the per-group count for a verdict `key`: `fe80::/10%zone` for a link-local address
 ## (`fe80::/10` when the key has no zone), `a.b.c.0/24` for IPv4, the /64 (`2001:db8:1:2::/64`) for
 ## any other IPv6 address; null for no key. One neighbour cannot rotate out of its link, its /24 or
