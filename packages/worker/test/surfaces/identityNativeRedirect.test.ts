@@ -16,6 +16,15 @@ import {
 } from "../../src/core/services.js";
 import type { Env } from "../../src/platform/env.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
+import { getOrCreateAccountByEmail } from "../../src/services/identity/portal/repo.js";
+import {
+  PORTAL_COOKIE,
+  PORTAL_CSRF_HEADER,
+} from "../../src/services/identity/portal/session.js";
+import { issuePortalSessionRow } from "../portalSessionRow.js";
+import { handlePortalApi as portalApi } from "../../src/services/identity/portal/api.js";
+import { SETTINGS } from "../../src/mount.js";
+import { portalHooksFor } from "../portalHarness.js";
 import { validateRedirectUri } from "../../src/services/identity/passthrough/redirectUri.js";
 
 const APP = "https://app.example";
@@ -135,6 +144,7 @@ async function setting(key: string, value: unknown) {
 beforeEach(async () => {
   db = makeTestDb();
   env = makeEnv(new KvMock(), [SLUG]);
+  env.PORTAL_SESSION_SECRET = "test-portal-session-secret";
   await seedProduct(db, SLUG);
   await db.run(
     "UPDATE products SET web_origins_json = ? WHERE slug = ?",
@@ -357,5 +367,249 @@ describe("authorize with a request_uri (§12.4, §12.12)", () => {
       expect(res.status).toBe(400);
       expect(res.headers.get("location")).toBeNull();
     }
+  });
+});
+
+// ── I-15.5 and I-15.6: the code, Continue and Cancel, the view, discovery and the return page ──
+
+const VERIFIER = "v".repeat(48);
+const OTHER_DEVICE = "I15DEVICEB0000000000000000000002";
+
+async function begin(uri: string) {
+  const res = await authorizeWith({ client_id: SLUG, request_uri: uri });
+  expect(res.status).toBe(303);
+  const handle = new URL(res.headers.get("location")!).searchParams.get(
+    "request",
+  )!;
+  const binder = res.headers.get("set-cookie")!.split(";")[0]!;
+  return { handle, binder };
+}
+
+async function signedIn() {
+  const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
+  const { token, session } = await issuePortalSessionRow(
+    env,
+    db,
+    {
+      accountId: account.id,
+      email: account.primary_email,
+      name: account.display_name,
+    },
+    NOW,
+  );
+  return { cookie: `${PORTAL_COOKIE}=${token}`, csrf: session.csrf };
+}
+
+function card(
+  path: string,
+  s: { cookie: string; csrf: string } | null,
+  binder: string,
+  method = "POST",
+  body: unknown = {},
+): Promise<Response> {
+  return portalApi(
+    new Request(`${BASE}${path}`, {
+      method,
+      headers: {
+        cookie: s ? `${s.cookie}; ${binder}` : binder,
+        ...(s ? { [PORTAL_CSRF_HEADER]: s.csrf } : {}),
+        ...(method === "POST" ? { "content-type": "application/json" } : {}),
+      },
+      ...(method === "POST" ? { body: JSON.stringify(body) } : {}),
+    }),
+    env,
+    db,
+    path,
+    NOW,
+    portalHooksFor(env, db),
+    SETTINGS,
+  );
+}
+
+const proceed = (
+  h: string,
+  s: Awaited<ReturnType<typeof signedIn>>,
+  b: string,
+) => card(`/api/signin/requests/${h}/continue`, s, b);
+
+function redeem(code: string, device: string, redirectUri = LOOP) {
+  return route("POST", `/${SLUG}/identity/token`, {
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      "x-pkey-device": device,
+    },
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: SLUG,
+      code,
+      code_verifier: VERIFIER,
+      redirect_uri: redirectUri,
+    }).toString(),
+  });
+}
+
+describe("Continue, Cancel and token for a pushed request", () => {
+  it("a loopback code carries request=, and only the pushing device redeems it", async () => {
+    const { handle, binder } = await begin(await pushed());
+    const s = await signedIn();
+    const res = await proceed(handle, s, binder);
+    expect(res.status).toBe(200);
+    const to = new URL(((await res.json()) as { redirect: string }).redirect);
+    expect(to.origin + to.pathname).toBe(LOOP);
+    expect(to.searchParams.get("request")).toBe(handle);
+    expect(to.searchParams.get("state")).toBe(STATE);
+    const code = to.searchParams.get("code")!;
+    const wrong = await redeem(code, OTHER_DEVICE);
+    expect(wrong.status).toBe(400);
+    expect(await wrong.json()).toMatchObject({ error: "invalid_grant" });
+    // The wrong device spent it.
+    expect((await redeem(code, DEVICE)).status).toBe(400);
+  });
+
+  it("the pushing device signs in, and the redirect uri is compared exactly", async () => {
+    const { handle, binder } = await begin(await pushed());
+    const s = await signedIn();
+    const out = (await (await proceed(handle, s, binder)).json()) as {
+      redirect: string;
+    };
+    const code = new URL(out.redirect).searchParams.get("code")!;
+    const other = await redeem(
+      code,
+      DEVICE,
+      "http://127.0.0.1:49153/pkey/callback",
+    );
+    expect(other.status).toBe(400);
+    const again = await begin(await pushed());
+    const out2 = (await (
+      await proceed(again.handle, s, again.binder)
+    ).json()) as {
+      redirect: string;
+    };
+    const ok = await redeem(
+      new URL(out2.redirect).searchParams.get("code")!,
+      DEVICE,
+    );
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toMatchObject({ token_type: "Bearer" });
+  });
+
+  it("one pushed request yields at most one code across reopened handles", async () => {
+    const uri = await pushed();
+    const a = await begin(uri);
+    const b = await begin(uri);
+    const s = await signedIn();
+    expect((await proceed(a.handle, s, a.binder)).status).toBe(200);
+    expect((await proceed(b.handle, s, b.binder)).status).toBe(404);
+    // Taken: the URI is gone.
+    const res = await authorizeWith({ client_id: SLUG, request_uri: uri });
+    expect(res.status).toBe(400);
+  });
+
+  it("Cancel on loopback carries request= and takes the pushed request", async () => {
+    const uri = await pushed();
+    const { handle, binder } = await begin(uri);
+    const s = await signedIn();
+    const res = await card(`/api/signin/requests/${handle}/cancel`, s, binder);
+    const to = new URL(((await res.json()) as { redirect: string }).redirect);
+    expect(to.searchParams.get("error")).toBe("access_denied");
+    expect(to.searchParams.get("request")).toBe(handle);
+    expect(
+      (await authorizeWith({ client_id: SLUG, request_uri: uri })).status,
+    ).toBe(400);
+  });
+
+  it("a scheme redirect has no request= and the view names the class and return uri", async () => {
+    const { handle, binder } = await begin(
+      await pushed({ redirect_uri: SCHEME, return_uri: SCHEME }),
+    );
+    const view = await card(
+      `/api/signin/requests/${handle}`,
+      null,
+      binder,
+      "GET",
+    );
+    expect(view.status).toBe(200);
+    const body = (await view.json()) as Record<string, unknown>;
+    expect(body.redirect).toBe("scheme");
+    expect(body.returnUri).toBe(SCHEME);
+    expect(body.deviceLabel).toBe("Ada's Mac");
+    expect((body.client as { kind: string }).kind).toBe("native");
+    const s = await signedIn();
+    const res = await proceed(handle, s, binder);
+    const to = new URL(((await res.json()) as { redirect: string }).redirect);
+    expect(to.protocol).toBe("com.tidewater.studio:");
+    expect(to.searchParams.has("request")).toBe(false);
+  });
+
+  it("a web request's view has neither member", async () => {
+    const res = await authorizeWith({
+      response_type: "code",
+      client_id: SLUG,
+      redirect_uri: `${APP}/auth/callback`,
+      state: STATE,
+      code_challenge: CHALLENGE,
+      code_challenge_method: "S256",
+    });
+    const handle = new URL(res.headers.get("location")!).searchParams.get(
+      "request",
+    )!;
+    const binder = res.headers.get("set-cookie")!.split(";")[0]!;
+    const body = (await (
+      await card(`/api/signin/requests/${handle}`, null, binder, "GET")
+    ).json()) as Record<string, unknown>;
+    expect("redirect" in body).toBe(false);
+    expect("returnUri" in body).toBe(false);
+  });
+});
+
+describe("discovery, the return page and association files", () => {
+  it("discovery names request, signinReturn and the registered classes", async () => {
+    const res = await route("GET", `/${SLUG}/.well-known/polaris.json`);
+    const id = (
+      (await res.json()) as { services: { identity: Record<string, any> } }
+    ).services.identity;
+    expect(id.endpoints.request).toBe(`${BASE}/${SLUG}/identity/request`);
+    expect(id.endpoints.signinReturn).toBe(`${BASE}/signin/return`);
+    expect(id.nativeRedirect).toEqual({
+      loopback: true,
+      schemes: [SCHEME],
+      claimedHttps: [`${APP}/open`],
+    });
+  });
+
+  it("serves the card shell for a well-formed handle only, GET and HEAD", async () => {
+    const handle = `rq_${"A".repeat(22)}`;
+    const ok = await route("GET", `/signin/return?request=${handle}`);
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get("cache-control")).toBe("no-store");
+    expect(ok.headers.get("referrer-policy")).toBe("no-referrer");
+    expect(
+      (await route("GET", `/signin/return?request=${handle}&cancelled=1`))
+        .status,
+    ).toBe(200);
+    expect(
+      (await route("HEAD", `/signin/return?request=${handle}`)).status,
+    ).toBe(200);
+    expect((await route("GET", `/signin/return`)).status).toBe(404);
+    expect((await route("GET", `/signin/return?request=rq_x`)).status).toBe(
+      404,
+    );
+    expect(
+      (await route("GET", `/signin/return?request=${handle}&cancelled=2`))
+        .status,
+    ).toBe(404);
+    expect(
+      (await route("POST", `/signin/return?request=${handle}`)).status,
+    ).toBe(405);
+  });
+
+  it("never serves association files on the API host", async () => {
+    for (const p of [
+      "/.well-known/apple-app-site-association",
+      "/.well-known/assetlinks.json",
+      `/${SLUG}/.well-known/apple-app-site-association`,
+      `/${SLUG}/.well-known/assetlinks.json`,
+    ])
+      expect((await route("GET", p)).status, p).toBe(404);
   });
 });

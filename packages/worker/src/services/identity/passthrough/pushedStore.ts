@@ -109,3 +109,30 @@ export async function takePushed(
 ): Promise<PushedRecord | null> {
   return parse(await consumeArtefact(env, artefactRef("signin-par", id)), now);
 }
+
+/**
+ * Continue, Cancel and the key return call this right after taking the request handle (§12.12 rule
+ * 3): for a request that came through a pushed `request_uri` it takes the pushed record in one
+ * atomic consume, so a URI reopened into several handles yields at most one code or refusal. False
+ * means another press won (answer `404`); true for every other request.
+ */
+export async function takeNativeOnce(
+  env: Env,
+  record: { native?: { par: string } },
+  now: number,
+): Promise<boolean> {
+  if (!record.native) return true;
+  return (await takePushed(env, record.native.par, now)) !== null;
+}
+
+/** A loopback redirect carries the request handle so the app can hand it to `/signin/return`. */
+export function withLoopbackRequest(
+  redirect: string,
+  record: { native?: { redirect: string } },
+  handle: string,
+): string {
+  if (record.native?.redirect !== "loopback") return redirect;
+  const url = new URL(redirect);
+  url.searchParams.set("request", handle);
+  return url.toString();
+}

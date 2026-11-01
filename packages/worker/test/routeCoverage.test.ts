@@ -98,6 +98,8 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
 const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   // The platform device-code entry pages: a code typed here finds its product's page.
   signInEntry: [["/signin", ["get"]]],
+  // I-15 (§12.12): the hosted desktop ReturnStep on the customer host.
+  signInReturn: [["/signin/return", ["get"]]],
   // F-37.1b: the key host's hops into Polaris Locker.
   lockerLink: [
     ["/approve", ["get"]],

@@ -16,7 +16,9 @@
 import type {
   ClientKind,
   NativeRedirectClass,
+  NativeRedirectDiscovery,
 } from "@polaris-key/protocol/identity";
+import { NATIVE_REDIRECT_PATH } from "@polaris-key/protocol/identity";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type { SettingsRegistry } from "../../../core/settings/registry.js";
@@ -181,5 +183,22 @@ export async function redirectRegistrationOf(
     loopback,
     schemes: await strings(NATIVE_SCHEMES_SETTING),
     claimedPaths: await strings(NATIVE_CLAIMED_PATHS_SETTING),
+  };
+}
+
+/** The `nativeRedirect` member of the identity discovery fragment (WIRE-CONTRACT-V5 §12.6). */
+export async function nativeRedirectDiscovery(
+  ctx: { env: Env; db: Db; registry?: SettingsRegistry },
+  product: { slug: string; webOrigins: readonly string[] },
+): Promise<NativeRedirectDiscovery> {
+  const reg = await redirectRegistrationOf(ctx, product);
+  return {
+    loopback: reg.loopback !== false,
+    schemes: (reg.schemes ?? []).map((s) => `${s}:${NATIVE_REDIRECT_PATH}`),
+    claimedHttps: (reg.claimedPaths ?? []).flatMap((p) =>
+      reg.webOrigins
+        .filter((o) => o.startsWith("https://"))
+        .map((o) => `${o}${p}`),
+    ),
   };
 }

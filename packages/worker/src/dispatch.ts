@@ -54,7 +54,13 @@ import {
 } from "./core/accounts/accountCookies.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
 import { handleDeployHook } from "./platformDeploy.js";
-import { ErrorCode, notFound, wireError } from "./core/errors.js";
+import {
+  ErrorCode,
+  methodNotAllowed,
+  notFound,
+  wireError,
+} from "./core/errors.js";
+import { REQUEST_HANDLE_PATTERN } from "@polaris-key/protocol/identity";
 import {
   handleSignInBind,
   handleSignInEntry,
@@ -332,6 +338,28 @@ async function routeRequest(
           settings: SETTINGS,
         });
       return handleSignInEntry(req);
+    // I-15 (§12.12 rule 7): the hosted desktop ReturnStep after a loopback sign-in. The card shell,
+    // for a well-formed handle; the SPA draws the variant from the state it saved before it
+    // navigated, and the page reads nothing from the store (`no-referrer`, `no-store`).
+    case "signInReturn": {
+      if (req.method !== "GET" && req.method !== "HEAD")
+        return methodNotAllowed();
+      const handle = url.searchParams.get("request") ?? "";
+      const cancelled = url.searchParams.get("cancelled");
+      if (
+        !new RegExp(REQUEST_HANDLE_PATTERN).test(handle) ||
+        (cancelled !== null && cancelled !== "1")
+      )
+        return notFound();
+      const shell = await handlePortal(req, env, db, "/", {
+        hooksFor,
+        settings: SETTINGS,
+      });
+      const headers = new Headers(shell.headers);
+      headers.set("cache-control", "no-store");
+      headers.set("referrer-policy", "no-referrer");
+      return new Response(shell.body, { status: shell.status, headers });
+    }
     case "lockerLink":
       return lockerLink(req, env, route.to, url);
     case "deviceEntry":

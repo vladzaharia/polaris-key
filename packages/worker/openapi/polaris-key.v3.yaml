@@ -16454,6 +16454,41 @@ paths:
             Location: { schema: { type: string } }
         "404":
           description: A `request` handle was given.
+  /signin/return:
+    get:
+      operationId: getSignInReturn
+      tags: [portal]
+      summary: The hosted desktop ReturnStep (I-15)
+      description: >
+        WIRE-CONTRACT-V5 §12.12 rule 7. A loopback listener answers `303` here after it received
+        the code. Served on the customer host (a key-host request is redirected there when one is
+        configured). Answers the card shell for a well-formed `request` handle and `404` otherwise;
+        the card draws the desktop variant from the state it saved in the browser's
+        `sessionStorage` before it navigated, and the generic variant without it. Reads no store.
+        `cache-control: no-store`, `referrer-policy: no-referrer`. `HEAD` is allowed; any other
+        method is `405`.
+      parameters:
+        - {
+            name: request,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" },
+          }
+        - {
+            name: cancelled,
+            in: query,
+            required: false,
+            description: "`1` after an app-side Cancel.",
+            schema: { type: string, enum: ["1"] },
+          }
+      responses:
+        "200":
+          description: The card shell.
+          content:
+            text/html: { schema: { type: string } }
+        "404":
+          description: A missing or malformed handle, or a `cancelled` other than `1`.
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /approve:
     get:
       operationId: getLockerApproveHop

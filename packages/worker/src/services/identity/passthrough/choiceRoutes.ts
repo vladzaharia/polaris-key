@@ -476,7 +476,8 @@ export async function handleChoice(
       summary: `Granted ${granted.join(", ") || "no claims"} to the app (scope ${taken.consent.scopeHash})`,
     });
   }
-  if (taken.fresh) await markFresh(env, product.slug, deviceId, taken.subject);
+  if (taken.fresh && taken.origin !== "exchange")
+    await markFresh(env, product.slug, deviceId, taken.subject);
   // R1-07: a device-code grant binds a device the person only approved from elsewhere; they are told.
   if (taken.via === "device")
     await noticeDeviceCodeBind(bcx, who, deviceId, label ?? null);
