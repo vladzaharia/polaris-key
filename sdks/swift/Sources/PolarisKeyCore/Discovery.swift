@@ -177,13 +177,19 @@ public struct IdentityDiscovery: Sendable, Equatable {
     /// sign-in. The routes are `nearbyStart`, `nearbyPoll` and `nearbyApprove` in `endpoints`.
     public let nearby: Bool
 
+    /// The native redirect classes the product accepts through the pushed `request` (§12.6,
+    /// §12.12), or nil while `request` is not served.
+    public let nativeRedirect: NativeRedirectDiscovery?
+
     public init(
         issuer: String? = nil, account: Bool = false, keyEntryLimit: Int? = nil,
         endpoints: [String: String] = [:], exchange: IdentityExchangeDiscovery? = nil,
         restore: Bool = false,
         deviceChoice: Bool = false,
-        nearby: Bool = false
+        nearby: Bool = false,
+        nativeRedirect: NativeRedirectDiscovery? = nil
     ) {
+        self.nativeRedirect = nativeRedirect
         self.deviceChoice = deviceChoice
         self.nearby = nearby
         self.issuer = issuer
@@ -203,13 +209,18 @@ public struct IdentityDiscovery: Sendable, Equatable {
             exchange: IdentityExchangeDiscovery(fragment.extras["exchange"]),
             restore: fragment.extras["restore"]?.boolValue == true,
             deviceChoice: fragment.extras["deviceChoice"]?.boolValue == true,
-            nearby: fragment.extras["nearby"]?.boolValue == true)
+            nearby: fragment.extras["nearby"]?.boolValue == true,
+            nativeRedirect: NativeRedirectDiscovery(fragment.extras["nativeRedirect"]))
     }
 
     /// The authorize endpoint a redirect sign-in sends the browser to.
     public var authorize: String? { endpoints["authorize"] }
     /// `POST`: the token endpoint a redirect sign-in redeems its code at.
     public var token: String? { endpoints["token"] }
+    /// `POST`: the pushed authorization request of a native redirect sign-in (§12.12).
+    public var request: String? { endpoints["request"] }
+    /// `GET`: the customer-host page a loopback listener answers `303` to (§12.12).
+    public var signinReturn: String? { endpoints["signinReturn"] }
 
     /// `GET`: the pairwise subject of the account signed in on the device.
     public var subject: String? { endpoints["subject"] }
@@ -243,6 +254,30 @@ public struct IdentityDiscovery: Sendable, Equatable {
     public var nearbyStart: String? { endpoints["nearbyStart"] }
     public var nearbyPoll: String? { endpoints["nearbyPoll"] }
     public var nearbyApprove: String? { endpoints["nearbyApprove"] }
+}
+
+/// `identity.nativeRedirect` of the discovery document (§12.6, §12.12): the redirect classes a
+/// native sign-in may use. `schemes` and `claimedHttps` hold the full registered redirect URIs.
+public struct NativeRedirectDiscovery: Sendable, Equatable {
+    public let loopback: Bool
+    public let schemes: [String]
+    public let claimedHttps: [String]
+
+    public init(loopback: Bool, schemes: [String] = [], claimedHttps: [String] = []) {
+        self.loopback = loopback
+        self.schemes = schemes
+        self.claimedHttps = claimedHttps
+    }
+
+    init?(_ value: JSONValue?) {
+        guard let object = value?.objectValue else { return nil }
+        func strings(_ member: String) -> [String] {
+            (object[member]?.arrayValue ?? []).compactMap(\.stringValue)
+        }
+        self.init(
+            loopback: object["loopback"]?.boolValue == true, schemes: strings("schemes"),
+            claimedHttps: strings("claimedHttps"))
+    }
 }
 
 /// `identity.exchange` of the discovery document (§12.11): which providers the product accepts.

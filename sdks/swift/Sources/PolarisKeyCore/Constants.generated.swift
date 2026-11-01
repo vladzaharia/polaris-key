@@ -2082,7 +2082,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.attach": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.account": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.redirect.web": CapabilityRow(status: "implemented", service: "identity", na: []),
-    "identity.redirect.native": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.redirect.native": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.devicecode.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
@@ -2161,4 +2161,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "7a65626dd66e7ca9b73aba21acda3eee32d199cf8e8f82feb962783ad77794d3"
+public let CAPABILITY_DIGEST = "0728807b38e0f53bb25bd37f35d312fcc8d718eb8191e17a091416a7aa66f2da"

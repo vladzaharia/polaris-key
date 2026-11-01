@@ -3364,8 +3364,7 @@
       ],
       "sdks": {
         "node": {
-          "planned": "I-15b",
-          "reason": "native redirect sign-in lands in the Node SDK with I-15b.2"
+          "spelling": "NativeRedirectSession.handleRedirect"
         },
         "react": {
           "planned": "I-15b",
@@ -3373,8 +3372,7 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-15b",
-          "reason": "native redirect sign-in lands in the Swift SDK with I-15b.4"
+          "spelling": "SignInNamespace.handleRedirect"
         },
         "kotlin": {
           "planned": "I-15b",
@@ -3517,43 +3515,6 @@
         },
         "godot": {
           "spelling": "PKeySignInSession.complete"
-        }
-      },
-      "layer": "client"
-    },
-    {
-      "id": "identity.signIn.handleRedirect",
-      "kind": "method",
-      "feature": "identity.redirect.native",
-      "args": [
-        {
-          "name": "url",
-          "type": "string"
-        }
-      ],
-      "sdks": {
-        "node": {
-          "spelling": "NativeRedirectSession.handleRedirect"
-        },
-        "react": {
-          "planned": "I-15b",
-          "reason": "the desktop adapter forwards the native redirect to the Node host (plans/I-15.md section 5)"
-        },
-        "python": {
-          "planned": "I-15b",
-          "reason": "native redirect sign-in (plans/I-15.md section 5)"
-        },
-        "swift": {
-          "planned": "I-15b",
-          "reason": "native redirect sign-in (plans/I-15.md section 5)"
-        },
-        "kotlin": {
-          "planned": "I-15b",
-          "reason": "native redirect sign-in (plans/I-15.md section 5)"
-        },
-        "godot": {
-          "planned": "I-15b",
-          "reason": "native redirect sign-in (plans/I-15.md section 5)"
         }
       },
       "layer": "client"

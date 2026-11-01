@@ -14,6 +14,7 @@ import Foundation
 import PolarisKeyCore
 
 @testable import PolarisKey
+@testable import PolarisKeyIdentity
 @testable import PolarisKeyPacks
 #if canImport(CryptoKit)
     import CryptoKit
@@ -405,6 +406,16 @@ actor ReplayServer {
 
     private var discoveryLoaded = false
 
+    /// The form a step's recorded push (`POST …/identity/request`) carries, or empty.
+    static func pushedForm(_ step: Transcript.Step) -> [String: String] {
+        for item in step.exchanges.items
+        where item.request.method == "POST" && item.request.path.hasSuffix("/identity/request") {
+            guard case .object(let members)? = item.request.body?.json else { continue }
+            return members.compactMapValues(\.stringValue)
+        }
+        return [:]
+    }
+
     /// The Worker's standard discovery document, for a transcript that loads discovery nowhere
     /// itself (P3-03's update transcripts): served once, to a request for the discovery path
     /// that the current step does not record. Nil for every other request.
@@ -437,9 +448,13 @@ actor ReplayServer {
         ]
         // A transcript that talks to the grant routes finds them published (§12.6), as the
         // Worker publishes the four together; without them the SDK runs card mode.
-        let choices = transcript.steps.contains {
+        let native = transcript.features.contains(Feature.identityRedirectNative)
+        let choiceRoutes = transcript.steps.contains {
             $0.exchanges.items.contains { $0.request.path.contains("/identity/choice/") }
         }
+        let nativeChoice =
+            native && transcript.steps.contains { Self.pushedForm($0)["license_choice"] == "app" }
+        let choices = choiceRoutes || nativeChoice
         if choices {
             for name in ["Licenses", "Devices", "Complete", "Cancel"] {
                 redirectEndpoints["choice\(name)"] = .string("\(base)/identity/choice/\(name.lowercased())")
@@ -509,15 +524,29 @@ actor ReplayServer {
                 ]))
         }
         if usesRedirect {
+            var fields: [String: JSONValue] = [
+                "enabled": .bool(true), "configured": .bool(true),
+                "issuer": .string(issuer),
+            ]
+            if native {
+                // I-15 (§12.6): the pushed-request endpoint, the customer-host return page and the
+                // classes the product accepts (its registered schemes are the transcript's).
+                redirectEndpoints["request"] = .string("\(base)/identity/request")
+                redirectEndpoints["signinReturn"] = .string("\(transcript.baseUrl)/signin/return")
+                let schemes = Set(
+                    transcript.steps.compactMap { $0.args["redirectUri"]?.stringValue }
+                        .filter { NativeRedirect.classify($0) == .scheme }
+                ).sorted()
+                fields["nativeRedirect"] = .object([
+                    "loopback": .bool(true), "schemes": .array(schemes.map(JSONValue.string)),
+                    "claimedHttps": .array([]),
+                ])
+            }
+            fields["endpoints"] = .object(redirectEndpoints)
             return try? JSONEncoder().encode(
                 JSONValue.object([
                     "product": .string(transcript.product),
-                    "services": .object([
-                        "identity": .object([
-                            "enabled": .bool(true), "configured": .bool(true),
-                            "issuer": .string(issuer), "endpoints": .object(redirectEndpoints),
-                        ])
-                    ]),
+                    "services": .object(["identity": .object(fields)]),
                 ]))
         }
         // The exchange transcripts (identity.exchange) ride a product whose discovery names the

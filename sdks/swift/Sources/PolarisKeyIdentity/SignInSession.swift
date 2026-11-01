@@ -48,12 +48,15 @@ public struct SignInOptions: Sendable {
     /// only when discovery publishes the four `choice*` routes; else the card chooses); a due
     /// choice then settles the session as `.chooseLicense` and the app runs `identity.choice`.
     public var licenseChoice: LicenseChoiceMode?
+    /// Redirect channel with no `redirectUri`: how the native redirect sign-in (loopback, a
+    /// registered scheme or a claimed HTTPS link, §12.12) starts. Ignored when `redirectUri` is set.
+    public var native: NativeRedirectOptions
 
     public init(
         channel: SignInChannel = .deviceCode, deviceName: String? = nil,
         browser: (any SignInBrowser)? = nil, redirectUri: String? = nil, scope: [String]? = nil,
         loginHint: String? = nil, nameHint: String? = nil, purpose: SignInPurpose? = nil,
-        licenseChoice: LicenseChoiceMode? = nil
+        licenseChoice: LicenseChoiceMode? = nil, native: NativeRedirectOptions = NativeRedirectOptions()
     ) {
         self.channel = channel
         self.deviceName = deviceName
@@ -64,6 +67,7 @@ public struct SignInOptions: Sendable {
         self.nameHint = nameHint
         self.purpose = purpose
         self.licenseChoice = licenseChoice
+        self.native = native
     }
 }
 
@@ -121,6 +125,10 @@ public struct SignInNamespace: Sendable {
     /// `sign-in-unavailable`, `invalid-argument`, `network-error`, ...). With `options.browser`
     /// the page is shown before this returns.
     public func start(_ options: SignInOptions = SignInOptions()) async throws -> SignInSession {
+        if options.channel == .redirect && options.redirectUri == nil {
+            // No host-supplied https URI: the native redirect (loopback, scheme or claimed).
+            return try await client.startNative(options)
+        }
         if options.channel == .redirect {
             let pending = try await client.startRedirect(options)
             let session = SignInSession(
@@ -133,6 +141,23 @@ public struct SignInNamespace: Sendable {
         let session = SignInSession(client: client, prompt: prompt, browser: options.browser)
         if options.browser != nil { try await session.show() }
         return session
+    }
+}
+
+extension SignInNamespace {
+    /// A scheme or claimed-HTTPS delivery: the URL the OS handed the app (`onOpenURL`, a universal
+    /// link). Checks the redirect URI, `state` and `iss` before anything is sent, then redeems the
+    /// code from this device and settles the native sign-in that is waiting for it. A delivery
+    /// that is not that sign-in's (another URL or a wrong `state`) throws `sign-in-failed` and
+    /// leaves the sign-in waiting. Throws `sign-in-failed` when none is waiting.
+    @discardableResult
+    public func handleRedirect(_ url: String) async throws -> SignInOutcome {
+        guard let session = client.nativeActive.current else {
+            throw SignInError(
+                code: ErrorCode.signInFailed,
+                message: "no native sign-in is waiting for a redirect.")
+        }
+        return try await session.handleRedirect(url)
     }
 }
 
@@ -156,6 +181,8 @@ public final class SignInSession: Sendable {
     private let prompt: SignInPrompt
     private let state: LockedValue<State>
     private let redirectDeviceName: String?
+    /// The native redirect flow (loopback, scheme or claimed), nil on the other channels.
+    let native: NativeFlow?
 
     /// The channel this session runs on.
     public let channel: SignInChannel
@@ -165,7 +192,22 @@ public final class SignInSession: Sendable {
         self.prompt = prompt
         self.channel = .deviceCode
         self.redirectDeviceName = nil
+        self.native = nil
         self.authorizeUrl = nil
+        self.state = LockedValue(State(browser: browser))
+    }
+
+    /// A native redirect session: the code fields are empty, `authorizeUrl` is the page to open,
+    /// and the redirect arrives on the flow's listener or through `handleRedirect`.
+    init(client: IdentityClient, native: NativeFlow, deviceName: String?, browser: (any SignInBrowser)?) {
+        self.client = client
+        self.prompt = SignInPrompt(
+            deviceCode: "", userCode: "", verificationUri: "", verificationUriComplete: "",
+            expiresIn: 0, interval: 0, expiresAt: 0, deviceName: deviceName)
+        self.channel = .redirect
+        self.redirectDeviceName = deviceName
+        self.native = native
+        self.authorizeUrl = native.authorizeUrl
         self.state = LockedValue(State(browser: browser))
     }
 
@@ -180,6 +222,7 @@ public final class SignInSession: Sendable {
             expiresIn: 0, interval: 0, expiresAt: 0, deviceName: deviceName)
         self.channel = .redirect
         self.redirectDeviceName = deviceName
+        self.native = nil
         self.state = LockedValue(State(browser: browser, pending: redirect))
         self.authorizeUrl = redirect.authorizeUrl
     }
@@ -216,6 +259,11 @@ public final class SignInSession: Sendable {
     /// False when no browser could open it.
     @discardableResult
     public func reopen() async -> Bool {
+        if let flow = native {
+            // The SAME authorize URL while the pushed request lives (no new push, state or verifier).
+            let live = !flow.isClosed && state.current.settled == nil && !state.current.cancelled
+            guard live, await client.core.now() < flow.expiresAt else { return false }
+        }
         do {
             try await show()
             return true
@@ -226,13 +274,15 @@ public final class SignInSession: Sendable {
 
     /// Stop the sign-in: the paced poll ends, `wait()` returns `.cancelled`, nothing binds.
     public func cancel() {
-        let (task, browser) = state.with { st -> (Task<SignInResult, Error>?, (any SignInBrowser)?) in
-            guard st.settled == nil, !st.cancelled else { return (nil, nil) }
+        let (task, browser, flipped) = state.with {
+            st -> (Task<SignInResult, Error>?, (any SignInBrowser)?, Bool) in
+            guard st.settled == nil, !st.cancelled else { return (nil, nil, false) }
             st.cancelled = true
             st.pending = nil
-            return (st.task, st.browser)
+            return (st.task, st.browser, true)
         }
         task?.cancel()
+        if flipped { native?.cancel() }
         Self.close(browser)
     }
 
@@ -240,6 +290,13 @@ public final class SignInSession: Sendable {
     /// `CancellationError` when the calling task is cancelled (the session keeps going; call
     /// `cancel()` to end it). A settled session answers the same outcome again.
     public func wait() async throws -> SignInOutcome {
+        if let flow = native {
+            // Native redirect: block until the redirect arrives (or the request lapses, or `cancel()`),
+            // then redeem it. A cancelled calling task throws `CancellationError`; the sign-in keeps going.
+            if let settled = state.current.settled { return try settled.get() }
+            _ = try await flow.arrivals.next()
+            return try await settleNative(flow)
+        }
         if channel == .redirect {
             let begun = state.current
             if let settled = begun.settled { return try settled.get() }
@@ -305,6 +362,7 @@ public final class SignInSession: Sendable {
                 code: ErrorCode.invalidArgument,
                 message: "complete(callbackUrl:) belongs to a redirect sign-in; use wait().")
         }
+        if native != nil { return try await handleRedirect(callbackUrl) }
         let pending = state.with { st -> RedirectPending? in
             let taken = st.pending
             st.pending = nil
@@ -338,6 +396,81 @@ public final class SignInSession: Sendable {
         }
     }
 
+    // ── Native redirect ──────────────────────────────────────────────────────────────────
+
+    /// A scheme or claimed delivery (`signIn.handleRedirect`): check it, then redeem the code.
+    func handleRedirect(_ url: String) async throws -> SignInOutcome {
+        guard let flow = native, let pending = flow.pendingView, flow.arrivals.current == nil else {
+            throw SignInError(
+                code: ErrorCode.signInFailed,
+                message: "this sign-in is already finished or was cancelled; start a new one.")
+        }
+        let result = NativeRedirect.parseCallback(pending, url)
+        if case .failed(let reason, _) = result, reason.leavesSessionWaiting {
+            throw SignInError(
+                code: ErrorCode.signInFailed,
+                message: "the sign-in redirect was refused (\(reason.rawValue)).")
+        }
+        guard flow.arrivals.arrive(.callback(result)) else {
+            throw SignInError(
+                code: ErrorCode.signInFailed, message: "this sign-in already received its redirect.")
+        }
+        return try await settleNative(flow)
+    }
+
+    /// The system browser session ended with an error other than the person closing it: the
+    /// sign-in ends with `sign-in-failed`.
+    func receiveBrowserFailure() {
+        native?.arrivals.arrive(.callback(.failed(.browserFailed, error: nil)))
+    }
+
+    /// The callback URL the system browser session handed back. Only a delivery that is this
+    /// sign-in's counts; `wait()` redeems it.
+    func receiveFromBrowser(_ url: String) {
+        guard let flow = native, let pending = flow.pendingView else { return }
+        let result = NativeRedirect.parseCallback(pending, url)
+        if case .failed(let reason, _) = result, reason.leavesSessionWaiting { return }
+        flow.arrivals.arrive(.callback(result))
+    }
+
+    private func settleNative(_ flow: NativeFlow) async throws -> SignInOutcome {
+        let task = flow.redeem { [self] in await redeemNative(flow) }
+        return try await task.value.get()
+    }
+
+    /// Redeem what arrived, once: the code from this device, or the end of the sign-in.
+    private func redeemNative(_ flow: NativeFlow) async -> Result<SignInOutcome, any Error> {
+        let arrival = flow.arrivals.current ?? .cancelled
+        let pending = flow.takePending()
+        flow.shut()
+        func done(_ result: Result<SignInOutcome, SignInError>) -> Result<SignInOutcome, any Error> {
+            _ = try? settle(result)
+            return result.mapError { $0 }
+        }
+        func refused(_ message: String) -> Result<SignInOutcome, any Error> {
+            done(.failure(SignInError(code: ErrorCode.signInFailed, message: message)))
+        }
+        switch arrival {
+        case .expired: return done(.success(.expired))
+        case .cancelled: return done(.success(.cancelled))
+        case .callback(.cancelled): return done(.success(.cancelled))
+        case .callback(.failed(let reason, _)):
+            return refused("the sign-in redirect was refused (\(reason.rawValue)).")
+        case .callback(.code(let code, _)):
+            guard let pending else { return refused("this sign-in has no redirect to redeem.") }
+            do {
+                switch try await client.redeemNative(pending, code: code) {
+                case .ready(let ready): return done(.success(.signedIn(ready)))
+                case .choose(let grant): return done(.success(.chooseLicense(grant)))
+                }
+            } catch let error as SignInError {
+                return done(.failure(error))
+            } catch {
+                return .failure(error)
+            }
+        }
+    }
+
     // ── Internals ────────────────────────────────────────────────────────────────────────
 
     /// One poll, unpaced, for the transcript replayer: the session's own request.
@@ -346,6 +479,28 @@ public final class SignInSession: Sendable {
     }
 
     func show() async throws {
+        if let flow = native {
+            guard let url = URL(string: flow.authorizeUrl) else {
+                throw PolarisError(
+                    code: ErrorCode.badResponse, message: "the authorize URL is not a URL.")
+            }
+            var opener = state.current.browser
+            if opener == nil {
+                opener = await defaultNativeBrowser(
+                    for: flow,
+                    deliver: { [weak self] callback in self?.receiveFromBrowser(callback) },
+                    failed: { [weak self] in self?.receiveBrowserFailure() })
+            }
+            guard let opener else {
+                throw UnsupportedError(
+                    Unsupported(
+                        feature: Feature.identityRedirectNative, reason: UnsupportedReason.runtime,
+                        detail: "this platform has no system browser for the sign-in; show the link instead."))
+            }
+            state.with { $0.browser = opener }
+            try await opener.open(url)
+            return
+        }
         guard let url = URL(string: authorizeUrl ?? prompt.verificationUriComplete) else {
             throw PolarisError(
                 code: ErrorCode.badResponse, message: "the verification URL is not a URL.")

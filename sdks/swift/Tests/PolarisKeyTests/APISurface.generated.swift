@@ -37,6 +37,7 @@ func apiSurface() async {
     _ = IdentityClient.subject  // identity.subject
     _ = IdentityClient.signOut  // identity.signOut
     _ = SignInNamespace.start  // identity.signIn.start
+    _ = SignInNamespace.handleRedirect  // identity.signIn.handleRedirect
     _ = SignInSession.reopen  // identity.signIn.session.reopen
     _ = SignInSession.cancel  // identity.signIn.session.cancel
     _ = SignInSession.wait  // identity.signIn.session.wait

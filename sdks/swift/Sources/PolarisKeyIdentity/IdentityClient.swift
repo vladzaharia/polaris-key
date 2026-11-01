@@ -223,6 +223,10 @@ public final class IdentityClient: Sendable {
     /// `redirect-web-*` hold the token exchange, not the sync that follows it).
     let redirectAcquisitionSync = LockedValue<Bool>(true)
     let redirectEntropy = LockedValue<(state: String?, codeVerifier: String?)?>(nil)
+    /// The native redirect sign-in waiting for its redirect (`signIn.handleRedirect`): one at a time.
+    let nativeActive = LockedValue<SignInSession?>(nil)
+    /// Conformance replay only: binds the loopback listener without a socket.
+    let nativeListenerFactory = LockedValue<(@Sendable () async throws -> any NativeLoopbackListener)?>(nil)
     /// The facade's local wipe after a released sign-out (`installSignOut`): the credential goes
     /// and the `license` event follows.
     let signOutHook = LockedValue<(@Sendable () async throws -> Void)?>(nil)

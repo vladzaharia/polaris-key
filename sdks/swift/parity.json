@@ -187,9 +187,8 @@
       "note": "LK-SKIP.9: the opt-in, the via rule and the activated outcome, with the replayer."
     },
     "identity.redirect.native": {
-      "status": "planned",
-      "wp": "I-15b",
-      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
+      "status": "implemented",
+      "note": "I-15b.4: signIn.start(SignInOptions(channel: .redirect)) with no redirectUri (NativeRedirect.swift, NativeSignIn.swift, NativeBrowser.swift; the client-core redirect.ts helpers ported). macOS: an NWListener bound to 127.0.0.1 on an OS-assigned port before the request is pushed, the default browser (NSWorkspace), one 303 to the customer host's return page, then closed. iOS and visionOS: ASWebAuthenticationSession with the registered scheme (read from Info.plist, or SignInOptions.native) or a claimed HTTPS link (17.4 and later), not ephemeral; a scheme or claimed delivery from elsewhere goes to signIn.handleRedirect(url). The code is redeemed from the pushing device with the PKCE verifier; headless hosts (D-68), a product that serves no request endpoint and a sandbox that cannot bind throw redirect-unavailable when no scheme or claimed class applies. The redirect-native-* and locker-redirect-native transcripts replay in TranscriptTests; NativeRedirectTests maps each listener rule over a real socket. A simulator or device check is still owed for ASWebAuthenticationSession."
     },
     "identity.exchange": {
       "status": "implemented",

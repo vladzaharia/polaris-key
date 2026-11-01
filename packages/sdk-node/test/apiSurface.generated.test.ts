@@ -76,6 +76,8 @@ it("identity.signOut", () =>
   expect("signOut" in IdentityClient.prototype).toBe(true));
 it("identity.signIn.start", () =>
   expect("signIn" in IdentityClient.prototype).toBe(true));
+it("identity.signIn.handleRedirect", () =>
+  expect("handleRedirect" in NativeRedirectSession.prototype).toBe(true));
 it("identity.signIn.session.reopen", () =>
   expect("reopen" in DeviceCodeSession.prototype).toBe(true));
 it("identity.signIn.session.cancel", () =>
@@ -84,8 +86,6 @@ it("identity.signIn.session.wait", () =>
   expect("wait" in DeviceCodeSession.prototype).toBe(true));
 it("identity.signIn.session.complete", () =>
   expect("complete" in RedirectSession.prototype).toBe(true));
-it("identity.signIn.handleRedirect", () =>
-  expect("handleRedirect" in NativeRedirectSession.prototype).toBe(true));
 it("identity.choice", () =>
   expect("choice" in IdentityClient.prototype).toBe(true));
 it("identity.choice.licenses", () =>

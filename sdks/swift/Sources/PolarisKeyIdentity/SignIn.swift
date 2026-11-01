@@ -119,7 +119,7 @@ func defaultSignInBrowser() -> (any SignInBrowser)? {
             anchor = nil
         }
 
-        private static func currentAnchor() -> ASPresentationAnchor {
+        static func currentAnchor() -> ASPresentationAnchor {
             #if os(macOS)
                 return NSApplication.shared.keyWindow ?? NSApplication.shared.windows.first
                     ?? ASPresentationAnchor()
@@ -135,7 +135,7 @@ func defaultSignInBrowser() -> (any SignInBrowser)? {
     }
 
     /// Answers `presentationAnchor(for:)` with the anchor taken when the sheet opened.
-    private final class AnchorProvider: NSObject, ASWebAuthenticationPresentationContextProviding,
+    final class AnchorProvider: NSObject, ASWebAuthenticationPresentationContextProviding,
         @unchecked Sendable
     {
         private let anchor: ASPresentationAnchor
