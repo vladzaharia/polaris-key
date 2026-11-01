@@ -22,9 +22,45 @@ public interface SyncRecords {
     public fun record(collection: String, recordId: String): ReadResult?
 }
 
+/** The collection handle's calls on the machine: `update`, `delete`, the catalog's declarations, record events and outcome taps. */
+public interface SyncCollections {
+    /**
+     * Update a `merge` record: [set] writes the named fields and [remove] drops the named ones; any other field is
+     * untouched (a field this version does not know survives). One clock stamp.
+     */
+    public fun update(
+        collection: String,
+        recordId: String,
+        set: Map<String, JsonElement> = emptyMap(),
+        remove: List<String> = emptyList(),
+    ): CallResult
+
+    /** Delete a record of any policy but `revision` (use `removeAt` there). */
+    public fun delete(collection: String, recordId: String): CallResult
+
+    /** The declaration of a collection in the catalog (an exact name, else the longest `prefix.*` pattern), or null. */
+    public fun collectionDecl(name: String): CollectionDecl?
+
+    /** The ids of a collection's effective records (pending edits applied), in byte order. */
+    public fun recordIds(collection: String): List<String>
+
+    /** Report record changes of [collection] as [SyncEvent.Records] events from now on (`false`: stop). */
+    public fun watchRecords(collection: String, on: Boolean)
+
+    /** Another listener for `putAt` / `removeAt` outcomes, beside `onOutcome`'s: returns its remover. A tap is told of every outcome. */
+    public fun tapOutcomes(tap: (RecordOutcome) -> Unit): () -> Unit
+
+    /** Carry over what observers registered on a machine this one replaces: the outcome taps and the watched collections. */
+    public fun adoptObservers(from: CloudSyncMachine)
+}
+
+/** A collection as the catalog declares it. */
+public data class CollectionDecl(val name: String, val policy: String, val field: String? = null, val resolve: String? = null)
+
 @Suppress("TooManyFunctions")
 internal class MachineRecords(private val p: MachineParts) :
     SyncRecords,
+    SyncCollections,
     SyncExactRecords {
     private val core get() = p.core
 
@@ -53,6 +89,48 @@ internal class MachineRecords(private val p: MachineParts) :
             "merge" -> p.puts.merge(part, target, value)
             else -> p.puts.stamped(part, rk, target, value)
         }
+        noteChanges("local")
+        p.pump.kick()
+        return CallResult.Ok
+    }
+
+    override fun update(collection: String, recordId: String, set: Map<String, JsonElement>, remove: List<String>): CallResult {
+        val names = set.keys.toList() + remove
+        val refusal = when {
+            p.routing.collection(collection)?.get("policy").stringValue != "merge" -> "collection-unknown"
+            core.s.subject == null -> "signed-out"
+            names.isEmpty() || names.toSet().size != names.size -> "bad_request"
+            else -> null
+        }
+        if (refusal == null) {
+            val part = core.active()
+            val target = OpTarget.Record(collection, recordId)
+            val edited = p.journal.tickHlc()
+            val marks = Marks(preContact = !core.s.contacted)
+            for (field in set.keys.sorted()) {
+                p.journal.enqueue(part, Op(0, target, "setField", set.getValue(field), field = field).also { it.editedHlc = edited }.withMarks(marks))
+            }
+            for (field in remove.sorted()) {
+                p.journal.enqueue(part, Op(0, target, "removeField", null, field = field).also { it.editedHlc = edited }.withMarks(marks))
+            }
+            noteChanges("local")
+            p.pump.kick()
+        }
+        return refusal?.let { CallResult.Failed(it) } ?: CallResult.Ok
+    }
+
+    override fun delete(collection: String, recordId: String): CallResult {
+        val policy = p.routing.collection(collection)?.get("policy").stringValue
+        val refusal = when {
+            policy == null || policy == "revision" -> "collection-unknown"
+            core.s.subject == null -> "signed-out"
+            else -> null
+        }
+        if (refusal != null) return CallResult.Failed(refusal)
+        val op = Op(0, OpTarget.Record(collection, recordId), "delete")
+        if (policy != "union") op.also { it.editedHlc = p.journal.tickHlc() }.preContact = !core.s.contacted
+        p.journal.enqueue(core.active(), op)
+        noteChanges("local")
         p.pump.kick()
         return CallResult.Ok
     }
@@ -72,6 +150,7 @@ internal class MachineRecords(private val p: MachineParts) :
         val op = Op(0, OpTarget.Record(collection, recordId), name, null, null, element)
         if (name == "remove") op.observedSeq = part.cursor
         p.journal.enqueue(part, op)
+        noteChanges("local")
         p.pump.kick()
         return CallResult.Ok
     }
@@ -123,6 +202,7 @@ internal class MachineRecords(private val p: MachineParts) :
         p.journal.enqueue(part, op)
         part.nextTicket += 1
         op.ticket = part.nextTicket
+        noteChanges("local")
         p.pump.kick()
         return PutAtResult.Ok(part.nextTicket)
     }
@@ -130,6 +210,66 @@ internal class MachineRecords(private val p: MachineParts) :
     /** Report [op]'s outcome, when it is an exact write. */
     fun emitOutcome(op: Op, make: (Long) -> RecordOutcome) {
         val ticket = op.ticket ?: return
-        core.outcome?.invoke(make(ticket))
+        val outcome = make(ticket)
+        core.outcome?.invoke(outcome)
+        core.outcomeTaps.toList().forEach { it(outcome) }
+    }
+
+    override fun tapOutcomes(tap: (RecordOutcome) -> Unit): () -> Unit {
+        core.outcomeTaps.add(tap)
+        return { core.outcomeTaps.remove(tap) }
+    }
+
+    override fun collectionDecl(name: String): CollectionDecl? = p.routing.collection(name)?.let {
+        CollectionDecl(it["name"].stringValue!!, it["policy"].stringValue!!, it["field"].stringValue, it["resolve"].stringValue)
+    }
+
+    override fun adoptObservers(from: CloudSyncMachine) {
+        from.observers().let { (taps, collections) ->
+            core.outcomeTaps.addAll(taps)
+            collections.forEach { watchRecords(it, true) }
+        }
+    }
+
+    override fun watchRecords(collection: String, on: Boolean) {
+        if (!on) {
+            core.watched.remove(collection)
+        } else if (collection !in core.watched) {
+            core.watched[collection] = recordStates(collection)
+        }
+    }
+
+    override fun recordIds(collection: String): List<String> = recordStates(collection).keys.sorted()
+
+    /** The effective rows of a collection: pending creates and held values included. Record id to its value and origin. */
+    private fun recordStates(collection: String): Map<String, String> {
+        val out = linkedMapOf<String, String>()
+        if (core.s.subject == null) return out
+        val prefix = "$collection/"
+        val part = core.active()
+        val keys = linkedSetOf<String>().apply {
+            addAll(part.records.keys)
+            part.pending.forEach { op ->
+                (op.target as? OpTarget.Record)?.takeIf { it.collection == collection }?.let { add(recordKey(it.collection, it.id)) }
+            }
+            addAll(part.held.keys)
+        }
+        for (rk in keys) {
+            if (!rk.startsWith(prefix)) continue
+            val id = rk.substring(prefix.length)
+            record(collection, id)?.let { out[id] = "${it.value}\u0000${it.from}" }
+        }
+        return out
+    }
+
+    /** Push a `records` event for each watched collection whose effective rows changed. */
+    fun noteChanges(origin: String) {
+        if (core.watched.isEmpty()) return
+        for ((collection, last) in core.watched.entries.toList()) {
+            val now = recordStates(collection)
+            val ids = (last.keys + now.keys).toSortedSet().filter { last[it] != now[it] }
+            core.watched[collection] = now
+            if (ids.isNotEmpty()) core.events.add(SyncEvent.Records(collection, ids, origin))
+        }
     }
 }

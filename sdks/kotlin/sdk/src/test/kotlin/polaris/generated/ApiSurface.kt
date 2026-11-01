@@ -87,6 +87,7 @@ internal suspend fun apiSurface() {
     SaveTransfer::resume  // cloudSync.transfer.resume
     SaveTransfer::cancel  // cloudSync.transfer.cancel
     PolarisKeyClient::events  // cloudSync.transferEvent
+    CloudSyncClient::collection  // cloudSync.collection
     PolarisKeyClient::discover  // client.discover
     PolarisKeyClient::presentation  // client.presentation
     PolarisKeyClient::presentationIcon  // client.presentationIcon

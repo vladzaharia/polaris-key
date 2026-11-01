@@ -16,13 +16,11 @@
 //  - HC-6: a locked codec refuses with `sync-locked` before anything is sealed, so nothing is sent; a
 //    seal failure throws, so nothing is sent.
 //
-// Scope: settings (the `$settings` collection), and records with a scalar value (D-2: saves are
-// `revision` records; U-23.K3). A record value is sealed under its collection with `k = id`, its id travels
-// as `blind("record", collection, id)`, and a pulled record opens only when the `k` inside the envelope
-// re-blinds to the id on the wire (section 13.10.4), so a Worker cannot place a sealed value under another
-// record. A record mutation other than `set` and `delete` (a `merge` field, a `union` element) and a sealed
-// `merge` or `union` change (`fields`, `elements`) are outside this codec: a mutation is refused with
-// `invalid-options` and a change reads as `invalid`. Nothing here logs or prints a value, a name or a root:
+// Scope: settings (the `$settings` collection), and records of every policy (section 13.10.4). A record value
+// is sealed under its collection with `k = id`, a `merge` field under `k = id U+0000 field` and a `union`
+// element under `k = id U+0000 canonicalJson(e)`. Each name travels as `blind(kind, collection, name)`, and a
+// pulled record opens only when the `k` inside every envelope re-blinds to the names on the wire, so a Worker
+// cannot place a sealed value under another record, field or element. Nothing here logs or prints a value, a name or a root:
 // errors name a rule, never content. Names compare as UTF-16 code units (equal to code points for
 // well-formed text), never by canonical equivalence.
 
@@ -132,7 +130,7 @@ public object HostCodec {
         if (codec.locked) throw locked()
         val b = body as? JsonObject ?: return SyncOpenedPull(body, OpenedBody())
         val out = b.toMutableMap()
-        val rows = HostCodecOpen(codec, aliases)
+        val rows = HostCodecOpen(codec, aliases, recordKeys)
         var changes: List<OpenedRow?> = emptyList()
         b["changes"].arrayValue?.let { list ->
             val opened = list.map { c -> (c as? JsonObject)?.let { rows.change(it) } }

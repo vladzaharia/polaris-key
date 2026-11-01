@@ -52,34 +52,89 @@ internal object HostCodecSeal {
     }
 
     /**
-     * A record mutation (scalar value, D-2): `set` seals the value under the collection with `k = id`; `delete`
-     * carries none. Either sends the id blinded. The collection travels in the clear (section 13.10.2).
+     * A record mutation (section 13.10.4). `set` seals the value under the collection with `k = id`; `setField` under
+     * `id U+0000 field`; `add` seals the element under `id U+0000 canonicalJson(e)`. `delete`, `removeField` and
+     * `remove` carry no value. Every name goes blinded, the collection in the clear.
      */
     private fun record(m: JsonObject, codec: SyncCodecPort): JsonObject {
         val target = m["target"].objectValue!!
         val ref = HostRecord.ref(target["record"])
         HostCodec.refuseIf(ref == null, "a record reference is malformed")
-        HostCodec.refuseIf(
-            m.containsKey("ct") || m.containsKey("field") || m.containsKey("element") || m.containsKey("member"),
-            "mutation carries a member this codec does not seal",
-        )
-        val (collection, id) = ref!!
-        val out = m.toMutableMap()
+        HostCodec.refuseIf(m.containsKey("ct"), "mutation carries a member this codec does not seal")
+        val c = RecordSeal(m, codec, ref!!.first, ref.second)
         when (m["op"].stringValue) {
-            "set" -> {
-                val value = m["value"]
-                HostCodec.refuseIf(value == null, "set needs a value")
-                out.remove("value")
-                out["ct"] = JsonPrimitive(Base64Url.encode(codec.seal(collection, id, value!!)))
-            }
-
-            "delete" -> HostCodec.refuseIf(m.containsKey("value"), "delete carries no value")
-
+            "set" -> c.set()
+            "delete" -> c.absent("value", "field", "element", "member")
+            "setField" -> c.setField()
+            "removeField" -> c.removeField()
+            "add" -> c.add()
+            "remove" -> c.remove()
             else -> HostCodec.refuseIf(true, "unsupported operation")
         }
-        val blinded = codec.blind(SyncBlind.Kind.Record, collection, id)
-        out["target"] = JsonObject(target + ("record" to HostRecord.pair(collection, blinded)))
-        return JsonObject(out)
+        c.out["target"] = JsonObject(target + ("record" to HostRecord.pair(c.collection, codec.blind(SyncBlind.Kind.Record, c.collection, c.id))))
+        return JsonObject(c.out)
+    }
+
+    /** One record mutation being sealed. */
+    private class RecordSeal(val m: JsonObject, val codec: SyncCodecPort, val collection: String, val id: String) {
+        val out: MutableMap<String, JsonElement> = m.toMutableMap()
+
+        fun absent(vararg names: String) =
+            HostCodec.refuseIf(names.any { m.containsKey(it) }, "mutation carries a member its operation does not take")
+
+        private fun field(): String {
+            val f = m["field"].stringValue
+            HostCodec.refuseIf(f == null || f.isEmpty() || HostCodec.hasNul(f), "a field name is empty or holds U+0000")
+            return f!!
+        }
+
+        /** The element's canonical JSON: a number or text that cannot be spelled identically everywhere is never sent. */
+        private fun element(): String {
+            val e = m["element"]
+            HostCodec.refuseIf(e == null, "an element is missing")
+            return try {
+                CanonicalJson.encode(e!!)
+            } catch (_: SyncCryptoException) {
+                throw HostCodec.refuse("an element cannot be spelled canonically")
+            }
+        }
+
+        private fun seal(name: String, value: JsonElement?) {
+            HostCodec.refuseIf(value == null, "${m["op"].stringValue} needs a value")
+            out.remove("value")
+            out["ct"] = JsonPrimitive(Base64Url.encode(codec.seal(collection, name, value!!)))
+        }
+
+        private fun blind(kind: SyncBlind.Kind, name: String) = JsonPrimitive(codec.blind(kind, collection, name))
+
+        fun set() {
+            absent("field", "element", "member")
+            seal(id, m["value"])
+        }
+
+        fun setField() {
+            absent("element", "member")
+            val f = field()
+            seal("$id\u0000$f", m["value"])
+            out["field"] = blind(SyncBlind.Kind.Field, f)
+        }
+
+        fun removeField() {
+            absent("value", "element", "member")
+            out["field"] = blind(SyncBlind.Kind.Field, field())
+        }
+
+        fun add() {
+            absent("value", "field", "member")
+            val name = element()
+            seal("$id\u0000$name", m["element"])
+            out["element"] = blind(SyncBlind.Kind.Element, name)
+        }
+
+        fun remove() {
+            absent("value", "field", "member")
+            out["element"] = blind(SyncBlind.Kind.Element, element())
+        }
     }
 
     private fun set(c: SealCtx) {

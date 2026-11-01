@@ -36,6 +36,7 @@ internal class CloudSyncHostBuilder(private val st: CloudSyncHostState, private 
     fun buildNow(persisted: MachineState?, document: JsonObject, discovery: SyncDiscovery?) {
         st.detach?.invoke()
         st.detach = null
+        val old = st.machine
         st.catalog = CloudSyncCatalog.effective(st.mirror, st.served, st.openKeys)
         st.routes = CloudSyncCatalog.routesOf(st.catalog)
         st.documentValue = document
@@ -48,6 +49,8 @@ internal class CloudSyncHostBuilder(private val st: CloudSyncHostState, private 
         val m = CloudSyncMachine(opts, persisted)
         st.machine = m
         m.onOutcome(st.outcome)
+        // The outcome taps and the watched collections of the machine this one replaces.
+        old?.let { m.adoptObservers(it) }
         discovery?.let { m.setDiscovery(it) }
         st.building = true
         try {

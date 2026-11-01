@@ -4269,9 +4269,7 @@
         "swift": {
           "planned": "U-46"
         },
-        "kotlin": {
-          "planned": "U-46"
-        },
+        "kotlin": {},
         "godot": {
           "planned": "U-46"
         }
@@ -4302,7 +4300,7 @@
           "planned": "U-46"
         },
         "kotlin": {
-          "planned": "U-46"
+          "spelling": "SyncCollection.get"
         },
         "godot": {
           "planned": "U-46"
@@ -4328,7 +4326,7 @@
           "planned": "U-46"
         },
         "kotlin": {
-          "planned": "U-46"
+          "spelling": "SyncCollection.ids"
         },
         "godot": {
           "planned": "U-46"
@@ -4364,7 +4362,7 @@
           "planned": "U-46"
         },
         "kotlin": {
-          "planned": "U-46"
+          "spelling": "SyncCollection.put"
         },
         "godot": {
           "planned": "U-46"
@@ -4400,7 +4398,7 @@
           "planned": "U-46"
         },
         "kotlin": {
-          "planned": "U-46"
+          "spelling": "SyncCollection.update"
         },
         "godot": {
           "planned": "U-46"
@@ -4436,7 +4434,7 @@
           "planned": "U-46"
         },
         "kotlin": {
-          "planned": "U-46"
+          "spelling": "SyncCollection.add"
         },
         "godot": {
           "planned": "U-46"
@@ -4472,7 +4470,7 @@
           "planned": "U-46"
         },
         "kotlin": {
-          "planned": "U-46"
+          "spelling": "SyncCollection.remove"
         },
         "godot": {
           "planned": "U-46"
@@ -4504,7 +4502,7 @@
           "planned": "U-46"
         },
         "kotlin": {
-          "planned": "U-46"
+          "spelling": "SyncCollection.delete"
         },
         "godot": {
           "planned": "U-46"
@@ -4536,7 +4534,7 @@
           "planned": "U-46"
         },
         "kotlin": {
-          "planned": "U-46"
+          "spelling": "SyncCollection.on"
         },
         "godot": {
           "planned": "U-46"

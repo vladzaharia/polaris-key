@@ -27,7 +27,19 @@ internal class MachineRouting(private val core: MachineCore) {
     fun targetOf(key: String): OpTarget.Setting =
         OpTarget.Setting(key, route(key)?.takeIf { it["route"].stringValue == "synced" }?.get("scope").stringValue ?: "user")
 
-    fun collection(name: String): JsonObject? = collections.firstOrNull { it["name"].stringValue == name }
+    /**
+     * The declaration governing a concrete name: an exact name, else the longest `prefix.*` pattern with something
+     * after the prefix (V5 section 13.7, "Matching").
+     */
+    fun collection(name: String): JsonObject? {
+        // The length of `prefix.` when [decl] is a `prefix.*` pattern that governs [name], else 0.
+        fun prefixOf(decl: JsonObject): Int {
+            val declared = decl["name"].stringValue.orEmpty()
+            val prefix = declared.length - 1
+            return if (declared.endsWith(".*") && name.length > prefix && name.startsWith(declared.substring(0, prefix))) prefix else 0
+        }
+        return collections.firstOrNull { it["name"].stringValue == name } ?: collections.filter { prefixOf(it) > 0 }.maxByOrNull { prefixOf(it) }
+    }
 
     fun locked(key: String): Boolean = core.opts.document["locked"].arrayValue.orEmpty().any { it.stringValue == key }
 

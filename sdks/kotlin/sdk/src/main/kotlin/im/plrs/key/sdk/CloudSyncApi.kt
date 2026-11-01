@@ -112,7 +112,9 @@ public sealed interface CloudSyncEvent {
     }
 
     public companion object {
-        internal fun of(e: SyncEvent): CloudSyncEvent = when (e) {
+        /** The event for app code, or null for a machine event that has its own listener (a collection's `records`). */
+        internal fun of(e: SyncEvent): CloudSyncEvent? = when (e) {
+            is SyncEvent.Records -> null
             is SyncEvent.Change -> Change(e.keys, e.origin)
             is SyncEvent.Rejected -> Rejected(e.mutationId, e.code)
             is SyncEvent.SignedOut -> SignedOut(e.reason, e.unsynced)
@@ -146,6 +148,13 @@ public class CloudSyncClient internal constructor(private val api: CloudSyncApi)
 
     /** Saves: `list`, `read`, `write`, `delete`, `revisions` and `resolve` (U-22.5). A product with no `saves` collection gets the typed N/A. */
     public val saves: SavesClient get() = api.saves
+
+    /**
+     * The records handle of a collection the product's catalog declares (an exact name, or one a `prefix.*` pattern
+     * governs). Starts Cloud Sync first; an undeclared name answers `collection_unknown` from each call, never a throw.
+     * Throws the typed `product` N/A when the product does not run the Sync service.
+     */
+    public suspend fun collection(name: String): SyncCollection = api.collection(name)
 
     /** The save writes in flight (running, paused or waiting on the network). */
     public fun transfers(): List<SaveTransfer> = api.saves.transfers()
@@ -324,6 +333,16 @@ internal class CloudSyncApi(
     }
 
     suspend fun newRecoveryCode(): String = recovery()
+
+    private val collections = java.util.concurrent.ConcurrentHashMap<String, SyncCollection>()
+
+    /** The records handle of [name] (one per name, so the machine's watch of it is shared). */
+    suspend fun collection(name: String): SyncCollection {
+        core.requireService(ServiceSlug.sync, Feature.syncRecords)
+        withContext(dispatcher) { attach() }
+        val h = withContext(dispatcher) { startedHost() } ?: throw PolarisException(ErrorCode.syncFailed, "Cloud Sync is not running.")
+        return collections.getOrPut(name) { SyncCollection(name, h) }
+    }
 
     // ── what the client calls ────────────────────────────────────────────────────────────────────
 
@@ -567,7 +586,7 @@ internal class CloudSyncApi(
                 emit(CloudSyncEvent.SignInOffered(safeSignInUrl(e.signInUrl, originString())))
                 continue
             }
-            emit(CloudSyncEvent.of(e))
+            CloudSyncEvent.of(e)?.let { emit(it) }
         }
         if (forgotten != null) {
             forgotten.join()

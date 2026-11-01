@@ -111,6 +111,16 @@ public sealed interface SyncEvent {
         }
     }
 
+    /** Records of a watched collection changed; [origin] is `local` or `remote`. Names ids only, never values. */
+    public data class Records(val collection: String, val ids: List<String>, val origin: String) : SyncEvent {
+        override fun toJson(): JsonObject = buildJsonObject {
+            put("type", "records")
+            put("collection", collection)
+            put("ids", JsonArray(ids.map { JsonPrimitive(it) }))
+            put("origin", origin)
+        }
+    }
+
     /** A mutation was rejected for good; [code] is the Worker's code or `undefined`. */
     public data class Rejected(val mutationId: Long, val code: String) : SyncEvent {
         override fun toJson(): JsonObject = buildJsonObject {

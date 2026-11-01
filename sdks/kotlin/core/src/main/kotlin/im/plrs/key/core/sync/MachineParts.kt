@@ -42,6 +42,7 @@ public class CloudSyncMachine private constructor(private val parts: MachinePart
     SyncSession by parts.session,
     SyncExchange by parts.receiver,
     SyncRecords by parts.records,
+    SyncCollections by parts.records,
     SyncExactRecords by parts.records {
     /** A machine for [opts], restored from [persisted] (a relaunch) when given. */
     public constructor(opts: CloudSyncOptions, persisted: MachineState? = null) : this(
@@ -74,7 +75,12 @@ public class CloudSyncMachine private constructor(private val parts: MachinePart
     public fun takeRequests(): List<JsonObject> = parts.core.outbox.toList().also { parts.core.outbox.clear() }
 
     /** The events the machine would emit, since the last call. */
-    public fun takeEvents(): List<SyncEvent> = parts.core.events.toList().also { parts.core.events.clear() }
+    public fun takeEvents(): List<SyncEvent> {
+        parts.records.noteChanges("remote")
+        return parts.core.events.toList().also { parts.core.events.clear() }
+    }
+
+    internal fun observers(): Pair<List<(RecordOutcome) -> Unit>, List<String>> = parts.core.outcomeTaps.toList() to parts.core.watched.keys.toList()
 
     public companion object {
         private fun fresh(opts: CloudSyncOptions): MachineState =

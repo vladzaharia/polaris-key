@@ -2,8 +2,8 @@
 //
 // The host codec's record half (U-23.K3; WIRE-CONTRACT-V5 section 13.10.4): scalar record values sealed under
 // their collection with `k = id`, the id sent as `blind("record", c, id)`, and a pulled record opened only when
-// the `k` inside the envelope re-blinds to the id on the wire. Merge and union records are outside the native
-// codec (D-2). The corpus's record rows run in the conformance SyncVectorsTest.
+// the `k` inside the envelope re-blinds to the id on the wire. Merge fields and union elements are in
+// HostCodecCellsTest. The corpus's record rows run in the conformance SyncVectorsTest.
 
 package im.plrs.key.core.sync
 
@@ -150,10 +150,7 @@ class HostCodecRecordsTest {
             JsonObject(mapOf("mutationId" to JsonPrimitive(1), "target" to target, "op" to str(op)) + extra)
         val one = JsonPrimitive(1)
         val refused = mapOf(
-            "setField" to m("setField", extra = mapOf("field" to str("hp"), "value" to one)),
-            "removeField" to m("removeField", extra = mapOf("field" to str("hp"))),
-            "add" to m("add", extra = mapOf("element" to str("e"), "value" to one)),
-            "remove" to m("remove", extra = mapOf("element" to str("e"), "observedSeq" to one)),
+            "add with a value" to m("add", extra = mapOf("element" to str("e"), "value" to one)),
             "clear" to m("clear"),
             "delete with a value" to m("delete", extra = mapOf("value" to one)),
             "set with no value" to m("set"),
@@ -230,8 +227,7 @@ class HostCodecRecordsTest {
             "a field envelope served as a value" to mapOf("record" to ref(SAVES, served), "ct" to str(ct(SAVES, "slot-1\u0000hp", JsonPrimitive(1)))),
             "an id holding NUL" to
                 mapOf("record" to ref(SAVES, bl(SyncBlind.Kind.Record, SAVES, "s")), "ct" to str(ct(SAVES, "s\u00001", JsonPrimitive(1)))),
-            "sealed fields" to mapOf("record" to ref(SAVES, served), "fields" to JsonArray(emptyList())),
-            "sealed elements" to mapOf("record" to ref(SAVES, served), "elements" to JsonArray(emptyList())),
+            "a ct and sealed fields" to mapOf("record" to ref(SAVES, served), "ct" to str(good), "fields" to JsonArray(emptyList())),
             "a malformed reference" to mapOf("record" to JsonArray(listOf(str(SAVES))), "ct" to str(good)),
         )
         for ((name, entry) in hostile) {
@@ -332,7 +328,8 @@ class HostCodecRecordsTest {
         assertEquals(INVALID, r.opened.conflicts[11])
         assertEquals(OpenedRow(seq = 3), r.opened.conflicts[12])
         val f = pull(obj("results" to JsonArray(listOf(result(7, obj("fields" to JsonArray(emptyList()), "version" to JsonPrimitive(3)))))), ms)
-        assertEquals(INVALID, f.opened.conflicts[7])
+        // Empty sealed cells are a record with no fields (HostCodecCellsTest holds the rest of the cells).
+        assertEquals(SEALED, f.opened.conflicts[7])
     }
 
     @Test
