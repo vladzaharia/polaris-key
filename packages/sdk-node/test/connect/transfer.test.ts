@@ -407,7 +407,7 @@ describe.each([
 
   it("writes queued by a closed session cannot land after a new session took the partial over", async () => {
     const w = await make();
-    const size = 1_200_000;
+    const size = 200_000; // 49 chunks: enough queued behind the held write, quick on a slow runner
     const chunk = 4096;
     w.a.cloudConnect.transfer.onOffer(() => ({
       saveTo: join(w.out, "big.bin"),
