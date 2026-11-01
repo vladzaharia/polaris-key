@@ -1555,8 +1555,25 @@ export class CloudSyncMachine {
     return { setting: key, scope: r?.route === "synced" ? r.scope : "user" };
   }
 
+  /** The declaration governing a concrete name: an exact name, else the longest `prefix.*`
+   *  pattern with something after the prefix (V5 §13.7, "Matching"). */
   private collection(name: string): CollectionDecl | undefined {
-    return this.catalog.collections?.find((c) => c.name === name);
+    let pattern: CollectionDecl | undefined;
+    let patternPrefix = 0;
+    for (const c of this.catalog.collections ?? []) {
+      if (c.name === name) return c;
+      if (!c.name.endsWith(".*")) continue;
+      const prefix = c.name.length - 1;
+      if (
+        name.length > prefix &&
+        name.startsWith(c.name.slice(0, prefix)) &&
+        prefix > patternPrefix
+      ) {
+        pattern = c;
+        patternPrefix = prefix;
+      }
+    }
+    return pattern;
   }
 
   private alias(key: string): string {

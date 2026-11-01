@@ -14,6 +14,7 @@ import type {
   SyncEvent,
 } from "../cloud-sync.js";
 import { SYNC_MAX_UNION_ELEMENT_BYTES } from "@polaris-key/protocol/sync";
+import { isBlindedName } from "./blind.js";
 import { canonicalJson } from "./envelope.js";
 
 export type CollectionError =
@@ -83,7 +84,11 @@ export class SyncCollection {
 
   /** The ids of the records a person holds, in byte order, pending creates included. */
   ids(): string[] {
-    return this.#decl() ? this.#port.machine.recordIds(this.name) : [];
+    const m = this.#port.machine;
+    if (!this.#decl()) return [];
+    // E2E: a record that holds a file and no value is listed under its wire id; it has no name.
+    const e2e = m.encryptionMode() === "e2e";
+    return m.recordIds(this.name).filter((id) => !(e2e && isBlindedName(id)));
   }
 
   /** `lastWrite`, `max`, `min`: a stamped write. `revision`: a write based on the version held,

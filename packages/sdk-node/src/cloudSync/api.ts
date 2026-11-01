@@ -20,6 +20,7 @@ import {
   type SyncEvent,
   type SyncStatus,
 } from "@polaris-key/client-core/cloud-sync";
+import { SyncCollection } from "@polaris-key/client-core/sync";
 import { Feature } from "../constants.generated.js";
 import type {
   ConfigClient,
@@ -92,6 +93,24 @@ export class CloudSyncApi {
     await this.#d.host.flush();
     await this.#chain;
     return this.status();
+  }
+
+  /** The records handle of a collection the product's catalog declares (U-46). Starts the host
+   *  first; an undeclared name answers `collection_unknown` from each call, never a throw. Throws
+   *  the typed `product` N/A when the product does not run the Sync service. */
+  async collection(name: string): Promise<SyncCollection> {
+    this.#d.ctx.requireService("sync", Feature.syncRecords);
+    await this.#attach();
+    const host = this.#d.host;
+    return new SyncCollection(name, {
+      // The machine is rebuilt when the catalog changes, so it is read at each call.
+      get machine() {
+        host.catchUp();
+        return host.machine;
+      },
+      onEvents: (fn) => host.onEvents(fn),
+      touch: () => void host.touch(),
+    });
   }
 
   // ── What the client calls ────────────────────────────────────────────────────────────────

@@ -27,6 +27,7 @@ import {
   CloudSyncMachine,
   SYNC_SIGNOUT_FLUSH_MS,
   type CloudSyncCatalog,
+  type CollectionDecl,
   type CloudSyncDocument,
   type OpenedBody,
   type RecordOutcome,
@@ -40,7 +41,11 @@ import {
 } from "@polaris-key/client-core/cloud-sync";
 import { openPull, sealPush } from "@polaris-key/client-core/sync";
 import { SYNC_KEY_PATTERN } from "@polaris-key/protocol/sync";
-import { syncedSettings, type ProductCatalog } from "@polaris-key/catalog";
+import {
+  resolveCollection,
+  syncedSettings,
+  type ProductCatalog,
+} from "@polaris-key/catalog";
 import type { CoreContext } from "../core/context.js";
 import type { TokenManager } from "../core/token.js";
 import type { ProductDiscoveryDocument } from "../discovery.js";
@@ -80,6 +85,22 @@ const SAVES_DECL = {
   policy: "revision",
   resolve: "keepServer",
 } as const;
+
+/** The collections the machine knows: the catalog's declarations, and `saves` unless declared. */
+function collectionsOf(catalog: ProductCatalog): CollectionDecl[] {
+  const out: CollectionDecl[] = [];
+  for (const c of catalog.cloudSync?.collections ?? []) {
+    const r = resolveCollection(c);
+    out.push({
+      name: r.name,
+      policy: r.conflict,
+      ...(r.conflictField !== null ? { field: r.conflictField } : {}),
+      ...(r.conflict === "revision" ? { resolve: "keepServer" as const } : {}),
+    });
+  }
+  if (!out.some((c) => c.name === SAVES_DECL.name)) out.push({ ...SAVES_DECL });
+  return out;
+}
 
 /** What the host needs from the client; each is a function so the host holds no stale copy. */
 export interface CloudSyncHostDeps {
@@ -276,7 +297,7 @@ export class CloudSyncHost {
     this.#routes = routesOf(this.#catalog);
     const catalog: CloudSyncCatalog = {
       settings: this.#routes,
-      collections: [{ ...SAVES_DECL }],
+      collections: collectionsOf(this.#catalog),
     };
     const document = this.#deps.document();
     this.#documentJson = JSON.stringify(document);
