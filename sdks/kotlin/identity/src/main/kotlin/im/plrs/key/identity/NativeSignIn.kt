@@ -193,6 +193,11 @@ internal class NativeFlow(
             Result.success(client.outcomeOf(got, taken))
         } catch (e: SignInError) {
             Result.failure(e)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: PolarisException) {
+            // A transport or answer failure at redemption settles the sign-in as failed, so wait() reports it.
+            Result.failure(e)
         }
     }
 

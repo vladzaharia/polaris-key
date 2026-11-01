@@ -340,6 +340,28 @@ class NativeSignInTest : NativeTestBase() {
     }
 
     @Test
+    fun aFailureAtRedemptionSettlesTheSignInAsFailed() = runBlocking {
+        val w = world(push = recordingPush(), tokenReply = { respond(200, "not json") })
+        val s = w.client.signIn.start(loopbackOptions())
+        get(portOf(s), "/pkey/callback?$callbackQuery")
+        val first = try {
+            s.wait()
+            null
+        } catch (e: PolarisException) {
+            e
+        }
+        assertNotNull("redemption failure surfaces", first)
+        // A second wait reports the same failure; it does not wait forever.
+        try {
+            s.wait()
+            fail("settled")
+        } catch (_: PolarisException) {
+            // same failure
+        }
+        assertNull(w.store.getToken())
+    }
+
+    @Test
     fun aTokenRefusalIsATypedErrorAndKeepsTheToken() = runBlocking {
         val w = world(push = recordingPush(), tokenReply = { respond(400, """{"error":"invalid_grant"}""") })
         val s = w.client.signIn.start(loopbackOptions())
