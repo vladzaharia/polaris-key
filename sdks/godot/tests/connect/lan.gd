@@ -223,7 +223,7 @@ class Events extends RefCounted:
 
 ## A real connection to a loopback port that reports another address, so the verdict and the race see a
 ## neighbour at one address and the real device at another.
-class NetAttempt extends PKeyConnectLan.TcpAttempt:
+class NetAttempt extends PKeyPeerLanGate.TcpAttempt:
 	var address := ""
 
 
@@ -232,10 +232,10 @@ class NetAttempt extends PKeyConnectLan.TcpAttempt:
 
 
 ## A fake race attempt: CONNECTING until `after` polls, then `end`.
-class FakeAttempt extends PKeyConnectLan.Attempt:
+class FakeAttempt extends PKeyPeerLanGate.Attempt:
 	var log: Array
 	var after := 0
-	var end := PKeyConnectLan.Attempt.CONNECTED
+	var end := PKeyPeerLanGate.Attempt.CONNECTED
 	var address := "127.0.0.1"
 	var polls := 0
 	var aborted := false
@@ -244,7 +244,7 @@ class FakeAttempt extends PKeyConnectLan.Attempt:
 
 	func poll() -> int:
 		polls += 1
-		return end if polls > after else PKeyConnectLan.Attempt.CONNECTING
+		return end if polls > after else PKeyPeerLanGate.Attempt.CONNECTING
 
 
 	func remote() -> String:
@@ -358,25 +358,25 @@ static func _has_loopback6() -> bool:
 
 
 func _helpers(t: PKeyTestContext) -> void:
-	var lim := PKeyConnectLan.PendingLimiter.new(3, 2, 2)
+	var lim := PKeyPeerLanGate.PendingLimiter.new(3, 2, 2)
 	var a := RefCounted.new()
 	var b := RefCounted.new()
 	var c := RefCounted.new()
 	var d := RefCounted.new()
-	var k := PKeyConnectLan.PendingLimiter.keys_of("192.168.1.5")
+	var k := PKeyPeerLanGate.PendingLimiter.keys_of("192.168.1.5")
 	t.check("limiter: keys are the address and its /24", k == {"address": "192.168.1.5", "group": "192.168.1.0/24"}, str(k))
 	var ra := lim.take(a, k)
 	var rb := lim.take(b, k)
 	t.check("limiter: two slots for one address", ra.is_valid() and rb.is_valid() and lim.size() == 2)
 	t.check("limiter: a third from the address is refused", not lim.take(c, k).is_valid())
-	t.check("limiter: another address in the same /24 is refused by the group cap", not lim.take(c, PKeyConnectLan.PendingLimiter.keys_of("192.168.1.6")).is_valid())
+	t.check("limiter: another address in the same /24 is refused by the group cap", not lim.take(c, PKeyPeerLanGate.PendingLimiter.keys_of("192.168.1.6")).is_valid())
 	ra.call()
 	ra.call()
 	t.check("limiter: a release is idempotent", lim.size() == 1)
-	var rc := lim.take(c, PKeyConnectLan.PendingLimiter.keys_of("10.0.0.1"))
-	var rd := lim.take(d, PKeyConnectLan.PendingLimiter.keys_of("10.0.1.1"))
+	var rc := lim.take(c, PKeyPeerLanGate.PendingLimiter.keys_of("10.0.0.1"))
+	var rd := lim.take(d, PKeyPeerLanGate.PendingLimiter.keys_of("10.0.1.1"))
 	t.check("limiter: up to the total of three", rc.is_valid() and rd.is_valid() and lim.size() == 3)
-	t.check("limiter: and the next is refused whatever its address", not lim.take(RefCounted.new(), PKeyConnectLan.PendingLimiter.keys_of("172.16.0.1")).is_valid())
+	t.check("limiter: and the next is refused whatever its address", not lim.take(RefCounted.new(), PKeyPeerLanGate.PendingLimiter.keys_of("172.16.0.1")).is_valid())
 	rb.call()
 	rc.call()
 	rd.call()
@@ -786,13 +786,13 @@ func _race(t: PKeyTestContext) -> void:
 	var set_plan := func(p: Dictionary) -> void:
 		plan.clear()
 		plan.merge(p)
-	var connector := func(host: String, _port: int) -> PKeyConnectLan.Attempt:
+	var connector := func(host: String, _port: int) -> PKeyPeerLanGate.Attempt:
 		var a := FakeAttempt.new()
 		a.host = host
 		a.log = log
 		var p: Dictionary = plan.get(host, {})
 		a.after = int(p.get("after", 0))
-		a.end = p.get("end", PKeyConnectLan.Attempt.CONNECTED)
+		a.end = p.get("end", PKeyPeerLanGate.Attempt.CONNECTED)
 		a.address = p.get("address", host)
 		log.append("start " + host)
 		made.append(a)
@@ -803,7 +803,7 @@ func _race(t: PKeyTestContext) -> void:
 		return
 	var svc: PKeyConnectLan = r.detail
 	# One slow, one quick: the second starts a stagger later and wins; the first is closed unused.
-	set_plan.call({"10.0.0.1": {"after": 100000, "end": PKeyConnectLan.Attempt.CONNECTED}, "10.0.0.2": {"after": 0}})
+	set_plan.call({"10.0.0.1": {"after": 100000, "end": PKeyPeerLanGate.Attempt.CONNECTED}, "10.0.0.2": {"after": 0}})
 	var started := Time.get_ticks_msec()
 	var won: Dictionary = await svc.call("_race", ["10.0.0.1", "10.0.0.2"], 1234)
 	var took := Time.get_ticks_msec() - started
@@ -814,7 +814,7 @@ func _race(t: PKeyTestContext) -> void:
 	log.clear()
 	made.clear()
 	svc._o["dial_stagger"] = 30.0
-	set_plan.call({"10.0.0.1": {"end": PKeyConnectLan.Attempt.FAILED}, "10.0.0.2": {"after": 0}})
+	set_plan.call({"10.0.0.1": {"end": PKeyPeerLanGate.Attempt.FAILED}, "10.0.0.2": {"after": 0}})
 	started = Time.get_ticks_msec()
 	won = await svc.call("_race", ["10.0.0.1", "10.0.0.2"], 1234)
 	took = Time.get_ticks_msec() - started
@@ -849,7 +849,7 @@ func _race(t: PKeyTestContext) -> void:
 	t.check("race: addresses the verdict refuses start no attempt", won.is_empty() and made.is_empty())
 	log.clear()
 	made.clear()
-	set_plan.call({"10.0.0.1": {"end": PKeyConnectLan.Attempt.FAILED}, "10.0.0.2": {"end": PKeyConnectLan.Attempt.FAILED}})
+	set_plan.call({"10.0.0.1": {"end": PKeyPeerLanGate.Attempt.FAILED}, "10.0.0.2": {"end": PKeyPeerLanGate.Attempt.FAILED}})
 	won = await svc.call("_race", ["10.0.0.1", "10.0.0.2"], 1234)
 	t.check("race: when every attempt fails the race ends empty, at once", won.is_empty() and made.size() == 2)
 	svc.stop()
@@ -868,7 +868,7 @@ func _fall_through(t: PKeyTestContext) -> void:
 	if ra.ok:
 		ports["10.9.9.2"] = (ra.detail as PKeyConnectLan).port()
 	var dialled_hosts: Array = []
-	var connector := func(host: String, _port: int) -> PKeyConnectLan.Attempt:
+	var connector := func(host: String, _port: int) -> PKeyPeerLanGate.Attempt:
 		var at := NetAttempt.new()
 		at.host = host
 		at.address = host
