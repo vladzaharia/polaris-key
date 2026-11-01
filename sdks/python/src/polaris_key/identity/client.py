@@ -24,6 +24,7 @@ The account verbs (``subject``, ``sign_out``, ``open_account``, ``attach``) live
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Callable, Dict, Optional
 
 from ..constants_generated import ErrorCode, Feature, UnsupportedReason
@@ -137,6 +138,7 @@ class IdentityClient:
         )
         #: The native redirect sign-in now waiting for its redirect (I-15): one at a time.
         self._native_active: Optional[NativeSignInSession] = None
+        self._native_lock = threading.Lock()
         self._choice = ChoiceClient(self._deps)
         self._discover = discover or (lambda: None)
         self._license_id = license_id or (lambda: None)
@@ -235,13 +237,15 @@ class IdentityClient:
     def _start_native(self, **opts: Any) -> NativeSignInSession:
         session = start_native_sign_in(self._deps, **opts)
         # A new sign-in replaces the one still waiting: its listener closes and its request drops.
-        previous, self._native_active = self._native_active, session
+        with self._native_lock:
+            previous, self._native_active = self._native_active, session
         if previous is not None:
             previous.cancel()
         return session
 
     def _handle_redirect(self, url: str) -> Any:
-        session = self._native_active
+        with self._native_lock:
+            session = self._native_active
         if session is None:
             raise SignInError(
                 ErrorCode.SIGN_IN_FAILED, "no native sign-in is waiting for a redirect."

@@ -44,7 +44,7 @@ STATE = "tidewater-state-0123456789"
 VERIFIER = "transcript-verifier-0123456789-abcdefghijklmnopqrst"
 HANDLE = "rq_fxXQ7DEgqPUfZlsJYdm76w"
 REQUEST_URI = "urn:ietf:params:oauth:request_uri:A1xUxaz50yGeWfx8JDSnAw"
-RETURN_PAGE = "https://customer.example/signin/return"
+RETURN_PAGE = f"{BASE_URL}/signin/return"
 SCHEME = "com.tidewater.studio:/pkey/callback"
 CODE = "nzMud_COpAeAOKaIdixAP_dJqIpwVVSjV3GCoBfT-eE"
 TRANSCRIPTS = Path(__file__).resolve().parents[3] / "conformance" / "transcripts"
@@ -820,3 +820,57 @@ def test_the_session_repr_holds_no_secret() -> None:
     text = repr(s) + repr(s._pending)
     assert VERIFIER not in text and STATE not in text
     s.cancel()
+
+
+def test_a_foreign_return_page_is_refused_before_any_request() -> None:
+    w = World()
+    doc = w.doc()
+    doc["services"]["identity"]["endpoints"]["signinReturn"] = "https://evil.example/signin/return"
+    w.doc = lambda: doc  # type: ignore[method-assign]
+    c = make(w)
+    with pytest.raises(PolarisError) as e:
+        start(c)
+    assert e.value.code == ErrorCode.INVALID_OPTIONS and w.of("/identity/request") == []
+
+
+def test_the_listener_logs_nothing_when_a_handler_fails(capfd: pytest.CaptureFixture[str]) -> None:
+    def boom(url: str) -> Tuple[Optional[str], bool]:
+        raise RuntimeError(f"secret {url}")
+
+    listener = LoopbackListener()
+    listener.start(boom)
+    try:
+        try:
+            get(listener.port, f"/pkey/callback?state=right&code={CODE}")
+        except Exception:
+            pass
+    finally:
+        listener.close()
+    out, err = capfd.readouterr()
+    assert out == "" and err == "" and CODE not in out + err
+
+
+def test_binding_does_not_ask_the_resolver(monkeypatch: pytest.MonkeyPatch) -> None:
+    def no(*a: Any, **k: Any) -> str:
+        raise AssertionError("getfqdn called")
+
+    monkeypatch.setattr(socket, "getfqdn", no)
+    listener = LoopbackListener()
+    listener.close()
+
+
+def test_concurrent_starts_leave_one_waiting_session() -> None:
+    w = World()
+    c = make(w)
+    made: List[NativeSignInSession] = []
+    ts = [
+        threading.Thread(target=lambda: made.append(start(c, loopback=False, registered_schemes=[SCHEME])))
+        for _ in range(4)
+    ]
+    for t in ts:
+        t.start()
+    for t in ts:
+        t.join(5)
+    live = [s for s in made if not s._closed]
+    assert len(made) == 4 and len(live) == 1 and c.identity._native_active is live[0]
+    live[0].cancel()

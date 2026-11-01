@@ -32,6 +32,7 @@ import http.server
 import os
 import re
 import socket
+import socketserver
 import sys
 import threading
 from dataclasses import dataclass, field
@@ -529,7 +530,14 @@ class _Server(http.server.ThreadingHTTPServer):
         exclusive = getattr(socket, "SO_EXCLUSIVEADDRUSE", None)
         if exclusive is not None:  # Windows: SO_REUSEADDR would let another process share it.
             self.socket.setsockopt(socket.SOL_SOCKET, exclusive, 1)
-        super().server_bind()
+        # TCPServer's bind, not HTTPServer's: that one asks the resolver for the host's FQDN.
+        socketserver.TCPServer.server_bind(self)
+        self.server_name = "127.0.0.1"
+        self.server_port = int(self.socket.getsockname()[1])
+
+    def handle_error(self, request: Any, client_address: Any) -> None:
+        # The default prints a traceback (and the client address); nothing request-derived is logged.
+        return None
 
 
 class _Handler(http.server.BaseHTTPRequestHandler):
@@ -871,6 +879,11 @@ class NativeSignInSession:
 # ── Starting one ─────────────────────────────────────────────────────────────────────
 
 
+def _origin(url: str) -> Optional[str]:
+    m = re.match(r"([A-Za-z][A-Za-z0-9+.\-]*)://([^/?#]*)", url)
+    return f"{m.group(1).lower()}://{m.group(2).lower()}" if m else None
+
+
 def _text(v: Any) -> Optional[str]:
     return v if isinstance(v, str) and v != "" else None
 
@@ -913,6 +926,11 @@ def start_native_sign_in(
         _text(fragment.get("issuer")),
     )
     return_page = _text(endpoints.get("signinReturn"))
+    if return_page is not None:
+        # The 303 target is the product's own customer host: the API origin or the issuer's.
+        allowed = {_origin(ctx.base_url), _origin(issuer or "")}
+        if _origin(return_page) not in allowed or not return_page.startswith("https://"):
+            raise PolarisError(ErrorCode.INVALID_OPTIONS, "the return page is outside this product.")
     advertised = fragment.get("nativeRedirect")
     native = advertised if isinstance(advertised, dict) else None
     if request_endpoint is not None and (not authorize or not token or not issuer):
