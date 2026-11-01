@@ -259,12 +259,13 @@ async function codeFor(
   };
 }
 
-describe("validateRedirectUri (the function I-15 widens)", () => {
+describe("validateRedirectUri (web)", () => {
   const reg = { webOrigins: [APP], redirectPaths: ["/auth/callback"] };
   it("accepts exactly origin + path and answers the client kind", () => {
     expect(validateRedirectUri(reg, CB)).toEqual({
       ok: true,
       kind: "web",
+      redirect: "web",
       uri: CB,
     });
   });
