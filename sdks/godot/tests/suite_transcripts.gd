@@ -244,6 +244,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			var fragment := PKeyDiscovery.identity_from(sdk.core.discovery_manifest)
 			out["exchange"] = _exchange_member(fragment.get("exchange", {}))
 			out["nonceEndpoint"] = String(fragment.get("nonce", "")) != ""
+			# connect.links (WIRE-CONTRACT-V5 section 15.9): the cached gate of inter-account links.
+			out["interAccount"] = PKeyConnectClient.inter_account_of(sdk.core.discovery_manifest)
 		"exchange":
 			out.merge(await _exchange_step(sdk, step, exchange_keys), true)
 		"subject":
@@ -275,6 +277,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 			out["catalog"] = await sdk.config.fetch_schema()
 		"relayTicket":
 			await _relay_ticket(sdk, out)
+		"relayTicketContact":
+			await _relay_ticket(sdk, out, step["args"])
 		"connectIdentity", "connectDevices":
 			await _connect_step(sdk, step, out)
 		"mintToken":
@@ -490,17 +494,21 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary, exchange_k
 
 ## `releaseFetch`: the step's target as a release record, fetched into a fresh directory (see the
 ## header). The whole payload a step fetched is kept on the SDK node for a later `partial` seed.
-## `connect.relay_ticket()` (CC-14.4, `connect.relay`). A refusal reads as `result: "refused"` with
+## `connect.relay_ticket()` (CC-14.4, `connect.relay`; with a `contact` {room, rid} the contact ticket of
+## `connect.links`, CC-19b.G4). A refusal reads as `result: "refused"` with
 ## the status, the code and, where the Worker answers them, `retryAfter` and `scope`. The relay URL
 ## is checked against the recorded host, not the loopback server's.
-static func _relay_ticket(sdk: Node, out: Dictionary) -> void:
+static func _relay_ticket(sdk: Node, out: Dictionary, contact := {}) -> void:
 	var state := PKeyConnectState.new(sdk.core.product, "user://pkey", true)
 	var client := PKeyConnectClient.new(sdk.core, state)
 	client.home_url = String(sdk.get_meta("pkey_transcript_base", ""))
-	var r: PKeyResult = await client.relay_ticket()
+	var r: PKeyResult = await client.relay_ticket(contact)
 	if r.ok:
 		var grant: PKeyConnectClient.Grant = r.detail
 		out["result"] = "ok"
+		if not contact.is_empty():
+			# The client accepted the answer only with `room: "c"` echoed.
+			out["room"] = "c"
 		out["protocol"] = grant.protocol
 		out["url"] = grant.url
 		out["expiresIn"] = grant.expires_at - int(sdk.core.clock.now())

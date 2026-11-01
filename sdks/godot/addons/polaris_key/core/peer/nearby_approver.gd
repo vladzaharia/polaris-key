@@ -592,7 +592,8 @@ func _after(seconds: float, fn: Callable) -> Array:
 	if timer is Callable and (timer as Callable).is_valid():
 		(timer as Callable).call(seconds, guarded)
 	elif _tree != null:
-		_tree.create_timer(maxf(0.05, seconds)).timeout.connect(guarded)
+		# Real time: a paused game clock (Engine.time_scale) must not stretch the advert or session bounds.
+		_tree.create_timer(maxf(0.05, seconds), true, false, true).timeout.connect(guarded)
 	return box
 
 

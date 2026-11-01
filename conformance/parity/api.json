@@ -7614,7 +7614,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLinks.pair"
+        }
       },
       "layer": "client",
       "args": [
@@ -7632,7 +7635,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLinks.list"
+        }
       },
       "layer": "client"
     },
@@ -7644,7 +7650,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLinks.remove"
+        }
       },
       "layer": "client",
       "args": [
@@ -7662,7 +7671,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLinks.set_reachable"
+        }
       },
       "layer": "client",
       "args": [
@@ -7684,7 +7696,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLinks.open"
+        }
       },
       "layer": "client",
       "args": [
@@ -7706,7 +7721,12 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLinks.link",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        }
       },
       "layer": "client",
       "args": [
@@ -7724,7 +7744,10 @@
         "node": {},
         "python": {},
         "swift": {},
-        "kotlin": {}
+        "kotlin": {},
+        "godot": {
+          "spelling": "PKeyCloudLinks.inter_account"
+        }
       },
       "layer": "client"
     },

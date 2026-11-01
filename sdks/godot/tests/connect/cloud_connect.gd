@@ -81,7 +81,7 @@ class StubClient extends PKeyConnectClient:
 		return PKeyResult.success({"device_id": device_id})
 
 
-	func relay_ticket() -> PKeyResult:
+	func relay_ticket(_contact := {}) -> PKeyResult:
 		tickets += 1
 		await (Engine.get_main_loop() as SceneTree).process_frame
 		var g := PKeyConnectClient.Grant.new()

@@ -36,6 +36,10 @@ extends RefCounted
 ## `keys` is a key port with `ensure()`, `public_keys()`, `sign()` and `dh(peer_public)`
 ## (PKeyDeviceKeyStore).
 
+## A contact row was stored, promoted, removed or re-marked, or the cached `interAccount` answer may have
+## moved: the LAN service, the contact relay and the links API read their lists again (CC-19b.G4).
+signal contacts_changed
+
 const RELAY_PROTOCOL := "pkey-relay.1"
 ## The Worker keeps the previous K_disc for 24 hours after a bump (section 15.4).
 const PREV_DISC_KEY_SECONDS := 86400
@@ -181,6 +185,76 @@ func _agree_public() -> Variant:
 		return null
 	var agree: Variant = PKeyB64Url.decode_strict(String((pub.detail as Dictionary).get("agree_key", "")))
 	return agree if agree is PackedByteArray and (agree as PackedByteArray).size() == 32 else null
+
+
+# ── The inter-account links (CC-19b.G4; section 15.10) ─────────────────────────────────────
+
+## The cached discovery answer `services.connect.interAccount`: true only while the product's setting, the
+## operator's gate and the service are on (section 15.9). False before discovery. Never fetches.
+func inter_account() -> bool:
+	var core := _core()
+	return core != null and inter_account_of(core.discovery_manifest)
+
+
+static func inter_account_of(manifest: Variant) -> bool:
+	var services: Variant = (manifest as Dictionary).get("services") if manifest is Dictionary else null
+	var f: Variant = (services as Dictionary).get("connect") if services is Dictionary else null
+	return f is Dictionary and typeof((f as Dictionary).get("interAccount")) == TYPE_BOOL and (f as Dictionary)["interAccount"]
+
+
+## The link rows of the connect record (the one reader and writer; a fresh view on each call).
+func contacts() -> PKeyConnectContacts:
+	return PKeyConnectContacts.new(_state, Callable(self, "_now"))
+
+
+func notify_contacts() -> void:
+	contacts_changed.emit()
+
+
+## The contacts in trial order, secrets decoded for the caller to zero (`PKeyConnectContacts.wipe_live`); none
+## while the gate is off or no record is held (the LAN service's and the contact relay's `contacts`).
+func live_contacts() -> Array:
+	if not inter_account():
+		return []
+	var r := contacts().trial_order()
+	return r.detail if r.ok else []
+
+
+## A handshake under a pending contact passed the pin: it takes the held one's place (`{id, agree_key}`).
+func contact_established(c: Dictionary) -> void:
+	if contacts().promote(str(c.get("agree_key", ""))).ok:
+		notify_contacts()
+
+
+## What pairing reads of this client (section 15.10).
+func pair_source() -> PKeyConnectPairing.Source:
+	var s := PKeyConnectPairing.Source.new()
+	var core := _core()
+	s.slug = core.product if core != null else ""
+	s.now = Callable(self, "_now")
+	s.agree_key = Callable(self, "_agree_key_text")
+	s.held = Callable(self, "_held_agree_keys")
+	s.store = Callable(self, "_store_contact")
+	s.allowed = Callable(self, "inter_account")
+	return s
+
+
+func _agree_key_text() -> String:
+	var agree: Variant = _agree_public()
+	return PKeyB64Url.encode(agree) if agree is PackedByteArray else ""
+
+
+func _held_agree_keys() -> Array:
+	var r := contacts().held_keys()
+	return r.detail if r.ok else []
+
+
+func _store_contact(incoming: Dictionary) -> PKeyResult:
+	var r := contacts().store(incoming)
+	if r.ok:
+		notify_contacts()
+		(r.detail as Dictionary)["id"] = PKeyConnectContacts.id_of(str(incoming["agree_key"]))
+	return r
 
 
 ## Store a record in place of the held one. The identity fetch writes through this; a record without
@@ -673,19 +747,22 @@ static func keys_after_ring(keys: Array[String], prior: Dictionary, next: Dictio
 ## `quota` (with the `scope`) and `ticket_invalid` (also for an answer that is not in the contract
 ## shape or names another host), each with the HTTP `status`; `no-token`, the transport's own codes
 ## and the Worker's other refusals as the core reports them. A coroutine.
-func relay_ticket() -> PKeyResult:
+func relay_ticket(contact := {}) -> PKeyResult:
 	# The Worker answers `device_keys_required` for a device without registered keys, and 404 when
 	# the operator's launch gate is off; the identity fetch is what registers and checks discovery.
+	# `contact` ({room: "c", rid}, section 15.7) asks for a ticket to one contact room; the body is sent as
+	# given, the Worker is the judge of it.
 	var core := _core()
 	if core == null:
 		return PKeyConnectErrors.relay("unavailable", "The SDK is gone.")
-	var r := await core.request("POST", "connect/relay/ticket", null, true)
+	var body: Variant = {"room": contact.get("room"), "rid": contact.get("rid")} if not contact.is_empty() else null
+	var r := await core.request("POST", "connect/relay/ticket", body, true)
 	if not r.ok:
 		return _ticket_refusal(r)
 	var parsed := PKeyJson.parse_bytes(r.detail["body"])
 	if not parsed["ok"]:
 		return _ticket_invalid("The relay ticket answer is not in the contract shape.")
-	return _grant(parsed["value"], r.detail.get("status", 200))
+	return _grant(parsed["value"], r.detail.get("status", 200), not contact.is_empty())
 
 
 func _ticket_refusal(r: PKeyResult) -> PKeyResult:
@@ -697,8 +774,9 @@ func _ticket_refusal(r: PKeyResult) -> PKeyResult:
 	if retry >= 0:
 		extra["retry_after_seconds"] = retry
 	match String(r.code):
-		PKeyConstants.ErrorCode.RELAY_DISABLED:
-			return PKeyConnectErrors.relay("disabled", "This product has its relay off.", extra)
+		PKeyConstants.ErrorCode.RELAY_DISABLED, PKeyConstants.ErrorCode.CONNECT_LINKS_DISABLED:
+			var links_off := String(r.code) == PKeyConstants.ErrorCode.CONNECT_LINKS_DISABLED
+			return PKeyConnectErrors.relay("links_disabled" if links_off else "disabled", "This product has %s off." % ("links between accounts" if links_off else "its relay"), extra)
 		PKeyConstants.ErrorCode.RELAY_PAUSED:
 			return PKeyConnectErrors.relay("paused", "The relay is paused; try again later.", extra)
 		PKeyConstants.ErrorCode.RELAY_QUOTA_EXCEEDED:
@@ -727,11 +805,17 @@ static func _retry_after(headers: Variant) -> int:
 
 ## The ticket answer, shape-checked and bound to this Worker: the ticket goes only to the Worker's
 ## own host over `wss:` and only for the protocol this client speaks (G13).
-func _grant(body: Variant, status: int) -> PKeyResult:
+func _grant(body: Variant, status: int, contact := false) -> PKeyResult:
 	var bad := _ticket_invalid("The relay ticket answer is not in the contract shape.", status)
 	if not body is Dictionary:
 		return bad
 	var o: Dictionary = body
+	# A contact request is answered with `room: "c"` echoed (section 15.7); an older Worker ignores the body and
+	# hands out an account ticket, which must not be used for a contact room. An account ticket has no `room`.
+	if contact and o.get("room") != "c":
+		return PKeyConnectErrors.relay("contact_unsupported", "This Worker does not serve contact rooms.", {"status": status} if status > 0 else {})
+	if not contact and o.has("room"):
+		return bad
 	var ticket: Variant = o.get("ticket")
 	var url: Variant = o.get("url")
 	if not ticket is String or not PKeyClaims.matches_whole_re(_ticket_re, ticket) \

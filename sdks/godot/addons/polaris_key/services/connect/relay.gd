@@ -367,6 +367,8 @@ func _random() -> float:
 
 ## Open one socket and run it to its close. A coroutine answering the close code, -1 for none.
 func _session(grant: PKeyConnectClient.Grant) -> int:
+	# Held for the whole socket: the frame waits below must not outlive this object.
+	var keep: PKeyConnectRelay = self
 	# The ticket is read here and handed to the opener.
 	var sock: Socket = _opener.call(grant.url, [PROTOCOL, grant.ticket()])
 	if sock == null:
@@ -438,7 +440,7 @@ func _session(grant: PKeyConnectClient.Grant) -> int:
 			sock.close(1000)
 			break
 		await _tree.process_frame
-	if _open and _mono() - opened_at >= float(_o.get("stable_seconds", STABLE_SECONDS)):
+	if keep._open and _mono() - opened_at >= float(_o.get("stable_seconds", STABLE_SECONDS)):
 		_attempts = 0
 	_open = false
 	if _socket == sock:

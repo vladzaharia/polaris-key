@@ -54,13 +54,14 @@ var caps: Array
 ## The peer's HELLO display data {label?, platform, app, max_message}, authenticated in mode a.
 var hello: Dictionary
 var role: String
-## The contact this session runs with (mode c: {id, label, categories}), else null.
-var contact: Variant = null
 ## The peer's static key (32 raw bytes), as certified by the handshake; empty until set.
 var peer_static := PackedByteArray()
 var remote_address: String
 ## "lan" or "relay".
 var path: String
+## A session opened under an inter-account link (mode c): {id, label?, categories?, pending?}, with no device id.
+## Empty otherwise.
+var contact: Dictionary = {}
 
 var _link: Object
 var _budget: Budget
@@ -161,10 +162,11 @@ func receive() -> PKeyResult:
 	return PKeyConnectErrors.lan("closed", "The session is closed.")
 
 
-## Close with `peer_bye` (or `peer_busy`); the CLOSE record is sent first.
+## Close with `peer_bye` (or `peer_busy`, or `peer_revoked` for a link that was removed); the CLOSE record is
+## sent first.
 func close(code: StringName = PKeyPeerSession.PEER_BYE) -> void:
 	if _link != null and not _ended:
-		_link.close(code if code == PKeyPeerSession.PEER_BUSY else PKeyPeerSession.PEER_BYE)
+		_link.close(code if code == PKeyPeerSession.PEER_BUSY or code == PKeyPeerSession.PEER_REVOKED else PKeyPeerSession.PEER_BYE)
 
 
 ## A newer roster was stored: the session ends `peer_revoked` when it no longer lists the peer.

@@ -43,9 +43,10 @@ static func _static_init() -> void:
 	_protocol_re = RegEx.create_from_string(_PROTOCOL_PATTERN)
 
 
-## The Noise protocol name of a mode: XXpsk0 for `a`, plain XX for `v` and `p`.
+## The Noise protocol name of a mode: XXpsk0 for `a` and for the contact mode `c` (the PSK of mode c is
+## the contact secret, section 15.10), plain XX for `v` and `p`.
 static func protocol_name(mode: String) -> String:
-	return "Noise_XXpsk0_25519_AESGCM_SHA256" if mode == "a" else "Noise_XX_25519_AESGCM_SHA256"
+	return "Noise_XXpsk0_25519_AESGCM_SHA256" if mode == "a" or mode == "c" else "Noise_XX_25519_AESGCM_SHA256"
 
 
 ## `"pkey-peer/1" || 0x00 || slug || 0x00 || mode || 0x00`.

@@ -93,7 +93,7 @@ func _inline(t: PKeyTestContext) -> void:
 	for i in 10:
 		pump.poll_once()
 	t.check("inline: both links are established over the memory pipe", ra.established.size() == 1 and rb.established.size() == 1 and la.is_established())
-	t.check("inline: the work ran inline, on this thread, five steps", pump.inline_run == 5 and pump.tasks_run == 0, "%d %d" % [pump.inline_run, pump.tasks_run])
+	t.check("inline: the work ran inline, on this thread, six steps (the responder's key trial is one)", pump.inline_run == 6 and pump.tasks_run == 0, "%d %d" % [pump.inline_run, pump.tasks_run])
 	t.check("inline: the established event is the session's", ra.established[0]["peer_device_id"] == PKeyTestPeers.ID_B and ra.established[0]["hello_authenticated"] == true)
 
 	t.check("inline: a record goes across", la.send_record(0x0100, "hi".to_utf8_buffer()).ok)
@@ -164,7 +164,7 @@ func _threaded(t: PKeyTestContext) -> void:
 	t.info("threaded: handshake in %d frames, %d ms, worst frame %d ms" % [frames, Time.get_ticks_msec() - started, worst[0]])
 	t.check("threaded: both links are established by frame polling alone", ra.established.size() == 1 and rb.established.size() == 1)
 	if pump.uses_threads():
-		t.check("threaded: five tasks ran, none inline", pump.tasks_run == 5 and pump.inline_run == 0, "%d %d" % [pump.tasks_run, pump.inline_run])
+		t.check("threaded: six tasks ran, none inline", pump.tasks_run == 6 and pump.inline_run == 0, "%d %d" % [pump.tasks_run, pump.inline_run])
 		t.check("threaded: they ran off this thread", pump.last_thread != 0 and pump.last_thread != OS.get_thread_caller_id())
 		t.check("threaded: at most two ran at once", pump.peak_in_flight <= PKeyPeerPump.MAX_TASKS and pump.in_flight == 0)
 	la.send_record(0x0100, "x".to_utf8_buffer())
@@ -190,7 +190,7 @@ func _threaded(t: PKeyTestContext) -> void:
 	t.info("threaded: eight handshakes together took %d frames" % burst)
 	t.check("threaded: all sixteen links establish", recs.all(func(r: Rec) -> bool: return r.established.size() == 1))
 	if pump.uses_threads():
-		t.check("threaded: and never more than two tasks ran at once", pump.peak_in_flight <= PKeyPeerPump.MAX_TASKS and pump.tasks_run == 40, "%d %d" % [pump.peak_in_flight, pump.tasks_run])
+		t.check("threaded: and never more than two tasks ran at once", pump.peak_in_flight <= PKeyPeerPump.MAX_TASKS and pump.tasks_run == 48, "%d %d" % [pump.peak_in_flight, pump.tasks_run])
 	for m in keep:
 		m[0].destroy()
 		m[1].destroy()

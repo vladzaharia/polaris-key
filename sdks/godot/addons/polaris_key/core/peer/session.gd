@@ -2,7 +2,7 @@
 class_name PKeyPeerSession
 extends RefCounted
 ## WIRE-CONTRACT-V5 sections 15.5 and 15.6: one `pkey-peer/1` session in mode `a` (account), `v`
-## (approver) or `p` (pair) (CC-14.8 and .9), ported from `packages/client-core/src/peer/session.ts`.
+## (approver), `p` (pair) or `c` (contact) (CC-14.8 and .9, CC-19b.G2), ported from `packages/client-core/src/peer/session.ts`.
 ## It owns no socket: de-framed Noise messages come in through `receive` and go out through the
 ## `send` callback, so one machine runs over TCP, the relay or memory.
 ##
@@ -13,7 +13,7 @@ extends RefCounted
 ## transport exists nothing is sent, after it a CLOSE record names the code.
 ##
 ## Options (a Dictionary given to `create`):
-##   mode, role, slug   "a" | "v" | "p"; "initiator" | "responder"; the product slug
+##   mode, role, slug   "a" | "v" | "p" | "c"; "initiator" | "responder"; the product slug
 ##   static_key         the X25519 private key (32 bytes): the device's agreement key in mode a, a
 ##                      one-time key in v and p. Or a key port with `public_key()` and `dh(remote)`
 ##                      (G1): the private key then never leaves the port. `dh` answers the 32-byte
@@ -22,6 +22,13 @@ extends RefCounted
 ##                      held_ring: Callable() -> {jws, epoch} or null, disc_keys: [bytes or null]
 ##                      newest first}. The initiator uses the first key, the responder tries the
 ##                      first two (G2)
+##   contacts           mode c, and a mode a responder that also serves contacts (the shared listener,
+##                      section 15.10): Array of {secret: 32 bytes, agree_key: 43 characters} in
+##                      `PKeyPeerContact.trial_order`. A mode c initiator names exactly one; a responder up
+##                      to 72 and needs `admission`. The static key is the device's agreeKey (or a port)
+##   exchange           mode p only: take part in the contact exchange, {agree_key, label?, cats, held?}.
+##                      The session then owns CONFIRM and CONTACT and ends the exchange with a `contact`
+##                      event; without it the host sees both as records
 ##   caps               the capabilities this side offers. Mode v adds `vouch/1` itself and requires
 ##                      it of the peer (section 15.6.1 rule 1)
 ##   hold_sas           the mode v initiator only: send no SAS_COMMIT at HELLO; the host starts the
@@ -36,8 +43,10 @@ extends RefCounted
 ##   rekey_messages, rekey_seconds   rekey after this many sent messages (2^20) or seconds (3600)
 ##
 ## Events (`type`): `established` {caps, hello {label?, platform, app, max_message},
-## hello_authenticated, remote_static, peer_device_id ("" in v and p)}, `sas` {code, display},
-## `record` {record_type, body}, `ring` {jws, epoch}, `trust_unverified` {jws}, `ring_wanted`,
+## hello_authenticated (mode a only), remote_static, peer_device_id ("" outside mode a), contact_index
+## (mode c: the index in `contacts`)}, `sas` {code, display},
+## `record` {record_type, body}, `contact` {secret, agree_key, label?, cats, pending} (mode p with
+## `exchange`; the secret is key material: store it, never log it), `ring` {jws, epoch}, `trust_unverified` {jws}, `ring_wanted`,
 ## `closed` {code, by_peer}.
 ##
 ## Threads (CC-14 D-2). `start` and `receive` are coroutines. A handshake step runs its Noise work
@@ -91,6 +100,7 @@ const RING_DROP_LIMIT := 8
 const DEFAULT_REKEY_MESSAGES := 1 << 20
 const DEFAULT_REKEY_SECONDS := 3600.0
 const VOUCH_CAP := "vouch/1"
+const MODES := ["a", "v", "p", "c"]
 
 var _mode: String
 var _role: String
@@ -119,8 +129,6 @@ var _queue: Array = []
 var _busy := false
 var _pending_close: StringName = &""
 var _peer_caps: Array = []
-var _peer_ring := 0
-var _peer_cert_jws := ""
 var _peer_remote := PackedByteArray()
 var _peer_device_id := ""
 var _max_send := PKeyPeerRecord.MAX_MESSAGE
@@ -129,28 +137,26 @@ var _keyed_at := 0.0
 var _held: Array = []
 var _flow: PKeyPeerVouch.Flow
 var _hold_sas := false
+var _contacts: Array = []
+var _contact_idx := -1
+var _xchg: PKeyPeerContact.Exchange
+var _xchg_offer: Dictionary = {}
+var _xchg_deadline := INF
 var _ticket: PKeyPeerLimiter.Ticket
 var _clock_started := false
 var _transport_deadline := INF
 var _sas_deadline := INF
-var _expires_at := 0
-var _ring_at := -INF
-var _ring_dropped := 0
+var _acct: PKeyPeerAccountFlow
 var _aborted := false
 var _wipe_pending := false
-# SAS state
-var _n_d := PackedByteArray()
-var _n_m := PackedByteArray()
-var _commit := ""
-var _sas_done := false
-var _sas_step := 0
+var _sas: PKeyPeerSasFlow
 
 
 ## A session from `options`, or `invalid-options` naming the problem. ok with the session.
 static func create(options: Dictionary) -> PKeyResult:
 	var mode: Variant = options.get("mode")
 	var role: Variant = options.get("role")
-	if not (mode is String and ["a", "v", "p"].has(mode)) or not (role is String and ["initiator", "responder"].has(role)):
+	if not (mode is String and MODES.has(mode)) or not (role is String and ["initiator", "responder"].has(role)):
 		return _invalid("mode and role")
 	if not options.get("slug") is String or options["slug"] == "":
 		return _invalid("slug")
@@ -167,6 +173,9 @@ static func create(options: Dictionary) -> PKeyResult:
 		return _invalid("account")
 	if mode != "a" and role == "responder" and not options.get("admission") is PKeyPeerLimiter:
 		return _invalid("an approver needs an admission limiter")
+	var contacts_bad := PKeyPeerContactFlow.options_problem(mode, role, options)
+	if contacts_bad != "":
+		return _invalid(contacts_bad)
 	if options.get("hold_sas", false) != false and not (options["hold_sas"] == true and mode == "v" and role == "initiator"):
 		return _invalid("hold_sas is for the mode v initiator")
 	var hello: Variant = options.get("hello")
@@ -206,6 +215,7 @@ func _init(options: Dictionary, port: Variant) -> void:
 	_slug = options["slug"]
 	_static = port
 	_account = options.get("account", {})
+	_acct = PKeyPeerAccountFlow.new(_account, Callable(self, "_now"), Callable(self, "_emit"))
 	_caps = (options.get("caps", []) as Array).duplicate()
 	# Both mode-v payloads list `vouch/1` (section 15.6.1 rule 1); the host cannot leave it out.
 	if _mode == "v":
@@ -213,6 +223,11 @@ func _init(options: Dictionary, port: Variant) -> void:
 			_caps.append(VOUCH_CAP)
 		_flow = PKeyPeerVouch.Flow.new("requester" if _role == "initiator" else "approver")
 		_hold_sas = options.get("hold_sas", false) == true
+	for c: Dictionary in options.get("contacts", []):
+		_contacts.append({"secret": (c["secret"] as PackedByteArray).duplicate(), "agree_key": c["agree_key"]})
+	if options.get("exchange") is Dictionary:
+		_xchg_offer = (options["exchange"] as Dictionary).duplicate(true)
+		_xchg = PKeyPeerContact.Exchange.new(_xchg_offer["agree_key"], _xchg_offer.get("held", []))
 	_hello = options["hello"]
 	_send_cb = options["send"]
 	_on_event = options["on_event"]
@@ -224,6 +239,7 @@ func _init(options: Dictionary, port: Variant) -> void:
 	_rekey_messages = int(options.get("rekey_messages", DEFAULT_REKEY_MESSAGES))
 	_rekey_seconds = float(options.get("rekey_seconds", DEFAULT_REKEY_SECONDS))
 	_asm = PKeyPeerRecord.Assembler.new(_mode)
+	_sas = PKeyPeerSasFlow.new(_crypto, _role == "initiator")
 	_keyed_at = _mono()
 
 
@@ -258,6 +274,12 @@ func is_busy() -> bool:
 ## The admitted certificate's device id in mode a; "" before the HELLO and in modes v and p.
 func peer_device_id() -> String:
 	return _peer_device_id
+
+
+## Mode c: the index, in `contacts`, of the contact the peer is; -1 before the first message is
+## opened and in the other modes.
+func contact_index() -> int:
+	return _contact_idx
 
 
 ## The Noise handshake hash `h` (a copy) once the session is established; empty before.
@@ -347,6 +369,13 @@ func confirm_sas() -> void:
 		if code != &"":
 			_fail(code, false)
 			return
+	if _xchg != null:
+		# The peer's CONTACT must follow within CONTACT_EXCHANGE_SECONDS of this CONFIRM.
+		_xchg_deadline = _mono() + PKeyPeerContact.CONTACT_EXCHANGE_SECONDS
+		var failed := _exchange_step(PKeyPeerContact.Exchange.OWN_CONFIRM)
+		if failed != &"":
+			_fail(failed, false)
+			return
 	var held := _held
 	_held = []
 	for m in held:
@@ -359,7 +388,7 @@ func confirm_sas() -> void:
 ## code deadline over. Only once and only after `established`; any other call closes the session
 ## `peer_not_allowed`.
 func start_sas() -> void:
-	if not _hold_sas or _phase != &"sas" or _sas_step != 0 or not _n_d.is_empty():
+	if not _hold_sas or _phase != &"sas" or _sas.step != 0:
 		close(PEER_NOT_ALLOWED)
 		return
 	# The code deadline counts from the person's choice, not from the first byte (N9).
@@ -383,7 +412,12 @@ func tick() -> void:
 	var t := _mono()
 	if t >= _transport_deadline or t >= _sas_deadline:
 		_fail(PEER_TIMEOUT, false)
-	elif _expires_at > 0 and _now() >= _expires_at:
+	elif t >= _xchg_deadline:
+		_xchg_deadline = INF
+		var late := _exchange_step(PKeyPeerContact.Exchange.TIMEOUT)
+		if late != &"":
+			_fail(late, false)
+	elif _acct.expires_at > 0 and _now() >= _acct.expires_at:
 		_fail(PEER_EXPIRED, false)
 
 
@@ -421,8 +455,11 @@ func _start_step() -> StringName:
 		key = _disc_key(0)
 		if key == null:
 			return HANDSHAKE_FAILED
+	elif _mode == "c":
+		_contact_idx = 0
+		key = _contacts[0]["secret"]
 	_start_clock()
-	var hs := _new_handshake(key)
+	var hs := _new_handshake(_mode, PKeyPeerContactFlow.psk_for(_slug, _mode, key))
 	if hs == null:
 		return HANDSHAKE_FAILED
 	var first := await _noise(func() -> PKeyResult: return hs.write_message(PKeyPeerPayload.payload1()))
@@ -436,8 +473,9 @@ func _start_step() -> StringName:
 
 func _receive_step(noise: PackedByteArray) -> StringName:
 	if not _clock_started and _role == "responder":
-		# An approver counts the attempt only now that a session starts.
-		if _admission != null:
+		# An approver counts the attempt only now that a session starts. A contact responder is
+		# admitted at its contact trial instead (message 1 is tried under the account's keys first).
+		if _admission != null and (_mode == "v" or _mode == "p"):
 			_ticket = _admission.begin()
 			if _ticket == null:
 				return PEER_BUSY
@@ -455,13 +493,10 @@ func _disc_key(i: int) -> Variant:
 	return keys[i]
 
 
-func _new_handshake(disc_key: Variant) -> PKeyPeerNoise.Handshake:
-	var psk: Variant = null
-	if _mode == "a":
-		psk = PKeyPeerNoise.psk(disc_key, _slug)
-		if (psk as PackedByteArray).is_empty():
-			return null
-	var r := PKeyPeerNoise.start(_role, PKeyPeerNoise.protocol_name(_mode), PKeyPeerNoise.prologue(_slug, _mode), _static, psk, null, _crypto)
+func _new_handshake(mode: String, psk: Variant) -> PKeyPeerNoise.Handshake:
+	if psk is PackedByteArray and (psk as PackedByteArray).is_empty():
+		return null
+	var r := PKeyPeerNoise.start(_role, PKeyPeerNoise.protocol_name(mode), PKeyPeerNoise.prologue(_slug, mode), _static, psk, null, _crypto)
 	return r.detail if r.ok else null
 
 
@@ -481,12 +516,13 @@ func _on_handshake(noise: PackedByteArray) -> StringName:
 		return HANDSHAKE_FAILED
 	var read := await _noise(func() -> PKeyResult: return hs.read_message(noise))
 	var verdict := PKeyPeerPayload.parse_handshake_payload(_mode, 2 if initiator else 3, read.detail) if read.ok else {"ok": false}
-	if not verdict["ok"]:
-		return HANDSHAKE_FAILED
+	var refused := _remote_refusal(verdict, hs.remote_static())
+	if refused != &"":
+		return refused
 	var remote := hs.remote_static()
 	var peer_device_id := ""
 	if _mode == "a":
-		var admitted := _admit_account(verdict, remote)
+		var admitted := _acct.admit_account(verdict, remote)
 		if admitted["code"] != &"":
 			return admitted["code"]
 		peer_device_id = admitted["device_id"]
@@ -496,6 +532,17 @@ func _on_handshake(noise: PackedByteArray) -> StringName:
 		if sent != &"":
 			return sent
 	return _open_transport(hs, remote, peer_device_id)
+
+
+## The close code for a handshake payload or remote key this session refuses, or "". The pin (section 15.10):
+## in mode c the remote static key must be the agreeKey of the contact the secret belongs to; the initiator
+## asks after message 2, the responder after message 3, and a mismatch is `peer_revoked` with nothing sent.
+func _remote_refusal(verdict: Dictionary, remote: PackedByteArray) -> StringName:
+	if not verdict["ok"]:
+		return HANDSHAKE_FAILED
+	if _mode == "c" and not PKeyPeerContact.pin(_contacts[_contact_idx]["agree_key"], remote):
+		return PEER_REVOKED
+	return &""
 
 
 ## The initiator's message 3.
@@ -510,36 +557,35 @@ func _write_third(hs: PKeyPeerNoise.Handshake) -> StringName:
 	return &""
 
 
-## Message 1 of a responder: in mode a the discovery keys are tried in turn (G2), the current then
-## the previous. No static DH runs before the tag verifies, and a failed tag closes silently.
+## Message 1 of a responder (section 15.5 and 15.10): the keys are tried in a fixed order by
+## `PKeyPeerContactFlow.first_message`, one offloaded task (R-6G B2: a first message over
+## `FIRST_MESSAGE_MAX` bytes is refused before any key is tried).
 func _on_first_message(noise: PackedByteArray) -> StringName:
 	if noise.size() > FIRST_MESSAGE_MAX:
 		# Nothing is sent and no HKDF or AEAD runs over a frame nobody has authenticated (R-6G B2).
 		return PEER_BAD_FRAME
-	var keys: Array = []
-	if _mode == "a":
-		for i in 2:
-			var k: Variant = _disc_key(i)
-			if k != null:
-				keys.append(k)
-	else:
-		keys.append(null)
-	var hs: PKeyPeerNoise.Handshake = null
-	var payload := PackedByteArray()
-	for k in keys:
-		var trial := _new_handshake(k)
-		if trial == null:
-			continue
-		var r := trial.read_message(noise)
-		if r.ok:
-			hs = trial
-			payload = r.detail
-			break
-	if hs == null or not PKeyPeerPayload.parse_handshake_payload(_mode, 1, payload)["ok"]:
+	var ctx := {
+		"mode": _mode, "slug": _slug, "static_key": _static, "crypto": _crypto, "admission": _admission,
+		"account": [_disc_key(0), _disc_key(1)] if _mode == "a" else null,
+		"secrets": _contacts.map(func(c: Dictionary) -> PackedByteArray: return c["secret"]),
+	}
+	var res := await PKeyPeerContactFlow.first_message(noise, ctx, _offload)
+	if res["ticket"] != null:
+		# Held until the transport opens (a contact hit) or the session ends.
+		_ticket = res["ticket"]
+	var hit: String = res["hit"]
+	if hit == "":
+		return res["close"] if res["close"] != &"" else HANDSHAKE_FAILED
+	if hit.begins_with("c:"):
+		_contact_idx = int(hit.substr(2))
+		_mode = "c"
+		_asm = PKeyPeerRecord.Assembler.new("c")
+	if _aborted or not PKeyPeerPayload.parse_handshake_payload(_mode, 1, res["payload"])["ok"]:
 		return HANDSHAKE_FAILED
 	var own := _own_payload()
 	if own.is_empty():
 		return HANDSHAKE_FAILED
+	var hs: PKeyPeerNoise.Handshake = res["hs"]
 	var second := await _noise(func() -> PKeyResult: return hs.write_message(own))
 	if not second.ok:
 		return HANDSHAKE_FAILED
@@ -556,44 +602,6 @@ func _own_payload() -> PackedByteArray:
 	return PKeyPeerPayload.payload23(_mode, _caps, {"cert": _account["cert_jws"], "ring": int(ring["epoch"]) if ring is Dictionary else 1})
 
 
-## Mode a: the peer's certificate against the remote static key and the held ring (section 15.3).
-## {code, device_id}; a code of "" admits. A held roster that is expired, unverifiable or another
-## account's must not admit: ask for a fresh one and refuse. Only a device with no roster at all
-## (first run) admits on the certificate.
-func _admit_account(verdict: Dictionary, remote: PackedByteArray) -> Dictionary:
-	var a := _account
-	var held: Variant = (a["held_ring"] as Callable).call()
-	var held_jws: Variant = null
-	if held is Dictionary:
-		held_jws = held["jws"]
-		var v := PKeyPeerCert.verify_ring(held_jws, a["trust"], a["expected_aud"])
-		if not v["ok"] or PKeyPeerCert.ring_expired(v["ring"], _now()) or v["ring"]["sub"] != a["own_sub"]:
-			_emit({"type": &"ring_wanted"})
-			return {"code": HANDSHAKE_FAILED}
-	else:
-		_emit({"type": &"ring_wanted"})
-	var adm := _admit(verdict["cert"], held_jws, remote)
-	if not adm["admit"]:
-		return {"code": PEER_REVOKED if adm["reason"] == "peer_revoked" else HANDSHAKE_FAILED}
-	_peer_cert_jws = verdict["cert"]
-	_peer_remote = remote
-	var wait: int = int(adm["cert"]["expires_at"]) - _now()
-	if wait <= 0:
-		return {"code": PEER_EXPIRED}
-	_expires_at = int(adm["cert"]["expires_at"])
-	_peer_ring = int(verdict["ring"])
-	if adm["ring_sync"] == "request":
-		_emit({"type": &"ring_wanted"})
-	return {"code": &"", "device_id": adm["cert"]["device_id"]}
-
-
-func _admit(cert_jws: String, ring_jws: Variant, remote: PackedByteArray) -> Dictionary:
-	var a := _account
-	return PKeyPeerCert.admit_peer(cert_jws, ring_jws, a["trust"], a["expected_aud"], _now(), {
-		"mode": "a", "remote_static": PKeyB64Url.encode(remote), "own_sub": a["own_sub"], "own_device_id": a["own_device_id"],
-	})
-
-
 ## The handshake is done: the transport ciphers, then HELLO.
 func _open_transport(hs: PKeyPeerNoise.Handshake, remote: PackedByteArray, peer_device_id: String) -> StringName:
 	if _aborted:
@@ -605,6 +613,9 @@ func _open_transport(hs: PKeyPeerNoise.Handshake, remote: PackedByteArray, peer_
 		return HANDSHAKE_FAILED
 	_tp = tp.detail
 	_hs = null
+	# The one-time static key is not needed past the handshake (V5 15.6.1 rule 10): zero our copy.
+	_wipe_static()
+	_static = null
 	_transport_deadline = INF
 	_keyed_at = _mono()
 	_phase = &"hello"
@@ -657,12 +668,46 @@ func _on_control(type: int, body: PackedByteArray) -> Variant:
 		PKeyPeerRecord.CLOSE:
 			code = _on_peer_close(body)
 		PKeyPeerRecord.TRUST:
-			code = _on_trust(body)
+			code = _on_trust(body) if _mode == "a" else PEER_NOT_ALLOWED
 		PKeyPeerRecord.SAS_COMMIT, PKeyPeerRecord.SAS_NONCE, PKeyPeerRecord.SAS_REVEAL:
 			code = _on_sas(type, body)
 		PKeyPeerRecord.RING:
-			code = _on_ring(body)
+			code = _on_ring(body) if _mode == "a" else PEER_NOT_ALLOWED
+		PKeyPeerRecord.CONFIRM, PKeyPeerRecord.CONTACT:
+			if _xchg != null:
+				code = _on_exchange_record(type, body)
 	return code
+
+
+## With the exchange on, the session owns CONFIRM and CONTACT, and only once the code is shown.
+func _on_exchange_record(type: int, body: PackedByteArray) -> StringName:
+	if _phase != &"sas_shown" and _phase != &"open":
+		return PEER_NOT_ALLOWED
+	if type == PKeyPeerRecord.CONFIRM:
+		return _exchange_step(PKeyPeerContact.Exchange.PEER_CONFIRM)
+	return _exchange_step(PKeyPeerContact.Exchange.PEER_CONTACT, body)
+
+
+## One event through the contact exchange: the failure code, or "". CONFIRM is sent by `confirm_sas`
+## itself; only CONTACT is the exchange's to send. The peer's valid CONTACT becomes a `contact` event.
+func _exchange_step(event: String, body := PackedByteArray()) -> StringName:
+	var r := _xchg.step(event, body)
+	if r.has("close"):
+		return r["close"]
+	if (r["sends"] as Array).has("CONTACT"):
+		var built := PKeyPeerContact.build_contact(_xchg_offer)
+		if not built.ok:
+			return PEER_BAD_FRAME
+		var code := _emit_records(PKeyPeerRecord.CONTACT, built.detail)
+		if code != &"":
+			return code
+	if r.has("stored"):
+		var event_out := PKeyPeerContactFlow.contact_event(r["stored"], _xchg_offer["agree_key"], _hash, _sas.n_d, _sas.n_m)
+		if event_out.is_empty():
+			return PEER_BAD_FRAME
+		_sas.wipe()
+		_emit(event_out)
+	return &""
 
 
 func _on_trust(body: PackedByteArray) -> StringName:
@@ -723,18 +768,23 @@ func _on_hello(type: int, body: PackedByteArray) -> StringName:
 		if not negotiated["ok"]:
 			return negotiated["close"]
 	_caps = caps
-	_phase = &"open" if _mode == "a" else &"sas"
+	var direct := _mode == "a" or _mode == "c"
+	_phase = &"open" if direct else &"sas"
+	if direct:
+		# A contact responder's slot among the connections waiting for message 3 ends here.
+		_settle()
 	var shown := {"platform": hello["platform"], "app": hello["app"], "max_message": hello["max_message"]}
 	if hello.has("label"):
 		shown["label"] = hello["label"]
 	_emit({
 		"type": &"established", "caps": caps.duplicate(), "hello": shown, "hello_authenticated": _mode == "a",
 		"remote_static": _peer_remote.duplicate(), "peer_device_id": _peer_device_id,
+		"contact_index": _contact_idx if _mode == "c" else -1,
 	})
 	if _phase == &"closed":
 		return &""
-	if _mode == "a":
-		return _push_ring()
+	if direct:
+		return _push_ring() if _mode == "a" else &""
 	# D commits first, unless the host holds the code back until the person chose this approver.
 	return _commit_sas() if _role == "initiator" and not _hold_sas else &""
 
@@ -754,105 +804,51 @@ func _on_peer_close(body: PackedByteArray) -> StringName:
 
 
 func _push_ring() -> StringName:
-	var held: Variant = (_account["held_ring"] as Callable).call()
-	if held is Dictionary and int(held["epoch"]) > _peer_ring:
-		return _emit_records(PKeyPeerRecord.RING, PKeyJson.stringify({"ring": held["jws"]}).to_utf8_buffer())
-	return &""
+	var body := _acct.ring_body()
+	return _emit_records(PKeyPeerRecord.RING, body) if not body.is_empty() else &""
 
 
 func _on_ring(body: PackedByteArray) -> StringName:
-	# One RING in RING_GAP_SECONDS is worked on; the rest are dropped without a parse or a verify, and a
-	# peer that keeps sending them is closed (R-6G B4). The host refetches through `ring_wanted`.
-	var t := _mono()
-	if t - _ring_at < RING_GAP_SECONDS:
-		_ring_dropped += 1
-		return PEER_BUSY if _ring_dropped >= RING_DROP_LIMIT else &""
-	_ring_at = t
-	_ring_dropped = 0
-	var a := _account
-	var o: Variant = PKeyPeerPayload.parse_strict_object(body)
-	if o == null or not (o as Dictionary).get("ring") is String:
-		return PEER_BAD_FRAME
-	var held: Variant = (a["held_ring"] as Callable).call()
-	var r := PKeyPeerCert.replace_ring(held["jws"] if held is Dictionary else null, o["ring"], a["trust"], a["expected_aud"], _now())
-	# A roster that is stale, older or another account's changes nothing.
-	if not r["replace"] or r["ring"]["sub"] != a["own_sub"]:
-		return &""
-	_emit({"type": &"ring", "jws": o["ring"], "epoch": int(r["ring"]["epoch"])})
+	var r := _acct.on_ring(body, _mono())
+	if not r.has("ring"):
+		return r["code"]
+	_emit({"type": &"ring", "jws": r["ring"]["jws"], "epoch": r["ring"]["epoch"]})
 	if _phase == &"closed":
 		return &""
 	# The new roster may have dropped this peer.
-	if not _admit(_peer_cert_jws, o["ring"], _peer_remote)["admit"]:
-		return PEER_REVOKED
-	return &""
+	return &"" if _acct.admits(r["ring"]["jws"], _peer_remote) else PEER_REVOKED
 
 
 ## The host stored a newer roster: judge the peer's certificate against it again, as the handshake does, and
 ## close `peer_revoked` when the roster no longer lists the peer with the keys it holds (mode a).
 func recheck(ring_jws: String) -> void:
-	if _phase == &"closed" or _account.is_empty() or _peer_cert_jws == "":
+	if _phase == &"closed" or _account.is_empty() or _acct.peer_cert_jws == "":
 		return
-	if not _admit(_peer_cert_jws, ring_jws, _peer_remote)["admit"]:
+	if not _acct.admits(ring_jws, _peer_remote):
 		close(PEER_REVOKED)
 
 
 # -- the short authentication code (modes v and p) ----------------------------------------------
 
 func _commit_sas() -> StringName:
-	_n_d = _crypto.random_bytes(32)
-	var code := _emit_records(PKeyPeerRecord.SAS_COMMIT, PKeyPeerSas.body("c", PKeyPeerSas.commit(_n_d)))
-	_sas_step = 1
-	return code
+	return _emit_records(PKeyPeerRecord.SAS_COMMIT, _sas.commit_body())
 
 
 func _on_sas(type: int, body: PackedByteArray) -> StringName:
-	if _phase != &"sas" or _sas_done:
+	if _phase != &"sas":
 		return PEER_BAD_FRAME
-	var initiator := _role == "initiator"
-	# Responder (M): COMMIT then REVEAL. Initiator (D): NONCE.
-	if type == PKeyPeerRecord.SAS_COMMIT and not initiator and _sas_step == 0:
-		return _sas_commit_received(body)
-	if type == PKeyPeerRecord.SAS_NONCE and initiator and _sas_step == 1:
-		return _sas_nonce_received(body)
-	if type == PKeyPeerRecord.SAS_REVEAL and not initiator and _sas_step == 1:
-		return _sas_reveal_received(body)
-	return PEER_BAD_FRAME
-
-
-func _sas_commit_received(body: PackedByteArray) -> StringName:
-	var c: Variant = PKeyPeerSas.parse_body("c", body)
-	if c == null:
-		return PEER_BAD_FRAME
-	_commit = PKeyPeerSas.encode_value(c)
-	if _mode == "v":
-		# The code deadline counts from D's choice, as D's does from `start_sas()` (N5).
+	var r := _sas.on_record(type, body, _mode)
+	if r["code"] != &"":
+		return r["code"]
+	if r.get("deadline", false):
 		_sas_deadline = _mono() + SAS_DEADLINE_SECONDS
-	_n_m = _crypto.random_bytes(32)
-	var sent := _emit_records(PKeyPeerRecord.SAS_NONCE, PKeyPeerSas.body("nM", _n_m))
-	_sas_step = 1
-	return sent
-
-
-func _sas_nonce_received(body: PackedByteArray) -> StringName:
-	var n_m: Variant = PKeyPeerSas.parse_body("nM", body)
-	if n_m == null:
-		return PEER_BAD_FRAME
-	_n_m = n_m
-	var revealed := _emit_records(PKeyPeerRecord.SAS_REVEAL, PKeyPeerSas.body("nD", _n_d))
-	return revealed if revealed != &"" else _finish_sas()
-
-
-func _sas_reveal_received(body: PackedByteArray) -> StringName:
-	var n_d: Variant = PKeyPeerSas.parse_body("nD", body)
-	if n_d == null or not PKeyPeerSas.reveal_ok(_commit, PKeyPeerSas.encode_value(n_d)):
-		return PEER_BAD_FRAME
-	_n_d = n_d
-	return _finish_sas()
-
-
-func _finish_sas() -> StringName:
-	var code := PKeyPeerSas.value(_hash, _n_d, _n_m, _mode)
-	_sas_done = true
+	if r.has("send"):
+		var sent := _emit_records(r["send"][0], r["send"][1])
+		if sent != &"":
+			return sent
+	if not r.get("finish", false):
+		return &""
+	var code := _sas.code(_hash, _mode)
 	_phase = &"sas_shown"
 	_emit({"type": &"sas", "code": code, "display": PKeyPeerSas.display(code)})
 	return &""
@@ -918,10 +914,19 @@ func _wipe() -> void:
 	# Let go of the discovery keys and the roster this session was handed (a copy of a shared
 	# PackedByteArray cannot be zeroed in place; dropping the references is what is cheap).
 	_account = {}
-	_n_d.fill(0)
-	_n_m.fill(0)
+	for c: Dictionary in _contacts:
+		var zeros := PackedByteArray()
+		zeros.resize((c["secret"] as PackedByteArray).size())
+		c["secret"] = zeros
+	_sas.wipe()
+	_acct.account = {}
+	_wipe_static()
+
+
+## Zero a raw static key in place (the buffer the session holds, not a copy of it).
+func _wipe_static() -> void:
 	if _static is PackedByteArray:
-		(_static as PackedByteArray).fill(0)
+		PKeyPeerNoise._wipe(_static)
 
 
 func _emit(event: Dictionary) -> void:
@@ -937,7 +942,7 @@ func _start_clock() -> void:
 	_clock_started = true
 	var t := _mono()
 	_transport_deadline = t + TRANSPORT_DEADLINE_SECONDS
-	if _mode != "a":
+	if _mode == "v" or _mode == "p":
 		_sas_deadline = t + SAS_DEADLINE_SECONDS
 
 
@@ -950,8 +955,9 @@ func _settle() -> void:
 
 
 func _stop_clock() -> void:
+	_xchg_deadline = INF
 	_transport_deadline = INF
-	_expires_at = 0
+	_acct.expires_at = 0
 	_settle()
 
 
@@ -968,7 +974,7 @@ func _owned(type: int) -> bool:
 	return [
 		PKeyPeerRecord.HELLO, PKeyPeerRecord.CLOSE, PKeyPeerRecord.REKEY, PKeyPeerRecord.SAS_COMMIT,
 		PKeyPeerRecord.SAS_NONCE, PKeyPeerRecord.SAS_REVEAL,
-	].has(type) or (type == PKeyPeerRecord.CONFIRM and _mode == "p")
+	].has(type) or (type == PKeyPeerRecord.CONFIRM and _mode == "p") or (type == PKeyPeerRecord.CONTACT and _xchg != null)
 
 
 ## A key port whose public half was read at `create`, on the calling thread: the Noise task may run

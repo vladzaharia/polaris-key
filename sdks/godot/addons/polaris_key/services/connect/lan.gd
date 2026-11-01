@@ -47,6 +47,8 @@ signal peer_lost(device_id: String)
 ## An inbound session, once it is open and admitted.
 signal session_opened(session: PKeyConnectSession)
 signal notice(n: Dictionary)
+## An inbound mode-c session (a contact dialled this device), once it is open and the pin has passed.
+signal contact_session_opened(session: PKeyConnectSession)
 
 const MAX_PENDING := 32
 const MAX_PENDING_PER_ADDRESS := 4
@@ -93,19 +95,29 @@ var _links: Dictionary = {}
 var _attached: Dictionary = {}
 var _stopped := false
 var _listening_frames := false
+## The inter-account links (CC-19b.G3): their adverts, names and sessions. One limiter serves the listener's
+## contact trial (section 15.10, "Admission").
+var _cx: PKeyConnectLanContacts
+var _limiter: PKeyPeerLimiter
 
 
 ## What the LAN service needs of the client. Each is a Callable: `load` () -> PKeyResult holding a
 ## PeerSource (sync); `now` () -> epoch seconds; `refresh` () -> a coroutine answering a PKeyResult, the
 ## identity fetch; `adopt_ring` (jws) -> {stored, epoch | reason}; `apply_trust` (jws) -> a coroutine
 ## answering {applied | reason}. `refresh`, `adopt_ring` and `apply_trust` may be empty: the document
-## is then refused `unsupported`.
+## is then refused `unsupported`. `contacts` () -> Array: the inter-account links in trial order, secrets decoded
+## (`PKeyConnectContacts.trial_order`); it answers none while the cached discovery `interAccount` is false,
+## which is the gate for every contact advert and mode-c answer here. `contact_established` (contact) is called
+## when a session opened under a pending contact: `{id, agree_key}`, so the host can promote it. Either may
+## be empty (no links). The service zeroes the secrets it is given.
 class Source extends RefCounted:
 	var load: Callable
 	var now: Callable
 	var refresh: Callable
 	var adopt_ring: Callable
 	var apply_trust: Callable
+	var contacts: Callable
+	var contact_established: Callable
 	## What the Callables belong to, held so that they stay valid (a Callable keeps no reference).
 	var keep: RefCounted
 
@@ -123,6 +135,8 @@ static func source_of(client: PKeyConnectClient, apply_trust := Callable()) -> S
 	s.refresh = Callable(client, "identity").bind(true)
 	s.adopt_ring = Callable(client, "adopt_ring")
 	s.apply_trust = apply_trust
+	s.contacts = Callable(client, "live_contacts")
+	s.contact_established = Callable(client, "contact_established")
 	return s
 
 
@@ -165,6 +179,8 @@ func _init(source: Source, options := {}) -> void:
 		"mono": Callable(self, "_mono"),
 	}, Callable(self, "_stored"), Callable(self, "_after"))
 	_docs.notice.connect(Callable(self, "_on_notice"))
+	_cx = PKeyConnectLanContacts.new(source.contacts)
+	_limiter = PKeyPeerLimiter.new(5, 4, Callable(self, "_mono"))
 
 
 func _to_string() -> String:
@@ -200,6 +216,45 @@ func peers() -> Array:
 	return out
 
 
+## The contacts seen on this network now: [{id, pending}]. The host picks one for `connect_contact`.
+func contact_peers() -> Array:
+	return _cx.seen()
+
+
+## Read the contacts again (stored, promoted, removed, re-marked, or the gate moved) and bring the adverts,
+## the accepted names and the listener's trial order to match. Safe to call at any time.
+func refresh_contacts() -> void:
+	if _stopped:
+		return
+	_cx.load_contacts()
+	var idr := _identity(true)
+	if idr.ok:
+		_advert_contacts(idr.detail, PKeyPeerAdvert.advert_epoch(_now()))
+	if _browse != null:
+		_push_accepted()
+
+
+## Stop the account browse for a while (a native lane browses once at a time, and a pairing window needs it).
+## True when a browse was running. The adverts and the listener stay.
+func suspend_browse() -> bool:
+	if _browse == null:
+		return false
+	_browse.call("stop")
+	_browse = null
+	_peers = {}
+	return true
+
+
+## Start the account browse again after `suspend_browse()`.
+func resume_browse() -> void:
+	if _stopped or _browse != null:
+		return
+	var b: PKeyResult = _mdns.browse(Callable(self, "_found"), Callable(self, "_gone"), Callable(self, "_accepts"))
+	if b.ok:
+		_browse = b.detail
+		_push_accepted()
+
+
 ## Sockets that have been accepted and not yet admitted (a test reads it).
 func pending_count() -> int:
 	return _pending.size()
@@ -233,6 +288,54 @@ func dial(target: Variant) -> PKeyResult:
 	if bool(peer.get("native", false)) and want != "":
 		return await PKeyConnectLanNative.dial(self, peer, want)
 	return await _dial_hosts(peer, want)
+
+
+## Dial a contact seen on this network (`contact_peers()`) and run the mode-c handshake under its secret
+## (section 15.10). `pending` picks the pending secret of a re-pair. The pin is the session's: a peer that
+## does not hold the contact's key ends it `peer_revoked` before a byte is sent back. ok with a
+## PKeyConnectSession whose `contact` names the link, or a LAN failure. A coroutine.
+func connect_contact(id: String, pending := false) -> PKeyResult:
+	if _stopped:
+		return PKeyConnectErrors.lan("not_listening", "The LAN service is stopped.")
+	var index := _cx.find(id, pending)
+	var peer := _cx.peer_of(id, pending)
+	var native := bool(peer.get("native", false))
+	var hosts: Array = []
+	for h in peer.get("hosts", []):
+		if h is String and _dialable(h):
+			hosts.append(h)
+	if index < 0 or peer.is_empty() or (hosts.is_empty() and not native):
+		return PKeyConnectErrors.lan("unknown_peer", "That contact was not found on this network.")
+	var idr := _identity(false)
+	if not idr.ok:
+		return idr
+	var contact: Dictionary = (_cx.contacts[index] as Dictionary).duplicate()
+	contact["secret"] = (contact["secret"] as PackedByteArray).duplicate()
+	var failure: PKeyResult = PKeyConnectErrors.lan("handshake_failed", "The handshake failed.")
+	var left: Array = hosts
+	while not _stopped:
+		var pipe: PKeyPeerPipe = null
+		var host := ""
+		if native:
+			pipe = await _gate.open_native(_mdns, str(peer["instance"]), Callable(self, "is_stopped"))
+		elif not left.is_empty():
+			var won := await _race(left, int(peer.get("port", 0)))
+			pipe = won.get("pipe")
+			host = str(won.get("host", ""))
+		if pipe == null:
+			failure = PKeyConnectErrors.lan("connect_failed", "The device did not answer.")
+			break
+		var one := await _handshake(pipe, idr.detail, host, contact)
+		if one.has("session"):
+			PKeyConnectContacts.wipe_live([contact])
+			return PKeyResult.success(one["session"])
+		failure = one["error"]
+		# A neighbour can answer first with its own address: the race runs again over the addresses left.
+		if native or host == "":
+			break
+		left = left.filter(func(h: String) -> bool: return h != host)
+	PKeyConnectContacts.wipe_live([contact])
+	return failure
 
 
 ## Dial a peer by its learned addresses: race them, and run the handshake with the winner.
@@ -299,12 +402,14 @@ func _forget() -> void:
 	_names = {}
 	_names_sig = ""
 	_names_epoch = -1
+	_cx.stop()
 
 
 # ── start ────────────────────────────────────────────────────────────────────────────────────
 
 
 func _start() -> PKeyResult:
+	_cx.load_contacts()
 	var idr := _identity(true)
 	if not idr.ok:
 		return idr
@@ -430,7 +535,7 @@ func _refresh_names(v: PKeyConnectClient.PeerSource) -> void:
 	material.append_array(v.disc_current)
 	material.append_array("|".to_utf8_buffer())
 	material.append_array(v.disc_previous)
-	material.append_array(("|" + ",".join(PackedStringArray(v.roster))).to_utf8_buffer())
+	material.append_array(("|" + ",".join(PackedStringArray(v.roster)) + "|" + _cx.sig).to_utf8_buffer())
 	var sig := PKeySyncHkdf.sha256(material).hex_encode()
 	if sig == _names_sig:
 		return
@@ -446,13 +551,14 @@ func _refresh_names(v: PKeyConnectClient.PeerSource) -> void:
 	_names = names
 	_names_sig = sig
 	_names_epoch = epoch
+	_cx.refresh_names(epoch)
 
 
 ## The adapter's roster filter. When the epoch has moved the names are worked out again first.
 func _accepts(instance: String) -> bool:
 	if _id != null and _names_epoch != PKeyPeerAdvert.advert_epoch(_now()):
 		_refresh_names((_id as Dictionary)["v"])
-	return _names.has(instance)
+	return _names.has(instance) or _cx.accepts(instance)
 
 
 ## An adapter that filters natively (`set_accepted`, the Apple lane) is told the instance names to report.
@@ -462,7 +568,7 @@ func _push_accepted() -> void:
 	var idr := _identity(false)
 	if idr.ok:
 		_refresh_names(idr.detail)
-		_mdns.call("set_accepted", _names.keys())
+		_mdns.call("set_accepted", _names.keys() + _cx.names.keys())
 
 
 ## K_disc or the roster was stored (a pushed RING, or a refresh): the next read reloads, and the
@@ -498,11 +604,21 @@ func _rotate() -> PKeyResult:
 		_adv_name = name
 		if old != null:
 			old.stop()
+	_cx.load_contacts()
+	_refresh_names(v)
+	_advert_contacts(v, epoch)
 	if _browse != null:
 		_push_accepted()
 	var next := (epoch + 1) * PKeyPeerAdvert.ADVERT_EPOCH_SECONDS - now
 	_after(float(maxi(1, next)), Callable(self, "_rotate_later"))
 	return PKeyResult.success()
+
+
+## The `m=c` adverts of the reachable contacts (slot c, this listener's port). Best effort: the account advert
+## stands on its own, and the next epoch or `refresh_contacts()` tries again.
+func _advert_contacts(v: PKeyConnectClient.PeerSource, epoch: int) -> void:
+	if bool(_o.get("advertise", true)) and not _stopped:
+		_cx.advertise(_mdns, _port, v.agree_public, epoch)
 
 
 func _rotate_later() -> void:
@@ -517,6 +633,10 @@ func _found(f: Dictionary) -> void:
 			hosts.append(h)
 	var native := bool(f.get("native", false))
 	if _stopped or (hosts.is_empty() and not native):
+		return
+	# A contact advert (`m=c`) is judged by the contact parser and by no other path (section 15.4).
+	if PKeyPeerContact.parse_txt(f.get("txt", []))["ok"]:
+		_found_contact(f, hosts)
 		return
 	var txt := PKeyPeerAdvert.parse_txt(f.get("txt", []))
 	if not txt["ok"] or txt["mode"] != "a":
@@ -548,7 +668,22 @@ func _found(f: Dictionary) -> void:
 		peer_found.emit(peer.duplicate(true))
 
 
+func _found_contact(f: Dictionary, hosts: Array) -> void:
+	var instance := str(f["instance"])
+	if _cx.contacts.is_empty() or _miss.has(instance):
+		return
+	var idr := _identity(false)
+	if idr.ok and _names_epoch != PKeyPeerAdvert.advert_epoch(_now()):
+		_refresh_names(idr.detail)
+	if not _cx.note_found(f, hosts):
+		# Bounded negative cache: a forged instance is not worked out twice.
+		if _miss.size() >= MISS_CACHE:
+			_miss.erase(_miss.keys()[0])
+		_miss[instance] = _now()
+
+
 func _gone(instance: String) -> void:
+	_cx.gone(instance)
 	for id: String in _peers.keys():
 		if _peers[id]["instance"] == instance:
 			_peers.erase(id)
@@ -664,11 +799,17 @@ func _on_inbound(session: PKeyConnectSession, pid: int) -> void:
 		if admitted.pipe != null and admitted.pipe.has_method("admit"):
 			admitted.pipe.call("admit")
 		_release(admitted)
-	if _stopped or _count_peer(session.peer_device_id) >= int(_o.get("max_sessions_per_peer", MAX_SESSIONS_PER_PEER)):
+	var by_contact := not session.contact.is_empty()
+	var held := _count_contact(str(session.contact["id"])) if by_contact else _count_peer(session.peer_device_id)
+	if _stopped or held >= int(_o.get("max_sessions_per_peer", MAX_SESSIONS_PER_PEER)):
 		session.close(PKeyPeerSession.PEER_BUSY)
 		return
 	_track(session)
-	session_opened.emit(session)
+	if by_contact:
+		_contact_opened(session)
+		contact_session_opened.emit(session)
+	else:
+		session_opened.emit(session)
 
 
 func _count_peer(device_id: String) -> int:
@@ -677,6 +818,23 @@ func _count_peer(device_id: String) -> int:
 		if (_sessions[sid] as PKeyConnectSession).peer_device_id == device_id:
 			n += 1
 	return n
+
+
+func _count_contact(id: String) -> int:
+	var n := 0
+	for sid: int in _sessions:
+		if str((_sessions[sid] as PKeyConnectSession).contact.get("id", "")) == id:
+			n += 1
+	return n
+
+
+## A session opened under a contact: the pin has passed, so a pending contact is promoted (the host stores it).
+func _contact_opened(session: PKeyConnectSession) -> void:
+	if not bool(session.contact["pending"]) or not _src.contact_established.is_valid():
+		return
+	var index := _cx.find(str(session.contact["id"]), true)
+	if index >= 0:
+		_src.contact_established.call({"id": session.contact["id"], "agree_key": _cx.contacts[index]["agree_key"]})
 
 
 func _track(session: PKeyConnectSession) -> void:
@@ -688,19 +846,38 @@ func _on_session_closed(_code: StringName, _by_peer: bool, sid: int) -> void:
 	_sessions.erase(sid)
 
 
-## A link and its attachment for `pipe`: {link, attachment}, or {} when the options are refused.
-func _make_link(pipe: PKeyPeerPipe, src: PKeyConnectClient.PeerSource, role: String) -> Dictionary:
-	var so := PKeyConnectChannel.session_options(src, {
+## A link and its attachment for `pipe`: {link, attachment}, or {} when the options are refused. `contact` (a
+## live contact) makes the initiator of a mode-c link to it; a responder with contacts serves them all (the
+## shared listener, section 15.10: the account's keys are tried first, then each secret).
+func _make_link(pipe: PKeyPeerPipe, src: PKeyConnectClient.PeerSource, role: String, contact := {}) -> Dictionary:
+	var opts := {
 		"role": role, "caps": _o.get("caps", ["app/1"]), "label": str(_o.get("label", "")), "ring": Callable(self, "_pushed"),
 		"now": _src.now, "mono": Callable(self, "_mono"), "rekey_messages": _o.get("rekey_messages", PKeyPeerSession.DEFAULT_REKEY_MESSAGES),
 		"rekey_seconds": _o.get("rekey_seconds", PKeyPeerSession.DEFAULT_REKEY_SECONDS),
-	})
+	}
+	var served: Array = []
+	var refs: Array = []
+	var so: Dictionary
+	if not contact.is_empty():
+		served = [{"secret": (contact["secret"] as PackedByteArray).duplicate(), "agree_key": contact["agree_key"]}]
+		refs = [{"id": contact["id"], "pending": contact["pending"]}]
+		so = PKeyConnectChannel.contact_session_options(src, opts, served[0])
+	else:
+		so = PKeyConnectChannel.session_options(src, opts)
+		if role == "responder" and not _cx.contacts.is_empty():
+			served = _cx.links()
+			refs = _cx.refs()
+			so["contacts"] = served
+			so["admission"] = _limiter
 	var seconds := float(_o.get("handshake_seconds", HANDSHAKE_SECONDS))
 	var lr := PKeyPeerLink.create(pipe, so, {"pump": _pump, "handshake_ms": int(seconds * 1000.0)})
+	# The session holds its own copies of the secrets.
+	PKeyConnectContacts.wipe_live(served)
 	if not lr.ok:
 		return {}
 	var link: PKeyPeerLink = lr.detail
 	var att := PKeyConnectChannel.attach(link, _docs, role, pipe.remote_address(), "lan", _budget, _o.get("xfer", Callable()))
+	att.contacts = refs
 	_links[link.get_instance_id()] = link
 	_attached[link.get_instance_id()] = att
 	link.closed.connect(_on_link_closed.bind(link.get_instance_id()))
@@ -731,8 +908,8 @@ func _race(hosts: Array, port: int) -> Dictionary:
 
 
 ## Link `pipe` as the initiator and wait for the session: {session}, or {error, host}.
-func _handshake(pipe: PKeyPeerPipe, ident: PKeyConnectClient.PeerSource, host: String) -> Dictionary:
-	var made := _make_link(pipe, ident, "initiator")
+func _handshake(pipe: PKeyPeerPipe, ident: PKeyConnectClient.PeerSource, host: String, contact := {}) -> Dictionary:
+	var made := _make_link(pipe, ident, "initiator", contact)
 	if made.is_empty():
 		pipe.abort()
 		return {"error": PKeyConnectErrors.lan("handshake_failed", "The handshake failed."), "host": host}
@@ -755,6 +932,8 @@ func _handshake(pipe: PKeyPeerPipe, ident: PKeyConnectClient.PeerSource, host: S
 		link.destroy()
 		return {"error": PKeyConnectErrors.lan("handshake_failed", "The session closed before it could be used."), "host": host}
 	_track(session)
+	if not contact.is_empty():
+		_contact_opened(session)
 	return {"session": session}
 
 

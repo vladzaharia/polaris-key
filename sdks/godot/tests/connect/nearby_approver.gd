@@ -28,6 +28,7 @@ func run(t: PKeyTestContext) -> void:
 	await _lifecycle(t)
 	await _tcp_gate(t)
 	await _request_wait(t)
+	await _timers_ignore_time_scale(t)
 
 
 func _tree() -> SceneTree:
@@ -605,3 +606,23 @@ func _request_wait(t: PKeyTestContext) -> void:
 	t.check("wait: D is told peer_timeout", d.closes[0][0] == &"peer_timeout", str(d.closes))
 	app.stop()
 	d.link.destroy()
+
+
+# -- the timers follow real time -------------------------------------------------------------------------
+
+
+func _timers_ignore_time_scale(t: PKeyTestContext) -> void:
+	var env := Env.new()
+	var host := Host.new()
+	var lane := NativeLane.new()
+	var app: PKeyPeerNearbyApprover = _approver(env, host, lane).detail
+	var fired := [false]
+	var saved := Engine.time_scale
+	Engine.time_scale = 0.0
+	app._after(0.1, func() -> void: fired[0] = true)
+	var stop := Time.get_ticks_msec() + 3000
+	while not fired[0] and Time.get_ticks_msec() < stop:
+		await _tree().process_frame
+	Engine.time_scale = saved
+	t.check("timers: a paused game clock (time_scale 0) does not stall the approver's timers", fired[0])
+	app.stop()

@@ -15,6 +15,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 	if not t.check("vectors parse", err == OK and j.data is Array, VECTORS):
 		return true
 	var cases: Array = j.data
+	_warmup_threads(t)
 	var t_init := Time.get_ticks_usec()
 	PKeyEd25519.warmup()
 	t.info("PKeyEd25519 one-time table init %.2f ms" % ((Time.get_ticks_usec() - t_init) / 1000.0))
@@ -112,3 +113,22 @@ func _spin(f: Callable, want: Variant, iters: int, bad: Array, slot: int) -> voi
 	for i in iters:
 		if f.call() != want:
 			bad[slot] += 1
+
+
+## Several threads making the base table the first time end with one whole, ordered table.
+func _warmup_threads(t: PKeyTestContext) -> void:
+	PKeyEd25519._bi = []
+	var threads: Array[Thread] = []
+	for i in 4:
+		var th := Thread.new()
+		th.start(PKeyEd25519.warmup)
+		threads.append(th)
+	for th in threads:
+		th.wait_to_finish()
+	var ok: bool = PKeyEd25519._bi.size() == PKeyEd25519.BI.size()
+	if ok:
+		for k in PKeyEd25519.BI.size():
+			if PKeyEd25519._bi[k][0] != PackedInt64Array(PKeyEd25519.BI[k][0]):
+				ok = false
+				break
+	t.check("warmup: threads racing to build the base table leave it whole and in order", ok)

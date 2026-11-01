@@ -73,7 +73,7 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
     private val candidates = HashSet<String>()
 
     /** The candidates whose TXT did not match: not watched again until they go. */
-    private val rejected = HashSet<String>()
+    private val rejected = LinkedHashSet<String>()
     private val adverts = HashMap<String, Advert>()
     private var advertGen = 0
     private var browse: Stopper? = null
@@ -237,6 +237,7 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
     private fun admitCandidate(name: String): Boolean {
         if (tags.isEmpty() || !isInstanceName(name)) return false
         if (name in candidates) return true
+        if (name in rejected) return false
         if (candidates.size >= MAX_CANDIDATES) return false
         candidates += name
         return true
@@ -267,7 +268,10 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
     private fun found(instance: String, r: NsdResolved) {
         if (instance !in accepted && !tagMatch(r.attributes)) {
             // A candidate whose TXT is not an advert we look for: not reported, not watched, and kept out until it goes.
+            // Its slot is freed: only names whose tag matched keep counting toward the candidate bound.
+            candidates.remove(instance)
             rejected += instance
+            while (rejected.size > MAX_REJECTED) rejected.remove(rejected.first())
             dropWatch(instance)
             return
         }
@@ -383,6 +387,9 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
 
         /** Names outside the roster that a tag browse may hold at once (half of PeerNsd's 64 watches). */
         const val MAX_CANDIDATES = 32
+
+        /** Names kept out until the OS reports them gone; the oldest are forgotten past this. */
+        const val MAX_REJECTED = 256
         const val MAX_TAGS = 2
         const val TAG_LENGTH = 16
         const val MAX_TXT = 8
