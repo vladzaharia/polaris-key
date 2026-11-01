@@ -285,6 +285,51 @@ describe.each([
     expect(conflict.serverVersion).toBe(conflict.remote!.version);
   });
 
+  it("a conflict from the server's version describes it, not this device's cached copy", async () => {
+    const r = rig({ e2e });
+    const v1 = done(await r.saves.write("slot1", small, meta).done);
+    const cached = (await r.records.get("slot1"))!;
+    done(
+      await r.saves.write("slot1", noise(900, 8), { ...meta, chapter: "Two" })
+        .done,
+    );
+    // This device's cache is behind: it still holds the v1 row.
+    r.records.get = async () => cached;
+    const mine = noise(700, 9);
+    const out = await r.saves.write("slot1", mine, meta, {
+      baseVersion: v1.version,
+    }).done;
+    if (out.state !== "conflict") throw new Error("conflict");
+    const serverVersion = r.records.recs.get(
+      r.records.wireId("slot1"),
+    )!.version;
+    expect(out.conflict.serverVersion).toBe(serverVersion);
+    expect(out.conflict.serverVersion).not.toBe(cached.version);
+    expect(out.conflict.remote!.version).toBe(serverVersion);
+    // Keeping this device's version succeeds against the server's version.
+    done(await r.saves.resolve(out.conflict, "local", mine).done);
+    // Writing again does not repeat the old conflict.
+    delete (r.records as { get?: unknown }).get;
+    done(await r.saves.write("slot1", noise(800, 5), meta).done);
+  });
+
+  it("a save deleted elsewhere is a conflict with no remote, and keeping this device's save succeeds", async () => {
+    const r = rig({ e2e });
+    done(await r.saves.write("slot1", small, meta).done);
+    const cached = (await r.records.get("slot1"))!;
+    r.records.recs.delete(r.records.wireId("slot1"));
+    r.records.get = async () => cached;
+    const mine = noise(700, 9);
+    const out = await r.saves.write("slot1", mine, meta).done;
+    if (out.state !== "conflict") throw new Error("conflict");
+    expect(out.conflict.remote).toBeNull();
+    expect(out.conflict.serverVersion).toBe(0);
+    done(await r.saves.resolve(out.conflict, "local", mine).done);
+    delete (r.records as { get?: unknown }).get;
+    const read = await r.saves.read("slot1");
+    expect(read.ok).toBe(true);
+  });
+
   it("settles a conflict: keep remote writes nothing", async () => {
     const mine = noise(700, 9);
     const { r, conflict } = await conflictRig(e2e, mine);

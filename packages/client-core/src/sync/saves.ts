@@ -489,7 +489,13 @@ export class SavesClient {
       opts,
       keep === "both"
         ? { copy: true }
-        : { baseVersion: conflict.serverVersion ?? "*" },
+        : {
+            // A copy the server no longer holds is replaced on "record must not exist".
+            baseVersion:
+              conflict.remote === null || !conflict.serverVersion
+                ? "*"
+                : conflict.serverVersion,
+          },
     );
   }
 
@@ -698,15 +704,43 @@ export class SavesClient {
     serverVersion: number | undefined | null,
     known?: SaveRecord | null,
   ): Promise<SaveOutcome> {
-    const rec = known !== undefined ? known : await this.d.records.get(id);
     const slots = (await this.d.records.list()).length;
+    // The server's answer wins. `known` is the copy a rejected `set` carried (null: deleted). A
+    // file `begin` answers only a version, and the cached row stands in for it only while it is
+    // that very version; a stale row is never presented as the server's copy.
+    let remote: SaveSummary | null;
+    let version: number | null;
+    if (known !== undefined) {
+      remote = known ? this.summary(known) : null;
+      version = known?.version ?? serverVersion ?? null;
+    } else if (serverVersion === undefined || serverVersion === null) {
+      const rec = await this.d.records.get(id);
+      remote = rec ? this.summary(rec) : null;
+      version = rec?.version ?? null;
+    } else if (serverVersion === 0) {
+      remote = null;
+      version = 0;
+    } else {
+      const rec = await this.d.records.get(id);
+      remote =
+        rec && rec.version === serverVersion
+          ? this.summary(rec)
+          : {
+              id,
+              version: serverVersion,
+              metadata: {},
+              file: null,
+              newerFormat: false,
+            };
+      version = serverVersion;
+    }
     return {
       state: "conflict",
       conflict: {
         id,
         local: { metadata, size: source.size },
-        remote: rec ? this.summary(rec) : null,
-        serverVersion: rec?.version ?? serverVersion ?? null,
+        remote,
+        serverVersion: version,
         bothAvailable: slots < SYNC_SAVE_SLOTS,
       },
     };

@@ -404,9 +404,12 @@ public class SavesClient internal constructor(
                 BytesSource(bytes),
                 conflict.localMetadata,
                 WriteMode.Base(
-                    conflict.serverVersion?.let {
-                        JsonPrimitive(it)
-                    } ?: JsonPrimitive("*"),
+                    // A copy the server no longer holds is replaced on "record must not exist".
+                    if (conflict.remote == null || (conflict.serverVersion ?: 0L) == 0L) {
+                        JsonPrimitive("*")
+                    } else {
+                        JsonPrimitive(conflict.serverVersion)
+                    },
                 ),
                 onProgress,
             )
@@ -631,11 +634,32 @@ public class SavesClient internal constructor(
         known: SaveRecord?,
         haveKnown: Boolean,
     ): SaveResult {
-        val rec = if (haveKnown) known else d.records.get(id)
         val slots = d.records.list().size
-        return SaveResult.Conflict(
-            SaveConflict(id, metadata, size, rec?.let { summary(d, it) }, rec?.version ?: serverVersion, slots < SYNC_SAVE_SLOTS),
-        )
+        // The server's answer wins. [known] is the copy a rejected set carried (null: deleted). A file begin answers
+        // only a version, and the cached row stands in for it only while it is that very version; a stale row is
+        // never presented as the server's copy.
+        val remote: SaveSummary?
+        val version: Long?
+        if (haveKnown) {
+            remote = known?.let { summary(d, it) }
+            version = known?.version ?: serverVersion
+        } else if (serverVersion == null) {
+            val rec = d.records.get(id)
+            remote = rec?.let { summary(d, it) }
+            version = rec?.version
+        } else if (serverVersion == 0L) {
+            remote = null
+            version = 0L
+        } else {
+            val rec = d.records.get(id)
+            remote = if (rec != null && rec.version == serverVersion) {
+                summary(d, rec)
+            } else {
+                SaveSummary(id, serverVersion, JsonObject(emptyMap()), null, false)
+            }
+            version = serverVersion
+        }
+        return SaveResult.Conflict(SaveConflict(id, metadata, size, remote, version, slots < SYNC_SAVE_SLOTS))
     }
 }
 

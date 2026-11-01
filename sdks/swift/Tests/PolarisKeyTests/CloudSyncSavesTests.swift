@@ -37,6 +37,8 @@ private final class FakeFiles: FileTransport, FileRevisions, @unchecked Sendable
     var onBegin: @Sendable () async throws -> FileRefusal? = { nil }
     /// A server version that makes `begin` a conflict, per record.
     var conflictAt: [String: Int] = [:]
+    /// The `baseVersion` of each `begin`, in order.
+    var bases: [JSONValue?] = []
 
     func begin(_ target: FileTarget, request: JSONValue) async throws -> FileReply<JSONValue> {
         lock.withLock { calls.append("begin") }
@@ -52,6 +54,7 @@ private final class FakeFiles: FileTransport, FileRevisions, @unchecked Sendable
                     body: .object(["server": .object(["version": .int(conflict)])])))
         }
         let base = request.objectValue?["baseVersion"]
+        lock.withLock { bases.append(base) }
         if case .string("*")? = base, cur > 0 {
             return .refused(
                 FileRefusal(
@@ -506,6 +509,42 @@ final class CloudSyncSavesTests: XCTestCase {
         else { return XCTFail("keep local") }
         let r3 = try await rig.records.get("slot1")
         XCTAssertEqual(r3?.value, ["who": .string("local")])
+    }
+
+    func testAConflictDescribesTheServersVersionNotTheCachedCopy() async throws {
+        let rig = Rig(e2e: false)
+        rig.records.seed("slot1", ["who": .string("old")], bytes: Data("old".utf8))
+        // Another device wrote version 40; this device's cache still holds version 1.
+        rig.files.conflictAt["slot1"] = 40
+        let t = try await rig.client.write(
+            "slot1", bytes: Data("mine".utf8), metadata: obj(["who": .string("mine")]))
+        guard case .conflict(let c) = await t.outcome() else { return XCTFail("not a conflict") }
+        XCTAssertEqual(c.serverVersion, 40)
+        XCTAssertEqual(c.remote?.version, 40)
+        XCTAssertNotEqual(c.remote?.metadata, obj(["who": .string("old")]))
+        // Keeping this device's version succeeds, and the next write does not repeat the conflict.
+        rig.files.conflictAt = [:]
+        rig.files.lock.withLock { rig.files.versionSeq["slot1"] = 40 }
+        guard case .done = try await rig.client.resolve(c, keep: .local, bytes: Data("mine".utf8)).outcome()
+        else { return XCTFail("keep local") }
+        guard case .done = try await rig.client.write("slot1", bytes: Data("again".utf8), metadata: obj([:])).outcome()
+        else { return XCTFail("a repeated conflict") }
+    }
+
+    func testASaveDeletedElsewhereHasNoRemoteAndKeepMineUsesMustNotExist() async throws {
+        let rig = Rig(e2e: false)
+        rig.records.seed("slot1", ["who": .string("old")], bytes: Data("old".utf8))
+        rig.files.conflictAt["slot1"] = 0
+        let t = try await rig.client.write(
+            "slot1", bytes: Data("mine".utf8), metadata: obj(["who": .string("mine")]))
+        guard case .conflict(let c) = await t.outcome() else { return XCTFail("not a conflict") }
+        XCTAssertNil(c.remote)
+        XCTAssertEqual(c.serverVersion, 0)
+        rig.files.conflictAt = [:]
+        rig.files.lock.withLock { rig.files.versionSeq["slot1"] = 0 }
+        guard case .done = try await rig.client.resolve(c, keep: .local, bytes: Data("mine".utf8)).outcome()
+        else { return XCTFail("keep local") }
+        XCTAssertEqual(rig.files.bases.last, .some(.string("*")))
     }
 
     func testKeepBothNeedsAFreeSlot() async throws {

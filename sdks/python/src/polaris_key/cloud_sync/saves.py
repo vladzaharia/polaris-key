@@ -633,7 +633,12 @@ class SavesClient:
         mode: Obj = (
             {"copy": True}
             if keep == "both"
-            else {"baseVersion": "*" if conflict["serverVersion"] is None else conflict["serverVersion"]}
+            else {
+                # A copy the server no longer holds is replaced on "record must not exist".
+                "baseVersion": "*"
+                if conflict["remote"] is None or not conflict["serverVersion"]
+                else conflict["serverVersion"]
+            }
         )
         return self._run(cid, data, conflict["local"]["metadata"], None, on_progress, mode)
 
@@ -811,19 +816,36 @@ class SavesClient:
         known: Any = None,
         has_known: bool = False,
     ) -> Obj:
-        rec = known if has_known else self._records.get(id)
         slots = len(self._records.list())
+        # The server's answer wins. ``known`` is the copy a rejected set carried (None: deleted). A
+        # file begin answers only a version; the cached row stands in for it only while it is that
+        # very version, and a stale row is never presented as the server's copy.
+        if has_known:
+            remote = self._summary(known) if known else None
+            version = known["version"] if known else server_version
+        elif server_version is None:
+            rec = self._records.get(id)
+            remote = self._summary(rec) if rec else None
+            version = rec["version"] if rec else None
+        elif server_version == 0:
+            remote, version = None, 0
+        else:
+            rec = self._records.get(id)
+            if rec and rec["version"] == server_version:
+                remote = self._summary(rec)
+            else:
+                remote = {"id": id, "version": server_version, "metadata": {}, "file": None, "newerFormat": False}
+            version = server_version
         return {
             "state": "conflict",
             "conflict": {
                 "id": id,
                 "local": {"metadata": metadata, "size": source.size},
-                "remote": self._summary(rec) if rec else None,
-                "serverVersion": rec["version"] if rec else server_version,
+                "remote": remote,
+                "serverVersion": version,
                 "bothAvailable": slots < SYNC_SAVE_SLOTS,
             },
         }
-
 
 
 # ── client.cloud_sync.saves ─────────────────────────────────────────────────────────────────────
