@@ -1092,6 +1092,74 @@ check is the private block, not the subnet, because Godot lists no netmask. `con
 in `parity.json` for all of these, except web; the native lanes are unit-tested over fakes and the
 native builds, and their device runs are the owner's checks.
 
+### Links between accounts (`PolarisKey.cloud_connect.links`)
+
+Two people pair their devices once, in person, and later open sessions to each other without pairing again.
+The product turns it on (`interAccount` in discovery); while it is off `pair` and `open` fail
+`connect_links_disabled` and nothing is advertised. The answer lapses after 24 hours or a failed read and is
+read again on a timer.
+
+```gdscript
+func _on_offer(offer: PKeyConnectPairing.Offer) -> void:
+	show_code(offer.code)           # both people see the same code
+	# on the person's answer: offer.confirm() or offer.decline()
+
+func pair_now() -> void:
+	PolarisKey.cloud_connect.links.link.connect(_on_link)
+	var r := await PolarisKey.cloud_connect.links.pair({categories = ["games"], on_offer = _on_offer})
+	# r.detail is the open window (stop(), the signals linked, failed and window_closed)
+
+func _on_link(session: PKeyConnectSession) -> void:
+	print(session.contact["id"])    # a session another person's device opened to this one
+```
+
+- `list()` answers `{id, label, categories, created_at, reachable, re_pair_pending}` per link; no key or secret.
+  `remove(id)` deletes the secret before it answers, ends its open sessions `peer_revoked` and purges what the
+  peer sent and did not finish. `set_reachable(id, bool)` advertises the link (at most 8) and keeps a relay room
+  for it. `open(id)` tries the LAN, then the relay; `session.contact` names the link.
+- With nothing connected to `link`, an inbound session is closed. Direct Transfer takes a link session only
+  after the link has been checked.
+- Web has no LAN and no pairing: `pair` fails `connect-unavailable` (reason `runtime`), `list()` is empty and
+  `open` fails `link-unknown`.
+- Pairing needs the local-network lane. It is `nearby-unsupported` below Android 14 (API 34), on an older native
+  binding, and where the lane is `querier_only`, which can dial a link but cannot be found. The LAN check is the
+  private block, not the subnet. A stranger on the LAN can use up a pairing window's eight offers; no link forms
+  without both people confirming the code. Contact secrets are sealed by the platform lane and only obfuscated
+  on Linux.
+
+### Direct Transfer (`PolarisKey.cloud_connect.transfer`)
+
+Send a file or bytes to another device, or to a linked person's device. Sessions list `xfer/1` by default
+(`start({transfer = false})` turns it off).
+
+```gdscript
+func _ready() -> void:
+	PolarisKey.cloud_connect.transfer.on_offer(_on_offer)
+
+func _on_offer(offer: PKeyTransferOffer) -> void:
+	if offer.size > 50_000_000:
+		offer.decline()
+	else:
+		offer.accept("user://inbox/received.bin")   # a path you chose; never build it from offer.name
+
+func send_to(link_id: String) -> void:
+	var r := await PolarisKey.cloud_connect.transfer.send({link = link_id}, "user://save.dat", {category = "games"})
+	if r.ok:
+		await (r.detail as PKeyTransferHandle).wait()
+```
+
+- `send(peer, source, options)`: `peer` is an open session, a device id or `{link = id}`; `source` is a path or a
+  `PackedByteArray`. The content is hashed off the main thread before the offer goes out. The `result` signal reports
+  each transfer's end in either direction.
+- With no handler, an unusable destination or no answer within 120 seconds, an offer is declined. A link's offers
+  are checked against its categories before the person is asked.
+- A partial file is kept for 24 hours and resumed when the same peer sends the same transfer again; sign-out and
+  removing a link delete it. The delivered file is written beside the destination and renamed after the hash matched.
+- Limits. The GDScript AES-GCM (Linux, web) moves about 1 MB a second a link; a native lane is faster. Web
+  runs over the relay only, with no resume. With no host quota and a disk that cannot say how much is free, the
+  store promises at most 1 GiB (4 GiB otherwise). GDScript has no `O_EXCL` or `O_NOFOLLOW`: temp files are in a
+  private directory, and the check of the destination before the rename is not atomic.
+
 ### Nearby approval (`PolarisKey.cloud_connect.nearby`)
 
 A device with no way to sign in (D) can be approved by a signed-in device (M) on the same network, with a code both
