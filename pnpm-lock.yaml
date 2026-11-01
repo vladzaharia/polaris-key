@@ -23,7 +23,7 @@ overrides:
   http-cache-semantics@^4: ^4.3.0
   source-map-js@^1: ^1.2.2
   zod@^4: ^4.6.6
-  fastify@^5: ^5.12.7
+  fastify@^5: 5.12.7
 
 importers:
 
@@ -440,7 +440,7 @@ importers:
         specifier: ^5.1.0
         version: 5.3.0
       fastify:
-        specifier: ^5.12.7
+        specifier: 5.12.7
         version: 5.12.7
       hono:
         specifier: ^4.7.0
@@ -688,7 +688,7 @@ importers:
         specifier: ^5.1.0
         version: 5.3.0
       fastify:
-        specifier: ^5.12.7
+        specifier: 5.12.7
         version: 5.12.7
       hono:
         specifier: ^4.7.0
