@@ -96,6 +96,14 @@ extension IdentityClient {
     /// Hand over what nearby sign-in needs. The umbrella does it when it builds the client; nil removes it.
     public func installNearby(_ binding: NearbyBinding?) { nearbyBinding.set(binding) }
 
+    /// Whether this device can take part in nearby sign-in as D: the runtime can browse the network and the
+    /// product's discovery names nearby approval and its routes. No request is made.
+    public func nearbyAvailable() async -> Bool {
+        guard nearbyBinding.current?.lan?() != nil, await core.enabled(.identity) else { return false }
+        guard let fragment = await core.discoveryDocument?.identity, fragment.nearby else { return false }
+        return [fragment.nearbyStart, fragment.nearbyPoll].allSatisfy { ($0 ?? "").isEmpty == false }
+    }
+
     /// Whether this token is still the one the credential store holds (a later sign-in replaces it).
     func nearbyHolds(_ token: String) async -> Bool { await core.token == token }
 
@@ -147,12 +155,14 @@ extension IdentityClient {
         let request: any NearbyRequestHandle
         do {
             request = try await lan.request(
-                NearbyRequestOptions(request: started.request, label: label, expiresIn: TimeInterval(started.expiresIn)))
+                NearbyRequestOptions(request: started.request, label: label, expiresIn: TimeInterval(started.expiresIn))
+            )
         } catch let error as NearbyError {
             throw PolarisError(code: error.code, message: "Nearby sign-in could not look for devices.")
         }
         return NearbySignInSession(
-            client: self, started: started, request: request, label: label, expiresAt: await core.now() + started.expiresIn,
+            client: self, started: started, request: request, label: label,
+            expiresAt: await core.now() + started.expiresIn,
             timer: binding.timer)
     }
 }
@@ -323,7 +333,10 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
     @discardableResult
     private func halt(onlyUnconfirmed: Bool = false) -> (acted: Bool, discard: Bool) {
         let step = state.with {
-            s -> (acted: Bool, listeners: [@Sendable () -> Void], deadline: (@Sendable () -> Void)?, sleeper: Task<Void, Error>?, discard: Bool) in
+            s -> (
+                acted: Bool, listeners: [@Sendable () -> Void], deadline: (@Sendable () -> Void)?,
+                sleeper: Task<Void, Error>?, discard: Bool
+            ) in
             if onlyUnconfirmed && (s.confirmed || s.ended) { return (false, [], nil, nil, false) }
             s.cancelled = true
             let deadline = s.deadline
@@ -461,17 +474,20 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
                     return .cancelled
                 }
                 armDeadline()
-                return end(
-                    .signedIn(SignInReady(identity: ready.identity, subject: ready.subject, scope: ready.scope, licenseId: ready.licenseId)))
+                return await end(
+                    .signedIn(
+                        SignInReady(
+                            identity: ready.identity, subject: ready.subject, scope: ready.scope,
+                            licenseId: ready.licenseId)))
             }
             if state.with({ $0.cancelled }) { return .cancelled }
             switch poll {
             case .ready, .pending: continue
-            case .timeout: return end(.expired)
+            case .timeout: return await end(.expired)
             case .denied:
-                throw fail(SignInError(code: ErrorCode.signInDenied, message: "nearby sign-in was refused."))
+                throw await fail(SignInError(code: ErrorCode.signInDenied, message: "nearby sign-in was refused."))
             case .unavailable:
-                throw fail(
+                throw await fail(
                     PolarisError(
                         code: ErrorCode.serviceUnavailable,
                         message: "this product no longer serves nearby sign-in."))
@@ -487,14 +503,18 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
     /// The outcome that ends the session before a poll (cancelled, lapsed), else nil; then the wait.
     private func pace() async throws -> SignInOutcome? {
         if state.with({ $0.cancelled }) { return .cancelled }
-        if await client.core.now() >= expiresAt { return end(.expired) }
+        if await client.core.now() >= expiresAt { return await end(.expired) }
         let lead = max(0, state.with { $0.notBefore } - Self.uptime())
         let seconds = min(lead, TimeInterval(expiresIn))
         if seconds > 0 {
             let sleeper = Task { try await client.sleepFor(seconds) }
             state.with { $0.sleeper = sleeper }
             do {
-                try await withTaskCancellationHandler { try await sleeper.value } onCancel: { sleeper.cancel() }
+                try await withTaskCancellationHandler {
+                    try await sleeper.value
+                } onCancel: {
+                    sleeper.cancel()
+                }
             } catch {
                 state.with { $0.sleeper = nil }
                 if state.with({ $0.cancelled }) { return .cancelled }
@@ -503,21 +523,21 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
             state.with { $0.sleeper = nil }
         }
         if state.with({ $0.cancelled }) { return .cancelled }
-        if await client.core.now() >= expiresAt { return end(.expired) }
+        if await client.core.now() >= expiresAt { return await end(.expired) }
         return nil
     }
 
     /// Keep a terminal outcome; everything but a sign-in closes the LAN half now.
-    private func end(_ o: SignInOutcome) -> SignInOutcome {
+    private func end(_ o: SignInOutcome) async -> SignInOutcome {
         state.with { $0.final = .outcome(o) }
         if case .signedIn = o { return o }
-        Task { await closeLan() }
+        await closeLan()
         return o
     }
 
-    private func fail(_ e: Error) -> Error {
+    private func fail(_ e: Error) async -> Error {
         state.with { $0.final = .failure(e) }
-        Task { await closeLan() }
+        await closeLan()
         return e
     }
 
@@ -528,7 +548,10 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
     /// when the sign-in ended first, or when the device is not signed in. Decided under one lock with the
     /// deadline, so exactly one of them wins.
     public func confirmAccount() async throws {
-        enum Decision { case ended, notSignedIn, already, go(token: String?, subject: String) }
+        enum Decision {
+            case ended, notSignedIn, already
+            case go(token: String?, subject: String)
+        }
         let decision = state.with { s -> Decision in
             if s.ended { return .ended }
             guard s.signedIn, let subject = s.subject else { return .notSignedIn }

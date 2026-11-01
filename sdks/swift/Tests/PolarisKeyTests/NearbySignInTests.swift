@@ -196,11 +196,13 @@ private func rig(
     try await core.start()
     let acquired = NBox(0)
     let sleeps = NBox<[Double]>([])
-    let identity = IdentityClient(core: core, onAcquired: { acquired.mutate { $0 += 1 } }) { seconds in
-        try Task.checkCancellation()
-        sleeps.mutate { $0.append(seconds) }
-        clock.now += Int(seconds.rounded(.up))
-    }
+    let identity = IdentityClient(
+        core: core, onAcquired: { acquired.mutate { $0 += 1 } },
+        sleep: { seconds in
+            try Task.checkCancellation()
+            sleeps.mutate { $0.append(seconds) }
+            clock.now += Int(seconds.rounded(.up))
+        })
     let events = Events()
     identity.installIdentityEvents { events.add($0) }
     identity.installSignOut { try await core.clearAll() }
@@ -210,7 +212,8 @@ private func rig(
     let timers = ManualTimers()
     let deviceId = await core.deviceId
     let signer: @Sendable () async throws -> (port: any DeviceKeyPort, deviceId: String) = { (port, deviceId) }
-    let lanProbe: (@Sendable () -> (any NearbySignInLan)?)? = lanAvailable ? { @Sendable () -> (any NearbySignInLan)? in lan } : nil
+    let lanProbe: (@Sendable () -> (any NearbySignInLan)?)? =
+        lanAvailable ? { @Sendable () -> (any NearbySignInLan)? in lan } : nil
     identity.installNearby(NearbyBinding(signer: signer, lan: lanProbe, timer: timers.timer))
     return Rig(
         core: core, store: store, plane: plane, identity: identity, lan: lan, timers: timers, events: events,
@@ -719,3 +722,139 @@ final class NearbySignInSessionTests: XCTestCase {
         XCTAssertFalse("\(session)".contains("482913"))
     }
 }
+
+// MARK: - The kit
+
+#if canImport(SwiftUI)
+    import PolarisKey
+    import PolarisKeyUICore
+
+    @MainActor
+    final class NearbyKitTests: XCTestCase {
+        private struct Kit {
+            let model: PolarisKeyGateModel
+            let client: PolarisKeyClient
+            let plane: Plane
+            let lan: FakeLan
+        }
+
+        private func kit(lanAvailable: Bool = true) async throws -> Kit {
+            let plane = Plane()
+            plane.set(discoveryPath, [(200, try discovery())])
+            plane.set(startPath, [(201, #"{"request":"\#(handle)","expiresIn":300,"interval":1}"#)])
+            plane.set(signoutPath, [(200, #"{"released":true}"#)])
+            let client = try await PolarisKeyClient.create(
+                options: PolarisKeyClientOptions(
+                    productSlug: product, baseUrl: base, version: "1.0.0", pinnedKeys: [:], trustRefresh: false,
+                    store: InMemoryStore(productSlug: product, deviceId: String(repeating: "D", count: 32)),
+                    transport: plane, expectedServices: [.license, .config, .identity], fingerprint: false))
+            let port = FixtureKeyPort()
+            port.use(label: "nearby-d-1")
+            let deviceId = await client.core.deviceId
+            let lan = FakeLan()
+            let signer: @Sendable () async throws -> (port: any DeviceKeyPort, deviceId: String) = { (port, deviceId) }
+            let probe: (@Sendable () -> (any NearbySignInLan)?)? =
+                lanAvailable ? { @Sendable () -> (any NearbySignInLan)? in lan } : nil
+            client.identity.installNearby(NearbyBinding(signer: signer, lan: probe))
+            _ = await client.core.discover()
+            let model = PolarisKeyGateModel(client: client, options: KitGateOptions(autoSignIn: false))
+            return Kit(model: model, client: client, plane: plane, lan: lan)
+        }
+
+        private func until(
+            _ what: String, seconds: TimeInterval = 10, file: StaticString = #filePath, line: UInt = #line,
+            _ cond: @MainActor () -> Bool
+        ) async {
+            let end = Date().addingTimeInterval(seconds)
+            while !cond() {
+                if Date() > end { return XCTFail("timed out: \(what)", file: file, line: line) }
+                try? await Task.sleep(nanoseconds: 5_000_000)
+            }
+        }
+
+        func testThePromptShowsOnlyWhenThisDeviceCanLookAndTheProductServesIt() async throws {
+            let off = try await kit(lanAvailable: false)
+            await off.model.offerNearby()
+            XCTAssertNil(off.model.inputs.autoSignIn)
+            let on = try await kit()
+            await on.model.offerNearby()
+            XCTAssertEqual(on.model.inputs.autoSignIn?.step, .nearbyPrompt)
+            XCTAssertEqual(on.plane.count(startPath), 0, "nothing starts until the person taps Continue")
+        }
+
+        func testThePhoneFlowFromTheTapToSignedIn() async throws {
+            let k = try await kit()
+            k.lan.request.list = [NearbyApproverInfo(id: "a1", label: "Ada's phone", platform: "ios")]
+            k.plane.set(pollPath, [(200, readyBody())])
+            await k.model.offerNearby()
+            await k.model.nearbyContinue()
+            XCTAssertEqual(k.model.inputs.autoSignIn?.step, .nearbyWait)
+            await until("the list") { k.model.nearbyApprovers.count == 1 }
+            XCTAssertNil(k.model.inputs.autoSignIn?.code)
+            await k.model.nearbyChoose("a1")
+            XCTAssertEqual(k.model.inputs.autoSignIn?.code, "482913")
+            XCTAssertEqual(k.lan.request.count("choose"), 1)
+            await until("the done step") { k.model.inputs.autoSignIn?.step == .nearbyDone }
+            XCTAssertEqual(k.model.inputs.autoSignIn?.email, "ada@example.com")
+            let held = await k.client.core.tokenUnconfirmed
+            XCTAssertTrue(held, "nothing is signed in until the person confirms")
+            await k.model.nearbyConfirm()
+            let after = await k.client.core.tokenUnconfirmed
+            let provenance = await k.client.core.tokenProvenance()
+            XCTAssertFalse(after)
+            XCTAssertEqual(provenance, .signin)
+            XCTAssertNil(k.model.inputs.autoSignIn)
+            XCTAssertEqual(k.plane.count(signoutPath), 0)
+        }
+
+        func testNotYouDeclinesAndSignsTheDeviceOut() async throws {
+            let k = try await kit()
+            k.plane.set(pollPath, [(200, readyBody())])
+            await k.model.offerNearby()
+            await k.model.nearbyContinue()
+            await until("the done step") { k.model.inputs.autoSignIn?.step == .nearbyDone }
+            await k.model.nearbyNotYou()
+            XCTAssertEqual(k.plane.count(signoutPath), 1)
+            XCTAssertEqual(k.lan.request.count("decline"), 1)
+            let token = await k.client.core.token
+            XCTAssertNil(token)
+            XCTAssertNil(k.model.inputs.autoSignIn)
+        }
+
+        func testLeavingTheWaitByAnyRouteCancelsTheRequest() async throws {
+            let k = try await kit()
+            k.plane.set(pollPath, [(200, #"{"status":"pending"}"#)])
+            await k.model.offerNearby()
+            await k.model.nearbyContinue()
+            await until("the wait") { k.model.inputs.autoSignIn?.step == .nearbyWait }
+            k.model.cancelSignIn()
+            await until("the LAN request closes") { k.lan.request.count("close") >= 1 }
+            XCTAssertNil(k.model.inputs.autoSignIn)
+            XCTAssertEqual(k.plane.count(signoutPath), 0, "nothing was signed in")
+        }
+
+        func testLeavingTheConfirmScreenSignsTheDeviceOutAgain() async throws {
+            let k = try await kit()
+            k.plane.set(pollPath, [(200, readyBody())])
+            await k.model.offerNearby()
+            await k.model.nearbyContinue()
+            await until("the done step") { k.model.inputs.autoSignIn?.step == .nearbyDone }
+            k.model.cancelSignIn()
+            await until("the discard") { k.plane.count(signoutPath) == 1 }
+            for _ in 0..<400 where await k.client.core.token != nil {
+                try? await Task.sleep(nanoseconds: 10_000_000)
+            }
+            let token = await k.client.core.token
+            XCTAssertNil(token)
+        }
+
+        func testARefusedStartShowsTheCodeOfTheRefusal() async throws {
+            let k = try await kit()
+            k.plane.set(startPath, [(400, #"{"error":{"code":"rate_limited"}}"#)])
+            await k.model.offerNearby()
+            await k.model.nearbyContinue()
+            XCTAssertEqual(k.model.inputs.error?.code, "rate_limited")
+            XCTAssertNil(k.model.inputs.autoSignIn)
+        }
+    }
+#endif

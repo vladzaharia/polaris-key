@@ -118,7 +118,9 @@ extension IdentityClient {
     ) async throws -> String {
         // Conformance replay only: a proof by another key or over another value.
         if let sign = nearbyProofSigner.current {
-            return try await sign(port, DeviceProofFields(purpose: purpose.rawValue, product: core.product, deviceId: deviceId, value: value))
+            return try await sign(
+                port,
+                DeviceProofFields(purpose: purpose.rawValue, product: core.product, deviceId: deviceId, value: value))
         }
         do {
             return try await DeviceProofs.sign(
