@@ -56,6 +56,7 @@ import {
 } from "@polaris-key/ui-core/browser/sdk/browser/connect/relay.js";
 import { QUEUE_MAX_BYTES } from "@polaris-key/ui-core/browser/sdk/browser/connect/session.js";
 import { createConnect } from "../src/browser/connect/create.js";
+import { XferStore } from "@polaris-key/ui-core/browser/sdk/browser/connect/xferStore.js";
 import { indexedDbConnectState } from "../src/browser/connect/state.js";
 import { discoveryBody, services } from "./fixtures.js";
 
@@ -682,6 +683,34 @@ describe("a pushed roster through the identity replacement rules", () => {
     await src.refresh!();
     expect(await adapter.connect.discoveryKeys()).not.toBeNull();
     expect((await adapter.connect.current())?.epoch).toBe(2);
+  });
+});
+
+describe("a roster that drops a device", () => {
+  it("purges that device's kept transfers without any session open, and no one else's", async () => {
+    const purged = vi
+      .spyOn(XferStore.prototype, "purgePeer")
+      .mockResolvedValue(undefined);
+    try {
+      const { worker, adapter } = await adapterWorld();
+      const src = adapter.connect.relaySource();
+      // The facade is made (nothing is started, no session exists).
+      expect(adapter.cloudConnect.peers()).toEqual([]);
+      await adapter.connect.identity();
+      // Same roster again: nobody left.
+      await adapter.connect.identity({ refresh: true });
+      expect(purged).not.toHaveBeenCalled();
+      expect(await src.adoptRing!(await worker.ring(2, false))).toEqual({
+        stored: true,
+        epoch: 2,
+      });
+      await until(() => purged.mock.calls.length === 1);
+      expect(Buffer.from(purged.mock.calls[0]![0]).toString("base64url")).toBe(
+        worker.other.agreeKey,
+      );
+    } finally {
+      purged.mockRestore();
+    }
   });
 });
 

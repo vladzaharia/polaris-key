@@ -376,6 +376,49 @@ describe("resume", () => {
     expect(new Uint8Array(await sink.blob!.arrayBuffer())).toEqual(body);
   });
 
+  it("reads a kept prefix back only once this session holds the partial", async () => {
+    const r = await rig({ lazy: true });
+    const body = bytes(300_000);
+    const { ref } = await seed(r, body, 3);
+    // A second session of the same peer, taken in while the partial is not held by anyone.
+    let inn2: unknown = null;
+    r.p.ra.onSession((s) => (inn2 = s));
+    const out2 = await r.p.rb.dial(r.p.a.id);
+    await until(() => inn2 !== null);
+    r.start();
+    r.sender.adopt(out2);
+    r.receiver.adopt(inn2 as never);
+    await sleep(50);
+    const reads: string[] = [];
+    const reread = r.store.reread.bind(r.store);
+    r.store.reread = (rf, c, b) => {
+      reads.push(rf);
+      return reread(rf, c, b);
+    };
+    // The first session takes the partial over and is held there.
+    let release!: () => void;
+    const gate = new Promise<void>((res) => (release = res));
+    const truncate = r.store.truncate.bind(r.store);
+    r.store.truncate = async (rf, to) => {
+      await gate;
+      return truncate(rf, to);
+    };
+    const sink = { blob: null as Blob | null };
+    r.setHandler(collect(sink));
+    const first = r.sender.send(r.p.out, new Blob([body]), { id: ID });
+    first.catch(() => undefined);
+    await until(() => reads.length === 1);
+    // The second session is asked the same: the partial is not its to read.
+    await expect(
+      r.sender.send(out2, new Blob([body]), { id: ID }),
+    ).rejects.toBeDefined();
+    expect(reads).toEqual([ref]);
+    release();
+    await first;
+    await until(() => sink.blob !== null);
+    expect(new Uint8Array(await sink.blob!.arrayBuffer())).toEqual(body);
+  });
+
   it("a different id, or different content, starts again at 0", async () => {
     const r = await rig({ lazy: true });
     const body = bytes(300_000);
