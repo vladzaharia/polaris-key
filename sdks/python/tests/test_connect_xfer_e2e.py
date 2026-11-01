@@ -19,8 +19,8 @@ from test_connect_peer_session import ID_A, ID_B, Dev, Side, _rnd
 
 from polaris_key.connect.contacts import ContactRef
 from polaris_key.connect.session import ConnectSession, SessionClosed
-from polaris_key.connect.transfer_store import PartialStore
 from polaris_key.connect.transfer import Accept, IncomingOffer, Transfer, TransferCancelled
+from polaris_key.connect.transfer_store import PartialStore
 from polaris_key.core.b64url import b64url_encode
 from polaris_key.core.peer_session import Closed, Established
 

@@ -407,7 +407,8 @@ class ContactKey(NamedTuple):
     def __repr__(self) -> str:
         return "ContactKey(<redacted>)"
 
-    __str__ = __repr__
+    def __str__(self) -> str:
+        return "ContactKey(<redacted>)"
 
 
 def browse_contact_instance(
