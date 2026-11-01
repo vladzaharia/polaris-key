@@ -1275,7 +1275,7 @@
       "jscpd:duplicate": 7
     },
     "packages/client-core/src/deviceKeyStoreWeb.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/client-core/src/feed.ts": {
       "jscpd:duplicate": 2
@@ -1347,7 +1347,7 @@
       "jscpd:duplicate": 1
     },
     "packages/client-core/src/peer/xfer.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 13
     },
     "packages/client-core/src/peer/xferEndpoint.ts": {
       "jscpd:duplicate": 1
@@ -1434,9 +1434,15 @@
       "jscpd:duplicate": 10
     },
     "packages/client-core/test/peerXfer.test.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 8
     },
     "packages/client-core/test/presentation.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/test/syncTransfer.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/test/syncTransferChunks.test.ts": {
       "jscpd:duplicate": 1
     },
     "packages/client-core/test/trust.test.ts": {
@@ -1632,7 +1638,7 @@
       "jscpd:duplicate": 3
     },
     "packages/sdk-node/src/connect/transfer.ts": {
-      "jscpd:duplicate": 20
+      "jscpd:duplicate": 19
     },
     "packages/sdk-node/src/core/boundedBody.ts": {
       "jscpd:duplicate": 2
@@ -2331,7 +2337,7 @@
       "jscpd:duplicate": 1
     },
     "packages/shared-protocol/src/identity.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/shared-protocol/src/packs.ts": {
       "jscpd:duplicate": 2
@@ -2373,7 +2379,7 @@
       "jscpd:duplicate": 16
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/idbJournal.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/saves.ts": {
       "jscpd:duplicate": 6
@@ -2418,7 +2424,7 @@
       "jscpd:duplicate": 4
     },
     "packages/ui-core/src/browser/sdk/browser/connect/transfer.ts": {
-      "jscpd:duplicate": 18
+      "jscpd:duplicate": 17
     },
     "packages/ui-core/src/browser/sdk/browser/connect/xferStore.ts": {
       "jscpd:duplicate": 1
@@ -3408,7 +3414,7 @@
       "jscpd:duplicate": 45
     },
     "packages/worker/test/attack/R9-injection.test.ts": {
-      "jscpd:duplicate": 22
+      "jscpd:duplicate": 23
     },
     "packages/worker/test/attestFixtures.ts": {
       "jscpd:duplicate": 1
@@ -4494,13 +4500,16 @@
       "jscpd:duplicate": 3
     },
     "packages/worker/test/surfaces/identityAuthorize.test.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 12
     },
     "packages/worker/test/surfaces/identityBrowserErasureFence.test.ts": {
       "jscpd:duplicate": 31
     },
     "packages/worker/test/surfaces/identityChoice.test.ts": {
       "jscpd:duplicate": 6
+    },
+    "packages/worker/test/surfaces/identityNativeRedirect.test.ts": {
+      "jscpd:duplicate": 9
     },
     "packages/worker/test/surfaces/identityPerProduct.test.ts": {
       "jscpd:duplicate": 2
@@ -4512,7 +4521,10 @@
       "jscpd:duplicate": 5
     },
     "packages/worker/test/surfaces/keyEntries.test.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 5
+    },
+    "packages/worker/test/surfaces/keyReturn.test.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/worker/test/surfaces/keysOutOfLogs.test.ts": {
       "jscpd:duplicate": 1
@@ -4674,7 +4686,7 @@
       "jscpd:duplicate": 10
     },
     "packages/worker/test/surfaces/signInBind.test.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/worker/test/surfaces/signInCardShell.test.ts": {
       "jscpd:duplicate": 3
@@ -4740,16 +4752,19 @@
       "jscpd:duplicate": 7
     },
     "packages/worker/test/transcripts/scenarios/link.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "packages/worker/test/transcripts/scenarios/locker.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 12
     },
     "packages/worker/test/transcripts/scenarios/packs.ts": {
       "jscpd:duplicate": 4
     },
     "packages/worker/test/transcripts/scenarios/redirect.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 8
+    },
+    "packages/worker/test/transcripts/scenarios/redirectNative.ts": {
+      "jscpd:duplicate": 12
     },
     "packages/worker/test/transcripts/scenarios/release.ts": {
       "jscpd:duplicate": 4
@@ -4860,7 +4875,7 @@
       "jscpd:duplicate": 2
     },
     "tools/corpus/reference/xfer.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 11
     },
     "tools/corpus/release-records.ts": {
       "jscpd:duplicate": 2
