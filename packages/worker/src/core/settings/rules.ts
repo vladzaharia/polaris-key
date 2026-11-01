@@ -151,6 +151,7 @@ export const SECURITY_WIDENING_KEYS: readonly string[] = [
   "core.trustPolicy",
   "identity.oidc",
   "identity.redirectPaths",
+  "identity.nativeRedirect.loopback",
   "identity.nativeRedirect.schemes",
   "identity.nativeRedirect.claimedPaths",
   "identity.issuer.clients",
@@ -181,6 +182,7 @@ export const SECURITY_WIDENING_AREAS: Readonly<
   "identity.oidc.syncTierOnSignIn": "keys",
   "identity.issuer.clients": "keys",
   "identity.redirectPaths": "keys",
+  "identity.nativeRedirect.loopback": "settings",
   "identity.nativeRedirect.schemes": "keys",
   "identity.nativeRedirect.claimedPaths": "keys",
   "identity.exchange.oidc": "keys",
@@ -199,7 +201,6 @@ export const SECURITY_WIDENING_AREAS: Readonly<
   "core.adminGroup": "settings",
   "identity.provisioning": "settings",
   "identity.keyEntry.claimByKey": "settings",
-  "identity.nativeRedirect.loopback": "settings",
   "distribution.access": "settings",
   "update.metadataAccess": "settings",
 };
