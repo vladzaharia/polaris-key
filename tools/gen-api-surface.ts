@@ -171,9 +171,11 @@ function renderNode(api: Api): string {
       const cls =
         r.name === "complete"
           ? "RedirectSession"
-          : NEARBY_SESSION.has(leafOf(r.id))
-            ? "NearbySignInSession"
-            : "DeviceCodeSession";
+          : r.name === "handleRedirect"
+            ? "NativeRedirectSession"
+            : NEARBY_SESSION.has(leafOf(r.id))
+              ? "NearbySignInSession"
+              : "DeviceCodeSession";
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in ${cls}.prototype).toBe(true));`,
       );
@@ -230,6 +232,7 @@ function renderNode(api: Api): string {
     `  EntitlementsClient,`,
     `  IdentityClient,`,
     `  LicenseClient,`,
+    `  NativeRedirectSession,`,
     `  NearbySignInSession,`,
     `  PolarisKeyClient,`,
     `  RedirectSession,`,

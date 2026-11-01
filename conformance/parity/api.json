@@ -3459,6 +3459,41 @@
       "layer": "client"
     },
     {
+      "id": "identity.signIn.session.handleRedirect",
+      "kind": "method",
+      "feature": "identity.redirect.native",
+      "args": [
+        {
+          "name": "url",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "react": {
+          "planned": "I-15b",
+          "reason": "the desktop adapter forwards the native redirect to the Node host (plans/I-15.md section 5)"
+        },
+        "python": {
+          "planned": "I-15b",
+          "reason": "native redirect sign-in (plans/I-15.md section 5)"
+        },
+        "swift": {
+          "planned": "I-15b",
+          "reason": "native redirect sign-in (plans/I-15.md section 5)"
+        },
+        "kotlin": {
+          "planned": "I-15b",
+          "reason": "native redirect sign-in (plans/I-15.md section 5)"
+        },
+        "godot": {
+          "planned": "I-15b",
+          "reason": "native redirect sign-in (plans/I-15.md section 5)"
+        }
+      },
+      "layer": "client"
+    },
+    {
       "id": "identity.choice",
       "kind": "namespace",
       "feature": "identity.choice",

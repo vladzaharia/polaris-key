@@ -11,6 +11,7 @@ import {
   EntitlementsClient,
   IdentityClient,
   LicenseClient,
+  NativeRedirectSession,
   NearbySignInSession,
   PolarisKeyClient,
   RedirectSession,
@@ -83,6 +84,8 @@ it("identity.signIn.session.wait", () =>
   expect("wait" in DeviceCodeSession.prototype).toBe(true));
 it("identity.signIn.session.complete", () =>
   expect("complete" in RedirectSession.prototype).toBe(true));
+it("identity.signIn.session.handleRedirect", () =>
+  expect("handleRedirect" in NativeRedirectSession.prototype).toBe(true));
 it("identity.choice", () =>
   expect("choice" in IdentityClient.prototype).toBe(true));
 it("identity.choice.licenses", () =>

@@ -226,6 +226,12 @@ export {
   type RedirectSignInOptions,
 } from "./identity/redirect.js";
 export {
+  NativeRedirectSession,
+  isHeadless,
+  type NativeRedirectOutcome,
+  type NativeRedirectSignInOptions,
+} from "./identity/nativeRedirect.js";
+export {
   DevicesClient,
   type AccountDevice,
   type DevicesClientOptions,
