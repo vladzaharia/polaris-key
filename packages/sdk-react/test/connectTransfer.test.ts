@@ -24,6 +24,8 @@ import {
 import { UnsupportedError } from "@polaris-key/ui-core/browser/sdk/core/caps.js";
 import { unsupportedCloudConnect } from "../src/browser/connect/index.js";
 import { until, pair, live } from "./relayFixtures.js";
+const sleep = (ms: number): Promise<void> =>
+  new Promise((r) => setTimeout(r, ms));
 
 (globalThis as { IDBKeyRange?: unknown }).IDBKeyRange = IDBKeyRange;
 
@@ -251,6 +253,43 @@ describe("a Blob over the relay", () => {
     await until(() => sink.blob !== null);
     expect(asked).toBe(2);
     expect(new Uint8Array(await sink.blob!.arrayBuffer())).toEqual(body);
+  });
+
+  it("a second session of the peer cannot write or take a held partial", async () => {
+    const r = await rig();
+    const body = bytes(300_000);
+    const sink = { blob: null as Blob | null };
+    r.setHandler(collect(sink));
+    // Hold the first session's first write: its partial exists and is in use.
+    let n = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((res) => (release = res));
+    const write = r.store.write.bind(r.store);
+    r.store.write = async (ref, off, d) => {
+      if (++n === 1) await gate;
+      return write(ref, off, d);
+    };
+    // The same peer has a second session, taken in before the partial exists (so it does not
+    // see it as held), and offers the same transfer.
+    let inn2: unknown = null;
+    r.p.ra.onSession((s) => (inn2 = s));
+    const out2 = await r.p.rb.dial(r.p.a.id);
+    await until(() => inn2 !== null);
+    r.sender.adopt(out2);
+    r.receiver.adopt(inn2 as never);
+    await sleep(50);
+    const first = r.sender.send(r.p.out, new Blob([body]), { id: ID });
+    first.catch(() => undefined);
+    await until(() => n === 1);
+    await expect(
+      r.sender.send(out2, new Blob([body]), { id: ID }),
+    ).rejects.toBeDefined();
+    // The first session still owns the partial and finishes it whole.
+    release();
+    await first;
+    await until(() => sink.blob !== null);
+    expect(new Uint8Array(await sink.blob!.arrayBuffer())).toEqual(body);
+    expect(r.got.filter((e) => e.outcome === "delivered")).toHaveLength(1);
   });
 
   it("an empty Blob is delivered empty", async () => {
