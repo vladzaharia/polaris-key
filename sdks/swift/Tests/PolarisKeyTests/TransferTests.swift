@@ -822,6 +822,44 @@ final class TransferTests: XCTestCase {
         XCTAssertEqual(store.free, 500)
     }
 
+    func testASymlinkedTransferDirectoryIsRefused() throws {
+        let root = tempDir()
+        let target = root.appendingPathComponent("elsewhere")
+        try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
+        let dir = root.appendingPathComponent("xfer")
+        try FileManager.default.createSymbolicLink(at: dir, withDestinationURL: target)
+        let store = XferStore(directory: dir)
+        let key = Data(repeating: 5, count: 32)
+        let sha = String(repeating: "ef", count: 32)
+        let id = Base64URL.encode(Data(repeating: 3, count: 16))
+        let ref = xferPartialPath(key: key, id: id, sha256: sha)
+        let meta = XferPartial(ref: ref, id: id, sha256: sha, size: 10, chunk: 5, bytes: 0, writtenAt: 0)
+        XCTAssertThrowsError(try store.create(meta, token: store.begin(peer: key)))
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: target.path), [])
+    }
+
+    func testAReservationThatNoLongerFitsIsRefusedAtTheStart() throws {
+        let store = XferStore(directory: tempDir().appendingPathComponent("xfer"), quota: 1000, diskReserve: 0)
+        let sha = String(repeating: "ef", count: 32)
+        func meta(_ n: UInt8) -> (XferPartial, Data) {
+            let key = Data(repeating: n, count: 32)
+            let id = Base64URL.encode(Data(repeating: n, count: 16))
+            let ref = xferPartialPath(key: key, id: id, sha256: sha)
+            return (XferPartial(ref: ref, id: id, sha256: sha, size: 800, chunk: 100, bytes: 0, writtenAt: 0), key)
+        }
+        let (m1, k1) = meta(1)
+        let (m2, k2) = meta(2)
+        let t1 = store.begin(peer: k1)
+        let t2 = store.begin(peer: k2)
+        // Both offers fitted when they were shown; the second is refused when its file would start.
+        store.reserve(m1.ref, declared: 800, written: 0, token: t1)
+        store.reserve(m2.ref, declared: 800, written: 0, token: t2)
+        try store.create(m1, token: t1)
+        XCTAssertThrowsError(try store.create(m2, token: t2)) {
+            XCTAssertEqual(($0 as? XferStoreError)?.kind, .quota)
+        }
+    }
+
     func testAnEffectQueuedBeforeAPurgeCannotRecreateTheStore() throws {
         let dir = tempDir().appendingPathComponent("xfer")
         let store = XferStore(directory: dir)
