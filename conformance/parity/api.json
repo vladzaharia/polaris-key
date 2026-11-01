@@ -7742,6 +7742,9 @@
           "spelling": "adapter.cloudConnect.transfer.send",
           "shape": "method",
           "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        },
+        "godot": {
+          "spelling": "PKeyCloudTransfer.send"
         }
       },
       "layer": "client",
@@ -7775,6 +7778,9 @@
           "spelling": "adapter.cloudConnect.transfer.onOffer",
           "shape": "method",
           "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        },
+        "godot": {
+          "spelling": "PKeyCloudTransfer.on_offer"
         }
       },
       "layer": "client",
@@ -7800,6 +7806,11 @@
           "spelling": "adapter.cloudConnect.transfer.onResult",
           "shape": "method",
           "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        },
+        "godot": {
+          "spelling": "PKeyCloudTransfer.result",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         }
       },
       "layer": "client",
@@ -7825,6 +7836,9 @@
           "spelling": "adapter.cloudConnect.transfer.cancel",
           "shape": "method",
           "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        },
+        "godot": {
+          "spelling": "PKeyCloudTransfer.cancel"
         }
       },
       "layer": "client",
@@ -7858,6 +7872,9 @@
         "swift": {
           "spelling": "TransferDecision.accept",
           "reason": "the handler returns the decision"
+        },
+        "godot": {
+          "spelling": "PKeyTransferOffer.accept"
         }
       },
       "layer": "client"
@@ -7885,6 +7902,9 @@
         "swift": {
           "spelling": "TransferDecision.decline",
           "reason": "the handler returns the decision"
+        },
+        "godot": {
+          "spelling": "PKeyTransferOffer.decline"
         }
       },
       "layer": "client"
