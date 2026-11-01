@@ -119,7 +119,7 @@ class ConnectAndroidTest {
                     onResult: (im.plrs.key.platform.NsdAdvertResult) -> Unit,
                 ) = NsdStop {}
 
-                override fun browse(listener: im.plrs.key.platform.PeerNsdListener) = NsdStop {}
+                override fun browse(listener: im.plrs.key.platform.PeerNsdListener, accept: (String) -> Boolean) = NsdStop {}
 
                 override fun watch(instance: String, listener: im.plrs.key.platform.PeerNsdListener) = NsdStop {}
             },
@@ -127,6 +127,8 @@ class ConnectAndroidTest {
                 override fun subnetsOf(network: android.net.Network) = emptyList<im.plrs.key.platform.Subnet>()
 
                 override fun factoryOf(network: android.net.Network) = null
+
+                override fun isNotVpn(network: android.net.Network) = true
 
                 override fun onDefaultNetworkChange(onChange: () -> Unit) = NsdStop {}
             },

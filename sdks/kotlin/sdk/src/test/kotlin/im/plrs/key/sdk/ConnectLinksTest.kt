@@ -488,6 +488,24 @@ class ConnectLinksTest : ConnectLanBase() {
     }
 
     @Test
+    fun noContactAdvertWhileInterAccountIsFalse() = runBlocking {
+        interAccount = false
+        val c = client()
+        c.discover()
+        c.connect.identity(refresh = true)
+        c.connect.updateContacts { rows, t -> storeRow(rows, Base64Url.encode(rnd()), rnd(), "Ben", emptyList(), t)?.rows }
+        assertEquals(1, c.connect.contactRows().size)
+        // A contact is held, the cached answer says links are off: nothing is offered for advert.
+        assertTrue(c.connect.liveContacts().isEmpty())
+        interAccount = true
+        c.discover()
+        assertEquals(1, c.connect.liveContacts().size)
+        interAccount = false
+        c.discover()
+        assertTrue(c.connect.liveContacts().isEmpty())
+    }
+
+    @Test
     fun pairAndOpenAreTheTypedNAWhileLinksAreOff() = runBlocking {
         interAccount = false
         val c = client()

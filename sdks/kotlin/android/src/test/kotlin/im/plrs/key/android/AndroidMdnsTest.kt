@@ -50,8 +50,11 @@ class AndroidMdnsTest {
             return NsdStop { r.stopped = true }
         }
 
-        override fun browse(listener: PeerNsdListener): NsdStop {
+        var accept: (String) -> Boolean = { true }
+
+        override fun browse(listener: PeerNsdListener, accept: (String) -> Boolean): NsdStop {
             browser = listener
+            this.accept = accept
             return NsdStop { browseStopped = true }
         }
 
@@ -64,9 +67,11 @@ class AndroidMdnsTest {
     private val wifi: Network = ShadowNetwork.newInstance(100)
     private val factory: SocketFactory = SocketFactory.getDefault()
 
-    private class FakeNet(val subnets: List<Subnet>, val factory: SocketFactory?) : NetworkPort {
+    private class FakeNet(val subnets: List<Subnet>, val factory: SocketFactory?, var notVpn: Boolean = true) : NetworkPort {
         var changed: (() -> Unit)? = null
         var unsubscribed = false
+
+        override fun isNotVpn(network: Network) = notVpn
 
         override fun subnetsOf(network: Network) = subnets
 
@@ -252,5 +257,103 @@ class AndroidMdnsTest {
         assertEquals(listOf("a=b=c", "k"), AndroidMdns.txtList(linkedMapOf("a" to "b=c".toByteArray(), "k" to null)))
         assertNull(AndroidMdns.txtList(mapOf("a" to byteArrayOf(0xc3.toByte()))))
         assertEquals("b=c", String(AndroidMdns.txtMap(listOf("a=b=c"))!!.getValue("a")))
+    }
+
+    @Test
+    fun theBrowsePassesItsNameFilterToTheFoundTable() {
+        val nsd = FakeNsd()
+        browse(nsd, lan(), Seen()) { it.startsWith("p1-") }
+        assertFalse(nsd.accept("stranger"))
+        assertTrue(nsd.accept("p1-BBBBBBBBBBBBBBBB"))
+    }
+
+    @Test
+    fun aGlobalOrCgnatAddressOnTheLinkIsNotReported() {
+        val net = FakeNet(
+            listOf(
+                Subnet(InetAddress.getByName("2606:4700::5"), 64),
+                Subnet(InetAddress.getByName("169.254.3.1"), 16),
+                Subnet(InetAddress.getByName("100.64.0.5"), 10),
+                Subnet(InetAddress.getByName("192.168.1.5"), 24),
+            ),
+            factory,
+        )
+        val nsd = FakeNsd()
+        val seen = Seen()
+        browse(nsd, net, seen)
+        nsd.browser!!.onFound("p1-BBBBBBBBBBBBBBBB")
+        val w = nsd.watchers.getValue("p1-BBBBBBBBBBBBBBBB")
+        w.onResolved(resolved("p1-BBBBBBBBBBBBBBBB", listOf("2606:4700::9", "169.254.3.9", "100.64.0.9")))
+        assertTrue(seen.up.isEmpty())
+        w.onResolved(resolved("p1-BBBBBBBBBBBBBBBB", listOf("2606:4700::9", "169.254.3.9", "100.64.0.9", "192.168.1.20")))
+        assertEquals(listOf("192.168.1.20"), seen.up.single().hosts)
+    }
+
+    @Test
+    fun aVpnNetworkOrOneWithNoFactoryIsNotALanCandidate() {
+        for (net in listOf(lan().apply { notVpn = false }, FakeNet(lan().subnets, null))) {
+            val nsd = FakeNsd()
+            val seen = Seen()
+            browse(nsd, net, seen)
+            nsd.browser!!.onFound("p1-BBBBBBBBBBBBBBBB")
+            nsd.watchers.getValue("p1-BBBBBBBBBBBBBBBB").onResolved(resolved("p1-BBBBBBBBBBBBBBBB", listOf("192.168.1.20")))
+            assertTrue(seen.up.isEmpty())
+        }
+    }
+
+    private class Timer {
+        val tasks = ArrayList<Pair<Long, () -> Unit>>()
+        var cancelled = 0
+
+        fun schedule(delay: Long, task: () -> Unit): NsdStop {
+            tasks += delay to task
+            return NsdStop { cancelled++ }
+        }
+    }
+
+    @Test
+    fun aRenameAfterANetworkChangeIsRetriedWithABoundedBackoff() = runBlocking {
+        val nsd = FakeNsd()
+        val net = lan()
+        val timer = Timer()
+        AndroidMdns(nsd, net, timer::schedule).advertise(MdnsAdvert("p1-AAAAAAAAAAAAAAAA", 4321, listOf("v=1")))
+        assertEquals(1, nsd.regs.size)
+        nsd.autoResult = null // from here the test answers each registration itself
+        net.changed!!.invoke()
+        assertEquals(2, nsd.regs.size)
+        // The OS renames the new registration (the old name is still held): a retry is scheduled, not dropped.
+        nsd.regs[1].onResult(NsdAdvertResult.Refused("renamed"))
+        assertEquals(listOf(AndroidMdns.RETRY_BASE_MILLIS), timer.tasks.map { it.first })
+        timer.tasks.last().second()
+        assertEquals(3, nsd.regs.size)
+        nsd.regs[2].onResult(NsdAdvertResult.Refused("renamed"))
+        assertEquals(AndroidMdns.RETRY_BASE_MILLIS * 2, timer.tasks.last().first)
+        // A refusal of an older registration is ignored.
+        nsd.regs[1].onResult(NsdAdvertResult.Refused("renamed"))
+        assertEquals(2, timer.tasks.size)
+        // The retries stop at the bound.
+        repeat(AndroidMdns.MAX_RETRIES) {
+            timer.tasks.last().second()
+            nsd.regs.last().onResult(NsdAdvertResult.Refused("renamed"))
+        }
+        assertEquals(AndroidMdns.MAX_RETRIES, timer.tasks.size)
+        // A registration that succeeds ends the sequence.
+        net.changed!!.invoke()
+        nsd.regs.last().onResult(NsdAdvertResult.Registered)
+        assertEquals(AndroidMdns.MAX_RETRIES, timer.tasks.size)
+    }
+
+    @Test
+    fun stoppingTheAdvertCancelsAPendingRetry() = runBlocking {
+        val nsd = FakeNsd()
+        val net = lan()
+        val timer = Timer()
+        val h = AndroidMdns(nsd, net, timer::schedule).advertise(MdnsAdvert("p1-AAAAAAAAAAAAAAAA", 4321, listOf("v=1")))
+        net.changed!!.invoke()
+        nsd.regs[1].onResult(NsdAdvertResult.Refused("renamed"))
+        h.stop()
+        assertEquals(1, timer.cancelled)
+        timer.tasks.last().second()
+        assertEquals(2, nsd.regs.size)
     }
 }
