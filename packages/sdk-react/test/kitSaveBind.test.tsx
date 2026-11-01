@@ -194,9 +194,8 @@ describe("SaveConflict follows the saves", () => {
     expect(f.resolve.mock.calls[0]![1]).toBe("remote");
   });
 
-  it("is the host's plain part when it passes its own input", () => {
+  it("is the host's plain part when it passes its own input and nothing is pending", () => {
     const f = fakeSaves();
-    f.setConflicts([CONFLICT]);
     const { container } = inProvider(
       f.saves,
       <SaveConflict
@@ -214,5 +213,139 @@ describe("SaveConflict follows the saves", () => {
       container.querySelector('button[data-key="saveConflict.keepThis"]')!,
     );
     expect(f.resolve).not.toHaveBeenCalled();
+  });
+
+  it("merges the host's card data and describe() over the binding (B1)", async () => {
+    const f = fakeSaves();
+    f.setConflicts([CONFLICT]);
+    const { container } = inProvider(
+      f.saves,
+      <SaveConflict
+        bytes={() => Uint8Array.of(1)}
+        describe={(c) => ({
+          local: { when: "today 9:00" },
+          remote: { device: "Laptop" },
+          newer: c.local.metadata["n"] === 2 ? "local" : "remote",
+        })}
+        input={{ saveConflict: { step: "choose", remote: { when: "Mon" } } }}
+      />,
+    );
+    expect(container.textContent).toMatch(/today 9:00/);
+    expect(container.textContent).toMatch(/Laptop/);
+    expect(container.textContent).toMatch(/Mon/);
+    expect(container.textContent).toMatch(/Newer/i);
+    fireEvent.click(
+      container.querySelector('button[data-key="saveConflict.keepOther"]')!,
+    );
+    await waitFor(() => expect(f.resolve).toHaveBeenCalledTimes(1));
+  });
+
+  it("Cancel keeps the conflict pending, calls onDismiss and the strip asks for review (M2, M7)", async () => {
+    const f = fakeSaves();
+    f.setConflicts([CONFLICT]);
+    const onDismiss = vi.fn();
+    const { container } = inProvider(
+      f.saves,
+      <>
+        <SaveConflict onDismiss={onDismiss} />
+        <CloudSyncStatus />
+      </>,
+    );
+    const strip = () =>
+      container.querySelector('[data-component="CloudSyncStatus"]');
+    // The screen is open: the strip defers to it (one live region, M5).
+    expect(
+      strip()?.querySelector('button[data-key="common.review"]'),
+    ).toBeFalsy();
+    fireEvent.click(
+      container.querySelector('button[data-key="common.cancel"]')!,
+    );
+    expect(f.saves.dismissConflict).not.toHaveBeenCalled();
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(
+        strip()?.querySelector('button[data-key="common.review"]'),
+      ).not.toBeNull(),
+    );
+    // Review opens the save conflict, not RingChange (B2).
+    fireEvent.click(
+      strip()!.querySelector('button[data-key="common.review"]')!,
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector('button[data-key="saveConflict.keepThis"]'),
+      ).not.toBeNull(),
+    );
+  });
+
+  it("returns focus to the opener when the screen closes (M7)", async () => {
+    const f = fakeSaves();
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    opener.focus();
+    f.setConflicts([CONFLICT]);
+    const { container } = inProvider(f.saves, <SaveConflict />);
+    fireEvent.click(
+      container.querySelector('button[data-key="common.cancel"]')!,
+    );
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+    opener.remove();
+  });
+
+  it("mounts the keeping status empty, then fills it (UX2-web 6)", async () => {
+    const f = fakeSaves();
+    f.setConflicts([CONFLICT]);
+    const { container } = inProvider(f.saves, <SaveConflict />);
+    const node = container.querySelector('[role="status"]')!;
+    expect(node.textContent).toBe("");
+    fireEvent.click(
+      container.querySelector('button[data-key="saveConflict.keepOther"]')!,
+    );
+    await waitFor(() => expect(node.textContent).not.toBe(""));
+    expect(container.querySelector('[role="status"]')).toBe(node);
+  });
+});
+
+describe("CloudSyncStatus states", () => {
+  it("is indeterminate with no counted bytes (M4)", () => {
+    const f = fakeSaves();
+    f.setRunning([write(0, 12_000_000)]);
+    const { container } = inProvider(f.saves, <CloudSyncStatus />);
+    expect(container.textContent).not.toMatch(/0 B/);
+    const bar = container.querySelector("[role=progressbar]");
+    expect(bar?.getAttribute("aria-valuenow")).toBeNull();
+  });
+
+  it("waits for a connection at once when offline (M3)", () => {
+    const f = fakeSaves();
+    f.setRunning([write(0, 12_000_000)]);
+    const spy = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+    const { container } = inProvider(f.saves, <CloudSyncStatus />);
+    expect(container.textContent).toMatch(/connection/i);
+    spy.mockRestore();
+  });
+
+  it("Try again calls onRetry and clears the notice (B3)", async () => {
+    const f = fakeSaves();
+    const onRetry = vi.fn();
+    const { container } = inProvider(
+      f.saves,
+      <CloudSyncStatus onRetry={onRetry} />,
+    );
+    act(() =>
+      f.emit({ type: "transferFailed", id: "saves:slot1", code: "rejected" }),
+    );
+    const btn = await waitFor(() => {
+      const b = container.querySelector('button[data-key="common.tryAgain"]');
+      expect(b).not.toBeNull();
+      return b!;
+    });
+    fireEvent.click(btn);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    await waitFor(() =>
+      expect(
+        container.querySelector('button[data-key="common.tryAgain"]'),
+      ).toBeNull(),
+    );
   });
 });
