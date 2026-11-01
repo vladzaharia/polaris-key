@@ -635,7 +635,7 @@ export class CloudTransfer {
         if (store !== null) {
           const kept = wire.ep.machine.partials().find((p) => p.id === id);
           if (!store.reserve(token, size, kept?.ref ?? null)) {
-            wire.ep.consent(id, "decline");
+            wire.ep.noRoom(id);
             return;
           }
           wire.tokens.set(id, token);

@@ -473,6 +473,42 @@ describe("the machine's edges", () => {
     ]);
   });
 
+  it("a room check that fails at accept cancels that transfer with quota and keeps the session", () => {
+    const m = mk({});
+    m.receive(
+      1,
+      XFER.OFFER,
+      xferOfferBody({ id: idOf(4), size: 4, sha256: sha, chunk: 2 }),
+    );
+    const out = m.noRoom(2, idOf(4));
+    expect(out.send).toEqual([{ t: "CANCEL", id: idOf(4), reason: "quota" }]);
+    expect(out.close).toBeUndefined();
+    // The transfer is over; the next offer on the session is judged on its own.
+    expect(m.noRoom(3, idOf(4)).send).toEqual([]);
+    const next = m.receive(
+      4,
+      XFER.OFFER,
+      xferOfferBody({ id: idOf(5), size: 4, sha256: sha, chunk: 2 }),
+    );
+    expect(next.close).toBeUndefined();
+    expect(next.ask).toMatchObject({ id: idOf(5) });
+  });
+
+  it("a room check that fails after the partial was made takes that new partial with it", () => {
+    const m = mk({});
+    m.receive(
+      1,
+      XFER.OFFER,
+      xferOfferBody({ id: idOf(4), size: 4, sha256: sha, chunk: 2 }),
+    );
+    const acc = m.consent(2, idOf(4), "accept");
+    const ref = (acc.partial[0] as { create: string }).create;
+    const out = m.noRoom(3, idOf(4));
+    expect(out.send).toEqual([{ t: "CANCEL", id: idOf(4), reason: "quota" }]);
+    expect(out.partial).toEqual([{ discard: ref }]);
+    expect(m.partials()).toEqual([]);
+  });
+
   it("starts a new session with the partials, none held", () => {
     const p: XferPartial = {
       ref: "p",
