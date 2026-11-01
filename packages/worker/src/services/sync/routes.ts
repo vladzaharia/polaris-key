@@ -55,6 +55,8 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
   {
     path: "files/:collection/:id/begin",
     methods: ["POST"],
+    // The handler answers a wrong method after the launch gate, so a gate-off request is 404.
+    other: "handler",
     auth: { kind: "device" },
     cors: true,
     params: { collection: FILE_PARAMS.collection, id: FILE_PARAMS.id },
@@ -63,6 +65,8 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
   {
     path: "files/:collection/:id/upload/:uploadId",
     methods: ["GET", "PUT", "DELETE"],
+    // The handler answers a wrong method after the launch gate, so a gate-off request is 404.
+    other: "handler",
     auth: { kind: "device" },
     cors: true,
     params: {
@@ -81,6 +85,8 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
   {
     path: "files/:collection/:id/upload/:uploadId/parts/:n",
     methods: ["PUT"],
+    // The handler answers a wrong method after the launch gate, so a gate-off request is 404.
+    other: "handler",
     auth: { kind: "device" },
     cors: true,
     params: FILE_PARAMS,
@@ -90,6 +96,8 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
   {
     path: "files/:collection/:id/upload/:uploadId/chunks",
     methods: ["POST"],
+    // The handler answers a wrong method after the launch gate, so a gate-off request is 404.
+    other: "handler",
     auth: { kind: "device" },
     cors: true,
     params: {
@@ -103,6 +111,8 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
   {
     path: "files/:collection/:id/upload/:uploadId/chunks/:chunkId",
     methods: ["PUT"],
+    // The handler answers a wrong method after the launch gate, so a gate-off request is 404.
+    other: "handler",
     auth: { kind: "device" },
     cors: true,
     params: {
@@ -116,6 +126,8 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
   {
     path: "files/:collection/chunks/:chunkId",
     methods: ["GET"],
+    // The handler answers a wrong method after the launch gate, so a gate-off request is 404.
+    other: "handler",
     auth: { kind: "device" },
     cors: true,
     params: {
@@ -128,6 +140,8 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
   {
     path: "files/:collection/:id/finalize",
     methods: ["POST"],
+    // The handler answers a wrong method after the launch gate, so a gate-off request is 404.
+    other: "handler",
     auth: { kind: "device" },
     cors: true,
     params: { collection: FILE_PARAMS.collection, id: FILE_PARAMS.id },
@@ -137,6 +151,8 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
   {
     path: "files/:collection/:id",
     methods: ["GET"],
+    // The handler answers a wrong method after the launch gate, so a gate-off request is 404.
+    other: "handler",
     auth: { kind: "device" },
     cors: true,
     params: { collection: FILE_PARAMS.collection, id: FILE_PARAMS.id },
@@ -145,6 +161,8 @@ export const SYNC_ROUTES = serviceRoutes("sync", [
   {
     path: "files/:collection/:id/revisions",
     methods: ["GET"],
+    // The handler answers a wrong method after the launch gate, so a gate-off request is 404.
+    other: "handler",
     auth: { kind: "device" },
     cors: true,
     params: { collection: FILE_PARAMS.collection, id: FILE_PARAMS.id },

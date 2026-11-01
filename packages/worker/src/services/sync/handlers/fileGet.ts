@@ -37,7 +37,7 @@ import { parseRange, reprDigest } from "../../../core/assets/blobs.js";
 import { ErrorCode, json, notFound, wireError } from "../../../core/errors.js";
 import { callCloudSync } from "../do/client.js";
 import { filesLimited } from "../limits.js";
-import { fileCall, withObject } from "./files.js";
+import { fileCall, withObject, wrongMethod } from "./files.js";
 import { retryable } from "./common.js";
 
 /**
@@ -69,7 +69,8 @@ export async function handleFileGet(
   match: RouteMatch,
 ): Promise<Response> {
   const { env, req, product, now } = ctx;
-  if (req.method !== "GET") return wireError(405, "method_not_allowed");
+  const wrong = await wrongMethod(ctx, "GET");
+  if (wrong) return wrong;
   const ranged = isByteRange(req.headers.get("range"));
   const call = await fileCall(ctx, match, {
     write: false,
@@ -164,7 +165,8 @@ export async function handleFileRevisions(
   ctx: ServiceContext,
   match: RouteMatch,
 ): Promise<Response> {
-  if (ctx.req.method !== "GET") return wireError(405, "method_not_allowed");
+  const wrong = await wrongMethod(ctx, "GET");
+  if (wrong) return wrong;
   const call = await fileCall(ctx, match, { write: false, limiter: "parts" });
   if (call instanceof Response) return call;
   const out = await withObject(ctx, call.caller, (pin) =>

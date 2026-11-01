@@ -14,6 +14,7 @@ import { SERVICE_SLUGS, serializeServices } from "../../src/core/services.js";
 import { launchGateOn } from "../../src/core/settings/platformRead.js";
 import { connectService } from "../../src/services/connect/index.js";
 import { handleToken } from "../../src/services/identity/passthrough/token.js";
+import { gameKindsOn } from "../../src/services/identity/passthrough/subjectToken.js";
 import { handleExchangeNonce } from "../../src/services/identity/passthrough/nonce.js";
 import type { Db } from "../../src/db/types.js";
 import type { Env } from "../../src/platform/env.js";
@@ -158,6 +159,43 @@ describe("launch.identityExchange", () => {
     const bad = unreadable(w.db);
     expect((await tokenGrant(w, bad)).error).toBe("unsupported_grant_type");
     expect(await nonce(w, bad)).toBe(404);
+  });
+});
+
+describe("launch.identityExchange: the link route", () => {
+  it("off: GET and POST on identity/link are 404; on: they are not", async () => {
+    const w = await world();
+    const status = async (method: string) =>
+      (
+        await dispatchWith(
+          new Request(`https://key.plrs.im/${P}/identity/link`, { method }),
+          w.env,
+          w.db,
+          NOW,
+        )
+      ).status;
+    expect(await status("GET")).not.toBe(404);
+    expect(await status("POST")).not.toBe(404);
+    setGate(w, "LAUNCH_IDENTITY_EXCHANGE", undefined);
+    expect(await status("GET")).toBe(404);
+    expect(await status("POST")).toBe(404);
+  });
+});
+
+describe("launch.gameSignIn: the game kinds", () => {
+  it("are served while the gate is on and none while it is off", async () => {
+    const w = await world();
+    const audiences = {
+      gameCenter: true,
+      apple: { teamId: "TEAM000000", bundleIds: ["com.example.game"] },
+      playGames: { applicationId: null, serverClientId: null },
+    } as never;
+    setGate(w, "LAUNCH_GAME_SIGN_IN", "on");
+    expect(await gameKindsOn(w.env, w.db, P, audiences)).toEqual([
+      "gamecenter",
+    ]);
+    setGate(w, "LAUNCH_GAME_SIGN_IN", undefined);
+    expect(await gameKindsOn(w.env, w.db, P, audiences)).toEqual([]);
   });
 });
 

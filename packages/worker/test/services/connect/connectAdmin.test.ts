@@ -16,6 +16,7 @@ import { accountForSubject } from "../../../src/core/accounts/accountSubjects.js
 import { currentRing } from "../../../src/services/connect/ring.js";
 import { newKeys } from "../../deviceKeyFixtures.js";
 import { NOW } from "../../seed.js";
+import { adminCall } from "../../consoleAdminCall.js";
 import { PRINCIPALS } from "../../rbacFixtures.js";
 import { A, B, enable, SLUG, world } from "./connectFixture.js";
 
@@ -225,6 +226,28 @@ describe("GET connect/people", () => {
     await enable(w.db, ["license", "identity"]);
     const res = await w.get("u1", [GROUP], PEOPLE);
     expect(await res.json()).toEqual({ enabled: false });
+  });
+});
+
+describe("connect admin routes are read-only", () => {
+  it("any other method, and any extra path segment, is refused", async () => {
+    const w = await setup();
+    const send = (path: string, method: string) =>
+      adminCall(w.env, w.db, path, {
+        method,
+        sub: "u1",
+        ...(method === "GET" ? {} : { body: {} }),
+      });
+    for (const path of [PEOPLE, USAGE])
+      for (const method of ["POST", "PUT", "PATCH", "DELETE"])
+        expect((await send(path, method)).status, `${method} ${path}`).toBe(
+          404,
+        );
+    for (const tail of ["people/extra", "usage/x", "rings"])
+      expect(
+        (await send(`/api/products/${SLUG}/connect/${tail}`, "GET")).status,
+        tail,
+      ).toBe(404);
   });
 });
 
