@@ -73,6 +73,9 @@ func run(t: PKeyTestContext) -> void:
 	await _over_the_relay(t)
 	await _lan_first(t)
 	await _gate_moves(t)
+	await _late_changes(t)
+	await _lan_in_flight(t)
+	await _cache_and_promotion(t)
 	await _frames(20)
 	_host.queue_free()
 
@@ -174,6 +177,7 @@ func _source(n: Device) -> PKeyConnectLan.Source:
 	var src := n.env.src()
 	src.contacts = Callable(n.client, "live_contacts")
 	src.contact_established = Callable(n.client, "contact_established")
+	src.inter_account = Callable(n.client, "inter_account")
 	return src
 
 
@@ -409,3 +413,146 @@ func _gate_moves(t: PKeyTestContext) -> void:
 	na.core.discovery_changed.emit()
 	t.check("gate: the gate opening again brings the room back", await _until(func() -> bool: return na.relay.rooms().size() == 1))
 	_finish(r)
+
+
+# -- changes that land while a handshake runs ------------------------------------------------------
+
+
+## Links layer, with no LAN service in the way: a session that comes up after its link was removed or links were
+## switched off is closed before the host hears of it, and an `open` in flight when its link is removed fails.
+func _late_changes(t: PKeyTestContext) -> void:
+	# Inbound, the link removed (the readers are not told: only the check at establish can catch it).
+	var r := _linked()
+	var na: Device = r["a"]
+	var nb: Device = r["b"]
+	await _until(func() -> bool: return na.relay.rooms().size() == 1 and na.relay.rooms()[0]["state"] == "open" and nb.relay.rooms()[0]["state"] == "open")
+	var caught: Array = []
+	nb.relay.session_opened.disconnect(nb.links._inbound)
+	nb.relay.session_opened.connect(func(s: PKeyConnectSession) -> void: caught.append(s))
+	var first: PKeyResult = await na.links.open(r["id_a"])
+	t.check("late: a session is up on both sides", first.ok and await _until(func() -> bool: return not caught.is_empty()))
+	if caught.is_empty():
+		_finish(r)
+		return
+	var codes: Array = []
+	(caught[0] as PKeyConnectSession).closed.connect(func(code: StringName, _by: bool) -> void: codes.append(code))
+	nb.client.contacts().remove(r["id_b"])
+	nb.links._inbound(caught[0])
+	t.check("late: a session for a link removed meanwhile is closed peer_revoked", (caught[0] as PKeyConnectSession).is_closed() and codes == [&"peer_revoked"], str(codes))
+	t.check("late: and the host never hears of it", nb.inbound.is_empty() and nb.links._sessions.is_empty())
+	_finish(r)
+	# Inbound, links switched off meanwhile.
+	var g := _linked()
+	var ga: Device = g["a"]
+	var gb: Device = g["b"]
+	await _until(func() -> bool: return ga.relay.rooms().size() == 1 and ga.relay.rooms()[0]["state"] == "open" and gb.relay.rooms()[0]["state"] == "open")
+	var seen: Array = []
+	gb.relay.session_opened.disconnect(gb.links._inbound)
+	gb.relay.session_opened.connect(func(s: PKeyConnectSession) -> void: seen.append(s))
+	var second: PKeyResult = await ga.links.open(g["id_a"])
+	await _until(func() -> bool: return not seen.is_empty())
+	if not t.check("late: a second session is up", second.ok and not seen.is_empty()):
+		_finish(g)
+		return
+	var codes2: Array = []
+	(seen[0] as PKeyConnectSession).closed.connect(func(code: StringName, _by: bool) -> void: codes2.append(code))
+	_manifest(gb.core, false)
+	gb.links._inbound(seen[0])
+	t.check("late: a session that comes up after links were switched off is closed peer_bye", (seen[0] as PKeyConnectSession).is_closed() and codes2 == [&"peer_bye"], str(codes2))
+	t.check("late: and the host never hears of it either", gb.inbound.is_empty())
+	_finish(g)
+	# Outbound: the link is removed while open() is still dialling.
+	var o := _linked()
+	var oa: Device = o["a"]
+	var ob: Device = o["b"]
+	await _until(func() -> bool: return oa.relay.rooms().size() == 1 and oa.relay.rooms()[0]["state"] == "open" and ob.relay.rooms()[0]["state"] == "open")
+	var res: Array = [null]
+	var runner := func() -> void:
+		res[0] = await oa.links.open(o["id_a"])
+	runner.call()
+	oa.client.contacts().remove(o["id_a"])
+	await _until(func() -> bool: return res[0] != null)
+	var out: PKeyResult = res[0]
+	t.check("late: an open in flight when its link is removed answers link-unknown", out != null and not out.ok and String(out.code) == "link-unknown", str(out))
+	t.check("late: and no session of it is kept", oa.links._sessions.is_empty())
+	_finish(o)
+
+
+## LAN service and links layer together, the PoC shapes: a handshake that began before `remove()`, and an `open()`
+## in flight when its own link is removed.
+func _lan_in_flight(t: PKeyTestContext) -> void:
+	var secret := _key(9)
+	var a: Dictionary = _pair["a"]
+	var b: Dictionary = _pair["b"]
+	var na := _device(a, [_raw(PKeyB64Url.encode(b["pub"]), secret)])
+	var nb := _device(b, [_raw(PKeyB64Url.encode(a["pub"]), secret)])
+	var bus := Lan.Bus.new()
+	var la: PKeyConnectLan = PKeyConnectLan.start(_source(na), {"allow_loopback": true, "host": "127.0.0.1", "mdns": Lan.FakeMdns.new(bus)}).detail
+	var lb: PKeyConnectLan = PKeyConnectLan.start(_source(nb), {"allow_loopback": true, "host": "127.0.0.1", "mdns": Lan.FakeMdns.new(bus)}).detail
+	na.links.attach(la, null, {})
+	nb.links.attach(lb, null, {})
+	var id_a := PKeyConnectContacts.id_of(PKeyB64Url.encode(b["pub"]))
+	var id_b := PKeyConnectContacts.id_of(PKeyB64Url.encode(a["pub"]))
+	await _until(func() -> bool: return not la.contact_peers().is_empty())
+	var res: Array = [null]
+	var runner := func() -> void:
+		res[0] = await na.links.open(id_a)
+	runner.call()
+	await _until(func() -> bool: return not lb._links.is_empty() or not lb._pending.is_empty(), 600)
+	t.check("lan: B removes the link while the handshake runs", nb.links.remove(id_b).ok)
+	await _until(func() -> bool: return res[0] != null, 600)
+	await _frames(30)
+	t.check("lan: the removed link opens no session on B", nb.inbound.is_empty() and lb.session_count() == 0)
+	var dialled: PKeyResult = res[0]
+	var shut: bool = dialled != null and (not dialled.ok or await _until(func() -> bool: return (dialled.detail as PKeyConnectSession).is_closed()))
+	t.check("lan: and the dialler's session, if it came up, is closed", shut)
+	# Outbound: A removes the link while its own open() waits for the LAN attempt.
+	var na2 := _device(a, [_raw(PKeyB64Url.encode(b["pub"]), secret)])
+	var nb2 := _device(b, [_raw(PKeyB64Url.encode(a["pub"]), secret)])
+	var bus2 := Lan.Bus.new()
+	var l2a: PKeyConnectLan = PKeyConnectLan.start(_source(na2), {"allow_loopback": true, "host": "127.0.0.1", "mdns": Lan.FakeMdns.new(bus2)}).detail
+	var l2b: PKeyConnectLan = PKeyConnectLan.start(_source(nb2), {"allow_loopback": true, "host": "127.0.0.1", "mdns": Lan.FakeMdns.new(bus2)}).detail
+	na2.links.attach(l2a, null, {})
+	nb2.links.attach(l2b, null, {})
+	await _until(func() -> bool: return not l2a.contact_peers().is_empty())
+	var res2: Array = [null]
+	var runner2 := func() -> void:
+		res2[0] = await na2.links.open(id_a)
+	runner2.call()
+	na2.links.remove(id_a)
+	await _until(func() -> bool: return res2[0] != null, 600)
+	var r2: PKeyResult = res2[0]
+	t.check("lan: an open in flight when its link is removed returns no live session", r2 != null and not r2.ok, str(r2))
+	for n: Device in [na, nb, na2, nb2]:
+		n.links.detach()
+	for l: PKeyConnectLan in [la, lb, l2a, l2b]:
+		l.stop()
+
+
+## The cached gate lapses and a failed read clears it; a pending contact is promoted by the secret that opened the session.
+func _cache_and_promotion(t: PKeyTestContext) -> void:
+	var n := _device(_pair["a"], [])
+	var core := n.core
+	t.check("gate cache: a manifest nothing stamped counts", n.links.inter_account())
+	core.set_meta("discovery_expires", float(Time.get_ticks_msec()) / 1000.0 + 100.0)
+	t.check("gate cache: a read stamped within a day counts", n.links.inter_account())
+	core.set_meta("discovery_expires", float(Time.get_ticks_msec()) / 1000.0 - 1.0)
+	t.check("gate cache: one older than a day no longer counts", not n.links.inter_account())
+	core.set_meta("discovery_expires", -1.0)
+	var moved := [0]
+	core.discovery_changed.connect(func() -> void: moved[0] += 1)
+	core._discovery_failed()
+	t.check("gate cache: a read that failed clears it and tells the readers", not n.links.inter_account() and moved[0] == 1)
+	core.set_meta("discovery_lapsed", false)
+	t.check("gate cache: a good read brings it back", n.links.inter_account())
+	# Promotion follows the secret.
+	var key := _key(30)
+	var held := _raw(key, _key(31))
+	var pend := _raw(key, _key(32), true, PKeyTestPeers.NOW - 10)
+	var m := _device(_pair["a"], [held, pend])
+	m.client.contact_established({"id": PKeyConnectContacts.id_of(key), "agree_key": key, "tag": PKeyConnectContacts.tag_of(PKeyB64Url.decode_strict(_key(31)))})
+	var rows: Array = m.state.read().detail.contacts
+	t.check("promotion: a session under the held secret does not promote the newer pending row", rows.size() == 2 and rows[1].has("pendingSince"))
+	m.client.contact_established({"id": PKeyConnectContacts.id_of(key), "agree_key": key, "tag": PKeyConnectContacts.tag_of(PKeyB64Url.decode_strict(_key(32)))})
+	var after: Array = m.state.read().detail.contacts
+	t.check("promotion: the secret that opened it is promoted", after.size() == 1 and after[0]["secret"] == _key(32) and not after[0].has("pendingSince"), str(after.size()))

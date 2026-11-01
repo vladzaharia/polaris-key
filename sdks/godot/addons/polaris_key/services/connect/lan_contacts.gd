@@ -48,6 +48,9 @@ func load_contacts() -> void:
 	var next: Variant = _source.call() if _source.is_valid() else []
 	var old := contacts
 	contacts = next if next is Array else []
+	for c: Dictionary in contacts:
+		if not c.has("tag"):
+			c["tag"] = PKeyConnectContacts.tag_of(c["secret"])
 	var parts := PackedStringArray()
 	for c: Dictionary in contacts:
 		parts.append("%s%s%s" % [c["id"], "p" if c["pending"] else "h", "r" if c["reachable"] else "-"])
@@ -85,7 +88,7 @@ func accepts(instance: String) -> bool:
 ## The `{id, pending}` of contact `index`: what a session under it shows the host.
 func ref_of(index: int) -> Dictionary:
 	var c: Dictionary = contacts[index]
-	return {"id": c["id"], "pending": c["pending"]}
+	return {"id": c["id"], "pending": c["pending"], "tag": c["tag"]}
 
 
 ## What a responder session is given: a copy of each secret (the session zeroes its own; the caller zeroes
@@ -102,6 +105,25 @@ func refs() -> Array:
 	for i in contacts.size():
 		out.append(ref_of(i))
 	return out
+
+
+## Whether the contact `id` is held with the secret `tag` names, as of the last read.
+func holds(id: String, tag: String) -> bool:
+	for c: Dictionary in contacts:
+		if c["id"] == id and c["tag"] == tag:
+			return true
+	return false
+
+
+## The earliest second at which a pending contact lapses, or -1 when none is pending.
+func next_lapse() -> int:
+	var at := -1
+	for c: Dictionary in contacts:
+		if c["pending"] and int(c.get("pending_since", -1)) >= 0:
+			var t := int(c["pending_since"]) + PKeyPeerContact.PENDING_CONTACT_SECONDS
+			if at < 0 or t < at:
+				at = t
+	return at
 
 
 ## The index of the contact `id` (the pending secret of a re-pair when `pending`), or -1.

@@ -261,6 +261,9 @@ func _quota(t: PKeyTestContext) -> void:
 	# An unknown disk leaves the quota.
 	var s3 := _store({"space": func() -> int: return 0, "quota": 2048})
 	t.check("an unknown disk leaves the quota", s3.free_bytes() == 2048)
+	var s3b := _store({"space": func() -> int: return 0})
+	t.check("an unknown disk and no host quota lowers the default", s3b.free_bytes() == PKeyTransferStore.UNKNOWN_DISK_QUOTA)
+	t.check("a known disk keeps the default quota", _store().free_bytes() == PKeyTransferStore.DEFAULT_QUOTA)
 	# Truncate re-reserves the rest.
 	var s4 := _store({"quota": 8192})
 	var o4 := Owner.new()
@@ -348,6 +351,16 @@ func _purges(t: PKeyTestContext) -> void:
 	var s2 := _store()
 	t.check("purge of an unused store is ok and makes nothing", s2.purge().ok and not DirAccess.dir_exists_absolute(s2.directory()))
 	t.check("the purge still bumped the epoch", s2.epoch(k1) == 1)
+	# A delivery depends on its own peer's purges, not another peer's.
+	var s3 := _store()
+	var d1 := Owner.new()
+	_put(s3, k1, _ref(7), _bytes(50), d1)
+	s3.apply(k1, {"keep": _ref(7)}, {}, d1)
+	var before: int = s3._delivery_epoch(_ref(7))
+	s3.purge(k2)
+	t.check("another peer's purge leaves a delivery's generation alone", s3._delivery_epoch(_ref(7)) == before)
+	s3.purge()
+	t.check("a purge of everything moves it", s3._delivery_epoch(_ref(7)) != before)
 
 
 func _eviction(t: PKeyTestContext) -> void:

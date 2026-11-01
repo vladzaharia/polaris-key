@@ -111,7 +111,8 @@ func sync() -> void:
 			want[_key(str(c["id"]), bool(c["pending"]))] = c
 	for k: String in _rooms.keys():
 		var room: Room = _rooms[k]
-		if not (known.has(room.id) if room.transient else want.has(k)):
+		var current: Dictionary = want.get(k, {})
+		if not (known.has(room.id) if room.transient else want.has(k)) or (not room.transient and str(current.get("tag", room.tag)) != room.tag):
 			_rooms.erase(k)
 			room.stop()
 	for k: String in want:
@@ -229,6 +230,8 @@ class Room extends RefCounted:
 	var pending := false
 	var transient := false
 	var rid := ""
+	## A one-way tag of the secret this room serves.
+	var tag := ""
 
 	var _c: Dictionary
 	var _src: PKeyConnectLan.Source
@@ -285,6 +288,7 @@ class Room extends RefCounted:
 		transient = p_transient
 		_agree_key = str(contact["agree_key"])
 		_secret = (contact["secret"] as PackedByteArray).duplicate()
+		tag = PKeyConnectContacts.tag_of(_secret)
 		rid = PKeyPeerContact.rid(_secret)
 		_limiter = PKeyPeerLimiter.new(5, 4, Callable(self, "_mono"))
 
@@ -784,7 +788,7 @@ class Room extends RefCounted:
 		rl.link = made.detail
 		pipe.closing = Callable(rl.link.session, "is_closed")
 		rl.attachment = PKeyConnectChannel.attach(rl.link, null, role, "relay", "relay", _budget, _o.get("xfer", Callable()))
-		rl.attachment.contacts = [{"id": id, "pending": pending}]
+		rl.attachment.contacts = [{"id": id, "pending": pending, "tag": tag}]
 		rl.attachment.opened.connect(_on_opened.bind(rl.key))
 		rl.link.closed.connect(_on_link_closed.bind(rl.key))
 		_links[rl.key] = rl
@@ -800,7 +804,7 @@ class Room extends RefCounted:
 		rl.session = session
 		rl.settled.emit()
 		if pending and _src.contact_established.is_valid():
-			_src.contact_established.call({"id": id, "agree_key": _agree_key})
+			_src.contact_established.call({"id": id, "agree_key": _agree_key, "tag": tag})
 		if rl.role == "responder" and _on_session.is_valid():
 			_on_session.call(session)
 

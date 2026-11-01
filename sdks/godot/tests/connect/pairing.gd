@@ -179,6 +179,7 @@ func run(t: PKeyTestContext) -> void:
 	await _end_to_end(t, false)
 	await _end_to_end(t, true)
 	await _decline(t)
+	await _offer_cap(t)
 	await _querier_only(t)
 
 
@@ -292,6 +293,26 @@ func _end_to_end(t: PKeyTestContext, native_pipes: bool) -> void:
 	t.check("%s: the host hears linked and the window closes" % tag, await _until(func() -> bool: return ha.linked.size() == 1 and not a.is_open() and not b.is_open()))
 	t.check("%s: a link names its id and no key" % tag, ha.linked.size() == 1 and ha.linked[0]["id"] == "link1" and not str(ha.linked[0]).contains(ha.agree_key()) and ha.failed.is_empty())
 	t.check("%s: str() shows no key" % tag, not str(a).contains(ha.agree_key()))
+
+
+## A window puts only a bounded number of offers to the host: a device that reaches the code after that is closed.
+func _offer_cap(t: PKeyTestContext) -> void:
+	var bus := Bus.new()
+	var ha := Host.new()
+	var hb := Host.new()
+	var ps := _pair_up(t, Lane.new(bus), Lane.new(bus), ha, hb, ["docs"], ["docs"])
+	if ps.is_empty():
+		return
+	var a: PKeyConnectPairing = ps[0]
+	var b: PKeyConnectPairing = ps[1]
+	a._offers = PKeyConnectPairing.MAX_OFFERS
+	t.check("offer cap: the other side still gets its offer", await _until(func() -> bool: return hb.offers.size() == 1))
+	for i in 30:
+		await _tree().process_frame
+	t.check("offer cap: a window that reached the cap puts no more to the host", ha.offers.is_empty())
+	t.check("offer cap: and the over-cap device is closed unasked", await _until(func() -> bool: return not ha.failed.is_empty()))
+	a.stop()
+	b.stop()
 
 
 func _decline(t: PKeyTestContext) -> void:

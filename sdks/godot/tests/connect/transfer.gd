@@ -28,6 +28,8 @@ class Half extends RefCounted:
 	var overwrite := false
 	var mode := "accept"
 	var dir := ""
+	## A file is made at the destination right after the offer is accepted (the destination appears late).
+	var late_file := false
 
 
 	func _init(p_dir: String, quota := -1, pump: PKeyPeerPump = null) -> void:
@@ -49,6 +51,10 @@ class Half extends RefCounted:
 		offers.append(offer)
 		if mode == "accept":
 			offer.accept(dest, overwrite)
+			if late_file:
+				var f := FileAccess.open(dest, FileAccess.WRITE)
+				f.store_string("kept")
+				f.close()
 		elif mode == "decline":
 			offer.decline()
 
@@ -69,6 +75,7 @@ func run(t: PKeyTestContext) -> void:
 	_tree().root.add_child(_host)
 	await _delivery(t, false)
 	await _delivery(t, true)
+	await _empty(t)
 	await _declines(t)
 	await _cancel(t)
 	await _quota_and_busy(t)
@@ -211,6 +218,43 @@ func _delivery(t: PKeyTestContext, threads: bool) -> void:
 	await _until(func() -> bool: return rig.sb.is_closed())
 	t.check("%s: closing the session lets go of the wires" % tag, await _until(func() -> bool: return a.hub._wires.is_empty() and b.hub._wires.is_empty()))
 	await _frames(3)
+
+
+## Content of zero bytes is placed before the sender is told, and a placement that fails is not reported delivered.
+func _empty(t: PKeyTestContext) -> void:
+	var pump := PKeyPeerPump.new(_tree(), false)
+	var a := Half.new(_dir(), -1, pump)
+	var b := Half.new(_dir(), -1, pump)
+	b.dest = b.dir.path_join("empty.bin")
+	b.listen()
+	var rig := await _sessions(pump, a, b)
+	if not t.check("empty: two sessions", rig != null):
+		return
+	var started: PKeyResult = await a.hub.send(rig.sa, PackedByteArray(), {"name": "e.bin"})
+	var done: PKeyResult = await (started.detail as PKeyTransferHandle).wait()
+	t.check("empty: the sender is told delivered", done.ok and done.detail["outcome"] == "delivered", str(done))
+	t.check("empty: and the file is already there when it is", FileAccess.file_exists(b.dest) and _read(b.dest).is_empty())
+	await _until(func() -> bool: return not b.results.is_empty())
+	t.check("empty: the receiver's result names the file", b.results.size() == 1 and b.results[0]["delivered"] and b.results[0]["path"] == b.dest, str(b.results))
+	rig.sa.close()
+	await _until(func() -> bool: return a.hub._wires.is_empty() and b.hub._wires.is_empty())
+	# The destination appears after the offer was accepted: nothing is placed and the sender is not told delivered.
+	var c := Half.new(_dir(), -1, pump)
+	var d := Half.new(_dir(), -1, pump)
+	d.dest = d.dir.path_join("taken.bin")
+	d.late_file = true
+	d.listen()
+	var rig2 := await _sessions(pump, c, d)
+	if not t.check("empty (late destination): two sessions", rig2 != null):
+		return
+	var started2: PKeyResult = await c.hub.send(rig2.sa, PackedByteArray(), {"name": "e.bin"})
+	var done2: PKeyResult = await (started2.detail as PKeyTransferHandle).wait()
+	t.check("empty (late destination): the sender is not told delivered", not (done2.ok and done2.detail["outcome"] == "delivered"), str(done2))
+	await _until(func() -> bool: return not d.results.is_empty())
+	t.check("empty (late destination): the receiver's result is not delivered", d.results.size() == 1 and not d.results[0]["delivered"], str(d.results))
+	t.check("empty (late destination): the file already there is untouched", _read(d.dest).get_string_from_utf8() == "kept")
+	t.check("empty (late destination): the session ended", await _until(func() -> bool: return rig2.sa.is_closed() and rig2.sb.is_closed()))
+	await _until(func() -> bool: return c.hub._wires.is_empty() and d.hub._wires.is_empty())
 
 
 func _has_temp(dir: String) -> bool:

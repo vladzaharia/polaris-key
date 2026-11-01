@@ -301,6 +301,7 @@ func attach(session: PKeyConnectSession) -> void:
 		"close": func(code: StringName) -> void: session.close(code),
 		"read": func(id: String, offset: int, length: int) -> Variant: return _read(wire, id, offset, length),
 		"apply": func(effect: Dictionary) -> Variant: return _apply(wire, effect),
+		"place": func(id: String) -> Variant: return _place_empty(wire, id),
 		"events": {
 			"ask": func(a: Dictionary) -> void: _on_ask(wire, a),
 			"withdraw": func(id: String) -> void: _on_withdraw(wire, id),
@@ -367,6 +368,17 @@ func _link_record(id: String) -> Dictionary:
 	return r if r is Dictionary else {}
 
 
+## A session to the link `link_id`; it is closed again when the link was removed while it opened.
+func _session_of_link(link_id: String) -> PKeyResult:
+	if not _links.is_valid() or not (_links.call() as Array).has(link_id) or not _open_link.is_valid():
+		return PKeyResult.failure(PKeyConstants.ErrorCode.LINK_UNKNOWN, "That link is not held on this device.")
+	var r: PKeyResult = await _open_link.call(link_id)
+	if r.ok and not (_links.call() as Array).has(link_id):
+		(r.detail as PKeyConnectSession).close(PKeyPeerSession.PEER_REVOKED)
+		return PKeyResult.failure(PKeyConstants.ErrorCode.LINK_UNKNOWN, "That link is not held on this device.")
+	return r
+
+
 func _session_of(peer: Variant) -> PKeyResult:
 	if peer is PKeyConnectSession:
 		return PKeyResult.success(peer)
@@ -376,11 +388,7 @@ func _session_of(peer: Variant) -> PKeyResult:
 		var r: PKeyResult = await _open_peer.call(peer)
 		return r
 	if peer is Dictionary and (peer as Dictionary).get("link") is String:
-		var link_id: String = peer["link"]
-		if not _links.is_valid() or not (_links.call() as Array).has(link_id) or not _open_link.is_valid():
-			return PKeyResult.failure(PKeyConstants.ErrorCode.LINK_UNKNOWN, "That link is not held on this device.")
-		var r2: PKeyResult = await _open_link.call(link_id)
-		return r2
+		return await _session_of_link(peer["link"])
 	return _invalid("The peer is a session, a device id or {link = id}.")
 
 
@@ -496,6 +504,20 @@ func _apply(wire: Wire, eff: Dictionary) -> Variant:
 	return store.apply(wire.peer_key, eff, meta, wire, wire.epoch)
 
 
+## Content of zero bytes keeps no partial file, so nothing finalizes it: the empty file is placed here, before the
+## sender's `DONE` goes out (the endpoint calls this ahead of its sends). null when the transfer is not that case.
+func _place_empty(wire: Wire, id: String) -> Variant:
+	var info: Variant = wire.dests.get(id)
+	if wire.store == null or not info is Dictionary or wire.delivered_to.has(id) or wire.out.has(id):
+		return null
+	wire.finalizing = id
+	var placed := wire.store.deliver("", (info as Dictionary)["dest"], (info as Dictionary)["overwrite"], wire)
+	if placed.ok:
+		wire.finalizing = ""
+		wire.delivered_to[id] = (info as Dictionary)["dest"]
+	return placed
+
+
 ## The machine's result (on the main thread): the handle and the `result` signal.
 func _on_result(wire: Wire, r: Dictionary) -> void:
 	var id: String = r["id"]
@@ -517,13 +539,6 @@ func _on_result(wire: Wire, r: Dictionary) -> void:
 	# A re-offer answered from the memory: the host is told nothing and no content moved.
 	if r["outcome"] == "delivered" and r.get("again", false) == true:
 		return
-	if r["outcome"] == "delivered" and handle == null and dest == "" and dest_info is Dictionary and wire.store != null:
-		# A transfer of zero bytes keeps no partial: the empty file is placed here.
-		var placed := wire.store.deliver("", (dest_info as Dictionary)["dest"], (dest_info as Dictionary)["overwrite"], wire)
-		if placed.ok:
-			dest = (dest_info as Dictionary)["dest"]
-		else:
-			out_r = {"id": id, "outcome": "closed"}
 	var res := {"id": id, "direction": "out" if handle != null else "in", "outcome": out_r["outcome"], "delivered": out_r["outcome"] == "delivered"}
 	if out_r.has("reason"):
 		res["reason"] = out_r["reason"]
@@ -652,7 +667,8 @@ class Source extends RefCounted:
 		var h := HashingContext.new()
 		h.start(HashingContext.HASH_SHA256)
 		if _path == "":
-			h.update(_bytes)
+			if not _bytes.is_empty():
+				h.update(_bytes)
 			return h.finish().hex_encode()
 		var f := FileAccess.open(_path, FileAccess.READ)
 		if f == null:

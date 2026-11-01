@@ -58,6 +58,7 @@ var _lan_attempt := LAN_ATTEMPT_SECONDS
 var _sessions: Dictionary = {}
 var _pairing: Dictionary = {}
 var _attached := false
+var _reread_gen := 0
 
 
 ## `core` and `client` are the SDK's own. `options` (wiring and test seams): `tree`, `lane` (Callable() -> the
@@ -74,10 +75,25 @@ func _init(core: PKeyCore, client: PKeyConnectClient, options := {}) -> void:
 	if not core.discovery_changed.is_connected(_client.notify_contacts):
 		core.discovery_changed.connect(_client.notify_contacts)
 	_client.contacts_changed.connect(_reconcile)
+	# The cached `interAccount` answer lapses after a day: read discovery again before it does.
+	core.discovery_changed.connect(_arm_reread)
+	_arm_reread()
 
 
 func _to_string() -> String:
 	return "PKeyCloudLinks()"
+
+
+func _arm_reread() -> void:
+	_reread_gen += 1
+	if _tree != null:
+		_tree.create_timer(PKeyCore.DISCOVERY_TTL_SECONDS).timeout.connect(_reread.bind(_reread_gen))
+
+
+func _reread(gen: int) -> void:
+	var core := _core_ref.get_ref() as PKeyCore
+	if gen == _reread_gen and core != null:
+		await core.discover()
 
 
 # ── the API ──────────────────────────────────────────────────────────────────────────────────
@@ -192,12 +208,12 @@ func open(id: String, options := {}) -> PKeyResult:
 		if lan != null and _seen_on_lan(lan, id, pending):
 			var tried := await _bounded(lan, id, pending, float(options.get("lan_attempt_seconds", _lan_attempt)))
 			if tried.ok:
-				return _track(tried.detail)
+				return _track_held(tried.detail)
 			last = tried
 		if relay_ok:
 			var dialled: PKeyResult = await relay.dial(id, pending)
 			if dialled.ok:
-				return _track(dialled.detail)
+				return _track_held(dialled.detail)
 			last = dialled
 	return last
 
@@ -319,8 +335,29 @@ func _inbound(session: PKeyConnectSession) -> void:
 	if get_signal_connection_list("link").is_empty():
 		session.close()
 		return
+	# The handshake may have begun before the link was removed or links were switched off.
+	if not _held(session):
+		return
 	_track(session)
 	link.emit(session)
+
+
+## Whether the link a session opened under is still held with the same secret and links are on; else the session
+## is closed (`peer_revoked`, or `peer_bye` when links are off) and this is false.
+func _held(session: PKeyConnectSession) -> bool:
+	if session.contact.is_empty():
+		return true
+	var on := inter_account()
+	if on and _client.holds_contact(str(session.contact["id"]), session.contact_tag):
+		return true
+	session.close(PKeyPeerSession.PEER_REVOKED if on else PKeyPeerSession.PEER_BYE)
+	return false
+
+
+func _track_held(session: PKeyConnectSession) -> PKeyResult:
+	if not _held(session):
+		return _unknown()
+	return _track(session)
 
 
 func _track(session: PKeyConnectSession) -> PKeyResult:
