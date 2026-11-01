@@ -129,6 +129,7 @@ public object MachineStateJson {
                 o["value"],
                 o["member"].stringValue,
                 o["element"],
+                o["field"].stringValue,
             )
         op.editedHlc = o["editedHlc"].stringValue
         op.baseVersion = o["baseVersion"]

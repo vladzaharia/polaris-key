@@ -224,8 +224,14 @@ def _apply_record_op(base: Any, op: Obj) -> Any:
     name = op["op"]
     if name == "set":
         return _clone(op.get("value"))
-    if name in ("setMember", "removeMember"):
-        return apply_setting_op("merge", base, op)
+    if name == "setField":
+        o = dict(base) if _is_object(base) else {}
+        o[op["field"]] = _clone(op.get("value"))
+        return o
+    if name == "removeField":
+        o = dict(base) if _is_object(base) else {}
+        o.pop(op["field"], None)
+        return o
     if name == "add":
         arr = list(base) if isinstance(base, list) else []
         if not any(json_equal(x, op.get("element")) for x in arr):
@@ -531,24 +537,24 @@ class CloudSyncMachine:
                 current = rec["value"] if rec is not None else None
                 cur: Obj = current if isinstance(current, dict) else {}
                 nxt: Obj = value if isinstance(value, dict) else {}
-                for member in _sorted(nxt):
-                    if member not in cur or not json_equal(cur[member], nxt[member]):
+                for field in _sorted(nxt):
+                    if field not in cur or not json_equal(cur[field], nxt[field]):
                         self._enqueue(
                             p,
                             {
                                 "target": target,
-                                "op": "setMember",
-                                "member": member,
-                                "value": _clone(nxt[member]),
+                                "op": "setField",
+                                "field": field,
+                                "value": _clone(nxt[field]),
                                 "editedHlc": edited,
                                 **marks,
                             },
                         )
-                for member in _sorted(cur):
-                    if member not in nxt:
+                for field in _sorted(cur):
+                    if field not in nxt:
                         self._enqueue(
                             p,
-                            {"target": target, "op": "removeMember", "member": member, "editedHlc": edited, **marks},
+                            {"target": target, "op": "removeField", "field": field, "editedHlc": edited, **marks},
                         )
             else:
                 queued = (

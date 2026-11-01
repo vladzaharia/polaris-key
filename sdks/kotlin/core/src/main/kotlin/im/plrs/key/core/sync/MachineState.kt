@@ -36,6 +36,8 @@ internal class Op(
     var value: JsonElement? = null,
     val member: String? = null,
     val element: JsonElement? = null,
+    /** `setField` and `removeField` on a `merge` record (§13.3). */
+    val field: String? = null,
 ) {
     var editedHlc: String? = null
     var baseVersion: JsonElement? = null
@@ -57,6 +59,7 @@ internal class Op(
         put("op", op)
         value?.let { put("value", it) }
         member?.let { put("member", it) }
+        field?.let { put("field", it) }
         element?.let { put("element", it) }
         editedHlc?.let { put("editedHlc", it) }
         baseVersion?.let { put("baseVersion", it) }
@@ -71,7 +74,7 @@ internal class Op(
     }
 
     /** A copy for a re-send: no mutation id and no `parked` mark (the id is assigned on enqueue). */
-    fun resend(keepParked: Boolean = false): Op = Op(0, target, op, value, member, element).also {
+    fun resend(keepParked: Boolean = false): Op = Op(0, target, op, value, member, element, field).also {
         if (keepParked) it.parked = parked
         it.editedHlc = editedHlc
         it.baseVersion = baseVersion

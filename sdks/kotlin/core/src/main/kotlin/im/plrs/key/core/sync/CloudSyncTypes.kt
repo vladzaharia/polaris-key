@@ -164,6 +164,8 @@ public enum class SyncOp(public val wire: String) {
     Clear("clear"),
     SetMember("setMember"),
     RemoveMember("removeMember"),
+    SetField("setField"),
+    RemoveField("removeField"),
     Add("add"),
     Remove("remove"),
 }

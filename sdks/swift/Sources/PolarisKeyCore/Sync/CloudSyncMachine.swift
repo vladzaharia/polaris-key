@@ -339,7 +339,14 @@ public func syncApplySettingOp(_ policy: String, _ base: JSONValue?, _ op: SyncO
 func syncApplyRecordOp(_ base: JSONValue?, _ op: SyncOp) -> JSONValue? {
     switch op.op {
     case .set: return op.value ?? .null
-    case .setMember, .removeMember: return syncApplySettingOp("merge", base, op)
+    case .setField:
+        var o = base?.objectValue ?? [:]
+        if let f = op.field { o[f] = op.value ?? .null }
+        return .object(o)
+    case .removeField:
+        var o = base?.objectValue ?? [:]
+        if let f = op.field { o.removeValue(forKey: f) }
+        return .object(o)
     case .add:
         var arr = base?.arrayValue ?? []
         if !arr.contains(where: { jsonEqual($0, op.element) }) { arr.append(op.element ?? .null) }
@@ -584,14 +591,14 @@ public final class CloudSyncMachine {
                     _ = enqueue(
                         name,
                         SyncOp(
-                            mutationId: 0, target: target, op: .setMember, value: nxt[m], member: m,
+                            mutationId: 0, target: target, op: .setField, value: nxt[m], field: m,
                             editedHlc: edited, preContact: pre))
                 }
                 for m in syncSortedKeys(cur.keys) where nxt[m] == nil {
                     _ = enqueue(
                         name,
                         SyncOp(
-                            mutationId: 0, target: target, op: .removeMember, member: m, editedHlc: edited,
+                            mutationId: 0, target: target, op: .removeField, field: m, editedHlc: edited,
                             preContact: pre))
                 }
             } else {
