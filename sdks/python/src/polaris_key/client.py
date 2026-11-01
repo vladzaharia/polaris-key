@@ -107,6 +107,10 @@ __all__ = [
 ]
 
 
+#: How long a discovery answer of ``interAccount: true`` counts without a fresh read (24 h).
+INTER_ACCOUNT_TTL_SECONDS = 24 * 60 * 60
+
+
 @dataclass(frozen=True)
 class SyncState:
     """The bridge contract — one snapshot of everything a UI layer renders from.
@@ -453,6 +457,10 @@ class PolarisKeyClient:
         self.devices.pack_installs = self.update.packs.pack_installs
 
         self._discovery_doc: Optional[Dict[str, Any]] = None
+        #: Unix seconds until which the cached ``interAccount`` answer counts; 0 once a re-read failed.
+        #: ``None`` for a document that did not come from ``discover()`` (nothing stamps it).
+        self._links_until: Optional[int] = None
+        self._links_timer: Optional[threading.Timer] = None
         #: The product's presentation (discovery's ``core.presentation``, HA-13): the seam the UI
         #: kits read (``polaris_key.presentation.PresentationSource``). Icons and the last member
         #: live under ``<cache>/presentation`` when the host named a ``cache_dir`` or the store
@@ -584,6 +592,9 @@ class PolarisKeyClient:
 
     def _inter_account(self) -> bool:
         """WIRE-CONTRACT-V5 §15.9: links are on only while the cached discovery document says so."""
+        # A cached answer lapses (INTER_ACCOUNT_TTL_SECONDS); a failed or empty re-read clears it.
+        if self._links_until is not None and self.core.now() >= self._links_until:
+            return False
         doc = self._discovery_doc
         services = doc.get("services") if isinstance(doc, dict) else None
         f = services.get("connect") if isinstance(services, dict) else None
@@ -622,6 +633,9 @@ class PolarisKeyClient:
         except Exception:
             pass
         self._timer_stop.set()
+        if self._links_timer is not None:
+            self._links_timer.cancel()
+            self._links_timer = None
         self._cloud_sync_api.close()
         self.cloud_sync_host.close()
         self.keyring.lock()
@@ -684,6 +698,8 @@ class PolarisKeyClient:
         )
         if isinstance(result, DiscoveryOk):
             self._discovery_doc = result.manifest
+            self._links_until = self.core.now() + INTER_ACCOUNT_TTL_SECONDS
+            self._reread_links_gate()
             self.core.set_services(result.services)
             # ``interAccount`` may have moved: links follow the document (§15.10 "Gates").
             self.connect.notify_contacts()
@@ -697,7 +713,30 @@ class PolarisKeyClient:
                 self.portal_store.accept(result.manifest)
             except Exception:
                 pass
+        elif self._links_until is None or self._links_until != 0:
+            # Not found, invalid or unreachable: the cached links answer is no longer trusted.
+            self._links_until = 0
+            self.connect.notify_contacts()
         return result
+
+    def _reread_links_gate(self) -> None:
+        """Re-read discovery when the cached links answer lapses, so a lapse withdraws the adverts."""
+        if self._links_timer is not None:
+            self._links_timer.cancel()
+
+        def again() -> None:
+            self._links_timer = None
+            try:
+                self.discover()
+            except Exception:
+                pass
+            if self._links_until is not None and self.core.now() >= self._links_until:
+                self.connect.notify_contacts()
+
+        t = threading.Timer(INTER_ACCOUNT_TTL_SECONDS, again)
+        t.daemon = True
+        self._links_timer = t
+        t.start()
 
     def _sync_document(self) -> Dict[str, Any]:
         """The signed config document's values and the keys it locks, for the Cloud Sync machine."""

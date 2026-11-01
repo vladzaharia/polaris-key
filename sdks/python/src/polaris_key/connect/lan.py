@@ -136,7 +136,7 @@ def lan_source(
         # A client without links (a test's stand-in) serves no contacts.
         contacts=getattr(client, "live_contacts", None),
         on_contacts=getattr(client, "on_contacts_changed", None),
-        contact_established=(lambda ref: client.promote_contact(ref.agree_key))
+        contact_established=(lambda ref: client.promote_contact(ref.agree_key, ref.tag))
         if hasattr(client, "promote_contact")
         else None,
     )
@@ -212,6 +212,8 @@ class LanService:
         #: Accepted transports that hold a slot and have not reached ``_accept`` yet.
         self._slots: Dict[Any, Callable[[], None]] = {}
         self._links: Set[SocketLink] = set()
+        #: For a handshake still running: the contacts (id and secret tag) its trial list holds.
+        self._serves: Dict[SocketLink, Set[str]] = {}
         self._sessions: Set[ConnectSession] = set()
         self._tasks: Set["asyncio.Future[Any]"] = set()
         self._on_session: List[Callable[[ConnectSession], None]] = []
@@ -561,11 +563,16 @@ class LanService:
         refs = [ref_of(c) for c in served]
 
         def established(s: ConnectSession) -> None:
+            self._serves.pop(link, None)
             self._sessions.add(s)
             s.on_close(lambda _c: self._sessions.discard(s))
             self._promote_if_pending(s)
 
         link: SocketLink
+
+        def ended() -> None:
+            self._links.discard(link)
+            self._serves.pop(link, None)
 
         def ring_wanted() -> None:
             # The refresh calls the Worker: never on the loop.
@@ -577,7 +584,7 @@ class LanService:
             on_ring=docs.on_ring,
             on_trust=docs.on_trust,
             on_ring_wanted=ring_wanted,
-            on_ended=lambda: self._links.discard(link),
+            on_ended=ended,
             contacts=refs,
             xfer=o.xfer,
         )
@@ -609,6 +616,8 @@ class LanService:
             peer_full=self._peer_full,
         )
         self._links.add(link)
+        if served:
+            self._serves[link] = {"%s|%s" % (c.id, c.tag) for c in served}
         return link
 
     def _peer_full(self, device_id: str) -> bool:
@@ -726,6 +735,12 @@ class LanService:
             "%s%s%s" % (c.id, "p" if c.pending else "h", "r" if c.reachable else "-") for c in nxt
         )
         wipe_live(old)
+        # A handshake still running under a contact that is gone (or whose secret was replaced) or while
+        # links are off is ended; an established session is the links layer's to close.
+        held = {"%s|%s" % (c.id, c.tag) for c in nxt}
+        for lk in [k for k, served in self._serves.items() if not served <= held]:
+            self._serves.pop(lk, None)
+            lk.destroy()
         # A peer seen under a contact that is gone is forgotten.
         have = {(c.id, c.pending) for c in nxt}
         for k in [k for k in self._contact_peers if k not in have]:

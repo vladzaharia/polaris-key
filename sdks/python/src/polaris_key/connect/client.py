@@ -64,7 +64,7 @@ from ..core.peer_cert import (
 from ..core.token import TokenManager
 from ..devices.client import DevicesClient
 from ..devices.keys import DEVICE_KEYS_FILE, DeviceKeyStorage, DeviceKeyStore, FileDeviceKeyStorage
-from .contacts import LiveContact, contact_id, drop_stale_rows, promote_row, store_row, trial_order_of
+from .contacts import LiveContact, contact_id, drop_stale_rows, promote_row, secret_tag, store_row, trial_order_of
 from .errors import RELAY_PROTOCOL, LanError, RelayError
 from .state import (
     CONNECT_STATE_FILE,
@@ -703,14 +703,27 @@ class ConnectClient:
             except Exception:
                 pass  # a host's listener cannot stop the others
 
-    def promote_contact(self, agree_key: str) -> None:
+    def promote_contact(self, agree_key: str, tag: Optional[str] = None) -> None:
         """The first handshake under the pending contact of ``agree_key`` passed the pin: it replaces the
-        held one."""
+        held one. With ``tag``, only the pending row whose secret has that tag (a replaced pending row is
+        not promoted)."""
         self.update_contacts(
-            lambda rows, _now: promote_row(rows, agree_key)
-            if any(r.pending_since is not None and r.agree_key == agree_key for r in rows)
+            lambda rows, _now: promote_row(rows, agree_key, tag)
+            if any(
+                r.pending_since is not None
+                and r.agree_key == agree_key
+                and (tag is None or secret_tag(b64url_decode(r.secret)) == tag)
+                for r in rows
+            )
             else None
         )
+
+    def holds_contact(self, agree_key: str, tag: str) -> bool:
+        """Whether the contact a session opened under is still held (same peer key, same secret) and links
+        are still on. Blocking."""
+        if not self.inter_account():
+            return False
+        return any(r.agree_key == agree_key and secret_tag(b64url_decode(r.secret)) == tag for r in self.contact_rows())
 
     def _write_contacts(self, held: ConnectStateRecord, rows: Any) -> None:
         import dataclasses

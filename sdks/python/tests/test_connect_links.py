@@ -139,3 +139,130 @@ def test_a_refresh_that_says_false_withdraws_the_adverts(world: Any) -> None:
     a._discovery_doc = {"services": {"connect": {"enabled": True, "interAccount": False}}}
     a.connect.notify_contacts()
     until(lambda: not any("m=c" in x.txt for x in net.adverts.values()))
+
+
+# -- a handshake in flight when the footing goes; the cached gate; promotion by secret ---------------------
+
+
+def _hold_after_first_send(monkeypatch: Any) -> Any:
+    """Hold every send after a link's first (handshake message 3 and later) until ``release()``."""
+    import threading
+
+    from polaris_key.core.peer_link import SocketLink
+
+    orig = SocketLink._send
+    state: Any = {"held": 0, "queue": [], "open": False, "lock": threading.Lock()}
+
+    def send(self: Any, noise: bytes) -> None:
+        n = getattr(self, "_hold_n", 0) + 1
+        self._hold_n = n
+        if n >= 2 and not state["open"]:
+            with state["lock"]:
+                if n == 2:
+                    state["held"] += 1
+                state["queue"].append((self, noise))
+            return
+        orig(self, noise)
+
+    def release() -> None:
+        state["open"] = True
+        for link, noise in list(state["queue"]):
+            link._loop.call_soon_threadsafe(orig, link, noise)
+
+    monkeypatch.setattr(SocketLink, "_send", send)
+    state["release"] = release
+    return state
+
+
+def _in_flight(world: Any, monkeypatch: Any, then: Any) -> List[Any]:
+    import threading
+
+    a, b, net = world
+    _pair(a, b, net)
+    ida, idb = a.cloud_connect.links.list()[0].id, b.cloud_connect.links.list()[0].id
+    opts = {"lan": {"mdns": net, "host": "127.0.0.1", "allow_loopback": True}, "relay": False}
+    a.cloud_connect.start(opts)
+    b.cloud_connect.start(opts)
+    inbound: List[Any] = []
+    a.cloud_connect.links.on_link(inbound.append)
+    hold = _hold_after_first_send(monkeypatch)
+
+    def dial() -> None:
+        for _ in range(100):
+            if hold["held"]:
+                return
+            try:
+                b.cloud_connect.links.open(idb, relay=False, lan_attempt_seconds=20)
+                return
+            except Exception:
+                time.sleep(0.01)
+
+    t = threading.Thread(target=dial, daemon=True)
+    t.start()
+    until(lambda: hold["held"] == 1)
+    then(a, ida)
+    hold["release"]()
+    t.join(10)
+    time.sleep(0.5)
+    return inbound
+
+
+def test_remove_before_a_handshake_completes_delivers_no_session(world: Any, monkeypatch: Any) -> None:
+    def then(a: Any, ida: str) -> None:
+        assert a.cloud_connect.links.remove(a.cloud_connect.links.list()[0].id) is True
+
+    assert _in_flight(world, monkeypatch, then) == []
+
+
+def test_a_gate_flip_before_a_handshake_completes_delivers_no_session(world: Any, monkeypatch: Any) -> None:
+    def then(a: Any, _ida: str) -> None:
+        a._discovery_doc = {"services": {"connect": {"enabled": True, "interAccount": False}}}
+        a.connect.notify_contacts()
+        time.sleep(0.2)
+
+    assert _in_flight(world, monkeypatch, then) == []
+
+
+def test_a_discovery_answer_older_than_a_day_no_longer_counts(world: Any) -> None:
+    a, _b, _net = world
+    assert a.cloud_connect.links.inter_account() is True
+    a._links_until = a.core.now() + 60
+    assert a.cloud_connect.links.inter_account() is True
+    a._links_until = a.core.now() - 1
+    assert a.cloud_connect.links.inter_account() is False
+
+
+def test_a_failed_discovery_closes_the_gate(world: Any, monkeypatch: Any) -> None:
+    import polaris_key.client as pc
+    from polaris_key.discovery import DiscoveryNotFound
+
+    a, b, net = world
+    _pair(a, b, net)
+    opts = {"lan": {"mdns": net, "host": "127.0.0.1", "allow_loopback": True}, "relay": False}
+    a.cloud_connect.start(opts)
+    until(lambda: any("m=c" in x.txt for x in net.adverts.values()))
+    a._links_until = a.core.now() + 3600
+    monkeypatch.setattr(pc, "discover_product", lambda **_kw: DiscoveryNotFound())
+    monkeypatch.setattr(a.core, "http", lambda: None)
+    a.discover()
+    assert a.cloud_connect.links.inter_account() is False
+    until(lambda: not any("m=c" in x.txt for x in net.adverts.values()))
+
+
+def test_promotion_follows_the_secret_not_the_peer_key() -> None:
+    from polaris_key.connect.contacts import promote_row, secret_tag
+    from polaris_key.connect.state import ContactRow
+    from polaris_key.core.b64url import b64url_encode
+
+    key = "A" * 43
+    s1, s2 = bytes([1]) * 32, bytes([2]) * 32
+
+    def row(secret: bytes, pending: Any = None) -> Any:
+        return ContactRow(
+            agree_key=key, secret=b64url_encode(secret), cats=("notes",), created_at=1, reachable=True,
+            pending_since=pending,
+        )
+
+    rows = [row(s1), row(s2, 5)]
+    assert promote_row(rows, key, secret_tag(s1)) == rows
+    assert [r.secret for r in promote_row(rows, key, secret_tag(s2))] == [b64url_encode(s2)]

@@ -205,7 +205,7 @@ class CloudLinks:
                 done, _ = await asyncio.wait({task}, timeout=self._lan_attempt if lan_attempt is None else lan_attempt)
                 if task in done:
                     try:
-                        return self._track(task.result())
+                        return await self._track_held(task.result())
                     except Exception as e:
                         last = e
                         if not (rel is not None and relay_opt and self._relay_on):
@@ -216,7 +216,7 @@ class CloudLinks:
                     last = LanError("connect_failed", "The LAN attempt took too long; trying the relay.")
             if rel is not None and relay_opt and self._relay_on:
                 try:
-                    return self._track(await rel.dial(cid, pending))
+                    return await self._track_held(await rel.dial(cid, pending))
                 except Exception as e:
                     last = e
         if last is not None:
@@ -270,7 +270,16 @@ class CloudLinks:
                 pass
 
     def _inbound(self, s: "ConnectSession") -> None:
+        import asyncio
+
         self._track(s)
+        # The handshake may have begun before the contact was removed or the gate went off: the session
+        # is delivered only while the contact (same secret) is held and links are on.
+        asyncio.ensure_future(self._deliver(s))
+
+    async def _deliver(self, s: "ConnectSession") -> None:
+        if not await self._still_held(s):
+            return
         with self._lock:
             subs = list(self._on_link)
         for f in subs:
@@ -278,6 +287,32 @@ class CloudLinks:
                 f(s)
             except Exception:
                 pass  # a host callback never ends a session
+
+    async def _still_held(self, s: "ConnectSession") -> bool:
+        """Close ``s`` (``peer_revoked``, or ``peer_bye`` when the gate is off) unless its contact is held."""
+        import asyncio
+
+        ref = s.contact
+        if ref is None:
+            return True
+        on = self.inter_account()
+        held = False
+        if on:
+            loop = asyncio.get_running_loop()
+            held = bool(await loop.run_in_executor(None, self._connect.holds_contact, ref.agree_key, ref.tag))
+        if held:
+            return True
+        try:
+            s.close("peer_revoked" if on else "peer_bye")
+        except Exception:
+            pass
+        return False
+
+    async def _track_held(self, s: "ConnectSession") -> "ConnectSession":
+        self._track(s)
+        if await self._still_held(s):
+            return s
+        raise LanError("unknown_peer", "That link was removed.")
 
     def _track(self, s: "ConnectSession") -> "ConnectSession":
         self._sessions.add(s)
