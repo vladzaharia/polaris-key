@@ -200,9 +200,12 @@ func _drop_pending() -> void:
 func _process(c: Dictionary) -> void:
 	_step_began = Time.get_ticks_usec()
 	var out: Dictionary = await _step(c)
-	if c["k"] == "offer" and out["refused"] == "":
-		_chunk[c["a"]["id"]] = int(c["a"]["chunk"])
-	await _perform(out, String(c["a"]["id"]) if c["k"] == "offer" else "")
+	var offered := ""
+	if c["k"] == "offer":
+		offered = String((c["a"] as Dictionary).get("id", ""))
+		if out["refused"] == "":
+			_chunk[offered] = int((c["a"] as Dictionary)["chunk"])
+	await _perform(out, offered)
 	if _failed:
 		return
 	if out["close"] != &"":
@@ -232,22 +235,23 @@ func _step(c: Dictionary) -> Dictionary:
 
 func _invoke(c: Dictionary) -> Dictionary:
 	var at := _clock()
+	var out: Dictionary = PKeyPeerXfer.Machine.blank()
 	match String(c["k"]):
 		"receive":
-			return _machine.receive(at, c["type"], c["body"])
+			out = _machine.receive(at, c["type"], c["body"])
 		"offer":
-			return _machine.offer(at, c["a"])
+			out = _machine.offer(at, c["a"])
 		"consent":
-			return _machine.consent(at, c["id"], c["answer"])
+			out = _machine.consent(at, c["id"], c["answer"])
 		"cancel":
-			return _machine.cancel(at, c["id"])
+			out = _machine.cancel(at, c["id"])
 		"fail":
-			return _machine.fail(at, c["id"])
+			out = _machine.fail(at, c["id"])
 		"tick":
-			return _machine.tick(at)
+			out = _machine.tick(at)
 		"abandon":
-			return _machine.abandon(at)
-	return PKeyPeerXfer.Machine.blank()
+			out = _machine.abandon(at)
+	return out
 
 
 # -- performing an output ------------------------------------------------------------------------
@@ -286,34 +290,47 @@ func _perform_send(s: Dictionary, failed: Dictionary) -> bool:
 	var id: String = s["id"]
 	if (t == "CHUNKS" or t == "DONE") and failed.has(id):
 		return true
+	var type := PKeyPeerXfer.OFFER
+	var body := PackedByteArray()
 	match t:
 		"OFFER":
-			return await _write(PKeyPeerXfer.OFFER, PKeyPeerXfer.offer_body(s))
+			body = PKeyPeerXfer.offer_body(s)
 		"ACCEPT":
-			return await _write(PKeyPeerXfer.ACCEPT, PKeyPeerXfer.offset_body(id, int(s["offset"])))
+			type = PKeyPeerXfer.ACCEPT
+			body = PKeyPeerXfer.offset_body(id, int(s["offset"]))
 		"ACK":
-			return await _write(PKeyPeerXfer.ACK, PKeyPeerXfer.offset_body(id, int(s["offset"])))
+			type = PKeyPeerXfer.ACK
+			body = PKeyPeerXfer.offset_body(id, int(s["offset"]))
 		"DONE":
-			return await _write(PKeyPeerXfer.DONE, PKeyPeerXfer.done_body(id, String(s.get("sha256", ""))))
+			type = PKeyPeerXfer.DONE
+			body = PKeyPeerXfer.done_body(id, String(s.get("sha256", "")))
 		"CANCEL":
-			return await _write(PKeyPeerXfer.CANCEL, PKeyPeerXfer.cancel_body(id, String(s["reason"])))
-		"CHUNKS":
-			var chunk: int = _chunk.get(id, 0)
-			var at: int = s["offset"]
-			var end: int = at + int(s["bytes"])
-			while at < end:
-				var n := mini(chunk, end - at)
-				var data: Variant = _read.call(id, at, n) if _read.is_valid() else null
-				if not data is PackedByteArray or (data as PackedByteArray).size() != n:
-					# The source failed: the transfer ends here, and its DONE never goes out.
-					failed[id] = true
-					return true
-				if not await _write(PKeyPeerXfer.CHUNK, PKeyPeerXfer.chunk_body(id, at, data)):
-					return false
-				at += n
-				if _frame.is_valid() and _budget_usec > 0 and Time.get_ticks_usec() - _step_began > _budget_usec:
-					await _frame.call()
-					_step_began = Time.get_ticks_usec()
+			type = PKeyPeerXfer.CANCEL
+			body = PKeyPeerXfer.cancel_body(id, String(s["reason"]))
+		_:
+			return await _send_chunks(s, failed)
+	return await _write(type, body)
+
+
+## The CHUNK records of one `CHUNKS` send. False when a port failed; a source that cannot be read marks the
+## transfer failed (no `DONE` goes out for it) and is not a port failure.
+func _send_chunks(s: Dictionary, failed: Dictionary) -> bool:
+	var id: String = s["id"]
+	var chunk: int = _chunk.get(id, 0)
+	var at: int = s["offset"]
+	var end: int = at + int(s["bytes"])
+	while at < end:
+		var n := mini(chunk, end - at)
+		var data: Variant = _read.call(id, at, n) if _read.is_valid() else null
+		if not data is PackedByteArray or (data as PackedByteArray).size() != n:
+			failed[id] = true
+			return true
+		if not await _write(PKeyPeerXfer.CHUNK, PKeyPeerXfer.chunk_body(id, at, data)):
+			return false
+		at += n
+		if _frame.is_valid() and _budget_usec > 0 and Time.get_ticks_usec() - _step_began > _budget_usec:
+			await _frame.call()
+			_step_began = Time.get_ticks_usec()
 	return true
 
 

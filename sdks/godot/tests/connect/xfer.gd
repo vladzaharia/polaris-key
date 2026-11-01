@@ -360,7 +360,7 @@ static func _done_body(id: String, sha := "") -> PackedByteArray:
 	return PKeyPeerXfer.done_body(id, sha)
 
 
-func _rx(mem: PKeyPeerXfer.DeliveredMemory, key: PackedByteArray) -> PKeyPeerXfer.Machine:
+func _rx(mem: PKeyPeerXferDelivered, key: PackedByteArray) -> PKeyPeerXfer.Machine:
 	var o := {
 		"mode": "a", "caps": ["xfer/1"], "max_message": 1048576, "peer_key": key,
 		"handler": func(_a: Dictionary) -> String: return "accept",
@@ -378,7 +378,7 @@ func _delivered(t: PKeyTestContext) -> void:
 	var key := _key()
 	var sha := _sha_of(_content(0, 2500))
 	# Delivered once, then offered again on a new session.
-	var mem := PKeyPeerXfer.DeliveredMemory.new()
+	var mem := PKeyPeerXferDelivered.new()
 	var m1 := _rx(mem, key)
 	var o1 := m1.receive(1.0, PKeyPeerXfer.OFFER, _offer(ID_A, 2500, sha, 1000))
 	t.check("delivered: a first offer is accepted at 0", o1["send"] == [{"t": "ACCEPT", "id": ID_A, "offset": 0}])
@@ -393,7 +393,8 @@ func _delivered(t: PKeyTestContext) -> void:
 	var c2 := m2.receive(11.0, PKeyPeerXfer.CHUNK, PKeyPeerXfer.chunk_body(ID_A, 2000, _content(2000, 2500)))
 	t.check("delivered: the tail is read and acknowledged but stores nothing", c2["send"] == [{"t": "ACK", "id": ID_A, "offset": 2500}] and (c2["partial"] as Array).is_empty())
 	var f2 := m2.receive(12.0, PKeyPeerXfer.DONE, _done_body(ID_A, sha))
-	t.check("delivered: DONE answers and the result is flagged again", f2["send"] == [{"t": "DONE", "id": ID_A}] and f2["results"] == [{"id": ID_A, "outcome": "delivered", "again": true}] and (f2["partial"] as Array).is_empty())
+	t.check("delivered: DONE answers and the result is flagged again", f2["send"] == [{"t": "DONE", "id": ID_A}]
+			and f2["results"] == [{"id": ID_A, "outcome": "delivered", "again": true}] and (f2["partial"] as Array).is_empty())
 	# A size that is a whole number of chunks accepts at the size; a wrong hash is refused without a result.
 	var sha2k := _sha_of(_content(0, 2000))
 	var m3 := _rx(mem, key)
@@ -424,7 +425,7 @@ func _delivered(t: PKeyTestContext) -> void:
 	t.check("delivered: no memory receives again", offer_send.call(_rx(null, key), 50.0) == fresh)
 	t.check("delivered: still known on the 24-hour mark", offer_send.call(_rx(mem, key), 22.0 + PKeyPeerXfer.DELIVERED_SECONDS) == [{"t": "ACCEPT", "id": ID_B, "offset": 2000}])
 	t.check("delivered: after 24 hours it receives again", offer_send.call(_rx(mem, key), 22.0 + PKeyPeerXfer.DELIVERED_SECONDS + 1.0) == fresh)
-	var known := PKeyPeerXfer.DeliveredMemory.new()
+	var known := PKeyPeerXferDelivered.new()
 	known.for_peer(key).add(ID_B, sha2k, 2000, 1.0)
 	known.forget(key)
 	t.check("delivered: forgetting a peer forgets its entries", offer_send.call(_rx(known, key), 10.0) == fresh)
@@ -438,7 +439,7 @@ func _delivered(t: PKeyTestContext) -> void:
 	var skip := asking.receive(5.0, PKeyPeerXfer.OFFER, _offer(ID_B, 2000, sha2k, 1000))
 	t.check("delivered: a re-offer needs neither consent nor room", skip["send"] == [{"t": "ACCEPT", "id": ID_B, "offset": 2000}] and skip["ask"] == null)
 	# The bounds: 64 per peer, 256 peers, oldest first.
-	var bounded := PKeyPeerXfer.DeliveredMemory.new()
+	var bounded := PKeyPeerXferDelivered.new()
 	var v := bounded.for_peer(_key())
 	for i in PKeyPeerXfer.MAX_DELIVERED_PER_PEER + 1:
 		v.add("id%d" % i, "a".repeat(64), 1, float(i))
@@ -451,11 +452,11 @@ func _delivered(t: PKeyTestContext) -> void:
 	t.check("delivered: at most 256 peers are held", bounded.peer_count() == PKeyPeerXfer.MAX_DELIVERED_PEERS)
 	bounded.clear()
 	t.check("delivered: clear forgets all", bounded.peer_count() == 0)
-	t.check("delivered: the memory prints nothing", str(bounded) == "PKeyPeerXfer.DeliveredMemory()")
+	t.check("delivered: the memory prints nothing", str(bounded) == "PKeyPeerXferDelivered()")
 
 
 func _seeded(key: PackedByteArray, id: String, sha: String, size: int) -> Object:
-	var mem := PKeyPeerXfer.DeliveredMemory.new()
+	var mem := PKeyPeerXferDelivered.new()
 	var view := mem.for_peer(key)
 	view.add(id, sha, size, 1.0)
 	return view

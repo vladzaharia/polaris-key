@@ -689,6 +689,8 @@ const GODOT_SCRIPT: Record<string, string> = {
   options: `"res://addons/polaris_key/core/options.gd"`,
   cloudSync: `"res://addons/polaris_key/services/cloud_sync.gd"`,
   cloudConnect: `"res://addons/polaris_key/services/cloud_connect.gd"`,
+  PKeyCloudTransfer: `"res://addons/polaris_key/services/connect/transfer.gd"`,
+  PKeyTransferOffer: `"res://addons/polaris_key/services/connect/transfer_offer.gd"`,
 };
 const GODOT_HANDLE = `"res://addons/polaris_key/services/config/setting.gd"`;
 const GODOT_OPTIONS = `"res://addons/polaris_key/core/options.gd"`;

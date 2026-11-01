@@ -263,7 +263,8 @@ func _order(t: PKeyTestContext) -> void:
 	tx.reset()
 	tx.ep.receive(PKeyPeerXfer.ACCEPT, PKeyPeerXfer.offset_body(ID_B, 0))
 	var sent := (tx.step["send"] as Array)
-	t.check("order: the content goes out in chunks of the offer's size, then DONE", sent.size() == 4 and sent[0]["t"] == "CHUNKS" and sent[0]["bytes"] == 4 and sent[2]["bytes"] == 2 and sent[3]["t"] == "DONE", str(sent))
+	t.check("order: the content goes out in chunks of the offer's size, then DONE", sent.size() == 4 and sent[0]["t"] == "CHUNKS"
+			and sent[0]["bytes"] == 4 and sent[2]["bytes"] == 2 and sent[3]["t"] == "DONE", str(sent))
 	var all := tx.order.filter(func(k: String) -> bool: return k == "record")
 	t.check("order: an offer, three chunks and DONE are five records", all.size() == 5, str(all.size()))
 	tx.ep.receive(PKeyPeerXfer.DONE, PKeyPeerXfer.done_body(ID_B))

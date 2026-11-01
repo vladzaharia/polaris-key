@@ -61,7 +61,7 @@ var _token := 0
 var _wires: Dictionary = {}
 var _store: PKeyTransferStore = null
 var _store_path := ""
-var _delivered := PKeyPeerXfer.DeliveredMemory.new()
+var _delivered := PKeyPeerXferDelivered.new()
 var _sweep_cancel := Callable()
 var _running := false
 
@@ -133,6 +133,46 @@ func cancel(id: String) -> void:
 
 ## Offer `source` to `peer`. A coroutine; see the file header.
 func send(peer: Variant, source: Variant, options := {}) -> PKeyResult:
+	var prep := _prepare(source, options)
+	if not prep.ok:
+		return prep
+	var src: Source = prep.detail["src"]
+	var opened := await _session_of(peer)
+	if not opened.ok:
+		src.close()
+		return opened
+	var begun := _begin(opened.detail, src, options)
+	if not begun.ok:
+		src.close()
+		return begun
+	var wire: Wire = begun.detail["wire"]
+	var handle: PKeyTransferHandle = begun.detail["handle"]
+	var id := handle.id
+	var on_start: Variant = options.get("on_start")
+	if on_start is Callable and (on_start as Callable).is_valid():
+		(on_start as Callable).call(handle)
+	var sha: String = await _worker(func() -> String: return src.hash_all())
+	var session: PKeyConnectSession = opened.detail
+	if sha == "" or session.is_closed() or wire.endpoint == null or wire.endpoint.is_dead():
+		wire.out.erase(id)
+		wire.sources.erase(id)
+		src.close()
+		if sha == "":
+			return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "The source cannot be read.", {"reason": "source"})
+		return PKeyConnectErrors.lan("closed", "The session is closed.")
+	var args := {"id": id, "size": src.size, "chunk": begun.detail["chunk"], "sha256": sha}
+	if options.has("category"):
+		args["cat"] = options["category"]
+	if prep.detail["shown"] != null:
+		args["name"] = prep.detail["shown"]
+	if options.has("type"):
+		args["type"] = options["type"]
+	wire.endpoint.offer(args)
+	return PKeyResult.success(handle)
+
+
+## The arguments of a send that need no session: ok with {src, shown}, the source and the name offered.
+func _prepare(source: Variant, options: Dictionary) -> PKeyResult:
 	var bad := _check_options(options)
 	if bad != null:
 		return bad
@@ -144,14 +184,16 @@ func send(peer: Variant, source: Variant, options := {}) -> PKeyResult:
 		return _invalid("The name is longer than 255 bytes.")
 	if src.size > PKeyPeerXfer.MAX_SIZE:
 		return _invalid("The content is larger than 2^40 bytes.")
-	var opened := await _session_of(peer)
-	if not opened.ok:
-		return opened
-	var session: PKeyConnectSession = opened.detail
+	return PKeyResult.success({"src": src, "shown": shown})
+
+
+## Registers the transfer on the session's wire: ok with {wire, handle, chunk}.
+func _begin(session: PKeyConnectSession, src: Source, options: Dictionary) -> PKeyResult:
 	var wire: Wire = _wires.get(session.get_instance_id())
 	if wire == null or wire.endpoint == null or wire.endpoint.is_dead():
 		return PKeyResult.failure(PKeyConstants.ErrorCode.PEER_NOT_ALLOWED, "The peer did not offer Direct Transfer (xfer/1) on this session.", {"reason": "not_allowed"})
-	var chunk := mini(mini(int(options.get("chunk", DEFAULT_CHUNK)), PKeyPeerXfer.MAX_CHUNK), int(session.hello.get("max_message", PKeyPeerPayload.DEFAULT_MAX_MESSAGE)) - PKeyPeerXfer.CHUNK_HEAD)
+	var peer_max := int(session.hello.get("max_message", PKeyPeerPayload.DEFAULT_MAX_MESSAGE))
+	var chunk := mini(mini(int(options.get("chunk", DEFAULT_CHUNK)), PKeyPeerXfer.MAX_CHUNK), peer_max - PKeyPeerXfer.CHUNK_HEAD)
 	if chunk < 1:
 		return _invalid("The chunk size is too small.")
 	var id: String = String(options["id"]) if options.has("id") else PKeyB64Url.encode(Crypto.new().generate_random_bytes(16))
@@ -160,34 +202,16 @@ func send(peer: Variant, source: Variant, options := {}) -> PKeyResult:
 	var handle := PKeyTransferHandle.new(id, Callable(self, "cancel"))
 	wire.out[id] = handle
 	wire.sources[id] = src
-	var on_start: Variant = options.get("on_start")
-	if on_start is Callable and (on_start as Callable).is_valid():
-		(on_start as Callable).call(handle)
-	var sha: String = await _worker(func() -> String: return src.hash_all())
-	if sha == "" or session.is_closed() or wire.endpoint == null or wire.endpoint.is_dead():
-		wire.out.erase(id)
-		wire.sources.erase(id)
-		src.close()
-		if sha == "":
-			return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "The source cannot be read.", {"reason": "source"})
-		return PKeyConnectErrors.lan("closed", "The session is closed.")
-	var args := {"id": id, "size": src.size, "chunk": chunk, "sha256": sha}
-	if options.has("category"):
-		args["cat"] = options["category"]
-	if shown != null:
-		args["name"] = shown
-	if options.has("type"):
-		args["type"] = options["type"]
-	wire.endpoint.offer(args)
-	return PKeyResult.success(handle)
+	return PKeyResult.success({"wire": wire, "handle": handle, "chunk": chunk})
 
 
 ## Delete every kept partial and forget what was delivered (sign-out, deactivation). Ends the transfers
-## in flight. Fails when a file could not be deleted.
+## in flight and closes their sessions. Fails when a file could not be deleted.
 func purge() -> PKeyResult:
 	for w: Wire in _wires.values():
 		if w.endpoint != null:
 			w.endpoint.closed()
+		w.session.close()
 	_delivered.clear()
 	var store := _get_store()
 	if store == null:
@@ -494,9 +518,9 @@ func _on_result(wire: Wire, r: Dictionary) -> void:
 		res["reason"] = out_r["reason"]
 	if out_r["outcome"] == "delivered" and dest != "":
 		res["path"] = dest
+	result.emit(res)
 	if handle != null:
 		handle._finish(res)
-	result.emit(res)
 
 
 static func _invalid(message: String) -> PKeyResult:

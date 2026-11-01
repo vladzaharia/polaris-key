@@ -49,6 +49,9 @@ signal notice(n: Dictionary)
 
 const LAN_ATTEMPT_SECONDS := 4.0
 
+## Direct Transfer (CC-20b): `send`, `on_offer`, the `result` signal and `cancel`.
+var transfer: PKeyCloudTransfer
+
 var _core_ref: WeakRef
 var _client: PKeyConnectClient
 var _tree: SceneTree
@@ -67,8 +70,6 @@ var _lan_attempt := LAN_ATTEMPT_SECONDS
 var _mono: Callable
 var _sessions: Dictionary = {}
 var _has_feature: Callable
-## Direct Transfer (CC-20b): `send`, `on_offer`, the `result` signal and `cancel`.
-var transfer: PKeyCloudTransfer
 
 
 ## `core` and `client` are the SDK's own; `tree` and `mono` (Callable() -> monotonic seconds) and
