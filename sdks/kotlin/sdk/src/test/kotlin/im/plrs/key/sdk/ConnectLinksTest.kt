@@ -726,22 +726,30 @@ class ConnectLinksTest : ConnectLanBase() {
     private class RecordingLink : im.plrs.key.core.peer.PeerLinkPort {
         override val remoteAddress = "10.0.0.9"
         val closes = CopyOnWriteArrayList<im.plrs.key.core.peer.PeerCloseCode>()
-        override suspend fun sendRecord(type: Int, body: ByteArray) {}
+        override suspend fun sendRecord(type: Int, body: ByteArray) = Unit
+
         override suspend fun close(code: im.plrs.key.core.peer.PeerCloseCode) {
             closes += code
         }
+
         override fun closeNow(code: im.plrs.key.core.peer.PeerCloseCode) {
             closes += code
         }
-        override fun pause(on: Boolean) {}
+
+        override fun pause(on: Boolean) = Unit
     }
 
     private class Held(val c: PolarisKeyClient, val id: String, val key: String, val secret: ByteArray) {
         val adopted = CopyOnWriteArrayList<ConnectSession>()
         val delivered = CopyOnWriteArrayList<ConnectSession>()
         fun session(link: RecordingLink, tag: String = secretTag(secret)) = ConnectSession(
-            link, "", listOf("app/1"), im.plrs.key.core.peer.PeerHello("test", "demo", 1 shl 20),
-            im.plrs.key.core.peer.NoiseRole.responder, "10.0.0.9", "lan",
+            link,
+            "",
+            listOf("app/1"),
+            im.plrs.key.core.peer.PeerHello("test", "demo", 1 shl 20),
+            im.plrs.key.core.peer.NoiseRole.responder,
+            "10.0.0.9",
+            "lan",
             contact = ContactRef(id, "Ben", listOf("docs"), key, false, tag),
         )
     }
@@ -761,7 +769,7 @@ class ConnectLinksTest : ConnectLanBase() {
     }
 
     @Test
-    fun linksASessionThatCompletesAfterItsContactIsGoneIsClosedPeerRevokedControlRevokeInFlightLinksLayer() = runBlocking {
+    fun linksLayerClosesPeerRevokedWhenTheContactIsGone() = runBlocking {
         val h = held()
         h.c.cloudConnect.links.remove(h.id)
         val link = RecordingLink()
@@ -773,7 +781,7 @@ class ConnectLinksTest : ConnectLanBase() {
     }
 
     @Test
-    fun linksASessionThatCompletesAfterLinksGoOffIsClosedPeerByeControlRevokeInFlightLinksLayer() = runBlocking {
+    fun linksLayerClosesPeerByeWhenLinksGoOff() = runBlocking {
         val h = held()
         interAccount = false
         h.c.discover()
@@ -786,7 +794,7 @@ class ConnectLinksTest : ConnectLanBase() {
     }
 
     @Test
-    fun linksASessionUnderAReplacedPendingSecretPromotesNothingAndIsClosed() = runBlocking {
+    fun linksLayerClosesASessionUnderAReplacedSecret() = runBlocking {
         val h = held()
         val link = RecordingLink()
         h.c.cloudConnect.links.inbound(h.session(link, tag = secretTag(rnd())))
@@ -796,7 +804,7 @@ class ConnectLinksTest : ConnectLanBase() {
     }
 
     @Test
-    fun linksAnInboundSessionThatIsNoLongerHeldIsNotHandedToDirectTransfer() = runBlocking {
+    fun linksLayerHandsOnlyAHeldSessionToDirectTransfer() = runBlocking {
         val h = held()
         val gone = RecordingLink()
         h.c.cloudConnect.links.remove(h.id)
@@ -814,7 +822,7 @@ class ConnectLinksTest : ConnectLanBase() {
     }
 
     @Test
-    fun linksAHandshakeUnderAPendingContactPromotesOnlyTheRowWhoseSecretOpenedIt() = runBlocking {
+    fun linksPromotionFollowsTheSecretThatOpenedTheSession() = runBlocking {
         val c = client()
         c.connect.identity(refresh = true)
         val key = Base64Url.encode(rnd())
@@ -833,7 +841,7 @@ class ConnectLinksTest : ConnectLanBase() {
     // -- a discovery read outside discover() ------------------------------------------------------------------
 
     @Test
-    fun linksADocumentReadOutsideDiscoverAlsoLapsesAfterADay() = runBlocking {
+    fun linksReadOutsideDiscoverAlsoLapsesAfterADay() = runBlocking {
         interAccount = true
         val c = client()
         // A read made straight on the core (a pinned service's first read, a sign-in, a nearby read).
@@ -844,7 +852,7 @@ class ConnectLinksTest : ConnectLanBase() {
     }
 
     @Test
-    fun linksAFailedReadOutsideDiscoverClosesTheGate() = runBlocking {
+    fun linksFailedReadOutsideDiscoverClosesTheGate() = runBlocking {
         interAccount = true
         val c = client()
         c.core.discover()
