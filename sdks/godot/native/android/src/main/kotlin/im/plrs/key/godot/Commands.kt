@@ -95,6 +95,9 @@ class Commands(
     identity: GoogleIdentityCommands.Backend = GoogleIdentityCommands.Real,
 ) {
     val queue = EventQueue()
+
+    /** The binary crypto entry (CC-14b.8): byte[] in and out, never through `cmd`. */
+    val crypto = CryptoCommands()
     private val nextReq = AtomicInteger(1)
     val worker: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "pkey-android-worker") }
     private val flavor: FlavorCommands = (flavorFactory ?: ::createFlavorCommands)(this)
@@ -167,6 +170,8 @@ class Commands(
             .put("packageInstaller", false)
             .put("playIntegrity", false)
             .put("googleId", googleId.available())
+            .put("cryptoAesGcm", true)
+            .put("cryptoX25519", crypto.x25519Supported)
         flavor.capabilities(out)
         return out
     }
