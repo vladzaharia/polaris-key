@@ -129,8 +129,6 @@ var _queue: Array = []
 var _busy := false
 var _pending_close: StringName = &""
 var _peer_caps: Array = []
-var _peer_ring := 0
-var _peer_cert_jws := ""
 var _peer_remote := PackedByteArray()
 var _peer_device_id := ""
 var _max_send := PKeyPeerRecord.MAX_MESSAGE
@@ -148,17 +146,10 @@ var _ticket: PKeyPeerLimiter.Ticket
 var _clock_started := false
 var _transport_deadline := INF
 var _sas_deadline := INF
-var _expires_at := 0
-var _ring_at := -INF
-var _ring_dropped := 0
+var _acct: PKeyPeerAccountFlow
 var _aborted := false
 var _wipe_pending := false
-# SAS state
-var _n_d := PackedByteArray()
-var _n_m := PackedByteArray()
-var _commit := ""
-var _sas_done := false
-var _sas_step := 0
+var _sas: PKeyPeerSasFlow
 
 
 ## A session from `options`, or `invalid-options` naming the problem. ok with the session.
@@ -224,6 +215,7 @@ func _init(options: Dictionary, port: Variant) -> void:
 	_slug = options["slug"]
 	_static = port
 	_account = options.get("account", {})
+	_acct = PKeyPeerAccountFlow.new(_account, Callable(self, "_now"), Callable(self, "_emit"))
 	_caps = (options.get("caps", []) as Array).duplicate()
 	# Both mode-v payloads list `vouch/1` (section 15.6.1 rule 1); the host cannot leave it out.
 	if _mode == "v":
@@ -247,6 +239,7 @@ func _init(options: Dictionary, port: Variant) -> void:
 	_rekey_messages = int(options.get("rekey_messages", DEFAULT_REKEY_MESSAGES))
 	_rekey_seconds = float(options.get("rekey_seconds", DEFAULT_REKEY_SECONDS))
 	_asm = PKeyPeerRecord.Assembler.new(_mode)
+	_sas = PKeyPeerSasFlow.new(_crypto, _role == "initiator")
 	_keyed_at = _mono()
 
 
@@ -395,7 +388,7 @@ func confirm_sas() -> void:
 ## code deadline over. Only once and only after `established`; any other call closes the session
 ## `peer_not_allowed`.
 func start_sas() -> void:
-	if not _hold_sas or _phase != &"sas" or _sas_step != 0 or not _n_d.is_empty():
+	if not _hold_sas or _phase != &"sas" or _sas.step != 0:
 		close(PEER_NOT_ALLOWED)
 		return
 	# The code deadline counts from the person's choice, not from the first byte (N9).
@@ -424,7 +417,7 @@ func tick() -> void:
 		var late := _exchange_step(PKeyPeerContact.Exchange.TIMEOUT)
 		if late != &"":
 			_fail(late, false)
-	elif _expires_at > 0 and _now() >= _expires_at:
+	elif _acct.expires_at > 0 and _now() >= _acct.expires_at:
 		_fail(PEER_EXPIRED, false)
 
 
@@ -529,7 +522,7 @@ func _on_handshake(noise: PackedByteArray) -> StringName:
 	var remote := hs.remote_static()
 	var peer_device_id := ""
 	if _mode == "a":
-		var admitted := _admit_account(verdict, remote)
+		var admitted := _acct.admit_account(verdict, remote)
 		if admitted["code"] != &"":
 			return admitted["code"]
 		peer_device_id = admitted["device_id"]
@@ -607,44 +600,6 @@ func _own_payload() -> PackedByteArray:
 		return PKeyPeerPayload.payload23(_mode, _caps)
 	var ring: Variant = (_account["held_ring"] as Callable).call()
 	return PKeyPeerPayload.payload23(_mode, _caps, {"cert": _account["cert_jws"], "ring": int(ring["epoch"]) if ring is Dictionary else 1})
-
-
-## Mode a: the peer's certificate against the remote static key and the held ring (section 15.3).
-## {code, device_id}; a code of "" admits. A held roster that is expired, unverifiable or another
-## account's must not admit: ask for a fresh one and refuse. Only a device with no roster at all
-## (first run) admits on the certificate.
-func _admit_account(verdict: Dictionary, remote: PackedByteArray) -> Dictionary:
-	var a := _account
-	var held: Variant = (a["held_ring"] as Callable).call()
-	var held_jws: Variant = null
-	if held is Dictionary:
-		held_jws = held["jws"]
-		var v := PKeyPeerCert.verify_ring(held_jws, a["trust"], a["expected_aud"])
-		if not v["ok"] or PKeyPeerCert.ring_expired(v["ring"], _now()) or v["ring"]["sub"] != a["own_sub"]:
-			_emit({"type": &"ring_wanted"})
-			return {"code": HANDSHAKE_FAILED}
-	else:
-		_emit({"type": &"ring_wanted"})
-	var adm := _admit(verdict["cert"], held_jws, remote)
-	if not adm["admit"]:
-		return {"code": PEER_REVOKED if adm["reason"] == "peer_revoked" else HANDSHAKE_FAILED}
-	_peer_cert_jws = verdict["cert"]
-	_peer_remote = remote
-	var wait: int = int(adm["cert"]["expires_at"]) - _now()
-	if wait <= 0:
-		return {"code": PEER_EXPIRED}
-	_expires_at = int(adm["cert"]["expires_at"])
-	_peer_ring = int(verdict["ring"])
-	if adm["ring_sync"] == "request":
-		_emit({"type": &"ring_wanted"})
-	return {"code": &"", "device_id": adm["cert"]["device_id"]}
-
-
-func _admit(cert_jws: String, ring_jws: Variant, remote: PackedByteArray) -> Dictionary:
-	var a := _account
-	return PKeyPeerCert.admit_peer(cert_jws, ring_jws, a["trust"], a["expected_aud"], _now(), {
-		"mode": "a", "remote_static": PKeyB64Url.encode(remote), "own_sub": a["own_sub"], "own_device_id": a["own_device_id"],
-	})
 
 
 ## The handshake is done: the transport ciphers, then HELLO.
@@ -744,11 +699,10 @@ func _exchange_step(event: String, body := PackedByteArray()) -> StringName:
 		if code != &"":
 			return code
 	if r.has("stored"):
-		var event_out := PKeyPeerContactFlow.contact_event(r["stored"], _xchg_offer["agree_key"], _hash, _n_d, _n_m)
+		var event_out := PKeyPeerContactFlow.contact_event(r["stored"], _xchg_offer["agree_key"], _hash, _sas.n_d, _sas.n_m)
 		if event_out.is_empty():
 			return PEER_BAD_FRAME
-		_n_d.fill(0)
-		_n_m.fill(0)
+		_sas.wipe()
 		_emit(event_out)
 	return &""
 
@@ -844,105 +798,51 @@ func _on_peer_close(body: PackedByteArray) -> StringName:
 
 
 func _push_ring() -> StringName:
-	var held: Variant = (_account["held_ring"] as Callable).call()
-	if held is Dictionary and int(held["epoch"]) > _peer_ring:
-		return _emit_records(PKeyPeerRecord.RING, PKeyJson.stringify({"ring": held["jws"]}).to_utf8_buffer())
-	return &""
+	var body := _acct.ring_body()
+	return _emit_records(PKeyPeerRecord.RING, body) if not body.is_empty() else &""
 
 
 func _on_ring(body: PackedByteArray) -> StringName:
-	# One RING in RING_GAP_SECONDS is worked on; the rest are dropped without a parse or a verify, and a
-	# peer that keeps sending them is closed (R-6G B4). The host refetches through `ring_wanted`.
-	var t := _mono()
-	if t - _ring_at < RING_GAP_SECONDS:
-		_ring_dropped += 1
-		return PEER_BUSY if _ring_dropped >= RING_DROP_LIMIT else &""
-	_ring_at = t
-	_ring_dropped = 0
-	var a := _account
-	var o: Variant = PKeyPeerPayload.parse_strict_object(body)
-	if o == null or not (o as Dictionary).get("ring") is String:
-		return PEER_BAD_FRAME
-	var held: Variant = (a["held_ring"] as Callable).call()
-	var r := PKeyPeerCert.replace_ring(held["jws"] if held is Dictionary else null, o["ring"], a["trust"], a["expected_aud"], _now())
-	# A roster that is stale, older or another account's changes nothing.
-	if not r["replace"] or r["ring"]["sub"] != a["own_sub"]:
-		return &""
-	_emit({"type": &"ring", "jws": o["ring"], "epoch": int(r["ring"]["epoch"])})
+	var r := _acct.on_ring(body, _mono())
+	if not r.has("ring"):
+		return r["code"]
+	_emit({"type": &"ring", "jws": r["ring"]["jws"], "epoch": r["ring"]["epoch"]})
 	if _phase == &"closed":
 		return &""
 	# The new roster may have dropped this peer.
-	if not _admit(_peer_cert_jws, o["ring"], _peer_remote)["admit"]:
-		return PEER_REVOKED
-	return &""
+	return &"" if _acct.admits(r["ring"]["jws"], _peer_remote) else PEER_REVOKED
 
 
 ## The host stored a newer roster: judge the peer's certificate against it again, as the handshake does, and
 ## close `peer_revoked` when the roster no longer lists the peer with the keys it holds (mode a).
 func recheck(ring_jws: String) -> void:
-	if _phase == &"closed" or _account.is_empty() or _peer_cert_jws == "":
+	if _phase == &"closed" or _account.is_empty() or _acct.peer_cert_jws == "":
 		return
-	if not _admit(_peer_cert_jws, ring_jws, _peer_remote)["admit"]:
+	if not _acct.admits(ring_jws, _peer_remote):
 		close(PEER_REVOKED)
 
 
 # -- the short authentication code (modes v and p) ----------------------------------------------
 
 func _commit_sas() -> StringName:
-	_n_d = _crypto.random_bytes(32)
-	var code := _emit_records(PKeyPeerRecord.SAS_COMMIT, PKeyPeerSas.body("c", PKeyPeerSas.commit(_n_d)))
-	_sas_step = 1
-	return code
+	return _emit_records(PKeyPeerRecord.SAS_COMMIT, _sas.commit_body())
 
 
 func _on_sas(type: int, body: PackedByteArray) -> StringName:
-	if _phase != &"sas" or _sas_done:
+	if _phase != &"sas":
 		return PEER_BAD_FRAME
-	var initiator := _role == "initiator"
-	# Responder (M): COMMIT then REVEAL. Initiator (D): NONCE.
-	if type == PKeyPeerRecord.SAS_COMMIT and not initiator and _sas_step == 0:
-		return _sas_commit_received(body)
-	if type == PKeyPeerRecord.SAS_NONCE and initiator and _sas_step == 1:
-		return _sas_nonce_received(body)
-	if type == PKeyPeerRecord.SAS_REVEAL and not initiator and _sas_step == 1:
-		return _sas_reveal_received(body)
-	return PEER_BAD_FRAME
-
-
-func _sas_commit_received(body: PackedByteArray) -> StringName:
-	var c: Variant = PKeyPeerSas.parse_body("c", body)
-	if c == null:
-		return PEER_BAD_FRAME
-	_commit = PKeyPeerSas.encode_value(c)
-	if _mode == "v":
-		# The code deadline counts from D's choice, as D's does from `start_sas()` (N5).
+	var r := _sas.on_record(type, body, _mode)
+	if r["code"] != &"":
+		return r["code"]
+	if r.get("deadline", false):
 		_sas_deadline = _mono() + SAS_DEADLINE_SECONDS
-	_n_m = _crypto.random_bytes(32)
-	var sent := _emit_records(PKeyPeerRecord.SAS_NONCE, PKeyPeerSas.body("nM", _n_m))
-	_sas_step = 1
-	return sent
-
-
-func _sas_nonce_received(body: PackedByteArray) -> StringName:
-	var n_m: Variant = PKeyPeerSas.parse_body("nM", body)
-	if n_m == null:
-		return PEER_BAD_FRAME
-	_n_m = n_m
-	var revealed := _emit_records(PKeyPeerRecord.SAS_REVEAL, PKeyPeerSas.body("nD", _n_d))
-	return revealed if revealed != &"" else _finish_sas()
-
-
-func _sas_reveal_received(body: PackedByteArray) -> StringName:
-	var n_d: Variant = PKeyPeerSas.parse_body("nD", body)
-	if n_d == null or not PKeyPeerSas.reveal_ok(_commit, PKeyPeerSas.encode_value(n_d)):
-		return PEER_BAD_FRAME
-	_n_d = n_d
-	return _finish_sas()
-
-
-func _finish_sas() -> StringName:
-	var code := PKeyPeerSas.value(_hash, _n_d, _n_m, _mode)
-	_sas_done = true
+	if r.has("send"):
+		var sent := _emit_records(r["send"][0], r["send"][1])
+		if sent != &"":
+			return sent
+	if not r.get("finish", false):
+		return &""
+	var code := _sas.code(_hash, _mode)
 	_phase = &"sas_shown"
 	_emit({"type": &"sas", "code": code, "display": PKeyPeerSas.display(code)})
 	return &""
@@ -1012,8 +912,8 @@ func _wipe() -> void:
 		var zeros := PackedByteArray()
 		zeros.resize((c["secret"] as PackedByteArray).size())
 		c["secret"] = zeros
-	_n_d.fill(0)
-	_n_m.fill(0)
+	_sas.wipe()
+	_acct.account = {}
 	if _static is PackedByteArray:
 		(_static as PackedByteArray).fill(0)
 
@@ -1046,7 +946,7 @@ func _settle() -> void:
 func _stop_clock() -> void:
 	_xchg_deadline = INF
 	_transport_deadline = INF
-	_expires_at = 0
+	_acct.expires_at = 0
 	_settle()
 
 
