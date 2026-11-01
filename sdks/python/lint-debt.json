@@ -297,9 +297,6 @@
     "sdks/python/tests/cli/fake_session.py": {
       "ruff:E501": 2
     },
-    "sdks/python/tests/cli/fixtures.py": {
-      "ruff:E501": 1
-    },
     "sdks/python/tests/cli/golden_support.py": {
       "ruff:E501": 1
     },
