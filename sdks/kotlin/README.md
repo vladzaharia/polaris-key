@@ -399,6 +399,28 @@ and a runtime with no mDNS adapter (Android until the `:android` glue supplies o
 - **Sign-out** stops every advert and closes every request, after Connect and before the device leaves it.
   `PolarisKeyFutures.nearby*` are the Java forms.
 
+#### Nearby sign-in on the new device
+
+`client.identity.signIn.startNearby()` does the whole of D for you: `nearby/start`, the LAN request, then the paced `nearby/poll`.
+It checks the runtime first (`nearby-unsupported`, no request) and discovery (`service-unavailable`, no request).
+`session.approvers` / `onApprovers` list who answered; `choose(id)` answers the code to show; `wait()` settles
+`SignedIn`, `Expired` or `Cancelled` (`wait(once = true)` may answer `Pending`) and throws `SignInError(sign-in-denied)` for a
+refusal. `client.identity.nearby.available(role)` says whether it can run here.
+
+The token the poll brings is held **unconfirmed** (`CoreContext.tokenUnconfirmed()`): it is not a sign-in, no subject is stored,
+no `Identity` event is raised, Cloud Sync and Connect do not start, and the automatic ladder's first rung does not count it. Show
+`session.identity` (the account's name and email) and ask:
+
+- `confirmAccount()` makes it a sign-in, stores the subject, raises the event and hands over what the approver sent.
+- `declineAccount()`, `cancel()` (leaving the screen by any route) and the `expiresIn`-second deadline (a monotonic timer from the
+  moment the poll answered) end it: the wrap is dropped, the LAN request declines and closes, the Worker is asked to sign out, and
+  the token, its mark and the identity are removed locally whatever it answered. The next start also drops an unconfirmed token.
+  The LAN peer closing is not an end.
+
+The Compose kit does this when the person presses Sign in (`PolarisNearbySignInState`; `PolarisGate(autoSignIn = false)` turns it
+off): the pre-prompt where the platform asks (macOS), the code to tap, the approvers to pick from, and the account to confirm.
+`PolarisKeyFutures.signInStartNearby` and `nearbySignIn*` are the Java forms.
+
 ## Cloud Sync settings
 
 `client.cloudSync.status()` answers the machine's state (`local` before it starts), `flush()` sends what is waiting (bounded) and
