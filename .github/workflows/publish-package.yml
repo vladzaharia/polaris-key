@@ -222,7 +222,7 @@ jobs:
         if: inputs.pending-registration && steps.publish.outcome == 'failure'
         env:
           DELIVERABLE: ${{ inputs.deliverable }}
-        run: echo "::warning::$DELIVERABLE was not published: production does not know it yet (owner step)."
+        run: echo "::warning::$DELIVERABLE was not published - production does not know it yet (owner step)."
       - name: Summary
         if: steps.publish.outcome == 'success'
         env:
