@@ -33,7 +33,9 @@ enum CryptoOps {
     }
 
     /// key, nonce, aad and the rest of the message, or nil when the header does not fit.
-    private static func parse(_ i: UnsafeBufferPointer<UInt8>) -> (key: SymmetricKey, nonce: Data, aad: Data, body: Data)? {
+    private static func parse(_ i: UnsafeBufferPointer<UInt8>) -> (
+        key: SymmetricKey, nonce: Data, aad: Data, body: Data
+    )? {
         guard i.count >= 48 else { return nil }
         let aadLen = (Int(i[44]) << 24) | (Int(i[45]) << 16) | (Int(i[46]) << 8) | Int(i[47])
         guard aadLen <= i.count - 48 else { return nil }
@@ -46,7 +48,9 @@ enum CryptoOps {
 
     static func seal(_ i: UnsafeBufferPointer<UInt8>) -> [UInt8] {
         guard let p = parse(i), let nonce = try? AES.GCM.Nonce(data: p.nonce) else { return [badInput] }
-        guard let box = try? AES.GCM.seal(p.body, using: p.key, nonce: nonce, authenticating: p.aad) else { return [refused] }
+        guard let box = try? AES.GCM.seal(p.body, using: p.key, nonce: nonce, authenticating: p.aad) else {
+            return [refused]
+        }
         return [ok] + Array(box.ciphertext) + Array(box.tag)
     }
 
@@ -54,7 +58,8 @@ enum CryptoOps {
         guard let p = parse(i), let nonce = try? AES.GCM.Nonce(data: p.nonce) else { return [badInput] }
         guard p.body.count >= tagBytes else { return [badInput] }
         let split = p.body.count - tagBytes
-        guard let box = try? AES.GCM.SealedBox(
+        guard
+            let box = try? AES.GCM.SealedBox(
                 nonce: nonce, ciphertext: p.body.prefix(split), tag: p.body.suffix(tagBytes)),
             let plain = try? AES.GCM.open(box, using: p.key, authenticating: p.aad)
         else { return [refused] }

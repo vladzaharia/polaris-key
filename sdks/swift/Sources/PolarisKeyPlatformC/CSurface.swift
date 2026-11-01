@@ -31,7 +31,8 @@ import PolarisKeyPlatform
 
 @_cdecl("pkp_call")
 public func pkp_call(_ json: UnsafePointer<CChar>?) -> UnsafeMutablePointer<CChar>? {
-    let out = json.map { PlatformHost.shared.call(String(cString: $0)) }
+    let out =
+        json.map { PlatformHost.shared.call(String(cString: $0)) }
         ?? encodePlatformJSON(["ok": false, "error": "bad_json"])
     return strdup(out)
 }
@@ -47,7 +48,7 @@ public func pkp_set_event_callback(_ cb: PlatformEventCallback?) {
 }
 
 @_cdecl("pkp_call_bin")
-public func pkp_call_bin(
+public func pkpCallBin(
     _ op: UnsafePointer<CChar>?, _ input: UnsafePointer<UInt8>?, _ n: Int, _ outN: UnsafeMutablePointer<Int>?
 ) -> UnsafeMutablePointer<UInt8>? {
     guard let outN else { return nil }
@@ -68,11 +69,11 @@ public func pkp_call_bin(
 }
 
 @_cdecl("pkp_free_bin")
-public func pkp_free_bin(_ p: UnsafeMutablePointer<UInt8>?) {
+public func pkpFreeBin(_ p: UnsafeMutablePointer<UInt8>?) {
     free(p)
 }
 
 @_cdecl("pkp_set_bin_event_callback")
-public func pkp_set_bin_event_callback(_ cb: PlatformEventSink.BinaryCallback?) {
+public func pkpSetBinEventCallback(_ cb: PlatformEventSink.BinaryCallback?) {
     PlatformHost.shared.sink.setBinaryCallback(cb)
 }

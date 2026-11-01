@@ -1,8 +1,8 @@
 import Foundation
+import PolarisKeyPlatformC
 import XCTest
 
 @testable import PolarisKeyPlatform
-import PolarisKeyPlatformC
 
 /// What the binary event callback received (a `@convention(c)` function cannot capture).
 private let seen = PlatformLock<[(String, [UInt8])]>([])
@@ -34,7 +34,9 @@ final class HostBinaryTests: XCTestCase {
 
     func testInputAndOutputAreBounded() {
         let big = [UInt8](repeating: 7, count: PlatformHost.maxBinaryBytes)
-        let h = host(["same": { Array($0) }, "grow": { _ in [UInt8](repeating: 1, count: PlatformHost.maxBinaryBytes + 1) }])
+        let h = host([
+            "same": { Array($0) }, "grow": { _ in [UInt8](repeating: 1, count: PlatformHost.maxBinaryBytes + 1) },
+        ])
         XCTAssertEqual(run(h, "same", big).count, PlatformHost.maxBinaryBytes)
         XCTAssertEqual(run(h, "same", big + [0]), [])
         XCTAssertEqual(run(h, "grow", [1]), [])
@@ -51,20 +53,20 @@ final class HostBinaryTests: XCTestCase {
     func testCSurfaceChecksNullsAndLengths() {
         var outN = 99
         // The shared host has no binary ops yet: every op is unknown, answered NULL with 0 bytes.
-        let unknown = "no_such_op".withCString { pkp_call_bin($0, [1, 2, 3], 3, &outN) }
+        let unknown = "no_such_op".withCString { pkpCallBin($0, [1, 2, 3], 3, &outN) }
         XCTAssertNil(unknown)
         XCTAssertEqual(outN, 0)
         outN = 99
-        XCTAssertNil(pkp_call_bin(nil, [1], 1, &outN))
+        XCTAssertNil(pkpCallBin(nil, [1], 1, &outN))
         XCTAssertEqual(outN, 0)
-        XCTAssertNil("x".withCString { pkp_call_bin($0, nil, 5, &outN) })
+        XCTAssertNil("x".withCString { pkpCallBin($0, nil, 5, &outN) })
         XCTAssertEqual(outN, 0)
-        XCTAssertNil("x".withCString { pkp_call_bin($0, [1], -1, &outN) })
-        XCTAssertNil("x".withCString { pkp_call_bin($0, [1], PlatformHost.maxBinaryBytes + 1, &outN) })
-        XCTAssertNil("x".withCString { pkp_call_bin($0, nil, 0, &outN) })
+        XCTAssertNil("x".withCString { pkpCallBin($0, [1], -1, &outN) })
+        XCTAssertNil("x".withCString { pkpCallBin($0, [1], PlatformHost.maxBinaryBytes + 1, &outN) })
+        XCTAssertNil("x".withCString { pkpCallBin($0, nil, 0, &outN) })
         // A NULL out_n is refused, not dereferenced.
-        XCTAssertNil("x".withCString { pkp_call_bin($0, [1], 1, nil) })
-        pkp_free_bin(nil)
+        XCTAssertNil("x".withCString { pkpCallBin($0, [1], 1, nil) })
+        pkpFreeBin(nil)
     }
 
     func testSelftestOpsExistOnlyWhenSwitchedOn() {
@@ -94,8 +96,8 @@ final class HostBinaryTests: XCTestCase {
         XCTAssertEqual(sink.drainBinary().count, PlatformEventSink.bufferLimit)
 
         seen.withLock { $0 = [] }
-        pkp_set_bin_event_callback(onBinary)
-        defer { pkp_set_bin_event_callback(nil) }
+        pkpSetBinEventCallback(onBinary)
+        defer { pkpSetBinEventCallback(nil) }
         PlatformHost.shared.sink.emitBinary("bj_data", [9, 8, 7])
         PlatformHost.shared.sink.emitBinary("bj_closed", [])
         let got = seen.withLock { $0 }

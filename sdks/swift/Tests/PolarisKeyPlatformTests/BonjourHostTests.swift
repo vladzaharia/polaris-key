@@ -16,7 +16,9 @@ import XCTest
         private var snap: [BonjourFound] = []
         private(set) var stops = 0
 
-        func start(includePeerToPeer: Bool, emit: @escaping @Sendable (BonjourDriverEvent) -> Void) -> @Sendable () -> Void {
+        func start(includePeerToPeer: Bool, emit: @escaping @Sendable (BonjourDriverEvent) -> Void)
+            -> @Sendable () -> Void
+        {
             lock.withLock { self.emit = emit }
             return { [self] in lock.withLock { stops += 1 } }
         }
@@ -33,7 +35,11 @@ import XCTest
         private let lock = NSLock()
         private var all: [NWConnection] = []
         func add(_ c: NWConnection) { lock.withLock { all.append(c) } }
-        func cancelAll() { lock.withLock { all.forEach { $0.cancel() } } }
+        func cancelAll() {
+            lock.withLock {
+                for conn in all { conn.cancel() }
+            }
+        }
     }
 
     private final class Box: @unchecked Sendable {
@@ -173,7 +179,10 @@ import XCTest
 
         func testOpsAreRegisteredInTheSystemTable() {
             let ops = PlatformBinaryOps.system(sink: PlatformEventSink(), environment: [:])
-            for op in ["bj_browse_start", "bj_browse_stop", "bj_accept", "bj_advertise_start", "bj_advertise_update", "bj_advertise_stop", "bj_stop_all", "bj_dial", "bj_send", "bj_credit", "bj_admit", "bj_close"] {
+            for op in [
+                "bj_browse_start", "bj_browse_stop", "bj_accept", "bj_advertise_start", "bj_advertise_update",
+                "bj_advertise_stop", "bj_stop_all", "bj_dial", "bj_send", "bj_credit", "bj_admit", "bj_close",
+            ] {
                 XCTAssertNotNil(ops[op], op)
             }
         }
@@ -206,7 +215,9 @@ import XCTest
 
         // MARK: pipes (CC-14b.5)
 
-        private func idBytes(_ id: UInt32) -> [UInt8] { [UInt8(id >> 24 & 255), UInt8(id >> 16 & 255), UInt8(id >> 8 & 255), UInt8(id & 255)] }
+        private func idBytes(_ id: UInt32) -> [UInt8] {
+            [UInt8(id >> 24 & 255), UInt8(id >> 16 & 255), UInt8(id >> 8 & 255), UInt8(id & 255)]
+        }
 
         func testPipeOpsRefuseBadInputAndUnknownIds() {
             let m = make()
@@ -288,10 +299,12 @@ import XCTest
         func testLivePipeRoundTrip() async throws {
             try XCTSkipUnless(
                 ProcessInfo.processInfo.environment["PKEY_LIVE_BONJOUR"] == "1", "set PKEY_LIVE_BONJOUR=1")
-            let sinkA = PlatformEventSink(), sinkB = PlatformEventSink()
+            let sinkA = PlatformEventSink()
+            let sinkB = PlatformEventSink()
             let a = BonjourHost(sink: sinkA, allowLoopback: true, configurationCheck: { nil })
             let b = BonjourHost(sink: sinkB, allowLoopback: true, configurationCheck: { nil })
-            var oa: [String: PlatformBinaryOp] = [:], ob: [String: PlatformBinaryOp] = [:]
+            var oa: [String: PlatformBinaryOp] = [:]
+            var ob: [String: PlatformBinaryOp] = [:]
             a.register(into: &oa)
             b.register(into: &ob)
             let me = inst(29)
@@ -303,7 +316,8 @@ import XCTest
                 while Date() < end {
                     for e in sink.drainBinary() {
                         if e.0 == kind { return e }
-                        FileHandle.standardError.write(Data("LIVE other event \(e.0) \(String(decoding: e.1.prefix(120), as: UTF8.self))\n".utf8))
+                        FileHandle.standardError.write(
+                            Data("LIVE other event \(e.0) \(String(decoding: e.1.prefix(120), as: UTF8.self))\n".utf8))
                     }
                     try await Task.sleep(nanoseconds: 50_000_000)
                 }

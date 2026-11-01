@@ -17,7 +17,10 @@ import XCTest
         func testAKeptNameIsRegisteredAgainWhenThePortChanges() {
             let a = BonjourContactAdverts()
             defer { a.stop() }
-            let names = ["pkey-test-c1-\(UInt32.random(in: 0...UInt32.max))", "pkey-test-c2-\(UInt32.random(in: 0...UInt32.max))"]
+            let names = [
+                "pkey-test-c1-\(UInt32.random(in: 0...UInt32.max))",
+                "pkey-test-c2-\(UInt32.random(in: 0...UInt32.max))",
+            ]
             a.update(names.map(advert), port: 40_001)
             XCTAssertEqual(a.ports, Dictionary(uniqueKeysWithValues: names.map { ($0, UInt16(40_001)) }))
             // Same set, same port: nothing is touched.

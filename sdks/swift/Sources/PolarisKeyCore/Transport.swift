@@ -337,9 +337,10 @@ public struct URLSessionTransport: PolarisTransport {
 /// path can be tested on macOS; only Linux calls it.
 package final class DelegatedExchange: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     private let lock = NSLock()
-    package typealias Redirect = @Sendable (
-        URLSession, URLSessionTask, HTTPURLResponse, URLRequest, @escaping (URLRequest?) -> Void
-    ) -> Void
+    package typealias Redirect =
+        @Sendable (
+            URLSession, URLSessionTask, HTTPURLResponse, URLRequest, @escaping (URLRequest?) -> Void
+        ) -> Void
     private let redirect: Redirect
     private let limit: Int?
     private var buffer = Data()
@@ -358,15 +359,28 @@ package final class DelegatedExchange: NSObject, URLSessionDataDelegate, @unchec
     nonisolated(unsafe) private static var runsValue = 0
     private static let counterLock = NSLock()
     package static var forced: Bool {
-        get { counterLock.lock(); defer { counterLock.unlock() }; return forcedValue }
-        set { counterLock.lock(); forcedValue = newValue; runsValue = 0; counterLock.unlock() }
+        get {
+            counterLock.lock()
+            defer { counterLock.unlock() }
+            return forcedValue
+        }
+        set {
+            counterLock.lock()
+            forcedValue = newValue
+            runsValue = 0
+            counterLock.unlock()
+        }
     }
     private static func countRun() {
         counterLock.lock()
         runsValue += 1
         counterLock.unlock()
     }
-    package static var runs: Int { counterLock.lock(); defer { counterLock.unlock() }; return runsValue }
+    package static var runs: Int {
+        counterLock.lock()
+        defer { counterLock.unlock() }
+        return runsValue
+    }
 
     /// With the redirect policy of `RedirectPolicy.Delegate`.
     static func run(

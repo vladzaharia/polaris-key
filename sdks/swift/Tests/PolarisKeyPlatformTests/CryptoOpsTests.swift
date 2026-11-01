@@ -26,7 +26,8 @@ final class CryptoOpsTests: XCTestCase {
 
     private func gcmInput(_ key: [UInt8], _ nonce: [UInt8], _ aad: [UInt8], _ body: [UInt8]) -> [UInt8] {
         let n = aad.count
-        return key + nonce + [UInt8(n >> 24 & 255), UInt8(n >> 16 & 255), UInt8(n >> 8 & 255), UInt8(n & 255)] + aad + body
+        return key + nonce + [UInt8(n >> 24 & 255), UInt8(n >> 16 & 255), UInt8(n >> 8 & 255), UInt8(n & 255)] + aad
+            + body
     }
 
     private func vectors() throws -> [String: Any] {
@@ -66,8 +67,11 @@ final class CryptoOpsTests: XCTestCase {
 
     func testAesGcmRows() throws {
         for r in try vectors()["aesGcm"] as! [[String: String]] {
-            let key = hex(r["key"]!), nonce = hex(r["nonce"]!), aad = hex(r["aad"]!)
-            let plain = hex(r["plaintext"]!), sealed = hex(r["ciphertext"]!) + hex(r["tag"]!)
+            let key = hex(r["key"]!)
+            let nonce = hex(r["nonce"]!)
+            let aad = hex(r["aad"]!)
+            let plain = hex(r["plaintext"]!)
+            let sealed = hex(r["ciphertext"]!) + hex(r["tag"]!)
             XCTAssertEqual(call("cx_seal", gcmInput(key, nonce, aad, plain)), [1] + sealed, r["id"]!)
             XCTAssertEqual(call("cx_open", gcmInput(key, nonce, aad, sealed)), [1] + plain, r["id"]!)
             var bad = sealed
@@ -78,7 +82,8 @@ final class CryptoOpsTests: XCTestCase {
     }
 
     func testBadInputs() {
-        let key = [UInt8](repeating: 1, count: 32), nonce = [UInt8](repeating: 2, count: 12)
+        let key = [UInt8](repeating: 1, count: 32)
+        let nonce = [UInt8](repeating: 2, count: 12)
         XCTAssertEqual(call("cx_seal", []), [3])
         XCTAssertEqual(call("cx_seal", key + nonce), [3])
         // aadLen larger than what follows.
@@ -93,7 +98,8 @@ final class CryptoOpsTests: XCTestCase {
     }
 
     func testLargeChunkAndAllByteValues() {
-        let key = (0..<32).map { UInt8($0) }, nonce = (0..<12).map { UInt8(100 + $0) }
+        let key = (0..<32).map { UInt8($0) }
+        let nonce = (0..<12).map { UInt8(100 + $0) }
         let plain = (0..<(1 << 20)).map { UInt8(truncatingIfNeeded: $0 &* 7 &+ 3) }
         let sealed = call("cx_seal", gcmInput(key, nonce, [], plain))
         XCTAssertEqual(sealed.count, 1 + plain.count + 16)

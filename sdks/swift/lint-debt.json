@@ -229,7 +229,6 @@
       "swift-format:LineLength": 1
     },
     "sdks/swift/Sources/PolarisKeyPlatformC/CSurface.swift": {
-      "swift-format:AddLines": 1,
       "swift-format:AlwaysUseLowerCamelCase": 3
     },
     "sdks/swift/Sources/PolarisKeyUI/BrandVector.swift": {
