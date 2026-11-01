@@ -80,6 +80,9 @@ var _running := false
 var _closed := false
 var _port := _Port.new()
 var _journal: Object = null
+## The saves' file transport (U-41.G): it owns the bulk channel's requests in flight.
+var _files: Object = null
+var _bulk_open := false
 ## Held here: a Callable on a RefCounted does not keep it alive.
 var _saves_port: _SavesPort = null
 var _cache: Object = null
@@ -178,6 +181,11 @@ func _build_saves() -> void:
 	_saves_port = port
 	var tr := FilesTransport.make_transport(host, _core.local_only)
 	var transport := FilesTransport.new(tr, port.request_context)
+	_files = transport
+	# D-10: the bulk channel is used only when the app opted in and the platform supplied one.
+	var opts: PKeyOptions = _core.options
+	if opts != null and opts.cloud_sync_background_transfers and opts.cloud_sync_bulk_channel != null:
+		transport.set_channel(opts.cloud_sync_bulk_channel)
 	_journal = Journal.Files.new(host.state_dir(), host.sealer())
 	var engine := Transfer.new(transport, _journal)
 	# A save may wait out a long throttle.
@@ -237,11 +245,15 @@ func _emit_transfer(event: Dictionary) -> void:
 
 
 ## The journal of the transfers and the chunk cache go with the person (D-9). Each is tried whatever the other did.
+## Person-scoped: only the leaving person's chunk folder goes, not the whole tree.
 func _purge_save_files() -> void:
 	if _journal != null:
 		_journal.clear()
-	if host != null and is_instance_valid(host):
-		_remove_tree(host.state_dir().path_join(PKeyChunkCache.DIR_NAME))
+	var leaving: Variant = _cache_for if _cache_for != null else _subject
+	if (leaving == null or leaving == "") and _core != null:
+		leaving = _core.cache.subject
+	if host != null and is_instance_valid(host) and leaving is String and leaving != "":
+		_remove_tree(host.state_dir().path_join(PKeyChunkCache.DIR_NAME).path_join((leaving as String).sha256_text()))
 	_cache = null
 	_cache_for = null
 
@@ -288,6 +300,7 @@ func attach() -> void:
 	var stored: String = _core.cache.subject
 	if stored != "":
 		await _sign_in(stored)
+	await _open_bulk()
 	_attached = true
 	_attaching = false
 
@@ -430,7 +443,18 @@ func _sign_in(subject: String) -> void:
 		host.mark_imported()
 	host.deliver_events()
 	host.touch()
+	await _open_bulk()
 	await _join_chain()
+
+
+## Open the bulk channel once per session, naming the journaled transfers to keep (D-7: the journal and the
+## server are the truth; the channel keeps no ledger). A transfer the channel lost is sent again by the
+## journal's own resume.
+func _open_bulk() -> void:
+	if _files == null or _bulk_open or _journal == null or not _files.batching():
+		return
+	_bulk_open = true
+	await _files.open_channel(_journal.list())
 
 
 ## The person changed (A-1): never talks to the server. Unsynced edits are discarded and the old
@@ -515,6 +539,11 @@ func _forget_task() -> void:
 ## failure is logged, never raised, and never replaces the sign-out's own error.
 func _forget() -> void:
 	_forgot = true
+	# The bulk channel closes first: its requests carry the person's sealed bodies and bearer, and nothing may
+	# be queued once the journal goes or the ring locks.
+	if _files != null:
+		_bulk_open = false
+		_files.close()
 	# Lock the ring first, synchronously: from here nothing is sealed for the saves, and a transfer in
 	# flight fails sync-locked. Then the saves' transfers, journal and chunk cache go, and only then the
 	# pin is removed.

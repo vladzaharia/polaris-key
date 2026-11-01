@@ -150,6 +150,13 @@ var allow_ephemeral_keys := false
 @export var cloud_sync_saves_max_bytes := 0
 ## The codec the E2E lane seals with (a PKeyCloudSync codec port). Not an export. Null: PKeySyncHostCodec over the key ring.
 var cloud_sync_codec: Object = null
+## `cloud_sync.saves`: queue a save's large request bodies with the operating system so they finish while the
+## game is in the background (U-41; plan D-10). Off by default. It takes effect only with a bulk channel the
+## platform supplies (`cloud_sync_bulk_channel`, or the platform's own); without one the transfer runs as before.
+@export var cloud_sync_background_transfers := false
+## The bulk channel (a `PKeyBulkChannel`) the background transfers use. Not an export. Null: none; a platform
+## glue or a test sets it.
+var cloud_sync_bulk_channel: Object = null
 
 @export_group("Config")
 ## Persist the player's settings by default (SDK parity §3.11): when the game has not installed its
