@@ -240,7 +240,11 @@ describe("InstallSteps FEEDS mapping", () => {
     ]
       .map((m) => m[1])
       .sort();
-    expect(deps).toEqual(["Sparkle"]);
+    // swift-crypto is Linux-only (the manifest's `linuxCrypto` condition): Apple platforms pull Sparkle alone.
+    expect(pkg).toMatch(
+      /name: "Crypto", package: "swift-crypto", condition: \.when\(platforms: \[\.linux\]\)/,
+    );
+    expect(deps).toEqual(["Sparkle", "swift-crypto"]);
     const sentence = `macOS ${floors.macOS}, iOS ${floors.iOS}, tvOS ${floors.tvOS} and visionOS ${floors.visionOS}`;
     // The install page names every floor; the first-product page, under its word budget, names
     // the one a macOS command-line package needs.
