@@ -47,7 +47,7 @@
       "gdlint:class-definitions-order": 1
     },
     "sdks/godot/addons/polaris_key/core/options.gd": {
-      "gdlint:class-definitions-order": 33,
+      "gdlint:class-definitions-order": 34,
       "gdlint:max-line-length": 1
     },
     "sdks/godot/addons/polaris_key/core/presentation.gd": {
@@ -274,7 +274,7 @@
     },
     "sdks/godot/addons/polaris_key/services/identity.gd": {
       "gdlint:max-line-length": 1,
-      "gdlint:max-returns": 4
+      "gdlint:max-returns": 5
     },
     "sdks/godot/addons/polaris_key/services/identity/account.gd": {
       "gdlint:max-returns": 2
@@ -282,7 +282,11 @@
     "sdks/godot/addons/polaris_key/services/identity/choice.gd": {
       "gdlint:max-returns": 1
     },
+    "sdks/godot/addons/polaris_key/services/identity/loopback_listener.gd": {
+      "gdlint:max-returns": 1
+    },
     "sdks/godot/addons/polaris_key/services/identity/sign_in_session.gd": {
+      "gdlint:max-line-length": 1,
       "gdlint:max-returns": 2,
       "gdlint:signal-name": 1
     },
@@ -552,9 +556,12 @@
     "sdks/godot/tests/identity/test_gate_auto.gd": {
       "gdlint:max-line-length": 8
     },
+    "sdks/godot/tests/identity/test_native_redirect.gd": {
+      "gdlint:max-line-length": 33
+    },
     "sdks/godot/tests/identity/test_redirect.gd": {
       "gdlint:class-definitions-order": 1,
-      "gdlint:max-line-length": 11,
+      "gdlint:max-line-length": 12,
       "gdlint:unused-argument": 1
     },
     "sdks/godot/tests/license/support.gd": {
@@ -666,7 +673,7 @@
       "gdlint:max-line-length": 13
     },
     "sdks/godot/tests/suite_cloud_sync_host.gd": {
-      "gdlint:max-line-length": 8
+      "gdlint:max-line-length": 5
     },
     "sdks/godot/tests/suite_cloud_sync_saves.gd": {
       "gdlint:max-file-lines": 1,
@@ -701,6 +708,9 @@
     "sdks/godot/tests/suite_export_stamps.gd": {
       "gdlint:max-line-length": 3
     },
+    "sdks/godot/tests/suite_identity.gd": {
+      "gdlint:max-line-length": 1
+    },
     "sdks/godot/tests/suite_keyring.gd": {
       "gdlint:max-line-length": 3
     },
@@ -728,7 +738,7 @@
       "gdlint:max-line-length": 3
     },
     "sdks/godot/tests/suite_sync_host_codec.gd": {
-      "gdlint:max-line-length": 23
+      "gdlint:max-line-length": 22
     },
     "sdks/godot/tests/suite_sync_ring.gd": {
       "gdlint:max-line-length": 28,

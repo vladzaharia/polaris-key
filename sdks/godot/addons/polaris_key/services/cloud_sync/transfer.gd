@@ -52,11 +52,7 @@ const FEATURE := "sync.files"
 ## The most missing chunks enqueued at once with a bulk channel (under SYNC_CHUNK_REQUESTS_PER_MINUTE = 600).
 const BATCH_CHUNKS := 256
 const _HASH_SLICE := 1048576
-## A seal or an open of at least this many bytes runs on a worker thread (the GDScript AES-GCM lane takes
-## about a second a MiB, so on the main thread a 32 MiB save would freeze the game).
-const THREAD_MIN_BYTES := 65536
-## Bytes a native-lane whole-file seal or open does between two frame yields.
-const YIELD_BYTES := 4194304
+const Support := preload("res://addons/polaris_key/services/cloud_sync/transfer_support.gd")
 const _BACKOFF_BASE := 0.5
 const _BACKOFF_CAP := 30.0
 const _MANIFEST_PLAIN_MAX := PKeySyncManifest.HEADER_BYTES + PKeySyncManifest.RECORD_BYTES * 16384
@@ -93,98 +89,6 @@ class Cancel:
 class _Join:
 	extends RefCounted
 	signal finished
-
-
-## A source over bytes in memory: `size` and `read(start, end)`.
-class BytesSource:
-	extends RefCounted
-	var size := 0
-	var _data := PackedByteArray()
-
-	func _init(data: PackedByteArray) -> void:
-		_data = data
-		size = data.size()
-
-	func read(start: int, end: int) -> PackedByteArray:
-		return _data.slice(start, end)
-
-
-## Runs `fn` (a computation over values it holds, touching no node) and answers its result: on a worker
-## thread when `size` is at least `THREAD_MIN_BYTES`, else inline. The caller awaits it either way.
-static func off_thread(fn: Callable, size: int) -> Variant:
-	var tree := Engine.get_main_loop() as SceneTree
-	if size < THREAD_MIN_BYTES or tree == null:
-		return fn.call()
-	var out: Array = [null]
-	var task := WorkerThreadPool.add_task(func() -> void: out[0] = fn.call(), false, "pkey file codec")
-	while not WorkerThreadPool.is_task_completed(task):
-		await tree.process_frame
-	WorkerThreadPool.wait_for_task_completion(task)
-	return out[0]
-
-
-## `codec.<method>(args)` off the main thread. A guarded codec (one with `inner()`) is asked on the main
-## thread before and after: if it went stale (locked or root replaced) meanwhile, the result is thrown away
-## and `failed` answered; the worker only runs the immutable inner codec.
-static func codec_off(codec: Object, method: String, args: Array, size: int, failed: Variant) -> Variant:
-	var target: Object = codec
-	var guarded := codec.has_method("inner")
-	if guarded:
-		if codec.locked():
-			return failed
-		target = codec.inner()
-		if target == null:
-			return failed
-	# A native AEAD lane is called from the main thread only (PKeySyncAead), so the work stays here: a
-	# whole file goes one segment at a time with a frame yield every `YIELD_BYTES`, anything else is one
-	# bounded call. The GDScript lane runs on a worker thread.
-	if PKeySyncAead.lane_name() != "gdscript":
-		var inline: Variant
-		if (method == "seal_whole" or method == "open_whole") and target.has_method("whole_sealer"):
-			inline = await _whole_by_segment(codec if guarded else null, target, method, args[0], failed)
-		else:
-			inline = target.callv(method, args)
-		if guarded and codec.locked():
-			return failed
-		return inline
-	var r: Variant = await off_thread(func() -> Variant: return target.callv(method, args), size)
-	if guarded and codec.locked():
-		return failed
-	return r
-
-
-## `seal_whole` / `open_whole` of an E2e codec on the main thread, one segment per step. A guarded codec is
-## asked before every segment: once it went stale the result is thrown away (`failed`).
-static func _whole_by_segment(guard: Object, target: Object, method: String, data: PackedByteArray, failed: Variant) -> Variant:
-	var tree := Engine.get_main_loop() as SceneTree
-	var sealing := method == "seal_whole"
-	var worker: Object = target.whole_sealer() if sealing else target.whole_opener()
-	var out := PackedByteArray()
-	if sealing:
-		out = worker.header.duplicate()
-	var step := PKeySyncFileStream.SEGMENT_BYTES
-	var at := 0
-	var since := 0
-	while at < data.size():
-		if guard != null and guard.locked():
-			return failed
-		var end := mini(data.size(), at + step)
-		for seg in worker.push(data.slice(at, end)):
-			out.append_array(seg)
-		if worker.error != "":
-			return failed if sealing else {"ok": false, "reason": worker.error}
-		since += end - at
-		at = end
-		if since >= YIELD_BYTES and tree != null:
-			since = 0
-			await tree.process_frame
-	if guard != null and guard.locked():
-		return failed
-	var last: PackedByteArray = worker.finish()
-	if worker.error != "":
-		return failed if sealing else {"ok": false, "reason": worker.error}
-	out.append_array(last)
-	return out if sealing else {"ok": true, "plain": out}
 
 
 static func reply_ok(value: Variant = null) -> Dictionary:
@@ -506,33 +410,6 @@ func _begin_call(ps: Dictionary, request: Dictionary) -> Dictionary:
 	return {"ok": true, "begun": b}
 
 
-## The finalize answer must describe the file that was begun: its size, hash and format, and a newer version.
-static func _finalized_matches(got: Variant, rec: Dictionary, format: String, base_version: Variant) -> bool:
-	if not (got is Dictionary):
-		return false
-	var size: Variant = _whole(got.get("size"))
-	var version: Variant = _whole(got.get("version"))
-	if size == null or size != int(rec["size"]):
-		return false
-	if got.get("sha256") != rec["sha256"] or got.get("format") != format:
-		return false
-	if version == null or version < 1:
-		return false
-	var base: Variant = _whole(base_version)
-	if base != null and version <= base:
-		return false
-	return true
-
-
-## A JSON number that is a whole value in the range of an int, as an int; else null.
-static func _whole(x: Variant) -> Variant:
-	if typeof(x) == TYPE_INT:
-		return x
-	if typeof(x) == TYPE_FLOAT and is_finite(x) and absf(x) <= 9007199254740991.0 and x == floorf(x):
-		return int(x)
-	return null
-
-
 ## `finalize`. On 409 upload_incomplete (at most twice) `resend` (a Callable(missing) -> bool, may be a
 ## coroutine) sends those again; a 409 or a mismatch otherwise releases the upload.
 func _finalize_call(ps: Dictionary, resend: Callable, format: String, base_version: Variant) -> Dictionary:
@@ -542,7 +419,7 @@ func _finalize_call(ps: Dictionary, resend: Callable, format: String, base_versi
 		if reply.has("reason"):
 			return reply
 		if reply["ok"]:
-			if not _finalized_matches(reply["value"], ps["rec"], format, base_version):
+			if not Support.finalized_matches(reply["value"], ps["rec"], format, base_version):
 				return _invalid("finalize")
 			journal.delete(ps["rec"]["id"])
 			return {"ok": true, "value": reply["value"]}
@@ -789,7 +666,7 @@ func _cut(req: Dictionary) -> Dictionary:
 				return _err("source-mismatch")
 			ctx.update(piece)
 			# The cut itself touches nothing shared: a worker thread owns the chunker while it runs.
-			pending = await off_thread(func() -> Array: return chunker.push(piece), piece.size())
+			pending = await Support.off_thread(func() -> Array: return chunker.push(piece), piece.size())
 			frm = end
 		else:
 			pending = chunker.finish()
@@ -941,7 +818,7 @@ func _send_chunk(ps: Dictionary, req: Dictionary, cut: Dictionary, unique: Dicti
 	# The file may have changed since it was cut: what is sent must still be the chunk named.
 	if plain.size() != rec["plain_len"] or not PKeySyncAesGcm.equal_constant_time(codec.chunk_id(plain), rec["id"]):
 		return _err("source-mismatch")
-	var obj: PackedByteArray = await codec_off(codec, "seal_chunk", [rec["id"], plain], plain.size(), PackedByteArray())
+	var obj: PackedByteArray = await Support.codec_off(codec, "seal_chunk", [rec["id"], plain], plain.size(), PackedByteArray())
 	if obj.is_empty():
 		return _err("invalid")
 	var digest := _sha_hex(obj)
@@ -1003,7 +880,7 @@ func _download_whole(ps: Dictionary, req: Dictionary) -> Dictionary:
 		at += data.size()
 	if ctx.finish().hex_encode() != req["sha256"]:
 		return _invalid("sha256")
-	var opened: Dictionary = await codec_off(codec, "open_whole", [stored], stored.size(), {"ok": false, "reason": "locked"})
+	var opened: Dictionary = await Support.codec_off(codec, "open_whole", [stored], stored.size(), {"ok": false, "reason": "locked"})
 	if not opened["ok"]:
 		return _invalid(opened["reason"])
 	var plain: PackedByteArray = opened["plain"]
@@ -1083,7 +960,7 @@ func _fetch_one(ps: Dictionary, req: Dictionary, codec, cache: Variant, rec: Dic
 	if cache != null:
 		var held: Variant = cache.get_object(id)
 		if held is PackedByteArray:
-			var o: Dictionary = await codec_off(codec, "open_chunk", [rec["id"], held], held.size(), {"ok": false, "reason": "locked"})
+			var o: Dictionary = await Support.codec_off(codec, "open_chunk", [rec["id"], held], held.size(), {"ok": false, "reason": "locked"})
 			if o["ok"] and (o["plain"] as PackedByteArray).size() == rec["plain_len"]:
 				return {"ok": true, "plain": o["plain"]}
 			cache.delete(id)  # damage costs a fetch
@@ -1101,7 +978,7 @@ func _fetch_one(ps: Dictionary, req: Dictionary, codec, cache: Variant, rec: Dic
 	var obj: PackedByteArray = got["value"]
 	if obj.size() > Codec.SERVER_CHUNK_MAX_STORED_BYTES:
 		return _invalid("chunk-size")
-	var opened: Dictionary = await codec_off(codec, "open_chunk", [rec["id"], obj], obj.size(), {"ok": false, "reason": "locked"})
+	var opened: Dictionary = await Support.codec_off(codec, "open_chunk", [rec["id"], obj], obj.size(), {"ok": false, "reason": "locked"})
 	if not opened["ok"]:
 		return _invalid("chunk-" + str(opened["reason"]))
 	if (opened["plain"] as PackedByteArray).size() != rec["plain_len"]:

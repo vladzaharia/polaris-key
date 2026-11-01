@@ -157,6 +157,29 @@ func _run_channel(wait: _Wait, method: String, head: Dictionary, body: PackedByt
 	wait.settle(r)
 
 
+## A channel answer as `{res}` in the PKeyTransport's shape or `{reply}`.
+func _bulk_answer(got: Dictionary, limit: int) -> Dictionary:
+	if got.has("cancelled") or got.has("timeout"):
+		# No answer: the engine retries it, and stops at once if the transfer was cancelled.
+		return {"reply": Transfer.reply_fail(0, "cancelled" if got.has("cancelled") else "network")}
+	if got.has("fail") or not (got.get("status") is int):
+		# An answer longer than the cap is not retried: another try meets the same body.
+		if got.get("fail") == "oversize":
+			return {"reply": Transfer.reply_fail(200, PKeyConstants.ErrorCode.BAD_RESPONSE)}
+		return {"reply": Transfer.reply_fail(0, "network")}
+	var status: int = got["status"]
+	last_status = status
+	if status >= 300 and status < 400:
+		return {"reply": Transfer.reply_fail(status, "redirect_refused")}
+	var body: PackedByteArray = got.get("body", PackedByteArray())
+	if body.size() > mini(limit, BODY_LIMIT):
+		return {"reply": Transfer.reply_fail(200, PKeyConstants.ErrorCode.BAD_RESPONSE)}
+	var answer_headers := {}
+	for k in (got.get("headers", {}) as Dictionary):
+		answer_headers[String(k).to_lower()] = (got["headers"] as Dictionary)[k]
+	return {"res": {"status": status, "headers": answer_headers, "body": body}}
+
+
 ## One request through the channel: `{res}` in the PKeyTransport's shape or `{reply}`.
 func _bulk_exchange(method: String, path: String, ctx: Dictionary, prepared: Dictionary, limit: int, timeout: float, via: Dictionary) -> Dictionary:
 	if _closed:
@@ -180,24 +203,7 @@ func _bulk_exchange(method: String, path: String, ctx: Dictionary, prepared: Dic
 	var got: Dictionary = wait.result
 	if got.has("cancelled") or got.has("timeout"):
 		_channel.cancel(req)
-		# No answer: the engine retries it, and stops at once if the transfer was cancelled.
-		return {"reply": Transfer.reply_fail(0, "cancelled" if got.has("cancelled") else "network")}
-	if got.has("fail") or not (got.get("status") is int):
-		# An answer longer than the cap is not retried: another try meets the same body.
-		if got.get("fail") == "oversize":
-			return {"reply": Transfer.reply_fail(200, PKeyConstants.ErrorCode.BAD_RESPONSE)}
-		return {"reply": Transfer.reply_fail(0, "network")}
-	var status: int = got["status"]
-	last_status = status
-	if status >= 300 and status < 400:
-		return {"reply": Transfer.reply_fail(status, "redirect_refused")}
-	var body: PackedByteArray = got.get("body", PackedByteArray())
-	if body.size() > mini(limit, BODY_LIMIT):
-		return {"reply": Transfer.reply_fail(200, PKeyConstants.ErrorCode.BAD_RESPONSE)}
-	var answer_headers := {}
-	for k in (got.get("headers", {}) as Dictionary):
-		answer_headers[String(k).to_lower()] = (got["headers"] as Dictionary)[k]
-	return {"res": {"status": status, "headers": answer_headers, "body": body}}
+	return _bulk_answer(got, limit)
 
 
 # ── Paths ───────────────────────────────────────────────────────────────────────────────────────
@@ -316,6 +322,17 @@ func _prepare(ctx: Dictionary, path: String, sent: Dictionary) -> Dictionary:
 	return {"headers": headers, "body": body}
 
 
+## The engine's reply for a request that failed before any answer.
+static func _request_failure(r: PKeyResult) -> Dictionary:
+	# A local-only client dials nothing and says so; it is a refusal, not a network failure to retry.
+	if r.code == PKeyErrors.LOCAL_ONLY:
+		return Transfer.reply_fail(400, "local_only")
+	# An answer longer than the cap is not retried: another try meets the same body.
+	if r.code == PKeyErrors.RESPONSE_TOO_LARGE:
+		return Transfer.reply_fail(200, PKeyConstants.ErrorCode.BAD_RESPONSE)
+	return Transfer.reply_fail(0, "network")
+
+
 ## One request. `sent`: {json?, body?, sha256?, range?: [start, end), if_match?}. Returns `{res}` (the
 ## transport's detail: status, headers, body) or `{reply}` (a failure already in the engine's shape).
 func _exchange(method: String, path: String, sent: Dictionary = {}, expect_bytes := 0, via: Variant = null) -> Dictionary:
@@ -332,13 +349,7 @@ func _exchange(method: String, path: String, sent: Dictionary = {}, expect_bytes
 		return await _bulk_exchange(method, path, ctx, prepared, limit, _tr.timeout, via)
 	var r: PKeyResult = await _tr.request(method, ctx["url"].call(path), prepared["headers"], body, {"follow_redirects": false, "range": true, "body_limit": mini(limit, BODY_LIMIT)})
 	if not r.ok:
-		# A local-only client dials nothing and says so; it is a refusal, not a network failure to retry.
-		if r.code == PKeyErrors.LOCAL_ONLY:
-			return {"reply": Transfer.reply_fail(400, "local_only")}
-		# An answer longer than the cap is not retried: another try meets the same body.
-		if r.code == PKeyErrors.RESPONSE_TOO_LARGE:
-			return {"reply": Transfer.reply_fail(200, PKeyConstants.ErrorCode.BAD_RESPONSE)}
-		return {"reply": Transfer.reply_fail(0, "network")}
+		return {"reply": _request_failure(r)}
 	var detail: Dictionary = r.detail
 	var status: int = detail["status"]
 	last_status = status

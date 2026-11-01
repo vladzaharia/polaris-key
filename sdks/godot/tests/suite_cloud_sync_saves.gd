@@ -801,7 +801,7 @@ func _stale_off_thread(t: PKeyTestContext) -> void:
 	var plain := _noise(200 * 1024)
 	var out := [null]
 	var sealing := func() -> void:
-		out[0] = await Transfer.codec_off(g, "seal_whole", [plain], plain.size(), PackedByteArray())
+		out[0] = await Transfer.Support.codec_off(g, "seal_whole", [plain], plain.size(), PackedByteArray())
 	sealing.call()
 	ring.locked = true
 	spins = 0
@@ -814,7 +814,7 @@ func _stale_off_thread(t: PKeyTestContext) -> void:
 	var sealed: PackedByteArray = g2.seal_whole(plain)
 	var res := [null]
 	var opening := func() -> void:
-		res[0] = await Transfer.codec_off(g2, "open_whole", [sealed], sealed.size(), {"ok": false, "reason": "locked"})
+		res[0] = await Transfer.Support.codec_off(g2, "open_whole", [sealed], sealed.size(), {"ok": false, "reason": "locked"})
 	opening.call()
 	ring2.locked = true
 	spins = 0
@@ -1309,11 +1309,11 @@ func _off_thread(t: PKeyTestContext) -> void:
 	var ring := Ring.new()
 	var codec := Codec.Guarded.new(Codec.E2e.new(ring.root, "saves"), func() -> bool: return ring.locked)
 	var plain := _noise(512 * 1024)
-	var sealed: PackedByteArray = await Transfer.off_thread(func() -> PackedByteArray: return codec.seal_whole(plain), plain.size())
+	var sealed: PackedByteArray = await Transfer.Support.off_thread(func() -> PackedByteArray: return codec.seal_whole(plain), plain.size())
 	var frames := Engine.get_process_frames() - before
 	t.check("off_thread: a large seal runs while the game keeps drawing frames", frames > 1 and not sealed.is_empty(), "%d frames" % frames)
-	var opened: Dictionary = await Transfer.off_thread(func() -> Dictionary: return codec.open_whole(sealed), sealed.size())
+	var opened: Dictionary = await Transfer.Support.off_thread(func() -> Dictionary: return codec.open_whole(sealed), sealed.size())
 	t.check("off_thread: the open is the same bytes back", opened["ok"] and opened["plain"] == plain)
-	var small: PackedByteArray = await Transfer.off_thread(func() -> PackedByteArray: return PackedByteArray([1]), 10)
+	var small: PackedByteArray = await Transfer.Support.off_thread(func() -> PackedByteArray: return PackedByteArray([1]), 10)
 	t.check("off_thread: a small job runs inline", small == PackedByteArray([1]))
 	await tree.process_frame

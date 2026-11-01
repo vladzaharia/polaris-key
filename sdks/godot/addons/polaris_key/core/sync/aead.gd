@@ -20,6 +20,8 @@ const NONCE_BYTES := PKeySyncAesGcm.NONCE_BYTES
 const TAG_BYTES := PKeySyncAesGcm.TAG_BYTES
 const MAX_BYTES := PKeySyncAesGcm.MAX_BYTES
 const MAX_AAD_BYTES := PKeySyncAesGcm.MAX_AAD_BYTES
+## The text of the refusal when a platform needs the native plugin and has none.
+const NEEDS_PLUGIN := "Synced files need the Polaris Key native plugin on this platform."
 
 ## Tests put a lane here; null means `PKeyPeerCrypto.for_platform()`.
 static var _override: PKeyPeerCrypto = null
@@ -55,10 +57,6 @@ static func files_supported() -> bool:
 	if mobile_override >= 0:
 		mobile = mobile_override == 1
 	return not mobile or _native_lane() != null
-
-
-## The text of that refusal.
-const NEEDS_PLUGIN := "Synced files need the Polaris Key native plugin on this platform."
 
 
 ## The lane the next call on this thread uses: "apple", "android", "windows" or a test lane, else

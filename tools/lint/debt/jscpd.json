@@ -1833,7 +1833,7 @@
       "jscpd:duplicate": 15
     },
     "packages/sdk-node/test/connect/links.test.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 13
     },
     "packages/sdk-node/test/connect/nearbyApprover.test.ts": {
       "jscpd:duplicate": 1
@@ -1974,7 +1974,7 @@
       "jscpd:duplicate": 4
     },
     "packages/sdk-react/src/desktop/bridgeSignIn.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/sdk-react/src/desktop/desktopAdapter.ts": {
       "jscpd:duplicate": 9
@@ -2515,6 +2515,9 @@
     },
     "packages/ui-core/src/browser/sdk/core/presentation.ts": {
       "jscpd:duplicate": 7
+    },
+    "packages/ui-core/src/browser/sdk/core/signIn.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/core/types.ts": {
       "jscpd:duplicate": 2

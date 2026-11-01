@@ -236,7 +236,7 @@ func _sha(b: PackedByteArray) -> String:
 
 
 func _upload_req(id: String, data: PackedByteArray, extra := {}) -> Dictionary:
-	var r := {"id": id, "collection": "saves", "record": "rec1", "source": Transfer.BytesSource.new(data), "size": data.size(), "sha256": _sha(data), "enc": "none"}
+	var r := {"id": id, "collection": "saves", "record": "rec1", "source": Transfer.Support.BytesSource.new(data), "size": data.size(), "sha256": _sha(data), "enc": "none"}
 	r.merge(extra, true)
 	return r
 
@@ -495,7 +495,7 @@ func _finalize_answer(t: PKeyTestContext) -> void:
 
 
 func _chunked_req(id: String, data: PackedByteArray, codec: Object, extra := {}) -> Dictionary:
-	var r := {"id": id, "collection": "saves", "record": "rec1", "source": Transfer.BytesSource.new(data), "codec": codec}
+	var r := {"id": id, "collection": "saves", "record": "rec1", "source": Transfer.Support.BytesSource.new(data), "codec": codec}
 	r.merge(extra, true)
 	return r
 
@@ -950,12 +950,12 @@ func _native_lane(t: PKeyTestContext) -> void:
 	plain.resize(32 * MIB)
 	var codec := Codec.E2e.new(root, "saves")
 	var frames := Engine.get_process_frames()
-	var stored: PackedByteArray = await Transfer.codec_off(codec, "seal_whole", [plain], plain.size(), PackedByteArray())
+	var stored: PackedByteArray = await Transfer.Support.codec_off(codec, "seal_whole", [plain], plain.size(), PackedByteArray())
 	var yielded := Engine.get_process_frames() - frames
 	t.check("native lane: a 32 MiB seal answers the stored size", stored.size() == PKeySyncFileStream.sealed_size(plain.size()))
 	t.check("native lane: ... every segment sealed inline on the main thread", lane.seals == 32 and lane.off_main == 0, "%d seals, %d off main" % [lane.seals, lane.off_main])
 	t.check("native lane: ... with a frame yield every 4 MiB", yielded >= 7, "%d frames" % yielded)
-	var opened: Dictionary = await Transfer.codec_off(codec, "open_whole", [stored], stored.size(), {"ok": false, "reason": "locked"})
+	var opened: Dictionary = await Transfer.Support.codec_off(codec, "open_whole", [stored], stored.size(), {"ok": false, "reason": "locked"})
 	t.check("native lane: it opens again the same way", opened.get("ok", false) and (opened["plain"] as PackedByteArray) == plain and lane.off_main == 0)
 	# A root replaced mid-seal discards the result.
 	var flag := [false]
@@ -964,10 +964,10 @@ func _native_lane(t: PKeyTestContext) -> void:
 	lane.on_seal = func(_n: int) -> void:
 		if lane.seals - before == 5:
 			flag[0] = true
-	var dropped: PackedByteArray = await Transfer.codec_off(guarded, "seal_whole", [plain], plain.size(), PackedByteArray())
+	var dropped: PackedByteArray = await Transfer.Support.codec_off(guarded, "seal_whole", [plain], plain.size(), PackedByteArray())
 	t.check("native lane: a root replaced mid-seal discards the result and stops sealing", dropped.is_empty() and guarded.tripped and lane.seals - before < 8, "%d" % (lane.seals - before))
 	# The chunk cut runs on a worker thread even then.
-	var cut_src := Transfer.BytesSource.new(_noise(3 * MIB))
+	var cut_src := Transfer.Support.BytesSource.new(_noise(3 * MIB))
 	var cut: Dictionary = await _engine(FakeServer.new())._cut({"source": cut_src, "codec": Codec.Server.new()})
 	t.check("native lane: the chunk cut still answers", cut["ok"] and cut["plain_size"] == 3 * MIB)
 	PKeySyncAead.use_lane_for_tests(null)

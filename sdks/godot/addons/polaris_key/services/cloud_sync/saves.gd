@@ -599,7 +599,7 @@ func _attempt(
 	var r: PKeyResult
 	if plan["mode"] == PKeySyncTransferPlan.MODE_CHUNKS:
 		var chunked := common.duplicate()
-		chunked["source"] = Transfer.BytesSource.new(bytes)
+		chunked["source"] = Transfer.Support.BytesSource.new(bytes)
 		chunked["codec"] = codec
 		r = await _d["engine"].upload_chunked(chunked)
 	else:
@@ -618,7 +618,7 @@ func _attempt(
 			sealed[0] = null
 			return {"state": "failed", "error": _err("sync-locked") if codec.get("tripped") == true else _err("too-large")}
 		var up := common.duplicate()
-		up["source"] = Transfer.BytesSource.new(stored_bytes)
+		up["source"] = Transfer.Support.BytesSource.new(stored_bytes)
 		up["size"] = stored_bytes.size()
 		up["sha256"] = PKeySyncHkdf.sha256(stored_bytes).hex_encode()
 		up["enc"] = codec.enc
@@ -650,7 +650,7 @@ func _attempt(
 ## Empty when the ring locked before or during the seal.
 func _seal(codec: Object, plain: PackedByteArray) -> PackedByteArray:
 	# The ring may lock or change its root while the thread runs: such a result is thrown away.
-	return await Transfer.codec_off(codec, "seal_whole", [plain], plain.size(), PackedByteArray())
+	return await Transfer.Support.codec_off(codec, "seal_whole", [plain], plain.size(), PackedByteArray())
 
 
 ## The first `<id>.copy`, `<id>.copy2`, ... that is not a save; null when all 16 slots are in use.

@@ -274,7 +274,7 @@ class BatchTransport:
 	func finalize(a, b): return s.finalize(a, b)
 	func plan_chunks(a, b, c): return s.plan_chunks(a, b, c)
 	func get_file(a, b): return s.get_file(a, b)
-	func get_chunk(a, b, c = ""): return s.get_chunk(a, b)
+	func get_chunk(a, b, _c = ""): return s.get_chunk(a, b)
 
 	func put_single(a, b, c, d):
 		transfers.append(a.get("transfer"))
