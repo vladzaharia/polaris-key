@@ -31,6 +31,7 @@
 
 package im.plrs.key.sdk
 
+import im.plrs.key.core.Base64Url
 import im.plrs.key.core.PeerTrustResult
 import im.plrs.key.core.peer.ADVERT_EPOCH_SECONDS
 import im.plrs.key.core.peer.BrowseIndex
@@ -43,6 +44,7 @@ import im.plrs.key.core.peer.contactInstance
 import im.plrs.key.core.peer.isInstanceName
 import im.plrs.key.core.peer.parseContactTxt
 import im.plrs.key.core.peer.NoiseRole
+import im.plrs.key.core.peer.PeerCloseCode
 import im.plrs.key.core.peer.PeerLink
 import im.plrs.key.core.peer.PeerMode
 import im.plrs.key.core.peer.TxtResult
@@ -197,8 +199,12 @@ internal fun lanSource(
     onContacts = { fn -> client.onContactsChanged(fn) },
     contactEstablished = { ref ->
         // The first handshake under a pending contact passed the pin: it replaces the held one.
+        // Only the row whose secret opened the session is promoted; a replaced pending row is not.
         client.updateContacts { rows, _ ->
-            if (rows.any { it.pendingSince != null && it.agreeKey == ref.agreeKey }) promoteRow(rows, ref.agreeKey) else null
+            val own = rows.any {
+                it.pendingSince != null && it.agreeKey == ref.agreeKey && secretTag(Base64Url.decode(it.secret) ?: ByteArray(0)) == ref.tag
+            }
+            if (own) promoteRow(rows, ref.agreeKey, ref.tag) else null
         }
     },
 )
@@ -234,6 +240,9 @@ internal class LanService private constructor(
     private val pending = HashSet<Socket>()
     private val limiter = PendingLimiter(o.maxPending, o.maxPendingPerAddress, o.maxPendingPerGroup)
     private val links = HashSet<PeerLink<ConnectSession>>()
+
+    /** For a handshake still running: the contacts (id and secret tag) its trial list holds. */
+    private val serves = HashMap<PeerLink<ConnectSession>, Set<String>>()
     private val sessions = HashSet<ConnectSession>()
     private val onSession = CopyOnWriteArrayList<(ConnectSession) -> Unit>()
     private val onPeerFns = CopyOnWriteArrayList<(LanPeer) -> Unit>()
@@ -484,12 +493,13 @@ internal class LanService private constructor(
             role,
             docs,
             onEstablished = { s ->
+                self?.let { l -> synchronized(lock) { serves -= l } }
                 synchronized(lock) { sessions += s }
                 s.onClose { synchronized(lock) { sessions -= s } }
                 s.contact?.let { ref -> if (ref.pending) scope.launch { quiet { src.contactEstablished?.invoke(ref) } } }
             },
             onEnded = {
-                self?.let { l -> synchronized(lock) { links -= l } }
+                self?.let { l -> synchronized(lock) { links -= l; serves -= l } }
                 for (c in copies) c.secret.fill(0)
             },
             contacts = served.map { it.ref },
@@ -498,7 +508,10 @@ internal class LanService private constructor(
             base.channel(role, send, onEvent, copies, if (copies.isEmpty()) null else contactLimiter)
         }
         self = l
-        synchronized(lock) { links += l }
+        synchronized(lock) {
+            links += l
+            if (served.isNotEmpty()) serves[l] = served.map { "${it.id}|${it.tag}" }.toSet()
+        }
         return l
     }
 
@@ -736,6 +749,13 @@ internal class LanService private constructor(
             contactNames = ContactNames(epoch, table)
         }
         for (c in old) c.wipe()
+        // A handshake still running under a contact that is gone (or whose secret was replaced) or while links are
+        // off is ended; an established session is the links layer's to close.
+        val heldNow = next.map { "${it.id}|${it.tag}" }.toSet()
+        val gone = synchronized(lock) {
+            serves.filterValues { !heldNow.containsAll(it) }.keys.toList().also { for (k in it) serves -= k }
+        }
+        for (l in gone) l.closeNow(PeerCloseCode.peer_bye)
         // A peer seen under a contact that is gone is forgotten.
         val have = next.map { "${it.id}|${it.pending}" }.toSet()
         synchronized(lock) { contactPeers.keys.removeAll { it !in have } }

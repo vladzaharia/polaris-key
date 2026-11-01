@@ -196,6 +196,9 @@ public actor ConnectClient {
     public nonisolated let identityChanges = ConnectIdentityEpoch()
     /// Fires when the contacts change or the discovery `interAccount` answer may have.
     nonisolated let contactChanges = ConnectSignal()
+    /// Unix seconds until which the cached `interAccount` answer counts; 0 once a re-read failed; nil for a
+    /// document that did not come from `noteDiscovery` (nothing stamps it).
+    nonisolated let linksUntil = LockedValue<Int?>(nil)
     /// Called with the `agreeKey` of every device a newly stored roster no longer lists (Direct Transfer deletes
     /// the partial files of a device that left, §15.11).
     nonisolated let rosterDeparted = LockedValue<(@Sendable ([String]) -> Void)?>(nil)

@@ -598,3 +598,10 @@ def test_exchange_is_for_mode_p_only() -> None:
             on_event=lambda e: None,
             hello={"platform": "t", "app": "a"},
         )
+
+
+def test_contact_key_repr_has_no_secret() -> None:
+    k = ContactKey(bytes([0xAB]) * 32, bytes([0xCD]) * 32)
+    for text in (repr(k), str(k), repr([k]), "%s" % (k,)):
+        assert "\\xab" not in text and "\\xcd" not in text and "abab" not in text
+        assert "secret" not in text.lower()

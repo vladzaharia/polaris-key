@@ -246,9 +246,12 @@ import PolarisKeyPlatform
                 contacts: { await c.liveContacts() }, onContacts: { fn in c.contactChanges.add(fn) },
                 contactEstablished: { ref in
                     // The first handshake under a pending contact passed the pin: it replaces the held one.
+                    // Only the row whose secret opened the session is promoted; a replaced pending row is not.
                     _ = try? await c.updateContacts { rows, _ in
-                        rows.contains { $0.pendingSince != nil && $0.agreeKey == ref.agreeKey }
-                            ? ConnectContacts.promote(rows, agreeKey: ref.agreeKey) : nil
+                        rows.contains {
+                            $0.pendingSince != nil && $0.agreeKey == ref.agreeKey
+                                && ConnectContacts.tag(Base64URL.decode($0.secret) ?? Data()) == ref.tag
+                        } ? ConnectContacts.promote(rows, agreeKey: ref.agreeKey, tag: ref.tag) : nil
                     }
                 })
         }
@@ -465,6 +468,8 @@ import PolarisKeyPlatform
         private var unContacts: (@Sendable () -> Void)?
         private var contactsSig = ""
         private var pending: [ObjectIdentifier: NWPipe] = [:]
+        /// For a handshake still running: the contacts (id and secret tag) its trial list holds.
+        private var pendingServes: [ObjectIdentifier: Set<String>] = [:]
         private var sessions: [ObjectIdentifier: ConnectSession] = [:]
 
         private init(_ src: ConnectLanSource, _ o: ConnectLanOptions) {
@@ -775,10 +780,12 @@ import PolarisKeyPlatform
                 let ident = try await identity(force: false)
                 if stopped { throw ConnectLanError(.notListening, "stopped") }
                 let served = contacts
+                if !served.isEmpty { pendingServes[key] = Set(served.map { "\($0.id)|\($0.tag)" }) }
                 let h = handlers(role: "responder", served: served)
                 let link = try await makeLink(pipe: pipe, ident: ident, role: .responder, handlers: h, served: served)
                 let session = try await h.opened(link)
                 pending[key] = nil
+                pendingServes[key] = nil
                 pipe.markAuthenticated()
                 if stopped { return await session.close() }
                 track(session)
@@ -790,6 +797,7 @@ import PolarisKeyPlatform
                 }
             } catch {
                 pending[key] = nil
+                pendingServes[key] = nil
                 await pipe.close()
             }
         }
@@ -877,6 +885,13 @@ import PolarisKeyPlatform
             // A peer seen under a contact that is gone is forgotten.
             let have = Set(next.map { "\($0.id)|\($0.pending)" })
             for k in contactPeers.keys where !have.contains(k) { contactPeers[k] = nil }
+            // A handshake still running under a contact that is gone (or whose secret was replaced) or while links
+            // are off is ended; an established session is the links layer's to close.
+            let heldNow = Set(next.map { "\($0.id)|\($0.tag)" })
+            for (k, served) in pendingServes where !served.isSubset(of: heldNow) {
+                pendingServes[k] = nil
+                if let p = pending[k] { Task { await p.close() } }
+            }
             if changed {
                 contactIndex.update(next, now: src.now())
                 network.rescan()

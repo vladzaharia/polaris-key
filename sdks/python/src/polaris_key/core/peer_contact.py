@@ -404,6 +404,11 @@ class ContactKey(NamedTuple):
     secret: bytes
     agree_key: bytes
 
+    def __repr__(self) -> str:
+        return "ContactKey(<redacted>)"
+
+    __str__ = __repr__
+
 
 def browse_contact_instance(
     instance: str, contacts: Sequence[ContactKey], now_seconds: int

@@ -300,6 +300,9 @@ private fun malformed(reason: String): PolarisException =
 private fun refuse(reason: String): PolarisException =
     PolarisException(ErrorCode.peerCertInvalid, "The Cloud Connect identity was refused: $reason.")
 
+/** How long a discovery answer of `interAccount: true` counts without a fresh read (24 h). */
+internal const val INTER_ACCOUNT_TTL_SECONDS: Long = 24L * 60 * 60
+
 /** Cloud Connect's identity: `client.connect`. Every call is serialised. */
 public class ConnectClient internal constructor(
     private val core: CoreContext,
@@ -606,8 +609,34 @@ public class ConnectClient internal constructor(
      * document is held.
      */
     public suspend fun interAccount(): Boolean {
+        // A cached answer lapses (INTER_ACCOUNT_TTL_SECONDS); a failed or empty re-read clears it.
+        val until = linksUntil
+        if (until != null && core.now() >= until) return false
         val f = core.discoveryDocument()?.services?.get(ServiceSlug.connect) ?: return false
         return f.enabled && (f.extras["interAccount"] as? JsonPrimitive)?.booleanOrNull == true
+    }
+
+    /**
+     * Epoch seconds until which the cached `interAccount` answer counts; 0 once a re-read failed. Null for a document
+     * that did not come from [noteDiscovery] (nothing stamps it).
+     */
+    @Volatile
+    private var linksUntil: Long? = null
+
+    /** A discovery read finished: stamp the cached answer, or clear it when the read was not a document. */
+    internal suspend fun noteDiscovery(ok: Boolean) {
+        linksUntil = if (ok) core.now() + INTER_ACCOUNT_TTL_SECONDS else 0L
+    }
+
+    /** True while the cached links answer would lapse or has lapsed (a re-read is due). */
+    internal suspend fun linksLapsed(): Boolean = linksUntil.let { it != null && core.now() >= it }
+
+    /**
+     * Whether the contact a session opened under is still held (same peer key, same secret) and links are still on.
+     */
+    internal suspend fun holdsContact(agreeKey: String, tag: String): Boolean {
+        if (!interAccount()) return false
+        return contactRows().any { it.agreeKey == agreeKey && secretTag(Base64Url.decode(it.secret) ?: ByteArray(0)) == tag }
     }
 
     /** Called when the contacts changed or the `interAccount` answer may have. Returns the unsubscribe. */

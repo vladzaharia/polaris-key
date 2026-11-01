@@ -83,13 +83,17 @@ public enum ContactStoreVerdict: Sendable, Equatable {
     case full
 }
 
-public struct ContactAdvertKey: Sendable {
+public struct ContactAdvertKey: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let secret: Data
     public let agreeKey: Data
     public init(secret: Data, agreeKey: Data) {
         self.secret = secret
         self.agreeKey = agreeKey
     }
+
+    public var description: String { "ContactAdvertKey(redacted)" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: [:]) }
 }
 
 public struct ContactHit: Sendable, Equatable {

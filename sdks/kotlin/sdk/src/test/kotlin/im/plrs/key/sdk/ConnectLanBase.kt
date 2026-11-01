@@ -77,7 +77,11 @@ abstract class ConnectLanBase {
         val browsers = CopyOnWriteArrayList<Pair<(MdnsFound) -> Unit, (String) -> Unit>>()
         val log = CopyOnWriteArrayList<String>()
 
-        private fun found(a: MdnsAdvert) = MdnsFound(a.instance, at, a.port, a.txt)
+        /** Opens the sockets every dial to a found advert uses (null: the default route). */
+        @Volatile
+        var factory: javax.net.SocketFactory? = null
+
+        private fun found(a: MdnsAdvert) = MdnsFound(a.instance, at, a.port, a.txt, socketFactory = factory)
 
         override suspend fun advertise(advert: MdnsAdvert): MdnsHandle {
             synchronized(adverts) { adverts[advert.instance] = advert }

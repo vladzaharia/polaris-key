@@ -38,6 +38,7 @@ __all__ = [
     "info_of",
     "live_of",
     "promote_row",
+    "secret_tag",
     "ref_of",
     "store_row",
     "trial_order_of",
@@ -74,9 +75,17 @@ class ContactRef:
     agree_key: str
     #: The session was opened under a pending contact: it is a first handshake of a re-pair.
     pending: bool
+    #: A one-way tag of the secret the session opened under (not the secret).
+    tag: str = field(default="", repr=False)
 
     def __repr__(self) -> str:
         return "<ContactRef %s>" % self.id
+
+
+def secret_tag(secret: Any) -> str:
+    """A one-way tag that tells two secrets apart without holding either."""
+    h = hashlib.sha256(b"pkey-contact-tag/1\x00" + bytes(secret)).digest()
+    return b64url_encode(h[:12])
 
 
 def contact_id(agree_key: str) -> str:
@@ -96,6 +105,7 @@ class LiveContact:
     cats: Tuple[str, ...]
     reachable: bool
     pending: bool
+    tag: str = field(default="", repr=False)
 
     def __repr__(self) -> str:
         return "<LiveContact %s%s>" % (self.id, " pending" if self.pending else "")
@@ -114,11 +124,12 @@ def live_of(row: ContactRow) -> LiveContact:
         cats=tuple(row.cats),
         reachable=row.reachable,
         pending=row.pending_since is not None,
+        tag=secret_tag(b64url_decode(row.secret)),
     )
 
 
 def ref_of(c: LiveContact) -> ContactRef:
-    return ContactRef(id=c.id, label=c.label, categories=c.cats, agree_key=c.agree_key, pending=c.pending)
+    return ContactRef(id=c.id, label=c.label, categories=c.cats, agree_key=c.agree_key, pending=c.pending, tag=c.tag)
 
 
 def wipe_live(cs: Sequence[LiveContact]) -> None:
@@ -199,9 +210,19 @@ def store_row(
     return True, out, pending
 
 
-def promote_row(rows: Sequence[ContactRow], agree_key: str) -> List[ContactRow]:
-    """A handshake under the pending contact of ``agree_key`` passed the pin: it takes the held one's place."""
-    pend = next((r for r in rows if r.pending_since is not None and r.agree_key == agree_key), None)
+def promote_row(rows: Sequence[ContactRow], agree_key: str, tag: Optional[str] = None) -> List[ContactRow]:
+    """A handshake under the pending contact of ``agree_key`` passed the pin: it takes the held one's place.
+    With ``tag``, only the pending row whose secret has that tag is promoted."""
+    pend = next(
+        (
+            r
+            for r in rows
+            if r.pending_since is not None
+            and r.agree_key == agree_key
+            and (tag is None or secret_tag(b64url_decode(r.secret)) == tag)
+        ),
+        None,
+    )
     held = next((r for r in rows if r.pending_since is None and r.agree_key == agree_key), None)
     if pend is None:
         return list(rows)

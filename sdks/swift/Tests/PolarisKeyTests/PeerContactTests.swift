@@ -474,3 +474,21 @@ final class PeerContactSessionTests: XCTestCase {
         XCTAssertEqual(d.closed.first?.0, .peerTimeout)
     }
 }
+
+final class PeerContactRedactionTests: XCTestCase {
+    func testContactAdvertKeyAndPeerContactLinkAreRedactedInDescriptionDebugDescriptionAndDump() {
+        let secret = Data(repeating: 0xAB, count: 32)
+        let key = Data(repeating: 0xCD, count: 32)
+        let a = ContactAdvertKey(secret: secret, agreeKey: key)
+        let l = PeerContactLink(secret: secret, agreeKey: String(repeating: "A", count: 43))
+        var out = ""
+        dump(a, to: &out)
+        dump([a], to: &out)
+        dump(l, to: &out)
+        dump([l], to: &out)
+        out += "\(a) \(l) \(String(reflecting: a)) \(String(reflecting: l))"
+        XCTAssertFalse(out.contains("171"), "no byte of the secret (0xAB)")
+        XCTAssertFalse(out.contains("205"), "no byte of the key (0xCD)")
+        XCTAssertFalse(out.contains("32 bytes"))
+    }
+}
