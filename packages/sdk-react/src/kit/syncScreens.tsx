@@ -322,8 +322,9 @@ export interface SaveConflictProps extends SyncScreenProps {
   bytes?: (
     conflict: SaveConflictInfo,
   ) => Uint8Array | RangedSource | Promise<Uint8Array | RangedSource>;
-  /** What the app knows about the two copies, for the cards: each copy's time (`when`), the other
-   *  device's name, and which is `newer`, from its own metadata. The saves hold none of these. */
+  /** Overrides for the cards: each copy's time (`when`), the other device's name and which is
+   *  `newer`. Optional: every SDK records `savedAt` and `deviceLabel` with a save, and the cards
+   *  read them. */
   describe?: (conflict: SaveConflictInfo) => ConflictDescription;
   /** A choice was made (the host applies it and moves `input.saveConflict.step` on). */
   onKeep?: (keep: SaveKeep) => void;
@@ -366,6 +367,11 @@ export function SaveConflict(props: SaveConflictProps): ReactNode {
   // Focus goes back to what held it when the screen opened (the dialog does so itself).
   const opener = useRef<HTMLElement | null>(null);
   const shown = bound.input !== undefined;
+  // A conflict that appears after the screen mounted (a write ended in one) takes focus, so it is
+  // announced once: a screen reader would otherwise stay on the Save button.
+  const wasHidden = useRef(false);
+  if (!shown) wasHidden.current = true;
+  const late = shown && wasHidden.current;
   if (shown && opener.current === null && typeof document !== "undefined") {
     const a = document.activeElement;
     if (a && a !== document.body) opener.current = a as HTMLElement;
@@ -384,6 +390,7 @@ export function SaveConflict(props: SaveConflictProps): ReactNode {
   return (
     <SaveConflict_
       {...rest}
+      {...(late && rest.autoFocus === undefined ? { autoFocus: true } : {})}
       {...(input ? { input } : {})}
       onAction={(a) => {
         rest.onAction?.(a);

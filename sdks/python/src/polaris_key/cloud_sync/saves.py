@@ -29,6 +29,7 @@ from __future__ import annotations
 import os
 import re
 import threading
+import time
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
 from ..constants_generated import SYNC_FILE_MAX_BYTES, SYNC_SAVE_SLOTS, Feature, TransferEvent
@@ -77,6 +78,10 @@ SAVES_MAX_RETRY_AFTER_SECONDS = 3600
 SAVE_FILE_BINDING_KEY = "$file"
 #: The client code for a downloaded file that fails a check (D-8).
 SAVES_FILE_INVALID = "sync-file-invalid"
+# SDK-owned metadata keys written with every save (SAVES-META): when it was saved (epoch ms) and the
+# device's display name. A write overwrites an app value under either key. Never a hardware value.
+SAVE_SAVED_AT_KEY = "savedAt"
+SAVE_DEVICE_KEY = "deviceLabel"
 
 _KEY = re.compile(r"[A-Za-z0-9._:-]{1,128}")
 _SHA = re.compile(r"[0-9a-f]{64}")
@@ -136,6 +141,10 @@ class SaveRecords:
 
     def delete(self, id: str, base_version: int) -> Obj:  # pragma: no cover - interface
         raise NotImplementedError
+
+    def pull(self) -> None:
+        """Pull the ``saves`` collection from the server and return when the pull ended (a failed or
+        impossible pull returns too, with the cache as it was). The default is no pull."""
 
 
 class MachineRecords(SaveRecords):
@@ -239,6 +248,11 @@ class MachineRecords(SaveRecords):
 
     def delete(self, id: str, base_version: int) -> Obj:
         return self._wait(lambda m: m.remove_at(SAVES_COLLECTION, id, base_version), id)
+
+    def pull(self) -> None:
+        with self._host.locked() as m:
+            m.pull()
+        self._host.touch()
 
 
 class _Waiter:
@@ -456,6 +470,8 @@ class SavesClient:
         save_format_version: Optional[int] = None,
         new_transfer_id: Optional[Callable[[str], str]] = None,
         spool: Callable[..., Obj] = memory_spool,
+        device_label: Optional[Callable[[], Optional[str]]] = None,
+        now: Optional[Callable[[], int]] = None,
     ) -> None:
         self._records = records
         self._engine = engine
@@ -466,6 +482,8 @@ class SavesClient:
         self._format = save_format_version
         self._new_transfer_id = new_transfer_id or (lambda s: "saves:" + s)
         self._spool = spool
+        self._device_label = device_label
+        self._now = now or (lambda: int(time.time() * 1000))
 
     @property
     def _e2e(self) -> bool:
@@ -615,13 +633,13 @@ class SavesClient:
         device's save on top of the server's version; ``"both"`` writes it as a new save in a free slot."""
         cid = conflict["id"]
         if keep == "remote":
-            return SaveTransfer(
-                cid,
-                {"done": 0, "total": 0},
-                lambda _c: {},
-                lambda: None,
-                settled={"state": "done", "id": cid, "kept": "remote", "version": conflict["serverVersion"]},
-            )
+            # Pull first, so the cache holds the copy the person chose (not this device's old one).
+            def keep_remote(_cancel: threading.Event) -> Obj:
+                self._pull()
+                rec = self._records.get(cid)
+                return {"state": "done", "id": cid, "kept": "remote", "version": rec["version"] if rec else None}
+
+            return SaveTransfer(cid, {"done": 0, "total": 0}, keep_remote, lambda: None)
         if keep == "both" and not conflict["bothAvailable"]:
             return SaveTransfer(
                 cid,
@@ -640,7 +658,7 @@ class SavesClient:
                 else conflict["serverVersion"]
             }
         )
-        return self._run(cid, data, conflict["local"]["metadata"], None, on_progress, mode)
+        return self._run(cid, data, conflict["local"]["metadata"], None, on_progress, mode, stamp=False)
 
     def delete(self, id: str, base_version: Optional[int] = None) -> Obj:
         """Delete a save; its file is collected with the record."""
@@ -671,7 +689,12 @@ class SavesClient:
         base_version: Any,
         on_progress: Optional[Callable[[int, int], None]],
         mode: Optional[Obj],
+        stamp: bool = True,
     ) -> SaveTransfer:
+        # The SDK's own keys: when and where this save was written. A resolve keeps the stamps of the
+        # copy it writes (they are already in the conflict's local metadata).
+        if stamp:
+            metadata = self._stamped(metadata)
         source: RangedSource = ranged_bytes(bytes(data)) if isinstance(data, (bytes, bytearray)) else data
         transfer_id = self._new_transfer_id(id)
         progress: Obj = {"done": 0, "total": source.size}
@@ -776,6 +799,22 @@ class SavesClient:
             transfer_id, progress, attempt, lambda: self._engine.cancel(transfer_id), hard_cancel=hard
         )
 
+    def _stamped(self, metadata: Obj) -> Obj:
+        out = {k: v for k, v in metadata.items() if k not in (SAVE_SAVED_AT_KEY, SAVE_DEVICE_KEY)}
+        out[SAVE_SAVED_AT_KEY] = self._now()
+        label = self._device_label() if self._device_label else None
+        if label:
+            out[SAVE_DEVICE_KEY] = label
+        return out
+
+    def _pull(self) -> bool:
+        """Pull the collection; never raises. True when the records layer pulled."""
+        try:
+            self._records.pull()
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
     def _precheck(self, id: str, source: RangedSource, metadata: Obj) -> Optional[SavesError]:
         if not isinstance(id, str) or not _KEY.fullmatch(id):
             return SavesError("invalid-save", "id")
@@ -816,6 +855,9 @@ class SavesClient:
         known: Any = None,
         has_known: bool = False,
     ) -> Obj:
+        # The cache may be behind the conflict: pull before reading it, so the screen shows what the
+        # server holds (and a save deleted elsewhere reads as deleted).
+        pulled = self._pull()
         slots = len(self._records.list())
         # The server's answer wins. ``known`` is the copy a rejected set carried (None: deleted). A
         # file begin answers only a version; the cached row stands in for it only while it is that
@@ -831,11 +873,14 @@ class SavesClient:
             remote, version = None, 0
         else:
             rec = self._records.get(id)
-            if rec and rec["version"] == server_version:
-                remote = self._summary(rec)
+            if rec and rec["version"] >= server_version:
+                remote, version = self._summary(rec), rec["version"]
+            elif pulled and rec is None:
+                # Pulled and gone: a tombstone's version, not a copy.
+                remote, version = None, None
             else:
                 remote = {"id": id, "version": server_version, "metadata": {}, "file": None, "newerFormat": False}
-            version = server_version
+                version = server_version
         return {
             "state": "conflict",
             "conflict": {
@@ -1015,6 +1060,7 @@ class SavesApi:
             cache=cache,
             max_bytes=o["max_bytes"],
             save_format_version=o["save_format_version"],
+            device_label=lambda: self._ctx.device_label(),
         )
 
     def _track(self, t: SaveTransfer) -> SaveTransfer:

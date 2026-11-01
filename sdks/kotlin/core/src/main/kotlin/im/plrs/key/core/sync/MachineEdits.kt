@@ -28,6 +28,9 @@ public interface SyncEdits {
 
     /** A licence or config document fetch succeeded: the only thing that lifts a `/sync` 401 or a non-`account_required` 403. */
     public fun refresh(): CallResult
+
+    /** Ask for a pull now (the cursor's changes); the host's next `touch()` sends it. */
+    public fun pull(): CallResult
 }
 
 internal class MachineEdits(private val p: MachineParts) : SyncEdits {
@@ -88,6 +91,12 @@ internal class MachineEdits(private val p: MachineParts) : SyncEdits {
 
     override fun flush(): CallResult {
         p.journal.commitAllDrafts()
+        p.pump.kick()
+        return CallResult.Ok
+    }
+
+    override fun pull(): CallResult {
+        core.pullWanted = true
         p.pump.kick()
         return CallResult.Ok
     }

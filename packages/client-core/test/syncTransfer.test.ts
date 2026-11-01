@@ -252,6 +252,22 @@ describe("TransferEngine upload", () => {
     },
   );
 
+  it("refuses a finalize answer whose version is not above a numeric base (whole mode, single and multipart)", async () => {
+    for (const data of [small, big]) {
+      const s = new FakeServer();
+      const orig = s.finalize;
+      // The answer names the very version the caller based its write on.
+      s.finalize = async (t, r) => {
+        const reply = await orig(t, r);
+        return reply.ok ? ok({ ...reply.value, version: 3 }) : reply;
+      };
+      const { e } = engine(s, memoryJournal());
+      await expect(
+        e.upload(await request(data, { baseVersion: 3 })),
+      ).rejects.toMatchObject({ reason: "file-invalid", detail: "finalize" });
+    }
+  });
+
   it("uploads a single-mode file and clears the journal", async () => {
     const s = new FakeServer();
     const j = memoryJournal();

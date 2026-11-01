@@ -220,6 +220,12 @@ export class MachineRecords implements SaveRecords {
       : r;
   }
 
+  /** Ask the server for the collection's changes and wait for the pull to end. */
+  async pull(): Promise<void> {
+    this.#host.machine.pull();
+    await this.#host.touch();
+  }
+
   async delete(id: string, baseVersion: number): Promise<SaveSetResult> {
     const r = await this.#wait(() =>
       this.#host.machine.removeAt(SAVES_COLLECTION, id, baseVersion),
@@ -409,6 +415,7 @@ export class SavesApi {
         : undefined;
     return new SavesClient({
       records: this.#records,
+      deviceLabel: () => ctx.deviceLabel(),
       engine: this.#engine,
       transport: this.#transport,
       codec,

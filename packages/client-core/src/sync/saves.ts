@@ -46,6 +46,11 @@ export const SAVES_COLLECTION = "saves";
 export const SAVE_FILE_BINDING_KEY = "$file";
 /** The client code for a downloaded file that fails a check (D-8). */
 export const SAVES_FILE_INVALID = "sync-file-invalid";
+/** SDK-owned metadata keys, written with every save (SAVES-META): when it was saved (epoch ms) and
+ *  the device's display name. A write overwrites an app value under either key; the conflict
+ *  screen reads them for its cards. Never a hardware value. */
+export const SAVE_SAVED_AT_KEY = "savedAt";
+export const SAVE_DEVICE_KEY = "deviceLabel";
 
 const KEY = /^[A-Za-z0-9._:-]{1,128}$/;
 
@@ -90,6 +95,9 @@ export interface SaveRecords {
     file?: SaveFileRef,
   ): Promise<SaveSetResult>;
   delete(id: string, baseVersion: number): Promise<SaveSetResult>;
+  /** Pull the `saves` collection from the server and settle when the pull ended (a failed or
+   *  impossible pull settles too, with the cache as it was). Absent: the cache is all there is. */
+  pull?(): Promise<void>;
 }
 
 export type SavesErrorCode =
@@ -254,6 +262,12 @@ export interface SavesDeps {
   spool?: SealSpool;
   /** A transfer id unique among the device's transfers. */
   newTransferId?: (saveId: string) => string;
+  /** The device's display name, stored with each save (SAVES-META); null or absent stores none. */
+  deviceLabel?: () => string | null | undefined;
+  /** The clock for `savedAt` (epoch ms); default `Date.now`. */
+  now?: () => number;
+  /** A write went running, paused or settled: a host that draws the transfers redraws. */
+  onState?: () => void;
 }
 
 const DEFAULT_MAX_BYTES = 32 * 1024 * 1024;
@@ -468,15 +482,18 @@ export class SavesClient {
     bytes: Uint8Array | RangedSource,
     opts: WriteOptions = {},
   ): SaveTransfer {
-    if (keep === "remote") {
-      const outcome: SaveOutcome = {
-        state: "done",
-        id: conflict.id,
-        kept: "remote",
-        version: conflict.serverVersion,
-      };
-      return settled(conflict.id, outcome);
-    }
+    if (keep === "remote")
+      // Pull first, so the cache holds the copy the person chose (not this device's old one).
+      return deferred(conflict.id, async () => {
+        await this.pull();
+        const rec = await this.d.records.get(conflict.id);
+        return {
+          state: "done",
+          id: conflict.id,
+          kept: "remote",
+          version: rec?.version ?? null,
+        } satisfies SaveOutcome;
+      });
     if (keep === "both" && !conflict.bothAvailable)
       return settled(conflict.id, {
         state: "failed",
@@ -496,6 +513,7 @@ export class SavesClient {
                 ? "*"
                 : conflict.serverVersion,
           },
+      false,
     );
   }
 
@@ -531,7 +549,11 @@ export class SavesClient {
     metadata: { [k: string]: Json },
     opts: WriteOptions,
     mode: { baseVersion: number | "*" } | { copy: true } | null,
+    stamp = true,
   ): SaveTransfer {
+    // The SDK's own keys: when and where this save was written. A resolve keeps the stamps of the
+    // copy it writes (they are already in `conflict.local.metadata`).
+    if (stamp) metadata = this.stamped(metadata);
     const hard = new AbortController();
     const source = "read" in bytes ? bytes : rangedBytes(bytes);
     const transferId = (this.d.newTransferId ?? ((s) => `saves:${s}`))(id);
@@ -654,7 +676,33 @@ export class SavesClient {
       attempt,
       () => this.d.engine.cancel(transferId),
       () => hard.abort(),
+      this.d.onState,
     );
+  }
+
+  private stamped(metadata: { [k: string]: Json }): { [k: string]: Json } {
+    const {
+      [SAVE_SAVED_AT_KEY]: _at,
+      [SAVE_DEVICE_KEY]: _dev,
+      ...rest
+    } = metadata;
+    const label = this.d.deviceLabel?.();
+    return {
+      ...rest,
+      [SAVE_SAVED_AT_KEY]: (this.d.now ?? Date.now)(),
+      ...(label ? { [SAVE_DEVICE_KEY]: label } : {}),
+    };
+  }
+
+  /** Pull the collection; never throws. True when the records layer pulled. */
+  private async pull(): Promise<boolean> {
+    if (!this.d.records.pull) return false;
+    try {
+      await this.d.records.pull();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private precheck(
@@ -704,6 +752,9 @@ export class SavesClient {
     serverVersion: number | undefined | null,
     known?: SaveRecord | null,
   ): Promise<SaveOutcome> {
+    // The cache may be behind the conflict: pull before reading it, so the screen shows what the
+    // server holds (and a save deleted elsewhere reads as deleted).
+    const pulled = await this.pull();
     const slots = (await this.d.records.list()).length;
     // The server's answer wins. `known` is the copy a rejected `set` carried (null: deleted). A
     // file `begin` answers only a version, and the cached row stands in for it only while it is
@@ -722,17 +773,23 @@ export class SavesClient {
       version = 0;
     } else {
       const rec = await this.d.records.get(id);
-      remote =
-        rec && rec.version === serverVersion
-          ? this.summary(rec)
-          : {
-              id,
-              version: serverVersion,
-              metadata: {},
-              file: null,
-              newerFormat: false,
-            };
-      version = serverVersion;
+      if (rec && rec.version >= serverVersion) {
+        remote = this.summary(rec);
+        version = rec.version;
+      } else if (pulled && rec === null) {
+        // Pulled and gone: a tombstone's version, not a copy.
+        remote = null;
+        version = null;
+      } else {
+        remote = {
+          id,
+          version: serverVersion,
+          metadata: {},
+          file: null,
+          newerFormat: false,
+        };
+        version = serverVersion;
+      }
     }
     return {
       state: "conflict",
@@ -757,6 +814,32 @@ function concat(parts: Uint8Array[]): Uint8Array {
     at += p.length;
   }
   return out;
+}
+
+/** A transfer that has no file to move: it settles when `run` does. */
+function deferred(id: string, run: () => Promise<SaveOutcome>): SaveTransfer {
+  let state: TransferState = "running";
+  const done = run().then(
+    (o) => {
+      state = o.state === "done" ? "done" : o.state;
+      return o;
+    },
+    (e): SaveOutcome => {
+      state = "failed";
+      return { state: "failed", error: asSavesError(e) };
+    },
+  );
+  return {
+    id,
+    get state() {
+      return state;
+    },
+    progress: { done: 0, total: 0 },
+    pause() {},
+    resume() {},
+    cancel: async () => {},
+    done,
+  };
 }
 
 function settled(id: string, outcome: SaveOutcome): SaveTransfer {
@@ -787,6 +870,7 @@ class WriteTransfer implements SaveTransfer {
     private readonly attempt: (signal: AbortSignal) => Promise<SaveOutcome>,
     private readonly release: () => Promise<void>,
     private readonly onCancel: () => void = () => undefined,
+    private readonly onState: () => void = () => undefined,
   ) {
     this.done = this.drive();
   }
@@ -816,20 +900,20 @@ class WriteTransfer implements SaveTransfer {
     for (;;) {
       this.controller = new AbortController();
       if (this.wanted === "pause") this.controller.abort();
-      this.state = "running";
+      this.setState("running");
       try {
         const outcome = await this.attempt(this.controller.signal);
         if (this.want() === "cancel") return this.cancelled();
-        this.state = outcome.state === "done" ? "done" : outcome.state;
+        this.setState(outcome.state === "done" ? "done" : outcome.state);
         return outcome;
       } catch (e) {
         if (this.want() === "cancel") return this.cancelled();
         if (!(e instanceof TransferError && e.reason === "aborted")) {
-          this.state = "failed";
+          this.setState("failed");
           return { state: "failed", error: asSavesError(e) };
         }
         // Paused: wait for resume (or cancel).
-        this.state = "paused";
+        this.setState("paused");
         await new Promise<void>((resolve) => {
           this.gate = resolve;
           if (this.want() !== "pause") resolve();
@@ -838,6 +922,16 @@ class WriteTransfer implements SaveTransfer {
         if (this.want() === "cancel") return this.cancelled();
         this.wanted = "run";
       }
+    }
+  }
+
+  private setState(next: TransferState): void {
+    if (this.state === next) return;
+    this.state = next;
+    try {
+      this.onState();
+    } catch {
+      // A listener's failure is its own.
     }
   }
 
@@ -852,7 +946,7 @@ class WriteTransfer implements SaveTransfer {
     } catch {
       // The server expires the upload within the day.
     }
-    this.state = "cancelled";
+    this.setState("cancelled");
     return { state: "cancelled" };
   }
 }

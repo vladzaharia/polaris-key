@@ -512,6 +512,13 @@ public final class CloudSyncMachine {
         return .ok
     }
 
+    /// Ask for a pull now (the cursor's changes); the host's next `touch()` sends it.
+    public func pull() -> CallResult {
+        pullWanted = true
+        kick()
+        return .ok
+    }
+
     /// A licence or config document fetch succeeded: the only thing that lifts a `/sync` 401 or a
     /// non-`account_required` 403.
     public func refresh() -> CallResult {

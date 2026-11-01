@@ -381,6 +381,13 @@ func flush() -> Dictionary:
 	return Types.ok()
 
 
+## Ask for a pull now (the cursor's changes); the host's next `touch()` sends it.
+func pull() -> Dictionary:
+	_pull_wanted = true
+	_kick()
+	return Types.ok()
+
+
 ## A licence or config document fetch succeeded: the only thing that lifts a `/sync` 401 or a
 ## non-`account_required` 403.
 func refresh() -> Dictionary:

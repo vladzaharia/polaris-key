@@ -250,6 +250,17 @@ class FakeRecords:
 	func drop_all() -> void:
 		dropped += 1
 
+	## What a pull does (another device wrote meanwhile); invalid: this port cannot pull.
+	var on_pull := Callable()
+	var pulls := 0
+
+	func pull_records() -> bool:
+		if not on_pull.is_valid():
+			return false
+		pulls += 1
+		on_pull.call()
+		return true
+
 
 ## A ring: a root and a lock flag.
 class Ring:
@@ -315,6 +326,14 @@ func _rig(e2e_mode: bool, over := {}) -> Dictionary:
 	deps.merge(over, true)
 	var saves := PKeySaves.new(deps)
 	return {"files": files, "records": records, "ring": ring, "journal": journal, "engine": engine, "events": events, "saves": saves}
+
+
+## The app's metadata, without the SDK's own savedAt / deviceLabel stamps.
+func _bare(meta: Dictionary) -> Dictionary:
+	var out := meta.duplicate()
+	out.erase("savedAt")
+	out.erase("deviceLabel")
+	return out
 
 
 func _types(events: Array) -> Array:
@@ -387,7 +406,7 @@ func _server_mode(t: PKeyTestContext) -> void:
 	t.check("write: done with the version the metadata set answered", out["state"] == "done" and out["id"] == "slot1" and out["version"] == 2, str(out))
 	t.check("write: the Worker holds the plaintext file in server mode", rig["files"].puts.size() == 1 and rig["files"].puts[0] == data)
 	var listed = await saves.list()
-	t.check("list: the save with its metadata and file", listed.ok and listed.detail.size() == 1 and listed.detail[0]["id"] == "slot1" and listed.detail[0]["metadata"] == {"playtime": 12, "chapter": "one"} and listed.detail[0]["file"]["size"] == 5000 and not listed.detail[0]["newer_format"], str(listed.detail))
+	t.check("list: the save with its metadata and file", listed.ok and listed.detail.size() == 1 and listed.detail[0]["id"] == "slot1" and _bare(listed.detail[0]["metadata"]) == {"playtime": 12, "chapter": "one"} and listed.detail[0]["file"]["size"] == 5000 and not listed.detail[0]["newer_format"], str(listed.detail))
 	var read = await saves.read("slot1")
 	t.check("read: the bytes and the metadata", read.ok and read.detail["bytes"] == data and read.detail["metadata"]["chapter"] == "one" and read.detail["file"]["format"] == "whole", str(read.detail.get("file")))
 	var types := _types(rig["events"])
@@ -446,7 +465,7 @@ func _e2e(t: PKeyTestContext) -> void:
 	t.check("e2e write: the metadata carries the $file binding of the stored file", value.has("$file") and value["$file"]["sha256"] == rig["files"].records[wire]["file"]["sha256"] and value["$file"]["size"] == stored.size() and value["$file"]["format"] == "whole", str(value))
 	t.check("e2e write: the id travels blinded", wire.begins_with("x:") and not rig["files"].records.has("slot1"))
 	var listed = await saves.list()
-	t.check("e2e list: the metadata without the binding, the file pointer", listed.ok and listed.detail[0]["metadata"] == {"progress": 0.5} and listed.detail[0]["file"] != null, str(listed.detail))
+	t.check("e2e list: the metadata without the binding, the file pointer", listed.ok and _bare(listed.detail[0]["metadata"]) == {"progress": 0.5} and listed.detail[0]["file"] != null, str(listed.detail))
 	var read = await saves.read("slot1")
 	t.check("e2e read: the plaintext back", read.ok and read.detail["bytes"] == data)
 	# a Worker that swaps the files of two slots is caught by the binding
@@ -531,14 +550,14 @@ func _conflicts(t: PKeyTestContext) -> void:
 	var stale = await _write(rig, "slot1", _noise(100), {"who": "b"}, {"base_version": 1})
 	t.check("conflict: a stale base_version is a conflict outcome, not an error", stale["state"] == "conflict", str(stale))
 	var c: Dictionary = stale["conflict"]
-	t.check("conflict: the local metadata, the server's copy, the slots", c["id"] == "slot1" and c["local"]["metadata"] == {"who": "b"} and c["remote"]["metadata"] == {"who": "a"} and c["server_version"] == 2 and c["both_available"], str(c))
+	t.check("conflict: the local metadata, the server's copy, the slots", c["id"] == "slot1" and _bare(c["local"]["metadata"]) == {"who": "b"} and c["local"]["metadata"].has("savedAt") and _bare(c["remote"]["metadata"]) == {"who": "a"} and c["server_version"] == 2 and c["both_available"], str(c))
 	var types := _types(rig["events"])
 	t.check("conflict: the transfer ends with transferDone state conflict", types.back() == "transferDone" and rig["events"].back()["state"] == "conflict")
 	var calls_before: int = rig["files"].calls.size()
 	var kept: Dictionary = await saves.resolve(c, "remote", _noise(100)).wait()
 	t.check("resolve remote: writes nothing, keeps the server's copy", kept["state"] == "done" and kept["kept"] == "remote" and kept["version"] == 2 and rig["files"].calls.size() == calls_before and rig["files"].records[rig["records"].wire_id("slot1")]["version"] == 2)
 	var local: Dictionary = await saves.resolve(c, "local", _noise(100)).wait()
-	t.check("resolve local: writes on top of the server's version", local["state"] == "done" and (await saves.read("slot1")).detail["metadata"] == {"who": "b"}, str(local))
+	t.check("resolve local: writes on top of the server's version", local["state"] == "done" and _bare((await saves.read("slot1")).detail["metadata"]) == {"who": "b"}, str(local))
 	var both: Dictionary = await saves.resolve(c, "both", _noise(100)).wait()
 	t.check("resolve both: a new save under <id>.copy", both["state"] == "done" and both["copy_id"] == "slot1.copy" and (await saves.list()).detail.size() == 2, str(both))
 	var both2: Dictionary = await saves.resolve(c, "both", _noise(100)).wait()
@@ -580,6 +599,33 @@ func _conflicts(t: PKeyTestContext) -> void:
 	gone["records"].stale_row = null
 	var kept_gone: Dictionary = await gone["saves"].resolve(del["conflict"], "local", _noise(30)).wait()
 	t.check("resolve local after a deletion elsewhere sends *", kept_gone["state"] == "done" and gone["files"].bases.back() == "*", str(kept_gone))
+	# a conflict and keeping the other version pull first; saves record when and where
+	var pulled = _rig(false, {"device_label": func() -> String: return "Steam Deck", "now": func() -> int: return 1000})
+	await _write(pulled, "s", _noise(30), {"n": 1})
+	var old_cache: Dictionary = pulled["records"].get_record("s")
+	var pw: String = pulled["records"].wire_id("s")
+	pulled["files"].records[pw]["version"] = 40
+	pulled["files"].records[pw]["value"] = {"n": 9}
+	pulled["records"].stale_row = old_cache
+	pulled["records"].on_pull = func() -> void: pulled["records"].stale_row = null
+	var pc: Dictionary = await _write(pulled, "s", _noise(30), {"n": 2}, {"base_version": old_cache["version"]})
+	t.check("conflict: pulls first, so the other card is the server's copy", pulled["records"].pulls == 1 and pc["state"] == "conflict" and pc["conflict"]["remote"]["metadata"] == {"n": 9}, str(pc))
+	t.check("conflict: this device's card carries when and where it was saved", pc["conflict"]["local"]["metadata"].get("savedAt") == 1000 and pc["conflict"]["local"]["metadata"].get("deviceLabel") == "Steam Deck", str(pc["conflict"]["local"]))
+	pulled["records"].stale_row = old_cache
+	var pk: Dictionary = await pulled["saves"].resolve(pc["conflict"], "remote", _noise(30)).wait()
+	t.check("resolve remote: pulls again and answers the version held", pulled["records"].pulls == 2 and pk["state"] == "done" and pk["kept"] == "remote" and pk["version"] == 40, str(pk))
+	# a save deleted elsewhere under a tombstone's version reads as deleted after the pull
+	var tomb = _rig(false)
+	await _write(tomb, "s", _noise(30), {"n": 1})
+	var tomb_row: Dictionary = tomb["records"].get_record("s")
+	tomb["records"].stale_row = tomb_row
+	var tw: String = tomb["records"].wire_id("s")
+	tomb["files"].records[tw]["version"] = 99
+	tomb["records"].on_pull = func() -> void:
+		tomb["files"].records.erase(tw)
+		tomb["records"].stale_row = null
+	var tc: Dictionary = await _write(tomb, "s", _noise(30), {"n": 2}, {"base_version": tomb_row["version"]})
+	t.check("conflict: a tombstone's version after the pull is a deleted save", tc["state"] == "conflict" and tc["conflict"]["remote"] == null, str(tc))
 	# a rejected set
 	var rej = _rig(false)
 	rej["records"].rejected_code = "quota_exceeded"
@@ -1187,7 +1233,7 @@ func _through_the_sdk(t: PKeyTestContext) -> void:
 	var h: PKeyTransfer = saves.write("slot1", data, {"chapter": "two", "formatVersion": 1})
 	t.check("sdk: the handle is listed while it runs", sdk.cloud_sync.transfers().size() == 1 and sdk.cloud_sync.transfers()[0] == h or h.outcome != null)
 	var out := await h.wait()
-	t.check("sdk: the write is done at the record version the Worker answered", out["state"] == "done" and out["version"] == 2 and Types.json_equal(worker.value, {"chapter": "two", "formatVersion": 1}) and worker.data == data, "%s | %s | %s" % [str(out), str(worker.value), worker.data == data])
+	t.check("sdk: the write is done at the record version the Worker answered", out["state"] == "done" and out["version"] == 2 and Types.json_equal(_bare(worker.value), {"chapter": "two", "formatVersion": 1}) and worker.value.has("savedAt") and worker.data == data, "%s | %s | %s" % [str(out), str(worker.value), worker.data == data])
 	# The acknowledged row takes the pointer finalize returned, so it lists its file before any pull.
 	var before_pull = await saves.list()
 	t.check("sdk: the acknowledged row is listed at once with its new file, before any pull", before_pull.ok and before_pull.detail.size() == 1 and before_pull.detail[0]["file"] != null and before_pull.detail[0]["file"]["size"] == out["file"]["size"] and before_pull.detail[0]["file"]["sha256"] == out["file"]["sha256"], str(before_pull.detail))
