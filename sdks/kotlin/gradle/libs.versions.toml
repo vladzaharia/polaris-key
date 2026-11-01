@@ -29,6 +29,9 @@ playGames = "22.1.0"
 # the last stable (1.7.0 is alpha). googleid is pinned at 1.2.0 (the lead's decision; 1.2.1 is not adopted):
 # it declares a credentials beta, which the direct 1.6.0 pin above resolves up to.
 androidxCredentials = "1.6.0"
+# 1.8.0 (2024-10): the last stable release that builds under AGP 8.6.1 (Godot 4.7.2 template). 1.9.0, the first with
+# AuthTabIntent, requires AGP 8.9.1 and compileSdk 36 (aar-metadata minAndroidGradlePluginVersion), so the Auth Tab waits for an AGP bump.
+androidxBrowser = "1.8.0"
 googleid = "1.2.0"
 # Block Store for :platform's play flavour (I-49.1b), an exact pin: 16.4.0 is the latest (2024-07-25) and
 # credentials-play-services-auth 1.6.0 already brings it in, so pinning changes no resolution. minSdk 21.
@@ -89,6 +92,7 @@ godot = { module = "org.godotengine:godot", version.ref = "godot" }
 play-app-update = { module = "com.google.android.play:app-update", version.ref = "playAppUpdate" }
 play-asset-delivery = { module = "com.google.android.play:asset-delivery", version.ref = "playAssetDelivery" }
 play-integrity = { module = "com.google.android.play:integrity", version.ref = "playIntegrity" }
+androidx-browser = { module = "androidx.browser:browser", version.ref = "androidxBrowser" }
 androidx-credentials = { module = "androidx.credentials:credentials", version.ref = "androidxCredentials" }
 androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth", version.ref = "androidxCredentials" }
 googleid = { module = "com.google.android.libraries.identity.googleid:googleid", version.ref = "googleid" }
