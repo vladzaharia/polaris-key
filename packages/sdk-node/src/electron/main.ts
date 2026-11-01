@@ -38,6 +38,7 @@ import {
   type BridgeMethod,
   type KitView,
 } from "./protocol.js";
+import { createNearbyHost, NearbyRefusal } from "./nearbyHost.js";
 import { resolveLocale } from "../cli/copy.js";
 import { KIT_COPY, KIT_COPY_VARIANTS } from "../kitCopy.generated.js";
 
@@ -385,7 +386,11 @@ function envelopeError(e: unknown): BridgeEnvelope {
   // Only the SDK's own typed errors and the bridge's refusals describe themselves to the renderer.
   // Anything else (a filesystem error naming a path, a TypeError from a host callback) is a
   // host detail: the renderer gets a generic answer, never its message.
-  if (!(e instanceof PolarisError) && !(e instanceof BridgeRefusal))
+  if (
+    !(e instanceof PolarisError) &&
+    !(e instanceof BridgeRefusal) &&
+    !(e instanceof NearbyRefusal)
+  )
     return { ok: false, code: "unknown", message: "The request failed." };
   const err = e as { code?: unknown; message?: unknown; detail?: unknown };
   const out: BridgeEnvelope = {
@@ -624,12 +629,16 @@ export function exposePolarisBridge(
   const flows = new Map<string, FlowEntry>();
   for (const wc of [opts.webContents ?? []].flat()) subscribers.set(wc.id, wc);
 
-  const currentState = (): Record<string, unknown> =>
-    bridgeState(client, hostFacts(opts.electron));
+  // v5: `nearby` is per window (its asks and session are bound to the window that made them), so
+  // every state carries the member for the window it goes to.
+  const currentState = (wcId?: number): Record<string, unknown> => ({
+    ...bridgeState(client, hostFacts(opts.electron)),
+    nearby: wcId === undefined ? {} : nearbyHost.stateFor(wcId),
+  });
 
   const pushState = (): void => {
     if (subscribers.size === 0) return;
-    const state = currentState();
+    const base = bridgeState(client, hostFacts(opts.electron));
     for (const [id, wc] of subscribers) {
       if (wc.isDestroyed?.()) {
         subscribers.delete(id);
@@ -640,11 +649,29 @@ export function exposePolarisBridge(
         // the app since it subscribed gets no state (no frame, no push).
         if (!senderAllowed({ sender: wc, senderFrame: wc.mainFrame ?? null }))
           continue;
-        wc.send(stateChannel(prefix), state);
+        wc.send(stateChannel(prefix), {
+          ...base,
+          nearby: nearbyHost.stateFor(id),
+        });
       } catch {
         subscribers.delete(id);
       }
     }
+  };
+
+  /** One window's state now (a nearby change). `false`: the window fails `allowSender`, so its
+   *  asks must die. A window that never subscribed gets nothing. */
+  const pushOne = (wc: WebContentsLike): boolean => {
+    if (wc.isDestroyed?.()) return false;
+    if (!senderAllowed({ sender: wc, senderFrame: wc.mainFrame ?? null }))
+      return false;
+    if (!subscribers.has(wc.id)) return true;
+    try {
+      wc.send(stateChannel(prefix), currentState(wc.id));
+    } catch {
+      subscribers.delete(wc.id);
+    }
+    return true;
   };
 
   const onLicense = (): void => pushState();
@@ -670,6 +697,19 @@ export function exposePolarisBridge(
   let lastDecide: Parameters<PolarisKeyClient["update"]["decide"]>[0] = {};
 
   const senderAllowed = opts.allowSender ?? defaultAllowSender(opts.appOrigin);
+
+  const nearbyHost = createNearbyHost({
+    identity: client.identity,
+    push: pushOne,
+    pushAll: () => pushState(),
+    signedIn: () => notify("signedIn"),
+    ...(opts.deviceName ? { deviceName: opts.deviceName } : {}),
+  });
+  // A sign-out from anywhere (an `invoke`, a declined nearby account) ends every ask.
+  const onIdentity = (e: { kind: string }): void => {
+    if (e.kind === "signedOut") nearbyHost.dropAll();
+  };
+  client.events.on("identity", onIdentity);
 
   /** Update-install progress for ONE `update.install` call: pushed to the invoking sender only
    *  (never `subscribers`), at most 10 per second, and never after the install settled or its
@@ -1105,10 +1145,10 @@ export function exposePolarisBridge(
     BridgeMethod,
     (event: IpcMainInvokeEventLike, ...args: unknown[]) => Promise<unknown>
   > = {
-    getSyncState: async () => currentState(),
-    refresh: async () => {
+    getSyncState: async (e) => currentState(e.sender.id),
+    refresh: async (e) => {
       await client.sync({ force: true });
-      return currentState();
+      return currentState(e.sender.id);
     },
     beginSignIn: async (_e, begin) => {
       // v4: the renderer's device name wins over the host option, which stays the default.
@@ -1179,6 +1219,7 @@ export function exposePolarisBridge(
       return bridgeActivation(r);
     },
     signOut: async () => {
+      nearbyHost.dropAll();
       await client.identity.signOut();
       pushState();
       return null;
@@ -1225,6 +1266,21 @@ export function exposePolarisBridge(
       await opts.shell.openExternal(u.href);
       return true;
     },
+    // ── v5 (I-47b): automatic and nearby sign-in ───────────────────────────────────────
+    autoSignIn: async (_e, o) => nearbyHost.autoSignIn(o),
+    nearbyStart: async (e, o) => nearbyHost.nearbyStart(e.sender, o),
+    nearbyChoose: async (e, id, ref) =>
+      nearbyHost.nearbyChoose(e.sender, id, ref),
+    nearbyConfirm: async (e, id) => nearbyHost.nearbyConfirm(e.sender, id),
+    nearbyDecline: async (e, id) => nearbyHost.nearbyDecline(e.sender, id),
+    nearbyCancel: async (e, id) => nearbyHost.nearbyCancel(e.sender, id),
+    approverStart: async (e) => nearbyHost.approverStart(e.sender),
+    approverStop: async (e) => nearbyHost.approverStop(e.sender),
+    approverPick: async (e, id, code) =>
+      nearbyHost.approverPick(e.sender, id, code),
+    approverDeny: async (e, id) => nearbyHost.approverDeny(e.sender, id),
+    approverChoose: async (e, id, choice) =>
+      nearbyHost.approverChoose(e.sender, id, choice),
     subscribe: async (event) => {
       const wc = event.sender;
       if (!subscribers.has(wc.id)) {
@@ -1338,6 +1394,8 @@ export function exposePolarisBridge(
         opts.ipcMain.removeHandler(channelOf(prefix, method));
       client.events.off("license", onLicense);
       client.events.off("config", onConfig);
+      client.events.off("identity", onIdentity);
+      nearbyHost.dropAll();
       offPresentation();
       for (const id of [...flows.keys()]) forgetFlow(id);
       subscribers.clear();

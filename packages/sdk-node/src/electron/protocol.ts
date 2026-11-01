@@ -13,14 +13,14 @@
 // config change, and after any verb that changes state.
 
 /** The PolarisBridge protocol revision this host speaks (`@polaris-key/react`'s BRIDGE_VERSION). */
-export const POLARIS_BRIDGE_VERSION = 4;
+export const POLARIS_BRIDGE_VERSION = 5;
 
 /** The default channel prefix and `window` key. */
 export const DEFAULT_BRIDGE_CHANNEL = "polaris-key";
 export const DEFAULT_BRIDGE_KEY = "polarisKey";
 
-/** The bridge methods that cross IPC, each an `ipcMain.handle` channel `<prefix>:<method>`. */
-export const BRIDGE_METHODS = [
+/** The v4 bridge methods that cross IPC, each an `ipcMain.handle` channel `<prefix>:<method>`. */
+const BRIDGE_V4_METHODS = [
   "getSyncState",
   "refresh",
   "beginSignIn",
@@ -33,6 +33,29 @@ export const BRIDGE_METHODS = [
   "openExternal",
   "subscribe",
   "unsubscribe",
+] as const;
+
+/** v5 (I-47b): the automatic and nearby sign-in methods. Permits never cross IPC: the renderer
+ *  holds only an `askId` (128 random bits, single use, bound to the sender's `webContents.id`). */
+export const BRIDGE_V5_METHODS = [
+  "autoSignIn",
+  "nearbyStart",
+  "nearbyChoose",
+  "nearbyConfirm",
+  "nearbyDecline",
+  "nearbyCancel",
+  "approverStart",
+  "approverStop",
+  "approverPick",
+  "approverDeny",
+  "approverChoose",
+] as const;
+export type BridgeV5Method = (typeof BRIDGE_V5_METHODS)[number];
+
+/** Every bridge method that crosses IPC (v4 and v5), each an `ipcMain.handle` channel. */
+export const BRIDGE_METHODS = [
+  ...BRIDGE_V4_METHODS,
+  ...BRIDGE_V5_METHODS,
 ] as const;
 export type BridgeMethod = (typeof BRIDGE_METHODS)[number];
 
