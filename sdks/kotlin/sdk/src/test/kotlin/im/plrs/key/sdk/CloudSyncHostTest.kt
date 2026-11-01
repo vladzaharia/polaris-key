@@ -91,6 +91,7 @@ class CloudSyncHostTest {
 
         /** Starts the host (a signed-out machine sends nothing), then signs in; the caller touches. */
         fun signIn(who: String) = runBlocking {
+            subject = who
             host.start()
             host.withMachine { it.signIn(who) }
         }
@@ -403,8 +404,13 @@ class CloudSyncHostTest {
         r.host.touch()
         // The session's person is Bob while the machine holds Alice's request: nothing is sent.
         assertTrue(r.sent.isEmpty())
-        // An unknown session person does not block.
+        // A session with no subject (an unconfirmed token holds the device) is not the bound person either.
         r.subject = null
+        r.host.withMachine { it.flush() }
+        r.host.touch()
+        assertTrue(r.sent.isEmpty())
+        // The bound person again: the request goes.
+        r.subject = "sub_alice"
         r.host.withMachine { it.flush() }
         r.host.touch()
         assertTrue(r.sent.isNotEmpty())
@@ -412,6 +418,24 @@ class CloudSyncHostTest {
         r.subject = "sub_alice"
         r.answer = {
             r.subject = "sub_bob"
+            SyncResponse(200, j("""{"cursor":50,"serverNow":1760000000000}"""))
+        }
+        r.host.withMachine {
+            it.set("audio.volume", JsonPrimitive(2))
+            it.flush()
+        }
+        r.host.touch()
+        val cursor = r.host.withMachine { (it.journal()["sub_alice"] as JsonObject)["cursor"] }
+        assertFalse(cursor == JsonPrimitive(50))
+        r.host.close()
+    }
+
+    @Test
+    fun aSubjectThatGoesMissingDuringTheRequestDoesNotReadTheAnswer() = runBlocking {
+        val r = Rig()
+        r.signIn("sub_alice")
+        r.answer = {
+            r.subject = null
             SyncResponse(200, j("""{"cursor":50,"serverNow":1760000000000}"""))
         }
         r.host.withMachine {

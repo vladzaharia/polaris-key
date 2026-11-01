@@ -21,11 +21,14 @@ public const val SYNC_MAX_EXCHANGES: Int = 64
 internal class CloudSyncHostExchange(private val st: CloudSyncHostState) {
     private val deps get() = st.deps
 
-    /** Whether the person this request was bound to is known and is not the session's person (A-1). */
+    /**
+     * Whether this request is bound to a person and the session's person is not that one (A-1). A session with
+     * no subject (signed out, or holding an unconfirmed token) is not the bound person.
+     */
     private suspend fun otherPerson(bound: String?): Boolean {
         if (bound == null) return false
         val session = deps.subject()
-        return session != null && session != bound
+        return session == null || session != bound
     }
 
     /** One request: seal it (E2E), send it, open the answer, hand both to the machine. */
