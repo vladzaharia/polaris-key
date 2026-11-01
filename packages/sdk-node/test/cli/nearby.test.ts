@@ -486,7 +486,7 @@ describe("login: nearby first", () => {
         { interactive: true, fastDelay: true, platform: "darwin" },
         async (h) => {
           const done = loginFlow(h.ctx, client);
-          await settle();
+          await until(() => plain(h.screen.text()).includes("Enter continue"));
           h.stdin.press("escape");
           return done;
         },
