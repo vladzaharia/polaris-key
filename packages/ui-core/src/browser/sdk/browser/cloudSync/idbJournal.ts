@@ -45,21 +45,36 @@ export interface MetaStore {
 
 export interface FilesStore {
   readonly journal: JournalStore;
+  /** The chunk cache of no person (the unscoped namespace). */
   readonly cache: ChunkCache;
+  /** The chunk cache of one person: a purge of another person leaves it be. */
+  scoped(scope: string): ChunkCache;
   readonly meta: MetaStore;
   readonly persistence: "durable" | "memory";
   /** Close the connection (the database stays). */
   close(): void;
-  /** Delete everything held (the connection is closed first). */
-  purge(): Promise<void>;
+  /** Delete what is held (the connection is closed first). With a scope, only that person's chunks
+   *  go (and the journal and meta, which no person owns); the database itself goes once no other
+   *  person's chunks are left. Without one, everything goes. */
+  purge(scope?: string): Promise<void>;
 }
+
+/** A chunk row's key: the person's scope, a separator no chunk id holds, the chunk id. */
+const SEP = "\u0000";
+const keyOf = (scope: string, id: string): string => `${scope}${SEP}${id}`;
+const prefixOf = (scope: string): string => `${scope}${SEP}`;
 
 const factoryOf = (idb?: IDBFactory): IDBFactory | undefined =>
   idb ?? (globalThis as { indexedDB?: IDBFactory }).indexedDB ?? undefined;
 
 function memoryStore(budget: number): FilesStore {
   const meta = new Map<string, unknown>();
-  let cache = memoryChunkCache(budget);
+  const caches = new Map<string, ChunkCache>();
+  const scoped = (scope: string): ChunkCache => {
+    let c = caches.get(scope);
+    if (!c) caches.set(scope, (c = memoryChunkCache(budget)));
+    return c;
+  };
   let journal = memoryJournal();
   return {
     persistence: "memory",
@@ -67,8 +82,9 @@ function memoryStore(budget: number): FilesStore {
       return journal;
     },
     get cache() {
-      return cache;
+      return scoped("");
     },
+    scoped,
     meta: {
       get: async (k) => meta.get(k) ?? null,
       put: async (k, v) => {
@@ -76,9 +92,10 @@ function memoryStore(budget: number): FilesStore {
       },
     },
     close() {},
-    async purge() {
+    async purge(scope) {
       meta.clear();
-      cache = memoryChunkCache(budget);
+      if (scope === undefined) caches.clear();
+      else caches.delete(scope);
       journal = memoryJournal();
     },
   };
@@ -172,29 +189,48 @@ export function filesStore(
     const rows = await tx<unknown[]>(CHUNKS, "readonly", (s) => s.getAll());
     return (total = rows.reduce<number>((n, r) => n + sizeOf(r), 0));
   };
-  const cache: ChunkCache = {
+  /** Delete every chunk row of one person, in one transaction. */
+  const dropScope = async (scope: string): Promise<void> => {
+    const d = await open();
+    const prefix = prefixOf(scope);
+    await new Promise<void>((res, rej) => {
+      const t = d.transaction(CHUNKS, "readwrite");
+      const st = t.objectStore(CHUNKS);
+      const req = st.getAllKeys();
+      req.onsuccess = () => {
+        for (const k of req.result)
+          if (typeof k === "string" && k.startsWith(prefix)) st.delete(k);
+      };
+      t.oncomplete = () => res();
+      t.onerror = () => rej(t.error ?? new Error("indexeddb"));
+      t.onabort = () => rej(t.error ?? new Error("indexeddb"));
+    });
+  };
+  const cacheOf = (scope: string): ChunkCache => ({
     async get(id) {
       check(id);
+      const key = keyOf(scope, id);
       const row = await tx<ChunkRow | undefined>(CHUNKS, "readonly", (s) =>
-        s.get(id),
+        s.get(key),
       );
       if (!row || !(row.b instanceof Uint8Array)) return null;
       // Most recently used goes last: touch the stamp, best effort.
       void tx(CHUNKS, "readwrite", (s) =>
-        s.put({ b: row.b, t: Date.now() }, id),
+        s.put({ b: row.b, t: Date.now() }, key),
       ).catch(() => undefined);
       return Uint8Array.from(row.b);
     },
     async put(id, object) {
       check(id);
+      const key = keyOf(scope, id);
       if (object.byteLength > budgetBytes) return;
       let used = await readTotal();
       const had = await tx<ChunkRow | undefined>(CHUNKS, "readonly", (s) =>
-        s.get(id),
+        s.get(key),
       );
       used -= sizeOf(had);
       await tx(CHUNKS, "readwrite", (s) =>
-        s.put({ b: Uint8Array.from(object), t: Date.now() } as ChunkRow, id),
+        s.put({ b: Uint8Array.from(object), t: Date.now() } as ChunkRow, key),
       );
       used += object.byteLength;
       total = used;
@@ -223,7 +259,7 @@ export function filesStore(
       rows.sort((a, b) => a.t - b.t);
       for (const r of rows) {
         if (used <= budgetBytes) break;
-        if (r.id === id) continue;
+        if (r.id === key) continue;
         await tx(CHUNKS, "readwrite", (s) => s.delete(r.id));
         used -= r.n;
       }
@@ -231,17 +267,18 @@ export function filesStore(
     },
     async delete(id) {
       check(id);
+      const key = keyOf(scope, id);
       const had = await tx<ChunkRow | undefined>(CHUNKS, "readonly", (s) =>
-        s.get(id),
+        s.get(key),
       );
-      await tx(CHUNKS, "readwrite", (s) => s.delete(id));
+      await tx(CHUNKS, "readwrite", (s) => s.delete(key));
       if (total !== null) total = Math.max(0, total - sizeOf(had));
     },
     async clear() {
-      await tx(CHUNKS, "readwrite", (s) => s.clear());
-      total = 0;
+      await dropScope(scope);
+      total = null;
     },
-  };
+  });
 
   const meta: MetaStore = {
     async get(key) {
@@ -261,10 +298,24 @@ export function filesStore(
   return {
     persistence: "durable",
     journal,
-    cache,
+    cache: cacheOf(""),
+    scoped: cacheOf,
     meta,
     close,
-    purge: async () => {
+    purge: async (scope) => {
+      if (scope !== undefined) {
+        // Only the leaving person's chunks go; the journal and meta belong to no person.
+        try {
+          await dropScope(scope);
+          await tx(JOURNAL, "readwrite", (s) => s.clear());
+          await tx(META, "readwrite", (s) => s.clear());
+          const left = await tx<number>(CHUNKS, "readonly", (s) => s.count());
+          total = null;
+          if (left > 0) return;
+        } catch {
+          // Fall through to the whole database: a purge never leaves the person's data behind.
+        }
+      }
       close();
       total = null;
       await deleteDb(factory, name);

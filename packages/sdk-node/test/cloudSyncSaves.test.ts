@@ -6,11 +6,18 @@
 // a conflict that reports the server copy, and the journal and chunk cache going with the person.
 
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readdirSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { TransferEvent } from "../src/constants.generated.js";
+import { chunkCachePersonDir } from "../src/cloudSync/chunkCache.js";
 import {
   PRODUCT,
   SUBJECT,
@@ -311,7 +318,7 @@ describe("cloudSync.saves", () => {
       const walk = (d: string): void => {
         for (const e of readdirSync(d, { withFileTypes: true })) {
           if (e.isDirectory()) {
-            if (/^cloud-sync-(transfers|chunks)$/.test(e.name))
+            if (/^cloud-sync-transfers$/.test(e.name))
               found.push(e.name);
             walk(join(d, e.name));
           }
@@ -320,6 +327,15 @@ describe("cloudSync.saves", () => {
       walk(stateDir);
       return found;
     };
+    // Two people on one device: each has a chunk cache directory.
+    const state = (client as unknown as { core: { dirs: { state: string } } })
+      .core.dirs.state;
+    const mine = chunkCachePersonDir(state, SUBJECT);
+    const theirs = chunkCachePersonDir(state, "someone-else");
+    for (const d of [mine, theirs]) {
+      mkdirSync(join(d, "c"), { recursive: true });
+      writeFileSync(join(d, "c", "x"), "x");
+    }
     // A parked transfer: the journal directory exists until the person goes.
     const t = await client.cloudSync.saves.write("slot-1", bytes(100), {});
     await t.done;
@@ -328,6 +344,9 @@ describe("cloudSync.saves", () => {
       client as unknown as { cloudSyncApi: { beforeSignOut(): Promise<void> } }
     ).cloudSyncApi.beforeSignOut();
     expect(dirs()).toEqual([]);
+    // Only the leaving person's chunks go; the other person's stay.
+    expect(existsSync(mine)).toBe(false);
+    expect(existsSync(join(theirs, "c", "x"))).toBe(true);
     expect(existsSync(stateDir)).toBe(true);
     client.close();
   });
