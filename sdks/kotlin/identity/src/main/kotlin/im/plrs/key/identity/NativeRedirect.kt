@@ -97,6 +97,8 @@ public class NativePending internal constructor(
     internal val endpoints: NativeEndpoints,
     /** The push carried `license_choice=app`: the token endpoint may answer `choose`. */
     internal val licenseChoice: Boolean = false,
+    /** The push carried `key_return=allow`: the token endpoint may answer [TokenAnswer.Activated]. */
+    internal val keyReturn: Boolean = false,
 ) {
     public val clientId: String get() = endpoints.clientId
     public val issuer: String get() = endpoints.issuer
@@ -123,6 +125,8 @@ public class PushOptions @JvmOverloads constructor(
     public val scope: List<String>? = null,
     public val hints: PushHints = PushHints(),
     public val licenseChoiceApp: Boolean = false,
+    /** Sends `key_return=allow` (after `license_choice`, before `device_name`); off by default. See [SignInOptions.keyReturn]. */
+    public val keyReturn: Boolean = false,
 )
 
 /** The card's prefill (§12.4): verifies nothing. */
@@ -293,7 +297,7 @@ private object PushRules {
 
     /**
      * Member order: `response_type client_id redirect_uri state code_challenge code_challenge_method [scope]
-     * [login_hint] [name_hint] [purpose] [license_choice] [device_name] [return_uri]`.
+     * [login_hint] [name_hint] [purpose] [license_choice] [key_return] [device_name] [return_uri]`.
      */
     fun form(endpoints: NativeEndpoints, redirectUri: String, state: String, verifier: String, options: PushOptions): String =
         IdentityRedirect.formBody(
@@ -304,6 +308,7 @@ private object PushRules {
                 optional("login_hint", options.hints.loginHint), optional("name_hint", options.hints.nameHint),
                 optional("purpose", options.hints.purpose),
                 ("license_choice" to "app").takeIf { options.licenseChoiceApp },
+                ("key_return" to IdentityRedirect.KEY_RETURN_ALLOW).takeIf { options.keyReturn },
                 optional("device_name", options.deviceName), optional("return_uri", options.returnUri),
             ),
         )
@@ -445,7 +450,7 @@ public object NativeRedirect {
             endpoints.requestEndpoint,
             IdentityRedirect.TOKEN_CONTENT_TYPE,
             PushRules.form(endpoints, redirectUri, state, verifier, options),
-            NativePending(redirectClass, redirectUri, state, verifier, endpoints, options.licenseChoiceApp),
+            NativePending(redirectClass, redirectUri, state, verifier, endpoints, options.licenseChoiceApp, options.keyReturn),
         )
     }
 

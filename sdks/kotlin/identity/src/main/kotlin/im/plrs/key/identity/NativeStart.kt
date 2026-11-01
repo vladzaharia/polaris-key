@@ -85,6 +85,7 @@ private suspend fun IdentityClient.pushOptions(facts: NativeFacts, options: Sign
     scope = options.scope,
     hints = PushHints(options.loginHint, options.nameHint, options.purpose?.wire),
     licenseChoiceApp = options.licenseChoice == "app" && facts.offer.choiceAvailable,
+    keyReturn = options.keyReturn,
 )
 
 /** Bind (a loopback), push, and build the flow; the listener is not serving yet. */

@@ -195,10 +195,11 @@ public class PolarisSignInState(
             }
         }
         val settled = try {
+            // The kit never asks for a key return, so `Activated` is not expected here (the kit's native redirect slice renders it).
             when (actions.wait(shown)) {
                 is SignInOutcome.SignedIn -> PolarisSignInUi.Done
                 SignInOutcome.Expired, SignInOutcome.Cancelled -> PolarisSignInUi.Expired
-                is SignInOutcome.Pending, is SignInOutcome.Choose -> PolarisSignInUi.Failed
+                is SignInOutcome.Pending, is SignInOutcome.Choose, is SignInOutcome.Activated -> PolarisSignInUi.Failed
             }
         } catch (e: CancellationException) {
             throw e

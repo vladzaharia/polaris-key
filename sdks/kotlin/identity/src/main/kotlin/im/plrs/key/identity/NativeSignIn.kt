@@ -245,6 +245,7 @@ public class ReplayPending(
     public val codeVerifier: String,
     public val issuer: String,
     public val licenseChoice: Boolean,
+    public val keyReturn: Boolean = false,
 )
 
 /**
@@ -257,7 +258,15 @@ public suspend fun IdentityClient.replayNativeCallback(recorded: ReplayPending, 
     val cls = NativeRedirect.classify(recorded.redirectUri) ?: throw IdentityRedirect.invalid("the recorded callback is at no native redirect URI.")
     val base = core.endpoints.url("identity")
     val endpoints = NativeEndpoints("$base/request", "$base/authorize", "$base/token", recorded.issuer, core.product)
-    val pending = NativePending(cls, recorded.redirectUri, recorded.state, recorded.codeVerifier, endpoints, recorded.licenseChoice)
+    val pending = NativePending(
+        cls,
+        recorded.redirectUri,
+        recorded.state,
+        recorded.codeVerifier,
+        endpoints,
+        recorded.licenseChoice,
+        recorded.keyReturn,
+    )
     val links = NativeLinks("$base/authorize", Long.MAX_VALUE, null, null)
     return NativeFlow(this, pending, links, null, null).handleRedirect(callbackUrl)
 }
@@ -273,5 +282,5 @@ public var IdentityClient.nativeListenerFactory: (() -> NativeLoopbackListener)?
 /** Redeem a native code at the token endpoint from the pushing device. The label went with the push; the token request does not repeat it. */
 internal suspend fun IdentityClient.redeemNative(pending: NativePending, code: String): SignInOutcome {
     val form = IdentityRedirect.tokenForm(pending.clientId, pending.codeVerifier, pending.redirectUri, code, null)
-    return redeemForm(pending.tokenEndpoint, form, pending.licenseChoice)
+    return redeemForm(pending.tokenEndpoint, form, pending.licenseChoice, pending.keyReturn)
 }

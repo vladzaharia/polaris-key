@@ -85,6 +85,22 @@ public sealed interface CallbackResult {
     public data class Failed(val reason: CallbackFailure, val error: String? = null) : CallbackResult
 }
 
+/** A licence's key-entry count (`used` may exceed `limit`). */
+public data class KeyReturnEntries(val used: Long, val limit: Long)
+
+/**
+ * The flat members a refusal of the token request can carry beside `error` (`device_limit`, `key_entry_limit`,
+ * `license_owned`), each present only when the body had it with the right type. [manageUrl] and [signInUrl] are
+ * links a client may show: absolute `https`, no userinfo; anything else is dropped.
+ */
+public data class RefusalDetails(
+    val limit: Long? = null,
+    val deviceCount: Long? = null,
+    val manageUrl: String? = null,
+    val keyEntries: KeyReturnEntries? = null,
+    val signInUrl: String? = null,
+)
+
 public sealed interface TokenAnswer {
     /** `200` with an `access_token`: the activation response under its OAuth names. */
     public data class Token(
@@ -104,10 +120,34 @@ public sealed interface TokenAnswer {
     }
 
     /**
-     * The Worker refused: [error] is its flat OAuth / Polaris code (`invalid_grant`, `rate_limited`, ...),
-     * [retryAfterSeconds] when it named one. A 5xx or a body with no `error` is `server_error`.
+     * `200` with `via: "key"`, read only when the request opted in to a key return (WIRE-CONTRACT-V5 §12.5 rule 3): the
+     * device is bound on the key's licence with no account, so [subject] is null (or a pairwise subject string a client
+     * still accepts), [license] is never null and [keyEntries] is the licence's count. The scope is always empty.
      */
-    public data class Refused(val error: String, val status: Int, val retryAfterSeconds: Int? = null) : TokenAnswer
+    public data class Activated(
+        val accessToken: String,
+        val subject: String?,
+        val schemaVersion: Long,
+        val device: JsonObject,
+        val license: JsonObject,
+        val keyEntries: KeyReturnEntries,
+    ) : TokenAnswer {
+        override fun toString(): String = "Activated(accessToken=[redacted])"
+    }
+
+    /**
+     * The Worker refused: [error] is its flat OAuth / Polaris code (`invalid_grant`, `rate_limited`, ...),
+     * [retryAfterSeconds] when it named one. A 5xx or a body with no `error` is `server_error`. [details] holds the
+     * flat members of `device_limit`, `key_entry_limit` and `license_owned`, each only when the body carried it.
+     */
+    public data class Refused(
+        val error: String,
+        val status: Int,
+        val retryAfterSeconds: Int? = null,
+        val details: RefusalDetails? = null,
+    ) : TokenAnswer {
+        override fun toString(): String = "Refused(error=$error, status=$status, retryAfterSeconds=$retryAfterSeconds, details=$details)"
+    }
 
     /** A `200` that is neither of the above, or lacks a member the call needs. */
     public data object Malformed : TokenAnswer
@@ -129,6 +169,8 @@ public class RedirectPending internal constructor(
     public val tokenEndpoint: String,
     /** The authorize request carried `license_choice=app`: the token endpoint may answer `choose`. */
     internal val licenseChoice: Boolean = false,
+    /** The authorize request carried `key_return=allow`: the token endpoint may answer [TokenAnswer.Activated]. */
+    internal val keyReturn: Boolean = false,
 ) {
     override fun toString(): String = "RedirectPending(authorizeUrl=$authorizeUrl, codeVerifier=[redacted])"
 }
@@ -148,7 +190,11 @@ public object IdentityRedirect {
     /** The `Content-Type` of the token request. */
     public const val TOKEN_CONTENT_TYPE: String = "application/x-www-form-urlencoded"
 
+    /** The value of the `key_return` authorize parameter (§12.4): the app accepts a key return. */
+    public const val KEY_RETURN_ALLOW: String = "allow"
+
     private val GRANT = Regex("sg_[A-Za-z0-9_-]{43}")
+    private val SUBJECT = Regex("ps_[A-Za-z0-9_-]{22}")
     private val secureRandom = SecureRandom()
 
     private fun systemRandom(length: Int): ByteArray = ByteArray(length).also { secureRandom.nextBytes(it) }
@@ -208,10 +254,11 @@ public object IdentityRedirect {
     /**
      * Build the authorize request. Query order is fixed so every SDK emits the same bytes:
      * `response_type client_id redirect_uri state code_challenge code_challenge_method scope [login_hint]
-     * [name_hint] [purpose] [license_choice]`, each value form-encoded (space as `+`). A hint that is empty
+     * [name_hint] [purpose] [license_choice] [key_return]`, each value form-encoded (space as `+`). A hint that is empty
      * is not sent; a hint is sent verbatim (the Worker normalises, and drops a login hint that is not an
      * email). [licenseChoice] `"app"` is sent only when [choiceAvailable] (discovery has the `choice*`
-     * endpoints). [state] and [codeVerifier] are test hooks. Throws `invalid-argument`.
+     * endpoints). [keyReturn] sends `key_return=allow` last (default off); see [SignInOptions.keyReturn]. [state] and
+     * [codeVerifier] are test hooks. Throws `invalid-argument`.
      */
     @JvmOverloads
     public fun start(
@@ -229,6 +276,7 @@ public object IdentityRedirect {
         random: RandomBytes? = null,
         state: String? = null,
         codeVerifier: String? = null,
+        keyReturn: Boolean = false,
     ): RedirectPending {
         if (!isRedirectUri(redirectUri)) throw invalid("redirectUri must be an absolute https URL with no fragment.")
         for ((name, value) in listOf("authorize" to authorizeEndpoint, "token" to tokenEndpoint)) {
@@ -253,10 +301,11 @@ public object IdentityRedirect {
         if (!nameHint.isNullOrEmpty()) pairs += "name_hint" to nameHint
         if (!purpose.isNullOrEmpty()) pairs += "purpose" to purpose
         if (licenseChoice == "app" && choiceAvailable) pairs += "license_choice" to "app"
+        if (keyReturn) pairs += "key_return" to KEY_RETURN_ALLOW
         val joiner = if (authorizeEndpoint.contains('?')) "&" else "?"
         return RedirectPending(
             "$authorizeEndpoint$joiner${formBody(pairs)}", theState, verifier, redirectUri, clientId, issuer, tokenEndpoint,
-            licenseChoice == "app" && choiceAvailable,
+            licenseChoice == "app" && choiceAvailable, keyReturn,
         )
     }
 
@@ -365,12 +414,37 @@ public object IdentityRedirect {
         return formBody(pairs)
     }
 
-    /** Read the token endpoint's answer. `choose` is decided by the `status` member alone, never by the absence of `access_token`. */
-    public fun parseTokenAnswer(status: Int, body: JsonElement?): TokenAnswer {
+    private fun count(v: JsonElement?): Long? = v.longValue?.takeIf { it >= 0 }
+
+    private fun entriesOf(v: JsonElement?): KeyReturnEntries? {
+        val m = v.objectValue ?: return null
+        val used = count(m["used"])
+        val limit = count(m["limit"])
+        return if (used != null && limit != null) KeyReturnEntries(used, limit) else null
+    }
+
+    private fun detailsOf(o: JsonObject): RefusalDetails? {
+        val d = RefusalDetails(
+            limit = count(o["limit"]), deviceCount = count(o["deviceCount"]),
+            manageUrl = ManageLink.read(o["manageUrl"].stringValue), keyEntries = entriesOf(o["keyEntries"]),
+            signInUrl = ManageLink.read(o["signInUrl"].stringValue),
+        )
+        return d.takeIf { it != RefusalDetails() }
+    }
+
+    /**
+     * Read the token endpoint's answer. `choose` is decided by the `status` member alone, never by the absence of
+     * `access_token`. A `200` with `via: "key"` is [TokenAnswer.Activated] only when the caller opted in ([keyReturn],
+     * from the pending request); without the opt-in, or with any other `via`, it is [TokenAnswer.Malformed]. A key
+     * return is malformed unless `scope` is `""`, `license` is an object, `keyEntries` is `{used, limit}` of
+     * non-negative integers and `subject` is a pairwise subject or null.
+     */
+    @JvmOverloads
+    public fun parseTokenAnswer(status: Int, body: JsonElement?, keyReturn: Boolean = false): TokenAnswer {
         val o = body.objectValue
         if (status != 200) {
             val error = o?.get("error").stringValue?.takeIf { it.isNotEmpty() } ?: "server_error"
-            return TokenAnswer.Refused(error, status, wholeSeconds(o?.get("retryAfter"))?.toInt())
+            return TokenAnswer.Refused(error, status, wholeSeconds(o?.get("retryAfter"))?.toInt(), o?.let(::detailsOf))
         }
         if (o == null) return TokenAnswer.Malformed
         if (o["status"].stringValue == "choose") {
@@ -380,6 +454,7 @@ public object IdentityRedirect {
             if (grant == null || !GRANT.matches(grant) || expiresIn == null || choices == null) return TokenAnswer.Malformed
             return TokenAnswer.Choose(grant, expiresIn.toDouble(), choices)
         }
+        if (o.containsKey("via")) return keyAnswer(o, keyReturn)
         val token = o["access_token"].stringValue?.takeIf { it.isNotEmpty() }
         val scope = o["scope"].stringValue
         val subject = o["subject"].stringValue?.takeIf { it.isNotEmpty() }
@@ -392,6 +467,22 @@ public object IdentityRedirect {
             else -> return TokenAnswer.Malformed
         }
         return TokenAnswer.Token(token, scope, subject, o["schemaVersion"].longValue ?: 1L, device, license)
+    }
+
+    private fun keyAnswer(o: JsonObject, keyReturn: Boolean): TokenAnswer {
+        if (o["via"].stringValue != "key" || !keyReturn) return TokenAnswer.Malformed
+        val token = o["access_token"].stringValue?.takeIf { it.isNotEmpty() }
+        val subjectMember = o["subject"]
+        val subject: String? = when {
+            subjectMember == null -> return TokenAnswer.Malformed
+            subjectMember is JsonNull -> null
+            else -> subjectMember.stringValue?.takeIf { SUBJECT.matches(it) } ?: return TokenAnswer.Malformed
+        }
+        val device = o["device"].objectValue
+        val license = o["license"].objectValue
+        val entries = entriesOf(o["keyEntries"])
+        if (token == null || o["scope"].stringValue != "" || device == null || license == null || entries == null) return TokenAnswer.Malformed
+        return TokenAnswer.Activated(token, subject, o["schemaVersion"].longValue ?: 1L, device, license, entries)
     }
 }
 
@@ -456,7 +547,8 @@ internal suspend fun IdentityClient.startRedirect(options: SignInOptions): Redir
     return IdentityRedirect.start(
         authorizeEndpoint = authorize, tokenEndpoint = token, issuer = issuer, clientId = core.product,
         redirectUri = redirectUri, scope = options.scope, loginHint = options.loginHint, nameHint = options.nameHint,
-        purpose = options.purpose?.wire, licenseChoice = options.licenseChoice, choiceAvailable = choiceAvailable, state = entropy?.state, codeVerifier = entropy?.codeVerifier,
+        purpose = options.purpose?.wire, licenseChoice = options.licenseChoice, choiceAvailable = choiceAvailable,
+        state = entropy?.state, codeVerifier = entropy?.codeVerifier, keyReturn = options.keyReturn,
     )
 }
 
@@ -467,11 +559,16 @@ internal suspend fun IdentityClient.startRedirect(options: SignInOptions): Redir
 internal suspend fun IdentityClient.redeemRedirect(pending: RedirectPending, code: String, deviceName: String?): SignInOutcome {
     val label = core.deviceLabel(deviceName)
     val form = IdentityRedirect.tokenForm(pending.clientId, pending.codeVerifier, pending.redirectUri, code, label)
-    return redeemForm(pending.tokenEndpoint, form, pending.licenseChoice)
+    return redeemForm(pending.tokenEndpoint, form, pending.licenseChoice, pending.keyReturn)
 }
 
 /** POST a token form at [tokenEndpoint] and settle the answer: store a token, or hand the choice on; a refusal is a [SignInError]. */
-internal suspend fun IdentityClient.redeemForm(tokenEndpoint: String, form: String, licenseChoice: Boolean): SignInOutcome {
+internal suspend fun IdentityClient.redeemForm(
+    tokenEndpoint: String,
+    form: String,
+    licenseChoice: Boolean,
+    keyReturn: Boolean = false,
+): SignInOutcome {
     val response: PolarisResponse = try {
         core.request(
             tokenEndpoint, method = "POST", headers = mapOf("content-type" to IdentityRedirect.TOKEN_CONTENT_TYPE),
@@ -486,13 +583,15 @@ internal suspend fun IdentityClient.redeemForm(tokenEndpoint: String, form: Stri
         throw PolarisException(ErrorCode.networkError, e.message ?: "network error", cause = e)
     }
     val body = JsonText.parseOrNull(response.text)
-    return when (val answer = IdentityRedirect.parseTokenAnswer(response.status, body)) {
+    return when (val answer = IdentityRedirect.parseTokenAnswer(response.status, body, keyReturn)) {
         TokenAnswer.Malformed -> throw PolarisException(ErrorCode.badResponse, "the token endpoint answered without a complete sign-in.")
         is TokenAnswer.Refused -> {
             val retry = answer.retryAfterSeconds ?: response.header("retry-after")?.trim()?.toIntOrNull()
             throw SignInError(
                 if (answer.status >= 500) ErrorCode.serverError else answer.error,
                 "the token endpoint refused the sign-in (${answer.error}).", retry,
+                // A 5xx carries no details: they belong to the refusals `license/activate` also gives.
+                details = answer.details.takeIf { answer.status < 500 },
             )
         }
         // Only `license_choice=app` makes the Worker answer this; nothing is stored and `identity.choice.*` finishes it.
@@ -502,6 +601,15 @@ internal suspend fun IdentityClient.redeemForm(tokenEndpoint: String, form: Stri
             } else {
                 throw PolarisException(ErrorCode.badResponse, "the token endpoint asked for a licence choice this sign-in did not request.")
             }
+        // A key return: a key activation, never a sign-in. The token is stored as `activate` (a key's provenance, so the
+        // automatic sign-in's first rung does not count it) and the stored subject is set to the answered value, so a
+        // null one clears whatever account the device held. The identity event is the subject change; no sign-in event.
+        is TokenAnswer.Activated -> {
+            if (core.storeSignIn(answer.accessToken, answer.subject, TokenSource.activate, personInitiated = true)) onSubject(answer.subject)
+            afterSignIn()
+            if (redirectAcquisitionSyncValue) onAcquired?.invoke()
+            SignInOutcome.Activated(answer.license["id"].stringValue, answer.keyEntries, answer.subject)
+        }
         is TokenAnswer.Token -> {
             if (core.storeSignIn(answer.accessToken, answer.subject, TokenSource.signin, personInitiated = true)) onSubject(answer.subject)
             afterSignIn()
