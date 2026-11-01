@@ -4,7 +4,7 @@ extends RefCounted
 # "resources still in use at exit" when a debug or editor build quits with a reference cycle alive;
 # a game that boots Polaris Key must not cause either. tests/exit_probe.gd runs the SDK as a game
 # does (configure, start, the drop-in boot with its gate and a persistent gate, an update prompt,
-# the settings panel, a sign-in dialog, a sign-out) and quits; this suite runs it as a child
+# the settings panel, a sign-in dialog, a sign-out, Cloud Connect started and stopped) and quits; this suite runs it as a child
 # process of this editor and requires a clean exit. Not run on an exported template (a template
 # ignores --script), where the probe cannot start.
 

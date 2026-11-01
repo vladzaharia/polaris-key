@@ -172,6 +172,10 @@ func flush() -> PKeyResult:
 # ── The saves ─────────────────────────────────────────────────────────────────────────────────
 
 
+func _device_label() -> String:
+	return PKeyDeviceLabel.resolve("", _core.options) if _core != null else ""
+
+
 func _build_saves() -> void:
 	var port := _SavesPort.new()
 	port.set_api(self)
@@ -195,7 +199,7 @@ func _build_saves() -> void:
 		"format_version": o["save_format_version"],
 		"emit": port.emit_transfer,
 		"purge_files": port.purge_files,
-		"device_label": func() -> String: return PKeyDeviceLabel.resolve("", _core.options) if _core != null else "",
+		"device_label": Callable(self, "_device_label"),
 	})
 
 

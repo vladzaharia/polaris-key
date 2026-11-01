@@ -102,22 +102,13 @@ func _init(core: PKeyCore, client: PKeyConnectClient, options := {}) -> void:
 	nearby = PKeyCloudNearby.new(core, client, near)
 	_client.on_left = Callable(self, "_forget_left")
 	var root := str(options.get("store_root", PKeyOptions.DEFAULT_STORE_ROOT))
+	# Callables by method name: a lambda that names this object would hold it, and the hub it is given
+	# is held by it in turn.
 	transfer = PKeyCloudTransfer.new({
-		"open_link": func(id: String) -> PKeyResult:
-			return await links.open_link(id),
-		"links": func() -> Array:
-			var ids: Array = []
-			for rec: Dictionary in _link_records():
-				ids.append(str(rec["id"]))
-			return ids,
-		"link_record": func(id: String) -> Dictionary:
-			for rec: Dictionary in _link_records():
-				if str(rec["id"]) == id:
-					return rec
-			return {},
-		"store_dir": func() -> String:
-			var c := _core()
-			return PKeyTransferStore.default_directory(root, c.storage_namespace) if c != null and c.storage_namespace != "" else "",
+		"open_link": Callable(self, "_open_link"),
+		"links": Callable(self, "_link_ids"),
+		"link_record": Callable(self, "_link_record"),
+		"store_dir": Callable(self, "_transfer_dir").bind(root),
 		"open_peer": Callable(self, "open"),
 		"offload": Callable(self, "_offload"),
 		"web": _on_web(),
@@ -290,6 +281,29 @@ func _offload(work: Callable) -> Variant:
 	if pump != null:
 		return await pump.offload(work)
 	return work.call()
+
+
+func _open_link(id: String) -> PKeyResult:
+	return await links.open_link(id)
+
+
+func _link_ids() -> Array:
+	var ids: Array = []
+	for rec: Dictionary in _link_records():
+		ids.append(str(rec["id"]))
+	return ids
+
+
+func _link_record(id: String) -> Dictionary:
+	for rec: Dictionary in _link_records():
+		if str(rec["id"]) == id:
+			return rec
+	return {}
+
+
+func _transfer_dir(root: String) -> String:
+	var c := _core()
+	return PKeyTransferStore.default_directory(root, c.storage_namespace) if c != null and c.storage_namespace != "" else ""
 
 
 func _link_records() -> Array:
