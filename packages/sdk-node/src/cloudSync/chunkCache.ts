@@ -47,8 +47,10 @@ export const chunkCacheDir = (
   join(stateDir, CLOUD_SYNC_CHUNKS_DIR, hash(subject), hash(collection));
 
 /** `<stateDir>/cloud-sync-chunks/<hash(subject)>`: everything one person cached. */
-export const chunkCachePersonDir = (stateDir: string, subject: string): string =>
-  join(stateDir, CLOUD_SYNC_CHUNKS_DIR, hash(subject));
+export const chunkCachePersonDir = (
+  stateDir: string,
+  subject: string,
+): string => join(stateDir, CLOUD_SYNC_CHUNKS_DIR, hash(subject));
 
 interface Entry {
   size: number;

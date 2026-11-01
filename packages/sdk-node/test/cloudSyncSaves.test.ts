@@ -318,8 +318,7 @@ describe("cloudSync.saves", () => {
       const walk = (d: string): void => {
         for (const e of readdirSync(d, { withFileTypes: true })) {
           if (e.isDirectory()) {
-            if (/^cloud-sync-transfers$/.test(e.name))
-              found.push(e.name);
+            if (/^cloud-sync-transfers$/.test(e.name)) found.push(e.name);
             walk(join(d, e.name));
           }
         }
