@@ -1396,6 +1396,9 @@ export const KIT_COPY: Readonly<
     "core.codes.redirect_uri_mismatch.title": "Sign-in can't return to the app",
     "core.codes.redirect_uri_mismatch.message":
       "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.",
+    "core.codes.invalid_request_uri.title": "Sign-in link expired",
+    "core.codes.invalid_request_uri.message":
+      "This sign-in link has expired. Go back to {product} and start again.",
     "core.codes.license_choice_required.title": "Choose a license",
     "core.codes.license_choice_required.message":
       "Choose which license this device uses, then continue.",
@@ -1627,6 +1630,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-expired.title": "Code expired",
     "core.codes.sign-in-expired.message":
       "The code expired before sign-in finished. Start again.",
+    "core.codes.redirect-unavailable.title": "Browser sign-in unavailable",
+    "core.codes.redirect-unavailable.message":
+      "Sign-in could not open a browser here. Use a code instead.",
     "core.codes.sign-in-denied.title": "Sign-in declined",
     "core.codes.sign-in-denied.message": "Sign-in was declined. Start again.",
     "core.codes.sign-in-unavailable.title": "Sign-in unavailable",
@@ -3462,6 +3468,9 @@ export const KIT_COPY: Readonly<
       "Anmeldung kann nicht zur App zurückkehren",
     "core.codes.redirect_uri_mismatch.message":
       "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler.",
+    "core.codes.invalid_request_uri.title": "Anmeldelink abgelaufen",
+    "core.codes.invalid_request_uri.message":
+      "Dieser Anmeldelink ist abgelaufen. Gehen Sie zurück zu {product} und beginnen Sie erneut.",
     "core.codes.license_choice_required.title": "Lizenz wählen",
     "core.codes.license_choice_required.message":
       "Wählen Sie, welche Lizenz dieses Gerät verwendet, und fahren Sie dann fort.",
@@ -3705,6 +3714,10 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-expired.title": "Code abgelaufen",
     "core.codes.sign-in-expired.message":
       "Der Code ist abgelaufen, bevor die Anmeldung abgeschlossen wurde. Beginnen Sie erneut.",
+    "core.codes.redirect-unavailable.title":
+      "Anmeldung im Browser nicht möglich",
+    "core.codes.redirect-unavailable.message":
+      "Die Anmeldung konnte hier keinen Browser öffnen. Verwenden Sie stattdessen einen Code.",
     "core.codes.sign-in-denied.title": "Anmeldung abgelehnt",
     "core.codes.sign-in-denied.message":
       "Die Anmeldung wurde abgelehnt. Beginnen Sie erneut.",
@@ -5534,6 +5547,9 @@ export const KIT_COPY: Readonly<
       "La connexion ne peut pas revenir à l’app",
     "core.codes.redirect_uri_mismatch.message":
       "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur.",
+    "core.codes.invalid_request_uri.title": "Lien de connexion expiré",
+    "core.codes.invalid_request_uri.message":
+      "Ce lien de connexion a expiré. Retournez dans {product} et recommencez.",
     "core.codes.license_choice_required.title": "Choisissez une licence",
     "core.codes.license_choice_required.message":
       "Choisissez la licence que cet appareil utilise, puis continuez.",
@@ -5777,6 +5793,10 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-expired.title": "Code expiré",
     "core.codes.sign-in-expired.message":
       "Le code a expiré avant la fin de la connexion. Recommencez.",
+    "core.codes.redirect-unavailable.title":
+      "Connexion par navigateur indisponible",
+    "core.codes.redirect-unavailable.message":
+      "La connexion n'a pas pu ouvrir de navigateur ici. Utilisez un code à la place.",
     "core.codes.sign-in-denied.title": "Connexion refusée",
     "core.codes.sign-in-denied.message":
       "La connexion a été refusée. Recommencez.",
@@ -7588,6 +7608,10 @@ export const KIT_COPY: Readonly<
       "El inicio de sesión no puede volver a la app",
     "core.codes.redirect_uri_mismatch.message":
       "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador.",
+    "core.codes.invalid_request_uri.title":
+      "El enlace de inicio de sesión caducó",
+    "core.codes.invalid_request_uri.message":
+      "Este enlace de inicio de sesión caducó. Vuelve a {product} y empieza de nuevo.",
     "core.codes.license_choice_required.title": "Elige una licencia",
     "core.codes.license_choice_required.message":
       "Elige qué licencia usa este dispositivo y continúa.",
@@ -7832,6 +7856,10 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-expired.title": "Código caducado",
     "core.codes.sign-in-expired.message":
       "El código caducó antes de terminar el inicio de sesión. Vuelve a empezar.",
+    "core.codes.redirect-unavailable.title":
+      "Inicio de sesión en el navegador no disponible",
+    "core.codes.redirect-unavailable.message":
+      "El inicio de sesión no pudo abrir un navegador aquí. Usa un código en su lugar.",
     "core.codes.sign-in-denied.title": "Inicio de sesión rechazado",
     "core.codes.sign-in-denied.message":
       "Se rechazó el inicio de sesión. Vuelve a empezar.",
@@ -9623,6 +9651,9 @@ export const KIT_COPY: Readonly<
     "core.codes.redirect_uri_mismatch.title": "Não foi possível voltar ao app",
     "core.codes.redirect_uri_mismatch.message":
       "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor.",
+    "core.codes.invalid_request_uri.title": "Link de login expirado",
+    "core.codes.invalid_request_uri.message":
+      "Este link de login expirou. Volte para {product} e comece de novo.",
     "core.codes.license_choice_required.title": "Escolha uma licença",
     "core.codes.license_choice_required.message":
       "Escolha qual licença este dispositivo usa e continue.",
@@ -9858,6 +9889,10 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-expired.title": "Código expirado",
     "core.codes.sign-in-expired.message":
       "O código expirou antes de o acesso ser concluído. Comece de novo.",
+    "core.codes.redirect-unavailable.title":
+      "Login pelo navegador indisponível",
+    "core.codes.redirect-unavailable.message":
+      "O login não conseguiu abrir um navegador aqui. Use um código.",
     "core.codes.sign-in-denied.title": "Acesso recusado",
     "core.codes.sign-in-denied.message":
       "O acesso foi recusado. Comece de novo.",
@@ -11652,6 +11687,9 @@ export const KIT_COPY: Readonly<
       "L'accesso non può tornare all'app",
     "core.codes.redirect_uri_mismatch.message":
       "L'accesso di questa app non è configurato correttamente, quindi si è fermato qui per proteggere il tuo account. Avvisa il suo sviluppatore.",
+    "core.codes.invalid_request_uri.title": "Link di accesso scaduto",
+    "core.codes.invalid_request_uri.message":
+      "Questo link di accesso è scaduto. Torna a {product} e ricomincia.",
     "core.codes.license_choice_required.title": "Scegli una licenza",
     "core.codes.license_choice_required.message":
       "Scegli quale licenza deve usare questo dispositivo, poi continua.",
@@ -11893,6 +11931,10 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-expired.title": "Codice scaduto",
     "core.codes.sign-in-expired.message":
       "Il codice è scaduto prima del completamento dell'accesso. Ricomincia.",
+    "core.codes.redirect-unavailable.title":
+      "Accesso dal browser non disponibile",
+    "core.codes.redirect-unavailable.message":
+      "L'accesso non ha potuto aprire un browser qui. Usa invece un codice.",
     "core.codes.sign-in-denied.title": "Accesso rifiutato",
     "core.codes.sign-in-denied.message":
       "L'accesso è stato rifiutato. Ricomincia.",
@@ -13703,6 +13745,9 @@ export const KIT_COPY: Readonly<
       "サインイン後にアプリへ戻れません",
     "core.codes.redirect_uri_mismatch.message":
       "このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。",
+    "core.codes.invalid_request_uri.title": "サインインリンクの有効期限切れ",
+    "core.codes.invalid_request_uri.message":
+      "このサインインリンクは有効期限が切れました。{product} に戻って、もう一度始めてください。",
     "core.codes.license_choice_required.title": "ライセンスを選択",
     "core.codes.license_choice_required.message":
       "このデバイスで使うライセンスを選んでから続行してください。",
@@ -13948,6 +13993,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-expired.title": "コードの有効期限切れ",
     "core.codes.sign-in-expired.message":
       "サインインが完了する前にコードの有効期限が切れました。もう一度やり直してください。",
+    "core.codes.redirect-unavailable.title": "ブラウザでサインインできません",
+    "core.codes.redirect-unavailable.message":
+      "ここではブラウザを開けませんでした。代わりにコードを使ってください。",
     "core.codes.sign-in-denied.title": "サインインが拒否されました",
     "core.codes.sign-in-denied.message":
       "サインインは拒否されました。もう一度やり直してください。",
@@ -15690,6 +15738,9 @@ export const KIT_COPY: Readonly<
       "로그인 후 앱으로 돌아갈 수 없어요",
     "core.codes.redirect_uri_mismatch.message":
       "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요.",
+    "core.codes.invalid_request_uri.title": "로그인 링크 만료",
+    "core.codes.invalid_request_uri.message":
+      "이 로그인 링크가 만료되었습니다. {product}(으)로 돌아가 다시 시작하세요.",
     "core.codes.license_choice_required.title": "라이선스 선택",
     "core.codes.license_choice_required.message":
       "이 기기에서 사용할 라이선스를 선택한 다음 계속하세요.",
@@ -15922,6 +15973,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-expired.title": "코드 만료됨",
     "core.codes.sign-in-expired.message":
       "로그인이 완료되기 전에 코드가 만료됐어요. 다시 시작하세요.",
+    "core.codes.redirect-unavailable.title": "브라우저 로그인을 사용할 수 없음",
+    "core.codes.redirect-unavailable.message":
+      "여기서는 브라우저를 열 수 없습니다. 대신 코드를 사용하세요.",
     "core.codes.sign-in-denied.title": "로그인 거부됨",
     "core.codes.sign-in-denied.message":
       "로그인이 거부됐어요. 다시 시작하세요.",
@@ -17546,6 +17600,9 @@ export const KIT_COPY: Readonly<
     "core.codes.redirect_uri_mismatch.title": "登录无法返回应用",
     "core.codes.redirect_uri_mismatch.message":
       "该应用的登录设置不正确，因此在此处停止以保护你的账户。请告知其开发者。",
+    "core.codes.invalid_request_uri.title": "登录链接已过期",
+    "core.codes.invalid_request_uri.message":
+      "此登录链接已过期。请返回 {product} 重新开始。",
     "core.codes.license_choice_required.title": "选择许可证",
     "core.codes.license_choice_required.message":
       "选择此设备使用的许可证，然后继续。",
@@ -17754,6 +17811,9 @@ export const KIT_COPY: Readonly<
     "core.codes.sign-in-expired.title": "代码已过期",
     "core.codes.sign-in-expired.message":
       "代码在登录完成前已过期。请重新开始。",
+    "core.codes.redirect-unavailable.title": "无法通过浏览器登录",
+    "core.codes.redirect-unavailable.message":
+      "此处无法打开浏览器登录。请改用代码。",
     "core.codes.sign-in-denied.title": "登录被拒绝",
     "core.codes.sign-in-denied.message": "登录被拒绝。请重新开始。",
     "core.codes.sign-in-unavailable.title": "登录不可用",

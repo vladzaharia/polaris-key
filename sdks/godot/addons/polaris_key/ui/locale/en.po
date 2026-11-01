@@ -6681,6 +6681,16 @@ msgstr "Sign-in can't return to the app"
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know."
 
+#. Sign-in link expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.title"
+msgstr "Sign-in link expired"
+
+#. This sign-in link has expired. Go back to {product} and start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.message"
+msgstr "This sign-in link has expired. Go back to {product} and start again."
+
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"
@@ -7480,6 +7490,16 @@ msgstr "Code expired"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-expired.message"
 msgstr "The code expired before sign-in finished. Start again."
+
+#. Browser sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.title"
+msgstr "Browser sign-in unavailable"
+
+#. Sign-in could not open a browser here. Use a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.message"
+msgstr "Sign-in could not open a browser here. Use a code instead."
 
 #. Sign-in declined
 #. Core copy (conformance/parity/copy.en.json, codes).

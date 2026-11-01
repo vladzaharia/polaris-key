@@ -1522,7 +1522,8 @@ Pinned by `identity-attach.json`, `identity-attach-errors.json` and
 ### 12.4 Authorize, Continue and Cancel [C]
 
 Pinned by `redirect-web-happy.json`, `redirect-web-errors.json` and `identity-request-hints.json`
-(transcripts; their `browser` steps are the requests no SDK makes). The authorization server of
+(transcripts; their `browser` steps are the requests no SDK makes). A native app reaches the same
+endpoint through a pushed request (§12.12). The authorization server of
 layer 1 is one per product: the issuer is `<origin>/<p>/identity`, discovery's `issuer`. Its one
 client is the product's own public client: `client_id` is the product slug and PKCE `S256` is
 mandatory; any other `client_id` is `invalid_client`. Only while the product's Identity service is
@@ -1542,6 +1543,14 @@ on (§12.8).
 | `login_hint`, `name_hint`, `purpose`, `license_choice` | Optional Polaris extensions. A hint prefills the card and verifies nothing, and one that does not normalise is dropped. `purpose` is `signin` or `attach`; `license_choice` is `card` or `app` (I-08b) |
 | `key_return`                                           | Optional, sent last. Only `allow`; any other value is `invalid_request`. Kept for `purpose=signin` on a product with License and the launch gate on, else dropped silently (§12.4.2)                   |
 
+The `request_uri` parameter (§12.12) replaces the table above. When it is present, only `client_id`
+may accompany it, and it is resolved first: an unknown, expired, malformed or already taken URI
+renders the branded `invalid_request_uri` page (400) and never redirects. A `client_id` that
+differs from the pushed record renders `invalid_client`. Any other parameter alongside it is
+`302 <redirect_uri>?error=invalid_request&state=…&iss=…` and the record is kept. A native
+`redirect_uri` (§12.12) sent straight to `authorize`, with no `request_uri`, is
+`redirect_uri_mismatch`.
+
 1. **No redirect before both are valid.** `client_id` and `redirect_uri` are checked first. A bad
    `client_id` renders `invalid_client` (401) and a bad `redirect_uri` renders
    `redirect_uri_mismatch` (400) on a branded page; neither redirects, whatever else is wrong.
@@ -1554,7 +1563,8 @@ on (§12.8).
    cannot be set here (it is host-only), so the request is bound to a fresh binder instead and the
    `303` goes through the bind hop (§12.9): `<origin>/signin?request=rq_…&bind=<token>`, with no
    `Set-Cookie`. Neither the app's `state`, its challenge nor its redirect URI is in either URL.
-   60 calls a minute per client network.
+   60 calls a minute per client network. A request that came through `request_uri` mints the
+   handle with `kind: "native"` and the pushed `device_name` as its label (§12.7.2).
 4. **Continue** is `POST /api/signin/requests/<handle>/continue` (same-origin portal JSON) with
    the account session, the portal CSRF header and the binder cookie of the browser that started
    the request: this is the callback binding of R1-07 for the web redirect. The body is
@@ -1567,9 +1577,13 @@ on (§12.8).
    product asked) and answers `{"redirect": "<redirect_uri>?code=…&state=…&iss=<issuer>"}`.
    The code lives 60 seconds and is single use, bound to the product, `client_id`,
    `redirect_uri`, the PKCE challenge, the account and the granted scope. The device is not known
-   here and binds at `token`.
+   here and binds at `token`, except for a pushed request, whose code carries the pusher's
+   `deviceId` (§12.5 rule 2). On a pushed request with a loopback `redirect_uri` the `redirect`
+   gains `request=<rq_ handle>` (after `iss`), and Continue takes the pushed record in the same
+   atomic step, so one pushed request yields at most one code.
 5. **Cancel** is `POST …/cancel` under the same three credentials and answers
-   `{"redirect": "<redirect_uri>?error=access_denied&state=…&iss=…"}`.
+   `{"redirect": "<redirect_uri>?error=access_denied&state=…&iss=…"}` (with `request=<rq_ handle>`
+   on a loopback `redirect_uri`, as Continue) and takes the pushed record, if any.
 6. A handle that is unknown, expired, bound to another browser, already taken, or for a product
    whose Identity is off answers `404 not_found`, always in the same shape.
 
@@ -1587,7 +1601,9 @@ on (§12.8).
 2. **The code.** It is redeemed against the challenge derived from the verifier in one atomic
    operation. Match or mismatch, the code ends, so a wrong verifier cannot be guessed at and a
    second redemption finds nothing. An unknown, expired, used or mismatching code, another
-   `client_id`-bound code or another `redirect_uri` is `invalid_grant`. A `client_id` that is not
+   `client_id`-bound code or another `redirect_uri` is `invalid_grant`. A code from a pushed
+   request (§12.12) carries the pusher's `deviceId`: a different `X-PKey-Device` is
+   `invalid_grant` and ends the code, and a native `redirect_uri` is compared exactly. A `client_id` that is not
    the product's is `invalid_client` (401) and touches no code.
 3. **A `200`** carries exactly `access_token` (the `pkeyt_` device token, not repeated as
    `token`), `token_type: "Bearer"`, `scope` (the granted subset), `schemaVersion`, `device`,
@@ -1622,6 +1638,12 @@ on (§12.8).
    codes, as on `license/activate`, and are not folded into `not_entitled`.
 6. **Never a token in a URL.** The device token is in the body of this response only, and the
    redirect carries a code that is useless without the verifier.
+7. **The fresh sign-in marker.** Every `200` for `authorization_code`, and `choice/complete` (§12.5.1)
+   on a grant with `origin: "code"`, writes `signin-fresh`: a single-use record keyed
+   `(product, deviceId)` that lives 300 s and that the link offer (§12.11.4) consumes. A pending
+   grant (§12.5.1) gains `origin: "code" | "exchange"`; one issued before this change has none and
+   writes nothing. A device-code sign-in (§12.10), the token exchange (§12.11.3), nearby approval
+   (§12.11.5) and silent restore (§12.11.8) never write it. The marker is not in any response.
 
 ### 12.4.1 The licence choice on the card [C]
 
@@ -1833,6 +1855,12 @@ only when `deviceChoice` is present and all four `choice*` endpoints are present
 send `loginHint`, `nameHint` and `purpose`: an older Worker ignores them. `DISCOVERY_VERSION`
 stays 2, because an SDK that predates the member ignores it.
 
+I-15 adds the endpoints `request` (§12.12) and `signinReturn` (the customer-host `/signin/return`, on
+the customer origin of §12.9), and `nativeRedirect: {loopback: boolean, schemes: string[],
+claimedHttps: string[]}` (full registered URIs). All three are present only while `request` is served.
+An SDK uses the native redirect channel only when `request` is present; otherwise it uses the device
+code. Pinned by `discovery-identity.json` and `locker-discovery-identity.json`.
+
 ### 12.7 Passthrough request metadata
 
 These are the Identity service's browser-facing shapes: same-origin portal JSON and the device
@@ -1874,7 +1902,9 @@ When the host passes no label, the SDK sends a platform default: Node `os.hostna
 Python `platform.node()` without a trailing `.local`, `.lan` or `.home`; Swift
 `Host.current().localizedName` on macOS and `UIDevice.current.name` on the iOS family; Kotlin
 `Settings.Global.DEVICE_NAME`, else `Build.MODEL`, on Android and the JVM host name elsewhere;
-Godot the device model, else the OS name. React sends none: a browser has no device name. A host
+Godot the device model, else the OS name. On Windows the auto-generated `DESKTOP-…` and `LAPTOP-…`
+host names become "Windows PC" and "Windows laptop", and Linux prefers `PRETTY_HOSTNAME` (SIGN-IN D-73),
+for Node, Python, Kotlin JVM and Godot desktop. React sends none: a browser has no device name. A host
 overrides the default in its configuration or per call, and opts out with an empty string (Godot:
 `PKeyOptions.send_device_name = false`).
 
@@ -1896,7 +1926,8 @@ nameVerified}`, with `kind` one of `web`, `native` and `device`. `appName` and
   600 s, and bound to the browser that created it. The binder lives in the `__Host-pk_req` cookie
   (HttpOnly, Secure, SameSite=Lax, Path=/), and its hash lives in the record. The record holds the
   product, the kind, the label, the user code, the origin and a flow reference. The device-code
-  confirmation page creates handles. There is no public creation route.
+  confirmation page creates handles, and so does `authorize` (§12.4 rule 3), with `kind: "native"`
+  for a request that came through `request_uri` (§12.12). There is no public creation route.
 - **`GET /api/signin/requests/:handle`** answers `{request, client, deviceLabel, userCode,
 expiresAt}` to the binding browser, plus `purpose`, `licenseChoice`, `loginHint` and `nameHint`
   on a request that carries them: an `authorize` request (§12.4) and a `device` request whose start
@@ -1905,7 +1936,9 @@ expiresAt}` to the binding browser, plus `purpose`, `licenseChoice`, `loginHint`
   is off. No display query parameter is read: `appName`, `name`, `icon`, `developer`, `origin`
   and `device` are all ignored. The view carries `keyReturn: true` on a request that recorded
   `key_return=allow` (§12.4.2) and no such member otherwise, so every earlier answer is byte for
-  byte what it was.
+  byte what it was. A request that came through `request_uri` (§12.12) also carries
+  `redirect: "loopback" | "scheme" | "claimed"` and `returnUri: string | null`; no other request has
+  either member.
 
 #### 12.7.3 App consent
 
@@ -1962,7 +1995,7 @@ unchanged, and a client reads every value below as any https URL.
    `freeDeviceUrl` and `getLicense.activateUrl`, `core.portal.activate` (§5.7), and the `Location` of `authorize` (§12.4 rule 3)
    and of §12.8 rule 3. With no usable `CUSTOMER_ORIGIN` they are what they were.
 2. **Routes.** It serves `/`, `/activate`, `/signin`, `/device`, `/tv`, `/login[/…]`, `/callback`,
-   `/logout`, `/magic/verify`, `/api/*`, `/media/*`, `/download/<token>`, `/assets/*`, its own
+   `/logout`, `/magic/verify`, `/signin/return` (§12.12), `/api/*`, `/media/*`, `/download/<token>`, `/assets/*`, its own
    `/.well-known/polaris-host.json` and `/robots.txt`. Everything else, the product routes and
    `/manage` included, is the plain `404`. The issuer, `authorize`, `token`, discovery and every
    signed document stay on the API host.
@@ -2302,6 +2335,61 @@ The account export lists `{createdAt, checkedAt}` per key and never the hash.
 - **Answers.** On `invalid_grant` an Android client deletes its item; an Apple client does not, because a synchronizable delete reaches every device. On `429`, `503`, a network failure or an unavailable store it leaves the item and goes on. When the key was consumed and the sign-in was then refused (above), the client falls to rung 3 of the ladder. A client never logs the secret.
 
 **Deployed clients and workers.** The Worker deploys first with the gate off. A client that predates this subsection ignores `restore` and never enrols. A client of this version against an older Worker finds no member, skips the rung and never enrols. After a rollback the table goes unread and items in backups stay inert (`unsupported_grant_type` counts as a failed rung); after a roll-forward, keys younger than 180 days work again.
+
+### 12.12 Native redirect [C]
+
+Pinned by `redirect-native-loopback.json`, `redirect-native-scheme.json`,
+`redirect-native-choose-app.json`, `redirect-native-errors.json`, `locker-redirect-native.json`,
+`discovery-identity.json` and `locker-discovery-identity.json` (transcripts, recorded by I-15.7; their
+`browser` steps are the requests no SDK makes). The long form is `plans/I-15.md`. A native app signs
+in through the system browser and receives the code on a redirect it owns: a loopback listener, a
+registered scheme or a claimed HTTPS link. Nothing is signed and no signed document changes:
+`PROTOCOL_VERSION` stays 5, `DISCOVERY_VERSION` 2 and `corpusVersion` 2. A device on the v0.9
+SDKs never calls `request` and ignores the discovery members below.
+
+1. **Native classes are accepted only through `request`.** A native `redirect_uri` on a direct
+   `authorize` is `redirect_uri_mismatch` (§12.4). This keeps the device label and the device
+   binding on one path.
+2. **`request`** is `POST /<p>/identity/request` (RFC 9126), `application/x-www-form-urlencoded`: the
+   §12.4 `authorize` parameters plus `device_name` (§12.7.1) and an optional `return_uri`. It needs
+   `X-PKey-Device`. The answer is `201` with `request_uri` (`urn:ietf:params:oauth:request_uri:` and 22 base64url characters) and
+   `expires_in: 600`, `no-store`, with no CORS. Errors are flat: `400 invalid_request`,
+   `401 invalid_client`, `400 redirect_uri_mismatch`, `400 invalid_scope` and `429 rate_limited`
+   (`identityRequest` 30 a minute per client network, `identityRequestDevice` 10 a minute per device
+   id, failing closed). Only while the product's Identity service is on (§12.8).
+3. **Storage.** A single-use record of kind `signin-par`, under the peppered hash of the URI, for
+   600 s. It holds the validated request, the `deviceId`, the label and `return_uri`. It can be
+   resolved again, so **Open browser again** reopens the same `authorize` URL, until Continue or
+   Cancel takes it (§12.4 rules 4 and 5); after that the URI answers `invalid_request_uri`.
+4. **The redirect URI classes.** A class is chosen by the URI, and every rule below is a refusal
+   when it fails:
+
+   | Class    | Rule                                                                                                                                                                                                                                                                                                                                                                 |
+   | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | Loopback | `http://127.0.0.1:<port>/pkey/callback` or `http://[::1]:<port>/pkey/callback`, with an explicit port other than 80. The port is not compared at registration (RFC 8252 §7.3); the URI is stored and compared exactly at `token`. `localhost`, any other path, a query, a fragment and userinfo are refused. On unless `identity.nativeRedirect.loopback` is `false` |
+   | Scheme   | `<scheme>:/pkey/callback` exactly (RFC 8252 §7.1) for a scheme listed in `identity.nativeRedirect.schemes`: reverse DNS, with no `im.plrs.` or `locker.polaris.` prefix                                                                                                                                                                                              |
+   | Claimed  | `https://<origin><path>` where the origin is in `web.origins` and the path is in `identity.nativeRedirect.claimedPaths`, which cannot overlap `identity.redirectPaths`                                                                                                                                                                                               |
+
+   `return_uri`, when sent, is a registered scheme's redirect URI. ReturnStep's **Return to <App>**
+   opens it, and it never carries a code.
+
+5. **`invalid_request_uri`.** The branded page of §12.4, `400`, with no redirect, for a `request_uri`
+   that is unknown, expired, malformed or already taken. It is a wire code (`errors.json`).
+6. **Listener** (informative, for every SDK). Bind `127.0.0.1` only, on an OS-assigned port. Accept one
+   `GET /pkey/callback` whose `Host` is `127.0.0.1:<port>` and whose `state` matches (constant-time);
+   answer anything else `404` and keep listening. Check `iss`. Answer `303 <signinReturn>?request=<rq>`
+   (add `&cancelled=1` after an app-side Cancel) with `Referrer-Policy: no-referrer` and `no-store`.
+   Close on the first match or after 600 s. Serve no HTML and send no CORS headers.
+7. **Return page.** `GET /signin/return?request=<rq>[&cancelled=1]` on the customer host (§12.9 rule 2)
+   serves the card shell. The card renders the desktop ReturnStep from the state it saved in the
+   browser's `sessionStorage` under the handle before it navigated; without that state it shows the
+   generic variant. There is no return API.
+8. **Association files.** The Worker never serves `/.well-known/apple-app-site-association` or
+   `assetlinks.json` on the API, console or customer host. A developer hosts them on their own
+   `web.origins` entry.
+9. **Fallback.** Without `request` in discovery (§12.6), or when no class can be used, the client
+   raises `redirect-unavailable` and the kit offers the device code. Cancel, expiry and failure
+   reuse `cancelled`, `sign-in-expired` and `sign-in-failed`.
 
 ## 13. Cloud Sync (HTTP, additive)
 

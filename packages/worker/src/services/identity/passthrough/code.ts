@@ -53,6 +53,11 @@ export interface SignInCodeRecord {
   choice: { licenseId: string; replaceDeviceId?: string } | null;
   nonce: string | null;
   licenseChoice: AuthorizeLicenseChoice;
+  /**
+   * The pusher's device id, on a code from a pushed request (WIRE-CONTRACT-V5 §12.12): `token`
+   * answers `invalid_grant` to any other `X-PKey-Device`.
+   */
+  deviceId?: string;
 }
 
 async function codeRef(

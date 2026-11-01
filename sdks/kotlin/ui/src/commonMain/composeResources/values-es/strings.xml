@@ -2541,6 +2541,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_redirect_uri_mismatch_message">El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_request_uri_title">El enlace de inicio de sesión caducó</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_invalid_request_uri_message">Este enlace de inicio de sesión caducó. Vuelve a %1$s y empieza de nuevo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">Elige una licencia</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_message">Elige qué licencia usa este dispositivo y continúa.</string>
@@ -2860,6 +2864,10 @@
     <string name="core_codes_sign_in_expired_title">Código caducado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_expired_message">El código caducó antes de terminar el inicio de sesión. Vuelve a empezar.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_title">Inicio de sesión en el navegador no disponible</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_message">El inicio de sesión no pudo abrir un navegador aquí. Usa un código en su lugar.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_denied_title">Inicio de sesión rechazado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

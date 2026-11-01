@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 285 distinct emit sites.
+codes with their JSON-pointer paths. 295 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -42,6 +42,8 @@ the offending value, or the allowed set.
 | `game_center_without_team` | error | product | `/identity/platformSignIn/gameCenter` | identity.platformSignIn.gameCenter needs apple.teamId: Game Center names an app by team and bundle id. |
 | `google_client_ids_without_server` | error | product | `/identity/platformSignIn/google/clientIds` | identity.platformSignIn.google.clientIds needs serverClientId: the web client is the token audience. |
 | `identity_block_without_service` | warning | product | `/identity` | identity is declared but the identity service is off, so none of it applies. |
+| `identity_claimed_paths_overlap_redirect` | error | product | `/identity/nativeRedirect/claimedPaths` | identity.nativeRedirect.claimedPaths must not repeat an identity.redirectPaths entry: a path is either a web callback or an app link. |
+| `identity_claimed_paths_without_origins` | warning | product | `/identity/nativeRedirect/claimedPaths` | identity.nativeRedirect.claimedPaths needs at least one web.origins entry: a claimed redirect URI is an origin from web.origins and one of these paths. |
 | `identity_redirect_paths_without_origins` | warning | product | `/identity/redirectPaths` | identity.redirectPaths needs at least one web.origins entry: a redirect URI is an origin from web.origins and one of these paths. |
 | `incompatible_reserved_name` | error | schema | `/entries/${decl.index}` | $\{decl.key\} is a reserved entitlement name the platform sets itself: $\{decl.problem\}. Incompatible reserved-name declarations are refused on this platform. |
 | `incompatible_reserved_name` | warning | schema | `/entries/${decl.index}` | $\{decl.key\} is a reserved entitlement name the platform sets itself: $\{decl.problem\}. This is a warning for now; it becomes an error when the platform switches licensing.reservedNames to error. |
@@ -112,7 +114,13 @@ the offending value, or the allowed set.
 | `invalid_google_client_id` | error | product | `/identity/platformSignIn/playGames/serverClientId` | identity.platformSignIn.playGames.serverClientId must be a Google client id, such as 1234-abc.apps.googleusercontent.com. |
 | `invalid_group_name` | error | product | `/oidc/groupRoleMap/${group}` | oidc.groupRoleMap keys must be plain group names (^[A-Za-z0-9][A-Za-z0-9 ._:@/-]\{0,127\}$). |
 | `invalid_identity_claim_by_key` | error | product | `/identity/keyEntry/claimByKey` | identity.keyEntry.claimByKey must be true or false. |
+| `invalid_identity_claimed_paths` | error | product | `/identity/nativeRedirect/claimedPaths/${i}` | identity.nativeRedirect.claimedPaths entries $\{problem\}. |
+| `invalid_identity_claimed_paths` | error | product | `/identity/nativeRedirect/claimedPaths` | identity.nativeRedirect.claimedPaths must be an array of at most $\{MAX_NATIVE_REDIRECT_CLAIMED_PATHS\} paths. |
 | `invalid_identity_key_entry_limit` | error | product | `/identity/keyEntry/limit` | identity.keyEntry.limit must be an integer from 1 to 100. |
+| `invalid_identity_native_redirect` | error | product | `/identity/nativeRedirect/${key}` | identity.nativeRedirect takes only loopback, schemes and claimedPaths. |
+| `invalid_identity_native_redirect` | error | product | `/identity/nativeRedirect/loopback` | identity.nativeRedirect.loopback must be true or false. |
+| `invalid_identity_native_redirect` | error | product | `/identity/nativeRedirect/schemes` | identity.nativeRedirect.schemes must be an array. |
+| `invalid_identity_native_redirect` | error | product | `/identity/nativeRedirect` | identity.nativeRedirect must be an object with loopback, schemes and claimedPaths. |
 | `invalid_identity_nearby` | error | product | `/identity/nearby` | identity.nearby must be true or false. |
 | `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/${key}` | identity.platformSignIn takes only google, apple, gameCenter and playGames. |
 | `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn/apple/${key}` | identity.platformSignIn.apple takes only teamId and bundleIds. |
@@ -125,12 +133,14 @@ the offending value, or the allowed set.
 | `invalid_identity_platform_sign_in` | error | product | `/identity/platformSignIn` | identity.platformSignIn must be an object with google, apple, gameCenter and playGames. |
 | `invalid_identity_redirect_paths` | error | product | `/identity/redirectPaths/${i}` | identity.redirectPaths entries $\{problem\}. |
 | `invalid_identity_redirect_paths` | error | product | `/identity/redirectPaths` | identity.redirectPaths must be an array of at most $\{MAX_IDENTITY_REDIRECT_PATHS\} paths. |
+| `invalid_identity_redirect_scheme` | error | product | `/identity/nativeRedirect/schemes/${i}` | identity.nativeRedirect.schemes entries $\{problem\}. |
+| `invalid_identity_redirect_scheme` | error | product | `/identity/nativeRedirect/schemes` | identity.nativeRedirect.schemes takes at most $\{MAX_NATIVE_REDIRECT_SCHEMES\} schemes. |
 | `invalid_identity_restore` | error | product | `/identity/restore` | identity.restore must be true or false. |
 | `invalid_identity_terms` | error | product | `/identity/terms` | identity.terms must be \{version, url?\}: a version of 1 to 32 characters of A-Z, a-z, 0-9, ., _ and -, and an https URL when url is given. |
-| `invalid_identity` | error | product | `/identity/${key}` | identity takes only keyEntry, terms, redirectPaths, platformSignIn, nearby and restore. |
+| `invalid_identity` | error | product | `/identity/${key}` | identity takes only keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby and restore. |
 | `invalid_identity` | error | product | `/identity/keyEntry/${key}` | identity.keyEntry takes only limit and claimByKey. |
 | `invalid_identity` | error | product | `/identity/keyEntry` | identity.keyEntry must be an object with limit and claimByKey. |
-| `invalid_identity` | error | product | `/identity` | identity must be an object with keyEntry, terms, redirectPaths, platformSignIn, nearby and restore. |
+| `invalid_identity` | error | product | `/identity` | identity must be an object with keyEntry, terms, redirectPaths, nativeRedirect, platformSignIn, nearby and restore. |
 | `invalid_ignore_tags` | error | release | `/release/deliverables/app/versioning/ignoreTags/${i}` | deliverables.app.versioning.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |
 | `invalid_ignore_tags` | error | release | `/release/deliverables/app/versioning/ignoreTags` | deliverables.app.versioning.ignoreTags must be an array of at most $\{MAX_IGNORE_TAGS\} exact tag names. |
 | `invalid_ignore_tags` | error | release | `/release/ignoreTags/${i}` | release.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |

@@ -8776,9 +8776,23 @@ paths:
         every claim the product grants, unknown values are ignored and `openid` is `invalid_scope`
         until I-21. `login_hint`, `name_hint` and `purpose` prefill the card and verify nothing.
         60 calls a minute per client network. With Identity off a browser navigation lands on
-        the friendly card (`identity_disabled`) and a JSON caller gets `404 not_found`.
+        the friendly card (`identity_disabled`) and a JSON caller gets `404 not_found`. A native
+        app (WIRE-CONTRACT-V5 §12.12) pushes its request to `identity/request` first and sends
+        only `client_id` and `request_uri` here: the URI is resolved before anything else, an
+        unknown, expired, malformed or taken one renders `invalid_request_uri` (400, a branded
+        page, never a redirect), and any other parameter beside it is `302
+        …?error=invalid_request` with the record kept. A native `redirect_uri` sent straight here
+        is `redirect_uri_mismatch`. The `response_type` and `redirect_uri` parameters below are
+        for the direct (web) form.
       parameters:
         - { $ref: "#/components/parameters/Product" }
+        - {
+            name: request_uri,
+            in: query,
+            required: false,
+            description: "A pushed request's URI (§12.12); with it only `client_id` may accompany.",
+            schema: { type: string },
+          }
         - {
             name: response_type,
             in: query,
@@ -9039,6 +9053,64 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/request:
+    post:
+      operationId: identityRequest
+      tags: [identity]
+      summary: Push a native app's authorize request (RFC 9126; I-15)
+      description: >
+        WIRE-CONTRACT-V5 §12.12. A native app sends the `authorize` parameters (§12.4) with a
+        native `redirect_uri` (a loopback address, a scheme registered in
+        `identity.nativeRedirect.schemes` or a claimed HTTPS path), `device_name` (§12.7.1) and an
+        optional `return_uri` (a registered scheme's redirect URI), and gets a `request_uri` to
+        open `authorize` with. A native `redirect_uri` is accepted only here: sent straight to
+        `authorize` it is `redirect_uri_mismatch`. The record lives 600 s and can be resolved
+        again until Continue or Cancel takes it. Form-encoded (a JSON body is `invalid_request`).
+        Needs `X-PKey-Device`. Errors are FLAT (RFC 6749 §5.2). `cache-control: no-store`; no CORS
+        headers. 30 calls a minute per client network and 10 per device id, fail-closed. With
+        Identity off the route does not exist (`404 not_found`).
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/PushedRequest" }
+      responses:
+        "201":
+          description: "The pushed request. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PushedRequestResponse" }
+              examples:
+                pushed:
+                  summary: test/surfaces/identityNativeRedirect.test.ts
+                  value:
+                    request_uri: urn:ietf:params:oauth:request_uri:Zk8LqR8nT0sYp2vcEgHj6B
+                    expires_in: 600
+        "400":
+          description: >
+            `invalid_request` (a malformed or missing parameter, no `X-PKey-Device`, a bad
+            `return_uri`), `redirect_uri_mismatch` (not a registered native URI) or
+            `invalid_scope` — FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                mismatch: { value: { error: redirect_uri_mismatch } }
+        "401":
+          description: "`invalid_client`: `client_id` is not the product slug — FLAT."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: "`rate_limited` with `retryAfter` — FLAT. Fails closed."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /{product}/identity/nonce:
     post:
       operationId: identityNonce
@@ -16382,6 +16454,41 @@ paths:
             Location: { schema: { type: string } }
         "404":
           description: A `request` handle was given.
+  /signin/return:
+    get:
+      operationId: getSignInReturn
+      tags: [portal]
+      summary: The hosted desktop ReturnStep (I-15)
+      description: >
+        WIRE-CONTRACT-V5 §12.12 rule 7. A loopback listener answers `303` here after it received
+        the code. Served on the customer host (a key-host request is redirected there when one is
+        configured). Answers the card shell for a well-formed `request` handle and `404` otherwise;
+        the card draws the desktop variant from the state it saved in the browser's
+        `sessionStorage` before it navigated, and the generic variant without it. Reads no store.
+        `cache-control: no-store`, `referrer-policy: no-referrer`. `HEAD` is allowed; any other
+        method is `405`.
+      parameters:
+        - {
+            name: request,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" },
+          }
+        - {
+            name: cancelled,
+            in: query,
+            required: false,
+            description: "`1` after an app-side Cancel.",
+            schema: { type: string, enum: ["1"] },
+          }
+      responses:
+        "200":
+          description: The card shell.
+          content:
+            text/html: { schema: { type: string } }
+        "404":
+          description: A missing or malformed handle, or a `cancelled` other than `1`.
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /approve:
     get:
       operationId: getLockerApproveHop
@@ -30658,6 +30765,50 @@ components:
         agreeKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
         issuedAt: { type: integer, minimum: 0, description: Unix seconds. }
         sig: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
+    PushedRequest:
+      type: object
+      description: >
+        The pushed authorization request (§12.12): the `authorize` parameters of §12.4 with a
+        native `redirect_uri`, plus the device label and an optional return URI.
+      required:
+        [
+          response_type,
+          client_id,
+          redirect_uri,
+          state,
+          code_challenge,
+          code_challenge_method,
+        ]
+      properties:
+        response_type: { type: string, enum: [code] }
+        client_id: { type: string, description: The product slug. }
+        redirect_uri:
+          type: string
+          description: >
+            `http://127.0.0.1:<port>/pkey/callback` (or `[::1]`), `<scheme>:/pkey/callback` for a
+            registered scheme, or `https://<web origin><claimed path>`.
+        state: { type: string, minLength: 16, maxLength: 512 }
+        code_challenge: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        code_challenge_method: { type: string, enum: [S256] }
+        scope: { type: string }
+        nonce: { type: string, maxLength: 255 }
+        login_hint: { type: string }
+        name_hint: { type: string }
+        purpose: { type: string, enum: [signin, attach] }
+        license_choice: { type: string, enum: [card, app] }
+        key_return: { type: string, enum: [allow] }
+        device_name: { type: string, description: The device label (§12.7.1). }
+        return_uri:
+          type: string
+          description: A registered scheme's redirect URI; it never carries a code.
+    PushedRequestResponse:
+      type: object
+      required: [request_uri, expires_in]
+      properties:
+        request_uri:
+          type: string
+          pattern: "^urn:ietf:params:oauth:request_uri:[A-Za-z0-9_-]{22}$"
+        expires_in: { type: integer, enum: [600] }
     ExchangeNonceRequest:
       type: object
       description: >

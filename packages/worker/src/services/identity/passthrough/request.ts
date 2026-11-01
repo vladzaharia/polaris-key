@@ -31,6 +31,7 @@ import {
   REQUEST_HANDLE_PATTERN,
   REQUEST_HANDLE_TTL_SECONDS,
   type ClientKind,
+  type NativeRedirectClass,
 } from "@polaris-key/protocol/identity";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { hashKey } from "../../../platform/crypto.js";
@@ -118,6 +119,19 @@ export function parseDeviceStart(
   };
 }
 
+/**
+ * What a request that came through a pushed `request_uri` adds (WIRE-CONTRACT-V5 §12.12): the
+ * redirect class, the pusher's device (the code is bound to it), the optional return URI and the
+ * pushed record's address, which Continue and Cancel take with the handle.
+ */
+export interface NativeRequestInfo {
+  redirect: NativeRedirectClass;
+  deviceId: string;
+  returnUri: string | null;
+  /** The `signin-par` artefact id (the peppered hash of the `request_uri`). */
+  par: string;
+}
+
 /** What a handle's record holds. */
 export interface SignInRequestRecord {
   product: string;
@@ -131,6 +145,8 @@ export interface SignInRequestRecord {
   authz?: AuthzRecord;
   /** The hints a device-code start sent (§12.10.1); absent on a start that sent none. */
   hints?: DeviceHints;
+  /** Set on a request that came through a pushed `request_uri` (§12.12). */
+  native?: NativeRequestInfo;
   /** The binder's peppered hash. */
   binder: string;
   /** Epoch seconds. */
@@ -185,6 +201,7 @@ export async function createSignInRequest(
     flowRef: string;
     authz?: AuthzRecord;
     hints?: DeviceHints;
+    native?: NativeRequestInfo;
     /**
      * The card is on another host (LK-04): no cookie is set here. A fresh binder is bound to the
      * request and travels in a single-use bind token to the customer host.
@@ -209,6 +226,7 @@ export async function createSignInRequest(
     flowRef: init.flowRef,
     ...(init.authz ? { authz: init.authz } : {}),
     ...(init.hints ? { hints: init.hints } : {}),
+    ...(init.native ? { native: init.native } : {}),
     binder: await hashKey(binder, env.KEY_HASH_PEPPER),
     expiresAt: now + REQUEST_HANDLE_TTL_SECONDS,
   };

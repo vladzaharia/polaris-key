@@ -6694,6 +6694,16 @@ msgstr "L'accesso non può tornare all'app"
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "L'accesso di questa app non è configurato correttamente, quindi si è fermato qui per proteggere il tuo account. Avvisa il suo sviluppatore."
 
+#. Sign-in link expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.title"
+msgstr "Link di accesso scaduto"
+
+#. This sign-in link has expired. Go back to {product} and start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.message"
+msgstr "Questo link di accesso è scaduto. Torna a {product} e ricomincia."
+
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"
@@ -7493,6 +7503,16 @@ msgstr "Codice scaduto"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-expired.message"
 msgstr "Il codice è scaduto prima del completamento dell'accesso. Ricomincia."
+
+#. Browser sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.title"
+msgstr "Accesso dal browser non disponibile"
+
+#. Sign-in could not open a browser here. Use a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.message"
+msgstr "L'accesso non ha potuto aprire un browser qui. Usa invece un codice."
 
 #. Sign-in declined
 #. Core copy (conformance/parity/copy.en.json, codes).

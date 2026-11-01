@@ -32,6 +32,7 @@ import {
   AUTHORIZE_STATE_MIN,
   KEY_RETURN_ALLOW,
   type AuthorizeRedirectError,
+  type ClientKind,
 } from "@polaris-key/protocol/identity";
 import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import type { Db } from "../../../db/types.js";
@@ -48,7 +49,12 @@ import type { ServiceHooks } from "../../../core/hooks.js";
 import { customerHostname, customerOrigin } from "../../../core/hosts.js";
 import { launchGateOn } from "../../../core/settings/platformRead.js";
 import { cloudSyncOn } from "./client.js";
-import { createSignInRequest, type AuthzRecord } from "./request.js";
+import {
+  createSignInRequest,
+  type AuthzRecord,
+  type NativeRequestInfo,
+} from "./request.js";
+import { readPushed } from "./pushedStore.js";
 import { redirectPathsOf, validateRedirectUri } from "./redirectUri.js";
 
 /** `authorize` is a navigation that writes one record: 60 a minute per client network. */
@@ -70,7 +76,7 @@ export function issuerOf(req: Request, product: { slug: string }): string {
 }
 
 /** `302 <redirect_uri>?error=…&state=…&iss=…` (RFC 6749 §4.1.2.1 with RFC 9207's `iss`). */
-function errorRedirect(
+export function errorRedirect(
   redirectUri: string,
   issuer: string,
   error: AuthorizeRedirectError,
@@ -99,16 +105,16 @@ export function redirect(status: 302 | 303, location: string): Response {
  * The refusal pages: the catalog's copy for the code (`core.codes.*`), the app named above the
  * card, and no way forward but "close this page". Neither says which value was wrong.
  */
-async function refusalPage(
+export async function refusalPage(
   ctx: { env: Env; db: Db; product: Product; hooks?: ServiceHooks },
   status: 400 | 401,
-  code: "invalid_client" | "redirect_uri_mismatch",
+  code: "invalid_client" | "redirect_uri_mismatch" | "invalid_request_uri",
 ): Promise<Response> {
   return codeRefusalPage(status, code, await appForPage(ctx));
 }
 
 /** The single value of a parameter; `undefined` when absent and `null` when repeated. */
-function single(
+export function single(
   params: URLSearchParams,
   name: string,
 ): string | undefined | null {
@@ -134,6 +140,96 @@ export function resolveScope(
   if (asked.includes("openid")) return null;
   const granted = offered.filter((s) => asked.includes(s));
   return granted.length > 0 ? [...granted] : null;
+}
+
+/** A parameter source: `undefined` when absent, `null` when repeated (see {@link single}). */
+export type ParamGet = (name: string) => string | undefined | null;
+
+/**
+ * The checks `authorize` and the pushed `request` share once `client_id` and `redirect_uri` are
+ * valid (WIRE-CONTRACT-V5 §12.4): `response_type`, `state`, the PKCE challenge, `scope`, `nonce`,
+ * `purpose`, `license_choice`, `key_return` and the hints. `error` is what the caller answers.
+ */
+export async function buildAuthz(
+  ctx: { env: Env; db: Db; product: Product },
+  get: ParamGet,
+  redirectUri: string,
+): Promise<
+  | { ok: true; authz: AuthzRecord }
+  | { ok: false; error: "invalid_request" | "invalid_scope" }
+> {
+  const { env, db, product } = ctx;
+  const fail = (
+    error: "invalid_request" | "invalid_scope",
+  ): { ok: false; error: "invalid_request" | "invalid_scope" } => ({
+    ok: false,
+    error,
+  });
+  if (get("response_type") !== "code") return fail(ErrorCode.InvalidRequest);
+  const stateRaw = get("state");
+  if (
+    typeof stateRaw !== "string" ||
+    stateRaw.length < AUTHORIZE_STATE_MIN ||
+    stateRaw.length > AUTHORIZE_STATE_MAX
+  )
+    return fail(ErrorCode.InvalidRequest);
+  const challenge = get("code_challenge");
+  if (typeof challenge !== "string" || !CHALLENGE_RE.test(challenge))
+    return fail(ErrorCode.InvalidRequest);
+  // S256 only: `plain` and an absent method are refused, never defaulted.
+  if (get("code_challenge_method") !== "S256")
+    return fail(ErrorCode.InvalidRequest);
+
+  const scopeRaw = get("scope");
+  if (scopeRaw === null) return fail(ErrorCode.InvalidRequest);
+  const scope = resolveScope(scopeRaw, product);
+  if (!scope) return fail(ErrorCode.InvalidScope);
+
+  const nonce = get("nonce");
+  if (
+    nonce === null ||
+    (nonce !== undefined && nonce.length > NONCE_MAX_LENGTH)
+  )
+    return fail(ErrorCode.InvalidRequest);
+  const purpose = get("purpose");
+  if (purpose !== undefined && purpose !== "signin" && purpose !== "attach")
+    return fail(ErrorCode.InvalidRequest);
+  const choice = get("license_choice");
+  if (choice !== undefined && choice !== "card" && choice !== "app")
+    return fail(ErrorCode.InvalidRequest);
+  // LK-SKIP (§12.4): `allow` is the only value. It is kept only for a sign-in on a product that
+  // runs License, with the launch gate on; otherwise it is dropped silently (the card offers nothing).
+  const keyReturnRaw = get("key_return");
+  if (keyReturnRaw === null) return fail(ErrorCode.InvalidRequest);
+  if (keyReturnRaw !== undefined && keyReturnRaw !== KEY_RETURN_ALLOW)
+    return fail(ErrorCode.InvalidRequest);
+  const keyReturn =
+    keyReturnRaw === KEY_RETURN_ALLOW &&
+    (purpose ?? "signin") === "signin" &&
+    product.services.license.enabled &&
+    (await launchGateOn(env, db, "launch.identityKeyReturn"));
+  const loginHint = get("login_hint");
+  const nameHint = get("name_hint");
+  if (loginHint === null || nameHint === null)
+    return fail(ErrorCode.InvalidRequest);
+
+  return {
+    ok: true,
+    authz: {
+      clientId: product.slug,
+      redirectUri,
+      state: stateRaw,
+      codeChallenge: challenge,
+      scope,
+      nonce: nonce ?? null,
+      licenseChoice: choice ?? "card",
+      purpose: purpose ?? "signin",
+      ...(keyReturn ? { keyReturn: true as const } : {}),
+      // Hints prefill and verify nothing: a hint that does not normalise is dropped.
+      loginHint: strictEmail(loginHint),
+      nameHint: normalizeDeviceLabel(nameHint),
+    },
+  };
 }
 
 export async function handleAuthorize(ctx: {
@@ -167,92 +263,74 @@ export async function handleAuthorize(ctx: {
   const clientId = single(params, "client_id");
   if (clientId !== product.slug)
     return refusalPage(ctx, 401, ErrorCode.InvalidClient);
-  const verdict = validateRedirectUri(
-    {
-      webOrigins: product.webOrigins,
-      redirectPaths: await redirectPathsOf(
-        { env, db, ...(ctx.settings ? { registry: ctx.settings } : {}) },
-        product.slug,
-      ),
-    },
-    single(params, "redirect_uri") ?? undefined,
-  );
-  if (!verdict.ok) return refusalPage(ctx, 400, ErrorCode.RedirectUriMismatch);
-
-  // 2. Everything else answers in the redirect.
   const issuer = issuerOf(req, product);
-  const stateRaw = single(params, "state");
-  const echoState =
-    typeof stateRaw === "string" && stateRaw.length <= AUTHORIZE_STATE_MAX
-      ? stateRaw
-      : null;
+
+  let kind: ClientKind;
+  let redirectUri: string;
+  let authz: AuthzRecord;
+  let native: NativeRequestInfo | undefined;
+  let deviceLabel: string | null = null;
+  let reqOrigin: string | null;
+  if (params.has("request_uri")) {
+    // §12.12: a pushed request replaces the whole parameter set. It is resolved first, and an
+    // unknown, expired, malformed or already taken one never redirects.
+    const uri = single(params, "request_uri");
+    const pushed =
+      typeof uri === "string"
+        ? await readPushed(env, product.slug, uri, now)
+        : null;
+    if (!pushed) return refusalPage(ctx, 400, ErrorCode.InvalidRequestUri);
+    const rec = pushed.record;
+    // Any other parameter is refused in the redirect, and the record is kept.
+    for (const name of new Set(params.keys()))
+      if (name !== "client_id" && name !== "request_uri")
+        return errorRedirect(
+          rec.authz.redirectUri,
+          issuer,
+          ErrorCode.InvalidRequest,
+          rec.authz.state,
+        );
+    kind = "native";
+    redirectUri = rec.authz.redirectUri;
+    authz = rec.authz;
+    deviceLabel = rec.deviceLabel;
+    native = {
+      redirect: rec.redirect,
+      deviceId: rec.deviceId,
+      returnUri: rec.returnUri,
+      par: pushed.id,
+    };
+    reqOrigin = rec.redirect === "claimed" ? new URL(redirectUri).origin : null;
+  } else {
+    const verdict = validateRedirectUri(
+      {
+        webOrigins: product.webOrigins,
+        redirectPaths: await redirectPathsOf(
+          { env, db, ...(ctx.settings ? { registry: ctx.settings } : {}) },
+          product.slug,
+        ),
+      },
+      single(params, "redirect_uri") ?? undefined,
+    );
+    if (!verdict.ok)
+      return refusalPage(ctx, 400, ErrorCode.RedirectUriMismatch);
+    kind = verdict.kind;
+    redirectUri = verdict.uri;
+    reqOrigin = new URL(verdict.uri).origin;
+
+    // 2. Everything else answers in the redirect.
+    const stateRaw = single(params, "state");
+    const echoState =
+      typeof stateRaw === "string" && stateRaw.length <= AUTHORIZE_STATE_MAX
+        ? stateRaw
+        : null;
+    const built = await buildAuthz(ctx, (n) => single(params, n), verdict.uri);
+    if (!built.ok)
+      return errorRedirect(verdict.uri, issuer, built.error, echoState);
+    authz = built.authz;
+  }
   const fail = (error: AuthorizeRedirectError): Response =>
-    errorRedirect(verdict.uri, issuer, error, echoState);
-
-  if (single(params, "response_type") !== "code")
-    return fail(ErrorCode.InvalidRequest);
-  if (
-    typeof stateRaw !== "string" ||
-    stateRaw.length < AUTHORIZE_STATE_MIN ||
-    stateRaw.length > AUTHORIZE_STATE_MAX
-  )
-    return fail(ErrorCode.InvalidRequest);
-  const challenge = single(params, "code_challenge");
-  if (typeof challenge !== "string" || !CHALLENGE_RE.test(challenge))
-    return fail(ErrorCode.InvalidRequest);
-  // S256 only: `plain` and an absent method are refused, never defaulted.
-  if (single(params, "code_challenge_method") !== "S256")
-    return fail(ErrorCode.InvalidRequest);
-  // `request_uri` is I-15's; until it ships it is not a parameter this endpoint reads.
-  if (params.has("request_uri")) return fail(ErrorCode.InvalidRequest);
-
-  const scopeRaw = single(params, "scope");
-  if (scopeRaw === null) return fail(ErrorCode.InvalidRequest);
-  const scope = resolveScope(scopeRaw, product);
-  if (!scope) return fail(ErrorCode.InvalidScope);
-
-  const nonce = single(params, "nonce");
-  if (
-    nonce === null ||
-    (nonce !== undefined && nonce.length > NONCE_MAX_LENGTH)
-  )
-    return fail(ErrorCode.InvalidRequest);
-  const purpose = single(params, "purpose");
-  if (purpose !== undefined && purpose !== "signin" && purpose !== "attach")
-    return fail(ErrorCode.InvalidRequest);
-  const choice = single(params, "license_choice");
-  if (choice !== undefined && choice !== "card" && choice !== "app")
-    return fail(ErrorCode.InvalidRequest);
-  // LK-SKIP (§12.4): `allow` is the only value. It is kept only for a sign-in on a product that
-  // runs License, with the launch gate on; otherwise it is dropped silently (the card offers nothing).
-  const keyReturnRaw = single(params, "key_return");
-  if (keyReturnRaw === null) return fail(ErrorCode.InvalidRequest);
-  if (keyReturnRaw !== undefined && keyReturnRaw !== KEY_RETURN_ALLOW)
-    return fail(ErrorCode.InvalidRequest);
-  const keyReturn =
-    keyReturnRaw === KEY_RETURN_ALLOW &&
-    (purpose ?? "signin") === "signin" &&
-    product.services.license.enabled &&
-    (await launchGateOn(env, db, "launch.identityKeyReturn"));
-  const loginHint = single(params, "login_hint");
-  const nameHint = single(params, "name_hint");
-  if (loginHint === null || nameHint === null)
-    return fail(ErrorCode.InvalidRequest);
-
-  const authz: AuthzRecord = {
-    clientId: product.slug,
-    redirectUri: verdict.uri,
-    state: stateRaw,
-    codeChallenge: challenge,
-    scope,
-    nonce: nonce ?? null,
-    licenseChoice: choice ?? "card",
-    purpose: purpose ?? "signin",
-    ...(keyReturn ? { keyReturn: true as const } : {}),
-    // Hints prefill and verify nothing: a hint that does not normalise is dropped.
-    loginHint: strictEmail(loginHint),
-    nameHint: normalizeDeviceLabel(nameHint),
-  };
+    errorRedirect(redirectUri, issuer, error, authz.state);
 
   // The card lives on the customer host once `CUSTOMER_ORIGIN` is usable (LK-04): the binder
   // cannot be set from here, so the redirect goes through the bind hop.
@@ -267,10 +345,12 @@ export async function handleAuthorize(ctx: {
       req,
       {
         product: product.slug,
-        kind: verdict.kind,
-        origin: new URL(verdict.uri).origin,
+        kind,
+        origin: reqOrigin,
         flowRef: "authorize",
         authz,
+        ...(deviceLabel ? { deviceLabel } : {}),
+        ...(native ? { native } : {}),
         crossHost,
       },
       now,

@@ -6668,6 +6668,16 @@ msgstr "サインイン後にアプリへ戻れません"
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。"
 
+#. Sign-in link expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.title"
+msgstr "サインインリンクの有効期限切れ"
+
+#. This sign-in link has expired. Go back to {product} and start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.message"
+msgstr "このサインインリンクは有効期限が切れました。{product} に戻って、もう一度始めてください。"
+
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"
@@ -7467,6 +7477,16 @@ msgstr "コードの有効期限切れ"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-expired.message"
 msgstr "サインインが完了する前にコードの有効期限が切れました。もう一度やり直してください。"
+
+#. Browser sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.title"
+msgstr "ブラウザでサインインできません"
+
+#. Sign-in could not open a browser here. Use a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.message"
+msgstr "ここではブラウザを開けませんでした。代わりにコードを使ってください。"
 
 #. Sign-in declined
 #. Core copy (conformance/parity/copy.en.json, codes).

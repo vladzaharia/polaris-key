@@ -208,6 +208,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/identity/nearby/poll` | identity | The new device collects the outcome of its nearby request (I-40.7) |
 | POST | `/{product}/identity/nearby/start` | identity | A signed-out device asks a nearby signed-in device to approve its sign-in (I-40.4) |
 | POST | `/{product}/identity/nonce` | identity | A nonce for a native platform sign-in (I-13.2) |
+| POST | `/{product}/identity/request` | identity | Push a native app's authorize request (RFC 9126; I-15) |
 | POST | `/{product}/identity/restore` | identity | Enrol or check this device's silent-restore key (I-49.5) |
 | DELETE | `/{product}/identity/restore` | identity | Revoke this device's silent-restore key (I-49.5) |
 | POST | `/{product}/identity/session/license` | identity | Mint a browser session from a license key |
@@ -313,6 +314,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | HEAD | `/help` | portal | Help (alias), headers only |
 | GET | `/media/{product}/{asset}` | portal | A product's art, as a redirect to its hosted copy |
 | GET | `/media/avatar/{asset}` | portal | An account picture, re-encoded and served same-origin |
+| GET | `/signin/return` | portal | The hosted desktop ReturnStep (I-15) |
 | GET | `/signin` | portal | Sign-in entry (redirect) |
 | GET | `/tv` | portal | Device-code entry page, TV variant (HTML) |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |

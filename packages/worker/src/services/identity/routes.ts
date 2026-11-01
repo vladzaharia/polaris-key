@@ -83,6 +83,7 @@ import {
 } from "./attach.js";
 import { handleAuthorize } from "./passthrough/authorize.js";
 import { handleToken } from "./passthrough/token.js";
+import { handlePushedRequest } from "./passthrough/pushed.js";
 import { handleExchangeNonce } from "./passthrough/nonce.js";
 import { handleNearbyStart } from "./passthrough/nearbyStart.js";
 import { handleNearbyApprove } from "./passthrough/nearbyApprove.js";
@@ -161,6 +162,22 @@ export const IDENTITY_ROUTES = serviceRoutes("identity", [
     auth: { kind: "code" },
     handler: ({ req, env, db, product, now, settings }) =>
       handleToken({
+        req,
+        env,
+        db,
+        product,
+        now,
+        ...(settings ? { settings } : {}),
+      }),
+  },
+  // I-15.4 (§12.12): a native app pushes its authorize request (RFC 9126). No CORS: only a native
+  // client calls it. The handler keeps its own method guard and rate limits.
+  {
+    path: "request",
+    methods: ["POST"],
+    auth: { kind: "none" },
+    handler: ({ req, env, db, product, now, settings }) =>
+      handlePushedRequest({
         req,
         env,
         db,
