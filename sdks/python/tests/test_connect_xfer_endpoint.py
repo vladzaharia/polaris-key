@@ -44,3 +44,30 @@ def test_a_throw_while_accepting_closes_the_session_and_not_the_host() -> None:
     assert closes == ["peer_bye"] and len(ev.errors) == 1
     ep.consent(ID, "accept")  # the endpoint is over: nothing happens
     assert closes == ["peer_bye"]
+
+
+def test_a_store_without_room_at_accept_cancels_that_transfer_with_quota_and_keeps_the_session() -> None:
+    from polaris_key.core.peer_xfer import XferNoRoom, xfer_cancel_body
+
+    closes: List[str] = []
+    sent: List[Any] = []
+    ev = Ev()
+    m = XferMachine(mode="a", caps=["xfer/1"], max_message=1 << 20, peer_key=bytes(32), handler=lambda a: "ask")
+
+    def apply(e: Any) -> None:
+        if "create" in e:
+            raise XferNoRoom(28, "no room")
+
+    ep = XferEndpoint(
+        m, send=lambda t, b: sent.append((t, bytes(b))), close=closes.append, read=lambda *a: b"", apply=apply, events=ev
+    )
+    ep.receive(XFER["OFFER"], xfer_offer_body({"id": ID, "size": 10, "sha256": SHA, "chunk": 10}))
+    ep.consent(ID, "accept")
+    # No ACCEPT went out; the one transfer was cancelled for room; the session is still open.
+    assert sent == [(XFER["CANCEL"], xfer_cancel_body(ID, "quota"))]
+    assert closes == [] and ev.errors == []
+    assert m.partials() == []
+    # The next offer on the same session is asked as usual.
+    other = "AAAAAAAAAAAAAAAAAAAAAA"
+    ep.receive(XFER["OFFER"], xfer_offer_body({"id": other, "size": 10, "sha256": SHA, "chunk": 10}))
+    assert [a["id"] for a in ev.asks] == [ID, other]

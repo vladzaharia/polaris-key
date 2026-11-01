@@ -24,6 +24,7 @@ from .peer_payload import parse_strict_object
 
 __all__ = [
     "XFER",
+    "XferNoRoom",
     "XFER_ACK_EVERY",
     "XFER_CAP",
     "XFER_CHUNK_HEAD",
@@ -272,6 +273,11 @@ def xfer_partial_path(key: bytes, id_: str, sha256: str) -> str:
 # -- The machine ----------------------------------------------------------------------------------
 
 
+class XferNoRoom(OSError):
+    """A store refused a ``create`` or ``truncate`` for want of room. The endpoint answers it with
+    ``CANCEL`` ``quota`` for that transfer and keeps the session."""
+
+
 class XferOut:
     """What one machine call asks for. ``send`` records, ``close`` a peer_* code, ``ask`` the host's
     question, ``withdraw`` ids whose question is withdrawn, ``results``, ``partial`` effects on the kept
@@ -474,6 +480,26 @@ class XferMachine:
                 self._end(t, True)
                 return
             self._accept(t)
+
+        return self._begin(at, go)
+
+    def no_room(self, at: float, id: str) -> XferOut:  # noqa: A002
+        """The host's room check failed when the person accepted: ``CANCEL`` ``quota`` for that one
+        transfer, and the session stays. A partial this transfer made at 0 bytes goes; one with bytes
+        kept stays."""
+
+        def go() -> None:
+            t = self._tr.get(id)
+            if t is None or t.dir != "in":
+                return
+            if t.st != "asking" and not t.accepted:
+                return
+            self._out.send.append({"t": "CANCEL", "id": id, "reason": "quota"})
+            p = next((x for x in self._parts if x["ref"] == t.partial), None)
+            if p is not None and p["bytes"] == 0:
+                self._eff({"discard": p["ref"]})
+                self._parts = [x for x in self._parts if x is not p]
+            self._end(t, True)
 
         return self._begin(at, go)
 
