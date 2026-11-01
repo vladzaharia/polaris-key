@@ -22,7 +22,7 @@ func run(t: PKeyTestContext) -> void:
 	t.check("advert row counts", _counts(a, {
 		"epochs": 8, "names": 12, "tags": 5, "txt": 24, "instances": 9, "browse": 12}))
 	t.check("sas row counts", _counts(s, {"commits": 3, "codes": 12, "reveals": 10, "nonces": 6}))
-	t.check("payload row counts (at least the rows this runner was written for)", _counts(h, {"payloads": 58, "intersection": 7}))
+	t.check("payload row counts (at least the rows this runner was written for)", _counts(h, {"payloads": 76, "intersection": 7}))
 	t.check("advert epoch seconds", int(a["epochSeconds"]) == PKeyPeerAdvert.ADVERT_EPOCH_SECONDS)
 	t.check("max payload", int(h["maxPayload"]) == PKeyPeerPayload.MAX_HANDSHAKE_PAYLOAD)
 	_epochs(t, a["epochs"])
@@ -226,14 +226,9 @@ static func _payload_bytes(r: Dictionary) -> PackedByteArray:
 
 func _payloads(t: PKeyTestContext, rows: Array) -> void:
 	var good := 0
-	var ran := 0
-	var skipped: Array = []
+	var modes := {}
 	for r in rows:
-		# Mode c (inter-account links, feature connect.links) is planned for Godot (parity.json, CC-19).
-		if r["mode"] == "c":
-			skipped.append(r["id"])
-			continue
-		ran += 1
+		modes[r["mode"]] = int(modes.get(r["mode"], 0)) + 1
 		var bytes := _payload_bytes(r)
 		var got := PKeyPeerPayload.parse_handshake_payload(r["mode"], int(r["message"]), bytes)
 		var want: Dictionary = r["want"]
@@ -242,8 +237,8 @@ func _payloads(t: PKeyTestContext, rows: Array) -> void:
 			ok = got["caps"] == want.get("caps", []) \
 					and got.get("ring", -1) == int(want.get("ring", -1)) and got.get("cert") == want.get("cert")
 		good += int(t.check("payload %s" % r["id"], ok))
-	t.check("every payload row Godot claims ran", ran >= 58 and good == ran, "%d/%d" % [good, ran])
-	t.check("the skipped payload rows are mode c only (connect.links is planned)", skipped.size() == rows.size() - ran, ", ".join(skipped))
+	t.check("every payload row ran", rows.size() >= 76 and good == rows.size(), "%d/%d" % [good, rows.size()])
+	t.check("mode c has 11 payload rows", int(modes.get("c", 0)) == 11, str(modes))
 
 
 func _intersection(t: PKeyTestContext, rows: Array) -> void:
