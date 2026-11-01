@@ -30,8 +30,6 @@ import im.plrs.key.core.ActivationSource
 import im.plrs.key.core.AttestResult
 import im.plrs.key.core.AttestationProvider
 import im.plrs.key.core.AttestationProviders
-import im.plrs.key.core.NoAttestation
-import im.plrs.key.core.attestDevice
 import im.plrs.key.core.BlockInfoRecord
 import im.plrs.key.core.Capabilities
 import im.plrs.key.core.CoreContext
@@ -43,29 +41,34 @@ import im.plrs.key.core.DocProfile
 import im.plrs.key.core.DocumentSlice
 import im.plrs.key.core.FingerprintSource
 import im.plrs.key.core.HardwareFingerprint
+import im.plrs.key.core.ImportBundleResult
 import im.plrs.key.core.JvmDeviceFactsSource
 import im.plrs.key.core.JvmFingerprintSource
 import im.plrs.key.core.LicenseDoc
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.LicenseStatus
+import im.plrs.key.core.NoAttestation
 import im.plrs.key.core.NoNetworkTransport
 import im.plrs.key.core.ProbeDeclaration
 import im.plrs.key.core.ReacquireFn
 import im.plrs.key.core.ReacquireRoute
 import im.plrs.key.core.Reacquired
 import im.plrs.key.core.RegisterResult
+import im.plrs.key.core.RuntimeFamily
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.ServicesMap
 import im.plrs.key.core.StoreStatus
 import im.plrs.key.core.Support
 import im.plrs.key.core.SyncResult
 import im.plrs.key.core.TokenSource
-import im.plrs.key.core.ImportBundleResult
+import im.plrs.key.core.attestDevice
+import im.plrs.key.core.boundChannels
 import im.plrs.key.core.chooseReacquireRoute
 import im.plrs.key.core.deauthorizeDevice
 import im.plrs.key.core.defaultDeviceKeyStore
 import im.plrs.key.core.listDevices
 import im.plrs.key.core.registerDevice
+import im.plrs.key.core.reloadFeeds
 import im.plrs.key.core.renameDevice
 import im.plrs.key.core.requestDeviceRegistration
 import im.plrs.key.identity.IdentityClient
@@ -86,14 +89,10 @@ import im.plrs.key.release.DistributionClient
 import im.plrs.key.release.ReleaseClient
 import im.plrs.key.update.UpdateClient
 import im.plrs.key.update.UpdateClientOptions
-import im.plrs.key.core.RuntimeFamily
-import im.plrs.key.core.boundChannels
-import im.plrs.key.core.reloadFeeds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -105,10 +104,10 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.JsonArray
 
 public data class PolarisKeyClientOptions @JvmOverloads constructor(
     val core: CoreOptions,
@@ -252,7 +251,8 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     private val reacquire: ReacquireFn = { current, source -> reacquireToken(current, source) }
 
     public val license: LicenseClient = LicenseClient(
-        core, options.license,
+        core,
+        options.license,
         onAcquired = { syncAfterAcquisition() },
         // The credential goes with the device: Connect stops and leaves, then Cloud Sync flushes, forgets the key ring
         // and purges. A root that cannot be removed stops the deactivation (no request, the token stays).
@@ -299,6 +299,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public val entitlements: EntitlementsClient = EntitlementsClient(license)
 
     public val config: ConfigClient = ConfigClient(core, options.config, reacquire) { attestForRetry() }
+
     /**
      * The changelog, the URLs, record verification and `fetch()` (a verified, resumable build
      * download; its records verify against `UpdateClientOptions.pinnedReleaseKeys`).
@@ -349,10 +350,16 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         val choices = channelChoices()
         if (channel != null && channel != choices.buildChannel) {
             if (choices.lockedBy != null) {
-                throw im.plrs.key.core.PolarisException(im.plrs.key.core.ErrorCode.channelNotAllowed, "This install's channel is set by ${choices.lockedBy}.")
+                throw im.plrs.key.core.PolarisException(
+                    im.plrs.key.core.ErrorCode.channelNotAllowed,
+                    "This install's channel is set by ${choices.lockedBy}.",
+                )
             }
             if (channel !in choices.options) {
-                throw im.plrs.key.core.PolarisException(im.plrs.key.core.ErrorCode.channelNotAllowed, "This licence does not grant the $channel channel.")
+                throw im.plrs.key.core.PolarisException(
+                    im.plrs.key.core.ErrorCode.channelNotAllowed,
+                    "This licence does not grant the $channel channel.",
+                )
             }
         }
         core.setChannel(channel)
@@ -410,7 +417,9 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * against the update options' `pinnedReleaseKeys`, never the product trust set.
      */
     public val packs: PacksClient = PacksClient(
-        core, options.update?.pinnedReleaseKeys ?: emptyMap(), options.packs,
+        core,
+        options.update?.pinnedReleaseKeys ?: emptyMap(),
+        options.packs,
         loadFeedDeltas = { committedFeedMenu(options.update) },
     )
 
@@ -623,6 +632,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
     private var refreshJob: Job? = null
     private val startLock = kotlinx.coroutines.sync.Mutex()
+
     @Volatile private var started = false
 
     /**
@@ -690,6 +700,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     // ── Presentation (core.presentation, plans/HA-13.md) ────────────────────────────────────────
+
     /**
      * The product's presentation seam (client-core's `PresentationSource`): the UI kit reads it
      * (`PolarisTheme(presentation = client.presentationSource)`) and never fetches discovery or the
@@ -723,6 +734,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public suspend fun caps(): List<String> = capabilityEngine.caps(core.services())
 
     // ── Sync ─────────────────────────────────────────────────────────────────────────────────
+
     /** One Core pass: trust refresh, the enabled documents in parallel, verify, cache, floor, report. */
     public suspend fun sync(force: Boolean = false): SyncResult {
         // De-duplicated (SP-51): a call that arrives while a pass of the same kind runs shares it
@@ -760,6 +772,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     private val syncFlightLock = kotlinx.coroutines.sync.Mutex()
+
     @Volatile private var syncFlight: SyncFlight? = null
 
     /** The post-acquisition sync, forced so a stale ETag cannot 304 away the very first document. */
@@ -776,11 +789,14 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * without-licence device or a product with License off. Null means the one attempt failed and
      * the hard-401 path applies.
      */
-    private suspend fun reacquireToken(current: String, source: TokenSource?): Reacquired? =
-        if (!tokenRejection.mayAsk(current)) null else when (chooseReacquireRoute(core.enabled(ServiceSlug.license), source)) {
+    private suspend fun reacquireToken(current: String, source: TokenSource?): Reacquired? = if (!tokenRejection.mayAsk(current)) {
+        null
+    } else {
+        when (chooseReacquireRoute(core.enabled(ServiceSlug.license), source)) {
             ReacquireRoute.devicesRegister ->
                 (core.requestDeviceRegistration(registrationFingerprint()) as? RegisterResult.Ok)
                     ?.let { Reacquired(it.token, TokenSource.register) }
+
             ReacquireRoute.licenseToken -> {
                 val answer = LicenseEndpoints.reacquireToken(core, current)
                 // A 401 on /license/token is final for this token (SP-51): the licence is gone, and
@@ -789,6 +805,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
                 (answer as? ActivationResult.Ok)?.let { Reacquired(it.token, TokenSource.reacquire) }
             }
         }
+    }
 
     /**
      * Bounds the §5 re-acquire (SP-51): a token the Worker refused at `/license/token` is not asked
@@ -825,6 +842,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         if (fingerprintEnabled) withContext(Dispatchers.IO) { fingerprintSource.collect(product) } else null
 
     // ── Telemetry (§6) ───────────────────────────────────────────────────────────────────────
+
     /**
      * Post the device telemetry snapshot now: the values of the documents this client VERIFIED
      * (R4-05), this host's software facts and the capability list, allowlisted keys only.
@@ -899,6 +917,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     // ── Offline bundles (§7) ─────────────────────────────────────────────────────────────────
+
     /** Verify and install an offline activation bundle. All-or-nothing; no token is created. */
     public suspend fun importBundle(jws: String): ImportBundleResult {
         val bundle = core.importBundle(jws)
@@ -987,6 +1006,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public suspend fun storeStatus(): StoreStatus? = core.storeStatus()
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────────────────
+
     /** Start polling on `refreshIntervalSeconds` (no-op when unset, already running or local-only). */
     @Synchronized
     public fun startRefresh() {
@@ -1021,8 +1041,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
 
     public companion object {
         /** Construct and `start()` (load token, device and cache with NO network) in one step. */
-        public suspend fun create(options: PolarisKeyClientOptions): PolarisKeyClient =
-            PolarisKeyClient(options).also { it.start() }
+        public suspend fun create(options: PolarisKeyClientOptions): PolarisKeyClient = PolarisKeyClient(options).also { it.start() }
 
         /**
          * A client that never touches the network (§7.3): `NoNetworkTransport` refuses at the dial,

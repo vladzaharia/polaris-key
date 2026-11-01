@@ -23,8 +23,8 @@ import im.plrs.key.core.peer.RelayMessage
 import im.plrs.key.core.peer.contactAlias
 import im.plrs.key.core.peer.contactRid
 import im.plrs.key.core.peer.decodeRelay
-import im.plrs.key.core.peer.lan.MdnsFound
 import im.plrs.key.core.peer.encodeRelay
+import im.plrs.key.core.peer.lan.MdnsFound
 import im.plrs.key.core.testing.ScriptedTransport
 import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.path
@@ -221,11 +221,16 @@ class ConnectLinksTest : ConnectLanBase() {
             }
         }
 
-        override fun createSocket(host: String?, port: Int): java.net.Socket = createSocket().also { it.connect(java.net.InetSocketAddress(host, port)) }
+        override fun createSocket(host: String?, port: Int): java.net.Socket = createSocket().also {
+            it.connect(java.net.InetSocketAddress(host, port))
+        }
 
-        override fun createSocket(host: String?, port: Int, localHost: java.net.InetAddress?, localPort: Int): java.net.Socket = createSocket(host, port)
+        override fun createSocket(host: String?, port: Int, localHost: java.net.InetAddress?, localPort: Int): java.net.Socket =
+            createSocket(host, port)
 
-        override fun createSocket(host: java.net.InetAddress?, port: Int): java.net.Socket = createSocket().also { it.connect(java.net.InetSocketAddress(host, port)) }
+        override fun createSocket(host: java.net.InetAddress?, port: Int): java.net.Socket = createSocket().also {
+            it.connect(java.net.InetSocketAddress(host, port))
+        }
 
         override fun createSocket(address: java.net.InetAddress?, port: Int, localAddress: java.net.InetAddress?, localPort: Int): java.net.Socket =
             createSocket(address, port)
@@ -399,6 +404,7 @@ class ConnectLinksTest : ConnectLanBase() {
     // -- the client: rows, the gate, the ticket -------------------------------------------------------
 
     private val deviceId = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
     @Volatile
     private var now = 1_700_000_000L
     private var discoveryStatus = 200

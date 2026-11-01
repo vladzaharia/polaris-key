@@ -873,14 +873,16 @@ class NearbySignInTest {
         try {
             World(directory = dir).signedIn()
             val refusing = object : im.plrs.key.core.Store by im.plrs.key.core.FileStore("djdl", dir) {
-                override suspend fun clearToken() {
-                    throw java.io.IOException("not removable")
-                }
+                override suspend fun clearToken(): Unit = throw java.io.IOException("not removable")
             }
             val again = CoreContext(
                 CoreOptions(
-                    productSlug = "djdl", version = "1.0.0", pinnedKeys = emptyMap(), trustRefresh = false,
-                    store = refusing, clock = { 1_700_000_000L },
+                    productSlug = "djdl",
+                    version = "1.0.0",
+                    pinnedKeys = emptyMap(),
+                    trustRefresh = false,
+                    store = refusing,
+                    clock = { 1_700_000_000L },
                 ),
             )
             again.start()

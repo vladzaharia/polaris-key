@@ -40,9 +40,6 @@ import im.plrs.key.core.peer.ContactTxtResult
 import im.plrs.key.core.peer.HandshakeLimiter
 import im.plrs.key.core.peer.MAX_CONTACT_SECRETS
 import im.plrs.key.core.peer.MAX_LIVE_CONTACT_ADVERTS
-import im.plrs.key.core.peer.contactInstance
-import im.plrs.key.core.peer.isInstanceName
-import im.plrs.key.core.peer.parseContactTxt
 import im.plrs.key.core.peer.NoiseRole
 import im.plrs.key.core.peer.PeerCloseCode
 import im.plrs.key.core.peer.PeerLink
@@ -50,6 +47,8 @@ import im.plrs.key.core.peer.PeerMode
 import im.plrs.key.core.peer.TxtResult
 import im.plrs.key.core.peer.accountInstance
 import im.plrs.key.core.peer.advertEpoch
+import im.plrs.key.core.peer.contactInstance
+import im.plrs.key.core.peer.isInstanceName
 import im.plrs.key.core.peer.lan.JvmMdns
 import im.plrs.key.core.peer.lan.LAN_MAX_PENDING
 import im.plrs.key.core.peer.lan.LAN_MAX_PENDING_PER_ADDRESS
@@ -64,10 +63,10 @@ import im.plrs.key.core.peer.lan.PendingLimiter
 import im.plrs.key.core.peer.lan.TcpPipe
 import im.plrs.key.core.peer.lan.inetAddressOfLiteral
 import im.plrs.key.core.peer.lan.lanDialRaceTo
-import javax.net.SocketFactory
 import im.plrs.key.core.peer.lan.literalOfInetAddress
 import im.plrs.key.core.peer.lan.socketVerdict
 import im.plrs.key.core.peer.lan.textVerdict
+import im.plrs.key.core.peer.parseContactTxt
 import im.plrs.key.core.peer.parseTxt
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -86,6 +85,7 @@ import java.io.IOException
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.CopyOnWriteArrayList
+import javax.net.SocketFactory
 
 /** Open sessions at once. */
 public const val LAN_MAX_SESSIONS: Int = 64
@@ -499,7 +499,12 @@ internal class LanService private constructor(
                 s.contact?.let { ref -> if (ref.pending) scope.launch { quiet { src.contactEstablished?.invoke(ref) } } }
             },
             onEnded = {
-                self?.let { l -> synchronized(lock) { links -= l; serves -= l } }
+                self?.let { l ->
+                    synchronized(lock) {
+                        links -= l
+                        serves -= l
+                    }
+                }
                 for (c in copies) c.secret.fill(0)
             },
             contacts = served.map { it.ref },
@@ -652,7 +657,8 @@ internal class LanService private constructor(
 
     private suspend fun startBrowse() {
         browseHandle = mdns.browse(
-            { f -> scope.launch { quiet { found(f) } } }, { gone(it) },
+            { f -> scope.launch { quiet { found(f) } } },
+            { gone(it) },
             { nameIndex(src.now())?.lookup(it) != null || contactNames?.lookup(it, src.now()) != null },
         )
     }
@@ -718,7 +724,15 @@ internal class LanService private constructor(
         override fun toString(): String = "ContactNames(${table.size})"
     }
 
-    private class ContactPeer(val id: String, val pending: Boolean, val instance: String, val host: String, val port: Int, val alternates: List<String>, val socketFactory: SocketFactory? = null)
+    private class ContactPeer(
+        val id: String,
+        val pending: Boolean,
+        val instance: String,
+        val host: String,
+        val port: Int,
+        val alternates: List<String>,
+        val socketFactory: SocketFactory? = null,
+    )
 
     private fun dropContacts() {
         val old = contacts
@@ -791,7 +805,10 @@ internal class LanService private constructor(
     private fun foundContact(f: MdnsFound, hosts: List<String>) {
         val hit = contactNames?.lookup(f.instance, src.now()) ?: return
         val c = contacts.firstOrNull { it.id == hit.first && it.pending == hit.second } ?: return
-        synchronized(lock) { contactPeers["${c.id}|${c.pending}"] = ContactPeer(c.id, c.pending, f.instance, hosts[0], f.port, hosts.drop(1), f.socketFactory) }
+        synchronized(lock) {
+            contactPeers["${c.id}|${c.pending}"] =
+                ContactPeer(c.id, c.pending, f.instance, hosts[0], f.port, hosts.drop(1), f.socketFactory)
+        }
     }
 
     /**

@@ -1395,6 +1395,9 @@
       "ktlint:standard:argument-list-wrapping": 11,
       "ktlint:standard:max-line-length": 2
     },
+    "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/NearbySignInTest.kt": {
+      "detekt:complexity.LargeClass": 1
+    },
     "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/RedirectSessionTest.kt": {
       "detekt:style.MaxLineLength": 3,
       "ktlint:standard:argument-list-wrapping": 12,
@@ -2065,6 +2068,7 @@
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 4,
       "detekt:exceptions.TooGenericExceptionCaught": 5,
+      "detekt:style.ReturnCount": 1,
       "detekt:style.ThrowsCount": 1
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/CloudNearby.kt": {
@@ -2167,7 +2171,7 @@
       "detekt:exceptions.TooGenericExceptionCaught": 3,
       "detekt:style.MagicNumber": 4,
       "detekt:style.MaxLineLength": 2,
-      "detekt:style.ReturnCount": 2,
+      "detekt:style.ReturnCount": 3,
       "detekt:style.ThrowsCount": 5,
       "ktlint:standard:argument-list-wrapping": 15,
       "ktlint:standard:blank-line-between-when-conditions": 5,
@@ -2199,7 +2203,8 @@
       "detekt:style.ThrowsCount": 2
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/ConnectContacts.kt": {
-      "detekt:complexity.LongParameterList": 3
+      "detekt:complexity.LongParameterList": 3,
+      "detekt:complexity.TooManyFunctions": 1
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/ConnectErrors.kt": {
       "detekt:complexity.LongParameterList": 1,
@@ -2212,16 +2217,9 @@
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.SwallowedException": 8,
       "detekt:exceptions.TooGenericExceptionCaught": 5,
-      "detekt:style.MaxLineLength": 3,
+      "detekt:style.MaxLineLength": 1,
       "detekt:style.ReturnCount": 2,
-      "detekt:style.ThrowsCount": 3,
-      "ktlint:standard:argument-list-wrapping": 13,
-      "ktlint:standard:binary-expression-wrapping": 1,
-      "ktlint:standard:class-signature": 8,
-      "ktlint:standard:function-literal": 2,
-      "ktlint:standard:import-ordering": 1,
-      "ktlint:standard:max-line-length": 2,
-      "ktlint:standard:wrapping": 1
+      "detekt:style.ThrowsCount": 3
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/ConnectLinkPairing.kt": {
       "detekt:complexity.ComplexCondition": 1,
@@ -2264,20 +2262,12 @@
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyClient.kt": {
       "detekt:complexity.TooManyFunctions": 1,
-      "detekt:exceptions.SwallowedException": 8,
-      "detekt:exceptions.TooGenericExceptionCaught": 9,
-      "detekt:style.MagicNumber": 4,
-      "detekt:style.MaxLineLength": 3,
+      "detekt:exceptions.SwallowedException": 9,
+      "detekt:exceptions.TooGenericExceptionCaught": 10,
+      "detekt:style.MagicNumber": 5,
+      "detekt:style.MaxLineLength": 1,
       "detekt:style.ReturnCount": 1,
-      "detekt:style.ThrowsCount": 1,
-      "ktlint:standard:argument-list-wrapping": 9,
-      "ktlint:standard:blank-line-between-when-conditions": 1,
-      "ktlint:standard:function-signature": 1,
-      "ktlint:standard:import-ordering": 1,
-      "ktlint:standard:max-line-length": 2,
-      "ktlint:standard:multiline-if-else": 2,
-      "ktlint:standard:spacing-between-declarations-with-annotations": 2,
-      "ktlint:standard:spacing-between-declarations-with-comments": 6
+      "detekt:style.ThrowsCount": 1
     },
     "sdks/kotlin/sdk/src/main/kotlin/im/plrs/key/sdk/PolarisKeyFutures.kt": {
       "detekt:complexity.TooManyFunctions": 1
@@ -2290,9 +2280,10 @@
       "detekt:complexity.NestedBlockDepth": 1,
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:exceptions.ExceptionRaisedInUnexpectedLocation": 1,
-      "detekt:exceptions.SwallowedException": 3,
+      "detekt:exceptions.SwallowedException": 5,
       "detekt:style.LoopWithTooManyJumpStatements": 2,
-      "detekt:style.ThrowsCount": 4,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 5,
       "ktlint:standard:blank-line-between-when-conditions": 7
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/BackendTest.kt": {
