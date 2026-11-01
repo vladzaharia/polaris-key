@@ -120,7 +120,8 @@ public struct SaveConflictView: View {
                 // heading so the title read does not cut it off.
                 focus = state == .keeping ? .message : .heading
                 if state == .failed {
-                    let line = screen.line("saveConflict.failedDeleted")
+                    let line =
+                        screen.line("saveConflict.failedDeleted")
                         ?? screen.lineOrKey("saveConflict.failed")
                     let text = strings.string(line)
                     Task { @MainActor in

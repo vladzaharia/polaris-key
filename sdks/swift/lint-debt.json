@@ -24,9 +24,7 @@
       "swift-format:LineLength": 1
     },
     "sdks/swift/Sources/PolarisKey/PolarisKeyClient.swift": {
-      "swift-format:AddLines": 1,
-      "swift-format:AlwaysUseLowerCamelCase": 1,
-      "swift-format:Indentation": 1
+      "swift-format:AlwaysUseLowerCamelCase": 1
     },
     "sdks/swift/Sources/PolarisKey/SyncKeyring.swift": {
       "swift-format:OneCasePerLine": 3
@@ -529,11 +527,6 @@
     },
     "sdks/swift/Tests/PolarisKeyTests/WireContractV3Tests.swift": {
       "swift-format:OrderedImports": 1
-    },
-    "sdks/swift/Tests/PolarisKeyUISnapshotTests/KitRulesTests.swift": {
-      "swift-format:AddLines": 2,
-      "swift-format:LineLength": 1,
-      "swift-format:TrailingComma": 2
     }
   }
 }

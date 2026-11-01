@@ -70,7 +70,7 @@ final class SaveConflictModelTests: XCTestCase {
     func testAChoiceIsAppliedOnceAndKeptNamesIt() async {
         let calls = Calls()
         let m = SaveConflictModel(
-            conflict: conflict(), host: SaveConflictHost { await calls.add($0); })
+            conflict: conflict(), host: SaveConflictHost { await calls.add($0) })
         var kept: KitSaveConflict.Keep?
         m.onKept = { kept = $0 }
         await m.keep(.local)
@@ -125,7 +125,8 @@ final class SaveConflictModelTests: XCTestCase {
         XCTAssertFalse(m.screen.shows("saveConflict.newerThis"))
         var gone = KitSaveConflict(
             step: .choose, local: c.local, remoteDeleted: true, bothAvailable: true, newer: .local)
-        XCTAssertFalse(SaveConflictModel(conflict: gone).screen.copyKeys.contains { $0.hasPrefix("saveConflict.newer") })
+        XCTAssertFalse(
+            SaveConflictModel(conflict: gone).screen.copyKeys.contains { $0.hasPrefix("saveConflict.newer") })
         gone.step = .kept
         gone.keep = .both  // reads as local after a deletion
         XCTAssertTrue(SaveConflictModel(conflict: gone).screen.shows("saveConflict.keptLocalTitle"))

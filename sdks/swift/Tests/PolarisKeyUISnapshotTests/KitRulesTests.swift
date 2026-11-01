@@ -159,7 +159,10 @@ final class KitRulesTests: XCTestCase {
             KitActionSlot(kind: .quiet),  // Cancel
         ]
         XCTAssertEqual(KitActionOrder.order(slots), [1, 2, 3, 0])
-        XCTAssertEqual(KitActionOrder.order([KitActionSlot(kind: .quiet), KitActionSlot(kind: .secondary), KitActionSlot(kind: .primary)]), [0, 1, 2])
+        XCTAssertEqual(
+            KitActionOrder.order([
+                KitActionSlot(kind: .quiet), KitActionSlot(kind: .secondary), KitActionSlot(kind: .primary),
+            ]), [0, 1, 2])
     }
 
     // MARK: Layout
@@ -360,8 +363,10 @@ final class KitRulesTests: XCTestCase {
     func testAFailedStartSaysWhatFailedAndOffersTryAgain() {
         // DL7: the boot error's own title is drawn, with the product named by it (DL5), never an
         // icon and a button alone.
-        let lines = [CopyLine("gate.error.title", ["product": "Tidewater Studio"]),
-            CopyLine("common.tryAgain")]
+        let lines = [
+            CopyLine("gate.error.title", ["product": "Tidewater Studio"]),
+            CopyLine("common.tryAgain"),
+        ]
         let view = StatusScreenView(errorLines: lines, onTryAgain: {})
         XCTAssertEqual(view.lines.map(\.key), ["gate.error.title", "common.tryAgain"])
         XCTAssertTrue(StatusScreenView.titleNamesProduct(lines.first))
@@ -495,7 +500,8 @@ final class KitRulesTests: XCTestCase {
         /// accessibility text size, in both schemes: no crash, and a non-empty fitted size. The
         /// pictures are the simulator baselines (examples/ui/swiftui/run.sh).
         @MainActor func testSaveScreensLayOutAtEverySize() {
-            let previews = PolarisKeyPreviewState.of(.saveConflict)
+            let previews =
+                PolarisKeyPreviewState.of(.saveConflict)
                 + PolarisKeyPreviewState.of(.cloudSyncStatus).filter {
                     ["transferring", "waiting", "transfer-failed"].contains($0.state)
                 }
@@ -532,9 +538,10 @@ final class KitRulesTests: XCTestCase {
                     let model = SaveConflictModel(inputs: preview.inputs)
                     let host = NSHostingView(
                         rootView: SaveConflictView(
-                            model: model, window: size, frames: { seen = $0 })
-                            .environment(\.colorScheme, .light)
-                            .frame(width: size.width, height: size.height))
+                            model: model, window: size, frames: { seen = $0 }
+                        )
+                        .environment(\.colorScheme, .light)
+                        .frame(width: size.width, height: size.height))
                     host.frame = NSRect(origin: .zero, size: size)
                     host.layoutSubtreeIfNeeded()
                     try await Task.sleep(nanoseconds: 150_000_000)

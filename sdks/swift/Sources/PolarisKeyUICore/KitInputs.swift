@@ -1091,7 +1091,9 @@ public struct KitSaveConflict: Sendable, Codable, Equatable, Hashable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(step, forKey: .step)
         try c.encodeIfPresent(local, forKey: .local)
-        if remoteDeleted { try c.encodeNil(forKey: .remote) } else {
+        if remoteDeleted {
+            try c.encodeNil(forKey: .remote)
+        } else {
             try c.encodeIfPresent(remote, forKey: .remote)
         }
         try c.encodeIfPresent(bothAvailable, forKey: .bothAvailable)

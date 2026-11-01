@@ -9,6 +9,7 @@ import PolarisKeyCore
 import XCTest
 
 @testable import PolarisKey
+
 #if canImport(CryptoKit)
     import CryptoKit
 #else
@@ -620,7 +621,8 @@ final class TransferTests: XCTestCase {
         let events = { (r: LockedValue<[XferResult]>, ep: LockedValue<XferEndpoint?>) in
             XferEvents(
                 ask: { a in ep.current?.consent(id: a.id, accept: true) }, withdraw: { _ in },
-                result: { x in r.with { $0.append(x) } }, refused: { _ in }, error: { e in log.with { $0.append("error \(e)") } })
+                result: { x in r.with { $0.append(x) } }, refused: { _ in },
+                error: { e in log.with { $0.append("error \(e)") } })
         }
         epA.set(
             XferEndpoint(
