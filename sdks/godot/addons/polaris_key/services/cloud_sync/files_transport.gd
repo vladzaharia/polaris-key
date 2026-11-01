@@ -20,12 +20,19 @@ extends RefCounted
 ##              integer.
 ##   Time       15 s plus one second per 64 KiB of body, sent or expected (a slow link is cut off).
 ##
+## Bulk bodies (U-41.G): with a `PKeyBulkChannel` that is available, `put_single`, `put_part`, `put_chunk`,
+## `get_file` and `get_chunk` go through it instead of the PKeyTransport, under the same route allow-list, the
+## same caps and the same refusals; the JSON calls never do. The channel's answer is read as an HTTP answer
+## (a 3xx is refused, an answer over the cap is `bad_response`). A reply still missing at the request's
+## deadline is cancelled natively and answers status 0, which the engine retries.
+##
 ## Every method is a coroutine answering the engine's reply Dictionary (`Transfer.reply_ok(value)` or
 ## `Transfer.reply_fail(status, code, retry_after, body)`). The bearer is read per request and never put in a
 ## reply, a log line or an error. A transport with no bearer answers `401 unauthorized` and sends nothing.
 
 const Transfer := preload("res://addons/polaris_key/services/cloud_sync/transfer.gd")
 const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
+const BulkChannel := preload("res://addons/polaris_key/services/cloud_sync/bulk_channel.gd")
 
 const JSON_MAX_BYTES := 1048576
 const ERROR_MAX_BYTES := 65536
@@ -46,9 +53,31 @@ static var _shape_product := ""
 
 ## The HTTP status of the last answer that arrived (0: none). The transcript replay reads it.
 var last_status := 0
+## Seconds a bulk request may wait for its answer; negative: the usual (15 s plus one per 64 KiB). A test sets it.
+var bulk_timeout := -1.0
 
 var _tr: PKeyTransport
 var _ctx: Callable
+var _channel: BulkChannel = null
+var _closed := false
+var _next_req := 0
+## req -> {call, transfer}: the bulk requests waiting for an answer.
+var _pending := {}
+
+
+## One bulk request's wait: settled by the channel's answer, the deadline or a cancel, whichever is first.
+class _Wait:
+	extends RefCounted
+	signal settled
+	var done := false
+	var result := {}
+
+	func settle(r: Dictionary) -> void:
+		if done:
+			return
+		done = true
+		result = r
+		settled.emit()
 
 
 static func _static_init() -> void:
@@ -73,6 +102,98 @@ static func make_transport(host: Node, local_only := false) -> PKeyTransport:
 func _init(tr: PKeyTransport, ctx: Callable) -> void:
 	_tr = tr
 	_ctx = ctx
+
+
+# ── The bulk channel ────────────────────────────────────────────────────────────────────────────
+
+## Route the bulk bodies through `channel` (null: back to the PKeyTransport).
+func set_channel(channel: BulkChannel) -> void:
+	_channel = channel
+
+
+## Whether bulk bodies go through a channel now. The engine batches a phase's requests when this is true.
+func batching() -> bool:
+	return _channel != null and _channel.available()
+
+
+## Open the channel for a (new) session: `keep_ids` are the journaled transfers. Answers the channel's
+## reconcile result (`resume` names transfers whose native tasks were lost).
+func open_channel(keep_ids: Array) -> Dictionary:
+	_closed = false
+	if _channel == null or not _channel.available():
+		return {"resume": [], "cancelled": 0, "swept": 0}
+	return await _channel.open(keep_ids)
+
+
+## Cancel every bulk request of one transfer, here and natively. Final: late answers are dropped.
+func cancel_transfer(transfer_id: String) -> void:
+	for req in _pending.keys():
+		if _pending[req]["transfer"] == transfer_id:
+			_pending[req]["wait"].settle({"cancelled": true})
+	if _channel != null:
+		_channel.cancel(transfer_id)
+
+
+## Sign-out: cancel every bulk request and close the channel. Requests made afterwards are refused until
+## `open_channel`.
+func close() -> void:
+	_closed = true
+	for req in _pending.keys():
+		_pending[req]["wait"].settle({"cancelled": true})
+	if _channel != null:
+		_channel.close()
+
+
+func _run_channel(wait: _Wait, method: String, head: Dictionary, body: PackedByteArray) -> void:
+	var r: Dictionary
+	if method == "PUT":
+		r = await _channel.put(head, body)
+	else:
+		r = await _channel.fetch(head)
+	wait.settle(r)
+
+
+## One request through the channel: `{res}` in the PKeyTransport's shape or `{reply}`.
+func _bulk_exchange(method: String, path: String, ctx: Dictionary, prepared: Dictionary, limit: int, timeout: float, via: Dictionary) -> Dictionary:
+	if _closed:
+		return {"reply": Transfer.reply_fail(400, "cancelled")}
+	var headers: Dictionary = prepared["headers"]
+	headers.erase("authorization")
+	_next_req = _next_req % 2147483647 + 1
+	var req := _next_req
+	var transfer: String = via.get("transfer", "")
+	var head := {"req": req, "transfer": transfer if transfer != "" else "unscoped", "url": ctx["url"].call(path), "headers": headers,
+			"bearer": ctx["token"], "max_body": mini(limit, BODY_LIMIT), "part": int(via.get("part", 0))}
+	var wait := _Wait.new()
+	_pending[req] = {"wait": wait, "transfer": head["transfer"]}
+	_run_channel(wait, method, head, prepared["body"])
+	if not wait.done:
+		var tree := Engine.get_main_loop() as SceneTree
+		var seconds := bulk_timeout if bulk_timeout >= 0.0 else timeout
+		tree.create_timer(seconds).timeout.connect(func() -> void: wait.settle({"timeout": true}))
+		await wait.settled
+	_pending.erase(req)
+	var got: Dictionary = wait.result
+	if got.has("cancelled") or got.has("timeout"):
+		_channel.cancel(req)
+		# No answer: the engine retries it, and stops at once if the transfer was cancelled.
+		return {"reply": Transfer.reply_fail(0, "cancelled" if got.has("cancelled") else "network")}
+	if got.has("fail") or not (got.get("status") is int):
+		# An answer longer than the cap is not retried: another try meets the same body.
+		if got.get("fail") == "oversize":
+			return {"reply": Transfer.reply_fail(200, PKeyConstants.ErrorCode.BAD_RESPONSE)}
+		return {"reply": Transfer.reply_fail(0, "network")}
+	var status: int = got["status"]
+	last_status = status
+	if status >= 300 and status < 400:
+		return {"reply": Transfer.reply_fail(status, "redirect_refused")}
+	var body: PackedByteArray = got.get("body", PackedByteArray())
+	if body.size() > mini(limit, BODY_LIMIT):
+		return {"reply": Transfer.reply_fail(200, PKeyConstants.ErrorCode.BAD_RESPONSE)}
+	var answer_headers := {}
+	for k in (got.get("headers", {}) as Dictionary):
+		answer_headers[String(k).to_lower()] = (got["headers"] as Dictionary)[k]
+	return {"res": {"status": status, "headers": answer_headers, "body": body}}
 
 
 # ── Paths ───────────────────────────────────────────────────────────────────────────────────────
@@ -129,6 +250,11 @@ static func is_files_path(product: String, path_and_query: String) -> bool:
 
 func _bad(what: String) -> Dictionary:
 	return Transfer.reply_fail(400, "bad_path", -1.0, {"detail": what})
+
+
+## The channel's tag for a request: the engine puts the transfer's journal id in the target.
+static func _via(target: Dictionary, part := 0) -> Dictionary:
+	return {"transfer": String(target.get("transfer", "")), "part": part}
 
 
 func _record_path(product: String, t: Dictionary) -> Variant:
@@ -188,7 +314,7 @@ func _prepare(ctx: Dictionary, path: String, sent: Dictionary) -> Dictionary:
 
 ## One request. `sent`: {json?, body?, sha256?, range?: [start, end), if_match?}. Returns `{res}` (the
 ## transport's detail: status, headers, body) or `{reply}` (a failure already in the engine's shape).
-func _exchange(method: String, path: String, sent: Dictionary = {}, expect_bytes := 0) -> Dictionary:
+func _exchange(method: String, path: String, sent: Dictionary = {}, expect_bytes := 0, via: Variant = null) -> Dictionary:
 	var ctx: Dictionary = _ctx.call()
 	var prepared := _prepare(ctx, path, sent)
 	if prepared.has("reply"):
@@ -198,6 +324,8 @@ func _exchange(method: String, path: String, sent: Dictionary = {}, expect_bytes
 	var limit := maxi(maxi(expect_bytes, ERROR_MAX_BYTES), JSON_MAX_BYTES if expect_bytes == 0 else 0)
 	_tr.timeout = BASE_SECONDS + float(maxi(expect_bytes, body.size()) / MIN_BYTES_PER_SECOND)
 	last_status = 0
+	if via is Dictionary and batching():
+		return await _bulk_exchange(method, path, ctx, prepared, limit, _tr.timeout, via)
 	var r: PKeyResult = await _tr.request(method, ctx["url"].call(path), prepared["headers"], body, {"follow_redirects": false, "range": true, "body_limit": mini(limit, BODY_LIMIT)})
 	if not r.ok:
 		# A local-only client dials nothing and says so; it is a refusal, not a network failure to retry.
@@ -325,14 +453,14 @@ func put_single(target: Dictionary, upload_id: String, body: PackedByteArray, sh
 	var path: Variant = _upload_path(_ctx.call()["product"], target, upload_id)
 	if path == null:
 		return _bad("upload")
-	return _empty(await _exchange("PUT", path, {"body": body, "sha256": sha256}))
+	return _empty(await _exchange("PUT", path, {"body": body, "sha256": sha256}, 0, _via(target)))
 
 
 func put_part(target: Dictionary, upload_id: String, n: int, body: PackedByteArray, sha256: String) -> Dictionary:
 	var path: Variant = _upload_path(_ctx.call()["product"], target, upload_id)
 	if path == null or n < 1 or n > PKeyConstants.SYNC_MAX_PARTS:
 		return _bad("part")
-	return _empty(await _exchange("PUT", "%s/parts/%d" % [path, n], {"body": body, "sha256": sha256}))
+	return _empty(await _exchange("PUT", "%s/parts/%d" % [path, n], {"body": body, "sha256": sha256}, 0, _via(target, n)))
 
 
 func abort(target: Dictionary, upload_id: String) -> Dictionary:
@@ -363,7 +491,7 @@ func put_chunk(target: Dictionary, upload_id: String, chunk_id: String, body: Pa
 	var path: Variant = _upload_path(_ctx.call()["product"], target, upload_id)
 	if path == null or _chunk_re.search(chunk_id) == null or body.size() > PKeyConstants.SYNC_CHUNK_MAX_STORED_BYTES:
 		return _bad("chunk")
-	return _empty(await _exchange("PUT", "%s/chunks/%s" % [path, chunk_id], {"body": body, "sha256": sha256}))
+	return _empty(await _exchange("PUT", "%s/chunks/%s" % [path, chunk_id], {"body": body, "sha256": sha256}, 0, _via(target)))
 
 
 ## The path and the `sent` members of a file GET, or `{reply}` when the query is not one.
@@ -398,7 +526,7 @@ func get_file(target: Dictionary, query: Dictionary) -> Dictionary:
 	if q.has("reply"):
 		return q["reply"]
 	var cap: int = q["cap"]
-	var r := await _exchange("GET", q["path"], q["sent"], cap)
+	var r := await _exchange("GET", q["path"], q["sent"], cap, _via(target))
 	if r.has("reply"):
 		return r["reply"]
 	var res: Dictionary = r["res"]
@@ -424,12 +552,12 @@ func revisions(target: Dictionary) -> Dictionary:
 	return _json(await _exchange("GET", rec + "/revisions"), _revisions_ok)
 
 
-func get_chunk(collection: String, chunk_id: String) -> Dictionary:
+func get_chunk(collection: String, chunk_id: String, transfer := "") -> Dictionary:
 	var product: String = _ctx.call()["product"]
 	if not _seg_ok(collection) or _chunk_re.search(chunk_id) == null:
 		return _bad("chunk")
 	var cap := PKeyConstants.SYNC_CHUNK_MAX_STORED_BYTES
-	var r := await _exchange("GET", "/%s/sync/files/%s/chunks/%s" % [product, collection, chunk_id], {}, cap)
+	var r := await _exchange("GET", "/%s/sync/files/%s/chunks/%s" % [product, collection, chunk_id], {}, cap, {"transfer": transfer})
 	if r.has("reply"):
 		return r["reply"]
 	var res: Dictionary = r["res"]
