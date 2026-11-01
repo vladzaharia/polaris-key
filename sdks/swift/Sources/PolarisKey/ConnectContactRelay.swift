@@ -504,7 +504,7 @@ actor ConnectContactRoom: RelayRoom, CustomStringConvertible, CustomReflectable 
             let link = try await PeerLink.make(
                 pipe: pipe, options: opts, handlers: h.handlers, handshakeSeconds: o.handshakeSeconds)
             entry.link = link
-            h.attach(RelayLinkFacade(link: link, svc: self))
+            h.attach(RelayLinkFacade(link: link, svc: self, pipe: pipe))
             pipe.onOverflow = { link.closeSoon(.peerBusy) }
             Task { await link.run() }
             if role == .initiator { await link.start() }

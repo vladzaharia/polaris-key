@@ -6,7 +6,7 @@ Card/Scroll/Body/Entry: Button "Approve a nearby device" [focus 1]
 Card/Scroll/Body/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Product/Name: Label "\u2068Polaris Key SDK\u2069"
 Card/Scroll/Body/Words/Title: Label "Let \u2068Living room TV\u2069 sign in?"
-Card/Scroll/Body/Words/Lede: Label "Tap the code it shows."
+Card/Scroll/Body/Words/Lede: Label "Choose the code it shows."
 Card/Scroll/Body/Words/Status: Label "Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Locker or a developer will ever ask you for this."
 Card/Scroll/Body/Codes/Code0: Button "482 913" [focus 1]
 Card/Scroll/Body/Codes/Code1: Button "107 356" [focus 2]

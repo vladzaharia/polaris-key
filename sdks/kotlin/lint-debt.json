@@ -2318,7 +2318,7 @@
       "ktlint:standard:max-line-length": 1
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/CloudConnectTest.kt": {
-      "ktlint:standard:import-ordering": 2
+      "ktlint:standard:import-ordering": 1
     },
     "sdks/kotlin/sdk/src/test/kotlin/im/plrs/key/sdk/CloudSyncSettingsTest.kt": {
       "detekt:complexity.CyclomaticComplexMethod": 1,

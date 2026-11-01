@@ -36,7 +36,7 @@ static func nearby_approval_view(ctx: RefCounted) -> Dictionary:
 		"denied": [["signin.approve.deniedDone", "common.done"], "common.done", null],
 		"expired": [["core.codes.sign-in-expired.title", "signin.nearby.expiredBody", "common.done"], "common.done", "neutral"],
 		"device-limit": [["core.codes.device_limit.title", "signin.nearby.deviceLimitBody", "devices.manage"], "devices.manage", "neutral"],
-		"choose": [["signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.choice.continue"], "signin.choice.continue", null],
+		"choose": [["signin.nearby.chooseTitle", "signin.nearby.chooseLede", "signin.approve.deny"], null, null],
 		"account-required": [["core.codes.account_required.title", "core.codes.account_required.message", "signin.key.signIn"], "signin.key.signIn", "neutral"],
 		"rate-limited": [["core.codes.rate_limited.title", "signin.nearby.rateLimitedBody", "common.done"], "common.done", "neutral"],
 	}

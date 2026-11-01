@@ -15,7 +15,6 @@ import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.DeviceKeyStore
 import im.plrs.key.core.InMemoryDeviceKeyStorage
 import im.plrs.key.core.InMemoryStore
-import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisRequest
 import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.jsonInt
