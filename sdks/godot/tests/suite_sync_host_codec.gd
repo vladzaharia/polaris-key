@@ -580,6 +580,17 @@ func _cells(t: PKeyTestContext) -> void:
 			and _changes(bare)[0]["record"] == [SAVES, served]
 			and _same(_changes(bare)[0]["value"], [])
 	)
+	for shape in ["fields", "elements"]:
+		var empty_value: Variant = {} if shape == "fields" else []
+		for held_keys in [[[SAVES, "slot-1"]], []]:
+			var out := _pull({"changes": [{"record": [SAVES, served], shape: [], "version": 1}]}, [], {}, [], null, held_keys)
+			var want_id: String = "slot-1" if not held_keys.is_empty() else served
+			t.check(
+					"cells pull: an empty %s list opens as an empty record under %s, never invalid" % [shape, "the held id" if not held_keys.is_empty() else "the blinded id"],
+					_rows(out)[0].get("invalid") != true
+					and _changes(out)[0]["record"] == [SAVES, want_id]
+					and _same(_changes(out)[0]["value"], empty_value)
+			)
 	var swapped_name := _fcell("hp", 1)
 	swapped_name["field"] = _bl("field", SAVES, "mp")
 	var plain_name := _fcell("hp", 1)
