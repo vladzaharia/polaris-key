@@ -182,10 +182,18 @@ describe("bridge v6: licence and device choice", () => {
     ).rejects.toMatchObject({ code: "invalid-argument" });
     expect(h.choice.licenses).not.toHaveBeenCalled();
     expect(h.choice.complete).not.toHaveBeenCalled();
-    // The foreign window cannot read the choose by polling the flow either.
-    expect(
-      (await h.asOther("pollSignIn", (await h.bridge.beginSignIn()).flowId)).ok,
-    ).toBe(true);
+    // The foreign window cannot read the choose by polling the flow either: the flow belongs to
+    // the window that began it, so another window's poll gets an expired answer and the SDK's
+    // session is not asked.
+    const fresh = await h.bridge.beginSignIn();
+    const session = await h.identity.signIn.start.mock.results.at(-1)!.value;
+    const polled = session.wait.mock.calls.length;
+    for (const flowId of [begin.flowId, fresh.flowId])
+      expect(await h.asOther("pollSignIn", flowId)).toEqual({
+        ok: true,
+        value: { kind: "expired" },
+      });
+    expect(session.wait.mock.calls.length).toBe(polled);
     h.handle.close();
   });
 

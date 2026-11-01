@@ -193,6 +193,41 @@ describe("complete()", () => {
   });
 });
 
+describe("discardLate()", () => {
+  const routes = (): Record<string, Handler> => ({
+    "GET /djdl/.well-known/polaris.json": discovery({
+      ...ALL,
+      signout: `${BASE}/identity/signout`,
+    }),
+    "POST /djdl/identity/choice/complete": () => json(TOKEN_OK),
+    "POST /djdl/identity/signout": () => json({ released: true }),
+  });
+  const signouts = (seen: Array<{ path: string }>) =>
+    seen.filter((r) => r.path.endsWith("/identity/signout")).length;
+
+  it("signs out the token the last complete stored", async () => {
+    const { client, seen } = await setup(routes());
+    await client.identity.choice.complete(GRANT, { kind: "create" });
+    expect(await client.identity.choice.discardLate()).toBe(true);
+    expect(signouts(seen)).toBe(1);
+  });
+
+  it("leaves a newer token alone", async () => {
+    const { client, seen } = await setup(routes());
+    await client.identity.choice.complete(GRANT, { kind: "create" });
+    // A newer sign-in replaced the token before the late result was undone.
+    const tokens = (
+      client as unknown as {
+        tokens: { set(t: string, s: string): Promise<void> };
+      }
+    ).tokens;
+    await tokens.set("pkeyt_newer", "signin");
+    expect(await client.identity.choice.discardLate()).toBe(false);
+    expect(signouts(seen)).toBe(0);
+    expect(client.hasToken).toBe(true);
+  });
+});
+
 describe("licenses(), devices() and cancel()", () => {
   it("read views and send no bearer; cancel answers ok on 204", async () => {
     const { client, seen } = await setup({

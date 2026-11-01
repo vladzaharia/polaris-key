@@ -234,6 +234,7 @@ export class IdentityClient {
       onAcquired: this.onAcquired,
       forget: () => this.forget(),
       emit: this.emit,
+      signOut: () => this.signOut(),
     }));
   }
   private readonly beforeSignOut = new BeforeSignOutHooks();
