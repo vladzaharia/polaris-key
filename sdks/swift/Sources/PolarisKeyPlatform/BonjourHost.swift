@@ -382,7 +382,7 @@ import Foundation
 
         // MARK: contacts and tags
 
-        /// Make the live contact set exactly `adverts` on slot a's port (CC-19 R-9b N3).
+        /// Make the live contact set exactly `adverts` on slot a's port.
         func setContacts(_ input: UnsafeBufferPointer<UInt8>) -> [UInt8] {
             guard let o = Self.object(input), let list = o["adverts"] as? [[String: Any]],
                 list.count <= Self.maxContacts
