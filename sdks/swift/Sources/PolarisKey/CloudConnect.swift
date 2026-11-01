@@ -135,16 +135,27 @@ import PolarisKeyCore
         /// is gated by the Identity service's discovery, never by Connect, and works with Connect off.
         public nonisolated let nearby: CloudNearby
 
+        /// Direct Transfer (CC-20; §15.11): `send(_:source:options:)` and `onOffer(_:)`.
+        public nonisolated let transfer: CloudTransfer
+
         /// `discovery` returns the loaded discovery document; `applyTrust` verifies, applies and persists a trust
         /// manifest a peer pushed (`CoreContext.applyPeerTrust`); `now` is epoch seconds.
         public init(
             connect: ConnectClient, discovery: @escaping @Sendable () async -> ProductDiscoveryDocument? = { nil },
             applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil,
             now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970) },
-            nearby: NearbyDeps? = nil
+            nearby: NearbyDeps? = nil, transferDirectory: URL? = nil
         ) {
             let links = CloudLinks(connect: connect)
             self.links = links
+            // Partial files live in the product's state directory; a bare facade (tests) gets a private one.
+            let transfer = CloudTransfer(
+                directory: transferDirectory
+                    ?? FileManager.default.temporaryDirectory.appendingPathComponent(
+                        "pkey-xfer-" + UUID().uuidString.lowercased(), isDirectory: true))
+            self.transfer = transfer
+            connect.rosterDeparted.set { keys in for k in keys { transfer.purge(agreeKey: k) } }
+            links.hook(adopt: { s in Task { await transfer.adopt(s) } }, removed: { transfer.purge(agreeKey: $0) })
             self.nearby = CloudNearby(nearby, deliver: { [queue] f in queue.async(execute: f) })
             let channel = channelListeners
             let notices = noticeListeners
@@ -152,15 +163,21 @@ import PolarisKeyCore
             let q = queue
             core = CloudConnectCore(
                 connect: connect, discovery: discovery, applyTrust: applyTrust, now: now, links: links,
+                transfer: transfer,
                 emit: Emit(
                     inbound: { s in
                         let subs = channel.all
-                        if subs.isEmpty { return false }  // nobody to hand it to (G9)
+                        if subs.isEmpty && !transfer.listening { return false }  // nobody to hand it to (G9)
                         for f in subs { q.async { f(s) } }
                         return true
                     },
                     notice: { n in for f in notices.all { q.async { f(n) } } },
                     status: { box.set($0) }))
+            let core = self.core
+            transfer.bind(
+                openDevice: { id, relay in try await core.open(id, relay: relay, lanAttempt: nil) },
+                openLink: { id, relay in try await links.open(id, relay: relay) },
+                hasLink: { id in await links.list().contains { $0.id == id } })
         }
 
         /// For tests: hand a session in as an inbound one.
@@ -186,6 +203,7 @@ import PolarisKeyCore
         /// leaves Connect (G18). Never throws and never waits past 15 s a step.
         func stopForSignOut(bound: TimeInterval = cloudConnectStopSeconds) async {
             await core.stop(timeout: bound)
+            transfer.purgeAll()  // sign-out and forget delete every partial file
             await stopNearby(bound: bound)
         }
 
@@ -278,13 +296,15 @@ import PolarisKeyCore
         private var lanAttempt = cloudConnectLanAttemptSeconds
         private var contactRelay: ConnectContactRelay?
         private let links: CloudLinks
+        private let transfer: CloudTransfer
 
         init(
             connect: ConnectClient, discovery: @escaping @Sendable () async -> ProductDiscoveryDocument?,
             applyTrust: (@Sendable (String) async -> PeerTrustResult)?, now: @escaping @Sendable () -> Int,
-            links: CloudLinks, emit: Emit
+            links: CloudLinks, transfer: CloudTransfer, emit: Emit
         ) {
             self.links = links
+            self.transfer = transfer
             self.connect = connect
             self.discovery = discovery
             self.applyTrust = applyTrust
@@ -511,6 +531,8 @@ import PolarisKeyCore
         private func track(_ s: ConnectSession) {
             let id = ObjectIdentifier(s)
             sessions[id] = s
+            let t = transfer
+            Task { await t.adopt(s) }
             s.onClose { [weak self] _ in
                 guard let self else { return }
                 Task { await self.untrack(id) }

@@ -322,7 +322,8 @@ public actor PolarisKeyClient {
                 },
                 signedIn: { await identityClient.current() != nil }, signer: { try await connect.nearbySigner() },
                 approverNetwork: options.connect.nearbyApproverNetwork ?? SystemNearbyApproverNetwork(),
-                requesterNetwork: options.connect.nearbyRequesterNetwork ?? SystemNearbyRequesterNetwork()))
+                requesterNetwork: options.connect.nearbyRequesterNetwork ?? SystemNearbyRequesterNetwork()),
+            transferDirectory: core.dirs.state.appendingPathComponent("xfer", isDirectory: true))
         self.cloudConnect = cloudConnect
         let attachments = self.attachments
         let ring: @Sendable () -> SyncKeyring = {

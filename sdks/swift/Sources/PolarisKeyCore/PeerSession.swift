@@ -28,6 +28,8 @@ import Foundation
 public let peerTransportDeadlineSeconds: TimeInterval = 30
 public let peerSasDeadlineSeconds: TimeInterval = 120
 let peerPongsPerSecond = 16
+/// Xfer records held between `established` and the transfer port being attached.
+let peerXferHeldRecords = 32
 /// §15.6: a HELLO in mode v or p (a peer not yet verified) is at most this many bytes.
 let peerMaxUnverifiedHelloBytes = 4096
 /// §15.6: bytes of host records held before the person's confirmation, modes v and p.
@@ -287,6 +289,9 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
     private var sasDone = false
     private var sasStep = 0
     private var queued: [(type: Int, body: Data)] = []
+    /// The transfer port (§15.11): the one reader and writer of the six xfer record types.
+    private var xferSink: (@Sendable (Int, Data) -> Void)?
+    private var xferHeld: [(type: Int, body: Data)] = []
     private var peerCertJws = ""
     private var peerRemote: Data?
     private var pending: (remote: Data, deviceId: String?)?
@@ -453,11 +458,31 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         await acquire()
         defer { releaseGate() }
         guard phase == .open else { throw PeerChannelError.notOpen }
-        guard !owned.contains(type), !(type == PeerRecordType.confirm && mode == .p),
+        guard !owned.contains(type), !isXferType(type), !(type == PeerRecordType.confirm && mode == .p),
             !(type == PeerRecordType.contact && exchange != nil)
         else {
             throw PeerChannelError.ownedRecord
         }
+        guard body.count <= maxSend else { throw PeerChannelError.messageTooLarge }
+        try emit(type, body)
+    }
+
+    /// The transfer port (§15.11). Records of the six xfer types reach `onRecord` instead of the host's `record`
+    /// event, and `sendRecord` refuses them; `sendXfer` is the writer. Only once the session is open with
+    /// `xfer/1` among its capabilities, and once.
+    public func attachXfer(_ onRecord: @escaping @Sendable (Int, Data) -> Void) throws {
+        guard phase == .open, xferSink == nil, caps.contains(xferCap) else { throw PeerChannelError.notOpen }
+        xferSink = onRecord
+        let held = xferHeld
+        xferHeld = []
+        for r in held { onRecord(r.type, r.body) }
+    }
+
+    /// Send one xfer record. Only once the port is attached.
+    public func sendXfer(type: Int, body: Data) async throws {
+        await acquire()
+        defer { releaseGate() }
+        guard phase == .open, xferSink != nil, isXferType(type) else { throw PeerChannelError.notOpen }
         guard body.count <= maxSend else { throw PeerChannelError.messageTooLarge }
         try emit(type, body)
     }
@@ -543,6 +568,8 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
         certExpires = nil
         settle()
         queued = []
+        xferSink = nil
+        xferHeld = []
         if wasUp && !byPeer && code != .handshakeFailed {
             try? emit(PeerRecordType.close, Data(#"{"code":"\#(code.rawValue)"}"#.utf8))
         }
@@ -751,6 +778,7 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
                 }
             }
             caps = PeerPayload.capsIntersection(caps, peerCaps)
+            asm.xferAllowed = caps.contains(xferCap)
             hash = try await hs?.handshakeHash
             pending = nil
             let account = mode == .a
@@ -797,6 +825,8 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
             certExpires = nil
             settle()
             queued = []
+            xferSink = nil
+            xferHeld = []
             wipe()
             onEvent(
                 .closed(knownClose.contains(code) ? PeerClosedReason(rawValue: code)! : .peerBadFrame, byPeer: true))
@@ -825,6 +855,15 @@ public actor PeerChannel: CustomStringConvertible, CustomReflectable {
 
     /// Everything else belongs to the host, and only once the code is settled.
     private func hostRecord(_ type: Int, _ body: Data) async throws {
+        if isXferType(type) {
+            // Direct Transfer: the caps and `MORE` were judged by the assembler. Records that arrive between
+            // `established` and the port being attached are held, a few at most.
+            guard phase == .open, caps.contains(xferCap) else { throw Fail(.peerNotAllowed) }
+            if let sink = xferSink { return sink(type, body) }
+            if xferHeld.count >= peerXferHeldRecords { throw Fail(.peerBusy) }
+            xferHeld.append((type, body))
+            return
+        }
         if phase == .sasShown {
             // The peer may confirm first: hold the record (bounded) until this side's person does.
             let heldBytes = queued.reduce(0) { $0 + $1.body.count }

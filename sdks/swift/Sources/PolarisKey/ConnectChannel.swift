@@ -79,7 +79,7 @@ extension PeerAccountContext {
 extension PeerChannelOptions {
     /// The options every channel of a transport shares (all but `role`). The same for LAN and relay.
     public static func connectBase(
-        _ src: PeerSource, role: PeerChannel.Role, caps: [String] = ["app/1"], label: String? = nil,
+        _ src: PeerSource, role: PeerChannel.Role, caps: [String] = ["app/1", xferCap], label: String? = nil,
         platform: String = connectPlatformName, ring: @escaping @Sendable () -> (jws: String, epoch: Int)? = { nil },
         now: (@Sendable () -> Int)? = nil, rekeyMessages: Int? = nil, rekeySeconds: TimeInterval? = nil
     ) -> PeerChannelOptions {
@@ -96,7 +96,7 @@ extension PeerChannelOptions {
     /// contacts it serves and needs the `admission` limiter.
     public static func connectContact(
         _ src: PeerSource, role: PeerChannel.Role, contacts: [PeerContactLink], admission: HandshakeLimiter? = nil,
-        caps: [String] = ["app/1"], label: String? = nil, platform: String = connectPlatformName,
+        caps: [String] = ["app/1", xferCap], label: String? = nil, platform: String = connectPlatformName,
         now: (@Sendable () -> Int)? = nil, rekeyMessages: Int? = nil, rekeySeconds: TimeInterval? = nil
     ) -> PeerChannelOptions {
         PeerChannelOptions(
