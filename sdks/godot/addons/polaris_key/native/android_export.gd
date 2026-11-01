@@ -37,6 +37,19 @@ const PLAY_DEPENDENCIES := [
 	"androidx.credentials:credentials-play-services-auth:1.6.0",
 	"com.google.android.libraries.identity.googleid:googleid:1.2.0",
 ]
+## WorkManager, for background transfers (U-41.6b): exactly the androidx.work library polaris-key-platform's
+## POMs name (sdks/kotlin/gradle/libs.versions.toml `androidxWork`). The AARs are local files and carry no
+## transitive dependencies, so both flavours add it; sdks/kotlin/tools/check_publication.sh fails when this
+## list and the platform POMs differ.
+const WORK_DEPENDENCIES := [
+	"androidx.work:work-runtime:2.12.0",
+]
+## Background transfer (D-10): the preset opts in with `polaris_key/cloud_sync_background` (env
+## PKEY_CLOUD_SYNC_BACKGROUND). Off, the export removes the two permissions polaris-key-platform's manifest adds
+## for it, so a game that never syncs files lists neither.
+const BACKGROUND_OPTION := "polaris_key/cloud_sync_background"
+const BACKGROUND_ENV := "PKEY_CLOUD_SYNC_BACKGROUND"
+const BACKGROUND_PERMISSIONS := ["android.permission.RUN_USER_INITIATED_JOBS", "android.permission.POST_NOTIFICATIONS"]
 ## Play Games Services v2 (I-48.7a; Q-3): added only by the opt-in `polaris_key/play_games` (env
 ## PKEY_ANDROID_PLAY_GAMES), with the app id from `polaris_key/play_games_app_id` (PKEY_ANDROID_PLAY_GAMES_APP_ID).
 ## The pin is libs.versions.toml's `playGames`; a test holds them together.
@@ -83,13 +96,15 @@ static func libraries(flavor: String) -> PackedStringArray:
 	])
 
 
-## The Maven coordinates `flavor` needs: Play Core and Credential Manager for play, nothing for
-## direct. `engine` is Engine.get_version_info() of the exporting editor ({} means a current one):
+## The Maven coordinates `flavor` needs: WorkManager for both, plus Play Core and Credential Manager for play.
+## `engine` is Engine.get_version_info() of the exporting editor ({} means a current one):
 ## below Godot 4.4 the Credential Manager libraries are left out.
 static func dependencies(flavor: String, engine := {}, play_games := false) -> PackedStringArray:
-	if flavor != "play":
+	if flavor != "play" and flavor != "direct":
 		return PackedStringArray()
-	var out := PackedStringArray()
+	var out := PackedStringArray(WORK_DEPENDENCIES)
+	if flavor != "play":
+		return out
 	for d in PLAY_DEPENDENCIES:
 		if credentials_supported(engine) or not is_credential_dependency(d):
 			out.append(d)
@@ -151,13 +166,22 @@ static func credentials_warning(flavor: String, engine := {}) -> String:
 	return ""
 
 
-## The <manifest> children for `flavor`: the local-network and network-state permissions for play and direct, and the two
-## install permissions for direct; nothing for none.
-static func manifest_elements(flavor: String) -> String:
+## Whether an option or env value turns background transfer on (default off).
+static func background_enabled(raw: Variant) -> bool:
+	return (raw is bool and raw) or (not (raw is bool) and str(raw).strip_edges().to_lower() in ["1", "true", "yes", "on"])
+
+
+## The <manifest> children for `flavor`: the local-network and network-state permissions for play and direct, the two
+## install permissions for direct, and, unless `background` is on, the removal of the job and notification
+## permissions the platform library adds (D-10); nothing for none.
+static func manifest_elements(flavor: String, background := false) -> String:
 	if flavor != "play" and flavor != "direct":
 		return ""
 	var s := "    <uses-permission android:name=\"%s\" />\n" % LOCAL_NETWORK_PERMISSION
 	s += "    <uses-permission android:name=\"%s\" />\n" % NETWORK_STATE_PERMISSION
+	if not background:
+		for p in BACKGROUND_PERMISSIONS:
+			s += "    <uses-permission android:name=\"%s\" tools:node=\"remove\" />\n" % p
 	if flavor != "direct":
 		return s
 	for p in DIRECT_PERMISSIONS:

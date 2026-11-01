@@ -95,16 +95,16 @@ func _provider(t: PKeyTestContext) -> void:
 
 func _export(t: PKeyTestContext) -> void:
 	var play := E.dependencies("play")
-	t.check("export: play carries Play Core and the three Credential Manager libraries", play.size() == 6)
+	t.check("export: play carries WorkManager, Play Core and the three Credential Manager libraries", play.size() == 7)
 	var cm := "androidx.credentials:credentials"
 	t.check("export: …credentials and credentials-play-services-auth", play.has(cm + ":1.6.0") and play.has(cm + "-play-services-auth:1.6.0"))
 	t.check("export: …and googleid", play.has("com.google.android.libraries.identity.googleid:googleid:1.2.0"))
-	t.check("export: direct carries no Credential Manager", E.dependencies("direct").is_empty())
+	t.check("export: direct carries no Credential Manager", E.dependencies("direct") == PackedStringArray(E.WORK_DEPENDENCIES))
 	var old := {"major": 4, "minor": 3}
 	var older := E.dependencies("play", old)
-	t.check("export: Godot 4.3 keeps Play Core and leaves Credential Manager out", older.size() == 3 and not Array(older).any(func(d): return E.is_credential_dependency(d)))
+	t.check("export: Godot 4.3 keeps Play Core and leaves Credential Manager out", older.size() == 4 and not Array(older).any(func(d): return E.is_credential_dependency(d)))
 	var sizes := [4, 7].map(func(minor): return E.dependencies("play", {"major": 4, "minor": minor}).size())
-	t.check("export: Godot 4.4 and 4.7 carry all six", E.dependencies("play", {"major": 4, "minor": 4}).size() == 6 and sizes == [6, 6])
+	t.check("export: Godot 4.4 and 4.7 carry all seven", E.dependencies("play", {"major": 4, "minor": 4}).size() == 7 and sizes == [7, 7])
 	t.check("export: the old-engine omission is warned about", E.credentials_warning("play", old).contains("Godot 4.3"))
 	t.check("export: current engines and direct are not warned", E.credentials_warning("play", {"major": 4, "minor": 7}) == "" and E.credentials_warning("direct", old) == "")
 

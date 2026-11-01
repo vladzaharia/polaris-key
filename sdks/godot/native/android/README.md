@@ -86,6 +86,14 @@ Maven for `play`, and for `direct` only the manifest entries `REQUEST_INSTALL_PA
 `UPDATE_PACKAGES_WITHOUT_USER_ACTION`. Without the Gradle build or the AARs the export carries no
 plugin, warns, and PKeyAndroid answers `dependency`.
 
+Both flavours also add `androidx.work:work-runtime` (WorkManager; the AARs are local files and bring
+no transitive dependencies), pinned to the version the platform POMs name; `check_publication.sh`
+fails on any difference. Background transfer is opt-in (D-10): unless the preset sets
+`polaris_key/cloud_sync_background` (`PKEY_CLOUD_SYNC_BACKGROUND` in CI), the export removes
+`RUN_USER_INITIATED_JOBS` and `POST_NOTIFICATIONS` from the merged manifest (`tools:node="remove"`).
+The game also sets `PKeyOptions.cloud_sync_background_transfers` for the Cloud Sync file channel
+(`addons/polaris_key/native/pkey_android_bulk.gd`) to be used.
+
 ## Export and device check
 
 ```sh

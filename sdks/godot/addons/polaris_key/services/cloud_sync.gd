@@ -186,8 +186,12 @@ func _build_saves() -> void:
 	_files = transport
 	# D-10: the bulk channel is used only when the app opted in and the platform supplied one.
 	var opts: PKeyOptions = _core.options
-	if opts != null and opts.cloud_sync_background_transfers and opts.cloud_sync_bulk_channel != null:
-		transport.set_channel(opts.cloud_sync_bulk_channel)
+	var channel: Object = opts.cloud_sync_bulk_channel if opts != null else null
+	if channel == null and opts != null and opts.cloud_sync_background_transfers and OS.get_name() == "Android":
+		# U-41.6b: the Android plugin's channel, when the export carries the plugin (null: foreground as before).
+		channel = PKeyAndroidBulk.create(_bulk_context)
+	if opts != null and opts.cloud_sync_background_transfers and channel != null:
+		transport.set_channel(channel)
 	_journal = Journal.Files.new(host.state_dir(), host.sealer())
 	var engine := Transfer.new(transport, _journal)
 	# A save may wait out a long throttle.
@@ -459,11 +463,20 @@ func _sign_in(subject: String) -> void:
 	await _join_chain()
 
 
+## What a native bulk channel pins at open: the product, the origin of the sync routes and the signed-in subject.
+func _bulk_context() -> Dictionary:
+	if host == null or not (_subject is String):
+		return {}
+	var ctx: Dictionary = host.request_context()
+	var parts := PKeyAndroidBulk.split_url((ctx["url"] as Callable).call("/"))
+	return {"product": ctx["product"], "origin": parts.get("origin", ""), "subject": _subject}
+
+
 ## Open the bulk channel once per session, naming the journaled transfers to keep (D-7: the journal and the
 ## server are the truth; the channel keeps no ledger). A transfer the channel lost is sent again by the
 ## journal's own resume.
 func _open_bulk() -> void:
-	if _files == null or _bulk_open or _journal == null or not _files.batching():
+	if _files == null or _bulk_open or _journal == null or not (_subject is String) or not _files.batching():
 		return
 	_bulk_open = true
 	await _files.open_channel(_journal.list())
