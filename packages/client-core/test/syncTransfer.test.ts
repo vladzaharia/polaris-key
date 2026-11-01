@@ -228,6 +228,30 @@ const big = noise(40 * MIB, 3); // 5 parts of 8 MiB
 const small = noise(300_000, 9);
 
 describe("TransferEngine upload", () => {
+  it.each([
+    ["size", (f: FinalizeResponse) => ({ ...f, size: f.size + 1 })],
+    ["sha256", (f: FinalizeResponse) => ({ ...f, sha256: "cd".repeat(32) })],
+    ["format", (f: FinalizeResponse) => ({ ...f, format: "chunks" as const })],
+    ["version", (f: FinalizeResponse) => ({ ...f, version: 0 })],
+  ])(
+    "refuses a finalize answer whose %s is not the one begun",
+    async (_n, change) => {
+      for (const data of [small, big]) {
+        const s = new FakeServer();
+        const orig = s.finalize;
+        s.finalize = async (t, r) => {
+          const reply = await orig(t, r);
+          return reply.ok ? ok(change(reply.value)) : reply;
+        };
+        const { e } = engine(s, memoryJournal());
+        await expect(e.upload(await request(data))).rejects.toMatchObject({
+          reason: "file-invalid",
+          detail: "finalize",
+        });
+      }
+    },
+  );
+
   it("uploads a single-mode file and clears the journal", async () => {
     const s = new FakeServer();
     const j = memoryJournal();

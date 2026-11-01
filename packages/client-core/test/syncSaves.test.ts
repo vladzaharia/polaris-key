@@ -450,6 +450,34 @@ describe.each([
   });
 });
 
+describe.each([
+  ["server mode", false],
+  ["end-to-end", true],
+])("saves, a finalize answer that is not the file written, %s", (_n, e2e) => {
+  it("fails the write and leaves the row alone", async () => {
+    const r = rig({ e2e });
+    const first = done(await r.saves.write("a", noise(40_000, 1), meta).done);
+    done(await r.saves.write("b", noise(41_000, 2), meta).done);
+    const b = r.records.recs.get(r.records.wireId("b"))!.file!;
+    const before = structuredClone(r.records.recs.get(r.records.wireId("a"))!);
+    const orig = r.server.finalize;
+    r.server.finalize = async (t, req) => {
+      const reply = await orig(t, req);
+      return reply.ok
+        ? { ok: true as const, value: { ...b, version: reply.value.version } }
+        : reply;
+    };
+    r.records.log.length = 0;
+    const out = await r.saves.write("a", noise(42_000, 3), meta, {
+      baseVersion: first.version,
+    }).done;
+    expect(out).toMatchObject({ state: "failed" });
+    expect(r.records.log).not.toContain("set");
+    const after = r.records.recs.get(r.records.wireId("a"))!;
+    expect(after.value).toEqual(before.value);
+  });
+});
+
 describe("saves, end-to-end binding (D-3)", () => {
   it("never reads a torn write: the file of an unfinished write is not the save", async () => {
     const r = rig({ e2e: true });
@@ -483,6 +511,22 @@ describe("saves, end-to-end binding (D-3)", () => {
       value: {
         revisions: [{ ...b.file!, createdAt: 0 }],
       },
+    });
+    await expect(r.saves.read("a")).rejects.toMatchObject({
+      code: "sync-file-invalid",
+      detail: "binding",
+    });
+  });
+
+  it("refuses a file of the bound size and format with another hash", async () => {
+    const r = rig({ e2e: true });
+    done(await r.saves.write("a", noise(40_000, 1), meta).done);
+    const a = r.records.recs.get("x:a")!;
+    const swapped = { ...a.file!, sha256: "ee".repeat(32) };
+    a.file = swapped;
+    r.server.revisions = async () => ({
+      ok: true,
+      value: { revisions: [{ ...swapped, createdAt: 0 }] },
     });
     await expect(r.saves.read("a")).rejects.toMatchObject({
       code: "sync-file-invalid",

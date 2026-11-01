@@ -762,12 +762,35 @@ abstract class UploadPass extends Pass {
     return reply.value;
   }
 
+  /** The answer must describe the file that was begun: its size, hash and format, and a newer version. Anything else adopts nothing. */
+  private checkFinalized(
+    got: FinalizeResponse,
+    format: FinalizeResponse["format"],
+    baseVersion: number | "*" | undefined,
+  ): void {
+    const v = got?.version;
+    if (
+      got === null ||
+      typeof got !== "object" ||
+      got.size !== this.rec.size ||
+      got.sha256 !== this.rec.sha256 ||
+      got.format !== format ||
+      typeof v !== "number" ||
+      !Number.isSafeInteger(v) ||
+      v < 1 ||
+      (typeof baseVersion === "number" && v <= baseVersion)
+    )
+      throw invalid("finalize");
+  }
+
   /**
    * `finalize`. On `409 upload_incomplete` (at most twice) `resend` gets the `missing` list and
    * sends those again, answering false when the list is not one this upload could have; a 409 or a
    * mismatch otherwise releases the upload.
    */
   protected async finalizeCall(
+    format: FinalizeResponse["format"],
+    baseVersion: number | "*" | undefined,
     resend: (missing: unknown) => Promise<boolean>,
   ): Promise<FinalizeResponse> {
     for (let again = 0; ; again++) {
@@ -779,6 +802,7 @@ abstract class UploadPass extends Pass {
         ),
       );
       if (reply.ok) {
+        this.checkFinalized(reply.value, format, baseVersion);
         await this.finish();
         return reply.value;
       }
@@ -982,7 +1006,7 @@ class Run extends UploadPass {
   }
 
   private finalize(): Promise<FinalizeResponse> {
-    return this.finalizeCall(async (missing) => {
+    return this.finalizeCall("whole", this.req.baseVersion, async (missing) => {
       if (
         !Array.isArray(missing) ||
         !missing.every(
@@ -1196,7 +1220,7 @@ class ChunkedRun extends UploadPass {
   }
 
   private finalize(): Promise<FinalizeResponse> {
-    return this.finalizeCall(async (lost) => {
+    return this.finalizeCall("chunks", this.req.baseVersion, async (lost) => {
       if (
         !Array.isArray(lost) ||
         !lost.every((id) => typeof id === "string" && this.unique.has(id))
