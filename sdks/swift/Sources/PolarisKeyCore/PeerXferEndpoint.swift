@@ -48,8 +48,11 @@ public struct XferEndpointPorts: Sendable {
     public var read: @Sendable (String, Int, Int) async throws -> Data
     /// The receiver's store.
     public var apply: @Sendable (XferOp) async throws -> Void
-    /// Called at once, in order, as the machine decides, before `apply` runs: the store reserves the bytes of a
-    /// transfer that was accepted and releases them when it ends, so the next offer sees them taken.
+    /// Reserving (`create`, `truncate`) is called at once, in order, as the machine decides, before `apply` runs, so
+    /// the next offer sees the bytes taken. Releasing (`keep`, `discard`, `delete`, `finalize`) is called once the
+    /// step's file work has been performed, never before: writes the machine decided earlier may still be queued,
+    /// and a claim released ahead of them fails them as not owned. A release is skipped when the same partial was
+    /// reserved again meanwhile.
     public var account: @Sendable (XferOp) -> Void
 
     public init(
@@ -72,6 +75,8 @@ public final class XferEndpoint: @unchecked Sendable {
         var dead = false
         var chunk: [String: Int] = [:]
         var refId: [String: String] = [:]
+        /// How many times each partial was reserved: a delayed release applies only if no newer reserve came.
+        var reserved: [String: Int] = [:]
         var timer: Task<Void, Never>?
     }
 
@@ -184,7 +189,19 @@ public final class XferEndpoint: @unchecked Sendable {
                 ops.append(XferOp(effect: e, meta: nil, id: nil))
             }
         }
-        for op in ops { ports.account(op) }
+        var releases: [(op: XferOp, ref: String, seq: Int)] = []
+        for op in ops {
+            switch op.effect {
+            case .create(let ref), .truncate(let ref, _):
+                s.reserved[ref, default: 0] += 1
+                ports.account(op)
+            case .keep(let ref), .discard(let ref), .delete(let ref), .finalize(let ref):
+                releases.append((op, ref, s.reserved[ref] ?? 0))
+            case .write, .evict:
+                break
+            }
+        }
+        let owed = releases
         let frozen = ops
         let sends = out.send
         let withdraw = out.withdraw
@@ -194,8 +211,21 @@ public final class XferEndpoint: @unchecked Sendable {
         let chunks = s.chunk
         queue {
             var failed = Set<String>()
+            // After the file work, whether it succeeded or not and before the records go (the peer must not see a
+            // transfer end while its bytes are still reserved): the claims of the transfers that ended.
+            let release = {
+                for r in owed where self.state.with({ ($0.reserved[r.ref] ?? 0) == r.seq }) { self.ports.account(r.op) }
+            }
             do {
                 for op in frozen { try await self.ports.apply(op) }
+            } catch {
+                release()
+                self.events.error(error)
+                self.ports.close(.peerBye)
+                return
+            }
+            release()
+            do {
                 for send in sends { try await self.perform(send, chunks, &failed) }
             } catch {
                 self.events.error(error)
