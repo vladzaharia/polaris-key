@@ -2403,7 +2403,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     keywords: ["loopback", "127.0.0.1", "desktop", "native", "redirect"],
     docs: "/docs/features/sign-in/",
     ownership: "claimable",
-    critical: false,
+    critical: true,
     secret: false,
     pending: null,
     deprecated: null,
