@@ -13,6 +13,7 @@ var _re: RegEx
 
 func run(t: PKeyTestContext) -> void:
 	_re = RegEx.create_from_string(SAS_RE)
+	await _static_key_zeroed(t)
 	await _same_code_then_records(t)
 	await _held_records(t)
 	await _hello_display(t)
@@ -39,6 +40,22 @@ func _open_pair(mode: String, hello := {}) -> Array:
 	await d.session.start()
 	await PKeyTestPeers.pump(d, m)
 	return sides
+
+
+## The session zeroes the very buffer it holds, not a copy of it: a typed reference taken before the
+## handshake reads all zeros after it. The caller's own buffer is the caller's to wipe.
+func _static_key_zeroed(t: PKeyTestContext) -> void:
+	for mode in ["v", "p"]:
+		var kd: PackedByteArray = PKeyTestPeers.random32()
+		var d := PKeyTestPeers.side(mode, "initiator", kd)
+		var m := PKeyTestPeers.side(mode, "responder", PKeyTestPeers.random32())
+		var held_d: PackedByteArray = d.session._static
+		var held_m: PackedByteArray = m.session._static
+		t.check("%s: the held keys start non-zero" % mode, held_d.count(0) < 32 and held_m.count(0) < 32)
+		await d.session.start()
+		await PKeyTestPeers.pump(d, m)
+		t.check("%s: both held static key buffers are all zero once the transport is open" % mode, held_d.count(0) == 32 and held_m.count(0) == 32)
+		t.check("%s: the caller's buffer is left alone" % mode, kd.count(0) < 32)
 
 
 func _same_code_then_records(t: PKeyTestContext) -> void:

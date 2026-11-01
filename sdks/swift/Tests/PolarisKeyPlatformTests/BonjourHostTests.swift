@@ -571,13 +571,48 @@ import XCTest
             _ = run(m.ops, "bj_accept_tags", json(["v": [h]]))
             m.driver.send(.upserted([tagged(1, m: "a", h: "ffffffffffffffff")]))
             XCTAssertEqual(events(m.sink).compactMap { $0.1["instance"] as? String }, [inst(1)])
-            m.driver.send(.upserted((100..<(100 + BonjourTable.maxInstances + 50)).map { tagged($0, m: "v", h: h) }))
-            let ev = events(m.sink)
-            XCTAssertFalse(
-                ev.contains { $0.0 == "bj_lost" && ($0.1["instance"] as? String) == inst(1) }, "the roster peer stays")
+            var lost: [String] = []
+            for start in stride(from: 100, to: 100 + BonjourTable.maxInstances + 50, by: 50) {
+                m.driver.send(.upserted((start..<(start + 50)).map { tagged($0, m: "v", h: h) }))
+                lost += events(m.sink).filter { $0.0 == "bj_lost" }.compactMap { $0.1["instance"] as? String }
+            }
+            XCTAssertFalse(lost.contains(inst(1)), "the roster peer stays")
             // A later tagged approver still enters once the partition is full of older strangers.
             m.driver.send(.upserted([tagged(900, m: "v", h: h)]))
             XCTAssertEqual(events(m.sink).filter { $0.0 == "bj_found" }.compactMap { $0.1["instance"] as? String }, [inst(900)])
+        }
+
+        // MARK: the table itself (presence is read from the table, not from the event sink)
+
+        private func found(_ i: Int, txt: [String] = []) -> BonjourFound {
+            BonjourFound(instance: inst(i), txt: txt, endpoint: BonjourEndpoint(name: inst(i)))
+        }
+
+        func testTableTaggedRowsNeverEvictRosterRowsAndTheReverse() {
+            var table = BonjourTable()
+            _ = table.upsert(found(0))
+            for i in 1...300 { _ = table.upsert(found(1000 + i), tagged: true) }
+            XCTAssertNotNil(table.row(inst(0)), "300 tagged strangers leave the roster row in the table")
+            XCTAssertEqual(table.count, 1 + BonjourTable.maxTagged)
+            for i in 1...300 { _ = table.upsert(found(2000 + i)) }
+            XCTAssertEqual(table.count, BonjourTable.maxInstances + BonjourTable.maxTagged)
+            for i in 269...300 { XCTAssertNotNil(table.row(inst(1000 + i)), "roster rows never evict tagged rows") }
+        }
+
+        func testTableRefreshOfAKnownRowEvictsNothing() {
+            var table = BonjourTable()
+            for i in 0..<BonjourTable.maxInstances { _ = table.upsert(found(i)) }
+            for i in 0..<BonjourTable.maxTagged { _ = table.upsert(found(5000 + i), tagged: true) }
+            let before = table.instances
+            XCTAssertTrue(table.upsert(found(7)).isEmpty, "an unchanged roster refresh changes nothing")
+            let changed = table.upsert(found(8, txt: ["m=a"]))
+            XCTAssertEqual(changed, [.up(found(8, txt: ["m=a"]))], "a changed refresh reports only its own row")
+            XCTAssertTrue(table.upsert(found(5003), tagged: true).isEmpty)
+            XCTAssertEqual(Set(table.instances), Set(before))
+            XCTAssertEqual(table.count, BonjourTable.maxInstances + BonjourTable.maxTagged)
+            // A row that moves from the tag partition to the roster takes a roster place, evicting the oldest roster row.
+            let moved = table.upsert(found(5004))
+            XCTAssertEqual(moved.filter { if case .down = $0 { return true } else { return false } }.count, 1)
         }
     }
 

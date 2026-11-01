@@ -177,10 +177,28 @@ struct BonjourTable {
         var out: [Change] = []
         let existing = rows[row.instance]
         if existing != nil {
+            // A refresh updates the row in place (its partition follows the new admission) and evicts nothing
+            // when the class is unchanged.
             order.removeAll { $0 == row.instance }
-            tagged.remove(row.instance)
+            let wasTagged = tagged.contains(row.instance)
+            if wasTagged != isTagged {
+                tagged.remove(row.instance)
+                rows[row.instance] = nil  // not counted against the partition it joins
+                out += evict(forNew: isTagged)
+            }
+        } else {
+            out += evict(forNew: isTagged)
         }
-        // Each partition evicts only its own least recently refreshed row.
+        order.append(row.instance)
+        rows[row.instance] = row
+        if isTagged { tagged.insert(row.instance) }
+        if existing != row { out.append(.up(row)) }
+        return out
+    }
+
+    /// Make room in one partition: each evicts only its own least recently refreshed row.
+    private mutating func evict(forNew isTagged: Bool) -> [Change] {
+        var out: [Change] = []
         let cap = isTagged ? Self.maxTagged : Self.maxInstances
         while (isTagged ? tagged.count : rows.count - tagged.count) >= cap,
             let oldest = order.first(where: { tagged.contains($0) == isTagged })
@@ -190,10 +208,6 @@ struct BonjourTable {
             tagged.remove(oldest)
             out.append(.down(oldest))
         }
-        order.append(row.instance)
-        rows[row.instance] = row
-        if isTagged { tagged.insert(row.instance) }
-        if existing != row { out.append(.up(row)) }
         return out
     }
 
