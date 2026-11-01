@@ -3160,6 +3160,7 @@
       "detekt:complexity.CyclomaticComplexMethod": 4,
       "detekt:complexity.LongMethod": 2,
       "detekt:complexity.LongParameterList": 2,
+      "detekt:complexity.NestedBlockDepth": 1,
       "detekt:complexity.TooManyFunctions": 1,
       "detekt:naming.FunctionNaming": 15,
       "detekt:style.MagicNumber": 3,
@@ -3431,7 +3432,7 @@
     },
     "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/AutoSignInScreensTest.kt": {
       "detekt:complexity.TooManyFunctions": 1,
-      "detekt:style.MagicNumber": 34
+      "detekt:style.MagicNumber": 38
     },
     "sdks/kotlin/ui/src/desktopTest/kotlin/im/plrs/key/ui/BoardShots.kt": {
       "detekt:complexity.LongParameterList": 1,

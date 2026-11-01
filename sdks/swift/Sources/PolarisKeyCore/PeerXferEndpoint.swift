@@ -214,7 +214,12 @@ public final class XferEndpoint: @unchecked Sendable {
             // After the file work, whether it succeeded or not and before the records go (the peer must not see a
             // transfer end while its bytes are still reserved): the claims of the transfers that ended.
             let release = {
-                for r in owed where self.state.with({ ($0.reserved[r.ref] ?? 0) == r.seq }) { self.ports.account(r.op) }
+                for r in owed {
+                    // The sequence check and the release share one critical section (lock order: state, then store).
+                    self.state.with { s in
+                        if (s.reserved[r.ref] ?? 0) == r.seq { self.ports.account(r.op) }
+                    }
+                }
             }
             do {
                 for op in frozen { try await self.ports.apply(op) }

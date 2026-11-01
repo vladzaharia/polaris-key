@@ -277,9 +277,6 @@ final class TransferTests: XCTestCase {
     }
 
     func testFileAndStreamSources() async throws {
-        // Disabled under load (owner 2026-10-26 rule); re-enable on a quiet machine. 2026-11-01: failed once on
-        // macOS CI with `peer-closed` (0.07 s) and passes locally; no race found in the two sends.
-        try XCTSkipIf(true, "Disabled under load (owner 2026-10-26 rule); re-enable on a quiet machine")
         let p = try await openPair()
         let a = await side(p.a)
         let b = await side(p.b)

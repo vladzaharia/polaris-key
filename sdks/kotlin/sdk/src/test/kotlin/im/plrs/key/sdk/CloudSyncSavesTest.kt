@@ -611,7 +611,7 @@ class CloudSyncSavesTest {
         client.close()
     }
 
-    private class FakePort(val log: CopyOnWriteArrayList<String>, val onCancelOwner: () -> String = { "" }) : CloudSyncBackgroundPort {
+    private class FakePort(val log: MutableList<String>, val onOwner: () -> String = { "" }) : CloudSyncBackgroundPort {
         @Volatile var runner: CloudSyncBackgroundRunner? = null
 
         override fun attach(runner: CloudSyncBackgroundRunner) {
@@ -628,7 +628,7 @@ class CloudSyncSavesTest {
         }
 
         override fun cancelOwner(owner: String) {
-            log += "cancelOwner:$owner:${onCancelOwner()}"
+            log += "cancelOwner:$owner:${onOwner()}"
         }
     }
 
@@ -681,7 +681,12 @@ class CloudSyncSavesTest {
         val roots = LoggedStorage(InMemoryDeviceKeyStorage()) {
             log += "pin:locked=${!rig.client.keyring.unlocked}"
         }
-        val port = FakePort(log, onCancelOwner = { "locked=${!rig.client.keyring.unlocked},pinStillThere=${log.none { it.startsWith("pin:") }}" })
+        val port = FakePort(
+            log,
+            onOwner = {
+                "locked=${!rig.client.keyring.unlocked},pinStillThere=${log.none { it.startsWith("pin:") }}"
+            },
+        )
         rig = Rig(roots = roots, seedRoot = true, port = port)
         rig.signIn()
         assertTrue(rig.saves.write("slot-1", bytes(100), meta("x")).result() is SaveResult.Done)
@@ -699,7 +704,19 @@ class CloudSyncSavesTest {
         // A cut-short upload from an earlier run, left in the journal.
         FileJournal(r.dir).put(
             "saves:slot-9",
-            JournalRecord("saves:slot-9", SAVES_COLLECTION, "slot-9", "u1", "single", null, emptyList(), "a".repeat(64), 10, 4_000_000_000_000.0, "uploading"),
+            JournalRecord(
+                "saves:slot-9",
+                SAVES_COLLECTION,
+                "slot-9",
+                "u1",
+                "single",
+                null,
+                emptyList(),
+                "a".repeat(64),
+                10,
+                4_000_000_000_000.0,
+                "uploading",
+            ),
         )
         r.saves.list()
         r.saves.list()

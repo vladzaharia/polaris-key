@@ -560,6 +560,7 @@ private fun replaceTarget(inputs: KitInputs): String? {
 /** The confirm step's account line: the email when shared, else the exchange kind's wording, else none. */
 private fun confirmAccountLine(auto: JsonObject): String? = when {
     auto.string("email") != null -> "signin.auto.confirm.as"
+
     else -> when (auto.string("kind")) {
         "gamecenter" -> "signin.auto.confirm.asGameCenter"
         "pgs" -> "signin.auto.confirm.asPlayGames"
