@@ -24,6 +24,7 @@ The account verbs (``subject``, ``sign_out``, ``open_account``, ``attach``) live
 
 from __future__ import annotations
 
+import threading
 from typing import Any, Callable, Dict, Optional
 
 from ..constants_generated import ErrorCode, Feature, UnsupportedReason
@@ -55,7 +56,8 @@ from .choice import ChoiceClient
 from .nearby import NearbyCredentials, NearbyRoutes
 from .nearby_approver import start_nearby_approver
 from .nearby_session import NearbyDeps, NearbySignInSession, start_nearby_sign_in
-from .redirect import RedirectSession, start_redirect_sign_in
+from .native_redirect import NativeSignInSession, start_native_sign_in
+from .redirect import SignInError, start_redirect_sign_in
 from ..core.context import CoreContext
 from ..core.token import TokenManager
 
@@ -128,7 +130,15 @@ class IdentityClient:
             load_discovery=discover,
             write_subject=self._account.write_subject,
         )
-        self._sign_in = SignInNamespace(self._start_sign_in, self._start_redirect, self._start_nearby_sign_in)
+        self._sign_in = SignInNamespace(
+            self._start_sign_in,
+            self._start_redirect,
+            self._start_nearby_sign_in,
+            self._handle_redirect,
+        )
+        #: The native redirect sign-in now waiting for its redirect (I-15): one at a time.
+        self._native_active: Optional[NativeSignInSession] = None
+        self._native_lock = threading.Lock()
         self._choice = ChoiceClient(self._deps)
         self._discover = discover or (lambda: None)
         self._license_id = license_id or (lambda: None)
@@ -217,8 +227,30 @@ class IdentityClient:
     def _start_sign_in(self, **opts: Any) -> SignInSession:
         return start_device_code(self._deps, **opts)
 
-    def _start_redirect(self, **opts: Any) -> RedirectSession:
+    def _start_redirect(self, **opts: Any) -> Any:
+        if opts.get("redirect_uri") is None:
+            # No host-supplied https URI: the native redirect (loopback, scheme or claimed).
+            opts.pop("redirect_uri", None)
+            return self._start_native(**opts)
         return start_redirect_sign_in(self._deps, **opts)
+
+    def _start_native(self, **opts: Any) -> NativeSignInSession:
+        session = start_native_sign_in(self._deps, **opts)
+        # A new sign-in replaces the one still waiting: its listener closes and its request drops.
+        with self._native_lock:
+            previous, self._native_active = self._native_active, session
+        if previous is not None:
+            previous.cancel()
+        return session
+
+    def _handle_redirect(self, url: str) -> Any:
+        with self._native_lock:
+            session = self._native_active
+        if session is None:
+            raise SignInError(
+                ErrorCode.SIGN_IN_FAILED, "no native sign-in is waiting for a redirect."
+            )
+        return session.handle_redirect(url)
 
     @property
     def choice(self) -> ChoiceClient:

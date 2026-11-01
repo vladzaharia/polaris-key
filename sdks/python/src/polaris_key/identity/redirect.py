@@ -56,6 +56,7 @@ __all__ = [
     "generate_state",
     "is_redirect_uri",
     "parse_token_answer",
+    "redeem_code",
     "pkce_challenge",
     "start_redirect",
     "start_redirect_sign_in",
@@ -526,74 +527,83 @@ class RedirectSession:
         return self._redeem(pending, checked.code or "")
 
     def _redeem(self, pending: RedirectPending, code: str) -> SignInOutcome:
-        deps = self._deps
-        ctx = deps.ctx
-        form = token_form(
-            pending.client_id,
-            pending.code_verifier,
-            pending.redirect_uri,
-            code,
-            ctx.device_label(self._device_name),
+        return redeem_code(
+            self._deps, pending, code, self._deps.ctx.device_label(self._device_name)
         )
-        # A 5xx raises `server-error` and no answer `network-error` (CoreContext.request).
-        res = ctx.request(
-            "POST",
-            pending.token_endpoint,
-            headers=ctx.headers({"content-type": TOKEN_CONTENT_TYPE}),
-            content=form.encode("utf-8"),
+
+
+def redeem_code(
+    deps: SignInDeps, pending: RedirectPending, code: str, label: Optional[str]
+) -> SignInOutcome:
+    """Redeem a code at the token endpoint (a web or a native sign-in) and settle the outcome:
+    ``label`` is the device name the form carries, or ``None`` for none."""
+    ctx = deps.ctx
+    form = token_form(
+        pending.client_id,
+        pending.code_verifier,
+        pending.redirect_uri,
+        code,
+        label,
+    )
+    # A 5xx raises `server-error` and no answer `network-error` (CoreContext.request).
+    res = ctx.request(
+        "POST",
+        pending.token_endpoint,
+        headers=ctx.headers({"content-type": TOKEN_CONTENT_TYPE}),
+        content=form.encode("utf-8"),
+    )
+    try:
+        body: Any = res.json()
+    except ValueError:
+        body = None
+    answer = parse_token_answer(res.status_code, body)
+    if answer.kind == "malformed":
+        raise PolarisError(
+            ErrorCode.BAD_RESPONSE,
+            "the token endpoint answered without a complete sign-in.",
+            status=res.status_code,
         )
-        try:
-            body: Any = res.json()
-        except ValueError:
-            body = None
-        answer = parse_token_answer(res.status_code, body)
-        if answer.kind == "malformed":
+    if answer.kind == "refused":
+        retry = answer.retry_after_seconds
+        if retry is None:
+            header = (res.headers.get("retry-after") or "").strip()
+            retry = min(int(header), 3600) if header.isdigit() else None
+        raise SignInError(
+            answer.error or ErrorCode.SERVER_ERROR,
+            f"the token endpoint refused the sign-in ({answer.error}).",
+            status=res.status_code,
+            retry_after_seconds=retry,
+        )
+    if answer.kind == "choose":
+        # Only `license_choice=app` makes the Worker answer this; nothing is stored and
+        # `identity.choice.*` finishes it.
+        if not pending.license_choice:
             raise PolarisError(
                 ErrorCode.BAD_RESPONSE,
-                "the token endpoint answered without a complete sign-in.",
-                status=res.status_code,
+                "the token endpoint asked for a licence choice this sign-in did not request.",
+                status=200,
             )
-        if answer.kind == "refused":
-            retry = answer.retry_after_seconds
-            if retry is None:
-                header = (res.headers.get("retry-after") or "").strip()
-                retry = min(int(header), 3600) if header.isdigit() else None
-            raise SignInError(
-                answer.error or ErrorCode.SERVER_ERROR,
-                f"the token endpoint refused the sign-in ({answer.error}).",
-                status=res.status_code,
-                retry_after_seconds=retry,
-            )
-        if answer.kind == "choose":
-            # Only `license_choice=app` makes the Worker answer this; nothing is stored and
-            # `identity.choice.*` finishes it.
-            if not pending.license_choice:
-                raise PolarisError(
-                    ErrorCode.BAD_RESPONSE,
-                    "the token endpoint asked for a licence choice this sign-in did not request.",
-                    status=200,
-                )
-            return SignInOutcome(
-                kind=CHOOSE,
-                grant=answer.grant,
-                expires_in=answer.expires_in,
-                choices=answer.choices,
-            )
-        assert answer.access_token is not None and answer.subject is not None
-        deps.tokens.set(answer.access_token, "signin", person_initiated=True)
-        deps.store_identity(None)
-        if deps.write_subject is not None:
-            deps.write_subject(answer.subject)
-        deps.on_acquired()
-        deps.emit("identity", change="signed_in", subject=answer.subject)
-        lic = answer.license
-        license_id = lic.get("id") if isinstance(lic, dict) and isinstance(lic.get("id"), str) else None
         return SignInOutcome(
-            kind=SIGNED_IN,
-            subject=answer.subject,
-            scope=answer.scope,
-            activation=SignInActivation(license_id=license_id),
+            kind=CHOOSE,
+            grant=answer.grant,
+            expires_in=answer.expires_in,
+            choices=answer.choices,
         )
+    assert answer.access_token is not None and answer.subject is not None
+    deps.tokens.set(answer.access_token, "signin", person_initiated=True)
+    deps.store_identity(None)
+    if deps.write_subject is not None:
+        deps.write_subject(answer.subject)
+    deps.on_acquired()
+    deps.emit("identity", change="signed_in", subject=answer.subject)
+    lic = answer.license
+    license_id = lic.get("id") if isinstance(lic, dict) and isinstance(lic.get("id"), str) else None
+    return SignInOutcome(
+        kind=SIGNED_IN,
+        subject=answer.subject,
+        scope=answer.scope,
+        activation=SignInActivation(license_id=license_id),
+    )
 
 
 def start_redirect_sign_in(
