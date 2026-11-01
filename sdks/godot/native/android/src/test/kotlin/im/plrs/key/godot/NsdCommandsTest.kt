@@ -9,6 +9,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,6 +26,8 @@ class NsdCommandsTest {
         var permission = NsdCommands.Permission.NOT_REQUIRED
         var advertised = ArrayList<Triple<String, Int, Map<String, ByteArray>>>()
         var advertResult: ((NsdAdvertResult) -> Unit)? = null
+        val advertResults = ArrayList<(NsdAdvertResult) -> Unit>()
+        val advertStopped = ArrayList<Int>()
         var advertStops = 0
         var browseListener: PeerNsdListener? = null
         var browseAccept: ((String) -> Boolean)? = null
@@ -40,7 +43,12 @@ class NsdCommandsTest {
         override fun advertise(instance: String, port: Int, txt: Map<String, ByteArray>, onResult: (NsdAdvertResult) -> Unit): Stopper {
             advertised += Triple(instance, port, txt)
             advertResult = onResult
-            return { advertStops++ }
+            advertResults += onResult
+            val index = advertised.size - 1
+            return {
+                advertStops++
+                advertStopped += index
+            }
         }
 
         override fun browse(listener: PeerNsdListener, accept: (String) -> Boolean): Stopper {
@@ -87,6 +95,7 @@ class NsdCommandsTest {
         assertTrue(r.getBoolean("supported"))
         assertEquals("denied", r.getString("permission"))
         assertTrue(op("capabilities").getBoolean("nsd"))
+        assertTrue(r.getBoolean("slots"))
     }
 
     @Test
@@ -149,7 +158,200 @@ class NsdCommandsTest {
         fake.advertResult!!(NsdAdvertResult.Registered)
         val e = poll().single()
         assertEquals("nsd_advert", e.getString("ev"))
+        assertEquals("a", e.getString("slot"))
         assertTrue(e.getBoolean("ok"))
+    }
+
+    private val h1 = "0123456789abcdef"
+    private val h2 = "fedcba9876543210"
+
+    private fun tags(v: List<String> = emptyList(), p: List<String> = emptyList()) = JSONObject().apply {
+        if (v.isNotEmpty()) put("v", JSONArray(v))
+        if (p.isNotEmpty()) put("p", JSONArray(p))
+    }
+
+    private fun attrs(m: String, h: String) = mapOf<String, ByteArray?>("v" to "1".toByteArray(), "m" to m.toByteArray(), "h" to h.toByteArray())
+
+    /** The i-th well-formed instance name (distinct for distinct i below 1024). */
+    private fun nameOf(i: Int): String {
+        val alpha = "abcdefghijklmnopqrstuvwxyz234567"
+        return "p1-" + "d".repeat(14) + alpha[i / 32] + alpha[i % 32]
+    }
+
+    @Test
+    fun slotsAreIndependentRegistrations() {
+        for (slot in listOf("a", "v", "p", "c0", "c7")) {
+            assertTrue(op("nsd_advertise") { put("slot", slot).put("instance", a).put("port", 4100) }.getBoolean("ok"))
+        }
+        assertEquals(5, fake.advertised.size)
+        assertEquals(0, fake.advertStops)
+        // A second call on a slot replaces that slot only.
+        assertTrue(op("nsd_advertise") { put("slot", "v").put("instance", b).put("port", 4100) }.getBoolean("ok"))
+        assertEquals(listOf(1), fake.advertStopped)
+        // The late answer of the replaced advert is ignored; each slot reports under its own name.
+        fake.advertResults[1](NsdAdvertResult.Refused("renamed"))
+        assertTrue(poll().isEmpty())
+        fake.advertResults[0](NsdAdvertResult.Registered)
+        fake.advertResults[5](NsdAdvertResult.Refused("renamed"))
+        val ev = poll()
+        assertEquals(listOf("a", "v"), ev.map { it.getString("slot") })
+        assertEquals(listOf(true, false), ev.map { it.getBoolean("ok") })
+        // A refusal withdraws that slot alone.
+        assertEquals(listOf(1, 5), fake.advertStopped)
+    }
+
+    @Test
+    fun aSlotOutsideTheElevenIsRefusedAndNothingStarts() {
+        for (slot in listOf("x", "c", "c8", "c10", "A", "", "ap")) {
+            assertEquals("bad_input", op("nsd_advertise") { put("slot", slot).put("instance", a).put("port", 4100) }.getString("error"))
+            assertEquals("bad_input", op("nsd_advertise_stop") { put("slot", slot) }.getString("error"))
+        }
+        assertTrue(fake.advertised.isEmpty())
+        assertEquals(0, fake.advertStops)
+    }
+
+    @Test
+    fun stopEndsOneSlotAndNoSlotMeansA() {
+        op("nsd_advertise") { put("slot", "a").put("instance", a).put("port", 4100) }
+        op("nsd_advertise") { put("slot", "p").put("instance", b).put("port", 4100) }
+        op("nsd_advertise_stop") { put("slot", "p") }
+        assertEquals(listOf(1), fake.advertStopped)
+        op("nsd_advertise_stop")
+        assertEquals(listOf(1, 0), fake.advertStopped)
+        // A slot that never ran, or already stopped, does nothing.
+        assertTrue(op("nsd_advertise_stop") { put("slot", "c3") }.getBoolean("ok"))
+        assertEquals(2, fake.advertStops)
+    }
+
+    @Test
+    fun anAdvertWithoutASlotIsSlotA() {
+        op("nsd_advertise") { put("instance", a).put("port", 4100) }
+        op("nsd_advertise") { put("slot", "a").put("instance", b).put("port", 4100) }
+        assertEquals(listOf(0), fake.advertStopped)
+    }
+
+    @Test
+    fun aTaggedNameOutsideTheRosterIsKeptOnlyWhenItsTxtMatches() {
+        assertTrue(op("nsd_accept") { put("names", names(a)).put("tags", tags(v = listOf(h1, h2), p = listOf(h2))) }.getBoolean("ok"))
+        op("nsd_browse_start")
+        assertTrue(fake.browseAccept!!(b))
+        fake.browseListener!!.onFound(b)
+        fake.watchListeners[b]!!.onResolved(NsdResolved(b, listOf("192.168.1.8"), 4100, attrs("v", h1), null))
+        val e = poll().single()
+        assertEquals("nsd_found", e.getString("ev"))
+        assertEquals(b, e.getString("instance"))
+        // A roster name is not judged by its TXT here.
+        fake.browseListener!!.onFound(a)
+        fake.watchListeners[a]!!.onResolved(resolved(a, "192.168.1.9"))
+        assertEquals(a, poll().single().getString("instance"))
+    }
+
+    @Test
+    fun aWrongKindOrTagIsDroppedAndStaysOut() {
+        op("nsd_accept") { put("names", JSONArray()).put("tags", tags(v = listOf(h1), p = listOf(h2))) }
+        op("nsd_browse_start")
+        val cases = listOf(nameOf(1) to attrs("v", h2), nameOf(2) to attrs("p", h1), nameOf(3) to attrs("a", h1), nameOf(4) to mapOf<String, ByteArray?>("m" to "v".toByteArray()))
+        for ((n, at) in cases) {
+            assertTrue(fake.browseAccept!!(n))
+            fake.browseListener!!.onFound(n)
+            fake.watchListeners[n]!!.onResolved(NsdResolved(n, listOf("192.168.1.8"), 4100, at, null))
+        }
+        assertTrue(poll().isEmpty())
+        assertEquals(cases.map { it.first }.sorted(), fake.watchStops.sorted())
+        // The same name is not watched again until the OS reports it gone.
+        val old = fake.watchListeners[nameOf(1)]
+        fake.browseListener!!.onFound(nameOf(1))
+        assertSame(old, fake.watchListeners[nameOf(1)])
+    }
+
+    @Test
+    fun withoutTagsANameOutsideTheRosterNeverTakesASlot() {
+        op("nsd_accept") { put("names", names(a)) }
+        op("nsd_browse_start")
+        assertFalse(fake.browseAccept!!(b))
+        fake.browseListener!!.onFound(b)
+        assertTrue(fake.watchListeners.isEmpty())
+        // A name that is not a well-formed instance never passes, tags or not.
+        op("nsd_accept") { put("names", names(a)).put("tags", tags(v = listOf(h1))) }
+        assertFalse(fake.browseAccept!!("p1-short"))
+        assertFalse(fake.browseAccept!!("x1-aaaaaaaaaaaaaaaa"))
+    }
+
+    @Test
+    fun forgedNamesAreBoundedByTheCandidateLimit() {
+        op("nsd_accept") { put("names", names(a)).put("tags", tags(v = listOf(h1))) }
+        op("nsd_browse_start")
+        val admitted = (0 until 500).count { fake.browseAccept!!(nameOf(it)) }
+        assertEquals(NsdCommands.MAX_CANDIDATES, admitted)
+        // The roster still passes, and a name already admitted still does.
+        assertTrue(fake.browseAccept!!(a))
+        assertTrue(fake.browseAccept!!(nameOf(0)))
+    }
+
+    @Test
+    fun aGoneCandidateFreesItsPlace() {
+        op("nsd_accept") { put("names", JSONArray()).put("tags", tags(v = listOf(h1))) }
+        op("nsd_browse_start")
+        for (i in 0 until NsdCommands.MAX_CANDIDATES) {
+            assertTrue(fake.browseAccept!!(nameOf(i)))
+            fake.browseListener!!.onFound(nameOf(i))
+        }
+        assertFalse(fake.browseAccept!!(nameOf(100)))
+        fake.browseListener!!.onLost(nameOf(0))
+        assertTrue(fake.browseAccept!!(nameOf(100)))
+    }
+
+    @Test
+    fun aBadTagListClearsNamesAndTagsAlike() {
+        fun bad(t: Any?) {
+            op("nsd_accept") { put("names", names(a)).put("tags", tags(v = listOf(h1))) }
+            assertEquals("bad_input", op("nsd_accept") { put("names", names(a)).put("tags", t) }.getString("error"))
+            op("nsd_browse_start")
+            assertFalse(fake.browseAccept!!(a))
+            assertFalse(fake.browseAccept!!(b))
+            op("nsd_browse_stop")
+        }
+        bad(JSONObject().put("v", JSONArray(listOf(h1, h2, "0000000000000000"))))
+        bad(JSONObject().put("v", JSONArray(listOf("short"))))
+        bad(JSONObject().put("v", JSONArray(listOf(h1.uppercase()))))
+        bad(JSONObject().put("v", JSONArray(listOf(5))))
+        bad(JSONObject().put("x", JSONArray(listOf(h1))))
+        bad(JSONObject().put("p", "nope"))
+        bad("text")
+    }
+
+    @Test
+    fun changingTagsRestartsTheBrowseAndDropsTheCandidates() {
+        op("nsd_accept") { put("names", names(a)).put("tags", tags(v = listOf(h1))) }
+        op("nsd_browse_start")
+        assertTrue(fake.browseAccept!!(b))
+        fake.browseListener!!.onFound(b)
+        fake.watchListeners[b]!!.onResolved(NsdResolved(b, listOf("192.168.1.8"), 4100, attrs("v", h1), null))
+        poll()
+        assertEquals(1, fake.browses)
+        assertTrue(op("nsd_accept") { put("names", names(a)).put("tags", tags(v = listOf(h2))) }.getBoolean("ok"))
+        assertEquals(2, fake.browses)
+        assertEquals(listOf(b), fake.watchStops)
+        assertEquals("nsd_lost", poll().single().getString("ev"))
+        // The same sets again change nothing; clearing the tags also closes the door.
+        op("nsd_accept") { put("names", names(a)).put("tags", tags(v = listOf(h2))) }
+        assertEquals(2, fake.browses)
+        op("nsd_accept") { put("names", names(a)) }
+        assertEquals(3, fake.browses)
+        assertFalse(fake.browseAccept!!(b))
+    }
+
+    @Test
+    fun stopAllForgetsTheTags() {
+        op("nsd_accept") { put("names", names(a)).put("tags", tags(v = listOf(h1))) }
+        op("nsd_stop_all")
+        op("nsd_browse_start")
+        assertFalse(fake.browseAccept!!(b))
+    }
+
+    @Test
+    fun candidatesLeaveHalfTheOsWatchesToTheRoster() {
+        assertTrue(NsdCommands.MAX_CANDIDATES <= im.plrs.key.platform.PeerNsd.MAX_WATCHED / 2)
     }
 
     @Test
@@ -158,6 +360,7 @@ class NsdCommandsTest {
         fake.advertResult!!(NsdAdvertResult.Refused("renamed"))
         val e = poll().single()
         assertFalse(e.getBoolean("ok"))
+        assertEquals("a", e.getString("slot"))
         assertEquals("renamed", e.getString("reason"))
         assertEquals(1, fake.advertStops)
     }
