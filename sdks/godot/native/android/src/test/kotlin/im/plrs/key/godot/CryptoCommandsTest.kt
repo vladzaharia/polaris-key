@@ -53,6 +53,28 @@ class CryptoCommandsTest {
     }
 
     @Test
+    fun syncAnswersEmptyAadTamperAndOneMebibyte() {
+        val key = ByteArray(32) { it.toByte() }
+        val nonce = ByteArray(12) { (0xA0 + it).toByte() }
+        val aad = "pkey-sync-kat".toByteArray(Charsets.UTF_8)
+        val plain = ByteArray(1 shl 20) { (it * 31 + 7).toByte() }
+        val sealed = c24.seal(key.copyOf(), nonce, aad, plain)
+        assertEquals(1 + plain.size + 16, sealed.size)
+        assertEquals(CryptoCommands.OK, sealed[0])
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(sealed.copyOfRange(1, sealed.size))
+        assertEquals("20985c5839f5d4ccc63675c2e97146b4e8de8c720a4536b93b8f36b9fa50d672", digest.joinToString("") { "%02x".format(it) })
+        assertArrayEquals(ok(plain), c24.open(key.copyOf(), nonce, aad, sealed.copyOfRange(1, sealed.size)))
+        val flipped = sealed.copyOfRange(1, sealed.size).also { it[it.size - 1] = (it[it.size - 1].toInt() xor 1).toByte() }
+        assertArrayEquals(st(CryptoCommands.REFUSED), c24.open(key.copyOf(), nonce, aad, flipped))
+        // The largest call the sync facade hands a lane: 1 MiB with 64 KiB of AAD.
+        val bigAad = ByteArray(64 * 1024) { 0x5A }
+        val big = c24.seal(key.copyOf(), nonce, bigAad, plain)
+        assertEquals(1 + plain.size + 16, big.size)
+        assertArrayEquals(ok(plain), c24.open(key.copyOf(), nonce, bigAad, big.copyOfRange(1, big.size)))
+        assertArrayEquals(st(CryptoCommands.REFUSED), c24.open(key.copyOf(), nonce, bigAad.copyOf().also { it[0] = 0 }, big.copyOfRange(1, big.size)))
+    }
+
+    @Test
     fun keyArraysAreWipedOnEveryPath() {
         val zero = ByteArray(32)
         val peer = ByteArray(32).also { it[0] = 9 }
