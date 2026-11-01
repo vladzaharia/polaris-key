@@ -137,6 +137,7 @@ public object MachineStateJson {
         op.moved = o["moved"].boolValue == true
         op.parked = o["parked"].stringValue
         op.ticket = o["ticket"].longValue
+        op.file = RecordFile.of(o["file"])
         return op
     }
 }

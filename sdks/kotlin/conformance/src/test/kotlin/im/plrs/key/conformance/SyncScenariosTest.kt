@@ -78,12 +78,7 @@ class SyncScenariosTest : ConformanceSuite() {
         val names = cases.map { it["name"].stringValue!! }
         assertEquals(19, names.size)
         assertEquals(names.size, names.toSet().size)
-        // ported in SAVES-FILEPTR.2
-        val pending = setOf("put-at-file-pointer-create", "put-at-file-pointer-update", "put-at-without-pointer-keeps-file")
-        for (sc in cases) {
-            if (sc["name"].stringValue in pending) continue
-            SyncScenarioDriver(corpus["product"].stringValue!!, sc).run()
-        }
+        for (sc in cases) SyncScenarioDriver(corpus["product"].stringValue!!, sc).run()
     }
 
     @Test

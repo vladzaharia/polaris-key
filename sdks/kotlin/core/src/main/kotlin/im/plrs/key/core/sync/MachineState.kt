@@ -47,6 +47,9 @@ internal class Op(
     /** The id `putAt` / `removeAt` returned: the op is exact (never coalesced, never rebased) and its outcome is reported under it. */
     var ticket: Long? = null
 
+    /** The pointer `putAt` was given (the one the save's finalize returned): the row adopts it when the op is acknowledged `ok`. Never sent. */
+    var file: RecordFile? = null
+
     /** The journal form (every mark), or the wire form when [wire] is true. */
     fun toJson(wire: Boolean = false): JsonObject = buildJsonObject {
         put("mutationId", mutationId)
@@ -63,6 +66,7 @@ internal class Op(
             if (moved) put("moved", true)
             parked?.let { put("parked", it) }
             ticket?.let { put("ticket", it) }
+            file?.let { put("file", it.toJson()) }
         }
     }
 
@@ -75,6 +79,7 @@ internal class Op(
         it.preContact = preContact
         it.moved = moved
         it.ticket = ticket
+        it.file = file
     }
 
     fun withMarks(marks: Marks): Op = also {

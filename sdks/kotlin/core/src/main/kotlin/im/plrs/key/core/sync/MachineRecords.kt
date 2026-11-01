@@ -101,8 +101,8 @@ internal class MachineRecords(private val p: MachineParts) :
             .map { (k, row) -> RecordRow(k.substring(prefix.length), row.value ?: JsonNull, row.version, row.file) }
     }
 
-    override fun putAt(collection: String, id: String, value: JsonElement, baseVersion: JsonElement): PutAtResult =
-        exact(collection, baseVersion, Op(0, OpTarget.Record(collection, id), "set", value))
+    override fun putAt(collection: String, id: String, value: JsonElement, baseVersion: JsonElement, file: RecordFile?): PutAtResult =
+        exact(collection, baseVersion, Op(0, OpTarget.Record(collection, id), "set", value).also { it.file = file })
 
     override fun removeAt(collection: String, id: String, baseVersion: JsonElement): PutAtResult =
         exact(collection, baseVersion, Op(0, OpTarget.Record(collection, id), "delete"))

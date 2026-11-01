@@ -184,8 +184,11 @@ internal interface SaveRecords {
 
     suspend fun get(id: String): SaveRecord?
 
-    /** Write the metadata at exactly [baseVersion]; a cancelled caller stops waiting (no timeout). */
-    suspend fun set(id: String, value: JsonObject, baseVersion: JsonElement): SaveSetResult
+    /**
+     * Write the metadata at exactly [baseVersion]; a cancelled caller stops waiting (no timeout). [file] is the pointer
+     * `finalize` returned: an acknowledged set adopts it on the row.
+     */
+    suspend fun set(id: String, value: JsonObject, baseVersion: JsonElement, file: RecordFile?): SaveSetResult
 
     suspend fun delete(id: String, baseVersion: Long): SaveSetResult
 }
@@ -597,7 +600,7 @@ public class SavesClient internal constructor(
             metadata
         }
         // The metadata `set` goes on the version `finalize` answered, not on the pulled row's.
-        return when (val set = d.records.set(targetId, value, JsonPrimitive(file.version))) {
+        return when (val set = d.records.set(targetId, value, JsonPrimitive(file.version), file)) {
             is SaveSetResult.Ok -> SaveResult.Done(id, set.version, file, targetId.takeIf { it != id })
             is SaveSetResult.Conflict -> conflictOutcome(d, id, metadata, source.size, set.server?.version, set.server, true)
             is SaveSetResult.Rejected -> SaveResult.Failed(SavesException(SavesException.REJECTED, set.code))

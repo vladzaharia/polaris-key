@@ -203,7 +203,11 @@ private class Cloud(private val e2e: Boolean) :
 
     override suspend fun get(id: String): SaveRecord? = records[wireId(id)]?.let { saved(wireId(id), it) }
 
-    override suspend fun set(id: String, value: JsonObject, baseVersion: JsonElement): SaveSetResult {
+    /** The pointer each `set` was given, in order. */
+    val setFiles = CopyOnWriteArrayList<RecordFile?>()
+
+    override suspend fun set(id: String, value: JsonObject, baseVersion: JsonElement, file: RecordFile?): SaveSetResult {
+        setFiles.add(file)
         val wire = wireId(id)
         idsByWire[wire] = id
         val rec = records[wire] ?: Rec(0, null, null).also { records[wire] = it }
@@ -271,6 +275,19 @@ class CloudSyncSavesClientTest {
     }
 
     @Test
+    fun theMetadataWriteCarriesTheFinalizedPointerSoTheNewFileListsAtOnce() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        val done = saves.writeAs("slot1", bytes(300), Meta("one", 3), MetaSerializer).result() as SaveResult.Done
+        // The machine adopts this pointer on ok; without it the new row would list no file until a pull.
+        val given = cloud.setFiles.single()!!
+        assertEquals(done.file.version, given.version)
+        assertEquals(done.file.size, given.size)
+        assertEquals(done.file.sha256, given.sha256)
+        assertEquals(done.file.format, given.format)
+    }
+
+    @Test
     fun anE2eSaveIsStoredSealedAndBoundToItsMetadata() = runBlocking {
         val cloud = Cloud(e2e = true)
         val saves = client(cloud, e2e = true)
@@ -306,8 +323,8 @@ class CloudSyncSavesClientTest {
     fun aRecordWithAMalformedBindingFailsAndOneWithoutAFileHasNone() = runBlocking {
         val cloud = Cloud(e2e = true)
         val saves = client(cloud, e2e = true)
-        cloud.set("bad", buildJsonObject { put(SAVE_FILE_BINDING_KEY, "nope") }, JsonPrimitive(0))
-        cloud.set("plain", meta("x"), JsonPrimitive(0))
+        cloud.set("bad", buildJsonObject { put(SAVE_FILE_BINDING_KEY, "nope") }, JsonPrimitive(0), null)
+        cloud.set("plain", meta("x"), JsonPrimitive(0), null)
         try {
             saves.read("bad")
             fail("malformed binding")
