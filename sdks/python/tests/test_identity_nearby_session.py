@@ -684,8 +684,9 @@ def test_the_confirm_screen_times_out_and_signs_the_device_out(clock, fake_timer
     w = Fake(nearby_discovery(), start=START, poll=TOKEN, signout=ok(released=False))
     c, fake, s = session(w)
     assert s.wait().kind == "signed_in"
-    # Armed for expires_in seconds, as a daemon, from the moment wait() answered.
-    assert [(t.interval, t.daemon) for t in fake_timer] == [(300, True)]
+    # Armed for expires_in seconds, as a daemon, from the moment wait() answered. The client's own
+    # links re-read timer (a day) is not this session's.
+    assert [(t.interval, t.daemon) for t in fake_timer if t.interval != 24 * 60 * 60] == [(300, True)]
     ended: List[int] = []
     s.on_end(lambda: ended.append(1))
     assert c._tokens.current is not None and not s.ended
