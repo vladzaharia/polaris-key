@@ -1283,6 +1283,9 @@
     "packages/client-core/src/headers.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/client-core/src/identityRedirect.ts": {
+      "jscpd:duplicate": 5
+    },
     "packages/client-core/src/outlet.ts": {
       "jscpd:duplicate": 7
     },
@@ -1357,6 +1360,9 @@
     },
     "packages/client-core/src/record.ts": {
       "jscpd:duplicate": 2
+    },
+    "packages/client-core/src/redirect.ts": {
+      "jscpd:duplicate": 5
     },
     "packages/client-core/src/semver.ts": {
       "jscpd:duplicate": 2
@@ -1439,8 +1445,11 @@
     "packages/client-core/test/presentation.test.ts": {
       "jscpd:duplicate": 1
     },
-    "packages/client-core/test/syncTransfer.test.ts": {
+    "packages/client-core/test/syncSaves.test.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/client-core/test/syncTransfer.test.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/client-core/test/syncTransferChunks.test.ts": {
       "jscpd:duplicate": 1
@@ -1590,7 +1599,7 @@
       "jscpd:duplicate": 14
     },
     "packages/sdk-node/src/cloudSync/saves.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/sdk-node/src/cloudSync/state.ts": {
       "jscpd:duplicate": 1
@@ -2088,7 +2097,7 @@
       "jscpd:duplicate": 44
     },
     "packages/sdk-react/test/cloudSyncSaves.test.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/sdk-react/test/cloudSyncSettings.test.tsx": {
       "jscpd:duplicate": 1
@@ -2133,7 +2142,7 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/keyring.test.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 4
     },
     "packages/sdk-react/test/kit.test.tsx": {
       "jscpd:duplicate": 1
@@ -2159,6 +2168,12 @@
     "packages/sdk-react/test/kitMatrix.test.tsx": {
       "jscpd:duplicate": 1
     },
+    "packages/sdk-react/test/kitNearby.test.tsx": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/test/kitNearbyFix.test.tsx": {
+      "jscpd:duplicate": 8
+    },
     "packages/sdk-react/test/kitNext.test.tsx": {
       "jscpd:duplicate": 2
     },
@@ -2169,7 +2184,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/kitSaveBind.test.tsx": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/kitSaveScreens.test.tsx": {
       "jscpd:duplicate": 2
@@ -2382,7 +2397,7 @@
       "jscpd:duplicate": 2
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/saves.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/store.ts": {
       "jscpd:duplicate": 1
@@ -4971,7 +4986,7 @@
       "jscpd:duplicate": 32
     },
     "tools/ui-matrix.ts": {
-      "jscpd:duplicate": 18
+      "jscpd:duplicate": 20
     }
   }
 }
