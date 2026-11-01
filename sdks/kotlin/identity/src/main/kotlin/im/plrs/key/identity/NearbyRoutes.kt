@@ -1,7 +1,8 @@
 // The nearby approval routes for the new device D (WIRE-CONTRACT-V5 section 12.11.5; I-45.12): `nearby/start` and
 // `nearby/poll`. This is the HTTP half of nearby sign-in; the LAN half (adverts, the code, `VOUCH_REQ`) is CC-15's
 // `NearbyRequest`, and `NearbySignInSession` (NearbySignIn.kt) joins the two. Mirrors sdk-node's
-// `identity/nearby.ts`. `nearby/approve` is the approving device's and is not here.
+// `identity/nearby.ts`. `nearby/approve` is the approving device's (I-45.13): it takes only a [NearbyVouch], the permit
+// of a code the person matched, and sends D's handle, device id and keys from it and from nothing else.
 //
 // What this file keeps:
 //  - an endpoint is used only when discovery names it, and a product whose discovery names none answers the typed
@@ -25,6 +26,8 @@
     "MagicNumber",
     "ComplexCondition",
     "CyclomaticComplexMethod",
+    "LongParameterList",
+    "TooManyFunctions",
 )
 
 package im.plrs.key.identity
@@ -36,6 +39,7 @@ import im.plrs.key.core.DeviceProofPurpose
 import im.plrs.key.core.DeviceProofs
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.Feature
+import im.plrs.key.core.HeaderName
 import im.plrs.key.core.JsonText
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.PolarisResponse
@@ -44,6 +48,10 @@ import im.plrs.key.core.Unsupported
 import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.boolValue
 import im.plrs.key.core.objectValue
+import im.plrs.key.core.peer.nearby.ApproveAnswerInput
+import im.plrs.key.core.peer.nearby.NearbyApprovalHandler
+import im.plrs.key.core.peer.nearby.NearbyApproverHandle
+import im.plrs.key.core.peer.nearby.NearbyApproverOptions
 import im.plrs.key.core.peer.nearby.NearbyRequest
 import im.plrs.key.core.peer.nearby.NearbyRequestOptions
 import im.plrs.key.core.peer.nearby.RequesterSigner
@@ -60,16 +68,37 @@ public fun interface NearbyWrapAdopter {
     public suspend fun adopt(record: ByteArray): Boolean
 }
 
+/** A wrap of this device's key ring root, sealed to the new device and not yet stored. */
+public class NearbySealedWrap(
+    /** The `KEYRING_WRAP` (`0x0030`) record body. */
+    public val record: ByteArray,
+    /** Stores the same wrap as the server's copy (`PUT`). */
+    public val store: suspend () -> Unit,
+) {
+    override fun toString(): String = "NearbySealedWrap"
+}
+
+/** The key ring's half of an approval: seals the root to D, or answers null when this device holds no root. */
+public fun interface NearbyWrapSealer {
+    public suspend fun seal(deviceId: String, agreeKey: String): NearbySealedWrap?
+}
+
 /**
  * What the facade gives the identity client for nearby sign-in: the LAN request (`cloudConnect.nearby.request`), D's
  * device keys and id, whether this runtime can discover, and, once the key ring can take a channel wrap, the adopter.
  * The identity module cannot reach the Connect module, so the facade installs this (`IdentityClient.installNearby`).
  */
-public class NearbyHost(
+public class NearbyHost @JvmOverloads constructor(
     public val request: suspend (NearbyRequestOptions) -> NearbyRequest,
     public val signer: suspend () -> RequesterSigner,
     public val runtime: suspend (NearbyRole) -> Boolean,
     public val wrap: NearbyWrapAdopter? = null,
+    /** The approving device's LAN half (`cloudConnect.nearby.onRequest`). Null: `identity.nearby.onRequest` answers `nearby-unsupported`. */
+    public val approver: (suspend (NearbyApprovalHandler, NearbyApproverOptions) -> NearbyApproverHandle)? = null,
+    /** Registers this device's keys with the Worker (a `device_keys_required` answer of `nearby/approve`). */
+    public val registerKeys: (suspend () -> Unit)? = null,
+    /** The key ring's half of an approval (see [NearbyWrapSealer]). Null: no wrap is sent. */
+    public val sealer: NearbyWrapSealer? = null,
 ) {
     override fun toString(): String = "NearbyHost"
 }
@@ -103,6 +132,8 @@ internal sealed interface NearbyPoll {
 
 private const val START = "nearbyStart"
 private const val POLL = "nearbyPoll"
+private const val APPROVE = "nearbyApprove"
+private val KEY = Regex("[A-Za-z0-9_-]{43}")
 private val REQUEST = Regex("nr_[A-Za-z0-9_-]{22}")
 private val SUBJECT = Regex("ps_[A-Za-z0-9_-]{22}")
 
@@ -118,6 +149,9 @@ internal fun interface NearbyProofSigner {
 
 internal class NearbyRoutes(private val client: IdentityClient) {
     private val core get() = client.core
+
+    /** Set when `start` was answered 404 (the operator's launch gate went off): a later 404 from `approve` is the same answer. */
+    @Volatile private var gateOff = false
 
     /** Replay only: see [NearbyProofSigner]. */
     @Volatile var signProof: NearbyProofSigner? = null
@@ -197,7 +231,10 @@ internal class NearbyRoutes(private val client: IdentityClient) {
             JsonObject(body).toString().toByteArray(Charsets.UTF_8),
         )
         // The gate is off (the Worker rolled back after our discovery): start has no other 404.
-        if (res.status == 404) throw typedUnavailable("this product does not serve nearby approval")
+        if (res.status == 404) {
+            gateOff = true
+            throw typedUnavailable("this product does not serve nearby approval")
+        }
         if (res.status != 201) throw refusal(res, "nearby start")
         val b = JsonText.parseOrNull(res.text).objectValue
         val handle = b?.get("request").stringValue
@@ -281,6 +318,87 @@ internal class NearbyRoutes(private val client: IdentityClient) {
         )
     }
 
+    /**
+     * `POST nearby/approve` from the approving device M. [vouch] is the permit of a matched pick (rule 10: no silent
+     * approval): D's handle, device id and keys are taken from it and from nothing else, so they are exactly what D's
+     * verified `VOUCH_REQ` named (the Worker compares them with what D sent on `start`). [decision] is `approve` or
+     * `deny`; [choice] is the licence or `create` after a choose. A `409 device_keys_required` registers M's keys once
+     * (when the host can) and asks again once, never again.
+     */
+    suspend fun approve(creds: NearbyCreds, vouch: NearbyVouch, decision: String, choice: JsonObject?): NearbyApprove {
+        if (decision != "approve" && decision != "deny") throw PolarisException(ErrorCode.invalidOptions, "nearby: decision must be approve or deny.")
+        if (!KEY.matches(vouch.signKey) || !KEY.matches(vouch.agreeKey) || vouch.deviceId.isEmpty() || !REQUEST.matches(vouch.request)) {
+            throw PolarisException(ErrorCode.invalidOptions, "nearby: D's request is malformed.")
+        }
+        val url = try {
+            endpoint(APPROVE)
+        } catch (e: PolarisException) {
+            if (e.code == ErrorCode.serviceUnavailable) return NearbyApprove.Unavailable
+            throw e
+        }
+        val token = creds.token?.takeIf { it.isNotEmpty() } ?: throw PolarisException(ErrorCode.noToken, "Sign in before approving a nearby device.")
+        val body = linkedMapOf<String, kotlinx.serialization.json.JsonElement>(
+            "request" to JsonPrimitive(vouch.request),
+            "deviceId" to JsonPrimitive(vouch.deviceId),
+            "signKey" to JsonPrimitive(vouch.signKey),
+            "agreeKey" to JsonPrimitive(vouch.agreeKey),
+            "decision" to JsonPrimitive(decision),
+        )
+        if (choice != null) body["choice"] = choice
+        // The proof is by M's own key over the request handle (the line-6 value).
+        val signed = JsonObject(body + ("proof" to JsonPrimitive(proof(creds.port, DeviceProofPurpose.nearbyApprove, creds.deviceId, vouch.request))))
+        val bytes = signed.toString().toByteArray(Charsets.UTF_8)
+        val headers = contentType("application/json") + mapOf("authorization" to "Bearer $token", HeaderName.device to creds.deviceId)
+        var retried = false
+        var res = client.exchangePost(url, headers, bytes)
+        val register = host().registerKeys
+        if (res.status == HTTP_CONFLICT && wireCode(res) == ErrorCode.deviceKeysRequired && register != null) {
+            // M registers its keys first and asks ONCE more; a second 409 is the answer.
+            register()
+            retried = true
+            res = client.exchangePost(url, headers, bytes)
+        }
+        return approveResult(res, decision, retried)
+    }
+
+    private fun wireCode(res: PolarisResponse): String? =
+        IdentityExchange.errorCode(JsonText.parseOrNull(res.text).objectValue, res.status).takeUnless { it.startsWith("http_") }
+
+    private fun approveResult(res: PolarisResponse, decision: String, retried: Boolean): NearbyApprove {
+        val status = res.status
+        val b = JsonText.parseOrNull(res.text).objectValue
+        val text = res.text.takeIf { res.body.isNotEmpty() }
+        if (status == HTTP_OK && b?.get("status").stringValue == "approved") {
+            return NearbyApprove.Approved(b?.get("deviceLabel").stringValue, NearbyApproveAnswer(status, text, retried))
+        }
+        val view = b?.get("choices").objectValue
+        if (status == HTTP_OK && b?.get("status").stringValue == "choose" && view != null) {
+            val parsed =
+                LicenseChoiceView.of(view) ?: throw PolarisException(ErrorCode.badResponse, "nearby approve answered with an unreadable choice.")
+            return NearbyApprove.Choose(parsed, NearbyApproveAnswer(status, text, retried))
+        }
+        if (status == HTTP_NO_CONTENT && decision == "deny") return NearbyApprove.Denied(NearbyApproveAnswer(status, null, retried))
+        if (status == HTTP_OK ||
+            status == HTTP_NO_CONTENT
+        ) {
+            throw PolarisException(ErrorCode.badResponse, "nearby approve answered with an unexpected body.")
+        }
+        val code = wireCode(res)
+        val flat = code?.let { JsonObject(mapOf("code" to JsonPrimitive(it))).toString() }
+        // `start` already learned the gate is off: this 404 is the same answer.
+        if (status == HTTP_NOT_FOUND && gateOff) return NearbyApprove.Unavailable
+        return NearbyApprove.Refused(code, status, IdentityExchange.retryAfter(res, b), NearbyApproveAnswer(status, flat, retried))
+    }
+
+    /**
+     * The answer in the shape the vouch's finish step reads (rule 6). A 404 reads discovery afresh first (N11): it means
+     * "unavailable" only when the fresh read no longer names `nearby` and `nearbyApprove`. A failed read is not "named".
+     */
+    suspend fun answerFor(a: NearbyApproveAnswer): ApproveAnswerInput {
+        val named = if (a.http != HTTP_NOT_FOUND) true else stillNamed(APPROVE)
+        return ApproveAnswerInput(a.http, a.body, named)
+    }
+
     /** A non-success answer as the exception a thrown call raises: the Worker's code, else the status's. */
     private fun refusal(res: PolarisResponse, what: String): PolarisException {
         val b = JsonText.parseOrNull(res.text).objectValue
@@ -305,6 +423,9 @@ internal class NearbyRoutes(private val client: IdentityClient) {
     }
 
     private companion object {
+        const val HTTP_OK = 200
+        const val HTTP_NO_CONTENT = 204
+        const val HTTP_CONFLICT = 409
         const val HTTP_BAD_REQUEST = 400
         const val HTTP_UNAUTHORIZED = 401
         const val HTTP_FORBIDDEN = 403

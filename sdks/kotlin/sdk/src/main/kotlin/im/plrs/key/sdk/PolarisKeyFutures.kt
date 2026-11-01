@@ -42,6 +42,9 @@ import im.plrs.key.identity.ExchangeNonceResult
 import im.plrs.key.identity.ExchangeOutcome
 import im.plrs.key.identity.LicenseChoice
 import im.plrs.key.identity.LicenseChoiceView
+import im.plrs.key.identity.NearbyApprovalStep
+import im.plrs.key.identity.NearbyAsk
+import im.plrs.key.identity.NearbyAskHandler
 import im.plrs.key.identity.NearbyCode
 import im.plrs.key.identity.NearbyRole
 import im.plrs.key.identity.NearbySignInOptions
@@ -126,6 +129,23 @@ public class PolarisKeyFutures @JvmOverloads constructor(
     /** `identity.nearby.available(role)`. */
     @JvmOverloads
     public fun nearbyAvailable(role: NearbyRole = NearbyRole.Requester): CompletableFuture<Boolean> = call { client.identity.nearby.available(role) }
+
+    /** `identity.nearby.onRequest(handler, options)`: the signed-in device advertises and hands each session to [handler] as a [NearbyAsk]. */
+    public fun identityNearbyOnRequest(handler: NearbyAskHandler, options: NearbyApproverOptions): CompletableFuture<NearbyApproverHandle> =
+        call { client.identity.nearby.onRequest(handler, options) }
+
+    /** `ask.pick(code)`: the person picked a code; the step says how the approval went. */
+    public fun nearbyAskPick(ask: NearbyAsk, code: String): CompletableFuture<NearbyApprovalStep> = call { ask.pick(code) }
+
+    /** `ask.deny()`: "None of these match", or a deny after a matched pick. */
+    public fun nearbyAskDeny(ask: NearbyAsk): CompletableFuture<NearbyApprovalStep> = call { ask.deny() }
+
+    /** `step.choose(choice)` of a licence choice. */
+    public fun nearbyApprovalChoose(step: NearbyApprovalStep.Choose, choice: LicenseChoice): CompletableFuture<NearbyApprovalStep> =
+        call { step.choose(choice) }
+
+    /** `step.cancel()` of a licence choice: a deny. */
+    public fun nearbyApprovalCancel(step: NearbyApprovalStep.Choose): CompletableFuture<NearbyApprovalStep> = call { step.cancel() }
 
     /** Redirect channel: `session.complete(callbackUrl)`; a refusal completes it exceptionally with `SignInError`. */
     public fun signInComplete(session: SignInSession, callbackUrl: String): CompletableFuture<SignInOutcome> = call { session.complete(callbackUrl) }

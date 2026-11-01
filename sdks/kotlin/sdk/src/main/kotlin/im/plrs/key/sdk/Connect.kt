@@ -340,6 +340,9 @@ public class ConnectClient internal constructor(
         RequesterSigner(p, core.deviceId())
     }
 
+    /** Registers this device's keys with the Worker, for an approval that answered `device_keys_required` (nearby sign-in, M). */
+    internal suspend fun registerNearbyKeys(): Unit = lock.withLock { register(usePort()) }
+
     /**
      * The held identity as it stands, verified again now; null when none is held, it does not verify
      * any more or its roster expired. Sends nothing and makes no keys.

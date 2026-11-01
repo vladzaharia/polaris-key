@@ -70,6 +70,9 @@ import im.plrs.key.core.renameDevice
 import im.plrs.key.core.requestDeviceRegistration
 import im.plrs.key.identity.IdentityClient
 import im.plrs.key.identity.NearbyHost
+import im.plrs.key.identity.NearbySealedWrap
+import im.plrs.key.identity.NearbyWrapAdopter
+import im.plrs.key.identity.NearbyWrapSealer
 import im.plrs.key.identity.onBeforeSignOut
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.EntitlementsClient
@@ -497,14 +500,6 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
             cc.stopForSignOut()
             connect.leave()
         }
-        // Nearby sign-in on this device (I-45.12): the identity client cannot reach Connect, so it is handed the LAN half.
-        identity.installNearby(
-            NearbyHost(
-                request = { cc.nearby.request(it) },
-                signer = { connect.nearbySigner() },
-                runtime = { cc.nearby.runtimeSupported() },
-            ),
-        )
     }
 
     /**
@@ -513,6 +508,31 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
      * root through [cloudSync]'s chain (after Connect's roster and after the flush), in memory and in storage.
      */
     public val keyring: SyncKeyring = SyncKeyring(core, options.keyring.copy(keys = options.keyring.keys ?: options.connect.deviceKeys))
+
+    init {
+        // Nearby sign-in (I-45.12, I-45.13): the identity client cannot reach Connect or the key ring, so it is handed the LAN
+        // half (request, approver), the device keys, and the ring's two halves of a wrap: opening the one an approver sent
+        // (only after the person confirmed the account) and sealing this device's root to a new device after an approval.
+        identity.installNearby(
+            NearbyHost(
+                request = { cloudConnect.nearby.request(it) },
+                signer = { connect.nearbySigner() },
+                runtime = { cloudConnect.nearby.runtimeSupported() },
+                wrap = NearbyWrapAdopter { record -> keyring.adoptWrap(record) is SyncUnlockResult.Unlocked },
+                approver = { handler, options -> cloudConnect.nearby.onRequest(handler, options) },
+                registerKeys = { connect.registerNearbyKeys() },
+                sealer = NearbyWrapSealer { deviceId, agreeKey ->
+                    // A restart keeps the root in its record: status() takes it back before the ring is asked.
+                    if (!keyring.status().unlocked) {
+                        null
+                    } else {
+                        val body = keyring.sealWrapTo(deviceId, agreeKey)
+                        NearbySealedWrap(body.channelRecord()) { keyring.putWrap(deviceId, body) }
+                    }
+                },
+            ),
+        )
+    }
 
     /** The identity callback reaches the API through this, because `identity` is built before the API. */
     private val cloudSyncApi = java.util.concurrent.atomic.AtomicReference<CloudSyncApi?>(null)

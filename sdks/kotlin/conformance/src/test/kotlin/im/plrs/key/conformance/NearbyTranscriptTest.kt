@@ -2,8 +2,8 @@
 // The nearby sign-in conversations (I-45.12; WIRE-CONTRACT-V5 section 12.11.5), replayed for the NEW device D: its
 // `nearby/start` and `nearby/poll` must reproduce every recorded request byte for byte, proofs included (the fixture
 // device keys of each step's `keyLabel`), and every recorded answer must read as the transcript's `expect`. The
-// approving device's `nearbyApprove` steps are served from the recording: that half is I-45.13's, which maps them to its
-// own routes. These six also run in `TranscriptTest` once `parity.json` claims `identity.nearby`.
+// approving device's `nearbyApprove` steps (I-45.13) are replayed the same way, as the `approver*` device with the permit
+// the replay makes. These six also run in `TranscriptTest` once `parity.json` claims `identity.nearby`.
 
 package im.plrs.key.conformance
 
@@ -17,7 +17,7 @@ import org.junit.Test
 
 class NearbyTranscriptTest : ConformanceSuite() {
     private val nearby = Transcript.load().filter { it.id.startsWith("nearby-") }
-    private val heldBack = setOf("nearbyApprove")
+    private val heldBack = emptySet<String>()
 
     @Test
     fun theSixScenariosArePresent() = assertEquals(
@@ -65,6 +65,18 @@ class NearbyTranscriptTest : ConformanceSuite() {
         val happy = nearby.first { it.id == "nearby-happy" }
         failsWith(item(happy, 1, ::alterProof), "proof")
         failsWith(item(happy, 5, ::alterProof), "proof")
+    }
+
+    /** The approving device's proof is held to the recording as well, and so is the answer it reads (a licence choice, a deny). */
+    @Test
+    fun theApproversProofAndAnswerAreHeldToTheRecording() {
+        val happy = nearby.first { it.id == "nearby-happy" }
+        failsWith(item(happy, 4, ::alterProof), "proof")
+        failsWith(happy.withExpect(4, "deviceLabel", JsonPrimitive("Another device")), "step 4 (nearbyApprove): deviceLabel")
+        val denied = nearby.first { it.id == "nearby-denied" }
+        failsWith(denied.withExpect(1, "result", JsonPrimitive("approved")), "step 1 (nearbyApprove): result")
+        val choose = nearby.first { it.id == "nearby-choose" }
+        failsWith(choose.withExpect(1, "result", JsonPrimitive("approved")), "step 1 (nearbyApprove): result")
     }
 
     @Test

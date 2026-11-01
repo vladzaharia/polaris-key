@@ -47,7 +47,9 @@ import im.plrs.key.core.UnsupportedReason
 import im.plrs.key.core.boolValue
 import im.plrs.key.core.cleanDisplayLabel
 import im.plrs.key.core.peer.VouchStatus
+import im.plrs.key.core.peer.nearby.NearbyApproverHandle
 import im.plrs.key.core.peer.nearby.NearbyApproverInfo
+import im.plrs.key.core.peer.nearby.NearbyApproverOptions
 import im.plrs.key.core.peer.nearby.NearbyRecord
 import im.plrs.key.core.peer.nearby.NearbyRequest
 import im.plrs.key.core.peer.nearby.NearbyRequestOptions
@@ -619,6 +621,16 @@ public class NearbyNamespace internal constructor(private val client: IdentityCl
     } catch (e: Exception) {
         false
     }
+
+    /**
+     * M, a signed-in device: advertise while the person has "Approve a nearby device" open ([NearbyApproverOptions.prompt])
+     * or has allowed background approval, and hand each session that reaches the code to [handler] as a [NearbyAsk]
+     * (see NearbyApproval.kt). Returns the handle that stops, pauses and resumes it. Throws `account_required` when the
+     * device is signed out, the typed N/A when the product serves no nearby approval and `nearby-unsupported` when this
+     * runtime cannot discover devices.
+     */
+    public suspend fun onRequest(handler: NearbyAskHandler, options: NearbyApproverOptions): NearbyApproverHandle =
+        client.startNearbyApprover(handler, options)
 }
 
 internal suspend fun IdentityClient.nearbyAvailable(role: NearbyRole): Boolean {

@@ -109,6 +109,7 @@ import im.plrs.key.identity.SignOutResult
 import im.plrs.key.identity.SubjectResult
 import im.plrs.key.identity.redirectAcquisitionSync
 import im.plrs.key.identity.redirectEntropy
+import im.plrs.key.identity.replayNearbyApprove
 import im.plrs.key.identity.replayNearbyPoll
 import im.plrs.key.identity.replayNearbyProofs
 import im.plrs.key.identity.replayNearbyProofsReset
@@ -496,9 +497,8 @@ object KotlinReplay {
                 out["tokenHeld"] = JsonPrimitive(store.getToken().let { it != null && it != before })
             }
 
-            // `identity.nearby` (I-45.12, V5 section 12.11.5): the new device D's routes. `nearbyApprove` is the approving device's
-            // and belongs to its own slice (I-45.13); a replay that holds it back serves it from the recording.
-            "nearbyStart", "nearbyPoll" -> nearbyStep(client, step, session, out)
+            // `identity.nearby` (V5 section 12.11.5): the new device D's routes (I-45.12) and the approving device M's (I-45.13).
+            "nearbyStart", "nearbyPoll", "nearbyApprove" -> nearbyStep(client, step, session, out)
 
             // `identity.restore` (I-49.12, V5 section 12.11.8): the recorded client is the new device; the backup item is the step's args.
             "restoreRedeem" -> {
@@ -956,7 +956,9 @@ object KotlinReplay {
             client.identity.replayNearbyProofsReset()
         }
         try {
-            if (step["action"].stringValue == "nearbyStart") {
+            if (step["action"].stringValue == "nearbyApprove") {
+                nearbyApproveStep(client, args, session, out)
+            } else if (step["action"].stringValue == "nearbyStart") {
                 val started = client.identity.replayNearbyStart(args["deviceName"].stringValue)
                 out["result"] = JsonPrimitive("ok")
                 out["expiresIn"] = JsonPrimitive(started.expiresIn)
@@ -977,6 +979,33 @@ object KotlinReplay {
                 out["code"] = JsonPrimitive(e.code)
             }
         }
+    }
+
+    /**
+     * `nearbyApprove`: M's `nearby/approve`. M is the `approver*` device: its id, its bearer and its key. The permit is made here,
+     * because no route offers one without a matched code; it vouches for what the recording sent (it may carry other keys than D's).
+     */
+    @OptIn(ConformanceReplayOnly::class)
+    private suspend fun nearbyApproveStep(client: PolarisKeyClient, args: JsonObject, session: ReplaySession, out: MutableMap<String, JsonElement>) {
+        val dk = session.keys.publicKeys()!!
+        val agree = args["agreeKeyLabel"].stringValue?.let { l -> FixtureKeyPort().also { it.use(l) }.publicKeys()!!.agreeKey } ?: dk.agreeKey
+        val m = FixtureKeyPort().also { it.use(args["approverKeyLabel"].stringValue!!) }
+        val a = client.identity.replayNearbyApprove(
+            approverDeviceId = args["approverDeviceId"].stringValue!!,
+            approverToken = args["approverToken"].stringValue!!,
+            approverKeys = m,
+            request = args["request"].stringValue!!,
+            deviceId = client.core.deviceId(),
+            signKey = dk.signKey,
+            agreeKey = agree,
+            decision = args["decision"].stringValue!!,
+            choice = args["choice"]?.objectValue,
+        )
+        out["result"] = JsonPrimitive(a.result)
+        a.deviceLabel?.let { out["deviceLabel"] = JsonPrimitive(it) }
+        a.choices?.let { out["choices"] = it }
+        a.status?.let { out["status"] = jsonInt(it.toLong()) }
+        a.code?.let { out["code"] = JsonPrimitive(it) }
     }
 
     /** The recorder's constants for a redirect conversation (`packages/worker/test/transcripts`). */

@@ -35,10 +35,14 @@ import im.plrs.key.core.testing.ScriptedTransport
 import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.TestSigner
 import im.plrs.key.core.testing.path
+import im.plrs.key.identity.NearbyApprovalStep
+import im.plrs.key.identity.NearbyAsk
 import im.plrs.key.identity.NearbyHost
 import im.plrs.key.identity.NearbyRole
+import im.plrs.key.identity.NearbySealedWrap
 import im.plrs.key.identity.NearbySignInSession
 import im.plrs.key.identity.NearbyWrapAdopter
+import im.plrs.key.identity.NearbyWrapSealer
 import im.plrs.key.identity.NearbyWrapState
 import im.plrs.key.identity.SignInOutcome
 import im.plrs.key.license.LicenseClientOptions
@@ -108,6 +112,19 @@ class NearbySignInE2eTest {
         val starts = AtomicInteger()
         val polls = AtomicInteger()
 
+        val approveCalls = AtomicInteger()
+        val approveBearers = CopyOnWriteArrayList<String?>()
+
+        /** The Worker's `nearby/approve`: D's keys and id must be the ones D sent on `start` (the permit's contents), else 404. */
+        fun approveBody(o: kotlinx.serialization.json.JsonObject): Pair<Int, String?> {
+            approveCalls.incrementAndGet()
+            val v = start[o["request"].stringValue]
+            val sent = Triple(o["deviceId"].stringValue, o["signKey"].stringValue, o["agreeKey"].stringValue)
+            if (v != sent) return 404 to """{"error":"not_found"}"""
+            approved += sent.first!!
+            return 200 to """{"status":"approved","deviceLabel":"Test"}"""
+        }
+
         fun approve(r: VouchRequest): Pair<Int, String?> {
             if (start[r.request] != Triple(r.deviceId, r.signKey, r.agreeKey)) return 404 to null
             approved += r.deviceId
@@ -145,6 +162,12 @@ class NearbySignInE2eTest {
                 worker.polls.incrementAndGet()
                 // The token is handed over once, after M approved.
                 if (worker.approved.isNotEmpty()) respond(200, ready) else respond(200, """{"status":"pending"}""")
+            }
+
+            r.path.endsWith("/identity/nearby/approve") -> {
+                worker.approveBearers += r.headers.entries.firstOrNull { it.key.equals("authorization", true) }?.value
+                val (status, body) = worker.approveBody(JsonText.parseOrNull(String(r.body!!)).objectValue!!)
+                respond(status, body.orEmpty())
             }
 
             r.path.endsWith("/identity/signout") -> {
@@ -273,6 +296,74 @@ class NearbySignInE2eTest {
         // Connect is a decision for the app: it never started on either client.
         assertFalse(w.d.cloudConnect.status().running)
         assertFalse(w.m.cloudConnect.status().running)
+    }
+
+    @Test
+    fun aWrongCodeOnTheApprovingDeviceCallsNoRouteAndApprovesNobody() = runBlocking<Unit> {
+        val w = World()
+        val record = byteArrayOf(9, 8, 7, 6)
+        val stored = CopyOnWriteArrayList<String>()
+        // M's key ring holds a root in this test: the sealer stands in for it (the ring's own half is SyncKeyringTest's).
+        w.m.identity.installNearby(
+            NearbyHost(
+                request = { throw AssertionError("M does not request") },
+                signer = { w.m.connect.nearbySigner() },
+                runtime = { true },
+                approver = { h, o -> w.m.cloudConnect.nearby.onRequest(h, o) },
+                sealer = NearbyWrapSealer { deviceId, _ ->
+                    NearbySealedWrap(record.copyOf()) { stored += deviceId }
+                },
+            ),
+        )
+        val asks = CopyOnWriteArrayList<NearbyAsk>()
+        w.m.identity.nearby.onRequest({ asks += it }, w.approverOptions())
+        val s = w.d.identity.signIn.startNearby()
+        until { s.approvers.size == 1 }
+        val shown = s.choose(s.approvers[0].id).code
+        until { asks.size == 1 }
+        val ask = asks[0]
+        assertEquals("Test", ask.device)
+        val code = ask.codes.first { it.replace(" ", "") == shown.replace(" ", "") }
+        // A wrong code first: no route is called, the session closes, nothing is approved.
+        val wrong = ask.codes.first { it != code }
+        val closed = runBlocking { ask.pick(wrong) }
+        assertEquals(NearbyApprovalStep.Mismatch, closed)
+        assertEquals(0, w.worker.approveCalls.get())
+        assertTrue(w.worker.approved.isEmpty())
+        s.cancel()
+    }
+
+    @Test
+    fun theMatchedCodeApprovesWithMsBearerAndDsKeysAndTheWrapFollowsOnlyAfterD() = runBlocking<Unit> {
+        val w = World()
+        val record = byteArrayOf(9, 8, 7, 6)
+        val stored = CopyOnWriteArrayList<String>()
+        w.m.identity.installNearby(
+            NearbyHost(
+                request = { throw AssertionError("M does not request") },
+                signer = { w.m.connect.nearbySigner() },
+                runtime = { true },
+                approver = { h, o -> w.m.cloudConnect.nearby.onRequest(h, o) },
+                sealer = NearbyWrapSealer { deviceId, _ -> NearbySealedWrap(record.copyOf()) { stored += deviceId } },
+            ),
+        )
+        val asks = CopyOnWriteArrayList<NearbyAsk>()
+        w.m.identity.nearby.onRequest({ asks += it }, w.approverOptions())
+        val s = w.d.identity.signIn.startNearby()
+        until { s.approvers.size == 1 }
+        val shown = s.choose(s.approvers[0].id).code
+        until { asks.size == 1 }
+        val ask = asks[0]
+        val step = runBlocking { ask.pick(ask.codes.first { it.replace(" ", "") == shown.replace(" ", "") }) }
+        assertEquals(NearbyApprovalStep.Approved("Test", wrapSent = true), step)
+        assertEquals(listOf(idD), w.worker.approved.toList())
+        assertEquals(listOf("Bearer pkeyt_held"), w.worker.approveBearers.toList())
+        assertEquals(listOf(idD), stored.toList())
+        // D signs in on its next poll, holds the wrap until its person confirms, then hands it to the ring.
+        assertTrue(settle(s) is SignInOutcome.SignedIn)
+        assertTrue(w.wrapped.isEmpty())
+        s.confirmAccount()
+        assertEquals(listOf(record.size), w.wrapped.toList())
     }
 
     @Test
