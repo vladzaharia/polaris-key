@@ -249,6 +249,19 @@ public struct SignInView: View {
                             color: line.key == "signin.nearby.match" ? .muted : .default)
                     }
                 }
+                // The devices that answered, until the person taps one: each row reads "Open <app> on
+                // <device>", and tapping it shows the code to tap there.
+                if screen.state == .nearbyWait, model.inputs.autoSignIn?.code == nil {
+                    ForEach(model.nearbyApprovers, id: \.id) { approver in
+                        KitButton(
+                            line: CopyLine(
+                                "signin.nearby.bodyOn",
+                                productArg.merging(["app": .text(model.identity.name)]) { a, _ in a }
+                                    .merging(["device": .text(approver.label ?? approver.platform)]) { _, b in b }),
+                            kind: .secondary
+                        ) { Task { await model.nearbyChoose(approver.id) } }
+                    }
+                }
             }
         case .linkDone, .nearbyDone:
             EmptyView()
@@ -494,6 +507,21 @@ public struct SignInView: View {
                     Task { await model.continueAutoSignIn() }
                 } else {
                     model.useAnotherAccount()
+                }
+            } else if model.signInScreen.state == .nearbyPrompt {
+                // The prompt is the one tap before the OS asks for Local Network access (D-A14).
+                if kind == .primary {
+                    Task { await model.nearbyContinue() }
+                } else {
+                    model.nearbyNotNow()
+                }
+            } else if model.signInScreen.state == .nearbyWait {
+                model.nearbyUseCode()
+            } else if model.signInScreen.state == .nearbyDone {
+                if kind == .primary {
+                    Task { await model.nearbyConfirm() }
+                } else {
+                    Task { await model.nearbyNotYou() }
                 }
             } else if kind != .primary, model.inDeviceLimit {
                 // The device limit's other account: the grant goes and the methods show.

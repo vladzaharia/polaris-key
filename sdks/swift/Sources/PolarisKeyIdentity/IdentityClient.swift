@@ -244,6 +244,10 @@ public final class IdentityClient: Sendable {
     /// Rung 1's detached daily check (Restore.swift).
     let restoreDaily = LockedValue<RestoreDailyState>(RestoreDailyState())
     private let sleep: @Sendable (Double) async throws -> Void
+    /// Nearby sign-in's device keys and LAN half (`installNearby`); nil until the umbrella hands them over.
+    let nearbyBinding = LockedValue<NearbyBinding?>(nil)
+    /// Conformance replay only: signs a nearby proof by another key or over another value than the client's.
+    let nearbyProofSigner = LockedValue<(@Sendable (any DeviceKeyPort, DeviceProofFields) async throws -> String)?>(nil)
 
     /// - Parameter sleep: how the wait loop waits between polls. Defaults to `Task.sleep`, which
     ///   throws `CancellationError` when the task is cancelled; tests inject a clock-driven one.
@@ -263,6 +267,9 @@ public final class IdentityClient: Sendable {
     /// Hand over the device key port the platform exchange signs with (the same keys Connect
     /// uses). Nil keeps the product's `DeviceKeyStore`, made on first use.
     public func installDeviceKeys(_ port: (any DeviceKeyPort)?) { deviceKeys.set(port) }
+
+    /// The wait between polls, as the wait loops make it (a test injects a clock-driven one).
+    func sleepFor(_ seconds: Double) async throws { try await sleep(seconds) }
 
     func notifyIdentity(_ change: IdentityChange) { identityEvents.current?(change) }
 

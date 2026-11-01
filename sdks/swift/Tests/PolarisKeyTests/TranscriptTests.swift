@@ -392,8 +392,17 @@ enum SwiftReplay {
             // `identity.restore` (§12.11.6): the restore member and whether the endpoints name it.
             out["restore"] = .bool(identity?.restore ?? false)
             out["restoreEndpoint"] = .bool(!(identity?.restoreEndpoint ?? "").isEmpty)
+            // `identity.nearby` (§12.11.5): whether the discovery just loaded names nearby approval.
+            out["nearby"] = identity?.nearby == true ? .bool(true) : .null
+            out["nearbyEndpoints"] = .bool(
+                [identity?.nearbyStart, identity?.nearbyApprove, identity?.nearbyPoll].allSatisfy {
+                    ($0 ?? "").isEmpty == false
+                })
             // `connect.links` (CC-19): the cached `services.connect.interAccount` the SDK gates links on.
             out["interAccount"] = .bool(await client.connect.interAccount())
+        case "nearbyStart", "nearbyPoll", "nearbyApprove":
+            guard let server else { throw ReplayError("nearby without a replay server") }
+            await NearbyReplay.run(client, step: step, session: session, server: server, into: &out)
         case "exchange":
             try await exchange(client, step: step, session: session, into: &out)
         case "restoreRedeem", "restoreEnroll", "restoreDelete":
@@ -1126,7 +1135,8 @@ enum SwiftReplay {
             t.initial.services
             ?? (u != nil
                 ? ["release", "distribution", "update"]
-                : (redirects || deviceChoice ? ["license", "config", "identity"] : nil))
+                : (redirects || deviceChoice || t.features.contains("identity.nearby")
+                    ? ["license", "config", "identity"] : nil))
         let tap = HeaderTap(ReplayTransport(server: server))
         let core = CoreOptions(
             productSlug: t.product, baseUrl: t.baseUrl,
@@ -1160,7 +1170,7 @@ enum SwiftReplay {
         // Nor the backup: a replay has no restore store, so the only restore traffic is the recorded one.
         client.identity.installRestoreStore(nil)
         if redirects
-            || t.steps.contains(where: { ["exchange", "choiceComplete", "restoreRedeem"].contains($0.action) })
+            || t.steps.contains(where: { ["exchange", "choiceComplete", "restoreRedeem", "nearbyPoll"].contains($0.action) })
         {
             client.identity.redirectAcquisitionSync.set(false)
         }

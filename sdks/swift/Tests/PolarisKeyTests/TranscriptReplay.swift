@@ -445,6 +445,27 @@ actor ReplayServer {
                 redirectEndpoints["choice\(name)"] = .string("\(base)/identity/choice/\(name.lowercased())")
             }
         }
+        // The nearby transcripts (identity.nearby) that load discovery nowhere themselves ride a product
+        // whose Identity fragment names `nearby` and its three endpoints (§12.11.5).
+        if transcript.features.contains("identity.nearby") {
+            let identityBase = "\(transcript.baseUrl)/\(transcript.product)/identity"
+            return try? JSONEncoder().encode(
+                JSONValue.object([
+                    "product": .string(transcript.product),
+                    "services": .object([
+                        "license": .object(["enabled": .bool(true)]),
+                        "config": .object(["enabled": .bool(true)]),
+                        "identity": .object([
+                            "enabled": .bool(true), "configured": .bool(true), "nearby": .bool(true),
+                            "endpoints": .object([
+                                "nearbyStart": .string("\(identityBase)/nearby/start"),
+                                "nearbyApprove": .string("\(identityBase)/nearby/approve"),
+                                "nearbyPoll": .string("\(identityBase)/nearby/poll"),
+                            ]),
+                        ]),
+                    ]),
+                ]))
+        }
         // The restore transcripts (identity.restore) ride a product whose Identity fragment names the
         // restore member and endpoint (§12.11.6) beside the token, sign-out and grant routes.
         if transcript.steps.contains(where: { $0.action.hasPrefix("restore") }) {

@@ -378,6 +378,9 @@ public actor CoreContext {
     private var explicitSignOutValue = false
     private var signOutGenerationValue = 0
     private var provenanceValue: TokenProvenance?
+    /// The held token is a nearby sign-in's that no person confirmed yet (V5 §15.6.1 rule 12). The store's
+    /// record carries it across launches; a start that finds it drops the token.
+    private var unconfirmedValue = false
     private var discoveredServices: ServicesMap?
     private var discoveryDocumentValue: ProductDiscoveryDocument?
     /// Tier 2 — REPLACED, never merged into, on every successful verification (§1 rule 2).
@@ -450,6 +453,10 @@ public actor CoreContext {
         deviceIdValue = try await bindDeviceId(productSlug: product, store: store)
         tokenValue = try await store.getToken()
         tokenSourceValue = nil
+        unconfirmedValue = false
+        // A start that finds the unconfirmed mark means the process ended on the confirm screen: the token
+        // goes, locally, before anything reads it. An unreadable mark reads as present (fails closed).
+        if await unconfirmedMarkStands() { try? await clearCredential() }
         loadCache(await store.readCache())
         // The last presentation, so an offline start still shows the product. Files only.
         presentationSource.loadCached()
@@ -484,6 +491,11 @@ public actor CoreContext {
         person: Bool = false
     ) async throws {
         let derived = provenance ?? Self.derive(source)
+        // A mark that is going away is dropped before the token changes. A re-acquire keeps it.
+        if derived != nil, unconfirmedValue {
+            try await store.writeRecordChecked(CoreContext.unconfirmedRecord, nil)
+            unconfirmedValue = false
+        }
         // Crash-safe order: the old provenance goes first and the new one is written last, so a
         // crash between leaves none, which rung 1 reads as "not a sign-in".
         if derived != nil { await writeProvenance(nil) }
@@ -505,6 +517,77 @@ public actor CoreContext {
         case .register?, .enroll?: return .register
         case .activate?: return .key
         case .reacquire?, nil: return nil
+        }
+    }
+
+    // ── The unconfirmed nearby sign-in ────────────────────────────────────────────────────
+
+    /// True while the held token is a nearby sign-in's that no person confirmed (rung 1 never counts it, and
+    /// Connect and Cloud Sync treat the device as signed out).
+    public var tokenUnconfirmed: Bool { tokenValue != nil && unconfirmedValue }
+
+    /// Hold a nearby sign-in's `token` under the unconfirmed mark. The mark is written BEFORE the token (a
+    /// crash leaves the old token or the marked one, never a bare one); a mark that cannot be written fails
+    /// the call and stores nothing. It is no sign-in (no provenance) until {@link confirmToken}.
+    public func setUnconfirmedToken(_ token: String) async throws {
+        do { try await store.writeRecordChecked(CoreContext.unconfirmedRecord, Data("1".utf8)) } catch {
+            lastStoreErrorValue = error as? StoreError
+            throw error
+        }
+        unconfirmedValue = true
+        await writeProvenance(nil)
+        do {
+            try await store.setToken(token)
+        } catch let error as StoreError {
+            lastStoreErrorValue = error
+            unconfirmedValue = false
+            try? await store.writeRecordChecked(CoreContext.unconfirmedRecord, nil)
+            throw error
+        }
+        tokenValue = token
+        tokenSourceValue = .signin
+    }
+
+    /// The person confirmed the account: the token is a sign-in, the mark goes and the explicit sign-out
+    /// flag ends. The provenance is written first, so a crash between leaves the mark over a token the next
+    /// start drops. Throws when the mark cannot be removed; the token then stays unconfirmed.
+    public func confirmToken() async throws {
+        guard tokenValue != nil, unconfirmedValue else { return }
+        await writeProvenance(.signin)
+        do { try await store.writeRecordChecked(CoreContext.unconfirmedRecord, nil) } catch {
+            await writeProvenance(nil)
+            lastStoreErrorValue = error as? StoreError
+            throw error
+        }
+        unconfirmedValue = false
+        await setExplicitSignOut(false)
+    }
+
+    /// Remove the token, its provenance and then the mark: the token goes BEFORE its mark, so a crash leaves
+    /// the mark over no token and never a bare token. When the token cannot be removed the mark stays.
+    public func clearCredential() async throws {
+        tokenValue = nil
+        tokenSourceValue = nil
+        var failure: Error?
+        do { try await store.clearToken() } catch { failure = error }
+        await writeProvenance(nil)
+        if failure == nil {
+            do { try await store.writeRecordChecked(CoreContext.unconfirmedRecord, nil) } catch { failure = error }
+        }
+        if failure == nil { unconfirmedValue = false }
+        if let failure { throw failure }
+    }
+
+    private func unconfirmedMarkStands() async -> Bool {
+        do {
+            if try await store.readRecordChecked(CoreContext.unconfirmedRecord) != nil {
+                unconfirmedValue = true
+                return true
+            }
+            return false
+        } catch {
+            unconfirmedValue = true
+            return true
         }
     }
 
@@ -583,6 +666,7 @@ public actor CoreContext {
 
     static let explicitSignOutRecord = "explicit-sign-out"
     static let provenanceRecord = "token-origin"
+    static let unconfirmedRecord = "token-unconfirmed"
 
     /// Wipe every credential and artifact, in memory and on disk, except the v4 update slices
     /// (below). Throws if the local wipe could not be completed — the caller needs to know the
@@ -606,6 +690,11 @@ public actor CoreContext {
 
         var failure: Error?
         do { try await store.clearToken() } catch { failure = error }
+        // The mark goes after the token it describes.
+        if failure == nil {
+            do { try await store.writeRecordChecked(CoreContext.unconfirmedRecord, nil) } catch { failure = error }
+            if failure == nil { unconfirmedValue = false }
+        }
         if carriedFeeds.isEmpty && carriedRecords.isEmpty && carriedEvidence.isEmpty {
             do { try await store.clearCache() } catch { failure = failure ?? error }
         } else {
