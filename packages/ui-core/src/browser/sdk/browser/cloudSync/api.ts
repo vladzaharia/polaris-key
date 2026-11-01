@@ -34,6 +34,7 @@ import type {
 import type { KeyringClient } from "../../core/keyring.js";
 import type { BrowserCloudSyncHost } from "./host.js";
 import { safeSignInUrl } from "../../core/signInUrl.js";
+import { browserCollection } from "./collection.js";
 
 export { safeSignInUrl };
 
@@ -375,6 +376,10 @@ export function clientOf(
     host: async () => host,
     status: () => api.status(),
     flush: () => api.flush(),
+    collection: async (name) => {
+      await api.attach();
+      return browserCollection(name, host);
+    },
     purge: () => host.purge(),
     onEvents: (l) => api.onEvents(l),
     onStatus: (l) => api.onStatus(l),

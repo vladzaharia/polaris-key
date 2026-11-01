@@ -19,7 +19,7 @@
 // @pkey-feature sync.keyring
 // @pkey-feature connect.relay connect.links
 // @pkey-feature sync.settings
-// @pkey-feature sync.files sync.files.delta sync.saves
+// @pkey-feature sync.files sync.files.delta sync.saves sync.records
 // @pkey-feature identity.nearby identity.redirect.native
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a

@@ -55,6 +55,8 @@ export {
   type TransferView,
   type SaveTransferEvent,
 } from "./react/useSaves.js";
+// sync.records (U-46): a collection's records, re-rendered on change.
+export { useCollection, type UseCollection } from "./react/useCollection.js";
 // connect.app (CC-09.2): Cloud Connect over the relay, the only path a page has.
 export {
   useCloudConnect,

@@ -37,6 +37,7 @@ import {
   type CallResult,
   type CloudSyncCatalog,
   type CloudSyncDocument,
+  type CollectionDecl,
   type EncryptionMode,
   type Json,
   type OpenedBody,
@@ -48,11 +49,16 @@ import {
   type WireMutation,
 } from "@polaris-key/client-core/cloud-sync";
 import {
+  collectionDecls,
   openPull,
   sealPush,
   type HostCodec,
 } from "@polaris-key/client-core/sync";
-import { syncedSettings, type ProductCatalog } from "@polaris-key/catalog";
+import {
+  resolveCollection,
+  syncedSettings,
+  type ProductCatalog,
+} from "@polaris-key/catalog";
 import { SYNC_KEY_PATTERN } from "../../constants.generated.js";
 import { bindRingToMachine, type KeyringClient } from "../../core/keyring.js";
 import {
@@ -93,12 +99,17 @@ export interface CloudSyncHostOptions {
   };
 }
 
-/** The collection `cloudSync.saves` writes to: a `revision` collection the machine holds. */
-const SAVES_DECL = {
-  name: "saves",
-  policy: "revision",
-  resolve: "keepServer",
-} as const;
+/** What the machine is built from besides the document: the routes and the collections. */
+function shapeOf(catalog: ProductCatalog): string {
+  return JSON.stringify([routesOf(catalog), collectionsOf(catalog)]);
+}
+
+/** The collections the machine knows: the catalog's declarations, and `saves` unless declared. */
+function collectionsOf(catalog: ProductCatalog): CollectionDecl[] {
+  return collectionDecls(
+    (catalog.cloudSync?.collections ?? []).map(resolveCollection),
+  );
+}
 
 /** The Web Locks the host runs under. */
 export interface HostLocks {
@@ -497,12 +508,13 @@ export class BrowserCloudSyncHost {
 
   /** (Re)build the machine from the journal, the catalog and the document. */
   #build(persisted: SyncStateRecord["persisted"]): void {
+    const previous = this.#machine;
     this.#detach?.();
     this.#catalog = this.#effective();
     this.#routes = routesOf(this.#catalog);
     const catalog: CloudSyncCatalog = {
       settings: this.#routes,
-      collections: [{ ...SAVES_DECL }],
+      collections: collectionsOf(this.#catalog),
     };
     const document = this.#deps.document();
     this.#documentJson = JSON.stringify(document);
@@ -519,6 +531,8 @@ export class BrowserCloudSyncHost {
       persisted ?? undefined,
     );
     this.#machine = m;
+    // A rebuild keeps the watched collections and outcome taps of the machine it replaces.
+    if (previous !== null) m.adoptObservers(previous);
     m.onOutcome(this.#outcome);
     this.#applyDiscovery(m);
     this.#detach = bindRingToMachine(this.#deps.ring, m);
@@ -748,10 +762,10 @@ export class BrowserCloudSyncHost {
     const fetched = vetted(await this.#deps.fetchSchema().catch(() => null));
     if (fetched === null) return;
     if (JSON.stringify(fetched) === JSON.stringify(this.#served)) return;
-    const before = JSON.stringify(routesOf(this.#catalog));
+    const before = shapeOf(this.#catalog);
     this.#served = fetched;
-    // Rebuild only when the routes the machine uses would change.
-    if (JSON.stringify(routesOf(this.#effective())) === before) {
+    // Rebuild only when the routes or collections the machine uses would change.
+    if (shapeOf(this.#effective()) === before) {
       this.#catalog = this.#effective();
       return;
     }

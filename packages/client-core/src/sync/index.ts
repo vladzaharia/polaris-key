@@ -18,3 +18,4 @@ export * from "./transfer.js";
 export * from "./chunkCache.js";
 export * from "./transferCodec.js";
 export * from "./saves.js";
+export * from "./collection.js";
