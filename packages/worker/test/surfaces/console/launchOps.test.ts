@@ -116,13 +116,18 @@ describe("platform settings page: Cloud Sync and Cloud Connect scalars", () => {
   });
 });
 
+async function ceilingWorld() {
+  const db = makeTestDb();
+  const env = adminEnv();
+  await seedProduct(db, "djdl");
+  const { enable } = await import("../../services/connect/connectFixture.js");
+  await enable(db, ["license", "identity", "connect"]);
+  return { db, env };
+}
+
 describe("product relay ceiling", () => {
   it("is served; raising needs the typed key, lowering a reason only", async () => {
-    const db = makeTestDb();
-    const env = adminEnv();
-    await seedProduct(db, "djdl");
-    const { enable } = await import("../../services/connect/connectFixture.js");
-    await enable(db, ["license", "identity", "connect"]);
+    const { db, env } = await ceilingWorld();
     const k = "cloudConnect.ceiling.relayBytes";
     const path = `/api/products/djdl/settings/${k}`;
     const get = await call(env, db, path, { method: "GET" });
@@ -162,5 +167,57 @@ describe("product relay ceiling", () => {
       },
     });
     expect(raise.status).toBe(200);
+  });
+
+  it("a reset that raises needs the typed key, one that lowers needs a reason", async () => {
+    const { db, env } = await ceilingWorld();
+    const k = "cloudConnect.ceiling.relayBytes";
+    const path = `/api/products/djdl/settings/${k}`;
+    await call(env, db, path, {
+      method: "PATCH",
+      body: { value: GiB, expectedVersion: 0, reason: "cost" },
+    });
+    // The default is higher than the lowered value: a reset raises it.
+    const noKey = await call(env, db, path, {
+      method: "DELETE",
+      body: { expectedVersion: 1, reason: "back" },
+    });
+    expect([noKey.status, why(noKey)]).toEqual([400, "confirm_required"]);
+    const ok = await call(env, db, path, {
+      method: "DELETE",
+      body: { expectedVersion: 1, reason: "back", confirm: k },
+    });
+    expect(ok.status).toBe(200);
+    const rowVersion = async () =>
+      (
+        await db.first<{ version: number }>(
+          "SELECT version FROM product_settings WHERE product = ? AND key = ?",
+          "djdl",
+          k,
+        )
+      )?.version ?? 0;
+    const v1 = await rowVersion();
+    // Raised above the default, then reset: that lowers, so a reason, no key.
+    const up = await call(env, db, path, {
+      method: "PATCH",
+      body: {
+        value: 600 * GiB,
+        expectedVersion: v1,
+        reason: "more",
+        confirm: k,
+      },
+    });
+    expect(up.status).toBe(200);
+    const v2 = await rowVersion();
+    const noReason = await call(env, db, path, {
+      method: "DELETE",
+      body: { expectedVersion: v2 },
+    });
+    expect([noReason.status, why(noReason)]).toEqual([422, "reason_required"]);
+    const low = await call(env, db, path, {
+      method: "DELETE",
+      body: { expectedVersion: v2, reason: "trim" },
+    });
+    expect(low.status).toBe(200);
   });
 });

@@ -126,10 +126,13 @@ describe("the launch gate launch.syncFiles", () => {
         expect((await call(w, method, path)).status, `${method} ${path}`).toBe(
           404,
         );
-    // With the gate on, the same wrong method is a 405.
+    // With the gate on, a wrong method is a 405, the upload status route included.
     setGate(w, "on");
     expect(
       (await call(w, "GET", filesPath("saves", "s1", "begin"))).status,
+    ).toBe(405);
+    expect(
+      (await call(w, "POST", uploadPath("saves", "s1", GHOST))).status,
     ).toBe(405);
   });
 
