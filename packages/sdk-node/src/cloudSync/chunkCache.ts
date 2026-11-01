@@ -1,6 +1,6 @@
-// The Cloud Sync chunk cache on disk (U-22.4, plan D-9): the `ChunkCache` port of client-core's
-// transfer engine. It holds chunk objects as stored (ciphertext in E2E mode, never plaintext), one
-// file per object.
+// The Cloud Sync chunk cache on disk (U-22.4, plan D-9): the `ChunkCache` port of client-core's transfer
+// engine. It holds chunk objects as stored: ciphertext in end-to-end mode; in server mode the app's
+// bytes, at the same protection as the state file, one file per object.
 //
 //   Names    an entry is named by its chunk id and nothing else, and only a 64-character lowercase
 //            hex id is accepted (`isChunkCacheId`): no server text, collection name or save id ever
@@ -16,7 +16,8 @@
 //            purge that goes with the person.
 //   Backup   there is no portable way to keep a Node file out of an OS backup. The state directory
 //            is the host's choice; put it where the platform does not back up (a cache or temp
-//            location), or accept that the cache holds only ciphertext in E2E mode.
+//            location), or accept that the cache holds ciphertext in E2E mode and the app's bytes
+//            in server mode.
 //
 // Reads never throw on a damaged entry: it is a miss and the file is dropped; the engine opens every
 // object again before use.

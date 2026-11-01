@@ -8956,6 +8956,13 @@ and T25; those numbers are taken (the envelope AAD, the cost of files), so they 
   with no row (a crash between the store and the row) is found by a later `PUT` of other bytes
   under the same key and refused, and goes at the erasure.
 
+Designed residual: background transfer and local copies. On a device, the chunk cache and the Swift
+spool hold the codec's bytes: plaintext in server mode, ciphertext in end-to-end mode. Both are kept
+at the snapshot file's protection and purged with the person. A background task's bearer is held by
+the system transfer service for the task's life; the SDK cancels tasks older than 30 minutes at
+relaunch and all of them at sign-out. While the app is suspended, a ranged read is bounded only by
+the task's end.
+
 ### The account override layer (U-03, U-27)
 
 Operators' managed config for one account on one product (`account_overrides`, keyed by the

@@ -1,10 +1,11 @@
 """The Cloud Sync chunk cache (U-22.10, plan D-9): a port of ``packages/client-core/src/sync/chunkCache.ts``
 and of ``packages/sdk-node/src/cloudSync/chunkCache.ts``.
 
-It holds chunk objects as stored (ciphertext in E2E mode, never plaintext), keyed by the 64-character
-lowercase hex chunk id, so a download fetches only the chunks the device lacks. Hosts name entries from
-the id alone, never from server text: ``get``, ``put`` and ``delete`` refuse anything but an id that
-matches ``SYNC_CHUNK_ID_PATTERN`` (:func:`is_chunk_cache_id`) with ``ValueError``.
+It holds chunk objects as stored: ciphertext in end-to-end mode; in server mode the app's bytes, at the
+same protection as the state file, keyed by the 64-character lowercase hex chunk id, so a download fetches
+only the chunks the device lacks. Hosts name entries from the id alone, never from server text: ``get``,
+``put`` and ``delete`` refuse anything but an id that matches ``SYNC_CHUNK_ID_PATTERN``
+(:func:`is_chunk_cache_id`) with ``ValueError``.
 
 A cache is best effort: the engine treats a failing ``get`` as a miss and a failing ``put`` as nothing,
 and it opens every cached object again before use, so a damaged entry costs a fetch. The host bounds it
@@ -16,8 +17,8 @@ atomically). :func:`chunk_cache_dir` hashes the subject and the collection into 
 person's chunks never serve another's and a collection name cannot climb out of the cache root. A name in
 the directory that is not a chunk id is ignored (a stray temporary file is removed on the first scan). An
 object over the budget is not kept. Python has no portable way to keep a file out of an OS backup: put the
-state directory where the platform does not back up, or accept that the cache holds only ciphertext in E2E
-mode.
+state directory where the platform does not back up, or accept that the cache holds ciphertext in E2E
+mode and the app's bytes in server mode.
 """
 
 from __future__ import annotations
