@@ -8,7 +8,7 @@
 //       show(ask.device, ask.platform, ask.codes);       // three codes, the person taps one
 //       const step = await ask.pick(tapped);             // or `await ask.deny()` for none of them
 //       // step.kind: approved | mismatch | not-nearby | denied | expired | device-limit | choose
-//       //            | account-required | rate-limited
+//       //            | account-required | rate-limited | failed
 //     },
 //     { prompt: true, label: "Ana's laptop" },
 //   );
@@ -63,6 +63,8 @@ export type NearbyApprovalStep =
   | { kind: "device-limit" }
   | { kind: "account-required" }
   | { kind: "rate-limited" }
+  /** The Worker or the network failed: nothing was approved, and the new device asks again. */
+  | { kind: "failed" }
   | {
       kind: "choose";
       /** The licences the person may give the new device. */
@@ -118,6 +120,15 @@ const KEYRING_WRAP = 0x0030;
 /** A licence choice is asked again (a lost mint) at most this often in one pick. */
 const MAX_ASKS = 3;
 
+/** A refusal that is the connection or the service, not the request. */
+function isTransport(code: string): boolean {
+  return (
+    code === ErrorCode.network ||
+    code === ErrorCode.networkError ||
+    code === ErrorCode.serverError
+  );
+}
+
 /** The step a Worker answer is, once `finish()` has sent what it sends. */
 function stepOf(a: NearbyApproveAnswer): NearbyApprovalStep {
   switch (a.kind) {
@@ -140,7 +151,7 @@ function stepOf(a: NearbyApproveAnswer): NearbyApprovalStep {
         case ErrorCode.rateLimited:
           return { kind: "rate-limited" };
         default:
-          return { kind: "expired" };
+          return { kind: isTransport(a.code) ? "failed" : "expired" };
       }
   }
 }
@@ -197,7 +208,8 @@ class Decision {
       await a.close().catch(() => undefined);
       if (e instanceof PolarisError && e.code === ErrorCode.accountRequired)
         return { kind: "account-required" };
-      if (e instanceof PolarisError) return { kind: "expired" };
+      if (e instanceof PolarisError)
+        return { kind: isTransport(e.code) ? "failed" : "expired" };
       throw e;
     }
     let out: Awaited<ReturnType<NearbyApproval["finish"]>>;

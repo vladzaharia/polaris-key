@@ -451,8 +451,16 @@ function autoStepView(
       return nearbyEnd(view, "nearby-not-nearby", "not_nearby");
     case "nearby-failed":
       return nearbyEnd(view, "nearby-failed", "network");
+    case "nearby-rate-limited":
+      return nearbyEnd(view, "nearby-rate-limited", "rate_limited");
+    case "nearby-unavailable":
+      return nearbyEnd(view, "nearby-unavailable", "nearby-unsupported");
     case "nearby-cancelled":
-      return nearbyEnd(view, "nearby-cancelled", "core.codes.unauthorized.title");
+      return nearbyEnd(
+        view,
+        "nearby-cancelled",
+        "core.codes.unauthorized.title",
+      );
     case "nearby-signed-out":
       return nearbyEnd(view, "nearby-signed-out", "core.gate.revoked.title");
     case "nearby-done":

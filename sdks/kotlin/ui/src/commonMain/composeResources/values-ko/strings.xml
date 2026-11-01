@@ -1334,7 +1334,7 @@
     <string name="signin_nearby_notNearbyBody">두 기기를 같은 Wi-Fi에 연결하거나 %1$s에서 코드로 로그인하세요.</string>
     <!-- Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_mismatch">코드가 일치하지 않아 %1$s에 로그인하지 않았어요.</string>
-    <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
+    <!-- Account menu entry: opens the nearby approval list on the signed-in device. macOS menu items use title case and an ellipsis because the item opens a pane. -->
     <string name="signin_nearby_menu">근처 기기 승인</string>
     <string name="signin_nearby_menu__macos">근처 기기 승인</string>
     <!-- Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->

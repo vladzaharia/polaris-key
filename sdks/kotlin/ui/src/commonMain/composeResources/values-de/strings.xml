@@ -1343,7 +1343,7 @@
     <string name="signin_nearby_notNearbyBody">Verbinden Sie beide mit demselben WLAN oder melden Sie sich auf %1$s mit einem Code an.</string>
     <!-- Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_mismatch">Dieser Code stimmte nicht überein, daher wurde %1$s nicht angemeldet.</string>
-    <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
+    <!-- Account menu entry: opens the nearby approval list on the signed-in device. macOS menu items use title case and an ellipsis because the item opens a pane. -->
     <string name="signin_nearby_menu">Gerät in der Nähe bestätigen</string>
     <string name="signin_nearby_menu__macos">Gerät in der Nähe bestätigen</string>
     <!-- Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->

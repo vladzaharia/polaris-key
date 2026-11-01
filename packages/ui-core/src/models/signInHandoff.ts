@@ -78,6 +78,8 @@ export type SignInState =
   | "nearby-failed"
   | "nearby-cancelled"
   | "nearby-signed-out"
+  | "nearby-rate-limited"
+  | "nearby-unavailable"
   | "device-limit"
   | "key-done"
   | "attach"

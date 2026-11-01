@@ -74,7 +74,7 @@
       "activation": "An activation result: {result: activationResult, code?, limit?, deviceCount?, manageUrl?}.",
       "offline": "Offline activation: {copied?, file?, submitted?, verified?} (the request code copied, a response loaded, submitted, its signature verified).",
       "provider": "The sign-in provider's name (Apple, Google, Steam), for the strings that name it: the link offer, the failed sign-in. Absent: Polaris Locker, the sign-in the generic row opens.",
-      "autoSignIn": "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | nearby-choose | nearby-none-found | nearby-denied | nearby-expired | nearby-not-nearby | nearby-failed | nearby-cancelled | nearby-signed-out | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
+      "autoSignIn": "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | nearby-choose | nearby-none-found | nearby-denied | nearby-expired | nearby-not-nearby | nearby-failed | nearby-rate-limited | nearby-unavailable | nearby-cancelled | nearby-signed-out | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
       "nearbyApproval": "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby | mismatch | denied | expired | device-limit | choose | account-required | rate-limited | listening | stopped | failed, device?}. Absent: the account-menu entry. `listening` is the screen open with nothing asking yet; `stopped` the advert stopped after declined requests; `failed` a server or network failure.",
       "linkPairing": "Pairing with someone nearby: {step: open | code | confirm | linked | failed | unavailable, device?, code?, categories?, reason?: declined | timeout | full | closed}. `device` is the label the other device reported: nothing authenticates it, so the screen words it as reported and, without one, says the device gave no name. `code` is drawn as served and compared by both people. `categories` (ids, at most 8) are listed before the confirm button; none says nothing is shared yet. `unavailable`: links are off for the product (the typed connect_links_disabled). Absent: LinkPairing is hidden.",
       "transferOffer": "A contact's offer to send something (D-8, consent per transfer): {step: ask | receiving | done | failed, device?, name}. `device` is the contact's label and `name` what it offers, both text the other side chose. Absent: TransferOffer is hidden.",
@@ -14600,6 +14600,50 @@
           "common.tryAgain",
           "core.codes.network.message",
           "core.codes.network.title",
+          "signin.nearby.code"
+        ],
+        "actions": ["retry"]
+      }
+    },
+    {
+      "name": "SignIn/nearby-rate-limited: too many attempts",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "nearby-rate-limited" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "nearby-rate-limited",
+        "copy": [
+          "common.tryAgain",
+          "core.codes.rate_limited.message",
+          "core.codes.rate_limited.title",
+          "signin.nearby.code"
+        ],
+        "actions": ["retry"]
+      }
+    },
+    {
+      "name": "SignIn/nearby-unavailable: this computer cannot look for nearby devices",
+      "input": {
+        "signIn": {
+          "presentation": "inline",
+          "replace": "inline",
+          "channel": "browser"
+        },
+        "autoSignIn": { "step": "nearby-unavailable" }
+      },
+      "expect": {
+        "component": "SignIn",
+        "state": "nearby-unavailable",
+        "copy": [
+          "common.tryAgain",
+          "core.codes.nearby-unsupported.message",
+          "core.codes.nearby-unsupported.title",
           "signin.nearby.code"
         ],
         "actions": ["retry"]

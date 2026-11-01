@@ -319,6 +319,22 @@
             "signin.nearby.code"
           ]
         },
+        "nearby-rate-limited": {
+          "copy": [
+            "core.codes.rate_limited.title",
+            "core.codes.rate_limited.message",
+            "common.tryAgain",
+            "signin.nearby.code"
+          ]
+        },
+        "nearby-unavailable": {
+          "copy": [
+            "core.codes.nearby-unsupported.title",
+            "core.codes.nearby-unsupported.message",
+            "common.tryAgain",
+            "signin.nearby.code"
+          ]
+        },
         "device-limit": {
           "copy": [
             "core.codes.device_limit.title",
