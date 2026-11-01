@@ -15,6 +15,8 @@ import type { ComponentName } from "@polaris-key/ui-core";
 
 import { kitComponent } from "./kitComponent.js";
 import { connectScreen } from "./connectLazy.js";
+import { nearbyScreen } from "./nearbyLazy.js";
+import type { NearbyApproverProps, NearbySignInProps } from "./nearby.js";
 import { holderScreen } from "./holdersLazy.js";
 import { syncScreen } from "./syncLazy.js";
 import type { ActivateDoneProps, AddToAccountProps } from "./holders.js";
@@ -75,8 +77,7 @@ const c = (name: ComponentName) => kitComponent(name);
 export const Boot = c("Boot");
 export const Welcome = c("Welcome");
 export const SignInHandoff = c("SignInHandoff");
-// NearbyApproval is not exported: nearby approval ships with I-40 and CC-15, and its ask step
-// draws no codes yet (UXR-kits-v7 B4). The component stays internal (`kitComponent`).
+// NearbyApproval itself stays internal (`kitComponent`): the desktop drives it as NearbyApprover.
 export const Activate = c("Activate");
 export const OfflineActivation = c("OfflineActivation");
 export const DeviceLimit = c("DeviceLimit");
@@ -125,5 +126,10 @@ export {
   type UseTransferOfferOptions,
 } from "./connectHooks.js";
 export type { LinkPairingProps, TransferOfferProps } from "./connect.js";
+// Nearby sign-in on the desktop bridge (I-47b): the new device and the signed-in device. They load
+// on demand and draw nothing where the adapter has no `nearby` (a browser, a v4 host).
+export const NearbySignIn = nearbyScreen<NearbySignInProps>("NearbySignIn");
+export const NearbyApprover =
+  nearbyScreen<NearbyApproverProps>("NearbyApprover");
 export const ChannelPicker = c("ChannelPicker");
 export const Toast = c("Toast");

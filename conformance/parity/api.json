@@ -7164,6 +7164,11 @@
       "feature": "identity.nearby",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "adapter.nearby.request",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the new device; the host holds the session"
+        },
         "python": {},
         "swift": {},
         "kotlin": {
@@ -7184,6 +7189,11 @@
       "feature": "identity.nearby",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "adapter.nearby.approver",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the signed-in device; open while its screen is"
+        },
         "python": {},
         "swift": {},
         "kotlin": {
@@ -7215,6 +7225,11 @@
       "returns": "bool",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "adapter.supports",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): supports('identity.nearby'); a v4 host answers reason version"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7248,6 +7263,11 @@
       "returns": "json",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "adapter.nearby.approver",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the signed-in device; asks arrive as pushed state, one ask id each"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7271,6 +7291,11 @@
       "returns": "json",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.state.approvers",
+          "shape": "property",
+          "reason": "desktop bridge v5 (I-47b): the requester session (adapter.nearby.request)"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7299,6 +7324,11 @@
       ],
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.subscribe",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7322,6 +7352,11 @@
       "returns": "string",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.state.code",
+          "shape": "property",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7345,6 +7380,11 @@
       "returns": "string",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.phase",
+          "shape": "property",
+          "reason": "desktop bridge v5 (I-47b): the requester session's phase"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7373,6 +7413,11 @@
       ],
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.subscribe",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7402,6 +7447,11 @@
       "returns": "json",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.choose",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7425,6 +7475,11 @@
       "returns": "json",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.confirm",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7447,6 +7502,11 @@
       "feature": "identity.nearby",
       "sdks": {
         "node": {},
+        "react": {
+          "spelling": "session.decline",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7470,6 +7530,9 @@
       "returns": "string",
       "sdks": {
         "node": {},
+        "react": {
+          "reason": "desktop bridge v5 (I-47b): the key-ring wrap stays in the host and never crosses IPC (D-2)"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",
@@ -7498,6 +7561,9 @@
       ],
       "sdks": {
         "node": {},
+        "react": {
+          "reason": "desktop bridge v5 (I-47b): the key-ring wrap stays in the host and never crosses IPC (D-2)"
+        },
         "python": {},
         "swift": {
           "planned": "I-44",

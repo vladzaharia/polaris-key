@@ -2287,12 +2287,9 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
   "identity.nearby": {
-    status: "na",
+    status: "implemented",
     service: "identity",
-    na: [
-      { runtime: "web", reason: "runtime" },
-      { runtime: "desktop-bridge", reason: "runtime" },
-    ],
+    na: [{ runtime: "web", reason: "runtime" }],
   },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
@@ -2479,4 +2476,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "0a3f37ba67ef6729d04fce09992c81b6a339c062989ad954c2dd26d206a70bac";
+  "2c55cb3f389e6845c31e2d010091deb257cefc46b1fb9eba7c48c9223e0954fe";
