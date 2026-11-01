@@ -121,6 +121,15 @@ export interface BridgeSignInBegin {
 /** The terminal outcome of polling an OIDC flow. v4's `ok` may carry the signed-in identity. */
 export type BridgeOidcPoll =
   | { kind: "pending" }
+  /** v6 (UK-42.22.7): the sign-in started with `licenseChoice: "app"` and a choice is due. `grant`
+   *  is an opaque ref the host bound to this window, not the Worker's grant: pass it to the
+   *  `identity.choice.*` verbs. A host below v6 never answers this. */
+  | {
+      kind: "choose";
+      grant: string;
+      expiresIn: number;
+      choices: Record<string, unknown>;
+    }
   | { kind: "ok"; identity?: { name?: string; email?: string } }
   | { kind: "denied" }
   | { kind: "expired" }
@@ -273,16 +282,26 @@ export type BridgeActivation =
  * the host call its own pick, so no approval exists without a fresh ask. Every method and every
  * push passes the host's `allowSender` rule. Asks die on `approverStop`, sign-out and window close.
  *
+ * ── WHAT v6 ADDS (UK-42.22.7) ────────────────────────────────────────────────────────────────
+ *
+ * The licence and device choice of a device-code sign-in. `pollSignIn` can answer `choose`, and
+ * four `invoke` verbs finish it: `("identity", "choice.licenses" | "choice.devices" |
+ * "choice.complete" | "choice.cancel")`, each taking the `grant` the poll answered. That value is
+ * an opaque ref (128 random bits) the host bound to the polling window; the Worker's grant never
+ * leaves the host process. A ref ends on complete, cancel, expiry, sign-out or window close, and a
+ * foreign, spent or unknown ref answers `{kind: "refused", code: "invalid_grant"}`. A host below
+ * v6 never answers `choose`, so the renderer leaves `licenseChoice` off the sign-in there.
+ *
  * Reserved, not yet used by this package: pack verbs (`("packs", …)`), telemetry extras and the
  * `onPackProgress` push below are declared for a later revision; nothing here calls or
  * subscribes to them, and the Node host answers none of them.
  */
-export const BRIDGE_VERSION = 5;
+export const BRIDGE_VERSION = 6;
 
 /** The bridge revisions this package accepts: v3 hosts keep working with the v4 verbs refused
  *  typed; v4 hosts keep working with the v5 methods refused typed; v5 hosts get everything. The
  *  v5 gate is `version >= BRIDGE_VERSION`; the v4 gate is `version >= 4`. */
-export const BRIDGE_VERSIONS_ACCEPTED = [3, 4, 5] as const;
+export const BRIDGE_VERSIONS_ACCEPTED = [3, 4, 5, 6] as const;
 
 /** v5 (I-47b): the options `autoSignIn` takes; `@polaris-key/node`'s `AutoSignInOptions`. */
 export interface BridgeAutoSignInOptions {

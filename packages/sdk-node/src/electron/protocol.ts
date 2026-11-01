@@ -13,7 +13,7 @@
 // config change, and after any verb that changes state.
 
 /** The PolarisBridge protocol revision this host speaks (`@polaris-key/react`'s BRIDGE_VERSION). */
-export const POLARIS_BRIDGE_VERSION = 5;
+export const POLARIS_BRIDGE_VERSION = 6;
 
 /** The default channel prefix and `window` key. */
 export const DEFAULT_BRIDGE_CHANNEL = "polaris-key";
@@ -105,6 +105,12 @@ export const DEFAULT_INVOKE_VERBS = [
   "identity.subject",
   "identity.attach",
   "identity.openAccount",
+  // v6 (UK-42.22.7): the licence and device choice after a device sign-in ends in `choose`. The
+  // `grant` argument is an opaque ref the host bound to the polling window; no grant crosses IPC.
+  "identity.choice.licenses",
+  "identity.choice.devices",
+  "identity.choice.complete",
+  "identity.choice.cancel",
 ] as const;
 
 /** What every handler resolves. */

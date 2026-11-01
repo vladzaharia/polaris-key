@@ -180,7 +180,7 @@
     },
     "identity.devicecode.choice": {
       "status": "implemented",
-      "note": "UK-42.22.6: signIn.start({channel: \"device-code\", licenseChoice: \"app\"}) sends the member only when discovery has deviceChoice and the four choice* endpoints; wait() ends in a choose outcome (grant, choices, expiresIn) and stops polling. The desktop bridge (UK-42.22.7) is not yet wired."
+      "note": "UK-42.22.6: signIn.start({channel: \"device-code\", licenseChoice: \"app\"}) sends the member only when discovery has deviceChoice and the four choice* endpoints; wait() ends in a choose outcome (grant, choices, expiresIn) and stops polling. The Electron bridge v6 (UK-42.22.7) answers choose from pollSignIn with an opaque ref bound to the polling window and finishes it through invoke(identity, choice.licenses|devices|complete|cancel); the Worker's grant stays in the main process."
     },
     "identity.signin.hints": {
       "status": "implemented"

@@ -224,11 +224,11 @@
     },
     "identity.choice": {
       "status": "implemented",
-      "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. The desktop renderer never holds a grant (the bridge's device-code sign-in never answers choose, so licenseChoice only rides as a hint), so its calls are a typed unsupported (runtime); a cookie page refuses the same way."
+      "note": "I-10a.11: bearer mode: usePolarisAuth().choice.{licenses, devices, complete, cancel} over the choice endpoints discovery names, a refusal being a result; useLicenseChoice(grant) is the hook. On the desktop, bridge v6 (UK-42.22.7) runs the same four calls over invoke(identity, choice.*) with an opaque ref the host bound to the window, the Worker's grant staying in the host; a host below v6 answers the typed unsupported (version). A cookie page refuses the typed unsupported."
     },
     "identity.devicecode.choice": {
       "status": "implemented",
-      "note": "UK-42.22.5: beginSignIn sends licenseChoice app only when discovery has deviceChoice and the four choice* endpoints; pollSignIn and waitForSignIn answer status choose (grant, choices, expiresIn) and the device-code session's wait() settles kind choose with no token. The desktop bridge (UK-42.22.7) is not yet wired."
+      "note": "UK-42.22.5: beginSignIn sends licenseChoice app only when discovery has deviceChoice and the four choice* endpoints; pollSignIn and waitForSignIn answer status choose (grant, choices, expiresIn) and the device-code session's wait() settles kind choose with no token. The desktop bridge (UK-42.22.7, protocol v6) answers choose from pollSignIn with an opaque ref; below v6 licenseChoice app is the typed unsupported (version) and discovery reads without deviceChoice."
     },
     "identity.signin.hints": {
       "status": "implemented",

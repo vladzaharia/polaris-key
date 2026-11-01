@@ -943,14 +943,16 @@ export class DesktopAdapter implements PolarisAdapter {
       ),
   };
 
-  /** `identity.choice.*`: the desktop renderer never holds a grant (the bridge's device-code
-   *  sign-in never answers `choose`, and the bridge has no verb that spends one), so each call is the typed
-   *  unsupported. */
+  /** `identity.choice.*` over the v6 bridge (UK-42.22.7). `grant` is the opaque ref a `choose`
+   *  poll answered: the host holds the Worker's grant and spends it, so the renderer never does.
+   *  A host below v6 never answers `choose`; these are then the typed `version` unsupported. */
   readonly choice: ChoiceNamespace = {
-    licenses: () => this.noChoice(),
-    devices: () => this.noChoice(),
-    complete: () => this.noChoice(),
-    cancel: () => this.noChoice(),
+    licenses: (grant) => this.choiceCall("choice.licenses", { grant }),
+    devices: (grant, licenseId) =>
+      this.choiceCall("choice.devices", { grant, licenseId }),
+    complete: (grant, choice) =>
+      this.choiceCall("choice.complete", { grant, choice }),
+    cancel: (grant) => this.choiceCall("choice.cancel", { grant }),
   };
 
   /** Automatic sign-in over the v5 bridge: the host runs its own ladder (a stored token) and
@@ -1035,22 +1037,41 @@ export class DesktopAdapter implements PolarisAdapter {
   private requester_: DesktopNearbyRequester | null = null;
   private approver_: DesktopNearbyApprover | null = null;
 
-  private noChoice(): Promise<never> {
-    return Promise.reject(
-      this.fail(
-        "identity",
-        new UnsupportedError(
-          {
-            supported: false,
-            feature: Feature.identityChoice,
-            reason: "runtime",
-            detail:
-              "The desktop renderer signs in by device code over the bridge, which never issues a licence-choice grant; the host process shows its own choice.",
-          },
-          "unsupported",
-        ),
-      ),
+  private async choiceCall<T>(method: string, args: unknown): Promise<T> {
+    const unsupported = new UnsupportedError(
+      {
+        supported: false,
+        feature: Feature.identityChoice,
+        reason: "version",
+        detail: `This desktop bridge (protocol v${this.bridge.version ?? 1}) never issues a licence-choice grant; bridge protocol v6 adds it.`,
+      },
+      "unsupported",
     );
+    if (!this.speaksV6()) throw this.fail("identity", unsupported);
+    let r: unknown;
+    try {
+      r = await this.invoke<unknown>("identity", method, args, unsupported);
+    } catch (e) {
+      throw this.fail("identity", asPolarisError(e));
+    }
+    if (
+      r === null ||
+      typeof r !== "object" ||
+      typeof (r as { kind?: unknown }).kind !== "string"
+    )
+      throw this.fail(
+        "identity",
+        new PolarisError(
+          ErrorCode.badResponse,
+          "the host answered a malformed choice.",
+        ),
+      );
+    if ((r as { kind: string }).kind === "ok" && method === "choice.complete")
+      this.apply(await this.bridge.getSyncState(), {
+        busy: noBusy(),
+        error: noErrors(),
+      });
+    return r as T;
   }
 
   private noRedirect(feature: string): PolarisError {
@@ -1110,6 +1131,20 @@ export class DesktopAdapter implements PolarisAdapter {
             reason: "runtime",
             detail:
               "The bridge's beginSignIn carries the hints, the purpose and the licence choice, not a scope; the host starts a sign-in that needs one.",
+          },
+          "unsupported",
+        ),
+      );
+    // A host below v6 never answers `choose`: the app's own choice cannot run there, so say so.
+    if (opts.licenseChoice === "app" && !this.speaksV6())
+      throw this.fail(
+        "identity",
+        new UnsupportedError(
+          {
+            supported: false,
+            feature: Feature.identityDevicecodeChoice,
+            reason: "version",
+            detail: `This desktop bridge (protocol v${this.bridge.version ?? 1}) never answers a licence choice; bridge protocol v6 adds it.`,
           },
           "unsupported",
         ),
@@ -1217,7 +1252,9 @@ export class DesktopAdapter implements PolarisAdapter {
     try {
       const d = await this.bridge.invoke("core", "discovery");
       return d && typeof d === "object"
-        ? withoutDeviceChoice(d as Record<string, unknown>)
+        ? this.speaksV6()
+          ? (d as Record<string, unknown>)
+          : withoutDeviceChoice(d as Record<string, unknown>)
         : null;
     } catch {
       return null;
@@ -1474,6 +1511,11 @@ export class DesktopAdapter implements PolarisAdapter {
     return (this.bridge.version ?? 1) >= 4;
   }
 
+  /** True when the host reports bridge protocol v6 or later (UK-42.22.7): it answers `choose`. */
+  private speaksV6(): boolean {
+    return (this.bridge.version ?? 1) >= 6;
+  }
+
   /** True when the host reports bridge protocol v5 or later (I-47b). */
   private speaksV5(): boolean {
     return (this.bridge.version ?? 1) >= 5;
@@ -1580,8 +1622,8 @@ export function bridgeActivationOutcome(
   }
 }
 
-/** The desktop bridge cannot run the device-code license choice yet (UK-42.22.7 rides bridge v5),
- *  so the host's discovery reads without `identity.deviceChoice`: Add goes to the portal there. */
+/** A host below bridge v6 never answers `choose` (it would poll on), so its discovery reads
+ *  without `identity.deviceChoice`: Add goes to the portal there. */
 function withoutDeviceChoice(
   d: Record<string, unknown>,
 ): Record<string, unknown> {

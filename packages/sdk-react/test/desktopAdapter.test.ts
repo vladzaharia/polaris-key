@@ -354,8 +354,9 @@ describe("DesktopAdapter — signIn.start over the bridge (UK-06.16)", () => {
     verificationUrl: "https://v",
     userCode: "ABCD",
   });
-  async function started(opts: Record<string, unknown>) {
+  async function started(opts: Record<string, unknown>, version = 6) {
     const bridge = makeFakeBridge(emptyBridgeState());
+    (bridge as { version?: number }).version = version;
     bridge.beginSignIn = vi.fn(async () => begin());
     bridge.pollSignIn = () => new Promise(() => {});
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
@@ -1124,5 +1125,113 @@ describe("DesktopAdapter — nearby sign-in over bridge v5", () => {
       reason: "version",
     });
     a.dispose();
+  });
+});
+
+// UK-42.22.7 (bridge v6): a device sign-in that ends in `choose`, and the choice verbs.
+describe("DesktopAdapter — licence and device choice over bridge v6", () => {
+  // @pkey-feature identity.devicecode.choice
+  const CHOOSE = {
+    kind: "choose",
+    grant: "ref0123456789abcdef0123456789abcd",
+    expiresIn: 300,
+    choices: { state: "choose", choices: [] },
+  } as const;
+
+  async function mounted(version: number, invoke?: PolarisBridge["invoke"]) {
+    const bridge = makeFakeBridge(emptyBridgeState());
+    (bridge as { version?: number }).version = version;
+    if (invoke) bridge.invoke = invoke;
+    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(adapter);
+    return { bridge, adapter };
+  }
+
+  it("a poll that answers choose settles the session as choose, with the ref", async () => {
+    const { bridge, adapter } = await mounted(6);
+    bridge.beginSignIn = vi.fn(async () => ({
+      flowId: "f",
+      userCode: "ABCD",
+      verificationUrl: "https://key.plrs.im/x",
+    }));
+    bridge.pollSignIn = vi.fn(async () => CHOOSE);
+    const session = (await adapter.signIn.start({
+      channel: "device-code",
+      licenseChoice: "app",
+    } as never)) as { wait(): Promise<unknown> };
+    expect(await session.wait()).toEqual(CHOOSE);
+    adapter.dispose();
+  });
+
+  it("refuses licenseChoice app, typed, on a host below v6", async () => {
+    const { adapter } = await mounted(5);
+    await expect(
+      adapter.signIn.start({
+        channel: "device-code",
+        licenseChoice: "app",
+      } as never),
+    ).rejects.toMatchObject({ unsupported: { reason: "version" } });
+    adapter.dispose();
+  });
+
+  it("choice.* go over invoke(identity, choice.*) and complete re-reads the state", async () => {
+    const invoke = vi.fn(async (_s: string, m: string) =>
+      m === "choice.complete"
+        ? { kind: "ok", licenseId: "l1", subject: "ps_x", scope: "openid" }
+        : { kind: "ok", view: { state: "choose", choices: [] } },
+    );
+    const { bridge, adapter } = await mounted(6, invoke);
+    const get = vi.spyOn(bridge, "getSyncState");
+    await adapter.choice.licenses("ref");
+    expect(invoke).toHaveBeenLastCalledWith("identity", "choice.licenses", {
+      grant: "ref",
+    });
+    await adapter.choice.devices("ref", "l1");
+    expect(invoke).toHaveBeenLastCalledWith("identity", "choice.devices", {
+      grant: "ref",
+      licenseId: "l1",
+    });
+    const before = get.mock.calls.length;
+    expect(
+      await adapter.choice.complete("ref", { kind: "keep" }),
+    ).toMatchObject({ kind: "ok" });
+    expect(invoke).toHaveBeenLastCalledWith("identity", "choice.complete", {
+      grant: "ref",
+      choice: { kind: "keep" },
+    });
+    expect(get.mock.calls.length).toBeGreaterThan(before);
+    await adapter.choice.cancel("ref");
+    expect(invoke).toHaveBeenLastCalledWith("identity", "choice.cancel", {
+      grant: "ref",
+    });
+    adapter.dispose();
+  });
+
+  it("choice.* are the typed version N/A below v6 and send nothing", async () => {
+    const invoke = vi.fn(async () => ({ kind: "ok" }));
+    const { adapter } = await mounted(5, invoke);
+    await expect(adapter.choice.licenses("ref")).rejects.toMatchObject({
+      unsupported: { reason: "version", feature: "identity.choice" },
+    });
+    expect(invoke).not.toHaveBeenCalled();
+    adapter.dispose();
+  });
+
+  it("discovery keeps deviceChoice from a v6 host and drops it from an older one", async () => {
+    const disc = {
+      services: { identity: { enabled: true, deviceChoice: true } },
+    };
+    for (const [version, kept] of [
+      [6, true],
+      [5, false],
+    ] as const) {
+      const { adapter } = await mounted(
+        version,
+        vi.fn(async () => disc),
+      );
+      const d = (await adapter.discovery()) as typeof disc | null;
+      expect("deviceChoice" in (d?.services.identity ?? {})).toBe(kept);
+      adapter.dispose();
+    }
   });
 });
