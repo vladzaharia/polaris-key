@@ -1,4 +1,4 @@
-// @pkey-feature connect.protocol connect.lan connect.links identity.nearby
+// @pkey-feature connect.protocol connect.lan connect.links identity.nearby connect.transfer
 // The Node conformance runner for `conformance/corpus/v2/peer-matrix.json` (WIRE-CONTRACT-V5
 // §15.4 to §15.7). It covers React too, since both JS SDKs share `@polaris-key/client-core`. The
 // suites are `peerMatrixSuites.ts`, shared with the browser runner; this file only reads the
@@ -6,7 +6,8 @@
 // run through the same suites. Its `vouch` rows are the nearby approval's request and result bodies
 // (identity.nearby), and the `contact` rows (connect.links: the secret, the CONTACT body, the
 // exchange, the store, the trial order, the pin, the advert, the room id and alias, the ticket
-// body) run through the same suites.
+// body) run through the same suites, as do the `xfer` rows (connect.transfer: the six record
+// bodies, the offer order, the window, the hash, the ending, resume and the partial path).
 
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
