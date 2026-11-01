@@ -43,6 +43,13 @@ const KIT_CSS = String.raw`
   --pk-selected: var(--pk-accent-subtle, var(--pk-surface-sunken));
   --pk-gap: var(--pk-space-3);
 }
+/* The inline strips take the width of their content, so they have no size containment: it would
+   give a strip in a flex bar (auto basis) zero width. */
+.pk-root[data-component="CloudSyncStatus"],
+.pk-root[data-component="GraceBanner"],
+.pk-root[data-component="Toast"] {
+  container-type: normal;
+}
 .pk-root[data-density="compact"] {
   --pk-kit-control-height: var(--pk-kit-control-height-compact);
   --pk-kit-radius-control: var(--pk-kit-radius-control-compact);

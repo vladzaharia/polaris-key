@@ -182,6 +182,9 @@ public class PolarisCloudSyncHost(
             }
 
             is CloudSyncEvent.Rejected, is CloudSyncEvent.UnsyncedData, CloudSyncEvent.PurgeFailed -> refresh()
+
+            // A file transfer is not the row's state: the saves screens follow it.
+            is CloudSyncEvent.TransferProgress, is CloudSyncEvent.TransferDone, is CloudSyncEvent.TransferFailed -> Unit
         }
     }
 

@@ -35,7 +35,17 @@ from polaris_key.ui.terminal.env import detect
 from polaris_key.ui.terminal.exit import EXIT
 from polaris_key.ui.terminal.flows import Terminal
 
-from .fake_session import FakeSession, raises, sign_in_of
+from .fake_session import (
+    FakeAsk,
+    FakeNearbySession,
+    FakeSession,
+    WhenKeys,
+    approver,
+    approver_identity,
+    nearby_identity,
+    raises,
+    sign_in_of,
+)
 from .fixtures import kit
 from .golden_support import env
 
@@ -233,7 +243,11 @@ def _terminal(verb: str, *, json_mode: bool = False, interactive: bool = False, 
         d.keys = lambda: keys  # type: ignore[method-assign]
     d.open_url = lambda url: True  # type: ignore[method-assign]
     d.copy = lambda text: True  # type: ignore[method-assign]
-    return Terminal(k, d, verb)
+    t = Terminal(k, d, verb)
+    t.platform = "linux"  # macOS names the Local Network prompt first: that is its own test
+    if keys is not None and hasattr(keys, "attach"):
+        keys.attach(t)
+    return t
 
 
 class _ActivateClient:
@@ -323,6 +337,27 @@ def _offline() -> Any:
     raise PolarisError("network", "offline")
 
 
+class _NearbyClient:
+    """A client with nearby on and a nearby session; the device-code sign-in signs in when nearby hands over."""
+
+    product = "tidewater"
+
+    def __init__(self, session: FakeNearbySession) -> None:
+        self.identity = nearby_identity(session)
+
+    def status(self) -> Any:
+        return SimpleNamespace(status="ok")
+
+
+class _Approver:
+    """A signed-in client for ``devices approve``."""
+
+    product = "tidewater"
+
+    def __init__(self, ask: Optional[FakeAsk] = None, raises_: Optional[BaseException] = None) -> None:
+        self.identity = approver_identity(ask, raises_=raises_)
+
+
 KEY = "pkey_tidewater_7Q2MzK8vRb1xLp4n3WPLDA"
 
 #: Each situation (vocabulary.cli.situations): the flow, its client and its keys.
@@ -340,23 +375,58 @@ SITUATIONS: Dict[str, Callable[[Terminal], Any]] = {
     "network": lambda t: flows.devices(SimpleNamespace(product="tidewater", list_devices=_offline), t, ["list"]),
     "key-refused": lambda t: flows.activate(_ActivateClient(ActivationUnauthorized()), t, KEY),
     "device-limit": lambda t: flows.activate(
-        _ActivateClient(ActivationDeviceLimit(limit=3, deviceCount=3, manage_url="https://polaris.locker/#/p/tidewater/devices")), t, KEY
+        _ActivateClient(
+            ActivationDeviceLimit(limit=3, deviceCount=3, manage_url="https://polaris.locker/#/p/tidewater/devices")
+        ),
+        t,
+        KEY,
     ),
-    "secret-hidden": lambda t: flows.secret(SimpleNamespace(config=SimpleNamespace(get_secret=lambda k: "s3cr3t")), t, ["api_key"]),
+    "secret-hidden": lambda t: flows.secret(
+        SimpleNamespace(config=SimpleNamespace(get_secret=lambda k: "s3cr3t")), t, ["api_key"]
+    ),
     "mint-hidden": lambda t: flows.mint(
-        SimpleNamespace(config=SimpleNamespace(mint_token=lambda r: SimpleNamespace(token="tok_live", expiresAt=1))), t, ["cdn"]
+        SimpleNamespace(config=SimpleNamespace(mint_token=lambda r: SimpleNamespace(token="tok_live", expiresAt=1))),
+        t,
+        ["cdn"],
     ),
     "usage": lambda t: flows.devices(SimpleNamespace(product="tidewater"), t, ["rename"]),
     "interrupt": lambda t: flows.activate(_ActivateClient(), t, None),
     "sign-in-cancelled": lambda t: flows.sign_in(SimpleNamespace(product="tidewater", identity=_Identity()), t),
     "sign-in-denied": lambda t: flows.sign_in(_PollEnds("sign-in-denied"), t),
     "sign-in-failed": lambda t: flows.sign_in(_PollEnds("sign-in-failed"), t),
+    # Nearby (I-47.13, D-5, D-10): first on an interactive run, never under --json.
+    "sign-in-nearby": lambda t: flows.sign_in(_NearbyClient(FakeNearbySession([approver()])), t),
+    # No approver answers in 2 s: nearby is cancelled and the regular sign-in runs.
+    "sign-in-nearby-handoff": lambda t: flows.sign_in(_NearbyClient(FakeNearbySession([])), t),
+    "approve-approved": lambda t: flows.devices(_Approver(FakeAsk(SimpleNamespace(kind="approved"))), t, ["approve"]),
+    "approve-mismatch": lambda t: flows.devices(_Approver(FakeAsk(SimpleNamespace(kind="mismatch"))), t, ["approve"]),
+    "approve-denied": lambda t: flows.devices(_Approver(FakeAsk()), t, ["approve"]),
+    "approve-not-nearby": lambda t: flows.devices(
+        _Approver(FakeAsk(SimpleNamespace(kind="not-nearby"))), t, ["approve"]
+    ),
+    "approve-unsupported": lambda t: flows.devices(
+        _Approver(raises_=PolarisError("nearby-unsupported", "no nearby here")), t, ["approve"]
+    ),
+    "approve-account-required": lambda t: flows.devices(
+        _Approver(raises_=PolarisError("account_required", "signed out")), t, ["approve"]
+    ),
+    # Both sides need a person: --json is refused before anything starts.
+    "approve-json": lambda t: flows.devices(_Approver(FakeAsk()), t, ["approve"]),
 }
 
 #: The keys an interactive situation is given once it waits.
-KEYS: Dict[str, Callable[[], _Keys]] = {
+KEYS: Dict[str, Callable[[], Any]] = {
     "interrupt": lambda: _Keys([], end=KeyboardInterrupt()),
     "sign-in-cancelled": lambda: _Keys(["esc"]),
+    # The account is confirmed once it is on the screen (Enter); the windows run on a fake clock.
+    "sign-in-nearby": lambda: WhenKeys([("Enter continue", "enter")]),
+    "sign-in-nearby-handoff": lambda: WhenKeys([]),
+    "approve-approved": lambda: WhenKeys([("choose a code", "2")]),
+    "approve-mismatch": lambda: WhenKeys([("choose a code", "1")]),
+    "approve-denied": lambda: WhenKeys([("choose a code", "d")]),
+    "approve-not-nearby": lambda: WhenKeys([("choose a code", "2")]),
+    "approve-unsupported": lambda: WhenKeys([]),
+    "approve-account-required": lambda: WhenKeys([]),
 }
 
 

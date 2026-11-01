@@ -97,6 +97,10 @@
       "title": "Limite de conexão remota atingido",
       "message": "Ele é redefinido em breve. Dispositivos na mesma rede continuam se conectando."
     },
+    "connect_links_disabled": {
+      "title": "Vínculo desativado",
+      "message": "O vínculo com outras pessoas está desativado neste app. Seus próprios dispositivos continuam se conectando."
+    },
     "relay_ticket_invalid": {
       "title": "Conexão expirada",
       "message": "O pedido de conexão expirou. Tente novamente."
@@ -204,6 +208,10 @@
     "redirect_uri_mismatch": {
       "title": "Não foi possível voltar ao app",
       "message": "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
+    },
+    "invalid_request_uri": {
+      "title": "Link de login expirado",
+      "message": "Este link de login expirou. Volte para {product} e comece de novo."
     },
     "license_choice_required": {
       "title": "Escolha uma licença",
@@ -525,6 +533,10 @@
       "title": "Código expirado",
       "message": "O código expirou antes de o acesso ser concluído. Comece de novo."
     },
+    "redirect-unavailable": {
+      "title": "Login pelo navegador indisponível",
+      "message": "O login não conseguiu abrir um navegador aqui. Use um código."
+    },
     "sign-in-denied": {
       "title": "Acesso recusado",
       "message": "O acesso foi recusado. Comece de novo."
@@ -616,6 +628,58 @@
     "nearby-permission-denied": {
       "title": "Rede local bloqueada",
       "message": "Este app não consegue acessar dispositivos da sua rede local. Permita nas configurações do sistema."
+    },
+    "nearby-unsupported": {
+      "title": "Login por proximidade indisponível",
+      "message": "Este dispositivo não pode procurar dispositivos próximos aqui."
+    },
+    "peer-handshake-failed": {
+      "title": "Não foi possível conectar com segurança",
+      "message": "Não foi possível estabelecer uma conexão segura com o dispositivo próximo. Tente novamente."
+    },
+    "peer-closed": {
+      "title": "Conexão encerrada",
+      "message": "A conexão com o dispositivo próximo foi encerrada. Tente novamente."
+    },
+    "transfer-cancelled": {
+      "title": "Transferência interrompida",
+      "message": "A transferência não foi concluída. Nada foi recebido."
+    },
+    "link-unknown": {
+      "title": "Não pareado",
+      "message": "Esse dispositivo não está mais pareado com este."
+    },
+    "peer_revoked": {
+      "title": "Dispositivo não é mais confiável",
+      "message": "O outro dispositivo foi removido da conta. Nada foi compartilhado."
+    },
+    "peer_expired": {
+      "title": "Certificado do dispositivo expirado",
+      "message": "O certificado do outro dispositivo expirou. Atualize e tente novamente."
+    },
+    "peer_bad_frame": {
+      "title": "Erro de conexão",
+      "message": "O dispositivo próximo enviou algo inesperado. Tente novamente."
+    },
+    "peer_unknown_critical": {
+      "title": "Solicitação não compatível",
+      "message": "O dispositivo próximo pediu algo que este app não aceita. Tente novamente."
+    },
+    "peer_not_allowed": {
+      "title": "Não permitido aqui",
+      "message": "O dispositivo próximo pediu algo que não é permitido nesta etapa. Tente novamente."
+    },
+    "peer_busy": {
+      "title": "Dispositivo próximo ocupado",
+      "message": "Há conexões demais abertas. Tente novamente em instantes."
+    },
+    "peer_timeout": {
+      "title": "Tempo de conexão esgotado",
+      "message": "O dispositivo próximo não respondeu a tempo. Tente novamente."
+    },
+    "peer_bye": {
+      "title": "Conexão encerrada",
+      "message": "O dispositivo próximo encerrou a conexão."
     },
     "platform-error": {
       "title": "Problema na plataforma",

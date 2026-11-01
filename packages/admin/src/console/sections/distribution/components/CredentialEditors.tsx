@@ -38,7 +38,8 @@ import {
 } from "../model/credentialKinds.js";
 import { humanField } from "../model/channelCopy.js";
 import { channelsOfKind } from "../model/channelScope.js";
-import { PinDialog, SetCredentialDrawer } from "./CredentialForms.js";
+import { SetCredentialDrawer } from "./CredentialForms.js";
+import { PinDialog } from "./CredentialPin.js";
 
 export function LastResult({
   c,
@@ -53,8 +54,9 @@ export function LastResult({
         </StatusPill>
         <span
           // A long id in the text breaks anywhere; prose breaks between words. The end padding holds the clamp's
-          // ellipsis, which Linux Chromium draws past the last full line.
-          className={`line-clamp-2 max-w-64 pe-4 text-xs text-fg-muted${
+          // ellipsis, which Linux Chromium draws past the last full line; text-overflow marks the clamp as a disclosed
+          // truncation (the full text is the title) for the layout probe.
+          className={`line-clamp-2 max-w-64 text-ellipsis pe-4 text-xs text-fg-muted${
             /\S{25,}/.test(c.lastError) ? " break-all" : ""
           }`}
           title={c.lastError}

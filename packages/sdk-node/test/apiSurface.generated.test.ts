@@ -3,11 +3,15 @@ import { expect, it } from "vitest";
 import {
   ChoiceClient,
   CloudConnect,
+  CloudLinks,
+  CloudNearby,
+  CloudTransfer,
   ConfigClient,
   DeviceCodeSession,
   EntitlementsClient,
   IdentityClient,
   LicenseClient,
+  NearbySignInSession,
   PolarisKeyClient,
   RedirectSession,
   type ConfigSetting,
@@ -32,6 +36,8 @@ export type Surface = [
   ConfigSetting["sync"],
   PolarisKeyClient["events"],
   NonNullable<Options["cloudSync"]>["encryption"],
+  IdentityClient["nearby"]["available"],
+  IdentityClient["nearby"]["onRequest"],
 ];
 
 it("client.create", () =>
@@ -87,6 +93,8 @@ it("identity.choice.complete", () =>
   expect("complete" in ChoiceClient.prototype).toBe(true));
 it("identity.choice.cancel", () =>
   expect("cancel" in ChoiceClient.prototype).toBe(true));
+it("identity.autoSignIn", () =>
+  expect("autoSignIn" in IdentityClient.prototype).toBe(true));
 it("identity.useLicenseChoice", () =>
   expect("choice" in IdentityClient.prototype).toBe(true));
 it("identity.attachLicense", () =>
@@ -193,6 +201,52 @@ it("cloudConnect.status", () =>
   expect("status" in CloudConnect.prototype).toBe(true));
 it("cloudConnect.onNotice", () =>
   expect("onNotice" in CloudConnect.prototype).toBe(true));
+it("cloudConnect.nearby.request", () =>
+  expect("request" in CloudNearby.prototype).toBe(true));
+it("cloudConnect.nearby.onRequest", () =>
+  expect("onRequest" in CloudNearby.prototype).toBe(true));
+it("identity.signIn.session.approvers", () =>
+  expect("approvers" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.onApprovers", () =>
+  expect("onApprovers" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.code", () =>
+  expect("code" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.result", () =>
+  expect("result" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.onResult", () =>
+  expect("onResult" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.choose", () =>
+  expect("choose" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.confirmAccount", () =>
+  expect("confirmAccount" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.declineAccount", () =>
+  expect("declineAccount" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.wrap", () =>
+  expect("wrap" in NearbySignInSession.prototype).toBe(true));
+it("identity.signIn.session.onWrap", () =>
+  expect("onWrap" in NearbySignInSession.prototype).toBe(true));
+it("cloudConnect.links.pair", () =>
+  expect("pair" in CloudLinks.prototype).toBe(true));
+it("cloudConnect.links.list", () =>
+  expect("list" in CloudLinks.prototype).toBe(true));
+it("cloudConnect.links.remove", () =>
+  expect("remove" in CloudLinks.prototype).toBe(true));
+it("cloudConnect.links.setReachable", () =>
+  expect("setReachable" in CloudLinks.prototype).toBe(true));
+it("cloudConnect.links.open", () =>
+  expect("open" in CloudLinks.prototype).toBe(true));
+it("cloudConnect.links.onLink", () =>
+  expect("onLink" in CloudLinks.prototype).toBe(true));
+it("cloudConnect.links.interAccount", () =>
+  expect("interAccount" in CloudLinks.prototype).toBe(true));
+it("cloudConnect.transfer.send", () =>
+  expect("send" in CloudTransfer.prototype).toBe(true));
+it("cloudConnect.transfer.onOffer", () =>
+  expect("onOffer" in CloudTransfer.prototype).toBe(true));
+it("cloudConnect.transfer.onResult", () =>
+  expect("onResult" in CloudTransfer.prototype).toBe(true));
+it("cloudConnect.transfer.cancel", () =>
+  expect("cancel" in CloudTransfer.prototype).toBe(true));
 it("removed: config.getConfig", () =>
   expect("getConfig" in ConfigClient.prototype).toBe(false));
 it("removed: PolarisKeyClient.getConfig", () =>

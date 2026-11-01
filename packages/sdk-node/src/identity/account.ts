@@ -97,6 +97,9 @@ export interface AccountDeps {
   hooks: BeforeSignOutHooks;
   /** Forget the stored identity and subject. */
   forget: () => Promise<void>;
+  /** The Worker accepted a sign-out (or there was no token to sign out): the person signed out
+   *  on purpose, so `autoSignIn()` stays quiet until the next sign-in (I-47.2). */
+  signedOut?: () => Promise<void>;
   /** The local half of a deactivation: token, cache, the license event. No request. */
   wipeLocal: () => Promise<void>;
   /** Open a URL in the host's browser; false when it could not. */
@@ -216,6 +219,7 @@ export class Account {
     const token = tokens.current;
     if (token === null) {
       await this.deps.forget();
+      await this.deps.signedOut?.();
       return { released: false };
     }
     await this.deps.hooks.run();
@@ -241,6 +245,7 @@ export class Account {
         "the signout endpoint answered without `released`.",
       );
     await this.deps.forget();
+    await this.deps.signedOut?.();
     if (body.released) await this.deps.wipeLocal();
     this.deps.emit?.({ kind: "signedOut", released: body.released });
     return { released: body.released };
@@ -309,7 +314,8 @@ export class Account {
         ErrorCode.badResponse,
         "attach answered without a token.",
       );
-    await tokens.set(body.token, "activate");
+    // An attach rotates the token of a device that is already signed in: the mark stays.
+    await tokens.set(body.token, "activate", true);
     const subject =
       typeof body.subject === "string" && isSubject(body.subject)
         ? body.subject

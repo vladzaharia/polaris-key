@@ -6,7 +6,7 @@ extends RefCounted
 # `func run(t: PKeyTestContext) -> void` (it may await); this suite runs them in order and
 # ends with a coverage check that every group ran.
 
-const GROUPS := ["load", "json", "errors", "semver", "store", "cache", "transport", "sync", "local", "autoload", "offload", "caps", "copy", "local_trust", "pin_custody", "events", "cloud_sync_machine"]
+const GROUPS := ["load", "json", "errors", "semver", "store", "cache", "transport", "sync", "local", "autoload", "offload", "caps", "copy", "local_trust", "pin_custody", "events", "cloud_sync_machine", "host_io"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
@@ -19,6 +19,7 @@ func run(t: PKeyTestContext, args: PackedStringArray) -> bool:
 		var script = load(path)
 		if not t.check("group %s loads" % name, script is GDScript and script.can_instantiate(), path):
 			continue
+		t.info("group %s starting" % name)  # names the group a crashing template run stopped in
 		var started := Time.get_ticks_msec()
 		await script.new().run(t)
 		t.info("group %s finished in %d ms" % [name, Time.get_ticks_msec() - started])

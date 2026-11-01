@@ -79,6 +79,11 @@ export class LicenseClient {
   private readonly fingerprintEnabled: boolean;
   /** Called after `deactivate()` wiped the device (the facade emits `events.license`). */
   onDeactivated: () => Promise<void> | void = () => undefined;
+  /**
+   * Runs first in `deactivate()`, before the deauthorize request: the host leaves Cloud Connect
+   * here. A rejection stops the deactivation with nothing changed, and the token stays.
+   */
+  beforeRelease: () => Promise<void> | void = () => undefined;
 
   constructor(
     private readonly ctx: CoreContext,
@@ -219,6 +224,7 @@ export class LicenseClient {
    * plane must not be left holding a token because the control plane was unreachable.
    */
   async deactivate(): Promise<void> {
+    await this.beforeRelease();
     const token = this.tokens.current;
     if (token) {
       // `deauthorize` swallows transport failures, including local-only mode's refusal.

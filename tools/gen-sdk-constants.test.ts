@@ -76,7 +76,8 @@ describe("the Cloud Sync constants (U-05.2)", () => {
     );
     const found = syncExports(SOURCES.protocol, SOURCES.protocolSyncSource!);
     expect(found.map((f) => f.name).sort()).toEqual(names.sort());
-    expect(found.length).toBe(58);
+    expect(found.length).toBe(names.length);
+    expect(found.length).toBeGreaterThan(0);
     expect(
       found.find((f) => f.name === "SYNC_WRITES_PAUSED_RETRY_AFTER_SECONDS")
         ?.section,
@@ -265,10 +266,10 @@ describe("the sources", () => {
       outletMatrixVersion: 1,
       planMatrixVersion: 2,
       syncScenariosVersion: 4,
-      deviceLabelVersion: 1,
+      deviceLabelVersion: 2,
       presentationMatrixVersion: 1,
       portalMatrixVersion: 1,
-      uiMatrixVersion: 7,
+      uiMatrixVersion: 8,
       backendMatrixVersion: 1,
       contentCorpusVersion: 2,
     });
@@ -396,6 +397,40 @@ describe("the source test: errors.json against the Worker", () => {
     ]);
   });
 
+  it("registers the peer close codes and refuses one the Worker emits (WIRE-CONTRACT-V5 §15.6)", () => {
+    const scanned = scanWorkerSource(SRC);
+    const peer = SOURCES.errors.filter((e) => e.kind === "peer");
+    expect(peer.map((e) => e.code).sort()).toEqual([
+      "peer_bad_frame",
+      "peer_busy",
+      "peer_bye",
+      "peer_expired",
+      "peer_not_allowed",
+      "peer_revoked",
+      "peer_timeout",
+      "peer_unknown_critical",
+    ]);
+    for (const e of peer) {
+      expect(e.service, e.code).toBe("connect");
+      expect(scanned.has(e.code), e.code).toBe(false);
+    }
+    expect(checkCoverage(SOURCES.errors, scanned)).toEqual([]);
+    const fixture = {
+      path: "packages/worker/src/services/license/fixture.ts",
+      text: 'return errorResponse(400, "peer_busy", "busy");',
+    };
+    expect(
+      checkCoverage(
+        SOURCES.errors,
+        scanWorkerSource({ ...SRC, files: [...SRC.files, fixture] }),
+      ),
+    ).toEqual([
+      expect.stringContaining(
+        `"peer_busy" is emitted by the Worker (packages/worker/src/services/license/fixture.ts:1) but errors.json marks it kind "peer"`,
+      ),
+    ]);
+  });
+
   it("exempts the backend kind from the Worker-emits check, and refuses one the Worker emits (WIRE-CONTRACT-V4 §14)", () => {
     const scanned = scanWorkerSource(SRC);
     // The four SP-53 codes are registered as `backend`, the Worker emits none of them, and the
@@ -438,7 +473,7 @@ describe("the source test: errors.json against the Worker", () => {
   it("the generated ErrorCodeKind names the backend kind, and the four codes carry it", () => {
     const ts = renderTs(MODEL);
     expect(ts).toContain(
-      'export type ErrorCodeKind = "wire" | "client" | "backend";',
+      'export type ErrorCodeKind = "wire" | "client" | "backend" | "peer";',
     );
     expect(ts).toContain('"license_stale": "backend",');
     expect(ts).toContain('"not_entitled": "wire",');

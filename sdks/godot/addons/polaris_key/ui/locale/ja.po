@@ -886,15 +886,35 @@ msgstr "またはアカウントなしで続ける。{product}は同じように
 msgid "activate.recommend.portal"
 msgstr "ライセンスを Polaris Locker で安全に保管"
 
+#. Finish in Polaris Locker
+#. AddToAccount, waiting: the title while the person confirms the email in Polaris Locker (a device code is shown).
+msgid "activate.attach.waitTitle"
+msgstr "Polaris Lockerで完了してください"
+
+#. Check it matches in Polaris Locker.
+#. AddToAccount, waiting: under the sign-in code; the person checks it against the code Polaris Locker shows.
+msgid "activate.attach.waitCheck"
+msgstr "Polaris Lockerに表示されたコードと一致することを確認してください。"
+
+#. Open Polaris Locker again
+#. AddToAccount, waiting: brings the Polaris Locker tab back.
+msgid "activate.attach.reopen"
+msgstr "Polaris Lockerをもう一度開く"
+
+#. macos: Open Polaris Locker Again
+msgctxt "macos"
+msgid "activate.attach.reopen"
+msgstr "Polaris Lockerをもう一度開く"
+
 #. Your license and its devices stay as they are.
 #. AddToAccount: under the title, above the fields.
 msgid "activate.attach.lede"
 msgstr "ライセンスとそのデバイスはそのままです。メールアドレスはブラウザーでコードを入力して確認します。"
 
-#. We send a code to this email in your browser. {product} never sees it.
+#. Polaris Locker sends a code to this email. {product} never sees it.
 #. AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated).
 msgid "activate.attach.fine"
-msgstr "ブラウザーでこのメールアドレスにコードを送ります。{product}にはコードは見えません。"
+msgstr "Polaris Lockerがこのメールアドレスにコードを送ります。{product}にはコードは見えません。"
 
 #. {product} is in your account
 #. AddToAccount: added. Arguments: {product} = the product's name (never translated).
@@ -3278,6 +3298,11 @@ msgstr "{license} · {term} · {device}は{limit}台中{position}台目のデバ
 msgid "signin.consent.replaces"
 msgstr "{license} · {device}を置き換え"
 
+#. {app}'s license is added to your account.
+#. Consent step before returning to the app (SIGN-IN.md §3.8), when the app keeps the license it holds and attaches it to the account (add to account). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.consent.licenseKept"
+msgstr "{app}のライセンスがアカウントに追加されます。"
+
 #. You'll choose a license in {app}.
 #. Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.consent.licenseInApp"
@@ -3530,6 +3555,11 @@ msgstr "スマートフォンでサインイン"
 msgid "signin.nearby.body"
 msgstr "サインイン済みで、このネットワークにあるスマートフォンまたはパソコンで {app} を開いてください。"
 
+#. Open {app} on {device}.
+#. Nearby sign-in, waiting, once a device is chosen: where to open the app. Arguments: {app} = the product's name from ProductIdentity (never translated); {device} = the other device's friendly name (never translated).
+msgid "signin.nearby.bodyOn"
+msgstr "{device} で {app} を開いてください。"
+
 #. Tap this code there:
 #. Nearby sign-in, waiting: the line above the code the other device must tap.
 msgid "signin.nearby.match"
@@ -3570,10 +3600,10 @@ msgstr "次に、{app} がネットワーク上のデバイスを見つけるこ
 msgid "signin.nearby.ask"
 msgstr "{device} のサインインを許可しますか？"
 
-#. Tap the code it shows.
+#. Choose the code it shows.
 #. Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated).
 msgid "signin.nearby.askBody"
-msgstr "表示されているコードをタップしてください。"
+msgstr "表示されているコードを選んでください。"
 
 #. {device} is signed in
 #. Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated).
@@ -3940,6 +3970,76 @@ msgstr "開かない場合は{url}にアクセスしてください"
 msgid "signin.cli.keys"
 msgstr "Enter もう一度開く · c コードを使う · Esc キャンセル"
 
+#. c use a code instead · Esc cancel
+#. Terminal sign-in (SIGN-IN.md §4.15), nearby: the keys line while the code waits for a tap on the other device. Plain text, no formatting.
+msgid "signin.cli.nearbyKey"
+msgstr "c 代わりにコードを使う · Esc キャンセル"
+
+#. Looking for your other devices…
+#. Terminal sign-in, nearby: shown beside the spinner for the first seconds while the computer looks for the person's other devices.
+msgid "signin.cli.nearbyLooking"
+msgstr "近くの別のデバイスを探しています…"
+
+#. Waiting…
+#. Terminal sign-in, nearby: shown beside the spinner while the code waits for a tap on the other device. Keep it to a word or two.
+msgid "signin.cli.nearbyWaiting"
+msgstr "待機中…"
+
+#. Enter continue · Esc not now
+#. Terminal key hints under the offer to look for nearby devices (macOS asks for access to the local network after it). Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
+msgid "signin.cli.nearbyPromptKeys"
+msgstr "Enter 続ける · Esc 今はしない"
+
+#. 1-{n} choose a device · c use a code instead · Esc cancel
+#. Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated).
+msgid "signin.cli.nearbyPickKeys"
+msgstr "1-{n} デバイスを選ぶ · c 代わりにコードを使う · Esc キャンセル"
+
+#. 1 choose this device · c use a code instead · Esc cancel
+#. Terminal key hints while one device nearby could approve the sign-in: 1 picks it. Keep each key first and the ' · ' separators.
+msgid "signin.cli.nearbyPickOneKeys"
+msgstr "1 このデバイスを選ぶ · c 代わりにコードを使う · Esc キャンセル"
+
+#. Enter continue · n or Esc not you, sign out
+#. Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n or Esc signs out again. Keep each key first and the ' · ' separators.
+msgid "signin.cli.nearbyDoneKeys"
+msgstr "Enter 続ける · n または Esc 自分ではない・サインアウト"
+
+#. Waiting for a device to ask…
+#. Terminal 'devices approve': shown beside the spinner while the computer waits for another device to ask to sign in.
+msgid "signin.cli.approveWaiting"
+msgstr "デバイスからの確認を待っています…"
+
+#. Esc stop
+#. Terminal key hint while 'devices approve' waits for a device to ask. Keep the key first.
+msgid "signin.cli.approveWaitKeys"
+msgstr "Esc 停止"
+
+#. 1-3 choose a code · d or Esc deny
+#. Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d or Esc denies. Keep each key first and the ' · ' separators.
+msgid "signin.cli.approveKeys"
+msgstr "1-3 コードを選ぶ · d または Esc 拒否"
+
+#. Sign in with a code on the other device.
+#. Terminal 'devices approve': this computer cannot take part in nearby sign-in. 'Polaris Locker' is the end-user product name (never translated).
+msgid "signin.cli.approveUnsupported"
+msgstr "もう一方のデバイスでコードを使ってサインインしてください。"
+
+#. Can't approve from this computer
+#. Terminal 'devices approve': the title when this computer cannot take part in nearby sign-in; the next step follows (signin.cli.approveUnsupported).
+msgid "signin.cli.approveUnsupportedTitle"
+msgstr "このコンピュータからは承認できません"
+
+#. 1-{n} choose a license · Esc deny
+#. Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated).
+msgid "signin.cli.approveChooseKeys"
+msgstr "1-{n} ライセンスを選ぶ · Esc 拒否"
+
+#. 1 choose the license · Esc deny
+#. Terminal key hints while 'devices approve' asks which license the new device gets and only one can be given: 1 picks it, Esc denies. Keep each key first and the ' · ' separators.
+msgid "signin.cli.approveChooseOneKeys"
+msgstr "1 ライセンスを選ぶ · Esc 拒否"
+
 #. No browser on this computer. Use a code instead:
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
 msgid "signin.cli.headless"
@@ -4261,6 +4361,16 @@ msgstr "ライセンス"
 #. Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it.
 msgid "cli.help.namespace"
 msgstr "有効化、サインイン、デバイス、アップデート"
+
+#. Approve a device signing in nearby
+#. Terminal help: what 'devices approve' does.
+msgid "cli.verb.devicesApprove"
+msgstr "近くのデバイスのサインインを承認"
+
+#. {command} needs a person at a terminal.
+#. Terminal usage error: 'devices approve' asks a person to pick a code, so it does not run with --json or without a terminal. Arguments: {command} = the command the person ran.
+msgid "cli.approve.needsPerson"
+msgstr "{command} は端末の前に人が必要です。"
 
 #. {command} needs a license
 #. Terminal: the title when a host command that needs a license is refused because the person has none (needs-activation), and the first line of the inline activate flow. {command} is the command they ran, such as 'export'.
@@ -5504,6 +5614,11 @@ msgstr "コードで確認済み"
 msgid "signin.gate.nameFrom"
 msgstr "次の名前を使う"
 
+#. {app} · {name}
+#. A "Use a name from" chip that offers the name the app passed along. Arguments: {app} = the requesting app's name; {name} = the name the app suggested (neither translated).
+msgid "signin.gate.nameFromApp"
+msgstr "{app} · {name}"
+
 #. Shown in Polaris Locker and in emails.
 #. Finish step: under the screen name. Polaris Locker is never translated.
 msgid "signin.gate.nameHint"
@@ -5883,6 +5998,166 @@ msgstr "ライセンスキーを入力してください。"
 msgid "signin.code.missing"
 msgstr "コードが届きませんか？"
 
+#. Pair with Someone Nearby
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
+msgid "linkPairing.title"
+msgstr "近くの人とリンク"
+
+#. Ask them to open this on their device. Stay close, on the same network.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Both people open this on their own device.
+msgid "linkPairing.openBody"
+msgstr "相手にもこの画面を開いてもらってください。近くで、同じネットワークに接続してください。"
+
+#. Looking for nearby devices…
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code.
+msgid "linkPairing.searching"
+msgstr "近くのデバイスを検索中…"
+
+#. Compare the code
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
+msgid "linkPairing.codeTitle"
+msgstr "コードを比べる"
+
+#. Both screens must show this code.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms.
+msgid "linkPairing.codeBody"
+msgstr "両方の画面に同じコードが表示されている必要があります。"
+
+#. Reported by the device: {device}
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Arguments: {device} = the label the other device sent. Nothing authenticates it: any device on the network can send any label, so the line says it is reported, not verified.
+msgid "linkPairing.reported"
+msgstr "デバイスの申告：{device}"
+
+#. The device gave no name
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Used when the other device sent no label.
+msgid "linkPairing.reportedUnnamed"
+msgstr "デバイス名は申告されていません"
+
+#. Each of you shares
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Heading above the data categories both people approve; always shown before the confirm button.
+msgid "linkPairing.shares"
+msgstr "共有される内容"
+
+#. Nothing is shared yet.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Used when the app asks for no data categories.
+msgid "linkPairing.sharesNone"
+msgstr "今のところ共有されるものはありません。"
+
+#. Codes match
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Confirms the code matches. The link is made when the other person does the same.
+msgid "linkPairing.confirm"
+msgstr "コードが一致"
+
+#. macos: Codes Match
+msgctxt "macos"
+msgid "linkPairing.confirm"
+msgstr "コードが一致"
+
+#. Not a match
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Declines: the session closes and nothing is stored.
+msgid "linkPairing.decline"
+msgstr "一致しない"
+
+#. macos: Not a Match
+msgctxt "macos"
+msgid "linkPairing.decline"
+msgstr "一致しない"
+
+#. Waiting for them to confirm
+#. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
+msgid "linkPairing.waiting"
+msgstr "相手の確認を待っています"
+
+#. Paired
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
+msgid "linkPairing.linkedTitle"
+msgstr "リンクしました"
+
+#. You can now connect without a code.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made.
+msgid "linkPairing.linkedBody"
+msgstr "今後はコードなしで接続できます。"
+
+#. Paired with {device}.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label.
+msgid "linkPairing.linkedWith"
+msgstr "{device}とリンクしました。"
+
+#. Couldn’t pair
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
+msgid "linkPairing.failedTitle"
+msgstr "リンクできませんでした"
+
+#. Someone said no. Nothing was paired.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
+msgid "linkPairing.failedDeclined"
+msgstr "どちらかが拒否しました。何もリンクされていません。"
+
+#. Time ran out before you both confirmed. Nothing was paired.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
+msgid "linkPairing.failedTimeout"
+msgstr "二人が確認する前に時間切れになりました。何もリンクされていません。"
+
+#. One of you has no room for another pairing. Remove one, then try again.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
+msgid "linkPairing.failedFull"
+msgstr "どちらかがこれ以上リンクを追加できません。1つ削除してからもう一度お試しください。"
+
+#. The connection closed. Nothing was paired.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
+msgid "linkPairing.failedClosed"
+msgstr "接続が閉じられました。何もリンクされていません。"
+
+#. Pairing code {code}
+#. Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit.
+msgid "a11y.linkCode"
+msgstr "リンクコード {code}"
+
+#. {device} wants to send you {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose.
+msgid "transferOffer.ask"
+msgstr "{device}が{name}を送信しようとしています"
+
+#. A paired device wants to send you {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
+msgid "transferOffer.askUnnamed"
+msgstr "連絡先が{name}を送信しようとしています"
+
+#. Only accept what you expect.
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title.
+msgid "transferOffer.askBody"
+msgstr "心当たりのあるものだけ受け取ってください。"
+
+#. Accept
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer.
+msgid "transferOffer.accept"
+msgstr "受け取る"
+
+#. Decline
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Declines the offer; nothing is received.
+msgid "transferOffer.decline"
+msgstr "断る"
+
+#. Receiving {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what is being received.
+msgid "transferOffer.receiving"
+msgstr "{name}を受信中"
+
+#. Received {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was received.
+msgid "transferOffer.done"
+msgstr "{name}を受信しました"
+
+#. Couldn’t receive {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was not received.
+msgid "transferOffer.failed"
+msgstr "{name}を受信できませんでした"
+
+#. Nothing was saved.
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title.
+msgid "transferOffer.failedBody"
+msgstr "何も保存されていません。"
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"
@@ -6112,6 +6387,16 @@ msgstr "リモート接続の上限に達しました"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
 msgstr "まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。"
+
+#. Pairing is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.title"
+msgstr "リンクはオフです"
+
+#. Pairing with other people is off for this app. Your own devices still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.message"
+msgstr "このアプリでは他の人とのリンクがオフです。自分のデバイス同士は引き続き接続できます。"
 
 #. Connection expired
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -6382,6 +6667,16 @@ msgstr "サインイン後にアプリへ戻れません"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。"
+
+#. Sign-in link expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.title"
+msgstr "サインインリンクの有効期限切れ"
+
+#. This sign-in link has expired. Go back to {product} and start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.message"
+msgstr "このサインインリンクは有効期限が切れました。{product} に戻って、もう一度始めてください。"
 
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -7183,6 +7478,16 @@ msgstr "コードの有効期限切れ"
 msgid "core.codes.sign-in-expired.message"
 msgstr "サインインが完了する前にコードの有効期限が切れました。もう一度やり直してください。"
 
+#. Browser sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.title"
+msgstr "ブラウザでサインインできません"
+
+#. Sign-in could not open a browser here. Use a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.message"
+msgstr "ここではブラウザを開けませんでした。代わりにコードを使ってください。"
+
 #. Sign-in declined
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-denied.title"
@@ -7412,6 +7717,136 @@ msgstr "ローカルネットワークがブロックされています"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.nearby-permission-denied.message"
 msgstr "このアプリはローカルネットワーク上のデバイスにアクセスできません。システム設定で許可してください。"
+
+#. Nearby sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-unsupported.title"
+msgstr "近くのデバイスでのサインインは利用できません"
+
+#. This device can't look for nearby devices here.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-unsupported.message"
+msgstr "このデバイスでは、ここで近くのデバイスを探せません。"
+
+#. Couldn't connect securely
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-handshake-failed.title"
+msgstr "安全に接続できませんでした"
+
+#. A secure connection to the nearby device couldn't be set up. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-handshake-failed.message"
+msgstr "近くのデバイスとの安全な接続を確立できませんでした。もう一度お試しください。"
+
+#. Connection ended
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-closed.title"
+msgstr "接続が終了しました"
+
+#. The connection to the nearby device ended. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-closed.message"
+msgstr "近くのデバイスとの接続が終了しました。もう一度お試しください。"
+
+#. Transfer stopped
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transfer-cancelled.title"
+msgstr "転送が停止しました"
+
+#. The transfer didn't finish. Nothing was received.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transfer-cancelled.message"
+msgstr "転送は完了しませんでした。何も受信されていません。"
+
+#. Not paired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link-unknown.title"
+msgstr "ペアリングされていません"
+
+#. That device is no longer paired with this one.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link-unknown.message"
+msgstr "そのデバイスはこのデバイスとペアリングされていません。"
+
+#. Device no longer trusted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_revoked.title"
+msgstr "デバイスは信頼されなくなりました"
+
+#. The other device was removed from the account. Nothing was shared.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_revoked.message"
+msgstr "相手のデバイスはアカウントから削除されました。何も共有されていません。"
+
+#. Device certificate expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_expired.title"
+msgstr "デバイス証明書の有効期限切れ"
+
+#. The other device's certificate has expired. Refresh and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_expired.message"
+msgstr "相手のデバイスの証明書の有効期限が切れています。更新してもう一度お試しください。"
+
+#. Connection error
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bad_frame.title"
+msgstr "接続エラー"
+
+#. The nearby device sent something unexpected. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bad_frame.message"
+msgstr "近くのデバイスが予期しないデータを送信しました。もう一度お試しください。"
+
+#. Unsupported request
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_unknown_critical.title"
+msgstr "サポートされていないリクエスト"
+
+#. The nearby device asked for something this app doesn't support. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_unknown_critical.message"
+msgstr "近くのデバイスが、このアプリが対応していない要求をしました。もう一度お試しください。"
+
+#. Not allowed here
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_not_allowed.title"
+msgstr "ここでは許可されていません"
+
+#. The nearby device asked for something that isn't allowed in this step. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_not_allowed.message"
+msgstr "近くのデバイスが、この手順では許可されていない要求をしました。もう一度お試しください。"
+
+#. Nearby device busy
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_busy.title"
+msgstr "近くのデバイスがビジー状態です"
+
+#. Too many connections are open. Try again in a moment.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_busy.message"
+msgstr "開いている接続が多すぎます。しばらくしてからもう一度お試しください。"
+
+#. Connection timed out
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_timeout.title"
+msgstr "接続がタイムアウトしました"
+
+#. The nearby device didn't respond in time. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_timeout.message"
+msgstr "近くのデバイスが時間内に応答しませんでした。もう一度お試しください。"
+
+#. Connection closed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bye.title"
+msgstr "接続が閉じられました"
+
+#. The nearby device ended the connection.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bye.message"
+msgstr "近くのデバイスが接続を終了しました。"
 
 #. Platform problem
 #. Core copy (conformance/parity/copy.en.json, codes).

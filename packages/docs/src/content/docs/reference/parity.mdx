@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 109 | 16 | 15 | 0 |
-| React | `web`, `desktop-bridge` | 106 | 25 | 9 | 0 |
-| Python | `python` | 98 | 16 | 26 | 0 |
-| Swift | `macos`, `ios` | 111 | 10 | 18 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 107 | 9 | 24 | 0 |
-| Kotlin | `android`, `jvm` | 112 | 9 | 18 | 1 |
+| Node | `node` | 117 | 16 | 9 | 0 |
+| React | `web`, `desktop-bridge` | 112 | 25 | 5 | 0 |
+| Python | `python` | 106 | 16 | 20 | 0 |
+| Swift | `macos`, `ios` | 117 | 10 | 14 | 1 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 118 | 9 | 15 | 0 |
+| Kotlin | `android`, `jvm` | 118 | 9 | 14 | 1 |
 
 ## Core
 
@@ -80,27 +80,27 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `sync.scenarios` | The Cloud Sync client machine: journal, HLC, partitions, open settings, import, paused and parked edits | `sync-scenarios.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.settings` | Settings over /sync: pull, push, cloudSync.status() and cloudSync.flush() | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.conflict` | One conflict vocabulary: cloudSync.onConflict and MergeRequest for revision records | unit + transcripts (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | planned (U-08) | — |
-| `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
+| `sync.saves` | cloudSync.saves on records and files: list, read, write, delete, revisions | transcripts | ✓ | ✓ | ✓ | ✓ | ✓; N/A (ios: runtime); N/A (android: runtime) | ✓ | ios, android: runtime |
 | `sync.keyring` | The key ring: create, wraps, recovery, adopt and reset over /devices/keyring | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.records` | cloudSync.collection(name): records of any collection with put, update, compare-and-set and union merge | transcripts | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | — |
-| `sync.files` | cloudSync files: single and multipart upload, resume, progress and ranged download | transcripts | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
-| `sync.files.delta` | cloudSync file delta: content-defined chunks, only the missing chunks travel | `sync-vectors.json` `cdcCases` + transcripts | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | — |
+| `sync.files` | cloudSync files: single and multipart upload, resume, progress and ranged download | transcripts | ✓ | ✓ | ✓ | ✓ | ✓; N/A (ios: runtime); N/A (android: runtime) | ✓ | ios, android: runtime |
+| `sync.files.delta` | cloudSync file delta: content-defined chunks, only the missing chunks travel | `sync-vectors.json` `cdcCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓; N/A (ios: runtime); N/A (android: runtime) | ✓ | ios, android: runtime |
 | `sync.e2e.recovery` | The recovery code, and the platform backup of the root where the OS has one | `sync-vectors.json` `recoveryCodeCases` + transcripts (U-36) | planned (U-38) | planned (U-20) | planned (U-06) | planned (U-39) | planned (U-40) | planned (U-39) | web, node, python, jvm, windows, linux: runtime |
-| `sync.transfer.background` | Background transfer: an upload or download that continues when the app is suspended | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (U-41) | planned (U-41); N/A (web: runtime) | planned (U-41); N/A (jvm: runtime) | web, desktop-bridge, node, python, jvm: runtime |
+| `sync.transfer.background` | Background transfer: an upload or download that continues when the app is suspended | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (U-41) | planned (U-41); N/A (linux: runtime); N/A (windows: runtime); N/A (macos: runtime); N/A (web: runtime) | planned (U-41); N/A (jvm: runtime) | linux, windows, macos, web, desktop-bridge, node, python, jvm: runtime |
 | `sync.e2e` | End-to-end encrypted Cloud Sync on the client: envelope, blinding, root wrap and the encryption-mode machine | `sync-vectors.json` + `sync-scenarios.json` + transcripts (U-33) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Cloud Connect
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `connect.identity` | Device certificates and rings: verify, key choice and admission | `cases.json` `peerCertCases` + transcripts | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
-| `connect.noise` | Noise_XX_25519_AESGCM_SHA256 and its primitives | `noise-vectors.json` | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
-| `connect.protocol` | pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes | `peer-matrix.json` | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
-| `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (CC-14) | planned (CC-12b) | web, desktop-bridge: runtime |
-| `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
-| `connect.links` | Inter-account links: mode p pairing and contacts | unit | planned (CC-19) | N/A (web, desktop-bridge: runtime) | planned (CC-19) | planned (CC-19) | planned (CC-19) | planned (CC-19) | web, desktop-bridge: runtime |
-| `connect.transfer` | Direct Transfer: data between Cloud Connect peers | unit | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | planned (CC-20) | — |
-| `connect.app` | The cloudConnect API: start, stop, peers, devices, open, onChannel | unit | ✓ | ✓ | ✓ | ✓ | planned (CC-14) | ✓ | — |
+| `connect.identity` | Device certificates and rings: verify, key choice and admission | `cases.json` `peerCertCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `connect.noise` | Noise_XX_25519_AESGCM_SHA256 and its primitives | `noise-vectors.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `connect.protocol` | pkey-peer/1: adverts, prologue, PSK, SAS, frames, records and relay envelopes | `peer-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `connect.lan` | LAN discovery (mDNS) and TCP channels between a person's devices | unit + `peer-matrix.json` `lanAddresses` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | planned (CC-12b) | web, desktop-bridge: runtime |
+| `connect.relay` | The relay: ticket, WebSocket channel, quotas | transcripts + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `connect.links` | Inter-account links: mode p pairing and contacts | transcripts + `peer-matrix.json` `contact` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | planned (CC-19) | ✓ | web, desktop-bridge: runtime |
+| `connect.transfer` | Direct Transfer: data between Cloud Connect peers | `peer-matrix.json` `xfer` | ✓ | ✓ | ✓ | ✓ | planned (CC-20) | ✓ | — |
+| `connect.app` | The cloudConnect API: start, stop, peers, devices, open, onChannel | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Devices and identity
 
@@ -121,16 +121,18 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `identity.attach` | Attach: add the device's licence to the account signed in on it, with a preview | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.account` | The account on the device: subject(), signOut() and openAccount() | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.redirect.web` | Web redirect sign-in: authorize with PKCE, then the code redeemed at token | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `identity.redirect.native` | Native redirect sign-in: a pushed request, then the code redeemed from the pushing device | transcripts | planned (I-15b) | planned (I-15b) | planned (I-15b) | planned (I-15b) | planned (I-15b) | planned (I-15b) | — |
 | `identity.choice` | Licence choice in the app: the choice.* primitives over a pending sign-in grant | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `identity.devicecode.choice` | Device-code sign-in with the hints and the licence choice in the app (the choose poll answer) | transcripts | planned (UK-42) | planned (UK-42) | planned (UK-42) | planned (UK-42) | planned (UK-42) | planned (UK-42) | — |
+| `identity.devicecode.choice` | Device-code sign-in with the hints and the licence choice in the app (the choose poll answer) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.signin.hints` | Sign-in hints: login_hint, name_hint and purpose prefill the card | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.keyreturn` | Key return: the Polaris Locker card's Continue without an account hands the app a device on the key's licence | transcripts | ✓ | ✓ | planned (I-15b) | planned (I-15b) | planned (I-15b) | planned (I-15b) | — |
 | `identity.exchange` | Platform sign-in: a Google or Apple ID token for a device token (the exchange) | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | ✓ | ✓; N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
 | `identity.gamecenter` | Platform sign-in: a Game Center identity-verification token for a device token (the exchange) | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓ | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm: runtime |
 | `identity.pgs` | Platform sign-in: a Play Games server auth code for a device token (the exchange) | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (macos: runtime); N/A (ios: runtime); N/A (web: runtime) | ✓; N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm: runtime |
-| `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | planned (I-47) | ✓ | planned (I-47) | ✓ | planned (I-48) | ✓ | — |
+| `identity.autosignin` | Automatic sign-in: the ladder that signs a device in without a click | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `identity.restore` | Silent restore: a new device of the same person signs in from the platform backup | transcripts | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓ | planned (I-49); N/A (linux: runtime); N/A (windows: runtime) | ✓; N/A (jvm: runtime) | node, python, web, jvm, windows, linux, desktop-bridge: runtime |
 | `identity.link` | The link offer: attach a platform identity to the account after a fresh sign-in | transcripts | N/A (node: runtime) | ✓; N/A (desktop-bridge: runtime) | N/A (python: runtime) | planned (I-44) | planned (I-48); N/A (linux: runtime); N/A (windows: runtime) | planned (I-45); N/A (jvm: runtime) | node, python, windows, linux, jvm, desktop-bridge: runtime |
+| `identity.nearby` | Nearby approval: a signed-in device approves a device that cannot sign itself in | transcripts + `peer-matrix.json` `vouch` | ✓ | ✓; N/A (web: runtime) | ✓ | planned (I-44) | planned (I-48); N/A (web: runtime) | planned (I-45) | web: runtime |
 
 ## Release and update
 

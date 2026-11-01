@@ -5,6 +5,13 @@
 //   connect-relay-ticket   a signed-in, key-registered device asks for a relay ticket: `pkeyrt_`,
 //                          the upgrade URL, the subprotocol and a 60 s life; no bearer is `401`;
 //                          the launch gate off is `404`
+//   connect-relay-ticket-contact
+//                          a contact ticket (CC-19.3; §15.7): the same route with the body
+//                          `{room:"c", rid}`; the answer echoes `room`. A body that is not exactly
+//                          that is `400 bad_request`
+//   connect-links-disabled a contact ticket while the product's inter-account setting or the
+//                          `launch.connectLinks` gate is off: `403 connect_links_disabled`, and
+//                          discovery's `interAccount` says so (§15.9)
 //   connect-relay-quota    the refusals, in their order: the product turned the relay off
 //                          (`relay_disabled`), the deployment paused it (`relay_paused`, with
 //                          `Retry-After`), the product's month is spent (`relay_quota_exceeded`,
@@ -66,11 +73,22 @@ import { deleteDeviceKeys } from "../../../src/core/devices/keys.js";
 const FEATURES = ["connect.relay"];
 const REQUIRES = ["core.store"];
 
-/** A relay namespace that is bound; the ticket route never calls it. */
+/**
+ * A relay namespace that is bound. The ticket route calls it only to count a contact room
+ * (`POST /rooms`, answered 204); anything else is a failure.
+ */
 const BOUND_RELAY = {
   idFromName: (n: string) => n,
-  get: () => ({ fetch: async () => new Response(null, { status: 500 }) }),
+  get: () => ({
+    fetch: async (req: Request) =>
+      new Response(null, {
+        status: new URL(req.url).pathname === "/rooms" ? 204 : 500,
+      }),
+  }),
 } as unknown as DurableObjectNamespace;
+
+/** The room id of the corpus's `contact.rooms.rid` row `room-a`. */
+const CONTACT_RID = "lXg0MgIHVN5qAmGFUen7vA";
 
 async function relayWorld(): Promise<{ world: World; token: string }> {
   const { world, token } = await identityWorld();
@@ -155,6 +173,146 @@ export const connectRelayTicket: Scenario = {
       expect(await ticket(r, "No bearer.", { bearer: false })).toBe(401);
       (world.env as unknown as Record<string, string>).LAUNCH_RELAY = "off";
       expect(await ticket(r, "The launch gate is off.")).toBe(404);
+      return r.transcript();
+    }),
+};
+
+/** One contact ticket request, with `expect` read off the answer. */
+async function contactTicket(
+  r: TranscriptRecorder,
+  note: string,
+  body: Record<string, JsonValue>,
+): Promise<number> {
+  let status = 0;
+  const exp: Record<string, string | number> = {};
+  await r.step(
+    { action: "relayTicketContact", note, args: body },
+    async (s: StepRecorder) => {
+      const res = await s.send({
+        method: "POST",
+        path: `/${PRODUCT}/connect/relay/ticket`,
+        bearer: "token",
+        body,
+        expectBody: { json: body, match: "exact" },
+      });
+      status = res.status;
+      const answer = (await res.clone().json()) as Record<string, any>;
+      if (res.status >= 400) {
+        exp.result = "refused";
+        exp.status = res.status;
+        exp.code = answer.error?.code ?? answer.error ?? "not_found";
+        return;
+      }
+      expect(answer.ticket).toMatch(/^pkeyrt_[A-Za-z0-9_-]{32}$/);
+      Object.assign(exp, {
+        result: "ok",
+        room: answer.room,
+        protocol: answer.protocol,
+        url: answer.url,
+        expiresIn: answer.expiresAt - T0,
+      });
+    },
+    exp,
+  );
+  return status;
+}
+
+const interAccountOn = (world: World): Promise<unknown> =>
+  world.db.run(
+    `INSERT OR REPLACE INTO product_settings (product, key, value_json, source, updated_at, updated_by)
+     VALUES (?, 'cloudConnect.interAccount', 'true', 'console', ?, 'transcript')`,
+    PRODUCT,
+    T0,
+  );
+
+export const connectRelayTicketContact: Scenario = {
+  id: "connect-relay-ticket-contact",
+  record: () =>
+    pinned("connect-relay-ticket-contact", async (pin) => {
+      const { world, token } = await relayWorld();
+      await interAccountOn(world);
+      const r = new TranscriptRecorder({
+        id: "connect-relay-ticket-contact",
+        description:
+          'A contact ticket (WIRE-CONTRACT-V5 §15.7, §15.10). The ticket request takes the optional body {room:"c", rid}: rid is the 22-character room id both linked devices derive from their contact secret. The answer is the account ticket\'s with "room":"c" echoed; a client that gets no room echo (an older Worker) treats the contact relay as unsupported. The ticket opens only that contact room. A body that is not exactly those two members, or a rid that is not canonical, is 400 bad_request.',
+        features: ["connect.links"],
+        requires: REQUIRES,
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: { deviceId: DEVICE, token, version: VERSION },
+      });
+      expect(
+        await contactTicket(r, "A contact ticket.", {
+          room: "c",
+          rid: CONTACT_RID,
+        }),
+      ).toBe(200);
+      expect(
+        await contactTicket(r, "A rid one character short.", {
+          room: "c",
+          rid: CONTACT_RID.slice(1),
+        }),
+      ).toBe(400);
+      expect(
+        await contactTicket(r, "Another room kind.", {
+          room: "a",
+          rid: CONTACT_RID,
+        }),
+      ).toBe(400);
+      return r.transcript();
+    }),
+};
+
+export const connectLinksDisabled: Scenario = {
+  id: "connect-links-disabled",
+  record: () =>
+    pinned("connect-links-disabled", async (pin) => {
+      const { world, token } = await relayWorld();
+      const r = new TranscriptRecorder({
+        id: "connect-links-disabled",
+        description:
+          "Links between accounts are off (WIRE-CONTRACT-V5 §15.7, §15.9, §15.10). Discovery reports interAccount false and a contact ticket is 403 connect_links_disabled while the product's cloudConnect.interAccount setting is off (its default), and again while the operator's launch gate (launch.connectLinks) is off. Only with the setting, the gate and the service all on does discovery say true and the ticket issue. The account's own devices are unaffected.",
+        features: ["connect.links"],
+        requires: REQUIRES,
+        product: PRODUCT,
+        now: T0,
+        world,
+        pinned: pin,
+        initial: { deviceId: DEVICE, token, version: VERSION },
+      });
+      const body = { room: "c", rid: CONTACT_RID } as const;
+      const discover = (note: string, want: boolean) =>
+        r.step(
+          { action: "discover", note },
+          async (s) => {
+            const d = await discovery(s, PRODUCT);
+            expect(d.status).toBe(200);
+            expect(
+              (
+                (await d.clone().json()) as {
+                  services: { connect: { interAccount: boolean } };
+                }
+              ).services.connect.interAccount,
+            ).toBe(want);
+          },
+          { result: "ok", interAccount: want },
+        );
+
+      await discover("The setting is off: discovery says no.", false);
+      expect(await contactTicket(r, "The setting is off.", body)).toBe(403);
+
+      await interAccountOn(world);
+      await discover("The setting is on: discovery says yes.", true);
+      (world.env as unknown as Record<string, string>).LAUNCH_CONNECT_LINKS =
+        "off";
+      await discover("The launch gate is off: discovery says no.", false);
+      expect(await contactTicket(r, "The launch gate is off.", body)).toBe(403);
+
+      (world.env as unknown as Record<string, string>).LAUNCH_CONNECT_LINKS =
+        "on";
+      expect(await contactTicket(r, "Both on.", body)).toBe(200);
       return r.transcript();
     }),
 };
@@ -620,6 +778,8 @@ export const connectIdentityRotate: Scenario = {
 
 export const CONNECT_SCENARIOS: Scenario[] = [
   connectRelayTicket,
+  connectRelayTicketContact,
+  connectLinksDisabled,
   connectRelayQuota,
   connectIdentity,
   connectIdentityRefusals,

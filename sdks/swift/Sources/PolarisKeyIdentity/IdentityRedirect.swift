@@ -18,9 +18,13 @@
 //   - The verifier, the code and the token are never put in a URL or a log here; the authorize URL
 //     carries only the challenge.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// Random bytes. Default `SystemRandomNumberGenerator`; a test injects a fixed source.
 public typealias RandomBytes = @Sendable (Int) -> [UInt8]

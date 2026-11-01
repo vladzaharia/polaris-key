@@ -1,8 +1,9 @@
 """The Cloud Connect error taxonomy (CC-10.4; WIRE-CONTRACT-V5 §15.7, §15.9). Mirrors
 ``packages/sdk-node/src/connect/session.ts`` (``LanError``) and ``relay.ts`` (``RelayError``): a typed
 ``reason`` for the host to branch on, and a registered ``code`` from ``conformance/parity/errors.json``
-(never a new one here). Both are :class:`~polaris_key.core.errors.PolarisError`, so ``except
-PolarisError`` catches them."""
+(never a new one here). ``LanError`` lives in :mod:`polaris_key.core.peer_lan_error` (the nearby approver
+and requester load without this package) and is re-exported here. Both are
+:class:`~polaris_key.core.errors.PolarisError`, so ``except PolarisError`` catches them."""
 
 from __future__ import annotations
 
@@ -10,26 +11,13 @@ from typing import Any, Dict, Optional
 
 from ..constants_generated import ErrorCode
 from ..core.errors import PolarisError
+from ..core.peer_lan_error import LAN_CODE, LanError
+from ..core.peer_lan_error import _make_lan as _make_lan  # noqa: F401  (pickles name this module)
 
 __all__ = ["LAN_CODE", "LanError", "RELAY_CODE", "RELAY_PROTOCOL", "RelayError"]
 
 #: The WebSocket subprotocol this client speaks (§15.7).
 RELAY_PROTOCOL = "pkey-relay.1"
-
-#: The registered client code of each LAN reason.
-LAN_CODE: Dict[str, str] = {
-    "no_identity": ErrorCode.NOT_CONFIGURED,
-    "no_keys": ErrorCode.NOT_CONFIGURED,
-    "not_started": ErrorCode.NOT_CONFIGURED,
-    "unknown_peer": ErrorCode.INVALID_ARGUMENT,
-    "not_listening": ErrorCode.CONNECT_UNAVAILABLE,
-    "connect_failed": ErrorCode.NETWORK_ERROR,
-    "handshake_failed": ErrorCode.PEER_CERT_INVALID,
-    "wrong_peer": ErrorCode.PEER_CERT_INVALID,
-    "closed": ErrorCode.NETWORK_ERROR,
-    "too_large": ErrorCode.INVALID_ARGUMENT,
-    "bad_type": ErrorCode.INVALID_ARGUMENT,
-}
 
 #: The registered code of each relay reason: the Worker's own for the four it answers with.
 RELAY_CODE: Dict[str, str] = {
@@ -46,24 +34,13 @@ RELAY_CODE: Dict[str, str] = {
     "wrong_peer": ErrorCode.PEER_CERT_INVALID,
     "unknown_peer": ErrorCode.INVALID_ARGUMENT,
     "mode_not_allowed": ErrorCode.INVALID_ARGUMENT,
+    #: A contact ticket while links between accounts are off (403 ``connect_links_disabled``).
+    "links_disabled": ErrorCode.CONNECT_LINKS_DISABLED,
+    #: The Worker did not echo ``room: "c"``: it predates contact rooms (§15.7).
+    "contact_unsupported": ErrorCode.CONNECT_UNAVAILABLE,
     "replaced": ErrorCode.CANCELLED,
     "stopped": ErrorCode.CANCELLED,
 }
-
-
-class LanError(PolarisError):
-    """A LAN-side refusal. ``reason`` is one of ``LAN_CODE``'s keys; ``close_code`` is why a session
-    ended, when it did."""
-
-    def __init__(self, reason: str, message: str, *, close_code: Optional[str] = None) -> None:
-        if reason not in LAN_CODE:
-            raise ValueError("unknown LAN error reason")
-        super().__init__(LAN_CODE[reason], message)
-        self.reason = reason
-        self.close_code = close_code
-
-    def __reduce__(self) -> Any:
-        return (_make_lan, (self.reason, self.message, self.close_code))
 
 
 class RelayError(PolarisError):
@@ -94,10 +71,6 @@ class RelayError(PolarisError):
             _make_relay,
             (self.reason, self.message, self.retry_after_seconds, self.scope, self.close_code, self.status),
         )
-
-
-def _make_lan(reason: str, message: str, close_code: Optional[str]) -> LanError:
-    return LanError(reason, message, close_code=close_code)
 
 
 def _make_relay(

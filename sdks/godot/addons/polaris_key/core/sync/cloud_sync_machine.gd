@@ -30,7 +30,7 @@ const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const Canonical := preload("res://addons/polaris_key/core/sync/canonical_json.gd")
 
 const LOCAL_PARTITION := Types.LOCAL_PARTITION
-const _JOURNAL_ONLY := ["preContact", "moved", "parked"]
+const _JOURNAL_ONLY := ["preContact", "moved", "parked", "ticket", "file"]
 
 var _product: String
 var _catalog: Dictionary
@@ -51,6 +51,8 @@ var _pull_wanted := false
 var _paused := false
 var _outbox: Array = []
 var _events: Array = []
+## The listener for `put_at` / `remove_at` outcomes (a Callable(outcome: Dictionary)). Not persisted.
+var _outcome: Callable = Callable()
 var _s: Dictionary
 var _client_id_re: RegEx
 ## "" when the machine was built; "bad-client-id" when the host's `newClientId` gave a malformed id.
@@ -61,8 +63,8 @@ var _hlc_re: RegEx
 
 
 func _init(opts: Dictionary, persisted: Variant = null) -> void:
-	_client_id_re = RegEx.create_from_string(PKeyConstants.SYNC_CLIENT_ID_PATTERN)
-	_hlc_re = RegEx.create_from_string(PKeyConstants.SYNC_HLC_PATTERN)
+	_client_id_re = RegEx.create_from_string(PKeyChannel.anchored(PKeyConstants.SYNC_CLIENT_ID_PATTERN))
+	_hlc_re = RegEx.create_from_string(PKeyChannel.anchored(PKeyConstants.SYNC_HLC_PATTERN))
 	_product = opts["product"]
 	_catalog = opts["catalog"]
 	_document = opts["document"]
@@ -226,7 +228,26 @@ static func _apply_record_op(base: Variant, op: Dictionary) -> Variant:
 			if not Types.json_equal(x, op.get("element")):
 				out.append(x)
 		return out
+	if name == "delete":
+		return Types.ABSENT
 	return base
+
+
+## A well-formed file pointer `{version, size, sha256, format}`, or null.
+static func _file_of(v: Variant) -> Variant:
+	if not (v is Dictionary):
+		return null
+	var d: Dictionary = v
+	if not (Types.is_number(d.get("version")) and Types.is_number(d.get("size")) and Types.is_string(d.get("sha256")) \
+			and (d.get("format") == "whole" or d.get("format") == "chunks")):
+		return null
+	return {"version": d["version"], "size": d["size"], "sha256": d["sha256"], "format": d["format"]}
+
+
+## `{"file": pointer}` for a well-formed pointer, else nothing (a row keeps `file` only when present).
+static func _file_mark(v: Variant) -> Dictionary:
+	var f: Variant = _file_of(v)
+	return {} if f == null else {"file": f}
 
 
 static func _record_key(c: String, i: String) -> String:
@@ -423,7 +444,7 @@ func put(collection: String, record_id: String, value: Variant) -> Dictionary:
 		else:
 			var queued: Variant = null
 			for o: Dictionary in p["pending"]:
-				if o["target"].has("record") and _rk_of(o["target"]) == rk:
+				if o["target"].has("record") and _rk_of(o["target"]) == rk and not o.has("ticket"):
 					queued = o
 					break
 			if queued != null:
@@ -480,6 +501,90 @@ func add(collection: String, record_id: String, element: Variant) -> Dictionary:
 ## Remove from a `union` record, observed at the current cursor.
 func remove(collection: String, record_id: String, element: Variant) -> Dictionary:
 	return _union_op(collection, record_id, element, "remove")
+
+
+## The cloud rows of a collection a person can read, by id: the snapshot as last pulled or
+## acknowledged, without pending edits. `[{id, value, version, file}]`; a file-only row has a null
+## `value`, and `file` is null when the row has none. Empty when signed out.
+func records(collection: String) -> Array:
+	var out: Array = []
+	if _s["subject"] == null:
+		return out
+	var rows: Dictionary = _active()["records"]
+	var prefix := collection + "/"
+	for rk: String in _sorted(rows.keys()):
+		if not rk.begins_with(prefix):
+			continue
+		var row: Dictionary = rows[rk]
+		if _row_unreadable(row):
+			continue
+		out.append({
+			"id": rk.substr(prefix.length()),
+			"value": Types.clone(row.get("value")),
+			"version": row["version"],
+			"file": Types.clone(row["file"]) if row.get("file") != null else null,
+		})
+	return out
+
+
+## The `[collection, id]` of every record held, so a record tombstone's blinded id maps back to it.
+func record_keys() -> Array:
+	var out: Array = []
+	if _s["subject"] == null:
+		return out
+	for rk: String in _sorted(_active()["records"].keys()):
+		var at := rk.find("/")
+		if at > 0:
+			out.append([rk.substr(0, at), rk.substr(at + 1)])
+	return out
+
+
+## Write a `revision` record at exactly `base_version`: a new mutation, never coalesced with a queued
+## edit and never rebased on a conflict. `{ok: true, mutationId: ticket}`; the outcome goes to
+## `on_outcome`. `file` is the pointer the save's finalize returned: on `ok` the row takes it with the
+## new version; without one the row keeps its prior file.
+func put_at(collection: String, record_id: String, value: Variant, base_version: Variant, file: Variant = null) -> Dictionary:
+	return _exact_op(collection, record_id, base_version, {"op": "set", "value": Types.clone(value)}, file)
+
+
+## Delete a `revision` record at exactly `base_version` (removes its file).
+func remove_at(collection: String, record_id: String, base_version: Variant) -> Dictionary:
+	return _exact_op(collection, record_id, base_version, {"op": "delete"})
+
+
+## The listener for `put_at` / `remove_at` outcomes: once per call, when its result arrives or on
+## sign-out. It must not call back into the machine. A null Callable removes it.
+func on_outcome(fn: Callable) -> void:
+	_outcome = fn
+
+
+func _exact_op(collection: String, record_id: String, base_version: Variant, body: Dictionary, file: Variant = null) -> Dictionary:
+	var decl: Variant = _collection(collection)
+	if decl == null or decl["policy"] != "revision":
+		return Types.fail("collection-unknown")
+	if _s["subject"] == null:
+		return Types.fail("signed-out")
+	var p := _active()
+	var op := {"target": {"record": [collection, record_id]}, "baseVersion": base_version}
+	op.merge(body, true)
+	var full := _enqueue(p, op)
+	# The ticket comes from its own counter: a clientMismatch renumbering cannot collide two of them.
+	var ticket: int = int(p.get("nextTicket", 1))
+	p["nextTicket"] = ticket + 1
+	full["ticket"] = ticket
+	var pointer: Variant = _file_of(file)
+	if pointer != null:
+		full["file"] = pointer
+	_kick()
+	return {"ok": true, "mutationId": ticket}
+
+
+func _emit_outcome(op: Dictionary, outcome: Dictionary) -> void:
+	if not op.has("ticket") or not _outcome.is_valid():
+		return
+	var out := {"mutationId": int(op["ticket"])}
+	out.merge(outcome, true)
+	_outcome.call(out)
 
 
 func sign_in(subject: String) -> Dictionary:
@@ -1464,12 +1569,18 @@ func _ok(req: Dictionary, body: Dictionary, opened: Dictionary) -> void:
 			latch_key = "s:%s" % c["setting"]
 		elif is_record:
 			latch_key = "r:" + _record_key(str(c["record"][0]), str(c["record"][1]))
-		var bad := _row_bad(p, latch_key, c["version"], open_row, req["cursor"])
+		# A record with a file and no value carries nothing to judge: a good row, null value. Only when
+		# nothing was sealed (no `ct`, host verdict not invalid) and, in E2E mode, only under a blinded id.
+		var file_only: bool = is_record and not c.has("value") and not c.has("ct") \
+				and not (open_row is Dictionary and open_row.get("invalid") == true) \
+				and _file_of(c.get("file")) != null \
+				and (not _requires_e2e() or PKeySyncBlind.is_blinded_name(str(c["record"][1])))
+		var bad: Dictionary = {} if file_only else _row_bad(p, latch_key, c["version"], open_row, req["cursor"])
 		if is_setting:
 			p["settings"][String(c["setting"])] = _merged({"value": Types.clone(c.get("value")), "version": c["version"]}, bad)
 			_drop_parked_by_remote(p, String(c["setting"]), c.get("editedHlc"))
 		elif is_record:
-			p["records"][_record_key(str(c["record"][0]), str(c["record"][1]))] = _merged({"value": Types.clone(c.get("value")), "version": c["version"]}, bad)
+			p["records"][_record_key(str(c["record"][0]), str(c["record"][1]))] = _merged(_merged({"value": Types.clone(c.get("value")), "version": c["version"]}, _file_mark(c.get("file"))), bad)
 	var tombstones: Array = body["tombstones"] if body.get("tombstones") is Array else []
 	for t in tombstones:
 		if not (t is Dictionary):
@@ -1530,8 +1641,11 @@ func _row_bad(p: Dictionary, latch_key: String, version: Variant, open_row: Vari
 ## A conflict's `server` copy as a held row. X-1: `cursor` is the push's own in-flight cursor.
 func _copy_row(p: Dictionary, latch_key: String, server: Dictionary, open_row: Variant, cursor: Variant) -> Dictionary:
 	var version: Variant = server["version"]
-	var bad := _row_bad(p, latch_key, version, open_row, cursor)
-	return _merged({"value": Types.clone(server.get("value")), "version": version}, bad)
+	var file_only: bool = not server.has("value") and not server.has("ct") \
+			and not (open_row is Dictionary and open_row.get("invalid") == true) \
+			and _file_of(server.get("file")) != null
+	var bad: Dictionary = {} if file_only else _row_bad(p, latch_key, version, open_row, cursor)
+	return _merged(_merged({"value": Types.clone(server.get("value")), "version": version}, _file_mark(server.get("file"))), bad)
 
 
 ## Take a served boundary: the least ever served, held at or below the sealed floor.
@@ -1640,35 +1754,43 @@ func _result(p: Dictionary, op: Dictionary, r: Dictionary, overrides: Dictionary
 		_note_sealed(p, r["version"], "r:%s" % rk)
 		var prior_r: Variant = p["records"].get(rk)
 		var rv: Variant = _apply_record_op(prior_r["value"] if prior_r != null else Types.ABSENT, op)
-		if not Types.is_absent(rv):
-			p["records"][rk] = {"value": rv, "version": r["version"]}
+		if op["op"] == "delete":
+			p["records"].erase(rk)
+		elif not Types.is_absent(rv):
+			p["records"][rk] = _merged({"value": rv, "version": r["version"]}, _file_mark(op["file"] if op.has("file") else (prior_r.get("file") if prior_r != null else null)))
 		if p["held"].has(rk):
 			rebase_on = r["version"]
 			has_rebase = true
+		_emit_outcome(op, {"status": "ok", "version": r["version"]})
 	elif status == "conflict" and r.get("server") is Dictionary:
 		var srv: Dictionary = r["server"]
 		if Types.is_number(srv.get("version")):
 			var rbad := _copy_row(p, "r:%s" % rk, srv, opened_conflict, cursor)
 			p["records"][rk] = rbad
+			var served: Variant = null
+			if _decidable(rbad):
+				served = {"value": Types.clone(rbad["value"]), "version": rbad["version"], "file": Types.clone(rbad["file"]) if rbad.get("file") != null else null}
+			_emit_outcome(op, {"status": "conflict", "server": served})
 			# The resolution is a NEW mutation on the server's version; N is never resent. Only
 			# `revision` resolves on the device; every other policy took the server's copy.
 			if p["held"].has(rk):
 				rebase_on = srv["version"]
 				has_rebase = true
 				rebase_value = op.get("value")
-			elif decl != null and op["op"] == "set" and _decidable(rbad) and _client_decides(decl["policy"]) \
+			elif not op.has("ticket") and decl != null and op["op"] == "set" and _decidable(rbad) and _client_decides(decl["policy"]) \
 					and _better(decl["policy"], _compared(op.get("value"), decl.get("field")), _compared(srv.get("value"), decl.get("field"))):
 				# E2E max/min record: the better value is re-pushed on the server's version.
 				rebase_on = srv["version"]
 				has_rebase = true
 				rebase_value = op.get("value")
-			elif decl != null and decl["policy"] == "revision" and decl.get("resolve") == "keepLocal" and op["op"] == "set":
+			elif not op.has("ticket") and decl != null and decl["policy"] == "revision" and decl.get("resolve") == "keepLocal" and op["op"] == "set":
 				rebase_on = srv["version"]
 				has_rebase = true
 				rebase_value = op.get("value")
 	else:
 		if status == "rejected":
 			_events.append({"type": "rejected", "mutationId": op["mutationId"], "code": _js_string(r, "code")})
+			_emit_outcome(op, {"status": "rejected", "code": _js_string(r, "code")})
 		if p["held"].has(rk):
 			var row: Variant = p["records"].get(rk)
 			rebase_on = row["version"] if row != null else "*"
@@ -1702,6 +1824,14 @@ func _leave(reason: String, discard: bool) -> void:
 	_commit_all_drafts()
 	var before := _value_map()
 	var p := _active()
+	# An exact write is not retried across a sign-out: its caller is told, and the op goes.
+	var kept: Array = []
+	for o: Dictionary in p["pending"]:
+		if o.has("ticket"):
+			_emit_outcome(o, {"status": "dropped"})
+		else:
+			kept.append(o)
+	p["pending"] = kept
 	var unsynced: int = p["pending"].size() + p["held"].size()
 	if discard:
 		p["pending"] = []

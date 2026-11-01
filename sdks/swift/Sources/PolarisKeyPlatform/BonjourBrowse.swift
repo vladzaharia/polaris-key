@@ -35,14 +35,19 @@ public struct BonjourEndpoint: Sendable, Hashable {
     #if canImport(Network)
         /// The endpoint to hand to `NWConnection`. Nil only in tests.
         public let network: NWEndpoint?
+        /// The interfaces the browse reported the hit on. A service hit is resolved on these, and an
+        /// address is dialled only when it came back on one of them (§15.4).
+        public let interfaces: [NWInterface]
 
         public init(
-            name: String, type: String = bonjourPeerServiceType, domain: String = "local.", network: NWEndpoint? = nil
+            name: String, type: String = bonjourPeerServiceType, domain: String = "local.", network: NWEndpoint? = nil,
+            interfaces: [NWInterface] = []
         ) {
             self.name = name
             self.type = type
             self.domain = domain
             self.network = network
+            self.interfaces = interfaces
         }
     #else
         public init(name: String, type: String = bonjourPeerServiceType, domain: String = "local.") {
@@ -141,6 +146,8 @@ public enum BonjourErrors {
 struct BonjourTable {
     static let maxInstances = 256
     static let maxTxt = 8
+    /// An instance name is `p1-` and 16 characters.
+    static let nameBytes = 19
 
     enum Change: Equatable {
         case up(BonjourFound)
@@ -187,6 +194,9 @@ struct BonjourTable {
         return [.down(instance)]
     }
 
+    /// The instances in the table.
+    var instances: [String] { order }
+
     mutating func clear() {
         order = []
         rows = [:]
@@ -210,6 +220,7 @@ public final class BonjourBrowse: Sendable {
     private let driver: any BonjourBrowseDriver
     private let configurationCheck: @Sendable () -> BonjourBrowseError?
     private let accept: (@Sendable (String) -> Bool)?
+    private let acceptFound: (@Sendable (BonjourFound) -> Bool)?
     private let state = PlatformLock(State())
 
     /// `configurationCheck` defaults to this process's Info.plist; a test passes its own.
@@ -217,9 +228,11 @@ public final class BonjourBrowse: Sendable {
         options: BonjourBrowseOptions = BonjourBrowseOptions(),
         driver: (any BonjourBrowseDriver)? = nil,
         configurationCheck: (@Sendable () -> BonjourBrowseError?)? = nil,
-        accept: (@Sendable (String) -> Bool)? = nil
+        accept: (@Sendable (String) -> Bool)? = nil,
+        acceptFound: (@Sendable (BonjourFound) -> Bool)? = nil
     ) {
         self.accept = accept
+        self.acceptFound = acceptFound
         self.options = options
         #if canImport(Network)
             self.driver = driver ?? NWBrowserDriver()
@@ -229,7 +242,7 @@ public final class BonjourBrowse: Sendable {
         self.configurationCheck = configurationCheck ?? Self.processConfigurationCheck
     }
 
-    @Sendable private static func processConfigurationCheck() -> BonjourBrowseError? {
+    @Sendable static func processConfigurationCheck() -> BonjourBrowseError? {
         #if os(iOS) || os(tvOS) || os(visionOS)
             return BonjourErrors.configurationError(infoDictionary: Bundle.main.infoDictionary, requiresPlist: true)
         #else
@@ -268,12 +281,14 @@ public final class BonjourBrowse: Sendable {
     /// The accept filter's answer changed (a roster or key arrived): offer the browser's current results
     /// to it again, so a peer seen before it was known enters the table now, with no new browse event.
     public func rescan() {
-        guard let accept else { return }
+        guard accept != nil || acceptFound != nil else { return }
         let results = driver.snapshot()
         let (changes, up, down) = state.withLock {
             s -> ([BonjourTable.Change], (@Sendable (BonjourFound) -> Void)?, (@Sendable (String) -> Void)?) in
             guard s.running else { return ([], nil, nil) }
-            return (results.filter { accept($0.instance) }.flatMap { s.table.upsert($0) }, s.onUp, s.onDown)
+            // A name that is no longer accepted leaves the table first (a revoked device, an old epoch).
+            let retired = s.table.instances.filter { !(accept?($0) ?? true) }.flatMap { s.table.remove($0) }
+            return (retired + results.filter { admit($0) }.flatMap { s.table.upsert($0) }, s.onUp, s.onDown)
         }
         guard let up, let down else { return }
         deliver(changes, onUp: up, onDown: down)
@@ -303,7 +318,7 @@ public final class BonjourBrowse: Sendable {
                 guard s.running else { return [] }
                 // Match first, then store: a name the caller does not know never takes a table slot,
                 // so forged names cannot evict real peers.
-                return found.filter { accept?($0.instance) ?? true }.flatMap { s.table.upsert($0) }
+                return found.filter { admit($0) }.flatMap { s.table.upsert($0) }
             }
             deliver(changes, onUp: onUp, onDown: onDown)
         case .removed(let names):
@@ -316,6 +331,13 @@ public final class BonjourBrowse: Sendable {
             let live = state.withLock { s in s.running }
             if live { onError(e) }
         }
+    }
+
+    /// A result enters the table only when the name filter and the result filter both let it in. The result
+    /// filter sees the TXT, which the nearby requester needs: an approver's name is random, so only its `m=v`
+    /// and product tag say it is one.
+    private func admit(_ f: BonjourFound) -> Bool {
+        (accept?(f.instance) ?? true) && (acceptFound?(f) ?? true)
     }
 
     private func deliver(
@@ -422,7 +444,8 @@ public final class BonjourBrowse: Sendable {
             }
             return BonjourFound(
                 instance: name, txt: txt,
-                endpoint: BonjourEndpoint(name: name, type: type, domain: domain, network: r.endpoint))
+                endpoint: BonjourEndpoint(
+                    name: name, type: type, domain: domain, network: r.endpoint, interfaces: r.interfaces))
         }
     }
 #endif

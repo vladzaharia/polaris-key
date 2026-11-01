@@ -489,8 +489,33 @@ key ring calls on `PolarisKey.keyring` through `PKeyCloudSyncController` unless 
   That was me.
 - **`PKeyCloudSyncStatus`** also draws `locked` ("Sync is locked." with **Unlock sync**, signal
   `unlock_requested`) and `ring-changed` ("Your sync key changed." with **Review**, which always
-  shows, signal `review_requested`). Following the sync client's state is the host binding and not
-  built yet; set `state` yourself until then.
+  shows, signal `review_requested`). With `follow_sdk` (the default) it follows `PolarisKey.cloud_sync`
+  and `PolarisKey.cloud_sync.saves` itself: no glue. While saves move it draws `transferring` ("Syncing
+  saves…" before its figures, `transfer_size` / `transfer_total`, and a bar filled by
+  `transfer_fraction`, or running when that is negative), `waiting` (`reason`: `network`, `battery` or
+  `background`) and `transfer-failed` (a secondary **Try again**, signal `retry_requested`). None of
+  them ever says synced. While a write runs the strip is `transferring` with the counted bytes, after a
+  failed write `transfer-failed` (until the next write starts), and while a conflict is unsettled
+  `conflict` with **Review**, which opens `PKeySaveConflict` over the game (`present_screens`).
+- **`PKeySaveConflict`.** The same save changed on two devices. It follows the saves by default
+  (`follow_sdk`, through `PKeySaveScreensHost.of(PolarisKey)`): it shows the first conflict a write ended
+  with and hides while there is none; a choice runs `saves.resolve`, and it moves on to keeping, kept or
+  failed with **Try again**. Cancel and Done drop the conflict without touching either copy. The game's one
+  line gives it the local save's bytes, which the SDK does not keep (**Keep the other version** needs none;
+  without the line, **Keep this device's version** and **Keep both** fail and say so):
+  `PKeySaveScreensHost.of(PolarisKey).local_copy = func(conflict: Dictionary) -> PackedByteArray: return my_bytes(conflict.id)`.
+  `saves.conflicts()` lists what is unsettled and `saves.dismiss_conflict(id)` forgets one. To drive the
+  screen yourself, set `follow_sdk = false`, then set
+  `step`, `local_when`, `remote_when`, `remote_device`, `remote_deleted`, `both_available`, `keep`,
+  `newer` and connect the signals. `newer` (`"local"` or `"remote"`, from your own metadata) tags that
+  card **Newer**; it chooses nothing and never shows when the other copy was deleted. Once applied it
+  titles itself with the result under a success mark; a failure offers **Try again**, **Choose
+  again** (`choose_again_requested()`: set `step` back to `"choose"`) and **Cancel**, none filled. It offers **Keep this device's version**, **Keep the other version** and
+  **Keep both** as one unfilled column, none the default; the first focus is **Cancel**. **Keep both**
+  stays on screen, disabled with its reason, while all 16 save slots are in use. When the other copy
+  was deleted it has its own title and lede and **Delete it here too** in place of the other two.
+  `keep_requested(keep)`, `retry_requested(keep)`, `cancelled()` and `done()`; `model` is the ui-core
+  view of the state.
 
 `PKeyCloudSyncController.begin(sdk)` says which screen a device needs: a locked device with no ring
 creates one and shows its recovery code, a ring this device cannot open asks for the code, a changed
@@ -882,6 +907,44 @@ if out.kind == PKeySignInOutcome.KIND_LICENSE_CHOICE:
   The encoder is pure GDScript, held to fixtures from Nayuki's qrcodegen (`tests/qr/`); about
   8 ms per encode on a release template (11 ms in the editor) on an M-series Mac.
 
+### Automatic sign-in (`PolarisKey.identity.auto_sign_in`)
+
+`auto_sign_in(opts)` signs the person in without a form. It never throws, and answers a
+`PKeyAutoSignInResult`. The rungs, in order:
+
+1. **Stored session.** A token from an earlier sign-in and a held license: `signed_in`, no network.
+2. **Silent restore.** Planned for the Apple and Android exports; the ladder skips it.
+3. **Platform account, silently.** Each installed provider (Sign in with Apple, Game Center, Play Games,
+   Google through Credential Manager, FedCM on web) over a fresh nonce from the Worker, then the exchange.
+4. **Platform sheet.** One account sheet, only with `prompt = "optional"`.
+
+Anything else is the regular sign-in form. Linux and Windows have no platform account: the ladder is
+rung 1, then `needs_sign_in`.
+
+```gdscript
+func sign_in_at_launch() -> void:
+	PKeyPlatformProviders.install(PolarisKey.identity)   # the gate and the sign-in dialog do this for you
+	var r := await PolarisKey.identity.auto_sign_in({prompt = "optional"})
+	match r.kind:
+		&"signed_in": pass        # the session is there (r.via, r.sync_key)
+		&"confirm": pass          # show r.pending.consent, then identity.choice.complete(r.pending.grant, null, {claims = [...]})
+		&"choose": pass           # the license choice (r.pending.view), then identity.choice.complete(grant, choice)
+		&"needs_sign_in": pass    # the regular form; r.reason is no_link, terms, signed_out, no_credential or cancelled
+		&"device_limit": pass     # every seat is taken: r.manage_url frees one
+		&"unavailable": pass      # r.code is the Worker's, or platform-identity-unavailable
+```
+
+Options: `prompt` (`"never"`, the default, or `"optional"`), `kinds` (exchange kinds to try), `providers`,
+`license_choice` (`"app"` or `"card"`), `device_name`, and `explicit` (the person pressed a sign-in button).
+Export options are opt-in: `polaris_key/apple_sign_in` (the Sign in with Apple entitlement),
+`polaris_key/game_center` with the Game Center extension, `polaris_key/play_games` and
+`polaris_key/play_games_app_id` for Play Games. Sign-out rule: `sign_out()` sets a flag once the Worker
+accepted it, and rungs 3 and 4 stay off until the person signs in again; the ladder's own exchange never
+clears it, and a sign-out during a prompt makes the run store nothing (`needs_sign_in` with reason
+`signed_out`). A provider whose credential was revoked at launch signs the device out the same way. No
+token, grant or link handle appears in a result's message, a `str()` or a log. The link offer and nearby
+approval are not built yet.
+
 ## Key ring (`PolarisKey.keyring`)
 
 The key ring is the root key behind end-to-end encrypted Cloud Sync. One ring per person and
@@ -939,8 +1002,11 @@ host does the same, and the state file's folder is excluded on every write (Andr
 no-backup directory, iOS through the flag, both with the plugin; nowhere else).
 
 `PolarisKey.keyring.status()` reports `root_persistence`, and the vault's `protection()` names
-the store in use (`keychain-sealed`, `keystore-sealed`, `dpapi-sealed`, `encrypted-file`, `file`,
-`memory`). The device's agreement key never leaves its store: a wrap is opened through the
+the store in use (`keychain-sealed`, `keystore-sealed`, `dpapi-sealed`, `encrypted-file`, `memory`).
+Only the three sealed stores protect the root. `encrypted-file` (Linux, which has no native sealer)
+is obfuscation, not protection: its key comes from the device id, the product and a salt beside
+the file, so code running as the same user can read the root. A vault made with `encrypted = false`
+is refused (`invalid-options`, `protection()` is `refused`): the root is never written as a plain file. The device's agreement key never leaves its store: a wrap is opened through the
 store's `dh`. The root, the code and every key print as redacted.
 
 - **Crypto in GDScript.** The engine has no AES-GCM, so values seal with AES-256-GCM over the
@@ -948,7 +1014,64 @@ store's `dh`. The root, the code and every key print as redacted.
   1 MiB per call (a file segment), about 1 MB/s. A synced file is at most 32 MiB on desktop (about
   30 s to seal); on iOS and Android files wait for the native lanes.
 - **Device keys.** The ring opens its wrap with the product's own device key store under
-  `store_root`, or the one you give as `PKeyOptions.device_keys`.
+  `store_root`, or the one you give as `PKeyOptions.device_keys`. The store follows the same rule as
+  the vault: sealed where a native lane exists, an `encrypted-file` (obfuscation, not protection)
+  where not, and a store made with `encrypted = false` is refused (`invalid-options`, `protection()`
+  is `refused`); the private keys are never written as a plain file. `PKeyDeviceKeyStore.for_tests`
+  keeps a plain file for test suites. `wipe()` on a refused store deletes a plain `device-keys` file
+  (and its salt and temporary siblings) an older build left behind, by name and without reading it.
+
+## Cloud Connect (`PolarisKey.cloud_connect`)
+
+Cloud Connect opens an encrypted session between a person's own devices: on the LAN when they share one,
+through the relay when they do not. The product turns it on (`launch.connect` is the operator's gate; while
+it is off `start()` fails `connect-unavailable`). The accessor is `cloud_connect`, never `connect`, which is
+Object's; the identity client under it is `PolarisKey.connect_client`.
+
+```gdscript
+func _ready() -> void:
+	PolarisKey.cloud_connect.channel.connect(_on_channel)  # without a listener, inbound sessions are closed
+	var started := await PolarisKey.cloud_connect.start()
+	if not started.ok:
+		print(started.code)
+		return
+	for peer in await PolarisKey.cloud_connect.refresh_peers():
+		print(peer["device_id"], peer["lan"], peer["relay"])
+
+func _on_channel(session: PKeyConnectSession) -> void:
+	session.message.connect(func(type: int, body: PackedByteArray): print(type, body.size()))
+
+func send_to(device_id: String) -> void:
+	var r := await PolarisKey.cloud_connect.open(device_id)
+	if r.ok:
+		(r.detail as PKeyConnectSession).send("hello".to_utf8_buffer())
+```
+
+- `start(options)` registers the device keys on first use, then brings up the LAN and the relay. Options:
+  `lan` and `relay` (`false` to turn one off, or a Dictionary of that service's options), `lan_attempt_seconds`
+  (default 4) and `label`. A LAN that cannot start is not fatal while the relay is on.
+- `open(device_id)` tries the LAN first when the device was seen there, then the relay. `session.path` says
+  which. Messages are application types 0x0100 to 0x7FFF.
+- `peers()` lists `{device_id, lan, relay}`; `refresh_peers()` asks the relay who is online now.
+  `devices()` is the Worker's list for display. `status()` is `{running, lan, lan_reason, lan_error, relay,
+relay_error, relay_reason}`.
+- The relay stays `off`, and no ticket is requested, when you pass `relay = false` or the product's discovery
+  turns the relay off or names no ticket endpoint (`relay_reason` says which).
+- Signing out stops Connect and forgets its state; a state that cannot be forgotten stops the sign-out.
+
+What runs where. The relay runs on every runtime, web included. The LAN runs on iOS, macOS, Android, Windows
+and Linux, and is `off` with `lan_reason` `unsupported` on web, which is relay only. Discovery is the OS's
+own where the build carries the native bridge: Apple's Bonjour on iOS and macOS, `NsdManager` on Android
+(from Android 17 the app needs `ACCESS_LOCAL_NETWORK`, which the export plugin declares; without the grant
+`start()` reports `nearby-permission-denied` for the LAN and the relay carries on). A mobile build without
+the bridge reports the LAN `off` with reason `unsupported`. Windows and Linux use the GDScript mDNS lane;
+where the engine cannot bind port 5353 the LAN is `querier_only`: this device finds others, and others do
+not find it. Pass `lan = {mdns = my_lane}` to hand in a discovery lane of your own. Crypto is GDScript
+unless a native lane passes its known-answer check (CryptoKit on Apple, CNG and Monocypher on Windows, JCA
+on Android); X25519 runs off the main thread, a few tens of milliseconds a handshake in the editor. The LAN
+check is the private block, not the subnet, because Godot lists no netmask. `connect.lan` is implemented
+in `parity.json` for all of these, except web; the native lanes are unit-tested over fakes and the
+native builds, and their device runs are the owner's checks.
 
 ## Cloud Sync settings (`PolarisKey.cloud_sync`)
 
@@ -1042,6 +1165,45 @@ the platform seal is not read through the weaker path. Its folder is rooted thro
 on every write: on Android with the `PolarisKeyAndroid` plugin it sits in the no-backup directory, on iOS with the
 `PolarisKeyApple` plugin it is marked out of backups, and elsewhere nothing is set. The journal never holds the root. The backup table above covers the
 key ring's files.
+
+## Synced saves (`PolarisKey.cloud_sync.saves`)
+
+A save is a metadata record and one file, written in that order so a save is never torn: the file
+goes up first, then the metadata. `PolarisKey.cloud_sync.saves` needs the Sync service and a signed-in
+person; with end-to-end encryption (the default) the file and the metadata are sealed with the
+[key ring](#key-ring-polariskeykeyring) and the Worker holds ciphertext. A locked ring, or a ring whose root was replaced while a call ran, fails the call
+with `sync-locked`.
+
+```gdscript
+func save_game(bytes: PackedByteArray) -> void:
+	var saves: PKeySaves = PolarisKey.cloud_sync.saves
+	var transfer: PKeyTransfer = saves.write("slot1", bytes, {"chapter": "two", "playtime": 5400, "formatVersion": 3})
+	var outcome: Dictionary = await transfer.wait()        # done, cancelled, failed or conflict; never an error value
+	match outcome.state:
+		"done": print("saved at version ", outcome.version)
+		"conflict":                                         # another device wrote first
+			var kept: PKeyTransfer = saves.resolve(outcome.conflict, "local", bytes)   # or "remote" or "both"
+			await kept.wait()
+
+func load_game() -> void:
+	var saves: PKeySaves = PolarisKey.cloud_sync.saves
+	var list: PKeyResult = await saves.list()      # [{id, version, metadata, file, newer_format}], at most 16
+	var read: PKeyResult = await saves.read("slot1")  # {id, version, metadata, file, bytes}
+```
+
+`write(id, bytes, metadata, opts)` returns at once. `opts` may carry `base_version` (an int, or `"*"` to
+create only) and `on_progress`. `transfer.pause()`, `resume()` and `cancel()` keep the upload's journal
+across a pause or a restart; `cancel()` also ends the wait for the metadata write and reports
+`cancelled`. That wait has no timeout: cancel, a sign-out (the write is dropped) and the host's retries
+end it. `PolarisKey.cloud_sync.transfers()` lists the writes in flight, and `transferProgress`,
+`transferDone` and `transferFailed` arrive on the `cloudSync` event. `list()`, `read()`, `revisions()` and `delete()` answer
+`PKeyResult`s; `read` of a save whose `formatVersion` is above
+`PKeyOptions.cloud_sync_save_format_version` fails with reason `newer-format` and downloads nothing.
+A save is at most 32 MiB (`cloud_sync_saves_max_bytes` lowers it) and the file is held whole in memory:
+the GDScript AES-GCM lane seals about a MiB a second, on a worker thread so the game keeps drawing.
+`cloud_sync_saves_delta` sends a changed save as content-defined chunks. A row you just wrote shows its
+file once the next pull names it. On iOS and Android every call answers the typed `unsupported` refusal
+until the native lanes (CC-14b).
 
 ## License notes
 

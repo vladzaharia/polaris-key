@@ -17,10 +17,16 @@ import im.plrs.key.release.DistributionClient
 import im.plrs.key.release.ReleaseClient
 import im.plrs.key.sdk.BackendClient
 import im.plrs.key.sdk.CloudConnect
+import im.plrs.key.sdk.CloudLinks
+import im.plrs.key.sdk.CloudNearby
 import im.plrs.key.sdk.CloudSyncClient
 import im.plrs.key.sdk.CloudSyncHostOptions
+import im.plrs.key.sdk.CloudTransfer
 import im.plrs.key.sdk.CommerceClient
 import im.plrs.key.sdk.PolarisKeyClient
+import im.plrs.key.sdk.SaveTransfer
+import im.plrs.key.sdk.TransferOffer
+import im.plrs.key.sdk.SavesClient
 import im.plrs.key.sdk.boot
 import im.plrs.key.sdk.bootHost
 import im.plrs.key.update.UpdateClient
@@ -70,6 +76,17 @@ internal suspend fun apiSurface() {
     CloudSyncClient::flush  // cloudSync.flush
     CloudSyncHostOptions::encryption  // cloudSync.encryption
     PolarisKeyClient::events  // cloudSync.event
+    CloudSyncClient::saves  // cloudSync.saves
+    SavesClient::list  // cloudSync.saves.list
+    SavesClient::read  // cloudSync.saves.read
+    SavesClient::write  // cloudSync.saves.write
+    SavesClient::delete  // cloudSync.saves.delete
+    SavesClient::revisions  // cloudSync.saves.revisions
+    CloudSyncClient::transfers  // cloudSync.transfers
+    SaveTransfer::pause  // cloudSync.transfer.pause
+    SaveTransfer::resume  // cloudSync.transfer.resume
+    SaveTransfer::cancel  // cloudSync.transfer.cancel
+    PolarisKeyClient::events  // cloudSync.transferEvent
     PolarisKeyClient::discover  // client.discover
     PolarisKeyClient::presentation  // client.presentation
     PolarisKeyClient::presentationIcon  // client.presentationIcon
@@ -174,4 +191,19 @@ internal suspend fun apiSurface() {
     CloudConnect::refreshPeers  // cloudConnect.refreshPeers
     CloudConnect::status  // cloudConnect.status
     CloudConnect::onNotice  // cloudConnect.onNotice
+    CloudNearby::request  // cloudConnect.nearby.request
+    CloudNearby::onRequest  // cloudConnect.nearby.onRequest
+    CloudLinks::pair  // cloudConnect.links.pair
+    CloudLinks::list  // cloudConnect.links.list
+    CloudLinks::remove  // cloudConnect.links.remove
+    CloudLinks::setReachable  // cloudConnect.links.setReachable
+    CloudLinks::open  // cloudConnect.links.open
+    CloudLinks::onLink  // cloudConnect.links.onLink
+    CloudLinks::interAccount  // cloudConnect.links.interAccount
+    CloudTransfer::send  // cloudConnect.transfer.send
+    CloudTransfer::onOffer  // cloudConnect.transfer.onOffer
+    CloudTransfer::onResult  // cloudConnect.transfer.onResult
+    val cancelById: (CloudTransfer, String) -> Unit = CloudTransfer::cancel  // cloudConnect.transfer.cancel
+    TransferOffer::accept  // cloudConnect.transfer.accept
+    TransferOffer::decline  // cloudConnect.transfer.decline
 }

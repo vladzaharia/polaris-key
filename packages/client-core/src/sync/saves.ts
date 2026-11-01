@@ -81,6 +81,13 @@ export interface SaveRecords {
     id: string,
     value: { [k: string]: Json },
     baseVersion: number | "*",
+    /** Fires when the caller cancels the write: stop waiting and reject with an `aborted`
+     *  `TransferError`. A pause does not fire it. There is no timeout: cancel, a sign-out drop and
+     *  the host's retries are what end a wait. */
+    cancel?: AbortSignal,
+    /** The pointer `finalize` returned: an acknowledged set adopts it, so the row lists the new
+     *  file at once instead of the prior one (or none). */
+    file?: SaveFileRef,
   ): Promise<SaveSetResult>;
   delete(id: string, baseVersion: number): Promise<SaveSetResult>;
 }
@@ -482,7 +489,13 @@ export class SavesClient {
       opts,
       keep === "both"
         ? { copy: true }
-        : { baseVersion: conflict.serverVersion ?? "*" },
+        : {
+            // A copy the server no longer holds is replaced on "record must not exist".
+            baseVersion:
+              conflict.remote === null || !conflict.serverVersion
+                ? "*"
+                : conflict.serverVersion,
+          },
     );
   }
 
@@ -519,6 +532,7 @@ export class SavesClient {
     opts: WriteOptions,
     mode: { baseVersion: number | "*" } | { copy: true } | null,
   ): SaveTransfer {
+    const hard = new AbortController();
     const source = "read" in bytes ? bytes : rangedBytes(bytes);
     const transferId = (this.d.newTransferId ?? ((s) => `saves:${s}`))(id);
     let sealed: Promise<SealedFile> | null = null;
@@ -600,7 +614,18 @@ export class SavesClient {
             }
           : {}),
       };
-      const set = await this.d.records.set(targetId, value, file.version);
+      const set = await this.d.records.set(
+        targetId,
+        value,
+        file.version,
+        hard.signal,
+        {
+          version: file.version,
+          size: file.size,
+          sha256: file.sha256,
+          format: file.format,
+        },
+      );
       if (set.ok)
         return {
           state: "done",
@@ -623,8 +648,12 @@ export class SavesClient {
       };
     };
 
-    return new WriteTransfer(transferId, progress, attempt, () =>
-      this.d.engine.cancel(transferId),
+    return new WriteTransfer(
+      transferId,
+      progress,
+      attempt,
+      () => this.d.engine.cancel(transferId),
+      () => hard.abort(),
     );
   }
 
@@ -675,15 +704,43 @@ export class SavesClient {
     serverVersion: number | undefined | null,
     known?: SaveRecord | null,
   ): Promise<SaveOutcome> {
-    const rec = known !== undefined ? known : await this.d.records.get(id);
     const slots = (await this.d.records.list()).length;
+    // The server's answer wins. `known` is the copy a rejected `set` carried (null: deleted). A
+    // file `begin` answers only a version, and the cached row stands in for it only while it is
+    // that very version; a stale row is never presented as the server's copy.
+    let remote: SaveSummary | null;
+    let version: number | null;
+    if (known !== undefined) {
+      remote = known ? this.summary(known) : null;
+      version = known?.version ?? serverVersion ?? null;
+    } else if (serverVersion === undefined || serverVersion === null) {
+      const rec = await this.d.records.get(id);
+      remote = rec ? this.summary(rec) : null;
+      version = rec?.version ?? null;
+    } else if (serverVersion === 0) {
+      remote = null;
+      version = 0;
+    } else {
+      const rec = await this.d.records.get(id);
+      remote =
+        rec && rec.version === serverVersion
+          ? this.summary(rec)
+          : {
+              id,
+              version: serverVersion,
+              metadata: {},
+              file: null,
+              newerFormat: false,
+            };
+      version = serverVersion;
+    }
     return {
       state: "conflict",
       conflict: {
         id,
         local: { metadata, size: source.size },
-        remote: rec ? this.summary(rec) : null,
-        serverVersion: rec?.version ?? serverVersion ?? null,
+        remote,
+        serverVersion: version,
         bothAvailable: slots < SYNC_SAVE_SLOTS,
       },
     };
@@ -729,6 +786,7 @@ class WriteTransfer implements SaveTransfer {
     readonly progress: { done: number; total: number },
     private readonly attempt: (signal: AbortSignal) => Promise<SaveOutcome>,
     private readonly release: () => Promise<void>,
+    private readonly onCancel: () => void = () => undefined,
   ) {
     this.done = this.drive();
   }
@@ -748,6 +806,7 @@ class WriteTransfer implements SaveTransfer {
   async cancel(): Promise<void> {
     if (this.state === "done" || this.state === "failed") return;
     this.wanted = "cancel";
+    this.onCancel();
     this.controller.abort();
     this.gate?.();
     await this.done;

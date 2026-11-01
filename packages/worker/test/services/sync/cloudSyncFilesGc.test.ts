@@ -24,7 +24,9 @@ import {
   call,
   filesPath,
   filesWorld,
+  finalize,
   push,
+  putBytes,
   rows,
   stored,
   uploadPath,
@@ -246,6 +248,26 @@ describe("an erasure leaves nothing in R2", () => {
     expect(w.r2.openUploads()).toBe(0);
   });
 
+  it("a single PUT that lands after the person's erasure leaves no object", async () => {
+    const w = await filesWorld();
+    const bytes = bytesOf(300, 5);
+    const res = await begin(w, "saves", "a", beginBody(bytes));
+    const up = (await res.json()) as BeginFileResponse;
+    const real = w.r2.put.bind(w.r2);
+    w.r2.put = async (...args: Parameters<typeof real>) => {
+      w.r2.put = real;
+      await deleteCloudSync(w.env, pin(w));
+      return real(...args);
+    };
+    const late = await putBytes(
+      w,
+      uploadPath("saves", "a", up.uploadId),
+      bytes,
+    );
+    expect(late.status).toBe(404);
+    expect(w.r2.keys()).toEqual([]);
+  });
+
   it("if R2 fails the erasure is refused and the rows (and keys) are kept for a retry", async () => {
     const w = await filesWorld();
     await stored(w, "saves", "a", bytesOf(10), { baseVersion: "*" });
@@ -343,6 +365,64 @@ describe("export and absorb carry files", () => {
     ).toEqual({ n: 2 });
   });
 
+  it("a single PUT that lands after an account merge keeps the file the survivor holds", async () => {
+    const w = await filesWorld();
+    const bytes = bytesOf(300, 3);
+    const res = await begin(w, "saves", "a", beginBody(bytes));
+    const up = (await res.json()) as BeginFileResponse;
+    const path = uploadPath("saves", "a", up.uploadId);
+    expect((await putBytes(w, path, bytes)).status).toBe(204);
+    const alice = pin(w);
+    const aliceKey = `u/${SLUG}/${alice.subject}/o/${up.uploadId}`;
+    // The second PUT is on its way when the file is finalized and the person's account is merged.
+    const real = w.r2.put.bind(w.r2);
+    w.r2.put = async (...args: Parameters<typeof real>) => {
+      w.r2.put = real;
+      expect((await finalize(w, "saves", "a", up.uploadId)).status).toBe(200);
+      await becomeBob(w);
+      await push(w, [
+        {
+          mutationId: nextId(),
+          target: { record: ["big", "bobs"] },
+          op: "set",
+          value: 1,
+          editedHlc: hlc,
+        },
+      ]);
+      const bobSubject = [...w.ns.instances.keys()]
+        .map((k) => k.split(":")[1]!)
+        .find((x) => x !== alice.subject) as string;
+      const bob = { product: SLUG, subject: bobSubject };
+      const doc = (await exportCloudSync(w.env, alice, { forMerge: true }))!;
+      await absorbCloudSync(w.env, bob, doc);
+      await deleteCloudSyncIfUnchanged(
+        w.env,
+        alice,
+        { seq: doc.seq, writes: doc.writes },
+        bob.subject,
+      );
+      await w.db.run(
+        "DELETE FROM account_product_subjects WHERE product = ? AND subject = ?",
+        SLUG,
+        alice.subject,
+      );
+      await w.db.run(
+        "INSERT INTO account_product_subject_aliases (product, alias, subject, merged_at) VALUES (?, ?, ?, ?)",
+        SLUG,
+        alice.subject,
+        bobSubject,
+        NOW,
+      );
+      return real(...args);
+    };
+    const late = await putBytes(w, path, bytes);
+    expect(late.status).toBe(404);
+    expect(w.r2.keys()).toContain(aliceKey);
+    const got = await call(w, "GET", `/${SLUG}/sync/files/saves/a`);
+    expect(got.status).toBe(200);
+    expect(new Uint8Array(await got.arrayBuffer())).toEqual(bytes);
+  });
+
   it("deleting the merged-away object keeps the files in R2; erasing the survivor then sweeps the absorbed prefix", async () => {
     const { w, alice, bob } = await pair();
     const doc = (await exportCloudSync(w.env, alice, { forMerge: true }))!;
@@ -427,3 +507,40 @@ describe("export and absorb carry files", () => {
 });
 
 void filesPath;
+
+describe("an object whose product is gone", () => {
+  it("an object that finds its product deleted removes its stored files before its rows, and keeps the rows while R2 fails", async () => {
+    clock(NOW * 1000);
+    const w = await filesWorld();
+    // The directory flush finds the product gone (its last statement changes no row).
+    (w.ns as unknown as { opts: { db?: unknown } }).opts.db = () => ({
+      batch: async () => undefined,
+      batchChanges: async (s: unknown[]) =>
+        s.map((_, i) => (i === s.length - 1 ? 0 : 1)),
+    });
+    await stored(w, "saves", "a", bytesOf(10));
+    expect(w.r2.keys()).toHaveLength(1);
+    clock(NOW * 1000 + 16 * 60_000);
+    const realDelete = w.r2.delete.bind(w.r2);
+    w.r2.delete = () => Promise.reject(new Error("r2 down"));
+    await alarm(w);
+    // R2 failed: the rows (and the retry alarm) stay, and the bytes are still there.
+    const inst = w.ns.instances.get(name(w))!;
+    expect(rows(w, "SELECT 1 FROM files")).toHaveLength(1);
+    expect(w.r2.keys()).toHaveLength(1);
+    expect(inst.storage.alarm).not.toBeNull();
+    // R2 recovers: the files go first, then the object's own storage.
+    w.r2.delete = realDelete;
+    clock(NOW * 1000 + 18 * 60_000);
+    await alarm(w);
+    expect(w.r2.keys()).toEqual([]);
+    expect(inst.storage.alarm).toBeNull();
+    expect(
+      inst.storage.sql.db
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
+        )
+        .all(),
+    ).toEqual([]);
+  });
+});

@@ -76,6 +76,7 @@ import { BackendClient, type BackendClientOptions } from "./backend/client.js";
 import { KeyringClient, type KeyringOptions } from "./keyring/client.js";
 import { CloudSyncHost, type CloudSyncHostOptions } from "./cloudSync/host.js";
 import { CloudSyncApi } from "./cloudSync/api.js";
+import { SavesApi } from "./cloudSync/saves.js";
 import { readStoredSubject } from "./identity/account.js";
 import { ConnectClient, type ConnectOptions } from "./connect/client.js";
 import { CloudConnect } from "./connect/cloudConnect.js";
@@ -100,6 +101,7 @@ import { PortalStore } from "./core/portal.js";
 import type { ParsedPortal } from "@polaris-key/client-core/portal";
 import {
   discoverProduct,
+  identityFragmentFrom,
   type DiscoverProductResult,
   type ProductDiscoveryDocument,
   type ServicesMap,
@@ -215,8 +217,14 @@ export class PolarisKeyClient {
   readonly cloudSyncHost: CloudSyncHost;
   /** Cloud Sync settings (U-06.3): `status()` and `flush()`; its events arrive on
    *  `events.on("cloudSync", …)`. A product without the Sync service answers the typed N/A. */
-  readonly cloudSync: Pick<CloudSyncApi, "status" | "flush">;
+  readonly cloudSync: Pick<CloudSyncApi, "status" | "flush"> & {
+    /** The saves of the signed-in person (U-22.5). */
+    readonly saves: SavesApi;
+    /** The save writes in flight. */
+    transfers(): ReturnType<SavesApi["transfers"]>;
+  };
   private readonly cloudSyncApi: CloudSyncApi;
+  private readonly savesApi: SavesApi;
 
   private readonly cache: CacheManager;
   private readonly tokens: TokenManager;
@@ -309,6 +317,19 @@ export class PolarisKeyClient {
       () => this.cache.state.license?.doc.licenseId ?? null,
       // Sign-out and deactivation both end in `identity.forget()`: the root and its pin go with them.
       () => this.keyring.forget(),
+      // Nearby approval (I-47.4): the device keys, the keys route and a fresh discovery read.
+      {
+        signer: () => this.connect.nearbySigner(),
+        registerKeys: (port) => this.devices.registerKeys(port),
+        refreshDiscovery: async () => {
+          // A read that failed says nothing about nearby, so it never falls back to the old
+          // document (N11: only a fresh read that still names `nearby` keeps a 404 an expiry).
+          const r = await this.discover().catch(() => null);
+          return r !== null && r.kind === "ok" ? this.discoveryDoc : null;
+        },
+        lan: () => this.cloudConnect.nearby,
+        keyring: () => this.keyring,
+      },
     );
     this.release = new ReleaseClient(
       this.core,
@@ -338,6 +359,16 @@ export class PolarisKeyClient {
           if (this.discoveryDoc === null) await this.discover();
           return this.discoveryDoc;
         },
+        // WIRE-CONTRACT-V5 §15.9: links are on only while the cached document says so.
+        interAccount: () => {
+          const f: unknown = this.discoveryDoc?.services?.connect;
+          return (
+            typeof f === "object" &&
+            f !== null &&
+            (f as { enabled?: unknown }).enabled === true &&
+            (f as { interAccount?: unknown }).interAccount === true
+          );
+        },
       },
       {
         ...(opts.keyring?.deviceKeys
@@ -346,7 +377,30 @@ export class PolarisKeyClient {
         ...opts.connect,
       },
     );
-    this.cloudConnect = new CloudConnect(this.connect);
+    this.cloudConnect = new CloudConnect(
+      this.connect,
+      {
+        slug: this.product,
+        now: () => this.core.now(),
+        requireIdentity: () =>
+          this.core.requireService("identity", Feature.identityNearby),
+        identity: async (fresh) => {
+          if (fresh || this.discoveryDoc === null)
+            await this.discover().catch(() => undefined);
+          return identityFragmentFrom(this.discoveryDoc);
+        },
+        // An unconfirmed nearby sign-in is not a sign-in yet (V5 §15.6.1 rule 12).
+        signedIn: async () =>
+          !this.tokens.unconfirmed && (await this.identity.current()) !== null,
+        signer: () => this.connect.nearbySigner(),
+      },
+      join(this.core.dirs.state, "transfer"),
+    );
+    // A device the roster dropped leaves nothing half-sent behind (§15.11).
+    this.connect.onRosterRemoved = (keys) => {
+      for (const k of keys)
+        void this.cloudConnect.transfer.purgePeer(k).catch(() => undefined);
+    };
     this.cloudSyncHost = new CloudSyncHost(
       {
         ctx: this.core,
@@ -369,6 +423,7 @@ export class PolarisKeyClient {
       },
       opts.cloudSync ?? {},
     );
+    let signedInAs: string | null = null;
     this.cloudSyncApi = new CloudSyncApi({
       ctx: this.core,
       host: this.cloudSyncHost,
@@ -376,10 +431,25 @@ export class PolarisKeyClient {
       config: this.config,
       subject: () => readStoredSubject(this.core.dirs.state),
       emit: (e) => this.events.safeEmit("cloudSync", e),
+      onSubject: (s) => {
+        signedInAs = s;
+      },
+      purgeSaves: () => this.savesApi.purge(),
+    });
+    this.savesApi = new SavesApi({
+      ctx: this.core,
+      host: this.cloudSyncHost,
+      keyring: this.keyring,
+      tokens: this.tokens,
+      subject: () => signedInAs,
+      attach: () => this.cloudSyncApi.attach(),
+      emit: (e) => this.events.safeEmit("cloudSync", e),
     });
     this.cloudSync = {
       status: () => this.cloudSyncApi.status(),
       flush: () => this.cloudSyncApi.flush(),
+      saves: this.savesApi,
+      transfers: () => this.savesApi.transfers(),
     };
     this.events.on("identity", (e) => {
       void this.cloudSyncApi.onIdentity(e).catch(() => undefined);
@@ -445,7 +515,12 @@ export class PolarisKeyClient {
     this.update.packs.on((p) => this.events.safeEmit("packs", p));
     this.update.onUpdateAvailable = (check) =>
       this.events.safeEmit("updateAvailable", check);
+    this.license.beforeRelease = async () => {
+      await this.cloudConnect.stopForSignOut();
+      await this.connect.leave();
+    };
     this.license.onDeactivated = async () => {
+      await this.cloudConnect.transfer.purge().catch(() => undefined);
       await this.keyring.forget();
       await this.identity.forget();
       await this.cloudSyncApi.onDeactivated().catch(() => undefined);
@@ -537,6 +612,8 @@ export class PolarisKeyClient {
       await this.portalStore.accept(result.manifest);
       this.cloudSyncHost.noteDiscovery();
       void this.cloudSyncApi.attach().catch(() => undefined);
+      // `interAccount` may have moved: links follow the document (§15.10 "Gates").
+      this.connect.notifyContacts();
     }
     return result;
   }
@@ -941,6 +1018,7 @@ export class PolarisKeyClient {
   /** Stop the refresh timers and Cloud Connect. Safe to call more than once. */
   close(): void {
     void this.cloudConnect.stop().catch(() => undefined);
+    void this.cloudConnect.nearby.stopAll().catch(() => undefined);
     void this.cloudSyncHost.close().catch(() => undefined);
     if (this.refreshTimer !== null) {
       clearTimeout(this.refreshTimer);

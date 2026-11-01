@@ -334,7 +334,11 @@ final class IdentityRedirectTests: XCTestCase {
         for value in answers {
             for text in [
                 "\(value)", String(reflecting: value), String(describing: value),
-                { () -> String in var out = ""; dump(value, to: &out); return out }(),
+                { () -> String in
+                    var out = ""
+                    dump(value, to: &out)
+                    return out
+                }(),
             ] {
                 XCTAssertFalse(text.contains(code), text)
                 XCTAssertFalse(text.contains(token), text)

@@ -361,6 +361,7 @@ export function RequestFlow({
         onContinue={() => void proceed()}
         onDeny={() => void deny()}
         onNotYou={() => void notYou()}
+        attach={view.purpose === "attach"}
       />
     );
   } else if (lic?.state === "none") {

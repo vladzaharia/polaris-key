@@ -16,10 +16,16 @@ import {
   CLOUD_CONNECT_DEFAULTS,
 } from "@polaris-key/catalog";
 import { deviceLicence } from "../../../core/accounts/syncAccess.js";
-import type { ServiceContext } from "../../../core/registry.js";
+import type {
+  DiscoveryContext,
+  ServiceContext,
+} from "../../../core/registry.js";
 import type { DeviceRow } from "../../../core/repo.js";
 import { resolveProductSetting } from "../../../core/settings/resolve.js";
-import { platformSetting } from "../../../core/settings/platformRead.js";
+import {
+  launchGateOn,
+  platformSetting,
+} from "../../../core/settings/platformRead.js";
 import { clampDayBytes } from "./engine.js";
 
 /** The entitlement a tier, a licence override or an add-on sets (plans/CC-01 §2.9). */
@@ -54,17 +60,44 @@ function monthBounds(now: number): { from: string; to: string } {
 }
 
 async function productSetting(
-  ctx: ServiceContext,
+  ctx: Pick<ServiceContext, "env" | "db" | "settings" | "product">,
   key: string,
+  now?: number,
 ): Promise<unknown> {
   if (!ctx.settings) return undefined;
   const r = await resolveProductSetting(
     { env: ctx.env, db: ctx.db, registry: ctx.settings },
     ctx.product.slug,
     key,
-    { now: ctx.now },
+    now === undefined ? {} : { now },
   );
   return r?.value;
+}
+
+/**
+ * Are links between accounts available on this product right now (V5 §15.9, §15.10 "Gates")?
+ * True only while `cloudConnect.interAccount` is on, `launch.connectLinks` is on and the service
+ * is on. Fails closed: an unreadable gate, a missing registry or an unreadable setting is off.
+ * The one reader of `cloudConnect.interAccount` and `launch.connectLinks`; the ticket route, the
+ * upgrade and discovery all ask it.
+ */
+export async function contactLinksOn(
+  ctx: Pick<
+    ServiceContext | DiscoveryContext,
+    "env" | "db" | "settings" | "product"
+  >,
+  now?: number,
+): Promise<boolean> {
+  if (!ctx.product.services.connect.enabled) return false;
+  if (!(await launchGateOn(ctx.env, ctx.db, "launch.connectLinks")))
+    return false;
+  try {
+    return (
+      (await productSetting(ctx, "cloudConnect.interAccount", now)) === true
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** The switch, the pause and the month, read fresh. Fails closed on an unreadable pause. */

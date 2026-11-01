@@ -107,8 +107,8 @@ class AccessibilityTest {
         // The update prompt in its dialog (the phone's bottom sheet): a window of its own, so it is listed apart.
         for ((name, content) in kitScreens + ("updatePrompt-sheet" to updateDialog)) {
             show(content)
-            // The update banner sits over the product, which brings its own heading.
-            checkScreen(name, failures, requireHeading = name != "updatePrompt-ready")
+            // The update banner and the transfer strip sit over the product, which brings its own heading.
+            checkScreen(name, failures, requireHeading = name != "updatePrompt-ready" && !name.startsWith("cloudSyncTransfer-"))
         }
         assertTrue(failures.joinToString("\n"), failures.isEmpty())
     }

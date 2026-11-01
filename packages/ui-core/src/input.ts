@@ -177,6 +177,11 @@ export interface ActivateDoneInput {
   /** The person came back from AddToAccount (Cancel): focus returns to the control that opened it
    *  (DL9), not to the primary. */
   returned?: boolean;
+  /** Where Add your name and email goes. `portal` (Polaris Locker's page, an external link) says so
+   *  in the action's label even with Identity on; absent or `app`, the in-page form. */
+  addIn?: "portal" | "app";
+  /** The channel is still being read: the action shows busy until it is known. */
+  addBusy?: boolean;
 }
 
 /** AddToAccount's steps (SIGN-IN.md §3.9, frames 43 to 46). */
@@ -263,6 +268,30 @@ export interface NearbyApprovalInput {
     | "rate-limited";
   /** The new device's friendly name. */
   device?: string;
+}
+
+/**
+ * Pairing with someone nearby (CC-19.9, `cloudConnect.links.pair`). `device` is the label the other
+ * device reported: nothing authenticates it, so the screen words it as reported. `code` is the
+ * pairing code both people compare, drawn as served. `categories` are the data categories this app
+ * asks both people to approve (ids, at most 8); the screen lists them before the confirm button.
+ * `reason` is how a session that reached the code ended without a link. `unavailable`: links are off
+ * for this product (the typed `connect_links_disabled`).
+ */
+export interface LinkPairingInput {
+  step: "open" | "code" | "confirm" | "linked" | "failed" | "unavailable";
+  device?: string;
+  code?: string;
+  categories?: readonly string[];
+  reason?: "declined" | "timeout" | "full" | "closed";
+}
+
+/** A contact's offer to send something (D-8): consent per transfer. `device` is the contact's
+ *  label, `name` what it offers, both text the other side chose. */
+export interface TransferOfferInput {
+  step: "ask" | "receiving" | "done" | "failed";
+  device?: string;
+  name: string;
 }
 
 export interface DeviceCodeInput {
@@ -445,6 +474,10 @@ export interface UiInput {
   autoSignIn?: AutoSignInInput;
   /** Nearby approval on the device that is already signed in. */
   nearbyApproval?: NearbyApprovalInput;
+  /** Pairing with someone nearby; absent, LinkPairing is hidden. */
+  linkPairing?: LinkPairingInput;
+  /** A contact's offer to send something; absent, TransferOffer is hidden. */
+  transferOffer?: TransferOfferInput;
   choices?: LicenseChoiceView;
   replaceView?: ReplaceView;
   /** The row the person picked in LicenseChoice (a license id, `keep` or `create`). */

@@ -104,6 +104,8 @@ Every save is checked against the [settings reference](/docs/reference/settings/
 name is at most 200 characters, the device limit at most 1,000,000 and the
 offline grace 1 to 365 days, and a value outside answers 422 `invalid_value`.
 
+A rename is also held to the manifest's [display-name rule](/docs/build/manifest/product/#display-names): a name with a control, invisible or bidirectional-formatting character answers 422, and a reserved name does too once the platform enforces reserved display names.
+
 ## Linking a repository to an existing product
 
 A product created from nothing (or before its repository had a `.pkey/`) can be handed over to

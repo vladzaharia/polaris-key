@@ -17,6 +17,9 @@ import { RelayService, type RelayOptions, type RelayStatus } from "./relay.js";
 import { serialQueue } from "./redact.js";
 import { locks } from "./lock.js";
 import type { ConnectSession } from "./session.js";
+import { CloudTransfer } from "./transfer.js";
+import { XferStore } from "./xferStore.js";
+import type { OfferHandler, TransferEvent } from "./xferTypes.js";
 
 /** The most a sign-out waits on Connect (decision D-12). */
 export const SIGN_OUT_BOUND_MS = 15_000;
@@ -24,6 +27,15 @@ export const SIGN_OUT_BOUND_MS = 15_000;
 export interface CloudConnectOptions {
   /** Options for the relay client (the socket factory, timers, caps, label). */
   relay?: RelayOptions;
+}
+
+/** What the facade holds for Direct Transfer (CC-20.4). */
+export interface TransferHooks {
+  /** The IndexedDB database of partial transfers; null for none (every offer is declined). */
+  store: XferStore | null;
+  handler(): OfferHandler | null;
+  maxSize(): number | null;
+  emit(e: TransferEvent): void;
 }
 
 export interface CloudPeer {
@@ -59,6 +71,7 @@ export class CloudConnect {
   #epoch = 0;
   /** The relay a `stop()` in flight is still closing, for the forced stop to reach. */
   #draining: RelayService | null = null;
+  readonly transfer: CloudTransfer;
 
   constructor(
     private readonly connect: ConnectClient,
@@ -67,8 +80,18 @@ export class CloudConnect {
       channel: (s: ConnectSession) => boolean;
       notice: (n: ConnectNotice) => void;
       change: () => void;
+      transfer?: TransferHooks;
     },
-  ) {}
+  ) {
+    const t = hooks.transfer;
+    this.transfer = new CloudTransfer({
+      store: t?.store ?? null,
+      openDevice: (id) => this.open(id),
+      handler: () => t?.handler() ?? null,
+      maxSize: () => t?.maxSize() ?? null,
+      emit: (e) => t?.emit(e),
+    });
+  }
 
   status(): CloudConnectStatus {
     const r = this.#relay?.status ?? null;
@@ -219,6 +242,11 @@ export class CloudConnect {
 
   /** A session to one of the person's devices over the relay. */
   async open(deviceId: string): Promise<ConnectSession> {
+    if (this.#elsewhere)
+      throw new LanError(
+        "elsewhere",
+        "Another tab of this app holds the relay.",
+      );
     if (!this.#running || this.#relay === null)
       throw new LanError("not_started", "Cloud Connect is not started.");
     return this.#track(await this.#relay.dial(deviceId));
@@ -227,10 +255,13 @@ export class CloudConnect {
   #inbound(s: ConnectSession): void {
     this.#track(s);
     // Nothing listens: an inbound session would only sit and fill its queue.
-    if (!this.hooks.channel(s)) void s.close().catch(() => undefined);
+    // A session that carries transfers stays: it declines what nobody decides.
+    if (!this.hooks.channel(s) && !s.xferCapable)
+      void s.close().catch(() => undefined);
   }
 
   #track(s: ConnectSession): ConnectSession {
+    this.transfer.adopt(s);
     this.#sessions.add(s);
     s.onClose(() => this.#sessions.delete(s));
     return s;

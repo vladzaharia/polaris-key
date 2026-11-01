@@ -275,6 +275,13 @@ function errorCodes() {
       mdxProse(entry.description),
       helpCell(helpMap, entry.code),
     ]);
+  const peerRows = registry
+    .filter((entry) => entry.kind === "peer")
+    .map((entry) => [
+      `\`${entry.code}\``,
+      `\`${entry.service}\``,
+      mdxProse(entry.description),
+    ]);
   // WIRE-CONTRACT-V4 §14.3 (SP-53): a product backend's problem `type` is this page with the code
   // as its fragment, so each code a backend answers with gets its own heading (its anchor).
   // `not_entitled` is the existing wire code, reused for a route's entitlement requirement.
@@ -323,6 +330,12 @@ from it. A new code needs an entry there first.`,
       "Raised by an SDK, never sent by the Worker. Hosts match on the exact string.",
       "",
       table(["Code", "Service", "Meaning", "Help"], clientRows),
+      "",
+      "## Peer codes (`conformance/parity/errors.json`)",
+      "",
+      "Close codes of a device-to-device session (WIRE-CONTRACT-V5 §15.6). They travel in a peer close frame, never in an HTTP body, and the Worker never emits one.",
+      "",
+      table(["Code", "Service", "Meaning"], peerRows),
       "",
       "## Backend codes (`conformance/parity/errors.json`)",
       "",
@@ -671,9 +684,9 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
       "",
       "WIRE-CONTRACT-V4 §11.5, client behaviour beside the contract: the journal, the debounce, the HLC and pre-contact re-stamping, conflict rebase, one outstanding compare-and-swap per record, the per-subject partitions, the first-sign-in move, sign-out with pending operations, principal changes, `account_required` and a `/sync` 401, each scenario a run of SDK calls, clock moves and scripted server answers. Literal data (`tools/sync-scenarios.ts`), not computed by an implementation; `@polaris-key/client-core/cloud-sync` is checked against it like every SDK, by the Node runner `conformance/runners/node/syncScenarios.test.ts`.",
       "",
-      `## Device labels (\`device-label.json\`): ${deviceLabel.cases?.length ?? "?"} cases`,
+      `## Device labels (\`device-label.json\`): ${deviceLabel.cases?.length ?? "?"} cases and ${deviceLabel.helloCases?.length ?? "?"} HELLO cases`,
       "",
-      "WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the one normalisation of the device label every SDK sends as `deviceName` and the Worker stores. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped.",
+      "WIRE-CONTRACT-V5 §12.7.1 (PX-W13, DEVICE-LABEL-STRIP): the one normalisation of the device label every SDK sends as `deviceName` and the Worker stores, with the two code point tables (`ranges.space`, `ranges.strip`) every SDK asserts equal to its own. `helloCases` is the same cleaner with NFC after step 2, for a peer's HELLO `label` and `app` (§15.6). Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped.",
       "",
       `## Product presentation (\`presentation-matrix.json\`): ${presentationMatrix.parseCases?.length ?? "?"} parse, ${presentationMatrix.pickCases?.length ?? "?"} size-choice and ${presentationMatrix.verifyCases?.length ?? "?"} verification cases`,
       "",

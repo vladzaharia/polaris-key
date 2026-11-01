@@ -29,6 +29,7 @@ import {
 import { setting } from "./define.js";
 import type { SettingDef } from "./types.js";
 import { LAUNCH_GATES } from "./launchGates.js";
+import { MIN_SDK_SETTINGS } from "./minSdk.js";
 import { CONSOLE_ACCESS_DEF } from "./consoleAccessDef.js";
 
 /**
@@ -183,6 +184,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
   }),
 
   ...LAUNCH_GATES,
+  ...MIN_SDK_SETTINGS,
 
   // ── Licensing (LX-05, S-19 §7.4, decision 15) ───────────────────────────────────────────
   // How an incompatible declaration of a reserved entitlement name (`channels`, `deviceLimit`,

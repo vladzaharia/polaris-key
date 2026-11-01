@@ -54,6 +54,8 @@ import { readPlatformSignIn } from "./platformSignIn.js";
 import { gameKindsOn } from "./passthrough/subjectToken.js";
 import { keyEntryLimit } from "../../core/licensing/keyEntries.js";
 import { accountPortalUrl } from "../../core/licensing/manageUrl.js";
+import { customerOrigin } from "../../core/hosts.js";
+import { nativeRedirectDiscovery } from "./passthrough/redirectUri.js";
 import { licenseHolderHooks } from "./accounts/holders.js";
 import {
   STOREFRONT_ACTIVATIONS_LISTENER,
@@ -184,6 +186,13 @@ export const identityService: ServiceDescriptor = {
       ? await gameKindsOn(env, db, product.slug, audiences)
       : [];
     kinds.push(...games);
+    // I-40.8 (§12.11.6): nearby approval is named only while the operator gate, the product row
+    // and `identity.nearby` all serve it: the same test the three routes answer 404 with.
+    const nearbyRow = (await launchGateOn(env, db, "launch.identityNearby"))
+      ? await getProduct(db, product.slug)
+      : null;
+    const nearbyOn =
+      nearbyRow !== null && (await readPlatformSignIn(db, nearbyRow)).nearby;
     const fragment: IdentityDiscovery = {
       enabled: true,
       // I-08: the platform sign-in (`authorize`, `token`) needs no per-product IdP row, so a
@@ -221,6 +230,12 @@ export const identityService: ServiceDescriptor = {
             },
           }
         : {}),
+      ...(nearbyOn ? { nearby: true as const } : {}),
+      // I-15 (§12.6, §12.12): the native redirect classes, named while `request` is served.
+      nativeRedirect: await nativeRedirectDiscovery(
+        { env, db, ...(settings ? { registry: settings } : {}) },
+        product,
+      ),
       endpoints: {
         session: `${base}/identity/session`,
         sessionLicense: `${base}/identity/session/license`,
@@ -233,6 +248,9 @@ export const identityService: ServiceDescriptor = {
         authDevicePoll: `${base}/identity/auth/device/poll`,
         authorize: `${base}/identity/authorize`,
         token: `${base}/identity/token`,
+        request: `${base}/identity/request`,
+        // The customer-host page a loopback listener answers `303` to (§12.9 rule 2).
+        signinReturn: `${customerOrigin(env, base) ?? new URL(base).origin}/signin/return`,
         choiceLicenses: `${base}/identity/choice/licenses`,
         choiceDevices: `${base}/identity/choice/devices`,
         choiceComplete: `${base}/identity/choice/complete`,
@@ -245,6 +263,13 @@ export const identityService: ServiceDescriptor = {
           ? {
               nonce: `${base}/identity/nonce`,
               link: `${base}/identity/link`,
+            }
+          : {}),
+        ...(nearbyOn
+          ? {
+              nearbyStart: `${base}/identity/nearby/start`,
+              nearbyApprove: `${base}/identity/nearby/approve`,
+              nearbyPoll: `${base}/identity/nearby/poll`,
             }
           : {}),
         ...(accountPortal ? { accountPortal } : {}),

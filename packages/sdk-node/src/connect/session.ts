@@ -20,12 +20,24 @@ import { printAs } from "../core/redact.js";
 import {
   FrameReader,
   PeerChannel,
+  XFER_CAP,
   encodeFrame,
   type ClosedReason,
   type PeerHello,
   type PeerSessionOptions,
   type SessionEvent,
 } from "@polaris-key/client-core/peer";
+import type { ContactRef } from "./contacts.js";
+
+/** The `HELLO` a mode-v end sends: the optional label, this platform and the product slug. */
+export const nearbyHello = (
+  slug: string,
+  label?: string,
+): PeerSessionOptions["hello"] => ({
+  ...(label !== undefined ? { label } : {}),
+  platform: process.platform,
+  app: slug,
+});
 
 export const HANDSHAKE_FRAME_MAX = 16_384;
 export const HANDSHAKE_MS = 30_000;
@@ -37,6 +49,8 @@ const MAX_QUEUED_MESSAGES = 256;
 export const QUEUE_PAUSE_BYTES = 4 * 1024 * 1024;
 export const QUEUE_RESUME_BYTES = 1024 * 1024;
 export const QUEUE_MAX_BYTES = 8 * 1024 * 1024;
+/** Bytes the socket may hold unsent for a peer that does not read, before the link ends `peer_busy`. */
+export const WRITE_MAX_BYTES = 4 * 1024 * 1024;
 
 export type LanErrorReason =
   | "no_identity"
@@ -49,7 +63,9 @@ export type LanErrorReason =
   | "closed"
   | "too_large"
   | "bad_type"
-  | "not_started";
+  | "not_started"
+  | "not_picked"
+  | "bad_input";
 
 /** The registered client code of each reason. */
 const LAN_CODE: Record<LanErrorReason, string> = {
@@ -64,6 +80,8 @@ const LAN_CODE: Record<LanErrorReason, string> = {
   closed: ErrorCode.networkError,
   too_large: ErrorCode.invalidArgument,
   bad_type: ErrorCode.invalidArgument,
+  not_picked: ErrorCode.invalidArgument,
+  bad_input: ErrorCode.invalidArgument,
 };
 
 export class LanError extends PolarisError {
@@ -79,6 +97,18 @@ export class LanError extends PolarisError {
     this.closeCode = options?.closeCode;
   }
   readonly closeCode: SessionCloseCode | undefined;
+}
+
+/**
+ * Call a host callback so that a throw cannot skip the cleanup that follows it (nearby approval:
+ * the callbacks are the host's, and a bug there must not leave a session or an advert up).
+ */
+export function guarded(fn: () => void): void {
+  try {
+    fn();
+  } catch {
+    // The host's bug is the host's; the module's own state is already settled.
+  }
 }
 
 /** Why a session ended: a client-core code, or the socket going away. */
@@ -99,6 +129,24 @@ export interface ChannelLink {
   readonly channel: PeerChannel;
   /** Stop (true) or resume (false) reading from the transport, where it can. */
   pause?(on: boolean): void;
+  /**
+   * A link with a bounded send queue: reserve room for a host send of `bytes` before anything is
+   * encrypted. Null when it is refused, the link having ended `peer_busy` (so the keys do not
+   * advance for a dropped message); otherwise a function that releases the reservation once the
+   * send has settled. Reserving at check time means unawaited sends cannot all pass together.
+   */
+  hold?(bytes: number): (() => void) | null;
+}
+
+/** Records of `xfer/1` held until the transfer layer binds (a peer sends one `OFFER` and waits). */
+const XFER_QUEUE_MAX = 16;
+
+/** What `ConnectSession.xferPort` hands the transfer layer. @internal */
+export interface XferPort {
+  peerKey: Uint8Array;
+  send(type: number, body: Uint8Array): Promise<void>;
+  close(code: "peer_bye" | "peer_busy"): void;
+  bind(sink: (type: number, body: Uint8Array) => void): void;
 }
 
 /** Which path a session took (WIRE-CONTRACT-V5 §15.7: the relay is the fallback). */
@@ -115,6 +163,11 @@ export class ConnectSession {
   #closed: SessionClosed | null = null;
   #bytes = 0;
   readonly #link: ChannelLink;
+  #peerKey: Uint8Array | null = null;
+  #xferSend: ((type: number, body: Uint8Array) => Promise<void>) | null = null;
+  #xferSink: ((type: number, body: Uint8Array) => void) | null = null;
+  #xferQueue: { type: number; body: Uint8Array }[] = [];
+  #xferTaken = false;
 
   /** @internal */
   constructor(
@@ -125,12 +178,27 @@ export class ConnectSession {
     readonly role: "initiator" | "responder",
     readonly remoteAddress: string,
     readonly path: SessionPath = "lan",
+    /** The link a mode-`c` session runs over (§15.10); null for the person's own devices. */
+    readonly contact: ContactRef | null = null,
+    /** The peer's authenticated static key (its certificate's agreeKey, or the pinned contact key). */
+    remoteStatic: Uint8Array | null = null,
   ) {
     this.#link = link;
+    // Direct Transfer (§15.11): when both sides listed `xfer/1`, the six record types are taken at
+    // once, so none reaches the channel before a reader exists. `bind` hands them to the transfer
+    // layer; until then a small queue holds them.
+    if (remoteStatic !== null && caps.includes(XFER_CAP)) {
+      this.#peerKey = remoteStatic.slice();
+      try {
+        this.#xferSend = link.channel.attachXfer((t, b) => this.#xferIn(t, b));
+      } catch {
+        this.#xferSend = null;
+      }
+    }
     // The link holds the channel and with it the discovery keys: never printed.
     printAs(this, () => ({
       session: "ConnectSession",
-      peerDeviceId,
+      ...(contact !== null ? { contact: contact.id } : { peerDeviceId }),
       path,
       role,
     }));
@@ -146,6 +214,8 @@ export class ConnectSession {
       throw new LanError("bad_type", "Application types are 0x0100 to 0x7FFF.");
     if (this.#closed !== null)
       throw new LanError("closed", "The session is closed.");
+    const release = this.#link.hold?.(body.length);
+    if (release === null) return;
     try {
       await this.#link.channel.sendRecord(type, body);
     } catch (e) {
@@ -155,13 +225,54 @@ export class ConnectSession {
           "The message is larger than the peer accepts.",
         );
       throw new LanError("closed", "The session is closed.", { cause: e });
+    } finally {
+      release?.();
     }
   }
 
   /** Send a record of any type the session does not own (a peer document, a later transfer
    *  type). The channel refuses HELLO, CLOSE, REKEY and SAS records. @internal */
   sendRecord(type: number, body: Uint8Array): Promise<void> {
-    return this.#link.channel.sendRecord(type, body);
+    const release = this.#link.hold?.(body.length);
+    if (release === null) return Promise.resolve();
+    const sent = this.#link.channel.sendRecord(type, body);
+    if (release === undefined) return sent;
+    return sent.finally(release);
+  }
+
+  #xferIn(type: number, body: Uint8Array): void {
+    if (this.#closed !== null) return;
+    if (this.#xferSink !== null) return this.#xferSink(type, body);
+    if (this.#xferQueue.length >= XFER_QUEUE_MAX) {
+      void this.#link.channel.close("peer_busy");
+      return;
+    }
+    this.#xferQueue.push({ type, body });
+  }
+
+  /**
+   * The transfer layer's hold on this session (§15.11): the peer's key, a writer and a binder for
+   * the reader. Once, and only when both sides listed `xfer/1`; null otherwise. @internal
+   */
+  xferPort(): XferPort | null {
+    if (this.#xferSend === null || this.#peerKey === null || this.#xferTaken)
+      return null;
+    this.#xferTaken = true;
+    const send = this.#xferSend;
+    return {
+      peerKey: this.#peerKey.slice(),
+      send: (type, body) => {
+        const release = this.#link.hold?.(body.length);
+        if (release === null) return Promise.resolve();
+        const sent = send(type, body);
+        return release === undefined ? sent : sent.finally(release);
+      },
+      close: (code) => void this.close(code).catch(() => undefined),
+      bind: (sink) => {
+        this.#xferSink = sink;
+        for (const r of this.#xferQueue.splice(0)) sink(r.type, r.body);
+      },
+    };
   }
 
   /** The next message; rejects when the session closes with none waiting. */
@@ -191,9 +302,22 @@ export class ConnectSession {
     return () => this.#onClose.delete(fn);
   }
 
-  /** Close with `peer_bye` (or another code); resolves when the socket is down. */
-  async close(code: "peer_bye" | "peer_busy" = "peer_bye"): Promise<void> {
+  /** The peer's Noise static key (its `agreeKey` in mode a). @internal */
+  peerStatic: Uint8Array | null = null;
+
+  /**
+   * Close with `peer_bye` (or another code); resolves when the socket is down. `peer_revoked` is
+   * what a deleted contact's open sessions hear (§15.10).
+   */
+  async close(
+    code: "peer_bye" | "peer_busy" | "peer_revoked" = "peer_bye",
+  ): Promise<void> {
     await this.#link.channel.close(code);
+  }
+
+  /** The roster no longer lists the peer: close `peer_revoked`. @internal */
+  async revoke(): Promise<void> {
+    await this.#link.channel.close("peer_revoked");
   }
 
   /** @internal */
@@ -246,6 +370,11 @@ export function routeRecord(
 
 export interface SocketLinkOptions {
   socket: Socket;
+  /**
+   * The contacts the channel was given (same order): a mode-`c` session names the one that
+   * opened it by index (§15.10), and its `ConnectSession` carries that link.
+   */
+  contacts?: readonly ContactRef[];
   channel: Omit<PeerSessionOptions, "send" | "onEvent">;
   onRing?: (jws: string, epoch: number) => void;
   onTrust?: (jws: string) => void;
@@ -253,6 +382,13 @@ export interface SocketLinkOptions {
   onEstablished?: (s: ConnectSession) => void;
   onEnded?: () => void;
   handshakeMs?: number;
+  /**
+   * Modes v and p (CC-15): the host owns the session. Every event of the channel goes here except
+   * `closed`, there is no `ConnectSession`, and the handshake window ends at `established`.
+   */
+  onEvent?: (e: SessionEvent) => void;
+  /** With `onEvent`: the link is over, with why. Called once. */
+  onClosed?: (c: SessionClosed) => void;
 }
 
 /** A socket bound to one `PeerChannel`. */
@@ -268,6 +404,8 @@ export class SocketLink {
   #deadline: NodeJS.Timeout;
   #ended = false;
   #lost = false;
+  /** The transport exists (a frame may then be the full 65,535 bytes, and a CLOSE can go out). */
+  #up = false;
 
   readonly #o: SocketLinkOptions;
 
@@ -283,13 +421,14 @@ export class SocketLink {
     this.channel = new PeerChannel({
       ...o.channel,
       send: (noise) => {
-        if (!socket.destroyed && !socket.writableEnded)
-          socket.write(encodeFrame(noise));
+        if (socket.destroyed || socket.writableEnded) return;
+        socket.write(encodeFrame(noise));
+        if (socket.writableLength > WRITE_MAX_BYTES) this.#unread();
       },
       onEvent: (e) => this.#event(e),
     });
     this.#deadline = setTimeout(
-      () => this.#fail("handshake_failed", false),
+      () => this.#fail("peer_timeout"),
       o.handshakeMs ?? HANDSHAKE_MS,
     );
     this.#deadline.unref();
@@ -312,27 +451,50 @@ export class SocketLink {
   #data(chunk: Buffer): void {
     if (this.#ended) return;
     const frames = this.#reader.push(chunk);
-    if (frames === null) return this.#fail("peer_bad_frame", false);
+    if (frames === null) return this.#fail("peer_bad_frame");
     for (const f of frames) {
-      if (this.#session === null && f.length > HANDSHAKE_FRAME_MAX)
-        return this.#fail("handshake_failed", false);
+      if (this.#session === null && !this.#up && f.length > HANDSHAKE_FRAME_MAX)
+        return this.#fail("handshake_failed");
       void this.channel.receive(f);
     }
   }
 
   #event(e: SessionEvent): void {
+    if (this.#o.onEvent !== undefined) {
+      if (e.type === "established") {
+        this.#up = true;
+        clearTimeout(this.#deadline);
+      }
+      if (e.type === "closed")
+        this.#finish({
+          code: this.#lost && !e.byPeer ? "connection_lost" : e.code,
+          byPeer: e.byPeer,
+        });
+      else this.#o.onEvent(e);
+      return;
+    }
     switch (e.type) {
       case "established": {
-        if (e.peerDeviceId === undefined) break;
+        // Mode `c`: no device id, the contact that opened the session names the peer.
+        const ref =
+          e.contactIndex !== undefined
+            ? this.#o.contacts?.[e.contactIndex]
+            : undefined;
+        if (e.peerDeviceId === undefined && ref === undefined) break;
+        this.#up = true;
         clearTimeout(this.#deadline);
         this.#session = new ConnectSession(
           this,
-          e.peerDeviceId,
+          e.peerDeviceId ?? "",
           e.caps,
           e.hello,
           this.#o.channel.role,
           this.#o.socket.remoteAddress ?? "",
+          "lan",
+          ref ?? null,
+          e.remoteStatic,
         );
+        this.#session.peerStatic = e.remoteStatic;
         this.#o.onEstablished?.(this.#session);
         this.#settle.resolve(this.#session);
         break;
@@ -361,21 +523,30 @@ export class SocketLink {
     }
   }
 
-  #fail(code: SessionCloseCode, byPeer: boolean): void {
+  /** The link ends itself: the closing side names its reason (§15.6; a zero-length frame is
+   *  `peer_bad_frame`, the handshake deadline `peer_timeout`). A CLOSE goes out only once the
+   *  transport exists. */
+  #fail(code: "peer_bad_frame" | "peer_timeout" | "handshake_failed"): void {
     if (this.#ended) return;
-    if (this.#session === null) {
-      // Not a live session: the channel has nothing to send.
-      this.#finish({ code, byPeer });
-      void this.channel.close("peer_bye");
-      return;
-    }
-    void this.channel.close("peer_bye");
+    // No transport yet: the channel has nothing to send. Past it the CLOSE goes out first, and
+    // the channel's `closed` event ends the link.
+    if (!this.#up) this.#finish({ code, byPeer: false });
+    void this.channel.close(code === "handshake_failed" ? "peer_bye" : code);
+  }
+
+  /** The peer is not reading and the socket holds too much: end `peer_busy` and drop the socket
+   *  at once (no CLOSE, because nobody is reading it). */
+  #unread(): void {
+    if (this.#ended) return;
+    this.#finish({ code: "peer_busy", byPeer: false });
+    this.#o.socket.destroy();
   }
 
   #finish(c: SessionClosed): void {
     if (this.#ended) return;
     this.#ended = true;
     clearTimeout(this.#deadline);
+    this.#o.onClosed?.(c);
     if (this.#session !== null) this.#session.ended(c);
     else
       this.#settle.reject(

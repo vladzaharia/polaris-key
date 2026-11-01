@@ -8,6 +8,10 @@
 //   open(id)     a session to one device: LAN first, the relay after a bounded LAN attempt
 //   onChannel()  sessions other devices opened to this one, on either path
 //   stop()       close the sessions, the relay and the LAN service
+//   nearby       approval of a device with no sign-in by a signed-in device nearby (mode v, CC-15):
+//                `request()` on the new device, `onRequest()` on the approver
+//   links        inter-account links (mode p pairing, mode c sessions, CC-19): `pair()`, `list()`,
+//                `remove()`, `open()`, `onLink()`; off unless discovery says `interAccount`
 //
 // Rules this module keeps:
 //  - the order is LAN, then relay. The LAN attempt is bounded (`lanAttemptMs`); when it fails or
@@ -15,15 +19,41 @@
 //    was not seen on the LAN goes straight to the relay. `session.path` says which was used;
 //  - with the relay disabled (`relay: false` at start, or per call) no relay socket is opened and
 //    no ticket is asked for: a device that is not reachable on the LAN stays unreachable;
-//  - the relay carries only mode `a` sessions (see relay.ts). Modes `v` and `p` are not reachable
-//    through this API at all;
+//  - the account relay carries only mode `a` sessions (see relay.ts). Modes `v` and `p` are not
+//    reachable through this API at all, and mode `c` runs over contact rooms (contactRelay.ts)
+//    that only `links` opens;
 //  - a failure on one path is never swallowed: when no path works the last typed error is thrown
 //    (`LanError` or `RelayError`).
 
-import { stopWithin } from "@polaris-key/client-core/peer";
+import {
+  PolarisError,
+  UnsupportedError,
+  type DeviceKeyPort,
+} from "@polaris-key/client-core";
+import { stopWithin, type Ring } from "@polaris-key/client-core/peer";
+import { base64UrlEncodeBytes } from "@polaris-key/jws";
+import { ErrorCode, Feature } from "../constants.generated.js";
+import type { IdentityFragment } from "../discovery.js";
 import { serialQueue, type ConnectNotice } from "./channel.js";
 import type { ConnectClient, ConnectDevice } from "./client.js";
+import { ContactRelay } from "./contactRelay.js";
+import { CloudLinks } from "./links.js";
+import { contactId } from "./contacts.js";
+import { CloudTransfer } from "./transfer.js";
+import { PartialStore } from "./transferStore.js";
 import type { LanOptions, LanPeer, LanService } from "./lan.js";
+import { MdnsUnavailableError } from "./mdns.js";
+import {
+  NearbyApprover,
+  type NearbyApproval,
+  type NearbyApproverHandle,
+  type NearbyApproverOptions,
+} from "./nearbyApprover.js";
+import {
+  NearbyRequester,
+  type NearbyRequest,
+  type NearbyRequestOptions,
+} from "./nearbyRequester.js";
 import {
   RelayError,
   type RelayOptions,
@@ -31,6 +61,21 @@ import {
   type RelayStatus,
 } from "./relay.js";
 import { ConnectSession, LanError } from "./session.js";
+
+/** What nearby approval reads of the client (CC-15.N4). */
+export interface NearbyDeps {
+  slug: string;
+  /** Seconds since the epoch. */
+  now(): number;
+  /** The Identity service is on for this product, else the typed N/A. */
+  requireIdentity(): void;
+  /** The Identity fragment of discovery; `fresh` loads it again first. Null while it is off. */
+  identity(fresh: boolean): Promise<IdentityFragment | null>;
+  /** This device is signed in on the product. */
+  signedIn(): Promise<boolean>;
+  /** D's device keys and its `X-PKey-Device` value. */
+  signer(): Promise<{ port: DeviceKeyPort; deviceId: string }>;
+}
 
 export interface CloudConnectOptions {
   /** The LAN half. `false` turns it off. */
@@ -67,6 +112,172 @@ const LAN_ATTEMPT_MS = 4000;
 /** The most a sign-out waits on Connect (decision D-12). */
 export const SIGN_OUT_BOUND_MS = 15_000;
 
+const unsupported = (
+  detail: string,
+  reason: "product" | "dependency" | "runtime",
+): UnsupportedError =>
+  new UnsupportedError(
+    { supported: false, feature: Feature.identityNearby, reason, detail },
+    reason === "product"
+      ? ErrorCode.serviceUnavailable
+      : ErrorCode.nearbyUnsupported,
+  );
+
+/**
+ * Nearby approval (CC-15; WIRE-CONTRACT-V5 §15.6.1), `client.cloudConnect.nearby`. It is gated by
+ * the Identity service's discovery (`nearby` and its endpoints), never by Connect: it works with
+ * Connect off. It carries the vouch over the LAN and calls no route; the host calls
+ * `nearby/start`, `poll` and `approve` and gives the answers to the handles.
+ */
+export class CloudNearby {
+  readonly #approvers = new Set<NearbyApprover>();
+  readonly #requests = new Set<NearbyRequester>();
+  /** Bumped by every `stopAll`: a start that began before it must not outlive it. */
+  #epoch = 0;
+
+  constructor(private readonly deps: NearbyDeps | null) {}
+
+  async #fragment(
+    fresh: boolean,
+    endpoints: readonly ("nearbyStart" | "nearbyPoll" | "nearbyApprove")[],
+  ): Promise<IdentityFragment> {
+    const d = this.deps;
+    if (d === null)
+      throw unsupported(
+        "Nearby approval is not set up on this client.",
+        "runtime",
+      );
+    // Discovery first: the service table comes from it once it is loaded.
+    const f = await d.identity(fresh);
+    d.requireIdentity();
+    const ep = (f?.endpoints ?? {}) as Record<string, string | undefined>;
+    if (f === null || f.nearby !== true || endpoints.some((k) => !ep[k]))
+      throw unsupported(
+        "This product's discovery does not name nearby approval.",
+        "product",
+      );
+    return f;
+  }
+
+  /** The multicast-dns dependency is optional: its absence is the typed `nearby-unsupported`. */
+  static #wrap(e: unknown): never {
+    if (e instanceof MdnsUnavailableError)
+      throw unsupported(e.message, "dependency");
+    throw e;
+  }
+
+  /**
+   * D, the device with no sign-in: browse for approvers nearby and list them for the person to tap
+   * (`choose`). `request` is the handle `nearby/start` answered. Throws the typed N/A when the
+   * product serves no nearby approval or this runtime cannot browse, and a closed error when a
+   * sign-out (`stopAll`) landed while it was starting.
+   */
+  async request(o: NearbyRequestOptions): Promise<NearbyRequest> {
+    const epoch = this.#epoch;
+    await this.#fragment(true, ["nearbyStart", "nearbyPoll"]);
+    const d = this.deps!;
+    for (const r of this.#requests) if (r.closed) this.#requests.delete(r);
+    if (epoch !== this.#epoch)
+      throw new LanError("closed", "Nearby approval was stopped.");
+    let r: NearbyRequester;
+    try {
+      r = await NearbyRequester.start(
+        { slug: d.slug, now: () => d.now(), signer: () => d.signer() },
+        o,
+      );
+    } catch (e) {
+      return CloudNearby.#wrap(e);
+    }
+    if (epoch !== this.#epoch) {
+      await r.close().catch(() => undefined);
+      throw new LanError("closed", "Nearby approval was stopped.");
+    }
+    this.#requests.add(r);
+    return r;
+  }
+
+  /**
+   * M, a signed-in device: advertise while the person has "Approve a nearby device" open
+   * (`prompt: true`) or has allowed background approval with the permission granted
+   * (`prompt: false` with `background: true`), and hand each session that reaches the code to
+   * `handler`. Returns the handle that stops, pauses and resumes it. Throws `account_required`
+   * when the device is signed out (also when the sign-out landed while this was starting), and the
+   * typed N/A when the product serves no nearby approval.
+   */
+  async onRequest(
+    handler: (a: NearbyApproval) => void,
+    o: NearbyApproverOptions,
+  ): Promise<NearbyApproverHandle> {
+    const epoch = this.#epoch;
+    await this.#fragment(true, ["nearbyApprove"]);
+    const d = this.deps!;
+    const signedOut = (): PolarisError =>
+      new PolarisError(
+        ErrorCode.accountRequired,
+        "Sign in before approving a nearby device.",
+      );
+    if (!(await d.signedIn()) || epoch !== this.#epoch) throw signedOut();
+    let h: NearbyApprover;
+    try {
+      h = await NearbyApprover.start(
+        {
+          slug: d.slug,
+          now: () => d.now(),
+          signedIn: () => d.signedIn(),
+          nearbyServed: () =>
+            this.#fragment(true, ["nearbyApprove"]).then(
+              () => true,
+              () => false,
+            ),
+        },
+        handler,
+        o,
+      );
+    } catch (e) {
+      return CloudNearby.#wrap(e);
+    }
+    // The sign-out may have landed while the advert was starting, before the handle was kept.
+    if (!(await d.signedIn().catch(() => false)) || epoch !== this.#epoch) {
+      await h.stop().catch(() => undefined);
+      throw signedOut();
+    }
+    this.#approvers.add(h);
+    return {
+      stop: async () => {
+        this.#approvers.delete(h);
+        await h.stop();
+      },
+      pause: () => h.pause(),
+      resume: () => h.resume(),
+      setPrompt: (open) => h.setPrompt(open),
+      reopen: () => h.reopen(),
+      status: () => h.status(),
+    };
+  }
+
+  /** Stop every advert and close every request. The sign-out step; also `client.close()`. */
+  async stopAll(): Promise<void> {
+    this.#epoch++;
+    const hs = [...this.#approvers];
+    const rs = [...this.#requests];
+    await Promise.all([
+      ...hs.map((h) => h.stop().catch(() => undefined)),
+      ...rs.map((r) => r.close().catch(() => undefined)),
+    ]);
+    for (const h of hs) this.#approvers.delete(h);
+    for (const r of rs) this.#requests.delete(r);
+  }
+
+  /** The sign-out bound ran out: drop every socket and listener now, with no goodbye. */
+  forceStop(): void {
+    this.#epoch++;
+    for (const h of this.#approvers) h.destroy();
+    for (const r of this.#requests) r.destroy();
+    this.#approvers.clear();
+    this.#requests.clear();
+  }
+}
+
 export class CloudConnect {
   #lan: LanService | null = null;
   #relay: RelayService | null = null;
@@ -84,10 +295,73 @@ export class CloudConnect {
   /** Bumped by a forced stop, so a `start()` it overtook tears down what it made. */
   #epoch = 0;
   /** What a `stop()` in flight is still closing, for the forced stop to reach. */
-  #draining: { lan: LanService | null; relay: RelayService | null } | null =
-    null;
+  #draining: {
+    lan: LanService | null;
+    relay: RelayService | null;
+    contactRelay: ContactRelay | null;
+  } | null = null;
 
-  constructor(private readonly connect: ConnectClient) {}
+  readonly #nearby: CloudNearby;
+  readonly #links: CloudLinks;
+  readonly #transfer: CloudTransfer;
+  #contactRelay: ContactRelay | null = null;
+
+  constructor(
+    private readonly connect: ConnectClient,
+    nearby: NearbyDeps | null = null,
+    /** Where partial files of received transfers are kept (`<state>/transfer`); null for none. */
+    transferDir: string | null = null,
+  ) {
+    this.#nearby = new CloudNearby(nearby);
+    // A roster this device stores re-admits every open session (§15.6).
+    connect.onRoster((ring) => this.#readmit(ring));
+    this.#transfer = new CloudTransfer({
+      store: transferDir === null ? null : new PartialStore(transferDir),
+      openDevice: (id) => this.open(id),
+      openLink: (id) => this.#links.open(id),
+      hasLink: async (id) =>
+        (await connect.contactRows()).some((r) => contactId(r.agreeKey) === id),
+    });
+    this.#links = new CloudLinks(connect, {
+      adopt: (s) => this.#transfer.adopt(s),
+      removed: (keys) =>
+        Promise.all(keys.map((k) => this.#transfer.purgePeer(k))).then(
+          () => undefined,
+        ),
+    });
+  }
+
+  /** Direct Transfer (CC-20.3): `send(peer, source)`, `onOffer(handler)`, `onResult(fn)`. */
+  get transfer(): CloudTransfer {
+    return this.#transfer;
+  }
+
+  /** Inter-account links (CC-19): `pair`, `list`, `remove`, `setReachable`, `open`, `onLink`. */
+  get links(): CloudLinks {
+    return this.#links;
+  }
+
+  /**
+   * Admit each open session again against a roster this device has just stored: a peer the roster
+   * no longer lists with the key the session was admitted under is closed `peer_revoked`. A
+   * roster that only adds devices keeps every session.
+   */
+  #readmit(ring: Ring): void {
+    for (const s of [...this.#sessions]) {
+      const key =
+        s.peerStatic === null ? null : base64UrlEncodeBytes(s.peerStatic);
+      const listed = ring.devices.some(
+        (d) =>
+          d.deviceId === s.peerDeviceId && (key === null || d.agreeKey === key),
+      );
+      if (!listed) void s.revoke().catch(() => undefined);
+    }
+  }
+
+  /** Nearby approval (CC-15): `request()` on the new device, `onRequest()` on the approver. */
+  get nearby(): CloudNearby {
+    return this.#nearby;
+  }
 
   status(): CloudConnectStatus {
     const r = this.#relay?.status ?? null;
@@ -143,6 +417,21 @@ export class CloudConnect {
           relay.onNotice((n) => this.#notice(n)),
         );
       }
+      // The contact rooms (§15.7) and the links API ride the same transports. A device with no
+      // links keeps no room; the list is read again whenever it changes.
+      let contactRelay: ContactRelay | null = null;
+      if (this.#relayOn) {
+        contactRelay = new ContactRelay(
+          this.connect.contactRelaySource(),
+          opts.relay === false ? {} : opts.relay,
+        );
+        this.#contactRelay = contactRelay;
+        await contactRelay.start().catch(() => undefined);
+      }
+      this.#links.attach(this.#lan, contactRelay, {
+        lanAttemptMs: this.#lanAttemptMs,
+        relayOn: this.#relayOn,
+      });
       this.#running = true;
     });
   }
@@ -156,8 +445,10 @@ export class CloudConnect {
       for (const u of this.#unsub.splice(0)) u();
       const lan = this.#lan;
       const relay = this.#relay;
-      this.#lan = this.#relay = null;
-      this.#draining = { lan, relay };
+      const contactRelay = this.#contactRelay;
+      this.#lan = this.#relay = this.#contactRelay = null;
+      this.#draining = { lan, relay, contactRelay };
+      await this.#links.detach();
       await Promise.all(
         [...this.#sessions].map((s) => s.close().catch(() => undefined)),
       );
@@ -165,6 +456,7 @@ export class CloudConnect {
       await Promise.all([
         lan?.stop().catch(() => undefined),
         relay?.stop().catch(() => undefined),
+        contactRelay?.stop().catch(() => undefined),
       ]);
       if (epoch === this.#epoch) this.#draining = null;
     });
@@ -178,6 +470,11 @@ export class CloudConnect {
    */
   async stopForSignOut(boundMs: number = SIGN_OUT_BOUND_MS): Promise<void> {
     if (await stopWithin(() => this.stop(), boundMs)) this.#forceStop();
+    // The partial files of received transfers go with the session (they are the peer's bytes).
+    await stopWithin(() => this.#transfer.purge(), boundMs);
+    // Then the nearby adverts and sessions (after Connect, before the device leaves it).
+    if (await stopWithin(() => this.#nearby.stopAll(), boundMs))
+      this.#nearby.forceStop();
   }
 
   #forceStop(): void {
@@ -185,13 +482,22 @@ export class CloudConnect {
     this.#serial = serialQueue();
     this.#running = false;
     for (const u of this.#unsub.splice(0)) u();
-    const held = [{ lan: this.#lan, relay: this.#relay }, this.#draining];
-    this.#lan = this.#relay = null;
+    const held = [
+      {
+        lan: this.#lan,
+        relay: this.#relay,
+        contactRelay: this.#contactRelay,
+      },
+      this.#draining,
+    ];
+    this.#lan = this.#relay = this.#contactRelay = null;
     this.#draining = null;
     this.#sessions.clear();
+    void this.#links.detach().catch(() => undefined);
     for (const h of held) {
       h?.lan?.abort();
       h?.relay?.abort();
+      h?.contactRelay?.abort();
     }
   }
 
@@ -282,6 +588,7 @@ export class CloudConnect {
   }
 
   #track(s: ConnectSession): ConnectSession {
+    this.#transfer.adopt(s);
     this.#sessions.add(s);
     s.onClose(() => this.#sessions.delete(s));
     return s;

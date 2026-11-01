@@ -117,6 +117,9 @@
     "swift-floor": {
       "paths": ["sdks/swift/"]
     },
+    "swift-linux": {
+      "paths": ["sdks/swift/"]
+    },
     "swiftui-mac": {
       "paths": [
         "sdks/swift/Sources/PolarisKeyUI",

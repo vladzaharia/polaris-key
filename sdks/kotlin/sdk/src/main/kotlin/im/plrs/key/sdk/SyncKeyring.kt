@@ -14,8 +14,9 @@
 //  - The first root this client acquires (create, recover, unlock) pins `{ringId, epoch, rootKid}`
 //    (no secret). A served ring or wrap that differs is never opened: `unlock()` answers
 //    `RingChanged`, and only the recovery code (`recover`) or an explicit `acceptRingChange`
-//    re-pins. `forget()` drops the pin and the stored root; the sign-out hook calls it. The stored
-//    root is used only while it matches the pin.
+//    re-pins. With no pin, the stored root's `{ringId, epoch, kid}` is the pin. `forget()` drops the
+//    stored root, then the pin (a root that cannot be removed keeps the pin); the sign-out hook calls
+//    it. The stored root is used only while it matches the pin.
 //  - Where the root lives (the host may pass `KeyringOptions.rootStorage`): Android seals it with
 //    its own Keystore alias (`androidSyncRootStorage`); on a JVM desktop it is the owner-only 0600
 //    file the device keys use (the JVM has no OS keyring); with no state directory it is memory
@@ -76,6 +77,15 @@ public class SyncKeyring internal constructor(
     /** Feeds the machine: it is told now, and on every unlock and lock. Returns a detach function. */
     public fun attach(listener: SyncRootListener): () -> Unit = memory.attach(listener)
 
+    /**
+     * The file codec of [collection] over the root held now. It reads the ring on every call and on every stream piece,
+     * and refuses with `sync-locked` once the ring locks or lets go of this root. Refuses with `sync-locked` while locked.
+     */
+    internal fun fileCodec(collection: String): FileCodec {
+        val held = need()
+        return GuardedFileCodec(E2eFileCodec(held.root, collection)) { memory.held === held }
+    }
+
     /** Whether this device holds a root right now. */
     public val unlocked: Boolean get() = memory.held != null
 
@@ -122,6 +132,12 @@ public class SyncKeyring internal constructor(
      */
     public suspend fun removeBackup(): Boolean = gate.withLock { backup.remove() }
 
+    /**
+     * Whether any key ring state is held (a root in memory, a pin or a stored root), read without creating
+     * anything: a licence-only app has none, and its deactivation never touches this storage.
+     */
+    internal suspend fun holdsState(): Boolean = gate.withLock { memory.held != null || memory.others.isNotEmpty() || vault.mightHold() }
+
     /** The pinned ring, or null before this client first acquired a root. Only [forget] drops it. */
     public suspend fun pin(): SyncRingPin? = vault.pin()
 
@@ -167,12 +183,12 @@ public class SyncKeyring internal constructor(
     private suspend fun unlockSteps(accept: SyncRingPin?): SyncUnlockResult {
         val state = readState()
         val ring = state.ring ?: decided(SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoRing))
-        val pinned = vault.pin()
+        val anchor = anchorOf(accept)
         // An accept holds only for the ring the person was shown; a ring that moved since is reported again.
-        val expected = accept ?: pinned
+        val expected = accept ?: anchor
         val served = SyncRingPin(ring.ringId, ring.epoch, ring.rootKid)
         if (expected != null && expected != served) {
-            decided(SyncUnlockResult.RingChanged(pinned ?: expected, served, ring.createdAt, state.wrap?.by))
+            decided(SyncUnlockResult.RingChanged(anchor ?: expected, served, ring.createdAt, state.wrap?.by))
         }
         val unlocked = SyncUnlockResult.Unlocked(ring.ringId, ring.epoch)
         val kid = unhex(ring.rootKid) ?: decided(UNUSABLE)
@@ -199,6 +215,15 @@ public class SyncKeyring internal constructor(
             return unlocked
         }
         decided(if (wrap == null) SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap) else UNUSABLE)
+    }
+
+    /**
+     * The ring this client already trusts: the pin or, with no pin, the stored root's {ringId, epoch, kid}. An unreadable
+     * pin or root is an error, not an absent one. A confirmed accept reads neither strictly, so it still works.
+     */
+    private suspend fun anchorOf(accept: SyncRingPin?): SyncRingPin? {
+        val checked = accept == null
+        return vault.pin(checked) ?: if (checked) vault.load(checked = true)?.let { SyncRingPin(it.ringId, it.epoch, it.kid) } else null
     }
 
     private suspend fun openOwnWrap(ring: SyncKeyringRing, wrap: SyncKeyringWrapInfo, kid: ByteArray): ByteArray? {

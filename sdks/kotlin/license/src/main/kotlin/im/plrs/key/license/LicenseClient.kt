@@ -77,6 +77,11 @@ public class LicenseClient(
     options: LicenseClientOptions = LicenseClientOptions(),
     /** Raised after [deactivate] wiped the credentials, so the facade can publish the new state (SP-51). */
     private val onDeactivated: (suspend () -> Unit)? = null,
+    /**
+     * Runs first in [deactivate], before any request: the facade stops what depends on the credential and
+     * forgets the Cloud Sync key ring. An exception stops the deactivation with the token kept and no request sent.
+     */
+    private val beforeRelease: (suspend () -> Unit)? = null,
     // Last, so `LicenseClient(core, options) { ... }` keeps binding its trailing lambda here.
     private val onAcquired: LicenseAcquiredListener? = null,
 ) {
@@ -199,6 +204,7 @@ public class LicenseClient(
      * holding a token.
      */
     public suspend fun deactivate() {
+        beforeRelease?.invoke()
         core.token()?.let { LicenseEndpoints.deauthorize(core, it) }
         core.clearAll()
         onDeactivated?.invoke()

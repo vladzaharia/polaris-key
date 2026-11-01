@@ -3,6 +3,7 @@
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import type { Product } from "../../../core/products.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 import { getDevice } from "../../../core/devices/store.js";
 import { sendSecurityNotice } from "../../../core/notify/send.js";
 import { appDeviceApprovedNotice } from "../../../core/notify/templates.js";
@@ -34,8 +35,12 @@ export async function noticeDeviceCodeBind(
       who.email,
       appDeviceApprovedNotice({
         deviceLabel: label,
-        // TODO(DNI): shownAppName(cx.env, cx.db, cx.product.slug, cx.product.name)
-        productName: cx.product.name,
+        productName: await shownAppName(
+          cx.env,
+          cx.db,
+          cx.product.slug,
+          cx.product.name,
+        ),
         productSlug: cx.product.slug,
         origin: noticeOrigin(cx.env, cx.req),
         via: "device",

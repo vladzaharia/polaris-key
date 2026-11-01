@@ -66,7 +66,9 @@ import {
   redirectWebHappy,
   redirectWebKeyReturn,
   redirectWebKeyReturnLimit,
+  redirectWebKeyReturnRefusals,
 } from "./redirect.js";
+import { REDIRECT_NATIVE_SCENARIOS } from "./redirectNative.js";
 
 import { CHOICE_SCENARIOS } from "./choice.js";
 import { CLOUD_SYNC_SCENARIOS } from "./cloudSync.js";
@@ -81,6 +83,7 @@ import { HOLDERS_SCENARIOS } from "./holders.js";
 import { LINK_SCENARIOS } from "./link.js";
 import { RESTORE_SCENARIOS } from "./restore.js";
 import { GAME_SCENARIOS } from "./gameExchange.js";
+import { NEARBY_SCENARIOS } from "./nearby.js";
 
 export const SCENARIOS: Scenario[] = [
   discoveryCapabilities,
@@ -129,7 +132,9 @@ export const SCENARIOS: Scenario[] = [
   redirectWebErrors,
   redirectWebKeyReturn,
   redirectWebKeyReturnLimit,
+  redirectWebKeyReturnRefusals,
   identityRequestHints,
+  ...REDIRECT_NATIVE_SCENARIOS,
   ...CHOICE_SCENARIOS,
   ...LOCKER_SCENARIOS,
   ...EXCHANGE_SCENARIOS,
@@ -143,4 +148,5 @@ export const SCENARIOS: Scenario[] = [
   ...CONNECT_SCENARIOS,
   ...HOLDERS_SCENARIOS,
   ...RESTORE_SCENARIOS,
+  ...NEARBY_SCENARIOS,
 ];

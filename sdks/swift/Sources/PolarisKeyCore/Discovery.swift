@@ -170,11 +170,22 @@ public struct IdentityDiscovery: Sendable, Equatable {
     /// the product setting and the launch gate allow it.
     public let restore: Bool
 
+    /// The device-code poll may answer `choose` (UK-42.22, §12.6); only with License on.
+    public let deviceChoice: Bool
+
+    /// Nearby approval (§12.11.5, CC-15) is served: a signed-in device nearby can approve a device with no
+    /// sign-in. The routes are `nearbyStart`, `nearbyPoll` and `nearbyApprove` in `endpoints`.
+    public let nearby: Bool
+
     public init(
         issuer: String? = nil, account: Bool = false, keyEntryLimit: Int? = nil,
         endpoints: [String: String] = [:], exchange: IdentityExchangeDiscovery? = nil,
-        restore: Bool = false
+        restore: Bool = false,
+        deviceChoice: Bool = false,
+        nearby: Bool = false
     ) {
+        self.deviceChoice = deviceChoice
+        self.nearby = nearby
         self.issuer = issuer
         self.account = account
         self.keyEntryLimit = keyEntryLimit
@@ -190,7 +201,9 @@ public struct IdentityDiscovery: Sendable, Equatable {
             keyEntryLimit: fragment.extras["keyEntryLimit"]?.intValue,
             endpoints: fragment.endpoints,
             exchange: IdentityExchangeDiscovery(fragment.extras["exchange"]),
-            restore: fragment.extras["restore"]?.boolValue == true)
+            restore: fragment.extras["restore"]?.boolValue == true,
+            deviceChoice: fragment.extras["deviceChoice"]?.boolValue == true,
+            nearby: fragment.extras["nearby"]?.boolValue == true)
     }
 
     /// The authorize endpoint a redirect sign-in sends the browser to.
@@ -215,6 +228,9 @@ public struct IdentityDiscovery: Sendable, Equatable {
             $0?.isEmpty == false
         }
     }
+    /// The device-code start may ask `licenseChoice: app` (UK-42.22, §12.6): discovery carries
+    /// `deviceChoice` and all four grant routes.
+    public var deviceChoiceAvailable: Bool { deviceChoice && choiceAvailable }
     /// The product's page in the customer portal.
     public var accountPortal: String? { endpoints["accountPortal"] }
     /// `POST`: the single-use nonce a platform provider signs into its ID token (§12.11.2).
@@ -223,6 +239,10 @@ public struct IdentityDiscovery: Sendable, Equatable {
     public var link: String? { endpoints["link"] }
     /// `POST` enrols or checks this device's restore key, `DELETE` revokes it (§12.11.8).
     public var restoreEndpoint: String? { endpoints["restore"] }
+    /// `POST`: D's nearby request (§12.11.5), `POST`: its poll, and M's approval.
+    public var nearbyStart: String? { endpoints["nearbyStart"] }
+    public var nearbyPoll: String? { endpoints["nearbyPoll"] }
+    public var nearbyApprove: String? { endpoints["nearbyApprove"] }
 }
 
 /// `identity.exchange` of the discovery document (§12.11): which providers the product accepts.

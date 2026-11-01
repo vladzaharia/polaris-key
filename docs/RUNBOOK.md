@@ -113,9 +113,15 @@ curl -fsS https://key.plrs.im/api/capabilities | jq .
 ```
 
 Launch gates: each v0.10.0 feature has a platform setting (`launch.identityExchange`,
-`launch.connect`, `launch.syncE2e`, `launch.relay`; Platform → Settings) that ships off. A gate is
+`launch.connect`, `launch.syncE2e`, `launch.relay`, `launch.identityNearby`; Platform → Settings) that ships off. A gate is
 on in staging and dev through `[vars]`. Turn one on in production only after the feature's
 security sign-off. An off gate answers as the build did before the feature existed.
+
+`launch.identityNearby` serves the three nearby approval routes and also needs the Identity
+service on and the product's `identity.nearby` setting on. Turn it on in production only after
+the SDK slices for the launched apps ship, the security review of nearby approval (SR-2) and the
+cryptographer's review of the key-binding and proof rules are signed off, and real-device runs on
+a local network have passed, a dual-stack network included. Its off state answers not found.
 
 ## Secrets
 
@@ -2504,6 +2510,26 @@ browser press, and Deny ends in their generic failure. Roll back only in an avai
 an older Worker ignores `approvedAt`, so flows waiting at the approval page would complete at their
 next poll. Count approved, denied and expired-unapproved flows from the audit rows
 `identity.signin.device_approved` and `identity.signin.device_denied`.
+
+## Display-name scan
+
+Run this once, read-only, before the Worker deploy that carries the invisible-character rule for
+display names. A name that holds a refused code point (a Hangul filler, a soft hyphen, U+2800, a
+line separator, a joiner) shows as the product slug on every end-user screen from that deploy, and
+an unchanged manifest that holds one fails its next link or resync. The scan lists them first.
+
+```sh
+npx wrangler d1 execute polaris_key_prod --env prod --remote --json --command \
+  "SELECT 'product' AS t, slug, name, NULL AS developer_name FROM products WHERE COALESCE(status,'active') != 'deleted' UNION ALL SELECT 'listing', product, name, developer_name FROM dist_listings UNION ALL SELECT 'listing-locale', product, name, NULL FROM dist_listing_locales" \
+  | pnpm tsx tools/scan-display-names.ts
+```
+
+`tools/scan-display-names.ts` reads the JSON on stdin and prints `slug,field,verdict,name` for each
+name that fails the rule (product names, listing names and developer names, and each locale's listing name), with invisible code points spelled `\u{...}`. It writes nothing and opens
+no connection. No output means there is nothing to do. For each `invalid` hit, rename the product
+in the console before the deploy; the console refuses an invisible character from the same deploy.
+A `reserved` hit is judged by the built-in terms only: the platform's extra terms and a product's
+approval live in settings the scan does not read, so check the product's approval before renaming.
 
 ## Customer host (Polaris Locker)
 

@@ -357,6 +357,7 @@ export class PkSignIn extends PkElement {
         if (step === "attach") await this.addModel?.cancel();
         return true;
       case "signin.handoff.again":
+      case "activate.attach.reopen":
         // Busy AddToAccount: bring the browser tab back; the sign-in keeps running.
         if (step === "attach") await this.addModel?.reopen();
         return true;

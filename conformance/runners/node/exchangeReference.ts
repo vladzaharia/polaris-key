@@ -27,6 +27,8 @@ export const b64u = (b: Uint8Array): string =>
 export interface DeviceKeys {
   signKey: string;
   agreeKey: string;
+  /** The 64-byte Ed25519 signature by the signing key over `message`. */
+  sign(message: Uint8Array): Uint8Array;
   proof(o: {
     purpose: string;
     product: string;
@@ -53,6 +55,7 @@ export function deviceKeys(label: string): DeviceKeys {
   return {
     signKey: b64u(raw),
     agreeKey: b64u(agree),
+    sign: (message) => sign(null, Buffer.from(message), priv),
     proof(o) {
       const lines = [
         "pkey-proof/1",
@@ -282,4 +285,19 @@ export async function replay(
     for (const [key, want] of Object.entries(step.expect))
       expect(reported[i]![key], `${t.id} step ${i}: ${key}`).toEqual(want);
   });
+}
+
+/** One JSON POST the way the reference client sends it: the device's headers, a JSON body. */
+export async function postJson(
+  server: ReplayServer,
+  url: string,
+  headers: Record<string, string>,
+  body: Record<string, unknown>,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  const res = await server.fetch(url, {
+    method: "POST",
+    headers: { ...headers, "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  return { status: res.status, body: await json(res) };
 }

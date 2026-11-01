@@ -195,7 +195,7 @@ static func default_outlet(platform: String) -> String:
 
 ## "" or the warning for an outlet id that does not match OUTLET_ID_PATTERN.
 static func outlet_warning(outlet: String) -> String:
-	if RegEx.create_from_string(OUTLET_ID_PATTERN).search(outlet) != null:
+	if RegEx.create_from_string(PKeyChannel.anchored(OUTLET_ID_PATTERN)).search(outlet) != null:
 		return ""
 	return "Outlet '%s' is not an outlet id (%s): use a kind (%s) or the product's own id, such as itch-beta." % [outlet, OUTLET_ID_PATTERN, ", ".join(OUTLETS)]
 

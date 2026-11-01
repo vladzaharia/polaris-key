@@ -1,11 +1,11 @@
 // WIRE-CONTRACT-V5 section 15.4: the mDNS packet codec for `_pkeypeer._tcp.local` (CC-12.7). Pure
 // functions over bytes: no socket, no clock. It parses and builds PTR queries and PTR, SRV, TXT and
-// A answers, and it is the one place a neighbour's packet is decoded, so every limit is enforced
+// A and AAAA answers, and it is the one place a neighbour's packet is decoded, so every limit is enforced
 // here (G5): a packet is at most 9,000 bytes and a section holds at most 64 records; a name is at
 // most 255 bytes and a label at most 63; a compression pointer must point strictly backwards and a
 // name follows at most 16 of them; a record's data lies inside the packet and fills exactly its
-// length; a TXT record keeps its first 8 entries; unknown types and classes are skipped; IPv4 only
-// (AAAA is an unknown type). A packet that breaks a limit throws [MdnsPacketError] and the caller
+// length (an A record is 4 bytes, an AAAA record 16); a TXT record keeps its first 8 entries; unknown
+// types and classes are skipped. A packet that breaks a limit throws [MdnsPacketError] and the caller
 // drops the whole packet. Names are lower-cased on the way in. Whether an address is believed is the
 // adapter's business (it needs the UDP source). Mirrors the Python codec `core/peer_mdns_packet.py`.
 
@@ -35,6 +35,7 @@ public const val MDNS_MAX_JUMPS: Int = 16
 public const val MDNS_MAX_TXT: Int = 8
 
 private const val T_A = 1
+private const val T_AAAA = 28
 private const val T_PTR = 12
 private const val T_TXT = 16
 private const val T_SRV = 33
@@ -49,12 +50,13 @@ private const val WORD = 0xffff
 private const val SRV_FIXED = 6
 private const val FIELD_BITS = 8
 private const val MAX_TXT_ENTRY = 255
+private const val V6_BYTES = 16
 
 /** A packet that cannot be decoded within the limits. [reason] is a short stable code. */
 public class MdnsPacketError(public val reason: String) : Exception(reason)
 
 /** The record types the codec understands. */
-public enum class MdnsType(internal val code: Int) { A(T_A), PTR(T_PTR), TXT(T_TXT), SRV(T_SRV) }
+public enum class MdnsType(internal val code: Int) { A(T_A), AAAA(T_AAAA), PTR(T_PTR), TXT(T_TXT), SRV(T_SRV) }
 
 /** The decoded data of a record. */
 public sealed class MdnsData {
@@ -67,7 +69,7 @@ public sealed class MdnsData {
     /** A TXT record's entries. */
     public data class Txt(val entries: List<String>) : MdnsData()
 
-    /** An A record's dotted IPv4 address. */
+    /** An A record's dotted IPv4 address, or an AAAA record's address as RFC 5952 text (never with a zone). */
     public data class Address(val ip: String) : MdnsData()
 }
 
@@ -78,7 +80,13 @@ public data class MdnsQuestion(val name: String, val type: MdnsType)
 public data class MdnsRecord(val name: String, val type: MdnsType, val ttl: Long, val data: MdnsData)
 
 /** A decoded datagram; [answers] are the answers followed by the additionals (authority is dropped). */
-public data class MdnsPacket(val isResponse: Boolean, val questions: List<MdnsQuestion>, val answers: List<MdnsRecord>)
+public data class MdnsPacket(
+    val isResponse: Boolean,
+    val questions: List<MdnsQuestion>,
+    val answers: List<MdnsRecord>,
+    /** The header's query ID (a legacy unicast answer echoes it). */
+    val id: Int = 0,
+)
 
 private fun typeOf(code: Int): MdnsType? = MdnsType.values().firstOrNull { it.code == code }
 
@@ -137,6 +145,11 @@ private class Reader(val buf: ByteArray) {
         MdnsType.A -> {
             if (end - start != 4) throw MdnsPacketError("bad_rdata")
             MdnsData.Address((start until end).joinToString(".") { u8(it).toString() })
+        }
+
+        MdnsType.AAAA -> {
+            if (end - start != V6_BYTES) throw MdnsPacketError("bad_rdata")
+            MdnsData.Address(text6(IntArray(V6_BYTES / 2) { (u8(start + 2 * it) shl FIELD_BITS) or u8(start + 2 * it + 1) }))
         }
 
         MdnsType.PTR -> {
@@ -209,7 +222,7 @@ public fun parseMdnsPacket(data: ByteArray): MdnsPacket {
     val (answers, afterAnswers) = r.records(pos, counts[1], true)
     val (_, afterAuthority) = r.records(afterAnswers, counts[2], false)
     val (extra, _) = r.records(afterAuthority, counts[3], true)
-    return MdnsPacket((flags and RESPONSE_BIT) != 0, questions, answers + extra)
+    return MdnsPacket((flags and RESPONSE_BIT) != 0, questions, answers + extra, r.u16(0))
 }
 
 private fun u16(out: ByteArrayOutputStream, v: Int) {
@@ -243,6 +256,26 @@ private fun ipv4(text: String): ByteArray {
     return ByteArray(4) { parts[it].toInt().toByte() }
 }
 
+private fun ipv6(text: String): ByteArray {
+    val a = parseLanAddress(text, foldMapped = false)
+    val g = a?.v6
+    require(a != null && g != null && a.zone == null) { "aaaa: not an IPv6 address" }
+    return ByteArray(V6_BYTES) { ((if (it % 2 == 0) g[it / 2] shr FIELD_BITS else g[it / 2]) and BYTE).toByte() }
+}
+
+private fun encodeTxt(data: MdnsData.Txt): ByteArray {
+    require(data.entries.size <= MDNS_MAX_TXT) { "txt: too many entries" }
+    val out = ByteArrayOutputStream()
+    for (e in data.entries) {
+        val b = e.toByteArray(Charsets.UTF_8)
+        require(b.size <= MAX_TXT_ENTRY) { "txt: entry too long" }
+        out.write(b.size)
+        out.write(b)
+    }
+    if (out.size() == 0) out.write(0)
+    return out.toByteArray()
+}
+
 private fun encodeRdata(data: MdnsData, type: MdnsType): ByteArray {
     val out = ByteArrayOutputStream()
     when {
@@ -256,18 +289,11 @@ private fun encodeRdata(data: MdnsData, type: MdnsType): ByteArray {
             out.write(encodeName(data.target))
         }
 
-        type == MdnsType.TXT && data is MdnsData.Txt -> {
-            require(data.entries.size <= MDNS_MAX_TXT) { "txt: too many entries" }
-            for (e in data.entries) {
-                val b = e.toByteArray(Charsets.UTF_8)
-                require(b.size <= MAX_TXT_ENTRY) { "txt: entry too long" }
-                out.write(b.size)
-                out.write(b)
-            }
-            if (out.size() == 0) out.write(0)
-        }
+        type == MdnsType.TXT && data is MdnsData.Txt -> out.write(encodeTxt(data))
 
         type == MdnsType.A && data is MdnsData.Address -> out.write(ipv4(data.ip))
+
+        type == MdnsType.AAAA && data is MdnsData.Address -> out.write(ipv6(data.ip))
 
         else -> throw IllegalArgumentException("record data does not match its type")
     }
@@ -293,22 +319,34 @@ public fun buildMdnsQuery(questions: List<MdnsQuestion>, packetId: Int = 0): Byt
 
 /**
  * An authoritative response packet (flags 0x8400) holding [answers]. Class IN; the cache-flush bit
- * is set on SRV, TXT and A (unique records), never on the shared PTR.
+ * is set on SRV, TXT, A and AAAA (unique records), never on the shared PTR, unless [flush] is false.
+ * A legacy unicast answer (RFC 6762 section 6.7) passes the query's [packetId] and the [questions] to
+ * repeat, and no cache-flush bit.
  */
-public fun buildMdnsResponse(answers: List<MdnsRecord>): ByteArray {
-    require(answers.size <= MDNS_MAX_RECORDS) { "too many records" }
+public fun buildMdnsResponse(
+    answers: List<MdnsRecord>,
+    packetId: Int = 0,
+    questions: List<MdnsQuestion> = emptyList(),
+    flush: Boolean = true,
+): ByteArray {
+    require(answers.size <= MDNS_MAX_RECORDS && questions.size <= MDNS_MAX_RECORDS) { "too many records" }
     val out = ByteArrayOutputStream()
-    u16(out, 0)
+    u16(out, packetId and WORD)
     u16(out, RESPONSE_FLAGS)
-    u16(out, 0)
+    u16(out, questions.size)
     u16(out, answers.size)
     u16(out, 0)
     u16(out, 0)
+    for (q in questions) {
+        out.write(encodeName(q.name))
+        u16(out, q.type.code)
+        u16(out, CLASS_IN)
+    }
     for (r in answers) {
         val rdata = encodeRdata(r.data, r.type)
         out.write(encodeName(r.name))
         u16(out, r.type.code)
-        u16(out, if (r.type == MdnsType.PTR) CLASS_IN else CLASS_IN or CACHE_FLUSH)
+        u16(out, if (r.type == MdnsType.PTR || !flush) CLASS_IN else CLASS_IN or CACHE_FLUSH)
         val ttl = r.ttl and 0xffffffffL
         u16(out, (ttl shr 16).toInt())
         u16(out, (ttl and WORD.toLong()).toInt())

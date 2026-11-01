@@ -38,3 +38,36 @@ export async function readCappedText(
   }
   return new TextDecoder().decode(all);
 }
+
+/** The body as bytes, or null when it is longer than `max` bytes (the stream is cancelled at once). */
+export async function readCappedBytes(
+  res: Response,
+  max: number,
+): Promise<Uint8Array | null> {
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > max) {
+    await res.body?.cancel().catch(() => undefined);
+    return null;
+  }
+  if (res.body === null) return new Uint8Array(0);
+  const reader = res.body.getReader();
+  const parts: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    parts.push(value);
+  }
+  const all = new Uint8Array(total);
+  let at = 0;
+  for (const p of parts) {
+    all.set(p, at);
+    at += p.byteLength;
+  }
+  return all;
+}

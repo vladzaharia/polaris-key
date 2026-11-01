@@ -7,6 +7,10 @@
 package im.plrs.key.sdk
 
 import im.plrs.key.core.CoreOptions
+import im.plrs.key.core.DeviceKeyStorage
+import im.plrs.key.core.ErrorCode
+import im.plrs.key.core.PolarisException
+import im.plrs.key.core.StoreException
 import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.DeviceKeyStore
 import im.plrs.key.core.InMemoryDeviceKeyStorage
@@ -31,6 +35,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -86,6 +91,21 @@ class CloudConnectTest {
         }
     }
 
+    /** A Connect state storage whose removal fails on demand; everything else is the wrapped storage. */
+    private class FaultyState(val inner: im.plrs.key.core.InMemoryDeviceKeyStorage) : DeviceKeyStorage by inner {
+        var removeFault: Exception? = null
+
+        override suspend fun clear() {
+            removeFault?.let { throw it }
+            inner.clear()
+        }
+
+        override suspend fun deleteRecord() {
+            removeFault?.let { throw it }
+            inner.deleteRecord()
+        }
+    }
+
     private class Device(val id: String, val port: DeviceKeyPort, val signKey: String, val agreeKey: String)
 
     private fun device(id: String): Device = runBlocking {
@@ -105,19 +125,22 @@ class CloudConnectTest {
         private val ticketUrl = "https://key.plrs.im/djdl/connect/relay/ticket"
         var connectFragment = """{"enabled":true,"relay":true,"endpoints":{"identity":"x","devices":"y","ticket":"$ticketUrl"}}"""
         val tickets = AtomicInteger()
+        val deauthorized = AtomicInteger()
 
-        fun ring(): String = signer.sign(
+        fun ring(): String = ringAt(1, listOf(a, b))
+
+        fun ringAt(epoch: Int, keep: List<Device>): String = this@CloudConnectTest.signer.sign(
             "pkey-ring+jws",
             JsonObject(
                 mapOf(
                     "iss" to JsonPrimitive("key.plrs.im"),
                     "aud" to JsonPrimitive("djdl"),
                     "sub" to JsonPrimitive(sub),
-                    "epoch" to jsonInt(1),
+                    "epoch" to jsonInt(epoch.toLong()),
                     "issuedAt" to jsonInt(now),
                     "expiresAt" to jsonInt(now + 604_800),
                     "devices" to JsonArray(
-                        listOf(a, b).sortedBy { it.id }.map {
+                        keep.sortedBy { it.id }.map {
                             JsonObject(
                                 mapOf(
                                     "deviceId" to JsonPrimitive(it.id),
@@ -141,6 +164,11 @@ class CloudConnectTest {
             r.path.endsWith("/identity/signout") -> respond(200, """{"released":false}""")
 
             r.path.endsWith("/devices/keys") -> respond(200, """{"keySeq":1}""")
+
+            r.path.endsWith("/license/deauthorize") -> {
+                deauthorized.incrementAndGet()
+                respond(200, "{}")
+            }
 
             r.path.endsWith("/connect/relay/ticket") -> {
                 tickets.incrementAndGet()
@@ -176,7 +204,7 @@ class CloudConnectTest {
             else -> respond(404, "")
         }
 
-        fun client(me: Device, trustRefresh: Boolean = false): PolarisKeyClient = runBlocking {
+        fun client(me: Device, trustRefresh: Boolean = false, state: DeviceKeyStorage? = null): PolarisKeyClient = runBlocking {
             val store = InMemoryStore("djdl", me.id)
             store.setToken("pkeyt_held")
             PolarisKeyClient.create(
@@ -192,7 +220,7 @@ class CloudConnectTest {
                         deviceName = "Test",
                     ),
                     license = LicenseClientOptions(fingerprint = false),
-                    connect = ConnectOptions(deviceKeys = me.port, allowEphemeralKeys = true),
+                    connect = ConnectOptions(deviceKeys = me.port, allowEphemeralKeys = true, state = state),
                 ),
             ).also { clients += it }
         }
@@ -216,6 +244,47 @@ class CloudConnectTest {
             cb.cloudConnect.start(o())
         }
         return ca to cb
+    }
+
+    @Test
+    fun deactivationLeavesCloudConnect() = runBlocking {
+        for (viaRoster in listOf(false, true)) {
+            val w = World()
+            val (ca, _) = both(w)
+            until { ca.cloudConnect.peers().any { it.deviceId == idB && it.lan } }
+            val s = ca.cloudConnect.open(idB)
+            assertNotNull(ca.connect.discoveryKeys())
+            if (viaRoster) ca.deauthorizeDevice(idA) else ca.license.deactivate()
+            until { s.closed != null }
+            assertFalse(ca.cloudConnect.status().running)
+            assertNull(ca.connect.current())
+            assertNull(ca.connect.discoveryKeys())
+            assertEquals(1, w.deauthorized.get())
+        }
+    }
+
+    @Test
+    fun deactivationStopsWhenConnectStateCannotBeCleared() = runBlocking {
+        val w = World()
+        val state = FaultyState(im.plrs.key.core.InMemoryDeviceKeyStorage())
+        val ca = w.client(w.a, state = state)
+        ca.cloudConnect.start(w.options())
+        assertNotNull(ca.connect.discoveryKeys())
+        state.removeFault = StoreException("busy")
+        try {
+            ca.license.deactivate()
+            fail("expected store_failed")
+        } catch (e: PolarisException) {
+            assertEquals(ErrorCode.storeFailed, e.code)
+        }
+        assertNotNull(ca.core.token())
+        assertEquals("no deauthorize request was sent", 0, w.deauthorized.get())
+        // Once the state can be removed, a retry completes.
+        state.removeFault = null
+        ca.license.deactivate()
+        assertNull(ca.core.token())
+        assertNull(ca.connect.discoveryKeys())
+        assertEquals(1, w.deauthorized.get())
     }
 
     @Test
@@ -273,6 +342,71 @@ class CloudConnectTest {
         assertEquals(LanErrorReason.permission_denied, (st.lanError as LanException).reason)
         until { c.cloudConnect.status().relay == "open" }
         assertTrue(c.cloudConnect.status().running)
+    }
+
+    private class FakePlatform(override val mdns: MdnsAdapter?, var verdict: LocalNetworkVerdict = LocalNetworkVerdict.Ok) : ConnectPlatform {
+        override suspend fun localNetwork(): LocalNetworkVerdict = verdict
+    }
+
+    /** Run [block] as Android with [platform] installed (the JVM stands in), and put both back. */
+    private fun <T> asAndroid(platform: ConnectPlatform?, block: () -> T): T {
+        ConnectPlatforms.android = true
+        ConnectPlatforms.installed = platform
+        try {
+            return block()
+        } finally {
+            ConnectPlatforms.android = im.plrs.key.core.RuntimeFamily.isAndroid
+            ConnectPlatforms.installed = null
+        }
+    }
+
+    private fun androidOptions(w: World) = CloudConnectOptions(
+        lanOptions = LanOptions(allowLoopback = true, host = "127.0.0.1"),
+        lanAttemptSeconds = 4.0,
+    ).also { it.relayOptions = RelayOptions(opener = w.room::opener, sleep = ManualSleep(), random = { 0.5 }, pingSeconds = 1000.0) }
+
+    @Test
+    fun androidUsesTheInstalledPlatformWhenTheHostBroughtNoAdapter() = runBlocking {
+        val w = World()
+        val c = w.client(w.a)
+        asAndroid(FakePlatform(w.net)) { runBlocking { c.cloudConnect.start(androidOptions(w)) } }
+        val st = c.cloudConnect.status()
+        assertEquals("on", st.lan)
+        assertNull(st.lanReason)
+        assertEquals(1, w.net.adverts.size)
+    }
+
+    @Test
+    fun androidWithoutAnAdapterAnswersUnsupportedAndTheRelayStillWorks() = runBlocking {
+        for (platform in listOf(null, FakePlatform(null))) {
+            val w = World()
+            val c = w.client(w.a)
+            asAndroid(platform) { runBlocking { c.cloudConnect.start(androidOptions(w)) } }
+            val st = c.cloudConnect.status()
+            assertEquals("off", st.lan)
+            assertEquals("unsupported", st.lanReason)
+            until { c.cloudConnect.status().relay == "open" }
+        }
+    }
+
+    @Test
+    fun androidMapsTheLocalNetworkPermissionToItsRegisteredCodes() = runBlocking {
+        val denied = World()
+        val c1 = denied.client(denied.a)
+        asAndroid(FakePlatform(denied.net, LocalNetworkVerdict.Denied)) { runBlocking { c1.cloudConnect.start(androidOptions(denied)) } }
+        val e1 = c1.cloudConnect.status().lanError as LanException
+        assertEquals(LanErrorReason.permission_denied, e1.reason)
+        assertEquals("nearby-permission-denied", e1.code)
+        assertTrue(denied.net.adverts.isEmpty())
+
+        val missing = World()
+        val c2 = missing.client(missing.a)
+        asAndroid(FakePlatform(missing.net, LocalNetworkVerdict.NotDeclared)) { runBlocking { c2.cloudConnect.start(androidOptions(missing)) } }
+        val e2 = c2.cloudConnect.status().lanError as PolarisException
+        assertEquals("not-configured", e2.code)
+        assertTrue(missing.net.adverts.isEmpty())
+        // The relay keeps working either way.
+        until { c2.cloudConnect.status().relay == "open" }
     }
 
     @Test
@@ -365,6 +499,27 @@ class CloudConnectTest {
         assertEquals("peer_bye", s.closed!!.code)
         assertTrue(s.closed!!.byPeer)
         assertTrue(ca.cloudConnect.status().running)
+        assertTrue(cb.cloudConnect.status().running)
+    }
+
+    @Test
+    fun storedRosterClosesSessionsWithDroppedDevice() = runBlocking {
+        val w = World()
+        val (ca, cb) = both(w)
+        cb.cloudConnect.onChannel { }
+        until { ca.cloudConnect.peers().any { it.deviceId == idB && it.lan } }
+        val s = ca.cloudConnect.open(idB)
+        val src = ca.cloudConnect.watch(lanSource(ca.connect, now = { now }))
+        val adopt = src.adoptRing!!
+        fun roster(epoch: Int, vararg keep: Device): String = w.ringAt(epoch, keep.toList())
+        // A roster that only adds devices keeps the session.
+        assertTrue(adopt(roster(2, w.a, w.b)) is RingAdoption.Stored)
+        Thread.sleep(200)
+        assertNull(s.closed)
+        // A roster that drops the peer ends it.
+        assertTrue(adopt(roster(3, w.a)) is RingAdoption.Stored)
+        until { s.closed != null }
+        assertEquals("peer_revoked", s.closed!!.code)
         assertTrue(cb.cloudConnect.status().running)
     }
 

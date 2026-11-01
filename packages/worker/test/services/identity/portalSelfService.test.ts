@@ -164,6 +164,49 @@ describe("license key masking and device names", () => {
 });
 
 describe("POST /api/activate/preview (G22)", () => {
+  it("names the product by its checked name before the person adds the key", async () => {
+    // DISPLAY-NAME-INVISIBLE B4: the claim preview is pre-consent.
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, "djdl");
+    await db.run(
+      "UPDATE products SET name = ? WHERE slug = ?",
+      "Steam",
+      "djdl",
+    );
+    const { key } = await seedLicenseWithKey(db, "djdl");
+    const s = await portalSession(env, db, "bob@example.com");
+    await setClaimByKey(db, "djdl", true);
+    const res = await preview(env, db, s, key);
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      verdict: "addable",
+      product: { slug: "djdl", name: "djdl" },
+    });
+  });
+
+  it("key-claim preview without a presentation names the product by its slug", async () => {
+    // DNI-G3: a product with no active signing key has no presentation; the raw name is not the fallback.
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, "djdl");
+    await db.run(
+      "UPDATE products SET name = ? WHERE slug = ?",
+      "Steam",
+      "djdl",
+    );
+    const { key } = await seedLicenseWithKey(db, "djdl");
+    await db.run(
+      "UPDATE product_keys SET status = 'retired' WHERE product = ?",
+      "djdl",
+    );
+    const s = await portalSession(env, db, "bob@example.com");
+    await setClaimByKey(db, "djdl", true);
+    const res = await preview(env, db, s, key);
+    const body = await res.json();
+    expect(body).toMatchObject({ product: { slug: "djdl", name: "djdl" } });
+  });
+
   it("previews an addable key: product, tier, terms, platforms, and writes nothing", async () => {
     const db = makeTestDb();
     const env = portalEnv();
@@ -464,6 +507,32 @@ describe("PATCH /api/licenses/:p/:id/devices/:deviceId (G6)", () => {
     }
     expect((await call(env, db, "PATCH", path, owner, {})).status).toBe(422);
     expect((await getDevice(db, "djdl", "dev-1"))?.label).toBeNull();
+  });
+
+  it("cleans a name like every device label, and refuses one that is only blanks (DEVICE-LABEL-STRIP)", async () => {
+    const { db, env, owner, path } = await fixture();
+    // Wide spaces collapse; a filler, the braille blank and a variation selector go. (Format
+    // characters, tags among them, are refused outright by the existing check.)
+    const res = await call(env, db, "PATCH", path, owner, {
+      label: "Ana\u2003\u2003Switch\u3164\u2800\ufe0f",
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ device: { label: "Ana Switch" } });
+    expect((await getDevice(db, "djdl", "dev-1"))?.label).toBe("Ana Switch");
+    // A non-empty value with nothing visible left is refused, with the existing message, and the
+    // stored name stays.
+    for (const label of ["\u3164", "\u2800\u2800", "\ufe0f"]) {
+      const refused = await call(env, db, "PATCH", path, owner, { label });
+      expect(refused.status).toBe(422);
+      expect(await refused.json()).toMatchObject({
+        error: "bad_request",
+        message: expect.stringContaining("plain text"),
+      });
+    }
+    expect((await getDevice(db, "djdl", "dev-1"))?.label).toBe("Ana Switch");
+    // Plain whitespace still clears the name.
+    const cleared = await call(env, db, "PATCH", path, owner, { label: "   " });
+    expect(await cleared.json()).toMatchObject({ device: { label: null } });
   });
 
   it("is 404 for someone else's licence, a device of another licence and a portal-off product", async () => {

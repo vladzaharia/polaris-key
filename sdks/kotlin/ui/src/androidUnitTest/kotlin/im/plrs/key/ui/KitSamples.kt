@@ -299,6 +299,22 @@ internal val kitScreens: List<Pair<String, @Composable () -> Unit>> = listOf(
     "unlockSync-working" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "working")) },
     "unlockSync-failed" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "failed")) },
     "unlockSync-start-over" to { PolarisUnlockSync(syncScreen(KitComponent.unlockSync, "unlockSync", "step" to "start-over")) },
+    // SaveConflict and the CloudSyncStatus transfer states (U-22.K4), resolved by KitStates from the saveConflict family's inputs.
+    "saveConflict-choose" to { PolarisSaveConflict(saveScreen("choose")) },
+    "saveConflict-choose-full" to { PolarisSaveConflict(saveScreen("choose", both = false)) },
+    "saveConflict-choose-deleted" to { PolarisSaveConflict(saveScreen("choose", deleted = true)) },
+    "saveConflict-choose-newer" to { PolarisSaveConflict(saveScreen("choose", newer = "remote")) },
+    "saveConflict-choose-newer-local" to { PolarisSaveConflict(saveScreen("choose", newer = "local")) },
+    "saveConflict-keeping-deleted" to { PolarisSaveConflict(saveScreen("keeping", deleted = true, keep = "remote")) },
+    "saveConflict-kept-deleted" to { PolarisSaveConflict(saveScreen("kept", deleted = true, keep = "remote")) },
+    "saveConflict-failed-deleted" to { PolarisSaveConflict(saveScreen("failed", deleted = true, keep = "remote")) },
+    "saveConflict-keeping" to { PolarisSaveConflict(saveScreen("keeping", keep = "local")) },
+    "saveConflict-kept" to { PolarisSaveConflict(saveScreen("kept", keep = "both")) },
+    "saveConflict-failed" to { PolarisSaveConflict(saveScreen("failed", keep = "remote")) },
+    "cloudSyncTransfer-transferring" to { PolarisCloudSyncTransfer(transferScreen("transferring"), fraction = 0.62f) },
+    "cloudSyncTransfer-indeterminate" to { PolarisCloudSyncTransfer(transferScreen("transferring", counted = false)) },
+    "cloudSyncTransfer-waiting" to { PolarisCloudSyncTransfer(transferScreen("waiting")) },
+    "cloudSyncTransfer-failed" to { PolarisCloudSyncTransfer(transferScreen("transfer-failed")) },
     "recoveryCode-show" to { PolarisRecoveryCodeScreen(syncScreen(KitComponent.recoveryCode, "recoveryCode"), sampleRecoveryCode) },
     "recoveryCode-saved" to {
         PolarisRecoveryCodeScreen(syncScreen(KitComponent.recoveryCode, "recoveryCode", "saved" to true), sampleRecoveryCode)
@@ -399,4 +415,29 @@ internal fun syncScreen(component: KitComponent, member: String, vararg fields: 
         }
     }
     return KitStates.resolve(component, KitInputs.of(mapOf(member to body)))
+}
+
+/** A SaveConflict state as the `saveConflict` family writes it (the other device named; [deleted] is `remote: null`). */
+internal fun saveScreen(step: String, both: Boolean = true, deleted: Boolean = false, keep: String? = null, newer: String? = null): KitScreen {
+    val text = buildString {
+        append("""{"saveConflict":{"step":"$step","local":{"when":"today, 14:02"},""")
+        append(if (deleted) """"remote":null,""" else """"remote":{"when":"yesterday, 21:40","device":"Maya's Steam Deck"},""")
+        if (keep != null) append(""""keep":"$keep",""")
+        if (newer != null) append(""""newer":"$newer",""")
+        append(""""bothAvailable":$both}}""")
+    }
+    return KitStates.resolve(
+        KitComponent.saveConflict,
+        KitInputs.fromJson(kotlinx.serialization.json.Json.parseToJsonElement(text) as kotlinx.serialization.json.JsonObject),
+    )
+}
+
+/** A CloudSyncStatus transfer state as the `cloudSync` family writes it. */
+internal fun transferScreen(state: String, counted: Boolean = true): KitScreen {
+    val transfer = if (counted) ""","transfer":{"size":"38 MB","total":"61 MB","fraction":0.62}""" else ""
+    val text = """{"cloudSync":{"state":"$state","lastSynced":"2 min ago"$transfer}}"""
+    return KitStates.resolve(
+        KitComponent.cloudSyncStatus,
+        KitInputs.fromJson(kotlinx.serialization.json.Json.parseToJsonElement(text) as kotlinx.serialization.json.JsonObject),
+    )
 }

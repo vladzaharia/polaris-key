@@ -158,6 +158,7 @@ async function finalizeUpload(
       deviceId: c.device.device_id,
       clientId,
       maxRecords: decl.maxRecords,
+      quotaBytes: c.access.quota.bytes,
       keepRevisions: decl.files.keepRevisions,
     });
   });

@@ -10,7 +10,7 @@
 import { spawn } from "node:child_process";
 import { join } from "node:path";
 import { rm } from "node:fs/promises";
-import { PolarisError } from "@polaris-key/client-core";
+import { PolarisError, type DeviceKeyPort } from "@polaris-key/client-core";
 import { DEVICE_POLL_DENIED } from "@polaris-key/protocol/identity";
 import { readJson, writeJson } from "../core/jsonFile.js";
 import { ErrorCode, Feature } from "../constants.generated.js";
@@ -24,6 +24,7 @@ import {
   type AttachResult,
   BeforeSignOutHooks,
   subjectFile,
+  writeStoredSubject,
   type OpenAccountResult,
   type SignOutResult,
 } from "./account.js";
@@ -35,6 +36,33 @@ import {
   type ShownIdentity,
 } from "./signIn.js";
 import { ChoiceClient } from "./choice.js";
+import { NearbyRoutes } from "./nearby.js";
+import {
+  onNearbyRequest,
+  type NearbyApproverKeyring,
+  type NearbyApproverLan,
+  type NearbyAsk,
+} from "./nearbyApprover.js";
+import type {
+  NearbyApproverHandle,
+  NearbyApproverOptions,
+} from "../connect/nearbyApprover.js";
+import {
+  startNearbySignIn,
+  type NearbyKeyring,
+  type NearbyLan,
+  type NearbySessionDeps,
+  type NearbySignInOptions,
+  type NearbySignInSession,
+} from "./nearbySession.js";
+import {
+  nearbyAvailable,
+  runAutoSignIn,
+  SignInState,
+  type AutoSignInOptions,
+  type AutoSignInResult,
+  type NearbyRole,
+} from "./autoSignIn.js";
 import {
   startRedirectSignIn,
   type RedirectSession,
@@ -99,6 +127,21 @@ export function openInBrowser(
   });
 }
 
+/** What nearby approval needs of the rest of the client, bound lazily (Cloud Connect is built
+ *  after Identity). */
+export interface NearbyBinding {
+  /** This device's keys (made when none exist) and its `X-PKey-Device` value. */
+  signer(): Promise<{ port: DeviceKeyPort; deviceId: string }>;
+  /** `devices.registerKeys(port)`. */
+  registerKeys(port: DeviceKeyPort): Promise<unknown>;
+  /** Load discovery again and answer it (N11). */
+  refreshDiscovery(): Promise<ProductDiscoveryDocument | null>;
+  /** The LAN half of nearby approval (`cloudConnect.nearby`). */
+  lan(): NearbyLan & NearbyApproverLan;
+  /** The key ring: a wrap sent to a new device, a wrap taken from the channel. */
+  keyring(): NearbyKeyring & NearbyApproverKeyring;
+}
+
 /** Raised after a sign-in mints a credential; the facade syncs. */
 export type SignInAcquiredListener = () => Promise<void>;
 
@@ -123,8 +166,13 @@ export class IdentityClient {
     private readonly licenseId: () => string | null = () => null,
     /** Runs after the identity is forgotten: the facade drops the key ring's root and pin. */
     private readonly onForget: () => Promise<void> | void = () => undefined,
+    /** Nearby approval's device keys and discovery refresh; absent, nearby answers the typed N/A. */
+    private readonly nearbyBinding: NearbyBinding | null = null,
   ) {
     this.identityFile = join(ctx.dirs.state, "identity.json");
+    this.signInState = new SignInState(ctx.dirs.state);
+    // The token manager keeps "a sign-in produced this token" in the state directory.
+    tokens.setMarks(this.signInState);
     this.account = new Account({
       ctx,
       tokens,
@@ -134,10 +182,42 @@ export class IdentityClient {
       wipeLocal: this.wipeLocal,
       openUrl: (url) => openInBrowser(url),
       emit: this.emit,
+      signedOut: async () => {
+        await this.tokens.dropSignIn();
+        await this.signInState.signedOut();
+      },
     });
   }
 
   private readonly account: Account;
+  private readonly signInState: SignInState;
+  #routes: NearbyRoutes | undefined;
+
+  /** The nearby HTTP routes, for the sign-in and approver sessions. @internal */
+  get nearbyRoutes(): NearbyRoutes {
+    const b = this.nearbyBinding;
+    return (this.#routes ??= new NearbyRoutes({
+      ctx: this.ctx,
+      tokens: this.tokens,
+      discovery: (fresh) =>
+        fresh && b !== null ? b.refreshDiscovery() : this.loadDiscovery(),
+      signer: () =>
+        b !== null
+          ? b.signer()
+          : Promise.reject(
+              new PolarisError(
+                ErrorCode.serviceUnavailable,
+                "nearby approval is not set up on this client.",
+              ),
+            ),
+      registerKeys: (port) =>
+        b !== null ? b.registerKeys(port) : Promise.resolve(),
+      onAcquired: this.onAcquired,
+      storeIdentity: (who) => this.storeIdentity(who),
+      licenseId: this.licenseId,
+      emit: this.emit,
+    }));
+  }
   private choiceClient: ChoiceClient | undefined;
 
   /**
@@ -162,6 +242,60 @@ export class IdentityClient {
   onBeforeSignOut(hook: () => Promise<void> | void): () => void {
     return this.beforeSignOut.add(hook);
   }
+
+  /**
+   * The automatic sign-in ladder (CC-01-auto-sign-in; I-47.2). Node runs rung 1 (a token a
+   * sign-in produced: `signedIn`, no network) and ends at the regular sign-in:
+   * `needsSignIn{reason: "signed_out"}` after an explicit `signOut()` (until the next sign-in),
+   * `needsSignIn{reason: "no_credential"}` otherwise, `unavailable` when Identity is off. It never
+   * throws and starts nothing: the sign-in form (a kit) starts nearby or the device code.
+   */
+  autoSignIn(_opts: AutoSignInOptions = {}): Promise<AutoSignInResult> {
+    return runAutoSignIn({
+      ctx: this.ctx,
+      discovery: this.loadDiscovery,
+      signedIn: () => this.tokens.signedIn,
+      state: this.signInState,
+      licenseId: this.licenseId,
+    });
+  }
+
+  /** Nearby approval (CC-15; V5 §12.11.5): whether this device can take part on one side. */
+  readonly nearby = {
+    /**
+     * M, a signed-in device: advertise while the person has "Approve a nearby device" open
+     * (`prompt: true`), or has allowed background approval (`prompt: false`, `background: true`),
+     * and hand each session that reaches the code to `handler` as an `ask` (nearbyApprover.ts).
+     * Returns CC-15's handle (`stop`, `pause`, `resume`, `setPrompt`, `reopen`, `status`). Throws
+     * `account_required` when signed out and the typed N/A when nearby approval is not served.
+     * Signing out stops it.
+     */
+    onRequest: (
+      handler: (ask: NearbyAsk) => void,
+      o: NearbyApproverOptions,
+    ): Promise<NearbyApproverHandle> => {
+      const b = this.nearbyBinding;
+      if (b === null)
+        return Promise.reject(
+          new PolarisError(
+            ErrorCode.serviceUnavailable,
+            "nearby approval is not set up on this client.",
+          ),
+        );
+      return onNearbyRequest(
+        { routes: this.nearbyRoutes, lan: () => b.lan(), keyring: b.keyring() },
+        handler,
+        // This device's name in the other device's list (§12.7.1); never an account identifier.
+        o.label !== undefined
+          ? o
+          : { ...o, ...labelFor(this.ctx.deviceLabel(undefined)) },
+      );
+    },
+    /** True when Identity is on, discovery names `nearby` and the role's endpoints, and this
+     *  runtime can do mDNS. Never throws. */
+    available: (o: { role: NearbyRole }): Promise<boolean> =>
+      nearbyAvailable({ ctx: this.ctx, discovery: this.loadDiscovery }, o),
+  };
 
   /** The pairwise subject of the account signed in on this device, or null (persisted). */
   subject(): Promise<string | null> {
@@ -199,10 +333,35 @@ export class IdentityClient {
   get signIn(): {
     start(opts: DeviceCodeSignInOptions): Promise<DeviceCodeSession>;
     start(opts: RedirectSignInOptions): Promise<RedirectSession>;
+    start(opts: NearbySignInOptions): Promise<NearbySignInSession>;
   } {
     const start = (
-      opts: DeviceCodeSignInOptions | RedirectSignInOptions,
-    ): Promise<DeviceCodeSession | RedirectSession> => {
+      opts:
+        | DeviceCodeSignInOptions
+        | RedirectSignInOptions
+        | NearbySignInOptions,
+    ): Promise<DeviceCodeSession | RedirectSession | NearbySignInSession> => {
+      if (opts.channel === "nearby") {
+        const b = this.nearbyBinding;
+        if (b === null)
+          return Promise.reject(
+            new PolarisError(
+              ErrorCode.serviceUnavailable,
+              "nearby approval is not set up on this client.",
+            ),
+          );
+        return startNearbySignIn(
+          {
+            ctx: this.ctx,
+            routes: this.nearbyRoutes,
+            lan: () => b.lan(),
+            keyring: b.keyring(),
+            signOut: () => this.signOut(),
+            ...this.nearbySessionHooks,
+          },
+          opts,
+        );
+      }
       if (opts.channel === "redirect")
         return startRedirectSignIn(
           {
@@ -222,6 +381,7 @@ export class IdentityClient {
             ctx: this.ctx,
             tokens: this.tokens,
             discovery: this.discovery,
+            loadDiscovery: this.loadDiscovery,
             onAcquired: this.onAcquired,
             storeIdentity: (who) => this.storeIdentity(who),
             fetchSubject: () => this.account.fetchSubject(),
@@ -242,7 +402,33 @@ export class IdentityClient {
       start: {
         (opts: DeviceCodeSignInOptions): Promise<DeviceCodeSession>;
         (opts: RedirectSignInOptions): Promise<RedirectSession>;
+        (opts: NearbySignInOptions): Promise<NearbySignInSession>;
       };
+    };
+  }
+
+  /** What a nearby sign-in session calls at the person's decision (V5 §15.6.1 rule 12). @internal */
+  private get nearbySessionHooks(): Pick<
+    NearbySessionDeps,
+    "confirm" | "dropLocal" | "holds"
+  > {
+    return {
+      holds: (token) => this.tokens.current === token,
+      // Confirmed: the token is a sign-in, the subject is stored and the event goes out, so Sync
+      // and Connect start now and not before (V5 §12.11.5 rule 9).
+      confirm: async (subject) => {
+        await this.tokens.confirmSignIn();
+        await writeStoredSubject(this.ctx.dirs.state, subject).catch(
+          () => undefined,
+        );
+        this.emit({ kind: "signedIn", subject });
+      },
+      // Unconfirmed and ended: the token, its mark and the stored identity go, whatever the
+      // Worker answered to the sign-out.
+      dropLocal: async () => {
+        await this.tokens.clear();
+        await this.forget();
+      },
     };
   }
 
@@ -277,4 +463,9 @@ export class IdentityClient {
     );
     await this.onForget();
   }
+}
+
+/** `{label}` when this device has a name to give, else nothing. */
+function labelFor(label: string | null): { label?: string } {
+  return label !== null && label !== "" ? { label } : {};
 }

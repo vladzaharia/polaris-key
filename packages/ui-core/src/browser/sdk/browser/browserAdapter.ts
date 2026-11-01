@@ -212,7 +212,11 @@ import {
   completeRedirect,
   type SettleHooks,
 } from "./bearer/signInSessions.js";
-import { choiceEndpointsOf, type ChoiceNamespace } from "../core/choice.js";
+import {
+  choiceEndpointsOf,
+  deviceChoiceOf,
+  type ChoiceNamespace,
+} from "../core/choice.js";
 import {
   callbackState,
   redirectEndpointsOf,
@@ -786,6 +790,7 @@ export class BrowserAdapter implements PolarisAdapter {
         identityEndpoints: () => accountEndpointsOf(this.discovery_),
         redirectEndpoints: () => redirectEndpointsOf(this.discovery_),
         choiceEndpoints: () => choiceEndpointsOf(this.discovery_),
+        deviceChoice: () => deviceChoiceOf(this.discovery_),
         exchangeEndpoints: () => exchangeDiscoveryOf(this.discovery_),
         ...(opts.fingerprint ? { fingerprint: opts.fingerprint } : {}),
         ...(opts.deviceName !== undefined
@@ -1412,10 +1417,20 @@ export class BrowserAdapter implements PolarisAdapter {
         // With the account endpoints the server releases the device; without them (a key-only
         // product) sign-out is the device deauthorization it always was.
         if (accountEndpointsOf(this.discovery_)?.signout) {
-          const r = await this.bearer.signOut();
-          this.applyBearer({ busy: noBusy(), error: noErrors() });
-          return { ...r, ...warn };
+          // The key ring is forgotten last among the pre-sign-out hooks (after Cloud Sync's
+          // flush) and before the request: a failed forget stops the sign-out with the token kept.
+          void this.cloudSync; // registers Cloud Sync's hook first
+          const off = this.bearer.onBeforeSignOut(() => this.forgetRing());
+          try {
+            const r = await this.bearer.signOut();
+            this.applyBearer({ busy: noBusy(), error: noErrors() });
+            return { ...r, ...warn };
+          } finally {
+            off();
+          }
         }
+        // The key ring goes before the request (a failed forget sends none and keeps the token).
+        await this.forgetRing();
         await this.bearer.deactivate();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
         return { released: true, ...warn };
@@ -1426,8 +1441,6 @@ export class BrowserAdapter implements PolarisAdapter {
             ? e
             : new PolarisError("sign-out-failed", (e as Error).message),
         );
-      } finally {
-        await this.forgetRing();
       }
     }
     try {
@@ -1616,8 +1629,8 @@ export class BrowserAdapter implements PolarisAdapter {
     if (current?.id === deviceId) {
       // This device's own seat: the deauthorization `signOut()` makes for a key-only product.
       if (this.bearer) {
-        await this.bearer.deactivate();
         await this.forgetRing();
+        await this.bearer.deactivate();
         this.applyBearer({ busy: noBusy(), error: noErrors() });
       } else await this.signOut();
       return;
@@ -2302,7 +2315,7 @@ export class BrowserAdapter implements PolarisAdapter {
     if (!b) return (this.connect_ = unsupportedConnect(COOKIE_DETAIL));
     const o = this.connectOptions ?? {};
     const name = `pkey-connect-${storeNamespace(this.product, this.base)}`;
-    return (this.connect_ = lazyConnect(
+    const lazy = lazyConnect(
       { now: () => this.clock(), lockName: `pkey-connect:${name}` },
       async () =>
         (await import("./connect/create.js")).createBrowserConnect({
@@ -2318,7 +2331,17 @@ export class BrowserAdapter implements PolarisAdapter {
           },
           deviceKeys: () => this.deviceKeyPort(),
         }),
-    ));
+    );
+    // Leaving the roster takes the half-received transfers with it (CC-20.4).
+    const leave = lazy.leave.bind(lazy);
+    lazy.leave = async () => {
+      try {
+        await leave();
+      } finally {
+        await this.cloud_?.transfer.purge().catch(() => undefined);
+      }
+    };
+    return (this.connect_ = lazy);
   }
 
   /**
@@ -2330,7 +2353,10 @@ export class BrowserAdapter implements PolarisAdapter {
     if (this.cloud_) return this.cloud_;
     if (!this.bearer)
       return (this.cloud_ = unsupportedCloudConnect("runtime", COOKIE_DETAIL));
-    const cloud = (this.cloud_ = createCloudConnect(this.connect));
+    const cloud = (this.cloud_ = createCloudConnect(
+      this.connect,
+      `pkey-xfer-${storeNamespace(this.product, this.base)}`,
+    ));
     // Connect stops before the server hears of the sign-out, within a bound (D-12): a session
     // must not outlive the roster it was admitted under, and a stuck stop cannot hold sign-out.
     this.bearer.onBeforeSignOut(() => stopCloudConnectForSignOut(cloud));
@@ -2360,6 +2386,8 @@ export class BrowserAdapter implements PolarisAdapter {
           .catch(() => undefined);
         // The relay stops first: a session must not outlive the roster it was admitted under.
         await this.cloudConnect.stop().catch(() => undefined);
+        // Half-received transfers are the peer's bytes: they leave with the roster.
+        await this.cloudConnect.transfer.purge().catch(() => undefined);
         await this.connect.leave();
       }
     }

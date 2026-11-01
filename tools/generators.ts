@@ -101,6 +101,18 @@ export const GENERATORS: Generator[] = [
     fast: true,
   },
   {
+    id: "godot-nfc",
+    title: "Godot NFC tables (UCD 16.0) and the expected-output fixture",
+    order: 20.5,
+    inputs: ["tools/unicode/nfc-16.0.json", "tools/gen-godot-nfc.ts"],
+    outputs: [
+      "sdks/godot/addons/polaris_key/core/text/nfc_data.gd",
+      "sdks/godot/tests/fixtures/nfc_cases.json",
+    ],
+    write: [tsx("tools/gen-godot-nfc.ts")],
+    fast: true,
+  },
+  {
     id: "channels",
     title: "Distribution-channel catalogue",
     order: 21,

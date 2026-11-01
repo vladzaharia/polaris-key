@@ -40,6 +40,7 @@ package im.plrs.key.sdk
 
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.PolarisException
+import im.plrs.key.core.SYNC_CHUNK_MAX_STORED_BYTES
 import im.plrs.key.core.SYNC_CHUNK_PLAN_MAX_IDS
 import im.plrs.key.core.SYNC_FILE_MAX_BYTES
 import im.plrs.key.core.SYNC_MAX_CHUNKS_PER_FILE
@@ -89,6 +90,7 @@ private const val RETRYABLE_FROM = 500
 private const val HTTP_REQUEST_TIMEOUT = 408
 private const val HTTP_TOO_MANY = 429
 private const val HTTP_CONFLICT = 409
+private const val HTTP_FORBIDDEN = 403
 private const val HTTP_GONE = 410
 private const val HTTP_NOT_FOUND = 404
 private const val HTTP_BAD_REQUEST = 400
@@ -162,7 +164,7 @@ public class FileBody(
  * The upload and download routes of §13.8 under `/<p>/sync/files/{collection}/{id}`. `sha256` is the lowercase
  * hex of the body; a host sends it as `Content-Digest`. Requests and answers are the JSON objects of the wire
  * (`protocol/sync.ts`). A host bounds [getFile] to the range it asked for and [getChunk] to
- * [SERVER_CHUNK_MAX_STORED_BYTES].
+ * [SYNC_CHUNK_MAX_STORED_BYTES].
  */
 public interface FileTransport {
     public suspend fun begin(target: FileTarget, request: JsonObject): FileReply<JsonObject>
@@ -193,6 +195,9 @@ public interface FileTransport {
 
     /** `GET /<p>/sync/files/{collection}/chunks/{chunkId}`: the object's bytes. */
     public suspend fun getChunk(collection: String, chunkId: String): FileReply<ByteArray>
+
+    /** `GET …/{id}/revisions`: `{revisions: [{version, size, sha256, format, createdAt}]}`, newest first. */
+    public suspend fun revisions(target: FileTarget): FileReply<JsonObject>
 }
 
 // -- Errors ----------------------------------------------------------------------------------------------------
@@ -238,6 +243,8 @@ public class TransferException(
     public val serverVersion: Int? = null,
     /** On [Reason.FILE_INVALID]: the first check that failed. */
     public val detail: String? = null,
+    /** On a `quota_exceeded`: whose quota (`user`, `collection` or `product`). */
+    public val scope: String? = null,
 ) : Exception(
     "file transfer: ${reason.wire}" + (code?.let { " ($it)" } ?: "") + (detail?.let { " [$it]" } ?: ""),
 ) {
@@ -518,7 +525,7 @@ private fun refuseUpload(r: FileRefusal): Exception {
         return TransferException(Reason.CONFLICT, HTTP_CONFLICT, r.code, serverVersion = v)
     }
     if (r.status == HTTP_BAD_REQUEST && r.code == "upload_mismatch") return TransferException(Reason.MISMATCH, HTTP_BAD_REQUEST, r.code)
-    return TransferException(Reason.REJECTED, r.status, r.code)
+    return TransferException(Reason.REJECTED, r.status, r.code, scope = r.body.objectValue?.get("scope").stringValue)
 }
 
 private fun <T> FileReply<T>.orRefuse(): T = when (this) {
@@ -613,7 +620,7 @@ private open class UploadPass(val engine: FileTransferEngine, collection: String
                 again++
                 continue
             }
-            if (r.status == HTTP_CONFLICT || (r.status == HTTP_BAD_REQUEST && r.code == "upload_mismatch")) discard()
+            if (r.status == HTTP_CONFLICT || r.status == HTTP_FORBIDDEN || (r.status == HTTP_BAD_REQUEST && r.code == "upload_mismatch")) discard()
             throw refuseUpload(r)
         }
     }
@@ -965,7 +972,7 @@ private class DownloadRun(val engine: FileTransferEngine, val req: DownloadReque
             }
         }
         val obj = engine.call(hold) { engine.transport.getChunk(req.collection, id) }.orReject()
-        if (obj.size > SERVER_CHUNK_MAX_STORED_BYTES) throw invalid("chunk-size")
+        if (obj.size > SYNC_CHUNK_MAX_STORED_BYTES) throw invalid("chunk-size")
         val o = req.codec.openChunk(rec.id, obj)
         if (o is FileOpened.Invalid) throw invalid("chunk-" + o.reason)
         val plain = (o as FileOpened.Ok).plain

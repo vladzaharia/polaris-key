@@ -30,6 +30,8 @@ export const ErrorCode = {
   RelayPaused: "relay_paused",
   /** CC-07.3: the person's day or the product's month is spent (429, body `scope`). */
   RelayQuotaExceeded: "relay_quota_exceeded",
+  /** CC-19.3: a contact-room ticket while the inter-account setting, `launch.connectLinks` or the service is off (403). */
+  ConnectLinksDisabled: "connect_links_disabled",
   /** CC-07.3: the relay ticket is missing, malformed, expired, spent or not for this caller (401). */
   RelayTicketInvalid: "relay_ticket_invalid",
   BadRequest: "bad_request",
@@ -99,6 +101,8 @@ export const ErrorCode = {
   UnsupportedGrantType: "unsupported_grant_type",
   InvalidScope: "invalid_scope",
   RedirectUriMismatch: "redirect_uri_mismatch",
+  /** I-15 (§12.12): an unknown, expired, malformed or taken `request_uri`; a card page, never a redirect. */
+  InvalidRequestUri: "invalid_request_uri",
   /** I-08: a licence choice is owed and was not made (Continue, `token`). */
   LicenseChoiceRequired: "license_choice_required",
 } as const;

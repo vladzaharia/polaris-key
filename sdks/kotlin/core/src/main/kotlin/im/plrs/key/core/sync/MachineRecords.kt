@@ -5,6 +5,7 @@ package im.plrs.key.core.sync
 
 import im.plrs.key.core.stringValue
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 
 /** The record calls an app makes while Cloud Sync is on. */
@@ -21,7 +22,10 @@ public interface SyncRecords {
     public fun record(collection: String, recordId: String): ReadResult?
 }
 
-internal class MachineRecords(private val p: MachineParts) : SyncRecords {
+@Suppress("TooManyFunctions")
+internal class MachineRecords(private val p: MachineParts) :
+    SyncRecords,
+    SyncExactRecords {
     private val core get() = p.core
 
     fun recordKey(c: String, id: String) = "$c/$id"
@@ -87,5 +91,45 @@ internal class MachineRecords(private val p: MachineParts) : SyncRecords {
             pending = true
         }
         return value?.let { ReadResult(it, if (pending) "pending" else "cloud") }
+    }
+
+    override fun records(collection: String): List<RecordRow> {
+        if (core.s.subject == null) return emptyList()
+        val prefix = "$collection/"
+        return core.active().records.entries.filter { it.key.startsWith(prefix) && !p.layers.rowUnreadable(it.value) }
+            .sortedBy { it.key }
+            .map { (k, row) -> RecordRow(k.substring(prefix.length), row.value ?: JsonNull, row.version, row.file) }
+    }
+
+    override fun putAt(collection: String, id: String, value: JsonElement, baseVersion: JsonElement, file: RecordFile?): PutAtResult =
+        exact(collection, baseVersion, Op(0, OpTarget.Record(collection, id), "set", value).also { it.file = file })
+
+    override fun removeAt(collection: String, id: String, baseVersion: JsonElement): PutAtResult =
+        exact(collection, baseVersion, Op(0, OpTarget.Record(collection, id), "delete"))
+
+    override fun onOutcome(listener: ((RecordOutcome) -> Unit)?) {
+        core.outcome = listener
+    }
+
+    private fun exact(collection: String, baseVersion: JsonElement, op: Op): PutAtResult {
+        val refusal = when {
+            p.routing.collection(collection)?.get("policy").stringValue != "revision" -> "collection-unknown"
+            core.s.subject == null -> "signed-out"
+            else -> null
+        }
+        if (refusal != null) return PutAtResult.Failed(refusal)
+        val part = core.active()
+        op.baseVersion = baseVersion
+        p.journal.enqueue(part, op)
+        part.nextTicket += 1
+        op.ticket = part.nextTicket
+        p.pump.kick()
+        return PutAtResult.Ok(part.nextTicket)
+    }
+
+    /** Report [op]'s outcome, when it is an exact write. */
+    fun emitOutcome(op: Op, make: (Long) -> RecordOutcome) {
+        val ticket = op.ticket ?: return
+        core.outcome?.invoke(make(ticket))
     }
 }

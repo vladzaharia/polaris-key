@@ -30,7 +30,7 @@ internal object SyncValues {
     }
 
     fun parseHlc(hlc: String): Pair<Long, Long> {
-        require(hlcPattern.containsMatchIn(hlc)) { "not an HLC" }
+        require(hlcPattern.matches(hlc)) { "not an HLC" }
         return hlc.substring(0, HLC_PHYSICAL_DIGITS).toLong(HEX) to hlc.substring(HLC_PHYSICAL_DIGITS + 1).toLong(HEX)
     }
 
@@ -80,8 +80,10 @@ internal object SyncValues {
 
     /** One record operation applied to a value. */
     fun applyRecordOp(base: JsonElement?, op: Op): JsonElement? = when (op.op) {
+        "delete" -> null
         "set" -> op.value ?: JsonNull
-        "setMember", "removeMember" -> applySettingOp("merge", base, op.op, op.value, op.member)
+        "setField" -> JsonObject(((base as? JsonObject) ?: JsonObject(emptyMap())) + (op.field!! to (op.value ?: JsonNull)))
+        "removeField" -> JsonObject(((base as? JsonObject) ?: JsonObject(emptyMap())) - op.field!!)
         "add" -> addTo((base as? JsonArray) ?: JsonArray(emptyList()), op.element!!)
         "remove" -> JsonArray(((base as? JsonArray) ?: JsonArray(emptyList())).filterNot { SyncJson.jsonEqual(it, op.element) })
         else -> base

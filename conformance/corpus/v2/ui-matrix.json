@@ -1,5 +1,5 @@
 {
-  "uiMatrixVersion": 10,
+  "uiMatrixVersion": 8,
   "description": "The UI state matrix (plans/UK-02.md \u00a74, plans/UK-02b.md): layer (c) of every UI kit, pinned once for every language. Component rows: drive the headless model of expect.component with input (a member input omits takes vocabulary.defaults) and compare state, the sorted copy keys and the sorted actions (absent means none). A state is a components.json state of the component, or hidden: the drop-in renders nothing and a styled part renders empty; hidden appears only on rows that turn a service off. copy lists the keys this input shows: a subset of the state's components.json list plus core.* keys the input selects (D7); vocabulary.unreached names the listed keys no row can show yet. actions are the controls the copy names (vocabulary.actionKeys) plus replace-in-browser. vocabulary.gaps declares the variants not pinned yet, each with the work package that appends its rows. mustNot marks a negative case (UI-KITS \u00a74.1): the expectation holds and none of its states, copy or actions appear. Inline sign-in rows have a sheet twin with the same expectation (D4); each must component has a presentation-absent twin of its default row (D6). theme rows pin UI-KITS \u00a71.2 and \u00a73.4's resolution; i18n rows the catalog lookup (the locale's override, the locale's table, the English override, English; a locale with no pack is English, and a pending core pack is English core copy) and the ICU subset, where # is the integer in plain ASCII digits (expect is computed by the generator's own formatter). vocabulary.loadingDelay pins DL7's delayed response: a row whose input has elapsedMs below min expects its loading state with no copy; from max, the state's usual copy. cli is the terminal drop-in contract (plans/UK-51.md), one object rather than component rows: verbs (the end-user set a mount offers, the developer verbs it offers only by name, the aliases), mount and help (what registering into a host CLI mounts, refuses with polaris-verb-collision, skips, hides and lists), gate (every licenseStatus x tty x json x entitled: run, the inline flow, or a refusal that is a triangle with its fix and exits 4), outcomes (a kit verb in a vocabulary.cli.situations situation: its mark, exit, result fields, stdout and fix verbs), stdin (what activate with no key reads, per vocabulary.cli.stdinKinds), capabilities (environment x streams x flags) and exit (the exit table). vocabulary.cli holds the rules; mount, help, gate and capabilities are computed by the generator's references. Every runner runs every row of every family; a row a natural model fails goes back as a bug against the row or the model. Append-only within a uiMatrixVersion: a changed row, input member or rule bumps it.",
   "vocabulary": {
     "actions": {
@@ -76,6 +76,8 @@
       "provider": "The sign-in provider's name (Apple, Google, Steam), for the strings that name it: the link offer, the failed sign-in. Absent: Polaris Locker, the sign-in the generic row opens.",
       "autoSignIn": "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
       "nearbyApproval": "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby, device?}. Absent: the account-menu entry.",
+      "linkPairing": "Pairing with someone nearby: {step: open | code | confirm | linked | failed | unavailable, device?, code?, categories?, reason?: declined | timeout | full | closed}. `device` is the label the other device reported: nothing authenticates it, so the screen words it as reported and, without one, says the device gave no name. `code` is drawn as served and compared by both people. `categories` (ids, at most 8) are listed before the confirm button; none says nothing is shared yet. `unavailable`: links are off for the product (the typed connect_links_disabled). Absent: LinkPairing is hidden.",
+      "transferOffer": "A contact's offer to send something (D-8, consent per transfer): {step: ask | receiving | done | failed, device?, name}. `device` is the contact's label and `name` what it offers, both text the other side chose. Absent: TransferOffer is hidden.",
       "signIn": "The sign-in session: {presentation, replace, channel, outcome?, browserOpened?, redeeming?, event?, issuedNow?, raced?, grantExpired?}. outcome is session.wait()'s; issuedNow is true when this sign-in added or issued the license.",
       "deviceCode": "The device-code poll: {phase, secondsLeft?}. Present exactly on rows with signIn.channel device-code; it alone selects SignInHandoff's state.",
       "choices": "plans/I-04.md's LicenseChoiceView, field for field.",
@@ -132,6 +134,8 @@
       "AddToAccount": "hidden (Identity off), then the step: form, invalid, busy, added, owned, email-bound, other-account, failed.",
       "SignIn (holders)": "`signIn.step` key-done (the ActivateDone body), attach (AddToAccount's, at its `addToAccount.step`) or added wins over every step except error and an automatic sign-in step.",
       "AccountAndLicense (holders)": "key-only with a `licenseHolder` that has no email (floating) draws Not in an account and Add your name and email instead of the key-only line; Identity off keeps it, Add opening the portal.",
+      "LinkPairing": "hidden (Connect off or no linkPairing), then the step: open, code (a device reached the code), confirm, linked, failed (its reason picks the line), unavailable.",
+      "TransferOffer": "hidden (Connect off or no transferOffer), then the step: ask, receiving, done, failed.",
       "Paywall": "loading, purchasing (pending purchase), restore (pending restore), purchased, not-available, offers."
     },
     "services": [
@@ -362,7 +366,16 @@
         "interrupt": "`activate` on an interactive terminal with no key: Ctrl-C at the key prompt.",
         "sign-in-cancelled": "`login` on an interactive terminal: Esc while it waits for the browser.",
         "sign-in-denied": "`login`: the device-code poll answers `error` with `reason: access_denied`.",
-        "sign-in-failed": "`login`: the device-code poll answers a bare `error` (no `reason`)."
+        "sign-in-failed": "`login`: the device-code poll answers a bare `error` (no `reason`).",
+        "sign-in-nearby": "`login` on an interactive terminal, nearby on: an approver answers within 2 s, the code is shown and the person taps it on the other device. With `--json` nearby never starts (no browse, no LAN request): the device-code flow runs and signs in.",
+        "sign-in-nearby-handoff": "`login` on an interactive terminal, nearby on: no approver answers within 2 s, so nearby is cancelled and the regular sign-in runs and signs in.",
+        "approve-approved": "`devices approve` on an interactive terminal, signed in: a device nearby asks, the person taps the code it shows (one of three) and the device is signed in.",
+        "approve-mismatch": "`devices approve`: the person taps a code the other device does not show; the request is denied.",
+        "approve-denied": "`devices approve`: the person chooses Deny; the request is denied.",
+        "approve-not-nearby": "`devices approve`: the Worker answers that the device that asked is not on this network (`not_nearby`).",
+        "approve-unsupported": "`devices approve` on a runtime that cannot take part in the nearby handshake (CC-15 answers `nearby-unsupported`).",
+        "approve-account-required": "`devices approve` on a device that is signed out: there is no account to approve for.",
+        "approve-json": "`devices approve --json`: both sides need a person, so the run is refused before anything starts."
       },
       "stdinKinds": {
         "tty": "A terminal, on an interactive run.",
@@ -5468,7 +5481,7 @@
       }
     },
     {
-      "name": "NearbyApproval/ask: tap the code the other device shows",
+      "name": "NearbyApproval/ask: choose the code the other device shows",
       "input": {
         "nearbyApproval": { "step": "ask", "device": "Kitchen iPad" }
       },
@@ -5567,7 +5580,7 @@
       }
     },
     {
-      "name": "NearbyApproval/choose: the license is chosen here, never on the new device",
+      "name": "NearbyApproval/choose: one tap per license, Deny to leave; chosen here, never on the new device",
       "input": {
         "nearbyApproval": { "step": "choose", "device": "Kitchen iPad" }
       },
@@ -5575,7 +5588,7 @@
         "component": "NearbyApproval",
         "state": "choose",
         "copy": [
-          "signin.choice.continue",
+          "signin.approve.deny",
           "signin.nearby.chooseLede",
           "signin.nearby.chooseTitle"
         ]
@@ -14001,6 +14014,466 @@
       }
     }
   ],
+  "connect": [
+    {
+      "name": "LinkPairing/open: both people open it, nearby",
+      "input": {
+        "linkPairing": { "step": "open", "categories": ["contacts", "photos"] }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "open",
+        "copy": [
+          "common.cancel",
+          "linkPairing.openBody",
+          "linkPairing.searching",
+          "linkPairing.title"
+        ],
+        "actions": ["cancel"]
+      }
+    },
+    {
+      "name": "LinkPairing/code: the code, the label as reported, the categories before the choice",
+      "input": {
+        "linkPairing": {
+          "step": "code",
+          "code": "123 456",
+          "device": "Maya's laptop",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "code",
+        "copy": [
+          "a11y.linkCode",
+          "linkPairing.codeBody",
+          "linkPairing.codeTitle",
+          "linkPairing.confirm",
+          "linkPairing.decline",
+          "linkPairing.reported",
+          "linkPairing.shares"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A label the other device sent is reported by the device, never shown as who it is.",
+        "states": ["linked"],
+        "copy": ["linkPairing.reportedUnnamed"]
+      }
+    },
+    {
+      "name": "LinkPairing/code: the device gave no name",
+      "input": {
+        "linkPairing": {
+          "step": "code",
+          "code": "123 456",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "code",
+        "copy": [
+          "a11y.linkCode",
+          "linkPairing.codeBody",
+          "linkPairing.codeTitle",
+          "linkPairing.confirm",
+          "linkPairing.decline",
+          "linkPairing.reportedUnnamed",
+          "linkPairing.shares"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A missing label is said to be missing; no name is made up.",
+        "copy": ["linkPairing.reported"]
+      }
+    },
+    {
+      "name": "LinkPairing/code: the app asks for no categories",
+      "input": {
+        "linkPairing": {
+          "step": "code",
+          "code": "123 456",
+          "device": "Maya's laptop",
+          "categories": []
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "code",
+        "copy": [
+          "a11y.linkCode",
+          "linkPairing.codeBody",
+          "linkPairing.codeTitle",
+          "linkPairing.confirm",
+          "linkPairing.decline",
+          "linkPairing.reported",
+          "linkPairing.sharesNone"
+        ]
+      },
+      "mustNot": {
+        "invariant": "With nothing to share the screen says so; it never lists a category.",
+        "copy": ["linkPairing.shares"]
+      }
+    },
+    {
+      "name": "LinkPairing/confirm: waiting for the other person, the code still on screen",
+      "input": {
+        "linkPairing": {
+          "step": "confirm",
+          "code": "123 456",
+          "device": "Maya's laptop",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "confirm",
+        "copy": [
+          "a11y.linkCode",
+          "common.cancel",
+          "linkPairing.reported",
+          "linkPairing.shares",
+          "linkPairing.waiting"
+        ],
+        "actions": ["cancel"]
+      },
+      "mustNot": {
+        "invariant": "Waiting never reads as linked.",
+        "states": ["linked"],
+        "copy": ["linkPairing.linkedTitle"]
+      }
+    },
+    {
+      "name": "LinkPairing/confirm: the device gave no name and nothing is shared",
+      "input": {
+        "linkPairing": {
+          "step": "confirm",
+          "code": "123 456",
+          "categories": []
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "confirm",
+        "copy": [
+          "a11y.linkCode",
+          "common.cancel",
+          "linkPairing.reportedUnnamed",
+          "linkPairing.sharesNone",
+          "linkPairing.waiting"
+        ],
+        "actions": ["cancel"]
+      }
+    },
+    {
+      "name": "LinkPairing/linked: with what both approved",
+      "input": {
+        "linkPairing": {
+          "step": "linked",
+          "device": "Maya's laptop",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "linked",
+        "copy": [
+          "common.done",
+          "linkPairing.linkedTitle",
+          "linkPairing.linkedWith",
+          "linkPairing.shares"
+        ]
+      }
+    },
+    {
+      "name": "LinkPairing/linked: nothing shared yet",
+      "input": { "linkPairing": { "step": "linked", "categories": [] } },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "linked",
+        "copy": [
+          "common.done",
+          "linkPairing.linkedBody",
+          "linkPairing.linkedTitle",
+          "linkPairing.sharesNone"
+        ]
+      }
+    },
+    {
+      "name": "LinkPairing/failed: someone said no",
+      "input": {
+        "linkPairing": {
+          "step": "failed",
+          "reason": "declined",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "failed",
+        "copy": [
+          "common.done",
+          "common.tryAgain",
+          "linkPairing.failedDeclined",
+          "linkPairing.failedTitle"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A session that ended without a link never says it linked.",
+        "states": ["linked"],
+        "copy": [
+          "linkPairing.linkedBody",
+          "linkPairing.linkedTitle",
+          "linkPairing.linkedWith"
+        ]
+      }
+    },
+    {
+      "name": "LinkPairing/failed: the window or the exchange ran out",
+      "input": {
+        "linkPairing": {
+          "step": "failed",
+          "reason": "timeout",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "failed",
+        "copy": [
+          "common.done",
+          "common.tryAgain",
+          "linkPairing.failedTimeout",
+          "linkPairing.failedTitle"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A session that ended without a link never says it linked.",
+        "states": ["linked"],
+        "copy": [
+          "linkPairing.linkedBody",
+          "linkPairing.linkedTitle",
+          "linkPairing.linkedWith"
+        ]
+      }
+    },
+    {
+      "name": "LinkPairing/failed: one device holds the most links",
+      "input": {
+        "linkPairing": {
+          "step": "failed",
+          "reason": "full",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "failed",
+        "copy": [
+          "common.done",
+          "common.tryAgain",
+          "linkPairing.failedFull",
+          "linkPairing.failedTitle"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A session that ended without a link never says it linked.",
+        "states": ["linked"],
+        "copy": [
+          "linkPairing.linkedBody",
+          "linkPairing.linkedTitle",
+          "linkPairing.linkedWith"
+        ]
+      }
+    },
+    {
+      "name": "LinkPairing/failed: the connection ended",
+      "input": {
+        "linkPairing": {
+          "step": "failed",
+          "reason": "closed",
+          "categories": ["contacts", "photos"]
+        }
+      },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "failed",
+        "copy": [
+          "common.done",
+          "common.tryAgain",
+          "linkPairing.failedClosed",
+          "linkPairing.failedTitle"
+        ],
+        "actions": ["retry"]
+      },
+      "mustNot": {
+        "invariant": "A session that ended without a link never says it linked.",
+        "states": ["linked"],
+        "copy": [
+          "linkPairing.linkedBody",
+          "linkPairing.linkedTitle",
+          "linkPairing.linkedWith"
+        ]
+      }
+    },
+    {
+      "name": "LinkPairing/unavailable: links are off for the product",
+      "input": { "linkPairing": { "step": "unavailable" } },
+      "expect": {
+        "component": "LinkPairing",
+        "state": "unavailable",
+        "copy": [
+          "common.done",
+          "core.codes.connect_links_disabled.message",
+          "core.codes.connect_links_disabled.title"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A product with links off never offers to pair.",
+        "states": ["code", "open"],
+        "copy": ["linkPairing.confirm", "linkPairing.title"]
+      }
+    },
+    {
+      "name": "LinkPairing/hidden: Connect off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "sync",
+          "commerce"
+        ],
+        "linkPairing": { "step": "open" }
+      },
+      "expect": { "component": "LinkPairing", "state": "hidden", "copy": [] }
+    },
+    {
+      "name": "TransferOffer/ask: the contact's label and the name it chose",
+      "input": {
+        "transferOffer": {
+          "step": "ask",
+          "name": "holiday.zip",
+          "device": "Maya's laptop"
+        }
+      },
+      "expect": {
+        "component": "TransferOffer",
+        "state": "ask",
+        "copy": [
+          "transferOffer.accept",
+          "transferOffer.ask",
+          "transferOffer.askBody",
+          "transferOffer.decline"
+        ]
+      },
+      "mustNot": {
+        "invariant": "Nothing is received before the person presses Accept (D-8).",
+        "states": ["done", "receiving"]
+      }
+    },
+    {
+      "name": "TransferOffer/ask: the contact has no label",
+      "input": { "transferOffer": { "step": "ask", "name": "holiday.zip" } },
+      "expect": {
+        "component": "TransferOffer",
+        "state": "ask",
+        "copy": [
+          "transferOffer.accept",
+          "transferOffer.askBody",
+          "transferOffer.askUnnamed",
+          "transferOffer.decline"
+        ]
+      }
+    },
+    {
+      "name": "TransferOffer/receiving: Cancel stops it",
+      "input": {
+        "transferOffer": {
+          "step": "receiving",
+          "name": "holiday.zip",
+          "device": "Maya's laptop"
+        }
+      },
+      "expect": {
+        "component": "TransferOffer",
+        "state": "receiving",
+        "copy": ["common.cancel", "transferOffer.receiving"],
+        "actions": ["cancel"]
+      }
+    },
+    {
+      "name": "TransferOffer/done: received",
+      "input": {
+        "transferOffer": {
+          "step": "done",
+          "name": "holiday.zip",
+          "device": "Maya's laptop"
+        }
+      },
+      "expect": {
+        "component": "TransferOffer",
+        "state": "done",
+        "copy": ["common.done", "transferOffer.done"]
+      },
+      "mustNot": {
+        "invariant": "A finished transfer offers nothing more to accept.",
+        "copy": ["transferOffer.accept"]
+      }
+    },
+    {
+      "name": "TransferOffer/failed: nothing was saved",
+      "input": {
+        "transferOffer": {
+          "step": "failed",
+          "name": "holiday.zip",
+          "device": "Maya's laptop"
+        }
+      },
+      "expect": {
+        "component": "TransferOffer",
+        "state": "failed",
+        "copy": [
+          "common.done",
+          "transferOffer.failed",
+          "transferOffer.failedBody"
+        ]
+      },
+      "mustNot": {
+        "invariant": "A failed transfer never says received.",
+        "states": ["done"],
+        "copy": ["transferOffer.done"]
+      }
+    },
+    {
+      "name": "TransferOffer/hidden: Connect off",
+      "input": {
+        "services": [
+          "license",
+          "config",
+          "release",
+          "distribution",
+          "update",
+          "identity",
+          "sync",
+          "commerce"
+        ],
+        "transferOffer": {
+          "step": "ask",
+          "name": "holiday.zip",
+          "device": "Maya's laptop"
+        }
+      },
+      "expect": { "component": "TransferOffer", "state": "hidden", "copy": [] }
+    }
+  ],
   "theme": [
     {
       "name": "elements: Tidewater's accent comes from its icon",
@@ -14943,6 +15416,7 @@
       "endUser": [
         "activate",
         "deactivate",
+        "devices approve",
         "devices deauthorize",
         "devices list",
         "devices rename",
@@ -14980,6 +15454,7 @@
           "mounted": [
             "activate",
             "deactivate",
+            "devices approve",
             "devices deauthorize",
             "devices list",
             "devices rename",
@@ -15004,6 +15479,7 @@
           "mounted": [
             "license activate",
             "license deactivate",
+            "license devices approve",
             "license devices deauthorize",
             "license devices list",
             "license devices rename",
@@ -15093,6 +15569,7 @@
           "mounted": [
             "license activate",
             "license deactivate",
+            "license devices approve",
             "license devices deauthorize",
             "license devices list",
             "license devices rename",
@@ -15128,6 +15605,7 @@
           "mounted": [
             "activate",
             "deactivate",
+            "devices approve",
             "devices deauthorize",
             "devices list",
             "devices rename",
@@ -15155,7 +15633,12 @@
             "update check"
           ],
           "error": null,
-          "skipped": ["devices deauthorize", "devices list", "devices rename"],
+          "skipped": [
+            "devices approve",
+            "devices deauthorize",
+            "devices list",
+            "devices rename"
+          ],
           "hidden": []
         }
       },
@@ -15179,6 +15662,7 @@
           "mounted": [
             "activate",
             "deactivate",
+            "devices approve",
             "devices deauthorize",
             "devices list",
             "devices rename",
@@ -15209,6 +15693,7 @@
               "commands": [
                 "activate",
                 "deactivate",
+                "devices approve",
                 "devices deauthorize",
                 "devices list",
                 "devices rename",
@@ -15240,6 +15725,7 @@
               "commands": [
                 "activate",
                 "deactivate",
+                "devices approve",
                 "devices deauthorize",
                 "devices list",
                 "devices rename",
@@ -15293,6 +15779,7 @@
               "commands": [
                 "activate",
                 "deactivate",
+                "devices approve",
                 "devices deauthorize",
                 "devices list",
                 "devices rename",
@@ -15315,6 +15802,7 @@
               "commands": [
                 "activate",
                 "deactivate",
+                "devices approve",
                 "devices deauthorize",
                 "devices list",
                 "devices rename",
@@ -17515,6 +18003,117 @@
           "json": true
         },
         "expect": { "exit": 1, "error": "sign-in-failed", "stdout": "result" }
+      },
+      {
+        "name": "sign-in-nearby",
+        "input": {
+          "verb": "login",
+          "situation": "sign-in-nearby",
+          "json": false
+        },
+        "expect": { "mark": "ok", "exit": 0, "error": null, "stdout": "screen" }
+      },
+      {
+        "name": "sign-in-nearby, --json",
+        "input": {
+          "verb": "login",
+          "situation": "sign-in-nearby",
+          "json": true
+        },
+        "expect": { "exit": 0, "error": null, "stdout": "result" }
+      },
+      {
+        "name": "sign-in-nearby-handoff",
+        "input": {
+          "verb": "login",
+          "situation": "sign-in-nearby-handoff",
+          "json": false
+        },
+        "expect": { "mark": "ok", "exit": 0, "error": null, "stdout": "screen" }
+      },
+      {
+        "name": "approve-approved",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-approved",
+          "json": false
+        },
+        "expect": { "mark": "ok", "exit": 0, "error": null, "stdout": "screen" }
+      },
+      {
+        "name": "approve-mismatch",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-mismatch",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen"
+        }
+      },
+      {
+        "name": "approve-denied",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-denied",
+          "json": false
+        },
+        "expect": { "exit": 1, "error": null, "stdout": "screen" }
+      },
+      {
+        "name": "approve-not-nearby",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-not-nearby",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen"
+        }
+      },
+      {
+        "name": "approve-unsupported",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-unsupported",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen"
+        }
+      },
+      {
+        "name": "approve-account-required",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-account-required",
+          "json": false
+        },
+        "expect": {
+          "mark": "warn",
+          "exit": 1,
+          "error": null,
+          "stdout": "screen",
+          "fix": ["login"]
+        }
+      },
+      {
+        "name": "approve-json, --json",
+        "input": {
+          "verb": "devices approve",
+          "situation": "approve-json",
+          "json": true
+        },
+        "expect": { "exit": 2, "error": "usage", "stdout": "result" }
       }
     ],
     "stdin": [

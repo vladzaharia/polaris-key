@@ -45,6 +45,8 @@ describe("a coded refusal in English", () => {
     await waitFor(() =>
       expect(copyFor("en").has("core.codes.license_disabled.title")).toBe(true),
     );
+    // The kit resolves its sign-in channel once as it attaches; wait for the welcome view again.
+    await waitFor(() => expect(control("welcome.useKey")).not.toBeNull());
     fireEvent.click(control("welcome.useKey")!);
     const field = await waitFor(() => {
       const f = container.querySelector<HTMLInputElement>("#pk-key");

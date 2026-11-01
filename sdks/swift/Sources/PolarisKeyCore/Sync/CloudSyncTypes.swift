@@ -136,12 +136,24 @@ public enum SyncTarget: Sendable, Equatable {
 }
 
 public enum SyncOpName: String, Sendable, Equatable {
-    case set, clear, setMember, removeMember, add, remove
+    case set, clear, setMember, removeMember, setField, removeField, add, remove, delete
 }
 
 /// Why a setting mutation waits on the device instead of being sent.
 public enum SyncParkReason: String, Sendable, Equatable {
     case quota, entitlement
+}
+
+/// The version an exact write is made against: a number, or `"*"` for any.
+public enum SyncBase: Sendable, Equatable {
+    case any
+    case version(Int)
+}
+
+/// The answer to `putAt` / `removeAt`: the ticket its outcome will carry, or a typed failure.
+public enum SyncTicketResult: Sendable, Equatable {
+    case ticket(Int)
+    case failed(String)
 }
 
 /// A mutation as the push body carries it, plus the journal-only marks.
@@ -151,6 +163,8 @@ public struct SyncOp: Sendable, Equatable {
     public var op: SyncOpName
     public var value: JSONValue?
     public var member: String?
+    /// `setField` and `removeField` on a `merge` record (§13.3).
+    public var field: String?
     public var element: JSONValue?
     public var observedSeq: Int?
     public var editedHlc: String?
@@ -160,18 +174,25 @@ public struct SyncOp: Sendable, Equatable {
     public var preContact: Bool
     public var moved: Bool
     public var parked: SyncParkReason?
+    /// Journal-only: the caller's ticket from `putAt` / `removeAt`; never on the wire.
+    public var ticket: Int?
+    /// Journal-only: the pointer `putAt` was given (the one the save's finalize returned); the row adopts it
+    /// when the op is acknowledged `ok`. Never on the wire.
+    public var file: SyncFilePointer?
 
     public init(
         mutationId: Int, target: SyncTarget, op: SyncOpName, value: JSONValue? = nil,
-        member: String? = nil, element: JSONValue? = nil, observedSeq: Int? = nil,
+        member: String? = nil, field: String? = nil, element: JSONValue? = nil, observedSeq: Int? = nil,
         editedHlc: String? = nil, baseVersion: Int? = nil, baseAny: Bool = false,
-        preContact: Bool = false, moved: Bool = false, parked: SyncParkReason? = nil
+        preContact: Bool = false, moved: Bool = false, parked: SyncParkReason? = nil, ticket: Int? = nil,
+        file: SyncFilePointer? = nil
     ) {
         self.mutationId = mutationId
         self.target = target
         self.op = op
         self.value = value
         self.member = member
+        self.field = field
         self.element = element
         self.observedSeq = observedSeq
         self.editedHlc = editedHlc
@@ -180,6 +201,8 @@ public struct SyncOp: Sendable, Equatable {
         self.preContact = preContact
         self.moved = moved
         self.parked = parked
+        self.ticket = ticket
+        self.file = file
     }
 
     /// The push body's form (no journal-only marks).
@@ -189,6 +212,7 @@ public struct SyncOp: Sendable, Equatable {
         ]
         if let value { o["value"] = value }
         if let member { o["member"] = .string(member) }
+        if let field { o["field"] = .string(field) }
         if let element { o["element"] = element }
         if let observedSeq { o["observedSeq"] = .int(observedSeq) }
         if let editedHlc { o["editedHlc"] = .string(editedHlc) }

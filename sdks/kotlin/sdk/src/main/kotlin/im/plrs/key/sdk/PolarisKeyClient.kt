@@ -249,6 +249,13 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public val license: LicenseClient = LicenseClient(
         core, options.license,
         onAcquired = { syncAfterAcquisition() },
+        // The credential goes with the device: Connect stops and leaves, then Cloud Sync flushes, forgets the key ring
+        // and purges. A root that cannot be removed stops the deactivation (no request, the token stays).
+        beforeRelease = {
+            cloudConnect.stopForSignOut()
+            connect.leave()
+            cloudSyncApi.get()?.beforeRelease()
+        },
         onDeactivated = {
             tokenRejection.clear()
             config.publish()
@@ -515,8 +522,11 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         account = { core.storedSubject() },
         emit = { eventFlow.tryEmit(PolarisEvent.CloudSync(it)) },
         forgetRing = { keyring.forget() },
+        ringHeld = { keyring.holdsState() },
         recovery = { keyring.setRecoveryCode() },
         cleanup = { tempStateDir?.deleteRecursively() },
+        lockRing = { keyring.lock() },
+        fileCodec = { collection, e2e -> if (e2e) keyring.fileCodec(collection) else ServerFileCodec() },
     ).also { api ->
         cloudSyncApi.set(api)
         // Registered after Connect's hook: the roster goes first. Then Cloud Sync flushes (bounded) and signs the machine out while
@@ -622,7 +632,11 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────────
-    public suspend fun discover(): DiscoveryResult = core.discover().also { cloudSyncImpl.noteDiscovery() }
+    public suspend fun discover(): DiscoveryResult = core.discover().also {
+        cloudSyncImpl.noteDiscovery()
+        // `interAccount` may have moved: links follow the document (section 15.10 "Gates").
+        connect.notifyContacts()
+    }
 
     // ── Presentation (core.presentation, plans/HA-13.md) ────────────────────────────────────────
     /**

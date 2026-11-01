@@ -169,6 +169,12 @@ function base(): Docs {
         keyEntry: { limit: 10, claimByKey: false },
         terms: { version: "2026-10", url: "https://acme.example/terms" },
         redirectPaths: ["/auth/callback"],
+        // I-15.2: the native redirect classes.
+        nativeRedirect: {
+          loopback: true,
+          schemes: ["com.acme.app"],
+          claimedPaths: ["/open"],
+        },
         // I-42.1: the native audiences and the nearby switch.
         platformSignIn: {
           google: {
@@ -801,12 +807,43 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) => (dist(d).listing.developerName = " Acme Inc."),
   },
   {
+    // DISPLAY-NAME-INVISIBLE D-2: a Hangul filler passes a plain-letter test but renders blank.
+    code: "invalid_display_text",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).product.name = "Steam\u3164"),
+  },
+  {
+    // DISPLAY-NAME-INVISIBLE D-3: a kept selector modifies the code point before it, so first is refused.
+    code: "invalid_display_text",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).product.name = "\uFE0FAcme"),
+  },
+  {
+    // DISPLAY-NAME-INVISIBLE D-7: the schema pattern carries the Basic Multilingual Plane part of the
+    // refused set. A supplementary-plane code point (here U+1D173, MUSICAL SYMBOL BEGIN BEAM) is
+    // checked by the validator only.
+    code: "invalid_display_text",
+    file: "distribution",
+    schema: "accepts",
+    mutate: (d) => (dist(d).listing.name = "Acme\u{1D173}"),
+  },
+  {
     // PX-W13 (§8 Q4, amended): a reserved term. A warning while the platform setting
     // identity.reservedDisplayNames is `warn` (the default); the schema cannot judge names.
     code: "reserved_display_name",
     file: "product",
     schema: "accepts",
     mutate: (d) => (p(d).product.name = "Steam Companion"),
+  },
+  {
+    // DISPLAY-NAME-INVISIBLE D-5: a tag inside a reserved term is deleted before comparing; the
+    // schema cannot judge names (and the tag is supplementary-plane).
+    code: "reserved_display_name",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => (p(d).product.name = "Ste\u{E0061}am"),
   },
   {
     // PX-W13: a multi-word term written as one word, through a confusable digit.
@@ -1285,6 +1322,71 @@ const MUTATIONS: Mutation[] = [
     schema: "rejects",
     mutate: (d) =>
       (p(d).identity.redirectPaths = ["/auth/callback", "/auth/callback"]),
+  },
+  // I-15.2: identity.nativeRedirect (plans/I-15.md §3).
+  {
+    code: "invalid_identity_native_redirect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect = ["loopback"]),
+  },
+  {
+    code: "invalid_identity_native_redirect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect.loopback = "yes"),
+  },
+  {
+    code: "invalid_identity_native_redirect",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect.localhost = true),
+  },
+  {
+    code: "invalid_identity_redirect_scheme",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect.schemes = ["tidewater"]),
+  },
+  {
+    code: "invalid_identity_redirect_scheme",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.nativeRedirect.schemes = ["locker.polaris.app"]),
+  },
+  {
+    code: "invalid_identity_redirect_scheme",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) =>
+      (p(d).identity.nativeRedirect.schemes = ["com.acme.app", "com.acme.app"]),
+  },
+  {
+    code: "invalid_identity_claimed_paths",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect.claimedPaths = ["open"]),
+  },
+  {
+    code: "invalid_identity_claimed_paths",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).identity.nativeRedirect.claimedPaths = ["/a/../b"]),
+  },
+  {
+    // A claimed path cannot also be a web callback; the schema cannot compare two members.
+    code: "identity_claimed_paths_overlap_redirect",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) =>
+      (p(d).identity.nativeRedirect.claimedPaths = ["/auth/callback"]),
+  },
+  {
+    code: "identity_claimed_paths_without_origins",
+    file: "product",
+    schema: "accepts",
+    mutate: (d) => delete p(d).web,
   },
   // I-42.1: identity.platformSignIn and identity.nearby (plans/CC-01-auto-sign-in.md §2.6).
   {
@@ -3792,6 +3894,26 @@ describe("valid manifests pass both validators", () => {
       distribution: true,
     });
   });
+
+  it.each([
+    "\u{1F3AE}\uFE0F Arcade",
+    "1\uFE0F\u20E3 Games",
+    "\u{1F3F4}\u{E0067}\u{E0062}\u{E0073}\u{E0063}\u{E0074}\u{E007F} Games",
+  ])(
+    "an emoji sequence name stays valid in both validators (DISPLAY-NAME-INVISIBLE D-3): %s",
+    (name) => {
+      const docs = base();
+      p(docs).product.name = name;
+      dist(docs).listing.name = name;
+      expect(tsCodes(docs)).toEqual([]);
+      expect(schemaAccepts(docs)).toEqual({
+        product: true,
+        schema: true,
+        release: true,
+        distribution: true,
+      });
+    },
+  );
 
   it("a Minted token carries its recipe in the entry's mint block (U-31)", () => {
     const docs = base();

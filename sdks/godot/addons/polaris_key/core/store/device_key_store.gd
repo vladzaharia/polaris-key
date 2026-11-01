@@ -50,15 +50,23 @@ extends RefCounted
 ##                     `FileAccess.open_encrypted_with_pass`. The passphrase is derived from
 ##                     `OS.get_unique_id()`, the product and a random per-install salt kept beside
 ##                     the record. This keeps the keys out of a casual copy of the folder (a
-##                     backup, a synced save directory, a support zip). It is NOT protection from
-##                     code running as the same user on the same machine, which can read the
-##                     salt and the unique id too. If the unique id changes (a new machine), the
+##                     backup, a synced save directory, a support zip). It is OBFUSCATION, NOT
+##                     protection: code running as the same user on the same machine can read the
+##                     salt and the unique id too, so it can derive the passphrase and read the
+##                     private keys. This is what Linux has (no native sealer); treat the keys as
+##                     readable by anything that runs as the player. If the unique id changes (a new machine), the
 ##                     record no longer opens and reads as unreadable until `wipe()`.
-##   "file"            the same file without engine encryption (`encrypted = false`), for an
-##                     engine build that lacks it. Also what an encrypted store reports when
-##                     `OS.get_unique_id()` is empty (some platforms have none): the passphrase
-##                     then rests on the salt beside the record alone, which is obfuscation, so
-##                     the store is `best_effort()` too.
+##   "file"            what an encrypted store reports when `OS.get_unique_id()` is empty (some
+##                     platforms have none): the passphrase then rests on the salt beside the
+##                     record alone, which is obfuscation, so the store is `best_effort()` too.
+##                     A store made with `for_tests` also reports "file": the record is a plain
+##                     file with no encryption at all, for the test suites only.
+##   "refused"         a store made with `encrypted = false` outside `for_tests`. The private keys
+##                     are never written as a plain file: every member answers `invalid-options`
+##                     (`public_keys()` and `sign()` included), and nothing is read, written or
+##                     locked. The one exception is `wipe()`: it deletes a plain `device-keys`
+##                     file an older build left in the directory (by name, never opened) and
+##                     answers ok.
 ##   "memory"          process memory only. A memory store refuses to register keys unless the
 ##                     caller passes `allow_ephemeral`. A web build whose `user://` is not
 ##                     persistent is also "memory".
@@ -124,12 +132,16 @@ var lock_stale_seconds := LOCK_STALE_SECONDS
 var unique_id := OS.get_unique_id()
 ## The native sealer in use (null: the engine-encrypted file, CC-26.6).
 var sealer: PKeyRecordSealer = null
+## The X25519 port (null until first use, then PKeyPeerCrypto.for_platform()).
+var crypto: PKeyPeerCrypto = null
 var _memory: bool
 ## False when `root` is outside `user://`: raw keys are never written to a shared or exported path.
 var _root_ok := true
 ## False when the product is not a canonical lower-case slug (the sealers accept no other): every member refuses with invalid-options.
 var _slug_ok := true
 var _encrypted: bool
+## Set by `for_tests` alone: the record may rest in a plain file.
+var _plain_ok := false
 ## The in-memory record of a memory store.
 var _mem_record := PackedByteArray()
 ## SHA-256 of the last record whose public halves were checked against its private halves.
@@ -143,8 +155,10 @@ var _salt_fault: PKeyResult = null
 ## A store for `product`. `root` is the parent directory, which must be under `user://` or the no-backup directory (PKeyBackupExclusion).
 ## `memory` keeps the keys in process memory only. `encrypted` turns the engine's file
 ## encryption on (the default) or off. `p_sealer` is a native sealer; null picks the platform's
-## when its lane is present (see the header).
-func _init(p_product: String, root := "user://pkey", memory := false, encrypted := true, p_sealer: PKeyRecordSealer = null) -> void:
+## when its lane is present (see the header). `p_crypto` is the X25519 port; null takes
+## `PKeyPeerCrypto.for_platform()` on first use (CC-14b.1: the private agreement key crosses into a
+## native lane as bytes in process, and the caller zeroes its copy).
+func _init(p_product: String, root := "user://pkey", memory := false, encrypted := true, p_sealer: PKeyRecordSealer = null, p_crypto: PKeyPeerCrypto = null) -> void:
 	product = p_product
 	dir = root.path_join(p_product)
 	var name_ok := RegEx.create_from_string("\\A[A-Za-z0-9][A-Za-z0-9@._-]{0,127}\\z").search(p_product) != null
@@ -152,14 +166,25 @@ func _init(p_product: String, root := "user://pkey", memory := false, encrypted 
 	_root_ok = name_ok and not p_product.contains("..") and PKeyBackupExclusion.is_private_root(root)
 	_memory = memory
 	_encrypted = encrypted
+	crypto = p_crypto
 	if not memory and encrypted and _root_ok:
 		sealer = p_sealer
-		if sealer == null and OS.get_environment("PKEY_DESKTOP_KEYRING") != "0":
+		if sealer == null and not PKeyRecordSealer.switched_off():
 			sealer = PKeyRecordSealer.for_platform(p_product)
 
 
 static func memory_only() -> PKeyDeviceKeyStore:
 	return PKeyDeviceKeyStore.new("memory", "user://pkey", true)
+
+
+## TEST ONLY: a store whose record rests in a plain file (no engine encryption, no sealer), so a suite
+## can damage a record, read it back and restart a store over a scratch directory on a machine with
+## no unique id. A shipped game builds a store with `new` (encrypted, the default) or takes the
+## product's own; `new(..., false)` is refused.
+static func for_tests(p_product: String, root := "user://pkey", memory := false) -> PKeyDeviceKeyStore:
+	var s := PKeyDeviceKeyStore.new(p_product, root, memory, false)
+	s._plain_ok = true
+	return s
 
 
 func _to_string() -> String:
@@ -177,6 +202,8 @@ func persistence() -> String:
 
 
 func protection() -> String:
+	if _plain_refused():
+		return "refused"
 	if _memory or persistence() == "memory":
 		return "memory"
 	if sealer != null:
@@ -184,6 +211,16 @@ func protection() -> String:
 	if _encrypted and unique_id != "":
 		return "encrypted-file"
 	return "file"
+
+
+## A store made with `encrypted = false` that would put the private keys in a plain file, outside
+## `for_tests`. It touches nothing.
+func _plain_refused() -> bool:
+	return not _memory and not _encrypted and not _plain_ok
+
+
+func _refusal() -> PKeyResult:
+	return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_OPTIONS, "device keys: a store made with encrypted = false is refused; the private keys are never written as a plain file")
 
 
 ## True only when the sealer's key is known to be in secure hardware: the iOS data-protection
@@ -216,6 +253,8 @@ func ensure() -> PKeyResult:
 func public_keys() -> PKeyResult:
 	if not _slug_ok:
 		return _bad_slug()
+	if _plain_refused():
+		return _refusal()
 	_mutex.lock()
 	var r := _public_keys_locked()
 	_mutex.unlock()
@@ -226,6 +265,8 @@ func public_keys() -> PKeyResult:
 func sign(msg: PackedByteArray) -> PKeyResult:
 	if not _slug_ok:
 		return _bad_slug()
+	if _plain_refused():
+		return _refusal()
 	_mutex.lock()
 	var r := _sign_locked(msg)
 	_mutex.unlock()
@@ -240,6 +281,8 @@ func dh(peer_public: PackedByteArray) -> PKeyResult:
 		return PKeyResult.success(null)
 	if not _slug_ok:
 		return _bad_slug()
+	if _plain_refused():
+		return _refusal()
 	_mutex.lock()
 	var r := _dh_locked(peer_public)
 	_mutex.unlock()
@@ -254,7 +297,30 @@ func rotate() -> PKeyResult:
 ## Deletes both keys, whatever state the record is in. The next ensure() makes a new pair with
 ## `generation` starting again.
 func wipe() -> PKeyResult:
+	if _plain_refused():
+		return _delete_plain_leftovers()
 	return _locked(_wipe_locked)
+
+
+## A refused store reads, writes and locks nothing, but an older build may have left a plain
+## `device-keys` file (and its salt and temporary siblings) in this directory. `wipe()` deletes them:
+## by name, never opened or read. Nothing exists and nothing is made when there is nothing to remove.
+func _delete_plain_leftovers() -> PKeyResult:
+	if not _slug_ok:
+		return _bad_slug()
+	if not _root_ok:
+		return PKeyResult.failure(STORE_FAULT, "device keys: the store directory must be under user://")
+	if not DirAccess.dir_exists_absolute(dir):
+		return PKeyResult.success()
+	var doomed: Array[String] = []
+	for name in DirAccess.get_files_at(dir):
+		if name == RECORD_FILE or name == SALT_FILE or name.begins_with(RECORD_FILE + ".tmp-"):
+			doomed.append(name)
+	for name in doomed:
+		var err := DirAccess.remove_absolute(dir.path_join(name))
+		if err != OK:
+			return _fault("remove", err)
+	return PKeyResult.success()
 
 
 # ── Operations (the mutex, and the file lock where there is a file, are held) ────────────
@@ -350,14 +416,22 @@ func _dh_locked(peer: PackedByteArray) -> PKeyResult:
 	if cur.detail == null:
 		return PKeyResult.success(null)
 	var rec: Dictionary = cur.detail
-	var secret := PKeyCurve25519.x25519(rec["agree_priv"], peer)
+	var secret = _port().x25519(rec["agree_priv"], peer)
 	_zero_record(rec)
+	if not (secret is PackedByteArray) or secret.size() != 32:
+		return PKeyResult.success(null)
 	var any := 0
 	for b in secret:
 		any |= b
 	if any == 0:
 		return PKeyResult.success(null)
 	return PKeyResult.success(secret)
+
+
+func _port() -> PKeyPeerCrypto:
+	if crypto == null:
+		crypto = PKeyPeerCrypto.for_platform()
+	return crypto
 
 
 # ── Records ──────────────────────────────────────────────────────────────────────────────
@@ -378,7 +452,7 @@ static func _zero_record(rec: Dictionary) -> void:
 	priv.fill(0)
 
 
-## Once per process: the curve code reproduces an RFC 7748 and an RFC 8032 vector, or this
+## Once per process: the curve code (through the X25519 port) reproduces an RFC 7748 and an RFC 8032 vector, or this
 ## runtime is unsupported (never "the record is bad").
 func _selftest() -> PKeyResult:  # null when the runtime is fine
 	if not _curve_checked:
@@ -387,7 +461,8 @@ func _selftest() -> PKeyResult:  # null when the runtime is fine
 		var want := "c3da55379de9c6908e94ea4df28d084f32eccf03491c71f754b4075577a28552"
 		var seed := "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60".hex_decode()
 		var pub := "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"
-		_curve_ok = PKeyCurve25519.x25519(k, u).hex_encode() == want and PKeyCurve25519.ed25519_public(seed).hex_encode() == pub
+		var got = _port().x25519(k, u)
+		_curve_ok = got is PackedByteArray and got.hex_encode() == want and PKeyCurve25519.ed25519_public(seed).hex_encode() == pub
 		_curve_checked = true
 	if not _curve_ok:
 		return PKeyResult.unsupported("core.devicekeys", PKeyConstants.UnsupportedReason.RUNTIME, "device keys: the curve code failed its self-test")
@@ -405,9 +480,9 @@ func _write_new(generation: int) -> PKeyResult:
 		"seed": seed,
 		"sign_pub": PKeyCurve25519.ed25519_public(seed),
 		"agree_priv": agree_priv,
-		"agree_pub": PKeyCurve25519.x25519_public(agree_priv),
+		"agree_pub": _port().x25519_public(agree_priv),
 	}
-	if PKeyCurve25519.is_low_order(rec["agree_pub"]):
+	if rec["agree_pub"].size() != 32 or PKeyCurve25519.is_low_order(rec["agree_pub"]):
 		_zero_record(rec)
 		return PKeyResult.unsupported("core.devicekeys", PKeyConstants.UnsupportedReason.RUNTIME, "device keys: the curve code is inconsistent")
 	var bytes := _encode(rec)
@@ -458,7 +533,7 @@ func _decode(bytes: PackedByteArray) -> Variant:
 	var digest := ctx.finish().hex_encode()
 	if digest != _checked_digest:
 		var ok: bool = PKeyCurve25519.ed25519_public(rec["seed"]) == rec["sign_pub"] \
-				and PKeyCurve25519.x25519_public(rec["agree_priv"]) == rec["agree_pub"] \
+				and _port().x25519_public(rec["agree_priv"]) == rec["agree_pub"] \
 				and not PKeyCurve25519.is_low_order(rec["agree_pub"])
 		if not ok:
 			_zero_record(rec)
@@ -599,7 +674,7 @@ func _open_failure(err: int, path: String) -> PKeyResult:
 	if _encrypted and (foreign or (err == ERR_FILE_CANT_OPEN and _looks_foreign(path))):
 		return PKeyResult.failure(KEYS_UNREADABLE, "device keys: the record is unreadable")
 	if err == ERR_UNAVAILABLE:
-		return PKeyResult.unsupported("core.devicekeys", PKeyConstants.UnsupportedReason.RUNTIME, "device keys: this engine cannot read an encrypted file; create the store with encrypted = false")
+		return PKeyResult.unsupported("core.devicekeys", PKeyConstants.UnsupportedReason.RUNTIME, "device keys: this engine cannot read an encrypted file")
 	return _fault("open", err)
 
 
@@ -683,7 +758,7 @@ func _store(bytes: PackedByteArray) -> PKeyResult:
 	if sealer == null and _salt_fault != null:
 		return _salt_fault
 	if err == ERR_UNAVAILABLE and _encrypted and sealer == null:
-		return PKeyResult.unsupported("core.devicekeys", PKeyConstants.UnsupportedReason.RUNTIME, "device keys: this engine cannot write an encrypted file; create the store with encrypted = false")
+		return PKeyResult.unsupported("core.devicekeys", PKeyConstants.UnsupportedReason.RUNTIME, "device keys: this engine cannot write an encrypted file")
 	return _fault("write", err)
 
 
@@ -694,6 +769,8 @@ func _store(bytes: PackedByteArray) -> PKeyResult:
 func _locked(op: Callable) -> PKeyResult:
 	if not _slug_ok:
 		return _bad_slug()
+	if _plain_refused():
+		return _refusal()
 	if not _memory and not _root_ok:
 		return PKeyResult.failure(STORE_FAULT, "device keys: the store directory must be under user://")
 	_mutex.lock()

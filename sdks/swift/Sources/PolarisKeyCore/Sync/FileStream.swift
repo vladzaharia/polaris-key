@@ -14,8 +14,12 @@
 // `Sealer` and the `Opener` keep at most one segment and the bytes in hand, and `openRange` reads
 // and decrypts only the segments it needs.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 public enum SyncFileStream {
     public static let magic = "PKSYNCF1"

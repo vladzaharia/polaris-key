@@ -244,6 +244,7 @@ class ErrorCode:
     RELAY_DISABLED: Final = "relay_disabled"
     RELAY_PAUSED: Final = "relay_paused"
     RELAY_QUOTA_EXCEEDED: Final = "relay_quota_exceeded"
+    CONNECT_LINKS_DISABLED: Final = "connect_links_disabled"
     RELAY_TICKET_INVALID: Final = "relay_ticket_invalid"
     DEVICE_LIMIT: Final = "device_limit"
     KEY_ENTRY_LIMIT: Final = "key_entry_limit"
@@ -272,6 +273,7 @@ class ErrorCode:
     UNSUPPORTED_GRANT_TYPE: Final = "unsupported_grant_type"
     INVALID_SCOPE: Final = "invalid_scope"
     REDIRECT_URI_MISMATCH: Final = "redirect_uri_mismatch"
+    INVALID_REQUEST_URI: Final = "invalid_request_uri"
     LICENSE_CHOICE_REQUIRED: Final = "license_choice_required"
     INTERSTITIAL_REQUIRED: Final = "interstitial_required"
     NOT_NEARBY: Final = "not_nearby"
@@ -352,6 +354,7 @@ class ErrorCode:
     SERVER_ERROR: Final = "server-error"
     CANCELLED: Final = "cancelled"
     SIGN_IN_EXPIRED: Final = "sign-in-expired"
+    REDIRECT_UNAVAILABLE: Final = "redirect-unavailable"
     SIGN_IN_DENIED: Final = "sign-in-denied"
     SIGN_IN_UNAVAILABLE: Final = "sign-in-unavailable"
     PLATFORM_IDENTITY_UNAVAILABLE: Final = "platform-identity-unavailable"
@@ -375,6 +378,19 @@ class ErrorCode:
     CONNECT_UNAVAILABLE: Final = "connect-unavailable"
     PEER_CERT_INVALID: Final = "peer-cert-invalid"
     NEARBY_PERMISSION_DENIED: Final = "nearby-permission-denied"
+    NEARBY_UNSUPPORTED: Final = "nearby-unsupported"
+    PEER_HANDSHAKE_FAILED: Final = "peer-handshake-failed"
+    PEER_CLOSED: Final = "peer-closed"
+    TRANSFER_CANCELLED: Final = "transfer-cancelled"
+    LINK_UNKNOWN: Final = "link-unknown"
+    PEER_REVOKED: Final = "peer_revoked"
+    PEER_EXPIRED: Final = "peer_expired"
+    PEER_BAD_FRAME: Final = "peer_bad_frame"
+    PEER_UNKNOWN_CRITICAL: Final = "peer_unknown_critical"
+    PEER_NOT_ALLOWED: Final = "peer_not_allowed"
+    PEER_BUSY: Final = "peer_busy"
+    PEER_TIMEOUT: Final = "peer_timeout"
+    PEER_BYE: Final = "peer_bye"
     PLATFORM_ERROR: Final = "platform-error"
     NO_TOKEN: Final = "no-token"
     MINT_UNAVAILABLE: Final = "mint-unavailable"
@@ -459,6 +475,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -487,6 +504,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "unsupported_grant_type",
     "invalid_scope",
     "redirect_uri_mismatch",
+    "invalid_request_uri",
     "license_choice_required",
     "interstitial_required",
     "not_nearby",
@@ -567,6 +585,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "server-error",
     "cancelled",
     "sign-in-expired",
+    "redirect-unavailable",
     "sign-in-denied",
     "sign-in-unavailable",
     "platform-identity-unavailable",
@@ -590,6 +609,19 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "connect-unavailable",
     "peer-cert-invalid",
     "nearby-permission-denied",
+    "nearby-unsupported",
+    "peer-handshake-failed",
+    "peer-closed",
+    "transfer-cancelled",
+    "link-unknown",
+    "peer_revoked",
+    "peer_expired",
+    "peer_bad_frame",
+    "peer_unknown_critical",
+    "peer_not_allowed",
+    "peer_busy",
+    "peer_timeout",
+    "peer_bye",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -676,6 +708,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "relay_disabled": "wire",
         "relay_paused": "wire",
         "relay_quota_exceeded": "wire",
+        "connect_links_disabled": "wire",
         "relay_ticket_invalid": "wire",
         "device_limit": "wire",
         "key_entry_limit": "wire",
@@ -704,6 +737,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "unsupported_grant_type": "wire",
         "invalid_scope": "wire",
         "redirect_uri_mismatch": "wire",
+        "invalid_request_uri": "wire",
         "license_choice_required": "wire",
         "interstitial_required": "wire",
         "not_nearby": "wire",
@@ -784,6 +818,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "server-error": "client",
         "cancelled": "client",
         "sign-in-expired": "client",
+        "redirect-unavailable": "client",
         "sign-in-denied": "client",
         "sign-in-unavailable": "client",
         "platform-identity-unavailable": "client",
@@ -807,6 +842,19 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "connect-unavailable": "client",
         "peer-cert-invalid": "client",
         "nearby-permission-denied": "client",
+        "nearby-unsupported": "client",
+        "peer-handshake-failed": "client",
+        "peer-closed": "client",
+        "transfer-cancelled": "client",
+        "link-unknown": "client",
+        "peer_revoked": "peer",
+        "peer_expired": "peer",
+        "peer_bad_frame": "peer",
+        "peer_unknown_critical": "peer",
+        "peer_not_allowed": "peer",
+        "peer_busy": "peer",
+        "peer_timeout": "peer",
+        "peer_bye": "peer",
         "platform-error": "client",
         "no-token": "client",
         "mint-unavailable": "client",
@@ -939,6 +987,7 @@ class Feature:
     IDENTITY_ATTACH: Final = "identity.attach"
     IDENTITY_ACCOUNT: Final = "identity.account"
     IDENTITY_REDIRECT_WEB: Final = "identity.redirect.web"
+    IDENTITY_REDIRECT_NATIVE: Final = "identity.redirect.native"
     IDENTITY_CHOICE: Final = "identity.choice"
     IDENTITY_DEVICECODE_CHOICE: Final = "identity.devicecode.choice"
     IDENTITY_SIGNIN_HINTS: Final = "identity.signin.hints"
@@ -949,6 +998,7 @@ class Feature:
     IDENTITY_AUTOSIGNIN: Final = "identity.autosignin"
     IDENTITY_RESTORE: Final = "identity.restore"
     IDENTITY_LINK: Final = "identity.link"
+    IDENTITY_NEARBY: Final = "identity.nearby"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
     RELEASE_RECORD: Final = "release.record"
@@ -1083,6 +1133,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.attach",
     "identity.account",
     "identity.redirect.web",
+    "identity.redirect.native",
     "identity.choice",
     "identity.devicecode.choice",
     "identity.signin.hints",
@@ -1093,6 +1144,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.autosignin",
     "identity.restore",
     "identity.link",
+    "identity.nearby",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1893,7 +1945,7 @@ SYNC_SCENARIOS_VERSION: Final[int] = 4
 
 
 #: `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
-DEVICE_LABEL_VERSION: Final[int] = 1
+DEVICE_LABEL_VERSION: Final[int] = 2
 
 
 #: `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.
@@ -1905,7 +1957,7 @@ PORTAL_MATRIX_VERSION: Final[int] = 1
 
 
 #: `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-UI_MATRIX_VERSION: Final[int] = 10
+UI_MATRIX_VERSION: Final[int] = 8
 
 
 #: `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
@@ -2481,11 +2533,11 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "sync.scenarios": CapabilityRow("implemented", "sync", ()),
         "sync.settings": CapabilityRow("implemented", "sync", ()),
         "sync.conflict": CapabilityRow("planned", "sync", ()),
-        "sync.saves": CapabilityRow("planned", "sync", ()),
+        "sync.saves": CapabilityRow("implemented", "sync", ()),
         "sync.keyring": CapabilityRow("implemented", "sync", ()),
         "sync.records": CapabilityRow("planned", "sync", ()),
-        "sync.files": CapabilityRow("planned", "sync", ()),
-        "sync.files.delta": CapabilityRow("planned", "sync", ()),
+        "sync.files": CapabilityRow("implemented", "sync", ()),
+        "sync.files.delta": CapabilityRow("implemented", "sync", ()),
         "sync.e2e.recovery": CapabilityRow("planned", "sync", ()),
         "sync.transfer.background": CapabilityRow("na", "sync", (CapabilityNa("python", "runtime"),)),
         "sync.e2e": CapabilityRow("implemented", "sync", ()),
@@ -2494,8 +2546,8 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "connect.protocol": CapabilityRow("implemented", "connect", ()),
         "connect.lan": CapabilityRow("implemented", "connect", ()),
         "connect.relay": CapabilityRow("implemented", "connect", ()),
-        "connect.links": CapabilityRow("planned", "connect", ()),
-        "connect.transfer": CapabilityRow("planned", "connect", ()),
+        "connect.links": CapabilityRow("implemented", "connect", ()),
+        "connect.transfer": CapabilityRow("implemented", "connect", ()),
         "connect.app": CapabilityRow("implemented", "connect", ()),
         "devices.fingerprint": CapabilityRow("implemented", "core", ()),
         "devices.facts": CapabilityRow("implemented", "core", ()),
@@ -2512,16 +2564,18 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.attach": CapabilityRow("implemented", "identity", ()),
         "identity.account": CapabilityRow("implemented", "identity", ()),
         "identity.redirect.web": CapabilityRow("implemented", "identity", ()),
+        "identity.redirect.native": CapabilityRow("planned", "identity", ()),
         "identity.choice": CapabilityRow("implemented", "identity", ()),
-        "identity.devicecode.choice": CapabilityRow("planned", "identity", ()),
+        "identity.devicecode.choice": CapabilityRow("implemented", "identity", ()),
         "identity.signin.hints": CapabilityRow("implemented", "identity", ()),
         "identity.keyreturn": CapabilityRow("planned", "identity", ()),
         "identity.exchange": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.gamecenter": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.pgs": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
-        "identity.autosignin": CapabilityRow("planned", "identity", ()),
+        "identity.autosignin": CapabilityRow("implemented", "identity", ()),
         "identity.restore": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
         "identity.link": CapabilityRow("na", "identity", (CapabilityNa("python", "runtime"),)),
+        "identity.nearby": CapabilityRow("implemented", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -2590,4 +2644,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "23551c87789e34793de669fccb03a6d4c7d75cc95d783fda9a39a8fcc9b7fdf6"
+CAPABILITY_DIGEST: Final[str] = "54a086615f29e7acb6d94601b9409de2d2056e06710440569ee9f0ff81d1d26d"

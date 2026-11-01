@@ -16,7 +16,7 @@ state, the last one ``"event": "result"``; never prompts), ``--no-color`` and ``
 ``sign-in``         sign in in the browser, or with a code when headless (``--device-code``);
                     ``login`` is the same verb
 ``sign-out``        release this device's seat and forget the identity (``--yes``); ``logout``
-``devices``         ``list`` (default) · ``rename <id> <label>`` · ``deauthorize <id>``
+``devices``         ``list`` (default) · ``rename <id> <label>`` · ``deauthorize <id>`` · ``approve``
 ``config``          ``list`` · ``get <key>`` · ``set <key> <value>`` · ``reset <key>`` (and the
                     v3 shorthand ``config <key>``)
 ``secret``          ``secret <key>``: whether a managed secret is present; ``--reveal`` prints it
@@ -315,33 +315,66 @@ _YES = (Opt("yes", "flag", "Do not ask for confirmation.", short="y"),)
 
 #: Every verb. ``login`` and ``logout`` are ``sign-in`` and ``sign-out`` (SIGN-IN.md §4.15).
 VERBS: Tuple[Verb, ...] = (
-    Verb("activate", "license", "Add a license key (a masked prompt, stdin or a file).", activate,
-         opts=_KEY_SOURCE, arg="key"),
+    Verb(
+        "activate",
+        "license",
+        "Add a license key (a masked prompt, stdin or a file).",
+        activate,
+        opts=_KEY_SOURCE,
+        arg="key",
+    ),
     Verb("enroll", "license", "Get a license with no key and no sign-in.", enroll),
-    Verb("deactivate", "license", "Stop counting this device and wipe local credentials.", deactivate,
-         opts=_YES),
+    Verb("deactivate", "license", "Stop counting this device and wipe local credentials.", deactivate, opts=_YES),
     Verb("status", "license", "License, devices and offline time.", status),
     Verb("sign-in", "identity", "Sign in in your browser, or with a code.", sign_in, opts=_SIGN_IN),
     Verb("login", "identity", "Same as sign-in.", sign_in, opts=_SIGN_IN),
     Verb("sign-out", "identity", "Sign out on this device.", sign_out, opts=_YES),
     Verb("logout", "identity", "Same as sign-out.", sign_out, opts=_YES),
     Verb("register", "devices", "Register this device with no key.", register),
-    Verb("devices", "devices", "list | rename <id> <label> | deauthorize <id>", devices, words=True, opts=_YES),
-    Verb("config", "config", "list | get <key> | set <key> <value> | reset <key>", config, words=True,
-         opts=(Opt("fallback", "str", "Value if the key is unset (get)."),)),
+    Verb(
+        "devices", "devices", "list | rename <id> <label> | deauthorize <id> | approve", devices, words=True, opts=_YES
+    ),
+    Verb(
+        "config",
+        "config",
+        "list | get <key> | set <key> <value> | reset <key>",
+        config,
+        words=True,
+        opts=(Opt("fallback", "str", "Value if the key is unset (get)."),),
+    ),
     Verb("secret", "config", "A managed secret; --reveal prints it.", secret, words=True, opts=_REVEAL),
     Verb("mint", "config", "Mint an edge token through a recipe; --reveal prints it.", mint, words=True, opts=_REVEAL),
-    Verb("update", "update", "check | download --to <path> | apply", update, words=True,
-         opts=(Opt("channel", "str", "The channel to check."), Opt("to", "str", "Where to download the build."))),
-    Verb("changelog", "release", "The published releases, newest first.", changelog,
-         opts=(Opt("limit", "int", "Show at most this many."),)),
+    Verb(
+        "update",
+        "update",
+        "check | download --to <path> | apply",
+        update,
+        words=True,
+        opts=(Opt("channel", "str", "The channel to check."), Opt("to", "str", "Where to download the build.")),
+    ),
+    Verb(
+        "changelog",
+        "release",
+        "The published releases, newest first.",
+        changelog,
+        opts=(Opt("limit", "int", "Show at most this many."),),
+    ),
     Verb("packs", "update", "status | ensure <pack…>", packs, words=True),
-    Verb("boot", "core", "Run the one-call boot, a live line per stage.", boot,
-         opts=(Opt("yes", "flag", "Download required content without asking."),)),
-    Verb("import-bundle", "core", "Import an offline activation file (a path, or -).", import_bundle,
-         arg="bundle"),
-    Verb("offline-request", "core", "The request code for an offline activation bundle.", offline_request,
-         opts=(Opt("no-qr", "flag", "Do not draw the QR code."),)),
+    Verb(
+        "boot",
+        "core",
+        "Run the one-call boot, a live line per stage.",
+        boot,
+        opts=(Opt("yes", "flag", "Download required content without asking."),),
+    ),
+    Verb("import-bundle", "core", "Import an offline activation file (a path, or -).", import_bundle, arg="bundle"),
+    Verb(
+        "offline-request",
+        "core",
+        "The request code for an offline activation bundle.",
+        offline_request,
+        opts=(Opt("no-qr", "flag", "Do not draw the QR code."),),
+    ),
     Verb("doctor", "core", "Diagnostics: discovery, services, store and supports.", doctor),
 )
 

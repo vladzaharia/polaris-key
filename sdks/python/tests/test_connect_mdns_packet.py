@@ -80,16 +80,32 @@ def test_compression_backwards_is_followed() -> None:
     assert pkt.answers[0].data == INST + "." + PEER_SERVICE
 
 
-def test_unknown_types_classes_and_aaaa_are_skipped() -> None:
+def test_unknown_types_and_classes_are_skipped() -> None:
     raw = (
-        _header(an=4)
-        + _rr(_name(HOST), 28, b"\x00" * 16)  # AAAA
+        _header(an=3)
         + _rr(_name(HOST), 99, b"xyz")
         + _rr(_name(HOST), 1, b"\x0a\x00\x00\x01", rclass=3)
         + _rr(_name(HOST), 1, b"\x0a\x00\x00\x01", rclass=0x8001)  # cache-flush bit is fine
     )
     pkt = parse_packet(raw)
     assert pkt.answers == [Record(HOST, "A", 120, "10.0.0.1")]
+
+
+def test_aaaa_is_decoded_to_rfc_5952_text_and_round_trips() -> None:
+    ll = bytes.fromhex("fe800000000000000000000000000001")
+    other = bytes.fromhex("20010db8000000000000000000000001")
+    raw = _header(an=2) + _rr(_name(HOST), 28, ll) + _rr(_name(HOST), 28, other)
+    assert [r.data for r in parse_packet(raw).answers] == ["fe80::1", "2001:db8::1"]
+    out = [Record(HOST, "AAAA", 120, "fe80::1"), Record(HOST, "AAAA", 120, "fd12:0:0:1::7")]
+    assert parse_packet(build_response(out)).answers == [
+        Record(HOST, "AAAA", 120, "fe80::1"),
+        Record(HOST, "AAAA", 120, "fd12:0:0:1::7"),
+    ]
+    # Only 16 bytes are an AAAA record.
+    assert _reason(_header(an=1) + _rr(_name(HOST), 28, ll[:15])) == "bad_rdata"
+    assert _reason(_header(an=1) + _rr(_name(HOST), 28, ll + b"\x00")) == "bad_rdata"
+    # An AAAA question is understood too.
+    assert parse_packet(build_query([(HOST, "AAAA")])).questions == [Question(HOST, "AAAA")]
 
 
 def test_authority_is_dropped_additionals_are_kept() -> None:
@@ -186,7 +202,10 @@ def test_builders_refuse_out_of_bounds_input() -> None:
     with pytest.raises(ValueError):
         build_query([("a" * 64 + ".local", "PTR")])
     with pytest.raises(ValueError):
-        build_query([(PEER_SERVICE, "AAAA")])
+        build_query([(PEER_SERVICE, "NS")])
+    for bad in ("10.0.0.1", "fe80::1%en0", "not-an-address", "::ffff:1.2.3.4\n"):
+        with pytest.raises(ValueError):
+            build_response([Record(HOST, "AAAA", 1, bad)])
     with pytest.raises(ValueError):
         build_response([Record(HOST, "A", 1, "300.1.1.1")])
     with pytest.raises(ValueError):

@@ -44,6 +44,12 @@ export interface Grant {
   /** `null` = every area. Only a `product_admin` grant may narrow. */
   areas: readonly AreaId[] | null;
   /**
+   * The most the grant allows. Absent means `edit` (view and edit), which is every grant the four
+   * built-in roles produce; `view` allows reads only. No stored grant carries it today: it is the
+   * rule `can()` applies the day a view-only role exists.
+   */
+  level?: Level;
+  /**
    * Where it came from. ST-29 knows only `root` (`PLATFORM_ADMIN_GROUP` at the console IdP,
    * computed from the session and never stored); ST-30 to ST-32 add the rest.
    */
@@ -68,8 +74,9 @@ export interface Principal {
  *   6. Product scope: a `product_admin` grant on `product:<slug>` or `products:*` allows a
  *      product area when its `areas` is `null` or lists it.
  *
- * `level` is unused by the four built-in roles, which all grant view and edit. It exists so that
- * a Product viewer, if one is ever added, is a rule here rather than a change at every call site.
+ * `level` is checked against each grant's own `level`: a grant that says `view` allows `view` only,
+ * and every grant without one (the four built-in roles) allows both. A Product viewer, if one is
+ * ever added, is then a grant here rather than a change at every call site.
  */
 export function can(
   p: Principal | null | undefined,
@@ -77,11 +84,15 @@ export function can(
   area: AreaId,
   level: Level,
 ): boolean {
-  void level;
   if (!p) return false;
   if (p.grants.length === 0) return false;
   if (area === "console") return true;
-  if (p.grants.some((g) => g.role === "superadmin" && g.scope === "platform"))
+  const reaches = (g: Grant): boolean => level === "view" || g.level !== "view";
+  if (
+    p.grants.some(
+      (g) => g.role === "superadmin" && g.scope === "platform" && reaches(g),
+    )
+  )
     return true;
 
   const effective: Scope =
@@ -97,7 +108,8 @@ export function can(
     )
       return false;
     return p.grants.some(
-      (g) => g.role === "platform_admin" && g.scope === "platform",
+      (g) =>
+        g.role === "platform_admin" && g.scope === "platform" && reaches(g),
     );
   }
 
@@ -105,6 +117,7 @@ export function can(
   return p.grants.some(
     (g) =>
       g.role === "product_admin" &&
+      reaches(g) &&
       (g.scope === "products:*" || g.scope === `product:${effective.slug}`) &&
       (g.areas === null || g.areas.includes(effectiveArea)),
   );

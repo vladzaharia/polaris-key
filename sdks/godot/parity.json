@@ -181,7 +181,7 @@
     },
     "identity.devicelabel": {
       "status": "implemented",
-      "note": "PX-W13: PKeyDeviceLabel.normalize (UTF-32, one character per code point), PKeyOptions.device_name and send_device_name, the model-else-OS default, on sign_in.start, activation and registration; PKeySignInSession.device_name is the echo, and PKeySignInDialog shows it under the code. A per-call name wins; opting out is send_device_name = false (an exported String cannot be null)."
+      "note": "PX-W13: PKeyDeviceLabel.normalize (UTF-32, one character per code point), and PKeyDeviceLabel.clean_hello for a peer HELLO (§15.6: NFC over PKeyNfc and generated Unicode 16.0 tables, CC-14 D-20; the corpus helloCases run), PKeyOptions.device_name and send_device_name, the model-else-OS default, on sign_in.start, activation and registration; PKeySignInSession.device_name is the echo, and PKeySignInDialog shows it under the code. A per-call name wins; opting out is send_device_name = false (an exported String cannot be null)."
     },
     "identity.toggle": {
       "status": "implemented",
@@ -204,9 +204,8 @@
       "note": "I-10b.6: sign_in.start({channel = \"redirect\", license_choice = \"app\"}) settles complete() as the license_choice outcome (a grant, the choices) when discovery names the choice endpoints; PolarisKey.identity.choice.licenses / devices / complete / cancel (PKeyIdentityChoice) dial only those endpoints, send no bearer (but complete with keep sends the device's own token, which the Worker reads as held), return the Worker's refusals as PKeyChoiceResult values (retry_after_seconds, manage_url, sign_in_url, key_entries, the fresh view) and never print the grant. choice.primitives() are the Callables the sign-in form (ui/model/sign_in_session.gd) drives."
     },
     "identity.devicecode.choice": {
-      "status": "planned",
-      "wp": "UK-42",
-      "note": "UK-42.22 (SDK slice .11): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+      "status": "implemented",
+      "note": "UK-42.22.11: sign_in.start({login_hint, name_hint, purpose, license_choice = \"app\"}) sends loginHint, nameHint, purpose and licenseChoice on the device start; licenseChoice only when discovery's identity fragment has deviceChoice and the four choice endpoints (PKeyDiscovery.identity_from device_choice), and an older Worker is sent none. A poll answering choose settles wait() as the license_choice outcome (grant, choices; nothing stored, identity.choice.* finishes it); a choose after a start that did not ask is invalid-response. holders-add-to-account-device replayed."
     },
     "identity.signin.hints": {
       "status": "implemented"
@@ -215,6 +214,11 @@
       "status": "planned",
       "wp": "I-15b",
       "note": "LK-SKIP.11: the opt-in, the via rule and the activated outcome, with the replayer."
+    },
+    "identity.redirect.native": {
+      "status": "planned",
+      "wp": "I-15b",
+      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
     },
     "identity.exchange": {
       "status": "implemented",
@@ -279,16 +283,21 @@
       "note": "I-48.7a/.7b: Play Games on Android (play flavour). The plugin's pgs_code op asks Play Games v2 for a server auth code (requestServerSideAccess) when the player is already signed in and never starts Play Games' sign-in; pgs_sign_in is the sign-in form's row. PKeyPgsProvider hands the code to the ladder as the exchange's subject token. The Play Games library and the APP_ID meta-data arrive only with the export opt-in polaris_key/play_games (off by default), compileOnly in the AAR, so a game that does not sign in through Play Games ships none. The three exchange-pgs transcripts are replayed. A live requestServerSideAccess answer needs a Play Games app (owner)."
     },
     "identity.autosignin": {
-      "status": "planned",
-      "wp": "I-48",
-      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-48)."
+      "status": "implemented",
+      "note": "I-48: PolarisKey.identity.auto_sign_in(opts) walks the ladder in order and answers a PKeyAutoSignInResult of kind signed_in, confirm (completed through identity.choice.complete(grant, choice, consent)), choose, needs_sign_in (reason, link_handle), device_limit or unavailable. Rung 1 is a stored sign-in token; rung 2 (silent restore) is I-49 and skipped; rung 3 asks each installed platform provider silently over a fresh nonce and exchanges; rung 4 shows the provider's one account sheet when prompt is optional. Providers are PKeyPlatformIdentityProvider objects, installed by the gate and the sign-in dialog or by PKeyPlatformProviders.install(PolarisKey.identity): Sign in with Apple, Credential Manager, Play Games and Game Center, and FedCM on web; desktop Linux and Windows have none, so the ladder ends at needs_sign_in there. A sign-out sets the explicit-sign-out flag and the ladder stops until the person signs in again; the ladder's own exchange never lowers it. sync_key is present or needed from PolarisKey.keyring when a key ring is configured, else null. Proven by tests/identity/{test_auto_sign_in,test_gate_auto,test_fedcm}.gd, tests/native/test_google.gd, the exchange-* transcripts replayed in suite_transcripts, and the native Apple suite. The link offer and nearby approval are separate rows (identity.link, identity.nearby), still planned."
     },
     "identity.restore": {
       "status": "planned",
       "wp": "I-49",
       "except": [
-        { "runtime": "linux", "reason": "runtime" },
-        { "runtime": "windows", "reason": "runtime" }
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        }
       ],
       "note": "Rung 2 over the pkp_call bk_* ops on the native Apple and Android lanes (I-49.13 to I-49.15)."
     },
@@ -306,6 +315,17 @@
         }
       ],
       "note": "Link offer (I-43.3 transcripts, I-48)."
+    },
+    "identity.nearby": {
+      "status": "planned",
+      "wp": "I-48",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Nearby approval (I-40.8 transcripts, I-48)."
     },
     "identity.keyentry": {
       "status": "implemented",
@@ -672,8 +692,18 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        }
+      ],
+      "note": "PolarisKey.cloud_sync.saves (PKeySaves, services/cloud_sync/saves.gd, over saves_records.gd and transfer_handle.gd): list, read, write, resolve, delete, revisions, transfers() and the transferProgress, transferDone and transferFailed events. The machine's records binding (records, put_at, remove_at with a ticket per exact write, the delete op, file pointers on rows, on_outcome) replays fileRecordCases in tests/suite_sync_scenarios.gd; a write is the file, then the metadata set as an exact put_at that waits for its one outcome (cancel() settles it as cancelled; there is no timeout). End-to-end saves carry the $file binding; the file codec is guarded and refuses sync-locked once the ring locks; sign-out locks the ring, purges the saves, then removes the pin. Whole-file seal and open run on a worker thread (the GDScript AES-GCM lane, at most 32 MiB a file). iOS and Android wait for the native lanes (CC-14b) and answer the typed unsupported refusal. Proven by tests/suite_cloud_sync_saves.gd and the cloudsync-files-single transcript."
     },
     "sync.keyring": {
       "status": "implemented",
@@ -684,12 +714,32 @@
       "wp": "U-46"
     },
     "sync.files": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        }
+      ],
+      "note": "The file transport (services/cloud_sync/files_transport.gd: a closed route allow-list, no redirects, Content-Digest, answer caps, Retry-After read under a 3600 s cap) under the transfer engine (transfer.gd). The cloudsync-files-* transcripts replay each file call through it (tests/suite_transcripts.gd, cloudSyncFile) and tests/suite_cloud_sync_files.gd covers the transport. Files are at most 32 MiB on the GDScript lane; iOS and Android wait for CC-14b."
     },
     "sync.files.delta": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime"
+        }
+      ],
+      "note": "Delta files: the chunks upload (CDC, plan calls of at most SYNC_CHUNK_PLAN_MAX_IDS ids, the missing chunks, the manifest, finalize) and the chunk download with the chunk cache, over the same transport. The cloudsync-chunks* transcripts replay each delta call (cloudSyncChunk). iOS and Android wait for CC-14b."
     },
     "sync.e2e.recovery": {
       "status": "planned",
@@ -699,6 +749,18 @@
       "status": "planned",
       "wp": "U-41",
       "except": [
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
         {
           "runtime": "web",
           "reason": "runtime"
@@ -710,24 +772,30 @@
       "note": "Settings seal and open through core/sync/cloud_sync_machine.gd in E2E mode (PKeyOptions.cloud_sync_encryption, e2e by default; app code only, never read from the Worker) over the key ring; guard (b) judges a conflict's server copy against the push's own cursor (X-1, the cursor is required). tests/suite_sync_scenarios.gd replays every e2e scenario with no skip list and tests/suite_sync_vectors.gd the vectors; the web lane uses GDScript AES-GCM, so there is no exception."
     },
     "connect.identity": {
-      "status": "planned",
-      "wp": "CC-14"
+      "status": "implemented",
+      "note": "PolarisKey.cloud_connect (PKeyConnectClient, services/connect/client.gd; state in state.gd, D-7): identity(refresh) makes and registers the device keys on first need (devices.register_keys, once more after one device_keys_required), fetches GET connect/identity, verifies the roster and this device's certificate against the effective set (PKeyPeerCert) and stores them as one record, user://pkey/<product>/connect.v1, sealed by the platform key where a lane exists (context pkey-connect/1 state/<product>, so another product's blob does not open), else the engine-encrypted file (obfuscation, not protection); a memory-only key store refuses unless allow_ephemeral_keys. A roster that is expired, stale, foreign or for other keys than this device's is never stored. K_disc is stored as delivered; the previous key is dropped when the roster lost a device and kept 24 hours otherwise. list_devices, current, discovery_keys, leave and adopt_ring (a roster a peer pushed; keys_stale) follow. tests/connect/cert.gd (peerCertCases, ringCases, peerAdmissionCases), tests/connect/identity.gd and the connect-identity* transcripts in suite_transcripts. No Godot web test lane: web runs the same code, untested."
     },
     "connect.noise": {
-      "status": "planned",
-      "wp": "CC-14"
+      "status": "implemented",
+      "note": "PKeyPeerNoise (core/peer/noise.gd) over PKeyPeerCrypto: XX and XXpsk0 for the three modes, the CipherState (nonce = 4 zero bytes then u64be; the 2^64-1 nonce written as eight 0xFF bytes) and rekey, low-order and all-zero DH refused (dh_zero), the static key's DH only through the key store (the private key never leaves it, G1). X25519 is PKeyCurve25519 and AES-256-GCM PKeySyncAesGcm (at most 64 KiB a call, enough for a 65,535-byte Noise message), GDScript on every runtime until CC-14b's native adapters; the ladders run off the main thread on a WorkerThreadPool task (at most two) and inline on web. tests/connect/noise.gd runs every noise-vectors.json section. No Godot web test lane: web runs the same code, untested."
     },
     "connect.protocol": {
-      "status": "planned",
-      "wp": "CC-14"
+      "status": "implemented",
+      "note": "Frames and FrameReader, records and RecordAssembler (chain at most 18, 1 MiB, critical and mode rules), relay envelopes, adverts, SAS, handshake payloads and the HELLO label rule, the peer session (mode a: admission against the held roster, HELLO first, CLOSE, PING, RING, REKEY, 30 s, peer_expired, the PSK trial; modes v and p with commit-reveal SAS and the HandshakeLimiter), PKeyPeerLink and PKeyPeerPump over the pipe port, ConnectSession and Channel (APP types 0x0100-0x7FFF only, byte caps G10, pushed RING and TRUST, G11 and G12), pushed trust through PKeyTrust.accept_peer. tests/connect/{bytes,codecs,session_a,session_sas,link,session,trust_accept_peer}.gd over peer-matrix.json. No Godot web test lane: web runs the same code, untested."
     },
     "connect.lan": {
-      "status": "planned",
-      "wp": "CC-14"
+      "status": "implemented",
+      "note": "PKeyConnectLan over PKeyMdns, PKeyLanAddress and the OS lanes (PKeyAppleMdns, PKeyAndroidMdns), driven by PolarisKey.cloud_connect: every lanAddresses and mdnsAnswers row (tests/connect/{mdns,mdns_packet,lan_address,lan}.gd). Discovery by runtime: iOS and macOS use Apple's Bonjour (CC-14b.4, .5: browse, advertise and the pipes through the binary entry); Android uses NsdManager (CC-14b.9: the nsd_* ops, ACCESS_LOCAL_NETWORK from Android 17 answers nearby-permission-denied); Windows and Linux use the GDScript mDNS querier and responder. PolarisKey.cloud_connect picks the OS lane where the build has the native bridge and falls back to GDScript on desktop; a mobile build without the bridge, and web, report the LAN off with reason unsupported (web is relay only, so web is N/A). A host can hand in its own lane as lan.mdns. Querier-only: where port 5353 cannot be bound (macOS always, Godot sets no SO_REUSEPORT) the device finds others and others do not find it; it hears them through the unicast answers RFC 6762 section 6.7 owes a legacy query, so a peer whose responder answers only multicast cannot be heard, and status().lan says querier_only. A responder answers a legacy query by unicast only from a source port of 1024 or more, with every record at TTL 10, and ignores every datagram from outside the private blocks of its interfaces. Godot lists no netmask, so the on-link test is the private block (10/8, 172.16/12, 192.168/16), not the subnet: a host elsewhere in the block that can route UDP to port 5353 and knows a roster name can fill that name's four address slots (denial of discovery) or cost one blind connect, never a trusted address; a phone's mobile-data interfaces are dropped by name. PacketPeerUDP reports no destination, so a unicast response cannot be told from a multicast one. IPv4 sockets only: IPv6 peers are reached through the listener's dual-stack socket, learned from IPv4 and ULA records, and link-local addresses (they need a zone) are skipped. Residuals owed to the owner: the Apple, Android and Windows native lanes are unit-tested over fakes and the Swift, Kotlin and CI builds, not yet on devices (OS-5 two Macs, OS-6 the Android 16 and 17 phones, a Windows runner for the CNG and Monocypher crypto stage and the 5353 probe); the GDScript responder on Windows and Linux awaits the CC-13.1 and CC-13.2 device runs.",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        }
+      ]
     },
     "connect.relay": {
-      "status": "planned",
-      "wp": "CC-14"
+      "status": "implemented",
+      "note": "PKeyConnectRelay (services/connect/relay.gd) over WebSocketPeer with TLSOptions.client(), wss only, the ticket as a second subprotocol, pkey-relay.1 required echoed back, one message of buffer in, four out, 1002 on a text frame or a bad envelope, the close codes of G15 (4001, 4003, 4008, 4009, backoff with jitter, unavailable after five attempts); mode-a sessions only (G16) over a PKeyPeerLink on a RelayPipe, the room's stamped from checked against the certificate (G8), MEMBERS and GONE, a pacer (180 a second, burst 360, LIMIT 1 halves it for 10 s, an 8 MiB queue that ends a session peer_busy) whose refused sends stay queued, all pipes under one 32 MiB budget (G10). PKeyConnectClient.relay_ticket (G13: the ticket matches the pattern, wss on the Worker's host, never in a str() or log). The relay stays off, and no ticket is asked for, when the host or discovery turns it off (G21). tests/connect/{client_relay,relay,relay_sessions,cloud_connect}.gd, the connect-relay-* transcripts, and a real WebSocketPeer against a local server for the close codes. No Godot web test lane: web runs the same code, untested. Web is relay-only. Accepted bound: each session's RelayPipe holds at most 9 MiB, inside the shared 32 MiB budget."
     },
     "connect.links": {
       "status": "planned",
@@ -738,8 +806,8 @@
       "wp": "CC-20"
     },
     "connect.app": {
-      "status": "planned",
-      "wp": "CC-14"
+      "status": "implemented",
+      "note": "PolarisKey.cloud_connect (PKeyCloudConnect, services/cloud_connect.gd): start, stop, peers, refresh_peers, devices, open, status and the signals channel and notice (the accessor is cloud_connect, never connect, which is Object's; the identity client is connect_client). LAN first (a 4 s bound), then the relay; an inbound session nobody listens for is closed (G9); sign-out stops Connect, then forgets the state, and stops when it cannot (G18); gated by launch.connect through discovery. The LAN is off with reason unsupported on mobile and web until CC-14b. tests/connect/cloud_connect.gd and the api_surface suite. No Godot web test lane: web runs the same code, untested."
     },
     "server.license": {
       "status": "na",

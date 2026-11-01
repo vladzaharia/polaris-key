@@ -486,12 +486,13 @@ def test_a_closed_session_wakes_a_blocked_receive_and_late_subscribers_are_told(
     assert s.closed == SessionClosed("peer_bye", True)
 
 
-def test_close_takes_only_the_two_host_codes_and_send_maps_link_failures() -> None:
+def test_close_takes_only_the_three_host_codes_and_send_maps_link_failures() -> None:
     s, link = fake_session()
     with pytest.raises(ValueError):
-        s.close("peer_revoked")
+        s.close("peer_bad_frame")
     s.close("peer_busy")
-    assert link.closed == ["peer_busy"]
+    s.close("peer_revoked")  # what a deleted contact's open sessions hear (§15.10)
+    assert link.closed == ["peer_busy", "peer_revoked"]
 
     class Boom(FakeLink):
         def send_record(self, t: int, b: bytes) -> None:
@@ -717,9 +718,7 @@ def test_nothing_runs_or_is_stored_after_close() -> None:
     assert d2._retry is None
 
 
-def test_a_peer_that_never_reads_is_closed_busy_not_buffered_without_bound() -> None:
-    from polaris_key.core import peer_link
-
+def test_lan_a_peer_that_does_not_read_is_closed_peer_busy_at_the_write_bound() -> None:
     with Rig() as rig:
         mine = rig.dial()
         assert rig.got_session.wait(5)
@@ -731,7 +730,7 @@ def test_a_peer_that_never_reads_is_closed_busy_not_buffered_without_bound() -> 
         aborted: List[bool] = []
         real_abort = t.abort
         t.abort = lambda: (aborted.append(True), real_abort())  # type: ignore[method-assign]
-        t.get_write_buffer_size = lambda: peer_link.WRITE_BUFFER_MAX + 1  # type: ignore[method-assign]
+        t.get_write_buffer_size = lambda: 4 * 1024 * 1024 + 1  # type: ignore[method-assign]
         theirs.send(b"x" * 100, 0x0100)
         for _ in range(250):
             if closed:

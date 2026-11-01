@@ -163,6 +163,21 @@ final class BackendTests: XCTestCase {
         }
     }
 
+    func testBackendSendUsesTheExchangeAndKeepsTheHopGuard() async throws {
+        BackendStub.reset { req in
+            req.url?.host == "api.example.com" ? .redirect("https://evil.example/steal") : .ok(status: 200, body: "")
+        }
+        DelegatedExchange.forced = true
+        defer { DelegatedExchange.forced = false }
+        let (backend, _) = try make()
+        do {
+            _ = try await backend.data(for: get("https://api.example.com/a"))
+            XCTFail("followed")
+        } catch {}
+        XCTAssertGreaterThanOrEqual(DelegatedExchange.runs, 1)
+        XCTAssertFalse(BackendStub.urls.contains { $0.contains("evil.example") })
+    }
+
     func testNonAllowedOriginIsRefusedBeforeAnythingIsSent() async throws {
         BackendStub.reset { _ in .ok(status: 200, body: "") }
         let (backend, state) = try make()

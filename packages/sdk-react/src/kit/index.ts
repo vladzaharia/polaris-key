@@ -14,9 +14,13 @@
 import type { ComponentName } from "@polaris-key/ui-core";
 
 import { kitComponent } from "./kitComponent.js";
+import { connectScreen } from "./connectLazy.js";
+import { nearbyScreen } from "./nearbyLazy.js";
+import type { NearbyApproverProps, NearbySignInProps } from "./nearby.js";
 import { holderScreen } from "./holdersLazy.js";
 import { syncScreen } from "./syncLazy.js";
 import type { ActivateDoneProps, AddToAccountProps } from "./holders.js";
+import type { LinkPairingProps, TransferOfferProps } from "./connect.js";
 import type {
   RecoveryCodeProps,
   RingChangeProps,
@@ -73,8 +77,7 @@ const c = (name: ComponentName) => kitComponent(name);
 export const Boot = c("Boot");
 export const Welcome = c("Welcome");
 export const SignInHandoff = c("SignInHandoff");
-// NearbyApproval is not exported: nearby approval ships with I-40 and CC-15, and its ask step
-// draws no codes yet (UXR-kits-v7 B4). The component stays internal (`kitComponent`).
+// NearbyApproval itself stays internal (`kitComponent`): the desktop drives it as NearbyApprover.
 export const Activate = c("Activate");
 export const OfflineActivation = c("OfflineActivation");
 export const DeviceLimit = c("DeviceLimit");
@@ -87,6 +90,7 @@ export const AccountAndLicense = c("AccountAndLicense");
 export const Paywall = c("Paywall");
 export const EntitlementGate = c("EntitlementGate");
 export { CloudSyncStatus } from "./statusDrive.js";
+export type { CloudSyncStatusProps } from "./statusDrive.js";
 // The Cloud Sync screens load on demand (their chunk is fetched the first time one is drawn).
 export const UnlockSync = syncScreen<UnlockSyncProps>("UnlockSync");
 export const RecoveryCode = syncScreen<RecoveryCodeProps>("RecoveryCode");
@@ -108,5 +112,25 @@ export {
   type UseAddToAccountOptions,
 } from "./holderHooks.js";
 export type { ActivateDoneProps, AddToAccountProps } from "./holders.js";
+// Inter-account links and direct-transfer offers (CC-19.9): pair with someone nearby, and the
+// prompt for what a contact offers. They load on demand; the hooks are the headless half.
+export const LinkPairing = connectScreen<LinkPairingProps>("LinkPairing");
+export const TransferOffer = connectScreen<TransferOfferProps>("TransferOffer");
+export {
+  linkPairingDriver,
+  useLinkPairing,
+  useTransferOffer,
+  type LinksLike,
+  type UseLinkPairing,
+  type UseLinkPairingOptions,
+  type UseTransferOffer,
+  type UseTransferOfferOptions,
+} from "./connectHooks.js";
+export type { LinkPairingProps, TransferOfferProps } from "./connect.js";
+// Nearby sign-in on the desktop bridge (I-47b): the new device and the signed-in device. They load
+// on demand and draw nothing where the adapter has no `nearby` (a browser, a v4 host).
+export const NearbySignIn = nearbyScreen<NearbySignInProps>("NearbySignIn");
+export const NearbyApprover =
+  nearbyScreen<NearbyApproverProps>("NearbyApprover");
 export const ChannelPicker = c("ChannelPicker");
 export const Toast = c("Toast");

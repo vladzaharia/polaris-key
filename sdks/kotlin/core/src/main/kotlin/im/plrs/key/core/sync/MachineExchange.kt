@@ -92,6 +92,13 @@ internal class MachineExchange(private val p: MachineParts) {
 
     private fun text(v: JsonElement): String = if (v is JsonPrimitive) v.content else v.toString()
 
+    /** A change with a well-formed [file] and nothing sealed: no value, no `ct`, a host verdict that is not invalid, and in E2E mode a blinded id. */
+    private fun fileOnly(c: JsonObject, file: RecordFile?, open: OpenedRow?): Boolean {
+        val id = (c["record"] as? JsonArray)?.getOrNull(1)?.let { text(it) } ?: return false
+        val nothingSealed = c["value"] == null && c["ct"] == null && open?.invalid != true
+        return nothingSealed && file != null && (!core.requiresE2e() || SyncBlind.isBlindedName(id))
+    }
+
     private fun applyChanges(part: SyncPartition, req: InFlight, body: JsonObject, opened: OpenedBody) {
         body["changes"].arrayValue.orEmpty().forEachIndexed { i, change ->
             val c = change as? JsonObject ?: return@forEachIndexed
@@ -101,8 +108,13 @@ internal class MachineExchange(private val p: MachineParts) {
             val setting = c["setting"].stringValue
             val rk = recordKey(c["record"])
             val latch = if (setting != null) "s:$setting" else rk?.let { "r:$it" } ?: ""
-            val flag = p.rows.rowBad(part, latch, version, opened.changes.getOrNull(i), req.cursor)
-            val row = SyncRow(c["value"] ?: JsonNull, version, null, flag.bad, flag.plain)
+            val open = opened.changes.getOrNull(i)
+            // A record with a file and no value carries nothing to judge (V5 section 13.4): a good row, null value. Only when
+            // nothing was sealed (no `ct`, host verdict not invalid) and, in E2E mode, only under a blinded id: a plain id
+            // there is not a save the host could have placed.
+            val file = RecordFile.of(c["file"])
+            val flag = if (fileOnly(c, file, open)) RowFlag() else p.rows.rowBad(part, latch, version, open, req.cursor)
+            val row = SyncRow(c["value"] ?: JsonNull, version, null, flag.bad, flag.plain, file)
             if (setting != null) {
                 part.settings[setting] = row
                 p.rows.dropParkedByRemote(part, setting, c["editedHlc"].stringValue)

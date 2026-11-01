@@ -39,6 +39,9 @@ License
       <deviceId>
     Remove a device and make
     room for another
+  devices approve
+    Approve a device signing
+    in nearby
   update check
     Check for a newer version
   update apply

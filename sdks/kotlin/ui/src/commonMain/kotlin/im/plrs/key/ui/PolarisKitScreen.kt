@@ -282,6 +282,37 @@ public fun PolarisKitScreen(
                 onReview = { onAction(null) },
             )
 
+        screen.component == KitComponent.cloudSyncStatus && screen.state in TransferStates ->
+            PolarisCloudSyncTransfer(
+                screen,
+                modifier,
+                fraction = rows.transferFraction,
+                onRetry = { onAction(KitAction.retry) },
+                catalog = catalog,
+                locale = locale,
+            )
+
+        screen.component == KitComponent.saveConflict ->
+            PolarisSaveConflict(
+                screen,
+                modifier,
+                onKeep = {
+                    onAction(
+                        when (it) {
+                            PolarisSaveKeep.Local -> KitAction.keepLocal
+                            PolarisSaveKeep.Remote -> KitAction.keepRemote
+                            PolarisSaveKeep.Both -> KitAction.keepBoth
+                        },
+                    )
+                },
+                onRetry = { onAction(KitAction.retry) },
+                onCancel = { onAction(KitAction.cancel) },
+                onDone = { onAction(null) },
+                onChooseAgain = { onAction(KitAction.chooseAgain) },
+                catalog = catalog,
+                locale = locale,
+            )
+
         else -> KitScreenBody(
             screen, modifier, catalog, locale, onAction, focused = focused, productName = null, requestCode = requestCode,
             addKeyUrl = addKeyUrl, progress = rows.progress, onControl = onControl,

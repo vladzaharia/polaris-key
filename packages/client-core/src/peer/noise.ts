@@ -198,11 +198,14 @@ export async function hkdfSha256(
 
 // ── Protocol names, prologue, PSK (§15.5) ────────────────────────────────────────────────────
 
-export type PeerMode = "a" | "v" | "p";
+export type PeerMode = "a" | "v" | "p" | "c";
 
-/** The Noise protocol name of a mode: XXpsk0 for `a` (R-1), plain XX for `v` and `p`. */
+/**
+ * The Noise protocol name of a mode: XXpsk0 for `a` (R-1) and for the contact mode `c` (§15.10),
+ * plain XX for `v` and `p`.
+ */
 export function peerNoiseProtocol(mode: PeerMode): string {
-  return mode === "a"
+  return mode === "a" || mode === "c"
     ? "Noise_XXpsk0_25519_AESGCM_SHA256"
     : "Noise_XX_25519_AESGCM_SHA256";
 }

@@ -97,6 +97,12 @@ the client when it gets one.
   screen with Copy link. A declined or failed sign-in names what happened and offers a new code.
   There is no QR on a desktop (a phone or a computer browses); on a TV or a console the gate opens
   on the code and draws one (below).
+- **Nearby sign-in.** Where the product serves it, the form looks for the person's other devices first:
+  the ones that answer are listed (a lone one is chosen after 3 seconds), the code to choose on the other
+  device shows in mono, and Use a code instead is a text control. Nobody answering within 2 seconds shows
+  the regular sign-in. After the poll the account is shown; Continue says it is theirs, Not you? signs out.
+- **Approve a nearby device.** `nearby_approval_page(client)` shows three codes and Deny; with several
+  licenses, each is one control, with Deny. Leaving either step, a closed window included, is Deny.
 - **Blocked.** A revoked device offers Sign in or Use a different key; an expired license, a version
   or a channel the license does not cover say so, with their fix.
 

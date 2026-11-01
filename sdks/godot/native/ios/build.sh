@@ -83,7 +83,7 @@ slice() {
   # then the C surface PolarisKeyPlatformC over it, linked with the glue into one dylib.
   mkdir -p "$dir/mods"
   xcrun --sdk "$sdk" swiftc -target "$triple" -sdk "$sdkp" -swift-version 6 -warnings-as-errors -O \
-    -parse-as-library -module-name PolarisKeyPlatform -emit-library -static \
+    -parse-as-library -package-name polaris_key -module-name PolarisKeyPlatform -emit-library -static \
     -emit-module -emit-module-path "$dir/mods/PolarisKeyPlatform.swiftmodule" \
     "$SRC"/*.swift -o "$dir/libPolarisKeyPlatform.a"
   if [ "$EXTENSION" = gamecenter ]; then

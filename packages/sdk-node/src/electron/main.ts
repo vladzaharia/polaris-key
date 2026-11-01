@@ -38,6 +38,8 @@ import {
   type BridgeMethod,
   type KitView,
 } from "./protocol.js";
+import { createNearbyHost, NearbyRefusal } from "./nearbyHost.js";
+import { ChoiceInputError, createChoiceHost } from "./choiceHost.js";
 import { resolveLocale } from "../cli/copy.js";
 import { KIT_COPY, KIT_COPY_VARIANTS } from "../kitCopy.generated.js";
 
@@ -254,6 +256,8 @@ export type PolarisBridgeHandle = {
 
 interface FlowEntry {
   prompt: DeviceCodeSession;
+  /** The window that began the flow: only it may poll it. */
+  windowId: number;
   timer: ReturnType<typeof setTimeout>;
 }
 
@@ -385,7 +389,11 @@ function envelopeError(e: unknown): BridgeEnvelope {
   // Only the SDK's own typed errors and the bridge's refusals describe themselves to the renderer.
   // Anything else (a filesystem error naming a path, a TypeError from a host callback) is a
   // host detail: the renderer gets a generic answer, never its message.
-  if (!(e instanceof PolarisError) && !(e instanceof BridgeRefusal))
+  if (
+    !(e instanceof PolarisError) &&
+    !(e instanceof BridgeRefusal) &&
+    !(e instanceof NearbyRefusal)
+  )
     return { ok: false, code: "unknown", message: "The request failed." };
   const err = e as { code?: unknown; message?: unknown; detail?: unknown };
   const out: BridgeEnvelope = {
@@ -473,6 +481,17 @@ export function signInHints(b: Record<string, unknown>): {
     // "card" is what the Worker does without the hint.
     ...(b.licenseChoice === "app" ? { licenseChoice: "app" as const } : {}),
   };
+}
+
+/** A choice call: a malformed argument is `invalid-argument`, as every other verb answers it. */
+async function choiceCall<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e instanceof ChoiceInputError)
+      throw new BridgeRefusal("invalid-argument", e.message);
+    throw e;
+  }
 }
 
 function optStr(v: unknown): string | undefined {
@@ -624,12 +643,16 @@ export function exposePolarisBridge(
   const flows = new Map<string, FlowEntry>();
   for (const wc of [opts.webContents ?? []].flat()) subscribers.set(wc.id, wc);
 
-  const currentState = (): Record<string, unknown> =>
-    bridgeState(client, hostFacts(opts.electron));
+  // v5: `nearby` is per window (its asks and session are bound to the window that made them), so
+  // every state carries the member for the window it goes to.
+  const currentState = (wcId?: number): Record<string, unknown> => ({
+    ...bridgeState(client, hostFacts(opts.electron)),
+    nearby: wcId === undefined ? {} : nearbyHost.stateFor(wcId),
+  });
 
   const pushState = (): void => {
     if (subscribers.size === 0) return;
-    const state = currentState();
+    const base = bridgeState(client, hostFacts(opts.electron));
     for (const [id, wc] of subscribers) {
       if (wc.isDestroyed?.()) {
         subscribers.delete(id);
@@ -640,11 +663,29 @@ export function exposePolarisBridge(
         // the app since it subscribed gets no state (no frame, no push).
         if (!senderAllowed({ sender: wc, senderFrame: wc.mainFrame ?? null }))
           continue;
-        wc.send(stateChannel(prefix), state);
+        wc.send(stateChannel(prefix), {
+          ...base,
+          nearby: nearbyHost.stateFor(id),
+        });
       } catch {
         subscribers.delete(id);
       }
     }
+  };
+
+  /** One window's state now (a nearby change). `false`: the window fails `allowSender`, so its
+   *  asks must die. A window that never subscribed gets nothing. */
+  const pushOne = (wc: WebContentsLike): boolean => {
+    if (wc.isDestroyed?.()) return false;
+    if (!senderAllowed({ sender: wc, senderFrame: wc.mainFrame ?? null }))
+      return false;
+    if (!subscribers.has(wc.id)) return true;
+    try {
+      wc.send(stateChannel(prefix), currentState(wc.id));
+    } catch {
+      subscribers.delete(wc.id);
+    }
+    return true;
   };
 
   const onLicense = (): void => pushState();
@@ -670,6 +711,31 @@ export function exposePolarisBridge(
   let lastDecide: Parameters<PolarisKeyClient["update"]["decide"]>[0] = {};
 
   const senderAllowed = opts.allowSender ?? defaultAllowSender(opts.appOrigin);
+
+  const nearbyHost = createNearbyHost({
+    identity: client.identity,
+    push: pushOne,
+    pushAll: () => pushState(),
+    signedIn: () => notify("signedIn"),
+    ...(opts.deviceName ? { deviceName: opts.deviceName } : {}),
+  });
+  // A sign-out from anywhere (an `invoke`, a declined nearby account) ends every ask.
+  const choiceHost = createChoiceHost({
+    choice: () => client.identity.choice,
+    signedIn: () => {
+      pushState();
+      notify("signedIn");
+    },
+    discard: () => client.identity.signOut(),
+    ended: (flowId) => forgetFlow(flowId),
+  });
+  const onIdentity = (e: { kind: string }): void => {
+    if (e.kind === "signedOut") {
+      nearbyHost.dropAll();
+      choiceHost.dropAll();
+    }
+  };
+  client.events.on("identity", onIdentity);
 
   /** Update-install progress for ONE `update.install` call: pushed to the invoking sender only
    *  (never `subscribers`), at most 10 per second, and never after the install settled or its
@@ -1056,6 +1122,16 @@ export function exposePolarisBridge(
       }
       return client.update.feedUrl(kind, o);
     },
+    // ── v6 (UK-42.22.7): the licence and device choice after a `choose` poll. The `grant` argument
+    //    is the ref the poll answered; the real grant stays in this process. ──
+    "identity.choice.licenses": async (a, e) =>
+      choiceCall(() => choiceHost.licenses(e.sender, a)),
+    "identity.choice.devices": async (a, e) =>
+      choiceCall(() => choiceHost.devices(e.sender, a)),
+    "identity.choice.complete": async (a, e) =>
+      choiceCall(() => choiceHost.complete(e.sender, a)),
+    "identity.choice.cancel": async (a, e) =>
+      choiceCall(() => choiceHost.cancel(e.sender, a)),
     // ── v4 (SP-13 config.local, SP-14 update-health events) ───────────────────────────
     "config.set": async (a) => {
       const b = bag(a);
@@ -1105,12 +1181,12 @@ export function exposePolarisBridge(
     BridgeMethod,
     (event: IpcMainInvokeEventLike, ...args: unknown[]) => Promise<unknown>
   > = {
-    getSyncState: async () => currentState(),
-    refresh: async () => {
+    getSyncState: async (e) => currentState(e.sender.id),
+    refresh: async (e) => {
       await client.sync({ force: true });
-      return currentState();
+      return currentState(e.sender.id);
     },
-    beginSignIn: async (_e, begin) => {
+    beginSignIn: async (e, begin) => {
       // v4: the renderer's device name wins over the host option, which stays the default.
       const deviceName = optStr(bag(begin).deviceName) ?? opts.deviceName;
       // UK-42.17: the hints the Node SDK's own `signIn.start` takes, and nothing more (no scope,
@@ -1125,7 +1201,7 @@ export function exposePolarisBridge(
       const ttl = Math.max(0, prompt.expiresIn * 1000) + graceMs;
       const timer = setTimeout(() => flows.delete(flowId), ttl);
       timer.unref?.();
-      flows.set(flowId, { prompt, timer });
+      flows.set(flowId, { prompt, windowId: e.sender.id, timer });
       return {
         flowId,
         verificationUrl: prompt.verificationUriComplete,
@@ -1135,9 +1211,15 @@ export function exposePolarisBridge(
         interval: prompt.interval,
       };
     },
-    pollSignIn: async (_e, flowId) => {
+    pollSignIn: async (e, flowId) => {
       const flow = flows.get(str(flowId, "flowId"));
-      if (!flow) return { kind: "expired" };
+      if (!flow || flow.windowId !== e.sender.id) return { kind: "expired" };
+      // v6: a flow that ended in `choose` answers it again to the same window, and nothing to
+      // another.
+      if (choiceHost.has(flowId as string))
+        return (
+          choiceHost.again(e.sender, flowId as string) ?? { kind: "expired" }
+        );
       let r;
       try {
         r = await flow.prompt.wait({ once: true });
@@ -1158,8 +1240,9 @@ export function exposePolarisBridge(
       }
       switch (r.kind) {
         case "pending":
-        case "choose":
           return { kind: "pending" };
+        case "choose":
+          return choiceHost.issue(e.sender, flowId as string, r);
         case "signedIn":
           forgetFlow(flowId as string);
           pushState();
@@ -1179,6 +1262,8 @@ export function exposePolarisBridge(
       return bridgeActivation(r);
     },
     signOut: async () => {
+      nearbyHost.dropAll();
+      choiceHost.dropAll();
       await client.identity.signOut();
       pushState();
       return null;
@@ -1225,6 +1310,21 @@ export function exposePolarisBridge(
       await opts.shell.openExternal(u.href);
       return true;
     },
+    // ── v5 (I-47b): automatic and nearby sign-in ───────────────────────────────────────
+    autoSignIn: async (_e, o) => nearbyHost.autoSignIn(o),
+    nearbyStart: async (e, o) => nearbyHost.nearbyStart(e.sender, o),
+    nearbyChoose: async (e, id, ref) =>
+      nearbyHost.nearbyChoose(e.sender, id, ref),
+    nearbyConfirm: async (e, id) => nearbyHost.nearbyConfirm(e.sender, id),
+    nearbyDecline: async (e, id) => nearbyHost.nearbyDecline(e.sender, id),
+    nearbyCancel: async (e, id) => nearbyHost.nearbyCancel(e.sender, id),
+    approverStart: async (e) => nearbyHost.approverStart(e.sender),
+    approverStop: async (e) => nearbyHost.approverStop(e.sender),
+    approverPick: async (e, id, code) =>
+      nearbyHost.approverPick(e.sender, id, code),
+    approverDeny: async (e, id) => nearbyHost.approverDeny(e.sender, id),
+    approverChoose: async (e, id, choice) =>
+      nearbyHost.approverChoose(e.sender, id, choice),
     subscribe: async (event) => {
       const wc = event.sender;
       if (!subscribers.has(wc.id)) {
@@ -1338,6 +1438,9 @@ export function exposePolarisBridge(
         opts.ipcMain.removeHandler(channelOf(prefix, method));
       client.events.off("license", onLicense);
       client.events.off("config", onConfig);
+      client.events.off("identity", onIdentity);
+      nearbyHost.dropAll();
+      choiceHost.dropAll();
       offPresentation();
       for (const id of [...flows.keys()]) forgetFlow(id);
       subscribers.clear();

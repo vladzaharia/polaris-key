@@ -14,9 +14,16 @@ import type {
   LicenseDoc,
 } from "@polaris-key/protocol/license";
 import type { BlockedState } from "@polaris-key/client-core";
-import { BRIDGE_VERSION, resolveBridge } from "../src/desktop/bridge.js";
+import {
+  BRIDGE_VERSION,
+  BRIDGE_VERSIONS_ACCEPTED,
+  resolveBridge,
+} from "../src/desktop/bridge.js";
 import type {
   BridgeHost,
+  BridgeNearbyAsk,
+  BridgeNearbyRequester,
+  BridgeNearbyStep,
   BridgeState,
   BridgeUpdateProgress,
   KitView,
@@ -72,8 +79,50 @@ describe("BridgeState mirrors @polaris-key/node's SyncState", () => {
   });
 
   it("declares its protocol revision (the fixture bridge is a v2 host)", () => {
-    expect(BRIDGE_VERSION).toBe(4);
+    expect(BRIDGE_VERSION).toBe(5);
     expect(makeFakeBridge(emptyBridgeState()).version).toBe(2);
+  });
+
+  it("v5 declares nearby sign-in as optional members, so a v4 host stays a PolarisBridge", () => {
+    expect(BRIDGE_VERSIONS_ACCEPTED).toEqual([3, 4, 5]);
+    // A v4 host: none of the v5 members. The assignment IS the assertion.
+    const v4: PolarisBridge = makeFakeBridge(emptyBridgeState());
+    expect(v4.autoSignIn).toBeUndefined();
+    const ask: BridgeNearbyAsk = {
+      askId: "ask_1",
+      device: "Studio PC",
+      platform: "windows",
+      codes: ["123 456", "234 567", "345 678"],
+    };
+    const requester: BridgeNearbyRequester = {
+      sessionId: "s_1",
+      phase: "waiting",
+      approvers: [{ id: "a_1", device: null, platform: "macos" }],
+      code: "123 456",
+    };
+    const step: BridgeNearbyStep = { kind: "approved" };
+    // A v5 host: every method, every shape, and `BridgeState.nearby` on the state push.
+    const v5: PolarisBridge = {
+      ...v4,
+      version: 5,
+      autoSignIn: async () => ({ kind: "needsSignIn", reason: "signed_out" }),
+      nearbyStart: async () => requester,
+      nearbyChoose: async () => requester,
+      nearbyConfirm: async () => requester,
+      nearbyDecline: async () => requester,
+      nearbyCancel: async () => undefined,
+      approverStart: async () => ({ listening: true, asks: [ask] }),
+      approverStop: async () => undefined,
+      approverPick: async () => step,
+      approverDeny: async () => undefined,
+      approverChoose: async () => ({ kind: "denied" }),
+    };
+    const state: BridgeState = {
+      ...emptyBridgeState(),
+      nearby: { requester, approver: { listening: true, asks: [ask] } },
+    };
+    expect(state.nearby?.approver?.asks[0]?.askId).toBe("ask_1");
+    expect(v5.version).toBe(5);
   });
 
   it("v3's importBundle mirrors @polaris-key/node's importBundle, field for field", () => {

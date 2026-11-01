@@ -13,6 +13,7 @@ Importing this module needs Textual; nothing else in the SDK does.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Dict, List, Optional, Tuple
 
 from rich.text import Text
@@ -22,18 +23,19 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.theme import Theme as TextualTheme
 from textual.widgets import Button, Footer, Input, ListItem, ListView, Select, Static, Switch
 
-from .. import _tokens, ansi
 from ...constants_generated import ErrorCode
+from ...core.models import license_user
+from .. import _tokens, ansi
 from ..core.copy import Copy
 from ..core.identity import ResolvedIdentity, presentation_source, resolve_identity
-from ...core.models import license_user
-from ..core.models import DevicesView, DeviceRow, GateView, UpdateView, gate_view, update_view
+from ..core.models import DeviceRow, DevicesView, GateView, UpdateView, gate_view, update_view
 from ..core.theme import Theme
 from ..qt.rows import Row, _setting_row
 from . import fmt
 from .fmt import platform_name
-from .settings_rows import settings_rows
+from .nearby import NearbyApprovalView
 from .screens import portal_url
+from .settings_rows import settings_rows
 from .text import clean
 
 __all__ = ["PolarisKeyApp", "run_app", "SECTIONS"]
@@ -219,6 +221,11 @@ class PolarisKeyApp(App):
         self._row_notes: Dict[str, Tuple[str, bool]] = {}
         self._focus_after: Optional[str] = None
         self._advanced = False
+        #: "Approve a nearby device" (I-47.13): the view now shown, the ask and its choose step, and the
+        #: handle that stops the advert. ``None`` outside the flow. ``_nearby`` caches whether this
+        #: product and runtime offer it.
+        self.approval: Optional[Dict[str, Any]] = None
+        self._nearby: Optional[bool] = None
         super().__init__()
         self.title = clean(self.identity.name)
         # The one key binding, labelled from the catalog.
@@ -360,6 +367,10 @@ class PolarisKeyApp(App):
         loop, the old one gone before the new one is mounted (ids repeat from pane to pane)."""
         if section != self.section:
             self.confirming = False
+            # Leaving the account pane leaves the approval: nothing is left listening.
+            if self.approval is not None:
+                self._approval_stop()
+                self.approval = None
         self.section = section
         self.call_later(self._rebuild)
 
@@ -631,6 +642,8 @@ class PolarisKeyApp(App):
     def _account_pane(self) -> List[Any]:
         t = self.copy
         g = self.gate()
+        if self.approval is not None:
+            return self._approval_pane()
         if self.confirming:
             return self._sign_out_pane(g)
         out: List[Any] = []
@@ -689,8 +702,241 @@ class PolarisKeyApp(App):
             out.append(_text(t("account.version", version=g.version), classes="pk-muted"))
         # A lone action is the primary (DL4).
         buttons = [Button(_out(t("common.manage")), classes="pk-primary", id="pk-manage")] if self.manage_url else []
+        if g.signed_in and self.nearby_offered():
+            buttons.append(
+                Button(t("signin.nearby.menu"), classes="pk-secondary" if buttons else "pk-primary", id="pk-approve")
+            )
         buttons.append(sign_out(not buttons))
         return out + [self._actions(*buttons), self._note()]
+
+    # ── Approve a nearby device (I-47.13) ─────────────────────────────────────────────────
+
+    def nearby_offered(self) -> bool:
+        """Whether "Approve a nearby device" is offered: the product serves it and this runtime can
+        advertise (``identity.nearby.available``; read once)."""
+        if self._nearby is None:
+            if "nearby" in self.data:
+                self._nearby = bool(self.data["nearby"])
+            else:
+                try:
+                    self._nearby = bool(self.client.identity.nearby.available(role="approver"))
+                except Exception:
+                    self._nearby = False
+        return self._nearby
+
+    def _approval_pane(self) -> List[Any]:
+        """The approval's pane for its view: waiting, the three codes, the license choice, or an outcome
+        with Done. The other device's name is display data from an unverified peer: drawn as text."""
+        t = self.copy
+        a = self.approval or {}
+        v: NearbyApprovalView = a["view"]
+        name = clean(v.device or "").strip()
+        device = name or t("part.newDevice")
+        title_device = name or t("part.newDeviceTitle")
+        out: List[Any] = []
+        done = Button(t("common.done"), classes="pk-primary", id="pk-approve-done")
+        if v.state == "entry":
+            out += [
+                _text(t("signin.nearby.menu"), classes="pk-title"),
+                _text(t("signin.cli.approveWaiting"), classes="pk-muted"),
+            ]
+            return out + [
+                self._actions(Button(t("common.cancel"), classes="pk-secondary", id="pk-approve-cancel")),
+                self._note(),
+            ]
+        if v.state in ("ask", "working"):
+            out.append(_text(t("signin.nearby.ask", device=device), classes="pk-title"))
+            if v.state == "working":
+                return out + [_text(t("common.working"), classes="pk-muted")]
+            out += [_text(t("signin.nearby.askBody")), _text(t("signin.approve.warning"), classes="pk-muted")]
+            buttons = [Button(code, classes="pk-secondary", id=f"pk-code-{i}") for i, code in enumerate(v.codes, 1)]
+            buttons.append(Button(t("signin.approve.deny"), classes="pk-secondary", id="pk-approve-deny"))
+            return out + [self._actions(*buttons), self._note()]
+        if v.state == "choose":
+            out += [
+                _text(t("signin.nearby.chooseTitle", device=device), classes="pk-title"),
+                _text(t("signin.nearby.chooseLede", product=self.identity.name), classes="pk-muted"),
+            ]
+            buttons = [
+                Button(clean(n), classes="pk-secondary", id=f"pk-choice-{i}") for i, n in enumerate(v.choices, 1)
+            ]
+            if v.create:
+                buttons.append(Button(t("signin.choice.create"), classes="pk-secondary", id="pk-choice-create"))
+            buttons.append(Button(t("signin.approve.deny"), classes="pk-secondary", id="pk-approve-deny"))
+            return out + [self._actions(*buttons), self._note()]
+        if v.state == "approved":
+            out.append(
+                Static(
+                    Text("✓ ", "bold") + Text(clean(t("signin.nearby.approved", device=title_device))),
+                    markup=False,
+                    classes="pk-row",
+                )
+            )
+        elif v.state == "denied":
+            out.append(_text(t("signin.approve.deniedDone"), classes="pk-muted"))
+        elif v.state == "mismatch":
+            out += [
+                self._refusal(t("signin.nearby.mismatch", device=device)),
+                _text(t("signin.nearby.expiredBody", device=device), classes="pk-muted"),
+            ]
+        elif v.state == "not-nearby":
+            out += [
+                self._refusal(t("signin.nearby.notNearby", device=title_device)),
+                _text(t("signin.nearby.notNearbyBody", device=device), classes="pk-muted"),
+            ]
+        elif v.state == "expired":
+            out += [
+                self._refusal(t("core.codes.sign-in-expired.title")),
+                _text(t("signin.nearby.expiredBody", device=device), classes="pk-muted"),
+            ]
+        elif v.state == "device-limit":
+            out += [
+                self._refusal(t("core.codes.device_limit.title")),
+                _text(t("signin.nearby.deviceLimitBody", device=device), classes="pk-muted"),
+            ]
+        elif v.state == "rate-limited":
+            out += [
+                self._refusal(t("core.codes.rate_limited.title")),
+                _text(t("signin.nearby.rateLimitedBody", device=device), classes="pk-muted"),
+            ]
+        elif v.state == "account-required":
+            out += [
+                self._refusal(t("core.codes.account_required.title")),
+                _text(t("core.codes.account_required.message"), classes="pk-muted"),
+            ]
+        elif v.state == "unsupported":
+            out += [
+                self._refusal(t("signin.cli.approveUnsupportedTitle")),
+                _text(t("signin.cli.approveUnsupported"), classes="pk-muted"),
+            ]
+        return out + [self._actions(done), self._note()]
+
+    def _approval_set(self, view: NearbyApprovalView, *, stop: bool = False) -> None:
+        """Show ``view``; an outcome stops the advert (nothing is left listening)."""
+        if self.approval is None:
+            return
+        self.approval["view"] = view
+        if stop:
+            self._approval_stop()
+        self._reshow()
+        self.call_after_refresh(
+            lambda: self.query(".pk-primary").first().focus() if self.query(".pk-primary") else None
+        )
+
+    def _approval_stop(self) -> None:
+        handle = (self.approval or {}).get("handle")
+        if handle is not None:
+            self.approval["handle"] = None  # type: ignore[index]
+            try:
+                handle.stop()
+            except Exception:
+                pass
+
+    def _approve_start(self) -> None:
+        self.approval = {"view": NearbyApprovalView("entry"), "ask": None, "step": None, "handle": None}
+        if self.client is not None and hasattr(self.client, "identity"):
+            try:
+                self.approval["handle"] = self.client.identity.nearby.on_request(self._on_ask, prompt=True)
+            except Exception as e:
+                code = getattr(e, "code", None)
+                state = (
+                    "unsupported"
+                    if code == ErrorCode.NEARBY_UNSUPPORTED
+                    else "account-required"
+                    if code in (ErrorCode.ACCOUNT_REQUIRED, ErrorCode.NO_TOKEN)
+                    else "expired"
+                )
+                self.approval["view"] = NearbyApprovalView(state)
+        self._reshow()
+
+    def _on_ask(self, ask: Any) -> None:
+        """The advert's handler (the Connect thread): hand the ask to the app's loop."""
+        try:
+            self.call_from_thread(self.asked, ask)
+        except RuntimeError:  # already on the app's own thread
+            self.asked(ask)
+
+    def asked(self, ask: Any) -> None:
+        """A device asks to sign in: show its three codes."""
+        if self.approval is None or self.approval.get("ask") is not None:
+            return
+        self.approval["ask"] = ask
+        device = clean(getattr(ask, "device", None) or "").strip() or None
+        self._approval_set(NearbyApprovalView("ask", device=device, codes=tuple(str(c) for c in ask.codes)))
+
+    def _approval_work(self, fn: Any) -> None:
+        """Run a call that talks to the Worker off the app's loop, then show where it came to."""
+        def work() -> None:
+            try:
+                step = fn()
+            except Exception as e:
+                code = getattr(e, "code", None)
+                step = type(
+                    "Step", (), {"kind": "account-required" if code == ErrorCode.ACCOUNT_REQUIRED else "expired"}
+                )()
+            self.call_from_thread(self._stepped, step)
+
+        self.run_worker(work, thread=True, exclusive=True)
+
+    def _stepped(self, step: Any) -> None:
+        if self.approval is None:
+            return
+        v: NearbyApprovalView = self.approval["view"]
+        if step.kind == "choose":
+            self.approval["step"] = step
+            choices = [c for c in (step.choices or {}).get("choices", []) if c.get("state") == "free"][:9]
+            names = tuple((c.get("name") or c.get("tierName") or "") for c in choices)
+            self.approval["free"] = choices
+            self._approval_set(
+                NearbyApprovalView(
+                    "choose", device=v.device, choices=names, create=(step.choices or {}).get("create") is not None
+                )
+            )
+            return
+        self._approval_set(NearbyApprovalView(step.kind, device=v.device), stop=True)
+
+    def _approval_press(self, bid: str) -> None:
+        a = self.approval
+        if a is None:
+            return
+        v: NearbyApprovalView = a["view"]
+        if bid == "pk-approve-cancel":
+            self._approval_stop()
+            self.approval = None
+            self._reshow()
+        elif bid == "pk-approve-done":
+            self._approval_stop()
+            self.approval = None
+            self._reshow()
+        elif bid == "pk-approve-deny":
+            step, ask = a.get("step"), a.get("ask")
+            if step is not None:
+                self._approval_set(replace(v, state="working"))
+                self._approval_work(step.cancel)
+            else:
+                try:
+                    if ask is not None:
+                        ask.deny()
+                except Exception:
+                    pass
+                self._approval_set(NearbyApprovalView("denied", device=v.device), stop=True)
+        elif bid.startswith("pk-code-"):
+            code = v.codes[int(bid[len("pk-code-"):]) - 1]
+            self._approval_set(replace(v, state="working"))
+            self._approval_work(lambda: a["ask"].pick(code))
+        elif bid.startswith("pk-choice-"):
+            step = a["step"]
+            tail = bid[len("pk-choice-"):]
+            choice = (
+                {"kind": "create"}
+                if tail == "create"
+                else {"kind": "license", "licenseId": a["free"][int(tail) - 1]["id"]}
+            )
+            self._approval_set(replace(v, state="working"))
+            self._approval_work(lambda: step.choose(choice))
+
+    def on_unmount(self) -> None:
+        self._approval_stop()
 
     def _sign_out_pane(self, g: GateView) -> List[Any]:
         t = self.copy
@@ -831,7 +1077,11 @@ class PolarisKeyApp(App):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         bid = event.button.id
-        if bid and bid.startswith("pk-reset-"):
+        if bid == "pk-approve":
+            self._approve_start()
+        elif bid and bid.startswith(("pk-approve-", "pk-code-", "pk-choice-")):
+            self._approval_press(bid)
+        elif bid and bid.startswith("pk-reset-"):
             self._reset(int(bid[len("pk-reset-"):]))
         elif bid == "pk-settings-retry":
             self._reshow()

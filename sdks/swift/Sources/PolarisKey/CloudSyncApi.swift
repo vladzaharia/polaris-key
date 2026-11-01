@@ -41,6 +41,23 @@ public enum CloudSyncEvent: Sendable, Equatable {
     case signInOffered(signInUrl: String?)
     /// The synced data could not be deleted from disk (no values, no path): the app may warn the person.
     case purgeFailed
+    /// A save transfer moved `done` of `total` plaintext bytes (`TransferEvent.transferprogress`).
+    case transferProgress(id: String, done: Int, total: Int)
+    /// A save transfer ended: `state` is `done`, `cancelled` or `conflict` (`TransferEvent.transferdone`). A
+    /// cancelled transfer is a state, not a failure.
+    case transferDone(id: String, state: String)
+    /// A save transfer failed with a code (`TransferEvent.transferfailed`).
+    case transferFailed(id: String, code: String)
+
+    /// The transfer event's type word from the generated `TransferEvent` constants; nil for the others.
+    public var transferType: String? {
+        switch self {
+        case .transferProgress: return TransferEvent.transferprogress
+        case .transferDone: return TransferEvent.transferdone
+        case .transferFailed: return TransferEvent.transferfailed
+        default: return nil
+        }
+    }
 
     init(_ e: SyncEvent) {
         switch e {
@@ -63,7 +80,16 @@ public struct RecoveryCodeModel: Sendable {
 /// `client.cloudSync`: the verbs. A product without the Sync service gets the typed N/A.
 public final class CloudSyncClient: Sendable {
     let api: CloudSyncApi
-    init(api: CloudSyncApi) { self.api = api }
+    /// The saves of the signed-in person (`list`, `read`, `write`, `resolve`, `delete`, `revisions`).
+    public let saves: SavesClient
+
+    init(api: CloudSyncApi, saves: SavesClient) {
+        self.api = api
+        self.saves = saves
+    }
+
+    /// The save writes in flight (each with `pause`, `resume`, `cancel` and `outcome`).
+    public func transfers() -> [SaveTransfer] { saves.transfers() }
 
     /// The machine's status. `local` before Cloud Sync has started. Throws the typed `product` N/A when the
     /// product does not run the Sync service.
@@ -106,6 +132,8 @@ actor CloudSyncApi {
     private let account: @Sendable () -> String?
     private let emit: @Sendable (CloudSyncEvent) -> Void
     private let forgetRing: @Sendable () async throws -> Void
+    private let lockRing: @Sendable () async -> Void
+    private let purgeSaves: @Sendable () async -> Void
     private let recovery: @Sendable () async throws -> String
     private var hostValue: CloudSyncHost?
     private var attached = false
@@ -124,6 +152,8 @@ actor CloudSyncApi {
         core: CoreContext, config: ConfigClient, host: @escaping @Sendable () -> CloudSyncHost,
         account: @escaping @Sendable () -> String?, emit: @escaping @Sendable (CloudSyncEvent) -> Void,
         forgetRing: @escaping @Sendable () async throws -> Void,
+        lockRing: @escaping @Sendable () async -> Void = {},
+        purgeSaves: @escaping @Sendable () async -> Void = {},
         recovery: @escaping @Sendable () async throws -> String
     ) {
         self.core = core
@@ -132,6 +162,8 @@ actor CloudSyncApi {
         self.account = account
         self.emit = emit
         self.forgetRing = forgetRing
+        self.lockRing = lockRing
+        self.purgeSaves = purgeSaves
         self.recovery = recovery
         self.importMarker = core.dirs.state.appendingPathComponent("cloud-sync-imported.json")
         (queue, enqueue) = AsyncStream<Work>.makeStream()
@@ -165,6 +197,14 @@ actor CloudSyncApi {
 
     /// The person Cloud Sync is signed in as (for tests and diagnostics).
     func currentSubject() -> String? { subject }
+
+    /// The host, started and signed in as the held subject; nil when the product has no Sync service or the
+    /// host did not start.
+    func startedHost() async -> CloudSyncHost? {
+        await attach()
+        guard let h = hostValue, await h.isStarted else { return nil }
+        return h
+    }
 
     // MARK: what the client calls
 
@@ -348,7 +388,7 @@ actor CloudSyncApi {
             await drainEvents()
         }
         subject = nil
-        do { try await forgetRing() } catch {
+        do { try await forgetPerson() } catch {
             // D-13: a ring that cannot forget stops the sign-out and the person stays signed in: nothing
             // is purged, and Cloud Sync is signed in again for them.
             if let who { await signIn(who) }
@@ -361,9 +401,25 @@ actor CloudSyncApi {
     /// forget failure is returned (it stops the release), a purge failure is reported and never replaces it.
     private func forgetAndPurge() async -> (any Error)? {
         var failure: (any Error)?
-        do { try await forgetRing() } catch { failure = error }
+        do { try await forgetPerson() } catch { failure = error }
         await purge()
         return failure
+    }
+
+    /// The person's keys and saves leave in this order: the ring locks (the root leaves memory, and a save
+    /// codec stops with it), the save transfers are purged (journal, chunk cache, waiting writes), then the
+    /// root and the pin are removed. A removal that fails throws; the earlier steps are not undone.
+    private func forgetPerson() async throws {
+        try await Self.forgetInOrder(lock: lockRing, purgeSaves: purgeSaves, forget: forgetRing)
+    }
+
+    static func forgetInOrder(
+        lock: @Sendable () async -> Void, purgeSaves: @Sendable () async -> Void,
+        forget: @Sendable () async throws -> Void
+    ) async throws {
+        await lock()
+        await purgeSaves()
+        try await forget()
     }
 
     private func purge() async {
@@ -420,7 +476,7 @@ actor CloudSyncApi {
     private func startForget() -> Task<Void, Never> {
         if let t = forgetTask { return t }
         let t = Task {
-            try? await self.forgetRing()
+            try? await self.forgetPerson()
             await self.purge()
             self.forgetDone()
         }

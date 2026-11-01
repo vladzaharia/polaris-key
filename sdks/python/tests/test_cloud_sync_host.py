@@ -547,6 +547,8 @@ def test_the_compiled_mirror_is_authoritative_and_bad_keys_are_dropped(rigs: Cal
             entry("theme", sync="local"),
             entry("extra", sync="local"),
             entry("bad key!", sync="local"),
+            entry("tail\n", sync="local"),
+            entry("tail\r", sync="local"),
         ],
     }
     r = rigs(w)
@@ -562,6 +564,7 @@ def test_the_compiled_mirror_is_authoritative_and_bad_keys_are_dropped(rigs: Cal
     r.host.flush(1000)
     saved = json.loads(Path(state_file(r.state_dir)).read_text())
     assert "bad key!" not in [e["key"] for e in saved["catalog"]["entries"]]
+    assert not {"tail\n", "tail\r"} & {e["key"] for e in saved["catalog"]["entries"]}
 
 
 def test_a_served_catalog_cannot_reclassify_an_open_setting_the_person_already_uses(

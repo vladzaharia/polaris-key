@@ -6,11 +6,15 @@
 // for byte with rekey, the 15 failure rows and the external anchors; then the engine's own
 // refusals, the key port, and the no-leak checks.
 
-import CryptoKit
 import Foundation
 import XCTest
 
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private func unhex(_ s: String) -> Data {
     let c = Array(s.utf8)
@@ -252,7 +256,7 @@ final class PeerNoiseTests: XCTestCase {
             let mode = try XCTUnwrap(PeerNoiseMode(rawValue: r.mode))
             XCTAssertEqual(hex(peerPrologue(slug: r.slug, mode: mode)), r.prologue, r.slug + r.mode)
         }
-        XCTAssertEqual(matrix.prologue.count, 6)
+        XCTAssertEqual(matrix.prologue.count, 8)
         for r in matrix.psk {
             XCTAssertEqual(hex(try peerPsk(discoveryKey: unhex(r.kDisc), slug: r.slug)), r.psk, r.slug)
         }
@@ -262,6 +266,7 @@ final class PeerNoiseTests: XCTestCase {
         }
         XCTAssertEqual(peerNoiseProtocol(.a), "Noise_XXpsk0_25519_AESGCM_SHA256")
         XCTAssertEqual(peerNoiseProtocol(.v), "Noise_XX_25519_AESGCM_SHA256")
+        XCTAssertEqual(peerNoiseProtocol(.c), "Noise_XXpsk0_25519_AESGCM_SHA256")
     }
 
     // ── Handshakes ───────────────────────────────────────────────────────────────────
@@ -279,7 +284,7 @@ final class PeerNoiseTests: XCTestCase {
     }
 
     func testHandshakesByteForByteWithRekey() async throws {
-        XCTAssertEqual(vectors.handshakes.map(\.mode).sorted(), ["a", "p", "v"])
+        XCTAssertEqual(vectors.handshakes.map(\.mode).sorted(), ["a", "c", "p", "v"])
         for h in vectors.handshakes {
             let mode = try XCTUnwrap(PeerNoiseMode(rawValue: h.mode))
             XCTAssertEqual(peerNoiseProtocol(mode), h.protocolName)
@@ -328,7 +333,7 @@ final class PeerNoiseTests: XCTestCase {
     }
 
     func testFailureRows() async throws {
-        XCTAssertEqual(vectors.failures.count, 15)
+        XCTAssertEqual(vectors.failures.count, 19)
         for f in vectors.failures {
             let ini = Side(
                 prologue: f.prologue, psk: f.psk, staticKey: f.initStatic, ephemeral: f.initEphemeral)

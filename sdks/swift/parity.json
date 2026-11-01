@@ -175,9 +175,8 @@
       "note": "SignInOptions(licenseChoice: .app) sends license_choice=app (only when discovery lists the four choice routes; else the card chooses) and session.complete(callbackUrl:) then settles .chooseLicense(PendingSignIn); identity.choice.licenses/devices/complete/cancel(grant:) take the grant (complete with keep also sends the device's own bearer, which the Worker reads as held; every other choice sends none), store the device token on complete like a sign-in, and throw a typed ChoiceError (invalid_grant, license_choice_required and device_limit with a fresh view, not_found, rate_limited with retryAfterSeconds); UnsupportedError(product) when a route is not published. LicenseChoiceModel (PolarisKeyUICore, @Observable) drives the LicenseChoice screen's KitInputs from the SDK."
     },
     "identity.devicecode.choice": {
-      "status": "planned",
-      "wp": "UK-42",
-      "note": "UK-42.22 (SDK slice .9): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+      "status": "implemented",
+      "note": "signIn.start(SignInOptions(licenseChoice: .app, ...)) sends loginHint, nameHint, purpose and licenseChoice on the device start (the hints always; licenseChoice app only when discovery carries deviceChoice and the four choice routes); a poll status choose settles session.wait() as .chooseLicense(PendingSignIn), the redirect's outcome, which identity.choice completes. A choose that was not asked for is a sign-in-failed."
     },
     "identity.signin.hints": {
       "status": "implemented"
@@ -186,6 +185,11 @@
       "status": "planned",
       "wp": "I-15b",
       "note": "LK-SKIP.9: the opt-in, the via rule and the activated outcome, with the replayer."
+    },
+    "identity.redirect.native": {
+      "status": "planned",
+      "wp": "I-15b",
+      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
     },
     "identity.exchange": {
       "status": "implemented",
@@ -213,6 +217,11 @@
       "status": "planned",
       "wp": "I-44",
       "note": "Link offer (I-43.3 transcripts, I-44)."
+    },
+    "identity.nearby": {
+      "status": "planned",
+      "wp": "I-44",
+      "note": "Nearby approval (I-40.8 transcripts, I-44). The LAN half is in (CC-15.S1 to S4: client.cloudConnect.nearby.request and onRequest, the vouch rows of peer-matrix.json run in PeerVouchTests); the routes and the kit screens follow in I-44."
     },
     "identity.keyentry": {
       "status": "implemented"
@@ -492,8 +501,8 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "note": "client.cloudSync.saves (PolarisKey/CloudSyncSaves.swift, CloudSyncSavesBinding.swift): list(), read(_:options:), write(_:bytes:metadata:options:) (and write(_:source:...) and write(_:bytes:encoding:...)), resolve(_:keep:bytes:options:), delete(_:baseVersion:), revisions(_:), and client.cloudSync.transfers() with pause(), resume() and cancel() on each SaveTransfer. The machine holds the saves collection (file pointers, records(), putAt/removeAt with journal-only tickets, one outcome per ticket); the file goes first and the metadata `set` second on the version finalize answered, so no save is torn; in end-to-end mode the sealed metadata carries the $file binding and a read downloads the revision it names (a miss is sync-file-invalid); newerFormat from SavesOptions.saveFormatVersion; the 16-slot cap, conflicts as SaveConflict with keep local/remote/both, and transferProgress/transferDone/transferFailed on client.events (a cancelled write is a transferDone with state cancelled). The wait for the metadata write has no timeout: cancel(), a sign-out (the write is dropped) and the host's retries end it; a pause never does. The key ring's fileCodec(collection:) refuses with sync-locked on every call and stream piece once the ring locks. Sign-out and forget: lock the ring, purge the saves (journal, the person's chunk cache, waiting writes), then remove the root and the pin. CloudSyncSavesTests, CloudSyncSavesHostTests, ForgetOrderTests, SyncKeyringTests, SyncScenariosTests (fileRecordCases) and the cloudsync-files-single transcript."
     },
     "sync.keyring": {
       "status": "implemented",
@@ -504,12 +513,12 @@
       "wp": "U-46"
     },
     "sync.files": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "note": "CloudSyncFileTransport (PolarisKey/CloudSyncFiles.swift) is the engine's FileTransport over the device bearer: a closed allow-list of the file routes (key charset, 64-hex chunk ids, no dot segments, only version=<digits> as a query), no redirect followed, JSON read to 1 MiB, error bodies to 64 KiB, a ranged GET to the range asked and a chunk to SYNC_CHUNK_MAX_STORED_BYTES, a deadline that grows with the body, Content-Digest on every PUT and Retry-After as seconds or a date capped at 3,600 before any integer conversion (a 503 unavailable from a down limiter backs off like a 429). CloudSyncFilesTests; the cloudsync-files-* transcripts replay in TranscriptTests (cloudsync-files-single also proves sync.saves and waits for it)."
     },
     "sync.files.delta": {
-      "status": "planned",
-      "wp": "U-23"
+      "status": "implemented",
+      "note": "The chunks mode over the same transport (planChunks, putChunk, getChunk, the manifest through putSingle; the chunk-size cap is the generated SYNC_CHUNK_MAX_STORED_BYTES) and the S4 engine; a present chunk that became missing is sent again. The cloudsync-chunks and cloudsync-chunks-delta transcripts replay in TranscriptTests."
     },
     "sync.e2e.recovery": {
       "status": "planned",
@@ -533,23 +542,23 @@
     },
     "connect.protocol": {
       "status": "implemented",
-      "note": "PolarisKeyCore peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter), PeerLink, and the trust manager's accept-peer; PeerBytesTests, PeerCodecTests, PeerSessionTests, PeerSessionSASTests, ConnectSessionTests and TrustAcceptPeerTests replay peer-matrix.json."
+      "note": "PolarisKeyCore peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter; HELLO display data cleaned: platform in [A-Za-z0-9 ._+-] up to 32 characters else Unknown, app cleaned like label, a HELLO in modes v and p up to 4 KiB, held host records up to 16 and 16 KiB), PeerLink, and the trust manager's accept-peer; PeerBytesTests, PeerCodecTests, PeerSessionTests, PeerSessionSASTests, ConnectSessionTests and TrustAcceptPeerTests replay peer-matrix.json."
     },
     "connect.lan": {
       "status": "implemented",
-      "note": "PolarisKeyPlatform BonjourBrowse and BonjourPipes (Network.framework: NWBrowser, NWListener, NWConnection; dial policy G6 and D-10 before the first byte, accept gate and 30 s authentication bound) and PolarisKey ConnectLan (advert rotation, browse index, dial, wrong_peer, session caps); the Info.plist needs NSLocalNetworkUsageDescription and the NSBonjourServices entry _pkeypeer._tcp, and a sandboxed macOS app needs com.apple.security.network.client and .server; BonjourBrowseTests, BonjourPipesTests, ConnectLanTests."
+      "note": "PolarisKeyPlatform BonjourBrowse and BonjourPipes (Network.framework: NWBrowser, NWListener, NWConnection; the LAN address rule lanVerdict of V5 §15.4.1 (LanAddress.swift: IPv4, fe80::/10, fc00::/7 and an on-link global IPv6 address) judged on a host and port as text before connect and on the connected path's remote and local endpoints before the first byte, and on an accepted source before a slot and again before the host sees the pipe, a non-LAN accept closed with no read; the 30 s authentication bound; unauthenticated sockets capped per address 4, per group 16 (the link for fe80::/10, the /24 for IPv4, the /64 for ULA and global) and 32 in all, a link-local key with its zone; a browse hit is resolved with DNS-SD on the interface the browse reported and every address is judged by lanVerdict and the connected subnets of the interface it came back on (LanResolve.swift, BonjourResolve.swift) before any connect, the SRV port must be 1024 to 65535, a service endpoint is never handed to NWConnection, and the dial falls through to the next address after a failed handshake (wrong_peer ends it); the residual is that the address is resolver-returned, not source-equal; the accept gate looks up an own address on the receiving interface; PeerCodecTests runs every peer-matrix.json lanAddresses row, skips the candidates rows because Swift reads no CANDIDATES entry, and skips mdnsAnswers because the OS resolver owns it) and PolarisKey ConnectLan (advert rotation, browse index, dial, wrong_peer, session caps); the Info.plist needs NSLocalNetworkUsageDescription and the NSBonjourServices entry _pkeypeer._tcp, and a sandboxed macOS app needs com.apple.security.network.client and .server; BonjourBrowseTests, BonjourPipesTests, LanResolveTests, ConnectLanTests."
     },
     "connect.relay": {
       "status": "implemented",
       "note": "client.connect.relayTicket() and PolarisKey ConnectRelay (URLSessionWebSocketTask with the pkey-relay.1 subprotocol and the ticket, reconnect policy, LIMIT and close codes 4001/4003/4008/4009, mode-a relay sessions, pacing, 8 MiB outbox cap with per-session accounting); ConnectRelayTests, ConnectRelaySessionTests, ConnectRelayTicketTests; TranscriptTests replays connect-relay-ticket and connect-relay-quota."
     },
     "connect.links": {
-      "status": "planned",
-      "wp": "CC-19"
+      "status": "implemented",
+      "note": "client.cloudConnect.links (sdks/swift/Sources/PolarisKey/CloudLinks.swift, CC-19.7; WIRE-CONTRACT-V5 section 15.10): pair(LinkPairOptions) opens the pairing window (ConnectLinkPairing.swift: an m=p advert with a random instance and the product tag, a listener of its own, at most 300 s; the lower instance dials; mode p to the code with PeerChannel's contact exchange, then the store), list(), remove(id) (the secret leaves the record, open sessions hear peer_revoked), setReachable(id, on), open(id) (mode c over the LAN, then the contact relay: ConnectContactRelay.swift opens a room per contact with the {room:\"c\", rid} ticket and speaks aliases only), onLink(fn) and interAccount(). The contacts are rows of the Connect record (ConnectState.swift, one Keychain item, wiped by leave(); a bad row makes the record unreadable); the shared LAN listener tries the account keys, then the contact secrets in trial order under one HandshakeLimiter; m=c adverts (at most 8, registered with DNS-SD beside the listener's account advert: BonjourContactAdverts.swift) and browse use PeerContacts.instance and a per-epoch name index; a pending contact is promoted by the first handshake that passes the pin. Everything is gated on the cached discovery interAccount (CloudLinksDisabled, code connect_links_disabled, otherwise). PeerContactTests.swift (@pkey-feature connect.links) runs the peer-matrix contact rows and two real channels; ConnectLinksTests.swift runs two accounts over the LAN and through a contact room; the connect-relay-ticket-contact and connect-links-disabled transcripts replay in TranscriptTests.swift. Secrets: Data is copy-on-write and CryptoKit copies its inputs, so a secret cannot be zeroed once it is in HKDF or HMAC; the copies this SDK owns are released, not overwritten. BonjourContactAdvertsTests.swift (CC-19.POLISH) keeps a registration by name and port; a contact row's categories must match ^[a-z0-9-]{1,32}$."
     },
     "connect.transfer": {
-      "status": "planned",
-      "wp": "CC-20"
+      "status": "implemented",
+      "note": "client.cloudConnect.transfer (sdks/swift/Sources/PolarisKey/CloudTransfer.swift, CC-20.6; WIRE-CONTRACT-V5 section 15.11): send(peer, source:, options:) (a device or a link; a file, Data or an AsyncThrowingStream spooled and hashed first), send(over:), onOffer(handler) (consent per transfer: .decline or .accept(to:); no handler declines; a mode-c offer is judged against the link's categories first), onReceived, cancel(id) and setMaxSize. The machine is PolarisKeyCore PeerXfer.swift (codecs, window, offer order, hash, ending, resume, limits, the partial path and the display-name cleaner), PeerXferEndpoint.swift runs it over a session, PeerXferStore.swift keeps the partial files (state/xfer, owner-only, named only by the derived path, delivery by link or copy through a temporary file and never over an existing file). PeerChannel owns the six record types when both payloads list xfer/1 (attachXfer, sendXfer; MORE is peer_bad_frame, no capability is peer_not_allowed, sendRecord refuses them); the LAN, relay and contact channels list xfer/1 by default. Each session owns the partials it claims (a second session of the same peer cannot touch them, a closed session's late effects are dropped, a purge of the peer refuses what is queued), and an accepted transfer reserves its declared size against the store quota (4 GiB) and the disk reserve (256 MiB) until it ends, writes past it are refused, a resume whose partial is gone or short starts at 0, and an effect queued before a purge is refused. Sign-out deletes every partial file; removing a link or a device leaving the roster deletes that peer's. PeerXferTests.swift replays every xfer row of peer-matrix.json (@pkey-feature connect.transfer); TransferTests.swift runs two in-process sessions (offer, accept, deliver; decline; consent timeout; cancel on either side; resume after a dropped session; hash mismatch; path-shaped names; the store)."
     },
     "connect.app": {
       "status": "implemented",

@@ -163,6 +163,28 @@ export function notifications(win: BrowserWindow): BridgeNotifications {
 
 The Update prompt installs through the update driver you set on the client. In Electron that is `electronUpdaterDriver` from `@polaris-key/node/update/drivers/electron-updater`. While it installs, the main process pushes progress to the window that started it and to no other. The bar is determinate when the driver knows the size and indeterminate otherwise; the kit invents no percentage. On macOS the primary action reads **Install and Relaunch**.
 
+## Sign in from a nearby device
+
+With bridge v5 the kit's `NearbySignIn` screen signs this device in from another signed-in device on the same network, and `NearbyApprover` is the other end: it lists the devices that ask and approves the one whose code the person picks. The main process runs both; the window never holds a key, token or request id. How it works is on [Sign in from a nearby device](/docs/features/sign-in/nearby/).
+
+Both screens need a v5 host: `@polaris-key/node` 0.10 or later in main and preload. On a v4 host the adapter reports nearby as unavailable and the screens close with `unsupported`.
+
+On macOS the system asks for Local Network access the first time the app looks for a nearby device. Set both keys in the app's `Info.plist`; without them the browse fails without a prompt. With Electron Forge:
+
+```ts
+export default {
+  packagerConfig: {
+    extendInfo: {
+      NSLocalNetworkUsageDescription:
+        "Looks for your other signed-in devices on this network, so you can sign in without typing.",
+      NSBonjourServices: ["_pkeypeer._tcp"],
+    },
+  },
+};
+```
+
+On Windows the first time a device waits to approve, the firewall asks to allow the app on private networks. The new device only connects out and needs no rule. Both devices must reach the Worker from the same network address, or the approval is refused and the screen ends with `not-nearby`.
+
 ## Chrome and sizes
 
 `theme.platform: "auto"` picks the chrome from the host facts the bridge reports: the OS, its accent, high contrast and reduced transparency. Pass `electron: { systemPreferences, nativeTheme }` to `exposePolarisBridge` to supply them; without it the host reports the OS only. Linux draws the GNOME chrome. To force a chrome, give the theme `"macos"`, `"windows"` or `"linux"`.

@@ -135,13 +135,8 @@
       "ruff:I001": 1
     },
     "sdks/python/src/polaris_key/identity/redirect.py": {
-      "mypy:arg-type": 3,
-      "mypy:operator": 1,
       "mypy:union-attr": 3,
       "ruff:I001": 1
-    },
-    "sdks/python/src/polaris_key/identity/sign_in.py": {
-      "mypy:arg-type": 2
     },
     "sdks/python/src/polaris_key/license/__init__.py": {
       "ruff:I001": 1
@@ -224,8 +219,7 @@
       "mypy:arg-type": 4,
       "mypy:misc": 4,
       "mypy:operator": 1,
-      "ruff:E501": 47,
-      "ruff:F401": 3
+      "ruff:E501": 47
     },
     "sdks/python/src/polaris_key/ui/terminal/parts.py": {
       "ruff:E501": 11
@@ -252,8 +246,7 @@
     },
     "sdks/python/src/polaris_key/ui/terminal/textual_app.py": {
       "mypy:call-arg": 1,
-      "ruff:E501": 25,
-      "ruff:I001": 1
+      "ruff:E501": 25
     },
     "sdks/python/src/polaris_key/update/__init__.py": {
       "ruff:I001": 1
@@ -305,7 +298,7 @@
       "ruff:E501": 2
     },
     "sdks/python/tests/cli/fixtures.py": {
-      "ruff:E501": 44
+      "ruff:E501": 1
     },
     "sdks/python/tests/cli/golden_support.py": {
       "ruff:E501": 1
@@ -325,7 +318,7 @@
       "ruff:E501": 14
     },
     "sdks/python/tests/cli/test_cli_contract.py": {
-      "ruff:E501": 10,
+      "ruff:E501": 7,
       "ruff:F402": 1
     },
     "sdks/python/tests/cli/test_cli_dx.py": {
@@ -401,9 +394,7 @@
       "ruff:I001": 1
     },
     "sdks/python/tests/test_async_client.py": {
-      "ruff:E501": 2,
-      "ruff:F811": 2,
-      "ruff:I001": 1
+      "ruff:E501": 2
     },
     "sdks/python/tests/test_auto_discover.py": {
       "ruff:I001": 1
@@ -512,9 +503,7 @@
     },
     "sdks/python/tests/test_identity_session.py": {
       "ruff:E501": 3,
-      "ruff:F401": 1,
-      "ruff:F811": 19,
-      "ruff:I001": 1
+      "ruff:F401": 1
     },
     "sdks/python/tests/test_license_events.py": {
       "ruff:I001": 1
@@ -616,9 +605,6 @@
     },
     "sdks/python/tests/test_supports.py": {
       "ruff:I001": 1
-    },
-    "sdks/python/tests/test_transcripts.py": {
-      "ruff:E501": 1
     },
     "sdks/python/tests/test_trust_custody.py": {
       "ruff:F401": 2,

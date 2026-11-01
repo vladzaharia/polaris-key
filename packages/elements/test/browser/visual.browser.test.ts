@@ -163,7 +163,15 @@ describe("the registry is covered", () => {
         .map((s) => `${c}.${s}`),
     );
     const have = new Set(FIXTURES.map((f) => f.id));
-    expect(want.filter((id) => !have.has(id))).toEqual([]);
+    // AddToAccount.waiting is baselined by the React holders.browser.test; the consent line that
+    // keeps the license on the account is the Polaris Locker portal's, not a kit view.
+    const elsewhere = new Set([
+      "AddToAccount.waiting",
+      "AddToAccount.consent-kept",
+    ]);
+    expect(want.filter((id) => !have.has(id) && !elsewhere.has(id))).toEqual(
+      [],
+    );
   });
 });
 

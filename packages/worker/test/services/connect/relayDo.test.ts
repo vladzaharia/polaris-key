@@ -1,19 +1,17 @@
 /// <reference types="@cloudflare/workers-types" />
 // CC-07.2: the relay room shell around the pure engine, over a fake state (storage, alarm,
-// hibernation-API sockets) and a fake WebSocket pair.
+// hibernation-API sockets) and a fake WebSocket pair (the harness: ./relayDoHarness.ts).
 
-import { decodeRelay, encodeRelay } from "@polaris-key/client-core/peer";
+import { decodeRelay } from "@polaris-key/client-core/peer";
 import { describe, expect, it } from "vitest";
-import { makeTestDb } from "../../helpers.js";
 import { invalidatePlatformSettings } from "../../../src/core/platformSettings.js";
 import { KvMock } from "../../kvMock.js";
-import { makeEnv, seedProduct } from "../../seed.js";
+import { makeEnv } from "../../seed.js";
 import type { Db } from "../../../src/db/types.js";
 import type { Env } from "../../../src/platform/env.js";
 import {
   ADMISSION_HEADER,
   encodeAdmission,
-  type Admission,
 } from "../../../src/services/connect/do/admission.js";
 import {
   forwardToRelay,
@@ -25,183 +23,25 @@ import {
   pokeRelay,
   setRelayPokePort,
 } from "../../../src/services/connect/relayPoke.js";
+import { ConnectRelayDO } from "../../../src/services/connect/do/relayDo.js";
+
 import {
-  ConnectRelayDO,
-  type ConnectRelayDoOptions,
-} from "../../../src/services/connect/do/relayDo.js";
-
-const DAY = 86_400_000;
-const T0 = Math.floor(1_800_000_000_000 / DAY) * DAY + 3_600_000;
-const GiB = 1024 ** 3;
-const dev = (n: number): Uint8Array => new Uint8Array(24).fill(n);
-const A = dev(1);
-const B = dev(2);
-
-class FakeSocket {
-  sent: Uint8Array[] = [];
-  closed: number | null = null;
-  attachment: unknown = null;
-  send(d: Uint8Array): void {
-    this.sent.push(d);
-  }
-  close(code: number): void {
-    this.closed = code;
-  }
-  serializeAttachment(v: unknown): void {
-    this.attachment = JSON.parse(JSON.stringify(v));
-  }
-  deserializeAttachment(): unknown {
-    return this.attachment;
-  }
-}
-
-/** Storage and sockets that outlive the object instance, as they do across hibernation. */
-class FakeState {
-  store = new Map<string, unknown>();
-  alarmAt: number | null = null;
-  sockets: FakeSocket[] = [];
-  storage = {
-    get: async (k: string) => structuredClone(this.store.get(k)),
-    put: async (k: string, v: unknown) =>
-      void this.store.set(k, structuredClone(v)),
-    delete: async (k: string) => void this.store.delete(k),
-    getAlarm: async () => this.alarmAt,
-    setAlarm: async (t: number) => void (this.alarmAt = t),
-    deleteAlarm: async () => void (this.alarmAt = null),
-    deleteAll: async () => void this.store.clear(),
-  };
-  acceptWebSocket(ws: FakeSocket): void {
-    this.sockets.push(ws);
-  }
-  getWebSockets(): FakeSocket[] {
-    return this.sockets.filter((s) => s.closed === null);
-  }
-  blockConcurrencyWhile<T>(f: () => Promise<T>): Promise<T> {
-    return f();
-  }
-}
-
-function world(env: Env = makeEnv(new KvMock())) {
-  const db = makeTestDb();
-  const state = new FakeState();
-  let now = T0;
-  let n = 0;
-  const pairs: { client: FakeSocket; server: FakeSocket }[] = [];
-  const make = (extra: Partial<ConnectRelayDoOptions> = {}) =>
-    new ConnectRelayDO(state as unknown as DurableObjectState, env, {
-      db: () => db,
-      now: () => now,
-      newId: () => `s${++n}`,
-      pair: () => {
-        const p = { client: new FakeSocket(), server: new FakeSocket() };
-        pairs.push(p);
-        return p as never;
-      },
-      upgraded: (_c, headers) =>
-        new Response("upgraded", { status: 200, headers }),
-      ...extra,
-    });
-  return {
-    db,
-    state,
-    env,
-    make,
-    pairs,
-    tick: (ms: number) => (now += ms),
-    now: () => now,
-  };
-}
-
-const idOf = (d: Uint8Array): string => Buffer.from(d).toString("base64url");
-
-/** Seed the person's roster (subject ps_AAAAAAAAAAAAAAAAAAAAAA on djdl) the alarm re-reads: the given devices. */
-async function seedRoster(
-  w: ReturnType<typeof world>,
-  devices: Uint8Array[] = [A, B],
-): Promise<void> {
-  await seedProduct(w.db, "djdl");
-  await w.db.run(
-    "INSERT OR IGNORE INTO accounts (id, created_at, modified_at) VALUES ('acc1', 1, 1)",
-  );
-  await w.db.run(
-    "INSERT OR IGNORE INTO account_product_subjects (account_id, product, subject, created_at) VALUES ('acc1', 'djdl', 'ps_AAAAAAAAAAAAAAAAAAAAAA', 1)",
-  );
-  for (const [i, d] of devices.entries()) {
-    await w.db.run(
-      `INSERT OR REPLACE INTO devices (product, device_id, license_id, status, first_seen, last_seen, subject)
-       VALUES ('djdl', ?, '', 'authorized', 1, 1, 'ps_AAAAAAAAAAAAAAAAAAAAAA')`,
-      idOf(d),
-    );
-    await w.db.run(
-      `INSERT OR REPLACE INTO device_keys (product, device_id, sign_key, agree_key, key_seq, created_at)
-       VALUES ('djdl', ?, ?, ?, 1, 1)`,
-      idOf(d),
-      `sign${i}${idOf(d)}`,
-      `agree${i}${idOf(d)}`,
-    );
-  }
-}
-
-const seeded = new WeakSet<object>();
-/** Run the room's alarm with the default roster (A and B) seeded once. */
-async function alarmOf(
-  w: ReturnType<typeof world>,
-  room: ConnectRelayDO,
-): Promise<void> {
-  if (!seeded.has(w.db)) {
-    seeded.add(w.db);
-    await seedRoster(w);
-  }
-  await room.alarm();
-}
-
-const adm = (
-  device: Uint8Array,
-  over: Partial<Admission["ticket"]> = {},
-  top: Partial<Admission> = {},
-): Admission => ({
-  product: "djdl",
-  subject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
-  monthCeiling: 500 * GiB,
-  seatsHeld: false,
-  ticket: {
-    device,
-    members: [A, B],
-    dayBytes: 256 * 1024 * 1024,
-    paused: false,
-    productOver: false,
-    expiresAt: T0 + 60_000,
-    ...over,
-  },
-  ...top,
-});
-
-function upgrade(a: Admission | null, protocols = "pkey-relay.1, pkeyrt_x") {
-  const h: Record<string, string> = {
-    upgrade: "websocket",
-    "sec-websocket-protocol": protocols,
-  };
-  if (a) h[ADMISSION_HEADER] = encodeAdmission(a);
-  return new Request("https://connect-relay.do/", { headers: h });
-}
-
-const frames = (s: FakeSocket) =>
-  s.sent.map((d) => decodeRelay("toClient", d)?.op);
-const send = (to: Uint8Array, len = 10): ArrayBuffer =>
-  encodeRelay({
-    op: "send",
-    to,
-    session: 1,
-    noise: new Uint8Array(len),
-  }).slice().buffer;
-
-/** A room with devices A and B online (sockets pairs 0 and 1). */
-async function joined(w: ReturnType<typeof world>): Promise<ConnectRelayDO> {
-  const room = w.make();
-  await room.fetch(upgrade(adm(A)));
-  await room.fetch(upgrade(adm(B)));
-  return room;
-}
+  A,
+  B,
+  DAY,
+  GiB,
+  adm,
+  alarmOf,
+  dev,
+  frames,
+  idOf,
+  joined,
+  seedRoster,
+  send,
+  upgrade,
+  world,
+  FakeSocket,
+} from "./relayDoHarness.js";
 
 const pokeReq = (body: unknown) =>
   new Request("https://connect-relay.do/", {
@@ -693,4 +533,350 @@ describe("ConnectRelayDO", () => {
       expect(ringEpochs(w.pairs[0]!.server)).toEqual([]);
     });
   });
+});
+
+describe("ConnectRelayDO: counting contact rooms (CC-19.3, V5 §15.7)", () => {
+  const rid = (n: number): string =>
+    Buffer.from(new Uint8Array(16).fill(n)).toString("base64url");
+  const count = (
+    room: ConnectRelayDO,
+    r: string,
+    over: Record<string, unknown> = {},
+  ) =>
+    room.fetch(
+      new Request("https://connect-relay.do/rooms", {
+        method: "POST",
+        body: JSON.stringify({
+          product: "djdl",
+          subject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
+          rid: r,
+          ...over,
+        }),
+      }),
+    );
+
+  it("takes a slot per new room up to 64, refuses the 65th, and refreshes one it holds", async () => {
+    const w = world();
+    const room = w.make();
+    for (let i = 0; i < 64; i++)
+      expect((await count(room, rid(i))).status, `${i}`).toBe(204);
+    expect((await count(room, rid(64))).status).toBe(429);
+    // A ticket for a room already counted is not a new room.
+    expect((await count(room, rid(7))).status).toBe(204);
+    expect((await count(room, rid(64))).status).toBe(429);
+  });
+
+  it("frees a slot when its room's idle period ends", async () => {
+    const w = world();
+    const room = w.make();
+    for (let i = 0; i < 64; i++) await count(room, rid(i));
+    w.tick(29 * DAY);
+    // Refreshing one keeps it; the others are still held.
+    expect((await count(room, rid(0))).status).toBe(204);
+    expect((await count(room, rid(100))).status).toBe(429);
+    w.tick(2 * DAY);
+    // The 63 not refreshed are past their 30 days; rid 0 was refreshed and is held.
+    expect((await count(room, rid(100))).status).toBe(204);
+    const held = (await w.state.storage.get("contactRooms")) as Record<
+      string,
+      number
+    >;
+    expect(Object.keys(held)).toHaveLength(2);
+  });
+
+  it("keeps a keyed hash of the rid, never the rid, and no subject, per person", async () => {
+    const w = world();
+    const room = w.make();
+    await count(room, rid(1));
+    const raw = JSON.stringify([...w.state.store.entries()]);
+    expect(raw).not.toContain(rid(1));
+    expect(raw).not.toContain("ps_AAAAAAAAAAAAAAAAAAAAAA");
+    // Another person's room, same rid: a different stored key.
+    const w2 = world();
+    const room2 = w2.make();
+    await count(room2, rid(1), { subject: "ps_BBBBBBBBBBBBBBBBBBBBBB" });
+    expect(
+      Object.keys((await w2.state.storage.get("contactRooms")) as {}),
+    ).not.toEqual(
+      Object.keys((await w.state.storage.get("contactRooms")) as {}),
+    );
+  });
+
+  it("creates no room and pins nothing, and refuses another pair once pinned", async () => {
+    const w = world();
+    const room = w.make();
+    await count(room, rid(1));
+    expect(w.state.store.has("room")).toBe(false);
+    expect(w.state.alarmAt).toBeNull();
+    // After the first socket pins (product, subject), another pair is refused.
+    await room.fetch(upgrade(adm(A)));
+    expect((await count(room, rid(2), { subject: "ps_other" })).status).toBe(
+      403,
+    );
+  });
+
+  it("is unreachable while launch.relay or launch.connectLinks is off, and refuses a bad body", async () => {
+    for (const gate of ["LAUNCH_RELAY", "LAUNCH_CONNECT_LINKS"]) {
+      const env = makeEnv(new KvMock());
+      (env as unknown as Record<string, string>)[gate] = "off";
+      const w = world(env);
+      expect((await count(w.make(), rid(1))).status, gate).toBe(404);
+      expect(w.state.store.has("contactRooms")).toBe(false);
+    }
+    const w = world();
+    const room = w.make();
+    expect((await count(room, "short")).status).toBe(400);
+    expect((await count(room, rid(1), { product: 1 })).status).toBe(400);
+    expect(
+      (
+        await room.fetch(
+          new Request("https://connect-relay.do/rooms", {
+            method: "POST",
+            body: "{",
+          }),
+        )
+      ).status,
+    ).toBe(400);
+    expect(
+      (
+        await room.fetch(
+          new Request("https://connect-relay.do/rooms", { method: "GET" }),
+        )
+      ).status,
+    ).toBe(405);
+  });
+
+  it("goes with the room on a purge", async () => {
+    const w = world();
+    const room = w.make();
+    await count(room, rid(1));
+    await room.fetch(upgrade(adm(A)));
+    await room.fetch(
+      new Request("https://connect-relay.do/", {
+        method: "POST",
+        body: JSON.stringify({
+          product: "djdl",
+          subject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
+        }),
+      }),
+    );
+    expect(w.state.store.has("contactRooms")).toBe(false);
+  });
+});
+
+describe("metering bounds: a room counts its bytes before it erases", () => {
+  const SUBJECT = "ps_AAAAAAAAAAAAAAAAAAAAAA";
+  const meter = async (w: ReturnType<typeof world>): Promise<number> =>
+    (await w.db.first<{ b: number | null }>(
+      "SELECT COALESCE(SUM(bytes), 0) AS b FROM connect_relay_daily",
+    ))!.b ?? 0;
+  const owing = async (w: ReturnType<typeof world>): Promise<number> => {
+    const p = (await w.state.storage.get("pending")) as
+      | Record<string, { bytes: number }>
+      | undefined;
+    return Object.values(p ?? {}).reduce((n, d) => n + d.bytes, 0);
+  };
+  const failingBatch = (w: ReturnType<typeof world>): Db =>
+    Object.assign(Object.create(w.db) as Db, {
+      batch: () => Promise.reject(new Error("d1 down")),
+    });
+
+  it("a room erased because its person has no device left counts its pending bytes first (the alarm)", async () => {
+    const w = world();
+    const room = await joined(w);
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    const owed = await owing(w);
+    expect(owed).toBeGreaterThan(1000);
+    await seedRoster(w, []);
+    w.state.alarmAt = null;
+    await room.alarm();
+    expect(w.state.store.has("room")).toBe(false);
+    expect(await meter(w)).toBe(owed);
+  });
+
+  it("a room erased because its person has no device left counts its pending bytes first (the poke)", async () => {
+    const w = world();
+    const room = await joined(w);
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    const owed = await owing(w);
+    await seedRoster(w, []);
+    const res = await room.fetch(
+      new Request("https://connect-relay.do/", {
+        method: "PUT",
+        body: JSON.stringify({ product: "djdl", subject: SUBJECT, epoch: 3 }),
+      }),
+    );
+    expect(res.status).toBe(204);
+    expect(w.state.store.has("room")).toBe(false);
+    expect(await meter(w)).toBe(owed);
+  });
+
+  it("a count that fails before the erase keeps the room, its bytes and the alarm for the retry", async () => {
+    const w = world();
+    const room = w.make({ db: () => failingBatch(w) });
+    await room.fetch(upgrade(adm(A)));
+    await room.fetch(upgrade(adm(B)));
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    await seedRoster(w, []);
+    // The poke swallows the failure.
+    const res = await room.fetch(
+      new Request("https://connect-relay.do/", {
+        method: "PUT",
+        body: JSON.stringify({ product: "djdl", subject: SUBJECT, epoch: 3 }),
+      }),
+    );
+    expect(res.status).toBe(204);
+    expect(await owing(w)).toBeGreaterThan(1000);
+    expect(w.state.store.has("room")).toBe(true);
+    // The alarm re-arms (see the backoff test) with the bytes still owed.
+    w.state.alarmAt = null;
+    await room.alarm();
+    expect(await owing(w)).toBeGreaterThan(1000);
+    expect(w.state.store.has("room")).toBe(true);
+    // The next alarm (the database back) counts them and erases.
+    const owed = await owing(w);
+    await w.make().alarm();
+    expect(w.state.store.has("room")).toBe(false);
+    expect(await meter(w)).toBe(owed);
+  });
+
+  it("a purge counts pending bytes first, and still erases when the count fails", async () => {
+    const w = world();
+    const room = await joined(w);
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    const owed = await owing(w);
+    const ns = (r: ConnectRelayDO) =>
+      ({
+        idFromName: (n: string) => n,
+        get: () => ({ fetch: (q: Request) => r.fetch(q) }),
+      }) as unknown as DurableObjectNamespace;
+    await purgeRelay({ CONNECT_RELAY: ns(room) }, "djdl", SUBJECT);
+    expect([...w.state.store.keys()]).toEqual(["erasedAt"]);
+    expect(await meter(w)).toBe(owed);
+
+    // And when the count fails the room is erased anyway.
+    const w2 = world();
+    const room2 = w2.make({ db: () => failingBatch(w2) });
+    await room2.fetch(upgrade(adm(A)));
+    await room2.fetch(upgrade(adm(B)));
+    await room2.webSocketMessage(w2.pairs[0]!.server as never, send(B, 1000));
+    await purgeRelay({ CONNECT_RELAY: ns(room2) }, "djdl", SUBJECT);
+    expect([...w2.state.store.keys()]).toEqual(["erasedAt"]);
+    expect(w2.pairs.map((p) => p.server.closed)).toEqual([4003, 4003]);
+  });
+});
+
+describe("erase critical section and alarm re-arm", () => {
+  const SUBJECT = "ps_AAAAAAAAAAAAAAAAAAAAAA";
+  /** Fail the first count while a concurrent caller (behind the input gate) tries to enter. */
+  const hooked = (
+    w: ReturnType<typeof world>,
+    during: () => void,
+    fail = false,
+  ): Db =>
+    Object.assign(Object.create(w.db) as Db, {
+      batch: async (...a: Parameters<Db["batch"]>) => {
+        during();
+        await new Promise((r) => setTimeout(r, 5));
+        if (fail) throw new Error("d1 down");
+        return w.db.batch(...a);
+      },
+    });
+  const behindGate = async (
+    w: ReturnType<typeof world>,
+    room: ConnectRelayDO,
+    req: Request,
+  ): Promise<Response> => {
+    while (w.state.gate) await w.state.gate;
+    return room.fetch(req);
+  };
+
+  it("an upgrade arriving during a purge's count waits for the erase and is refused", async () => {
+    const w = world();
+    let entering: Promise<Response> | undefined;
+    let room!: ConnectRelayDO;
+    room = w.make({
+      db: () =>
+        hooked(w, () => {
+          entering ??= behindGate(w, room, upgrade(adm(A)));
+        }),
+    });
+    await room.fetch(upgrade(adm(A)));
+    await room.fetch(upgrade(adm(B)));
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    const ns = {
+      idFromName: (n: string) => n,
+      get: () => ({ fetch: (q: Request) => room.fetch(q) }),
+    } as unknown as DurableObjectNamespace;
+    await purgeRelay({ CONNECT_RELAY: ns }, "djdl", SUBJECT);
+    const res = await entering!;
+    expect(res.status).not.toBe(200);
+    expect(w.state.getWebSockets()).toEqual([]);
+  });
+
+  it("an upgrade arriving during the poke's erase count never survives in an empty room", async () => {
+    const w = world();
+    let entering: Promise<Response> | undefined;
+    let room!: ConnectRelayDO;
+    room = w.make({
+      db: () =>
+        hooked(w, () => {
+          entering ??= behindGate(w, room, upgrade(adm(A)));
+        }),
+    });
+    await room.fetch(upgrade(adm(A)));
+    await room.fetch(upgrade(adm(B)));
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    await seedRoster(w, []);
+    await room.fetch(
+      new Request("https://connect-relay.do/", {
+        method: "PUT",
+        body: JSON.stringify({ product: "djdl", subject: SUBJECT, epoch: 3 }),
+      }),
+    );
+    await entering!;
+    // Whatever was admitted after the erase has a room behind it; nothing is left unmetered.
+    if (w.state.getWebSockets().length > 0)
+      expect(w.state.store.has("room")).toBe(true);
+  });
+
+  it("a count that fails on every alarm re-arms with a bounded backoff, then erases once it lands", async () => {
+    const w = world();
+    const room = w.make({ db: () => failingBatch(w) });
+    await room.fetch(upgrade(adm(A)));
+    await room.fetch(upgrade(adm(B)));
+    await room.webSocketMessage(w.pairs[0]!.server as never, send(B, 1000));
+    await seedRoster(w, []);
+    const owed = await owing(w);
+    const gaps: number[] = [];
+    for (let i = 0; i < 12; i++) {
+      w.state.alarmAt = null;
+      await room.alarm();
+      expect(w.state.alarmAt).not.toBeNull();
+      gaps.push(w.state.alarmAt! - w.now());
+      expect(w.state.store.has("room")).toBe(true);
+      expect(await owing(w)).toBe(owed);
+    }
+    expect(gaps[1]!).toBeGreaterThan(gaps[0]!);
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(600_000);
+    // The database is back.
+    await w.make().alarm();
+    expect(w.state.store.has("room")).toBe(false);
+    expect(await meter(w)).toBe(owed);
+  });
+
+  const meter = async (w: ReturnType<typeof world>): Promise<number> =>
+    (await w.db.first<{ b: number | null }>(
+      "SELECT COALESCE(SUM(bytes), 0) AS b FROM connect_relay_daily",
+    ))!.b ?? 0;
+  const owing = async (w: ReturnType<typeof world>): Promise<number> => {
+    const p = (await w.state.storage.get("pending")) as
+      | Record<string, { bytes: number }>
+      | undefined;
+    return Object.values(p ?? {}).reduce((n, d) => n + d.bytes, 0);
+  };
+  const failingBatch = (w: ReturnType<typeof world>): Db =>
+    Object.assign(Object.create(w.db) as Db, {
+      batch: () => Promise.reject(new Error("d1 down")),
+    });
 });

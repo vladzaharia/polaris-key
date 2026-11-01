@@ -132,7 +132,14 @@ export async function settleAppMode(
         scope: facts.scope,
         ...(facts.keys ? { keys: facts.keys } : {}),
         ...(facts.fresh ? { fresh: true as const } : {}),
+        // §12.5 rule 7: a code redemption is `code`, a key-proving exchange is `exchange`.
+        ...(facts.fresh
+          ? { origin: "code" as const }
+          : facts.keys
+            ? { origin: "exchange" as const }
+            : {}),
         ...(facts.via ? { via: facts.via } : {}),
+        ...(device.label ? { label: device.label } : {}),
       },
       now,
     );

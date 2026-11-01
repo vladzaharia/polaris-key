@@ -97,6 +97,10 @@
       "title": "원격 연결 한도 도달",
       "message": "곧 초기화됩니다. 같은 네트워크의 기기는 계속 연결됩니다."
     },
+    "connect_links_disabled": {
+      "title": "연결이 꺼져 있어요",
+      "message": "이 앱에서는 다른 사람과의 연결이 꺼져 있어요. 내 기기끼리는 계속 연결돼요."
+    },
     "relay_ticket_invalid": {
       "title": "연결 만료",
       "message": "연결 요청이 만료되었습니다. 다시 시도하세요."
@@ -204,6 +208,10 @@
     "redirect_uri_mismatch": {
       "title": "로그인 후 앱으로 돌아갈 수 없어요",
       "message": "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요."
+    },
+    "invalid_request_uri": {
+      "title": "로그인 링크 만료",
+      "message": "이 로그인 링크가 만료되었습니다. {product}(으)로 돌아가 다시 시작하세요."
     },
     "license_choice_required": {
       "title": "라이선스 선택",
@@ -525,6 +533,10 @@
       "title": "코드 만료됨",
       "message": "로그인이 완료되기 전에 코드가 만료됐어요. 다시 시작하세요."
     },
+    "redirect-unavailable": {
+      "title": "브라우저 로그인을 사용할 수 없음",
+      "message": "여기서는 브라우저를 열 수 없습니다. 대신 코드를 사용하세요."
+    },
     "sign-in-denied": {
       "title": "로그인 거부됨",
       "message": "로그인이 거부됐어요. 다시 시작하세요."
@@ -616,6 +628,58 @@
     "nearby-permission-denied": {
       "title": "로컬 네트워크 차단됨",
       "message": "이 앱이 로컬 네트워크의 기기에 접근할 수 없습니다. 시스템 설정에서 허용해 주세요."
+    },
+    "nearby-unsupported": {
+      "title": "근처 기기 로그인을 사용할 수 없음",
+      "message": "이 기기에서는 근처 기기를 찾을 수 없습니다."
+    },
+    "peer-handshake-failed": {
+      "title": "보안 연결에 실패함",
+      "message": "근처 기기와 보안 연결을 설정할 수 없습니다. 다시 시도하세요."
+    },
+    "peer-closed": {
+      "title": "연결이 종료됨",
+      "message": "근처 기기와의 연결이 종료되었습니다. 다시 시도하세요."
+    },
+    "transfer-cancelled": {
+      "title": "전송 중단됨",
+      "message": "전송이 완료되지 않았습니다. 수신된 항목이 없습니다."
+    },
+    "link-unknown": {
+      "title": "페어링되지 않음",
+      "message": "해당 기기는 더 이상 이 기기와 페어링되어 있지 않습니다."
+    },
+    "peer_revoked": {
+      "title": "더 이상 신뢰할 수 없는 기기",
+      "message": "상대 기기가 계정에서 제거되었습니다. 공유된 내용은 없습니다."
+    },
+    "peer_expired": {
+      "title": "기기 인증서 만료",
+      "message": "상대 기기의 인증서가 만료되었습니다. 새로 고치고 다시 시도하세요."
+    },
+    "peer_bad_frame": {
+      "title": "연결 오류",
+      "message": "근처 기기가 예상치 못한 데이터를 보냈습니다. 다시 시도하세요."
+    },
+    "peer_unknown_critical": {
+      "title": "지원하지 않는 요청",
+      "message": "근처 기기가 이 앱에서 지원하지 않는 것을 요청했습니다. 다시 시도하세요."
+    },
+    "peer_not_allowed": {
+      "title": "여기서는 허용되지 않음",
+      "message": "근처 기기가 이 단계에서 허용되지 않는 것을 요청했습니다. 다시 시도하세요."
+    },
+    "peer_busy": {
+      "title": "근처 기기가 사용 중",
+      "message": "열려 있는 연결이 너무 많습니다. 잠시 후 다시 시도하세요."
+    },
+    "peer_timeout": {
+      "title": "연결 시간 초과",
+      "message": "근처 기기가 제때 응답하지 않았습니다. 다시 시도하세요."
+    },
+    "peer_bye": {
+      "title": "연결이 닫힘",
+      "message": "근처 기기가 연결을 종료했습니다."
     },
     "platform-error": {
       "title": "플랫폼 문제",

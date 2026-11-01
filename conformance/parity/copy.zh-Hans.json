@@ -97,6 +97,10 @@
       "title": "已达远程连接用量上限",
       "message": "即将重置。同一网络下的设备仍可连接。"
     },
+    "connect_links_disabled": {
+      "title": "链接已关闭",
+      "message": "此应用已关闭与他人的链接。你自己的设备仍可连接。"
+    },
     "relay_ticket_invalid": {
       "title": "连接已过期",
       "message": "连接请求已过期。请重试。"
@@ -204,6 +208,10 @@
     "redirect_uri_mismatch": {
       "title": "登录无法返回应用",
       "message": "该应用的登录设置不正确，因此在此处停止以保护你的账户。请告知其开发者。"
+    },
+    "invalid_request_uri": {
+      "title": "登录链接已过期",
+      "message": "此登录链接已过期。请返回 {product} 重新开始。"
     },
     "license_choice_required": {
       "title": "选择许可证",
@@ -525,6 +533,10 @@
       "title": "代码已过期",
       "message": "代码在登录完成前已过期。请重新开始。"
     },
+    "redirect-unavailable": {
+      "title": "无法通过浏览器登录",
+      "message": "此处无法打开浏览器登录。请改用代码。"
+    },
     "sign-in-denied": {
       "title": "登录被拒绝",
       "message": "登录被拒绝。请重新开始。"
@@ -616,6 +628,58 @@
     "nearby-permission-denied": {
       "title": "本地网络已被阻止",
       "message": "此应用无法访问本地网络上的设备。请在系统设置中允许。"
+    },
+    "nearby-unsupported": {
+      "title": "附近登录不可用",
+      "message": "此设备在此处无法查找附近的设备。"
+    },
+    "peer-handshake-failed": {
+      "title": "无法建立安全连接",
+      "message": "无法与附近的设备建立安全连接。请重试。"
+    },
+    "peer-closed": {
+      "title": "连接已结束",
+      "message": "与附近设备的连接已结束。请重试。"
+    },
+    "transfer-cancelled": {
+      "title": "传输已停止",
+      "message": "传输未完成，未收到任何内容。"
+    },
+    "link-unknown": {
+      "title": "未配对",
+      "message": "该设备已不再与此设备配对。"
+    },
+    "peer_revoked": {
+      "title": "设备不再受信任",
+      "message": "对方设备已从账户中移除。未共享任何内容。"
+    },
+    "peer_expired": {
+      "title": "设备证书已过期",
+      "message": "对方设备的证书已过期。请刷新后重试。"
+    },
+    "peer_bad_frame": {
+      "title": "连接错误",
+      "message": "附近设备发送了意外的内容。请重试。"
+    },
+    "peer_unknown_critical": {
+      "title": "不支持的请求",
+      "message": "附近设备提出了此应用不支持的请求。请重试。"
+    },
+    "peer_not_allowed": {
+      "title": "此处不允许",
+      "message": "附近设备提出了此步骤中不允许的请求。请重试。"
+    },
+    "peer_busy": {
+      "title": "附近设备繁忙",
+      "message": "打开的连接过多。请稍后重试。"
+    },
+    "peer_timeout": {
+      "title": "连接超时",
+      "message": "附近设备未及时响应。请重试。"
+    },
+    "peer_bye": {
+      "title": "连接已关闭",
+      "message": "附近设备已结束连接。"
     },
     "platform-error": {
       "title": "平台出现问题",

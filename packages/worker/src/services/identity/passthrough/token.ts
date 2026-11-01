@@ -145,7 +145,9 @@ function withNoStore(res: Response): Response {
 }
 
 /** The form body as single-valued parameters, or `null` when it is not a plain form. */
-async function readForm(req: Request): Promise<Map<string, string> | null> {
+export async function readForm(
+  req: Request,
+): Promise<Map<string, string> | null> {
   const type = (req.headers.get("content-type") ?? "")
     .split(";")[0]!
     .trim()
@@ -252,6 +254,9 @@ export async function handleToken(ctx: {
   );
   if (!record) return oauth(400, ErrorCode.InvalidGrant);
   if (record.clientId !== clientId) return oauth(400, ErrorCode.InvalidGrant);
+  // §12.12: a code from a pushed request belongs to the device that pushed it.
+  if (record.deviceId !== undefined && record.deviceId !== deviceId)
+    return oauth(400, ErrorCode.InvalidGrant);
   const presentedUri = form.get("redirect_uri");
   if (
     presentedUri !== undefined &&

@@ -108,10 +108,18 @@ dual-shape ambiguity for a runner to pick the wrong side of. Version constants t
 files themselves — `corpusVersion` **2**, `gateMatrixVersion` **2**, `fingerprintVersion` **1**,
 `stageMatrixVersion` **3**, `headersVersion` **2**, `configMatrixVersion` **1**,
 `updateMatrixVersion` **1**, `outletMatrixVersion` **1**, `planMatrixVersion` **2**,
-`feedUrlMatrixVersion` **1**, `syncScenariosVersion` **2**, `deviceLabelVersion` **1**,
+`feedUrlMatrixVersion` **1**, `syncScenariosVersion` **2**, `deviceLabelVersion` **2**,
 `contentCorpusVersion` **2**, `deviceProofVersion` **1**, `noiseVectorsVersion` **1**, `peerMatrixVersion` **1**, `presentationMatrixVersion` **1**, `uiMatrixVersion` **4** — and case counts, generated
 straight from the corpus files, live at
 [Conformance corpus v2](/docs/reference/corpus/).
+
+## HTTP transcripts
+
+`conformance/transcripts/` holds the recorded conversations (see [Add a corpus case](/docs/contribute/corpus-cases/#http-transcripts)). One row for the device-code channel:
+
+| Transcript                      | Proves                                                                                                                                                                                                                                                | Features                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `holders-add-to-account-device` | Add a floating license to an account over the device-code channel: the start carries the hints, `purpose: "attach"` and `licenseChoice: "app"`, the poll answers `choose` with a grant, then `keep` and `attach` put the same license in the account. | `identity.devicecode.choice`, `identity.attach` |
 
 ## Swift reads the checkout
 

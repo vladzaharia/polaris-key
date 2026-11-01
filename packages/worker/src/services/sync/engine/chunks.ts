@@ -25,8 +25,8 @@ import {
   type SyncChunkRef,
 } from "@polaris-key/protocol/sync";
 import type { FileLimits } from "./files.js";
-import type { StoredChunk, SyncStore, UploadRow } from "./types.js";
-import { fileUsage, moveReserved } from "./usage.js";
+import type { StoredChunk, StoreUsage, SyncStore, UploadRow } from "./types.js";
+import { compactUsage, fileUsage, moveReserved } from "./usage.js";
 
 /** The smallest stored chunk object: server mode is `0x00 codec` and one byte; E2E adds 12 + 16 + 1. */
 export const CHUNK_MIN_STORED_BYTES = { none: 3, e2e: 31 } as const;
@@ -37,6 +37,13 @@ export const chunkObjectKey = (
   collection: string,
   chunkId: string,
 ): string => `u/${pin.product}/${pin.subject}/c/${collection}/${chunkId}`;
+
+/**
+ * The `unrefAt` of a chunk row whose object the collector has begun to delete: the object may be
+ * gone, so the row answers `missing` at a plan call and a `PUT` stores it again. It sorts before
+ * every real time, so a marked row is the first the collector retries.
+ */
+export const CHUNK_COLLECTING = -1;
 
 /** A chunk id as the wire writes it. */
 const CHUNK_ID = /^[0-9a-f]{64}$/;
@@ -103,7 +110,9 @@ export function planChunks(store: SyncStore, input: PlanInput): PlanOutcome {
   >();
   let delta = 0;
   for (const [id, declared] of input.chunks) {
-    const stored = store.getChunk(upload.collection, id);
+    const found = store.getChunk(upload.collection, id);
+    // A row the collector has begun to delete may point at nothing: it is no row.
+    const stored = found?.unrefAt === CHUNK_COLLECTING ? undefined : found;
     const prior = have.get(id);
     // A chunk this upload already holds stays present even if the row was replaced meanwhile.
     const row = stored
@@ -201,7 +210,9 @@ export function storeChunk(
   input: StoredInput,
   upload: UploadRow | undefined,
 ): StoredChunk {
-  const prior = store.getChunk(input.collection, input.chunkId);
+  const found = store.getChunk(input.collection, input.chunkId);
+  // The object is in R2 now: a row the collector had begun to delete is replaced, not kept.
+  const prior = found?.unrefAt === CHUNK_COLLECTING ? undefined : found;
   const row: StoredChunk = prior ?? {
     collection: input.collection,
     chunkId: input.chunkId,
@@ -234,6 +245,23 @@ function chargeChunk(store: SyncStore, delta: number): void {
     bytes: Math.max(0, u.bytes + delta),
     fileBytes: Math.max(0, f.fileBytes + delta),
   });
+}
+
+/**
+ * The stored bytes of the chunks an upload names that no file references now and that the upload
+ * did not reserve: a chunk its plan answered `present` whose last reference went afterwards. They
+ * are charged at `finalize` (the first reference), so `finalize` checks them against the quota.
+ */
+export function unreservedChunkBytes(
+  store: SyncStore,
+  upload: UploadRow,
+): number {
+  let extra = 0;
+  for (const r of store.uploadChunks(upload.uploadId)) {
+    const c = store.getChunk(upload.collection, r.chunkId);
+    if (c && c.refs === 0) extra += Math.max(0, c.storedBytes - r.reserved);
+  }
+  return extra;
 }
 
 /** The identity of a stored file version. */
@@ -291,4 +319,42 @@ export function unrefFileChunks(
   }
   store.deleteFileChunks(file.collection, file.recordId, file.version);
   return freed;
+}
+
+/**
+ * The stored bytes of the chunks that only kept revisions or parked copies name (no live file does).
+ * `fileBytes` holds every chunk's bytes (a chunk is charged once, whichever file names it), so a
+ * report that splits live from kept bytes moves these across: `revisionBytes` counts them, not 0.
+ * The quota's `bytes` is unchanged. A read for reports (the directory flush, the console's usage),
+ * never a counter the engine writes.
+ */
+export function revisionOnlyChunkBytes(store: SyncStore): number {
+  const live = new Set<string>();
+  const kept = new Set<string>();
+  const status = new Map<string, string>();
+  for (const f of store.allFiles())
+    status.set(`${f.collection}\0${f.recordId}\0${f.version}`, f.status);
+  for (const r of store.allFileChunks()) {
+    const st = status.get(`${r.collection}\0${r.recordId}\0${r.version}`);
+    if (st === undefined || st === "dead") continue;
+    (st === "live" ? live : kept).add(`${r.collection}\0${r.chunkId}`);
+  }
+  let bytes = 0;
+  for (const c of store.allChunks()) {
+    const k = `${c.collection}\0${c.chunkId}`;
+    if (c.refs > 0 && kept.has(k) && !live.has(k)) bytes += c.storedBytes;
+  }
+  return bytes;
+}
+
+/** `usage` as reports show it: the chunk bytes only revisions name move from `fileBytes` to `revisionBytes`. */
+export function reportedUsage(store: SyncStore, usage: StoreUsage): StoreUsage {
+  const f = fileUsage(usage);
+  const moved = Math.min(f.fileBytes, revisionOnlyChunkBytes(store));
+  if (moved === 0) return usage;
+  return compactUsage({
+    ...usage,
+    fileBytes: f.fileBytes - moved,
+    revisionBytes: f.revisionBytes + moved,
+  });
 }

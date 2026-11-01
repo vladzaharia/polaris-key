@@ -1,0 +1,62 @@
+── truecolor · 80 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[38;2;114;202;190m◆[0m  [1mSign in with your phone[0m
+[2m│[0m  Next, allow Tidewater Studio to find devices on your network, so your phone
+[2m│[0m  can sign you in.
+[2m└[0m  [1mEnter[0m [2mcontinue · [0m[1mEsc[0m [2mnot now[0m
+── ansi16 · 80 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[36m◆[0m  [1mSign in with your phone[0m
+[2m│[0m  Next, allow Tidewater Studio to find devices on your network, so your phone
+[2m│[0m  can sign you in.
+[2m└[0m  [1mEnter[0m [2mcontinue · [0m[1mEsc[0m [2mnot now[0m
+── no-color · 80 ──
+┌  [7m Tidewater Studio [0m · login
+│
+◆  [1mSign in with your phone[0m
+│  Next, allow Tidewater Studio to find devices on your network, so your phone
+│  can sign you in.
+└  [1mEnter[0m continue · [1mEsc[0m not now
+── ascii · 80 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
+[2m|[0m
+[36m*[0m  [1mSign in with your phone[0m
+[2m|[0m  Next, allow Tidewater Studio to find devices on your network, so your phone
+[2m|[0m  can sign you in.
+[2m`[0m  [1mEnter[0m [2mcontinue - Esc not now[0m
+── truecolor · 60 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[38;2;114;202;190m◆[0m  [1mSign in with your phone[0m
+[2m│[0m  Next, allow Tidewater Studio to find devices on your
+[2m│[0m  network, so your phone can sign you in.
+[2m└[0m  [1mEnter[0m [2mcontinue · [0m[1mEsc[0m [2mnot now[0m
+── ansi16 · 60 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · login[0m
+[2m│[0m
+[36m◆[0m  [1mSign in with your phone[0m
+[2m│[0m  Next, allow Tidewater Studio to find devices on your
+[2m│[0m  network, so your phone can sign you in.
+[2m└[0m  [1mEnter[0m [2mcontinue · [0m[1mEsc[0m [2mnot now[0m
+── no-color · 60 ──
+┌  [7m Tidewater Studio [0m · login
+│
+◆  [1mSign in with your phone[0m
+│  Next, allow Tidewater Studio to find devices on your
+│  network, so your phone can sign you in.
+└  [1mEnter[0m continue · [1mEsc[0m not now
+── ascii · 60 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - login[0m
+[2m|[0m
+[36m*[0m  [1mSign in with your phone[0m
+[2m|[0m  Next, allow Tidewater Studio to find devices on your
+[2m|[0m  network, so your phone can sign you in.
+[2m`[0m  [1mEnter[0m [2mcontinue - Esc not now[0m
+── pipe · 80 ──
+Tidewater Studio · login
+Sign in with your phone
+Next, allow Tidewater Studio to find devices on your network, so your phone can
+sign you in.
+Enter continue · Esc not now

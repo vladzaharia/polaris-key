@@ -6,6 +6,8 @@ import {
 import { resolveBridge } from "../src/desktop/bridge.js";
 import type {
   BridgeActivation,
+  BridgeNearbyAsk,
+  BridgeNearbyRequester,
   BridgeOidcPoll,
   BridgeState,
   BridgeUpdateProgress,
@@ -352,8 +354,9 @@ describe("DesktopAdapter — signIn.start over the bridge (UK-06.16)", () => {
     verificationUrl: "https://v",
     userCode: "ABCD",
   });
-  async function started(opts: Record<string, unknown>) {
+  async function started(opts: Record<string, unknown>, version = 6) {
     const bridge = makeFakeBridge(emptyBridgeState());
+    (bridge as { version?: number }).version = version;
     bridge.beginSignIn = vi.fn(async () => begin());
     bridge.pollSignIn = () => new Promise(() => {});
     const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
@@ -789,5 +792,446 @@ describe("DesktopAdapter — onOpen (UK-06.4)", () => {
     });
     expect(() => a.onOpen!(() => undefined)()).not.toThrow();
     a.dispose();
+  });
+});
+
+// ── Bridge v5 (I-47b.2): automatic and nearby sign-in ────────────────────────────────────────
+
+const ASK: BridgeNearbyAsk = {
+  askId: "ask-1",
+  device: "Studio PC",
+  platform: "windows",
+  codes: ["111 111", "222 222", "333 333"],
+};
+
+function v5Bridge(
+  over: Partial<PolarisBridge> = {},
+): PolarisBridge & { push(s: BridgeState): void } {
+  return Object.assign(makeFakeBridge(emptyBridgeState()), {
+    version: 5,
+    ...over,
+  }) as PolarisBridge & { push(s: BridgeState): void };
+}
+
+// @pkey-feature identity.autosignin
+describe("DesktopAdapter — automatic sign-in over bridge v5", () => {
+  it("maps the host's ladder onto AutoSignInResult", async () => {
+    const answers = [
+      {
+        kind: "signedIn",
+        via: "stored",
+        subject: "ps_abc",
+        activation: { licenseId: "lic_1" },
+      },
+      { kind: "needsSignIn", reason: "signed_out" },
+      { kind: "needsSignIn", reason: "no_credential" },
+      { kind: "unavailable", code: "product" },
+    ] as const;
+    let i = 0;
+    const autoSignIn = vi.fn(async () => answers[i++]!);
+    const a = new DesktopAdapter({
+      bridge: v5Bridge({ autoSignIn }),
+      now: () => NOW_SEC,
+    });
+    await ready(a);
+    expect(await a.autoSignIn({ prompt: "none", deviceName: "Mac" })).toEqual({
+      kind: "signedIn",
+      via: "stored",
+      subject: "ps_abc",
+      activation: { licenseId: "lic_1" },
+    });
+    expect(autoSignIn).toHaveBeenCalledWith({
+      prompt: "none",
+      deviceName: "Mac",
+    });
+    expect(await a.autoSignIn()).toEqual({
+      kind: "needsSignIn",
+      reason: "signedOut",
+    });
+    expect(await a.autoSignIn()).toEqual({
+      kind: "needsSignIn",
+      reason: "noCredential",
+    });
+    expect(await a.autoSignIn()).toEqual({
+      kind: "unavailable",
+      code: "product",
+    });
+    a.dispose();
+  });
+
+  it("a host failure is a result, never a throw", async () => {
+    const a = new DesktopAdapter({
+      bridge: v5Bridge({
+        autoSignIn: async () => {
+          throw new Error("ipc down");
+        },
+      }),
+      now: () => NOW_SEC,
+    });
+    await ready(a);
+    expect(await a.autoSignIn()).toEqual({
+      kind: "unavailable",
+      code: "refused",
+    });
+    a.dispose();
+  });
+
+  it("a v4 host is unsupported and is never called", async () => {
+    const autoSignIn = vi.fn();
+    const a = new DesktopAdapter({
+      bridge: v5Bridge({ version: 4, autoSignIn } as never),
+      now: () => NOW_SEC,
+    });
+    await ready(a);
+    expect(await a.autoSignIn()).toEqual({
+      kind: "unavailable",
+      code: "runtime",
+    });
+    expect(autoSignIn).not.toHaveBeenCalled();
+    expect(a.supports("identity.autosignin")).toMatchObject({
+      supported: false,
+      reason: "version",
+    });
+    expect(a.caps()).not.toContain("identity.autosignin");
+    a.dispose();
+  });
+});
+
+// @pkey-feature identity.nearby
+describe("DesktopAdapter — nearby sign-in over bridge v5", () => {
+  it("D: searches, picks an approver, shows the code and ends done", async () => {
+    const requester = (
+      phase: BridgeNearbyRequester["phase"],
+      extra: Partial<BridgeNearbyRequester> = {},
+    ): BridgeNearbyRequester => ({
+      sessionId: "s-1",
+      phase,
+      approvers: [{ id: "ref-1", device: "Mac", platform: "macos" }],
+      ...extra,
+    });
+    const bridge = v5Bridge({
+      nearbyStart: vi.fn(async () => requester("choose-approver")),
+      nearbyChoose: vi.fn(async () =>
+        requester("waiting", { code: "123 456" }),
+      ),
+      nearbyConfirm: vi.fn(async () => requester("done")),
+    });
+    const a = new DesktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(a);
+    const s = await a.nearby.request({ deviceName: "Studio PC" });
+    expect(bridge.nearbyStart).toHaveBeenCalledWith({
+      deviceName: "Studio PC",
+    });
+    expect(s.input).toEqual({ step: "nearby-wait" });
+    expect(s.state?.approvers[0]!.id).toBe("ref-1");
+    await s.choose("ref-1");
+    expect(bridge.nearbyChoose).toHaveBeenCalledWith("s-1", "ref-1");
+    expect(s.input).toEqual({ step: "nearby-wait", code: "123 456" });
+    // A push for the same session moves it; one for another session does not.
+    bridge.push(
+      emptyBridgeState({
+        nearby: { requester: requester("confirm-account", { email: "a@b.c" }) },
+      }),
+    );
+    expect(s.input).toEqual({ step: "confirm", email: "a@b.c" });
+    bridge.push(
+      emptyBridgeState({
+        nearby: { requester: { ...requester("done"), sessionId: "other" } },
+      }),
+    );
+    expect(s.phase).toBe("confirm-account");
+    await s.confirm();
+    expect(bridge.nearbyConfirm).toHaveBeenCalledWith("s-1");
+    expect(s.input).toEqual({ step: "nearby-done" });
+    a.dispose();
+  });
+
+  it("D: decline and cancel go to the host with the host's session id", async () => {
+    const r: BridgeNearbyRequester = {
+      sessionId: "s-2",
+      phase: "confirm-account",
+      approvers: [],
+      email: "a@b.c",
+    };
+    const bridge = v5Bridge({
+      nearbyStart: vi.fn(async () => r),
+      nearbyDecline: vi.fn(async () => ({ ...r, phase: "cancelled" as const })),
+      nearbyCancel: vi.fn(async () => undefined),
+    });
+    const a = new DesktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(a);
+    const s = await a.nearby.request();
+    await s.decline();
+    expect(bridge.nearbyDecline).toHaveBeenCalledWith("s-2");
+    expect(s.phase).toBe("cancelled");
+    expect(s.input).toBeNull();
+    await s.cancel();
+    expect(bridge.nearbyCancel).toHaveBeenCalledWith("s-2");
+    expect(s.state).toBeNull();
+    a.dispose();
+  });
+
+  it("M: shows pushed asks, picks a code and reports each outcome", async () => {
+    const pick = vi
+      .fn()
+      .mockResolvedValueOnce({ kind: "approved" })
+      .mockResolvedValueOnce({ kind: "mismatch" });
+    const bridge = v5Bridge({
+      approverStart: vi.fn(async () => ({ listening: true, asks: [] })),
+      approverStop: vi.fn(async () => undefined),
+      approverPick: pick,
+    });
+    const a = new DesktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(a);
+    const m = await a.nearby.approver();
+    await m.start();
+    expect(m.listening).toBe(true);
+    bridge.push(
+      emptyBridgeState({
+        nearby: {
+          approver: {
+            listening: true,
+            asks: [ASK, { ...ASK, askId: "ask-2", device: null }],
+          },
+        },
+      }),
+    );
+    expect(m.asks.map((x) => x.askId)).toEqual(["ask-1", "ask-2"]);
+    expect(m.input("ask-1")).toEqual({ step: "ask", device: "Studio PC" });
+    expect(m.input("ask-2")).toEqual({ step: "ask" });
+    expect(await m.pick("ask-1", "222 222")).toEqual({ kind: "approved" });
+    expect(pick).toHaveBeenCalledWith("ask-1", "222 222");
+    expect(m.input("ask-1")).toEqual({ step: "approved", device: "Studio PC" });
+    await m.pick("ask-2", "333 333");
+    expect(m.input("ask-2")).toEqual({ step: "mismatch" });
+    await m.stop();
+    expect(m.listening).toBe(false);
+    expect(m.input("ask-1")).toBeNull();
+    a.dispose();
+  });
+
+  it("M: a licence choice, then Choose or Deny", async () => {
+    const choose = vi.fn(async () => ({ kind: "approved" }) as const);
+    const deny = vi.fn(async () => undefined);
+    const bridge = v5Bridge({
+      approverStart: vi.fn(async () => ({ listening: true, asks: [ASK] })),
+      approverPick: vi.fn(async () => ({
+        kind: "choose" as const,
+        choices: [
+          { licenseId: "l1", name: "Pro" },
+          { licenseId: "l2", name: "Team" },
+        ],
+      })),
+      approverChoose: choose,
+      approverDeny: deny,
+    });
+    const a = new DesktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(a);
+    const m = await a.nearby.approver();
+    await m.start();
+    await m.pick("ask-1", "111 111");
+    expect(m.input("ask-1")).toEqual({ step: "choose", device: "Studio PC" });
+    expect(m.choices("ask-1").map((c) => c.licenseId)).toEqual(["l1", "l2"]);
+    await m.choose("ask-1", { kind: "license", licenseId: "l2" });
+    expect(choose).toHaveBeenCalledWith("ask-1", {
+      kind: "license",
+      licenseId: "l2",
+    });
+    expect(m.input("ask-1")?.step).toBe("approved");
+    await m.deny("ask-1");
+    expect(deny).toHaveBeenCalledWith("ask-1");
+    expect(m.input("ask-1")?.step).toBe("denied");
+    a.dispose();
+  });
+
+  it("M: Deny sends the host's ask and shows Denied", async () => {
+    const deny = vi.fn(async () => undefined);
+    const bridge = v5Bridge({
+      approverStart: vi.fn(async () => ({ listening: true, asks: [ASK] })),
+      approverDeny: deny,
+    });
+    const a = new DesktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(a);
+    const m = await a.nearby.approver();
+    await m.start();
+    await m.deny("ask-1");
+    expect(deny).toHaveBeenCalledWith("ask-1");
+    expect(m.input("ask-1")).toEqual({ step: "denied", device: "Studio PC" });
+    // The host drops the ask on deny; closing the outcome clears what is left.
+    bridge.push(
+      emptyBridgeState({ nearby: { approver: { listening: true, asks: [] } } }),
+    );
+    m.dismiss("ask-1");
+    expect(m.input("ask-1")).toBeNull();
+    a.dispose();
+  });
+
+  it("M: a stale askId refused by the host surfaces as invalid-argument", async () => {
+    const refusal = Object.assign(
+      new Error("That nearby request is not open."),
+      {
+        code: "invalid-argument",
+      },
+    );
+    const bridge = v5Bridge({
+      approverStart: vi.fn(async () => ({ listening: true, asks: [ASK] })),
+      approverPick: vi.fn(async () => {
+        throw refusal;
+      }),
+    });
+    const a = new DesktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(a);
+    const m = await a.nearby.approver();
+    await m.start();
+    await expect(m.pick("ask-1", "111 111")).rejects.toMatchObject({
+      code: "invalid-argument",
+      message: "That nearby request is not open.",
+    });
+    // Nothing is kept for the refused ask.
+    expect(m.input("ask-1")?.step).toBe("ask");
+    a.dispose();
+  });
+
+  it("a host push without the approver ends listening", async () => {
+    const bridge = v5Bridge({
+      approverStart: vi.fn(async () => ({ listening: true, asks: [ASK] })),
+    });
+    const a = new DesktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(a);
+    const m = await a.nearby.approver();
+    await m.start();
+    bridge.push(emptyBridgeState({ nearby: {} }));
+    expect(m.listening).toBe(false);
+    expect(m.asks).toEqual([]);
+    a.dispose();
+  });
+
+  it("a v4 host is unsupported for both roles and nothing crosses", async () => {
+    const nearbyStart = vi.fn();
+    const approverStart = vi.fn();
+    const a = new DesktopAdapter({
+      bridge: v5Bridge({ version: 4, nearbyStart, approverStart } as never),
+      now: () => NOW_SEC,
+    });
+    await ready(a);
+    await expect(a.nearby.request()).rejects.toMatchObject({
+      unsupported: { supported: false, reason: "version" },
+    });
+    await expect(a.nearby.approver()).rejects.toThrowError(/protocol v5/);
+    expect(nearbyStart).not.toHaveBeenCalled();
+    expect(approverStart).not.toHaveBeenCalled();
+    expect(a.supports("identity.nearby")).toMatchObject({
+      supported: false,
+      reason: "version",
+    });
+    a.dispose();
+  });
+});
+
+// UK-42.22.7 (bridge v6): a device sign-in that ends in `choose`, and the choice verbs.
+describe("DesktopAdapter — licence and device choice over bridge v6", () => {
+  // @pkey-feature identity.devicecode.choice
+  const CHOOSE = {
+    kind: "choose",
+    grant: "ref0123456789abcdef0123456789abcd",
+    expiresIn: 300,
+    choices: { state: "choose", choices: [] },
+  } as const;
+
+  async function mounted(version: number, invoke?: PolarisBridge["invoke"]) {
+    const bridge = makeFakeBridge(emptyBridgeState());
+    (bridge as { version?: number }).version = version;
+    if (invoke) bridge.invoke = invoke;
+    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    await ready(adapter);
+    return { bridge, adapter };
+  }
+
+  it("a poll that answers choose settles the session as choose, with the ref", async () => {
+    const { bridge, adapter } = await mounted(6);
+    bridge.beginSignIn = vi.fn(async () => ({
+      flowId: "f",
+      userCode: "ABCD",
+      verificationUrl: "https://key.plrs.im/x",
+    }));
+    bridge.pollSignIn = vi.fn(async () => CHOOSE);
+    const session = (await adapter.signIn.start({
+      channel: "device-code",
+      licenseChoice: "app",
+    } as never)) as { wait(): Promise<unknown> };
+    expect(await session.wait()).toEqual(CHOOSE);
+    adapter.dispose();
+  });
+
+  it("refuses licenseChoice app, typed, on a host below v6", async () => {
+    const { adapter } = await mounted(5);
+    await expect(
+      adapter.signIn.start({
+        channel: "device-code",
+        licenseChoice: "app",
+      } as never),
+    ).rejects.toMatchObject({ unsupported: { reason: "version" } });
+    adapter.dispose();
+  });
+
+  it("choice.* go over invoke(identity, choice.*) and complete re-reads the state", async () => {
+    const invoke = vi.fn(async (_s: string, m: string) =>
+      m === "choice.complete"
+        ? { kind: "ok", licenseId: "l1", subject: "ps_x", scope: "openid" }
+        : { kind: "ok", view: { state: "choose", choices: [] } },
+    );
+    const { bridge, adapter } = await mounted(6, invoke);
+    const get = vi.spyOn(bridge, "getSyncState");
+    await adapter.choice.licenses("ref");
+    expect(invoke).toHaveBeenLastCalledWith("identity", "choice.licenses", {
+      grant: "ref",
+    });
+    await adapter.choice.devices("ref", "l1");
+    expect(invoke).toHaveBeenLastCalledWith("identity", "choice.devices", {
+      grant: "ref",
+      licenseId: "l1",
+    });
+    const before = get.mock.calls.length;
+    expect(
+      await adapter.choice.complete("ref", { kind: "keep" }),
+    ).toMatchObject({ kind: "ok" });
+    expect(invoke).toHaveBeenLastCalledWith("identity", "choice.complete", {
+      grant: "ref",
+      choice: { kind: "keep" },
+    });
+    expect(get.mock.calls.length).toBeGreaterThan(before);
+    await adapter.choice.cancel("ref");
+    expect(invoke).toHaveBeenLastCalledWith("identity", "choice.cancel", {
+      grant: "ref",
+    });
+    adapter.dispose();
+  });
+
+  it("choice.* are the typed version N/A below v6 and send nothing", async () => {
+    const invoke = vi.fn(async () => ({ kind: "ok" }));
+    const { adapter } = await mounted(5, invoke);
+    await expect(adapter.choice.licenses("ref")).rejects.toMatchObject({
+      unsupported: { reason: "version", feature: "identity.choice" },
+    });
+    expect(invoke).not.toHaveBeenCalled();
+    adapter.dispose();
+  });
+
+  it("discovery keeps deviceChoice from a v6 host and drops it from an older one", async () => {
+    const disc = {
+      services: { identity: { enabled: true, deviceChoice: true } },
+    };
+    for (const [version, kept] of [
+      [6, true],
+      [5, false],
+    ] as const) {
+      const { adapter } = await mounted(
+        version,
+        vi.fn(async () => disc),
+      );
+      const d = (await adapter.discovery()) as typeof disc | null;
+      expect("deviceChoice" in (d?.services.identity ?? {})).toBe(kept);
+      adapter.dispose();
+    }
   });
 });

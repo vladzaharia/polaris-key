@@ -28,6 +28,7 @@ export const ErrorCode = {
   relayDisabled: "relay_disabled",
   relayPaused: "relay_paused",
   relayQuotaExceeded: "relay_quota_exceeded",
+  connectLinksDisabled: "connect_links_disabled",
   relayTicketInvalid: "relay_ticket_invalid",
   deviceLimit: "device_limit",
   keyEntryLimit: "key_entry_limit",
@@ -56,6 +57,7 @@ export const ErrorCode = {
   unsupportedGrantType: "unsupported_grant_type",
   invalidScope: "invalid_scope",
   redirectUriMismatch: "redirect_uri_mismatch",
+  invalidRequestUri: "invalid_request_uri",
   licenseChoiceRequired: "license_choice_required",
   interstitialRequired: "interstitial_required",
   notNearby: "not_nearby",
@@ -136,6 +138,7 @@ export const ErrorCode = {
   serverError: "server-error",
   cancelled: "cancelled",
   signInExpired: "sign-in-expired",
+  redirectUnavailable: "redirect-unavailable",
   signInDenied: "sign-in-denied",
   signInUnavailable: "sign-in-unavailable",
   platformIdentityUnavailable: "platform-identity-unavailable",
@@ -159,6 +162,19 @@ export const ErrorCode = {
   connectUnavailable: "connect-unavailable",
   peerCertInvalid: "peer-cert-invalid",
   nearbyPermissionDenied: "nearby-permission-denied",
+  nearbyUnsupported: "nearby-unsupported",
+  peerHandshakeFailed: "peer-handshake-failed",
+  peerClosed: "peer-closed",
+  transferCancelled: "transfer-cancelled",
+  linkUnknown: "link-unknown",
+  peerRevoked: "peer_revoked",
+  peerExpired: "peer_expired",
+  peerBadFrame: "peer_bad_frame",
+  peerUnknownCritical: "peer_unknown_critical",
+  peerNotAllowed: "peer_not_allowed",
+  peerBusy: "peer_busy",
+  peerTimeout: "peer_timeout",
+  peerBye: "peer_bye",
   platformError: "platform-error",
   noToken: "no-token",
   mintUnavailable: "mint-unavailable",
@@ -244,6 +260,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "relay_disabled",
   "relay_paused",
   "relay_quota_exceeded",
+  "connect_links_disabled",
   "relay_ticket_invalid",
   "device_limit",
   "key_entry_limit",
@@ -272,6 +289,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "unsupported_grant_type",
   "invalid_scope",
   "redirect_uri_mismatch",
+  "invalid_request_uri",
   "license_choice_required",
   "interstitial_required",
   "not_nearby",
@@ -352,6 +370,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "server-error",
   "cancelled",
   "sign-in-expired",
+  "redirect-unavailable",
   "sign-in-denied",
   "sign-in-unavailable",
   "platform-identity-unavailable",
@@ -375,6 +394,19 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "connect-unavailable",
   "peer-cert-invalid",
   "nearby-permission-denied",
+  "nearby-unsupported",
+  "peer-handshake-failed",
+  "peer-closed",
+  "transfer-cancelled",
+  "link-unknown",
+  "peer_revoked",
+  "peer_expired",
+  "peer_bad_frame",
+  "peer_unknown_critical",
+  "peer_not_allowed",
+  "peer_busy",
+  "peer_timeout",
+  "peer_bye",
   "platform-error",
   "no-token",
   "mint-unavailable",
@@ -437,7 +469,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
 ];
 
 /** `wire`: appears in a Worker response body. `client`: raised only by an SDK. `backend`: answered by an SDK's server core to an app's request to its own backend (WIRE-CONTRACT-V4 §14). */
-export type ErrorCodeKind = "wire" | "client" | "backend";
+export type ErrorCodeKind = "wire" | "client" | "backend" | "peer";
 
 /** The registry: every error code and its kind. */
 export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
@@ -462,6 +494,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   relay_disabled: "wire",
   relay_paused: "wire",
   relay_quota_exceeded: "wire",
+  connect_links_disabled: "wire",
   relay_ticket_invalid: "wire",
   device_limit: "wire",
   key_entry_limit: "wire",
@@ -490,6 +523,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   unsupported_grant_type: "wire",
   invalid_scope: "wire",
   redirect_uri_mismatch: "wire",
+  invalid_request_uri: "wire",
   license_choice_required: "wire",
   interstitial_required: "wire",
   not_nearby: "wire",
@@ -570,6 +604,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "server-error": "client",
   cancelled: "client",
   "sign-in-expired": "client",
+  "redirect-unavailable": "client",
   "sign-in-denied": "client",
   "sign-in-unavailable": "client",
   "platform-identity-unavailable": "client",
@@ -593,6 +628,19 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   "connect-unavailable": "client",
   "peer-cert-invalid": "client",
   "nearby-permission-denied": "client",
+  "nearby-unsupported": "client",
+  "peer-handshake-failed": "client",
+  "peer-closed": "client",
+  "transfer-cancelled": "client",
+  "link-unknown": "client",
+  peer_revoked: "peer",
+  peer_expired: "peer",
+  peer_bad_frame: "peer",
+  peer_unknown_critical: "peer",
+  peer_not_allowed: "peer",
+  peer_busy: "peer",
+  peer_timeout: "peer",
+  peer_bye: "peer",
   "platform-error": "client",
   "no-token": "client",
   "mint-unavailable": "client",
@@ -722,6 +770,7 @@ export const Feature = {
   identityAttach: "identity.attach",
   identityAccount: "identity.account",
   identityRedirectWeb: "identity.redirect.web",
+  identityRedirectNative: "identity.redirect.native",
   identityChoice: "identity.choice",
   identityDevicecodeChoice: "identity.devicecode.choice",
   identitySigninHints: "identity.signin.hints",
@@ -732,6 +781,7 @@ export const Feature = {
   identityAutosignin: "identity.autosignin",
   identityRestore: "identity.restore",
   identityLink: "identity.link",
+  identityNearby: "identity.nearby",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -867,6 +917,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.attach",
   "identity.account",
   "identity.redirect.web",
+  "identity.redirect.native",
   "identity.choice",
   "identity.devicecode.choice",
   "identity.signin.hints",
@@ -877,6 +928,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.autosignin",
   "identity.restore",
   "identity.link",
+  "identity.nearby",
   "release.changelog",
   "release.download",
   "release.record",
@@ -1635,7 +1687,7 @@ export const PLAN_MATRIX_VERSION = 2;
 export const SYNC_SCENARIOS_VERSION = 4;
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
-export const DEVICE_LABEL_VERSION = 1;
+export const DEVICE_LABEL_VERSION = 2;
 
 /** `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json. */
 export const PRESENTATION_MATRIX_VERSION = 1;
@@ -1644,7 +1696,7 @@ export const PRESENTATION_MATRIX_VERSION = 1;
 export const PORTAL_MATRIX_VERSION = 1;
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-export const UI_MATRIX_VERSION = 10;
+export const UI_MATRIX_VERSION = 8;
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 export const BACKEND_MATRIX_VERSION = 1;
@@ -2110,11 +2162,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "sync.scenarios": { status: "implemented", service: "sync", na: [] },
   "sync.settings": { status: "implemented", service: "sync", na: [] },
   "sync.conflict": { status: "planned", service: "sync", na: [] },
-  "sync.saves": { status: "planned", service: "sync", na: [] },
+  "sync.saves": { status: "implemented", service: "sync", na: [] },
   "sync.keyring": { status: "implemented", service: "sync", na: [] },
   "sync.records": { status: "planned", service: "sync", na: [] },
-  "sync.files": { status: "planned", service: "sync", na: [] },
-  "sync.files.delta": { status: "planned", service: "sync", na: [] },
+  "sync.files": { status: "implemented", service: "sync", na: [] },
+  "sync.files.delta": { status: "implemented", service: "sync", na: [] },
   "sync.e2e.recovery": { status: "planned", service: "sync", na: [] },
   "sync.transfer.background": {
     status: "na",
@@ -2145,7 +2197,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
       { runtime: "desktop-bridge", reason: "runtime" },
     ],
   },
-  "connect.transfer": { status: "planned", service: "connect", na: [] },
+  "connect.transfer": { status: "implemented", service: "connect", na: [] },
   "connect.app": { status: "implemented", service: "connect", na: [] },
   "devices.fingerprint": {
     status: "na",
@@ -2195,9 +2247,14 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "identity",
     na: [],
   },
+  "identity.redirect.native": {
+    status: "planned",
+    service: "identity",
+    na: [],
+  },
   "identity.choice": { status: "implemented", service: "identity", na: [] },
   "identity.devicecode.choice": {
-    status: "planned",
+    status: "implemented",
     service: "identity",
     na: [],
   },
@@ -2241,6 +2298,11 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     status: "implemented",
     service: "identity",
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
+  },
+  "identity.nearby": {
+    status: "implemented",
+    service: "identity",
+    na: [{ runtime: "web", reason: "runtime" }],
   },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
@@ -2427,4 +2489,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "390cddad8259eeb1a25b871b689ef896c7fb3dd04e931abaf385a6ecfcbbb7a8";
+  "590aed02f959a93b5db1c1c959efef691e101c4923e250fe43d81c87b89df6ba";

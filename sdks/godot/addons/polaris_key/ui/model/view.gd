@@ -45,7 +45,10 @@ static func actions_for(copy: Array, extra: Array = []) -> Array:
 ##   copy          an Array of keys; null, false and "" entries are dropped (ui-core's
 ##                 `cond && "key"`)
 ##   extraActions  actions with no copy key of their own (`replace-in-browser`)
+##   disabledActions  actions of a control drawn disabled: its label is copy, but the view does not
+##                 offer the action
 ##   args          null values are dropped
+##   keyArgs       the arguments one key takes instead of `args` ({key: {name: value}}), nulls dropped
 ##   primary, tone, errorSlot, link, qr
 ##   focus         leave out to focus the primary, or the heading when there is none; null for a
 ##                 view that never takes focus
@@ -61,11 +64,26 @@ static func make(ctx: RefCounted, component: String, spec: Dictionary) -> Dictio
 	for k in raw_args:
 		if raw_args[k] != null:
 			args[k] = raw_args[k]
+	var key_args := {}
+	var raw_key_args = spec.get("keyArgs", {})
+	for key in raw_key_args:
+		var own := {}
+		for k in raw_key_args[key]:
+			if raw_key_args[key][k] != null:
+				own[k] = raw_key_args[key][k]
+		key_args[key] = own
 	var isolate := []
 	for k in args:
 		if ISOLATED_ARGS.has(k):
 			isolate.append(k)
+	for key in key_args:
+		for k in key_args[key]:
+			if ISOLATED_ARGS.has(k) and not isolate.has(k):
+				isolate.append(k)
 	isolate.sort()
+	var actions := actions_for(copy, spec.get("extraActions", []))
+	for a in spec.get("disabledActions", []):
+		actions.erase(a)
 	var primary = spec.get("primary")
 	var focus_target = spec.get("focus", UNSET)
 	if focus_target is String and focus_target == UNSET:
@@ -74,11 +92,11 @@ static func make(ctx: RefCounted, component: String, spec: Dictionary) -> Dictio
 	var qr = spec.get("qr")
 	if qr == null:
 		qr = link.get("qr", false) if link is Dictionary else false
-	return {
+	var out := {
 		"component": component,
 		"state": spec["state"],
 		"copy": copy,
-		"actions": actions_for(copy, spec.get("extraActions", [])),
+		"actions": actions,
 		"args": args,
 		"isolate": isolate,
 		"decisions": {
@@ -90,6 +108,9 @@ static func make(ctx: RefCounted, component: String, spec: Dictionary) -> Dictio
 			"qr": qr,
 		},
 	}
+	if not key_args.is_empty():
+		out["keyArgs"] = key_args
+	return out
 
 
 ## DL9: a field is never focused on appear under a coarse pointer, and a TV or pad-only screen

@@ -238,6 +238,10 @@
     "packages/sdk-node/scripts/render-goldens.mjs": {
       "knip:unlisted": 1
     },
+    "packages/sdk-node/src/connect/index.ts": {
+      "knip:exports": 3,
+      "knip:types": 2
+    },
     "packages/sdk-node/src/electron/preload.ts": {
       "knip:unlisted": 1
     },
@@ -269,8 +273,8 @@
       "knip:files": 1
     },
     "packages/sdk-react/src/kit/index.ts": {
-      "knip:exports": 8,
-      "knip:types": 9
+      "knip:exports": 9,
+      "knip:types": 14
     },
     "packages/sdk-react/src/license/index.ts": {
       "knip:files": 1
@@ -553,9 +557,6 @@
       "knip:exports": 5,
       "knip:types": 6
     },
-    "packages/worker/src/services/identity/signInSettings.ts": {
-      "knip:exports": 1
-    },
     "packages/worker/src/services/license/admin/keyEmail.ts": {
       "knip:exports": 1
     },
@@ -635,6 +636,9 @@
     "tools/corpus/config.ts": {
       "knip:files": 1
     },
+    "tools/corpus/contact.ts": {
+      "knip:files": 1
+    },
     "tools/corpus/content-fixture.ts": {
       "knip:files": 1
     },
@@ -707,6 +711,9 @@
     "tools/corpus/reference/config.ts": {
       "knip:exports": 1
     },
+    "tools/corpus/reference/contact.ts": {
+      "knip:files": 1
+    },
     "tools/corpus/reference/content.ts": {
       "knip:files": 1
     },
@@ -732,6 +739,12 @@
       "knip:files": 1
     },
     "tools/corpus/reference/headers.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/lanAddress.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/reference/mdns.ts": {
       "knip:files": 1
     },
     "tools/corpus/reference/noise.ts": {
@@ -776,6 +789,9 @@
     "tools/corpus/reference/versions.ts": {
       "knip:files": 1
     },
+    "tools/corpus/reference/xfer.ts": {
+      "knip:files": 1
+    },
     "tools/corpus/release-records.ts": {
       "knip:files": 1
     },
@@ -795,6 +811,9 @@
       "knip:files": 1
     },
     "tools/corpus/update.ts": {
+      "knip:files": 1
+    },
+    "tools/corpus/xfer.ts": {
       "knip:files": 1
     },
     "tools/gen-content-corpus.ts": {

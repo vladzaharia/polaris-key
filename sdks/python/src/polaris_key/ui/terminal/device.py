@@ -207,6 +207,9 @@ class KeyReader:
         #: The start of a terminal answer (``ESC ]``) that has not ended yet: it is not a key.
         self._osc_tail = b""
         self.active = False
+        #: True once the terminal's input ended (a read the terminal reported ready returned nothing):
+        #: a flow that asks the person something treats it as "no", never as a wait.
+        self.eof = False
 
     def __enter__(self) -> "KeyReader":
         if os.name == "posix":
@@ -283,7 +286,10 @@ class KeyReader:
             return b""
         if self._fd not in ready:
             return b""
-        return os.read(self._fd, 4096)  # type: ignore[arg-type]
+        data = os.read(self._fd, 4096)  # type: ignore[arg-type]
+        if not data:
+            self.eof = True
+        return data
 
     def _raw(self, timeout: Optional[float]) -> str:
         if os.name == "posix":

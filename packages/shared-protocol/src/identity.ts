@@ -57,11 +57,131 @@ export const DISPLAY_TEXT_STRIP: readonly (readonly [number, number])[] = [
   [0xfeff, 0xfeff],
 ];
 
+/**
+ * §12.7.1 step 1 (`deviceLabelVersion` 2): the code points a device label maps to U+0020 before
+ * anything else — every White_Space code point except U+0020 itself, and U+2800 BRAILLE PATTERN
+ * BLANK. The table is `ranges.space` of `device-label.json`. Inclusive `[first, last]` ranges.
+ * `DISPLAY_TEXT_SPACE` stays as it was, for the manifest rule.
+ */
+export const DEVICE_LABEL_SPACE: readonly (readonly [number, number])[] = [
+  [0x0009, 0x000d],
+  [0x0085, 0x0085],
+  [0x00a0, 0x00a0],
+  [0x1680, 0x1680],
+  [0x2000, 0x200a],
+  [0x2028, 0x2029],
+  [0x202f, 0x202f],
+  [0x205f, 0x205f],
+  [0x2800, 0x2800],
+  [0x3000, 0x3000],
+];
+
+/**
+ * §12.7.1 step 2 (`deviceLabelVersion` 2): the code points a device label drops — every control
+ * (Cc), format character (Cf), default-ignorable code point and surrogate, as of Unicode 16.0.
+ * The table is `ranges.strip` of `device-label.json`, frozen as ranges so every runtime agrees,
+ * Godot's included. The C0 and C1 blocks are listed whole; step 1 has already mapped the
+ * whitespace controls among them. Inclusive `[first, last]` ranges. `DISPLAY_TEXT_STRIP` stays as
+ * it was, for the manifest rule `invalid_display_text` and the published schemas.
+ */
+export const DEVICE_LABEL_STRIP: readonly (readonly [number, number])[] = [
+  [0x0000, 0x001f],
+  [0x007f, 0x009f],
+  [0x00ad, 0x00ad],
+  [0x034f, 0x034f],
+  [0x0600, 0x0605],
+  [0x061c, 0x061c],
+  [0x06dd, 0x06dd],
+  [0x070f, 0x070f],
+  [0x0890, 0x0891],
+  [0x08e2, 0x08e2],
+  [0x115f, 0x1160],
+  [0x17b4, 0x17b5],
+  [0x180b, 0x180f],
+  [0x200b, 0x200f],
+  [0x202a, 0x202e],
+  [0x2060, 0x206f],
+  [0x3164, 0x3164],
+  [0xd800, 0xdfff],
+  [0xfe00, 0xfe0f],
+  [0xfeff, 0xfeff],
+  [0xffa0, 0xffa0],
+  [0xfff0, 0xfffb],
+  [0x110bd, 0x110bd],
+  [0x110cd, 0x110cd],
+  [0x13430, 0x1343f],
+  [0x1bca0, 0x1bca3],
+  [0x1d173, 0x1d17a],
+  [0xe0000, 0xe0fff],
+];
+
 /** §12.7.2: an opaque sign-in request handle, `rq_` and 16 random bytes in base64url. */
 export const REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$";
 
 /** §12.7.2: how long a request handle lives, equal to the sign-in flow's own lifetime. */
 export const REQUEST_HANDLE_TTL_SECONDS = 600;
+
+/**
+ * §12.12: a pushed authorization request's URI, `urn:ietf:params:oauth:request_uri:` and 16 random
+ * bytes in base64url (RFC 9126).
+ */
+export const REQUEST_URI_PATTERN =
+  "^urn:ietf:params:oauth:request_uri:[A-Za-z0-9_-]{22}$";
+
+/** §12.12: how long a pushed request lives, or until Continue or Cancel takes it (RFC 9126 `expires_in`). */
+export const PUSHED_REQUEST_TTL_SECONDS = 600;
+
+/** §12.12: the one path of the loopback and scheme redirect URIs (RFC 8252 §7). */
+export const NATIVE_REDIRECT_PATH = "/pkey/callback";
+
+/** §12.12: how a native redirect URI reaches the app. A web redirect is never one of these. */
+export type NativeRedirectClass = "loopback" | "scheme" | "claimed";
+
+/**
+ * §12.12: `POST /<p>/identity/request`, form-encoded. The §12.4 `authorize` parameters (each as
+ * there; `redirect_uri` is a native one) plus the device label and an optional return URI. Needs
+ * `X-PKey-Device`.
+ */
+export interface PushedRequestParams {
+  response_type: "code";
+  client_id: string;
+  redirect_uri: string;
+  state: string;
+  code_challenge: string;
+  code_challenge_method: "S256";
+  scope?: string;
+  nonce?: string;
+  login_hint?: string;
+  name_hint?: string;
+  purpose?: AuthorizePurpose;
+  license_choice?: AuthorizeLicenseChoice;
+  key_return?: "allow";
+  /** The device label (§12.7.1), cleaned like `deviceName` on `token`. */
+  device_name?: string;
+  /** A registered scheme's redirect URI for ReturnStep's "Return to <App>". It never carries a code. */
+  return_uri?: string;
+}
+
+/** §12.12: the `201` answer of `POST /<p>/identity/request`. `no-store`, no CORS. */
+export interface PushedRequestResponse {
+  /** {@link REQUEST_URI_PATTERN}. The only parameter besides `client_id` that `authorize` then takes. */
+  request_uri: string;
+  /** {@link PUSHED_REQUEST_TTL_SECONDS}. */
+  expires_in: number;
+}
+
+/**
+ * §12.6: `nativeRedirect` in the identity discovery fragment, present only while `request` is
+ * served. `schemes` and `claimedHttps` hold the full registered redirect URIs.
+ */
+export interface NativeRedirectDiscovery {
+  /** `identity.nativeRedirect.loopback` (default true). */
+  loopback: boolean;
+  /** `<scheme>:/pkey/callback` for each registered scheme. */
+  schemes: string[];
+  /** `https://<origin><path>` for each registered claimed path on each web origin. */
+  claimedHttps: string[];
+}
 
 /** The kind of client a sign-in request came from (§12.7.2). */
 export type ClientKind = "web" | "native" | "device";
@@ -116,6 +236,12 @@ export interface SignInRequestView {
    * this request. Absent otherwise, so every earlier answer stays byte-identical.
    */
   keyReturn?: true;
+  /**
+   * I-15 (§12.7.2): on a native request only, the class of its redirect URI and the pushed
+   * `return_uri`. Absent on every other request.
+   */
+  redirect?: NativeRedirectClass;
+  returnUri?: string | null;
 }
 
 /** One line of what an app gets when the person continues (§12.7.3). */
@@ -375,6 +501,8 @@ export interface IdentityDiscovery {
   nearby?: true;
   /** UK-42.22 (§12.10.1): the device-code poll answers `choose` to a start that asked `licenseChoice: "app"`. */
   deviceChoice?: true;
+  /** I-15 (§12.12): the native redirect classes the product accepts through `request`. Present only while `request` is served. */
+  nativeRedirect?: NativeRedirectDiscovery;
   /** I-49 (§12.11.8): silent restore is served; the `restore` endpoint comes with it. */
   restore?: true;
   endpoints: {
@@ -391,6 +519,10 @@ export interface IdentityDiscovery {
     authorize?: string;
     /** I-08 (§12.5): the OAuth-shaped token endpoint (form-encoded, CORS for `web.origins`). */
     token?: string;
+    /** I-15 (§12.12): the pushed authorization request. Present only with `nativeRedirect`. */
+    request?: string;
+    /** I-15 (§12.12): the customer-host page a loopback listener answers `303` to. Present with `request`. */
+    signinReturn?: string;
     /** I-08b (§12.5): the pending sign-in grant's four routes. Present only when the licence choice is served. */
     choiceLicenses?: string;
     choiceDevices?: string;
@@ -841,6 +973,8 @@ export type NearbyChoiceInput =
 /** §12.11.5: `POST /<p>/identity/nearby/approve`, from the signed-in device M. */
 export interface NearbyApproveRequest {
   request: string;
+  /** D's device id from `start` (its authenticated VOUCH_REQ); a difference is `404 not_found`. */
+  deviceId: string;
   signKey: string;
   agreeKey: string;
   decision: "approve" | "deny";

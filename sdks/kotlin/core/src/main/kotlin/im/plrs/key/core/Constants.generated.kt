@@ -34,6 +34,7 @@ public object ErrorCode {
     public const val relayDisabled: String = "relay_disabled"
     public const val relayPaused: String = "relay_paused"
     public const val relayQuotaExceeded: String = "relay_quota_exceeded"
+    public const val connectLinksDisabled: String = "connect_links_disabled"
     public const val relayTicketInvalid: String = "relay_ticket_invalid"
     public const val deviceLimit: String = "device_limit"
     public const val keyEntryLimit: String = "key_entry_limit"
@@ -62,6 +63,7 @@ public object ErrorCode {
     public const val unsupportedGrantType: String = "unsupported_grant_type"
     public const val invalidScope: String = "invalid_scope"
     public const val redirectUriMismatch: String = "redirect_uri_mismatch"
+    public const val invalidRequestUri: String = "invalid_request_uri"
     public const val licenseChoiceRequired: String = "license_choice_required"
     public const val interstitialRequired: String = "interstitial_required"
     public const val notNearby: String = "not_nearby"
@@ -142,6 +144,7 @@ public object ErrorCode {
     public const val serverError: String = "server-error"
     public const val cancelled: String = "cancelled"
     public const val signInExpired: String = "sign-in-expired"
+    public const val redirectUnavailable: String = "redirect-unavailable"
     public const val signInDenied: String = "sign-in-denied"
     public const val signInUnavailable: String = "sign-in-unavailable"
     public const val platformIdentityUnavailable: String = "platform-identity-unavailable"
@@ -165,6 +168,19 @@ public object ErrorCode {
     public const val connectUnavailable: String = "connect-unavailable"
     public const val peerCertInvalid: String = "peer-cert-invalid"
     public const val nearbyPermissionDenied: String = "nearby-permission-denied"
+    public const val nearbyUnsupported: String = "nearby-unsupported"
+    public const val peerHandshakeFailed: String = "peer-handshake-failed"
+    public const val peerClosed: String = "peer-closed"
+    public const val transferCancelled: String = "transfer-cancelled"
+    public const val linkUnknown: String = "link-unknown"
+    public const val peerRevoked: String = "peer_revoked"
+    public const val peerExpired: String = "peer_expired"
+    public const val peerBadFrame: String = "peer_bad_frame"
+    public const val peerUnknownCritical: String = "peer_unknown_critical"
+    public const val peerNotAllowed: String = "peer_not_allowed"
+    public const val peerBusy: String = "peer_busy"
+    public const val peerTimeout: String = "peer_timeout"
+    public const val peerBye: String = "peer_bye"
     public const val platformError: String = "platform-error"
     public const val noToken: String = "no-token"
     public const val mintUnavailable: String = "mint-unavailable"
@@ -249,6 +265,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -277,6 +294,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "unsupported_grant_type",
     "invalid_scope",
     "redirect_uri_mismatch",
+    "invalid_request_uri",
     "license_choice_required",
     "interstitial_required",
     "not_nearby",
@@ -357,6 +375,7 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "server-error",
     "cancelled",
     "sign-in-expired",
+    "redirect-unavailable",
     "sign-in-denied",
     "sign-in-unavailable",
     "platform-identity-unavailable",
@@ -380,6 +399,19 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "connect-unavailable",
     "peer-cert-invalid",
     "nearby-permission-denied",
+    "nearby-unsupported",
+    "peer-handshake-failed",
+    "peer-closed",
+    "transfer-cancelled",
+    "link-unknown",
+    "peer_revoked",
+    "peer_expired",
+    "peer_bad_frame",
+    "peer_unknown_critical",
+    "peer_not_allowed",
+    "peer_busy",
+    "peer_timeout",
+    "peer_bye",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -464,6 +496,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "relay_disabled" to "wire",
     "relay_paused" to "wire",
     "relay_quota_exceeded" to "wire",
+    "connect_links_disabled" to "wire",
     "relay_ticket_invalid" to "wire",
     "device_limit" to "wire",
     "key_entry_limit" to "wire",
@@ -492,6 +525,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "unsupported_grant_type" to "wire",
     "invalid_scope" to "wire",
     "redirect_uri_mismatch" to "wire",
+    "invalid_request_uri" to "wire",
     "license_choice_required" to "wire",
     "interstitial_required" to "wire",
     "not_nearby" to "wire",
@@ -572,6 +606,7 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "server-error" to "client",
     "cancelled" to "client",
     "sign-in-expired" to "client",
+    "redirect-unavailable" to "client",
     "sign-in-denied" to "client",
     "sign-in-unavailable" to "client",
     "platform-identity-unavailable" to "client",
@@ -595,6 +630,19 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "connect-unavailable" to "client",
     "peer-cert-invalid" to "client",
     "nearby-permission-denied" to "client",
+    "nearby-unsupported" to "client",
+    "peer-handshake-failed" to "client",
+    "peer-closed" to "client",
+    "transfer-cancelled" to "client",
+    "link-unknown" to "client",
+    "peer_revoked" to "peer",
+    "peer_expired" to "peer",
+    "peer_bad_frame" to "peer",
+    "peer_unknown_critical" to "peer",
+    "peer_not_allowed" to "peer",
+    "peer_busy" to "peer",
+    "peer_timeout" to "peer",
+    "peer_bye" to "peer",
     "platform-error" to "client",
     "no-token" to "client",
     "mint-unavailable" to "client",
@@ -724,6 +772,7 @@ public object Feature {
     public const val identityAttach: String = "identity.attach"
     public const val identityAccount: String = "identity.account"
     public const val identityRedirectWeb: String = "identity.redirect.web"
+    public const val identityRedirectNative: String = "identity.redirect.native"
     public const val identityChoice: String = "identity.choice"
     public const val identityDevicecodeChoice: String = "identity.devicecode.choice"
     public const val identitySigninHints: String = "identity.signin.hints"
@@ -734,6 +783,7 @@ public object Feature {
     public const val identityAutosignin: String = "identity.autosignin"
     public const val identityRestore: String = "identity.restore"
     public const val identityLink: String = "identity.link"
+    public const val identityNearby: String = "identity.nearby"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
     public const val releaseRecord: String = "release.record"
@@ -868,6 +918,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.attach",
     "identity.account",
     "identity.redirect.web",
+    "identity.redirect.native",
     "identity.choice",
     "identity.devicecode.choice",
     "identity.signin.hints",
@@ -878,6 +929,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.autosignin",
     "identity.restore",
     "identity.link",
+    "identity.nearby",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1578,7 +1630,7 @@ public const val PLAN_MATRIX_VERSION: Int = 2
 public const val SYNC_SCENARIOS_VERSION: Int = 4
 
 /** `deviceLabelVersion` of conformance/corpus/v2/device-label.json. */
-public const val DEVICE_LABEL_VERSION: Int = 1
+public const val DEVICE_LABEL_VERSION: Int = 2
 
 /** `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json. */
 public const val PRESENTATION_MATRIX_VERSION: Int = 1
@@ -1587,7 +1639,7 @@ public const val PRESENTATION_MATRIX_VERSION: Int = 1
 public const val PORTAL_MATRIX_VERSION: Int = 1
 
 /** `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json. */
-public const val UI_MATRIX_VERSION: Int = 10
+public const val UI_MATRIX_VERSION: Int = 8
 
 /** `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14). */
 public const val BACKEND_MATRIX_VERSION: Int = 1
@@ -2021,11 +2073,11 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "sync.scenarios" to CapabilityRow("implemented", "sync", listOf()),
     "sync.settings" to CapabilityRow("implemented", "sync", listOf()),
     "sync.conflict" to CapabilityRow("planned", "sync", listOf()),
-    "sync.saves" to CapabilityRow("planned", "sync", listOf()),
+    "sync.saves" to CapabilityRow("implemented", "sync", listOf()),
     "sync.keyring" to CapabilityRow("implemented", "sync", listOf()),
     "sync.records" to CapabilityRow("planned", "sync", listOf()),
-    "sync.files" to CapabilityRow("planned", "sync", listOf()),
-    "sync.files.delta" to CapabilityRow("planned", "sync", listOf()),
+    "sync.files" to CapabilityRow("implemented", "sync", listOf()),
+    "sync.files.delta" to CapabilityRow("implemented", "sync", listOf()),
     "sync.e2e.recovery" to CapabilityRow("planned", "sync", listOf()),
     "sync.transfer.background" to CapabilityRow("planned", "sync", listOf(CapabilityNa("jvm", "runtime"))),
     "sync.e2e" to CapabilityRow("implemented", "sync", listOf()),
@@ -2034,8 +2086,8 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "connect.protocol" to CapabilityRow("implemented", "connect", listOf()),
     "connect.lan" to CapabilityRow("planned", "connect", listOf()),
     "connect.relay" to CapabilityRow("implemented", "connect", listOf()),
-    "connect.links" to CapabilityRow("planned", "connect", listOf()),
-    "connect.transfer" to CapabilityRow("planned", "connect", listOf()),
+    "connect.links" to CapabilityRow("implemented", "connect", listOf()),
+    "connect.transfer" to CapabilityRow("implemented", "connect", listOf()),
     "connect.app" to CapabilityRow("implemented", "connect", listOf()),
     "devices.fingerprint" to CapabilityRow("implemented", "core", listOf()),
     "devices.facts" to CapabilityRow("implemented", "core", listOf()),
@@ -2052,8 +2104,9 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.attach" to CapabilityRow("implemented", "identity", listOf()),
     "identity.account" to CapabilityRow("implemented", "identity", listOf()),
     "identity.redirect.web" to CapabilityRow("implemented", "identity", listOf()),
+    "identity.redirect.native" to CapabilityRow("planned", "identity", listOf()),
     "identity.choice" to CapabilityRow("implemented", "identity", listOf()),
-    "identity.devicecode.choice" to CapabilityRow("planned", "identity", listOf()),
+    "identity.devicecode.choice" to CapabilityRow("implemented", "identity", listOf()),
     "identity.signin.hints" to CapabilityRow("implemented", "identity", listOf()),
     "identity.keyreturn" to CapabilityRow("planned", "identity", listOf()),
     "identity.exchange" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
@@ -2062,6 +2115,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.autosignin" to CapabilityRow("implemented", "identity", listOf()),
     "identity.restore" to CapabilityRow("implemented", "identity", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.link" to CapabilityRow("planned", "identity", listOf(CapabilityNa("jvm", "runtime"))),
+    "identity.nearby" to CapabilityRow("planned", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -2129,4 +2183,4 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "05164d483bd89d2e76b5f80e8bf6b6bf562a9dd5c8e2db862bff3c6677864af4"
+public const val CAPABILITY_DIGEST: String = "bd8a405e9fd5549964856c24bf86eba84d724e89e16d3136bcedb324a9d48584"

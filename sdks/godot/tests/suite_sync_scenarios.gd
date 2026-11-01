@@ -1,13 +1,14 @@
 extends RefCounted
 # @pkey-feature sync.scenarios
 # @pkey-feature sync.settings config.sync
+# @pkey-feature sync.saves
 # @pkey-feature sync.e2e
 # `sync-scenarios.json`: the Cloud Sync client state machine and the setting routes.
 #
 # Mirrors sdks/python/tests/test_sync_scenarios.py. The corpus is read from the generator-owned
 # mirror through the strict parser (ints stay ints). `settingCases` runs in full and every
-# scenario replays: there is no skip list (U-21.5 deleted PENDING), and the run asserts the replay
-# count equals the corpus count. The X-1 conflict-copy unit test and the principal, blocked and
+# scenario replays except the named SKIPPED ones (U-21.5 deleted PENDING; record-merge-fields waits for
+# C26.7/U-09.11G), and the run asserts replayed plus skipped equals the corpus count. The X-1 conflict-copy unit test and the principal, blocked and
 # 410 paths are in tests/core/test_cloud_sync_machine.gd.
 #
 # The machine contract the driver calls (snake_case; `set`/`get` are Object methods, so the value
@@ -16,7 +17,9 @@ extends RefCounted
 # `add(c, id, v)`, `remove(c, id, v)`, `flush()`, `refresh()` (each returns a Dictionary),
 # `advance(ms)`, `set_network(state)`, `receive(res, opened)`, `set_root(has)`, `sign_in(subject)`,
 # `sign_out(discard)`, `take_requests()`, `take_events()`, `get_value(k)`, `setting_state(k)`,
-# `record(collection, id)`, `journal()`, `status()`, `encryption_since()`.
+# `record(collection, id)`, `journal()`, `status()`, `encryption_since()`; and for `fileRecordCases`
+# (the records binding of cloudSync.saves): `put_at(c, id, v, base)`, `remove_at(c, id, base)`,
+# `on_outcome(listener)` and `records(collection)`.
 
 const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const Routes := preload("res://addons/polaris_key/core/sync/sync_routes.gd")
@@ -24,6 +27,8 @@ const Routes := preload("res://addons/polaris_key/core/sync/sync_routes.gd")
 const CORPUS := "res://tests/corpus/v2/sync-scenarios.json"
 const STEP_KINDS := ["local", "advance", "network", "respond", "signIn", "signOut", "relaunch", "root", "assert"]
 const CALLS := ["set", "clear", "put", "add", "remove", "flush", "refresh"]
+const FILE_RECORD_CALLS := ["putAt", "removeAt"]
+const FILE_RECORD_ASSERTS := ["rows", "outcomes"]
 
 
 func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
@@ -36,6 +41,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_shape(t, corpus)
 	_setting_cases(t, corpus["settingCases"])
 	_scenarios(t, corpus)
+	_file_record_cases(t, corpus, corpus["fileRecordCases"])
 	_misuse(t, corpus)
 	return true
 
@@ -67,6 +73,13 @@ func _shape(t: PKeyTestContext, corpus: Dictionary) -> void:
 			elif kind == "local" and not CALLS.has(step[kind]["call"]):
 				unknown += 1
 	t.check("scenario names are unique", names.size() == corpus["scenarios"].size())
+	# The records binding of cloudSync.saves (plans/U-22.5.md): a second family, replayed in full.
+	var family: Dictionary = corpus["fileRecordCases"]
+	var family_names := {}
+	for sc: Dictionary in family["scenarios"]:
+		family_names[sc["name"]] = true
+	t.check("fileRecordCases is declared (19 cases)", family["scenarios"].size() == 19 and family_names.size() == 19)
+	t.check("fileRecordCases vocabulary is the driver's", Types.json_equal(family["calls"], FILE_RECORD_CALLS) and Types.json_equal(family["asserts"], FILE_RECORD_ASSERTS))
 	t.check("every step and call is known", unknown == 0, str(unknown))
 	t.check("the corpus has scenarios, rules and setting cases", corpus["scenarios"].size() > 0 and corpus["rules"].size() > 0 and corpus["settingCases"].size() > 0)
 
@@ -95,12 +108,21 @@ func _setting_cases(t: PKeyTestContext, cases: Array) -> void:
 	t.check("setting cases evaluated", cases.size() > 0)
 
 
+# Scenarios the GDScript machine does not replay yet, by name: ported in C26.7/U-09.11G
+# (a merge record sends setField / removeField there).
+const SKIPPED := ["record-merge-fields"]
+
+
 func _scenarios(t: PKeyTestContext, corpus: Dictionary) -> void:
 	var ran := 0
+	var skipped := 0
 	for sc: Dictionary in corpus["scenarios"]:
+		if SKIPPED.has(sc["name"]):
+			skipped += 1
+			continue
 		_replay(t, corpus, sc)
 		ran += 1
-	t.check("every corpus scenario replays (no skip list)", ran == corpus["scenarios"].size(), "%d" % ran)
+	t.check("every corpus scenario replays (skips: %s)" % ", ".join(SKIPPED), ran + skipped == corpus["scenarios"].size() and skipped == SKIPPED.size(), "%d" % ran)
 
 
 func _opts(corpus: Dictionary, init: Dictionary, ids: Array) -> Dictionary:
@@ -120,8 +142,20 @@ func _opts(corpus: Dictionary, init: Dictionary, ids: Array) -> Dictionary:
 	}
 
 
+func _file_record_cases(t: PKeyTestContext, corpus: Dictionary, family: Dictionary) -> void:
+	var ran := 0
+	for sc: Dictionary in family["scenarios"]:
+		_replay(t, corpus, sc)
+		ran += 1
+	t.check("every fileRecordCases scenario replays (no skip)", ran == family["scenarios"].size(), "%d" % ran)
+
+
 func _call(m: Variant, name: String, args: Array) -> Dictionary:
 	match name:
+		"putAt":
+			return m.put_at(args[0], args[1], args[2], args[3], args[4] if args.size() > 4 else null)
+		"removeAt":
+			return m.remove_at(args[0], args[1], args[2])
 		"set":
 			return m.set_value(args[0], args[1])
 		"clear":
@@ -145,6 +179,8 @@ func _replay(t: PKeyTestContext, corpus: Dictionary, sc: Dictionary) -> void:
 	var machine_script: GDScript = load("res://addons/polaris_key/core/sync/cloud_sync_machine.gd")
 	var m: Variant = machine_script.new(opts)
 	var licence: Variant = Types.clone(init["licence"])
+	var outcomes: Array = []
+	m.on_outcome(func(o: Dictionary) -> void: outcomes.append(o))
 	var name: String = sc["name"]
 	if init["legacyLocal"] != null:
 		t.check("%s: import" % name, Types.json_equal(m.import_local(init["legacyLocal"]), {"ok": true}))
@@ -174,11 +210,12 @@ func _replay(t: PKeyTestContext, corpus: Dictionary, sc: Dictionary) -> void:
 				m.sign_out(raw.get("discardUnsynced") == true)
 			"relaunch":
 				m = machine_script.relaunch(m, opts, "lost" if raw.get("journal") == "lost" else "kept")
+				m.on_outcome(func(o: Dictionary) -> void: outcomes.append(o))
 			"assert":
-				_assert(t, m, raw, where, licence)
+				_assert(t, m, raw, where, licence, outcomes)
 
 
-func _assert(t: PKeyTestContext, m: Variant, raw: Dictionary, where: String, licence: Variant) -> void:
+func _assert(t: PKeyTestContext, m: Variant, raw: Dictionary, where: String, licence: Variant, outcomes: Array) -> void:
 	var requests: Variant = m.take_requests()
 	var events: Variant = m.take_events()
 	if raw.has("requests"):
@@ -195,6 +232,13 @@ func _assert(t: PKeyTestContext, m: Variant, raw: Dictionary, where: String, lic
 	for key: String in records:
 		var parts := key.split("/", true, 1)
 		t.check("%s: records.%s" % [where, key], Types.json_equal(m.record(parts[0], parts[1]), records[key]))
+	var drained: Array = outcomes.duplicate(true)
+	outcomes.clear()
+	if raw.has("outcomes"):
+		t.check("%s: outcomes" % where, Types.json_equal(drained, raw["outcomes"]), JSON.stringify(drained))
+	var rows: Dictionary = raw.get("rows", {})
+	for collection: String in rows:
+		t.check("%s: rows.%s" % [where, collection], Types.json_equal(m.records(collection), rows[collection]), JSON.stringify(m.records(collection)))
 	if raw.has("journal"):
 		t.check("%s: journal" % where, Types.json_equal(m.journal(), raw["journal"]))
 	if raw.has("status"):

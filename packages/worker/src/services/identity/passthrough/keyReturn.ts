@@ -65,6 +65,7 @@ import { cardJson } from "../card/http.js";
 import { issuerOf } from "./authorize.js";
 import { issueAuthorizationCode } from "./code.js";
 import { takeSignInRequest } from "./request.js";
+import { takeNativeOnce, withLoopbackRequest } from "./pushedStore.js";
 import { liveRequest } from "./routes.js";
 
 /** 10 a minute per client network, charged before any lookup. */
@@ -207,6 +208,7 @@ export async function handleSignInKeyReturn(
   // 8. One press, one code. A lost race finds the request gone.
   const record = await takeSignInRequest(env, req, handle, now);
   if (!record?.authz) return NOT_FOUND();
+  if (!(await takeNativeOnce(env, record, now))) return NOT_FOUND();
   const { authz } = record;
   await appendAudit(db, {
     product: product.slug,
@@ -238,6 +240,7 @@ export async function handleSignInKeyReturn(
       keyHash,
       nonce: authz.nonce,
       licenseChoice: authz.licenseChoice,
+      ...(record.native ? { deviceId: record.native.deviceId } : {}),
     },
     authz.codeChallenge,
   );
@@ -245,5 +248,7 @@ export async function handleSignInKeyReturn(
   target.searchParams.set("code", code);
   target.searchParams.set("state", authz.state);
   target.searchParams.set("iss", issuerOf(req, product));
-  return cardJson({ redirect: target.toString() });
+  return cardJson({
+    redirect: withLoopbackRequest(target.toString(), record, handle),
+  });
 }

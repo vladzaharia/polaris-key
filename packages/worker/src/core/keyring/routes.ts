@@ -69,6 +69,7 @@ import {
 } from "../accounts/accountSubjects.js";
 import { appendAudit } from "../audit.js";
 import { randomId } from "../../platform/crypto.js";
+import { keyringMinSdkRefusal } from "./minSdk.js";
 import { rateLimitOk } from "../rateLimit.js";
 import { sendSecurityNotice } from "../notify/send.js";
 import {
@@ -96,6 +97,7 @@ import {
   setRecovery,
   type WrapInput,
 } from "./store.js";
+import { shownAppName } from "../accounts/reservedDisplayNames.js";
 
 const RING_ID = new RegExp(SYNC_RING_ID_PATTERN);
 const KID = new RegExp(SYNC_KID_PATTERN);
@@ -260,6 +262,9 @@ export async function handleKeyring(
   // LG-1: with the gate off the routes do not exist, whatever the product has enabled.
   if (!(await launchGateOn(env, db, "launch.syncE2e"))) return notFound();
   if (!(await keyringWanted(db, product))) return notFound();
+  // D-39b: an SDK build below its minimum is told to update, on every route (the read first).
+  const stale = await keyringMinSdkRefusal(req, env, db);
+  if (stale) return stale;
   if (!METHODS[target.kind].includes(req.method)) return methodNotAllowed();
 
   const valid = await validateDeviceToken(env, db, product, bearer(req), now);
@@ -542,7 +547,12 @@ async function emailAccount(
       null,
       notice({
         deviceLabel: c.device.label,
-        productName: c.product.name,
+        productName: await shownAppName(
+          c.env,
+          c.db,
+          c.product.slug,
+          c.product.name,
+        ),
         productSlug: c.product.slug,
         at: c.now,
         origin: new URL(c.req.url).origin,

@@ -259,12 +259,13 @@ async function codeFor(
   };
 }
 
-describe("validateRedirectUri (the function I-15 widens)", () => {
+describe("validateRedirectUri (web)", () => {
   const reg = { webOrigins: [APP], redirectPaths: ["/auth/callback"] };
   it("accepts exactly origin + path and answers the client kind", () => {
     expect(validateRedirectUri(reg, CB)).toEqual({
       ok: true,
       kind: "web",
+      redirect: "web",
       uri: CB,
     });
   });
@@ -329,6 +330,32 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
     // The app is named above the card, from the product's path, whatever client_id said.
     expect(html).toContain(`<strong><bdi>${SLUG}</bdi></strong>`);
     expect(html).not.toContain("<script");
+  });
+
+  it.each([
+    ["a reserved name", "Steam"],
+    ["a Hangul filler", "Tide\u3164"],
+    ["a bidi override", "Tide\u202e"],
+  ])(
+    "names an app whose name fails the display rules by its slug (%s)",
+    async (_n, name) => {
+      await db.run("UPDATE products SET name = ? WHERE slug = ?", name, SLUG);
+      const res = await authorize({ client_id: "other" });
+      expect(res.status).toBe(401);
+      const html = await res.text();
+      expect(html).toContain(`<strong><bdi>${SLUG}</bdi></strong>`);
+      expect(html).not.toContain(name);
+    },
+  );
+
+  it("names an app whose name passes by that name", async () => {
+    await db.run(
+      "UPDATE products SET name = ? WHERE slug = ?",
+      "Tide Bikes",
+      SLUG,
+    );
+    const html = await (await authorize({ client_id: "other" })).text();
+    expect(html).toContain("<strong><bdi>Tide Bikes</bdi></strong>");
   });
 
   it.each([
@@ -404,7 +431,6 @@ describe("GET /<p>/identity/authorize (§12.4)", () => {
     ["a bad key_return", { key_return: "deny" }, "invalid_request"],
     ["an empty key_return", { key_return: "" }, "invalid_request"],
     ["a long nonce", { nonce: "n".repeat(256) }, "invalid_request"],
-    ["a request_uri", { request_uri: "urn:x" }, "invalid_request"],
   ] as const)("302s %s back to the app with iss", async (_n, over, error) => {
     const res = await authorize(over);
     expect(res.status).toBe(302);

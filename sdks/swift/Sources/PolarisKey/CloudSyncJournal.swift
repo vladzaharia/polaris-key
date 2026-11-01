@@ -54,10 +54,8 @@ public struct TransferJournalError: Error, Sendable, Equatable {
     public let reason: Reason
 }
 
-private let hex64 = try! NSRegularExpression(pattern: "^[0-9a-f]{64}$")
-
 func isHex64(_ s: String) -> Bool {
-    hex64.firstMatch(in: s, range: NSRange(s.startIndex..., in: s)) != nil
+    wholeMatches("[0-9a-f]{64}", s) != nil
 }
 
 /// The record, or a `TransferJournalError`. The result is a fresh value; the input is not touched.

@@ -16,6 +16,7 @@ from polaris_key.core.peer_mdns import (
     MAX_ADDRS,
     MAX_INSTANCES,
     NEW_WINDOW_SECONDS,
+    AddressBook,
     MdnsAdvert,
     MdnsFound,
     MdnsUnavailableError,
@@ -55,10 +56,15 @@ class Clock:
         return self.t
 
 
+#: The connected IPv4 subnets of the fake LAN: every source the tests use sits in one of them.
+NETS = ["192.168.0.0/16", "10.0.0.0/8", "127.0.0.0/8"]
+
+
 class Rig:
     def __init__(self, **kw: Any) -> None:
         self.socks: List[FakeSocket] = []
         self.clock = Clock()
+        kw.setdefault("subnets", lambda: NETS)
         self.adapter = MulticastDnsAdapter(create=self._make, clock=self.clock, **kw)
 
     def _make(self, on_packet: Callable[[bytes, str], None]) -> FakeSocket:
@@ -99,7 +105,7 @@ class Browser:
         self.down: List[str] = []
 
         async def go() -> Any:
-            return await rig.adapter.browse(self.up.append, self.down.append)
+            return await rig.adapter.browse(self.up.append, self.down.append, kw.get("accept"))
 
         self.handle = run(go())
 
@@ -144,6 +150,11 @@ def full(inst: str = INST, ip: str = "192.168.1.20") -> List[Record]:
 )
 def test_lan_addresses(ip: str, ok: bool) -> None:
     assert is_lan_address(ip) is ok
+
+
+def test_is_lan_address_is_ipv4_and_literal_only() -> None:
+    for bad in ("10.0.0.1\n", "10.0.0.1 ", "10.0.0.1:80", "0xa.0.0.1", "167772161", "fe80::1", "fd12::1"):
+        assert not is_lan_address(bad), bad
 
 
 def test_loopback_only_when_allowed() -> None:
@@ -343,16 +354,38 @@ def test_an_a_record_is_believed_only_from_its_own_source() -> None:
     assert b.up[0].host == "192.168.1.20"
 
 
-def test_an_address_outside_the_lan_is_never_dialled() -> None:
+def test_no_filter_on_the_address_at_learn_time_the_dial_time_verdict_decides() -> None:
+    # A source on a connected subnet is believed for its own address, whatever the address is.
     for ip in ("8.8.8.8", "169.254.9.9", "100.64.0.9", "127.0.0.1"):
+        rig = Rig(subnets=lambda: ["0.0.0.0/0"])
+        b = Browser(rig)
+        b.push(full(ip=ip), src=ip)
+        assert [f.host for f in b.up] == [ip], ip
+
+
+def test_a_response_from_outside_the_receiving_interfaces_subnets_teaches_nothing() -> None:
+    # RFC 6762 section 11: the source must be on a connected subnet.
+    for ip in ("8.8.8.8", "172.16.0.9", "100.64.0.9"):
         rig = Rig()
         b = Browser(rig)
         b.push(full(ip=ip), src=ip)
         assert b.up == [], ip
-    rig = Rig(allow_loopback=True)
+    rig = Rig(subnets=lambda: ["172.16.0.0/12"])
     b = Browser(rig)
-    b.push(full(ip="127.0.0.1"), src="127.0.0.1")
-    assert b.up[0].host == "127.0.0.1"
+    b.push(full(ip="172.16.0.9"), src="172.16.0.9")
+    assert [f.host for f in b.up] == ["172.16.0.9"]
+    b.push(full(ip="192.168.1.20"), src="192.168.1.20")  # now off the subnet
+    assert len(b.up) == 1
+
+
+def test_unreadable_interfaces_are_unavailable_not_guessed(monkeypatch: pytest.MonkeyPatch) -> None:
+    import polaris_key.core.peer_mdns as m
+
+    monkeypatch.setattr(m, "interface_addresses", lambda: None)
+    rig = Rig(subnets=None)
+    rig.adapter._subnets = None
+    with pytest.raises(MdnsUnavailableError):
+        run(rig.adapter.browse(lambda f: None))
 
 
 def test_the_first_address_seen_is_dialled_and_at_most_four_are_kept() -> None:
@@ -413,6 +446,62 @@ def test_names_of_the_wrong_shape_and_bad_ports_are_dropped() -> None:
     # A PTR that is not the service's own name is not an advert.
     b.push([Record("_other._tcp.local", "PTR", 0, FQDN)])
     assert b.down == []
+
+
+@pytest.mark.parametrize("port", [0, 1, 80, 1023])
+def test_an_srv_port_below_1024_is_ignored(port: int) -> None:
+    rig = Rig()
+    b = Browser(rig)
+    b.push([ptr(), srv(port=port), txt(), a()])
+    assert b.up == []
+    b.push([srv(port=1024)])
+    assert b.up[-1].port == 1024  # the lowest port a random listen can draw
+
+
+def test_names_fold_by_ascii_in_the_srv_target_and_the_host() -> None:
+    rig = Rig()
+    b = Browser(rig)
+    shouting = Record(INST.upper() + ".Local", "A", 120, "192.168.1.20")
+    b.push([ptr(), srv(target=INST.upper() + ".LOCAL"), txt(), shouting])
+    assert b.up[-1].hosts == ("192.168.1.20",) and b.up[-1].instance == INST
+
+
+def test_the_roster_filter_keeps_only_the_names_it_allows_for_every_record_type() -> None:
+    other = "p1-" + "b" * 16
+    asked: List[str] = []
+
+    def accept(name: str) -> bool:
+        asked.append(name)
+        return name == INST
+
+    rig = Rig()
+    b = Browser(rig, accept=accept)
+    b.push(full(inst=other))
+    for r in (ptr(other), srv(other), txt(other), a(other)):
+        b.push([r])
+    assert b.up == [] and set(asked) == {other}
+    # Nothing of the refused name took a place: the real one is still learned in full.
+    b.push(full())
+    assert [f.instance for f in b.up] == [INST]
+    # A goodbye for a name that is not allowed is not a goodbye.
+    b.push([ptr(other, ttl=0)])
+    assert b.down == []
+
+
+def test_no_source_owns_a_name_and_a_flood_from_one_source_does_not_evict_a_real_peer() -> None:
+    rig = Rig()
+    b = Browser(rig)
+    b.push([ptr(), srv(), txt(), a(ip="10.0.0.66")], src="10.0.0.66")  # a neighbour announces the name first
+    b.push([a(ip="10.0.0.5")], src="10.0.0.5")  # the real device is not locked out
+    assert b.up[-1].hosts == ("10.0.0.66", "10.0.0.5")
+    alphabet = "abcdefghijklmnopqrstuvwxyz234567"
+    for i in range(256):
+        n = "p1-" + alphabet[i // 32] + alphabet[i % 32] + "d" * 14
+        b.push([ptr(n), srv(n), txt(n), a(n, "10.0.0.66")], src="10.0.0.66")
+    assert b.down == []
+    # 16 new names a minute per source; a device takes one in the instance table and one in the address
+    # table (as in Node), so 8 devices are reported from one source.
+    assert len({f.instance for f in b.up}) == 8
 
 
 def test_the_instance_table_is_bounded_and_evicts_the_least_recently_refreshed() -> None:
@@ -506,3 +595,24 @@ def test_live_two_adapters_on_this_host_find_each_other() -> None:
     finally:
         run(ah.stop())
         run(bh.stop())
+
+
+def test_mdns_an_address_not_seen_for_five_minutes_lapses_and_frees_its_place() -> None:
+    book = AddressBook()
+    name = INST + ".local"
+    four = ["192.168.1.1", "192.168.1.2", "192.168.1.3", "192.168.1.4"]
+
+    def learn(ip: str, now: float) -> None:
+        book.learn(Record(name, "A", 120, ip), ip, None, now)
+
+    for ip in four:
+        learn(ip, 0.0)
+    # A fifth cannot take a place while the four are held, and a refresh of one of them (the name
+    # stays alive) does not keep the others.
+    learn("192.168.1.5", 60.0)
+    assert book.hosts(name, 60.0) == four
+    learn(four[0], 200.0)
+    later = ENTRY_TTL_SECONDS + 1
+    learn("192.168.1.5", later)
+    assert book.hosts(name, later) == [four[0], "192.168.1.5"]
+    assert book.hosts(name, later + ENTRY_TTL_SECONDS + 1) == []

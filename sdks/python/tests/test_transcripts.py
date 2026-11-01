@@ -6,8 +6,8 @@ makes applicable, against a fake server (``transcript_replay.ReplayServer``, an
 request.
 
 Which transcripts run is DATA: a transcript for a feature this SDK has not implemented is
-skipped, and starts running the moment the manifest claims it. The SDK clock is ``time.time`` pinned to each step's ``now``: the recorded documents
-were signed at a fixed instant and expire an hour later.
+skipped, and starts running the moment the manifest claims it. The SDK clock is ``time.time`` pinned to
+each step's ``now``: the recorded documents were signed at a fixed instant and expire an hour later.
 
 ``updateDecide`` (plans/P3-01.md §5, §6) is ``client.update.decide(channel=…, staged=…,
 skip_version=…)``, and its ``expect`` keys are the ``UpdateCheck``'s own (``channel``,
@@ -50,6 +50,13 @@ end-to-end transcript the push body is sealed by ``seal_push`` and the answer op
 ``invalid``. The report is ``result``, ``cursor``, ``more``, ``settings`` (the wire's setting names,
 sorted) and ``results`` (one label per mutation result) beside the quota and encryption members.
 
+``nearbyStart`` / ``nearbyPoll`` (D) and ``nearbyApprove`` (M) (I-47.5, ``identity.nearby``, WIRE-CONTRACT-V5
+§12.11.5) drive the nearby route client (``client.identity._nearby_routes``) with the fixture keys of the
+step's labels. The transcript's own device is D; M is the ``approver*`` device, which the replay sends as
+(its id, its bearer, its key). ``proofKeyLabel`` / ``proofValue`` sign the proof with another key or over
+another value; ``agreeKeyLabel`` sends another agreement key. ``unavailable`` is the client sending
+nothing because discovery names no ``nearby`` member, or a 404 from ``start`` (the gate is off).
+
 ``chunkRange`` (P4-32, plans/P4-32.md §5) is ``chunk_range_fetch`` over the packs client's own
 object fetch (``client.update.packs._fetch_object``), against the blobs template the last
 discover returned. ``range`` is the fetch's status; ``bytes`` the body it returned, as a string.
@@ -62,14 +69,16 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature update.feed release.record update.decide
 # @pkey-feature packs.apply.chunk commerce.receipt
 # @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
-# @pkey-feature license.manage
+# @pkey-feature license.manage connect.links
 # @pkey-feature identity.keyentry identity.account identity.attach identity.toggle
 # @pkey-feature core.presentation ui.cli.portal
-# @pkey-feature identity.redirect.web identity.choice identity.signin.hints
+# @pkey-feature identity.redirect.web identity.choice identity.signin.hints identity.devicecode.choice
 # @pkey-feature sync.keyring connect.identity connect.relay sync.settings
+# @pkey-feature sync.files sync.files.delta sync.saves identity.nearby
 
 from __future__ import annotations
 
+import base64
 import copy
 import dataclasses
 import hashlib
@@ -79,6 +88,7 @@ import re
 import shutil
 import tempfile
 import time
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urljoin, urlsplit
 
@@ -96,7 +106,9 @@ from transcript_replay import (
 )
 
 from polaris_key import PolarisError, PolarisKeyClient, StagedUpdate, UpdateClientOptions
+from polaris_key.cloud_sync.files import FileRoutes
 from polaris_key.cloud_sync.host_codec import open_pull, seal_push
+from polaris_key.cloud_sync.transfer import FileQuery, FileTarget
 from polaris_key.cloud_sync.transport import send_sync
 from polaris_key.constants_generated import ERROR_CODE_VALUES
 from polaris_key.core import sync_crypto as sc
@@ -106,6 +118,8 @@ from polaris_key.core.device_keys import DevicePublicKeys
 from polaris_key.core.models import ReleaseRecordDoc
 from polaris_key.core.store import CacheRecord
 from polaris_key.devices.keys import create_device_key_store
+from polaris_key.identity.account import identity_fragment_from
+from polaris_key.identity.nearby import NearbyCredentials, NearbyStarted, _grant
 from polaris_key.update.packs import chunk_range_fetch
 
 MANIFEST = load_manifest("sdks/python/parity.json")
@@ -224,13 +238,15 @@ def _connect_step(client: PolarisKeyClient, step: Dict[str, Any], session: Dict[
     return out
 
 
-def _relay_ticket_step(client: PolarisKeyClient) -> Dict[str, Any]:
+def _relay_ticket_step(client: PolarisKeyClient, contact: Any = None) -> Dict[str, Any]:
     """``client.connect.relay_ticket()`` (CC-10.4, ``connect.relay``). A refusal reads as ``result:
     "refused"`` with the status, the Worker's code and, where it answers them, ``retryAfter`` and ``scope``."""
     out: Dict[str, Any] = {}
     try:
-        g = client.connect.relay_ticket()
+        g = client.connect.relay_ticket(contact)
         out["result"] = "ok"
+        if contact is not None:
+            out["room"] = g.room
         out["protocol"] = g.protocol
         out["url"] = g.url
         out["expiresIn"] = g.expires_at - int(time.time())
@@ -244,6 +260,96 @@ def _relay_ticket_step(client: PolarisKeyClient) -> Dict[str, Any]:
         scope = getattr(e, "scope", None)
         if scope is not None:
             out["scope"] = scope
+    return out
+
+
+def _nearby_step(
+    client: PolarisKeyClient, store: TranscriptStore, step: Dict[str, Any], session: Dict[str, Any]
+) -> Dict[str, Any]:
+    """The nearby route client (I-47.5, ``identity.nearby``) over the fixture keys of the step's labels."""
+    t = session["transcript"]
+    action, args = step["action"], step["args"]
+    routes = client.identity._nearby_routes
+    own = t["initial"]["deviceId"]
+
+    def keys(label_arg: str) -> _FixtureKeys:
+        label = str(args[label_arg])
+        cache = session.setdefault("fixtureKeys", {})
+        if label not in cache:
+            cache[label] = _FixtureKeys(label)
+        return cache[label]  # type: ignore[no-any-return]
+
+    # A doctored proof: the same call, signed by other keys or over another value.
+    real_sign = type(routes)._sign
+    proof_label = args.get("proofKeyLabel")
+    proof_value = args.get("proofValue")
+
+    def sign(creds: NearbyCredentials, purpose: str, value: str) -> str:
+        port = _FixtureKeys(str(proof_label)) if proof_label is not None else creds.keys
+        return real_sign(
+            routes,
+            NearbyCredentials(creds.device_id, port, creds.token),
+            purpose,
+            str(proof_value) if proof_value is not None else value,
+        )
+
+    routes._sign = sign  # type: ignore[method-assign]
+    out: Dict[str, Any] = {}
+    try:
+        d = NearbyCredentials(own, keys("keyLabel"), store.token)
+        if action == "nearbyStart":
+            r = routes.start(d, device_name=args.get("deviceName"))
+            if r.kind == "started":
+                session["nearbyStarted"] = r
+                out.update(result="ok", expiresIn=r.expires_in, interval=r.interval)
+            elif r.kind == "unavailable":
+                out["result"] = "unavailable"
+            else:
+                out.update(result="refused", status=r.status, code=r.code)
+        elif action == "nearbyPoll":
+            k = d.keys.ensure()
+            base = session.get("nearbyStarted") or NearbyStarted("nr_" + "A" * 22, 300, 3, k.sign_key, k.agree_key, own)
+            handle = args.get("request")
+            started = dataclasses.replace(base, request=handle) if isinstance(handle, str) else base
+            r = routes.poll(d, started)
+            if r.kind == "unavailable":
+                out["result"] = "unavailable"
+            elif r.kind == "refused":
+                out.update(result="refused", status=r.status, code=r.code)
+            elif r.kind == "signed_in":
+                out.update(result="ready", scope=r.scope)
+            elif r.kind == "denied":
+                out.update(result="error", reason=r.reason)
+            elif r.kind == "slow_down":
+                out.update(result="slow-down", interval=r.interval)
+            elif r.kind == "retry":
+                out["result"] = "transient"
+            else:
+                out["result"] = r.kind
+        else:
+            m = NearbyCredentials(str(args["approverDeviceId"]), keys("approverKeyLabel"), str(args["approverToken"]))
+            dk = d.keys.ensure()
+            agree = (
+                _FixtureKeys(str(args["agreeKeyLabel"])).ensure().agree_key if "agreeKeyLabel" in args else dk.agree_key
+            )
+            started = session.get("nearbyStarted")
+            request = args.get("request") or (started.request if started is not None else None)
+            # The replay vouches for what the recording sent (it may carry other keys than D's): the permit
+            # is made here, in the test, because no route offers one.
+            vouch = _grant(
+                SimpleNamespace(request=str(request), device_id=own, sign_key=dk.sign_key, agree_key=agree)
+            )
+            r = routes.approve(m, vouch, decision=str(args["decision"]), choice=args.get("choice"))
+            out["result"] = r.kind
+            if r.kind == "approved":
+                out["deviceLabel"] = r.device_label
+            elif r.kind == "choose":
+                out["choices"] = r.choices
+            elif r.kind == "refused":
+                out.update(status=r.status, code=r.code)
+    finally:
+        del routes._sign  # drop the instance override: the class method is the real one
+    out["tokenHeld"] = store.token is not None
     return out
 
 
@@ -263,14 +369,29 @@ def _act(
         return _keyring_step(client, step, session)
     if action in ("cloudSyncPull", "cloudSyncPush"):
         return _cloud_sync_step(client, step, session)
+    if action in ("cloudSyncFile", "cloudSyncChunk"):
+        return _cloud_sync_file_step(client, step)
     if action in ("connectIdentity", "connectDevices"):
         return _connect_step(client, step, session)
     if action == "relayTicket":
         return _relay_ticket_step(client)
+    if action in ("nearbyStart", "nearbyPoll", "nearbyApprove"):
+        return _nearby_step(client, store, step, session)
+    if action == "relayTicketContact":
+        return _relay_ticket_step(client, (str(args["room"]), str(args["rid"])))
     # D-6: the recorded action names map onto the session (`sign_in.start`, `wait`).
     if action == "beginSignIn":
         try:
-            p = client.identity.sign_in.start(device_name=args.get("deviceName"))
+            opts: Dict[str, Any] = {"device_name": args.get("deviceName")}
+            for wire, kw in (
+                ("loginHint", "login_hint"),
+                ("nameHint", "name_hint"),
+                ("purpose", "purpose"),
+                ("licenseChoice", "license_choice"),
+            ):
+                if isinstance(args.get(wire), str):
+                    opts[kw] = args[wire]
+            p = client.identity.sign_in.start(**opts)
         except PolarisError as e:
             # identity-disabled: the refusal is the step's result.
             out["result"] = e.code
@@ -349,6 +470,14 @@ def _act(
         out["presentation"] = client.presentation()
         # ui.cli.portal (DISC-01): the core.portal member the client holds after this discovery.
         out["portal"] = client.portal()
+        # identity.nearby (I-40): the member and the three endpoints the last discovery names.
+        frag = identity_fragment_from(client.discovery())
+        out["nearby"] = True if frag is not None and frag.get("nearby") is True else None
+        out["nearbyEndpoints"] = frag is not None and all(
+            n in frag["endpoints"] for n in ("nearbyStart", "nearbyApprove", "nearbyPoll")
+        )
+        # connect.links (CC-19): the cached services.connect.interAccount the SDK gates links on.
+        out["interAccount"] = client.cloud_connect.links.inter_account()
     elif action == "sync":
         r = client.sync(force=args.get("force") is True)
         out["applied"] = r.applied
@@ -637,6 +766,99 @@ def _generated_mutations(count: int, first: int, names: List[str]) -> List[Dict[
     ]
 
 
+def _record_names(rows: Any) -> List[str]:
+    """``collection/id`` of each record row, sorted."""
+    names = []
+    for r in rows if isinstance(rows, list) else []:
+        rec = r.get("record") if isinstance(r, dict) else None
+        if isinstance(rec, list) and len(rec) == 2:
+            names.append(f"{rec[0]}/{rec[1]}")
+    return sorted(names)
+
+
+def _cloud_sync_file_step(client: PolarisKeyClient, step: Dict[str, Any]) -> Dict[str, Any]:
+    """``cloudSyncFile`` / ``cloudSyncChunk`` (U-10.12, U-37.6; WIRE-CONTRACT-V5 section 13.2, 13.8): one file
+    route call through the host's ``FileRoutes``, the engine's ``FileTransport`` port. The transport builds
+    the path from the target and the upload id the recording drew (read from the recorded path), adds the
+    headers and ``Content-Digest``, and bounds what it reads; the call's JSON body and PUT bytes are the
+    recording's own, so a step pins what the transport does with them, not how the engine plans them."""
+    out: Dict[str, Any] = {}
+    transport = FileRoutes(client.core, lambda: client._tokens.current)
+    req = step["exchanges"]["items"][0]["request"]
+    args = step["args"]
+    op = args["op"]
+    collection = args["collection"]
+    target = FileTarget(collection, args.get("id", ""))
+    m = re.search(r"/upload/([^/?]+)", req["path"])
+    upload_id = m.group(1) if m else ""
+    body_json = (req.get("body") or {}).get("json")
+    data = base64.b64decode(req["bodyBase64"]) if req.get("bodyBase64") else b""
+    # A PUT carries the digest the recording sent. It is the body's own except where a step sends a wrong
+    # one on purpose (`upload_mismatch`); the transport only encodes the hex it is given.
+    digest_header = re.fullmatch(r"sha-256=:([A-Za-z0-9+/=]+):", req["headers"].get("content-digest", ""))
+    digest = base64.b64decode(digest_header.group(1)).hex() if digest_header else hashlib.sha256(data).hexdigest()
+    version = args.get("version")
+    if op == "begin":
+        reply = transport.begin(target, body_json)
+    elif op == "status":
+        reply = transport.status(target, upload_id)
+    elif op in ("put", "putManifest"):
+        reply = transport.put_single(target, upload_id, data, digest)
+    elif op == "part":
+        reply = transport.put_part(target, upload_id, int(args["part"]), data, digest)
+    elif op == "putChunk":
+        reply = transport.put_chunk(target, upload_id, args["chunk"], data, digest)
+    elif op == "abort":
+        reply = transport.abort(target, upload_id)
+    elif op == "plan":
+        reply = transport.plan_chunks(target, upload_id, body_json)
+    elif op == "finalize":
+        reply = transport.finalize(target, body_json)
+    elif op in ("download", "downloadManifest"):
+        reply = transport.get_file(target, FileQuery(version=version))
+    elif op == "getChunk":
+        reply = transport.get_chunk(collection, args["chunk"])
+    elif op == "revisions":
+        reply = transport.revisions(target)
+    else:
+        raise AssertionError(f"unknown {step['action']} op {op}")
+    if reply.ok:
+        out["result"] = "ok"
+        out["status"] = 204 if req["method"] == "PUT" or op == "abort" else 200
+        v = reply.value
+        if op == "begin":
+            out["mode"] = v["mode"]
+            if v.get("partBytes") is not None:
+                out["partBytes"] = v["partBytes"]
+        elif op == "status":
+            out.update(mode=v["mode"], size=v["size"], received=v["received"])
+            if v.get("missing") is not None:
+                out["missing"] = v["missing"]
+        elif op == "plan":
+            out["missing"] = sorted(v["missing"])
+            out["present"] = sorted(v["present"], key=lambda x: x[0])
+        elif op == "finalize":
+            out.update(version=v["version"], size=v["size"], sha256=v["sha256"], format=v["format"])
+        elif op in ("download", "downloadManifest"):
+            out.update(size=len(v.data), sha256=hashlib.sha256(v.data).hexdigest())
+        elif op == "getChunk":
+            out.update(size=len(v), sha256=hashlib.sha256(v).hexdigest())
+        elif op == "revisions":
+            out["versions"] = [r["version"] for r in v["revisions"]]
+            out["formats"] = [r["format"] for r in v["revisions"]]
+        return out
+    out.update(result="refused", status=reply.status, code=reply.code)
+    if reply.retry_after_seconds is not None:
+        out["retryAfter"] = reply.retry_after_seconds
+    extra = reply.body if isinstance(reply.body, dict) else {}
+    if extra.get("missing") is not None:
+        out["missing"] = extra["missing"]
+    server = extra.get("server")
+    if isinstance(server, dict) and server.get("version") is not None:
+        out["serverVersion"] = server["version"]
+    return out
+
+
 def _result_label(r: Dict[str, Any]) -> str:
     """One label per mutation result, in the transcript format's words."""
     status = r.get("status")
@@ -721,6 +943,12 @@ def _cloud_sync_step(
             out["quotaBytes"] = quota["bytes"]
         if isinstance(quota.get("files"), bool):
             out["files"] = quota["files"]
+    changed = _record_names(body_in.get("changes"))
+    if changed:
+        out["records"] = changed
+    deleted = _record_names(body_in.get("tombstones"))
+    if deleted:
+        out["deletedRecords"] = deleted
     if isinstance(body_in.get("encryption"), str):
         out["encryption"] = body_in["encryption"]
     if isinstance(body_in.get("encryptionSince"), int):
@@ -945,10 +1173,39 @@ def _uses_account(t: Dict[str, Any]) -> bool:
     return any(s["action"] in ("subject", "signOut", "attach") for s in t["steps"])
 
 
+def _asks_device_choice(t: Dict[str, Any]) -> bool:
+    """Does this transcript start a device-code sign-in that asks ``licenseChoice: "app"``?
+    (UK-42.22: discovery then carries ``deviceChoice``, the SDK's gate for sending the member.)"""
+    return any(
+        s["action"] == "beginSignIn" and s["args"].get("licenseChoice") == "app"
+        for s in t["steps"]
+    )
+
+
 def _standard_discovery(t: Dict[str, Any]) -> Dict[str, Any]:
     """The Worker's standard discovery document, for a transcript that loads none itself."""
     base = f"{t['baseUrl']}/{t['product']}"
-    if _uses_account(t) or _uses_redirect(t):
+    if "identity.nearby" in t["features"]:
+        # Nearby approval is named (WIRE-CONTRACT-V5 §12.11.6): the member and the three endpoints.
+        return {
+            "product": t["product"],
+            "services": {
+                "license": {"enabled": True},
+                "config": {"enabled": True},
+                "identity": {
+                    "enabled": True,
+                    "configured": True,
+                    "account": True,
+                    "nearby": True,
+                    "endpoints": {
+                        "nearbyStart": f"{base}/identity/nearby/start",
+                        "nearbyApprove": f"{base}/identity/nearby/approve",
+                        "nearbyPoll": f"{base}/identity/nearby/poll",
+                    },
+                },
+            },
+        }
+    if _uses_account(t) or _uses_redirect(t) or _asks_device_choice(t):
         choice = any(
             "/identity/choice/" in x["request"]["path"]
             for s in t["steps"]
@@ -965,6 +1222,7 @@ def _standard_discovery(t: Dict[str, Any]) -> Dict[str, Any]:
                     "enabled": True,
                     "configured": True,
                     "account": True,
+                    **({"deviceChoice": True} if _asks_device_choice(t) else {}),
                     "issuer": _redirect_issuer(t),
                     "endpoints": {
                         "subject": f"{base}/identity/subject",
@@ -1030,6 +1288,8 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
     services = t["initial"].get("services")
     if services is None and u is not None:
         services = ["release", "distribution", "update"]
+    if services is None and _asks_device_choice(t):
+        services = ["license", "config", "identity"]
     if services is not None:
         kwargs["expected_services"] = services
     if u is not None:
@@ -1089,8 +1349,8 @@ def replay(t: Dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
         **kwargs,
     )
     client.devices.fingerprint = lambda: FINGERPRINT  # type: ignore[method-assign]
-    if _uses_redirect(t):
-        # The redirect recordings pin the token exchange alone. The acquisition sync a sign-in
+    if _uses_redirect(t) or _asks_device_choice(t) or "identity.nearby" in t["features"]:
+        # The redirect and nearby recordings pin the token exchange alone. The acquisition sync a sign-in
         # raises (trust fetch, documents, report) is pinned by the sync transcripts.
         client.identity._deps.on_acquired = lambda: None
     client.init()

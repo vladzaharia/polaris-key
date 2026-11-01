@@ -121,6 +121,9 @@ import PolarisKeyCore
 
     public final class CloudConnect: Sendable {
         let core: CloudConnectCore
+        /// Inter-account links (CC-19): `pair`, `list`, `remove`, `setReachable`, `open`, `onLink`. Off unless
+        /// discovery says `interAccount`.
+        public let links: CloudLinks
         private let channelListeners = Listeners<ConnectSession>()
         private let noticeListeners = Listeners<ConnectNotice>()
         private let statusBox = LockedValue(
@@ -128,28 +131,53 @@ import PolarisKeyCore
                 running: false, lan: "off", lanError: nil, relay: "off", relayError: nil, relayReason: nil))
         private let queue = DispatchQueue(label: "im.plrs.key.cloud-connect.callbacks")
 
+        /// Nearby approval (CC-15): `request(_:)` on the new device, `onRequest(_:options:)` on the approver. It
+        /// is gated by the Identity service's discovery, never by Connect, and works with Connect off.
+        public nonisolated let nearby: CloudNearby
+
+        /// Direct Transfer (CC-20; §15.11): `send(_:source:options:)` and `onOffer(_:)`.
+        public nonisolated let transfer: CloudTransfer
+
         /// `discovery` returns the loaded discovery document; `applyTrust` verifies, applies and persists a trust
         /// manifest a peer pushed (`CoreContext.applyPeerTrust`); `now` is epoch seconds.
         public init(
             connect: ConnectClient, discovery: @escaping @Sendable () async -> ProductDiscoveryDocument? = { nil },
             applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil,
-            now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970) }
+            now: @escaping @Sendable () -> Int = { Int(Date().timeIntervalSince1970) },
+            nearby: NearbyDeps? = nil, transferDirectory: URL? = nil
         ) {
+            let links = CloudLinks(connect: connect)
+            self.links = links
+            // Partial files live in the product's state directory; a bare facade (tests) gets a private one.
+            let transfer = CloudTransfer(
+                directory: transferDirectory
+                    ?? FileManager.default.temporaryDirectory.appendingPathComponent(
+                        "pkey-xfer-" + UUID().uuidString.lowercased(), isDirectory: true))
+            self.transfer = transfer
+            connect.rosterDeparted.set { keys in for k in keys { transfer.purge(agreeKey: k) } }
+            links.hook(adopt: { s in Task { await transfer.adopt(s) } }, removed: { transfer.purge(agreeKey: $0) })
+            self.nearby = CloudNearby(nearby, deliver: { [queue] f in queue.async(execute: f) })
             let channel = channelListeners
             let notices = noticeListeners
             let box = statusBox
             let q = queue
             core = CloudConnectCore(
-                connect: connect, discovery: discovery, applyTrust: applyTrust, now: now,
+                connect: connect, discovery: discovery, applyTrust: applyTrust, now: now, links: links,
+                transfer: transfer,
                 emit: Emit(
                     inbound: { s in
                         let subs = channel.all
-                        if subs.isEmpty { return false }  // nobody to hand it to (G9)
+                        if subs.isEmpty && !transfer.listening { return false }  // nobody to hand it to (G9)
                         for f in subs { q.async { f(s) } }
                         return true
                     },
                     notice: { n in for f in notices.all { q.async { f(n) } } },
                     status: { box.set($0) }))
+            let core = self.core
+            transfer.bind(
+                openDevice: { id, relay in try await core.open(id, relay: relay, lanAttempt: nil) },
+                openLink: { id, relay in try await links.open(id, relay: relay) },
+                hasLink: { id in await links.list().contains { $0.id == id } })
         }
 
         /// For tests: hand a session in as an inbound one.
@@ -170,6 +198,21 @@ import PolarisKeyCore
         /// closed by then is force-cancelled (listener, browser and relay socket, no graceful close) and its
         /// discovery key is dropped, so a sign-out is never held up by Connect.
         public func stop() async { await core.stop(timeout: cloudConnectStopSeconds) }
+
+        /// The sign-out step: Connect stops (bounded), then the nearby adverts and requests, before the device
+        /// leaves Connect (G18). Never throws and never waits past 15 s a step.
+        func stopForSignOut(bound: TimeInterval = cloudConnectStopSeconds) async {
+            await core.stop(timeout: bound)
+            transfer.purgeAll()  // sign-out and forget delete every partial file
+            await stopNearby(bound: bound)
+        }
+
+        /// Stop every nearby advert and close every request, for at most `bound` seconds: past it, every socket and
+        /// listener is dropped at once (no goodbye). Also what `PolarisKeyClient.close()` runs.
+        func stopNearby(bound: TimeInterval = cloudConnectStopSeconds) async {
+            let nearby = nearby
+            if !(await connectBounded(bound) { await nearby.stopAll() }) { nearby.forceStop() }
+        }
 
         /// The person's other devices that can be reached now, with the paths each has.
         public func peers() async -> [CloudPeer] { await core.peers() }
@@ -251,11 +294,17 @@ import PolarisKeyCore
         private var unsub: [@Sendable () -> Void] = []
         private var sessions: [ObjectIdentifier: ConnectSession] = [:]
         private var lanAttempt = cloudConnectLanAttemptSeconds
+        private var contactRelay: ConnectContactRelay?
+        private let links: CloudLinks
+        private let transfer: CloudTransfer
 
         init(
             connect: ConnectClient, discovery: @escaping @Sendable () async -> ProductDiscoveryDocument?,
-            applyTrust: (@Sendable (String) async -> PeerTrustResult)?, now: @escaping @Sendable () -> Int, emit: Emit
+            applyTrust: (@Sendable (String) async -> PeerTrustResult)?, now: @escaping @Sendable () -> Int,
+            links: CloudLinks, transfer: CloudTransfer, emit: Emit
         ) {
+            self.links = links
+            self.transfer = transfer
             self.connect = connect
             self.discovery = discovery
             self.applyTrust = applyTrust
@@ -313,7 +362,7 @@ import PolarisKeyCore
             let reason = o.relay ? cloudConnectRelayWanted(await discovery()) : "host"
             guard gen == generation else { throw CancellationError() }
             let relayOn = reason == nil
-            let src = ConnectLanSource.client(connect, now: now, applyTrust: applyTrust)
+            let src = watch(ConnectLanSource.client(connect, now: now, applyTrust: applyTrust))
             if o.lan {
                 do {
                     let svc = try await ConnectLanService.start(src, options: o.lanOptions)
@@ -366,6 +415,22 @@ import PolarisKeyCore
             } else {
                 relayReason = reason
             }
+            // The contact rooms (§15.7) and the links API ride the same transports. A device with no links keeps no
+            // room; the list is read again whenever it changes.
+            if relayOn {
+                let c = connect
+                let cr = ConnectContactRelay(
+                    source: ConnectContactRelaySource(
+                        lan: src, ticket: { rid in await c.relayTicket(room: "c", rid: rid) }),
+                    options: o.relayOptions)
+                contactRelay = cr
+                await cr.start()
+                guard gen == generation else {
+                    await cr.stop()
+                    throw CancellationError()
+                }
+            }
+            await links.attach(lan: lan, relay: contactRelay, lanAttempt: lanAttempt, relayOn: relayOn)
             guard gen == generation else { throw CancellationError() }
             running = true
             publish()
@@ -400,16 +465,20 @@ import PolarisKeyCore
             running = false
             for u in unsub { u() }
             unsub = []
-            let (l, r) = (lan, relay)
+            let (l, r, cr) = (lan, relay, contactRelay)
             lan = nil
             relay = nil
+            contactRelay = nil
             let open = Array(sessions.values)
             sessions = [:]
             relayStatus = nil
             publish()
+            let links = self.links
             let closed = await connectBounded(timeout) {
                 if let t { _ = try? await t.value }
+                await links.detach()
                 for s in open { await s.close() }
+                await cr?.stop()
                 await r?.stop()
                 await l?.stop()
             }
@@ -418,6 +487,8 @@ import PolarisKeyCore
                 // the services let go of the discovery key.
                 l?.abort()
                 r?.abort()
+                cr?.abort()
+                Task { await links.detach() }
                 t?.cancel()
             }
         }
@@ -460,6 +531,8 @@ import PolarisKeyCore
         private func track(_ s: ConnectSession) {
             let id = ObjectIdentifier(s)
             sessions[id] = s
+            let t = transfer
+            Task { await t.adopt(s) }
             s.onClose { [weak self] _ in
                 guard let self else { return }
                 Task { await self.untrack(id) }
@@ -467,6 +540,35 @@ import PolarisKeyCore
         }
 
         private func untrack(_ id: ObjectIdentifier) { sessions[id] = nil }
+
+        /// A roster this device stores, pushed or fetched, is checked against every open session.
+        func watch(_ source: ConnectLanSource) -> ConnectLanSource {
+            var src = source
+            if let adopt = src.adoptRing {
+                src.adoptRing = { [weak self] jws in
+                    let r = await adopt(jws)
+                    if r.stored, let self { await self.rosterStored() }
+                    return r
+                }
+            }
+            if let refresh = src.refresh {
+                src.refresh = { [weak self] in
+                    try await refresh()
+                    if let self { await self.rosterStored() }
+                }
+            }
+            return src
+        }
+
+        /// Admits every open session again against the roster now held: a session with a device the
+        /// roster no longer lists ends `peer_revoked`. A roster that only adds devices keeps them all.
+        func rosterStored() async {
+            guard let held = await connect.held() else { return }
+            let listed = Set(held.ring.devices.map(\.deviceId))
+            for s in Array(sessions.values) where !listed.contains(s.peerDeviceId) {
+                await s.closeRevoked()
+            }
+        }
 
         func open(_ deviceId: String, relay relayOpt: Bool, lanAttempt attempt: TimeInterval?) async throws
             -> ConnectSession

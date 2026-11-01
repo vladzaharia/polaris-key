@@ -269,6 +269,24 @@ function readOnly(db: Db): Db {
 }
 
 describe("GET /api/discover (G24)", () => {
+  it("names an offer by its checked name before the person adds it", async () => {
+    // DISPLAY-NAME-INVISIBLE B4: Discover is pre-consent, so a bad stored name reads as the slug.
+    const env = portalEnv();
+    const db = makeTestDb();
+    await freeProduct(db, "mossgarden");
+    await db.run(
+      "UPDATE products SET name = ? WHERE slug = ?",
+      "Moss\u202E",
+      "mossgarden",
+    );
+    const who = await platformAccount(env, db);
+    const { body } = await list(env, db, who);
+    expect(body.offers[0]).toMatchObject({
+      product: "mossgarden",
+      name: "mossgarden",
+    });
+  });
+
   it("offers a product whose oidcDefault rule would issue, with its terms and reason", async () => {
     const env = portalEnv();
     const db = makeTestDb();

@@ -1,0 +1,120 @@
+── truecolor · 80 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mLet New phone sign in?[0m
+[2m│[0m  [2mOnly approve if you started this yourself, on a device in front of you.[0m
+[2m│[0m  [2mNobody from Polaris Locker or a developer will ever ask you for this.[0m
+[2m│[0m  Choose the code it shows.
+[2m│[0m
+[2m│[0m  [1m1[0m  111 111
+[2m│[0m  [1m2[0m  482 913
+[2m│[0m  [1m3[0m  777 777
+[2m│[0m
+[2m└[0m  [1m1-3[0m [2mchoose a code · [0m[1md[0m [2mor Esc deny[0m
+── ansi16 · 80 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[36m◆[0m  [1mLet New phone sign in?[0m
+[2m│[0m  [2mOnly approve if you started this yourself, on a device in front of you.[0m
+[2m│[0m  [2mNobody from Polaris Locker or a developer will ever ask you for this.[0m
+[2m│[0m  Choose the code it shows.
+[2m│[0m
+[2m│[0m  [1m1[0m  111 111
+[2m│[0m  [1m2[0m  482 913
+[2m│[0m  [1m3[0m  777 777
+[2m│[0m
+[2m└[0m  [1m1-3[0m [2mchoose a code · [0m[1md[0m [2mor Esc deny[0m
+── no-color · 80 ──
+┌  [7m Tidewater Studio [0m · devices approve
+│
+◆  [1mLet New phone sign in?[0m
+│  Only approve if you started this yourself, on a device in front of you.
+│  Nobody from Polaris Locker or a developer will ever ask you for this.
+│  Choose the code it shows.
+│
+│  [1m1[0m  111 111
+│  [1m2[0m  482 913
+│  [1m3[0m  777 777
+│
+└  [1m1-3[0m choose a code · [1md[0m or Esc deny
+── ascii · 80 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices approve[0m
+[2m|[0m
+[36m*[0m  [1mLet New phone sign in?[0m
+[2m|[0m  [2mOnly approve if you started this yourself, on a device in front of you.[0m
+[2m|[0m  [2mNobody from Polaris Locker or a developer will ever ask you for this.[0m
+[2m|[0m  Choose the code it shows.
+[2m|[0m
+[2m|[0m  [1m1[0m  111 111
+[2m|[0m  [1m2[0m  482 913
+[2m|[0m  [1m3[0m  777 777
+[2m|[0m
+[2m`[0m  [1m1-3[0m [2mchoose a code - d or Esc deny[0m
+── truecolor · 60 ──
+[2m┌[0m  [1;38;2;255;255;255;48;2;38;132;122m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[38;2;20;121;111m◆[0m  [1mLet New phone sign in?[0m
+[2m│[0m  [2mOnly approve if you started this yourself, on a device in[0m
+[2m│[0m  [2mfront of you. Nobody from Polaris Locker or a developer[0m
+[2m│[0m  [2mwill ever ask you for this.[0m
+[2m│[0m  Choose the code it shows.
+[2m│[0m
+[2m│[0m  [1m1[0m  111 111
+[2m│[0m  [1m2[0m  482 913
+[2m│[0m  [1m3[0m  777 777
+[2m│[0m
+[2m└[0m  [1m1-3[0m [2mchoose a code · [0m[1md[0m [2mor Esc deny[0m
+── ansi16 · 60 ──
+[2m┌[0m  [1;7;36m Tidewater Studio [0m[2m · devices approve[0m
+[2m│[0m
+[36m◆[0m  [1mLet New phone sign in?[0m
+[2m│[0m  [2mOnly approve if you started this yourself, on a device in[0m
+[2m│[0m  [2mfront of you. Nobody from Polaris Locker or a developer[0m
+[2m│[0m  [2mwill ever ask you for this.[0m
+[2m│[0m  Choose the code it shows.
+[2m│[0m
+[2m│[0m  [1m1[0m  111 111
+[2m│[0m  [1m2[0m  482 913
+[2m│[0m  [1m3[0m  777 777
+[2m│[0m
+[2m└[0m  [1m1-3[0m [2mchoose a code · [0m[1md[0m [2mor Esc deny[0m
+── no-color · 60 ──
+┌  [7m Tidewater Studio [0m · devices approve
+│
+◆  [1mLet New phone sign in?[0m
+│  Only approve if you started this yourself, on a device in
+│  front of you. Nobody from Polaris Locker or a developer
+│  will ever ask you for this.
+│  Choose the code it shows.
+│
+│  [1m1[0m  111 111
+│  [1m2[0m  482 913
+│  [1m3[0m  777 777
+│
+└  [1m1-3[0m choose a code · [1md[0m or Esc deny
+── ascii · 60 ──
+[2m+[0m  [1;7;36m Tidewater Studio [0m[2m - devices approve[0m
+[2m|[0m
+[36m*[0m  [1mLet New phone sign in?[0m
+[2m|[0m  [2mOnly approve if you started this yourself, on a device in[0m
+[2m|[0m  [2mfront of you. Nobody from Polaris Locker or a developer[0m
+[2m|[0m  [2mwill ever ask you for this.[0m
+[2m|[0m  Choose the code it shows.
+[2m|[0m
+[2m|[0m  [1m1[0m  111 111
+[2m|[0m  [1m2[0m  482 913
+[2m|[0m  [1m3[0m  777 777
+[2m|[0m
+[2m`[0m  [1m1-3[0m [2mchoose a code - d or Esc deny[0m
+── pipe · 80 ──
+Tidewater Studio · devices approve
+Let New phone sign in?
+Only approve if you started this yourself, on a device in front of you. Nobody
+from Polaris Locker or a developer will ever ask you for this.
+Choose the code it shows.
+
+1  111 111
+2  482 913
+3  777 777
+
+1-3 choose a code · d or Esc deny

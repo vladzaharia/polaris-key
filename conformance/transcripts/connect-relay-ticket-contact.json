@@ -1,0 +1,164 @@
+{
+  "transcriptVersion": 1,
+  "id": "connect-relay-ticket-contact",
+  "description": "A contact ticket (WIRE-CONTRACT-V5 §15.7, §15.10). The ticket request takes the optional body {room:\"c\", rid}: rid is the 22-character room id both linked devices derive from their contact secret. The answer is the account ticket's with \"room\":\"c\" echoed; a client that gets no room echo (an older Worker) treats the contact relay as unsupported. The ticket opens only that contact room. A body that is not exactly those two members, or a rid that is not canonical, is 400 bad_request.",
+  "features": ["connect.links"],
+  "requires": ["core.store"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_Ud2cVY78aHmPxyFnSrCtdqaNdB0q58IYqyPQgNImKfA",
+    "version": "1.0.0"
+  },
+  "steps": [
+    {
+      "action": "relayTicketContact",
+      "note": "A contact ticket.",
+      "args": { "room": "c", "rid": "lXg0MgIHVN5qAmGFUen7vA" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/connect/relay/ticket",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "room": "c", "rid": "lXg0MgIHVN5qAmGFUen7vA" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "ticket": "pkeyrt_8tpb8Hu6C0wsMRz_YG8hDK3JrzWEGKKH",
+                "url": "wss://key.plrs.im/djdl/connect/relay",
+                "protocol": "pkey-relay.1",
+                "expiresAt": 1700000060,
+                "room": "c"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "room": "c",
+        "protocol": "pkey-relay.1",
+        "url": "wss://key.plrs.im/djdl/connect/relay",
+        "expiresIn": 60
+      }
+    },
+    {
+      "action": "relayTicketContact",
+      "note": "A rid one character short.",
+      "args": { "room": "c", "rid": "Xg0MgIHVN5qAmGFUen7vA" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/connect/relay/ticket",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "room": "c", "rid": "Xg0MgIHVN5qAmGFUen7vA" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "bad_request" } }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 400, "code": "bad_request" }
+    },
+    {
+      "action": "relayTicketContact",
+      "note": "Another room kind.",
+      "args": { "room": "a", "rid": "lXg0MgIHVN5qAmGFUen7vA" },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "POST",
+              "path": "/djdl/connect/relay/ticket",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch",
+                "content-type"
+              ],
+              "body": {
+                "json": { "room": "a", "rid": "lXg0MgIHVN5qAmGFUen7vA" },
+                "match": "exact"
+              }
+            },
+            "response": {
+              "status": 400,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": { "error": { "code": "bad_request" } }
+            }
+          }
+        ]
+      },
+      "expect": { "result": "refused", "status": 400, "code": "bad_request" }
+    }
+  ]
+}

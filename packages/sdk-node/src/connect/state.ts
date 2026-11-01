@@ -12,6 +12,12 @@
 //    returns it except `discoveryKeys()` on the client, which hands out bytes.
 
 import { join } from "node:path";
+import { isCanonicalB64url } from "@polaris-key/jws";
+import {
+  MAX_CONTACTS,
+  MAX_CONTACT_CATS,
+  MAX_PENDING_CONTACTS,
+} from "@polaris-key/client-core/peer";
 import {
   FileDeviceKeyStorage,
   InMemoryDeviceKeyStorage,
@@ -42,11 +48,68 @@ export interface ConnectStateRecord {
   /** A pushed roster removed a device, so K_disc was replaced at the Worker and this copy is
    *  stale until the next identity fetch. Absent when false. */
   keysStale?: true;
+  /**
+   * The inter-account links this device holds for the product (WIRE-CONTRACT-V5 §15.10), in the
+   * order they are held, at most `MAX_CONTACTS` and `MAX_PENDING_CONTACTS` pending ones. Each
+   * carries a contact secret: key material of the same standing as K_disc. Absent when none.
+   */
+  contacts?: ContactRow[];
+}
+
+/** One contact as it rests in the record. `secret` and `agreeKey` are canonical base64url of 32 bytes. */
+export interface ContactRow {
+  agreeKey: string;
+  secret: string;
+  label?: string;
+  cats: string[];
+  createdAt: number;
+  /** The host's local "advertise and keep a relay room for this contact" choice. */
+  reachable: boolean;
+  /** Unix seconds when a re-pair stored this contact pending (§15.10); absent for a held one. */
+  pendingSince?: number;
 }
 
 const KEY = /^[A-Za-z0-9_-]{43}$/;
+const CAT = /^[a-z0-9-]{1,32}$/;
+const key32 = (v: unknown): v is string =>
+  typeof v === "string" && KEY.test(v) && isCanonicalB64url(v);
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** The contact rows of a record, or null when any row breaks a rule (the record is then unusable). */
+function parseContacts(v: unknown): ContactRow[] | null {
+  if (!Array.isArray(v)) return null;
+  if (v.length > MAX_CONTACTS + MAX_PENDING_CONTACTS) return null;
+  const out: ContactRow[] = [];
+  for (const r of v) {
+    if (!isRecord(r)) return null;
+    if (!key32(r.agreeKey) || !key32(r.secret)) return null;
+    if (
+      !Array.isArray(r.cats) ||
+      r.cats.length > MAX_CONTACT_CATS ||
+      !r.cats.every((c) => typeof c === "string" && CAT.test(c)) ||
+      new Set(r.cats).size !== r.cats.length
+    )
+      return null;
+    if (r.label !== undefined && typeof r.label !== "string") return null;
+    if (!Number.isSafeInteger(r.createdAt)) return null;
+    if (typeof r.reachable !== "boolean") return null;
+    if (r.pendingSince !== undefined && !Number.isSafeInteger(r.pendingSince))
+      return null;
+    out.push({
+      agreeKey: r.agreeKey,
+      secret: r.secret,
+      ...(r.label !== undefined ? { label: r.label } : {}),
+      cats: [...(r.cats as string[])],
+      createdAt: r.createdAt as number,
+      reachable: r.reachable,
+      ...(r.pendingSince !== undefined
+        ? { pendingSince: r.pendingSince as number }
+        : {}),
+    });
+  }
+  return out;
+}
 
 export function parseConnectState(raw: Buffer): ConnectStateRecord | null {
   let v: unknown;
@@ -82,6 +145,12 @@ export function parseConnectState(raw: Buffer): ConnectStateRecord | null {
       return null;
     registered = { signKey: reg.signKey, agreeKey: reg.agreeKey };
   }
+  let contacts: ContactRow[] | undefined;
+  if (v.contacts !== undefined) {
+    const c = parseContacts(v.contacts);
+    if (c === null) return null;
+    if (c.length > 0) contacts = c;
+  }
   return {
     schema: CONNECT_STATE_SCHEMA,
     product: v.product,
@@ -94,6 +163,7 @@ export function parseConnectState(raw: Buffer): ConnectStateRecord | null {
     registered,
     storedAt: v.storedAt as number,
     ...(v.keysStale === true ? { keysStale: true as const } : {}),
+    ...(contacts !== undefined ? { contacts } : {}),
   };
 }
 

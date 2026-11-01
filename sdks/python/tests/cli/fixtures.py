@@ -31,6 +31,7 @@ from polaris_key.ui.core.models import (
 )
 from polaris_key.ui.terminal import screens
 from polaris_key.ui.terminal.env import TermEnv
+from polaris_key.ui.terminal.nearby import NearbyApprovalView, NearbyLoginView, nearby_approval, nearby_login
 from polaris_key.ui.terminal.parts import Kit
 from polaris_key.ui.terminal.text import Line
 
@@ -118,6 +119,7 @@ _ROWS = (
 )
 _NOTES = ("Stem export in one click, with loudness matching", "Track freeze now works with every plug-in")
 _UPDATE = dict(version="2.5", current="2.4.1", size="61 MB", notes=_NOTES, notes_url="https://tidewater.app/releases/2.5")
+_ASK = NearbyApprovalView("ask", device="New phone", codes=("111 111", "482 913", "777 777"))
 _LIMIT = ActivateView("DeviceLimit", "browser-mode", "device-limit", "device_limit", KEY, 3, 3, "https://polaris.locker/#/p/tidewater/devices")
 
 
@@ -126,24 +128,67 @@ FIXTURES: Tuple[Fixture, ...] = (
     Fixture("PolarisKeyGate", "needs-activation", "status", _gate("needs-activation")),
     Fixture("PolarisKeyGate", "licensed", "status", _gate("not-applicable")),
     Fixture("AccountAndLicense", "signed-in", "status", _gate("ok", **_ACCOUNT)),
-    Fixture("AccountAndLicense", "key-only", "status", _gate("ok", tier="Pro", term="Lifetime", version="2.4.1", channel="stable")),
+    Fixture(
+        "AccountAndLicense",
+        "key-only",
+        "status",
+        _gate("ok", tier="Pro", term="Lifetime", version="2.4.1", channel="stable"),
+    ),
     Fixture("GraceBanner", "days-left", "status", _gate("grace", grace_until=NOW + 3 * DAY, **_ACCOUNT)),
     Fixture("GraceBanner", "last-day", "status", _gate("grace", grace_until=NOW + DAY // 2, **_ACCOUNT)),
     Fixture("StatusScreen", "revoked", "status", _gate("revoked")),
     Fixture("StatusScreen", "expired", "status", _gate("expired")),
     Fixture("StatusScreen", "version-too-old", "status", _gate("version-too-old", allowed_min="2.4.0")),
-    Fixture("StatusScreen", "version-too-new", "status", _gate("version-too-new", allowed_min="1.0.0", allowed_max="2.3.9")),
+    Fixture(
+        "StatusScreen", "version-too-new", "status", _gate("version-too-new", allowed_min="1.0.0", allowed_max="2.3.9")
+    ),
     Fixture("StatusScreen", "channel-not-entitled", "status", _gate("channel-not-entitled")),
     # ── Boot ──
-    Fixture("Boot", "progress", "boot", lambda k: screens.boot_progress(k, "gate", 2) + screens.boot(k, BootView("Boot", "progress", "ready"), "boot")),
-    Fixture("Boot", "progress", "boot", lambda k: screens.boot(k, BootView("Boot", "progress", "ready", update_available=True), "boot"), "update"),
+    Fixture(
+        "Boot",
+        "progress",
+        "boot",
+        lambda k: screens.boot_progress(k, "gate", 2) + screens.boot(k, BootView("Boot", "progress", "ready"), "boot"),
+    ),
+    Fixture(
+        "Boot",
+        "progress",
+        "boot",
+        lambda k: screens.boot(k, BootView("Boot", "progress", "ready", update_available=True), "boot"),
+        "update",
+    ),
     Fixture("Boot", "fetching", "boot", lambda k: screens.boot_progress(k, "fetch", 2, done="38 MB", total="91 MB")),
-    Fixture("Boot", "consent", "boot", lambda k: screens.boot(k, BootView("Boot", "consent", size="91 MB", metered=True), "boot")),
-    Fixture("Boot", "offline", "boot", lambda k: screens.boot(k, BootView("Boot", "offline", "offline", playable=True), "boot")),
-    Fixture("Boot", "blocked", "boot", lambda k: screens.boot(k, BootView("Boot", "blocked", "blocked", "version-too-old"), "boot")),
+    Fixture(
+        "Boot",
+        "consent",
+        "boot",
+        lambda k: screens.boot(k, BootView("Boot", "consent", size="91 MB", metered=True), "boot"),
+    ),
+    Fixture(
+        "Boot",
+        "offline",
+        "boot",
+        lambda k: screens.boot(k, BootView("Boot", "offline", "offline", playable=True), "boot"),
+    ),
+    Fixture(
+        "Boot",
+        "blocked",
+        "boot",
+        lambda k: screens.boot(k, BootView("Boot", "blocked", "blocked", "version-too-old"), "boot"),
+    ),
     Fixture("Boot", "declined", "boot", lambda k: screens.boot(k, BootView("Boot", "declined", "fetch"), "boot")),
-    Fixture("Boot", "rolled-back", "boot", lambda k: screens.boot(k, BootView("Boot", "rolled-back", "ready", rolled_back=True), "boot")),
-    Fixture("Boot", "error", "boot", lambda k: screens.boot(k, BootView("Boot", "error", "error", code="mount-failed"), "boot")),
+    Fixture(
+        "Boot",
+        "rolled-back",
+        "boot",
+        lambda k: screens.boot(k, BootView("Boot", "rolled-back", "ready", rolled_back=True), "boot"),
+    ),
+    Fixture(
+        "Boot",
+        "error",
+        "boot",
+        lambda k: screens.boot(k, BootView("Boot", "error", "error", code="mount-failed"), "boot"),
+    ),
     # ── SignIn and SignInHandoff (SIGN-IN.md §4.15 frame 32: the browser, or a code when headless) ──
     Fixture("SignInHandoff", "starting", "login", lambda k: screens.sign_in(k, SignInModel().view, "login", frame=2)),
     Fixture("SignIn", "handoff", "login", _sign_in(False)),
@@ -163,57 +208,384 @@ FIXTURES: Tuple[Fixture, ...] = (
         ),
     ),
     Fixture(
-        "SignIn", "done", "login", _sign_in(False, ("finished", _Result("signed_in", "Mara Fennick", "mara@fennick.studio")))
+        "SignIn",
+        "done",
+        "login",
+        _sign_in(False, ("finished", _Result("signed_in", "Mara Fennick", "mara@fennick.studio"))),
     ),
     Fixture("SignInHandoff", "expired", "login", _sign_in(True, ("finished", _Result("expired")))),
     Fixture("SignInHandoff", "denied", "login", _sign_in(True, ("errored", "sign-in-denied"))),
     Fixture("SignInHandoff", "failed", "login", _sign_in(True, ("errored", "sign-in-failed"))),
     Fixture("SignInHandoff", "cancelled", "login", _sign_in(False, ("cancelled", None))),
     Fixture("SignIn", "error", "login", _sign_in(False, ("failed", "sign-in-unavailable"))),
+    # ── SignIn nearby (I-47.13): login looks for the person's other devices first ──
+    Fixture("SignIn", "nearby-prompt", "login", lambda k: nearby_login(k, NearbyLoginView("prompt"), "login")),
+    Fixture(
+        "SignIn",
+        "nearby-wait",
+        "login",
+        lambda k: nearby_login(k, NearbyLoginView("looking"), "login", frame=2),
+        "looking",
+    ),
+    Fixture(
+        "SignIn",
+        "nearby-wait",
+        "login",
+        lambda k: nearby_login(k, NearbyLoginView("pick", approvers=("Ana's laptop", "Ben's phone")), "login"),
+        "pick",
+    ),
+    Fixture(
+        "SignIn",
+        "nearby-wait",
+        "login",
+        lambda k: nearby_login(k, NearbyLoginView("pick", approvers=("Ana's laptop",)), "login"),
+        "pick-one",
+    ),
+    Fixture(
+        "SignIn",
+        "nearby-wait",
+        "login",
+        lambda k: nearby_login(k, NearbyLoginView("wait", code="482 913", device="Ana's laptop"), "login", frame=2),
+    ),
+    Fixture(
+        "SignIn",
+        "nearby-done",
+        "login",
+        lambda k: nearby_login(k, NearbyLoginView("done", name="Mara Fennick", email="mara@fennick.studio"), "login"),
+    ),
+    Fixture(
+        "SignIn",
+        "nearby-done",
+        "login",
+        lambda k: nearby_login(k, NearbyLoginView("signed-out"), "login"),
+        "signed-out",
+    ),
+    # ── NearbyApproval: devices approve ──
+    Fixture(
+        "NearbyApproval", "entry", "devices approve", lambda k: nearby_approval(k, NearbyApprovalView("entry"), frame=2)
+    ),
+    Fixture(
+        "NearbyApproval",
+        "entry",
+        "devices approve",
+        lambda k: nearby_approval(k, NearbyApprovalView("unsupported")),
+        "unsupported",
+    ),
+    Fixture("NearbyApproval", "ask", "devices approve", lambda k: nearby_approval(k, _ASK)),
+    Fixture(
+        "NearbyApproval",
+        "approved",
+        "devices approve",
+        lambda k: nearby_approval(k, NearbyApprovalView("approved", device="New phone")),
+    ),
+    Fixture(
+        "NearbyApproval",
+        "mismatch",
+        "devices approve",
+        lambda k: nearby_approval(k, NearbyApprovalView("mismatch", device="New phone")),
+    ),
+    Fixture(
+        "NearbyApproval",
+        "denied",
+        "devices approve",
+        lambda k: nearby_approval(k, NearbyApprovalView("denied", device="New phone")),
+    ),
+    Fixture(
+        "NearbyApproval",
+        "not-nearby",
+        "devices approve",
+        lambda k: nearby_approval(k, NearbyApprovalView("not-nearby", device="New phone")),
+    ),
+    Fixture(
+        "NearbyApproval",
+        "expired",
+        "devices approve",
+        lambda k: nearby_approval(k, NearbyApprovalView("expired", device="New phone")),
+    ),
+    Fixture(
+        "NearbyApproval",
+        "device-limit",
+        "devices approve",
+        lambda k: nearby_approval(k, NearbyApprovalView("device-limit", device="New phone")),
+    ),
+    Fixture(
+        "NearbyApproval",
+        "choose",
+        "devices approve",
+        lambda k: nearby_approval(
+            k, NearbyApprovalView("choose", device="New phone", choices=("Pro", "Harbor Audio team"), create=True)
+        ),
+    ),
+    Fixture(
+        "NearbyApproval",
+        "account-required",
+        "devices approve",
+        lambda k: nearby_approval(k, NearbyApprovalView("account-required")),
+    ),
+    Fixture(
+        "NearbyApproval",
+        "rate-limited",
+        "devices approve",
+        lambda k: nearby_approval(k, NearbyApprovalView("rate-limited", device="New phone")),
+    ),
     # ── Activate ──
     Fixture("Activate", "empty", "activate", lambda k: screens.key_entry(k, "", parse_key(""))),
-    Fixture("Activate", "typing", "activate", lambda k: screens.key_entry(k, "pkey_tidewater_7Q2M", parse_key("pkey_tidewater_7Q2M"))),
+    Fixture(
+        "Activate",
+        "typing",
+        "activate",
+        lambda k: screens.key_entry(k, "pkey_tidewater_7Q2M", parse_key("pkey_tidewater_7Q2M")),
+    ),
     Fixture("Activate", "parsed", "activate", lambda k: screens.key_entry(k, KEY, parse_key(KEY))),
-    Fixture("Activate", "cut-short", "activate", lambda k: screens.key_entry(k, KEY[:25], parse_key(KEY[:25], final=True))),
-    Fixture("Activate", "rejected", "activate", lambda k: screens.key_entry(k, "TIDE-1234-ABCD", parse_key("TIDE-1234-ABCD", final=True))),
+    Fixture(
+        "Activate", "cut-short", "activate", lambda k: screens.key_entry(k, KEY[:25], parse_key(KEY[:25], final=True))
+    ),
+    Fixture(
+        "Activate",
+        "rejected",
+        "activate",
+        lambda k: screens.key_entry(k, "TIDE-1234-ABCD", parse_key("TIDE-1234-ABCD", final=True)),
+    ),
     Fixture("Activate", "busy", "activate", lambda k: screens.key_entry(k, KEY, parse_key(KEY), busy=True, frame=2)),
-    Fixture("Activate", "device-limit", "activate", lambda k: screens.activate(k, ActivateView("DeviceLimit", "failed", "device-limit", "device_limit", KEY), "activate")),
-    Fixture("Activate", "done", "activate", lambda k: screens.activate(k, ActivateView("Activate", "done", "ok", key=KEY), "activate")),
+    Fixture(
+        "Activate",
+        "device-limit",
+        "activate",
+        lambda k: screens.activate(
+            k, ActivateView("DeviceLimit", "failed", "device-limit", "device_limit", KEY), "activate"
+        ),
+    ),
+    Fixture(
+        "Activate",
+        "done",
+        "activate",
+        lambda k: screens.activate(k, ActivateView("Activate", "done", "ok", key=KEY), "activate"),
+    ),
     # ── DeviceLimit (browser mode, then Try again) ──
     Fixture("DeviceLimit", "browser-mode", "activate", lambda k: screens.device_limit(k, _LIMIT, "activate")),
-    Fixture("DeviceLimit", "browser-mode", "activate", lambda k: screens.device_limit(k, _LIMIT, "activate", opened=True), "opened"),
+    Fixture(
+        "DeviceLimit",
+        "browser-mode",
+        "activate",
+        lambda k: screens.device_limit(k, _LIMIT, "activate", opened=True),
+        "opened",
+    ),
     # ── OfflineActivation ──
-    Fixture("OfflineActivation", "default", "offline-request", lambda k: screens.offline_activation(k, OfflineView("OfflineActivation", "default", request_code="dev_8f3a2c19e04b"), "offline-request")),
-    Fixture("OfflineActivation", "rejected-signature", "import-bundle", lambda k: screens.offline_activation(k, OfflineView("OfflineActivation", "rejected-signature", code="bundle-jws-rejected"), "import-bundle")),
-    Fixture("OfflineActivation", "done", "import-bundle", lambda k: screens.offline_activation(k, OfflineView("OfflineActivation", "done", imported=("license", "config")), "import-bundle")),
+    Fixture(
+        "OfflineActivation",
+        "default",
+        "offline-request",
+        lambda k: screens.offline_activation(
+            k, OfflineView("OfflineActivation", "default", request_code="dev_8f3a2c19e04b"), "offline-request"
+        ),
+    ),
+    Fixture(
+        "OfflineActivation",
+        "rejected-signature",
+        "import-bundle",
+        lambda k: screens.offline_activation(
+            k, OfflineView("OfflineActivation", "rejected-signature", code="bundle-jws-rejected"), "import-bundle"
+        ),
+    ),
+    Fixture(
+        "OfflineActivation",
+        "done",
+        "import-bundle",
+        lambda k: screens.offline_activation(
+            k, OfflineView("OfflineActivation", "done", imported=("license", "config")), "import-bundle"
+        ),
+    ),
     # ── Devices ──
-    Fixture("Devices", "list", "devices", lambda k: screens.devices(k, DevicesView("Devices", "list", _ROWS), "devices")),
-    Fixture("Devices", "confirming", "devices", lambda k: screens.devices(k, DevicesView("Devices", "confirming", target=_ROWS[0]), "devices")),
+    Fixture(
+        "Devices", "list", "devices", lambda k: screens.devices(k, DevicesView("Devices", "list", _ROWS), "devices")
+    ),
+    Fixture(
+        "Devices",
+        "confirming",
+        "devices",
+        lambda k: screens.devices(k, DevicesView("Devices", "confirming", target=_ROWS[0]), "devices"),
+    ),
     Fixture("Devices", "empty", "devices", lambda k: screens.devices(k, DevicesView("Devices", "empty"), "devices")),
-    Fixture("Devices", "browser-mode", "devices", lambda k: screens.devices(k, DevicesView("Devices", "browser-mode"), "devices")),
+    Fixture(
+        "Devices",
+        "browser-mode",
+        "devices",
+        lambda k: screens.devices(k, DevicesView("Devices", "browser-mode"), "devices"),
+    ),
     # ── UpdatePrompt, UpdateProgress, ReleaseNotes ──
-    Fixture("UpdatePrompt", "available", "update", lambda k: screens.update(k, UpdateView("UpdatePrompt", "available", **_UPDATE), "update")),  # type: ignore[arg-type]
-    Fixture("UpdatePrompt", "downloading", "update", lambda k: screens.update(k, UpdateView("UpdatePrompt", "downloading", "2.5", "2.4.1", fraction=0.62, done="38 MB", total="61 MB", eta="20 s"), "update")),
-    Fixture("UpdatePrompt", "ready", "update", lambda k: screens.update(k, UpdateView("UpdatePrompt", "ready", "2.5", "2.4.1"), "update")),
-    Fixture("UpdatePrompt", "mandatory", "update", lambda k: screens.update(k, UpdateView("UpdatePrompt", "mandatory", "2.5", "2.4.1", critical=True), "update")),
-    Fixture("UpdatePrompt", "blocked", "update", lambda k: screens.update(k, UpdateView("UpdatePrompt", "blocked", current="2.4.1"), "update")),
-    Fixture("UpdatePrompt", "store", "update", lambda k: screens.update(k, UpdateView("UpdatePrompt", "store", "2.5", "2.4.1", listing_url="https://apps.apple.com/app/id6450000000"), "update")),
-    Fixture("UpdatePrompt", "platform", "update", lambda k: screens.update(k, UpdateView("UpdatePrompt", "platform", "2.5", "2.4.1"), "update")),
-    Fixture("UpdatePrompt", "revoked-required-content", "update", lambda k: screens.update(k, UpdateView("UpdatePrompt", "revoked-required-content", "2.5", "2.4.1"), "update")),
-    Fixture("UpdatePrompt", "up-to-date", "update", lambda k: screens.update(k, UpdateView("UpdatePrompt", "up-to-date", current="2.4.1"), "update")),
-    Fixture("UpdateProgress", "queued", "packs", lambda k: screens.update_progress(k, ProgressView("UpdateProgress", "queued", "studio-presets"), "packs")),
-    Fixture("UpdateProgress", "downloading", "packs", lambda k: screens.update_progress(k, ProgressView("UpdateProgress", "downloading", "studio-presets", 0.42, "38 MB", "91 MB", "1 min"), "packs")),
-    Fixture("UpdateProgress", "installing", "packs", lambda k: screens.update_progress(k, ProgressView("UpdateProgress", "installing", "studio-presets"), "packs")),
-    Fixture("UpdateProgress", "failed", "packs", lambda k: screens.update_progress(k, ProgressView("UpdateProgress", "failed", "studio-presets", code="chunk-bundle-truncated"), "packs")),
-    Fixture("UpdateProgress", "done", "packs", lambda k: screens.update_progress(k, ProgressView("UpdateProgress", "done", "studio-presets"), "packs")),
-    Fixture("ReleaseNotes", "list", "changelog", lambda k: screens.release_notes(k, ReleaseNotesView("ReleaseNotes", "list", (("2.5", "2026-10-01", _NOTES, "https://tidewater.app/releases/2.5"), ("2.4.1", "2026-09-12", ("Fixes a crash when a plug-in is missing",), None))), "changelog")),
-    Fixture("ReleaseNotes", "empty", "changelog", lambda k: screens.release_notes(k, ReleaseNotesView("ReleaseNotes", "empty"), "changelog")),
-    Fixture("ReleaseNotes", "error", "changelog", lambda k: screens.release_notes(k, ReleaseNotesView("ReleaseNotes", "error"), "changelog")),
+    Fixture(
+        "UpdatePrompt",
+        "available",
+        "update",
+        lambda k: screens.update(k, UpdateView("UpdatePrompt", "available", **_UPDATE), "update"),
+    ),  # type: ignore[arg-type]
+    Fixture(
+        "UpdatePrompt",
+        "downloading",
+        "update",
+        lambda k: screens.update(
+            k,
+            UpdateView(
+                "UpdatePrompt", "downloading", "2.5", "2.4.1", fraction=0.62, done="38 MB", total="61 MB", eta="20 s"
+            ),
+            "update",
+        ),
+    ),
+    Fixture(
+        "UpdatePrompt",
+        "ready",
+        "update",
+        lambda k: screens.update(k, UpdateView("UpdatePrompt", "ready", "2.5", "2.4.1"), "update"),
+    ),
+    Fixture(
+        "UpdatePrompt",
+        "mandatory",
+        "update",
+        lambda k: screens.update(k, UpdateView("UpdatePrompt", "mandatory", "2.5", "2.4.1", critical=True), "update"),
+    ),
+    Fixture(
+        "UpdatePrompt",
+        "blocked",
+        "update",
+        lambda k: screens.update(k, UpdateView("UpdatePrompt", "blocked", current="2.4.1"), "update"),
+    ),
+    Fixture(
+        "UpdatePrompt",
+        "store",
+        "update",
+        lambda k: screens.update(
+            k,
+            UpdateView("UpdatePrompt", "store", "2.5", "2.4.1", listing_url="https://apps.apple.com/app/id6450000000"),
+            "update",
+        ),
+    ),
+    Fixture(
+        "UpdatePrompt",
+        "platform",
+        "update",
+        lambda k: screens.update(k, UpdateView("UpdatePrompt", "platform", "2.5", "2.4.1"), "update"),
+    ),
+    Fixture(
+        "UpdatePrompt",
+        "revoked-required-content",
+        "update",
+        lambda k: screens.update(k, UpdateView("UpdatePrompt", "revoked-required-content", "2.5", "2.4.1"), "update"),
+    ),
+    Fixture(
+        "UpdatePrompt",
+        "up-to-date",
+        "update",
+        lambda k: screens.update(k, UpdateView("UpdatePrompt", "up-to-date", current="2.4.1"), "update"),
+    ),
+    Fixture(
+        "UpdateProgress",
+        "queued",
+        "packs",
+        lambda k: screens.update_progress(k, ProgressView("UpdateProgress", "queued", "studio-presets"), "packs"),
+    ),
+    Fixture(
+        "UpdateProgress",
+        "downloading",
+        "packs",
+        lambda k: screens.update_progress(
+            k, ProgressView("UpdateProgress", "downloading", "studio-presets", 0.42, "38 MB", "91 MB", "1 min"), "packs"
+        ),
+    ),
+    Fixture(
+        "UpdateProgress",
+        "installing",
+        "packs",
+        lambda k: screens.update_progress(k, ProgressView("UpdateProgress", "installing", "studio-presets"), "packs"),
+    ),
+    Fixture(
+        "UpdateProgress",
+        "failed",
+        "packs",
+        lambda k: screens.update_progress(
+            k, ProgressView("UpdateProgress", "failed", "studio-presets", code="chunk-bundle-truncated"), "packs"
+        ),
+    ),
+    Fixture(
+        "UpdateProgress",
+        "done",
+        "packs",
+        lambda k: screens.update_progress(k, ProgressView("UpdateProgress", "done", "studio-presets"), "packs"),
+    ),
+    Fixture(
+        "ReleaseNotes",
+        "list",
+        "changelog",
+        lambda k: screens.release_notes(
+            k,
+            ReleaseNotesView(
+                "ReleaseNotes",
+                "list",
+                (
+                    ("2.5", "2026-10-01", _NOTES, "https://tidewater.app/releases/2.5"),
+                    ("2.4.1", "2026-09-12", ("Fixes a crash when a plug-in is missing",), None),
+                ),
+            ),
+            "changelog",
+        ),
+    ),
+    Fixture(
+        "ReleaseNotes",
+        "empty",
+        "changelog",
+        lambda k: screens.release_notes(k, ReleaseNotesView("ReleaseNotes", "empty"), "changelog"),
+    ),
+    Fixture(
+        "ReleaseNotes",
+        "error",
+        "changelog",
+        lambda k: screens.release_notes(k, ReleaseNotesView("ReleaseNotes", "error"), "changelog"),
+    ),
     # ── Settings (config) ──
-    Fixture("Settings", "list", "config", lambda k: screens.settings(k, SettingsView("Settings", "list", (SettingRow("audio.sampleRate", 48000, "default"), SettingRow("ui.theme", "dark", "local"))), "config")),
-    Fixture("Settings", "locked", "config", lambda k: screens.settings(k, SettingsView("Settings", "locked", (SettingRow("telemetry.crashReports", True, "enforced", "Fennick Studio"), SettingRow("ui.theme", "dark", "local"))), "config")),
-    Fixture("Settings", "saving", "config", lambda k: screens.settings(k, SettingsView("Settings", "saved", (SettingRow("ui.theme", "light", "local"),)), "config")),
-    Fixture("Settings", "error", "config", lambda k: screens.settings(k, SettingsView("Settings", "error", code="managed_by_admin"), "config")),
+    Fixture(
+        "Settings",
+        "list",
+        "config",
+        lambda k: screens.settings(
+            k,
+            SettingsView(
+                "Settings",
+                "list",
+                (SettingRow("audio.sampleRate", 48000, "default"), SettingRow("ui.theme", "dark", "local")),
+            ),
+            "config",
+        ),
+    ),
+    Fixture(
+        "Settings",
+        "locked",
+        "config",
+        lambda k: screens.settings(
+            k,
+            SettingsView(
+                "Settings",
+                "locked",
+                (
+                    SettingRow("telemetry.crashReports", True, "enforced", "Fennick Studio"),
+                    SettingRow("ui.theme", "dark", "local"),
+                ),
+            ),
+            "config",
+        ),
+    ),
+    Fixture(
+        "Settings",
+        "saving",
+        "config",
+        lambda k: screens.settings(
+            k, SettingsView("Settings", "saved", (SettingRow("ui.theme", "light", "local"),)), "config"
+        ),
+    ),
+    Fixture(
+        "Settings",
+        "error",
+        "config",
+        lambda k: screens.settings(k, SettingsView("Settings", "error", code="managed_by_admin"), "config"),
+    ),
 )
 
 _AUTO_SIGN_IN = (
@@ -239,9 +611,6 @@ NOT_DRAWN = {
     ("SignIn", "link-offer"): _AUTO_SIGN_IN,
     ("SignIn", "link-done"): _AUTO_SIGN_IN,
     ("SignIn", "link-conflict"): _AUTO_SIGN_IN,
-    ("SignIn", "nearby-prompt"): _AUTO_SIGN_IN,
-    ("SignIn", "nearby-wait"): _AUTO_SIGN_IN,
-    ("SignIn", "nearby-done"): _AUTO_SIGN_IN,
     ("SignIn", "device-limit"): (
         "a device limit with no license rows follows an automatic or provider sign-in; "
         "the terminal's device limit is Activate device-limit, drawn by the activate verb"
@@ -279,10 +648,12 @@ OUT_OF_SCOPE = {
     "About": "should tier; doctor covers diagnostics",
     "ChannelPicker": "should tier; update --channel",
     "Toast": "a terminal prints lines, it has no toasts",
-    "NearbyApproval": "the approving device is an app with a screen; a terminal never approves a nearby sign-in",
     "UnlockSync": "should tier; no CLI verb for unlocking synced data yet",
     "RecoveryCode": "should tier; no CLI verb for the recovery code yet",
     "RingChange": "should tier; no CLI verb for a linked-device change yet",
     "ActivateDone": "should tier; the activate verb prints the result and the account hint in its own lines",
     "AddToAccount": "should tier; the terminal adds a key to an account through login, not a form",
+    "SaveConflict": "should tier; a terminal has no synced save to choose between, and no CLI verb for it yet",
+    "LinkPairing": "should tier; Cloud Connect pairing has no CLI verb yet",
+    "TransferOffer": "should tier; Direct Transfer has no CLI verb yet",
 }

@@ -101,6 +101,21 @@ function rowsFor(api: Api, sdk: Sdk): Row[] {
 }
 
 const q = (s: string): string => JSON.stringify(s);
+
+/** The `identity.signIn.session` members only the nearby session (D, I-47) has; the device-code and redirect sessions do not. */
+const NEARBY_SESSION = new Set([
+  "approvers",
+  "onApprovers",
+  "code",
+  "result",
+  "onResult",
+  "choose",
+  "confirmAccount",
+  "declineAccount",
+  "wrap",
+  "onWrap",
+]);
+const leafOf = (id: string): string => id.split(".").pop()!;
 const BANNER = (c: string): string =>
   `${c} GENERATED FILE — do not edit by hand. Source: conformance/parity/api.json; regenerate with \`pnpm gen api\`.`;
 
@@ -125,6 +140,9 @@ function typePath(root: string, path: string): string {
     );
 }
 
+/** Direct Transfer's offer-answer rows: members only where the offer is an object (Python, Kotlin). */
+const TRANSFER_ANSWER = new Set(["accept", "decline"]);
+
 function renderNode(api: Api): string {
   const lines: string[] = [];
   const types: string[] = [];
@@ -144,13 +162,38 @@ function renderNode(api: Api): string {
       lines.push(
         `it(${q(r.id)}, () => expect("signIn" in IdentityClient.prototype).toBe(true));`,
       );
+    } else if (r.id.startsWith("identity.nearby.")) {
+      // M's side of nearby approval (I-47): `available` and `onRequest` live on the client's `nearby` member.
+      types.push(`IdentityClient["nearby"][${q(r.name)}]`);
     } else if (r.id.startsWith("identity.signIn.session.")) {
-      // The sessions `signIn.start` answers: device code (wait, reopen, cancel), redirect (complete, cancel).
+      // The sessions `signIn.start` answers: device code (wait, reopen, cancel), redirect (complete, cancel),
+      // nearby (D: approvers, choose, code, confirmAccount ...).
       const cls =
-        r.name === "complete" ? "RedirectSession" : "DeviceCodeSession";
+        r.name === "complete"
+          ? "RedirectSession"
+          : NEARBY_SESSION.has(leafOf(r.id))
+            ? "NearbySignInSession"
+            : "DeviceCodeSession";
       lines.push(
         `it(${q(r.id)}, () => expect(${q(r.name)} in ${cls}.prototype).toBe(true));`,
       );
+    } else if (r.id.startsWith("cloudConnect.nearby.")) {
+      // Nearby approval (CC-15): request and onRequest live on `cloudConnect.nearby`.
+      lines.push(
+        `it(${q(r.id)}, () => expect(${q(r.name)} in CloudNearby.prototype).toBe(true));`,
+      );
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloudConnect.links`.
+      lines.push(
+        `it(${q(r.id)}, () => expect(${q(r.name)} in CloudLinks.prototype).toBe(true));`,
+      );
+    } else if (r.id.startsWith("cloudConnect.transfer.")) {
+      // Direct Transfer (CC-20): the verbs live on `cloudConnect.transfer` (`CloudTransfer`). The offer's answer is
+      // the handler's return value in Node, so accept and decline have no member to assert.
+      if (!TRANSFER_ANSWER.has(leafOf(r.id)))
+        lines.push(
+          `it(${q(r.id)}, () => expect(${q(r.name)} in CloudTransfer.prototype).toBe(true));`,
+        );
     } else if (r.id.startsWith("identity.choice.")) {
       // The licence choice an app shows itself: licenses, devices, complete, cancel live on `identity.choice`.
       lines.push(
@@ -179,11 +222,15 @@ function renderNode(api: Api): string {
     `import {`,
     `  ChoiceClient,`,
     `  CloudConnect,`,
+    `  CloudLinks,`,
+    `  CloudNearby,`,
+    `  CloudTransfer,`,
     `  ConfigClient,`,
     `  DeviceCodeSession,`,
     `  EntitlementsClient,`,
     `  IdentityClient,`,
     `  LicenseClient,`,
+    `  NearbySignInSession,`,
     `  PolarisKeyClient,`,
     `  RedirectSession,`,
     `  type ConfigSetting,`,
@@ -273,13 +320,29 @@ function renderPython(api: Api): string {
       continue; // an instance attribute set in __init__
     } else if (r.handle) {
       attrs.push(`(${q(r.id)}, "ConfigSetting", ${q(r.name)})`);
+    } else if (r.id.startsWith("cloudConnect.nearby.")) {
+      // Nearby approval (CC-15): request and on_request live on `cloud_connect.nearby`.
+      attrs.push(`(${q(r.id)}, "CloudNearby", ${q(r.name)})`);
     } else if (r.id === "identity.signIn") {
       // sign_in is a property on the identity client; start is its one verb.
       attrs.push(`(${q(r.id)}, "IdentityClient", "sign_in")`);
     } else if (r.id === "identity.signIn.start") {
       attrs.push(`(${q(r.id)}, "SignInNamespace", "start")`);
+    } else if (r.id.startsWith("identity.nearby.")) {
+      // M's side of nearby approval (I-47): `available` and `on_request` live on `identity.nearby`.
+      attrs.push(`(${q(r.id)}, "NearbyNamespace", ${q(r.name)})`);
     } else if (r.id.startsWith("identity.signIn.session.")) {
-      attrs.push(`(${q(r.id)}, "SignInSession", ${q(r.name)})`);
+      attrs.push(
+        `(${q(r.id)}, ${q(NEARBY_SESSION.has(leafOf(r.id)) ? "NearbySignInSession" : "SignInSession")}, ${q(r.name)})`,
+      );
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloud_connect.links`.
+      attrs.push(`(${q(r.id)}, "CloudLinks", ${q(r.name)})`);
+    } else if (r.id.startsWith("cloudConnect.transfer.")) {
+      // Direct Transfer (CC-20): the verbs live on `cloud_connect.transfer` (`Transfer`); the offer answers on `IncomingOffer`.
+      attrs.push(
+        `(${q(r.id)}, ${q(TRANSFER_ANSWER.has(leafOf(r.id)) ? "IncomingOffer" : "Transfer")}, ${q(r.name)})`,
+      );
     } else if (PY_CLASS[r.ns]) {
       attrs.push(`(${q(r.id)}, ${q(PY_CLASS[r.ns]!)}, ${q(r.name)})`);
     }
@@ -302,7 +365,12 @@ import pytest
 from polaris_key.client import PolarisKeyClient
 from polaris_key.config.client import ConfigClient, ConfigSetting
 from polaris_key.connect.cloud_connect import CloudConnect
+from polaris_key.connect.links import CloudLinks
+from polaris_key.connect.nearby import CloudNearby
+from polaris_key.connect.transfer import IncomingOffer, Transfer
 from polaris_key.identity.client import IdentityClient
+from polaris_key.identity.auto_sign_in import NearbyNamespace
+from polaris_key.identity.nearby_session import NearbySignInSession
 from polaris_key.identity.sign_in import SignInNamespace, SignInSession
 from polaris_key.license.client import LicenseClient
 from polaris_key.license.entitlements import EntitlementsClient
@@ -314,9 +382,15 @@ CLASSES = {
     "IdentityClient": IdentityClient,
     "SignInNamespace": SignInNamespace,
     "SignInSession": SignInSession,
+    "NearbyNamespace": NearbyNamespace,
+    "NearbySignInSession": NearbySignInSession,
     "LicenseClient": LicenseClient,
     "EntitlementsClient": EntitlementsClient,
     "CloudConnect": CloudConnect,
+    "CloudLinks": CloudLinks,
+    "CloudNearby": CloudNearby,
+    "IncomingOffer": IncomingOffer,
+    "Transfer": Transfer,
 }
 
 ${list("ATTRS", attrs)}
@@ -360,6 +434,8 @@ const SWIFT_TYPE: Record<string, string> = {
   packs: "PacksClient",
   cloudConnect: "CloudConnect",
   cloudSync: "CloudSyncClient",
+  SavesClient: "SavesClient",
+  SaveTransfer: "SaveTransfer",
   SignInNamespace: "SignInNamespace",
   SignInSession: "SignInSession",
   ChoiceNamespace: "ChoiceNamespace",
@@ -430,6 +506,17 @@ function renderSwift(api: Api): string {
       lines.push(
         `_ = \\${r.name === "events" ? "PolarisKeyClient" : (SWIFT_TYPE[r.ns] ?? "PolarisKeyClient")}.${r.name}  // ${r.id}`,
       );
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
+      lines.push(`_ = CloudLinks.${ref}  // ${r.id}`);
+    } else if (r.id.startsWith("cloudConnect.nearby.")) {
+      // Nearby approval (CC-15): request and onRequest live on `cloudConnect.nearby`.
+      lines.push(`_ = CloudNearby.${ref}  // ${r.id}`);
+    } else if (r.id.startsWith("cloudConnect.transfer.")) {
+      // Direct Transfer (CC-20): the verbs live on `cloudConnect.transfer` (`CloudTransfer`). The handler returns the
+      // answer (`TransferDecision`), so accept and decline have no member to assert.
+      if (!TRANSFER_ANSWER.has(leafOf(r.id)))
+        lines.push(`_ = CloudTransfer.${ref}  // ${r.id}`);
     } else if (SWIFT_TYPE[r.ns]) {
       lines.push(`_ = ${SWIFT_TYPE[r.ns]}.${ref}  // ${r.id}`);
     }
@@ -469,7 +556,10 @@ const KOTLIN_TYPE: Record<string, string> = {
   packs: "PacksClient",
   presentation: "PresentationSource",
   cloudConnect: "CloudConnect",
+  CloudNearby: "CloudNearby",
   cloudSync: "CloudSyncClient",
+  SavesClient: "SavesClient",
+  SaveTransfer: "SaveTransfer",
 };
 /** Rows built by the Android and Desktop bootstrap objects (PolarisKeyAndroid, PolarisKeyDesktop): not on the client, and the Android module is not in the JVM build. */
 const KOTLIN_UNASSERTED = new Set([
@@ -507,6 +597,19 @@ function renderKotlin(api: Api): string {
       lines.push(`PolarisKeyClient::${r.name}  // ${r.id}`); // an extension function
     } else if (r.handle) {
       continue; // Kotlin has no setting handle until U-07 (a StateFlow today)
+    } else if (r.id.startsWith("cloudConnect.links.")) {
+      // Inter-account links (CC-19): the verbs live on `cloudConnect.links` (`CloudLinks`).
+      lines.push(`CloudLinks::${r.name}  // ${r.id}`);
+    } else if (r.id === "cloudConnect.transfer.cancel") {
+      // `cancel(id)` and `cancel(peer, id)` overload; the typed reference picks the one the rows name.
+      lines.push(
+        `val cancelById: (CloudTransfer, String) -> Unit = CloudTransfer::cancel  // ${r.id}`,
+      );
+    } else if (r.id.startsWith("cloudConnect.transfer.")) {
+      // Direct Transfer (CC-20): the verbs live on `cloudConnect.transfer` (`CloudTransfer`); the offer answers on `TransferOffer`.
+      lines.push(
+        `${TRANSFER_ANSWER.has(leafOf(r.id)) ? "TransferOffer" : "CloudTransfer"}::${r.name}  // ${r.id}`,
+      );
     } else if (KOTLIN_TYPE[r.ns]) {
       lines.push(`${KOTLIN_TYPE[r.ns]}::${r.name}  // ${r.id}`);
     }
@@ -531,10 +634,16 @@ function renderKotlin(api: Api): string {
     `import im.plrs.key.release.ReleaseClient`,
     `import im.plrs.key.sdk.BackendClient`,
     `import im.plrs.key.sdk.CloudConnect`,
+    `import im.plrs.key.sdk.CloudLinks`,
+    `import im.plrs.key.sdk.CloudNearby`,
     `import im.plrs.key.sdk.CloudSyncClient`,
     `import im.plrs.key.sdk.CloudSyncHostOptions`,
+    `import im.plrs.key.sdk.CloudTransfer`,
     `import im.plrs.key.sdk.CommerceClient`,
     `import im.plrs.key.sdk.PolarisKeyClient`,
+    `import im.plrs.key.sdk.SaveTransfer`,
+    `import im.plrs.key.sdk.TransferOffer`,
+    `import im.plrs.key.sdk.SavesClient`,
     ...[
       ...new Set(
         rowsFor(api, "kotlin")
@@ -567,6 +676,8 @@ const GODOT_SCRIPT: Record<string, string> = {
   identity: `"res://addons/polaris_key/services/identity.gd"`,
   PKeySignInNamespace: `"res://addons/polaris_key/services/identity/sign_in_namespace.gd"`,
   PKeySignInSession: `"res://addons/polaris_key/services/identity/sign_in_session.gd"`,
+  PKeySaves: `"res://addons/polaris_key/services/cloud_sync/saves.gd"`,
+  PKeyTransfer: `"res://addons/polaris_key/services/cloud_sync/transfer_handle.gd"`,
   devices: `"res://addons/polaris_key/services/devices.gd"`,
   release: `"res://addons/polaris_key/services/release.gd"`,
   distribution: `"res://addons/polaris_key/services/distribution.gd"`,
@@ -577,6 +688,7 @@ const GODOT_SCRIPT: Record<string, string> = {
   presentation: `"res://addons/polaris_key/core/presentation.gd"`,
   options: `"res://addons/polaris_key/core/options.gd"`,
   cloudSync: `"res://addons/polaris_key/services/cloud_sync.gd"`,
+  cloudConnect: `"res://addons/polaris_key/services/cloud_connect.gd"`,
 };
 const GODOT_HANDLE = `"res://addons/polaris_key/services/config/setting.gd"`;
 const GODOT_OPTIONS = `"res://addons/polaris_key/core/options.gd"`;

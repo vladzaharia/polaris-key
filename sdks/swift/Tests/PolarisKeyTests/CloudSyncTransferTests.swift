@@ -6,13 +6,17 @@
 // is `sync-file-invalid`, cache damage is a miss, journal and cache names that no id can steer, and the
 // real zstd decoder behind codec 1 chunks.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import XCTest
 import libzstd
 
 @testable import PolarisKey
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private let mib = 1_048_576
 private let clockNow = 1000.0
@@ -293,17 +297,17 @@ final class CloudSyncTransferTests: XCTestCase {
         let srv = ServerFileCodec()
         let plain = noise(5000)
         for c in [e2e as any FileCodec, srv] {
-            let id = c.chunkId(plain)
+            let id = try! c.chunkId(plain)
             let obj = try! c.sealChunk(id: id, plain: plain)
             XCTAssertEqual(obj.count, c.chunkObjectBytes(plain.count), c.enc)
-            XCTAssertEqual(c.openChunk(id: id, object: obj), .ok(plain), c.enc)
-            XCTAssertNotEqual(c.openChunk(id: c.chunkId(noise(10)), object: obj), .ok(plain), c.enc)
+            XCTAssertEqual(try! c.openChunk(id: id, object: obj), .ok(plain), c.enc)
+            XCTAssertNotEqual(try! c.openChunk(id: try! c.chunkId(noise(10)), object: obj), .ok(plain), c.enc)
             XCTAssertEqual(c.plainSize(c.storedSize(4096)), 4096, c.enc)
         }
         XCTAssertFalse("\(e2e)".contains(hexOf(root)))
         XCTAssertEqual(Mirror(reflecting: e2e).children.count, 0)
         let id = srv.chunkId(plain)
-        XCTAssertEqual(srv.openChunk(id: id, object: Data(count: serverChunkMaxStoredBytes + 1)), .invalid("size"))
+        XCTAssertEqual(srv.openChunk(id: id, object: Data(count: SYNC_CHUNK_MAX_STORED_BYTES + 1)), .invalid("size"))
         XCTAssertEqual(srv.openChunk(id: id, object: Data([0, 9, 1])), .invalid("codec"))
         XCTAssertEqual(srv.openChunk(id: id, object: Data([7, 0, 1])), .invalid("version"))
     }
@@ -798,7 +802,7 @@ final class CloudSyncTransferTests: XCTestCase {
         }
         let sink = Collected()
         await expect(.fileInvalid) { try await self.engine(s).download(request(sink)) }
-        s.tamperChunk = { _, o in Data(count: serverChunkMaxStoredBytes + 1) + o }
+        s.tamperChunk = { _, o in Data(count: SYNC_CHUNK_MAX_STORED_BYTES + 1) + o }
         await expect(.fileInvalid, "chunk-size") { try await self.engine(s).download(request(Collected())) }
         let keys = Array(s.chunks.keys)
         let other = s.chunks[keys[1]]!

@@ -78,6 +78,9 @@ export async function signInRequestView(
     userCode: record.userCode,
     expiresAt: record.expiresAt,
     // I-08 (§12.4): what `authorize` carried. Hints prefill the card and verify nothing.
+    ...(record.native
+      ? { redirect: record.native.redirect, returnUri: record.native.returnUri }
+      : {}),
     ...(record.authz
       ? {
           purpose: record.authz.purpose,

@@ -80,6 +80,10 @@ export type RelayErrorReason =
   | "wrong_peer"
   | "busy"
   | "mode_not_allowed"
+  /** A contact ticket while links between accounts are off (403 `connect_links_disabled`). */
+  | "links_disabled"
+  /** The Worker did not echo `room: "c"`: it predates contact rooms (§15.7). */
+  | "contact_unsupported"
   | "stopped";
 
 /** The registered code of each reason: the Worker's own for the four it answers with. */
@@ -97,6 +101,8 @@ const RELAY_CODE: Record<RelayErrorReason, string> = {
   wrong_peer: ErrorCode.peerCertInvalid,
   unknown_peer: ErrorCode.invalidArgument,
   mode_not_allowed: ErrorCode.invalidArgument,
+  links_disabled: ErrorCode.connectLinksDisabled,
+  contact_unsupported: ErrorCode.connectUnavailable,
   replaced: ErrorCode.cancelled,
   stopped: ErrorCode.cancelled,
 };
@@ -136,6 +142,8 @@ export interface RelayGrant {
   protocol: string;
   /** Seconds since the epoch. */
   expiresAt: number;
+  /** `"c"` for a contact-room ticket, echoed by the Worker; absent for an account ticket. */
+  room?: "c";
 }
 
 /** What the relay needs of the client: the LAN source's identity plus a ticket. */
@@ -183,6 +191,8 @@ export interface RelayOptions {
   rekeySeconds?: number;
   /** The send queue behind the socket (D-9): pacer, byte cap (default 8 MiB). */
   outbox?: Omit<RelayOutboxOptions, "timer">;
+  /** Bytes of received envelopes waiting to be handled before the socket is closed (default 8 MiB). */
+  maxPendingBytes?: number;
 }
 
 export type RelayState =
@@ -236,6 +246,10 @@ class RelayLink {
       onRing(jws: string, epoch: number): void;
       onTrust(jws: string): void;
       onRingWanted(): void;
+      /** Reserve `bytes` of the send queue for a host send; false when it would not fit. */
+      reserve(bytes: number): boolean;
+      /** Give a reservation back (the send has settled and its bytes are queued). */
+      release(bytes: number): void;
       onEstablished(s: ConnectSession): void;
       onEnded(l: RelayLink): void;
     },
@@ -254,10 +268,32 @@ class RelayLink {
       onEvent: (e) => this.#event(e),
     });
     this.#deadline = setTimeout(() => {
-      void this.channel.close("peer_bye");
-      this.finish({ code: "handshake_failed", byPeer: false });
+      void this.channel.close("peer_timeout");
+      this.finish({ code: "peer_timeout", byPeer: false });
     }, handshakeMs);
     this.#deadline.unref();
+  }
+
+  /**
+   * Reserve queue room for a host send of `bytes`. If it would not fit, this session ends
+   * `peer_busy` now and the answer is null. It runs before the channel encrypts anything: a
+   * message dropped after it was encrypted leaves a gap in the nonces, and the peer then fails the
+   * CLOSE as `peer_bad_frame`. The reservation counts against every session of the service until
+   * the returned function runs (when the send has settled and its bytes are queued).
+   */
+  hold(bytes: number): (() => void) | null {
+    if (this.#ended) return () => undefined;
+    const est = bytes + 128 * (Math.floor(bytes / 60_000) + 1);
+    if (!this.cb.reserve(est)) {
+      this.overflow();
+      return null;
+    }
+    let held = true;
+    return () => {
+      if (!held) return;
+      held = false;
+      this.cb.release(est);
+    };
   }
 
   /** The send queue is full: end this session `peer_busy`, and say so to the peer. */
@@ -294,7 +330,10 @@ class RelayLink {
           this.role,
           "relay",
           "relay",
+          null,
+          e.remoteStatic,
         );
+        this.#session.peerStatic = e.remoteStatic;
         this.cb.onEstablished(this.#session);
         this.#settle.resolve(this.#session);
         break;
@@ -362,6 +401,12 @@ export class RelayService {
   #lastLimit: number | null = null;
   #chain: Promise<unknown> = Promise.resolve();
   #out: RelayOutbox | null = null;
+  /** Queue bytes promised to host sends that are not yet encrypted and queued. */
+  #reserved = 0;
+  /** Bytes of received envelopes waiting for the handler. */
+  #pendingBytes = 0;
+  /** Sockets closed for a refused envelope: nothing more from them is handled. */
+  #refused = new WeakSet<RelaySocket>();
   #docs: PeerDocs;
   #id: { at: number; v: LanIdentity } | null = null;
 
@@ -673,26 +718,51 @@ export class RelayService {
         this.#schedulePing(ws);
       };
       ws.onmessage = (ev) => {
+        if (this.#refused.has(ws)) return;
         const bytes = toBytes(ev.data);
         if (bytes === null) {
           this.#refuse(ws);
           return;
         }
+        // Envelopes wait their turn, but only so many bytes of them: a room (or a path to it)
+        // that outpaces the handler gets the socket closed, not an unbounded queue.
+        if (
+          this.#pendingBytes + bytes.length >
+          (this.#o.maxPendingBytes ?? 8 * 1024 * 1024)
+        ) {
+          this.#refuse(ws, 1013);
+          return;
+        }
+        this.#pendingBytes += bytes.length;
         this.#chain = this.#chain
-          .then(() => (this.#ws === ws ? this.#handle(ws, bytes) : undefined))
-          .catch(() => this.#refuse(ws));
+          .then(() =>
+            this.#ws === ws && !this.#refused.has(ws)
+              ? this.#handle(ws, bytes)
+              : undefined,
+          )
+          .catch(() => this.#refuse(ws))
+          .finally(() => {
+            this.#pendingBytes -= bytes.length;
+          });
       };
       ws.onerror = () => undefined;
       ws.onclose = (ev) => finish(typeof ev.code === "number" ? ev.code : null);
     });
   }
 
-  #refuse(ws: RelaySocket): void {
-    // A refused envelope: close 1002, treat later frames as lost.
+  #refuse(ws: RelaySocket, code = 1002): void {
+    this.#refused.add(ws);
+    // A refused envelope: close 1002 (1013 for overload), treat later frames as lost. The
+    // WebSocket API only lets a script close with 1000 or 3000 to 4999 and throws on the rest: the
+    // socket is closed 1000 then, and the refusal is the same.
     try {
-      ws.close(1002);
+      ws.close(code);
     } catch {
-      // gone
+      try {
+        ws.close(1000);
+      } catch {
+        // gone
+      }
     }
   }
 
@@ -705,6 +775,19 @@ export class RelayService {
       this.#pingCancel = timer(tick, this.#o.pingMs ?? 25_000);
     };
     this.#pingCancel = timer(tick, this.#o.pingMs ?? 25_000);
+  }
+
+  /**
+   * Take `bytes` of the queue behind the socket for a send that has not been encrypted yet. The
+   * room counts what is queued plus what is reserved. True when there is no queue (the socket is
+   * down); then nothing is reserved.
+   */
+  #reserve(bytes: number): boolean {
+    const out = this.#out;
+    if (!this.#open || out === null) return true;
+    if (out.queued + this.#reserved + bytes > out.maxBytes) return false;
+    this.#reserved += bytes;
+    return true;
   }
 
   #sendEnv(m: Parameters<typeof encodeRelay>[0], force = true): boolean {
@@ -823,6 +906,10 @@ export class RelayService {
       (noise) => this.#sendSession(link, peer, sessionId, noise),
       {
         ...this.#docs.hooks,
+        reserve: (n) => this.#reserve(n),
+        release: (n) => {
+          this.#reserved = Math.max(0, this.#reserved - n);
+        },
         onEstablished: (s) => {
           if (role === "responder") for (const f of [...this.#onSession]) f(s);
         },

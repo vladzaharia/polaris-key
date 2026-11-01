@@ -67,6 +67,19 @@ interface SignInBeginBag {
   licenseChoice?: "app" | "card";
 }
 
+/** The `autoSignIn` bag (ui-core's `BridgeAutoSignInOptions`, restated). */
+interface PreloadAutoSignInBag {
+  prompt?: "none" | "optional";
+  licenseChoice?: "app" | "card";
+  deviceName?: string;
+}
+
+/** The `approverChoose` answer (ui-core's `BridgeNearbyChoice`, restated). */
+type PreloadNearbyChoice =
+  | { kind: "license"; licenseId: string }
+  | { kind: "create" }
+  | { kind: "decline" };
+
 /** The bridge object the preload exposes. Its shape is `@polaris-key/react`'s `PolarisBridge`
  *  (protocol v4); `test/electronBridge.test.ts` pins the assignability. */
 export interface PreloadPolarisBridge {
@@ -82,6 +95,18 @@ export interface PreloadPolarisBridge {
   importBundle(jws: string): Promise<never>;
   /** v4 (UK-06.16): open an https link in the system browser (the host refuses anything else). */
   openExternal(url: string): Promise<boolean>;
+  /** v5 (I-47b): automatic and nearby sign-in. Permits stay in the host: an ask is an `askId`. */
+  autoSignIn(opts?: PreloadAutoSignInBag): Promise<never>;
+  nearbyStart(opts?: { deviceName?: string }): Promise<never>;
+  nearbyChoose(sessionId: string, approverId: string): Promise<never>;
+  nearbyConfirm(sessionId: string): Promise<never>;
+  nearbyDecline(sessionId: string): Promise<never>;
+  nearbyCancel(sessionId: string): Promise<void>;
+  approverStart(): Promise<never>;
+  approverStop(): Promise<void>;
+  approverPick(askId: string, code: string): Promise<never>;
+  approverDeny(askId: string): Promise<void>;
+  approverChoose(askId: string, choice: PreloadNearbyChoice): Promise<never>;
   on(event: "stateChanged", cb: (state: never) => void): () => void;
   /** v4 (UK-06.3): progress of an `update.install` this window started. */
   onUpdateProgress(cb: (p: PreloadUpdateProgress) => void): () => void;
@@ -108,7 +133,7 @@ function unwrap(raw: unknown): unknown {
   throw new PolarisBridgeError(env.code, env.message, env.detail ?? null);
 }
 
-/** Build the PolarisBridge v4 object over `ipcRenderer`. */
+/** Build the PolarisBridge v5 object over `ipcRenderer`. */
 export function createPreloadBridge(
   ipc: IpcRendererLike,
   opts: PreloadBridgeOptions = {},
@@ -190,6 +215,30 @@ export function createPreloadBridge(
     importBundle: (jws: string) => call("importBundle", jws) as Promise<never>,
     openExternal: async (url: string) =>
       (await call("openExternal", url)) === true,
+    autoSignIn: (opts?: PreloadAutoSignInBag) =>
+      call("autoSignIn", opts) as Promise<never>,
+    nearbyStart: (opts?: { deviceName?: string }) =>
+      call("nearbyStart", opts) as Promise<never>,
+    nearbyChoose: (sessionId: string, approverId: string) =>
+      call("nearbyChoose", sessionId, approverId) as Promise<never>,
+    nearbyConfirm: (sessionId: string) =>
+      call("nearbyConfirm", sessionId) as Promise<never>,
+    nearbyDecline: (sessionId: string) =>
+      call("nearbyDecline", sessionId) as Promise<never>,
+    nearbyCancel: async (sessionId: string) => {
+      await call("nearbyCancel", sessionId);
+    },
+    approverStart: () => call("approverStart") as Promise<never>,
+    approverStop: async () => {
+      await call("approverStop");
+    },
+    approverPick: (askId: string, code: string) =>
+      call("approverPick", askId, code) as Promise<never>,
+    approverDeny: async (askId: string) => {
+      await call("approverDeny", askId);
+    },
+    approverChoose: (askId: string, choice: PreloadNearbyChoice) =>
+      call("approverChoose", askId, choice) as Promise<never>,
     onUpdateProgress(cb: (p: PreloadUpdateProgress) => void): () => void {
       progressListeners.add(cb);
       if (progressListeners.size === 1)

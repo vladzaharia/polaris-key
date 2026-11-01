@@ -5,6 +5,7 @@ import { MemoryStore } from "../../../src/services/sync/engine/memoryStore.js";
 import {
   planChunks,
   refFileChunks,
+  reportedUsage,
   unrefFileChunks,
 } from "../../../src/services/sync/engine/chunks.js";
 import {
@@ -82,6 +83,22 @@ describe.each(Object.entries(makers))(
       expect(bytes(s)).toBe(100 + 1000 + 2000 + 3000);
       expect(fileBytes(s)).toBe(bytes(s));
       expect(s.getChunk("saves", ID(2))?.refs).toBe(2);
+    });
+
+    it("reports the chunk bytes only a kept revision names as revision bytes", () => {
+      const s = make();
+      seeded(s, [
+        ["a", 1, [1, 2]],
+        ["a", 2, [2, 3]],
+      ]);
+      // Version 1 became a revision: chunk 1 is its alone, chunk 2 is shared with the live file.
+      s.putFile({ ...file("a", 1), status: "revision" });
+      const u = reportedUsage(s, s.getUsage());
+      expect(u.bytes).toBe(s.getUsage().bytes);
+      expect(fileUsage(u).revisionBytes).toBe(1000);
+      expect(fileUsage(u).fileBytes).toBe(fileBytes(s) - 1000);
+      // A chunk nothing keeps is not counted; the stored counters are untouched.
+      expect(fileUsage(s.getUsage()).revisionBytes).toBe(0);
     });
 
     it("names a chunk once per file however often the list repeats it", () => {

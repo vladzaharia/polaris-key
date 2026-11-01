@@ -17,7 +17,8 @@ extends RefCounted
 ##    root_kid}` before it is held: no root is held without a pin. A served ring that differs is
 ##    never opened: `unlock()` answers kind `ring-changed`, and only the recovery code (`recover`) or
 ##    an explicit `accept_ring_change` re-pins. `forget()` drops the pin and the stored root; the
-##    sign-out hook calls it. The stored root is used only while it matches the pin.
+##    sign-out hook calls it. The stored root is used only while it matches the pin. With no pin,
+##    the stored root's `{ring_id, epoch, kid}` is the pin.
 ##  * A bad recovery code is refused before any request.
 ##  * Host misuse (locked, a bad argument, no device keys) is a failure result, never an assert.
 ##
@@ -82,8 +83,12 @@ class _Memory extends RefCounted:
 	var held: _Held = null
 	var others: Array = []
 	var listeners: Array[Callable] = []
+	## Bumped every time the held root is set, replaced or dropped. A file codec made for one root asks it
+	## again before each use and fails closed (sync-locked) once it is not the one it was made at.
+	var generation := 0
 
 	func set_held(h: _Held, p_others: Variant = null) -> void:
+		generation += 1
 		held = h
 		if p_others != null:
 			others = p_others
@@ -131,6 +136,18 @@ class Codec extends RefCounted:
 		if _m.held == null:
 			return ""
 		return PKeySyncBlind.blind(_m.held.root, kind, ctx, name)
+
+	## Counts every change of the held root (a lock, an unlock, an accepted or adopted or recovered root).
+	func generation() -> int:
+		return _m.generation
+
+	## Hands the current root to `fn` (a Callable(root) -> Variant) and answers what it returns; null while
+	## locked. The file codec is built this way: the root stays inside objects the caller drops with the
+	## operation, and each of them asks `locked()` again before it uses it.
+	func with_root(fn: Callable) -> Variant:
+		if _m.held == null:
+			return null
+		return fn.call(_m.held.root)
 
 	func _try(envelope: PackedByteArray, attempt: Callable) -> Dictionary:
 		if _m.held == null:
@@ -300,11 +317,20 @@ func _unlock_with(accept: Variant) -> PKeyResult:
 	if not pin_r.ok:
 		return pin_r
 	var pinned: Variant = pin_r.detail
-	var expected: Variant = accept if accept != null else pinned
+	# With no pin and no confirmed accept, the stored root is the pin. Unknown is not absent: an
+	# unreadable root opens, writes and pins nothing.
+	var anchor: Variant = pinned
+	if anchor == null and accept == null:
+		var sr := _vault.read_root()
+		if not sr.ok:
+			return sr
+		if sr.detail != null:
+			anchor = {"ring_id": sr.detail["ring_id"], "epoch": sr.detail["epoch"], "root_kid": sr.detail["kid"]}
+	var expected: Variant = accept if accept != null else anchor
 	var served := {"ring_id": ring["ring_id"], "epoch": ring["epoch"], "root_kid": ring["root_kid"]}
 	if expected != null and not _same_pin(expected, served):
 		var w: Variant = st.detail["wrap"]
-		return PKeyResult.success({"kind": "ring-changed", "pinned": pinned if pinned != null else expected, "served": served, "created_at": ring["created_at"], "by": w["by"] if w != null else null})
+		return PKeyResult.success({"kind": "ring-changed", "pinned": anchor if anchor != null else expected, "served": served, "created_at": ring["created_at"], "by": w["by"] if w != null else null})
 	var unlocked_r := PKeyResult.success({"kind": "unlocked", "ring_id": ring["ring_id"], "epoch": ring["epoch"]})
 	var kid := _unhex(ring["root_kid"], 16)
 	if kid == null:
@@ -314,7 +340,9 @@ func _unlock_with(accept: Variant) -> PKeyResult:
 		return unlocked_r
 	var stored := _stored_root(served)
 	if stored != null:
-		_memory.set_held(stored, _others_with(stored))
+		var sr_hold := _hold(stored, false)
+		if not sr_hold.ok:
+			return sr_hold
 		return unlocked_r
 	var wrap: Variant = st.detail["wrap"]
 	if wrap == null:

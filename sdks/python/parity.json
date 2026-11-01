@@ -170,9 +170,8 @@
       "note": "I-10a.17: identity.choice.licenses/devices/complete/cancel over the endpoints discovery names (typed service-unavailable N/A otherwise), no bearer (but for keep, which sends the device token: holders-add-to-account), the grant never in an error; a Worker refusal is a ChoiceRefused result (retry_after_seconds, manage_url, sign_in_url, key_entries, the fresh view); keep completes attachable; a redirect choose answer settles as the choice outcome only when the session asked for license_choice=\"app\". The three choice-* and two redirect-web-choose* transcripts are replayed."
     },
     "identity.devicecode.choice": {
-      "status": "planned",
-      "wp": "UK-42",
-      "note": "UK-42.22 (SDK slice .8): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+      "status": "implemented",
+      "note": "UK-42.22.8: sign_in.start(license_choice=\"app\") sends licenseChoice only when discovery has deviceChoice and the four choice* endpoints; wait() answers the CHOOSE outcome (grant, expires_in, choices) from a choose poll and stops polling. holders-add-to-account-device is replayed."
     },
     "identity.signin.hints": {
       "status": "implemented"
@@ -181,6 +180,11 @@
       "status": "planned",
       "wp": "I-15b",
       "note": "LK-SKIP.8: the opt-in, the via rule and the activated outcome, with the replayer."
+    },
+    "identity.redirect.native": {
+      "status": "planned",
+      "wp": "I-15b",
+      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
     },
     "identity.exchange": {
       "status": "na",
@@ -201,9 +205,8 @@
       "note": "Play Games runs only on Android."
     },
     "identity.autosignin": {
-      "status": "planned",
-      "wp": "I-47",
-      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-47)."
+      "status": "implemented",
+      "note": "I-47: client.identity.auto_sign_in() (the ladder of plan-auto-sign-in §1, over the exchange rungs and nearby) with the session's confirm_account, decline_account, wrap and on_wrap; the terminal kit's login runs it first."
     },
     "identity.restore": {
       "status": "na",
@@ -216,6 +219,10 @@
       "runtime": ["python"],
       "reason": "runtime",
       "note": "No OS account to offer a link from (I-43)."
+    },
+    "identity.nearby": {
+      "status": "implemented",
+      "note": "I-47: both devices. D: identity.sign_in.start(channel='nearby') (approvers, on_approvers, choose, code, result, wait, confirm_account, decline_account, wrap, on_wrap) over the nearbyStart and nearbyPoll routes; M: identity.nearby.available and on_request (the approver, approve with the matched pick, the license choice). The six nearby-* transcripts replay in tests/test_transcripts.py (the reference client plays both devices), and the vouch rows of peer-matrix.json run in tests/test_connect_conformance.py. Kits: the terminal's login (nearby first) and devices approve, the Textual entry and the Qt SignIn states and NearbyApproval."
     },
     "identity.keyentry": {
       "status": "implemented",
@@ -492,8 +499,8 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "client.cloud_sync.saves (cloud_sync/saves.py, synchronous): list, read, write, delete, revisions and resolve, a port of client-core's SavesClient bound to the machine's records (rows keep the file pointer; put_at and remove_at at an exact version, one outcome each: the fileRecordCases family of sync-scenarios.json) and the Python file transport, journal and chunk cache under one TransferEngine (max_retry_after_seconds 3600). A write runs on its own thread: its handle has pause, resume, cancel and wait; client.cloud_sync.transfers() lists the writes in flight; transferProgress, transferDone and transferFailed arrive as cloudSync events. The journal and chunk cache go with the person. tests/test_cloud_sync_saves.py; the cloudsync-files-single transcript replays through the transport."
     },
     "sync.keyring": {
       "status": "implemented",
@@ -504,12 +511,12 @@
       "wp": "U-46"
     },
     "sync.files": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "polaris_key.cloud_sync.files.FileRoutes: the FileTransport port of the transfer engine over bearer HTTP (the closed route list, no redirects, Content-Digest, bounds equal to what was asked, Retry-After parsed), under the transfer engine and journal (cloud_sync/transfer.py, journal.py). The cloudsync-files-* transcripts replay through it in tests/test_transcripts.py (cloudSyncFile); tests/test_cloud_sync_files.py."
     },
     "sync.files.delta": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "The same transport carries the chunk plan, chunk PUT and chunk GET calls; the chunker and chunk objects are core/sync_files.py (sync-vectors.json cdcCases and chunkCases run in tests/test_sync_crypto_conformance.py). The cloudsync-chunks* transcripts replay through the transport (cloudSyncChunk)."
     },
     "sync.e2e.recovery": {
       "status": "planned",
@@ -534,23 +541,23 @@
     },
     "connect.protocol": {
       "status": "implemented",
-      "note": "polaris_key.core peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter) and TrustManager.accept_peer; tests/test_connect_peer_*.py, test_connect_session.py and test_trust_accept_peer.py replay peer-matrix.json."
+      "note": "polaris_key.core peer codecs, frames, relay envelopes, SAS and the peer session (modes a, v, p; commit-reveal SAS, handshake limiter) and TrustManager.accept_peer; tests/test_connect_peer_*.py, test_connect_session.py and test_trust_accept_peer.py replay peer-matrix.json. HELLO display data from an unauthenticated peer (modes v and p, §15.6) is bounded as client-core does: a HELLO is at most 4 KiB, label and app are cleaned to 64 code points (an empty app is Unknown), a platform outside 32 characters of A-Z a-z 0-9 space . _ + - is Unknown, and at most 16 records and 16 KiB of bodies are held before the person confirms. The mode v vouch (CC-15.P1, WIRE-CONTRACT-V5 section 15.6.1): core/peer_vouch.py runs the peer-matrix vouch rows in tests/test_connect_conformance.py; both mode v payloads list vouch/1 and a peer without it is closed peer_not_allowed after HELLO; the engine holds the SAS until start_sas() for the initiator (hold_sas) and restarts the 120 s code deadline at the choice; an open MORE chain is capped at 16 KiB in modes v and p."
     },
     "connect.lan": {
       "status": "implemented",
-      "note": "polaris_key.connect.lan and the bounded mDNS responder and browser (advert rotation, browse match, TCP listen and dial, G7 caps, wrong_peer, flood and write-buffer caps); tests/test_connect_lan.py, test_connect_mdns.py, test_connect_mdns_packet.py. A live multicast test runs only with PKEY_LIVE_MDNS=1."
+      "note": "polaris_key.connect.lan and the bounded mDNS responder and browser (advert rotation, browse match, TCP listen and dial, G7 caps, wrong_peer, flood and write-buffer caps); tests/test_connect_lan.py, test_connect_mdns.py, test_connect_mdns_packet.py. IPv6 (CC-IPV6.4a, WIRE-CONTRACT-V5 §15.4): mDNS runs on 224.0.0.251 and on ff02::fb with one socket per interface (IPV6_JOIN_GROUP, IPV6_MULTICAST_IF; at most 8; the zone is the interface name; the interface list comes from getifaddrs through ctypes, and browsing raises MdnsUnavailableError where it cannot be read), the codec has AAAA, an advert's AAAA is the fe80 address the kernel sends from, a response from outside the receiving interface's connected subnets is ignored (RFC 6762 section 11), an A or AAAA record is learned only when equal to the packet source (the peer-matrix mdnsAnswers rows run in test_connect_peer_codecs.py), at most 4 addresses per name, and lan_verdict and lan_group_key (core/peer_lan_address.py, literal-only parsing, no ipaddress module) run the lanAddresses rows; the CANDIDATES rows are not run because this SDK neither sends nor reads that record (CC-08R). TCP (CC-IPV6.4b, §15.4.1): one dual-stack :: listener on one port (IPV6_V6ONLY off, 0.0.0.0 fallback); an accepted socket is judged by lan_verdict on its own peer and local address before a slot and before any read, a dialled address as text before the connect and on the connected socket before its first byte (connect/lan_judge.py); unauthenticated sockets are capped at 4 per address, 16 per /64 and 32 in total; a device with several addresses dials them in a 250 ms race with at most 2 in flight (connect/dial.py). tests/test_connect_lan.py runs it on ::1. Live multicast tests run only with PKEY_LIVE_MDNS=1."
     },
     "connect.relay": {
       "status": "implemented",
       "note": "client.connect.relay_ticket() and polaris_key.connect.relay (ticket offer, WebSocket socket via the optional websockets extra, reconnect policy, LIMIT and close codes, redirects refused, mode-a relay sessions, pacing, 8 MiB queue cap); tests/test_connect_relay*.py and test_connect_client_relay.py; tests/test_transcripts.py replays connect-relay-ticket and connect-relay-quota."
     },
     "connect.links": {
-      "status": "planned",
-      "wp": "CC-19"
+      "status": "implemented",
+      "note": "client.cloud_connect.links (sdks/python/src/polaris_key/connect/links.py, CC-19.6; WIRE-CONTRACT-V5 section 15.10), the same API and store as Node: pair() opens the mode-p pairing window (pairing.py: m=p advert, own listener, the lower instance dials, the core/peer_contact.py exchange), list(), remove(id) (open sessions hear peer_revoked), set_reachable(), open(id) (mode c over the LAN, then the contact relay in contact_relay.py with the {room:c, rid} ticket and aliases only) and on_link(). Contacts are rows of pkey.connect.v1 (state.py). The shared LAN listener tries the account keys then the contact secrets under one HandshakeLimiter; everything is gated on the cached discovery interAccount (typed N/A otherwise). tests/test_connect_contact.py runs the peer-matrix contact rows and mode c sessions in memory; tests/test_connect_links.py is the loopback two-account test. tests/test_connect_contact_room.py (CC-19.POLISH) holds a relay message that arrives before MEMBERS (at most 8) and judges it on MEMBERS."
     },
     "connect.transfer": {
-      "status": "planned",
-      "wp": "CC-20"
+      "status": "implemented",
+      "note": "client.cloud_connect.transfer (polaris_key.connect.transfer, CC-20.5; WIRE-CONTRACT-V5 section 15.11): send(peer, source, name=, type=, cat=, chunk=, id=) returns a TransferHandle (wait, cancel); on_offer(handler) puts every OFFER to the host (an Accept(dest), 'decline', or None to answer later with IncomingOffer.accept/decline; no handler declines, mode c checks the category before asking); on_result(); cancel(id); purge() on sign-out and forget_peer() when a link is removed. The pure machine and codecs are core/peer_xfer.py (the peer-matrix xfer rows all run in tests/test_connect_xfer_conformance.py), core/peer_xfer_endpoint.py runs it over the session's transfer port (PeerSession.attach_xfer: the six types 0x20 to 0x25 belong to it when both payloads list xfer/1; without the cap they close peer_not_allowed, MORE closes peer_bad_frame, send_record refuses them). The partial store (connect/transfer_store.py) keeps files named only by the derived partial path under <state>/transfers (0700, files 0600), 24 h life, 8 per peer, a free-space check, atomic delivery (temp + rename) to the host's destination. tests/test_connect_xfer_*.py, tests/test_cloud_connect_transfer.py."
     },
     "connect.app": {
       "status": "implemented",

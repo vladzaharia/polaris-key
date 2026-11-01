@@ -116,7 +116,7 @@ def identity_fragment_from(manifest: Optional[Dict[str, Any]]) -> Optional[Dict[
     """The Identity fragment of a discovery document (WIRE-CONTRACT-V4 §12.6), or ``None``
     while Identity is off or absent. Endpoints are kept only when they are non-empty strings: a
     client uses an endpoint the document names and never builds one. ``account``,
-    ``keyEntryLimit`` and ``issuer`` are read the same way (anything malformed is dropped)."""
+    ``nearby``, ``keyEntryLimit`` and ``issuer`` are read the same way (anything malformed is dropped)."""
     services = manifest.get("services") if isinstance(manifest, dict) else None
     raw = services.get("identity") if isinstance(services, dict) else None
     if not isinstance(raw, dict) or raw.get("enabled") is not True:
@@ -135,6 +135,8 @@ def identity_fragment_from(manifest: Optional[Dict[str, Any]]) -> Optional[Dict[
         out["issuer"] = raw["issuer"]
     if raw.get("account") is True:
         out["account"] = True
+    if raw.get("nearby") is True:
+        out["nearby"] = True
     limit = raw.get("keyEntryLimit")
     if isinstance(limit, int) and not isinstance(limit, bool) and limit >= 1:
         out["keyEntryLimit"] = limit
@@ -310,12 +312,15 @@ class Account:
     def sign_out(self) -> SignOutResult:
         """Sign out: run the pre-sign-out hooks, ``POST signout``, then forget the identity. On
         ``released: true`` the device token, cache and licence state go too; on ``false`` (a
-        key-only activation) the device keeps its licence and token. A refusal or failure
-        raises and changes nothing."""
+        key-only activation) the device keeps its licence and token. Once the Worker accepts, the
+        explicit-sign-out flag is set (``auto_sign_in`` then answers ``signed_out``) until the
+        next sign-in. A refusal or failure raises and changes nothing."""
         url = self._endpoint("signout")
         token = self._tokens.current
         if not token:
             self._forget()
+            # Nothing was held, so nothing for the server to accept: the person still chose to be signed out.
+            self._tokens.set_explicit_sign_out(True)
             return SignOutResult(released=False)
         self._hooks.run()
         res = self._call("POST", url, token)
@@ -330,8 +335,14 @@ class Account:
                 ErrorCode.BAD_RESPONSE, "the signout endpoint answered without `released`."
             )
         self._forget()
+        # The Worker accepted it: nothing automatic may sign this person back in. The flag goes
+        # first, so a crash before the wipe still leaves the device signed out (fail closed).
+        self._tokens.set_explicit_sign_out(True)
         if released:
             self._wipe_local()
+        else:
+            # The token stays, but it is no longer a signed-in person's: rung 1 must not count it.
+            self._tokens.set_provenance("key")
         if self._emit is not None:
             self._emit("identity", change="signed_out", released=released)
         return SignOutResult(released=released)
@@ -375,7 +386,7 @@ class Account:
         new_token = body.get("token")
         if not isinstance(new_token, str) or not new_token:
             raise PolarisError(ErrorCode.BAD_RESPONSE, "attach answered without a token.")
-        self._tokens.set(new_token, "activate")
+        self._tokens.set(new_token, "activate", provenance="signin")
         subject = body.get("subject") if _is_subject(body.get("subject")) else None
         before = self.stored_subject()
         self.write_subject(subject)

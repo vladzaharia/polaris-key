@@ -8,6 +8,9 @@ import Foundation
 public let peerMaxMessageBytes = 1_048_576
 /// A Noise message is at most 65,535 bytes; 16 are the tag and 3 the record header.
 public let peerMaxRecordBody = 65535 - 16 - 3
+/// An open MORE chain in modes v and p (§15.6.1): their messages are a `HELLO`, the SAS records, a
+/// `VOUCH_REQ` and the held Sync records, all far under this, and the peer is not yet verified.
+public let peerMaxVPChainBytes = 16_384
 /// Records in one MORE chain: a full 1 MiB message in the smallest records, plus one.
 public let peerMaxChainRecords = (peerMaxMessageBytes + peerMaxRecordBody - 1) / peerMaxRecordBody + 1
 
@@ -132,6 +135,10 @@ public struct PeerRecordAssembler: Sendable {
     /// Set once a non-critical unknown type opened a chain that is being dropped.
     private var dropping: Int?
     private let mode: PeerRecordMode
+    /// Set by the session once the capabilities are known (§15.11): whether `xfer/1` is in both payloads.
+    /// While nil the xfer types read as any other. When set, an xfer record without the capability is
+    /// `peer_not_allowed`, and one with `MORE` set is `peer_bad_frame`.
+    public var xferAllowed: Bool?
 
     public init(mode: PeerRecordMode) { self.mode = mode }
 
@@ -150,10 +157,15 @@ public struct PeerRecordAssembler: Sendable {
             return .ignored
         }
         if !row.modes.contains(mode.rawValue) { return .close(.peerNotAllowed) }
+        if row.from == 0x0020, let allowed = xferAllowed {
+            if !allowed { return .close(.peerNotAllowed) }
+            if more { return .close(.peerBadFrame) }
+        }
         // An empty MORE record is accepted (corpus `more-empty-parts`), so the chain's record
         // count is what bounds the work.
         let size = (open?.size ?? 0) + r.body.count
         if size > peerMaxMessageBytes { return .close(.peerBadFrame) }
+        if more || open != nil, mode == .v || mode == .p, size > peerMaxVPChainBytes { return .close(.peerBadFrame) }
         var parts = open?.parts ?? []
         if parts.count >= peerMaxChainRecords { return .close(.peerBadFrame) }
         parts.append(r.body)

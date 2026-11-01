@@ -29,7 +29,7 @@ import {
   type GateStep,
 } from "@polaris-key/ui-core/browser";
 
-import { WEB_ADD_IN, type AddIn } from "@polaris-key/ui-core";
+import { addInOf, type AddIn } from "@polaris-key/ui-core";
 import { PolarisContext } from "../react/context.js";
 import { useAdapterState } from "../react/hooks.js";
 import type {
@@ -128,6 +128,32 @@ export function useSdkGate(
   const addFlow = useRef<AddFlow | null>(null);
   const addToken = useRef(0);
   const [addState, redrawAdd] = useReducer((n: number) => n + 1, 0);
+  /** Where Add your name and email goes: the host's `addIn`, else read once from discovery (null
+   *  until known; the press then shows busy instead of acting on a guess). */
+  const [channel, setChannel] = useState<AddIn | null>(opts.addIn ?? null);
+  const [addBusy, setAddBusy] = useState(false);
+  const channelRef = useRef<AddIn | null>(opts.addIn ?? null);
+  const readChannel = useCallback(async (): Promise<AddIn> => {
+    if (channelRef.current) return channelRef.current;
+    let d: Record<string, unknown> | null = null;
+    try {
+      d = (await adapter?.discovery()) ?? null;
+    } catch {
+      d = null;
+    }
+    if (d) {
+      channelRef.current = addInOf(d);
+      setChannel(channelRef.current);
+    }
+    return channelRef.current ?? "portal";
+  }, [adapter]);
+  useEffect(() => {
+    if (
+      !channelRef.current &&
+      adapter?.snapshot().capabilities.identity.enabled
+    )
+      void readChannel();
+  }, [adapter, readChannel]);
   // The sign-in a holder flow runs in this page: one at a time.
   const session = useRef<SignInSessionHandle | null>(null);
   const owning = useRef(false);
@@ -299,14 +325,16 @@ export function useSdkGate(
   const identityOn = state.capabilities?.identity.enabled === true;
   // The checking screen waits for the ladder only where the build has one to run.
   const holds = autoOn && adapter?.supports(AUTOSIGNIN).supported === true;
+  // Due on the first render that could start it, so the checking screen is never preceded by a
+  // frame of Welcome.
+  const autoDue =
+    autoOn &&
+    !autoStarted.current &&
+    state.phase !== "loading" &&
+    state.status === "needs-activation" &&
+    identityOn;
   useEffect(() => {
-    if (!autoOn || !adapter || autoStarted.current) return;
-    if (
-      state.phase === "loading" ||
-      state.status !== "needs-activation" ||
-      !identityOn
-    )
-      return;
+    if (!autoOn || !adapter || !autoDue) return;
     autoStarted.current = true;
     setAuto({ pending: true, seed: null });
     // The ladder and its mapping load now, with the run, not with the page.
@@ -318,7 +346,7 @@ export function useSdkGate(
         setAuto({ pending: false, seed });
         if (open) setStep("signin");
       });
-  }, [autoOn, adapter, state.phase, state.status, identityOn]);
+  }, [autoOn, adapter, autoDue]);
   // An identity failure ends the hand-off (the Welcome step shows it).
   const identityError = state.error.identity;
   useEffect(() => {
@@ -422,31 +450,41 @@ export function useSdkGate(
     [adapter, ctx, opts.returnUrl],
   );
 
-  /** Add your name and email: the portal (WEB_ADD_IN, or Identity off); otherwise AddToAccount.
-   *  The holder flows load now, not with the gate. */
-  const addIn = opts.addIn ?? WEB_ADD_IN;
+  /** Add your name and email: AddToAccount when discovery carries `deviceChoice` (or the host
+   *  says `app`); otherwise the portal, which is also where Identity off goes. The holder flows
+   *  load now, not with the gate. */
   const addToAccount = useCallback(() => {
     if (!adapter) return;
-    if (
-      addIn === "portal" ||
-      !adapter.snapshot().capabilities.identity.enabled
-    ) {
-      openPortal(heldKey.current ?? undefined);
-      return;
-    }
-    if (stepRef.current === "add") return;
-    dropAdd();
-    addFrom.current = stepRef.current;
     const token = ++addToken.current;
-    void import("./holderGate.js").then((m) => {
+    void (async () => {
+      let where: AddIn = "portal";
+      if (adapter.snapshot().capabilities.identity.enabled) {
+        if (channelRef.current) where = channelRef.current;
+        else {
+          setAddBusy(true);
+          where = await readChannel();
+          if (alive.current) setAddBusy(false);
+        }
+      }
+      if (where === "portal") {
+        if (token === addToken.current && alive.current)
+          openPortal(heldKey.current ?? undefined);
+        return;
+      }
       if (token !== addToken.current || !alive.current) return;
+      if (stepRef.current === "add") return;
+      dropAdd();
+      addFrom.current = stepRef.current;
+      const t2 = ++addToken.current;
+      const m = await import("./holderGate.js");
+      if (t2 !== addToken.current || !alive.current) return;
       addFlow.current = m.createAddFlow(adapter, session, "device", () =>
         redrawAdd(),
       );
       holding.current = true;
       enter("add", "activate.recommend.action");
-    });
-  }, [adapter, addIn, openPortal, dropAdd, enter]);
+    })();
+  }, [adapter, openPortal, dropAdd, enter, readChannel]);
 
   /** "Sign in to that account" on a license-owned refusal: sign in in this page and complete with
    *  the key just entered (D17). One sign-in at a time: a second press while one is live does
@@ -454,22 +492,28 @@ export function useSdkGate(
   const ownedSignIn = useCallback(() => {
     if (!adapter || owning.current || session.current) return;
     const k = key.trim();
-    if (addIn === "portal") {
-      // The portal signs in to that account and adds the key.
-      openPortal(k || undefined);
-      return;
-    }
     owning.current = true;
-    void import("./holderGate.js")
-      .then((m) => m.ownedSignIn(adapter, session, k))
+    void readChannel()
+      .then((where) => {
+        if (where === "portal") {
+          // The portal signs in to that account and adds the key.
+          owning.current = false;
+          if (alive.current) openPortal(k || undefined);
+          return "portal" as const;
+        }
+        return import("./holderGate.js").then((m) =>
+          m.ownedSignIn(adapter, session, k),
+        );
+      })
       .catch(() => "fallback" as const)
       .then((r) => {
+        if (r === "portal") return;
         owning.current = false;
         if (!alive.current) return;
         if (r === "fallback") signIn();
         else if (r === "signedIn") finish();
       });
-  }, [adapter, key, signIn, finish, openPortal, addIn]);
+  }, [adapter, key, signIn, finish, openPortal, readChannel]);
 
   const act = useCallback(
     (k: string) => {
@@ -512,10 +556,14 @@ export function useSdkGate(
         case "signin.key.signIn":
         case "signin.again":
         case "signin.handoff.again":
+        case "activate.attach.reopen":
         case "signInHandoff.newCode":
           // AddToAccount while busy: bring the browser tab back, inside the press; the sign-in
           // keeps running.
-          if (step === "add" && k === "signin.handoff.again") {
+          if (
+            step === "add" &&
+            (k === "signin.handoff.again" || k === "activate.attach.reopen")
+          ) {
             void Promise.resolve(session.current?.reopen()).catch(() => {});
             return;
           }
@@ -714,6 +762,11 @@ export function useSdkGate(
               dismissed,
               deviceKind: "device",
               ...(returned.current ? { returned: true } : {}),
+              ...(channel === "portal" ? { addIn: "portal" as const } : {}),
+              ...(addBusy ? { addBusy: true } : {}),
+              ...(addFlow.current?.model.input().deviceCode
+                ? { deviceCode: addFlow.current.model.input().deviceCode! }
+                : {}),
               ...(addFlow.current
                 ? {
                     addToAccount: {
@@ -741,6 +794,8 @@ export function useSdkGate(
       signInFailed,
       opts.locale,
       addState,
+      channel,
+      addBusy,
     ],
   );
   if (!ctx || !input) return null;
@@ -749,7 +804,7 @@ export function useSdkGate(
     adapter: ctx.adapter,
     // While automatic sign-in is out the gate keeps its checking screen, never a flash of Welcome.
     input:
-      auto.pending && holds
+      (auto.pending || autoDue) && holds
         ? { ...shown, gate: { checking: true, cached: false } }
         : shown,
     step,

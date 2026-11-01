@@ -39,6 +39,9 @@ const Transport := preload("res://addons/polaris_key/services/cloud_sync/transpo
 const State := preload("res://addons/polaris_key/services/cloud_sync/state.gd")
 const CodecPort := preload("res://addons/polaris_key/services/cloud_sync/codec_port.gd")
 
+## The collection `cloud_sync.saves` writes to: a `revision` collection the machine holds.
+const SAVES_DECL := {"name": "saves", "policy": "revision", "resolve": "keepServer"}
+
 ## The machine's events, in batches, in order. A listener may call `touch` or `flush`: the pump
 ## runs again after it, never a second pump.
 signal events(batch: Array)
@@ -58,6 +61,8 @@ var _file: State
 var _codec: CodecPort
 var _transport: PKeyTransport
 var _machine: Machine = null
+## The listener for `put_at` / `remove_at` outcomes; it survives a rebuild of the machine.
+var _outcome: Callable = Callable()
 var _detach: Callable = Callable()
 ## The catalog compiled into the app: authoritative for every key it names.
 var _mirror: Variant = null
@@ -109,7 +114,7 @@ func configure(deps: Dictionary, opts: Dictionary = {}) -> void:
 	_opts = opts
 	_codec = deps.get("codec", CodecPort.new())
 	_file = State.new(deps["state_dir"], deps["product"], deps.get("sealer"))
-	_sync_key_re = RegEx.create_from_string(PKeyConstants.SYNC_KEY_PATTERN)
+	_sync_key_re = RegEx.create_from_string(PKeyChannel.anchored(PKeyConstants.SYNC_KEY_PATTERN))
 
 
 ## How the journal is kept: "sealed", "encrypted-file" or "none" (see state.gd).
@@ -119,6 +124,49 @@ func state_protection() -> String:
 
 func is_started() -> bool:
 	return _started and not _closed
+
+
+## The one listener for the machine's `put_at` / `remove_at` outcomes (kept across rebuilds).
+func on_outcome(fn: Callable) -> void:
+	_outcome = fn
+	if _machine != null:
+		_machine.on_outcome(fn)
+
+
+## The `saves` settings app code gave, with defaults: `delta` (true), `max_bytes` (null: the template's
+## 32 MiB) and `save_format_version` (0: no check).
+func saves_options() -> Dictionary:
+	var o: Variant = _opts.get("saves")
+	var d: Dictionary = o if o is Dictionary else {}
+	return {
+		"delta": d.get("delta", true) != false,
+		"max_bytes": d.get("max_bytes"),
+		"save_format_version": int(d.get("save_format_version", 0)),
+	}
+
+
+## The codec port (locked until a ring is unlocked).
+func codec() -> Object:
+	return _codec
+
+
+## The request context of the sync routes, per call: `{product, token, headers, url}`.
+func request_context() -> Dictionary:
+	return {
+		"product": _deps["product"],
+		"token": _deps["token"].call(),
+		"headers": _deps["headers"],
+		"url": _deps["url"],
+	}
+
+
+## Where the transfer journal and the chunk cache live.
+func state_dir() -> String:
+	return _deps["state_dir"]
+
+
+func sealer() -> Variant:
+	return _deps.get("sealer")
 
 
 ## The machine; null before `start`.
@@ -233,7 +281,7 @@ func _build(persisted: Variant) -> Dictionary:
 	var make_id: Callable = _deps.get("new_client_id", _random_client_id)
 	var m := Machine.new({
 		"product": _deps["product"],
-		"catalog": {"settings": routes},
+		"catalog": {"settings": routes, "collections": [SAVES_DECL.duplicate()]},
 		"document": document,
 		"now": _now(),
 		"encryption": _opts.get("encryption", "e2e"),
@@ -247,6 +295,7 @@ func _build(persisted: Variant) -> Dictionary:
 	_routes = routes
 	_document_json = JSON.stringify(document, "", false)
 	_machine = m
+	m.on_outcome(_outcome)
 	_gen += 1
 	_apply_discovery(m)
 	_detach = _codec.attach(_on_root_changed)
@@ -431,7 +480,7 @@ func _exchange(m: Machine, req: Dictionary, bound: Variant) -> void:
 		if ok:
 			await _maybe_refetch(res["body"])
 		return
-	var opened_res: Dictionary = _codec.open_pull(res["body"], mutations, _opts.get("aliases"), _open_keys.keys())
+	var opened_res: Dictionary = _codec.open_pull(res["body"], mutations, _opts.get("aliases"), _open_keys.keys(), m.record_keys())
 	if not opened_res.get("ok", false):
 		# Locked since the request left, or a repeated mutationId: the answer is dropped, the cursor stays.
 		return _receive(m, Transport.TRANSPORT_ERROR)

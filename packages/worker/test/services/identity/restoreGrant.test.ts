@@ -324,6 +324,22 @@ describe("a successful restore", () => {
     expect(mail[0]!.text).not.toMatch(/rs_|rk_/);
   });
 
+  it("the restore notice names the app by its checked name", async () => {
+    // DNI: the notice goes to an inbox before anyone has judged the stored product name.
+    await seedConsent();
+    await w.db.run(
+      "UPDATE products SET name = ? WHERE slug = ?",
+      "Steam",
+      SLUG,
+    );
+    const r = await redeem(await enrol());
+    expect(r.res.status).toBe(200);
+    expect(mail).toHaveLength(1);
+    expect(mail[0]!.subject).not.toContain("Steam");
+    expect(mail[0]!.text).not.toContain("Steam");
+    expect(mail[0]!.subject).toContain(`${SLUG} signed in on`);
+  });
+
   it("a replay of the same key finds nothing", async () => {
     await seedConsent();
     const key = await enrol();

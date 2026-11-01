@@ -229,7 +229,6 @@
       "swift-format:LineLength": 1
     },
     "sdks/swift/Sources/PolarisKeyPlatformC/CSurface.swift": {
-      "swift-format:AddLines": 1,
       "swift-format:AlwaysUseLowerCamelCase": 3
     },
     "sdks/swift/Sources/PolarisKeyUI/BrandVector.swift": {
@@ -351,6 +350,9 @@
       "swift-format:OrderedImports": 1,
       "swift-format:TrailingComma": 1
     },
+    "sdks/swift/Tests/PolarisKeyTests/CloudSyncBackgroundTests.swift": {
+      "swift-format:LineLength": 1
+    },
     "sdks/swift/Tests/PolarisKeyTests/CloudSyncHostBoundsTests.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 2
     },
@@ -368,9 +370,6 @@
     "sdks/swift/Tests/PolarisKeyTests/ConformanceTests.swift": {
       "swift-format:LineLength": 1,
       "swift-format:TrailingComma": 1
-    },
-    "sdks/swift/Tests/PolarisKeyTests/ConnectSessionTests.swift": {
-      "swift-format:AlwaysUseLowerCamelCase": 6
     },
     "sdks/swift/Tests/PolarisKeyTests/ContentConformanceTests.swift": {
       "swift-format:AddLines": 2,
@@ -469,9 +468,6 @@
     },
     "sdks/swift/Tests/PolarisKeyTests/PeerNoiseTests.swift": {
       "swift-format:AlwaysUseLowerCamelCase": 1
-    },
-    "sdks/swift/Tests/PolarisKeyTests/PeerSessionTests.swift": {
-      "swift-format:AlwaysUseLowerCamelCase": 26
     },
     "sdks/swift/Tests/PolarisKeyTests/PlatformTransportTests.swift": {
       "swift-format:LineLength": 2

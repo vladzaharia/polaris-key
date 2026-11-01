@@ -66,19 +66,6 @@ function storedPassthroughName(json: string | null | undefined): string | null {
   return check.ok ? check.name : null;
 }
 
-/**
- * The <App> of "<App> wants you to sign in" and of "<App> via Polaris Key": the stored header name,
- * else the product's display name. The passthrough flows (I-07, I-08) and their mail (I-18's
- * `deliverEmail` sender `displayName`) read it here.
- */
-export async function passthroughDisplayName(
-  db: Db,
-  product: { slug: string; name: string },
-): Promise<string> {
-  const settings = await getPortalProductSettings(db, product.slug);
-  return storedPassthroughName(settings?.branding_json) ?? product.name;
-}
-
 async function iosDevicesSeen(db: Db, product: string): Promise<boolean> {
   const row = await db.first<{ one: number }>(
     "SELECT 1 AS one FROM devices WHERE product = ? AND platform = 'ios' LIMIT 1",

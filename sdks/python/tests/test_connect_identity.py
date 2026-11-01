@@ -449,10 +449,15 @@ def test_sign_out_clears_the_connect_state_and_keeps_the_device_keys(worker, tmp
 
 def test_sign_out_without_connect_state_creates_nothing(worker, tmp_path) -> None:
     out, c = _device_with_signout(worker, tmp_path)
-    before = sorted(os.listdir(tmp_path))
+    def files() -> list:
+        return sorted(f for _, _, names in os.walk(tmp_path) for f in names)
+
+    before = files()
     c.identity.sign_out()
     assert out.signouts == 1
-    assert sorted(os.listdir(tmp_path)) == before
+    # Sign-out records that the person signed out on purpose and that the kept token is no sign-in
+    # (I-47.3); it makes no Connect state.
+    assert files() == sorted(before + ["explicit-sign-out", "token-provenance"])
     assert not os.path.exists(os.path.join(c.core.dirs.state, CONNECT_STATE_FILE))
     assert not os.path.exists(os.path.join(c.core.dirs.state, "device-keys.json"))
 

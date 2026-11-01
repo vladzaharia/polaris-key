@@ -44,6 +44,43 @@ describe("RecordAssembler chains", () => {
   });
 });
 
+describe("RecordAssembler chains in modes v and p", () => {
+  const more = (n: number) => ({
+    type: 0x8014,
+    flags: 1,
+    body: new Uint8Array(n),
+  });
+  it.each(["v", "p"] as const)(
+    "closes an open MORE chain over 16 KiB in mode %s",
+    (mode) => {
+      const a = new RecordAssembler(mode);
+      expect(a.push(more(8192))).toEqual({ kind: "pending" });
+      expect(a.push(more(8192))).toEqual({ kind: "pending" });
+      expect(a.push(more(1))).toEqual({
+        kind: "close",
+        code: "peer_bad_frame",
+      });
+    },
+  );
+  it("closes a first MORE record over 16 KiB, and takes a 16 KiB chain", () => {
+    expect(new RecordAssembler("v").push(more(16385))).toEqual({
+      kind: "close",
+      code: "peer_bad_frame",
+    });
+    const a = new RecordAssembler("v");
+    expect(a.push(more(16384))).toEqual({ kind: "pending" });
+    expect(
+      a.push({ type: 0x8014, flags: 0, body: new Uint8Array(0) }).kind,
+    ).toBe("message");
+  });
+  it("leaves mode a to the 1 MiB message cap", () => {
+    const a = new RecordAssembler("a");
+    const part = { type: 0x0100, flags: 1, body: new Uint8Array(20_000) };
+    expect(a.push(part)).toEqual({ kind: "pending" });
+    expect(a.push(part)).toEqual({ kind: "pending" });
+  });
+});
+
 describe("relay RING epoch", () => {
   it("refuses an epoch above the safe integer range", () => {
     const b = new Uint8Array(9);

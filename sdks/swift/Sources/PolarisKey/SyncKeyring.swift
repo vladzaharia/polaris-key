@@ -16,12 +16,22 @@
 //  - The first root this client acquires (create, recover, unlock) pins `{ringId, epoch, rootKid}`
 //    in the Core store (no secret). A served ring or wrap that differs is never opened: `unlock()`
 //    answers `ringChanged`, and only the recovery code (`recover`) or an explicit
-//    `acceptRingChange(confirmed:)` re-pins. `forget()` drops the pin and the Keychain root; the
-//    release hook calls it. The stored root is used only while it matches the pin.
-//  - An iCloud Keychain backup of the root is a later slice (U-39.5).
+//    `acceptRingChange(confirmed:)` re-pins. `forget()` drops the Keychain root, then the pin; the
+//    release hook calls it. The stored root is used only while it matches the pin. With no pin, a
+//    stored root is the pin.
+//  - iCloud Keychain backup (U-39.5, R-11): the same root also goes into `PlatformBackupStore`
+//    (synchronizable; service `pkey-sync:<product>`, account `<subject>:<ringId>`), written when the
+//    ring is created, reset, recovered or unlocked. A new device with no local root reads it, once
+//    it matches the served ring's `kid`, as a silent rung before the recovery code is asked for, and
+//    then deposits its own server wrap like `recover()` does (best effort).
+//    Sign-out (`forget()`) keeps the item, because deleting a synchronizable item deletes it on
+//    every device of the Apple ID. Only `reset()` (which removes the old ring's item), `deleteBackup()`
+//    (account deletion) and the person's own Keychain remove it. A backup that cannot be read or
+//    written is skipped: it never fails a ring call. `SyncKeyringOptions.backup = .off` opts out.
 
 import Foundation
 import PolarisKeyCore
+import PolarisKeyPlatform
 
 /// Told when this device gains or loses the root: Cloud Sync's machine takes the root as a flag.
 public protocol SyncRootListener: Sendable {
@@ -223,6 +233,80 @@ public final class SyncCodec: Sendable, CustomReflectable, CustomStringConvertib
     }
 }
 
+/// The file codec of a collection: it seals with the root it was made with, and refuses (`sync-locked`) on
+/// every call and every stream piece once the ring no longer holds that root. The root is not exposed.
+private final class GuardedFileCodec: FileCodec, CustomReflectable, CustomStringConvertible {
+    private let inner: E2eFileCodec
+    private let memory: RingMemory
+    private let kid: Data
+
+    init(inner: E2eFileCodec, memory: RingMemory, kid: Data) {
+        self.inner = inner
+        self.memory = memory
+        self.kid = kid
+    }
+
+    var description: String { "GuardedFileCodec(locked: \(!live))" }
+    var customMirror: Mirror { Mirror(self, children: [], displayStyle: .class) }
+
+    fileprivate var live: Bool { memory.held?.kid == kid }
+    fileprivate func check() throws { if !live { throw SyncKeyring.lockedError() } }
+
+    var enc: String { inner.enc }
+    func chunkId(_ plain: Data) throws -> Data {
+        try check()
+        return try inner.chunkId(plain)
+    }
+    func chunkObjectBytes(_ plainLen: Int) -> Int { inner.chunkObjectBytes(plainLen) }
+    func sealChunk(id: Data, plain: Data) throws -> Data {
+        try check()
+        return try inner.sealChunk(id: id, plain: plain)
+    }
+    func openChunk(id: Data, object: Data) throws -> FileOpened {
+        try check()
+        return try inner.openChunk(id: id, object: object)
+    }
+    func storedSize(_ plainSize: Int) -> Int { inner.storedSize(plainSize) }
+    func plainSize(_ storedSize: Int) -> Int? { inner.plainSize(storedSize) }
+    func sealManifest(_ plain: Data) throws -> Data {
+        try check()
+        return try inner.sealManifest(plain)
+    }
+    func openManifest(_ stored: Data) throws -> FileOpened {
+        try check()
+        return try inner.openManifest(stored)
+    }
+    func sealWhole(_ plain: Data) throws -> Data {
+        try check()
+        return try inner.sealWhole(plain)
+    }
+    func makeOpener() throws -> any FileOpener {
+        try check()
+        return GuardedOpener(inner: try inner.makeOpener(), codec: self)
+    }
+}
+
+private final class GuardedOpener: FileOpener, @unchecked Sendable {
+    private let inner: any FileOpener
+    private let codec: GuardedFileCodec
+    init(inner: any FileOpener, codec: GuardedFileCodec) {
+        self.inner = inner
+        self.codec = codec
+    }
+    func push(_ data: Data) throws -> [Data] {
+        try codec.check()
+        let out = try inner.push(data)
+        try codec.check()
+        return out
+    }
+    func finish() throws -> Data {
+        try codec.check()
+        let out = try inner.finish()
+        try codec.check()
+        return out
+    }
+}
+
 /// `SyncCodec` is the host codec's port (U-07.5). `open` gains no default here: the host passes the
 /// app's aliases explicitly.
 extension SyncCodec: SyncCodecPort {}
@@ -255,13 +339,63 @@ private func same(_ a: Data, _ b: Data) -> Bool {
     return d == 0
 }
 
-private let ringIdPattern = try! NSRegularExpression(pattern: "^rg_[A-Za-z0-9_-]{22}$")
-private func isRingId(_ s: String) -> Bool {
-    ringIdPattern.firstMatch(in: s, range: NSRange(s.startIndex..., in: s)) != nil
+func isRingId(_ s: String) -> Bool {
+    wholeMatches("rg_[A-Za-z0-9_-]{22}", s) != nil
 }
+
+/// Where the root is backed up for a new device of the same person. The bytes are a JSON object
+/// (the stored-root record); the port never sees the person's recovery code.
+public protocol SyncRootBackupPort: Sendable {
+    func load(subject: String, ringId: String) throws -> Data?
+    func save(subject: String, ringId: String, value: Data) throws
+    func remove(subject: String, ringId: String) throws
+}
+
+#if canImport(Security)
+    /// The iCloud Keychain backup: `PlatformBackupStore.syncRoot` for one product.
+    struct PlatformSyncRootBackup: SyncRootBackupPort {
+        let product: String
+        let store: PlatformBackupStore
+
+        init(product: String, accessGroup: String?) {
+            self.init(product: product, store: PlatformBackupStore(accessGroup: accessGroup))
+        }
+
+        init(product: String, store: PlatformBackupStore) {
+            self.product = product
+            self.store = store
+        }
+
+        private func item(_ subject: String, _ ringId: String) -> PlatformBackupStore.Item {
+            .syncRoot(product: product, subject: subject, ringId: ringId)
+        }
+
+        func load(subject: String, ringId: String) throws -> Data? { try store.get(item(subject, ringId)) }
+        func save(subject: String, ringId: String, value: Data) throws {
+            try store.set(item(subject, ringId), value: value)
+        }
+        func remove(subject: String, ringId: String) throws { try store.delete(item(subject, ringId)) }
+    }
+#endif
 
 /// The seams a host or a test may replace.
 public struct SyncKeyringOptions: Sendable {
+    /// Whether, and where, the root is backed up beyond this device.
+    public enum Backup: Sendable {
+        /// The platform backup (iCloud Keychain on Apple), on by default. It needs a signed-in
+        /// subject; without one, or where the platform has none, nothing is backed up.
+        case platform
+        /// No backup: the opt-out.
+        case off
+        /// A host's own store.
+        case custom(any SyncRootBackupPort)
+    }
+    public var backup: Backup = .platform
+    /// Where removal looks when `backup` is `.off` (tests give a store; nil: the platform backup).
+    var removalPort: (any SyncRootBackupPort)?
+    /// The signed-in subject, for the backup's account name. Nil: no backup is read or written.
+    /// `client.keyring` and `configureKeyring(_:)` fill it from the identity client.
+    public var subject: (@Sendable () -> String?)?
     /// This device's keys. Nil: the product's `DeviceKeyStore` (the one `client.connect` makes by
     /// default). Give the same port you gave `ConnectOptions`.
     public var keys: (any DeviceKeyPort)?
@@ -269,10 +403,15 @@ public struct SyncKeyringOptions: Sendable {
     public var rootStore: RingRootStore?
     /// A keychain access group for the default key port and root store.
     public var accessGroup: String?
-    public init(keys: (any DeviceKeyPort)? = nil, rootStore: RingRootStore? = nil, accessGroup: String? = nil) {
+    public init(
+        keys: (any DeviceKeyPort)? = nil, rootStore: RingRootStore? = nil, accessGroup: String? = nil,
+        backup: Backup = .platform, subject: (@Sendable () -> String?)? = nil
+    ) {
         self.keys = keys
         self.rootStore = rootStore
         self.accessGroup = accessGroup
+        self.backup = backup
+        self.subject = subject
     }
 }
 
@@ -280,10 +419,21 @@ public actor SyncKeyring: CustomReflectable {
     private static let pinRecord = "sync-ring-pin"
 
     private let core: CoreContext
-    nonisolated let options: SyncKeyringOptions
+    /// The options, whether the SDK built this ring on its own (`implicit`: the Cloud Sync host asked for
+    /// it before the app configured one) and whether any option was read yet (`used`). While implicit and
+    /// unused, `configureKeyring(_:)` swaps the options in place, so the order of the host's background
+    /// start and the app's configure call cannot matter.
+    private nonisolated let state: LockedValue<(options: SyncKeyringOptions, implicit: Bool, used: Bool)>
+    nonisolated var options: SyncKeyringOptions {
+        state.with {
+            $0.used = true
+            return $0.options
+        }
+    }
     private nonisolated let memory = RingMemory()
     private var madeKeys: (any DeviceKeyPort)?
     private var madeRoots: RingRootStore?
+    private var madeBackup: (any SyncRootBackupPort)?
     private var memoryPin: SyncRingPin?
     /// Bumped by `forget()`: an acquisition that began before it is not kept (N-2).
     private var forgetGeneration = 0
@@ -294,8 +444,21 @@ public actor SyncKeyring: CustomReflectable {
 
     public init(core: CoreContext, options: SyncKeyringOptions = SyncKeyringOptions()) {
         self.core = core
-        self.options = options
+        self.state = LockedValue((options, false, false))
         self.codec = SyncCodec(memory: memory)
+    }
+
+    /// A ring the SDK made itself, open to one `configureKeyring(_:)` before it is first used.
+    nonisolated func markImplicit() { state.with { $0.implicit = true } }
+
+    /// Adopts `options` when this ring is implicit and nothing has read its options yet.
+    nonisolated func adopt(_ options: SyncKeyringOptions) -> Bool {
+        state.with {
+            guard $0.implicit, !$0.used else { return false }
+            $0.options = options
+            $0.implicit = false
+            return true
+        }
     }
 
     public nonisolated var customMirror: Mirror { Mirror(self, children: [], displayStyle: .class) }
@@ -323,6 +486,15 @@ public actor SyncKeyring: CustomReflectable {
         memory.attach(listener)
     }
 
+    /// The file codec of a collection (end-to-end mode), sealing with the ring's current root. Every call
+    /// and every stream piece re-checks that the ring still holds it, and refuses with `sync-locked` once
+    /// it does not. Throws `sync-locked` while locked.
+    public nonisolated func fileCodec(collection: String) throws -> any FileCodec {
+        guard let h = memory.held else { throw Self.lockedError() }
+        return GuardedFileCodec(
+            inner: E2eFileCodec(root: h.root, collection: collection), memory: memory, kid: h.kid)
+    }
+
     /// Whether this device holds a root right now.
     public nonisolated var unlocked: Bool { memory.held != nil }
 
@@ -343,18 +515,19 @@ public actor SyncKeyring: CustomReflectable {
         ring = nil
     }
 
-    /// Sign-out: forgets every root, in memory and in the Keychain, and drops the pin, so the next
-    /// person on this device starts clean. A root that cannot be deleted throws, so the sign-out
-    /// stops rather than leave it behind.
+    /// Sign-out: forgets every root, in memory and in the device Keychain, and drops the pin, so the
+    /// next person on this device starts clean. A root that cannot be deleted throws, so the sign-out
+    /// stops rather than leave it behind. The iCloud backup item is kept (R-11): deleting it would
+    /// delete it on every device of the Apple ID.
     public func forget() async throws {
         // N-2: a root being acquired when this runs is not stored after it.
         forgetGeneration += 1
         lock()
+        // The root goes first and the pin last: a stored root never outlives its pin. A root that
+        // cannot be removed keeps the pin and throws.
+        try roots().clear()
         memoryPin = nil
-        var failure: Error?
-        do { try roots().clear() } catch { failure = error }
-        do { try await core.store.writeRecordChecked(Self.pinRecord, nil) } catch { failure = failure ?? error }
-        if let failure { throw failure }
+        try await core.store.writeRecordChecked(Self.pinRecord, nil)
     }
 
     private func keyPort() throws -> any DeviceKeyPort {
@@ -371,6 +544,86 @@ public actor SyncKeyring: CustomReflectable {
         let r = try RingRootStore(productSlug: core.product, accessGroup: options.accessGroup)
         madeRoots = r
         return r
+    }
+
+    // ── The backup ───────────────────────────────────────────────────────────────────────
+
+    private func backupPort() -> (any SyncRootBackupPort)? {
+        if let b = madeBackup { return b }
+        let b: (any SyncRootBackupPort)?
+        switch options.backup {
+        case .off: b = nil
+        case .custom(let c): b = c
+        case .platform:
+            #if canImport(Security)
+                b = PlatformSyncRootBackup(product: core.product, accessGroup: options.accessGroup)
+            #else
+                b = nil
+            #endif
+        }
+        madeBackup = b
+        return b
+    }
+
+    /// The backup port and the signed-in subject, when both exist.
+    private func backupTarget() -> (port: any SyncRootBackupPort, subject: String)? {
+        guard let port = backupPort(), let subject = options.subject?(), !subject.isEmpty else { return nil }
+        return (port, subject)
+    }
+
+    /// Where removal looks. With the opt-out on, the platform item an earlier build wrote is still
+    /// removed: the option stops writing and reading, not removing.
+    private func removalTarget() -> (port: any SyncRootBackupPort, subject: String)? {
+        if let t = backupTarget() { return t }
+        guard case .off = options.backup, let subject = options.subject?(), !subject.isEmpty else { return nil }
+        if let p = options.removalPort { return (p, subject) }
+        #if canImport(Security)
+            return (PlatformSyncRootBackup(product: core.product, accessGroup: options.accessGroup), subject)
+        #else
+            return nil
+        #endif
+    }
+
+    /// The backed-up root, when it is for `ring` and still derives its own `kid`. Anything wrong
+    /// with the item (absent, unreadable, another ring) is a miss.
+    private func backedUpRoot(matching ring: SyncRingPin) -> HeldRoot? {
+        guard let t = backupTarget(), let data = (try? t.port.load(subject: t.subject, ringId: ring.ringId)) ?? nil,
+            let s = try? JSONDecoder().decode(StoredRingRoot.self, from: data), s.v == StoredRingRoot.version
+        else { return nil }
+        return heldRoot(from: s, matching: ring)
+    }
+
+    /// Writes the root to the backup unless the same record is already there. Best effort.
+    private func backUp(_ h: HeldRoot) {
+        guard let t = backupTarget() else { return }
+        let record = StoredRingRoot(
+            ringId: h.ringId, epoch: h.epoch, kid: hexOf(h.kid), root: Base64URL.encode(h.root))
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard let value = try? encoder.encode(record) else { return }
+        if let have = (try? t.port.load(subject: t.subject, ringId: h.ringId)) ?? nil, have == value { return }
+        try? t.port.save(subject: t.subject, ringId: h.ringId, value: value)
+    }
+
+    /// The rings this client knows of: held, pinned or last served.
+    private func knownRingIds() async -> [String] {
+        var ids: [String] = []
+        for id in [memory.held?.ringId, await pin()?.ringId, ring?.ringId] {
+            if let id, !ids.contains(id) { ids.append(id) }
+        }
+        return ids
+    }
+
+    /// Removes the backup item of every ring this client knows of (account deletion: call it before
+    /// the account goes). Nothing to remove without a signed-in subject. A store that cannot delete
+    /// throws, so the caller can say so. Sign-out never calls this (R-11).
+    public func deleteBackup() async throws {
+        guard let t = removalTarget() else { return }
+        var failure: Error?
+        for id in await knownRingIds() {
+            do { try t.port.remove(subject: t.subject, ringId: id) } catch { failure = failure ?? error }
+        }
+        if let failure { throw failure }
     }
 
     // ── The pin ──────────────────────────────────────────────────────────────────────────
@@ -391,6 +644,29 @@ public actor SyncKeyring: CustomReflectable {
             return SyncRingPin(ringId: r.ringId, epoch: r.epoch, rootKid: r.rootKid)
         }
         return memoryPin
+    }
+
+    /// The pin for `unlock`. A read that fails is `store-failed`; a record that decodes badly or
+    /// names another product is absent. With no pin, the stored root's `{ringId, epoch, kid}`
+    /// stands in for it (an unreadable record is `device-keys-unreadable`, a faulting store
+    /// `store-failed`). Nothing is written.
+    private func anchorForUnlock() async throws -> SyncRingPin? {
+        let data: Data?
+        do { data = try await core.store.readRecordChecked(Self.pinRecord) } catch {
+            throw PolarisError(code: ErrorCode.storeFailed, message: "The key ring pin could not be read.")
+        }
+        if let data, let r = try? JSONDecoder().decode(PinRecord.self, from: data), r.product == core.product {
+            return SyncRingPin(ringId: r.ringId, epoch: r.epoch, rootKid: r.rootKid)
+        }
+        if let m = memoryPin { return m }
+        let stored: StoredRingRoot?
+        do { stored = try roots().load() } catch RingRootStoreError.unreadable {
+            throw PolarisError(
+                code: ErrorCode.deviceKeysUnreadable, message: "The stored key ring root could not be read.")
+        } catch {
+            throw PolarisError(code: ErrorCode.storeFailed, message: "The stored key ring root could not be read.")
+        }
+        return stored.map { SyncRingPin(ringId: $0.ringId, epoch: $0.epoch, rootKid: $0.kid) }
     }
 
     private func writePin(_ p: SyncRingPin) async throws {
@@ -426,14 +702,16 @@ public actor SyncKeyring: CustomReflectable {
         let gen = forgetGeneration
         let state = try await read()
         guard let ring = state.ring else { return .locked(reason: .noRing) }
-        let pinned = await pin()
+        // With no accept: the pin, else the stored root's triple (a stored root is the pin when
+        // none is stored). A confirmed accept stands on its own, so it reads neither.
+        let anchor = accept == nil ? try await anchorForUnlock() : nil
         // An accept holds only for the ring the person was shown; a ring that moved since is
         // reported again, not adopted.
-        let expected = accept ?? pinned
+        let expected = accept ?? anchor
         let served = SyncRingPin(ringId: ring.ringId, epoch: ring.epoch, rootKid: ring.rootKid)
         if let expected, expected != served {
             return .ringChanged(
-                pinned: pinned ?? expected, served: served, createdAt: ring.createdAt, by: state.wrap?.by)
+                pinned: anchor ?? expected, served: served, createdAt: ring.createdAt, by: state.wrap?.by)
         }
         guard let kid = unhex(ring.rootKid) else { return .locked(reason: .unusableWrap) }
         if let h = memory.held, h.ringId == ring.ringId, h.epoch == ring.epoch, same(h.kid, kid) {
@@ -442,6 +720,17 @@ public actor SyncKeyring: CustomReflectable {
         // The Keychain root, when it is this ring's (and, when a pin stands, the pinned one).
         if let stored = storedRoot(matching: served) {
             try await hold(stored, store: false, gen: gen)
+            return .unlocked(ringId: ring.ringId, epoch: ring.epoch)
+        }
+        // The iCloud backup: a new device of the same person unlocks silently, before the recovery
+        // code is asked for. It must match the served ring's `kid`, like any other root.
+        if let backed = backedUpRoot(matching: served) {
+            try await hold(backed, store: true, gen: gen)
+            // Like `recover()`: the device now holds the root, so it stores its own wrap and the next
+            // start no longer depends on the backup. Best effort; a device whose current wrap
+            // already stands has nothing to deposit.
+            let current = state.wrap.map { $0.kid == ring.rootKid && $0.epoch == ring.epoch } ?? false
+            if !current { _ = await depositOwnWrap() }
             return .unlocked(ringId: ring.ringId, epoch: ring.epoch)
         }
         guard let wrap = state.wrap else { return .locked(reason: .noWrap) }
@@ -615,7 +904,7 @@ public actor SyncKeyring: CustomReflectable {
     }
 
     /// Takes a freshly acquired root: pinned first (no root is held without a pin), then kept in
-    /// the Keychain (a failure there leaves the root in memory only), then held.
+    /// the Keychain and the backup (a failure there leaves the root in memory only), then held.
     private func hold(_ h: HeldRoot, store: Bool, gen: Int) async throws {
         // N-2: the ring was forgotten (sign-out) since this acquisition began: nothing is kept.
         guard gen == forgetGeneration else { throw CancellationError() }
@@ -631,6 +920,7 @@ public actor SyncKeyring: CustomReflectable {
             try? roots().save(
                 StoredRingRoot(ringId: h.ringId, epoch: h.epoch, kid: hexOf(h.kid), root: Base64URL.encode(h.root)))
         }
+        backUp(h)
         var others = memory.others
         if let old = memory.held, old.ringId != h.ringId || old.epoch != h.epoch { others.append(old) }
         memory.set(held: h, others: others)
@@ -638,7 +928,12 @@ public actor SyncKeyring: CustomReflectable {
 
     /// The Keychain root, when it is for `ring` and still derives its own `kid`.
     private func storedRoot(matching ring: SyncRingPin) -> HeldRoot? {
-        guard let s = (try? roots().load()) ?? nil, s.ringId == ring.ringId, s.epoch == ring.epoch,
+        guard let s = (try? roots().load()) ?? nil else { return nil }
+        return heldRoot(from: s, matching: ring)
+    }
+
+    private func heldRoot(from s: StoredRingRoot, matching ring: SyncRingPin) -> HeldRoot? {
+        guard s.ringId == ring.ringId, s.epoch == ring.epoch,
             s.kid == ring.rootKid, let root = unb64(s.root, SyncCrypto.rootBytes), let kid = unhex(s.kid),
             same(SyncCrypto.deriveKid(root: root), kid)
         else { return nil }
@@ -689,13 +984,20 @@ public actor SyncKeyring: CustomReflectable {
             body["recovery"] = ["ct": Base64URL.encode(blob)]
             shown = try SyncRecovery.encode(code: code)
         }
+        let before = await knownRingIds()
         try await send("POST", path, body)
+        // Start over: the old ring's backup item goes (the server keeps `previous` for 30 days, and
+        // this client keeps the old root in memory for `adopt`). A create has no old ring to remove.
+        if path != "devices/keyring", let t = removalTarget() {
+            for old in before where old != ringId { try? t.port.remove(subject: t.subject, ringId: old) }
+        }
         try await hold(HeldRoot(ringId: ringId, epoch: epoch, kid: kid, root: root), store: true, gen: gen)
         ring = nil
         return SyncCreatedRing(ringId: ringId, epoch: epoch, rootKid: hexOf(kid), recoveryCode: shown)
     }
 
-    /// After a recovery: stores this device's own wrap. Never throws; false when it could not.
+    /// After a recovery or a backup unlock: stores this device's own wrap. Never throws; false when
+    /// it could not.
     private func depositOwnWrap() async -> Bool {
         do {
             try await wrapTo(deviceId: await core.deviceId, agreeKey: try await agreeKey())
@@ -811,9 +1113,12 @@ extension PolarisKeyClient {
     /// it was already built: configure before the first `client.keyring` read.
     @discardableResult
     public nonisolated func configureKeyring(_ options: SyncKeyringOptions) throws -> SyncKeyring {
+        var options = options
+        if options.subject == nil { options.subject = { [identity] in identity.account } }
         let built = SyncKeyring(core: core, options: options)
         return try attachments.with { table in
-            if table[ObjectIdentifier(KeyringAttachment.self)] != nil {
+            if let existing = table[ObjectIdentifier(KeyringAttachment.self)] as? SyncKeyring {
+                if existing.adopt(options) { return existing }
                 throw PolarisError(
                     code: ErrorCode.invalidOptions,
                     message: "client.keyring is already built; call configureKeyring(_:) before the first read.")
@@ -825,14 +1130,21 @@ extension PolarisKeyClient {
 
     /// The Cloud Sync key ring: `status`, `unlock`, `create`, `reset`, `wrapTo`, `recover`,
     /// `forget`, and the `codec` the E2E machine seals with. Built on first read.
-    public nonisolated var keyring: SyncKeyring { Self.keyring(core: core, attachments: attachments) }
+    public nonisolated var keyring: SyncKeyring {
+        Self.keyring(core: core, attachments: attachments, subject: { [identity] in identity.account })
+    }
 
-    static func keyring(core: CoreContext, attachments: LockedValue<[ObjectIdentifier: any Sendable]>) -> SyncKeyring {
+    static func keyring(
+        core: CoreContext, attachments: LockedValue<[ObjectIdentifier: any Sendable]>,
+        subject: (@Sendable () -> String?)? = nil
+    ) -> SyncKeyring {
         attachments.with { table in
             let key = ObjectIdentifier(KeyringAttachment.self)
             if let k = table[key] as? SyncKeyring { return k }
             // The client's Keychain access group, so a host sharing one stores the root in it.
-            let k = SyncKeyring(core: core, options: SyncKeyringOptions(accessGroup: core.keychainAccessGroup))
+            let k = SyncKeyring(
+                core: core, options: SyncKeyringOptions(accessGroup: core.keychainAccessGroup, subject: subject))
+            k.markImplicit()
             table[key] = k
             return k
         }

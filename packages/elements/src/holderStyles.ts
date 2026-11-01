@@ -62,13 +62,15 @@ export const HOLDER_CSS = `
   font-size: var(--pk-kit-type-meta-size);
   line-height: var(--pk-kit-type-meta-line-height);
 }
-.holder-form {
+.holder-form,
+.holder-wait {
   display: grid;
   gap: var(--pk-space-4);
 }
 /* A short window (DL1, DL3): the form's steps sit closer, so the title, the first field and the
    docked bar share the 390 px that large text leaves. */
-.pk-root[data-shape="short"] .holder-form {
+.pk-root[data-shape="short"] .holder-form,
+.pk-root[data-shape="short"] .holder-wait {
   gap: var(--pk-space-2);
 }
 .pk-root[data-shape="short"] .stage[data-split][data-kind] .card.step[data-part="card"] > .texts ~ .holder-form {

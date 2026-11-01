@@ -47,6 +47,7 @@ import {
   deviceRemovedNotice,
   deviceReplacedNotice,
 } from "../../../core/notify/templates.js";
+import { shownProductRow } from "../../../core/accounts/reservedDisplayNames.js";
 
 /** The rate-limit bucket device removal spends, on every surface. */
 export const DEVICE_DISCONNECT_BUCKET = "portalDeviceDisconnect";
@@ -176,14 +177,18 @@ export async function releaseAccountDevice(
       ? deviceReplacedNotice({
           deviceLabel: device.label,
           newDeviceLabel: forLabel,
-          productName: (await getProduct(db, product))?.name,
+          productName: (
+            await shownProductRow(env, db, await getProduct(db, product))
+          )?.name,
           productSlug: product,
           at: now,
           origin: new URL(req.url).origin,
         })
       : deviceRemovedNotice({
           deviceLabel: device.label,
-          productName: (await getProduct(db, product))?.name,
+          productName: (
+            await shownProductRow(env, db, await getProduct(db, product))
+          )?.name,
           productSlug: product,
           origin: new URL(req.url).origin,
         }),

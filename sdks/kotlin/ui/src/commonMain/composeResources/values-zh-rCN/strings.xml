@@ -324,10 +324,17 @@
     <string name="activate_recommend_skip">或不使用账户继续。%1$s的使用方式完全相同。</string>
     <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
     <string name="activate_recommend_portal">将许可证安全保存在 Polaris Locker</string>
+    <!-- AddToAccount, waiting: the title while the person confirms the email in Polaris Locker (a device code is shown). -->
+    <string name="activate_attach_waitTitle">在 Polaris Locker 中完成</string>
+    <!-- AddToAccount, waiting: under the sign-in code; the person checks it against the code Polaris Locker shows. -->
+    <string name="activate_attach_waitCheck">请在 Polaris Locker 中确认代码一致。</string>
+    <!-- AddToAccount, waiting: brings the Polaris Locker tab back. -->
+    <string name="activate_attach_reopen">再次打开 Polaris Locker</string>
+    <string name="activate_attach_reopen__macos">再次打开 Polaris Locker</string>
     <!-- AddToAccount: under the title, above the fields. -->
     <string name="activate_attach_lede">你的许可证及其设备保持不变。你将在浏览器中用验证码确认电子邮件。</string>
     <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
-    <string name="activate_attach_fine">我们会在浏览器中向这个电子邮件发送验证码。%1$s看不到它。</string>
+    <string name="activate_attach_fine">Polaris Locker 会向这个电子邮件发送验证码。%1$s看不到它。</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$s已在你的账户中</string>
     <!-- AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
@@ -1207,6 +1214,8 @@
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s将成为第%4$s台设备（共%5$s台）</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · 替换%2$s</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the app keeps the license it holds and attaches it to the account (add to account). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_licenseKept">%1$s的许可证将添加到你的账户。</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_consent_licenseInApp">你将在%1$s中选择许可证。</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
@@ -1299,6 +1308,8 @@
     <string name="signin_nearby_promptTitle">用手机登录</string>
     <!-- Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
     <string name="signin_nearby_body">在已登录且处于此网络的手机或电脑上打开 %1$s。</string>
+    <!-- Nearby sign-in, waiting, once a device is chosen: where to open the app. Arguments: {app} = the product's name from ProductIdentity (never translated); {device} = the other device's friendly name (never translated). Arguments: 1=app, 2=device. -->
+    <string name="signin_nearby_bodyOn">在 %2$s 上打开 %1$s。</string>
     <!-- Nearby sign-in, waiting: the line above the code the other device must tap. -->
     <string name="signin_nearby_match">在那边点按此代码：</string>
     <!-- Nearby sign-in, waiting: switches to the device code. -->
@@ -1314,7 +1325,7 @@
     <!-- Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_ask">允许 %1$s 登录？</string>
     <!-- Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated). -->
-    <string name="signin_nearby_askBody">点按它显示的代码。</string>
+    <string name="signin_nearby_askBody">选择它显示的代码。</string>
     <!-- Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_approved">%1$s 已登录</string>
     <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
@@ -1448,6 +1459,34 @@
     <string name="signin_cli_ifNotOpened">如果未打开，请前往%1$s</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_keys">Enter 再次打开 · c 使用代码 · Esc 取消</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15), nearby: the keys line while the code waits for a tap on the other device. Plain text, no formatting. -->
+    <string name="signin_cli_nearbyKey">c 改用代码 · Esc 取消</string>
+    <!-- Terminal sign-in, nearby: shown beside the spinner for the first seconds while the computer looks for the person's other devices. -->
+    <string name="signin_cli_nearbyLooking">正在查找你的其他设备…</string>
+    <!-- Terminal sign-in, nearby: shown beside the spinner while the code waits for a tap on the other device. Keep it to a word or two. -->
+    <string name="signin_cli_nearbyWaiting">等待中…</string>
+    <!-- Terminal key hints under the offer to look for nearby devices (macOS asks for access to the local network after it). Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
+    <string name="signin_cli_nearbyPromptKeys">Enter 继续 · Esc 暂不</string>
+    <!-- Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated). Arguments: 1=n. -->
+    <string name="signin_cli_nearbyPickKeys">1-%1$s 选择设备 · c 改用代码 · Esc 取消</string>
+    <!-- Terminal key hints while one device nearby could approve the sign-in: 1 picks it. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_nearbyPickOneKeys">1 选择此设备 · c 改用代码 · Esc 取消</string>
+    <!-- Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n or Esc signs out again. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_nearbyDoneKeys">Enter 继续 · n 或 Esc 不是你，退出登录</string>
+    <!-- Terminal 'devices approve': shown beside the spinner while the computer waits for another device to ask to sign in. -->
+    <string name="signin_cli_approveWaiting">正在等待设备发出请求…</string>
+    <!-- Terminal key hint while 'devices approve' waits for a device to ask. Keep the key first. -->
+    <string name="signin_cli_approveWaitKeys">Esc 停止</string>
+    <!-- Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d or Esc denies. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_approveKeys">1-3 选择代码 · d 或 Esc 拒绝</string>
+    <!-- Terminal 'devices approve': this computer cannot take part in nearby sign-in. 'Polaris Locker' is the end-user product name (never translated). -->
+    <string name="signin_cli_approveUnsupported">请在另一台设备上使用代码登录。</string>
+    <!-- Terminal 'devices approve': the title when this computer cannot take part in nearby sign-in; the next step follows (signin.cli.approveUnsupported). -->
+    <string name="signin_cli_approveUnsupportedTitle">无法在此电脑上批准</string>
+    <!-- Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated). Arguments: 1=n. -->
+    <string name="signin_cli_approveChooseKeys">1-%1$s 选择许可证 · Esc 拒绝</string>
+    <!-- Terminal key hints while 'devices approve' asks which license the new device gets and only one can be given: 1 picks it, Esc denies. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_approveChooseOneKeys">1 选择许可证 · Esc 拒绝</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_headless">这台电脑上没有浏览器。请改用代码：</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {name} = the person's display name; {email} = an email address. Arguments: 1=name, 2=email. -->
@@ -1573,6 +1612,10 @@
     <string name="cli_help_group">许可证</string>
     <!-- Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it. -->
     <string name="cli_help_namespace">激活、登录、设备和更新</string>
+    <!-- Terminal help: what 'devices approve' does. -->
+    <string name="cli_verb_devicesApprove">批准附近设备的登录</string>
+    <!-- Terminal usage error: 'devices approve' asks a person to pick a code, so it does not run with -json or without a terminal. Arguments: {command} = the command the person ran. Arguments: 1=command. -->
+    <string name="cli_approve_needsPerson">%1$s 需要有人在终端前操作。</string>
     <!-- Terminal: the title when a host command that needs a license is refused because the person has none (needs-activation), and the first line of the inline activate flow. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
     <string name="cli_gate_needs">%1$s需要许可证</string>
     <!-- Terminal: the title when a host command is refused because the person's license does not hold the entitlement it needs. They have a license, so it is never 'needs a license'. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
@@ -2057,6 +2100,8 @@
     <string name="signin_gate_confirmedByCode">已通过验证码确认</string>
     <!-- Finish step: label above the screen-name suggestion chips. -->
     <string name="signin_gate_nameFrom">使用以下来源的名称</string>
+    <!-- A "Use a name from" chip that offers the name the app passed along. Arguments: {app} = the requesting app's name; {name} = the name the app suggested (neither translated). Arguments: 1=app, 2=name. -->
+    <string name="signin_gate_nameFromApp">%1$s · %2$s</string>
     <!-- Finish step: under the screen name. Polaris Locker is never translated. -->
     <string name="signin_gate_nameHint">显示在 Polaris Locker 和电子邮件中。</string>
     <!-- Finish step: the picture group label. -->
@@ -2203,6 +2248,68 @@
     <string name="signin_key_enterKey">请输入你的许可证密钥。</string>
     <!-- Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a). -->
     <string name="signin_code_missing">没收到验证码？</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device. -->
+    <string name="linkPairing_title">与附近的人建立链接</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Both people open this on their own device. -->
+    <string name="linkPairing_openBody">请对方在其设备上打开此页面。保持靠近，并连接同一网络。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code. -->
+    <string name="linkPairing_searching">正在查找附近的设备…</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare. -->
+    <string name="linkPairing_codeTitle">核对验证码</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms. -->
+    <string name="linkPairing_codeBody">两个屏幕必须显示同一个验证码。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Arguments: {device} = the label the other device sent. Nothing authenticates it: any device on the network can send any label, so the line says it is reported, not verified. Arguments: 1=device. -->
+    <string name="linkPairing_reported">设备自称：%1$s</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Used when the other device sent no label. -->
+    <string name="linkPairing_reportedUnnamed">设备未提供名称</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Heading above the data categories both people approve; always shown before the confirm button. -->
+    <string name="linkPairing_shares">双方共享</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Used when the app asks for no data categories. -->
+    <string name="linkPairing_sharesNone">目前不共享任何内容。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Confirms the code matches. The link is made when the other person does the same. -->
+    <string name="linkPairing_confirm">验证码一致</string>
+    <string name="linkPairing_confirm__macos">验证码一致</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Declines: the session closes and nothing is stored. -->
+    <string name="linkPairing_decline">不一致</string>
+    <string name="linkPairing_decline__macos">不一致</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet. -->
+    <string name="linkPairing_waiting">正在等待对方确认</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices. -->
+    <string name="linkPairing_linkedTitle">已建立链接</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made. -->
+    <string name="linkPairing_linkedBody">现在无需验证码即可连接。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label. Arguments: 1=device. -->
+    <string name="linkPairing_linkedWith">已与%1$s建立链接。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link. -->
+    <string name="linkPairing_failedTitle">无法建立链接</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code. -->
+    <string name="linkPairing_failedDeclined">有人拒绝了。未建立任何链接。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first. -->
+    <string name="linkPairing_failedTimeout">双方确认前已超时。未建立任何链接。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links. -->
+    <string name="linkPairing_failedFull">其中一方已无法再添加链接。请先移除一个，然后重试。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended. -->
+    <string name="linkPairing_failedClosed">连接已关闭。未建立任何链接。</string>
+    <!-- Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit. Arguments: 1=code. -->
+    <string name="a11y_linkCode">链接验证码 %1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose. Arguments: 1=device, 2=name. -->
+    <string name="transferOffer_ask">%1$s想向你发送%2$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends. Arguments: 1=name. -->
+    <string name="transferOffer_askUnnamed">联系人想向你发送%1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title. -->
+    <string name="transferOffer_askBody">只接收你预期的内容。</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer. -->
+    <string name="transferOffer_accept">接收</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Declines the offer; nothing is received. -->
+    <string name="transferOffer_decline">拒绝</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what is being received. Arguments: 1=name. -->
+    <string name="transferOffer_receiving">正在接收%1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was received. Arguments: 1=name. -->
+    <string name="transferOffer_done">已接收%1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was not received. Arguments: 1=name. -->
+    <string name="transferOffer_failed">无法接收%1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title. -->
+    <string name="transferOffer_failedBody">未保存任何内容。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
@@ -2295,6 +2402,10 @@
     <string name="core_codes_relay_quota_exceeded_title">已达远程连接用量上限</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_quota_exceeded_message">即将重置。同一网络下的设备仍可连接。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_links_disabled_title">链接已关闭</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_links_disabled_message">此应用已关闭与他人的链接。你自己的设备仍可连接。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">连接已过期</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2403,6 +2514,10 @@
     <string name="core_codes_redirect_uri_mismatch_title">登录无法返回应用</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_redirect_uri_mismatch_message">该应用的登录设置不正确，因此在此处停止以保护你的账户。请告知其开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_request_uri_title">登录链接已过期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_invalid_request_uri_message">此登录链接已过期。请返回 %1$s 重新开始。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">选择许可证</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2724,6 +2839,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_expired_message">代码在登录完成前已过期。请重新开始。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_title">无法通过浏览器登录</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_message">此处无法打开浏览器登录。请改用代码。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_denied_title">登录被拒绝</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_denied_message">登录被拒绝。请重新开始。</string>
@@ -2815,6 +2934,58 @@
     <string name="core_codes_nearby_permission_denied_title">本地网络已被阻止</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_nearby_permission_denied_message">此应用无法访问本地网络上的设备。请在系统设置中允许。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_unsupported_title">附近登录不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_unsupported_message">此设备在此处无法查找附近的设备。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_handshake_failed_title">无法建立安全连接</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_handshake_failed_message">无法与附近的设备建立安全连接。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_closed_title">连接已结束</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_closed_message">与附近设备的连接已结束。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transfer_cancelled_title">传输已停止</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transfer_cancelled_message">传输未完成，未收到任何内容。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_unknown_title">未配对</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_unknown_message">该设备已不再与此设备配对。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_revoked_title">设备不再受信任</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_revoked_message">对方设备已从账户中移除。未共享任何内容。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_expired_title">设备证书已过期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_expired_message">对方设备的证书已过期。请刷新后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bad_frame_title">连接错误</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bad_frame_message">附近设备发送了意外的内容。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_unknown_critical_title">不支持的请求</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_unknown_critical_message">附近设备提出了此应用不支持的请求。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_not_allowed_title">此处不允许</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_not_allowed_message">附近设备提出了此步骤中不允许的请求。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_busy_title">附近设备繁忙</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_busy_message">打开的连接过多。请稍后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_timeout_title">连接超时</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_timeout_message">附近设备未及时响应。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bye_title">连接已关闭</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bye_message">附近设备已结束连接。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">平台出现问题</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

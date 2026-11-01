@@ -32,6 +32,7 @@ public enum ErrorCode {
     public static let relayDisabled = "relay_disabled"
     public static let relayPaused = "relay_paused"
     public static let relayQuotaExceeded = "relay_quota_exceeded"
+    public static let connectLinksDisabled = "connect_links_disabled"
     public static let relayTicketInvalid = "relay_ticket_invalid"
     public static let deviceLimit = "device_limit"
     public static let keyEntryLimit = "key_entry_limit"
@@ -60,6 +61,7 @@ public enum ErrorCode {
     public static let unsupportedGrantType = "unsupported_grant_type"
     public static let invalidScope = "invalid_scope"
     public static let redirectUriMismatch = "redirect_uri_mismatch"
+    public static let invalidRequestUri = "invalid_request_uri"
     public static let licenseChoiceRequired = "license_choice_required"
     public static let interstitialRequired = "interstitial_required"
     public static let notNearby = "not_nearby"
@@ -140,6 +142,7 @@ public enum ErrorCode {
     public static let serverError = "server-error"
     public static let cancelled = "cancelled"
     public static let signInExpired = "sign-in-expired"
+    public static let redirectUnavailable = "redirect-unavailable"
     public static let signInDenied = "sign-in-denied"
     public static let signInUnavailable = "sign-in-unavailable"
     public static let platformIdentityUnavailable = "platform-identity-unavailable"
@@ -163,6 +166,19 @@ public enum ErrorCode {
     public static let connectUnavailable = "connect-unavailable"
     public static let peerCertInvalid = "peer-cert-invalid"
     public static let nearbyPermissionDenied = "nearby-permission-denied"
+    public static let nearbyUnsupported = "nearby-unsupported"
+    public static let peerHandshakeFailed = "peer-handshake-failed"
+    public static let peerClosed = "peer-closed"
+    public static let transferCancelled = "transfer-cancelled"
+    public static let linkUnknown = "link-unknown"
+    public static let peerRevoked = "peer_revoked"
+    public static let peerExpired = "peer_expired"
+    public static let peerBadFrame = "peer_bad_frame"
+    public static let peerUnknownCritical = "peer_unknown_critical"
+    public static let peerNotAllowed = "peer_not_allowed"
+    public static let peerBusy = "peer_busy"
+    public static let peerTimeout = "peer_timeout"
+    public static let peerBye = "peer_bye"
     public static let platformError = "platform-error"
     public static let noToken = "no-token"
     public static let mintUnavailable = "mint-unavailable"
@@ -247,6 +263,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "relay_disabled",
     "relay_paused",
     "relay_quota_exceeded",
+    "connect_links_disabled",
     "relay_ticket_invalid",
     "device_limit",
     "key_entry_limit",
@@ -275,6 +292,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "unsupported_grant_type",
     "invalid_scope",
     "redirect_uri_mismatch",
+    "invalid_request_uri",
     "license_choice_required",
     "interstitial_required",
     "not_nearby",
@@ -355,6 +373,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "server-error",
     "cancelled",
     "sign-in-expired",
+    "redirect-unavailable",
     "sign-in-denied",
     "sign-in-unavailable",
     "platform-identity-unavailable",
@@ -378,6 +397,19 @@ public let ERROR_CODE_VALUES: [String] = [
     "connect-unavailable",
     "peer-cert-invalid",
     "nearby-permission-denied",
+    "nearby-unsupported",
+    "peer-handshake-failed",
+    "peer-closed",
+    "transfer-cancelled",
+    "link-unknown",
+    "peer_revoked",
+    "peer_expired",
+    "peer_bad_frame",
+    "peer_unknown_critical",
+    "peer_not_allowed",
+    "peer_busy",
+    "peer_timeout",
+    "peer_bye",
     "platform-error",
     "no-token",
     "mint-unavailable",
@@ -462,6 +494,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "relay_disabled": "wire",
     "relay_paused": "wire",
     "relay_quota_exceeded": "wire",
+    "connect_links_disabled": "wire",
     "relay_ticket_invalid": "wire",
     "device_limit": "wire",
     "key_entry_limit": "wire",
@@ -490,6 +523,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "unsupported_grant_type": "wire",
     "invalid_scope": "wire",
     "redirect_uri_mismatch": "wire",
+    "invalid_request_uri": "wire",
     "license_choice_required": "wire",
     "interstitial_required": "wire",
     "not_nearby": "wire",
@@ -570,6 +604,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "server-error": "client",
     "cancelled": "client",
     "sign-in-expired": "client",
+    "redirect-unavailable": "client",
     "sign-in-denied": "client",
     "sign-in-unavailable": "client",
     "platform-identity-unavailable": "client",
@@ -593,6 +628,19 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "connect-unavailable": "client",
     "peer-cert-invalid": "client",
     "nearby-permission-denied": "client",
+    "nearby-unsupported": "client",
+    "peer-handshake-failed": "client",
+    "peer-closed": "client",
+    "transfer-cancelled": "client",
+    "link-unknown": "client",
+    "peer_revoked": "peer",
+    "peer_expired": "peer",
+    "peer_bad_frame": "peer",
+    "peer_unknown_critical": "peer",
+    "peer_not_allowed": "peer",
+    "peer_busy": "peer",
+    "peer_timeout": "peer",
+    "peer_bye": "peer",
     "platform-error": "client",
     "no-token": "client",
     "mint-unavailable": "client",
@@ -722,6 +770,7 @@ public enum Feature {
     public static let identityAttach = "identity.attach"
     public static let identityAccount = "identity.account"
     public static let identityRedirectWeb = "identity.redirect.web"
+    public static let identityRedirectNative = "identity.redirect.native"
     public static let identityChoice = "identity.choice"
     public static let identityDevicecodeChoice = "identity.devicecode.choice"
     public static let identitySigninHints = "identity.signin.hints"
@@ -732,6 +781,7 @@ public enum Feature {
     public static let identityAutosignin = "identity.autosignin"
     public static let identityRestore = "identity.restore"
     public static let identityLink = "identity.link"
+    public static let identityNearby = "identity.nearby"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
     public static let releaseRecord = "release.record"
@@ -866,6 +916,7 @@ public let FEATURE_VALUES: [String] = [
     "identity.attach",
     "identity.account",
     "identity.redirect.web",
+    "identity.redirect.native",
     "identity.choice",
     "identity.devicecode.choice",
     "identity.signin.hints",
@@ -876,6 +927,7 @@ public let FEATURE_VALUES: [String] = [
     "identity.autosignin",
     "identity.restore",
     "identity.link",
+    "identity.nearby",
     "release.changelog",
     "release.download",
     "release.record",
@@ -1538,7 +1590,7 @@ public let PLAN_MATRIX_VERSION = 2
 public let SYNC_SCENARIOS_VERSION = 4
 
 /// `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
-public let DEVICE_LABEL_VERSION = 1
+public let DEVICE_LABEL_VERSION = 2
 
 /// `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.
 public let PRESENTATION_MATRIX_VERSION = 1
@@ -1547,7 +1599,7 @@ public let PRESENTATION_MATRIX_VERSION = 1
 public let PORTAL_MATRIX_VERSION = 1
 
 /// `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-public let UI_MATRIX_VERSION = 10
+public let UI_MATRIX_VERSION = 8
 
 /// `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 public let BACKEND_MATRIX_VERSION = 1
@@ -1999,11 +2051,11 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "sync.scenarios": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.settings": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.conflict": CapabilityRow(status: "planned", service: "sync", na: []),
-    "sync.saves": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.saves": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.keyring": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.records": CapabilityRow(status: "planned", service: "sync", na: []),
-    "sync.files": CapabilityRow(status: "planned", service: "sync", na: []),
-    "sync.files.delta": CapabilityRow(status: "planned", service: "sync", na: []),
+    "sync.files": CapabilityRow(status: "implemented", service: "sync", na: []),
+    "sync.files.delta": CapabilityRow(status: "implemented", service: "sync", na: []),
     "sync.e2e.recovery": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.transfer.background": CapabilityRow(status: "planned", service: "sync", na: []),
     "sync.e2e": CapabilityRow(status: "implemented", service: "sync", na: []),
@@ -2012,8 +2064,8 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "connect.protocol": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.lan": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.relay": CapabilityRow(status: "implemented", service: "connect", na: []),
-    "connect.links": CapabilityRow(status: "planned", service: "connect", na: []),
-    "connect.transfer": CapabilityRow(status: "planned", service: "connect", na: []),
+    "connect.links": CapabilityRow(status: "implemented", service: "connect", na: []),
+    "connect.transfer": CapabilityRow(status: "implemented", service: "connect", na: []),
     "connect.app": CapabilityRow(status: "implemented", service: "connect", na: []),
     "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.facts": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -2030,8 +2082,9 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.attach": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.account": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.redirect.web": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.redirect.native": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
-    "identity.devicecode.choice": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.devicecode.choice": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.signin.hints": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.keyreturn": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.exchange": CapabilityRow(status: "implemented", service: "identity", na: []),
@@ -2040,6 +2093,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.autosignin": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.restore": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.link": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.nearby": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -2107,4 +2161,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "033d5e07cc1b8195b1562ac13afee49953ed0f0b92019ef0188989648d0ea962"
+public let CAPABILITY_DIGEST = "d025a8b146ee20961c85b56673f8052523f7533425031a8322674af78fc411df"

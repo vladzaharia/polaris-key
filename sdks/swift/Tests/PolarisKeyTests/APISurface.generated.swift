@@ -52,6 +52,17 @@ func apiSurface() async {
     _ = CloudSyncClient.status  // cloudSync.status
     _ = CloudSyncClient.flush  // cloudSync.flush
     _ = \PolarisKeyClient.events  // cloudSync.event
+    _ = \CloudSyncClient.saves  // cloudSync.saves
+    _ = SavesClient.list  // cloudSync.saves.list
+    _ = SavesClient.read(_:options:)  // cloudSync.saves.read
+    _ = SavesClient.write(_:bytes:metadata:options:)  // cloudSync.saves.write
+    _ = SavesClient.delete(_:baseVersion:)  // cloudSync.saves.delete
+    _ = SavesClient.revisions(_:)  // cloudSync.saves.revisions
+    _ = CloudSyncClient.transfers  // cloudSync.transfers
+    _ = SaveTransfer.pause  // cloudSync.transfer.pause
+    _ = SaveTransfer.resume  // cloudSync.transfer.resume
+    _ = SaveTransfer.cancel  // cloudSync.transfer.cancel
+    _ = \PolarisKeyClient.events  // cloudSync.transferEvent
     _ = PolarisKeyClient.discover  // client.discover
     _ = \PolarisKeyClient.presentation  // client.presentation
     _ = PolarisKeyClient.presentationIcon  // client.presentationIcon
@@ -161,4 +172,17 @@ func apiSurface() async {
     _ = CloudConnect.refreshPeers  // cloudConnect.refreshPeers
     _ = CloudConnect.status  // cloudConnect.status
     _ = CloudConnect.onNotice  // cloudConnect.onNotice
+    _ = CloudNearby.request  // cloudConnect.nearby.request
+    _ = CloudNearby.onRequest  // cloudConnect.nearby.onRequest
+    _ = CloudLinks.pair  // cloudConnect.links.pair
+    _ = CloudLinks.list  // cloudConnect.links.list
+    _ = CloudLinks.remove  // cloudConnect.links.remove
+    _ = CloudLinks.setReachable  // cloudConnect.links.setReachable
+    _ = CloudLinks.open  // cloudConnect.links.open
+    _ = CloudLinks.onLink  // cloudConnect.links.onLink
+    _ = CloudLinks.interAccount  // cloudConnect.links.interAccount
+    _ = CloudTransfer.send(_:source:options:)  // cloudConnect.transfer.send
+    _ = CloudTransfer.onOffer(_:)  // cloudConnect.transfer.onOffer
+    _ = CloudTransfer.onResult(_:)  // cloudConnect.transfer.onResult
+    _ = CloudTransfer.cancel(_:)  // cloudConnect.transfer.cancel
 }

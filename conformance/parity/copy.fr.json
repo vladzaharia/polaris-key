@@ -97,6 +97,10 @@
       "title": "Limite de connexion à distance atteinte",
       "message": "Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours."
     },
+    "connect_links_disabled": {
+      "title": "Liaison désactivée",
+      "message": "La liaison avec d'autres personnes est désactivée pour cette app. Tes propres appareils se connectent toujours."
+    },
     "relay_ticket_invalid": {
       "title": "Connexion expirée",
       "message": "La demande de connexion a expiré. Réessayez."
@@ -204,6 +208,10 @@
     "redirect_uri_mismatch": {
       "title": "La connexion ne peut pas revenir à l’app",
       "message": "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur."
+    },
+    "invalid_request_uri": {
+      "title": "Lien de connexion expiré",
+      "message": "Ce lien de connexion a expiré. Retournez dans {product} et recommencez."
     },
     "license_choice_required": {
       "title": "Choisissez une licence",
@@ -525,6 +533,10 @@
       "title": "Code expiré",
       "message": "Le code a expiré avant la fin de la connexion. Recommencez."
     },
+    "redirect-unavailable": {
+      "title": "Connexion par navigateur indisponible",
+      "message": "La connexion n'a pas pu ouvrir de navigateur ici. Utilisez un code à la place."
+    },
     "sign-in-denied": {
       "title": "Connexion refusée",
       "message": "La connexion a été refusée. Recommencez."
@@ -616,6 +628,58 @@
     "nearby-permission-denied": {
       "title": "Réseau local bloqué",
       "message": "Cette app ne peut pas accéder aux appareils de votre réseau local. Autorisez-le dans les réglages du système."
+    },
+    "nearby-unsupported": {
+      "title": "Connexion à proximité indisponible",
+      "message": "Cet appareil ne peut pas rechercher d'appareils à proximité ici."
+    },
+    "peer-handshake-failed": {
+      "title": "Connexion sécurisée impossible",
+      "message": "Impossible d'établir une connexion sécurisée avec l'appareil à proximité. Réessayez."
+    },
+    "peer-closed": {
+      "title": "Connexion terminée",
+      "message": "La connexion avec l'appareil à proximité s'est terminée. Réessayez."
+    },
+    "transfer-cancelled": {
+      "title": "Transfert interrompu",
+      "message": "Le transfert n'a pas abouti. Rien n'a été reçu."
+    },
+    "link-unknown": {
+      "title": "Non associé",
+      "message": "Cet appareil n'est plus associé à celui-ci."
+    },
+    "peer_revoked": {
+      "title": "Appareil non fiable",
+      "message": "L'autre appareil a été retiré du compte. Rien n'a été partagé."
+    },
+    "peer_expired": {
+      "title": "Certificat de l'appareil expiré",
+      "message": "Le certificat de l'autre appareil a expiré. Actualisez et réessayez."
+    },
+    "peer_bad_frame": {
+      "title": "Erreur de connexion",
+      "message": "L'appareil à proximité a envoyé quelque chose d'inattendu. Réessayez."
+    },
+    "peer_unknown_critical": {
+      "title": "Demande non prise en charge",
+      "message": "L'appareil à proximité a demandé quelque chose que cette app ne prend pas en charge. Réessayez."
+    },
+    "peer_not_allowed": {
+      "title": "Non autorisé ici",
+      "message": "L'appareil à proximité a demandé quelque chose qui n'est pas autorisé à cette étape. Réessayez."
+    },
+    "peer_busy": {
+      "title": "Appareil à proximité occupé",
+      "message": "Trop de connexions sont ouvertes. Réessayez dans un instant."
+    },
+    "peer_timeout": {
+      "title": "Délai de connexion dépassé",
+      "message": "L'appareil à proximité n'a pas répondu à temps. Réessayez."
+    },
+    "peer_bye": {
+      "title": "Connexion fermée",
+      "message": "L'appareil à proximité a mis fin à la connexion."
     },
     "platform-error": {
       "title": "Problème de plateforme",

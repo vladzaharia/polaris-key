@@ -1,4 +1,5 @@
 // @pkey-feature sync.scenarios
+// @pkey-feature sync.saves
 // @pkey-feature sync.settings config.sync
 // @pkey-feature sync.e2e
 //
@@ -65,6 +66,19 @@ class SyncScenariosTest : ConformanceSuite() {
             }
             SyncScenarioDriver(corpus["product"].stringValue!!, sc).run()
         }
+    }
+
+    @Test
+    fun fileRecordCasesReplayInFull() {
+        // The records binding of cloudSync.saves (plans/U-22.5.md): a second family, replayed in full.
+        val family = corpus["fileRecordCases"] as JsonObject
+        assertEquals(listOf("putAt", "removeAt"), family["calls"].arrayValue!!.map { it.stringValue })
+        assertEquals(listOf("rows", "outcomes"), family["asserts"].arrayValue!!.map { it.stringValue })
+        val cases = family["scenarios"].arrayValue!!.map { it as JsonObject }
+        val names = cases.map { it["name"].stringValue!! }
+        assertEquals(19, names.size)
+        assertEquals(names.size, names.toSet().size)
+        for (sc in cases) SyncScenarioDriver(corpus["product"].stringValue!!, sc).run()
     }
 
     @Test

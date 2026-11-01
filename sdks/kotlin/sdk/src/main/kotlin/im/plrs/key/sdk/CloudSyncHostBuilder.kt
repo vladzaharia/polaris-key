@@ -41,11 +41,13 @@ internal class CloudSyncHostBuilder(private val st: CloudSyncHostState, private 
         st.documentValue = document
         st.documentJson = document.toString()
         st.discoveryValue = discovery
-        val opts = CloudSyncOptions(st.deps.product, JsonObject(mapOf("settings" to JsonArray(st.routes))), document, st.deps.clock(), ::newClientId)
+        val catalog = JsonObject(mapOf("settings" to JsonArray(st.routes), "collections" to JsonArray(CloudSyncCatalog.collectionsOf(st.catalog))))
+        val opts = CloudSyncOptions(st.deps.product, catalog, document, st.deps.clock(), ::newClientId)
         opts.encryption = st.opts.encryption
         opts.hasRoot = st.deps.keyringUnlocked()
         val m = CloudSyncMachine(opts, persisted)
         st.machine = m
+        m.onOutcome(st.outcome)
         discovery?.let { m.setDiscovery(it) }
         st.building = true
         try {

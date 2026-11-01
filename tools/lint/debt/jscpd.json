@@ -32,6 +32,9 @@
     "conformance/runners/node/noiseVectors.test.ts": {
       "jscpd:duplicate": 3
     },
+    "conformance/runners/node/peerMatrixSuites.ts": {
+      "jscpd:duplicate": 1
+    },
     "conformance/runners/node/presentation.test.ts": {
       "jscpd:duplicate": 2
     },
@@ -51,7 +54,7 @@
       "jscpd:duplicate": 3
     },
     "conformance/runners/node/transcripts.test.ts": {
-      "jscpd:duplicate": 26
+      "jscpd:duplicate": 27
     },
     "examples/node-electron/src/main.ts": {
       "jscpd:duplicate": 1
@@ -306,7 +309,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/config/model/mintBlock.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/admin/src/console/sections/config/pages/profileActions.tsx": {
       "jscpd:duplicate": 1
@@ -348,10 +351,7 @@
       "jscpd:duplicate": 1
     },
     "packages/admin/src/console/sections/distribution/components/CredentialForms.tsx": {
-      "jscpd:duplicate": 6
-    },
-    "packages/admin/src/console/sections/distribution/components/RolloutDialogs.tsx": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 4
     },
     "packages/admin/src/console/sections/distribution/components/ascShared.tsx": {
       "jscpd:duplicate": 1
@@ -1272,10 +1272,10 @@
       "jscpd:duplicate": 1
     },
     "packages/client-core/src/decide.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 7
     },
     "packages/client-core/src/deviceKeyStoreWeb.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 3
     },
     "packages/client-core/src/feed.ts": {
       "jscpd:duplicate": 2
@@ -1320,13 +1320,19 @@
       "jscpd:duplicate": 1
     },
     "packages/client-core/src/peer/advert.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 5
+    },
+    "packages/client-core/src/peer/cert.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/peer/contact.ts": {
+      "jscpd:duplicate": 7
     },
     "packages/client-core/src/peer/frame.ts": {
       "jscpd:duplicate": 1
     },
     "packages/client-core/src/peer/payload.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "packages/client-core/src/peer/record.ts": {
       "jscpd:duplicate": 1
@@ -1335,6 +1341,15 @@
       "jscpd:duplicate": 4
     },
     "packages/client-core/src/peer/sas.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/peer/session.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/client-core/src/peer/xfer.ts": {
+      "jscpd:duplicate": 11
+    },
+    "packages/client-core/src/peer/xferEndpoint.ts": {
       "jscpd:duplicate": 1
     },
     "packages/client-core/src/presentation.ts": {
@@ -1376,6 +1391,9 @@
     "packages/client-core/test/delegation.test.ts": {
       "jscpd:duplicate": 13
     },
+    "packages/client-core/test/deviceLabel.test.ts": {
+      "jscpd:duplicate": 4
+    },
     "packages/client-core/test/hostCodec.test.ts": {
       "jscpd:duplicate": 4
     },
@@ -1406,8 +1424,17 @@
     "packages/client-core/test/peerAdmission.test.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/client-core/test/peerContact.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/client-core/test/peerListener.test.ts": {
+      "jscpd:duplicate": 8
+    },
     "packages/client-core/test/peerSession.test.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 10
+    },
+    "packages/client-core/test/peerXfer.test.ts": {
+      "jscpd:duplicate": 5
     },
     "packages/client-core/test/presentation.test.ts": {
       "jscpd:duplicate": 1
@@ -1527,13 +1554,16 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/src/cli/flows.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 6
     },
     "packages/sdk-node/src/cli/gate.ts": {
       "jscpd:duplicate": 2
     },
     "packages/sdk-node/src/cli/kit.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/cli/nearby.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/sdk-node/src/cli/term/prompt.ts": {
       "jscpd:duplicate": 2
@@ -1547,8 +1577,14 @@
     "packages/sdk-node/src/cloudSync/api.ts": {
       "jscpd:duplicate": 4
     },
+    "packages/sdk-node/src/cloudSync/files.ts": {
+      "jscpd:duplicate": 8
+    },
     "packages/sdk-node/src/cloudSync/host.ts": {
-      "jscpd:duplicate": 12
+      "jscpd:duplicate": 14
+    },
+    "packages/sdk-node/src/cloudSync/saves.ts": {
+      "jscpd:duplicate": 6
     },
     "packages/sdk-node/src/cloudSync/state.ts": {
       "jscpd:duplicate": 1
@@ -1560,28 +1596,46 @@
       "jscpd:duplicate": 4
     },
     "packages/sdk-node/src/connect/channel.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 9
     },
     "packages/sdk-node/src/connect/client.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 19
     },
     "packages/sdk-node/src/connect/cloudConnect.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-node/src/connect/contactRelay.ts": {
+      "jscpd:duplicate": 29
     },
     "packages/sdk-node/src/connect/lan.ts": {
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-node/src/connect/links.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/connect/nearbyApprover.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/src/connect/nearbyRequester.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/src/connect/pairing.ts": {
+      "jscpd:duplicate": 4
     },
     "packages/sdk-node/src/connect/relay.ts": {
-      "jscpd:duplicate": 24
+      "jscpd:duplicate": 51
     },
     "packages/sdk-node/src/connect/session.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 11
     },
     "packages/sdk-node/src/connect/state.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
+    },
+    "packages/sdk-node/src/connect/transfer.ts": {
+      "jscpd:duplicate": 20
     },
     "packages/sdk-node/src/core/boundedBody.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/sdk-node/src/core/bundle.ts": {
       "jscpd:duplicate": 1
@@ -1592,8 +1646,11 @@
     "packages/sdk-node/src/core/context.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/sdk-node/src/core/events.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-node/src/core/presentation.ts": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 9
     },
     "packages/sdk-node/src/core/redact.ts": {
       "jscpd:duplicate": 1
@@ -1689,7 +1746,7 @@
       "jscpd:duplicate": 2
     },
     "packages/sdk-node/test/cli/cliMount.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/sdk-node/test/cli/envelope.test.ts": {
       "jscpd:duplicate": 1
@@ -1702,6 +1759,9 @@
     },
     "packages/sdk-node/test/cli/kit.test.ts": {
       "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/cli/nearby.test.ts": {
+      "jscpd:duplicate": 4
     },
     "packages/sdk-node/test/cli/offline.test.ts": {
       "jscpd:duplicate": 2
@@ -1716,7 +1776,7 @@
       "jscpd:duplicate": 13
     },
     "packages/sdk-node/test/cli/scenarios.ts": {
-      "jscpd:duplicate": 25
+      "jscpd:duplicate": 27
     },
     "packages/sdk-node/test/cli/uk45.test.ts": {
       "jscpd:duplicate": 2
@@ -1733,6 +1793,9 @@
     "packages/sdk-node/test/cloudSyncHost.test.ts": {
       "jscpd:duplicate": 19
     },
+    "packages/sdk-node/test/cloudSyncSaves.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-node/test/commerce.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -1744,6 +1807,30 @@
     },
     "packages/sdk-node/test/connect.test.ts": {
       "jscpd:duplicate": 15
+    },
+    "packages/sdk-node/test/connect/links.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/sdk-node/test/connect/nearbyApprover.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/connect/transfer.test.ts": {
+      "jscpd:duplicate": 9
+    },
+    "packages/sdk-node/test/connect/transferLinks.test.ts": {
+      "jscpd:duplicate": 8
+    },
+    "packages/sdk-node/test/connectCustody.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-node/test/connectHardening.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-node/test/connectPacing.test.ts": {
+      "jscpd:duplicate": 5
+    },
+    "packages/sdk-node/test/contactFixtures.ts": {
+      "jscpd:duplicate": 4
     },
     "packages/sdk-node/test/copy.test.ts": {
       "jscpd:duplicate": 1
@@ -1758,7 +1845,7 @@
       "jscpd:duplicate": 3
     },
     "packages/sdk-node/test/electronBridge.test.ts": {
-      "jscpd:duplicate": 9
+      "jscpd:duplicate": 11
     },
     "packages/sdk-node/test/electronHardening.test.ts": {
       "jscpd:duplicate": 1
@@ -1786,6 +1873,9 @@
     },
     "packages/sdk-node/test/identity.test.ts": {
       "jscpd:duplicate": 5
+    },
+    "packages/sdk-node/test/identityAutoSignIn.test.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/sdk-node/test/identityParity.test.ts": {
       "jscpd:duplicate": 1
@@ -1818,7 +1908,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-node/test/relayFixtures.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 12
     },
     "packages/sdk-node/test/releaseFetch.test.ts": {
       "jscpd:duplicate": 2
@@ -1859,7 +1949,25 @@
     "packages/sdk-react/src/desktop/desktopAdapter.ts": {
       "jscpd:duplicate": 9
     },
+    "packages/sdk-react/src/kit/connect.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/src/kit/connectHooks.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/sdk-react/src/kit/connectLazy.tsx": {
+      "jscpd:duplicate": 2
+    },
     "packages/sdk-react/src/kit/desktopCss.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/src/kit/holders.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/src/kit/holdersLazy.tsx": {
+      "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/src/kit/nearbyLazy.tsx": {
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/src/kit/rows.tsx": {
@@ -1928,11 +2036,20 @@
     "packages/sdk-react/test/browser/chrome.themes.browser.test.tsx": {
       "jscpd:duplicate": 8
     },
+    "packages/sdk-react/test/browser/connect.browser.test.tsx": {
+      "jscpd:duplicate": 13
+    },
+    "packages/sdk-react/test/browser/holders.browser.test.tsx": {
+      "jscpd:duplicate": 10
+    },
     "packages/sdk-react/test/browser/kit.browser.test.tsx": {
       "jscpd:duplicate": 7
     },
     "packages/sdk-react/test/browser/motion.browser.test.tsx": {
       "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/browser/nearby.browser.test.tsx": {
+      "jscpd:duplicate": 4
     },
     "packages/sdk-react/test/browser/polish.browser.test.tsx": {
       "jscpd:duplicate": 11
@@ -1958,8 +2075,14 @@
     "packages/sdk-react/test/chunkFixtures.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/sdk-react/test/cloudSyncFiles.browser.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-react/test/cloudSyncHost.test.ts": {
-      "jscpd:duplicate": 40
+      "jscpd:duplicate": 44
+    },
+    "packages/sdk-react/test/cloudSyncSaves.test.ts": {
+      "jscpd:duplicate": 6
     },
     "packages/sdk-react/test/cloudSyncSettings.test.tsx": {
       "jscpd:duplicate": 1
@@ -1968,10 +2091,13 @@
       "jscpd:duplicate": 3
     },
     "packages/sdk-react/test/connectIdentity.test.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 15
     },
     "packages/sdk-react/test/connectRelay.test.ts": {
-      "jscpd:duplicate": 11
+      "jscpd:duplicate": 4
+    },
+    "packages/sdk-react/test/connectTransfer.test.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/copy.test.ts": {
       "jscpd:duplicate": 1
@@ -1980,7 +2106,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/desktopAdapter.test.ts": {
-      "jscpd:duplicate": 8
+      "jscpd:duplicate": 9
     },
     "packages/sdk-react/test/desktopIdentity.test.tsx": {
       "jscpd:duplicate": 1
@@ -2000,11 +2126,17 @@
     "packages/sdk-react/test/headers.test.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/sdk-react/test/keyring.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-react/test/kit.test.tsx": {
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/kitCodedCopy.test.tsx": {
       "jscpd:duplicate": 3
+    },
+    "packages/sdk-react/test/kitConnect.test.tsx": {
+      "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/kitDrive.test.tsx": {
       "jscpd:duplicate": 8
@@ -2019,7 +2151,7 @@
       "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/kitMatrix.test.tsx": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 1
     },
     "packages/sdk-react/test/kitNext.test.tsx": {
       "jscpd:duplicate": 2
@@ -2030,14 +2162,17 @@
     "packages/sdk-react/test/kitRenew.test.tsx": {
       "jscpd:duplicate": 1
     },
-    "packages/sdk-react/test/kitSaveScreens.test.tsx": {
+    "packages/sdk-react/test/kitSaveBind.test.tsx": {
       "jscpd:duplicate": 1
+    },
+    "packages/sdk-react/test/kitSaveScreens.test.tsx": {
+      "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/kitSignIn.test.tsx": {
       "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/kitSyncScreens.test.tsx": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/sdk-react/test/lazyChunkFailure.test.ts": {
       "jscpd:duplicate": 3
@@ -2057,11 +2192,17 @@
     "packages/sdk-react/test/packs.test.ts": {
       "jscpd:duplicate": 18
     },
+    "packages/sdk-react/test/relayFixtures.ts": {
+      "jscpd:duplicate": 8
+    },
     "packages/sdk-react/test/release.test.tsx": {
       "jscpd:duplicate": 3
     },
+    "packages/sdk-react/test/savesFixtures.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/sdk-react/test/signInSession.test.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 5
     },
     "packages/sdk-react/test/storeNamespace.test.ts": {
       "jscpd:duplicate": 1
@@ -2083,6 +2224,9 @@
     },
     "packages/sdk-react/test/updateMatrixParity.test.ts": {
       "jscpd:duplicate": 5
+    },
+    "packages/sdk-react/test/useSaves.test.tsx": {
+      "jscpd:duplicate": 1
     },
     "packages/sdk-react/vitest.browser.config.ts": {
       "jscpd:duplicate": 4
@@ -2150,6 +2294,9 @@
     "packages/shared-manifest/src/descriptor.ts": {
       "jscpd:duplicate": 6
     },
+    "packages/shared-manifest/src/displayName.ts": {
+      "jscpd:duplicate": 3
+    },
     "packages/shared-manifest/src/distribution.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -2184,7 +2331,7 @@
       "jscpd:duplicate": 1
     },
     "packages/shared-protocol/src/identity.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 6
     },
     "packages/shared-protocol/src/packs.ts": {
       "jscpd:duplicate": 2
@@ -2208,7 +2355,7 @@
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/boundedBody.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 6
     },
     "packages/ui-core/src/browser/sdk/browser/browserAdapter.ts": {
       "jscpd:duplicate": 10
@@ -2219,8 +2366,17 @@
     "packages/ui-core/src/browser/sdk/browser/cloudSync/create.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/files.ts": {
+      "jscpd:duplicate": 9
+    },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/host.ts": {
-      "jscpd:duplicate": 14
+      "jscpd:duplicate": 16
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/idbJournal.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/browser/cloudSync/saves.ts": {
+      "jscpd:duplicate": 6
     },
     "packages/ui-core/src/browser/sdk/browser/cloudSync/store.ts": {
       "jscpd:duplicate": 1
@@ -2235,10 +2391,10 @@
       "jscpd:duplicate": 1
     },
     "packages/ui-core/src/browser/sdk/browser/connect/channel.ts": {
-      "jscpd:duplicate": 7
+      "jscpd:duplicate": 8
     },
     "packages/ui-core/src/browser/sdk/browser/connect/client.ts": {
-      "jscpd:duplicate": 17
+      "jscpd:duplicate": 19
     },
     "packages/ui-core/src/browser/sdk/browser/connect/cloud.ts": {
       "jscpd:duplicate": 3
@@ -2253,13 +2409,22 @@
       "jscpd:duplicate": 2
     },
     "packages/ui-core/src/browser/sdk/browser/connect/relay.ts": {
-      "jscpd:duplicate": 22
+      "jscpd:duplicate": 28
     },
     "packages/ui-core/src/browser/sdk/browser/connect/session.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 11
     },
     "packages/ui-core/src/browser/sdk/browser/connect/state.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/transfer.ts": {
+      "jscpd:duplicate": 18
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/xferStore.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/ui-core/src/browser/sdk/browser/connect/xferTypes.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/ui-core/src/browser/sdk/browser/discovery.ts": {
       "jscpd:duplicate": 2
@@ -2291,6 +2456,9 @@
     "packages/ui-core/src/browser/sdk/core/choice.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/ui-core/src/browser/sdk/core/cloudSync.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/ui-core/src/browser/sdk/core/crash.ts": {
       "jscpd:duplicate": 1
     },
@@ -2315,11 +2483,20 @@
     "packages/ui-core/src/input.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/ui-core/src/linkPairingModel.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/ui-core/src/vocabulary.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/ui-core/test/browserGate.test.ts": {
+      "jscpd:duplicate": 3
+    },
     "packages/ui-core/test/imports.test.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/ui-core/test/linkPairingModel.test.ts": {
+      "jscpd:duplicate": 5
     },
     "packages/ui-core/test/matrix.ts": {
       "jscpd:duplicate": 2
@@ -2677,6 +2854,12 @@
     },
     "packages/worker/src/services/config/document.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/worker/src/services/connect/do/contactRoom.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/src/services/connect/do/relayDo.ts": {
+      "jscpd:duplicate": 4
     },
     "packages/worker/src/services/distribution/admin.ts": {
       "jscpd:duplicate": 3
@@ -3104,6 +3287,9 @@
     "packages/worker/src/services/sync/handlers/push.ts": {
       "jscpd:duplicate": 2
     },
+    "packages/worker/src/services/sync/limits.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/worker/src/services/sync/scheduled.ts": {
       "jscpd:duplicate": 1
     },
@@ -3139,6 +3325,12 @@
     },
     "packages/worker/test-workerd/commerceCors.test.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/worker/test-workerd/connectContact.test.ts": {
+      "jscpd:duplicate": 3
+    },
+    "packages/worker/test-workerd/connectRelay.test.ts": {
+      "jscpd:duplicate": 3
     },
     "packages/worker/test-workerd/feedContent.test.ts": {
       "jscpd:duplicate": 1
@@ -3274,6 +3466,12 @@
     },
     "packages/worker/test/core/headersCorpus.test.ts": {
       "jscpd:duplicate": 1
+    },
+    "packages/worker/test/core/keyring/minSdk.test.ts": {
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/core/keyring/routes.test.ts": {
+      "jscpd:duplicate": 2
     },
     "packages/worker/test/core/keyring/store.test.ts": {
       "jscpd:duplicate": 1
@@ -3482,11 +3680,20 @@
     "packages/worker/test/services/connect/connectIdentity.test.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/worker/test/services/connect/relayContact.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/connect/relayContactDo.test.ts": {
+      "jscpd:duplicate": 3
+    },
     "packages/worker/test/services/connect/relayDo.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 7
+    },
+    "packages/worker/test/services/connect/relayDoHarness.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/worker/test/services/connect/relayRoutes.test.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/worker/test/services/distribution/ascCatalog.test.ts": {
       "jscpd:duplicate": 7
@@ -3595,6 +3802,9 @@
     },
     "packages/worker/test/services/identity/connectionRouting.test.ts": {
       "jscpd:duplicate": 4
+    },
+    "packages/worker/test/services/identity/deviceAppModeFix.test.ts": {
+      "jscpd:duplicate": 1
     },
     "packages/worker/test/services/identity/deviceApproval.test.ts": {
       "jscpd:duplicate": 12
@@ -3711,7 +3921,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/services/identity/portalSelfService.test.ts": {
-      "jscpd:duplicate": 3
+      "jscpd:duplicate": 4
     },
     "packages/worker/test/services/identity/portalServices.test.ts": {
       "jscpd:duplicate": 10
@@ -3806,6 +4016,12 @@
     "packages/worker/test/services/sync/cloudSyncBudget.test.ts": {
       "jscpd:duplicate": 1
     },
+    "packages/worker/test/services/sync/cloudSyncChunksFinalize.test.ts": {
+      "jscpd:duplicate": 1
+    },
+    "packages/worker/test/services/sync/cloudSyncChunksPut.test.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/worker/test/services/sync/cloudSyncDeletion.test.ts": {
       "jscpd:duplicate": 1
     },
@@ -3813,22 +4029,25 @@
       "jscpd:duplicate": 2
     },
     "packages/worker/test/services/sync/cloudSyncFilesBegin.test.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 4
     },
     "packages/worker/test/services/sync/cloudSyncFilesFinalize.test.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
+    },
+    "packages/worker/test/services/sync/cloudSyncFilesGc.test.ts": {
+      "jscpd:duplicate": 3
     },
     "packages/worker/test/services/sync/cloudSyncFilesGet.test.ts": {
-      "jscpd:duplicate": 4
+      "jscpd:duplicate": 6
     },
     "packages/worker/test/services/sync/cloudSyncFilesRecords.test.ts": {
       "jscpd:duplicate": 1
     },
     "packages/worker/test/services/sync/cloudSyncFilesUpload.test.ts": {
-      "jscpd:duplicate": 1
+      "jscpd:duplicate": 2
     },
     "packages/worker/test/services/sync/cloudSyncFilesWorld.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "packages/worker/test/services/sync/cloudSyncLimits.test.ts": {
       "jscpd:duplicate": 10
@@ -4332,7 +4551,7 @@
       "jscpd:duplicate": 20
     },
     "packages/worker/test/surfaces/oidcLicenseChoice.test.ts": {
-      "jscpd:duplicate": 17
+      "jscpd:duplicate": 16
     },
     "packages/worker/test/surfaces/packReadiness.test.ts": {
       "jscpd:duplicate": 2
@@ -4499,6 +4718,9 @@
     "packages/worker/test/transcripts/scenarios/cloudSyncFiles.ts": {
       "jscpd:duplicate": 10
     },
+    "packages/worker/test/transcripts/scenarios/connect.ts": {
+      "jscpd:duplicate": 1
+    },
     "packages/worker/test/transcripts/scenarios/devices.ts": {
       "jscpd:duplicate": 4
     },
@@ -4527,7 +4749,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/transcripts/scenarios/redirect.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 6
     },
     "packages/worker/test/transcripts/scenarios/release.ts": {
       "jscpd:duplicate": 4
@@ -4571,17 +4793,26 @@
     "tools/corpus/config.ts": {
       "jscpd:duplicate": 1
     },
+    "tools/corpus/contact.ts": {
+      "jscpd:duplicate": 3
+    },
     "tools/corpus/content.ts": {
       "jscpd:duplicate": 1
     },
     "tools/corpus/delegation.ts": {
       "jscpd:duplicate": 1
     },
+    "tools/corpus/device-label.ts": {
+      "jscpd:duplicate": 9
+    },
     "tools/corpus/gate.ts": {
       "jscpd:duplicate": 9
     },
     "tools/corpus/packs.ts": {
       "jscpd:duplicate": 5
+    },
+    "tools/corpus/peerMatrix.ts": {
+      "jscpd:duplicate": 2
     },
     "tools/corpus/record.ts": {
       "jscpd:duplicate": 2
@@ -4591,6 +4822,9 @@
     },
     "tools/corpus/reference/config.ts": {
       "jscpd:duplicate": 4
+    },
+    "tools/corpus/reference/contact.ts": {
+      "jscpd:duplicate": 5
     },
     "tools/corpus/reference/ed25519.ts": {
       "jscpd:duplicate": 1
@@ -4611,7 +4845,7 @@
       "jscpd:duplicate": 2
     },
     "tools/corpus/reference/peerMatrix.ts": {
-      "jscpd:duplicate": 10
+      "jscpd:duplicate": 11
     },
     "tools/corpus/reference/record.ts": {
       "jscpd:duplicate": 2
@@ -4624,6 +4858,9 @@
     },
     "tools/corpus/reference/update.ts": {
       "jscpd:duplicate": 2
+    },
+    "tools/corpus/reference/xfer.ts": {
+      "jscpd:duplicate": 10
     },
     "tools/corpus/release-records.ts": {
       "jscpd:duplicate": 2
@@ -4643,11 +4880,14 @@
     "tools/corpus/update.ts": {
       "jscpd:duplicate": 3
     },
+    "tools/corpus/xfer.ts": {
+      "jscpd:duplicate": 9
+    },
     "tools/gate.mjs": {
       "jscpd:duplicate": 1
     },
     "tools/gen-api-surface.ts": {
-      "jscpd:duplicate": 6
+      "jscpd:duplicate": 8
     },
     "tools/gen-channels.ts": {
       "jscpd:duplicate": 7
@@ -4661,6 +4901,9 @@
     "tools/gen-generators-doc.ts": {
       "jscpd:duplicate": 2
     },
+    "tools/gen-godot-nfc.ts": {
+      "jscpd:duplicate": 6
+    },
     "tools/gen-mirrors.ts": {
       "jscpd:duplicate": 1
     },
@@ -4668,7 +4911,7 @@
       "jscpd:duplicate": 2
     },
     "tools/gen-roles-matrix.ts": {
-      "jscpd:duplicate": 2
+      "jscpd:duplicate": 3
     },
     "tools/gen-sdk-constants.test.ts": {
       "jscpd:duplicate": 2
@@ -4710,10 +4953,10 @@
       "jscpd:duplicate": 1
     },
     "tools/sync-scenarios.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 32
     },
     "tools/ui-matrix.ts": {
-      "jscpd:duplicate": 16
+      "jscpd:duplicate": 18
     }
   }
 }

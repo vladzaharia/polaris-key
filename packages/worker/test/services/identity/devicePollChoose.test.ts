@@ -26,13 +26,13 @@ vi.mock("../../../src/services/identity/passthrough/grant.js", async (orig) => {
   };
 });
 
-import { upsertDevice } from "../../../src/core/devices/store.js";
 import { type World } from "../../transcripts/recorder.js";
 import { DEVICE, T0 } from "../../transcripts/client.js";
 import { pinned, PRODUCT } from "../../transcripts/world.js";
 import {
   CHOICE,
   noGrantWorld,
+  seedFullLicense,
   pollDevice,
   signedIn as shared,
 } from "../../transcripts/appMode.js";
@@ -155,45 +155,7 @@ describe("the device-code poll in app mode (§12.10.1)", () => {
     pinned("uk-42-22-poll", async () => {
       const w = await platformIdentityWorld();
       const started = await signedIn(w);
-      // The account holds a FULL licence of its own (a seat limit of one, taken by another device),
-      // so the view would offer Replace on a card or a same-device grant.
-      const account = await w.db.first<{ account_id: string }>(
-        "SELECT account_id FROM account_links WHERE kind = 'oidc' AND subject = ?",
-        PLAYER.sub,
-      );
-      expect(account).toBeTruthy();
-      await w.db.run(
-        `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id, activated_at,
-         expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
-         modified_by, modified_at, account_id)
-       VALUES (?, 'lic_full', 'active', NULL, 'Full', NULL, NULL, NULL, ?, NULL, NULL, '{}', NULL, NULL, NULL, NULL, ?, ?)`,
-        PRODUCT,
-        T0,
-        T0,
-        account!.account_id,
-      );
-      await w.db.run(
-        "UPDATE products SET default_device_limit = 1 WHERE slug = ?",
-        PRODUCT,
-      );
-      await upsertDevice(w.db, {
-        product: PRODUCT,
-        device_id: "other-device",
-        customer_id: null,
-        license_id: "lic_full",
-        status: "authorized",
-        first_seen: T0,
-        last_seen: T0,
-        ua: null,
-        label: "Other PC",
-        overrides_json: null,
-        reported_json: null,
-        token_hash: null,
-      });
-      await w.db.run(
-        "UPDATE devices SET seat_no = 1 WHERE product = ? AND device_id = 'other-device'",
-        PRODUCT,
-      );
+      await seedFullLicense(w);
       const res = await poll(w, started, T0 + 5);
       const body = (await res.json()) as {
         status: string;

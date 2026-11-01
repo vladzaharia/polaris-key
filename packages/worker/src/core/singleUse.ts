@@ -86,6 +86,8 @@ export type SingleUseKind =
   | "relay-ticket"
   /** A nearby-approval request (I-40.2, WIRE-CONTRACT-V5 §12.11.5), by product + the hash of its `nr_` handle. */
   | "nearby-request"
+  /** A pushed native sign-in request (I-15.4, WIRE-CONTRACT-V5 §12.12), by product + the hash of its `request_uri`: the validated authorize request, resolvable until Continue or Cancel takes it. */
+  | "signin-par"
   /** A Game Center identity signature already accepted (I-14.6, WIRE-CONTRACT-V5 §12.11.7), by product + the hash of the signature: held 180 s, written `ifAbsent`. */
   | "gamecenter-signature";
 
@@ -113,22 +115,43 @@ export function singleUseShard(ref: ArtefactRef): string {
   return `su:${shardIndex(storageKey(ref), SINGLE_USE_SHARDS)}`;
 }
 
+/** The store could not be reached or answered badly. `*Strict` operations throw it; the lenient
+ *  ones read it as "absent". */
+export class SingleUseUnavailableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SingleUseUnavailableError";
+  }
+}
+
 async function call(
   env: Env,
   ref: ArtefactRef,
   body: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   const ns = env.SINGLE_USE;
-  if (!ns) throw new Error("single-use store is not bound");
-  const stub = ns.get(ns.idFromName(singleUseShard(ref)));
-  const res = await stub.fetch("https://single-use/op", {
-    method: "POST",
-    body: JSON.stringify({ ...body, key: storageKey(ref) }),
-  });
-  if (!res.ok) throw new Error(`single-use store answered ${res.status}`);
-  const out: unknown = await res.json();
+  if (!ns) throw new SingleUseUnavailableError("single-use store is not bound");
+  let res: Response;
+  try {
+    const stub = ns.get(ns.idFromName(singleUseShard(ref)));
+    res = await stub.fetch("https://single-use/op", {
+      method: "POST",
+      body: JSON.stringify({ ...body, key: storageKey(ref) }),
+    });
+  } catch (e) {
+    throw new SingleUseUnavailableError(
+      e instanceof Error ? e.message : "single-use store unreachable",
+    );
+  }
+  if (!res.ok)
+    throw new SingleUseUnavailableError(
+      `single-use store answered ${res.status}`,
+    );
+  const out: unknown = await res.json().catch(() => null);
   if (out === null || typeof out !== "object")
-    throw new Error("single-use store answered a malformed body");
+    throw new SingleUseUnavailableError(
+      "single-use store answered a malformed body",
+    );
   return out as Record<string, unknown>;
 }
 
@@ -188,6 +211,15 @@ export function getArtefact(
   ref: ArtefactRef,
 ): Promise<string | null> {
   return read(env, ref, { op: "get" }, valueOf, null);
+}
+
+/** {@link getArtefact}, but an unreachable store throws {@link SingleUseUnavailableError}
+ *  instead of reading as absent: for a caller that must tell "gone" from "cannot say". */
+export async function getArtefactStrict(
+  env: Env,
+  ref: ArtefactRef,
+): Promise<string | null> {
+  return valueOf(await call(env, ref, { op: "get" }));
 }
 
 /** Atomically take the payload at `ref` and delete it: of any number of concurrent calls, at
@@ -285,6 +317,16 @@ export function updateArtefact(
     (out) => ({ ok: out.ok === true, payload: valueOf(out) }),
     { ok: false, payload: null },
   );
+}
+
+/** {@link updateArtefact}, but an unreachable store throws {@link SingleUseUnavailableError}. */
+export async function updateArtefactStrict(
+  env: Env,
+  ref: ArtefactRef,
+  change: ArtefactUpdate,
+): Promise<{ ok: boolean; payload: string | null }> {
+  const out = await call(env, ref, { op: "update", ...change });
+  return { ok: out.ok === true, payload: valueOf(out) };
 }
 
 export interface StrikePolicy {

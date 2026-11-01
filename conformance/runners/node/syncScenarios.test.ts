@@ -57,6 +57,8 @@ import {
   type CloudSyncOptions,
   type Json,
   type OpenedBody,
+  type RecordFile,
+  type RecordOutcome,
   type SyncResponse,
 } from "@polaris-key/client-core/cloud-sync";
 
@@ -103,6 +105,12 @@ interface SyncScenarios {
   rules: { id: string }[];
   scenarios: Scenario[];
   settingCases: SettingCase[];
+  /** Appended with the records binding of cloudSync.saves (plans/U-22.5.md). */
+  fileRecordCases: {
+    calls: string[];
+    asserts: string[];
+    scenarios: Scenario[];
+  };
 }
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -125,6 +133,20 @@ function call(m: CloudSyncMachine, name: string, args: Json[]): CallResult {
       return m.add(args[0] as string, args[1] as string, args[2] as Json);
     case "remove":
       return m.remove(args[0] as string, args[1] as string, args[2] as Json);
+    case "putAt":
+      return m.putAt(
+        args[0] as string,
+        args[1] as string,
+        args[2] as Json,
+        args[3] as number | "*",
+        args[4] as RecordFile | undefined,
+      );
+    case "removeAt":
+      return m.removeAt(
+        args[0] as string,
+        args[1] as string,
+        args[2] as number | "*",
+      );
     case "flush":
       return m.flush();
     case "refresh":
@@ -152,7 +174,12 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
     for (const r of corpus.rules) expect(covered.has(r.id), r.id).toBe(true);
   });
 
-  for (const sc of corpus.scenarios) {
+  it("declares the file-record family's calls and asserts", () => {
+    expect(corpus.fileRecordCases.calls).toEqual(["putAt", "removeAt"]);
+    expect(corpus.fileRecordCases.asserts).toEqual(["rows", "outcomes"]);
+  });
+
+  for (const sc of [...corpus.scenarios, ...corpus.fileRecordCases.scenarios]) {
     it(sc.name, () => {
       const ids = [...sc.init.clientIds];
       const opts: CloudSyncOptions = {
@@ -175,6 +202,8 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
       };
       const licence = structuredClone(sc.init.licence);
       let m = new CloudSyncMachine(opts);
+      let outcomes: RecordOutcome[] = [];
+      m.onOutcome((o) => outcomes.push(o));
       if (sc.init.legacyLocal !== null)
         expect(
           m.importLocal(sc.init.legacyLocal),
@@ -222,6 +251,7 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
             break;
           case "relaunch":
             m = relaunch(m, opts, raw.journal === "lost" ? "lost" : "kept");
+            m.onOutcome((o) => outcomes.push(o));
             break;
           case "assert": {
             const requests = m.takeRequests();
@@ -242,6 +272,12 @@ describe(`sync-scenarios v${corpus.syncScenariosVersion} (the Cloud Sync client 
               const [c = "", id = ""] = key.split("/");
               expect(m.record(c, id), `${where}: records.${key}`).toEqual(want);
             }
+            const drained = outcomes;
+            outcomes = [];
+            if (raw.outcomes !== undefined)
+              expect(drained, `${where}: outcomes`).toEqual(raw.outcomes);
+            for (const [c, want] of Object.entries((raw.rows as Obj) ?? {}))
+              expect(m.records(c), `${where}: rows.${c}`).toEqual(want);
             if (raw.journal !== undefined)
               expect(m.journal(), `${where}: journal`).toEqual(raw.journal);
             if (raw.status !== undefined)

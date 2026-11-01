@@ -11,6 +11,7 @@ RECORDED and answered with a 599, and :meth:`ReplayServer.end_step` fails with t
 
 from __future__ import annotations
 
+import base64
 import copy
 import json
 import re
@@ -186,7 +187,15 @@ class ReplayServer:
                 out.append(f"required header {name}: missing")
         has_body = body is not None and len(body) > 0
         want = expected["body"]
-        if want is None:
+        if expected.get("bodyBase64") is not None:
+            # Raw bytes (a file PUT): asserted exact.
+            raw = base64.b64decode(expected["bodyBase64"])
+            if body is None or bytes(body) != raw:
+                out.append(
+                    f"body: expected {len(raw)} bytes, got {0 if body is None else len(body)} "
+                    "(not the recorded bytes)"
+                )
+        elif want is None:
             if has_body:
                 out.append(f"body: expected none, got {body[:120]!r}")
         elif not has_body:
@@ -276,6 +285,12 @@ class ReplayServer:
         if item is None:
             return httpx.Response(599, text="replay: no matching exchange")
         response = item["response"]
+        if response.get("bodyBase64") is not None:
+            return httpx.Response(
+                response["status"],
+                headers=response["headers"],
+                content=base64.b64decode(response["bodyBase64"]),
+            )
         b = response["body"]
         text = b if isinstance(b, str) else json.dumps(b, separators=(",", ":"))
         return httpx.Response(

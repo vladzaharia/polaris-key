@@ -487,6 +487,80 @@ describe("the identity block (I-09, plans/I-27.md §3)", () => {
     );
   });
 
+  it("validates identity.nativeRedirect (I-15.2)", () => {
+    const run = (nativeRedirect: unknown, redirectPaths?: string[]) =>
+      codes(
+        validate({
+          identity: {
+            nativeRedirect,
+            ...(redirectPaths ? { redirectPaths } : {}),
+          },
+        }),
+      );
+    expect(
+      validate({
+        identity: {
+          nativeRedirect: {
+            loopback: false,
+            schemes: ["com.tidewater.studio"],
+            claimedPaths: ["/open"],
+          },
+        },
+      }).ok,
+    ).toBe(true);
+    expect(run("loopback").errors).toEqual([
+      "invalid_identity_native_redirect",
+    ]);
+    expect(run({ localhost: true }).errors).toEqual([
+      "invalid_identity_native_redirect",
+    ]);
+    expect(run({ loopback: "yes" }).errors).toEqual([
+      "invalid_identity_native_redirect",
+    ]);
+    for (const scheme of [
+      "tidewater",
+      "Com.Tidewater.App",
+      "im.plrs.app",
+      "locker.polaris.app",
+      `com.${"a".repeat(62)}`,
+      7,
+    ]) {
+      expect(run({ schemes: [scheme] }).errors).toEqual([
+        "invalid_identity_redirect_scheme",
+      ]);
+    }
+    expect(run({ schemes: ["com.a.b", "com.a.b"] }).errors).toEqual([
+      "invalid_identity_redirect_scheme",
+    ]);
+    expect(
+      run({ schemes: ["a.a", "b.b", "c.c", "d.d", "e.e"] }).errors,
+    ).toEqual(["invalid_identity_redirect_scheme"]);
+    expect(run({ claimedPaths: ["open"] }).errors).toEqual([
+      "invalid_identity_claimed_paths",
+    ]);
+    expect(run({ claimedPaths: "/open" }).errors).toEqual([
+      "invalid_identity_claimed_paths",
+    ]);
+    expect(run({ claimedPaths: ["/cb"] }, ["/cb"]).errors).toEqual([
+      "identity_claimed_paths_overlap_redirect",
+    ]);
+  });
+
+  it("warns when claimed paths have no web origin to pair with", () => {
+    const res = validateManifestDocuments({
+      product: {
+        ...PRODUCT,
+        modules: IDENTITY_ON.modules,
+        identity: { nativeRedirect: { claimedPaths: ["/open"] } },
+      },
+      schema: catalogWithSecretDelivery(),
+    });
+    expect(res.ok).toBe(true);
+    expect(codes(res).warnings).toContain(
+      "identity_claimed_paths_without_origins",
+    );
+  });
+
   it("warns when the block is declared while the identity service is off", () => {
     const res = validateManifestDocuments({
       product: {

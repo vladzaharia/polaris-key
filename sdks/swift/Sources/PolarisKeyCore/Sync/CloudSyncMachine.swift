@@ -96,17 +96,79 @@ public struct SyncMachineOptions {
 public struct SyncRow: Sendable, Equatable {
     public var value: JSONValue
     public var version: Int
+    /// A record's file pointer (V5 §13.7), kept from a pull or a conflict copy.
+    public var file: SyncFilePointer?
     /// The row could not be read (E2E open failed).
     public var bad: Bool = false
     /// A plaintext row's store sequence (legacy only while below `encryptionSince`).
     public var plain: Int?
 
-    public init(value: JSONValue, version: Int, bad: Bool = false, plain: Int? = nil) {
+    public init(
+        value: JSONValue, version: Int, bad: Bool = false, plain: Int? = nil, file: SyncFilePointer? = nil
+    ) {
         self.value = value
         self.version = version
+        self.file = file
         self.bad = bad
         self.plain = plain
     }
+}
+
+/// A record's file pointer: `{version, size, sha256, format}` (V5 §13.7).
+public struct SyncFilePointer: Sendable, Equatable {
+    public enum Format: String, Sendable, Equatable { case whole, chunks }
+    public var version: Int
+    public var size: Int
+    public var sha256: String
+    public var format: Format
+
+    public init(version: Int, size: Int, sha256: String, format: Format) {
+        self.version = version
+        self.size = size
+        self.sha256 = sha256
+        self.format = format
+    }
+
+    /// A well-formed pointer, or nil.
+    public init?(json: JSONValue?) {
+        guard case .object(let o)? = json, let v = syncNumber(o["version"]), let n = syncNumber(o["size"]),
+            let version = Int(exactly: v), let size = Int(exactly: n), case .string(let sha)? = o["sha256"],
+            case .string(let f)? = o["format"], let format = Format(rawValue: f)
+        else { return nil }
+        self.init(version: version, size: size, sha256: sha, format: format)
+    }
+
+    public var json: JSONValue {
+        .object([
+            "version": .int(version), "size": .int(size), "sha256": .string(sha256),
+            "format": .string(format.rawValue),
+        ])
+    }
+}
+
+/// What a `putAt` / `removeAt` came to (once per call).
+public enum SyncRecordOutcome: Sendable, Equatable {
+    case ok(version: Int)
+    /// The server's current copy, or nil when it could not be read.
+    case conflict(server: SyncRecordCopy?)
+    case rejected(code: String)
+    /// The person signed out before the result arrived.
+    case dropped
+}
+
+/// A conflict's `server` copy as the caller may see it.
+public struct SyncRecordCopy: Sendable, Equatable {
+    public var value: JSONValue
+    public var version: Int
+    public var file: SyncFilePointer?
+}
+
+/// One readable cloud row of a collection (`records`).
+public struct SyncRecordRow: Sendable, Equatable {
+    public var id: String
+    public var value: JSONValue
+    public var version: Int
+    public var file: SyncFilePointer?
 }
 
 /// A setting held in the local partition.
@@ -149,6 +211,9 @@ public struct SyncPartition: Sendable, Equatable {
     public var sealedFloor: Int?
     /// Quota minus usage on the last response, in bytes.
     public var headroom: Double?
+    /// The last ticket `putAt` / `removeAt` handed out; separate from `nextMutationId`, so a
+    /// renumbering never makes a new ticket equal a pending one.
+    public var nextTicket: Int = 1
 
     public init(clientId: String?) { self.clientId = clientId }
 }
@@ -197,6 +262,8 @@ extension SyncOp {
         if preContact { o["preContact"] = .bool(true) }
         if moved { o["moved"] = .bool(true) }
         if let parked { o["parked"] = .string(parked.rawValue) }
+        if let ticket { o["ticket"] = .int(ticket) }
+        if let file { o["file"] = file.json }
         return .object(o)
     }
 }
@@ -272,13 +339,21 @@ public func syncApplySettingOp(_ policy: String, _ base: JSONValue?, _ op: SyncO
 func syncApplyRecordOp(_ base: JSONValue?, _ op: SyncOp) -> JSONValue? {
     switch op.op {
     case .set: return op.value ?? .null
-    case .setMember, .removeMember: return syncApplySettingOp("merge", base, op)
+    case .setField:
+        var o = base?.objectValue ?? [:]
+        if let f = op.field { o[f] = op.value ?? .null }
+        return .object(o)
+    case .removeField:
+        var o = base?.objectValue ?? [:]
+        if let f = op.field { o.removeValue(forKey: f) }
+        return .object(o)
     case .add:
         var arr = base?.arrayValue ?? []
         if !arr.contains(where: { jsonEqual($0, op.element) }) { arr.append(op.element ?? .null) }
         return .array(arr)
     case .remove:
         return .array((base?.arrayValue ?? []).filter { !jsonEqual($0, op.element) })
+    case .delete: return nil
     default: return base
     }
 }
@@ -334,6 +409,7 @@ public final class CloudSyncMachine {
     var needSnapshot = false
     var pullWanted = false
     var paused = false
+    var outcome: ((Int, SyncRecordOutcome) -> Void)?
     var outbox: [SyncRequest] = []
     var events: [SyncEvent] = []
     var s: SyncMachineState
@@ -494,7 +570,7 @@ public final class CloudSyncMachine {
         if decl.policy == "revision" {
             if inFlightTouches(rk) {
                 s.partitions[name]!.held[rk] = value
-            } else if let idx = s.partitions[name]!.pending.firstIndex(where: isRecord) {
+            } else if let idx = s.partitions[name]!.pending.firstIndex(where: { isRecord($0) && $0.ticket == nil }) {
                 s.partitions[name]!.pending[idx].value = value
             } else {
                 let row = s.partitions[name]!.records[rk]
@@ -515,14 +591,14 @@ public final class CloudSyncMachine {
                     _ = enqueue(
                         name,
                         SyncOp(
-                            mutationId: 0, target: target, op: .setMember, value: nxt[m], member: m,
+                            mutationId: 0, target: target, op: .setField, value: nxt[m], field: m,
                             editedHlc: edited, preContact: pre))
                 }
                 for m in syncSortedKeys(cur.keys) where nxt[m] == nil {
                     _ = enqueue(
                         name,
                         SyncOp(
-                            mutationId: 0, target: target, op: .removeMember, member: m, editedHlc: edited,
+                            mutationId: 0, target: target, op: .removeField, field: m, editedHlc: edited,
                             preContact: pre))
                 }
             } else {
@@ -543,6 +619,71 @@ public final class CloudSyncMachine {
         }
         kick()
         return .ok
+    }
+
+    /// The cloud rows of a collection a person can read, by id: the snapshot as last pulled or
+    /// acknowledged, without pending edits. A file-only row has a `null` value. Empty when signed out.
+    public func records(_ collection: String) -> [SyncRecordRow] {
+        guard s.subject != nil else { return [] }
+        let p = s.partitions[activeName]!
+        let prefix = "\(collection)/"
+        var out: [SyncRecordRow] = []
+        for rk in syncSortedKeys(p.records.keys) where rk.hasPrefix(prefix) {
+            let row = p.records[rk]!
+            if rowUnreadable(row) { continue }
+            out.append(
+                SyncRecordRow(
+                    id: String(rk.dropFirst(prefix.count)), value: row.value, version: row.version, file: row.file))
+        }
+        return out
+    }
+
+    /// Write a `revision` record at exactly `baseVersion`: a new mutation, never coalesced with a
+    /// queued edit and never rebased on a conflict. Its outcome goes to `onOutcome`. Returns the ticket.
+    /// `file` is the pointer the save's finalize returned: on `ok` the row takes it with the new version;
+    /// without one the row keeps its prior file.
+    public func putAt(
+        _ collection: String, _ recordId: String, _ value: JSONValue, baseVersion: SyncBase,
+        file: SyncFilePointer? = nil
+    ) -> SyncTicketResult {
+        exactOp(collection, recordId, baseVersion, op: .set, value: value, file: file)
+    }
+
+    /// Delete a `revision` record at exactly `baseVersion` (removes its file).
+    public func removeAt(_ collection: String, _ recordId: String, baseVersion: SyncBase) -> SyncTicketResult {
+        exactOp(collection, recordId, baseVersion, op: .delete, value: nil)
+    }
+
+    /// The listener for `putAt` / `removeAt` outcomes: once per call, when its result arrives or on
+    /// sign-out. It must not call the machine. nil removes it.
+    public func onOutcome(_ listener: ((Int, SyncRecordOutcome) -> Void)?) { outcome = listener }
+
+    func exactOp(
+        _ collection: String, _ recordId: String, _ base: SyncBase, op: SyncOpName, value: JSONValue?,
+        file: SyncFilePointer? = nil
+    ) -> SyncTicketResult {
+        guard let decl = collectionDecl(collection), decl.policy == "revision" else {
+            return .failed("collection-unknown")
+        }
+        guard s.subject != nil else { return .failed("signed-out") }
+        let name = activeName
+        let ticket = s.partitions[name]!.nextTicket
+        s.partitions[name]!.nextTicket = ticket + 1
+        var mutation = SyncOp(mutationId: 0, target: .record(collection, recordId), op: op, value: value)
+        switch base {
+        case .any: mutation.baseAny = true
+        case .version(let v): mutation.baseVersion = v
+        }
+        mutation.ticket = ticket
+        mutation.file = file
+        _ = enqueue(name, mutation)
+        kick()
+        return .ticket(ticket)
+    }
+
+    func emitOutcome(_ op: SyncOp, _ outcome: SyncRecordOutcome) {
+        guard let ticket = op.ticket, let listener = self.outcome else { return }
+        listener(ticket, outcome)
     }
 
     /// Add to a `union` record (an OR-set).
@@ -797,7 +938,7 @@ public final class CloudSyncMachine {
 
     func freshClientId() throws -> String {
         let cid = newClientId()
-        guard cid.range(of: SYNC_CLIENT_ID_PATTERN, options: .regularExpression) != nil else {
+        guard wholeMatches(SYNC_CLIENT_ID_PATTERN, cid) != nil else {
             throw SyncMachineError.badClientId
         }
         return cid
@@ -1126,6 +1267,9 @@ public final class CloudSyncMachine {
         guard let name = s.subject else { return }
         commitAllDrafts()
         let before = valueMap()
+        // An exact write is not retried across a sign-out: its caller is told, and the op goes.
+        for op in s.partitions[name]!.pending where op.ticket != nil { emitOutcome(op, .dropped) }
+        s.partitions[name]!.pending.removeAll { $0.ticket != nil }
         let unsynced = s.partitions[name]!.pending.count + s.partitions[name]!.held.count
         if discard {
             s.partitions[name]!.pending = []

@@ -12,6 +12,7 @@ import type {
   SyncScreenName,
 } from "@polaris-key/ui-core";
 
+import { CONNECT_LAYOUTS } from "./connectLayouts.js";
 import { SYNC_LAYOUTS } from "./syncLayouts.js";
 
 export { SYNC_LAYOUTS };
@@ -541,10 +542,17 @@ export const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
     ],
     // Start using is a quiet line unless it is the view's primary (added): the license keeps
     // working, so it never competes with the fix (frame 46).
-    links: ["signin.handoff.again", "common.cancel", "signin.done.start"],
-    // The form's heading is the action it came from ("Add your name and email").
+    links: [
+      "signin.handoff.again",
+      "activate.attach.reopen",
+      "common.cancel",
+      "signin.done.start",
+    ],
+    // The form's heading is the action it came from ("Add your name and email"); while the person
+    // confirms the email in Polaris Locker it is "Finish in Polaris Locker".
     titles: [
       "activate.recommend.action",
+      "activate.attach.waitTitle",
       "activate.attach.done",
       "activate.otherAccount.title",
     ],
@@ -556,13 +564,23 @@ export const HOLDER_LAYOUTS: Readonly<Record<HolderScreenName, Layout>> = {
       "activate.attach.nameRequired",
       "signin.email.invalid",
       "activate.attach.fine",
+      "activate.attach.waitCheck",
+      "part.code.label",
+      "a11y.code",
+      "a11y.copyCode",
     ],
   },
 };
 
 /** Every component's layout. */
 export const LAYOUTS: Readonly<Record<ScreenName, Layout>> =
-  /* @__PURE__ */ Object.assign({}, KIT_LAYOUTS, SYNC_LAYOUTS, HOLDER_LAYOUTS);
+  /* @__PURE__ */ Object.assign(
+    {},
+    KIT_LAYOUTS,
+    SYNC_LAYOUTS,
+    HOLDER_LAYOUTS,
+    CONNECT_LAYOUTS,
+  );
 
 /** A key that titles its screen or section. */
 export function isTitleKey(key: string, layout: Layout): boolean {
@@ -603,6 +621,8 @@ export const TAGS: Readonly<Record<ScreenName, string>> = {
   SaveConflict: "pk-save-conflict",
   ActivateDone: "pk-activate-done",
   AddToAccount: "pk-add-to-account",
+  LinkPairing: "pk-link-pairing",
+  TransferOffer: "pk-transfer-offer",
 };
 
 // ── Dialog controls (UK-06.6) ────────────────────────────────────────────────────────────────

@@ -487,9 +487,9 @@
       "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
     },
     "displayName": {
-      "description": "A name the sign-in card shows: a label, with no control, zero-width or bidirectional-formatting character and no leading or trailing whitespace (invalid_display_text, PX-W13).",
+      "description": "A name the sign-in card shows: a label, with no control, invisible or bidirectional-formatting character, not starting with a variation selector and no leading or trailing whitespace (invalid_display_text). The pattern carries the Basic Multilingual Plane part; the validator also refuses the supplementary-plane code points.",
       "allOf": [{ "$ref": "#/$defs/label" }],
-      "pattern": "^(?!\\s)(?![\\s\\S]*\\s$)[^\\u0000-\\u001f\\u007f-\\u009f\\u061c\\u200b-\\u200f\\u202a-\\u202e\\u2060-\\u2064\\u2066-\\u2069\\ufeff]*$"
+      "pattern": "^(?![\\s\\ufe00-\\ufe0f\\u180b-\\u180d\\u180f])(?![\\s\\S]*\\s$)[^\\u0000-\\u001f\\u007f-\\u009f\\u00ad\\u034f\\u0600-\\u0605\\u061c\\u06dd\\u070f\\u0890\\u0891\\u08e2\\u115f\\u1160\\u17b4\\u17b5\\u180e\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u206f\\u2800\\u3164\\ud800-\\udfff\\ufeff\\uffa0\\ufff0-\\ufffb]*$"
     },
     "longText": {
       "description": "Longer human text: at most 2000 chars, no control characters.",
@@ -795,6 +795,38 @@
             "type": "string",
             "maxLength": 256,
             "pattern": "^(?!.*//)(?!.*\\.\\.)/[^?#*\\u0000-\\u0020\\u007f]*$"
+          }
+        },
+        "nativeRedirect": {
+          "type": "object",
+          "description": "Native sign-in redirect classes (identity.nativeRedirect.*; WIRE-CONTRACT-V5 section 12.12). Loopback needs no registration and is on unless false; a registered scheme or a claimed HTTPS path is accepted only when listed here.",
+          "additionalProperties": false,
+          "properties": {
+            "loopback": {
+              "type": "boolean",
+              "description": "Whether a desktop app may sign in on a loopback address (identity.nativeRedirect.loopback). Default true."
+            },
+            "schemes": {
+              "type": "array",
+              "description": "Registered reverse-DNS URL schemes (identity.nativeRedirect.schemes), up to 4 unique, each with a dot and at most 64 characters, never im.plrs. or locker.polaris.. The redirect URI is the scheme plus :/pkey/callback.",
+              "maxItems": 4,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^(?!im\\.plrs\\.)(?!locker\\.polaris\\.)(?=.*\\.)[a-z][a-z0-9+.-]{0,63}$"
+              }
+            },
+            "claimedPaths": {
+              "type": "array",
+              "description": "Claimed HTTPS paths (identity.nativeRedirect.claimedPaths): a redirect URI is a web.origins origin plus one of these paths. Up to 8 unique paths, each rooted at /, at most 256 characters, with no ?, #, *, // or ..; needs web.origins (identity_claimed_paths_without_origins) and cannot repeat an identity.redirectPaths entry (identity_claimed_paths_overlap_redirect).",
+              "maxItems": 8,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "maxLength": 256,
+                "pattern": "^(?!.*//)(?!.*\\.\\.)/[^?#*\\u0000-\\u0020\\u007f]*$"
+              }
+            }
           }
         },
         "platformSignIn": {

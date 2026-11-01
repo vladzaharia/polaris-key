@@ -357,8 +357,13 @@ export {
 } from "./config.js";
 
 export { canonicalArch, canonicalPlatform } from "./headers.js";
-// WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the device label every SDK sends as `deviceName`.
-export { normalizeDeviceLabel } from "./deviceLabel.js";
+// WIRE-CONTRACT-V5 §12.7.1 (PX-W13): the device label every SDK sends as `deviceName`, and the
+// HELLO cleaning of §15.6 (`cleanDisplayLabel`: NFC between steps 2 and 3).
+export {
+  cleanDisplayLabel,
+  cleanDisplayName,
+  normalizeDeviceLabel,
+} from "./deviceLabel.js";
 
 export {
   channelForVersion,

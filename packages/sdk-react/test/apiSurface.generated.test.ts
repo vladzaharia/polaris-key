@@ -19,7 +19,9 @@ import {
   usePolarisFetch,
   usePolarisKey,
   usePresentation,
+  useSaves,
   useSetting,
+  useTransfers,
   useUpdateDecision,
   type PolarisKeyConfig,
 } from "../src/index.js";
@@ -50,6 +52,16 @@ export type Surface = [
   ReturnType<typeof useCloudSync>["status"],
   ReturnType<typeof useCloudSync>["flush"],
   ReturnType<typeof useCloudSync>["status"],
+  ReturnType<typeof useSaves>["list"],
+  ReturnType<typeof useSaves>["read"],
+  ReturnType<typeof useSaves>["write"],
+  ReturnType<typeof useSaves>["delete"],
+  ReturnType<typeof useSaves>["revisions"],
+  ReturnType<typeof useTransfers>["transfers"],
+  ReturnType<typeof useTransfers>["pause"],
+  ReturnType<typeof useTransfers>["resume"],
+  ReturnType<typeof useTransfers>["cancel"],
+  ReturnType<typeof useTransfers>["transfers"],
   PolarisKeyConfig["auth"],
   PolarisKeyConfig["mode"],
   PolarisKeyConfig["bridge"],
@@ -75,6 +87,7 @@ it("config.setting", () => expect(typeof useConfigSetting).toBe("function"));
 it("entitlements.has", () => expect(typeof useEntitlement).toBe("function"));
 it("identity.useLicenseChoice", () =>
   expect(typeof useLicenseChoice).toBe("function"));
+it("cloudSync.saves", () => expect(typeof useSaves).toBe("function"));
 it("client.presentation", () =>
   expect(typeof usePresentation).toBe("function"));
 it("client.capabilities", () =>

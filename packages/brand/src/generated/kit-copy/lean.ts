@@ -105,6 +105,7 @@ export const KIT_COPY_VARIANTS: Readonly<
   "activate.submit": { macos: "Activate License" },
   "common.activateLicense": { macos: "Activate a License" },
   "activate.recommend.action": { macos: "Add Your Name and Email" },
+  "activate.attach.reopen": { macos: "Open Polaris Locker Again" },
   "activate.waitingSignIn": { macos: "Sign In as {maskedEmail}" },
   "activate.otherEmail.verify": { macos: "Verify That Email" },
   "account.removeKey": { macos: "Remove License from This Device" },
@@ -235,6 +236,8 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.join.again": { macos: "Sign In to {email} Again" },
   "signin.join.startAgain": { macos: "Start Again" },
   "signin.join.methodsLink": { macos: "Sign-In Methods" },
+  "linkPairing.confirm": { macos: "Codes Match" },
+  "linkPairing.decline": { macos: "Not a Match" },
 };
 
 /** Locales whose core.* strings are English until their core pack lands. */

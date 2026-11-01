@@ -30,6 +30,7 @@ import im.plrs.key.core.Base64Url
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.peer.LinkHandlers
 import im.plrs.key.core.peer.NoiseRole
+import im.plrs.key.core.peer.PeerChannel
 import im.plrs.key.core.peer.PeerCloseCode
 import im.plrs.key.core.peer.PeerLinkPort
 import im.plrs.key.core.peer.RELAY_MAX_MESSAGE
@@ -104,6 +105,10 @@ private const val LIMIT_PAUSED = 4
 /** Bytes a socket may hold unsent before it is closed (R-6P S5). */
 internal const val RELAY_WRITE_CAP: Long = 8L * 1024 * 1024
 
+/** Inbound envelope bytes that may wait for the handler; past it the socket is closed [CLOSE_OVERLOAD]. */
+internal const val RELAY_PENDING_CAP: Long = 8L * 1024 * 1024
+private const val CLOSE_OVERLOAD = 1013
+
 /** Throws [RelayException] (`mode_not_allowed`) for a mode the relay must never carry. */
 internal fun assertRelayMode(mode: String): String {
     if (mode != "a") throw RelayException(RelayErrorReason.mode_not_allowed, "Mode $mode never crosses the relay; it is LAN only.")
@@ -170,9 +175,26 @@ internal class RelayOptions(
 
 private class OkSocket(private val ws: WebSocket) : RelaySocket {
     val incoming = Channel<RelayFrame>(Channel.UNLIMITED)
+    private val pending = java.util.concurrent.atomic.AtomicLong(0)
+
+    /** Counts [n] inbound bytes as waiting; false when that would pass [RELAY_PENDING_CAP]. */
+    fun admit(n: Int): Boolean {
+        while (true) {
+            val have = pending.get()
+            if (have + n > RELAY_PENDING_CAP) return false
+            if (pending.compareAndSet(have, have + n)) return true
+        }
+    }
 
     @Volatile
     var endCode: Int? = null
+
+    /** Past the waiting bound: the socket is closed and what waits is dropped. */
+    fun overload() {
+        endCode = CLOSE_OVERLOAD
+        ws.close(CLOSE_OVERLOAD, null)
+        incoming.cancel()
+    }
 
     override suspend fun send(data: ByteArray) {
         if (ws.queueSize() + data.size > RELAY_WRITE_CAP || !ws.send(data.toByteString())) {
@@ -184,7 +206,10 @@ private class OkSocket(private val ws: WebSocket) : RelaySocket {
 
     override suspend fun receive(): RelayFrame {
         val f = incoming.receiveCatching().getOrNull()
-        if (f != null) return f
+        if (f != null) {
+            if (f is RelayFrame.Binary) pending.addAndGet(-f.bytes.size.toLong())
+            return f
+        }
         throw SocketClosed(endCode)
     }
 
@@ -259,7 +284,8 @@ internal fun okHttpOpener(client: OkHttpClient? = null, openSeconds: Double = 15
                         s.incoming.close()
                         return
                     }
-                    s.incoming.trySend(RelayFrame.Binary(bytes.toByteArray()))
+                    // Envelopes wait for the handler, but only so many bytes of them.
+                    if (s.admit(bytes.size)) s.incoming.trySend(RelayFrame.Binary(bytes.toByteArray())) else s.overload()
                 }
 
                 override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -304,12 +330,26 @@ internal fun okHttpOpener(client: OkHttpClient? = null, openSeconds: Double = 15
 
 private class HeldIdentity(val at: Long, val source: PeerSource)
 
+/** What a [RelayLink] needs of the room it rides in: the account room ([RelayService]) or a contact room. */
+internal interface RelayRoomPort {
+    fun sendSession(peer: ByteArray, session: Long, noise: ByteArray)
+
+    fun hasRoom(n: Int): Boolean
+
+    /** Holds [n] bytes of queue room until [release]; false when the queue has no room for it. */
+    fun reserve(n: Int): Boolean
+
+    fun release(n: Int)
+
+    fun linkEnded(link: RelayLink)
+}
+
 internal class RelayService(
     private val src: LanSource,
     private val ticket: suspend () -> RelayGrant,
     private val o: RelayOptions = RelayOptions(),
     scope: CoroutineScope? = null,
-) {
+) : RelayRoomPort {
     private val ownsScope = scope == null
     private val scope: CoroutineScope = scope ?: CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val opener: RelayOpener = o.opener ?: okHttpOpener(null, o.openSeconds)
@@ -834,13 +874,13 @@ internal class RelayService(
         assertRelayMode("a")
         synchronized(lock) {
             if (links.size >= o.maxSessions) return null
-            val link = RelayLink(this, peer, sessionId, key, role, base, handlers, o.handshakeSeconds, scope)
+            val link = RelayLink(this, peer, sessionId, key, role, { send, onEvent -> base.channel(role, send, onEvent) }, handlers, o.handshakeSeconds, scope)
             links[key] = link
             return link
         }
     }
 
-    internal fun linkEnded(link: RelayLink) {
+    override fun linkEnded(link: RelayLink) {
         synchronized(lock) {
             if (links[link.key] === link) links.remove(link.key)
             endedKeys.addLast(link.key)
@@ -868,7 +908,7 @@ internal class RelayService(
         for (l in all) l.lost()
     }
 
-    internal fun sendSession(peer: ByteArray, session: Long, noise: ByteArray) {
+    override fun sendSession(peer: ByteArray, session: Long, noise: ByteArray) {
         // Handshake and PONG envelopes are not held to the outbox cap (they must go out); a session that
         // keeps asking for them while the box is over twice the cap is closed instead.
         val q = outbox
@@ -882,7 +922,29 @@ internal class RelayService(
         sendEnv(RelayMessage.Send(peer, session, noise))
     }
 
-    internal fun hasRoom(n: Int): Boolean = outbox?.roomFor(n) == true
+    override fun hasRoom(n: Int): Boolean = synchronized(reserveLock) { roomLocked(n) }
+
+    private val reserveLock = Any()
+    private var reserved = 0L
+
+    private fun roomLocked(n: Int): Boolean {
+        val total = (n + reserved).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        return outbox?.roomFor(total) == true
+    }
+
+    /**
+     * Holds [n] bytes of queue room at check time, so sends that overlap cannot pass on the same room. False
+     * when the queue has no room for it. [release] gives it back once the record is in the queue.
+     */
+    override fun reserve(n: Int): Boolean = synchronized(reserveLock) {
+        val fits = roomLocked(n)
+        if (fits) reserved += n
+        fits
+    }
+
+    override fun release(n: Int) {
+        synchronized(reserveLock) { reserved = (reserved - n).coerceAtLeast(0) }
+    }
 
     // -- identity and documents --------------------------------------------------------------------
 
@@ -960,15 +1022,17 @@ internal class RelayService(
  * that sends faster than the host reads ends with `peer_busy` at the byte caps (G10).
  */
 internal class RelayLink(
-    private val svc: RelayService,
+    private val svc: RelayRoomPort,
     val peer: ByteArray,
     val sessionId: Long,
     val key: String,
     private val role: NoiseRole,
-    base: ChannelBase,
+    channelFor: (send: (ByteArray) -> Unit, onEvent: (SessionEvent) -> Unit) -> PeerChannel,
     private val handlers: LinkHandlers<ConnectSession>,
     handshakeSeconds: Double,
     private val scope: CoroutineScope,
+    /** A contact-room session (mode c): the peer is named by the contact's key, not by a certificate's device id. */
+    private val contact: Boolean = false,
 ) : PeerLinkPort {
     @Volatile
     var ended = false
@@ -980,7 +1044,7 @@ internal class RelayLink(
     private var wake: Job? = null
     private var deadline: Job? = null
     val opened: CompletableDeferred<ConnectSession> = CompletableDeferred()
-    val channel = base.channel(role, { svc.sendSession(peer, sessionId, it) }, ::onEvent)
+    val channel = channelFor({ svc.sendSession(peer, sessionId, it) }, ::onEvent)
 
     override val remoteAddress: String = "relay"
 
@@ -1015,12 +1079,31 @@ internal class RelayLink(
 
     override suspend fun sendRecord(type: Int, body: ByteArray) {
         // Refuse before the channel encrypts: a message dropped after encryption would break the stream.
-        if (!svc.hasRoom(body.size + OVERHEAD * (body.size / CHUNK + 1))) {
+        // The room is held from the check until the record is queued (the channel's output is synchronous),
+        // so two sends that overlap cannot both pass on the same room.
+        val need = body.size + OVERHEAD * (body.size / CHUNK + 1)
+        if (!svc.reserve(need)) {
             // D-9: a full send queue ends this session `peer_busy`; the host sees the close, not an error.
             channel.close(PeerCloseCode.peer_busy)
             return
         }
-        channel.sendRecord(type, body)
+        try {
+            channel.sendRecord(type, body)
+        } finally {
+            svc.release(need)
+        }
+    }
+
+    override fun attachXfer(onRecord: (Int, ByteArray) -> Unit): suspend (Int, ByteArray) -> Unit {
+        val write = channel.attachXfer(onRecord)
+        return { type, body ->
+            // The same refusal as sendRecord: a message dropped after encryption would break the stream.
+            if (!svc.hasRoom(body.size + OVERHEAD * (body.size / CHUNK + 1))) {
+                channel.close(PeerCloseCode.peer_busy)
+            } else {
+                write(type, body)
+            }
+        }
     }
 
     override suspend fun close(code: PeerCloseCode) {
@@ -1063,9 +1146,10 @@ internal class RelayLink(
     private fun onEvent(e: SessionEvent) {
         when (e) {
             is SessionEvent.Established -> {
-                val id = e.peerDeviceId ?: return
+                // A contact room speaks aliases: the pin on the contact's key names the peer, not a device id.
+                val id = if (contact) (if (e.contactIndex == null) return else null) else (e.peerDeviceId ?: return)
                 // The certificate, not the room's stamp, names the peer; they must agree (G8).
-                if (id != Base64Url.encode(peer)) {
+                if (id != null && id != Base64Url.encode(peer)) {
                     why = RelayErrorReason.wrong_peer
                     scope.launch { channel.close(PeerCloseCode.peer_bye) }
                     finish(SessionEvent.Closed(HANDSHAKE, false))
@@ -1086,6 +1170,8 @@ internal class RelayLink(
             SessionEvent.RingWanted -> handlers.onRingWanted()
 
             is SessionEvent.Sas -> Unit
+
+            is SessionEvent.Contact -> Unit
 
             is SessionEvent.Closed -> finish(if (lostAlready && !e.byPeer) SessionEvent.Closed("connection_lost", false) else e)
         }

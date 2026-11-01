@@ -74,8 +74,10 @@ class PeerChannelTest {
         disc: List<ByteArray?>,
         var held: HeldRing? = null,
         label: String? = null,
+        app: String = "demo",
         rekeyMessages: Int = 1 shl 20,
         rekeySeconds: Double = 3600.0,
+        caps: List<String> = listOf("app/1", "ring/1"),
     ) {
         val events = ArrayList<SessionEvent>()
         val out = ArrayList<ByteArray>()
@@ -84,9 +86,9 @@ class PeerChannelTest {
         val s = PeerChannel(
             role, "djdl", dev.stat,
             AccountContext(signer.trust, "djdl", dev.cert, sub, dev.id, { held }, disc),
-            HelloInfo("test", "demo", label),
+            HelloInfo("test", app, label),
             { out.add(it) }, { events.add(it) },
-            caps = listOf("app/1", "ring/1"), now = { wall }, mono = { clock },
+            caps = caps, now = { wall }, mono = { clock },
             rekeyMessages = rekeyMessages, rekeySeconds = rekeySeconds,
         )
 
@@ -112,12 +114,13 @@ class PeerChannelTest {
         aHeld: HeldRing? = null,
         bHeld: HeldRing? = null,
         expA: Long = now + 1000,
+        caps: List<String> = listOf("app/1", "ring/1"),
     ): Triple<Side, Side, Pair<Dev, Dev>> {
         val da = Dev(idA, 1, exp = expA, epoch = aEpoch)
         val db = Dev(idB, 2)
         val k = rnd()
-        val a = Side(NoiseRole.initiator, da, listOf(k), aHeld, rekeyMessages = aRekeyMessages, rekeySeconds = aRekeySeconds)
-        val b = Side(NoiseRole.responder, db, listOf(k), bHeld)
+        val a = Side(NoiseRole.initiator, da, listOf(k), aHeld, rekeyMessages = aRekeyMessages, rekeySeconds = aRekeySeconds, caps = caps)
+        val b = Side(NoiseRole.responder, db, listOf(k), bHeld, caps = caps)
         return Triple(a, b, da to db)
     }
 
@@ -269,6 +272,18 @@ class PeerChannelTest {
     }
 
     @Test
+    fun helloPaddedWithInvisibleBlanksShowsAsThePlainLabel() = runBlocking {
+        val k = rnd()
+        val a = Side(NoiseRole.initiator, Dev(idA, 1), listOf(k), label = "Ana's Switch\u3164\u2800", app = "\u3164\u200B")
+        val b = Side(NoiseRole.responder, Dev(idB, 2), listOf(k))
+        a.s.start()
+        pump(a, b)
+        val hello = b.of<SessionEvent.Established>().single().hello
+        assertEquals("Ana's Switch", hello.label)
+        assertEquals("Unknown", hello.app)
+    }
+
+    @Test
     fun theFirstRecordMustBeHelloAndTheRefusalIsSaid() = runBlocking {
         val k = rnd()
         val da = Dev(idA, 1)
@@ -369,7 +384,7 @@ class PeerChannelTest {
         }
         a.s.start()
         pump(a, b)
-        for (t in listOf(RecordType.HELLO, RecordType.CLOSE, RecordType.REKEY, RecordType.SAS_COMMIT)) {
+        for (t in listOf(RecordType.HELLO, RecordType.CLOSE, RecordType.REKEY, RecordType.SAS_COMMIT) + (XferType.OFFER..XferType.CANCEL)) {
             try {
                 a.s.sendRecord(t, ByteArray(0))
                 fail("record $t is owned by the session")
@@ -377,6 +392,69 @@ class PeerChannelTest {
                 assertEquals("record owned by the session", e.message)
             }
         }
+    }
+
+    @Test
+    fun theTransferPortCarriesOnlyTheTransferTypesAndOnlyWithTheCapability() = runBlocking {
+        val (a, b, _) = pair(caps = listOf("app/1", XFER_CAP))
+        a.s.start()
+        pump(a, b)
+        val got = ArrayList<Pair<Int, String>>()
+        val write = a.s.attachXfer { _, _ -> }
+        b.s.attachXfer { t, body -> got += t to String(body) }
+        try {
+            a.s.attachXfer { _, _ -> }
+            fail("the port is attached once")
+        } catch (e: IllegalStateException) {
+            assertEquals("transfers are not available on this session", e.message)
+        }
+        write(XferType.OFFER, "{}".toByteArray())
+        try {
+            write(0x0100, ByteArray(0))
+            fail("the port writes the transfer types only")
+        } catch (e: IllegalStateException) {
+            assertEquals("session not open", e.message)
+        }
+        pump(a, b)
+        assertEquals(listOf(XferType.OFFER to "{}"), got)
+        assertTrue("a transfer record is not a host record", b.of<SessionEvent.Record>().isEmpty())
+
+        val (c, d, _) = pair()
+        c.s.start()
+        pump(c, d)
+        try {
+            c.s.attachXfer { _, _ -> }
+            fail("no capability, no port")
+        } catch (e: IllegalStateException) {
+            assertEquals("transfers are not available on this session", e.message)
+        }
+    }
+
+    @Test
+    fun aTransferRecordWithNoPortBehindTheCapabilityClosesPeerNotAllowed() = runBlocking {
+        val (a, b, _) = pair(caps = listOf("app/1", XFER_CAP))
+        a.s.start()
+        pump(a, b)
+        val write = a.s.attachXfer { _, _ -> }
+        write(XferType.OFFER, "{}".toByteArray())
+        pump(a, b)
+        assertEquals("peer_not_allowed", closedOf(b).single().code)
+    }
+
+    @Test
+    fun theAssemblerJudgesTransferRecordsOnceTheCapabilityIsKnown() {
+        fun offer(more: Boolean) = PeerRecord(XferType.OFFER, if (more) 1 else 0, ByteArray(2))
+        val unknown = RecordAssembler(RecordMode.a)
+        assertTrue(unknown.push(offer(false)) is AssembleResult.Message)
+        val without = RecordAssembler(RecordMode.a).also { it.xferAllowed = false }
+        assertEquals(PeerCloseCode.peer_not_allowed, (without.push(offer(false)) as AssembleResult.Close).code)
+        val with = RecordAssembler(RecordMode.a).also { it.xferAllowed = true }
+        assertEquals(PeerCloseCode.peer_bad_frame, (with.push(offer(true)) as AssembleResult.Close).code)
+        assertTrue(RecordAssembler(RecordMode.c).also { it.xferAllowed = true }.push(offer(false)) is AssembleResult.Message)
+        assertEquals(
+            PeerCloseCode.peer_not_allowed,
+            (RecordAssembler(RecordMode.v).also { it.xferAllowed = true }.push(offer(false)) as AssembleResult.Close).code,
+        )
     }
 
     @Test

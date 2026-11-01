@@ -34,6 +34,7 @@ __all__ = [
     "PeerDocsSource",
     "REFRESH_GAP_SECONDS",
     "channel_base",
+    "contact_channel",
     "peer_account",
 ]
 
@@ -100,6 +101,33 @@ def channel_base(
         "slug": src.slug,
         "static_key": src.static_key,
         "account": peer_account(src, ring),
+        "caps": list(caps),
+        "hello": {"label": label, "platform": sys.platform, "app": src.slug},
+    }
+    if now is not None:
+        o["now"] = now
+    if rekey_messages is not None:
+        o["rekey_messages"] = rekey_messages
+    if rekey_seconds is not None:
+        o["rekey_seconds"] = rekey_seconds
+    return o
+
+
+def contact_channel(
+    src: PeerSource,
+    *,
+    caps: Sequence[str] = ("app/1",),
+    label: Optional[str] = None,
+    now: Optional[Callable[[], int]] = None,
+    rekey_messages: Optional[int] = None,
+    rekey_seconds: Optional[float] = None,
+) -> Dict[str, Any]:
+    """What a mode-``c`` ``PeerSession`` needs (§15.10): no account, no certificate. The static key is the
+    device's agreeKey behind the same key handle as mode ``a``."""
+    o: Dict[str, Any] = {
+        "mode": "c",
+        "slug": src.slug,
+        "static_key": src.static_key,
         "caps": list(caps),
         "hello": {"label": label, "platform": sys.platform, "app": src.slug},
     }

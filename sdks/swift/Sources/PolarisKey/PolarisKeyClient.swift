@@ -312,11 +312,36 @@ public actor PolarisKeyClient {
         self.connect = connect
         let cloudConnect = CloudConnect(
             connect: connect, discovery: { await core.discoveryDocument },
-            applyTrust: { await core.applyPeerTrust($0) })
+            applyTrust: { await core.applyPeerTrust($0) },
+            nearby: NearbyDeps(
+                slug: core.product,
+                requireIdentity: { try await core.requireService(.identity, feature: Feature.identityNearby) },
+                identity: { fresh in
+                    if fresh { _ = await core.discover() }
+                    return await core.discoveryDocument?.identity
+                },
+                signedIn: { await identityClient.current() != nil }, signer: { try await connect.nearbySigner() },
+                approverNetwork: options.connect.nearbyApproverNetwork ?? SystemNearbyApproverNetwork(),
+                requesterNetwork: options.connect.nearbyRequesterNetwork ?? SystemNearbyRequesterNetwork()),
+            transferDirectory: core.dirs.state.appendingPathComponent("xfer", isDirectory: true))
         self.cloudConnect = cloudConnect
+        // Nearby sign-in (D): the Identity module reads the LAN half through this. A platform that cannot browse
+        // the network (no Network framework) leaves it nil and answers the typed `nearby-unsupported`.
+        #if canImport(Network)
+            let nearbyLan = CloudNearbyLan(nearby: cloudConnect.nearby)
+            identityClient.installNearby(
+                NearbyBinding(signer: { try await connect.nearbySigner() }, lan: { nearbyLan }))
+        #else
+            identityClient.installNearby(
+                NearbyBinding(signer: { try await connect.nearbySigner() }, lan: nil))
+        #endif
         let attachments = self.attachments
-        let ring: @Sendable () -> SyncKeyring = { PolarisKeyClient.keyring(core: core, attachments: attachments) }
+        let ring: @Sendable () -> SyncKeyring = {
+            PolarisKeyClient.keyring(core: core, attachments: attachments, subject: { identityClient.account })
+        }
         let syncOptions = options.cloudSync
+        let savesBox = LockedValue<SavesClient?>(nil)
+        let savesEnvBox = LockedValue<LiveSavesEnvironment?>(nil)
         let api = CloudSyncApi(
             core: core, config: config,
             host: {
@@ -327,9 +352,34 @@ public actor PolarisKeyClient {
                     options: syncOptions)
             },
             account: { identityClient.account }, emit: { hub.emit(.cloudSync($0)) },
-            forgetRing: { try await ring().forget() }, recovery: { try await ring().setRecoveryCode() })
+            forgetRing: { try await ring().forget() },
+            // The ring locks only after the background tasks are cancelled: nothing sealed under the root
+            // goes out once it is locked.
+            lockRing: {
+                await savesEnvBox.current?.closeBackground()
+                await ring().lock()
+            },
+            purgeSaves: { await savesBox.current?.purge() },
+            recovery: { try await ring().setRecoveryCode() })
         self.cloudSyncApi = api
-        self.cloudSync = CloudSyncClient(api: api)
+        // The bearer of a background task is read when the task is made; a 401 re-acquires once.
+        let fingerprintOn = options.license.fingerprint
+        let backgroundTokens: BackgroundTokens? =
+            syncOptions.backgroundTransfers
+            ? BackgroundTokens(
+                current: { await core.token },
+                refresh: {
+                    await core.reacquireOutsideSync(
+                        PolarisKeyClient.reacquire(core: core, fingerprintEnabled: fingerprintOn))
+                }) : nil
+        let savesEnv = LiveSavesEnvironment(
+            core: core, api: api, keyring: ring, options: syncOptions.saves, backgroundTokens: backgroundTokens)
+        savesEnvBox.set(savesEnv)
+        let saves = SavesClient(
+            env: savesEnv,
+            options: syncOptions.saves, emit: { hub.emit(.cloudSync($0)) })
+        savesBox.set(saves)
+        self.cloudSync = CloudSyncClient(api: api, saves: saves)
         // The activation event: mint a credential, then sync. `devices.register()` deliberately
         // does NOT fire it — a keyless registration is a provisioning step a host may want to
         // take long before it wants documents (an installer that registers at setup and syncs on
@@ -348,7 +398,7 @@ public actor PolarisKeyClient {
             // A released device holds no roster and no discovery key; if they cannot be removed
             // (a locked Keychain) the release stops.
             beforeRelease: {
-                await cloudConnect.stop()  // Connect stops before the roster and the credential go
+                await cloudConnect.stopForSignOut()  // Connect stops before the roster and the credential go
                 try await connect.leave()
                 // The principal leaves with the device: the ring forgets (a failure stops the release),
                 // then the synced data is purged.
@@ -379,7 +429,7 @@ public actor PolarisKeyClient {
         // synced data is purged (A-3). A root that cannot be deleted (a locked Keychain) stops the
         // sign-out.
         identity.onBeforeSignOut {
-            await cloudConnect.stop()
+            await cloudConnect.stopForSignOut()
             try await connect.leave()
             try await api.beforeSignOut()
         }
@@ -387,7 +437,7 @@ public actor PolarisKeyClient {
             do {
                 // Fail closed: the held roster and K_disc go first, and if they cannot, nothing
                 // else is wiped.
-                await cloudConnect.stop()
+                await cloudConnect.stopForSignOut()
                 try await connect.leave()
                 try await core.clearAll()
             } catch {
@@ -458,6 +508,8 @@ public actor PolarisKeyClient {
     public func discover() async -> DiscoveryResult {
         let result = await core.discover()
         cloudSyncApi.attachSoon()
+        // `interAccount` may have moved: links follow the document (§15.10 "Gates").
+        connect.notifyContacts()
         return result
     }
 
@@ -812,6 +864,9 @@ public actor PolarisKeyClient {
     public func close() {
         refreshTask?.cancel()
         refreshTask = nil
+        // Bounded like the sign-out step: a hanging advert withdrawal cannot keep a closed client's sockets.
+        let cloud = cloudConnect
+        Task { await cloud.stopNearby() }
     }
 }
 

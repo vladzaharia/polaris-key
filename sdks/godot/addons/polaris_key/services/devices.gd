@@ -58,6 +58,10 @@ const STORE_SIGNALS := ["appStore", "testFlight"]
 var fingerprint_host: PKeyHostIo = null
 ## Called after deauthorize() wiped the local state (the autoload re-emits its state).
 var on_wiped: Callable
+## Runs before the seat is released: a coroutine returning null or a PKeyResult. A failing result
+## stops the call: nothing is sent, the token and the cache stay, and the result is returned (the
+## key ring and Cloud Connect state are forgotten first, or the credential stays).
+var before_release: Callable
 ## The platform attest() answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var attest_platform := ""
 ## The native facades attest() uses (null: PKeyApple.shared() / PKeyAndroid.shared()). Tests set them.
@@ -179,6 +183,7 @@ func register_keys(port: Object, allow_ephemeral := false) -> PKeyResult:
 		"product": core.product,
 		"device_id": core.device_id,
 		"allow_ephemeral": allow_ephemeral,
+		"issued_at": int(core.clock.now()),
 	})
 	if not built.ok:
 		return built
@@ -266,12 +271,17 @@ func rename(label: Variant) -> PKeyResult:
 ## `DELETE /devices/<this device>`, then the local wipe (the token and the verified cache),
 ## whatever the server answered: the wipe is mandatory, as in license.deactivate. ok when the
 ## server confirmed and the wipe succeeded; otherwise the server's code (or `store-failed`), with
-## detail {remote_ok, wiped}. A coroutine.
+## detail {remote_ok, wiped}. `before_release` runs first; a failure there stops everything
+## (nothing sent, token kept). A coroutine.
 func deauthorize() -> PKeyResult:
 	var core := _core()
 	var pre = _require_token(core)
 	if pre != null:
 		return pre
+	if before_release.is_valid():
+		var rel: Variant = await before_release.call()
+		if rel is PKeyResult and not rel.ok:
+			return rel
 	var r := await core.request("DELETE", "devices/%s" % core.device_id.uri_encode(), null, true)
 	var wiped := core.tokens.clear()
 	wiped = core.cache.clear() and wiped

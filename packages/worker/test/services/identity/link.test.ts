@@ -650,6 +650,25 @@ describe("the notice and the audit", () => {
   });
 });
 
+describe("the notice names the app by its checked name", () => {
+  it("a stored name that fails the display rules reads as the slug", async () => {
+    // DISPLAY-NAME-INVISIBLE B3: an end-user security email never prints a bidi or reserved name.
+    await h.db.run(
+      "UPDATE products SET name = ? WHERE slug = ?",
+      "Steam",
+      SLUG,
+    );
+    await markFresh(h.env, SLUG, DEVICE, ada.subject);
+    const res = await tokenForm(ada, google({ email: "mallory@gmail.com" }));
+    expect(res.status).toBe(200);
+    expect(mail.length).toBeGreaterThan(0);
+    for (const m of mail) {
+      expect(m.text).toContain(`${SLUG} as a way to sign in`);
+      expect(m.text).not.toContain("Steam");
+    }
+  });
+});
+
 describe("the step-up belongs to one person", () => {
   /** Sign `email` in on the device by a channel that writes no step-up (the device code). */
   async function rebind(email: string): Promise<string> {

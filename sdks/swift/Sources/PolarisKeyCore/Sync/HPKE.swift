@@ -6,8 +6,12 @@
 // The key schedule is written out here (D-10) so that opening runs over `DeviceKeyPort.dh`: the
 // private agreement key never leaves its port. Sealing uses an ephemeral `Curve25519` key.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 public enum SyncHPKE {
     /// The `kem` member of a wrap: the HPKE KEM id as a JSON integer.

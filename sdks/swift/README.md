@@ -563,8 +563,39 @@ starts clean. A root that cannot be deleted throws and stops the release.
 **Where the root lives.** In memory while the app runs, and in one Keychain item: service
 `pkey:<product>`, account `sync-root`, accessible after first unlock on this device only
 (`AfterFirstUnlockThisDeviceOnly`), never synchronizable. A restart takes it back while it matches
-the pin. A Keychain write that fails leaves the root in memory only. An iCloud Keychain backup of
-the root is planned.
+the pin. A Keychain write that fails leaves the root in memory only. A second, synchronizable copy in the
+person's iCloud Keychain is on by default; see [Back up the Sync key](#back-up-the-sync-key).
+
+### Back up the Sync key
+
+By default the root is also saved to the person's iCloud Keychain, so a new device on the same Apple
+ID unlocks Cloud Sync without the recovery code. The item is synchronizable, with service
+`pkey-sync:<product>` and account `<subject>:<ringId>`, and it holds only the root's record: the
+recovery code is never in it. It is written when the ring is created, reset, recovered or unlocked.
+Nothing is backed up without a signed-in subject, or on a build with no Keychain access group
+entitlement; the ring calls carry on without it and never fail because of it.
+
+A new device with no root of its own reads the item, uses it only when it derives the `kid` of the
+ring the Worker serves, and unlocks with no prompt. It then stores its own wrap with the Worker, as
+`recover(_:)` does, so its next start no longer depends on the backup. If that request fails the
+device is unlocked all the same.
+
+To keep the root out of iCloud, turn the backup off before the first read of `client.keyring`:
+
+```swift
+import PolarisKey
+
+func keyRingWithoutBackup(_ client: PolarisKeyClient) throws -> SyncKeyring {
+    // The default is `.platform`. `.off` writes and reads no backup item.
+    try client.configureKeyring(SyncKeyringOptions(backup: .off))
+}
+```
+
+**Sign-out keeps the item.** `forget()` removes the root from memory and from this device's Keychain
+item, but not the iCloud copy: a synchronizable item deleted on one device is deleted on every
+device of the Apple ID. The next sign-in on this device, or any other on the same Apple ID, unlocks
+from it. Only `reset()` (which removes the old ring's item and writes the new one), `deleteBackup()`
+(call it before account deletion) and the person's own Keychain remove it.
 
 ### Cloud Sync settings
 
@@ -718,6 +749,47 @@ turns a path off.
 
 A refused Local Network prompt is the `nearby-permission-denied` error. A **sandboxed macOS app** also needs the
 `com.apple.security.network.client` and `com.apple.security.network.server` entitlements (it dials out and listens).
+
+### Nearby approval
+
+`client.cloudConnect.nearby` lets a device with no sign-in ask a signed-in device on the same network to sign
+it in. It carries the vouch over the LAN and calls no route: your app calls `nearby/start`, `poll` and
+`approve` (the Identity kit does it for you) and hands the answers to the handles. It needs the product's
+Identity discovery to name `nearby`; it does not need the `connect` service, and it works with Connect off. A
+product that does not serve it answers the typed N/A (`service-unavailable`, or `nearby-unsupported` here).
+
+```swift
+import Foundation
+import PolarisKey
+
+// The new device (D): list the approvers nearby; the person taps one.
+func ask(_ client: PolarisKeyClient, handle: String) async throws {
+    let request = try await client.cloudConnect.nearby.request(
+        NearbyRequestOptions(request: handle, label: "Living room TV"))
+    request.onApprovers { list in /* show label and platform; they are reported by the device, not proven */ }
+    let code = try await request.choose("approver-id")  // show this code, "123 456"
+    _ = code
+    request.onResult { status in /* display only: poll is the authority */ }
+}
+
+// The signed-in device (M): while "Approve a nearby device" is open.
+func approve(_ client: PolarisKeyClient) async throws {
+    _ = try await client.cloudConnect.nearby.onRequest(
+        { approval in /* show approval.codes, label and platform */ },
+        options: NearbyApproverOptions(prompt: true, label: "Ana's laptop"))
+}
+// when the person picks a code:  switch try await approval.pick(code) { case .request(let r): ...approve with r... }
+// then:                           try await approval.finish(VouchApproveAnswer(http:body:discoveryNearby:))
+```
+
+M advertises only while the person has the screen open, or has turned on background approval
+(`prompt: false, background: true`), the device is signed in and discovery still names `nearby`. Three codes are
+shown, one is D's, and a wrong pick, "None of these match" or a stop closes the session and calls no route. A
+second failure within ten minutes stops the advert until `reopen()`. D holds the Sync records M sends until its
+person confirms the account (`confirmAccount()`). Never use an account identifier as a `label`: it is shown on
+the other device. Sign-out stops every advert and request after `cloudConnect.stop()` and before the device
+leaves Connect. The Local Network prompt and `Info.plist` keys are the same as for Cloud Connect above;
+`NearbyError.permissionDenied` is `nearby-permission-denied`.
 
 ### Stores
 

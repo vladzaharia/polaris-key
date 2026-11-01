@@ -4,6 +4,7 @@ import { D1Db } from "../../../db/d1.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
 import { absorbSettings } from "../engine/absorb.js";
+import { reportedUsage } from "../engine/chunks.js";
 import { applyPull, collectTombstones } from "../engine/pull.js";
 import { applyPush } from "../engine/push.js";
 import type { FileLimits } from "../engine/files.js";
@@ -60,6 +61,8 @@ import {
   absorbedFrom,
   collectFileGarbage,
   eraseFileObjects,
+  GC_NO_STORE_RETRY_MS,
+  GC_RETRY_MS,
   hasCollectableChunks,
   noteAbsorbed,
   releaseForMerge,
@@ -239,7 +242,12 @@ export class CloudSyncDO implements DurableObject {
       // Files: expired uploads and files nothing points at leave R2 (it never throws: a failure
       // is a retry date).
       const gc = await collectFileGarbage(this.fileHost(), pin, nowMs);
-      const flush = buildFlush(this.store, pin, this.store.getUsage(), nowMs);
+      const flush = buildFlush(
+        this.store,
+        pin,
+        reportedUsage(this.store, this.store.getUsage()),
+        nowMs,
+      );
       if (!flush) {
         await this.scheduleAlarm(gc.retryAt);
         return;
@@ -260,6 +268,15 @@ export class CloudSyncDO implements DurableObject {
         await this.withTimeout(handle.batch(flush.statements));
       }
       if (!live) {
+        // The product is gone: the person's stored files leave R2 first (keys, objects, sweep), as
+        // in an erasure. A failure keeps the rows and sets the retry date directly: the object is
+        // still dirty, so `scheduleAlarm` would answer "now" and spin.
+        if (!(await eraseFileObjects(this.fileHost(), pin))) {
+          await this.ctx.storage.setAlarm(
+            nowMs + (this.bucket() ? GC_RETRY_MS : GC_NO_STORE_RETRY_MS),
+          );
+          return;
+        }
         await this.eraseSelf();
         return;
       }
@@ -357,13 +374,16 @@ export class CloudSyncDO implements DurableObject {
       return objectError("pin_mismatch", 403);
     // An absorbed object (account merge) takes no write; only an erasure (`deleteAll`) and the
     // merge's own repeat delete get through. Reads answer empty.
+    // `filePart` on an erased object is answered (an empty object refuses it): the Worker then
+    // deletes the bytes that landed after the erasure. An absorbed object still answers 410.
     if (
       (this.store.getMeta("absorbed_into") !== undefined ||
         this.store.getMeta("erased_at") !== undefined) &&
       (op.op === "push" ||
         op.op === "absorb" ||
         op.op === "fileBegin" ||
-        op.op === "filePart" ||
+        (op.op === "filePart" &&
+          this.store.getMeta("absorbed_into") !== undefined) ||
         op.op === "fileChunkPlan" ||
         op.op === "chunkStored" ||
         op.op === "fileFinalizePrepare" ||
@@ -542,6 +562,7 @@ export class CloudSyncDO implements DurableObject {
     if (
       op.op === "fileFinalizeCommit" &&
       (!isName(op.clientId) ||
+        !Number.isSafeInteger(op.quotaBytes) ||
         !Number.isSafeInteger(op.keepRevisions) ||
         op.keepRevisions < 0)
     )
@@ -860,7 +881,7 @@ export class CloudSyncDO implements DurableObject {
       op: "inspect",
       seq: this.store.currentSeq(),
       empty: this.store.isEmpty(),
-      usage: this.store.getUsage(),
+      usage: reportedUsage(this.store, this.store.getUsage()),
       encryptionSince: gone ? null : (this.store.getEncryptionSince() ?? null),
       settings: gone
         ? []

@@ -556,5 +556,5 @@ func is_unlocked(flag: String) -> bool:
 
 
 static func _is_uuid(s: String) -> bool:
-	var re := RegEx.create_from_string("^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$")
+	var re := RegEx.create_from_string("\\A[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\\z")
 	return re.search(s) != null

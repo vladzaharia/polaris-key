@@ -41,6 +41,9 @@ signal install_status(status: Dictionary)
 ## The game's activity resumed: re-check In-App Updates (a downloaded flexible update, an
 ## interrupted immediate one).
 signal resumed()
+## A LAN discovery event from the plugin (CC-14b.9): `nsd_found`, `nsd_lost`, `nsd_advert` or
+## `nsd_error`. PKeyAndroidMdns is the one consumer.
+signal nsd_event(event: Dictionary)
 
 const SINGLETON := "PolarisKeyAndroid"
 const PLAY_STORE := "com.android.vending"
@@ -304,6 +307,8 @@ func poll() -> int:
 			"resumed":
 				_source = null
 				resumed.emit()
+			"nsd_found", "nsd_lost", "nsd_advert", "nsd_error":
+				nsd_event.emit(ev)
 	return events.size()
 
 

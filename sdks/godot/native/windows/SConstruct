@@ -9,24 +9,28 @@
 # StoreContext file alone is compiled as C++20 (C++/WinRT under C++17 needs
 # <experimental/coroutine>, which the VS 2026 STL rejects); godot-cpp stays at C++17. No updater
 # library is linked: velopack_libc.dll and WinSparkle.dll are loaded at run time. The Credential
-# Manager class (SP-27) links advapi32 and the DPAPI one (CC-26.7) crypt32, both part of Windows.
+# Manager class (SP-27) links advapi32, the DPAPI one (CC-26.7) crypt32 and the crypto one
+# (CC-14b.6) bcrypt, all part of Windows; X25519 is Monocypher's C file, fetched by fetch_deps.sh.
 import os
 
 godot_cpp = ARGUMENTS.get("godot_cpp", "../.deps/godot-cpp")
 velopack = ARGUMENTS.get("velopack", "../.deps/velopack")
+monocypher = ARGUMENTS.get("monocypher", "../.deps/monocypher")
 # Keep SCons' signature database beside godot-cpp, so caching that one directory makes a CI
 # rebuild incremental (an uncached godot-cpp build takes 287-503 s on windows-latest).
 SConsignFile(os.path.join(os.path.abspath(godot_cpp), ".sconsign-pkey-win"))
 
 env = SConscript(os.path.join(godot_cpp, "SConstruct"))
-env.Append(CPPPATH=["src/", os.path.join(velopack, "include")])
-env.Append(LIBS=["WindowsApp", "ole32", "user32", "advapi32", "crypt32"])
+env.Append(CPPPATH=["src/", os.path.join(velopack, "include"), monocypher])
+env.Append(LIBS=["WindowsApp", "ole32", "user32", "advapi32", "crypt32", "bcrypt"])
 env.Append(CCFLAGS=["/bigobj"])
 
 cpp20 = env.Clone()
 cpp20["CXXFLAGS"] = [f for f in cpp20["CXXFLAGS"] if not str(f).startswith("/std:")] + ["/std:c++20"]
 
-objects = [env.SharedObject(s) for s in ["src/register.cpp", "velopack/pkey_velopack.cpp", "winsparkle/pkey_winsparkle.cpp", "credman/pkey_credman.cpp"]]
+objects = [env.SharedObject(s) for s in ["src/register.cpp", "velopack/pkey_velopack.cpp", "winsparkle/pkey_winsparkle.cpp", "credman/pkey_credman.cpp", "crypto/pkey_crypto.cpp"]]
+# Monocypher 4.0.3 (CC-14b.7), one C file; only crypto_x25519 and crypto_x25519_public_key are called.
+objects.append(env.SharedObject(os.path.join(monocypher, "monocypher.c")))
 objects.append(cpp20.SharedObject("storecontext/pkey_storecontext.cpp"))
 library = env.SharedLibrary("bin/pkey_win{}".format(env["SHLIBSUFFIX"]), source=objects)
 Default(library)

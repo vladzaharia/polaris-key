@@ -887,12 +887,32 @@ msgstr ""
 msgid "activate.recommend.portal"
 msgstr ""
 
+#. Finish in Polaris Locker
+#. AddToAccount, waiting: the title while the person confirms the email in Polaris Locker (a device code is shown).
+msgid "activate.attach.waitTitle"
+msgstr ""
+
+#. Check it matches in Polaris Locker.
+#. AddToAccount, waiting: under the sign-in code; the person checks it against the code Polaris Locker shows.
+msgid "activate.attach.waitCheck"
+msgstr ""
+
+#. Open Polaris Locker again
+#. AddToAccount, waiting: brings the Polaris Locker tab back.
+msgid "activate.attach.reopen"
+msgstr ""
+
+#. macos: Open Polaris Locker Again
+msgctxt "macos"
+msgid "activate.attach.reopen"
+msgstr ""
+
 #. Your license and its devices stay as they are.
 #. AddToAccount: under the title, above the fields.
 msgid "activate.attach.lede"
 msgstr ""
 
-#. We send a code to this email in your browser. {product} never sees it.
+#. Polaris Locker sends a code to this email. {product} never sees it.
 #. AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated).
 msgid "activate.attach.fine"
 msgstr ""
@@ -3285,6 +3305,11 @@ msgstr ""
 msgid "signin.consent.replaces"
 msgstr ""
 
+#. {app}'s license is added to your account.
+#. Consent step before returning to the app (SIGN-IN.md §3.8), when the app keeps the license it holds and attaches it to the account (add to account). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.consent.licenseKept"
+msgstr ""
+
 #. You'll choose a license in {app}.
 #. Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.consent.licenseInApp"
@@ -3538,6 +3563,11 @@ msgstr ""
 msgid "signin.nearby.body"
 msgstr ""
 
+#. Open {app} on {device}.
+#. Nearby sign-in, waiting, once a device is chosen: where to open the app. Arguments: {app} = the product's name from ProductIdentity (never translated); {device} = the other device's friendly name (never translated).
+msgid "signin.nearby.bodyOn"
+msgstr ""
+
 #. Tap this code there:
 #. Nearby sign-in, waiting: the line above the code the other device must tap.
 msgid "signin.nearby.match"
@@ -3578,7 +3608,7 @@ msgstr ""
 msgid "signin.nearby.ask"
 msgstr ""
 
-#. Tap the code it shows.
+#. Choose the code it shows.
 #. Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated).
 msgid "signin.nearby.askBody"
 msgstr ""
@@ -3948,6 +3978,76 @@ msgstr ""
 msgid "signin.cli.keys"
 msgstr ""
 
+#. c use a code instead · Esc cancel
+#. Terminal sign-in (SIGN-IN.md §4.15), nearby: the keys line while the code waits for a tap on the other device. Plain text, no formatting.
+msgid "signin.cli.nearbyKey"
+msgstr ""
+
+#. Looking for your other devices…
+#. Terminal sign-in, nearby: shown beside the spinner for the first seconds while the computer looks for the person's other devices.
+msgid "signin.cli.nearbyLooking"
+msgstr ""
+
+#. Waiting…
+#. Terminal sign-in, nearby: shown beside the spinner while the code waits for a tap on the other device. Keep it to a word or two.
+msgid "signin.cli.nearbyWaiting"
+msgstr ""
+
+#. Enter continue · Esc not now
+#. Terminal key hints under the offer to look for nearby devices (macOS asks for access to the local network after it). Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators.
+msgid "signin.cli.nearbyPromptKeys"
+msgstr ""
+
+#. 1-{n} choose a device · c use a code instead · Esc cancel
+#. Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated).
+msgid "signin.cli.nearbyPickKeys"
+msgstr ""
+
+#. 1 choose this device · c use a code instead · Esc cancel
+#. Terminal key hints while one device nearby could approve the sign-in: 1 picks it. Keep each key first and the ' · ' separators.
+msgid "signin.cli.nearbyPickOneKeys"
+msgstr ""
+
+#. Enter continue · n or Esc not you, sign out
+#. Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n or Esc signs out again. Keep each key first and the ' · ' separators.
+msgid "signin.cli.nearbyDoneKeys"
+msgstr ""
+
+#. Waiting for a device to ask…
+#. Terminal 'devices approve': shown beside the spinner while the computer waits for another device to ask to sign in.
+msgid "signin.cli.approveWaiting"
+msgstr ""
+
+#. Esc stop
+#. Terminal key hint while 'devices approve' waits for a device to ask. Keep the key first.
+msgid "signin.cli.approveWaitKeys"
+msgstr ""
+
+#. 1-3 choose a code · d or Esc deny
+#. Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d or Esc denies. Keep each key first and the ' · ' separators.
+msgid "signin.cli.approveKeys"
+msgstr ""
+
+#. Sign in with a code on the other device.
+#. Terminal 'devices approve': this computer cannot take part in nearby sign-in. 'Polaris Locker' is the end-user product name (never translated).
+msgid "signin.cli.approveUnsupported"
+msgstr ""
+
+#. Can't approve from this computer
+#. Terminal 'devices approve': the title when this computer cannot take part in nearby sign-in; the next step follows (signin.cli.approveUnsupported).
+msgid "signin.cli.approveUnsupportedTitle"
+msgstr ""
+
+#. 1-{n} choose a license · Esc deny
+#. Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated).
+msgid "signin.cli.approveChooseKeys"
+msgstr ""
+
+#. 1 choose the license · Esc deny
+#. Terminal key hints while 'devices approve' asks which license the new device gets and only one can be given: 1 picks it, Esc denies. Keep each key first and the ' · ' separators.
+msgid "signin.cli.approveChooseOneKeys"
+msgstr ""
+
 #. No browser on this computer. Use a code instead:
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
 msgid "signin.cli.headless"
@@ -4269,6 +4369,16 @@ msgstr ""
 #. Activate, sign in, devices and updates
 #. Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it.
 msgid "cli.help.namespace"
+msgstr ""
+
+#. Approve a device signing in nearby
+#. Terminal help: what 'devices approve' does.
+msgid "cli.verb.devicesApprove"
+msgstr ""
+
+#. {command} needs a person at a terminal.
+#. Terminal usage error: 'devices approve' asks a person to pick a code, so it does not run with --json or without a terminal. Arguments: {command} = the command the person ran.
+msgid "cli.approve.needsPerson"
 msgstr ""
 
 #. {command} needs a license
@@ -5514,6 +5624,11 @@ msgstr ""
 msgid "signin.gate.nameFrom"
 msgstr ""
 
+#. {app} · {name}
+#. A "Use a name from" chip that offers the name the app passed along. Arguments: {app} = the requesting app's name; {name} = the name the app suggested (neither translated).
+msgid "signin.gate.nameFromApp"
+msgstr ""
+
 #. Shown in Polaris Locker and in emails.
 #. Finish step: under the screen name. Polaris Locker is never translated.
 msgid "signin.gate.nameHint"
@@ -5895,6 +6010,166 @@ msgstr ""
 msgid "signin.code.missing"
 msgstr ""
 
+#. Pair with Someone Nearby
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device.
+msgid "linkPairing.title"
+msgstr ""
+
+#. Ask them to open this on their device. Stay close, on the same network.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Both people open this on their own device.
+msgid "linkPairing.openBody"
+msgstr ""
+
+#. Looking for nearby devices…
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code.
+msgid "linkPairing.searching"
+msgstr ""
+
+#. Compare the code
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare.
+msgid "linkPairing.codeTitle"
+msgstr ""
+
+#. Both screens must show this code.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms.
+msgid "linkPairing.codeBody"
+msgstr ""
+
+#. Reported by the device: {device}
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Arguments: {device} = the label the other device sent. Nothing authenticates it: any device on the network can send any label, so the line says it is reported, not verified.
+msgid "linkPairing.reported"
+msgstr ""
+
+#. The device gave no name
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Used when the other device sent no label.
+msgid "linkPairing.reportedUnnamed"
+msgstr ""
+
+#. Each of you shares
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Heading above the data categories both people approve; always shown before the confirm button.
+msgid "linkPairing.shares"
+msgstr ""
+
+#. Nothing is shared yet.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Used when the app asks for no data categories.
+msgid "linkPairing.sharesNone"
+msgstr ""
+
+#. Codes match
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Confirms the code matches. The link is made when the other person does the same.
+msgid "linkPairing.confirm"
+msgstr ""
+
+#. macos: Codes Match
+msgctxt "macos"
+msgid "linkPairing.confirm"
+msgstr ""
+
+#. Not a match
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Declines: the session closes and nothing is stored.
+msgid "linkPairing.decline"
+msgstr ""
+
+#. macos: Not a Match
+msgctxt "macos"
+msgid "linkPairing.decline"
+msgstr ""
+
+#. Waiting for them to confirm
+#. LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet.
+msgid "linkPairing.waiting"
+msgstr ""
+
+#. Paired
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices.
+msgid "linkPairing.linkedTitle"
+msgstr ""
+
+#. You can now connect without a code.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made.
+msgid "linkPairing.linkedBody"
+msgstr ""
+
+#. Paired with {device}.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label.
+msgid "linkPairing.linkedWith"
+msgstr ""
+
+#. Couldn’t pair
+#. LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link.
+msgid "linkPairing.failedTitle"
+msgstr ""
+
+#. Someone said no. Nothing was paired.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code.
+msgid "linkPairing.failedDeclined"
+msgstr ""
+
+#. Time ran out before you both confirmed. Nothing was paired.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first.
+msgid "linkPairing.failedTimeout"
+msgstr ""
+
+#. One of you has no room for another pairing. Remove one, then try again.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links.
+msgid "linkPairing.failedFull"
+msgstr ""
+
+#. The connection closed. Nothing was paired.
+#. LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended.
+msgid "linkPairing.failedClosed"
+msgstr ""
+
+#. Pairing code {code}
+#. Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit.
+msgid "a11y.linkCode"
+msgstr ""
+
+#. {device} wants to send you {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose.
+msgid "transferOffer.ask"
+msgstr ""
+
+#. A paired device wants to send you {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
+msgid "transferOffer.askUnnamed"
+msgstr ""
+
+#. Only accept what you expect.
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title.
+msgid "transferOffer.askBody"
+msgstr ""
+
+#. Accept
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer.
+msgid "transferOffer.accept"
+msgstr ""
+
+#. Decline
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Declines the offer; nothing is received.
+msgid "transferOffer.decline"
+msgstr ""
+
+#. Receiving {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what is being received.
+msgid "transferOffer.receiving"
+msgstr ""
+
+#. Received {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was received.
+msgid "transferOffer.done"
+msgstr ""
+
+#. Couldn’t receive {name}
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was not received.
+msgid "transferOffer.failed"
+msgstr ""
+
+#. Nothing was saved.
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title.
+msgid "transferOffer.failedBody"
+msgstr ""
+
 #. Something went wrong
 #. Core copy (conformance/parity/copy.en.json, fallback).
 msgid "core.fallback.title"
@@ -6123,6 +6398,16 @@ msgstr ""
 #. It resets soon. Devices on the same network still connect.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.relay_quota_exceeded.message"
+msgstr ""
+
+#. Pairing is off
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.title"
+msgstr ""
+
+#. Pairing with other people is off for this app. Your own devices still connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.connect_links_disabled.message"
 msgstr ""
 
 #. Connection expired
@@ -6393,6 +6678,16 @@ msgstr ""
 #. This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.redirect_uri_mismatch.message"
+msgstr ""
+
+#. Sign-in link expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.title"
+msgstr ""
+
+#. This sign-in link has expired. Go back to {product} and start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.message"
 msgstr ""
 
 #. Choose a license
@@ -7195,6 +7490,16 @@ msgstr ""
 msgid "core.codes.sign-in-expired.message"
 msgstr ""
 
+#. Browser sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.title"
+msgstr ""
+
+#. Sign-in could not open a browser here. Use a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.message"
+msgstr ""
+
 #. Sign-in declined
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-denied.title"
@@ -7423,6 +7728,136 @@ msgstr ""
 #. This app can't reach devices on your local network. Allow it in system settings.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.nearby-permission-denied.message"
+msgstr ""
+
+#. Nearby sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-unsupported.title"
+msgstr ""
+
+#. This device can't look for nearby devices here.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.nearby-unsupported.message"
+msgstr ""
+
+#. Couldn't connect securely
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-handshake-failed.title"
+msgstr ""
+
+#. A secure connection to the nearby device couldn't be set up. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-handshake-failed.message"
+msgstr ""
+
+#. Connection ended
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-closed.title"
+msgstr ""
+
+#. The connection to the nearby device ended. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer-closed.message"
+msgstr ""
+
+#. Transfer stopped
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transfer-cancelled.title"
+msgstr ""
+
+#. The transfer didn't finish. Nothing was received.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transfer-cancelled.message"
+msgstr ""
+
+#. Not paired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link-unknown.title"
+msgstr ""
+
+#. That device is no longer paired with this one.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link-unknown.message"
+msgstr ""
+
+#. Device no longer trusted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_revoked.title"
+msgstr ""
+
+#. The other device was removed from the account. Nothing was shared.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_revoked.message"
+msgstr ""
+
+#. Device certificate expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_expired.title"
+msgstr ""
+
+#. The other device's certificate has expired. Refresh and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_expired.message"
+msgstr ""
+
+#. Connection error
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bad_frame.title"
+msgstr ""
+
+#. The nearby device sent something unexpected. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bad_frame.message"
+msgstr ""
+
+#. Unsupported request
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_unknown_critical.title"
+msgstr ""
+
+#. The nearby device asked for something this app doesn't support. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_unknown_critical.message"
+msgstr ""
+
+#. Not allowed here
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_not_allowed.title"
+msgstr ""
+
+#. The nearby device asked for something that isn't allowed in this step. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_not_allowed.message"
+msgstr ""
+
+#. Nearby device busy
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_busy.title"
+msgstr ""
+
+#. Too many connections are open. Try again in a moment.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_busy.message"
+msgstr ""
+
+#. Connection timed out
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_timeout.title"
+msgstr ""
+
+#. The nearby device didn't respond in time. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_timeout.message"
+msgstr ""
+
+#. Connection closed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bye.title"
+msgstr ""
+
+#. The nearby device ended the connection.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.peer_bye.message"
 msgstr ""
 
 #. Platform problem

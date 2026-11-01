@@ -49,6 +49,7 @@ import { mintAccountLicense } from "./mint.js";
 import type { LicenseChoiceInput } from "@polaris-key/protocol/identity";
 import { issueAuthorizationCode } from "./code.js";
 import { takeSignInRequest } from "./request.js";
+import { takeNativeOnce, withLoopbackRequest } from "./pushedStore.js";
 import { askedScopeHash, liveRequest } from "./routes.js";
 
 /** Continue and Cancel: 30 a minute per account, failing closed. */
@@ -158,13 +159,18 @@ export async function handleSignInCancel(
     return refuse(429, "rate_limited");
   const record = await takeSignInRequest(env, req, handle, now);
   if (!record?.authz) return NOT_FOUND();
+  if (!(await takeNativeOnce(env, record, now))) return NOT_FOUND();
   const { authz } = record;
   return cardJson({
-    redirect: target(
-      authz.redirectUri,
-      issuerOf(req, { slug: record.product }),
-      authz.state,
-      { error: ACCESS_DENIED },
+    redirect: withLoopbackRequest(
+      target(
+        authz.redirectUri,
+        issuerOf(req, { slug: record.product }),
+        authz.state,
+        { error: ACCESS_DENIED },
+      ),
+      record,
+      handle,
     ),
   });
 }
@@ -285,6 +291,7 @@ export async function handleSignInContinue(
   // Every check has passed: take the request (one press, one code), then write.
   const record = await takeSignInRequest(env, req, handle, now);
   if (!record?.authz) return NOT_FOUND();
+  if (!(await takeNativeOnce(env, record, now))) return NOT_FOUND();
 
   const subject = await subjectFor(db, account.id, product.slug, now);
   const scopeHash = await askedScopeHash(product);
@@ -336,15 +343,20 @@ export async function handleSignInContinue(
       choice,
       nonce: record.authz.nonce,
       licenseChoice: record.authz.licenseChoice,
+      ...(record.native ? { deviceId: record.native.deviceId } : {}),
     },
     record.authz.codeChallenge,
   );
   return cardJson({
-    redirect: target(
-      record.authz.redirectUri,
-      issuerOf(req, product),
-      record.authz.state,
-      { code },
+    redirect: withLoopbackRequest(
+      target(
+        record.authz.redirectUri,
+        issuerOf(req, product),
+        record.authz.state,
+        { code },
+      ),
+      record,
+      handle,
     ),
   });
 }

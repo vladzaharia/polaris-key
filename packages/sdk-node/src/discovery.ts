@@ -383,6 +383,7 @@ export function identityFragmentFrom(
       ? { issuer: optionalString(raw.issuer) }
       : {}),
     ...(raw.account === true ? { account: true as const } : {}),
+    ...(raw.nearby === true ? { nearby: true as const } : {}),
     ...(Number.isSafeInteger(limit) && (limit as number) >= 1
       ? { keyEntryLimit: limit as number }
       : {}),

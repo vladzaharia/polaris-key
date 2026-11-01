@@ -183,8 +183,11 @@ func all() -> Array:
 	for c in [["default: replace the least recent", "default"], ["default: the limit is not known", "unknown"], ["browser mode", "browser"], ["browser mode: a QR code on a TV", "browser-tv"], ["busy", "busy"], ["removed", "removed"], ["failed", "failed"]]:
 		out.append(["device_limit", c[0], device_limit.bind(c[1])])
 	# ── PKeyCloudSyncStatus, PKeyAbout and PKeyReleaseNotes (UI-KITS.md §4.1), the models' states.
-	for c in [["synced", "synced"], ["syncing", "syncing"], ["offline", "offline"], ["conflict, Review offered", "conflict"], ["error", "error"], ["error: signed out", "signed-out"], ["locked", "locked"], ["ring changed", "ring-changed"]]:
+	for c in [["synced", "synced"], ["syncing", "syncing"], ["offline", "offline"], ["conflict, Review offered", "conflict"], ["error", "error"], ["error: signed out", "signed-out"], ["locked", "locked"], ["ring changed", "ring-changed"], ["transferring", "transferring"], ["transferring, no figures", "transferring-plain"], ["waiting for a connection", "waiting"], ["waiting for power", "waiting-battery"], ["waiting for the app", "waiting-background"], ["transfer failed", "transfer-failed"]]:
 		out.append(["cloud_sync", c[0], cloud_sync.bind(c[1])])
+	# ── PKeySaveConflict (ui-matrix `saveConflict`, K.5): every state the model has.
+	for c in [["choose", "choose"], ["choose: the other device is not known", "unknown-device"], ["choose: every slot in use", "slots-full"], ["choose: the other copy was deleted", "deleted"], ["choose: the other version is newer", "newer-remote"], ["choose: this device's version is newer", "newer-local"], ["keeping", "keeping"], ["keeping: after a deletion elsewhere", "keeping-deleted"], ["kept: this device", "kept-local"], ["kept: the other copy", "kept-remote"], ["kept: both", "kept-both"], ["kept: the deletion", "kept-deleted"], ["kept: this device after a deletion elsewhere", "kept-local-deleted"], ["failed", "failed"], ["failed: after a deletion elsewhere", "failed-deleted"], ["hidden", "hidden"]]:
+		out.append(["save_conflict", c[0], save_conflict.bind(c[1])])
 	# ── The Cloud Sync screens (ui-matrix `cloudSync`, U-42.5): every state the model has.
 	for c in ["code", "code, typed", "invalid", "working", "failed", "start-over-failed", "no-code", "start-over", "hidden"]:
 		out.append(["unlock_sync", c, unlock_sync.bind(c)])
@@ -594,6 +597,67 @@ func cloud_sync(kind: String) -> Control:
 			s.signed_in = false
 		"locked", "ring-changed":
 			s.state = kind
+		"transferring":
+			s.state = kind
+			s.transfer_size = "38 MB"
+			s.transfer_total = "61 MB"
+			s.transfer_fraction = 0.62
+		"transferring-plain":
+			s.state = "transferring"
+		"waiting", "waiting-battery", "waiting-background":
+			s.state = "waiting"
+			s.reason = kind.trim_prefix("waiting-") if kind != "waiting" else "network"
+		"transfer-failed":
+			s.state = kind
+	s.refresh_view()
+	return s
+
+
+## A SaveConflict state: the corpus rows' inputs (Maya's Steam Deck holds the other copy).
+func save_conflict(kind: String) -> Control:
+	var s := PKeySaveConflict.new()
+	s.auto_sdk = false
+	add(s)
+	s.local_when = "today, 14:02"
+	s.remote_when = "yesterday, 21:40"
+	s.remote_device = "Maya’s Steam Deck"
+	s.both_available = true
+	match kind:
+		"unknown-device":
+			s.remote_device = ""
+		"slots-full":
+			s.both_available = false
+		"deleted":
+			s.remote_deleted = true
+		"newer-remote", "newer-local":
+			s.newer = kind.trim_prefix("newer-")
+		"keeping":
+			s.step = "keeping"
+			s.keep = "local"
+		"keeping-deleted":
+			s.remote_deleted = true
+			s.step = "keeping"
+			s.keep = "remote"
+		"kept-local-deleted":
+			s.remote_deleted = true
+			s.step = "kept"
+			s.keep = "local"
+		"failed-deleted":
+			s.remote_deleted = true
+			s.step = "failed"
+			s.keep = "remote"
+		"kept-local", "kept-remote", "kept-both":
+			s.step = "kept"
+			s.keep = kind.trim_prefix("kept-")
+		"kept-deleted":
+			s.remote_deleted = true
+			s.step = "kept"
+			s.keep = "remote"
+		"failed":
+			s.step = "failed"
+			s.keep = "local"
+		"hidden":
+			s.sync_on = false
 	s.refresh_view()
 	return s
 

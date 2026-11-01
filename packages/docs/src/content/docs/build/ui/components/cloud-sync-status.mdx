@@ -36,6 +36,22 @@ A small Cloud Sync status. It shows only while Cloud Sync is on and never implie
 
     **Headless.** `viewOf("CloudSyncStatus", input)` returns the view: its state and the copy keys it shows.
 
+    **Saves.** Inside the provider the strip follows the saves: moving, waiting for a connection, failed or in conflict. Review on a conflict opens `<SaveConflict />`; give the strip `bytes` and `describe` for it. The saves hold no time or device name, so `describe` supplies each card's `when`, the other device and `newer` from your own metadata. Without `bytes`, Keep this and Keep both cannot run (a development warning says so). Try again calls `onRetry`: write the save again. Cancel leaves the conflict pending and the strip keeps asking.
+
+    ```tsx
+    import { CloudSyncStatus, SaveConflict } from "@polaris-key/react/kit";
+
+    export function SavesBar(props: { local: () => Uint8Array; retry: () => void }) {
+      const describe = () => ({ local: { when: "today 9:00" }, newer: "local" as const });
+      return (
+        <>
+          <CloudSyncStatus bytes={props.local} describe={describe} onRetry={props.retry} />
+          <SaveConflict bytes={props.local} describe={describe} />
+        </>
+      );
+    }
+    ```
+
     [React](/docs/build/ui/frameworks/react/) has the theme, the restyle hooks and the sample.
 
   </TabItem>

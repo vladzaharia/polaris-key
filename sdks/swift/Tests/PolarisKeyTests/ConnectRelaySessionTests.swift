@@ -3,12 +3,16 @@
 // `ConnectRelayService`s share one in-process `FakeRoom`; the sessions are real mode-a engines. Mirrors the
 // Python port's `test_connect_relay_sessions.py`.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import XCTest
 
 @testable import PolarisKey
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private let sub = "ps_AAAAAAAAAAAAAAAAAAAAAA"
 private let idA = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH"
@@ -377,6 +381,51 @@ final class ConnectRelaySessionTests: XCTestCase {
         XCTAssertNil(sc.closed)
         let left = await a.openLinkIds()
         XCTAssertTrue(left.contains { $0.peer == peerC })
+        await w.close()
+    }
+
+    /// Two host sends that overlap on a queue with room for one are checked against the room before either
+    /// is encrypted: the second is refused, and the peer ends `peer_busy`, not on a gap in the stream.
+    func testOverlappingHostSendsAreCheckedBeforeEncryption() async throws {
+        let w = try await World(members: [idA, idB, idC])
+        let clock = FakeClock()
+        let sleeper = ManualSleep()
+        let pacer = ConnectPacer(rate: 180, burst: 360, clock: { clock.now }, sleep: { try await sleeper.sleep($0) })
+        let a = try await w.start(w.a) { $0.pacer = { pacer } }
+        let b = try await w.start(w.b)
+        let c = try await w.start(w.c)
+        let inbound = LockedValue<ConnectSession?>(nil)
+        b.onSession { inbound.set($0) }
+        c.onSession { _ in }
+        let s = try await a.dial(idB)
+        _ = try await a.dial(idC)
+        await until("the peer holds the session") { inbound.current != nil }
+        while pacer.tryTake() == 0 {}  // the writer now waits on the pacer, so the queue fills
+        // Fill the queue with bytes for the third device, which the session under test does not share.
+        let peerC = try XCTUnwrap(Base64URL.decodeStrict(idC))
+        let linkIds = await a.openLinkIds()
+        let id = try XCTUnwrap(linkIds.first { $0.peer == peerC })
+        // Leave room for one 1,500-byte message and not for two.
+        while await a.hasRoom(70_000) {
+            await a.sendSession(peer: id.peer, session: id.session, noise: Data(count: 60_000))
+        }
+        while await a.hasRoom(3_256) {
+            await a.sendSession(peer: id.peer, session: id.session, noise: Data(count: 500))
+        }
+        let ok = await a.hasRoom(1_628)
+        XCTAssertTrue(ok, "room for one")
+        let msg = Data(repeating: 4, count: 1_500)
+        async let one: Void = { try? await s.send(msg) }()
+        async let two: Void = { try? await s.send(msg) }()
+        _ = await (one, two)
+        await until("the session is closed peer_busy") { s.closed != nil }
+        XCTAssertEqual(s.closed?.code, "peer_busy")
+        for _ in 0..<400 where inbound.current?.closed == nil {
+            clock.advance(10)
+            sleeper.fire { _ in true }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+        XCTAssertEqual(inbound.current?.closed?.code, "peer_busy", "no encrypted message was dropped")
         await w.close()
     }
 }

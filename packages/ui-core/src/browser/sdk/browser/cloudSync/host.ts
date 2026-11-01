@@ -40,6 +40,7 @@ import {
   type EncryptionMode,
   type Json,
   type OpenedBody,
+  type RecordOutcome,
   type SettingRoute,
   type SyncEvent,
   type SyncRequest,
@@ -81,7 +82,23 @@ export interface CloudSyncHostOptions {
   catalog?: ProductCatalog;
   /** Renames the app declares (old name to current name). Never taken from a served body. */
   aliases?: Readonly<Record<string, string>>;
+  /** `cloudSync.saves`: the app's `saves` collection settings (all optional). */
+  saves?: {
+    /** Delta transfer of a changed save (the collection's `files.delta`). Default `true`. */
+    delta?: boolean;
+    /** The collection's `files.maxBytes`. Default 32 MiB. */
+    maxBytes?: number;
+    /** The app's `saveFormatVersion`; absent turns the newer-format check off. */
+    saveFormatVersion?: number;
+  };
 }
+
+/** The collection `cloudSync.saves` writes to: a `revision` collection the machine holds. */
+const SAVES_DECL = {
+  name: "saves",
+  policy: "revision",
+  resolve: "keepServer",
+} as const;
 
 /** The Web Locks the host runs under. */
 export interface HostLocks {
@@ -100,7 +117,12 @@ export interface HostLocks {
 export interface BrowserSyncHostDeps {
   product: string;
   request: ProductRequest;
-  ring: Pick<KeyringClient, "hasRoot" | "subscribe" | "codec" | "forget">;
+  ring: Pick<KeyringClient, "hasRoot" | "subscribe" | "codec" | "forget"> & {
+    lock?: () => unknown;
+  };
+  /** Cancel the save transfers and delete their journal and chunk cache (the saves layer). Run
+   *  after the ring locks and before its pin goes. */
+  purgeSaves?: () => Promise<void>;
   /** The loaded discovery document's `services.sync`, or null before discovery. */
   discovery: () => { enabled?: unknown; encryption?: unknown } | null;
   /** `GET /config/schema` (diagnostic and unsigned; null on any failure). */
@@ -120,6 +142,8 @@ export interface BrowserSyncHostDeps {
   channel: TabChannel;
   /** Diagnostics; never given a value or a secret. */
   log?: (message: string) => void;
+  /** Run by `purge()` after the record is gone: the file journal and chunk cache go with it. */
+  onPurge?: () => Promise<void>;
   /** Test seams: the clock, and the page events (`pagehide`, `pageshow`). */
   clock?: { now: () => number };
   page?: {
@@ -284,6 +308,30 @@ export class BrowserCloudSyncHost {
 
   get #holdsLock(): boolean {
     return this.#role?.isWriter ?? false;
+  }
+
+  #outcome: ((o: RecordOutcome) => void) | null = null;
+
+  /** The one listener for the machine's `putAt` / `removeAt` outcomes (kept across rebuilds). */
+  onOutcome(fn: ((o: RecordOutcome) => void) | null): void {
+    this.#outcome = fn;
+    this.#machine?.onOutcome(fn);
+  }
+
+  /** The `saves` settings the app gave, with defaults. */
+  get savesOptions(): {
+    delta: boolean;
+    maxBytes?: number;
+    saveFormatVersion?: number;
+  } {
+    const o = this.#opts.saves ?? {};
+    return {
+      delta: o.delta ?? true,
+      ...(o.maxBytes !== undefined ? { maxBytes: o.maxBytes } : {}),
+      ...(o.saveFormatVersion !== undefined
+        ? { saveFormatVersion: o.saveFormatVersion }
+        : {}),
+    };
   }
 
   /** Subscribe to the machine's events (batches, in order). Returns an unsubscribe function. */
@@ -452,7 +500,10 @@ export class BrowserCloudSyncHost {
     this.#detach?.();
     this.#catalog = this.#effective();
     this.#routes = routesOf(this.#catalog);
-    const catalog: CloudSyncCatalog = { settings: this.#routes };
+    const catalog: CloudSyncCatalog = {
+      settings: this.#routes,
+      collections: [{ ...SAVES_DECL }],
+    };
     const document = this.#deps.document();
     this.#documentJson = JSON.stringify(document);
     const m = new CloudSyncMachine(
@@ -468,6 +519,7 @@ export class BrowserCloudSyncHost {
       persisted ?? undefined,
     );
     this.#machine = m;
+    m.onOutcome(this.#outcome);
     this.#applyDiscovery(m);
     this.#detach = bindRingToMachine(this.#deps.ring, m);
   }
@@ -785,6 +837,14 @@ export class BrowserCloudSyncHost {
   /** Drop the ring (the root first), then the record. Each is tried whatever the other did; a
    *  failure is logged and never thrown. */
   async #forgetAll(): Promise<void> {
+    // The root leaves first (a save codec stops with it: `sync-locked`), then the save transfers
+    // (running writes, journal, chunk cache); the pin and the record go with the rest.
+    await Promise.resolve(this.#deps.ring.lock?.()).catch(() => {
+      this.#deps.log?.("cloud sync: the key ring could not be locked");
+    });
+    await (this.#deps.purgeSaves?.() ?? Promise.resolve()).catch(() => {
+      this.#deps.log?.("cloud sync: the save transfers could not be deleted");
+    });
     const ring = this.#deps.ring.forget().catch(() => {
       // The root is already gone (`forget` locks first); only the pin failed to go.
       this.#deps.log?.("cloud sync: the key ring pin could not be removed");
@@ -1020,6 +1080,9 @@ export class BrowserCloudSyncHost {
     try {
       await this.#withStateLock(() => removeSyncState(this.#deps.store));
     } finally {
+      await this.#deps.onPurge?.().catch(() => {
+        this.#deps.log?.("cloud sync: the file state could not be deleted");
+      });
       this.#deps.channel.post({ t: "purge" });
       this.#noteStatus();
     }

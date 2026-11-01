@@ -198,9 +198,9 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.choice` | `identity.choice` | `usePolarisAuth().choice` | planned (I-10a) | planned (I-10b) | `identity.choice` | `PKeyIdentity.choice` | `identity.choice` |
 | `identity.choice.licenses` | `identity.choice.licenses` | `usePolarisAuth().choice.licenses` | planned (I-10a) | `ChoiceNamespace.licenses` | `ChoiceClient.licenses` | `PKeyIdentityChoice.licenses` | `identity.choice` |
 | `identity.choice.devices` | `identity.choice.devices` | `usePolarisAuth().choice.devices` | planned (I-10a) | `ChoiceNamespace.devices` | `ChoiceClient.devices` | `PKeyIdentityChoice.devices` | `identity.choice` |
-| `identity.choice.complete` | `identity.choice.complete` | `usePolarisAuth().choice.complete` | planned (I-10a) | `ChoiceNamespace.complete` | `ChoiceClient.complete` | `PKeyIdentityChoice.complete` (planned: I-48) | `identity.choice` |
+| `identity.choice.complete` | `identity.choice.complete` | `usePolarisAuth().choice.complete` | planned (I-10a) | `ChoiceNamespace.complete` | `ChoiceClient.complete` | `PKeyIdentityChoice.complete` | `identity.choice` |
 | `identity.choice.cancel` | `identity.choice.cancel` | `usePolarisAuth().choice.cancel` | planned (I-10a) | `ChoiceNamespace.cancel` | `ChoiceClient.cancel` | `PKeyIdentityChoice.cancel` | `identity.choice` |
-| `identity.autoSignIn` | planned (I-47) | `usePolarisAuth().autoSignIn` | planned (I-47) | `identity.autoSignIn` | `identity.autoSignIn` | `PKeyIdentity.auto_sign_in` (planned: I-48) | `identity.autosignin` |
+| `identity.autoSignIn` | `identity.autoSignIn` | `usePolarisAuth().autoSignIn` | `identity.auto_sign_in` | `identity.autoSignIn` | `identity.autoSignIn` | `PKeyIdentity.auto_sign_in` | `identity.autosignin` |
 | `identity.link.offer` | — | `usePolarisAuth().link.offer` | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
 | `identity.link.accept` | — | `usePolarisAuth().link.accept` | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
 | `identity.link.decline` | — | `usePolarisAuth().link.decline` | — | planned (I-44) | planned (I-45) | planned (I-48) | `identity.link` |
@@ -212,6 +212,18 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `identity.isAvailable` | — | — | — | — | — | `identity.is_available` | — |
 | `identity.openInBrowser` | — | — | — | — | — | `identity.open_in_browser` | — |
 | `identity.copyLink` | — | — | — | — | — | `identity.copy_link` | — |
+| `identity.nearby.available` | `identity.nearby.available` | `adapter.supports` | `identity.nearby.available` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
+| `identity.nearby.onRequest` | `identity.nearby.onRequest` | `adapter.nearby.approver` | `identity.nearby.on_request` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
+| `identity.signIn.session.approvers` | `identity.signIn.session.approvers` | `session.state.approvers` | `identity.sign_in.session.approvers` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
+| `identity.signIn.session.onApprovers` | `identity.signIn.session.onApprovers` | `session.subscribe` | `identity.sign_in.session.on_approvers` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
+| `identity.signIn.session.code` | `identity.signIn.session.code` | `session.state.code` | `identity.sign_in.session.code` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
+| `identity.signIn.session.result` | `identity.signIn.session.result` | `session.phase` | `identity.sign_in.session.result` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
+| `identity.signIn.session.onResult` | `identity.signIn.session.onResult` | `session.subscribe` | `identity.sign_in.session.on_result` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
+| `identity.signIn.session.choose` | `identity.signIn.session.choose` | `session.choose` | `identity.sign_in.session.choose` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
+| `identity.signIn.session.confirmAccount` | `identity.signIn.session.confirmAccount` | `session.confirm` | `identity.sign_in.session.confirm_account` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
+| `identity.signIn.session.declineAccount` | `identity.signIn.session.declineAccount` | `session.decline` | `identity.sign_in.session.decline_account` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
+| `identity.signIn.session.wrap` | `identity.signIn.session.wrap` | `identity.signIn.session.wrap` | `identity.sign_in.session.wrap` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
+| `identity.signIn.session.onWrap` | `identity.signIn.session.onWrap` | `identity.signIn.session.onWrap` | `identity.sign_in.session.on_wrap` | planned (I-44) | planned (I-45) | planned (I-48) | `identity.nearby` |
 
 ## events
 
@@ -227,17 +239,17 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 | `cloudSync.flush` | `cloudSync.flush` | `useCloudSync().flush` | `cloud_sync.flush` | `cloudSync.flush` | `cloudSync.flush` | `cloud_sync.flush` | `sync.settings` |
 | `cloudSync.encryption` | `cloudSync.encryption` | `BrowserAdapterOptions.cloudSync.encryption` | `cloud_sync.encryption` | `CloudSyncOptions(encryption:)` | `cloudSync.encryption` | `cloud_sync_encryption` | `sync.e2e` |
 | `cloudSync.event` | `events.on("cloudSync")` | `useCloudSync().status` | `cloud_sync.event` | `events` | `client.events` | `client.event` | `sync.settings` |
-| `cloudSync.saves` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.saves.list` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.saves.read` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.saves.write` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.saves.delete` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.saves.revisions` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.saves` |
-| `cloudSync.transfers` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
-| `cloudSync.transfer.pause` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
-| `cloudSync.transfer.resume` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
-| `cloudSync.transfer.cancel` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
-| `cloudSync.transferEvent` | planned (U-22) | planned (U-22) | planned (U-22) | planned (U-23) | planned (U-23) | planned (U-23) | `sync.files` |
+| `cloudSync.saves` | `cloudSync.saves` | `useSaves` | `cloud_sync.saves` | `cloudSync.saves` | `cloudSync.saves` | `cloud_sync.saves` | `sync.saves` |
+| `cloudSync.saves.list` | `cloudSync.saves.list` | `useSaves().list` | `cloud_sync.saves.list` | `SavesClient.list` | `SavesClient.list` | `PKeySaves.list` | `sync.saves` |
+| `cloudSync.saves.read` | `cloudSync.saves.read` | `useSaves().read` | `cloud_sync.saves.read` | `SavesClient.read` | `SavesClient.read` | `PKeySaves.read` | `sync.saves` |
+| `cloudSync.saves.write` | `cloudSync.saves.write` | `useSaves().write` | `cloud_sync.saves.write` | `SavesClient.write` | `SavesClient.write` | `PKeySaves.write` | `sync.saves` |
+| `cloudSync.saves.delete` | `cloudSync.saves.delete` | `useSaves().delete` | `cloud_sync.saves.delete` | `SavesClient.delete` | `SavesClient.delete` | `PKeySaves.delete` | `sync.saves` |
+| `cloudSync.saves.revisions` | `cloudSync.saves.revisions` | `useSaves().revisions` | `cloud_sync.saves.revisions` | `SavesClient.revisions` | `SavesClient.revisions` | `PKeySaves.revisions` | `sync.saves` |
+| `cloudSync.transfers` | `cloudSync.transfers` | `useTransfers().transfers` | `cloud_sync.transfers` | `cloudSync.transfers` | `cloudSync.transfers` | `cloud_sync.transfers` | `sync.files` |
+| `cloudSync.transfer.pause` | `cloudSync.transfer.pause` | `useTransfers().pause` | `cloud_sync.transfer.pause` | `SaveTransfer.pause` | `SaveTransfer.pause` | `PKeyTransfer.pause` | `sync.files` |
+| `cloudSync.transfer.resume` | `cloudSync.transfer.resume` | `useTransfers().resume` | `cloud_sync.transfer.resume` | `SaveTransfer.resume` | `SaveTransfer.resume` | `PKeyTransfer.resume` | `sync.files` |
+| `cloudSync.transfer.cancel` | `cloudSync.transfer.cancel` | `useTransfers().cancel` | `cloud_sync.transfer.cancel` | `SaveTransfer.cancel` | `SaveTransfer.cancel` | `PKeyTransfer.cancel` | `sync.files` |
+| `cloudSync.transferEvent` | `cloudSync.transferEvent` | `useTransfers().transfers` | `cloud_sync.transfer_event` | `events` | `client.events` | `client.event` | `sync.files` |
 | `cloudSync.collection` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
 | `cloudSync.collection.get` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
 | `cloudSync.collection.ids` | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | planned (U-46) | `sync.records` |
@@ -413,15 +425,30 @@ its replacement. Pin exact 0.9.x versions. From 1.0 every SDK follows semver aga
 
 | Concept | Node | React | Python | Swift | Kotlin | Godot | Feature |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `cloudConnect.start` | `cloudConnect.start` | `useCloudConnect().start` | `cloud_connect.start` | `cloudConnect.start` | `cloudConnect.start` | planned (CC-14) | `connect.app` |
-| `cloudConnect.stop` | `cloudConnect.stop` | `useCloudConnect().stop` | `cloud_connect.stop` | `cloudConnect.stop` | `cloudConnect.stop` | planned (CC-14) | `connect.app` |
-| `cloudConnect.peers` | `cloudConnect.peers` | `useCloudConnect().peers` | `cloud_connect.peers` | `cloudConnect.peers` | `cloudConnect.peers` | planned (CC-14) | `connect.app` |
-| `cloudConnect.devices` | `cloudConnect.devices` | `useCloudConnect().devices` | `cloud_connect.devices` | `cloudConnect.devices` | `cloudConnect.devices` | planned (CC-14) | `connect.app` |
-| `cloudConnect.open` | `cloudConnect.open` | `useCloudConnect().open` | `cloud_connect.open` | `cloudConnect.open` | `cloudConnect.open` | planned (CC-14) | `connect.app` |
-| `cloudConnect.onChannel` | `cloudConnect.onChannel` | `useCloudConnect().onChannel` | `cloud_connect.on_channel` | `cloudConnect.onChannel` | `cloudConnect.onChannel` | planned (CC-14) | `connect.app` |
-| `cloudConnect.refreshPeers` | `cloudConnect.refreshPeers` | `useCloudConnect().refreshPeers` | `cloud_connect.refresh_peers` | `cloudConnect.refreshPeers` | `cloudConnect.refreshPeers` | — | `connect.app` |
-| `cloudConnect.status` | `cloudConnect.status` | `useCloudConnect().status` | `cloud_connect.status` | `cloudConnect.status` | `cloudConnect.status` | — | `connect.app` |
-| `cloudConnect.onNotice` | `cloudConnect.onNotice` | `useCloudConnect().onNotice` | `cloud_connect.on_notice` | `cloudConnect.onNotice` | `cloudConnect.onNotice` | — | `connect.app` |
+| `cloudConnect.start` | `cloudConnect.start` | `useCloudConnect().start` | `cloud_connect.start` | `cloudConnect.start` | `cloudConnect.start` | `cloud_connect.start` | `connect.app` |
+| `cloudConnect.stop` | `cloudConnect.stop` | `useCloudConnect().stop` | `cloud_connect.stop` | `cloudConnect.stop` | `cloudConnect.stop` | `cloud_connect.stop` | `connect.app` |
+| `cloudConnect.peers` | `cloudConnect.peers` | `useCloudConnect().peers` | `cloud_connect.peers` | `cloudConnect.peers` | `cloudConnect.peers` | `cloud_connect.peers` | `connect.app` |
+| `cloudConnect.devices` | `cloudConnect.devices` | `useCloudConnect().devices` | `cloud_connect.devices` | `cloudConnect.devices` | `cloudConnect.devices` | `cloud_connect.devices` | `connect.app` |
+| `cloudConnect.open` | `cloudConnect.open` | `useCloudConnect().open` | `cloud_connect.open` | `cloudConnect.open` | `cloudConnect.open` | `cloud_connect.open` | `connect.app` |
+| `cloudConnect.onChannel` | `cloudConnect.onChannel` | `useCloudConnect().onChannel` | `cloud_connect.on_channel` | `cloudConnect.onChannel` | `cloudConnect.onChannel` | `channel` | `connect.app` |
+| `cloudConnect.refreshPeers` | `cloudConnect.refreshPeers` | `useCloudConnect().refreshPeers` | `cloud_connect.refresh_peers` | `cloudConnect.refreshPeers` | `cloudConnect.refreshPeers` | `cloud_connect.refresh_peers` | `connect.app` |
+| `cloudConnect.status` | `cloudConnect.status` | `useCloudConnect().status` | `cloud_connect.status` | `cloudConnect.status` | `cloudConnect.status` | `cloud_connect.status` | `connect.app` |
+| `cloudConnect.onNotice` | `cloudConnect.onNotice` | `useCloudConnect().onNotice` | `cloud_connect.on_notice` | `cloudConnect.onNotice` | `cloudConnect.onNotice` | `notice` | `connect.app` |
+| `cloudConnect.nearby.request` | `cloudConnect.nearby.request` | `adapter.nearby.request` | `cloud_connect.nearby.request` | `cloudConnect.nearby.request` | `CloudNearby.request` | — | `identity.nearby` |
+| `cloudConnect.nearby.onRequest` | `cloudConnect.nearby.onRequest` | `adapter.nearby.approver` | `cloud_connect.nearby.on_request` | `cloudConnect.nearby.onRequest` | `CloudNearby.onRequest` | — | `identity.nearby` |
+| `cloudConnect.links.pair` | `cloudConnect.links.pair` | — | `cloud_connect.links.pair` | `cloudConnect.links.pair` | `cloudConnect.links.pair` | — | `connect.links` |
+| `cloudConnect.links.list` | `cloudConnect.links.list` | — | `cloud_connect.links.list` | `cloudConnect.links.list` | `cloudConnect.links.list` | — | `connect.links` |
+| `cloudConnect.links.remove` | `cloudConnect.links.remove` | — | `cloud_connect.links.remove` | `cloudConnect.links.remove` | `cloudConnect.links.remove` | — | `connect.links` |
+| `cloudConnect.links.setReachable` | `cloudConnect.links.setReachable` | — | `cloud_connect.links.set_reachable` | `cloudConnect.links.setReachable` | `cloudConnect.links.setReachable` | — | `connect.links` |
+| `cloudConnect.links.open` | `cloudConnect.links.open` | — | `cloud_connect.links.open` | `cloudConnect.links.open` | `cloudConnect.links.open` | — | `connect.links` |
+| `cloudConnect.links.onLink` | `cloudConnect.links.onLink` | — | `cloud_connect.links.on_link` | `cloudConnect.links.onLink` | `cloudConnect.links.onLink` | — | `connect.links` |
+| `cloudConnect.links.interAccount` | `cloudConnect.links.interAccount` | — | `cloud_connect.links.inter_account` | `cloudConnect.links.interAccount` | `cloudConnect.links.interAccount` | — | `connect.links` |
+| `cloudConnect.transfer.send` | `cloudConnect.transfer.send` | `adapter.cloudConnect.transfer.send` | `cloud_connect.transfer.send` | `cloudConnect.transfer.send` | `cloudConnect.transfer.send` | — | `connect.transfer` |
+| `cloudConnect.transfer.onOffer` | `cloudConnect.transfer.onOffer` | `adapter.cloudConnect.transfer.onOffer` | `cloud_connect.transfer.on_offer` | `cloudConnect.transfer.onOffer` | `cloudConnect.transfer.onOffer` | — | `connect.transfer` |
+| `cloudConnect.transfer.onResult` | `cloudConnect.transfer.onResult` | `adapter.cloudConnect.transfer.onResult` | `cloud_connect.transfer.on_result` | `cloudConnect.transfer.onResult` | `cloudConnect.transfer.onResult` | — | `connect.transfer` |
+| `cloudConnect.transfer.cancel` | `cloudConnect.transfer.cancel` | `adapter.cloudConnect.transfer.cancel` | `cloud_connect.transfer.cancel` | `cloudConnect.transfer.cancel` | `cloudConnect.transfer.cancel` | — | `connect.transfer` |
+| `cloudConnect.transfer.accept` | `cloudConnect.transfer.onOffer` | `TransferOfferDriver.accept` | `IncomingOffer.accept` | `TransferDecision.accept` | `TransferOffer.accept` | — | `connect.transfer` |
+| `cloudConnect.transfer.decline` | `cloudConnect.transfer.onOffer` | `TransferOfferDriver.decline` | `IncomingOffer.decline` | `TransferDecision.decline` | `TransferOffer.decline` | — | `connect.transfer` |
 
 ## Removed in 0.9
 

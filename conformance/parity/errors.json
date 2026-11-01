@@ -130,6 +130,12 @@
       "description": "429: the relay quota is spent. The body's `scope` says whose: `person` (the day's bytes, resets at 00:00 UTC) or `product` (the month's bytes, resets on the 1st). The local network is never metered."
     },
     {
+      "code": "connect_links_disabled",
+      "kind": "wire",
+      "service": "connect",
+      "description": "403: a contact-room relay ticket was asked for while the product's inter-account setting (`cloudConnect.interAccount`), the `launch.connectLinks` gate or the service is off. Nothing else is looked at. Links between accounts are not available; the local network and the account's own devices are unaffected."
+    },
+    {
       "code": "relay_ticket_invalid",
       "kind": "wire",
       "service": "connect",
@@ -298,6 +304,12 @@
       "description": "400, the card page only, never a redirect: GET /<p>/identity/authorize was given a redirect_uri whose origin is not in the product's web origins or whose path is not in identity.redirectPaths, both matched exactly (I-08)."
     },
     {
+      "code": "invalid_request_uri",
+      "kind": "wire",
+      "service": "identity",
+      "description": "400, the branded page only, never a redirect: GET /<p>/identity/authorize was given a `request_uri` that is unknown, expired, malformed or already taken by Continue or Cancel (WIRE-CONTRACT-V5 §12.4, §12.12; I-15)."
+    },
+    {
       "code": "license_choice_required",
       "kind": "wire",
       "service": "identity",
@@ -313,8 +325,7 @@
       "code": "not_nearby",
       "kind": "wire",
       "service": "identity",
-      "description": "403, nested, from POST /<p>/identity/nearby/approve (WIRE-CONTRACT-V5 §12.11.5): the approving device is not on the requesting device's client network. Nothing is written and the request stays open; the device code is the fallback.",
-      "plannedBy": "I-40"
+      "description": "403, nested, from POST /<p>/identity/nearby/approve (WIRE-CONTRACT-V5 §12.11.5): the approving device is not on the requesting device's client network. Nothing is written and the request stays open; the device code is the fallback."
     },
     {
       "code": "auth_method_disabled",
@@ -740,7 +751,7 @@
       "code": "sign-in-failed",
       "kind": "client",
       "service": "identity",
-      "description": "A device-code sign-in poll answered a bare `error` (no `reason`): the sign-in failed after approval and the service does not say why and the Worker will not retry it. Also, in React, a sign-in or activation that did not complete. Begin again (DENY-01)."
+      "description": "A device-code sign-in poll (or a native-redirect sign-in) answered a bare `error` (no `reason`): the sign-in failed after approval and the service does not say why and the Worker will not retry it. Also, in React, a sign-in or activation that did not complete. Begin again (DENY-01)."
     },
     {
       "code": "sign-out-failed",
@@ -770,13 +781,19 @@
       "code": "cancelled",
       "kind": "client",
       "service": "identity",
-      "description": "Python, Godot: a device-code sign-in wait was cancelled by the host."
+      "description": "Python, Godot: a device-code sign-in wait was cancelled by the host. Also a native-redirect wait the host or the person cancelled (I-15)."
     },
     {
       "code": "sign-in-expired",
       "kind": "client",
       "service": "identity",
-      "description": "Godot: a device-code sign-in ended because its code expired: the client's expires_at passed (no poll is sent after it) or the server answered `timeout`. Begin again."
+      "description": "Godot: a device-code sign-in (or a native-redirect sign-in whose pushed request lapsed) ended because its code expired: the client's expires_at passed (no poll is sent after it) or the server answered `timeout`. Begin again."
+    },
+    {
+      "code": "redirect-unavailable",
+      "kind": "client",
+      "service": "identity",
+      "description": "A native-redirect sign-in (`channel: \"redirect\"`) could not start: no browser could be opened, no loopback listener could be bound and no scheme is registered. The kit offers Use a code instead (WIRE-CONTRACT-V5 §12.12; I-15b)."
     },
     {
       "code": "sign-in-denied",
@@ -915,6 +932,84 @@
       "kind": "client",
       "service": "connect",
       "description": "The OS refused this app access to devices on the local network (iOS and macOS Local Network permission; Android local-network access). The person can allow it in the system settings."
+    },
+    {
+      "code": "nearby-unsupported",
+      "kind": "client",
+      "service": "connect",
+      "description": "Nearby sign-in cannot run here: this SDK or platform has no local-network discovery (web, a desktop bridge, or a runtime that has not shipped it yet). A host hides its nearby surface and does not retry."
+    },
+    {
+      "code": "peer-handshake-failed",
+      "kind": "client",
+      "service": "connect",
+      "description": "The secure session with a nearby device could not be established: the handshake failed, or the other device could not be verified. Nothing is trusted; a host may start again."
+    },
+    {
+      "code": "peer-closed",
+      "kind": "client",
+      "service": "connect",
+      "description": "The session with a nearby device ended before the exchange finished. A host tells the person and may start again."
+    },
+    {
+      "code": "transfer-cancelled",
+      "kind": "client",
+      "service": "connect",
+      "description": "A Direct Transfer ended without delivering the content. `reason` is the `CANCEL` reason sent or received: `declined`, `cancelled`, `hash`, `size`, `category`, `busy`, `quota` or `timeout`; `cancelled` also when the host cancelled (WIRE-CONTRACT-V5 \u00a715.11). A host shows the reason and may offer again."
+    },
+    {
+      "code": "link-unknown",
+      "kind": "client",
+      "service": "connect",
+      "description": "The host named a contact this device does not hold, or one that was removed (WIRE-CONTRACT-V5 \u00a715.10, \u00a715.11). Nothing was sent; a host refreshes its list."
+    },
+    {
+      "code": "peer_revoked",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device was revoked, or its certificate chain no longer verifies against the account roster. The session closes at once and nothing it carried is trusted."
+    },
+    {
+      "code": "peer_expired",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device's certificate or the roster it relied on has expired. The session closes; a host refreshes its roster and may retry."
+    },
+    {
+      "code": "peer_bad_frame",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device sent a frame or record that breaks the peer framing rules (bad flags, size, order or body). The session closes and the record is dropped."
+    },
+    {
+      "code": "peer_unknown_critical",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device sent a record whose critical bit is set and whose type this device does not know. The session closes."
+    },
+    {
+      "code": "peer_not_allowed",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The record type is not allowed in this session's mode. The session closes."
+    },
+    {
+      "code": "peer_busy",
+      "kind": "peer",
+      "service": "connect",
+      "description": "This device has no room for another session or pending request (a limit on open sessions or held requests). The other device may retry later."
+    },
+    {
+      "code": "peer_timeout",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device did not complete the handshake, confirmation or a reply within its time limit. The session closes."
+    },
+    {
+      "code": "peer_bye",
+      "kind": "peer",
+      "service": "connect",
+      "description": "The other device closed the session on purpose: a normal end, not a failure."
     },
     {
       "code": "platform-error",

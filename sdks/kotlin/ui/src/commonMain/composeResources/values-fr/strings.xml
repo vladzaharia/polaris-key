@@ -328,10 +328,17 @@
     <string name="activate_recommend_skip">Ou continuez sans compte. %1$s fonctionne de la même façon.</string>
     <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
     <string name="activate_recommend_portal">Gardez votre licence en sécurité dans Polaris Locker</string>
+    <!-- AddToAccount, waiting: the title while the person confirms the email in Polaris Locker (a device code is shown). -->
+    <string name="activate_attach_waitTitle">Terminez dans Polaris Locker</string>
+    <!-- AddToAccount, waiting: under the sign-in code; the person checks it against the code Polaris Locker shows. -->
+    <string name="activate_attach_waitCheck">Vérifiez dans Polaris Locker que le code correspond.</string>
+    <!-- AddToAccount, waiting: brings the Polaris Locker tab back. -->
+    <string name="activate_attach_reopen">Rouvrir Polaris Locker</string>
+    <string name="activate_attach_reopen__macos">Rouvrir Polaris Locker</string>
     <!-- AddToAccount: under the title, above the fields. -->
     <string name="activate_attach_lede">Votre licence et ses appareils restent tels quels.</string>
     <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
-    <string name="activate_attach_fine">Nous envoyons un code à cet e-mail dans votre navigateur. %1$s ne le voit jamais.</string>
+    <string name="activate_attach_fine">Polaris Locker envoie un code à cet e-mail. %1$s ne le voit jamais.</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$s est dans votre compte</string>
     <!-- AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
@@ -1223,6 +1230,8 @@
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s devient l’appareil %4$s sur %5$s</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · remplace %2$s</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the app keeps the license it holds and attaches it to the account (add to account). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_licenseKept">La licence de %1$s est ajoutée à votre compte.</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_consent_licenseInApp">Vous choisirez une licence dans %1$s.</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
@@ -1317,6 +1326,8 @@
     <string name="signin_nearby_promptTitle">Se connecter avec le téléphone</string>
     <!-- Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
     <string name="signin_nearby_body">Ouvrez %1$s sur un téléphone ou un ordinateur connecté et sur ce réseau.</string>
+    <!-- Nearby sign-in, waiting, once a device is chosen: where to open the app. Arguments: {app} = the product's name from ProductIdentity (never translated); {device} = the other device's friendly name (never translated). Arguments: 1=app, 2=device. -->
+    <string name="signin_nearby_bodyOn">Ouvrez %1$s sur %2$s.</string>
     <!-- Nearby sign-in, waiting: the line above the code the other device must tap. -->
     <string name="signin_nearby_match">Touchez ce code là-bas :</string>
     <!-- Nearby sign-in, waiting: switches to the device code. -->
@@ -1332,7 +1343,7 @@
     <!-- Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_ask">Laisser %1$s se connecter ?</string>
     <!-- Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated). -->
-    <string name="signin_nearby_askBody">Touchez le code qu’il affiche.</string>
+    <string name="signin_nearby_askBody">Choisissez le code qu’il affiche.</string>
     <!-- Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_approved">%1$s est connecté</string>
     <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
@@ -1466,6 +1477,34 @@
     <string name="signin_cli_ifNotOpened">S’il ne s’est pas ouvert, rendez-vous sur %1$s</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_keys">Entrée rouvrir · c utiliser un code · Échap annuler</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15), nearby: the keys line while the code waits for a tap on the other device. Plain text, no formatting. -->
+    <string name="signin_cli_nearbyKey">c utiliser un code à la place · Échap annuler</string>
+    <!-- Terminal sign-in, nearby: shown beside the spinner for the first seconds while the computer looks for the person's other devices. -->
+    <string name="signin_cli_nearbyLooking">Recherche de vos autres appareils…</string>
+    <!-- Terminal sign-in, nearby: shown beside the spinner while the code waits for a tap on the other device. Keep it to a word or two. -->
+    <string name="signin_cli_nearbyWaiting">En attente…</string>
+    <!-- Terminal key hints under the offer to look for nearby devices (macOS asks for access to the local network after it). Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
+    <string name="signin_cli_nearbyPromptKeys">Entrée continuer · Échap pas maintenant</string>
+    <!-- Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated). Arguments: 1=n. -->
+    <string name="signin_cli_nearbyPickKeys">1-%1$s choisir un appareil · c utiliser un code · Échap annuler</string>
+    <!-- Terminal key hints while one device nearby could approve the sign-in: 1 picks it. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_nearbyPickOneKeys">1 choisir cet appareil · c utiliser un code · Échap annuler</string>
+    <!-- Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n or Esc signs out again. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_nearbyDoneKeys">Entrée continuer · n ou Échap ce n'est pas vous, déconnexion</string>
+    <!-- Terminal 'devices approve': shown beside the spinner while the computer waits for another device to ask to sign in. -->
+    <string name="signin_cli_approveWaiting">En attente de la demande d'un appareil…</string>
+    <!-- Terminal key hint while 'devices approve' waits for a device to ask. Keep the key first. -->
+    <string name="signin_cli_approveWaitKeys">Échap arrêter</string>
+    <!-- Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d or Esc denies. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_approveKeys">1-3 choisir un code · d ou Échap refuser</string>
+    <!-- Terminal 'devices approve': this computer cannot take part in nearby sign-in. 'Polaris Locker' is the end-user product name (never translated). -->
+    <string name="signin_cli_approveUnsupported">Connectez-vous avec un code sur l'autre appareil.</string>
+    <!-- Terminal 'devices approve': the title when this computer cannot take part in nearby sign-in; the next step follows (signin.cli.approveUnsupported). -->
+    <string name="signin_cli_approveUnsupportedTitle">Impossible d’approuver depuis cet ordinateur</string>
+    <!-- Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated). Arguments: 1=n. -->
+    <string name="signin_cli_approveChooseKeys">1-%1$s choisir une licence · Échap refuser</string>
+    <!-- Terminal key hints while 'devices approve' asks which license the new device gets and only one can be given: 1 picks it, Esc denies. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_approveChooseOneKeys">1 choisir la licence · Échap refuser</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_headless">Aucun navigateur sur cet ordinateur. Utilisez plutôt un code :</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {name} = the person's display name; {email} = an email address. Arguments: 1=name, 2=email. -->
@@ -1593,6 +1632,10 @@
     <string name="cli_help_group">Licence</string>
     <!-- Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it. -->
     <string name="cli_help_namespace">Activation, connexion, appareils et mises à jour</string>
+    <!-- Terminal help: what 'devices approve' does. -->
+    <string name="cli_verb_devicesApprove">Approuver la connexion d'un appareil à proximité</string>
+    <!-- Terminal usage error: 'devices approve' asks a person to pick a code, so it does not run with -json or without a terminal. Arguments: {command} = the command the person ran. Arguments: 1=command. -->
+    <string name="cli_approve_needsPerson">%1$s demande une personne devant le terminal.</string>
     <!-- Terminal: the title when a host command that needs a license is refused because the person has none (needs-activation), and the first line of the inline activate flow. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
     <string name="cli_gate_needs">%1$s nécessite une licence</string>
     <!-- Terminal: the title when a host command is refused because the person's license does not hold the entitlement it needs. They have a license, so it is never 'needs a license'. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
@@ -2079,6 +2122,8 @@
     <string name="signin_gate_confirmedByCode">Confirmé par code</string>
     <!-- Finish step: label above the screen-name suggestion chips. -->
     <string name="signin_gate_nameFrom">Utiliser un nom de</string>
+    <!-- A "Use a name from" chip that offers the name the app passed along. Arguments: {app} = the requesting app's name; {name} = the name the app suggested (neither translated). Arguments: 1=app, 2=name. -->
+    <string name="signin_gate_nameFromApp">%1$s · %2$s</string>
     <!-- Finish step: under the screen name. Polaris Locker is never translated. -->
     <string name="signin_gate_nameHint">Affiché dans Polaris Locker et dans les e-mails.</string>
     <!-- Finish step: the picture group label. -->
@@ -2229,6 +2274,68 @@
     <string name="signin_key_enterKey">Saisissez votre clé de licence.</string>
     <!-- Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a). -->
     <string name="signin_code_missing">Pas de code reçu ?</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device. -->
+    <string name="linkPairing_title">Associer avec une personne proche</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Both people open this on their own device. -->
+    <string name="linkPairing_openBody">Demandez à l’autre personne d’ouvrir ceci sur son appareil. Restez proches, sur le même réseau.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code. -->
+    <string name="linkPairing_searching">Recherche d’appareils proches…</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare. -->
+    <string name="linkPairing_codeTitle">Comparez le code</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms. -->
+    <string name="linkPairing_codeBody">Les deux écrans doivent afficher ce code.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Arguments: {device} = the label the other device sent. Nothing authenticates it: any device on the network can send any label, so the line says it is reported, not verified. Arguments: 1=device. -->
+    <string name="linkPairing_reported">Indiqué par l’appareil : %1$s</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Used when the other device sent no label. -->
+    <string name="linkPairing_reportedUnnamed">L’appareil n’a donné aucun nom</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Heading above the data categories both people approve; always shown before the confirm button. -->
+    <string name="linkPairing_shares">Chacun partage</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Used when the app asks for no data categories. -->
+    <string name="linkPairing_sharesNone">Rien n’est partagé pour l’instant.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Confirms the code matches. The link is made when the other person does the same. -->
+    <string name="linkPairing_confirm">Les codes correspondent</string>
+    <string name="linkPairing_confirm__macos">Les codes correspondent</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Declines: the session closes and nothing is stored. -->
+    <string name="linkPairing_decline">Ne correspondent pas</string>
+    <string name="linkPairing_decline__macos">Ne correspondent pas</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet. -->
+    <string name="linkPairing_waiting">En attente de leur confirmation</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices. -->
+    <string name="linkPairing_linkedTitle">Associé</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made. -->
+    <string name="linkPairing_linkedBody">Vous pouvez désormais vous connecter sans code.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label. Arguments: 1=device. -->
+    <string name="linkPairing_linkedWith">Associé à %1$s.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link. -->
+    <string name="linkPairing_failedTitle">Association impossible</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code. -->
+    <string name="linkPairing_failedDeclined">Quelqu’un a refusé. Rien n’a été associé.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first. -->
+    <string name="linkPairing_failedTimeout">Le temps est écoulé avant votre confirmation à tous les deux. Rien n’a été associé.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links. -->
+    <string name="linkPairing_failedFull">L’un de vous ne peut plus ajouter d’association. Supprimez-en une, puis réessayez.</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended. -->
+    <string name="linkPairing_failedClosed">La connexion s’est fermée. Rien n’a été associé.</string>
+    <!-- Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit. Arguments: 1=code. -->
+    <string name="a11y_linkCode">Code d’association %1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose. Arguments: 1=device, 2=name. -->
+    <string name="transferOffer_ask">%1$s veut vous envoyer %2$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends. Arguments: 1=name. -->
+    <string name="transferOffer_askUnnamed">Un contact veut vous envoyer %1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title. -->
+    <string name="transferOffer_askBody">N’acceptez que ce que vous attendez.</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer. -->
+    <string name="transferOffer_accept">Accepter</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Declines the offer; nothing is received. -->
+    <string name="transferOffer_decline">Refuser</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what is being received. Arguments: 1=name. -->
+    <string name="transferOffer_receiving">Réception de %1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was received. Arguments: 1=name. -->
+    <string name="transferOffer_done">%1$s reçu</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was not received. Arguments: 1=name. -->
+    <string name="transferOffer_failed">Impossible de recevoir %1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title. -->
+    <string name="transferOffer_failedBody">Rien n’a été enregistré.</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">Une erreur s’est produite</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
@@ -2321,6 +2428,10 @@
     <string name="core_codes_relay_quota_exceeded_title">Limite de connexion à distance atteinte</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_quota_exceeded_message">Elle se réinitialise bientôt. Les appareils du même réseau se connectent toujours.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_links_disabled_title">Liaison désactivée</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_links_disabled_message">La liaison avec d'autres personnes est désactivée pour cette app. Tes propres appareils se connectent toujours.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">Connexion expirée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2429,6 +2540,10 @@
     <string name="core_codes_redirect_uri_mismatch_title">La connexion ne peut pas revenir à l’app</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_redirect_uri_mismatch_message">La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_request_uri_title">Lien de connexion expiré</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_invalid_request_uri_message">Ce lien de connexion a expiré. Retournez dans %1$s et recommencez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">Choisissez une licence</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2750,6 +2865,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_expired_message">Le code a expiré avant la fin de la connexion. Recommencez.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_title">Connexion par navigateur indisponible</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_message">La connexion n'a pas pu ouvrir de navigateur ici. Utilisez un code à la place.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_denied_title">Connexion refusée</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_denied_message">La connexion a été refusée. Recommencez.</string>
@@ -2841,6 +2960,58 @@
     <string name="core_codes_nearby_permission_denied_title">Réseau local bloqué</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_nearby_permission_denied_message">Cette app ne peut pas accéder aux appareils de votre réseau local. Autorisez-le dans les réglages du système.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_unsupported_title">Connexion à proximité indisponible</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_unsupported_message">Cet appareil ne peut pas rechercher d'appareils à proximité ici.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_handshake_failed_title">Connexion sécurisée impossible</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_handshake_failed_message">Impossible d'établir une connexion sécurisée avec l'appareil à proximité. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_closed_title">Connexion terminée</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_closed_message">La connexion avec l'appareil à proximité s'est terminée. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transfer_cancelled_title">Transfert interrompu</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transfer_cancelled_message">Le transfert n'a pas abouti. Rien n'a été reçu.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_unknown_title">Non associé</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_unknown_message">Cet appareil n'est plus associé à celui-ci.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_revoked_title">Appareil non fiable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_revoked_message">L'autre appareil a été retiré du compte. Rien n'a été partagé.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_expired_title">Certificat de l'appareil expiré</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_expired_message">Le certificat de l'autre appareil a expiré. Actualisez et réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bad_frame_title">Erreur de connexion</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bad_frame_message">L'appareil à proximité a envoyé quelque chose d'inattendu. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_unknown_critical_title">Demande non prise en charge</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_unknown_critical_message">L'appareil à proximité a demandé quelque chose que cette app ne prend pas en charge. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_not_allowed_title">Non autorisé ici</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_not_allowed_message">L'appareil à proximité a demandé quelque chose qui n'est pas autorisé à cette étape. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_busy_title">Appareil à proximité occupé</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_busy_message">Trop de connexions sont ouvertes. Réessayez dans un instant.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_timeout_title">Délai de connexion dépassé</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_timeout_message">L'appareil à proximité n'a pas répondu à temps. Réessayez.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bye_title">Connexion fermée</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bye_message">L'appareil à proximité a mis fin à la connexion.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">Problème de plateforme</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

@@ -15,8 +15,6 @@ import PolarisKeyCore
 public let cloudSyncChunksDirName = "cloud-sync-chunks"
 /// The least a cache is allowed to hold (D-9).
 public let chunkCacheMinBytes = 256 * 1024 * 1024
-/// The most one stored chunk object is (D-5: 1 MiB plus 30).
-public let serverChunkMaxStoredBytes = SYNC_CDC_MAX_BYTES + 30
 
 public struct ChunkCacheError: Error, Sendable, Equatable {
     public let what: String
@@ -102,8 +100,16 @@ public final class MemoryChunkCache: ChunkCache, @unchecked Sendable {
 /// another's and a collection name cannot climb out of the cache root.
 public func chunkCacheDirectory(stateDir: URL, subject: String, collection: String) -> URL {
     func h(_ s: String) -> String { SyncCrypto.sha256(Data(s.utf8)).map { String(format: "%02x", $0) }.joined() }
+    return chunkCachePersonDirectory(stateDir: stateDir, subject: subject)
+        .appendingPathComponent(h(collection), isDirectory: true)
+}
+
+/// `<stateDir>/cloud-sync-chunks/<hash(subject)>`: everything one person's chunk cache holds. A purge removes
+/// this and nothing beside it.
+public func chunkCachePersonDirectory(stateDir: URL, subject: String) -> URL {
+    let digest = SyncCrypto.sha256(Data(subject.utf8)).map { String(format: "%02x", $0) }.joined()
     return stateDir.appendingPathComponent(cloudSyncChunksDirName, isDirectory: true)
-        .appendingPathComponent(h(subject), isDirectory: true).appendingPathComponent(h(collection), isDirectory: true)
+        .appendingPathComponent(digest, isDirectory: true)
 }
 
 /// The cache on disk: an LRU of at most `maxBytes`, one file per object named by its chunk id (0600, in a
@@ -135,7 +141,7 @@ public final class FileChunkCache: ChunkCache, @unchecked Sendable {
             }
             guard let attrs = try? FileManager.default.attributesOfItem(atPath: p.path),
                 attrs[.type] as? FileAttributeType == .typeRegular, let size = attrs[.size] as? Int,
-                size <= serverChunkMaxStoredBytes
+                size <= SYNC_CHUNK_MAX_STORED_BYTES
             else {
                 try? FileManager.default.removeItem(at: p)
                 continue
@@ -180,7 +186,7 @@ public final class FileChunkCache: ChunkCache, @unchecked Sendable {
         try lock.withLock {
             _ = load()
             drop(id)
-            if object.count > maxBytes || object.count > serverChunkMaxStoredBytes { return }
+            if object.count > maxBytes || object.count > SYNC_CHUNK_MAX_STORED_BYTES { return }
             try cloudSyncWriteAtomic(object, to: path(id))
             var idx = load()
             idx.append((id, object.count))

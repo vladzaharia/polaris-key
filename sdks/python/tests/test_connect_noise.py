@@ -135,7 +135,9 @@ def test_aes_gcm_known_answers_and_a_flipped_bit_fails() -> None:
 def test_handshake_byte_for_byte_with_rekey(h: Dict[str, Any]) -> None:
     assert peer_noise_protocol(h["mode"]) == h["protocol"]
     assert peer_prologue(h["slug"], h["mode"]).hex() == h["prologue"]
-    if h.get("psk"):
+    if h["mode"] == "a":
+        # The mode-a PSK is HKDF(salt empty, ikm discovery key, info), V5 §15.5. Mode c's PSK is the
+        # contact secret itself; its derivation is peer-matrix.json `contact.secrets`.
         k_disc = hashlib.sha256(b"pkey-peer/1 noise vector k_disc").digest()
         assert peer_psk(k_disc, h["slug"]).hex() == h["psk"]
     hs = [m for m in h["messages"] if m["kind"] == "handshake"]
@@ -173,8 +175,8 @@ def test_a_tampered_or_replayed_record_fails_and_does_not_advance(h: Dict[str, A
     assert e2.value.code == "decrypt"
 
 
-def test_the_three_modes_cover_a_v_and_p() -> None:
-    assert sorted(h["mode"] for h in V["handshakes"]) == ["a", "p", "v"]
+def test_the_four_modes_cover_a_c_p_and_v() -> None:
+    assert sorted(h["mode"] for h in V["handshakes"]) == ["a", "c", "p", "v"]
 
 
 @pytest.mark.parametrize("f", V["failures"], ids=[f["id"] for f in V["failures"]])
@@ -198,8 +200,8 @@ def test_failure_rows(f: Dict[str, Any]) -> None:
         i.write_message(b"")
 
 
-def test_covers_the_15_failure_rows() -> None:
-    assert len(V["failures"]) == 15
+def test_covers_the_19_failure_rows() -> None:
+    assert len(V["failures"]) == 19
 
 
 def test_a_raised_exchange_and_an_all_zero_output_both_refuse_with_dh_zero() -> None:
@@ -312,7 +314,7 @@ def test_the_cipher_refuses_a_short_ciphertext_and_an_oversize_plaintext() -> No
 
 
 def test_prologue_rows() -> None:
-    assert len(M["prologue"]) == 6
+    assert len(M["prologue"]) == 8
     for r in M["prologue"]:
         assert peer_prologue(r["slug"], r["mode"]).hex() == r["prologue"]
 

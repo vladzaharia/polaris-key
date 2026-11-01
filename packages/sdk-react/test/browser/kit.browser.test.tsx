@@ -79,6 +79,7 @@ const FAMILIES = [
   "cloudSync",
   "saveConflict",
   "holders",
+  "connect",
 ] as const;
 
 const matrix = matrixJson as Obj & { vocabulary: Obj & { defaults: Obj } };
@@ -211,13 +212,23 @@ const BASELINE_SCENES: readonly Scene[] = COMPONENT_STATE_FIXTURES.map(
   (fixture) => ({ id: fixture.id, fixture, baseline: true }),
 );
 
+// States this matrix does not draw. AddToAccount.waiting is baselined by holders.browser.test (its
+// own scene beside the other holder views); the consent line that keeps the license on the account
+// is the Polaris Locker portal's (packages/admin signInRequest), not a kit view.
+const ELSEWHERE_STATE_IDS: ReadonlySet<string> = new Set([
+  "AddToAccount.waiting",
+  "AddToAccount.consent-kept",
+]);
+
 const REGISTERED_COMPONENT_STATE_IDS = Object.entries(
   componentRegistryJson.components,
-).flatMap(([component, definition]) =>
-  Object.keys(definition.states)
-    .filter((state) => state !== "hidden")
-    .map((state) => `${component}.${state}`),
-);
+)
+  .flatMap(([component, definition]) =>
+    Object.keys(definition.states)
+      .filter((state) => state !== "hidden")
+      .map((state) => `${component}.${state}`),
+  )
+  .filter((id) => !ELSEWHERE_STATE_IDS.has(id));
 
 interface Size {
   label: string;
@@ -986,6 +997,38 @@ describe("the save screens at the §7.1 sizes", () => {
               text.indexOf("38 MB of 61 MB"),
             );
         });
+});
+
+describe("the Cloud Sync strip in a flex app bar", () => {
+  for (const size of SAVE_SIZES.filter((s) =>
+    ["390", "1280"].includes(s.label),
+  ))
+    it(`keeps its width and its Try again on screen at ${size.label}`, async () => {
+      await page.viewport(size.width, size.height);
+      document.body.style.margin = "0";
+      host = document.createElement("div");
+      document.body.append(host);
+      root = createRoot(host);
+      root.render(
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <b>App</b>
+          <Kit.CloudSyncStatus
+            input={{ cloudSync: { state: "transfer-failed" } }}
+            theme={{ product: PRODUCT, colorScheme: "light" }}
+          />
+        </div>,
+      );
+      await new Promise((r) => setTimeout(r, 200));
+      const strip = host.querySelector<HTMLElement>(".pk-root")!;
+      expect(
+        strip.getBoundingClientRect().width,
+        "not collapsed",
+      ).toBeGreaterThan(120);
+      const retry = host.querySelector('[data-key="common.tryAgain"]')!;
+      expect(retry.getBoundingClientRect().right).toBeLessThanOrEqual(
+        size.width,
+      );
+    });
 });
 
 const deleted = (name: string): boolean => name === "deleted";

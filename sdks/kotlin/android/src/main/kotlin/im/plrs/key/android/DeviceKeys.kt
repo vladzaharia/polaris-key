@@ -47,7 +47,7 @@ public class AndroidDeviceKeySealer(private val sealer: KeystoreSealer) : Device
  * so it is deferred to the storage's first (IO-dispatched) operation: building a client on the main thread
  * trips no StrictMode disk-read violation. The product name is still checked now.
  */
-private fun fileOrNoBackup(context: Context, productSlug: String, file: File?, name: String): () -> File {
+internal fun fileOrNoBackup(context: Context, productSlug: String, file: File?, name: String): () -> File {
     val slug = SecureStore.checkProductName(productSlug)
     return { file ?: File(context.noBackupFilesDir, "pkey/$slug/$name") }
 }
@@ -86,10 +86,15 @@ public fun androidSyncRootStorage(
  * These client options with the Cloud Sync root in [androidSyncRootStorage], unless the host chose a storage, and
  * with the platform backup of the root (Block Store, U-39.10), unless the host chose a store or turned it off. The
  * `direct` flavour has no Block Store, so it installs none and the ring falls through to its wrap or the recovery code.
+ * [scope] is the store namespace, so the root's file and alias sit beside the pin and the token store.
  */
-internal fun PolarisKeyClientOptions.withAndroidKeyring(context: Context, productSlug: String): PolarisKeyClientOptions = copy(
+internal fun PolarisKeyClientOptions.withAndroidKeyring(
+    context: Context,
+    scope: String,
+    keys: KeyProvider = AndroidKeyStoreProvider(context),
+): PolarisKeyClientOptions = copy(
     keyring = keyring.copy(
-        rootStorage = keyring.rootStorage ?: androidSyncRootStorage(context, productSlug),
+        rootStorage = keyring.rootStorage ?: androidSyncRootStorage(context, scope, keys),
         backup = keyring.backup ?: androidRootBackup(context),
     ),
 )

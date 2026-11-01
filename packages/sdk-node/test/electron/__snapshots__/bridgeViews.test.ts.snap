@@ -6327,7 +6327,7 @@ exports[`bridge views: signIn (ui.signin) > NearbyApproval/approved 1`] = `
 }
 `;
 
-exports[`bridge views: signIn (ui.signin) > NearbyApproval/ask: tap the code the other device shows 1`] = `
+exports[`bridge views: signIn (ui.signin) > NearbyApproval/ask: choose the code the other device shows 1`] = `
 {
   "actions": [],
   "args": {
@@ -6357,7 +6357,7 @@ exports[`bridge views: signIn (ui.signin) > NearbyApproval/ask: tap the code the
 }
 `;
 
-exports[`bridge views: signIn (ui.signin) > NearbyApproval/choose: the license is chosen here, never on the new device 1`] = `
+exports[`bridge views: signIn (ui.signin) > NearbyApproval/choose: one tap per license, Deny to leave; chosen here, never on the new device 1`] = `
 {
   "actions": [],
   "args": {
@@ -6366,7 +6366,7 @@ exports[`bridge views: signIn (ui.signin) > NearbyApproval/choose: the license i
   },
   "component": "NearbyApproval",
   "copy": [
-    "signin.choice.continue",
+    "signin.approve.deny",
     "signin.nearby.chooseLede",
     "signin.nearby.chooseTitle",
   ],
@@ -6374,7 +6374,7 @@ exports[`bridge views: signIn (ui.signin) > NearbyApproval/choose: the license i
     "errorSlot": null,
     "focus": "heading",
     "link": null,
-    "primary": "signin.choice.continue",
+    "primary": null,
     "qr": false,
     "tone": null,
   },

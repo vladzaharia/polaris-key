@@ -4,6 +4,7 @@
 
 export { copyForm, recoveryGroups, spokenForm } from "./recoveryCode.js";
 export { SYNC_LAYOUTS } from "./syncLayouts.js";
+export { CONNECT_LAYOUTS } from "./connectLayouts.js";
 
 import { scopeCss } from "./scopeCss.js";
 import { HOLDER_CSS } from "./holderStyles.js";

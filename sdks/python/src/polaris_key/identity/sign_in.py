@@ -31,7 +31,7 @@ import math
 import threading
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict, Optional, cast
 
 import httpx
 
@@ -100,7 +100,7 @@ class SignInOutcome:
     identity: Optional[SignedInIdentity] = None
     #: Redirect channel, ``signed_in``: the granted scope, space-delimited.
     scope: Optional[str] = None
-    #: Redirect channel, ``choose`` (``license_choice="app"`` and a choice is due): no token was
+    #: ``choose`` (``license_choice="app"`` and a choice is due; both channels): no token was
     #: stored. ``grant`` is a credential, so it is kept out of ``repr``; finish with
     #: ``identity.choice.complete(grant, ...)`` or ``cancel(grant)`` before ``expires_in`` seconds
     #: pass (300, §12.5.1).
@@ -314,7 +314,8 @@ class SignInSession:
                     continue
                 raise
             status = poll["s"]
-            if status == "ready":
+            if status == "ready" or status == "choose":
+                # ``choose``: the flow is spent on the Worker, so polling stops here (§12.10.1).
                 return poll["outcome"]  # type: ignore[no-any-return]
             if stopped():
                 return SignInOutcome(kind=CANCELLED)
@@ -377,7 +378,7 @@ class SignInSession:
             interval = answer.get("interval")
             return {
                 "s": "slow-down",
-                "interval": _whole_seconds(float(interval))
+                "interval": _whole_seconds(float(cast(float, interval)))
                 if _is_seconds(interval)
                 else self.interval + SLOW_DOWN_STEP_SECONDS,
             }
@@ -399,13 +400,33 @@ class SignInSession:
                 "identity": identity or SignedInIdentity(),
                 "attachable": answer.get("attachable") is True,
             }
+        if status == "choose":
+            # UK-42.22: a start that asked ``license_choice="app"`` is answered with a grant and
+            # no token. Nothing is stored; finish with ``identity.choice``.
+            grant = answer.get("grant")
+            expires_in = answer.get("expiresIn")
+            choices = answer.get("choices")
+            if not (_is_str(grant) and _is_seconds(expires_in) and isinstance(choices, dict)):
+                raise PolarisError(
+                    ErrorCode.SIGN_IN_FAILED,
+                    "device sign-in answered choose without a complete grant.",
+                )
+            return {
+                "s": "choose",
+                "outcome": SignInOutcome(
+                    kind=CHOOSE,
+                    grant=grant,
+                    expires_in=_whole_seconds(cast(float, expires_in)),
+                    choices=choices,
+                ),
+            }
         if status == "ready":
             token = answer.get("token")
             if not _is_str(token):
                 raise PolarisError(
                     ErrorCode.SIGN_IN_FAILED, "device sign-in answered ready without a token."
                 )
-            tokens.set(token, "signin")
+            tokens.set(cast(str, token), "signin", person_initiated=True)
             deps.store_identity(identity)
             deps.on_acquired()
             try:
@@ -424,6 +445,25 @@ class SignInSession:
                 ),
             }
         raise PolarisError(ErrorCode.SIGN_IN_FAILED, "device sign-in failed.")
+
+
+_CHOICE_ENDPOINTS = ("choiceLicenses", "choiceDevices", "choiceComplete", "choiceCancel")
+
+
+def _device_choice_served(deps: SignInDeps) -> bool:
+    """Does discovery carry ``deviceChoice`` and the four ``choice*`` endpoints (§12.6)?"""
+    try:
+        doc = deps.load_discovery() if deps.load_discovery is not None else deps.discovery()
+    except Exception:
+        return False
+    services = doc.get("services") if isinstance(doc, dict) else None
+    identity = services.get("identity") if isinstance(services, dict) else None
+    if not isinstance(identity, dict) or identity.get("deviceChoice") is not True:
+        return False
+    endpoints = identity.get("endpoints")
+    if not isinstance(endpoints, dict):
+        return False
+    return all(_is_str(endpoints.get(k)) for k in _CHOICE_ENDPOINTS)
 
 
 def start_device_code(
@@ -469,8 +509,11 @@ def start_device_code(
         body["purpose"] = purpose
     if scope is not None:
         body["scope"] = scope if isinstance(scope, str) else " ".join(scope)
-    if license_choice is not None:
-        body["licenseChoice"] = license_choice
+    # §12.10.1 / §12.6: ask for the app's own licence choice only when this Worker serves it
+    # (``deviceChoice`` and the four ``choice*`` endpoints); an older one would leave the card
+    # choosing.
+    if license_choice == "app" and _device_choice_served(deps):
+        body["licenseChoice"] = "app"
     res = _post(ctx, "identity/auth/device/start", body)
     if res.status_code == 404:
         raise UnsupportedError(
@@ -525,21 +568,28 @@ class SignInNamespace:
         self,
         start: Callable[..., SignInSession],
         start_redirect: Optional[Callable[..., Any]] = None,
+        start_nearby: Optional[Callable[..., Any]] = None,
     ) -> None:
         self._start = start
         self._start_redirect = start_redirect
+        self._start_nearby = start_nearby
 
     def start(self, channel: str = "device-code", **opts: Any) -> Any:
         """Start a sign-in. ``channel="device-code"`` (the default) takes ``device_name``,
         ``login_hint``, ``name_hint``, ``purpose``, ``scope`` and ``license_choice`` and answers a
         :class:`SignInSession`. ``channel="redirect"`` takes the same plus the required https
         ``redirect_uri`` and answers a :class:`~polaris_key.identity.redirect.RedirectSession`
-        with ``authorize_url`` and ``complete(callback_url)``. Any other channel answers the typed
-        ``version`` N/A (loopback, scheme and claimed-HTTPS redirects are I-15's)."""
+        with ``authorize_url`` and ``complete(callback_url)``. ``channel="nearby"`` (``device_name``) is the
+        new device's side of nearby sign-in and answers a
+        :class:`~polaris_key.identity.nearby_session.NearbySignInSession`: the typed N/A when the product
+        or this runtime does not serve it. Any other channel answers the typed ``version`` N/A (loopback,
+        scheme and claimed-HTTPS redirects are I-15's)."""
         if channel == "device-code":
             return self._start(**opts)
         if channel == "redirect" and self._start_redirect is not None:
             return self._start_redirect(**opts)
+        if channel == "nearby" and self._start_nearby is not None:
+            return self._start_nearby(**opts)
         raise UnsupportedError(
             Unsupported(
                 Feature.IDENTITY_REDIRECT_WEB,

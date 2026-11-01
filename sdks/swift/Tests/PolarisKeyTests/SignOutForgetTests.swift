@@ -4,13 +4,17 @@
 // K_disc, and makes the Cloud Sync key ring forget its root and pin. A root that cannot be
 // deleted stops the sign-out.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import XCTest
 
 @testable import PolarisKey
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 final class SignOutForgetTests: XCTestCase {
     private let signer = TestSigner(kid: "connect-kid")
@@ -132,5 +136,39 @@ final class SignOutForgetTests: XCTestCase {
         XCTAssertFalse(log.contains { $0.contains("identity/signout") })
         let token = await r.client.core.token
         XCTAssertEqual(token, "pkeyt_dev")
+    }
+}
+
+// @pkey-feature sync.saves
+// The order a person's keys and saves leave in: the ring locks, the save transfers are purged, then the
+// pin goes. A pin that cannot be removed still comes after the purge and is reported.
+final class ForgetOrderTests: XCTestCase {
+    private final class Log: @unchecked Sendable {
+        let lock = NSLock()
+        var steps: [String] = []
+        func add(_ s: String) { lock.withLock { steps.append(s) } }
+        var all: [String] { lock.withLock { steps } }
+    }
+
+    func testTheRingLocksThenTheSavesArePurgedThenThePinIsRemoved() async throws {
+        let log = Log()
+        try await CloudSyncApi.forgetInOrder(
+            lock: { log.add("lock") }, purgeSaves: { log.add("purge saves") }, forget: { log.add("remove pin") })
+        XCTAssertEqual(log.all, ["lock", "purge saves", "remove pin"])
+    }
+
+    func testAPinThatCannotBeRemovedIsReportedAfterThePurge() async throws {
+        struct Stuck: Error {}
+        let log = Log()
+        do {
+            try await CloudSyncApi.forgetInOrder(
+                lock: { log.add("lock") }, purgeSaves: { log.add("purge saves") },
+                forget: {
+                    log.add("remove pin")
+                    throw Stuck()
+                })
+            XCTFail("the failure was swallowed")
+        } catch is Stuck {}
+        XCTAssertEqual(log.all, ["lock", "purge saves", "remove pin"])
     }
 }

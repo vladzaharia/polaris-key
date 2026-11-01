@@ -126,7 +126,7 @@ class Side:
             slug="djdl",
             static_key=dev.priv,
             account=acct,
-            caps=["app/1", "ring/1"],
+            caps=kw.pop("caps", ["app/1", "ring/1"]),
             hello={"platform": "test", "app": "demo"},
             send=self.out.append,
             on_event=self.events.append,
@@ -302,6 +302,33 @@ def test_hello_display_data_is_cleaned() -> None:
     assert b.of(Established)[0].hello.label == "Café TV"
 
 
+def test_hello_label_padded_with_invisible_blanks_shows_as_the_plain_label() -> None:
+    A, B = Dev(ID_A), Dev(ID_B)
+    k = _rnd()
+    a = Side("initiator", A, [k])
+    a.s._hello["label"] = "Ana's Switch\u3164\u2800"
+    a.s._hello["app"] = "\u3164\u200b"
+    b = Side("responder", B, [k])
+    a.s.start()
+    pump(a, b)
+    est = b.of(Established)[0]
+    assert est.hello.label == "Ana's Switch" and est.hello.app == "Unknown"
+
+
+def test_a_hello_over_4_kib_is_fine_in_mode_a() -> None:
+    A, B = Dev(ID_A), Dev(ID_B)
+    k = _rnd()
+    a = Side("initiator", A, [k])
+    a.s._hello["label"] = "x" * 4100
+    a.s._hello["platform"] = "<b>"
+    b = Side("responder", B, [k])
+    a.s.start()
+    pump(a, b)
+    est = b.of(Established)[0]
+    # The cap is for the modes whose peer is not verified; the display cleaning is not.
+    assert est.hello.platform == "Unknown" and est.hello.label is not None and len(est.hello.label) == 64
+
+
 def test_the_first_record_must_be_hello_and_the_refusal_is_said() -> None:
     B = Dev(ID_B)
     A = Dev(ID_A)
@@ -471,6 +498,8 @@ def _rows() -> List[Dict[str, Any]]:
         types = {int(r["type"], 16) for r in s["records"]}
         if types & _INTERNAL:
             continue  # the session answers or consumes these itself; the assembler rows cover them
+        if types & set(range(0x20, 0x26)):
+            continue  # Direct Transfer owns these in a session (§15.11): test_connect_xfer_session.py
         out.append(s)
     return out
 

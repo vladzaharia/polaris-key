@@ -10,15 +10,17 @@
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints identity.account
-// @pkey-feature identity.attach identity.choice identity.keyreturn
+// @pkey-feature identity.attach identity.choice identity.keyreturn identity.devicecode.choice
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 // @pkey-feature core.presentation
 // @pkey-feature ui.cli.portal
 // @pkey-feature sync.keyring
-// @pkey-feature connect.relay
+// @pkey-feature connect.relay connect.links
 // @pkey-feature sync.settings
+// @pkey-feature sync.files sync.files.delta sync.saves
+// @pkey-feature identity.nearby
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -61,12 +63,7 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import {
-  createHash,
-  createPrivateKey,
-  createPublicKey,
-  sign as edSign,
-} from "node:crypto";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -106,10 +103,26 @@ import type {
   WireMutation,
 } from "@polaris-key/client-core/cloud-sync";
 import { signJws } from "@polaris-key/jws";
+import type { FileReply } from "@polaris-key/client-core/sync";
+import type { VouchRequest } from "@polaris-key/client-core/peer";
 // The host's own transport (U-06.2). The package does not export it, so the runner reads the
 // built file: the replay must go through the bearer, the `X-PKey-*` headers and the byte caps the
 // host uses, not through a copy of them.
 import { sendSync } from "../../../packages/sdk-node/dist/cloudSync/transport.js";
+import { NodeFileTransport } from "../../../packages/sdk-node/dist/cloudSync/files.js";
+// The permit of a matched nearby pick. Neither the package entry nor the routes offer it; the
+// replay reads the built module the client under test was built from (one module instance, so its
+// permits are the ones the routes check).
+import { grantApproval } from "../../../packages/sdk-node/dist/identity/nearby.js";
+import {
+  fixtureKeys,
+  nearbyAction,
+  nearbyDiscovery,
+  nearbyClientOptions,
+  nearbyFacts,
+  type NearbyReplayParty,
+  type RoutesLike,
+} from "./nearbyActions.js";
 import {
   applies,
   doctor,
@@ -218,6 +231,14 @@ function usesAccount(t: Transcript): boolean {
   );
 }
 
+/** Does this transcript start a device-code sign-in that asks `licenseChoice: "app"`? (UK-42.22:
+ *  discovery must then carry `deviceChoice`, which is the SDK's gate for sending the member.) */
+function asksDeviceChoice(t: Transcript): boolean {
+  return t.steps.some(
+    (s) => s.action === "beginSignIn" && s.args.licenseChoice === "app",
+  );
+}
+
 /** The Worker's standard discovery document, for a transcript that loads none itself. */
 function standardDiscovery(t: Transcript): string {
   const base = `${t.baseUrl}/${t.product}`;
@@ -231,11 +252,12 @@ function standardDiscovery(t: Transcript): string {
       ...(usesAccount(t)
         ? { license: { enabled: true }, config: { enabled: true } }
         : {}),
-      ...(usesRedirect(t) || usesAccount(t)
+      ...(usesRedirect(t) || usesAccount(t) || asksDeviceChoice(t)
         ? {
             identity: {
               enabled: true,
               configured: true,
+              ...(asksDeviceChoice(t) ? { deviceChoice: true } : {}),
               issuer: redirectIssuer(t),
               account: true,
               endpoints: {
@@ -288,6 +310,8 @@ interface Session {
   redirect: RedirectSession | null;
   /** The label of the fixture keys the client holds (`connectIdentity`). */
   keyLabel?: string;
+  /** Nearby approval (`identity.nearby`): D is this replay's client, M is built per approve. */
+  nearbyM?: (step: Step) => Promise<NearbyReplayParty>;
   /** The first ring a `keyringCreate` made: the one a later `keyringAdopt` takes the root of. */
   firstRingId?: string;
   /** The next mutation id a `cloudSyncPush` generates (one past the last the Worker answered). */
@@ -658,6 +682,16 @@ async function cloudSyncStep(
     if (typeof body.quota.bytes === "number") out.quotaBytes = body.quota.bytes;
     if (typeof body.quota.files === "boolean") out.files = body.quota.files;
   }
+  const recordNames = (rows: unknown): string[] =>
+    (Array.isArray(rows) ? rows : [])
+      .map((r) => (isRec(r) ? r.record : undefined))
+      .filter((r): r is Json[] => Array.isArray(r) && r.length === 2)
+      .map((r) => `${String(r[0])}/${String(r[1])}`)
+      .sort();
+  const changed = recordNames(body.changes);
+  if (changed.length > 0) out.records = changed;
+  const deleted = recordNames(body.tombstones);
+  if (deleted.length > 0) out.deletedRecords = deleted;
   if (typeof body.encryption === "string") out.encryption = body.encryption;
   if (typeof body.encryptionSince === "number")
     out.encryptionSince = body.encryptionSince;
@@ -671,6 +705,183 @@ async function cloudSyncStep(
       isRec(r) ? resultLabel(r) : "?",
     );
   }
+}
+
+const hexOf = (b: Uint8Array): string =>
+  createHash("sha256").update(b).digest("hex");
+
+/**
+ * `cloudSyncFile` / `cloudSyncChunk` (U-10.12, U-37.6; WIRE-CONTRACT-V5 §13.2, §13.8): one file
+ * route call through the host's `NodeFileTransport`, the engine's `FileTransport` port. The
+ * transport builds the path from the target and the upload id the recording drew (read from the
+ * recorded path), adds the headers and `Content-Digest`, and bounds what it reads; the call's
+ * JSON body and PUT bytes are the recording's own, so a step pins what the transport does with
+ * them, not how the engine plans them (client-core's unit tests pin that). A refusal is a value.
+ */
+async function cloudSyncFileStep(
+  client: PolarisKeyClient,
+  step: Step,
+  out: Observed,
+): Promise<void> {
+  const tokens = (client as unknown as { tokens: { current: string | null } })
+    .tokens;
+  const transport = new NodeFileTransport({
+    ctx: client.core,
+    token: () => tokens.current,
+  });
+  const req = step.exchanges.items[0]!.request;
+  const op = String(step.args.op);
+  const collection = String(step.args.collection);
+  const target = { collection, record: String(step.args.id) };
+  const uploadId = /\/upload\/([^/?]+)/.exec(req.path)?.[1] ?? "";
+  const json = req.body?.json as never;
+  const bytes = req.bodyBase64
+    ? new Uint8Array(Buffer.from(req.bodyBase64, "base64"))
+    : new Uint8Array(0);
+  const version =
+    typeof step.args.version === "number" ? step.args.version : undefined;
+  // A PUT carries the digest the recording sent. It is the body's own except where a step sends a
+  // wrong one on purpose (`upload_mismatch`); the transport only encodes the hex it is given.
+  const recorded = /^sha-256=:([A-Za-z0-9+/=]+):$/.exec(
+    req.headers["content-digest"] ?? "",
+  )?.[1];
+  const digest = recorded
+    ? Buffer.from(recorded, "base64").toString("hex")
+    : hexOf(bytes);
+  const opts = {};
+  let reply: FileReply<unknown>;
+  let ok = (v: unknown): void => {
+    void v;
+  };
+  switch (op) {
+    case "begin":
+      reply = await transport.begin(target, json, opts);
+      ok = (v) => {
+        const b = v as { mode: string; partBytes?: number };
+        out.mode = b.mode;
+        if (b.partBytes !== undefined) out.partBytes = b.partBytes;
+      };
+      break;
+    case "status":
+      reply = await transport.status(target, uploadId, opts);
+      ok = (v) => {
+        const b = v as {
+          mode: string;
+          size: number;
+          received: number[];
+          missing?: string[];
+        };
+        out.mode = b.mode;
+        out.size = b.size;
+        out.received = b.received;
+        if (b.missing !== undefined) out.missing = b.missing;
+      };
+      break;
+    case "put":
+    case "putManifest":
+      reply = await transport.putSingle(target, uploadId, bytes, digest, opts);
+      break;
+    case "part":
+      reply = await transport.putPart(
+        target,
+        uploadId,
+        Number(step.args.part),
+        bytes,
+        digest,
+        opts,
+      );
+      break;
+    case "putChunk":
+      reply = await transport.putChunk(
+        target,
+        uploadId,
+        String(step.args.chunk),
+        bytes,
+        digest,
+        opts,
+      );
+      break;
+    case "abort":
+      reply = await transport.abort(target, uploadId, opts);
+      break;
+    case "plan":
+      reply = await transport.planChunks(target, uploadId, json, opts);
+      ok = (v) => {
+        const b = v as { missing: string[]; present: [string, number][] };
+        out.missing = [...b.missing].sort();
+        out.present = [...b.present].sort((x, y) => (x[0] < y[0] ? -1 : 1));
+      };
+      break;
+    case "finalize":
+      reply = await transport.finalize(target, json, opts);
+      ok = (v) => {
+        const b = v as {
+          version: number;
+          size: number;
+          sha256: string;
+          format: string;
+        };
+        out.version = b.version;
+        out.size = b.size;
+        out.sha256 = b.sha256;
+        out.format = b.format;
+      };
+      break;
+    case "download":
+    case "downloadManifest":
+      reply = await transport.getFile(
+        target,
+        version !== undefined ? { version } : {},
+        opts,
+      );
+      ok = (v) => {
+        const b = v as { bytes: Uint8Array };
+        out.size = b.bytes.length;
+        out.sha256 = hexOf(b.bytes);
+      };
+      break;
+    case "getChunk":
+      reply = await transport.getChunk(
+        collection,
+        String(step.args.chunk),
+        opts,
+      );
+      ok = (v) => {
+        const b = v as Uint8Array;
+        out.size = b.length;
+        out.sha256 = hexOf(b);
+      };
+      break;
+    case "revisions":
+      reply = await transport.revisions(target, opts);
+      ok = (v) => {
+        const r = (v as { revisions: { version: number; format: string }[] })
+          .revisions;
+        out.versions = r.map((x) => x.version);
+        out.formats = r.map((x) => x.format);
+      };
+      break;
+    default:
+      throw new Error(`unknown ${step.action} op ${op}`);
+  }
+  if (reply.ok) {
+    out.result = "ok";
+    out.status = req.method === "PUT" || op === "abort" ? 204 : 200;
+    ok(reply.value);
+    return;
+  }
+  out.result = "refused";
+  out.status = reply.status;
+  out.code = reply.code;
+  if (reply.retryAfterSeconds !== undefined)
+    out.retryAfter = reply.retryAfterSeconds;
+  const body = (reply.body ?? {}) as {
+    missing?: unknown;
+    server?: { version?: number };
+  };
+  if (body.missing !== undefined) out.missing = body.missing as never;
+  if (body.server?.version !== undefined)
+    out.serverVersion = body.server.version;
 }
 
 /**
@@ -764,33 +975,7 @@ async function keyringStep(
  * clear. The agreement key has no private half here, so `dh` answers nothing; identity needs none.
  */
 function fixtureKeyPort(label: string): DeviceKeyPort {
-  const seed = createHash("sha256").update(label).digest();
-  const priv = createPrivateKey({
-    key: Buffer.concat([
-      Buffer.from("302e020100300506032b657004220420", "hex"),
-      seed,
-    ]),
-    format: "der",
-    type: "pkcs8",
-  });
-  const jwk = createPublicKey(priv).export({ format: "jwk" });
-  const signKey = jwk.x as string;
-  const agree = createHash("sha256").update(`${label}:agree`).digest();
-  agree[31]! &= 0x7f;
-  const keys = {
-    signKey,
-    agreeKey: agree.toString("base64url"),
-    generation: 1,
-  };
-  return {
-    ensure: async () => keys,
-    publicKeys: async () => keys,
-    sign: async (m) => new Uint8Array(edSign(null, Buffer.from(m), priv)),
-    dh: async () => null,
-    rotate: async () => keys,
-    persistence: () => "durable",
-    wipe: async () => undefined,
-  };
+  return fixtureKeys(label) as unknown as DeviceKeyPort;
 }
 
 /** `client.connect` (CC-06.4, `connect.identity`): the identity and the device list. */
@@ -845,11 +1030,21 @@ async function act(
     case "beginSignIn": {
       // D-6: the recorded action names map onto the session (`signIn.start`, `wait`).
       const name = step.args.deviceName;
+      const hint = (k: string) =>
+        typeof step.args[k] === "string" ? { [k]: step.args[k] } : {};
       let p: DeviceCodeSession;
       try {
         p = await client.identity.signIn.start({
           channel: "device-code",
           ...(typeof name === "string" ? { deviceName: name } : {}),
+          ...hint("loginHint"),
+          ...hint("nameHint"),
+          ...(step.args.purpose === "signin" || step.args.purpose === "attach"
+            ? { purpose: step.args.purpose }
+            : {}),
+          ...(step.args.licenseChoice === "app"
+            ? { licenseChoice: "app" as const }
+            : {}),
         });
       } catch (e) {
         if (!(e instanceof PolarisError)) throw e;
@@ -1006,10 +1201,20 @@ async function act(
       break;
     case "discover":
       out.result = (await client.discover()).kind;
+      // identity.nearby: whether the discovery just loaded names nearby approval.
+      if (session.transcript.features.includes("identity.nearby"))
+        Object.assign(
+          out,
+          nearbyFacts(
+            (client as unknown as { discoveryDoc: unknown }).discoveryDoc,
+          ),
+        );
       // core.presentation (HA-13): the member the client exposes after this discovery.
       out.presentation = client.presentation() as JsonValue;
       // ui.cli.portal (DISC-01): the core.portal member the client holds after this discovery.
       out.portal = client.portal() as JsonValue;
+      // connect.links (CC-19): the cached `services.connect.interAccount` the SDK gates links on.
+      out.interAccount = client.cloudConnect.links.interAccount();
       break;
     case "sync": {
       const r = await client.sync({ force: step.args.force === true });
@@ -1054,6 +1259,34 @@ async function act(
           if (e.retryAfterSeconds !== undefined)
             out.retryAfter = e.retryAfterSeconds;
           if (e.scope !== undefined) out.scope = e.scope;
+        } else if (e instanceof PolarisError) {
+          out.status = e.status ?? null;
+          out.code = e.code;
+        } else throw e;
+      }
+      break;
+    }
+    case "relayTicketContact": {
+      // CC-19: `client.connect.relayTicket({room, rid})`, the body sent as given. A refusal reads
+      // as `result: "refused"` like `relayTicket`; an answer without the `room` echo is the typed
+      // `contact_unsupported`.
+      try {
+        const g = await client.connect.relayTicket({
+          room: String(step.args.room),
+          rid: String(step.args.rid),
+        });
+        out.result = "ok";
+        out.room = g.room ?? null;
+        out.protocol = g.protocol;
+        out.url = g.url;
+        out.expiresIn = g.expiresAt - Math.floor(Date.now() / 1000);
+      } catch (e) {
+        out.result = "refused";
+        if (e instanceof RelayError) {
+          out.status = e.status ?? null;
+          out.code = e.code;
+          if (e.retryAfterSeconds !== undefined)
+            out.retryAfter = e.retryAfterSeconds;
         } else if (e instanceof PolarisError) {
           out.status = e.status ?? null;
           out.code = e.code;
@@ -1228,6 +1461,10 @@ async function act(
     case "cloudSyncPush":
       await cloudSyncStep(client, step, session, out);
       break;
+    case "cloudSyncFile":
+    case "cloudSyncChunk":
+      await cloudSyncFileStep(client, step, out);
+      break;
     case "connectIdentity":
     case "connectDevices":
       await connectStep(client, step, session, out);
@@ -1243,6 +1480,31 @@ async function act(
         },
       );
       break;
+    case "nearbyStart":
+    case "nearbyPoll":
+    case "nearbyApprove": {
+      // identity.nearby (I-47.4): the HTTP routes under the nearby sessions, `identity.nearbyRoutes`
+      // (typed cast: it is internal). D is this client; M a second one the replay builds.
+      const first = session.transcript.steps.find(
+        (s) => typeof s.args.keyLabel === "string",
+      )!;
+      Object.assign(
+        out,
+        await nearbyAction({
+          t: session.transcript,
+          step,
+          d: () => ({
+            routes: (client.identity as unknown as { nearbyRoutes: RoutesLike })
+              .nearbyRoutes,
+            keys: fixtureKeys(String(first.args.keyLabel)),
+          }),
+          m: (s) => session.nearbyM!(s),
+          tokenHeld: () => store.token !== null,
+          grant: (v) => grantApproval(v as unknown as VouchRequest),
+        }),
+      );
+      break;
+    }
     default:
       throw new Error(`unknown action ${step.action}`);
   }
@@ -1283,6 +1545,9 @@ async function replay(t: Transcript): Promise<void> {
     );
   }
   let currentStep: Step | null = null;
+  let stepIndex = -1;
+  // identity.nearby (I-47.4): two devices, the fixture keys of the first step's `keyLabel`.
+  const nearby = t.features.includes("identity.nearby");
   const syncWire: SyncWire = { etag: null, retryAfter: null };
   // The standard discovery answer, for a transcript that loads discovery nowhere itself.
   let discoverySteps = t.steps.some((s) => s.action === "discover");
@@ -1293,6 +1558,16 @@ async function replay(t: Transcript): Promise<void> {
   ) => {
     const url = new URL(input instanceof Request ? input.url : String(input));
     const step = currentStep;
+    if (
+      nearby &&
+      url.pathname === discoveryPath &&
+      step &&
+      !step.exchanges.items.some((x) => x.request.path === discoveryPath)
+    )
+      return new Response(JSON.stringify(nearbyDiscovery(t, stepIndex)), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
     if (
       !discoverySteps &&
       url.pathname === discoveryPath &&
@@ -1321,13 +1596,15 @@ async function replay(t: Transcript): Promise<void> {
   }) as typeof fetch;
   const services =
     t.initial.services ??
-    (u
-      ? ["release", "distribution", "update"]
-      : usesAccount(t)
-        ? ["license", "config", "identity"]
-        : usesRedirect(t)
-          ? ["identity"]
-          : undefined);
+    (nearby
+      ? ["license", "config", "identity"]
+      : u
+        ? ["release", "distribution", "update"]
+        : usesAccount(t)
+          ? ["license", "config", "identity"]
+          : usesRedirect(t)
+            ? ["identity"]
+            : undefined);
   const client = new PolarisKeyClient({
     productSlug: t.product,
     baseUrl: t.baseUrl,
@@ -1340,7 +1617,16 @@ async function replay(t: Transcript): Promise<void> {
     deviceName: t.initial.deviceName ?? "",
     stateDir,
     // The key ring's device keys: a memory store, since the replay registers none.
-    keyring: { deviceKeys: createNodeDeviceKeyStore({ memory: true }) },
+    keyring: {
+      deviceKeys: nearby
+        ? fixtureKeyPort(
+            String(
+              t.steps.find((s) => typeof s.args.keyLabel === "string")!.args
+                .keyLabel,
+            ),
+          )
+        : createNodeDeviceKeyStore({ memory: true }),
+    },
     // The presentation cache (HA-13) too, so a replay never writes into the developer's home.
     cacheDir: stateDir,
     ...(services ? { expectedServices: services as never } : {}),
@@ -1363,7 +1649,7 @@ async function replay(t: Transcript): Promise<void> {
       : {}),
   });
   client.devices.fingerprint = () => FINGERPRINT;
-  if (usesRedirect(t))
+  if (usesRedirect(t) || asksDeviceChoice(t) || nearby)
     // The redirect recordings pin the token exchange alone. The acquisition sync a sign-in
     // raises (trust fetch, documents, report) is pinned by the sync transcripts, so it is not
     // replayed here.
@@ -1378,9 +1664,42 @@ async function replay(t: Transcript): Promise<void> {
     redirect: null,
     syncWire,
   };
+  const approvers: PolarisKeyClient[] = [];
+  if (nearby)
+    session.nearbyM = async (s) => {
+      // M: the signed-in approver of this step, a second device with its own id, token and keys.
+      const keys = fixtureKeys(String(s.args.approverKeyLabel));
+      const m = new PolarisKeyClient(
+        nearbyClientOptions(t, {
+          store: new TranscriptStore(
+            String(s.args.approverDeviceId),
+            String(s.args.approverToken),
+          ),
+          fetchImpl,
+          dir: join(stateDir, "approver"),
+          keys,
+        }) as never,
+      );
+      approvers.push(m);
+      await m.init();
+      // M read discovery while the gate was still on; only a fresh read sees it go off.
+      const at = stepIndex;
+      stepIndex = 0;
+      await m.discover();
+      stepIndex = at;
+      (
+        m.identity as unknown as { onAcquired: () => Promise<void> }
+      ).onAcquired = async () => undefined;
+      return {
+        routes: (m.identity as unknown as { nearbyRoutes: RoutesLike })
+          .nearbyRoutes,
+        keys,
+      };
+    };
   for (let i = 0; i < t.steps.length; i += 1) {
     const step = server.beginStep(i);
     currentStep = step;
+    stepIndex = i;
     vi.setSystemTime((step.now ?? t.now) * 1000);
     const observed = await act(client, store, step, session);
     server.endStep();
@@ -1391,6 +1710,7 @@ async function replay(t: Transcript): Promise<void> {
       ).toEqual(want);
   }
   client.close();
+  for (const m of approvers) m.close();
 }
 
 afterEach(() => {
@@ -1455,6 +1775,34 @@ describe("the Node replayer fails on a doctored transcript", () => {
     const t = JSON.parse(JSON.stringify(base)) as Transcript;
     t.steps[1]!.expect.documents = { license: "applied", config: "applied" };
     await expect(replay(t)).rejects.toThrow(/step 1 \(sync\): documents/);
+  });
+});
+
+// @pkey-feature sync.files
+describe("the Node replayer's file steps fail on a doctored transcript", () => {
+  const base = TRANSCRIPTS.find((t) => t.id === "cloudsync-files-single")!;
+
+  it("a dropped required header", async () => {
+    const t = doctor(base, 1, (items) =>
+      items.map((x) => ({
+        ...x,
+        request: {
+          ...x.request,
+          requiredHeaders: [...x.request.requiredHeaders, "x-pkey-doctored"],
+        },
+      })),
+    );
+    await expect(replay(t)).rejects.toThrow(
+      /required header x-pkey-doctored: missing/,
+    );
+  });
+
+  it("a different outcome", async () => {
+    const t = JSON.parse(JSON.stringify(base)) as Transcript;
+    t.steps[3]!.expect.version = 2;
+    await expect(replay(t)).rejects.toThrow(
+      /step 3 \(cloudSyncFile\): version/,
+    );
   });
 });
 

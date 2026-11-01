@@ -179,9 +179,8 @@
       "status": "implemented"
     },
     "identity.devicecode.choice": {
-      "status": "planned",
-      "wp": "UK-42",
-      "note": "UK-42.22 (SDK slice .6 and .7): the device start's four members behind the deviceChoice discovery gate, and the choose poll answer."
+      "status": "implemented",
+      "note": "UK-42.22.6: signIn.start({channel: \"device-code\", licenseChoice: \"app\"}) sends the member only when discovery has deviceChoice and the four choice* endpoints; wait() ends in a choose outcome (grant, choices, expiresIn) and stops polling. The Electron bridge v6 (UK-42.22.7) answers choose from pollSignIn with an opaque ref bound to the polling window and finishes it through invoke(identity, choice.licenses|devices|complete|cancel); the Worker's grant stays in the main process."
     },
     "identity.signin.hints": {
       "status": "implemented"
@@ -189,6 +188,11 @@
     "identity.keyreturn": {
       "status": "implemented",
       "note": "LK-SKIP.7: signIn.start({channel: \"redirect\", redirectUri, keyReturn: true}) appends key_return=allow and complete() settles an activated outcome (licenseId, subject null, keyEntries) for a via: \"key\" answer: the token is stored as a key activation, the stored account is forgotten and no signedIn is emitted. A refusal (device_limit, key_entry_limit, license_owned) is a RedirectRefusedError whose details carry limit, deviceCount, manageUrl, keyEntries and signInUrl. Both redirect-web-key-return transcripts replay."
+    },
+    "identity.redirect.native": {
+      "status": "planned",
+      "wp": "I-15b",
+      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
     },
     "identity.exchange": {
       "status": "na",
@@ -209,9 +213,8 @@
       "note": "Play Games runs only on Android. The Node conformance runner replays the transcripts with a reference client."
     },
     "identity.autosignin": {
-      "status": "planned",
-      "wp": "I-47",
-      "note": "autoSignIn() ladder (plan-auto-sign-in §1, I-47)."
+      "status": "implemented",
+      "note": "I-47: client.identity.autoSignIn() (the ladder of plan-auto-sign-in §1, over the exchange rungs and nearby) with the session's confirmAccount, declineAccount, wrap and onWrap; the terminal kit's login runs it first."
     },
     "identity.restore": {
       "status": "na",
@@ -224,6 +227,10 @@
       "runtime": ["node"],
       "reason": "runtime",
       "note": "No OS account to offer a link from (I-43)."
+    },
+    "identity.nearby": {
+      "status": "implemented",
+      "note": "I-47: both devices. D: identity.signIn.start({channel: 'nearby'}) (approvers, onApprovers, choose, code, result, wait, confirmAccount, declineAccount, wrap, onWrap) over the nearbyStart and nearbyPoll routes; M: identity.nearby.available and onRequest (the approver, approve with the matched pick, the licence choice). The six nearby-* transcripts replay in conformance/runners/node (the reference client plays both devices), and the vouch rows of peer-matrix.json run there too. Kit: the CLI's login (nearby first) and devices approve."
     },
     "identity.keyentry": {
       "status": "implemented"
@@ -491,8 +498,8 @@
       "wp": "U-08"
     },
     "sync.saves": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "client.cloudSync.saves (src/cloudSync/saves.ts): list, read, write, delete, revisions and resolve over client-core's SavesClient, bound to the machine's records (rows keep the file pointer; putAt and removeAt at an exact version, one outcome each: the fileRecordCases family of sync-scenarios.json) and the Node file transport, journal and chunk cache under one TransferEngine (maxRetryAfterSeconds 3600). client.cloudSync.transfers() lists the writes in flight; transferProgress, transferDone and transferFailed ride client.events under the cloudSync kind. The journal and chunk cache go with the person. test/cloudSyncSaves.test.ts; the cloudsync-files-single transcript replays through the transport."
     },
     "sync.keyring": {
       "status": "implemented",
@@ -503,12 +510,12 @@
       "wp": "U-46"
     },
     "sync.files": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "The Node file transport (src/cloudSync/files.ts: the closed route list, no redirects, Content-Digest, bounds equal to what was asked), the transfer journal and the chunk cache, under client-core's TransferEngine (single and multipart, resume, Retry-After). The cloudsync-files-* transcripts replay through the transport in the Node transcript runner (cloudSyncFile); test/cloudSyncFiles.test.ts."
     },
     "sync.files.delta": {
-      "status": "planned",
-      "wp": "U-22"
+      "status": "implemented",
+      "note": "The same transport carries the chunk plan, chunk PUT and chunk GET calls; client-core's engine cuts and plans the chunks (sync-vectors.json cdcCases and chunkCases run in syncVectors.test.ts). The cloudsync-chunks* transcripts replay through the transport (cloudSyncChunk)."
     },
     "sync.e2e.recovery": {
       "status": "planned",
@@ -537,19 +544,19 @@
     },
     "connect.lan": {
       "status": "implemented",
-      "note": "client.connect.lan() (packages/sdk-node/src/connect, CC-08.2): LanService listens on TCP (random port, bounded unauthenticated sockets, a handshake deadline, frames over 16 KiB refused before the handshake), advertises the account instance name on the epoch timer through an MdnsAdapter (multicast-dns 7.2.5, optional, behind an interface; adverts that do not verify against the roster, K_disc and two epochs are dropped; non-LAN addresses are never dialled) and dials with client-core's PeerChannel (Noise XXpsk0, certificate and roster admission, HELLO, MORE reassembly to 1 MiB, rekey). The device's X25519 key stays behind DeviceKeyPort.dh. ConnectSession gives send, receive, onMessage, onClose and close with typed LanError reasons. test/lan.e2e.test.ts and test/connectMdns.test.ts (@pkey-feature connect.lan)."
+      "note": "client.connect.lan() (packages/sdk-node/src/connect, CC-08.2): LanService listens on TCP (one random port on a dual-stack `::` socket, falling back to 0.0.0.0; bounded unauthenticated sockets, per address and per /64, a handshake deadline, frames over 16 KiB refused before the handshake), advertises the account instance name on the epoch timer through an MdnsAdapter (multicast-dns 7.2.5, optional, behind an interface; adverts that do not verify against the roster, K_disc and two epochs are dropped; non-LAN addresses are never dialled) and dials with client-core's PeerChannel (Noise XXpsk0, certificate and roster admission, HELLO, MORE reassembly to 1 MiB, rekey). The device's X25519 key stays behind DeviceKeyPort.dh. ConnectSession gives send, receive, onMessage, onClose and close with typed LanError reasons. IPv6 (CC-IPV6.3, WIRE-CONTRACT-V5 §15.4 and §15.4.1): mDNS runs on 224.0.0.251 and on ff02::fb with one udp6 socket per interface (at most 8; the zone is the interface), with AAAA adverts and queries; a response from outside the receiving interface's connected subnets is ignored; an A or AAAA record is learned only when equal to the packet source (the mdnsAnswers rows run in test/mdnsAnswers.test.ts), at most 4 addresses per name; a peer is dialled in an RFC 8305 race (250 ms, 2 in flight) and every address is judged by client-core's lanVerdict as text before a socket exists and on the connected socket (and on an accepted one, before it is read) before the first byte. test/lan.e2e.test.ts, test/connectMdns.test.ts, test/mdnsAnswers.test.ts and test/connectHardening.test.ts (@pkey-feature connect.lan)."
     },
     "connect.relay": {
       "status": "implemented",
       "note": "client.connect.relay() / client.cloudConnect (packages/sdk-node/src/connect/relay.ts, CC-08.3): connect.relayTicket() trades the bearer for a single-use pkeyrt_ ticket (shape-checked, wss and the Worker's own host only; typed RelayError for relay_disabled, relay_paused with Retry-After, relay_quota_exceeded with its scope); RelayService opens the WebSocket with pkey-relay.1 and the ticket, frames SEND, RECV, LIST, MEMBERS, RING, PING and LIMIT with client-core's envelope codec, runs one PeerChannel per (peer, session) in mode a only with the LAN's admission, reconnects with exponential backoff and jitter on a fresh ticket each time, and stops with a typed error on a spent quota, a disabled relay or a replaced socket (4009). Modes v and p never cross it (assertRelayMode; tested). A relay RING op above the held epoch, or a peer on a newer roster, fetches identity({refresh:true}); a pushed RING is stored under the identity fetch's rules and a pushed TRUST is verified and applied or refused with a reason. test/relay.test.ts (@pkey-feature connect.relay) runs against an in-process room with the CC-07 engine's framing; the connect-relay-ticket and connect-relay-quota transcripts replay in the Node runner."
     },
     "connect.links": {
-      "status": "planned",
-      "wp": "CC-19"
+      "status": "implemented",
+      "note": "client.cloudConnect.links (packages/sdk-node/src/connect/links.ts, CC-19.5; WIRE-CONTRACT-V5 §15.10): pair({categories, label, onCode, onLinked, onFailed}) opens the pairing window (pairing.ts: an m=p advert with a random instance and the product tag, a listener of its own, at most 300 s; the lower instance dials; mode p to the code with client-core's contact exchange, then storeContact), list(), remove(id) (the secret leaves the record, open sessions hear peer_revoked), setReachable(id, on), open(id) (mode c over the LAN, then the contact relay: contactRelay.ts opens a room per contact with the {room:\"c\", rid} ticket and speaks aliases only) and onLink(fn). The contacts are rows of pkey.connect.v1 (state.ts, 0600, wiped by leave()); the shared LAN listener tries the account keys, then the contact secrets in contactTrialOrder under one HandshakeLimiter; m=c adverts (at most 8) and browse use client-core's contactInstance and browseContactInstance; a pending contact is promoted by the first handshake that passes the pin. Everything is gated on the cached discovery interAccount (typed N/A otherwise). The peer-matrix contact rows run in conformance/runners/node/peerMatrix.test.ts; the connect-relay-ticket-contact and connect-links-disabled transcripts replay in transcripts.test.ts; test/connect/links.test.ts (@pkey-feature connect.links) is the loopback two-account test. Node keeps the discovery document in memory only, so a restarted offline app has links off until its first successful discovery."
     },
     "connect.transfer": {
-      "status": "planned",
-      "wp": "CC-20"
+      "status": "implemented",
+      "note": "client.cloudConnect.transfer (packages/sdk-node/src/connect/transfer.ts, transferStore.ts, CC-20.3; WIRE-CONTRACT-V5 §15.11): send(peer, source, {name, type, category, chunk, signal, id, onStart}) for a device id, {link} or an open session, from a file path, bytes or a stream (spooled and hashed first); onOffer(handler) decides each offer (no handler, a refusal, an error or an unusable destination declines; the answer is {saveTo, overwrite?} or {stream}); onResult(fn); cancel(id); maxSize. Sessions list xfer/1 by default; client-core's XferEndpoint runs the machine over ConnectSession.xferPort(). Partial files live in <state>/transfer/p (0700 directory, 0600 files, named by the derived reference only, 24 h, 64 files, a 4 GiB quota and the volume's free space), are removed on sign-out, deactivation and link deletion, and are delivered by temp-file and rename after the hash matched. The peer-matrix xfer rows run in conformance/runners/node/peerMatrix.test.ts; test/connect/transfer.test.ts and transferLinks.test.ts (@pkey-feature connect.transfer) are the two-session tests over the LAN, the relay fixture and a link."
     },
     "connect.app": {
       "status": "implemented",

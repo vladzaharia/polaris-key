@@ -14,6 +14,7 @@ import {
   deleteCloudSyncIfUnchanged,
   exportCloudSync,
 } from "../../../src/services/sync/do/client.js";
+import { SqlStore } from "../../../src/services/sync/do/sqlStore.js";
 import { syncProductPurge } from "../../../src/services/sync/productDeletion.js";
 import {
   SLUG,
@@ -118,6 +119,63 @@ describe("a record delete releases chunks", () => {
     await alarm(w);
     expect(rows(w, "SELECT 1 FROM chunks")).toEqual([]);
     expect(w.r2.has(keyOf(w, "delta", a))).toBe(false);
+  });
+});
+
+describe("a chunk the collector has begun to delete is answered missing", () => {
+  const getChunk = (w: FilesWorld, c: TestChunk) =>
+    call(w, "GET", `/${SLUG}/sync/files/delta/chunks/${c.id}`);
+
+  /** Writes and deletes `a`; the collector's delete is `fail`ed (after reaching R2 or not). */
+  async function interrupted(reached: boolean) {
+    const w = await filesWorld();
+    const a = chunkOf(1);
+    await writeChunked(w, "delta", "one", manifestOf(1, 150), [a]);
+    await del(w, "delta", "one");
+    const real = w.r2.delete.bind(w.r2);
+    w.r2.delete = async (...args: Parameters<typeof real>) => {
+      if (reached) await real(...args);
+      throw new Error("r2 did not answer");
+    };
+    await alarm(w);
+    w.r2.delete = real;
+    expect(w.r2.has(keyOf(w, "delta", a))).toBe(!reached);
+    return { w, a };
+  }
+
+  /** Saves `a` again: the plan, the chunk, the manifest, finalize. */
+  async function again(w: FilesWorld, a: TestChunk) {
+    const manifest = manifestOf(2, 151);
+    const up = await beginChunks(w, "delta", "two", manifest);
+    const plan = await planned(w, "delta", "two", up.uploadId, [a]);
+    expect(plan.missing).toEqual([a.id]);
+    expect(plan.present).toEqual([]);
+    expect((await putChunk(w, "delta", "two", up.uploadId, a)).status).toBe(
+      204,
+    );
+    // Stored again: a repeat of the plan call finds it present.
+    expect(
+      (await planned(w, "delta", "two", up.uploadId, [a])).present,
+    ).toEqual([[a.id, a.object.length]]);
+    expect(
+      (await putManifest(w, "delta", "two", up.uploadId, manifest)).status,
+    ).toBe(204);
+    expect((await finalize(w, "delta", "two", up.uploadId)).status).toBe(200);
+    const res = await getChunk(w, a);
+    expect(res.status).toBe(200);
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(a.object);
+    await alarm(w);
+    expect(w.r2.has(keyOf(w, "delta", a))).toBe(true);
+  }
+
+  it("a chunk whose delete reached the store but did not answer is missing at the next plan, and a PUT stores it again", async () => {
+    const { w, a } = await interrupted(true);
+    await again(w, a);
+  });
+
+  it("a chunk whose delete failed before reaching the store is missing at the next plan, and its PUT keeps the object", async () => {
+    const { w, a } = await interrupted(false);
+    await again(w, a);
   });
 });
 
@@ -298,6 +356,31 @@ describe("an erasure deletes the chunk prefix", () => {
     expect(w.r2.keys()).toEqual([theirs]);
   });
 
+  it("an erasure removes chunk objects by the prefix sweep, a page at a time, without reading every chunk row", async () => {
+    const { w } = await chunked();
+    // More chunk objects than one page of the sweep.
+    for (let i = 0; i < 1500; i++)
+      await w.r2.put(
+        `u/${SLUG}/${w.subject}/c/delta/${i.toString(16).padStart(64, "0")}`,
+        new Uint8Array(3),
+      );
+    const allChunks = vi.spyOn(SqlStore.prototype, "allChunks");
+    const lists = vi.spyOn(w.r2, "list");
+    // The keys are gone before the first call to R2.
+    let keysAtFirstCall: number | undefined;
+    const realList = w.r2.list.bind(w.r2);
+    w.r2.list = ((...args: Parameters<typeof realList>) => {
+      keysAtFirstCall ??= rows(w, "SELECT kid FROM ssec_keys").length;
+      return realList(...args);
+    }) as typeof w.r2.list;
+    await deleteCloudSync(w.env, pin(w));
+    expect(allChunks).not.toHaveBeenCalled();
+    expect(lists.mock.calls.length).toBeGreaterThanOrEqual(2);
+    expect(keysAtFirstCall).toBe(0);
+    expect(w.r2.keys().some((k) => k.includes(`/${w.subject}/`))).toBe(false);
+    allChunks.mockRestore();
+  });
+
   it("if R2 fails the erasure is refused and the chunk rows are kept for a retry", async () => {
     const { w } = await chunked();
     const realList = w.r2.list.bind(w.r2);
@@ -393,6 +476,32 @@ describe("export and absorb carry chunks", () => {
     expect(w.r2.keys().filter((k) => k.includes("/c/"))).toHaveLength(2);
     await deleteCloudSync(w.env, bob);
     expect(w.r2.keys()).toEqual([]);
+  });
+
+  it("a merge takes the absorbed chunk row over a survivor row whose delete was attempted", async () => {
+    const { w, alice, bob, a } = await pair();
+    bobDb(w, bob)
+      .prepare(
+        `INSERT INTO chunks (collection, chunk_id, object_key, stored_bytes, refs, unref_at)
+         VALUES ('delta', ?, ?, ?, 0, -1)`,
+      )
+      .run(a.id, `u/${SLUG}/${bob.subject}/c/delta/${a.id}`, a.object.length);
+    const doc = (await exportCloudSync(w.env, alice, { forMerge: true }))!;
+    await absorbCloudSync(w.env, bob, doc);
+    const row = bobDb(w, bob)
+      .prepare(
+        "SELECT object_key, refs, unref_at FROM chunks WHERE chunk_id = ?",
+      )
+      .get(a.id) as { object_key: string; refs: number; unref_at: number };
+    expect(row.object_key).toContain(alice.subject);
+    expect(row.refs).toBe(1);
+    expect(row.unref_at).not.toBe(-1);
+    const res = await call(
+      w,
+      "GET",
+      `/${SLUG}/sync/files/delta/chunks/${a.id}`,
+    );
+    expect(res.status).toBe(200);
   });
 
   it("the survivor charges the chunks it took, once", async () => {

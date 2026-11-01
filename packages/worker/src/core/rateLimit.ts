@@ -18,6 +18,8 @@ export interface RateLimit {
   id: string;
   limit: number;
   windowSec: number;
+  /** Units one call counts for; absent is 1. A call is refused only once the counter has reached `limit`. */
+  cost?: number;
 }
 
 /**
@@ -105,6 +107,15 @@ const FAIL_MODE: Record<string, FailMode> = {
   // I-14.12b: the per-product budget of Play Games code redemptions, each an outbound call to
   // Google; an outage refuses (the exchange answers its one invalid_grant).
   pgsRedeem: "closed",
+  // CC-19.3: contact tickets, 30 an hour per device (V5 §15.7); a lost counter refuses.
+  connectContactTicket: "closed",
+  // I-40.4: nearby approval `start` writes one single-use record per call (per client network).
+  identityNearbyStart: "closed",
+  // I-40.5: `approve` is per approving device; the subject budget is charged on decisions only.
+  identityNearbyApprove: "closed",
+  identityNearbyApproveSubject: "closed",
+  // I-40.7: the coarse per-network ceiling on `poll`, beside the per-request interval.
+  identityNearbyPoll: "closed",
   identityLink: "closed",
   // LK-SKIP: the card's key return looks a licence key up with no account behind the request
   // (per client network, then per request handle), so with the limiter gone it must not become an
@@ -247,6 +258,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
   adminAccessDenied: "open",
+  // U-11a.F: the console's Cloud Sync file downloads, per signed-in session: a count a minute and a
+  // MiB budget an hour. Both are cost budgets on an already authenticated, stepped-up read.
+  adminSyncDownload: "open",
+  adminSyncDownloadMiB: "open",
   portalDeviceDisconnect: "open",
   // PX-W16: Account → Profile edits. Writes the account's own row only; nothing to guard.
   portalProfileEdit: "open",
@@ -311,8 +326,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   syncPull: "open",
   // The Cloud Sync file routes (U-10): `begin` and whole-file `GET` per device an hour, parts,
   // chunks, status and ranged reads per device a minute. The same reasoning as the push: a live
-  // device token and a principal, a cost budget, nothing secret behind it, and the person's
-  // object bounds the work.
+  // device token and a principal, a cost budget, nothing secret behind it. These two rows are the
+  // READS' mode: the write calls (begin, PUT, chunk plan, finalize) refuse when the limiter cannot
+  // be read, in `services/sync/limits.ts` (`rateLimitCheck`, 503 unavailable), because they
+  // create R2 state the person's object does not meter operation by operation.
   syncFilesDevice: "open",
   syncParts: "open",
 };
@@ -371,16 +388,18 @@ export function rateLimitShard(product: string, rl: RateLimit): string {
 }
 
 /**
- * Returns true if the call is within the limit (and counts it), false if it should 429. With
- * `peek`, answers the same without counting.
+ * The limiter's three answers: within the limit (and counted), over it, or unreadable (a throw,
+ * a non-2xx, a malformed body). With `peek`, answers the same without counting. A caller that
+ * must refuse when the limiter is down (the Cloud Sync file writes) reads `unavailable` itself;
+ * `rateLimitOk` applies the bucket's fail mode for everyone else.
  */
-export async function rateLimitOk(
+export async function rateLimitCheck(
   env: Env,
   product: string,
   rl: RateLimit,
   now: number,
   peek = false,
-): Promise<boolean> {
+): Promise<"ok" | "limited" | "unavailable"> {
   try {
     const stub = env.RL.get(env.RL.idFromName(rateLimitShard(product, rl)));
     const res = await stub.fetch("https://rl/check", {
@@ -391,25 +410,44 @@ export async function rateLimitOk(
         limit: rl.limit,
         windowSec: rl.windowSec,
         now,
+        ...(rl.cost !== undefined && rl.cost !== 1 ? { cost: rl.cost } : {}),
         ...(peek ? { peek: true } : {}),
       }),
     });
     // A non-2xx (or an HTML error page from the runtime) must not reach `res.json()` — that
     // destructure was itself one of the unhandled throws.
-    if (!res.ok) return failModeFor(rl.bucket) === "open";
+    if (!res.ok) return "unavailable";
     const body: unknown = await res.json();
     if (
       typeof body !== "object" ||
       body === null ||
       typeof (body as { ok?: unknown }).ok !== "boolean"
     ) {
-      return failModeFor(rl.bucket) === "open";
+      return "unavailable";
     }
-    return (body as { ok: boolean }).ok;
+    return (body as { ok: boolean }).ok ? "ok" : "limited";
   } catch {
     // DO reset (every deploy), overload, colo error, or a malformed body.
-    return failModeFor(rl.bucket) === "open";
+    return "unavailable";
   }
+}
+
+/**
+ * Returns true if the call is within the limit (and counts it), false if it should 429. With
+ * `peek`, answers the same without counting. When the limiter cannot be read the bucket's
+ * `FAIL_MODE` decides.
+ */
+export async function rateLimitOk(
+  env: Env,
+  product: string,
+  rl: RateLimit,
+  now: number,
+  peek = false,
+): Promise<boolean> {
+  const r = await rateLimitCheck(env, product, rl, now, peek);
+  return (
+    r === "ok" || (r === "unavailable" && failModeFor(rl.bucket) === "open")
+  );
 }
 
 /**

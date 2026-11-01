@@ -97,6 +97,10 @@
       "title": "Límite de conexión remota alcanzado",
       "message": "Se restablece pronto. Los dispositivos de la misma red siguen conectándose."
     },
+    "connect_links_disabled": {
+      "title": "Vincular está desactivado",
+      "message": "Vincular con otras personas está desactivado en esta app. Tus propios dispositivos siguen conectándose."
+    },
     "relay_ticket_invalid": {
       "title": "Conexión caducada",
       "message": "La solicitud de conexión caducó. Inténtalo de nuevo."
@@ -204,6 +208,10 @@
     "redirect_uri_mismatch": {
       "title": "El inicio de sesión no puede volver a la app",
       "message": "El inicio de sesión de esta app no está bien configurado, así que se detuvo aquí para proteger tu cuenta. Avisa a su desarrollador."
+    },
+    "invalid_request_uri": {
+      "title": "El enlace de inicio de sesión caducó",
+      "message": "Este enlace de inicio de sesión caducó. Vuelve a {product} y empieza de nuevo."
     },
     "license_choice_required": {
       "title": "Elige una licencia",
@@ -525,6 +533,10 @@
       "title": "Código caducado",
       "message": "El código caducó antes de terminar el inicio de sesión. Vuelve a empezar."
     },
+    "redirect-unavailable": {
+      "title": "Inicio de sesión en el navegador no disponible",
+      "message": "El inicio de sesión no pudo abrir un navegador aquí. Usa un código en su lugar."
+    },
     "sign-in-denied": {
       "title": "Inicio de sesión rechazado",
       "message": "Se rechazó el inicio de sesión. Vuelve a empezar."
@@ -616,6 +628,58 @@
     "nearby-permission-denied": {
       "title": "Red local bloqueada",
       "message": "Esta app no puede acceder a los dispositivos de tu red local. Permítelo en los ajustes del sistema."
+    },
+    "nearby-unsupported": {
+      "title": "Inicio de sesión cercano no disponible",
+      "message": "Este dispositivo no puede buscar dispositivos cercanos aquí."
+    },
+    "peer-handshake-failed": {
+      "title": "No se pudo conectar de forma segura",
+      "message": "No se pudo establecer una conexión segura con el dispositivo cercano. Inténtalo de nuevo."
+    },
+    "peer-closed": {
+      "title": "Conexión finalizada",
+      "message": "La conexión con el dispositivo cercano ha finalizado. Inténtalo de nuevo."
+    },
+    "transfer-cancelled": {
+      "title": "Transferencia detenida",
+      "message": "La transferencia no se completó. No se recibió nada."
+    },
+    "link-unknown": {
+      "title": "Sin vincular",
+      "message": "Ese dispositivo ya no está vinculado con este."
+    },
+    "peer_revoked": {
+      "title": "Dispositivo ya no es de confianza",
+      "message": "El otro dispositivo se eliminó de la cuenta. No se compartió nada."
+    },
+    "peer_expired": {
+      "title": "Certificado del dispositivo caducado",
+      "message": "El certificado del otro dispositivo ha caducado. Actualiza e inténtalo de nuevo."
+    },
+    "peer_bad_frame": {
+      "title": "Error de conexión",
+      "message": "El dispositivo cercano envió algo inesperado. Inténtalo de nuevo."
+    },
+    "peer_unknown_critical": {
+      "title": "Solicitud no admitida",
+      "message": "El dispositivo cercano pidió algo que esta app no admite. Inténtalo de nuevo."
+    },
+    "peer_not_allowed": {
+      "title": "No permitido aquí",
+      "message": "El dispositivo cercano pidió algo que no se permite en este paso. Inténtalo de nuevo."
+    },
+    "peer_busy": {
+      "title": "Dispositivo cercano ocupado",
+      "message": "Hay demasiadas conexiones abiertas. Inténtalo de nuevo en un momento."
+    },
+    "peer_timeout": {
+      "title": "Se agotó el tiempo de conexión",
+      "message": "El dispositivo cercano no respondió a tiempo. Inténtalo de nuevo."
+    },
+    "peer_bye": {
+      "title": "Conexión cerrada",
+      "message": "El dispositivo cercano finalizó la conexión."
     },
     "platform-error": {
       "title": "Problema de la plataforma",

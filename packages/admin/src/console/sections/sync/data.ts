@@ -159,3 +159,17 @@ export const syncRevisionsQuery = (
     gcTime: 0,
     staleTime: Infinity,
   });
+
+/**
+ * A record's file (the live one, or `version`) as bytes: a read that needs a recent sign-in and
+ * reports its progress. Not a query: the caller saves the blob.
+ */
+export const downloadSyncFile = (
+  slug: string,
+  subject: string,
+  collection: string,
+  id: string,
+  version: number | undefined,
+  onProgress: (loaded: number, total: number) => void,
+): Promise<Blob> =>
+  api.syncFileDownload(slug, subject, collection, id, version, onProgress);

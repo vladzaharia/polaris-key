@@ -14,6 +14,7 @@
  * Decision state, every move a compare-and-set so two callers never both win:
  *   pending --claim(M)--> claimed --decide(M)--> approved | denied   (sticky once decided)
  *   claimed --release(M)--> pending      (a refusal M can retry)
+ * An unreachable store throws; the handlers answer 503 and keep the request.
  * A claim older than {@link NEARBY_CLAIM_STALE_SECONDS} may be taken again, by anyone.
  */
 
@@ -26,9 +27,9 @@ import {
   artefactRef,
   attemptArtefact,
   deleteArtefact,
-  getArtefact,
+  getArtefactStrict,
   putArtefact,
-  updateArtefact,
+  updateArtefactStrict,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 
@@ -109,6 +110,12 @@ export async function nearbyRef(
   );
 }
 
+/** Whether the request carries a client network at all. Without one every caller would hash
+ *  alike and read as "nearby", so start and approve refuse. */
+export function hasClientNetwork(req: Request): boolean {
+  return req.headers.get("cf-connecting-ip") !== null;
+}
+
 /** The peppered hash of the caller's network, for `netHash`. */
 export function nearbyNetHash(env: Env, req: Request): Promise<string> {
   return hashKey(clientNetwork(req), env.KEY_HASH_PEPPER);
@@ -140,12 +147,14 @@ export function createNearby(
   });
 }
 
-/** The live request, or null when absent, expired, ended or unreachable. */
+/** The live request, or null when absent, expired or ended. Throws `SingleUseUnavailableError`
+ *  when the store cannot be reached (so a caller never reads an outage as "gone"); every
+ *  compare-and-set below does the same. */
 export async function readNearby(
   env: Env,
   ref: ArtefactRef,
 ): Promise<NearbyRequestRecord | null> {
-  return parse(await getArtefact(env, ref));
+  return parse(await getArtefactStrict(env, ref));
 }
 
 export type NearbyMove =
@@ -172,7 +181,10 @@ export async function claimNearby(
   const set = { state: "claimed", claimedBy: by, claimedAt: now };
   if (cur.state === "pending")
     return moved(
-      await updateArtefact(env, ref, { expect: { state: "pending" }, set }),
+      await updateArtefactStrict(env, ref, {
+        expect: { state: "pending" },
+        set,
+      }),
     );
   if (
     cur.state === "claimed" &&
@@ -180,7 +192,7 @@ export async function claimNearby(
     now - cur.claimedAt >= NEARBY_CLAIM_STALE_SECONDS
   )
     return moved(
-      await updateArtefact(env, ref, {
+      await updateArtefactStrict(env, ref, {
         expect: {
           state: "claimed",
           claimedBy: cur.claimedBy ?? null,
@@ -206,7 +218,7 @@ export async function decideNearby(
       ? { state: "approved", decidedAt: now, ...decision.approve }
       : { state: "denied", decidedAt: now };
   return moved(
-    await updateArtefact(env, ref, {
+    await updateArtefactStrict(env, ref, {
       expect: { state: "claimed", claimedBy: by },
       set,
     }),
@@ -220,7 +232,7 @@ export async function releaseNearby(
   by: string,
 ): Promise<NearbyMove> {
   return moved(
-    await updateArtefact(env, ref, {
+    await updateArtefactStrict(env, ref, {
       expect: { state: "claimed", claimedBy: by },
       set: { state: "pending" },
       unset: ["claimedBy", "claimedAt"],
@@ -246,7 +258,7 @@ export async function takeNearbyPollSlot(
   now: number,
 ): Promise<NearbyMove> {
   return moved(
-    await updateArtefact(env, ref, {
+    await updateArtefactStrict(env, ref, {
       expect: { lastPollAt: seenLastPollAt ?? null },
       set: { lastPollAt: now },
     }),

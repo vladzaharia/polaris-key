@@ -86,6 +86,29 @@ class SealerCommandsTest {
     }
 
     @Test
+    fun ksGetOnAPresentAliasThatDoesNotLoadIsAKeystoreError() {
+        val set = op("ks_set", "product" to "diceroll", "account" to "token", "value" to "pkeyt_x")
+        assertTrue(set.getBoolean("ok"))
+        val glitchy = Commands(TestHost(), keyProvider = {
+            object : KeyProvider by keys {
+                override fun get(alias: String): SecretKey? = null
+
+                override fun exists(alias: String): Boolean = true
+            }
+        })
+        val q = { o: String -> JSONObject().put("op", o).put("product", "diceroll").put("account", "token").put("value", "pkeyt_y") }
+        val r = glitchy.json(q("ks_get"))
+        assertFalse(r.getBoolean("ok"))
+        assertEquals("keystore", r.getString("error"))
+        assertEquals("keystore", r.getString("reason"))
+        val w = glitchy.json(q("ks_set"))
+        assertFalse(w.getBoolean("ok"))
+        assertEquals("keystore", w.getString("reason"))
+        assertEquals("no key was minted over the present alias", 1, keys.created)
+        assertEquals("pkeyt_x", op("ks_get", "product" to "diceroll", "account" to "token").getString("value"))
+    }
+
+    @Test
     fun productsAreBoundAndInputsChecked() {
         seal("diceroll")
         seal("other")

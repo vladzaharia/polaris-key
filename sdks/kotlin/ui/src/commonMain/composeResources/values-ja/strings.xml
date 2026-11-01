@@ -324,10 +324,17 @@
     <string name="activate_recommend_skip">またはアカウントなしで続ける。%1$sは同じように使えます。</string>
     <!-- ActivateDone: the single reason line when Identity is off; the action opens the portal. -->
     <string name="activate_recommend_portal">ライセンスを Polaris Locker で安全に保管</string>
+    <!-- AddToAccount, waiting: the title while the person confirms the email in Polaris Locker (a device code is shown). -->
+    <string name="activate_attach_waitTitle">Polaris Lockerで完了してください</string>
+    <!-- AddToAccount, waiting: under the sign-in code; the person checks it against the code Polaris Locker shows. -->
+    <string name="activate_attach_waitCheck">Polaris Lockerに表示されたコードと一致することを確認してください。</string>
+    <!-- AddToAccount, waiting: brings the Polaris Locker tab back. -->
+    <string name="activate_attach_reopen">Polaris Lockerをもう一度開く</string>
+    <string name="activate_attach_reopen__macos">Polaris Lockerをもう一度開く</string>
     <!-- AddToAccount: under the title, above the fields. -->
     <string name="activate_attach_lede">ライセンスとそのデバイスはそのままです。メールアドレスはブラウザーでコードを入力して確認します。</string>
     <!-- AddToAccount: the fine print under the email field. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
-    <string name="activate_attach_fine">ブラウザーでこのメールアドレスにコードを送ります。%1$sにはコードは見えません。</string>
+    <string name="activate_attach_fine">Polaris Lockerがこのメールアドレスにコードを送ります。%1$sにはコードは見えません。</string>
     <!-- AddToAccount: added. Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
     <string name="activate_attach_done">%1$sがアカウントに入りました</string>
     <!-- AddToAccount: added, shown only when the product has sync. Plain words: no feature name. Arguments: {deviceKind} = the device kind already worded (computer, phone). Arguments: 1=deviceKind. -->
@@ -1207,6 +1214,8 @@
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$sは%5$s台中%4$s台目のデバイスになります</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · %2$sを置き換え</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the app keeps the license it holds and attaches it to the account (add to account). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_licenseKept">%1$sのライセンスがアカウントに追加されます。</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_consent_licenseInApp">ライセンスは%1$sで選択します。</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
@@ -1299,6 +1308,8 @@
     <string name="signin_nearby_promptTitle">スマートフォンでサインイン</string>
     <!-- Nearby sign-in, waiting. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
     <string name="signin_nearby_body">サインイン済みで、このネットワークにあるスマートフォンまたはパソコンで %1$s を開いてください。</string>
+    <!-- Nearby sign-in, waiting, once a device is chosen: where to open the app. Arguments: {app} = the product's name from ProductIdentity (never translated); {device} = the other device's friendly name (never translated). Arguments: 1=app, 2=device. -->
+    <string name="signin_nearby_bodyOn">%2$s で %1$s を開いてください。</string>
     <!-- Nearby sign-in, waiting: the line above the code the other device must tap. -->
     <string name="signin_nearby_match">そちらでこのコードをタップ：</string>
     <!-- Nearby sign-in, waiting: switches to the device code. -->
@@ -1314,7 +1325,7 @@
     <!-- Nearby approval, on the signed-in device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_ask">%1$s のサインインを許可しますか？</string>
     <!-- Nearby approval: number matching. Three 6-digit codes follow; one matches the code the new device shows. Arguments: {device} = the new device's friendly name (never translated). -->
-    <string name="signin_nearby_askBody">表示されているコードをタップしてください。</string>
+    <string name="signin_nearby_askBody">表示されているコードを選んでください。</string>
     <!-- Nearby approval: the new device is signed in. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_approved">%1$s がサインインしました</string>
     <!-- Nearby approval: the new device is not on the approver's network. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
@@ -1448,6 +1459,34 @@
     <string name="signin_cli_ifNotOpened">開かない場合は%1$sにアクセスしてください</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_keys">Enter もう一度開く · c コードを使う · Esc キャンセル</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15), nearby: the keys line while the code waits for a tap on the other device. Plain text, no formatting. -->
+    <string name="signin_cli_nearbyKey">c 代わりにコードを使う · Esc キャンセル</string>
+    <!-- Terminal sign-in, nearby: shown beside the spinner for the first seconds while the computer looks for the person's other devices. -->
+    <string name="signin_cli_nearbyLooking">近くの別のデバイスを探しています…</string>
+    <!-- Terminal sign-in, nearby: shown beside the spinner while the code waits for a tap on the other device. Keep it to a word or two. -->
+    <string name="signin_cli_nearbyWaiting">待機中…</string>
+    <!-- Terminal key hints under the offer to look for nearby devices (macOS asks for access to the local network after it). Each part is a key name, a space, then what it does; keep the key first and the ' · ' separators. -->
+    <string name="signin_cli_nearbyPromptKeys">Enter 続ける · Esc 今はしない</string>
+    <!-- Terminal key hints while several devices nearby could approve the sign-in: 1-9 picks the numbered device. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated). Arguments: 1=n. -->
+    <string name="signin_cli_nearbyPickKeys">1-%1$s デバイスを選ぶ · c 代わりにコードを使う · Esc キャンセル</string>
+    <!-- Terminal key hints while one device nearby could approve the sign-in: 1 picks it. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_nearbyPickOneKeys">1 このデバイスを選ぶ · c 代わりにコードを使う · Esc キャンセル</string>
+    <!-- Terminal key hints under 'Signed in as {email}' after a nearby sign-in: Enter accepts the account, n or Esc signs out again. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_nearbyDoneKeys">Enter 続ける · n または Esc 自分ではない・サインアウト</string>
+    <!-- Terminal 'devices approve': shown beside the spinner while the computer waits for another device to ask to sign in. -->
+    <string name="signin_cli_approveWaiting">デバイスからの確認を待っています…</string>
+    <!-- Terminal key hint while 'devices approve' waits for a device to ask. Keep the key first. -->
+    <string name="signin_cli_approveWaitKeys">Esc 停止</string>
+    <!-- Terminal key hints while a device asks to sign in: 1-3 pick the code it shows, d or Esc denies. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_approveKeys">1-3 コードを選ぶ · d または Esc 拒否</string>
+    <!-- Terminal 'devices approve': this computer cannot take part in nearby sign-in. 'Polaris Locker' is the end-user product name (never translated). -->
+    <string name="signin_cli_approveUnsupported">もう一方のデバイスでコードを使ってサインインしてください。</string>
+    <!-- Terminal 'devices approve': the title when this computer cannot take part in nearby sign-in; the next step follows (signin.cli.approveUnsupported). -->
+    <string name="signin_cli_approveUnsupportedTitle">このコンピュータからは承認できません</string>
+    <!-- Terminal key hints while 'devices approve' asks which license the new device gets: 1-9 picks the numbered license, Esc denies. Keep each key first and the ' · ' separators. Arguments: {n} = how many numbered rows there are, 2 or more (never translated). Arguments: 1=n. -->
+    <string name="signin_cli_approveChooseKeys">1-%1$s ライセンスを選ぶ · Esc 拒否</string>
+    <!-- Terminal key hints while 'devices approve' asks which license the new device gets and only one can be given: 1 picks it, Esc denies. Keep each key first and the ' · ' separators. -->
+    <string name="signin_cli_approveChooseOneKeys">1 ライセンスを選ぶ · Esc 拒否</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_headless">このコンピュータにはブラウザがありません。代わりにコードを使用してください：</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {name} = the person's display name; {email} = an email address. Arguments: 1=name, 2=email. -->
@@ -1573,6 +1612,10 @@
     <string name="cli_help_group">ライセンス</string>
     <!-- Terminal help of a host's own command-line tool: what the one namespace command (license) holds, when the license commands are nested under it. -->
     <string name="cli_help_namespace">有効化、サインイン、デバイス、アップデート</string>
+    <!-- Terminal help: what 'devices approve' does. -->
+    <string name="cli_verb_devicesApprove">近くのデバイスのサインインを承認</string>
+    <!-- Terminal usage error: 'devices approve' asks a person to pick a code, so it does not run with -json or without a terminal. Arguments: {command} = the command the person ran. Arguments: 1=command. -->
+    <string name="cli_approve_needsPerson">%1$s は端末の前に人が必要です。</string>
     <!-- Terminal: the title when a host command that needs a license is refused because the person has none (needs-activation), and the first line of the inline activate flow. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
     <string name="cli_gate_needs">%1$sにはライセンスが必要です</string>
     <!-- Terminal: the title when a host command is refused because the person's license does not hold the entitlement it needs. They have a license, so it is never 'needs a license'. {command} is the command they ran, such as 'export'. Arguments: 1=command. -->
@@ -2057,6 +2100,8 @@
     <string name="signin_gate_confirmedByCode">コードで確認済み</string>
     <!-- Finish step: label above the screen-name suggestion chips. -->
     <string name="signin_gate_nameFrom">次の名前を使う</string>
+    <!-- A "Use a name from" chip that offers the name the app passed along. Arguments: {app} = the requesting app's name; {name} = the name the app suggested (neither translated). Arguments: 1=app, 2=name. -->
+    <string name="signin_gate_nameFromApp">%1$s · %2$s</string>
     <!-- Finish step: under the screen name. Polaris Locker is never translated. -->
     <string name="signin_gate_nameHint">Polaris Lockerとメールに表示されます。</string>
     <!-- Finish step: the picture group label. -->
@@ -2203,6 +2248,68 @@
     <string name="signin_key_enterKey">ライセンスキーを入力してください。</string>
     <!-- Sign-in card, code step: links to the Help page for a code that has not arrived (DOC-06a). -->
     <string name="signin_code_missing">コードが届きませんか？</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Window open, waiting for a nearby device. -->
+    <string name="linkPairing_title">近くの人とリンク</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Both people open this on their own device. -->
+    <string name="linkPairing_openBody">相手にもこの画面を開いてもらってください。近くで、同じネットワークに接続してください。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Shown while the window is open and no device has reached the code. -->
+    <string name="linkPairing_searching">近くのデバイスを検索中…</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The code both people compare. -->
+    <string name="linkPairing_codeTitle">コードを比べる</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Under the code: both screens must show the same one before anyone confirms. -->
+    <string name="linkPairing_codeBody">両方の画面に同じコードが表示されている必要があります。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Arguments: {device} = the label the other device sent. Nothing authenticates it: any device on the network can send any label, so the line says it is reported, not verified. Arguments: 1=device. -->
+    <string name="linkPairing_reported">デバイスの申告：%1$s</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Used when the other device sent no label. -->
+    <string name="linkPairing_reportedUnnamed">デバイス名は申告されていません</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Heading above the data categories both people approve; always shown before the confirm button. -->
+    <string name="linkPairing_shares">共有される内容</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Used when the app asks for no data categories. -->
+    <string name="linkPairing_sharesNone">今のところ共有されるものはありません。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Confirms the code matches. The link is made when the other person does the same. -->
+    <string name="linkPairing_confirm">コードが一致</string>
+    <string name="linkPairing_confirm__macos">コードが一致</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Declines: the session closes and nothing is stored. -->
+    <string name="linkPairing_decline">一致しない</string>
+    <string name="linkPairing_decline__macos">一致しない</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). This person confirmed; the other has not yet. -->
+    <string name="linkPairing_waiting">相手の確認を待っています</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The link was made on both devices. -->
+    <string name="linkPairing_linkedTitle">リンクしました</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). After the link is made. -->
+    <string name="linkPairing_linkedBody">今後はコードなしで接続できます。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Names who was paired. Arguments: {device} = the label the other device sent (text it chose, not verified). Used instead of the plain body when the device sent a label. Arguments: 1=device. -->
+    <string name="linkPairing_linkedWith">%1$sとリンクしました。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). The session ended without a link. -->
+    <string name="linkPairing_failedTitle">リンクできませんでした</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason declined: someone declined the code. -->
+    <string name="linkPairing_failedDeclined">どちらかが拒否しました。何もリンクされていません。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason timeout: the window closed first. -->
+    <string name="linkPairing_failedTimeout">二人が確認する前に時間切れになりました。何もリンクされていません。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason full: one device holds the most links. -->
+    <string name="linkPairing_failedFull">どちらかがこれ以上リンクを追加できません。1つ削除してからもう一度お試しください。</string>
+    <!-- LinkPairing: link two accounts, once, in person (CC-19.9). Reason closed: the connection ended. -->
+    <string name="linkPairing_failedClosed">接続が閉じられました。何もリンクされていません。</string>
+    <!-- Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit. Arguments: 1=code. -->
+    <string name="a11y_linkCode">リンクコード %1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose. Arguments: 1=device, 2=name. -->
+    <string name="transferOffer_ask">%1$sが%2$sを送信しようとしています</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends. Arguments: 1=name. -->
+    <string name="transferOffer_askUnnamed">連絡先が%1$sを送信しようとしています</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title. -->
+    <string name="transferOffer_askBody">心当たりのあるものだけ受け取ってください。</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer. -->
+    <string name="transferOffer_accept">受け取る</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Declines the offer; nothing is received. -->
+    <string name="transferOffer_decline">断る</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what is being received. Arguments: 1=name. -->
+    <string name="transferOffer_receiving">%1$sを受信中</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was received. Arguments: 1=name. -->
+    <string name="transferOffer_done">%1$sを受信しました</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {name} = what was not received. Arguments: 1=name. -->
+    <string name="transferOffer_failed">%1$sを受信できませんでした</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the failed title. -->
+    <string name="transferOffer_failedBody">何も保存されていません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
     <string name="core_fallback_title">問題が発生しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
@@ -2295,6 +2402,10 @@
     <string name="core_codes_relay_quota_exceeded_title">リモート接続の上限に達しました</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_quota_exceeded_message">まもなくリセットされます。同じネットワーク上のデバイスは引き続き接続できます。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_links_disabled_title">リンクはオフです</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_connect_links_disabled_message">このアプリでは他の人とのリンクがオフです。自分のデバイス同士は引き続き接続できます。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_relay_ticket_invalid_title">接続の期限が切れました</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2403,6 +2514,10 @@
     <string name="core_codes_redirect_uri_mismatch_title">サインイン後にアプリへ戻れません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_redirect_uri_mismatch_message">このアプリのサインイン設定が正しくないため、アカウントを守るためにここで停止しました。開発元にお知らせください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_request_uri_title">サインインリンクの有効期限切れ</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_invalid_request_uri_message">このサインインリンクは有効期限が切れました。%1$s に戻って、もう一度始めてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_choice_required_title">ライセンスを選択</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -2724,6 +2839,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_expired_message">サインインが完了する前にコードの有効期限が切れました。もう一度やり直してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_title">ブラウザでサインインできません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_redirect_unavailable_message">ここではブラウザを開けませんでした。代わりにコードを使ってください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_denied_title">サインインが拒否されました</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_sign_in_denied_message">サインインは拒否されました。もう一度やり直してください。</string>
@@ -2815,6 +2934,58 @@
     <string name="core_codes_nearby_permission_denied_title">ローカルネットワークがブロックされています</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_nearby_permission_denied_message">このアプリはローカルネットワーク上のデバイスにアクセスできません。システム設定で許可してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_unsupported_title">近くのデバイスでのサインインは利用できません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_nearby_unsupported_message">このデバイスでは、ここで近くのデバイスを探せません。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_handshake_failed_title">安全に接続できませんでした</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_handshake_failed_message">近くのデバイスとの安全な接続を確立できませんでした。もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_closed_title">接続が終了しました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_closed_message">近くのデバイスとの接続が終了しました。もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transfer_cancelled_title">転送が停止しました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transfer_cancelled_message">転送は完了しませんでした。何も受信されていません。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_unknown_title">ペアリングされていません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_unknown_message">そのデバイスはこのデバイスとペアリングされていません。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_revoked_title">デバイスは信頼されなくなりました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_revoked_message">相手のデバイスはアカウントから削除されました。何も共有されていません。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_expired_title">デバイス証明書の有効期限切れ</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_expired_message">相手のデバイスの証明書の有効期限が切れています。更新してもう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bad_frame_title">接続エラー</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bad_frame_message">近くのデバイスが予期しないデータを送信しました。もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_unknown_critical_title">サポートされていないリクエスト</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_unknown_critical_message">近くのデバイスが、このアプリが対応していない要求をしました。もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_not_allowed_title">ここでは許可されていません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_not_allowed_message">近くのデバイスが、この手順では許可されていない要求をしました。もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_busy_title">近くのデバイスがビジー状態です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_busy_message">開いている接続が多すぎます。しばらくしてからもう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_timeout_title">接続がタイムアウトしました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_timeout_message">近くのデバイスが時間内に応答しませんでした。もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bye_title">接続が閉じられました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_peer_bye_message">近くのデバイスが接続を終了しました。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_platform_error_title">プラットフォームの問題</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

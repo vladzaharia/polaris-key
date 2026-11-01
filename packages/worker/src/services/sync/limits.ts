@@ -27,7 +27,11 @@ import {
   SYNC_FILE_TRANSFERS_PER_HOUR,
 } from "@polaris-key/protocol/sync";
 import type { Env } from "../../platform/env.js";
-import { rateLimitOk, shardIndex } from "../../core/rateLimit.js";
+import {
+  rateLimitCheck,
+  rateLimitOk,
+  shardIndex,
+} from "../../core/rateLimit.js";
 import { wireError } from "../../core/errors.js";
 
 export const SYNC_LIMITER_SHARDS = 8;
@@ -53,6 +57,17 @@ function limited(windowSec: number, now: number): Response {
     "retry-after",
     String(Math.max(1, windowSec - (now % windowSec))),
   );
+  return res;
+}
+
+/**
+ * The answer for a file write when the limiter cannot be read: `503 unavailable` with a short
+ * `Retry-After`, not a `429` whose retry date is the rest of a window of up to an hour (every
+ * deploy resets the limiter object for calls in flight).
+ */
+function unavailable(): Response {
+  const res = wireError(503, "unavailable");
+  res.headers.set("retry-after", "5");
   return res;
 }
 
@@ -122,8 +137,8 @@ export async function pullLimited(
 
 /**
  * A `429 rate_limited` Response when the device has used its 30 file transfers of the hour (a
- * `begin`, or a whole-file `GET`), else null (U-10, §13.8.2). Fails open, like the push: the caller
- * is authenticated, and the person's object bounds the work.
+ * `begin`, or a whole-file `GET`), else null (U-10, §13.8.2). When the limiter cannot be read, a
+ * call that `closed` (a write) answers `503 unavailable`; the others proceed, as the push does.
  */
 export async function filesLimited(
   env: Env,
@@ -131,8 +146,9 @@ export async function filesLimited(
   subject: string,
   deviceId: string,
   now: number,
+  closed = false,
 ): Promise<Response | null> {
-  const ok = await rateLimitOk(
+  const r = await rateLimitCheck(
     env,
     syncLimiterShard(product, subject),
     {
@@ -143,12 +159,13 @@ export async function filesLimited(
     },
     now,
   );
-  return ok ? null : limited(SYNC_FILES_DEVICE_WINDOW_SEC, now);
+  if (r === "limited") return limited(SYNC_FILES_DEVICE_WINDOW_SEC, now);
+  return r === "unavailable" && closed ? unavailable() : null;
 }
 
 /**
  * A `429 rate_limited` Response when the device is over 600 part, chunk, status or ranged-`GET`
- * requests a minute, else null (U-10, §13.8.2). Fails open, as `filesLimited` does.
+ * requests a minute, else null (U-10, §13.8.2). `closed` as for `filesLimited`.
  */
 export async function partsLimited(
   env: Env,
@@ -156,8 +173,9 @@ export async function partsLimited(
   subject: string,
   deviceId: string,
   now: number,
+  closed = false,
 ): Promise<Response | null> {
-  const ok = await rateLimitOk(
+  const r = await rateLimitCheck(
     env,
     syncLimiterShard(product, subject),
     {
@@ -168,5 +186,6 @@ export async function partsLimited(
     },
     now,
   );
-  return ok ? null : limited(SYNC_PARTS_DEVICE_WINDOW_SEC, now);
+  if (r === "limited") return limited(SYNC_PARTS_DEVICE_WINDOW_SEC, now);
+  return r === "unavailable" && closed ? unavailable() : null;
 }

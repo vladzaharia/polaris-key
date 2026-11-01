@@ -43,6 +43,10 @@ import {
   usePlatformSignInVisible,
 } from "../components/PlatformSignIn.js";
 import {
+  NativeAppsSection,
+  useNativeAppsVisible,
+} from "../components/NativeApps.js";
+import {
   MethodsSection,
   PresentationSection,
   StatusSection,
@@ -117,6 +121,7 @@ export function AppSignInPage({ slug }: { slug: string }): React.ReactElement {
   const keys = useQuery(reads.productSettings(slug, area));
   const hasTierSync = useHasTierSync(slug);
   const hasPlatform = usePlatformSignInVisible(slug);
+  const hasNative = useNativeAppsVisible(slug);
   const name = product.data?.name ?? slug;
   const header = (
     <PageHeader
@@ -171,6 +176,7 @@ export function AppSignInPage({ slug }: { slug: string }): React.ReactElement {
       claimByKey={portal.data.claimByKey ?? false}
       hasTierSync={hasTierSync}
       hasPlatform={hasPlatform}
+      hasNative={hasNative}
     />
   );
 }
@@ -186,6 +192,7 @@ function PageBody({
   claimByKey,
   hasTierSync,
   hasPlatform,
+  hasNative,
 }: {
   slug: string;
   name: string;
@@ -197,6 +204,7 @@ function PageBody({
   claimByKey: boolean;
   hasTierSync: boolean;
   hasPlatform: boolean;
+  hasNative: boolean;
 }): React.ReactElement {
   const gate = useWriteGate("signin", slug);
   // The Sign-in switch is a Settings write: the one notice names the access a viewer is missing.
@@ -291,6 +299,7 @@ function PageBody({
     ...(hasPlatform
       ? [{ id: "platform-sign-in", title: "Platform sign-in" }]
       : []),
+    ...(hasNative ? [{ id: "native-apps", title: "Native apps" }] : []),
     { id: "terms", title: "Terms" },
     { id: "license-keys", title: "License keys", dirty: keysDirty },
     { id: "polaris-locker", title: "Polaris Locker", dirty: lockerDirty },
@@ -327,6 +336,7 @@ function PageBody({
             />
           </div>
           <PlatformSignInSection slug={slug} />
+          {hasNative ? <NativeAppsSection slug={slug} /> : null}
           <TermsSection slug={slug} name={name} />
           <LicenseKeysSection
             slug={slug}

@@ -109,6 +109,12 @@
                         "serverClientId": "1234-web.apps.googleusercontent.com"
                       }
                     },
+                    "nearby": true,
+                    "nativeRedirect": {
+                      "loopback": true,
+                      "schemes": [],
+                      "claimedHttps": []
+                    },
                     "endpoints": {
                       "session": "https://key.plrs.im/djdl/identity/session",
                       "sessionLicense": "https://key.plrs.im/djdl/identity/session/license",
@@ -121,6 +127,8 @@
                       "authDevicePoll": "https://key.plrs.im/djdl/identity/auth/device/poll",
                       "authorize": "https://key.plrs.im/djdl/identity/authorize",
                       "token": "https://key.plrs.im/djdl/identity/token",
+                      "request": "https://key.plrs.im/djdl/identity/request",
+                      "signinReturn": "https://key.plrs.im/signin/return",
                       "choiceLicenses": "https://key.plrs.im/djdl/identity/choice/licenses",
                       "choiceDevices": "https://key.plrs.im/djdl/identity/choice/devices",
                       "choiceComplete": "https://key.plrs.im/djdl/identity/choice/complete",
@@ -131,6 +139,9 @@
                       "restore": "https://key.plrs.im/djdl/identity/restore",
                       "nonce": "https://key.plrs.im/djdl/identity/nonce",
                       "link": "https://key.plrs.im/djdl/identity/link",
+                      "nearbyStart": "https://key.plrs.im/djdl/identity/nearby/start",
+                      "nearbyApprove": "https://key.plrs.im/djdl/identity/nearby/approve",
+                      "nearbyPoll": "https://key.plrs.im/djdl/identity/nearby/poll",
                       "accountPortal": "https://key.plrs.im/#/p/djdl"
                     }
                   },

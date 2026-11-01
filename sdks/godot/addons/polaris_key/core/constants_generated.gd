@@ -33,6 +33,7 @@ class ErrorCode:
 	const RELAY_DISABLED := "relay_disabled"
 	const RELAY_PAUSED := "relay_paused"
 	const RELAY_QUOTA_EXCEEDED := "relay_quota_exceeded"
+	const CONNECT_LINKS_DISABLED := "connect_links_disabled"
 	const RELAY_TICKET_INVALID := "relay_ticket_invalid"
 	const DEVICE_LIMIT := "device_limit"
 	const KEY_ENTRY_LIMIT := "key_entry_limit"
@@ -61,6 +62,7 @@ class ErrorCode:
 	const UNSUPPORTED_GRANT_TYPE := "unsupported_grant_type"
 	const INVALID_SCOPE := "invalid_scope"
 	const REDIRECT_URI_MISMATCH := "redirect_uri_mismatch"
+	const INVALID_REQUEST_URI := "invalid_request_uri"
 	const LICENSE_CHOICE_REQUIRED := "license_choice_required"
 	const INTERSTITIAL_REQUIRED := "interstitial_required"
 	const NOT_NEARBY := "not_nearby"
@@ -141,6 +143,7 @@ class ErrorCode:
 	const SERVER_ERROR := "server-error"
 	const CANCELLED := "cancelled"
 	const SIGN_IN_EXPIRED := "sign-in-expired"
+	const REDIRECT_UNAVAILABLE := "redirect-unavailable"
 	const SIGN_IN_DENIED := "sign-in-denied"
 	const SIGN_IN_UNAVAILABLE := "sign-in-unavailable"
 	const PLATFORM_IDENTITY_UNAVAILABLE := "platform-identity-unavailable"
@@ -164,6 +167,19 @@ class ErrorCode:
 	const CONNECT_UNAVAILABLE := "connect-unavailable"
 	const PEER_CERT_INVALID := "peer-cert-invalid"
 	const NEARBY_PERMISSION_DENIED := "nearby-permission-denied"
+	const NEARBY_UNSUPPORTED := "nearby-unsupported"
+	const PEER_HANDSHAKE_FAILED := "peer-handshake-failed"
+	const PEER_CLOSED := "peer-closed"
+	const TRANSFER_CANCELLED := "transfer-cancelled"
+	const LINK_UNKNOWN := "link-unknown"
+	const PEER_REVOKED := "peer_revoked"
+	const PEER_EXPIRED := "peer_expired"
+	const PEER_BAD_FRAME := "peer_bad_frame"
+	const PEER_UNKNOWN_CRITICAL := "peer_unknown_critical"
+	const PEER_NOT_ALLOWED := "peer_not_allowed"
+	const PEER_BUSY := "peer_busy"
+	const PEER_TIMEOUT := "peer_timeout"
+	const PEER_BYE := "peer_bye"
 	const PLATFORM_ERROR := "platform-error"
 	const NO_TOKEN := "no-token"
 	const MINT_UNAVAILABLE := "mint-unavailable"
@@ -226,7 +242,7 @@ class ErrorCode:
 
 
 ## Every `ErrorCode` value, in source order.
-const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "attestation_required", "attestation_rejected", "attestation_unavailable", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "signing_unavailable", "device_keys_invalid", "device_keys_required", "ring_too_large", "relay_disabled", "relay_paused", "relay_quota_exceeded", "relay_ticket_invalid", "device_limit", "key_entry_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "license_unusable", "disabled", "oidc_error", "unavailable", "erasure_ledger_unavailable", "identity_disabled", "unknown_app", "invalid_request", "invalid_client", "invalid_grant", "unsupported_grant_type", "invalid_scope", "redirect_uri_mismatch", "license_choice_required", "interstitial_required", "not_nearby", "auth_method_disabled", "email_unavailable", "turnstile_failed", "signin_expired", "invalid_code", "code_expired", "email_in_use", "terms_required", "license_owned", "license_email_bound", "account_required", "cursor_expired", "client_mismatch", "value_invalid", "op_invalid_for_policy", "setting_not_synced", "collection_unknown", "entitlement_required", "quota_exceeded", "writes_paused", "encryption_mismatch", "revision_conflict", "upload_mismatch", "upload_expired", "upload_incomplete", "file_too_large", "keyring_conflict", "email_mismatch", "link_conflict", "last_link", "step_up_required", "not_eligible", "not_removable", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "asset_unreachable", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "backend-origin-not-allowed", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device-keys-unreadable", "device-key-store-error", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "sign-in-denied", "sign-in-unavailable", "platform-identity-unavailable", "sync-locked", "recovery-code-invalid", "sync-encryption-pinned", "sync-file-invalid", "invalid-options", "invalid-argument", "invoke-not-allowed", "sender-refused", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "connect-unavailable", "peer-cert-invalid", "nearby-permission-denied", "platform-error", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "chunks-ref-mismatch", "chunks-bad-length", "chunks-bad-magic", "chunks-unsupported-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-reserved-nonzero", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref", "chunks-bad-bundle-range", "chunks-size-mismatch", "chunks-payload-mismatch", "chunk-bundle-truncated", "chunk-corrupt", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-type-check-failed", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pck-directory-refused", "pck-engine-mismatch", "pack-rolled-back", "pack-revoked", "pack-not-data-only", "marker-rejected", "attach-declined", "license_required", "license_invalid", "license_stale", "sign_in_required"]
+const ERROR_CODE_VALUES := ["unauthorized", "not_found", "bad_request", "forbidden", "attestation_required", "attestation_rejected", "attestation_unavailable", "rate_limited", "body_too_large", "method_not_allowed", "misconfigured", "registration_closed", "value_not_representable", "document_not_representable", "signing_unavailable", "device_keys_invalid", "device_keys_required", "ring_too_large", "relay_disabled", "relay_paused", "relay_quota_exceeded", "connect_links_disabled", "relay_ticket_invalid", "device_limit", "key_entry_limit", "license_disabled", "license_expired", "not_entitled", "version_blocked", "channel_not_allowed", "hardware_mismatch", "fingerprint_required", "enroll_disabled", "enroll_claimed", "enroll_failed", "managed_by_admin", "catalog_unavailable", "license_unusable", "disabled", "oidc_error", "unavailable", "erasure_ledger_unavailable", "identity_disabled", "unknown_app", "invalid_request", "invalid_client", "invalid_grant", "unsupported_grant_type", "invalid_scope", "redirect_uri_mismatch", "invalid_request_uri", "license_choice_required", "interstitial_required", "not_nearby", "auth_method_disabled", "email_unavailable", "turnstile_failed", "signin_expired", "invalid_code", "code_expired", "email_in_use", "terms_required", "license_owned", "license_email_bound", "account_required", "cursor_expired", "client_mismatch", "value_invalid", "op_invalid_for_policy", "setting_not_synced", "collection_unknown", "entitlement_required", "quota_exceeded", "writes_paused", "encryption_mismatch", "revision_conflict", "upload_mismatch", "upload_expired", "upload_incomplete", "file_too_large", "keyring_conflict", "email_mismatch", "link_conflict", "last_link", "step_up_required", "not_eligible", "not_removable", "download_auth_required", "delivery_gate_missing", "upstream_rate_limited", "server_misconfigured", "internal_error", "release_record_rejected", "release_tag_is_pack_release", "asset_unreachable", "feed_not_composable", "service-unavailable", "service-disabled", "local-only", "backend-origin-not-allowed", "insecure-base-url", "bundle-jws-rejected", "bundle-claims-rejected", "bundle-trust-rejected", "inner-doc-rejected", "bundle", "transport", "network", "refresh-failed", "sync-failed", "fetch-failed", "bridge-missing", "unknown", "release-refused", "bundle-rejected", "bundle-import-unsupported", "report-unsupported", "device-management-unsupported", "device-keys-unreadable", "device-key-store-error", "device_list_failed", "device_rename_failed", "device_deauthorize_failed", "key-entry-unsupported", "sign-in-failed", "sign-out-failed", "bad_response", "network-error", "server-error", "cancelled", "sign-in-expired", "redirect-unavailable", "sign-in-denied", "sign-in-unavailable", "platform-identity-unavailable", "sync-locked", "recovery-code-invalid", "sync-encryption-pinned", "sync-file-invalid", "invalid-options", "invalid-argument", "invoke-not-allowed", "sender-refused", "not-configured", "unsupported", "timeout", "response-too-large", "too-many-redirects", "insecure-redirect", "http-error", "invalid-response", "store-failed", "connect-unavailable", "peer-cert-invalid", "nearby-permission-denied", "nearby-unsupported", "peer-handshake-failed", "peer-closed", "transfer-cancelled", "link-unknown", "peer_revoked", "peer_expired", "peer_bad_frame", "peer_unknown_critical", "peer_not_allowed", "peer_busy", "peer_timeout", "peer_bye", "platform-error", "no-token", "mint-unavailable", "feed-rejected", "feed-rollback", "record-rejected", "record-mismatch", "payload-mismatch", "swap-refused", "swap-failed", "files-index-invalid", "files-unsafe-path", "files-duplicate-path", "files-case-collision", "files-path-conflict", "files-layout-mismatch", "content-stamp-invalid", "full-corrupt", "delta-artifact-mismatch", "delta-base-mismatch", "delta-apply-failed", "file-corrupt", "file-source-missing", "payload-hash-mismatch", "chunks-ref-mismatch", "chunks-bad-length", "chunks-bad-magic", "chunks-unsupported-version", "chunks-bad-record-size", "chunks-bad-flags", "chunks-reserved-nonzero", "chunks-zero-length", "chunks-bad-clen", "chunks-bad-bundle-ref", "chunks-bad-bundle-range", "chunks-size-mismatch", "chunks-payload-mismatch", "chunk-bundle-truncated", "chunk-corrupt", "plan-transport-unsupported", "plan-insufficient-disk", "plan-no-strategy", "pack-no-variant", "pack-type-unsupported", "pack-type-check-failed", "pack-not-pinned", "pack-not-entitled", "pack-state-unreadable", "pck-directory-refused", "pck-engine-mismatch", "pack-rolled-back", "pack-revoked", "pack-not-data-only", "marker-rejected", "attach-declined", "license_required", "license_invalid", "license_stale", "sign_in_required"]
 
 ## The registry: every error code and its kind (`wire` or `client`).
 const ERROR_CODE_KINDS := {
@@ -251,6 +267,7 @@ const ERROR_CODE_KINDS := {
 	"relay_disabled": "wire",
 	"relay_paused": "wire",
 	"relay_quota_exceeded": "wire",
+	"connect_links_disabled": "wire",
 	"relay_ticket_invalid": "wire",
 	"device_limit": "wire",
 	"key_entry_limit": "wire",
@@ -279,6 +296,7 @@ const ERROR_CODE_KINDS := {
 	"unsupported_grant_type": "wire",
 	"invalid_scope": "wire",
 	"redirect_uri_mismatch": "wire",
+	"invalid_request_uri": "wire",
 	"license_choice_required": "wire",
 	"interstitial_required": "wire",
 	"not_nearby": "wire",
@@ -359,6 +377,7 @@ const ERROR_CODE_KINDS := {
 	"server-error": "client",
 	"cancelled": "client",
 	"sign-in-expired": "client",
+	"redirect-unavailable": "client",
 	"sign-in-denied": "client",
 	"sign-in-unavailable": "client",
 	"platform-identity-unavailable": "client",
@@ -382,6 +401,19 @@ const ERROR_CODE_KINDS := {
 	"connect-unavailable": "client",
 	"peer-cert-invalid": "client",
 	"nearby-permission-denied": "client",
+	"nearby-unsupported": "client",
+	"peer-handshake-failed": "client",
+	"peer-closed": "client",
+	"transfer-cancelled": "client",
+	"link-unknown": "client",
+	"peer_revoked": "peer",
+	"peer_expired": "peer",
+	"peer_bad_frame": "peer",
+	"peer_unknown_critical": "peer",
+	"peer_not_allowed": "peer",
+	"peer_busy": "peer",
+	"peer_timeout": "peer",
+	"peer_bye": "peer",
 	"platform-error": "client",
 	"no-token": "client",
 	"mint-unavailable": "client",
@@ -512,6 +544,7 @@ class Feature:
 	const IDENTITY_ATTACH := "identity.attach"
 	const IDENTITY_ACCOUNT := "identity.account"
 	const IDENTITY_REDIRECT_WEB := "identity.redirect.web"
+	const IDENTITY_REDIRECT_NATIVE := "identity.redirect.native"
 	const IDENTITY_CHOICE := "identity.choice"
 	const IDENTITY_DEVICECODE_CHOICE := "identity.devicecode.choice"
 	const IDENTITY_SIGNIN_HINTS := "identity.signin.hints"
@@ -522,6 +555,7 @@ class Feature:
 	const IDENTITY_AUTOSIGNIN := "identity.autosignin"
 	const IDENTITY_RESTORE := "identity.restore"
 	const IDENTITY_LINK := "identity.link"
+	const IDENTITY_NEARBY := "identity.nearby"
 	const RELEASE_CHANGELOG := "release.changelog"
 	const RELEASE_DOWNLOAD := "release.download"
 	const RELEASE_RECORD := "release.record"
@@ -589,7 +623,7 @@ class Feature:
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "core.backend", "core.devicekeys", "license.gate", "license.signedinuser", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "sync.keyring", "sync.records", "sync.files", "sync.files.delta", "sync.e2e.recovery", "sync.transfer.background", "sync.e2e", "connect.identity", "connect.noise", "connect.protocol", "connect.lan", "connect.relay", "connect.links", "connect.transfer", "connect.app", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "identity.redirect.web", "identity.choice", "identity.devicecode.choice", "identity.signin.hints", "identity.keyreturn", "identity.exchange", "identity.gamecenter", "identity.pgs", "identity.autosignin", "identity.restore", "identity.link", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.kit.holders", "ui.cli", "ui.cli.mount", "ui.cli.contract", "ui.cli.portal", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt", "server.license", "server.signin", "server.config", "server.webhooks"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.presentation", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "core.backend", "core.devicekeys", "license.gate", "license.signedinuser", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "config.sync", "sync.scenarios", "sync.settings", "sync.conflict", "sync.saves", "sync.keyring", "sync.records", "sync.files", "sync.files.delta", "sync.e2e.recovery", "sync.transfer.background", "sync.e2e", "connect.identity", "connect.noise", "connect.protocol", "connect.lan", "connect.relay", "connect.links", "connect.transfer", "connect.app", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.devicelabel", "identity.toggle", "identity.keyentry", "identity.attach", "identity.account", "identity.redirect.web", "identity.redirect.native", "identity.choice", "identity.devicecode.choice", "identity.signin.hints", "identity.keyreturn", "identity.exchange", "identity.gamecenter", "identity.pgs", "identity.autosignin", "identity.restore", "identity.link", "identity.nearby", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.kit.keyentry", "ui.kit.account", "ui.kit.holders", "ui.cli", "ui.cli.mount", "ui.cli.contract", "ui.cli.portal", "ui.gate", "ui.activate", "ui.signin", "ui.devicelimit", "ui.devices", "ui.update", "ui.settings", "ui.paywall", "ui.theme", "ui.i18n", "commerce.receipt", "server.license", "server.signin", "server.config", "server.webhooks"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -1051,7 +1085,7 @@ const PLAN_MATRIX_VERSION := 2
 const SYNC_SCENARIOS_VERSION := 4
 
 ## `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
-const DEVICE_LABEL_VERSION := 1
+const DEVICE_LABEL_VERSION := 2
 
 ## `presentationMatrixVersion` of conformance/corpus/v2/presentation-matrix.json.
 const PRESENTATION_MATRIX_VERSION := 1
@@ -1060,7 +1094,7 @@ const PRESENTATION_MATRIX_VERSION := 1
 const PORTAL_MATRIX_VERSION := 1
 
 ## `uiMatrixVersion` of conformance/corpus/v2/ui-matrix.json.
-const UI_MATRIX_VERSION := 10
+const UI_MATRIX_VERSION := 8
 
 ## `backendMatrixVersion` of conformance/corpus/v2/backend-matrix.json (WIRE-CONTRACT-V4 §14).
 const BACKEND_MATRIX_VERSION := 1
@@ -1491,22 +1525,22 @@ static func capabilities() -> Dictionary:
 		"sync.scenarios": {"status": "implemented", "service": "sync", "na": []},
 		"sync.settings": {"status": "implemented", "service": "sync", "na": []},
 		"sync.conflict": {"status": "planned", "service": "sync", "na": []},
-		"sync.saves": {"status": "planned", "service": "sync", "na": []},
+		"sync.saves": {"status": "implemented", "service": "sync", "na": [{"runtime": "ios", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}]},
 		"sync.keyring": {"status": "implemented", "service": "sync", "na": []},
 		"sync.records": {"status": "planned", "service": "sync", "na": []},
-		"sync.files": {"status": "planned", "service": "sync", "na": []},
-		"sync.files.delta": {"status": "planned", "service": "sync", "na": []},
+		"sync.files": {"status": "implemented", "service": "sync", "na": [{"runtime": "ios", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}]},
+		"sync.files.delta": {"status": "implemented", "service": "sync", "na": [{"runtime": "ios", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}]},
 		"sync.e2e.recovery": {"status": "planned", "service": "sync", "na": []},
-		"sync.transfer.background": {"status": "planned", "service": "sync", "na": [{"runtime": "web", "reason": "runtime"}]},
+		"sync.transfer.background": {"status": "planned", "service": "sync", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"sync.e2e": {"status": "implemented", "service": "sync", "na": []},
-		"connect.identity": {"status": "planned", "service": "connect", "na": []},
-		"connect.noise": {"status": "planned", "service": "connect", "na": []},
-		"connect.protocol": {"status": "planned", "service": "connect", "na": []},
-		"connect.lan": {"status": "planned", "service": "connect", "na": []},
-		"connect.relay": {"status": "planned", "service": "connect", "na": []},
+		"connect.identity": {"status": "implemented", "service": "connect", "na": []},
+		"connect.noise": {"status": "implemented", "service": "connect", "na": []},
+		"connect.protocol": {"status": "implemented", "service": "connect", "na": []},
+		"connect.lan": {"status": "implemented", "service": "connect", "na": [{"runtime": "web", "reason": "runtime"}]},
+		"connect.relay": {"status": "implemented", "service": "connect", "na": []},
 		"connect.links": {"status": "planned", "service": "connect", "na": []},
 		"connect.transfer": {"status": "planned", "service": "connect", "na": []},
-		"connect.app": {"status": "planned", "service": "connect", "na": []},
+		"connect.app": {"status": "implemented", "service": "connect", "na": []},
 		"devices.fingerprint": {"status": "implemented", "service": "core", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"devices.facts": {"status": "implemented", "service": "core", "na": []},
 		"devices.register": {"status": "implemented", "service": "core", "na": []},
@@ -1522,16 +1556,18 @@ static func capabilities() -> Dictionary:
 		"identity.attach": {"status": "implemented", "service": "identity", "na": []},
 		"identity.account": {"status": "implemented", "service": "identity", "na": []},
 		"identity.redirect.web": {"status": "implemented", "service": "identity", "na": []},
+		"identity.redirect.native": {"status": "planned", "service": "identity", "na": []},
 		"identity.choice": {"status": "implemented", "service": "identity", "na": []},
-		"identity.devicecode.choice": {"status": "planned", "service": "identity", "na": []},
+		"identity.devicecode.choice": {"status": "implemented", "service": "identity", "na": []},
 		"identity.signin.hints": {"status": "implemented", "service": "identity", "na": []},
 		"identity.keyreturn": {"status": "planned", "service": "identity", "na": []},
 		"identity.exchange": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
 		"identity.gamecenter": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"identity.pgs": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
-		"identity.autosignin": {"status": "planned", "service": "identity", "na": []},
+		"identity.autosignin": {"status": "implemented", "service": "identity", "na": []},
 		"identity.restore": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
 		"identity.link": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
+		"identity.nearby": {"status": "planned", "service": "identity", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
 		"release.download": {"status": "implemented", "service": "release", "na": []},
 		"release.record": {"status": "implemented", "service": "release", "na": []},
@@ -1599,4 +1635,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "6e45d5d2a2315c1aa47ddd70026caf6ae298ef47111cd0f836ad4cc6d8c4f0c7"
+const CAPABILITY_DIGEST := "18faf40c292596d90fd5dbc3f4d4c69885873b966feb17bab952265738a93489"

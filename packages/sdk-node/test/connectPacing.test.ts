@@ -4,6 +4,7 @@
 // these tests pin that the relay service uses it.
 import { describe, expect, it, vi } from "vitest";
 import { RelayPacer } from "@polaris-key/client-core/peer";
+import type { ConnectSession } from "../src/connect/session.js";
 import { devId, until } from "./lanFixtures.js";
 import { FakeRoom, ManualTimer, relayHarness } from "./relayFixtures.js";
 
@@ -46,6 +47,85 @@ describe("D-9: the relay send path is paced", () => {
     expect(link.closed?.code).toBe("peer_busy");
     expect(link.closed?.byPeer).toBe(false);
     expect(b.cloudConnect.status().running).toBe(true);
+  });
+});
+
+describe("NODE-OVERFLOW: a refused host send does not advance the keys", () => {
+  it("the peer sees peer_busy, not peer_bad_frame", async () => {
+    const { a, b, room } = await world();
+    let ms = 0;
+    const pace = new RelayPacer(180, 360, () => ms);
+    let inn: ConnectSession | null = null;
+    a.cloudConnect.onChannel((s) => (inn = s));
+    await a.cloudConnect.start(viaRelay(room));
+    await b.cloudConnect.start(
+      viaRelay(room, { outbox: { pacer: pace, maxBytes: 4096 } }),
+    );
+    await until(() => b.cloudConnect.peers().some((p) => p.deviceId === A));
+    const link = await b.cloudConnect.open(A);
+    await until(() => inn !== null);
+    const peerEnd = (inn as unknown as ConnectSession).closed;
+    expect(peerEnd).toBeNull();
+    // Spend the burst, then let one second of tokens back in once the queue has refused the send.
+    while (pace.tryTake() === 0);
+    await link.send(new Uint8Array(100_000)).catch(() => undefined);
+    expect(link.closed?.code).toBe("peer_busy");
+    ms = 5_000;
+    await until(() => (inn as unknown as ConnectSession).closed !== null);
+    expect((inn as unknown as ConnectSession).closed).toEqual({
+      code: "peer_busy",
+      byPeer: true,
+    });
+  });
+});
+
+describe("relay: concurrent host sends are refused before encryption", () => {
+  it("three unawaited sends against a small cap end peer_busy for the peer", async () => {
+    const { a, b, room } = await world();
+    let ms = 0;
+    const pace = new RelayPacer(180, 360, () => ms);
+    let inn: ConnectSession | null = null;
+    a.cloudConnect.onChannel((s) => (inn = s));
+    await a.cloudConnect.start(viaRelay(room));
+    await b.cloudConnect.start(
+      viaRelay(room, { outbox: { pacer: pace, maxBytes: 4096 } }),
+    );
+    await until(() => b.cloudConnect.peers().some((p) => p.deviceId === A));
+    const link = await b.cloudConnect.open(A);
+    await until(() => inn !== null);
+    while (pace.tryTake() === 0);
+    // Nothing is awaited between the sends: each checks before any of them has queued.
+    await Promise.all(
+      [1, 2, 3].map(() =>
+        link.send(new Uint8Array(1500)).catch(() => undefined),
+      ),
+    );
+    expect(link.closed?.code).toBe("peer_busy");
+    ms = 5_000;
+    await until(() => (inn as unknown as ConnectSession).closed !== null);
+    expect((inn as unknown as ConnectSession).closed).toEqual({
+      code: "peer_busy",
+      byPeer: true,
+    });
+  });
+
+  it("two sessions sending at once share one reservation", async () => {
+    const { a, b, room } = await world();
+    const pace = new RelayPacer(180, 360, () => 0);
+    await a.cloudConnect.start(viaRelay(room));
+    await b.cloudConnect.start(
+      viaRelay(room, { outbox: { pacer: pace, maxBytes: 4096 } }),
+    );
+    await until(() => b.cloudConnect.peers().some((p) => p.deviceId === A));
+    const one = await b.cloudConnect.open(A);
+    const two = await b.cloudConnect.open(A);
+    while (pace.tryTake() === 0);
+    await Promise.all([
+      one.send(new Uint8Array(1500)).catch(() => undefined),
+      one.send(new Uint8Array(1500)).catch(() => undefined),
+      two.send(new Uint8Array(1500)).catch(() => undefined),
+    ]);
+    expect([one.closed?.code, two.closed?.code]).toContain("peer_busy");
   });
 });
 

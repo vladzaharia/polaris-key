@@ -72,6 +72,16 @@ public protocol ConnectSessionLink: Sendable {
     func closeSoon(_ code: PeerCloseCode)
     /// Stop or resume reading. Links without flow control ignore it.
     func pause(_ on: Bool)
+    /// The transfer port (§15.11): records of the six xfer types reach `onRecord` and leave through `sendXfer`.
+    func attachXfer(_ onRecord: @escaping @Sendable (Int, Data) -> Void) async throws
+    func sendXfer(type: Int, body: Data) async throws
+}
+
+extension ConnectSessionLink {
+    public func attachXfer(_ onRecord: @escaping @Sendable (Int, Data) -> Void) async throws {
+        throw PeerChannelError.notOpen
+    }
+    public func sendXfer(type: Int, body: Data) async throws { throw PeerChannelError.notOpen }
 }
 
 extension PeerLink: ConnectSessionLink {}
@@ -98,14 +108,22 @@ public final class ConnectSession: Sendable, CustomStringConvertible, CustomRefl
     public let role: String
     public let remoteAddress: String
     public let path: String
+    /// The link a mode-`c` session runs over (§15.10); nil for the person's own devices.
+    public let contact: ConnectContactRef?
+    /// The peer's authenticated static key (32 raw bytes): the certificate's `agreeKey` in mode `a`, the pinned
+    /// contact key in mode `c`. Direct Transfer keys its partial files by it.
+    public let remoteStatic: Data?
     private let link: any ConnectSessionLink
     private let budget: ConnectQueueBudget
     private let state = LockedValue(State())
 
     public init(
         link: any ConnectSessionLink, peerDeviceId: String, caps: [String], hello: PeerHello, role: String,
-        remoteAddress: String, path: String = "lan", budget: ConnectQueueBudget? = nil
+        remoteAddress: String, path: String = "lan", budget: ConnectQueueBudget? = nil,
+        contact: ConnectContactRef? = nil, remoteStatic: Data? = nil
     ) {
+        self.contact = contact
+        self.remoteStatic = remoteStatic
         self.link = link
         self.peerDeviceId = peerDeviceId
         self.caps = caps
@@ -116,7 +134,10 @@ public final class ConnectSession: Sendable, CustomStringConvertible, CustomRefl
         self.budget = budget ?? .shared
     }
 
-    public var description: String { "ConnectSession(peer: \(peerDeviceId), path: \(path), role: \(role))" }
+    public var description: String {
+        contact.map { "ConnectSession(contact: \($0.id), path: \(path), role: \(role))" }
+            ?? "ConnectSession(peer: \(peerDeviceId), path: \(path), role: \(role))"
+    }
     public var customMirror: Mirror { Mirror(self, children: [:]) }
 
     public var closed: ConnectSessionClosed? { state.with { $0.closed } }
@@ -145,6 +166,27 @@ public final class ConnectSession: Sendable, CustomStringConvertible, CustomRefl
             throw ConnectLanError(.closed, "The session is closed.")
         }
     }
+
+    /// The transfer port, once (§15.11). Throws `ConnectLanError` (`closed`) when the session is closed or the
+    /// capability was not negotiated.
+    func attachXfer(_ onRecord: @escaping @Sendable (Int, Data) -> Void) async throws {
+        if closed != nil { throw ConnectLanError(.closed, "The session is closed.") }
+        do { try await link.attachXfer(onRecord) } catch { throw ConnectLanError(.closed, "The session is closed.") }
+    }
+
+    func sendXfer(type: Int, body: Data) async throws {
+        if closed != nil { throw ConnectLanError(.closed, "The session is closed.") }
+        do {
+            try await link.sendXfer(type: type, body: body)
+        } catch let e as ConnectRelayError {
+            throw e
+        } catch {
+            throw ConnectLanError(.closed, "The session is closed.")
+        }
+    }
+
+    /// Close with any session code from a callback that cannot await (a transfer fault is `peer_bad_frame`).
+    func closeSoon(_ code: PeerCloseCode) { link.closeSoon(code) }
 
     /// The next message. Waits until one arrives; throws `ConnectLanError` (`closed`) when the session
     /// closes with none waiting, and `CancellationError` when the task is cancelled.
@@ -218,11 +260,15 @@ public final class ConnectSession: Sendable, CustomStringConvertible, CustomRefl
         return { [state] in state.with { $0.onClose.removeAll { $0.id == id } } }
     }
 
-    /// Close with `peer_bye` (or `peer_busy`); the CLOSE record is sent first.
+    /// Close with `peer_bye` (or `peer_busy`, or `peer_revoked` for a deleted contact); the CLOSE record is
+    /// sent first.
     public func close(_ code: PeerCloseCode = .peerBye) async {
-        precondition(code == .peerBye || code == .peerBusy, "close code")
+        precondition(code == .peerBye || code == .peerBusy || code == .peerRevoked, "close code")
         await link.close(code)
     }
+
+    /// Close with `peer_revoked`: the roster no longer lists the peer.
+    func closeRevoked() async { await link.close(.peerRevoked) }
 
     // MARK: The link's calls
 
@@ -294,6 +340,7 @@ public final class ConnectSessionHandlers: Sendable {
     private let role: String
     private let path: String
     private let budget: ConnectQueueBudget?
+    private let contacts: [ConnectContactRef]
     private let box = LockedValue<ConnectSession?>(nil)
     private let linkBox = LockedValue<(any ConnectSessionLink)?>(nil)
     private let onEstablishedFn: (@Sendable (ConnectSession) -> Void)?
@@ -303,7 +350,7 @@ public final class ConnectSessionHandlers: Sendable {
     private let onEndedFn: (@Sendable () -> Void)?
 
     public init(
-        role: String, path: String = "lan", budget: ConnectQueueBudget? = nil,
+        role: String, path: String = "lan", budget: ConnectQueueBudget? = nil, contacts: [ConnectContactRef] = [],
         onEstablished: (@Sendable (ConnectSession) -> Void)? = nil, onRing: (@Sendable (String, Int) -> Void)? = nil,
         onTrust: (@Sendable (String) -> Void)? = nil, onRingWanted: (@Sendable () -> Void)? = nil,
         onEnded: (@Sendable () -> Void)? = nil
@@ -311,6 +358,7 @@ public final class ConnectSessionHandlers: Sendable {
         self.role = role
         self.path = path
         self.budget = budget
+        self.contacts = contacts
         onEstablishedFn = onEstablished
         onRingFn = onRing
         onTrustFn = onTrust
@@ -325,10 +373,12 @@ public final class ConnectSessionHandlers: Sendable {
     public var handlers: PeerLinkHandlers {
         PeerLinkHandlers(
             onEstablished: { [self] e, address in
-                guard let id = e.peerDeviceId, let link = linkBox.current else { return }
+                let ref = e.contactIndex.flatMap { contacts.indices.contains($0) ? contacts[$0] : nil }
+                // Mode c has no device id: the contact that opened the session names the peer.
+                guard let id = e.peerDeviceId ?? (ref != nil ? "" : nil), let link = linkBox.current else { return }
                 let s = ConnectSession(
                     link: link, peerDeviceId: id, caps: e.caps, hello: e.hello, role: role, remoteAddress: address,
-                    path: path, budget: budget)
+                    path: path, budget: budget, contact: ref, remoteStatic: e.remoteStatic)
                 box.set(s)
                 onEstablishedFn?(s)
             },

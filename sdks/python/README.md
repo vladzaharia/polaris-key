@@ -164,19 +164,19 @@ Every one is importable on its own, so a config-only daemon never pulls the lice
 `import polaris_key` itself loads no service, httpx or cryptography until a name is used, so a
 host CLI that mounts the verbs pays for the client only when a verb runs.
 
-| Import                 | Owns                                                                                                                 |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `polaris_key.core`     | device principal, credential, trust, cache v3, clock floor, sync, telemetry, offline bundles, the frozen wire crypto |
-| `polaris_key.license`  | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate, `entitled_channels()`          |
-| `polaris_key.config`   | the signed config document + layered resolution, `fetch_schema()` (the catalog), edge-mint (`mint_token`)            |
-| `polaris_key.devices`  | registration, the roster, fingerprint / facts / device-id, the stores                                                |
-| `polaris_key.identity` | device-code sign-in (RFC 8628): `sign_in.start()` answers a session with `wait` / `reopen` / `cancel`                |
-| `polaris_key.release`  | changelog, install script, artifact URLs, verified `fetch()`                                                         |
-| `polaris_key.update`   | version check, the Sparkle appcast URL, the signed update decision (`decide`, `feed`, `release_record`, `build_url`) |
-| `polaris_key.commerce` | store purchase claims: `binding()`, `claim()`, `claim_steam()`, `claim_play()`, `claim_app_store()`                  |
-| `polaris_key.copy`     | the localized message table for every registry code and status                                                       |
-| `polaris_key.aio`      | `AsyncClient`: every sub-client as coroutines over the same core                                                     |
-| `polaris_key.local`    | the transportless profile                                                                                            |
+| Import                 | Owns                                                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `polaris_key.core`     | device principal, credential, trust, cache v3, clock floor, sync, telemetry, offline bundles, the frozen wire crypto  |
+| `polaris_key.license`  | `activate` / `enroll` / `token` / `deauthorize`, the signed grant document, the gate, `entitled_channels()`           |
+| `polaris_key.config`   | the signed config document + layered resolution, `fetch_schema()` (the catalog), edge-mint (`mint_token`)             |
+| `polaris_key.devices`  | registration, the roster, fingerprint / facts / device-id, the stores                                                 |
+| `polaris_key.identity` | `auto_sign_in()`; sign-in by device code (RFC 8628) or nearby approval: `sign_in.start()` answers a session; `nearby` |
+| `polaris_key.release`  | changelog, install script, artifact URLs, verified `fetch()`                                                          |
+| `polaris_key.update`   | version check, the Sparkle appcast URL, the signed update decision (`decide`, `feed`, `release_record`, `build_url`)  |
+| `polaris_key.commerce` | store purchase claims: `binding()`, `claim()`, `claim_steam()`, `claim_play()`, `claim_app_store()`                   |
+| `polaris_key.copy`     | the localized message table for every registry code and status                                                        |
+| `polaris_key.aio`      | `AsyncClient`: every sub-client as coroutines over the same core                                                      |
+| `polaris_key.local`    | the transportless profile                                                                                             |
 
 `client.license.entitled_channels()` returns the `channels` entitlement's string grants in
 order, or `["stable"]` when the license carries none — the Worker's own answer, and every SDK's.
@@ -500,6 +500,47 @@ raises `PolarisError` with `code="sign-in-denied"`; a sign-in that fails after a
 old `/identity/auth/poll` route is retired and the Worker no longer serves it.
 
 A `MintedToken`'s `repr` leaves out `token`, so logging it does not leak the credential.
+
+## Nearby sign-in
+
+A signed-in device (M) approves a device that cannot sign itself in (D), over the LAN and with a short
+code the person matches. `client.identity` is the app's side: `identity.auto_sign_in()` answers first
+(a stored sign-in, or the regular form), `identity.sign_in.start(channel="nearby")` is D's session
+(`approvers`, `on_approvers`, `choose`, `code`, `wait`, `confirm_account`, `decline_account`, `wrap`) and
+`identity.nearby.available(role=...)` and `on_request` are M's. They call the `nearby/start`, `poll`
+and `approve` routes for you and need the multicast layer (`MdnsUnavailableError` answers
+`nearby-unsupported`). The terminal kit (`login` looks for nearby devices first; `devices approve`), the
+Textual app and the Qt kit draw both sides; the guide is
+[Your own UI](https://key.plrs.im/docs/build/sdks/python/your-own-ui/).
+
+`client.cloud_connect.nearby` is the LAN half underneath, gated by the Identity service's discovery and
+working with Connect off. It calls no route: use it only to build your own routes, with `nearby/start`,
+`poll` and `approve` handing their answers to the handles.
+
+```python
+# D: the new device. `request` is the handle `nearby/start` answered.
+req = client.cloud_connect.nearby.request(request, label="Ana's phone")
+req.on_approvers(lambda approvers: show(approvers))     # label and platform, as the device reports them
+shown = req.choose(approver.id)                         # the person tapped one: show shown.code
+req.on_result(lambda status: ...)                       # display only: your poll is the authority
+
+# M: a signed-in device. The handler runs on the Connect thread: hand the approval to your UI thread.
+handle = client.cloud_connect.nearby.on_request(on_approval, prompt=True, label="Ana's laptop")
+
+def on_approval(approval):
+    ...                                                 # show approval.codes; the person picks one
+    got = approval.pick(code)                           # a VouchRequest, "mismatch" or "invalid"
+    if not isinstance(got, str):
+        status, body = call_approve(got)                # your POST nearby/approve with exactly `got`
+        approval.finish(ApproveAnswerInput(status, body, discovery_nearby=True))
+```
+
+Name the device in `label` (`"Ana's laptop"`); never use an account identifier. The label D reports is
+unauthenticated display data: show it as "reported by the device", never as proof of who is asking. The
+blocking calls raise from the Connect thread (hand the work to a thread); the `AsyncClient` mirrors them as
+coroutines. A sign-out stops every advert and request (`nearby.stop_all()`, bounded to 15 s).
+Handlers run on the Connect loop, so keep them short: one that blocks the loop keeps the advert up past that bound
+(sign-out still clears the token, so nothing can be approved, and the sockets drop when the loop is free).
 
 ## Edge-mint
 

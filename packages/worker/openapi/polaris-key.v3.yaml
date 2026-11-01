@@ -298,10 +298,16 @@ paths:
                           authDevicePoll: https://key.plrs.im/djdl/identity/auth/device/poll
                           authorize: https://key.plrs.im/djdl/identity/authorize
                           token: https://key.plrs.im/djdl/identity/token
+                          request: https://key.plrs.im/djdl/identity/request
+                          signinReturn: https://key.plrs.im/signin/return
                           attach: https://key.plrs.im/djdl/identity/attach
                           subject: https://key.plrs.im/djdl/identity/subject
                           signout: https://key.plrs.im/djdl/identity/signout
                           accountPortal: https://key.plrs.im/#/p/djdl
+                        nativeRedirect:
+                          loopback: true
+                          schemes: ["com.example.djdl:/pkey/callback"]
+                          claimedHttps: ["https://djdl.example/open"]
                       sync:
                         enabled: true
                         settings: true
@@ -1061,7 +1067,9 @@ paths:
                 none: { value: { ring: null, wrap: null } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: No account is signed in on the device (`account_required`).
+          description: >
+            No account is signed in on the device (`account_required`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1103,7 +1111,9 @@ paths:
                 badRequest: { value: { error: { code: bad_request } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: No account is signed in on the device (`account_required`).
+          description: >
+            No account is signed in on the device (`account_required`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1169,6 +1179,7 @@ paths:
           description: >
             No account is signed in on the device (`account_required`), or the calling device
             holds no wrap and cannot deposit one for another (`forbidden`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1200,6 +1211,7 @@ paths:
           description: >
             No account is signed in on the device (`account_required`), or `deviceId` is another
             device (`forbidden`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1235,7 +1247,9 @@ paths:
               schema: { $ref: "#/components/schemas/KeyringRecovery" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: No account is signed in on the device (`account_required`).
+          description: >
+            No account is signed in on the device (`account_required`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1275,6 +1289,7 @@ paths:
           description: >
             No account is signed in on the device (`account_required`), or the device holds no
             wrap (`forbidden`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1330,6 +1345,7 @@ paths:
           description: >
             No account is signed in on the device (`account_required`), or the device holds no
             wrap (`forbidden`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -1390,7 +1406,9 @@ paths:
               schema: { $ref: "#/components/schemas/WireError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403":
-          description: No account is signed in on the device (`account_required`).
+          description: >
+            No account is signed in on the device (`account_required`).
+            The SDK build is below the minimum for its SDK (`version_blocked`, no `allowedRange`; update the app).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -8764,9 +8782,23 @@ paths:
         every claim the product grants, unknown values are ignored and `openid` is `invalid_scope`
         until I-21. `login_hint`, `name_hint` and `purpose` prefill the card and verify nothing.
         60 calls a minute per client network. With Identity off a browser navigation lands on
-        the friendly card (`identity_disabled`) and a JSON caller gets `404 not_found`.
+        the friendly card (`identity_disabled`) and a JSON caller gets `404 not_found`. A native
+        app (WIRE-CONTRACT-V5 §12.12) pushes its request to `identity/request` first and sends
+        only `client_id` and `request_uri` here: the URI is resolved before anything else, an
+        unknown, expired, malformed or taken one renders `invalid_request_uri` (400, a branded
+        page, never a redirect), and any other parameter beside it is `302
+        …?error=invalid_request` with the record kept. A native `redirect_uri` sent straight here
+        is `redirect_uri_mismatch`. The `response_type` and `redirect_uri` parameters below are
+        for the direct (web) form.
       parameters:
         - { $ref: "#/components/parameters/Product" }
+        - {
+            name: request_uri,
+            in: query,
+            required: false,
+            description: "A pushed request's URI (§12.12); with it only `client_id` may accompany.",
+            schema: { type: string },
+          }
         - {
             name: response_type,
             in: query,
@@ -9027,6 +9059,64 @@ paths:
         - { $ref: "#/components/parameters/Product" }
       responses:
         "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/request:
+    post:
+      operationId: identityRequest
+      tags: [identity]
+      summary: Push a native app's authorize request (RFC 9126; I-15)
+      description: >
+        WIRE-CONTRACT-V5 §12.12. A native app sends the `authorize` parameters (§12.4) with a
+        native `redirect_uri` (a loopback address, a scheme registered in
+        `identity.nativeRedirect.schemes` or a claimed HTTPS path), `device_name` (§12.7.1) and an
+        optional `return_uri` (a registered scheme's redirect URI), and gets a `request_uri` to
+        open `authorize` with. A native `redirect_uri` is accepted only here: sent straight to
+        `authorize` it is `redirect_uri_mismatch`. The record lives 600 s and can be resolved
+        again until Continue or Cancel takes it. Form-encoded (a JSON body is `invalid_request`).
+        Needs `X-PKey-Device`. Errors are FLAT (RFC 6749 §5.2). `cache-control: no-store`; no CORS
+        headers. 30 calls a minute per client network and 10 per device id, fail-closed. With
+        Identity off the route does not exist (`404 not_found`).
+      security: []
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: "#/components/schemas/PushedRequest" }
+      responses:
+        "201":
+          description: "The pushed request. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PushedRequestResponse" }
+              examples:
+                pushed:
+                  summary: test/surfaces/identityNativeRedirect.test.ts
+                  value:
+                    request_uri: urn:ietf:params:oauth:request_uri:Zk8LqR8nT0sYp2vcEgHj6B
+                    expires_in: 600
+        "400":
+          description: >
+            `invalid_request` (a malformed or missing parameter, no `X-PKey-Device`, a bad
+            `return_uri`), `redirect_uri_mismatch` (not a registered native URI) or
+            `invalid_scope` — FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                mismatch: { value: { error: redirect_uri_mismatch } }
+        "401":
+          description: "`invalid_client`: `client_id` is not the product slug — FLAT."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: "`rate_limited` with `retryAfter` — FLAT. Fails closed."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /{product}/identity/nonce:
     post:
       operationId: identityNonce
@@ -9086,6 +9176,288 @@ paths:
                 limited: { value: { error: { code: rate_limited } } }
     options:
       operationId: preflightIdentityNonce
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/nearby/start:
+    post:
+      operationId: identityNearbyStart
+      tags: [identity]
+      summary: A signed-out device asks a nearby signed-in device to approve its sign-in (I-40.4)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.5. The new device D sends its two public keys and a `nearby-start`
+        `pkey-proof/1` proof over `<signKey>.<agreeKey>`, checked with the body's `signKey`. The
+        answer is a request handle (`nr_` and 22 base64url characters) held for 300 seconds.
+        The handle is stored only as a peppered hash, and the client network only as a peppered
+        hash. Every refusal about the keys is one `400 device_keys_invalid`: a malformed key, a
+        device that already has a registered signing key and sent another, an agreement key held
+        by another device, and a device id that already holds a credential and proves it by neither
+        its bearer nor its registered signing key. Every refusal of the proof is one
+        `400 invalid_grant`. 10 calls a minute per client network, fail-closed. NESTED errors.
+        With Identity off, `identity.nearby` off or the operator gate `launch.identityNearby` off,
+        the route does not exist (`404 not_found`).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NearbyStartRequest" }
+      responses:
+        "201":
+          description: "The request handle. `cache-control: no-store`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NearbyStartResponse" }
+              examples:
+                started:
+                  value:
+                    request: nr_Zk8LqR8nT0sYp2vcEgHj6B
+                    expiresIn: 300
+                    interval: 3
+        "400":
+          description: >
+            A malformed body or device id (`bad_request`), a refused key set
+            (`device_keys_invalid`) or a refused proof (`invalid_grant`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                invalid:
+                  value: { error: { code: invalid_grant } }
+        "404":
+          description: Nearby approval is off for this product or deployment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: Over the network limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+        "503":
+          description: The request could not be recorded; no handle was handed out.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityNearbyStart
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/nearby/approve:
+    post:
+      operationId: identityNearbyApprove
+      tags: [identity]
+      summary: The signed-in device approves or denies a nearby sign-in (I-40.5)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.5. The approving device M sends its bearer with its `X-PKey-Device`,
+        the request handle, D's device id and the two keys D started with, the decision and a `nearby-approve`
+        `pkey-proof/1` proof over the handle, checked with M's registered signing key. A device with
+        no sign-in is `403 account_required`; one with no registered signing key is
+        `409 device_keys_required`. A request that is unknown, expired, decided or another
+        product's, M's own request, and a device id or keys that differ from D's start values are one
+        `404 not_found`; a mismatch counts an attempt and the third ends the request. A client
+        network other than the one `start` came from is `403 not_nearby` and the request stays open.
+        A denial is final (`204`). An approval with no `choice` while a choice is due answers `choose`
+        and writes nothing. `choice` is `{kind:"license", licenseId}` or `{kind:"create"}` and nothing
+        else. 10 calls a minute per approving device, and 5 an hour per subject charged on decisions
+        only, both fail-closed. NESTED errors. With Identity off, `identity.nearby` off or the
+        operator gate `launch.identityNearby` off, the route does not exist (`404 not_found`).
+        An approval binds D: the licence M picked, `create`, the one free candidate, or no licence
+        when there is nothing to choose, and answers `{status: "approved", deviceLabel}`
+        (`deviceLabel` is D's stored label, or null). D's credential is stored as a hash only; D's
+        poll collects the token. A full licence is `403 device_limit` and a lost mint is
+        `409 license_choice_required`; those, `rate_limited` and `503 unavailable` leave the
+        request open. The tap is D's consent: a standing consent stands, and with none the asked
+        scope is recorded.
+      security: [{ deviceToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NearbyApproveRequest" }
+      responses:
+        "200":
+          description: >
+            `approved` (D is bound) or `choose` (a choice is due; nothing is written).
+            `cache-control: no-store`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NearbyApproveResponse" }
+        "204":
+          description: The request was denied. The denial is final.
+        "400":
+          description: >
+            A malformed body, handle, `choice` or device id (`bad_request`), or a refused proof
+            (`invalid_grant`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                invalid:
+                  value: { error: { code: invalid_grant } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403":
+          description: >
+            `not_nearby` (another client network than `start`'s), `account_required` (M has no
+            sign-in on this product) or `device_limit` (the licence has no free seat; the request
+            stays open).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                notNearby: { value: { error: { code: not_nearby } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "409":
+          description: >
+            M has no registered signing key (`device_keys_required`), or a licence was not minted
+            (`license_choice_required`, the request stays open).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "413":
+          description: The body is over 4 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: Over the device or subject limit.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                limited: { value: { error: { code: rate_limited } } }
+        "503":
+          description: The sign-in or a store the bind needs could not be read; the request stays open.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightIdentityNearbyApprove
+      tags: [identity]
+      summary: CORS preflight
+      description: >
+        Browser preflight for a page on one of the product's `web.origins`. Answered
+        before service dispatch, so the result never depends on whether the service
+        behind this path is enabled. See `CorsPreflight`. No credentials are allowed.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
+  /{product}/identity/nearby/poll:
+    post:
+      operationId: identityNearbyPoll
+      tags: [identity]
+      summary: The new device collects the outcome of its nearby request (I-40.7)
+      description: >
+        WIRE-CONTRACT-V5 §12.11.5 rule 10. D sends the handle and a `nearby-poll` `pkey-proof/1`
+        proof over it, made with the signing key D sent on `start`, with the `X-PKey-Device` of
+        `start`. A wrong proof and a wrong device are one `400 invalid_grant`. An unknown, expired or
+        collected request, and a device that was removed or rebound after the approval, answer
+        `{status: "timeout"}`. A poll inside the 3 second interval is `429` with the state
+        `slow_down`; a storage failure is `503 unavailable` with `Retry-After` and keeps the
+        request. A denial is `{status: "error", reason: "access_denied"}`. An approval is answered
+        once with a `TokenResponse`: D's credential is replaced by a new one at that poll and only
+        its hash is stored. A coarse 60 calls a minute per client network, fail-closed. With
+        Identity off, `identity.nearby` off or the operator gate `launch.identityNearby` off, the
+        route does not exist (`404 not_found`).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { $ref: "#/components/parameters/DeviceHeader" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NearbyPollRequest" }
+      responses:
+        "200":
+          description: "A state, a denial or the token (once). `cache-control: no-store`."
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/NearbyPollState" }
+                  - { $ref: "#/components/schemas/TokenResponse" }
+              examples:
+                pending: { value: { status: pending } }
+                timeout: { value: { status: timeout } }
+                denied: { value: { status: error, reason: access_denied } }
+        "400":
+          description: >
+            A malformed body or device id (`bad_request`), or a wrong proof or device
+            (`invalid_grant`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+              examples:
+                invalid:
+                  value: { error: { code: invalid_grant } }
+        "404":
+          description: Nearby approval is off for this product or deployment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "413":
+          description: The body is over 2 KiB.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WireError" }
+        "429":
+          description: >
+            `slow_down` (a poll inside the interval; a state, not an error body), or `rate_limited`
+            over the network ceiling.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - { $ref: "#/components/schemas/SlowDown" }
+                  - { $ref: "#/components/schemas/WireError" }
+              examples:
+                slowDown: { value: { status: slow_down, interval: 3 } }
+        "503":
+          description: >
+            A storage failure. `Retry-After` is the poll interval; the request is kept.
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string, enum: [unavailable] }
+                  message: { type: string }
+    options:
+      operationId: preflightIdentityNearbyPoll
       tags: [identity]
       summary: CORS preflight
       description: >
@@ -9863,6 +10235,16 @@ paths:
         off), `503 relay_paused` (the deployment paused it; `Retry-After`), `429
         relay_quota_exceeded` with `scope: product` (the month is spent) or `scope: person` (the
         person's day is zero). The same credential and refusals as `connect/identity`.
+
+        An optional body asks for a contact room (CC-19.3, §15.7, §15.10): `{"room":"c","rid":"…"}`,
+        strict JSON of at most 256 bytes, `rid` the 22 canonical base64url characters of the
+        room id. No body is the account ticket above. The ticket then opens only that contact
+        room, and the answer carries `"room":"c"`; an account answer carries no `room`. While the
+        product's `cloudConnect.interAccount` setting, the `launch.connectLinks` gate or the
+        service is off, a contact request is `403 connect_links_disabled` and nothing else is
+        looked at. A bad body is `400 bad_request`. Contact tickets are limited to 30 an hour per
+        device, and a person may hold at most 64 contact rooms; both refuse with `429
+        rate_limited`, and fail closed.
       security: [{ deviceToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -9871,6 +10253,14 @@ paths:
           required: true
           description: The device the bearer token belongs to.
           schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ConnectRelayTicketRequest" }
+            examples:
+              contact:
+                value: { room: c, rid: lXg0MgIHVN5qAmGFUen7vA }
       responses:
         "200":
           description: "`cache-control: no-store`."
@@ -9884,8 +10274,17 @@ paths:
                     url: wss://key.plrs.im/djdl/connect/relay
                     protocol: pkey-relay.1
                     expiresAt: 1761300060
+                contact:
+                  value:
+                    ticket: pkeyrt_dGlja2V0dGlja2V0dGlja2V0dGlja2V0
+                    url: wss://key.plrs.im/djdl/connect/relay
+                    protocol: pkey-relay.1
+                    expiresAt: 1761300060
+                    room: c
         "400":
-          description: "`bad_request`: `X-PKey-Device` is missing or malformed."
+          description: >
+            `bad_request`: `X-PKey-Device` is missing or malformed, or a contact body is not
+            exactly `room` `c` and a canonical `rid`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -9894,7 +10293,8 @@ paths:
           description: >
             `account_required`: no account is signed in on the device (the body carries
             `signInUrl`). `relay_disabled`: the product turned the relay off; devices connect only
-            on the same network.
+            on the same network. `connect_links_disabled`: a contact ticket while the product's
+            inter-account setting, the `launch.connectLinks` gate or the service is off.
           content:
             application/json:
               schema:
@@ -9903,6 +10303,8 @@ paths:
                   - { $ref: "#/components/schemas/WireError" }
               examples:
                 disabled: { value: { error: { code: relay_disabled } } }
+                linksDisabled:
+                  { value: { error: { code: connect_links_disabled } } }
         "404": { $ref: "#/components/responses/NotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "409":
@@ -9917,7 +10319,8 @@ paths:
         "429":
           description: >
             `relay_quota_exceeded` (`scope` is `person` or `product`; the local network is never
-            metered), or `rate_limited` (12 tickets a minute per device; `Retry-After`).
+            metered), or `rate_limited` (12 tickets a minute per device; a contact ticket also 30
+            an hour per device and 64 contact rooms per person; `Retry-After`).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ConnectRelayQuotaExceeded" }
@@ -9959,7 +10362,8 @@ paths:
         WIRE-CONTRACT-V5 §15.7. A WebSocket upgrade with `Sec-WebSocket-Protocol: pkey-relay.1,
         pkeyrt_…`: the ticket from `POST /{product}/connect/relay/ticket`, which this request
         consumes. The Worker checks the ticket, re-reads the person's devices, and hands the socket
-        to the person's relay room, which answers `pkey-relay.1`. The ticket value never reaches the
+        to the person's relay room (a contact ticket: to the contact room it is bound to), which answers
+        `pkey-relay.1`. The ticket value never reaches the
         room. A missing, malformed, expired, spent or foreign ticket is `401 relay_ticket_invalid`
         (no `Authorization` is read). Answers `404` while the relay is off on the deployment, and
         the same `403`, `429` and `503` refusals as the ticket route. After the upgrade the room
@@ -9986,7 +10390,9 @@ paths:
               examples:
                 invalid: { value: { error: { code: relay_ticket_invalid } } }
         "403":
-          description: "`relay_disabled`: the product turned the relay off."
+          description: >
+            `relay_disabled`: the product turned the relay off. `connect_links_disabled`: a contact
+            ticket while inter-account links are off.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
@@ -11003,7 +11409,9 @@ paths:
         writes the file first and the record's metadata second, on the `version` returned here
         (§11.5). A `finalize` of the same upload still in flight is `503 unavailable` (`Retry-After:
         1`). `403 quota_exceeded` with `scope: collection` when the record would be a create past
-        `maxRecords`.
+        `maxRecords`, or with `scope: user` when a `chunks` upload names chunks whose last
+        reference went after its plan call and whose bytes no longer fit the person's quota (the
+        upload ends).
       security: [{ deviceToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -16052,6 +16460,41 @@ paths:
             Location: { schema: { type: string } }
         "404":
           description: A `request` handle was given.
+  /signin/return:
+    get:
+      operationId: getSignInReturn
+      tags: [portal]
+      summary: The hosted desktop ReturnStep (I-15)
+      description: >
+        WIRE-CONTRACT-V5 §12.12 rule 7. A loopback listener answers `303` here after it received
+        the code. Served on the customer host (a key-host request is redirected there when one is
+        configured). Answers the card shell for a well-formed `request` handle and `404` otherwise;
+        the card draws the desktop variant from the state it saved in the browser's
+        `sessionStorage` before it navigated, and the generic variant without it. Reads no store.
+        `cache-control: no-store`, `referrer-policy: no-referrer`. `HEAD` is allowed; any other
+        method is `405`.
+      parameters:
+        - {
+            name: request,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: "^rq_[A-Za-z0-9_-]{22}$" },
+          }
+        - {
+            name: cancelled,
+            in: query,
+            required: false,
+            description: "`1` after an app-side Cancel.",
+            schema: { type: string, enum: ["1"] },
+          }
+      responses:
+        "200":
+          description: The card shell.
+          content:
+            text/html: { schema: { type: string } }
+        "404":
+          description: A missing or malformed handle, or a `cancelled` other than `1`.
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /approve:
     get:
       operationId: getLockerApproveHop
@@ -29710,6 +30153,25 @@ components:
         url: { type: string, description: "The upgrade URL, `wss:`." }
         protocol: { type: string, const: pkey-relay.1 }
         expiresAt: { type: integer, description: "Epoch seconds." }
+        room:
+          type: string
+          const: c
+          description: >
+            Present only on the answer to a contact request; it echoes the request. A client that
+            asked for a contact room and got none (an older Worker) must not connect.
+    ConnectRelayTicketRequest:
+      type: object
+      required: [room, rid]
+      additionalProperties: false
+      description: >
+        The optional body of a contact ticket (WIRE-CONTRACT-V5 §15.7): strict JSON of at most 256
+        bytes.
+      properties:
+        room: { type: string, const: c }
+        rid:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{22}$"
+          description: The room id, 16 bytes in 22 canonical base64url characters.
     ConnectRelayQuotaExceeded:
       type: object
       required: [error, scope]
@@ -29724,8 +30186,10 @@ components:
       description: >
         Cloud Connect's fragment (WIRE-CONTRACT-V5 §15.9). `{"enabled": false}` when off. When on,
         `lan` says devices may find each other on the local network, `relay` that the relay is
-        available and `interAccount` that devices of different accounts may connect. Each endpoint
-        is a URL or `null` until the release that serves it.
+        available and `interAccount` that devices of different accounts may link and reach each
+        other (true only while the product's `cloudConnect.interAccount` setting, the
+        `launch.connectLinks` gate and the service are all on; an SDK needs it before it pairs).
+        Each endpoint is a URL or `null` until the release that serves it.
       oneOf:
         - type: object
           required: [enabled]
@@ -30307,6 +30771,50 @@ components:
         agreeKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
         issuedAt: { type: integer, minimum: 0, description: Unix seconds. }
         sig: { type: string, pattern: "^[A-Za-z0-9_-]{86}$" }
+    PushedRequest:
+      type: object
+      description: >
+        The pushed authorization request (§12.12): the `authorize` parameters of §12.4 with a
+        native `redirect_uri`, plus the device label and an optional return URI.
+      required:
+        [
+          response_type,
+          client_id,
+          redirect_uri,
+          state,
+          code_challenge,
+          code_challenge_method,
+        ]
+      properties:
+        response_type: { type: string, enum: [code] }
+        client_id: { type: string, description: The product slug. }
+        redirect_uri:
+          type: string
+          description: >
+            `http://127.0.0.1:<port>/pkey/callback` (or `[::1]`), `<scheme>:/pkey/callback` for a
+            registered scheme, or `https://<web origin><claimed path>`.
+        state: { type: string, minLength: 16, maxLength: 512 }
+        code_challenge: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        code_challenge_method: { type: string, enum: [S256] }
+        scope: { type: string }
+        nonce: { type: string, maxLength: 255 }
+        login_hint: { type: string }
+        name_hint: { type: string }
+        purpose: { type: string, enum: [signin, attach] }
+        license_choice: { type: string, enum: [card, app] }
+        key_return: { type: string, enum: [allow] }
+        device_name: { type: string, description: The device label (§12.7.1). }
+        return_uri:
+          type: string
+          description: A registered scheme's redirect URI; it never carries a code.
+    PushedRequestResponse:
+      type: object
+      required: [request_uri, expires_in]
+      properties:
+        request_uri:
+          type: string
+          pattern: "^urn:ietf:params:oauth:request_uri:[A-Za-z0-9_-]{22}$"
+        expires_in: { type: integer, enum: [600] }
     ExchangeNonceRequest:
       type: object
       description: >
@@ -30321,6 +30829,88 @@ components:
       properties:
         nonce: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
         expiresIn: { type: integer, enum: [300] }
+    NearbyStartRequest:
+      type: object
+      description: >
+        The keys of the new device and the proof (§12.11.5). `deviceName` is display data,
+        normalised as §12.7.1 on receipt.
+      required: [signKey, agreeKey, proof]
+      properties:
+        signKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        agreeKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        deviceName: { type: string }
+        proof:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{86}$"
+          description: A `pkey-proof/1` signature, purpose `nearby-start`.
+    NearbyStartResponse:
+      type: object
+      required: [request, expiresIn, interval]
+      properties:
+        request: { type: string, pattern: "^nr_[A-Za-z0-9_-]{22}$" }
+        expiresIn: { type: integer, enum: [300] }
+        interval: { type: integer, enum: [3] }
+    NearbyApproveRequest:
+      type: object
+      description: >
+        M's decision (§12.11.5). The device id and keys are D's, as M learned them from D's
+        `VOUCH_REQ`. The proof signs the handle only; the decision and the choice are protected by
+        TLS and M's bearer.
+      required: [request, deviceId, signKey, agreeKey, decision, proof]
+      properties:
+        request: { type: string, pattern: "^nr_[A-Za-z0-9_-]{22}$" }
+        deviceId: { type: string, pattern: "^[A-Za-z0-9_-]{1,128}$" }
+        signKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        agreeKey: { type: string, pattern: "^[A-Za-z0-9_-]{43}$" }
+        decision: { type: string, enum: [approve, deny] }
+        choice:
+          oneOf:
+            - type: object
+              required: [kind, licenseId]
+              additionalProperties: false
+              properties:
+                kind: { type: string, enum: [license] }
+                licenseId: { type: string }
+            - type: object
+              required: [kind]
+              additionalProperties: false
+              properties:
+                kind: { type: string, enum: [create] }
+        proof:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{86}$"
+          description: A `pkey-proof/1` signature, purpose `nearby-approve`, by M's registered signing key.
+    NearbyApproveResponse:
+      type: object
+      description: >
+        `{status: "approved", deviceLabel}` once D is bound, or the `choose` answer: the account's
+        licence view for D, with nothing written.
+      required: [status]
+      properties:
+        status: { type: string, enum: [choose, approved] }
+        choices: { $ref: "#/components/schemas/LicenseChoiceView" }
+        deviceLabel: { type: [string, "null"] }
+    NearbyPollRequest:
+      type: object
+      required: [request, proof]
+      properties:
+        request: { type: string, pattern: "^nr_[A-Za-z0-9_-]{22}$" }
+        proof:
+          type: string
+          pattern: "^[A-Za-z0-9_-]{86}$"
+          description: A `pkey-proof/1` signature, purpose `nearby-poll`, by the signing key D sent on `start`.
+    NearbyPollState:
+      description: The poll's states (§12.11.5 rule 10); the token is a `TokenResponse`.
+      oneOf:
+        - type: object
+          required: [status]
+          properties:
+            status: { type: string, enum: [pending, timeout] }
+        - type: object
+          required: [status, reason]
+          properties:
+            status: { type: string, enum: [error] }
+            reason: { type: string, enum: [access_denied] }
     LinkOfferResponse:
       type: object
       required: [offer]

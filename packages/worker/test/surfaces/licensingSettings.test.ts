@@ -737,11 +737,17 @@ describe("the settings API refuses what the registry refuses", () => {
       .map((d) => d.key)
       .sort();
     expect(served).toEqual([
+      // CC-19.3: links between accounts, read with the relay switch by the ticket route and discovery.
+      "cloudConnect.interAccount",
       // CC-07.3: the relay switch, read by the relay ticket route.
       "cloudConnect.relay.enabled",
       // I-09: the identity block's live row-backed settings (claimByKey since ST-14).
       "identity.keyEntry.claimByKey",
       "identity.keyEntry.limit",
+      // I-15.2: the native redirect classes.
+      "identity.nativeRedirect.claimedPaths",
+      "identity.nativeRedirect.loopback",
+      "identity.nativeRedirect.schemes",
       "identity.nearby",
       "identity.oidc.syncTierOnSignIn",
       // I-42.2: the platform sign-in audiences.

@@ -21,6 +21,7 @@ import {
   renderBrandPage,
 } from "../../../core/brandHtml.js";
 import { appForPage, pageApp } from "../../../core/brandPage.js";
+import { shownDeveloperName } from "../../../core/accounts/reservedDisplayNames.js";
 import type { Db } from "../../../db/types.js";
 import {
   ENTRY_FOOTER,
@@ -51,6 +52,27 @@ export async function listingDeveloper(
   } catch {
     return null;
   }
+}
+
+/**
+ * The name a page draws the app by: the checked name the confirm drew (`appForPage`), else the
+ * slug. Never `product.name` raw, which a page cannot verify without the database.
+ */
+export function shownName(
+  product: Pick<Product, "slug">,
+  app?: { name: string } | undefined,
+): string {
+  return app?.name || product.slug;
+}
+
+/** The listing's developer name as a screen may show it: `null` when it fails the display rules. */
+export async function shownListingDeveloper(
+  env: Env,
+  db: Db,
+  slug: string,
+  hooks: ServiceHooks | undefined,
+): Promise<string | null> {
+  return shownDeveloperName(env, db, slug, await listingDeveloper(hooks));
 }
 
 /** What every step after the confirm shares: the TV variant and the app the confirm drew. */
@@ -131,7 +153,7 @@ export async function renderDeviceConfirmation(
   app?: { name: string; iconUrl?: string | null; developer?: string | null },
   tv = false,
 ): Promise<Response> {
-  const shown = pageApp(app ?? { name: product.name });
+  const shown = pageApp(app ?? { name: product.slug });
   const csrf = randomToken(16);
   record.csrf = csrf;
   // An update, never a put: it cannot resurrect a record a poll redeemed meanwhile.
@@ -172,14 +194,15 @@ export async function renderDeviceConfirmation(
   // Before sign-in: this page approves NOTHING (I-37). "Continue" only hands the browser to the
   // IdP; the explicit step is the approval page after sign-in (`deviceApproval.ts`), the only
   // thing that sets `approvedAt`.
-  const who = app?.developer?.trim() || product.name;
+  const appName = shownName(product, app);
+  const who = app?.developer?.trim() || appName;
   const html = renderAuthCard({
     links: DEVICE_CARD_LINKS,
     title: "Sign in to continue",
     heading: "Sign in to continue",
     ...(tv ? { variant: "tv" as const } : {}),
     passport: {
-      name: product.name,
+      name: appName,
       iconUrl: shown.app.iconUrl,
       artUrl: shown.app.artUrl ?? null,
       developer: app?.developer ?? null,
@@ -195,7 +218,7 @@ export async function renderDeviceConfirmation(
       note("info", "Didn't start this? Deny, and nothing signs in."),
     footer: {
       icon: "lock",
-      text: `Polaris Locker signs you in for ${isolate(product.name)}. ${isolate(who)} never sees your codes or passkeys.`,
+      text: `Polaris Locker signs you in for ${isolate(appName)}. ${isolate(who)} never sees your codes or passkeys.`,
     },
   });
   const headers = deviceHtmlHeaders(record.authorizeUrl, shown.imgOrigin);
@@ -247,7 +270,7 @@ export function deviceGonePage(
   view: PageView = {},
 ): Response {
   const expired = kind === "expired";
-  const shown = pageApp(view.app ?? { name: product?.name ?? "" });
+  const shown = pageApp(view.app ?? { name: product?.slug ?? "" });
   const html = renderAuthCard({
     links: DEVICE_CARD_LINKS,
     ...(view.tv ? { variant: "tv" as const } : {}),
@@ -258,7 +281,7 @@ export function deviceGonePage(
     ...(product && view.app
       ? {
           header: appHeader({
-            name: view.app.name || product.name,
+            name: shownName(product, view.app),
             iconUrl: shown.app.iconUrl,
           }),
         }
@@ -285,13 +308,16 @@ export function deviceDeniedPage(
   product: Product,
   view: PageView = {},
 ): Response {
-  const shown = pageApp(view.app ?? { name: product.name });
+  const shown = pageApp(view.app ?? { name: product.slug });
   const html = renderAuthCard({
     links: DEVICE_CARD_LINKS,
     ...(view.tv ? { variant: "tv" as const } : {}),
     title: "Nothing was signed in",
     heading: "Nothing was signed in",
-    header: appHeader({ name: product.name, iconUrl: shown.app.iconUrl }),
+    header: appHeader({
+      name: shownName(product, view.app),
+      iconUrl: shown.app.iconUrl,
+    }),
     body: callout(
       "check-circle",
       "You denied the request",
@@ -342,10 +368,10 @@ export function productAccountDisabledPage(
   view: PageView = {},
 ): Response {
   return accountDisabledPage({
-    app: view.app ?? { name: product.name },
+    app: view.app ?? { name: product.slug },
     signInHref: "/login",
     back: flow.returnTo
-      ? { href: flow.returnTo, productName: product.name }
+      ? { href: flow.returnTo, productName: shownName(product, view.app) }
       : null,
   });
 }

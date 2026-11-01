@@ -110,16 +110,19 @@ export function nearbyApprovalView(
         "neutral",
       );
     case "choose":
-      // The license is chosen on the approving device (D-A10), never on the new one.
-      return outcome(
-        "choose",
-        [
+      // The license is chosen on the approving device (D-A10), never on the new one. One tap per
+      // license (the licenses are the host's choices, no "Use this license" step), and Deny is
+      // the one other control, as on the code prompt (UXR-47: leaving answers Deny). No primary.
+      return makeView(ctx, "NearbyApproval", {
+        state: "choose",
+        copy: [
           "signin.nearby.chooseTitle",
           "signin.nearby.chooseLede",
-          "signin.choice.continue",
+          "signin.approve.deny",
         ],
-        "signin.choice.continue",
-      );
+        args,
+        focus: "heading",
+      });
     case "account-required":
       return outcome(
         "account-required",

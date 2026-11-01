@@ -48,6 +48,7 @@ import {
   mintLicenseKey,
   productFromKey,
 } from "../../../platform/crypto.js";
+import { normalizeDeviceLabel } from "@polaris-key/client-core";
 import { normalizeEmail } from "../../../platform/email.js";
 import type { Db } from "../../../db/types.js";
 import type { Env } from "../../../platform/env.js";
@@ -101,6 +102,7 @@ import {
   type PortalHooksFor,
 } from "./api.js";
 import { presentationFor } from "./library.js";
+import { shownAppName } from "../../../core/accounts/reservedDisplayNames.js";
 
 // ── The claim rules ─────────────────────────────────────────────────────────────────────────
 
@@ -315,7 +317,7 @@ async function productView(
     : null;
   return {
     slug: product.slug,
-    name: pres?.name ?? product.name,
+    name: pres?.name ?? product.slug,
     branding: product.branding,
     developerName: pres?.developerName ?? null,
     tintColor: pres?.tintColor ?? null,
@@ -528,7 +530,7 @@ export async function handleClaimKey(
     db,
     session.email,
     licenseAddedNotice({
-      productName: product.name,
+      productName: await shownAppName(env, db, product.slug, product.name),
       productSlug: product.slug,
       origin,
     }),
@@ -730,8 +732,11 @@ export const DEVICE_LABEL_MAX = 64;
 /**
  * A device name is display text other people's code never interprets, but it lands in emails and
  * lists, so it is held to plain text: no control characters, no bidirectional overrides (which can
- * make "Studio PC" render as something else), trimmed, at most `DEVICE_LABEL_MAX` characters.
- * `null` clears the name. Answers `undefined` for a value that is not acceptable.
+ * make "Studio PC" render as something else), trimmed, at most `DEVICE_LABEL_MAX` characters. What
+ * passes those checks is then cleaned as every device label is (WIRE-CONTRACT-V5 §12.7.1): spaces
+ * of every kind become one space and invisible code points go, so a name cannot be padded with
+ * blanks or fillers. `null` clears the name. Answers `undefined` for a value that is not
+ * acceptable, a non-empty one that is nothing but blanks and invisible code points included.
  */
 export function parseDeviceLabel(value: unknown): string | null | undefined {
   if (value === null) return null;
@@ -740,7 +745,7 @@ export function parseDeviceLabel(value: unknown): string | null | undefined {
   if (!trimmed) return null;
   if ([...trimmed].length > DEVICE_LABEL_MAX) return undefined;
   if (/[\p{Cc}\p{Cf}\u2028\u2029]/u.test(trimmed)) return undefined;
-  return trimmed;
+  return normalizeDeviceLabel(trimmed) ?? undefined;
 }
 
 export async function handleDeviceRename(
@@ -878,7 +883,9 @@ export async function handleKeyReissue(
     now,
   });
   const notice = licenseKeyReplacedNotice({
-    productName: license.product_name,
+    productName: license.product_name
+      ? await shownAppName(env, db, product, license.product_name)
+      : license.product_name,
     productSlug: product,
     origin: new URL(req.url).origin,
   });

@@ -8,10 +8,14 @@
 // payload cap is raise-only and coupled to a proven `typ`, and the two document types must
 // refuse each other.
 
-import CryptoKit
 import Foundation
 @testable import PolarisKeyCore
 import XCTest
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 final class WireContractV3Tests: XCTestCase {
     private let signer = TestSigner(kid: "wire-v3-key")

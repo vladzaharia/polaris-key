@@ -38,8 +38,12 @@
 //    and it is coupled to a REQUIRED `typ` because otherwise a 256 KiB untyped blob accepted
 //    here could be re-presented at an ordinary document call site.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// A trust set: `kid` → raw 32-byte Ed25519 public key, base64url-encoded.
 public typealias TrustSet = [String: String]

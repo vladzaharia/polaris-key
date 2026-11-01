@@ -132,6 +132,54 @@ import PolarisKeyPlatform
         }
     }
 
+    /// Browse names to contacts (§15.4, §15.10): one dictionary per (15-minute epoch, contact list), built from
+    /// the contacts' secrets and the peers' agreeKeys for the current and the previous epoch, so a forged
+    /// `p1-` name costs one lookup and no HMAC. At most 72 contacts x 2 epochs = 144 HMACs a rebuild. The first
+    /// match wins in `contactTrialOrder`. It holds names and ids only, never a secret.
+    final class ConnectContactIndex: Sendable {
+        struct Hit: Equatable, Sendable {
+            let id: String
+            let pending: Bool
+        }
+        private struct State {
+            var epoch = Int.min
+            var table: [String: Hit] = [:]
+        }
+        private let state = LockedValue(State())
+
+        /// Rebuild for `now`'s epoch from `contacts` (already in trial order).
+        func update(_ contacts: [ConnectLiveContact], now: Int) {
+            let epoch = peerAdvertEpoch(now)
+            var table: [String: Hit] = [:]
+            for c in contacts.prefix(maxContactSecrets) {
+                for back in 0...1 {
+                    let n = PeerContacts.instance(
+                        secret: c.secret, advertiserAgreeKey: c.agreeKeyBytes, epoch: epoch - back)
+                    if table[n] == nil { table[n] = Hit(id: c.id, pending: c.pending) }
+                }
+            }
+            state.with {
+                $0.epoch = epoch
+                $0.table = table
+            }
+        }
+
+        func lookup(_ instance: String, now: Int) -> Hit? {
+            guard PeerAdvert.isInstanceName(instance) else { return nil }
+            return state.with { $0.epoch == peerAdvertEpoch(now) ? $0.table[instance] : nil }
+        }
+
+        /// True when the table is for an older epoch than `now`'s (the service rebuilds it).
+        func stale(now: Int) -> Bool { state.with { $0.epoch != peerAdvertEpoch(now) } }
+
+        func clear() {
+            state.with {
+                $0.epoch = .min
+                $0.table = [:]
+            }
+        }
+    }
+
     /// A counter every holder of a cached identity reads: it moves when the identity changes anywhere (a refresh,
     /// a pushed roster, a sign-out), so the LAN and relay services drop their 30 s copies together (N8).
     public final class ConnectIdentityEpoch: Sendable {
@@ -153,14 +201,27 @@ import PolarisKeyPlatform
         public var applyTrust: (@Sendable (String) async -> PeerTrustResult)?
         /// Moves when the identity changes; the services share it so one's change reaches the other.
         public var changes: ConnectIdentityEpoch
+        /// The inter-account links (§15.10) in trial order, secrets decoded: empty while links are off (no cached
+        /// `interAccount`) or none are held.
+        public var contacts: (@Sendable () async -> [ConnectLiveContact])?
+        /// Called when the contacts changed (stored, promoted, removed, re-marked, or the gate moved).
+        public var onContacts: (@Sendable (@escaping @Sendable () -> Void) -> @Sendable () -> Void)?
+        /// A session opened under a contact: the first handshake of a pending one promotes it.
+        public var contactEstablished: (@Sendable (ConnectContactRef) async -> Void)?
 
         public init(
             load: @escaping @Sendable () async throws -> PeerSource, now: @escaping @Sendable () -> Int,
             refresh: (@Sendable () async throws -> Void)? = nil,
             adoptRing: (@Sendable (String) async -> RingAdoption)? = nil,
             applyTrust: (@Sendable (String) async -> PeerTrustResult)? = nil,
-            changes: ConnectIdentityEpoch = ConnectIdentityEpoch()
+            changes: ConnectIdentityEpoch = ConnectIdentityEpoch(),
+            contacts: (@Sendable () async -> [ConnectLiveContact])? = nil,
+            onContacts: (@Sendable (@escaping @Sendable () -> Void) -> @Sendable () -> Void)? = nil,
+            contactEstablished: (@Sendable (ConnectContactRef) async -> Void)? = nil
         ) {
+            self.contacts = contacts
+            self.onContacts = onContacts
+            self.contactEstablished = contactEstablished
             self.load = load
             self.now = now
             self.refresh = refresh
@@ -181,7 +242,15 @@ import PolarisKeyPlatform
                         throw ConnectLanError(.noIdentity, "The identity could not be refreshed.")
                     }
                 },
-                adoptRing: { await c.adoptRing($0) }, applyTrust: applyTrust, changes: c.identityChanges)
+                adoptRing: { await c.adoptRing($0) }, applyTrust: applyTrust, changes: c.identityChanges,
+                contacts: { await c.liveContacts() }, onContacts: { fn in c.contactChanges.add(fn) },
+                contactEstablished: { ref in
+                    // The first handshake under a pending contact passed the pin: it replaces the held one.
+                    _ = try? await c.updateContacts { rows, _ in
+                        rows.contains { $0.pendingSince != nil && $0.agreeKey == ref.agreeKey }
+                            ? ConnectContacts.promote(rows, agreeKey: ref.agreeKey) : nil
+                    }
+                })
         }
     }
 
@@ -199,15 +268,22 @@ import PolarisKeyPlatform
             onUp: @escaping @Sendable (BonjourFound) -> Void, onDown: @escaping @Sendable (String) -> Void,
             onError: @escaping @Sendable (BonjourBrowseError) -> Void
         ) throws -> @Sendable () -> Void
+        /// The addresses of a browse hit that may be dialled, in order, resolved and judged before any
+        /// connect (§15.4.1). The default is the hit itself, for a network that connects by a host and port.
+        func resolve(_ endpoint: BonjourEndpoint) async throws -> [BonjourEndpoint]
         /// Connect; the pipe is handed back only after the address passed the dial policy.
         func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe
         func stop() async
         /// The roster or keys changed: offer the browser's current results to the name filter again.
         func rescan()
+        /// Make the live contact adverts (`m=c`, §15.10) exactly `adverts`, on the listener's port.
+        func advertiseContacts(_ adverts: [BonjourAdvert]) async
     }
 
     extension ConnectLanNetwork {
+        public func advertiseContacts(_ adverts: [BonjourAdvert]) async {}
         public func rescan() {}
+        public func resolve(_ endpoint: BonjourEndpoint) async throws -> [BonjourEndpoint] { [endpoint] }
     }
 
     /// The OS network: `NWListener`, `NWBrowser` and `NWConnection` through `PolarisKeyPlatform`.
@@ -217,6 +293,8 @@ import PolarisKeyPlatform
         private let dialOptions: BonjourDialOptions
         private let browseAccept: (@Sendable (String) -> Bool)?
         private let browsing = LockedValue<BonjourBrowse?>(nil)
+        private let contactAdverts = BonjourContactAdverts()
+        private let port = LockedValue<UInt16>(0)
 
         /// `peerToPeer` is AWDL (D-5), off by default. `allowLoopback` is for tests and same-host use.
         public convenience init(peerToPeer: Bool = false, allowLoopback: Bool = false) {
@@ -235,7 +313,13 @@ import PolarisKeyPlatform
         public func listen(
             onPipe: @escaping @Sendable (NWPipe) -> Void, onEvent: @escaping @Sendable (BonjourListenerEvent) -> Void
         ) async throws -> UInt16 {
-            try await listener.start(advert: nil, onPipe: onPipe, onEvent: onEvent)
+            let p = try await listener.start(advert: nil, onPipe: onPipe, onEvent: onEvent)
+            port.set(p)
+            return p
+        }
+
+        public func advertiseContacts(_ adverts: [BonjourAdvert]) async {
+            contactAdverts.update(adverts, port: port.current)
         }
 
         public func advertise(_ advert: BonjourAdvert?) async { listener.update(advert: advert) }
@@ -253,11 +337,18 @@ import PolarisKeyPlatform
             }
         }
 
+        public func resolve(_ endpoint: BonjourEndpoint) async throws -> [BonjourEndpoint] {
+            try await BonjourPipes.resolve(endpoint, options: dialOptions)
+        }
+
         public func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe {
             try await BonjourPipes.dial(endpoint, options: dialOptions)
         }
 
-        public func stop() async { listener.stop() }
+        public func stop() async {
+            contactAdverts.stop()
+            listener.stop()
+        }
 
         public func rescan() { browsing.current?.rescan() }
     }
@@ -289,7 +380,7 @@ import PolarisKeyPlatform
         public var timer: ConnectPeerDocs.Timer?
 
         public init(
-            caps: [String] = ["app/1"], label: String? = nil, advertise: Bool = true, browse: Bool = true,
+            caps: [String] = ["app/1", xferCap], label: String? = nil, advertise: Bool = true, browse: Bool = true,
             allowLoopback: Bool = false, peerToPeer: Bool = false, network: (any ConnectLanNetwork)? = nil,
             maxSessions: Int = connectLanMaxSessions, rekeyMessages: Int? = nil, rekeySeconds: TimeInterval? = nil,
             handshakeSeconds: TimeInterval = PeerLink.handshakeSeconds, timer: ConnectPeerDocs.Timer? = nil
@@ -362,6 +453,17 @@ import PolarisKeyPlatform
         private var cancelEpoch: (@Sendable () -> Void)?
         private var peers: [String: (peer: ConnectLanPeer, instance: String)] = [:]
         nonisolated let index: ConnectBrowseIndex
+        nonisolated let contactIndex = ConnectContactIndex()
+        /// The inter-account links held now (empty while off), in trial order. Held in memory for the life of
+        /// the service and dropped at `stop()`; `Data` cannot be zeroed in place, so they are released.
+        private var contacts: [ConnectLiveContact] = []
+        private var contactPeers: [String: (peer: ConnectLiveContact, instance: String, endpoint: BonjourEndpoint)] =
+            [:]
+        private let contactSessionSubs = Subscribers<ConnectSession>()
+        /// One limiter per listener for the contact trial (§15.10, "Admission"): 5 a minute, 4 waiting.
+        private let limiter = HandshakeLimiter()
+        private var unContacts: (@Sendable () -> Void)?
+        private var contactsSig = ""
         private var pending: [ObjectIdentifier: NWPipe] = [:]
         private var sessions: [ObjectIdentifier: ConnectSession] = [:]
 
@@ -370,12 +472,13 @@ import PolarisKeyPlatform
             self.o = o
             let index = ConnectBrowseIndex()
             self.index = index
+            let cindex = contactIndex
             let now = src.now
             network =
                 o.network
                 ?? SystemConnectLanNetwork(
                     peerToPeer: o.peerToPeer, allowLoopback: o.allowLoopback,
-                    accept: { index.lookup($0, now: now()) != nil })
+                    accept: { index.lookup($0, now: now()) != nil || cindex.lookup($0, now: now()) != nil })
             timer =
                 o.timer ?? { s, fn in
                     let t = Task {
@@ -417,6 +520,7 @@ import PolarisKeyPlatform
 
         private func begin() async throws {
             _ = try await identity(force: true)
+            await loadContacts()
             do {
                 port = try await network.listen(
                     onPipe: { [weak self] pipe in
@@ -458,6 +562,10 @@ import PolarisKeyPlatform
                     throw Self.lanError(e)
                 }
             }
+            unContacts = src.onContacts?({ [weak self] in
+                guard let self else { return }
+                Task { await self.refreshContacts() }
+            })
         }
 
         public func listenPort() -> UInt16 { port }
@@ -482,6 +590,20 @@ import PolarisKeyPlatform
             sessionSubs.add(fn)
         }
 
+        /// Called for each inbound mode-`c` session (a contact dialled this device) once it is open.
+        @discardableResult
+        public nonisolated func onContactSession(_ fn: @escaping @Sendable (ConnectSession) -> Void)
+            -> @Sendable () -> Void
+        {
+            contactSessionSubs.add(fn)
+        }
+
+        /// The contacts seen on this network now, by link `id` and whether it is the pending secret of a
+        /// re-pair (§15.10). The host picks one to dial; `connectContact` runs the handshake.
+        public func currentContactPeers() -> [(id: String, pending: Bool)] {
+            contactPeers.values.map { ($0.peer.id, $0.peer.pending) }
+        }
+
         /// Called when the OS reports a problem after start (Local Network refused, a failed listener).
         @discardableResult
         public nonisolated func onError(_ fn: @escaping @Sendable (ConnectLanError) -> Void) -> @Sendable () -> Void {
@@ -494,14 +616,20 @@ import PolarisKeyPlatform
             docs.close()
             cancelEpoch?()
             cancelEpoch = nil
+            unContacts?()
+            unContacts = nil
             stopBrowse?()
             stopBrowse = nil
+            contacts = []
+            contactPeers = [:]
+            contactIndex.clear()
             for p in pending.values { await p.close() }
             pending = [:]
             for s in sessions.values { await s.close() }
             sessions = [:]
             held = nil
             index.clear()
+            await network.advertiseContacts([])
             await network.stop()
         }
 
@@ -514,6 +642,7 @@ import PolarisKeyPlatform
             }
             docs.close()
             index.clear()
+            contactIndex.clear()
             let net = network
             Task { await net.stop() }
             Task { await self.abortInActor() }
@@ -527,6 +656,10 @@ import PolarisKeyPlatform
             cancelEpoch = nil
             stopBrowse = nil
             peers = [:]
+            contacts = []
+            contactPeers = [:]
+            unContacts?()
+            unContacts = nil
             let (p, s) = (Array(pending.values), Array(sessions.values))
             pending = [:]
             sessions = [:]
@@ -585,7 +718,8 @@ import PolarisKeyPlatform
         // MARK: Links
 
         private func makeLink(
-            pipe: NWPipe, ident: PeerSource, role: PeerChannel.Role, handlers: ConnectSessionHandlers
+            pipe: NWPipe, ident: PeerSource, role: PeerChannel.Role, handlers: ConnectSessionHandlers,
+            served: [ConnectLiveContact] = []
         ) async throws -> PeerLink {
             let docs = docs
             let epoch = ident.ringEpoch
@@ -594,10 +728,16 @@ import PolarisKeyPlatform
                 if let p = docs.pushed, p.epoch > epoch { return p }
                 return nil
             }
-            let opts = PeerChannelOptions.connectBase(
+            var opts = PeerChannelOptions.connectBase(
                 ident, role: role, caps: o.caps, label: o.label, ring: ring, now: src.now,
                 rekeyMessages: o.rekeyMessages,
                 rekeySeconds: o.rekeySeconds)
+            // The shared listener (§15.5, §15.10): a responder that holds contacts tries the account's keys,
+            // then each contact's secret, under the one limiter.
+            if role == .responder, !served.isEmpty {
+                opts.contacts = served.map { PeerContactLink(secret: $0.secret, agreeKey: $0.agreeKey) }
+                opts.admission = limiter
+            }
             let link = try await PeerLink.make(
                 pipe: LanPipe(pipe: pipe), options: opts, handlers: handlers.handlers,
                 handshakeSeconds: o.handshakeSeconds)
@@ -606,10 +746,10 @@ import PolarisKeyPlatform
             return link
         }
 
-        private func handlers(role: String) -> ConnectSessionHandlers {
+        private func handlers(role: String, served: [ConnectLiveContact] = []) -> ConnectSessionHandlers {
             let docs = docs
             return ConnectSessionHandlers(
-                role: role, onRing: { docs.onRing($0, $1) }, onTrust: { docs.onTrust($0) },
+                role: role, contacts: served.map(\.ref), onRing: { docs.onRing($0, $1) }, onTrust: { docs.onTrust($0) },
                 onRingWanted: { docs.onRingWanted() })
         }
 
@@ -634,14 +774,20 @@ import PolarisKeyPlatform
                 // The identity is read before the first byte is handled; the socket buffers meanwhile.
                 let ident = try await identity(force: false)
                 if stopped { throw ConnectLanError(.notListening, "stopped") }
-                let h = handlers(role: "responder")
-                let link = try await makeLink(pipe: pipe, ident: ident, role: .responder, handlers: h)
+                let served = contacts
+                let h = handlers(role: "responder", served: served)
+                let link = try await makeLink(pipe: pipe, ident: ident, role: .responder, handlers: h, served: served)
                 let session = try await h.opened(link)
                 pending[key] = nil
                 pipe.markAuthenticated()
                 if stopped { return await session.close() }
                 track(session)
-                sessionSubs.fire(session)
+                if let ref = session.contact {
+                    if ref.pending { Task { await self.src.contactEstablished?(ref) } }
+                    contactSessionSubs.fire(session)
+                } else {
+                    sessionSubs.fire(session)
+                }
             } catch {
                 pending[key] = nil
                 await pipe.close()
@@ -659,36 +805,156 @@ import PolarisKeyPlatform
             return try await connect(peer)
         }
 
+        /// Dial a discovered device: the hit is resolved and judged first, then its addresses are tried in
+        /// order. A failed connect or handshake falls through to the next address; the dial fails with the
+        /// last error when none is left. A handshake that completes with another device ends the dial at
+        /// once as `wrongPeer` (§15.4.1, Dialling).
         public func connect(_ peer: ConnectLanPeer) async throws -> ConnectSession {
             if stopped { throw ConnectLanError(.notListening, "The LAN service is stopped.") }
             let ident = try await identity(force: false)
-            let pipe: NWPipe
-            do { pipe = try await network.dial(peer.endpoint) } catch let e as BonjourPipeError {
+            let targets: [BonjourEndpoint]
+            do { targets = try await network.resolve(peer.endpoint) } catch let e as BonjourPipeError {
                 if case .browse(.permissionDenied) = e { throw Self.lanError(e) }
                 throw ConnectLanError(.connectFailed, "The device did not answer.")
             }
-            let key = ObjectIdentifier(pipe)
-            pending[key] = pipe
-            defer { pending[key] = nil }
-            let session: ConnectSession
-            do {
-                let h = handlers(role: "initiator")
-                let link = try await makeLink(pipe: pipe, ident: ident, role: .initiator, handlers: h)
-                await link.start()
-                session = try await h.opened(link)
-            } catch let e as ConnectLanError {
-                await pipe.close()
-                throw e
-            } catch {
-                await pipe.close()
-                throw ConnectLanError(.handshakeFailed, "The handshake failed.")
+            var last = ConnectLanError(.connectFailed, "The device did not answer.")
+            for target in targets {
+                if stopped { throw ConnectLanError(.notListening, "The LAN service is stopped.") }
+                let pipe: NWPipe
+                do { pipe = try await network.dial(target) } catch let e as BonjourPipeError {
+                    if case .browse(.permissionDenied) = e { throw Self.lanError(e) }
+                    last = ConnectLanError(.connectFailed, "The device did not answer.")
+                    continue
+                }
+                let key = ObjectIdentifier(pipe)
+                pending[key] = pipe
+                defer { pending[key] = nil }
+                let session: ConnectSession
+                do {
+                    let h = handlers(role: "initiator")
+                    let link = try await makeLink(pipe: pipe, ident: ident, role: .initiator, handlers: h)
+                    await link.start()
+                    session = try await h.opened(link)
+                } catch let e as ConnectLanError {
+                    await pipe.close()
+                    last = e
+                    continue
+                } catch {
+                    await pipe.close()
+                    last = ConnectLanError(.handshakeFailed, "The handshake failed.")
+                    continue
+                }
+                if session.peerDeviceId != peer.deviceId {
+                    await session.close()
+                    throw ConnectLanError(.wrongPeer, "The device that answered is not the one that advertised.")
+                }
+                track(session)
+                return session
             }
-            if session.peerDeviceId != peer.deviceId {
-                await session.close()
-                throw ConnectLanError(.wrongPeer, "The device that answered is not the one that advertised.")
+            throw last
+        }
+
+        // MARK: Contacts (§15.10)
+
+        /// Read the contacts again (stored, promoted, removed, re-marked, or the gate moved) and bring the
+        /// adverts, the accepted names and the listener's trial order to match. Safe at any time.
+        public func refreshContacts() async {
+            if stopped { return }
+            await loadContacts()
+            if stopped { return }
+            if let ident = try? await identity(force: false), listening, o.advertise {
+                await advertContacts(ident)
             }
-            track(session)
-            return session
+        }
+
+        private func loadContacts() async {
+            let next = (await src.contacts?()) ?? []
+            if stopped { return }
+            let sig = next.map { "\($0.id)\($0.pending ? "p" : "h")\($0.reachable ? "r" : "-")" }.joined(separator: ",")
+            let changed = sig != contactsSig || contactIndex.stale(now: src.now())
+            contacts = next
+            contactsSig = sig
+            // A peer seen under a contact that is gone is forgotten.
+            let have = Set(next.map { "\($0.id)|\($0.pending)" })
+            for k in contactPeers.keys where !have.contains(k) { contactPeers[k] = nil }
+            if changed {
+                contactIndex.update(next, now: src.now())
+                network.rescan()
+            }
+        }
+
+        /// The contact adverts for the contacts marked reachable, at most 8, on the listener's port.
+        private func advertContacts(_ ident: PeerSource) async {
+            let epoch = peerAdvertEpoch(src.now())
+            let adverts = contacts.filter(\.reachable).prefix(maxLiveContactAdverts).map {
+                BonjourAdvert(
+                    instance: PeerContacts.instance(
+                        secret: $0.secret, advertiserAgreeKey: ident.agreePublic, epoch: epoch),
+                    txt: ["v=1", "m=c"])
+            }
+            await network.advertiseContacts(Array(adverts))
+        }
+
+        private func foundContact(_ f: BonjourFound) {
+            guard let hit = contactIndex.lookup(f.instance, now: src.now()),
+                let c = contacts.first(where: { $0.id == hit.id && $0.pending == hit.pending })
+            else { return }
+            contactPeers["\(hit.id)|\(hit.pending)"] = (c, f.instance, f.endpoint)
+        }
+
+        /// Dial a contact seen on this network and run the mode-`c` handshake under its secret (§15.10).
+        /// `pending` picks the pending secret of a re-pair. The pin is the session's: a peer that does not hold
+        /// the contact's key ends it as `peer_revoked` before a byte is sent back. Throws `ConnectLanError`.
+        public func connectContact(_ id: String, pending isPending: Bool = false) async throws -> ConnectSession {
+            if stopped { throw ConnectLanError(.notListening, "The LAN service is stopped.") }
+            guard let entry = contactPeers["\(id)|\(isPending)"] else {
+                throw ConnectLanError(.unknownPeer, "That contact was not found on this network.")
+            }
+            let c = entry.peer
+            let ident = try await identity(force: false)
+            let targets: [BonjourEndpoint]
+            do { targets = try await network.resolve(entry.endpoint) } catch let e as BonjourPipeError {
+                if case .browse(.permissionDenied) = e { throw Self.lanError(e) }
+                throw ConnectLanError(.connectFailed, "The contact did not answer.")
+            }
+            var last = ConnectLanError(.connectFailed, "The contact did not answer.")
+            for target in targets {
+                if stopped { throw ConnectLanError(.notListening, "The LAN service is stopped.") }
+                let pipe: NWPipe
+                do { pipe = try await network.dial(target) } catch let e as BonjourPipeError {
+                    if case .browse(.permissionDenied) = e { throw Self.lanError(e) }
+                    last = ConnectLanError(.connectFailed, "The contact did not answer.")
+                    continue
+                }
+                let key = ObjectIdentifier(pipe)
+                pending[key] = pipe
+                defer { pending[key] = nil }
+                do {
+                    let ref = c.ref
+                    let h = ConnectSessionHandlers(role: "initiator", contacts: [ref])
+                    let opts = PeerChannelOptions.connectContact(
+                        ident, role: .initiator, contacts: [PeerContactLink(secret: c.secret, agreeKey: c.agreeKey)],
+                        caps: o.caps, label: o.label, now: src.now, rekeyMessages: o.rekeyMessages,
+                        rekeySeconds: o.rekeySeconds)
+                    let link = try await PeerLink.make(
+                        pipe: LanPipe(pipe: pipe), options: opts, handlers: h.handlers,
+                        handshakeSeconds: o.handshakeSeconds)
+                    h.attach(link)
+                    Task { await link.run() }
+                    await link.start()
+                    let session = try await h.opened(link)
+                    track(session)
+                    if ref.pending { Task { await self.src.contactEstablished?(ref) } }
+                    return session
+                } catch let e as ConnectLanError {
+                    await pipe.close()
+                    last = e
+                } catch {
+                    await pipe.close()
+                    last = ConnectLanError(.handshakeFailed, "The handshake failed.")
+                }
+            }
+            throw last
         }
 
         // MARK: Discovery
@@ -708,6 +974,9 @@ import PolarisKeyPlatform
                 advName = name
                 await network.advertise(BonjourAdvert(instance: name, txt: ["v=1", "m=a"]))
             }
+            // Contacts: the names rotate with the epoch like the account's.
+            await loadContacts()
+            await advertContacts(ident)
             armEpoch(src.now())
         }
 
@@ -730,15 +999,20 @@ import PolarisKeyPlatform
                 return
             }
             if index.refresh(now: src.now()) { network.rescan() }
+            await loadContacts()
             armEpoch(src.now())
         }
 
         private func gone(_ instance: String) {
             for k in peers.keys where peers[k]?.instance == instance { peers[k] = nil }
+            for k in contactPeers.keys where contactPeers[k]?.instance == instance { contactPeers[k] = nil }
         }
 
         private func found(_ f: BonjourFound) async {
             if stopped { return }
+            // A contact advert (`m=c`) is judged by `PeerContacts.parseTxt` and by no other path (§15.4): the
+            // generic parser answers an unknown mode, so it can never be dialled as `a`.
+            if PeerContacts.parseTxt(f.txt) == .ok { return foundContact(f) }
             guard case .ok(let mode, _) = PeerAdvert.parseTxt(f.txt), mode == .a else { return }
             guard (try? await identity(force: false)) != nil, let hit = index.lookup(f.instance, now: src.now()) else {
                 return

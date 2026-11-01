@@ -26,6 +26,8 @@ internal fun cloudSyncStatusScreen(inputs: KitInputs): KitScreen {
         return screen(KitComponent.cloudSyncStatus, "ring-changed", listOf(context.line("cloudSync.ringChanged"), context.line("common.review")))
     }
     val known = state ?: return hidden(KitComponent.cloudSyncStatus)
+    // A pending transfer is never reported as synced, whatever `lastSynced` holds (UI-KITS Must not).
+    transferStatusScreen(context, known, sync)?.let { return it }
     val signedOut = known == "error" && sync.boolean("signedIn") == false
     val review = known == "conflict" && sync.boolean("canReview") == true
     val head = when {
@@ -135,4 +137,51 @@ internal fun ringChangeScreen(inputs: KitInputs): KitScreen {
         context.line("common.cancel"),
     )
     return screen(KitComponent.ringChange, if (failed) "failed" else "confirm", lines)
+}
+
+/** What a waiting transfer names, by its reason (default: the network). */
+private val WAITING_KEYS: Map<String, String> = mapOf(
+    "network" to "cloudSync.waitingNetwork",
+    "battery" to "cloudSync.waitingBattery",
+    "background" to "cloudSync.waitingBackground",
+)
+
+/**
+ * The transfer states of CloudSyncStatus (U-22.K0, models/cloudSync.ts): `transferring` names the
+ * label before its figures, `waiting` its reason, `transfer-failed` offers Try again. None of them
+ * ever carries `cloudSync.synced`, whatever `lastSynced` holds.
+ */
+private fun transferStatusScreen(context: KitContext, state: String, sync: kotlinx.serialization.json.JsonObject): KitScreen? = when (state) {
+    "transferring" -> {
+        val transfer = sync.obj("transfer")
+        val size = transfer.string("size")
+        val total = transfer.string("total")
+        val known = size != null && total != null
+        screen(
+            KitComponent.cloudSyncStatus,
+            "transferring",
+            listOfNotNull(
+                context.line("cloudSync.transferring"),
+                if (known) {
+                    context.line("cloudSync.transferProgress", mapOf("size" to CopyArgument.Text(size!!), "total" to CopyArgument.Text(total!!)))
+                } else {
+                    null
+                },
+            ),
+        )
+    }
+
+    "waiting" -> screen(
+        KitComponent.cloudSyncStatus,
+        "waiting",
+        listOf(context.line(WAITING_KEYS[sync.string("reason") ?: "network"] ?: "cloudSync.waitingNetwork")),
+    )
+
+    "transfer-failed" -> screen(
+        KitComponent.cloudSyncStatus,
+        "transfer-failed",
+        listOf(context.line("cloudSync.transferFailed"), context.line("common.tryAgain")),
+    )
+
+    else -> null
 }

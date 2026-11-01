@@ -1,3 +1,4 @@
+// @pkey-feature sync.saves
 // @pkey-feature sync.scenarios
 // @pkey-feature sync.e2e
 // @pkey-feature sync.settings
@@ -17,7 +18,7 @@ import XCTest
 /// What the scenario driver needs of a machine. The machine (U-07.2) conforms in the test target
 /// until the host owns it; every answer is the plain JSON the corpus compares.
 protocol SyncScenarioMachine: AnyObject {
-    func call(_ name: String, _ args: [JSONValue]) -> CallResult
+    func call(_ name: String, _ args: [JSONValue]) -> JSONValue
     func advance(ms: Int)
     func setNetwork(_ state: String)
     func receive(status: Int, body: JSONValue?, opened: SyncOpenedBody?) throws
@@ -32,6 +33,8 @@ protocol SyncScenarioMachine: AnyObject {
     func settingState(_ key: String) -> JSONValue?
     func record(_ collection: String, _ id: String) -> JSONValue?
     func journal() -> JSONValue
+    func records(_ collection: String) -> JSONValue
+    func takeOutcomes() -> [JSONValue]
     func status() -> JSONValue
     func encryptionSince() -> JSONValue
 }
@@ -51,6 +54,11 @@ private struct SyncScenarioFile {
     let root: [String: JSONValue]
     var scenarios: [[String: JSONValue]] { (root["scenarios"]?.arrayValue ?? []).compactMap(\.objectValue) }
     var settingCases: [[String: JSONValue]] { (root["settingCases"]?.arrayValue ?? []).compactMap(\.objectValue) }
+    /// The records binding of cloudSync.saves (plans/U-22.5.md): a second family, replayed in full.
+    var fileRecordScenarios: [[String: JSONValue]] {
+        let family = root["fileRecordCases"]?.objectValue
+        return (family?["scenarios"]?.arrayValue ?? []).compactMap(\.objectValue)
+    }
 
     static func load() throws -> SyncScenarioFile {
         let v = try CorpusLocator.load(JSONValue.self, "sync-scenarios")
@@ -119,7 +127,7 @@ final class SyncScenariosTests: XCTestCase {
             switch kind {
             case "local":
                 let result = m.call(o["call"]?.stringValue ?? "", o["args"]?.arrayValue ?? [])
-                if let want = o["expect"] { XCTAssertEqual(result.json, want, at) }
+                if let want = o["expect"] { XCTAssertEqual(result, want, at) }
             case "advance": m.advance(ms: o["ms"]?.intValue ?? 0)
             case "network": m.setNetwork(o["state"]?.stringValue ?? "")
             case "respond":
@@ -152,6 +160,11 @@ final class SyncScenariosTests: XCTestCase {
         for (key, want) in o["states"]?.objectValue ?? [:] {
             XCTAssertTrue(jsonEqual(m.settingState(key), want), "\(at): states.\(key)")
         }
+        let outcomes = m.takeOutcomes()
+        if let want = o["outcomes"] { XCTAssertTrue(jsonEqual(.array(outcomes), want), "\(at): outcomes") }
+        for (c, want) in o["rows"]?.objectValue ?? [:] {
+            XCTAssertTrue(jsonEqual(m.records(c), want), "\(at): rows.\(c)")
+        }
         for (key, want) in o["records"]?.objectValue ?? [:] {
             let parts = key.split(separator: "/", maxSplits: 1).map(String.init)
             XCTAssertTrue(jsonEqual(m.record(parts[0], parts.count > 1 ? parts[1] : ""), want), "\(at): records.\(key)")
@@ -162,6 +175,21 @@ final class SyncScenariosTests: XCTestCase {
             XCTAssertTrue(jsonEqual(m.encryptionSince(), want), "\(at): encryptionSince")
         }
         if let want = o["licence"] { XCTAssertTrue(jsonEqual(licence, want), "\(at): licence") }
+    }
+
+    // MARK: - fileRecordCases (replayed in full)
+
+    func testFileRecordCases() throws {
+        let f = try file()
+        let family = f.root["fileRecordCases"]?.objectValue
+        XCTAssertEqual(family?["calls"], .array([.string("putAt"), .string("removeAt")]))
+        XCTAssertEqual(family?["asserts"], .array([.string("rows"), .string("outcomes")]))
+        let scenarios = f.fileRecordScenarios
+        XCTAssertEqual(scenarios.count, 19)
+        for sc in scenarios {
+            try runScenario(
+                sc, name: sc["name"]?.stringValue ?? "?", make: Self.makeMachine, product: f.root["product"] ?? .null)
+        }
     }
 
     // MARK: - settingCases (in full)
@@ -238,6 +266,38 @@ final class SyncScenariosTests: XCTestCase {
 final class CloudSyncScenarioAdapter: SyncScenarioMachine {
     let machine: CloudSyncMachine
     private let opts: SyncMachineOptions
+    /// The outcomes since the last assert; shared with the machine a relaunch builds.
+    private var sink = OutcomeSink()
+
+    final class OutcomeSink { var items: [JSONValue] = [] }
+
+    private func listen() {
+        let sink = self.sink
+        machine.onOutcome { ticket, outcome in sink.items.append(Self.outcomeJSON(ticket, outcome)) }
+    }
+
+    static func outcomeJSON(_ ticket: Int, _ o: SyncRecordOutcome) -> JSONValue {
+        var out: [String: JSONValue] = ["mutationId": .int(ticket)]
+        switch o {
+        case .ok(let v):
+            out["status"] = .string("ok")
+            out["version"] = .int(v)
+        case .conflict(let server):
+            out["status"] = .string("conflict")
+            if let server {
+                out["server"] = .object([
+                    "value": server.value, "version": .int(server.version), "file": server.file?.json ?? .null,
+                ])
+            } else {
+                out["server"] = .null
+            }
+        case .rejected(let code):
+            out["status"] = .string("rejected")
+            out["code"] = .string(code)
+        case .dropped: out["status"] = .string("dropped")
+        }
+        return .object(out)
+    }
 
     init(product: JSONValue, initBlock i: SyncScenarioInit, newClientId: @escaping () -> String) throws {
         let cat = i["catalog"]?.objectValue ?? [:]
@@ -267,27 +327,68 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
         o.hasRoot = i["hasRoot"]?.boolValue ?? false
         opts = o
         machine = try CloudSyncMachine(o)
+        listen()
     }
 
-    private init(machine: CloudSyncMachine, opts: SyncMachineOptions) {
+    private init(machine: CloudSyncMachine, opts: SyncMachineOptions, sink: OutcomeSink) {
         self.machine = machine
         self.opts = opts
+        self.sink = sink
+        listen()
     }
 
-    func call(_ name: String, _ a: [JSONValue]) -> CallResult {
+    func records(_ collection: String) -> JSONValue {
+        .array(
+            machine.records(collection).map {
+                .object([
+                    "id": .string($0.id), "value": $0.value, "version": .int($0.version),
+                    "file": $0.file?.json ?? .null,
+                ])
+            })
+    }
+
+    func takeOutcomes() -> [JSONValue] {
+        defer { sink.items = [] }
+        return sink.items
+    }
+
+    func call(_ name: String, _ a: [JSONValue]) -> JSONValue {
         func str(_ i: Int) -> String { a.count > i ? (a[i].stringValue ?? "") : "" }
+        func base(_ i: Int) -> SyncBase {
+            if a.count > i, let v = a[i].intValue { return .version(v) }
+            return .any
+        }
+        func ticket(_ r: SyncTicketResult) -> JSONValue {
+            switch r {
+            case .ticket(let t): return .object(["ok": .bool(true), "mutationId": .int(t)])
+            case .failed(let e): return .object(["ok": .bool(false), "error": .string(e)])
+            }
+        }
         switch name {
-        case "set": return machine.set(str(0), a[1])
-        case "clear": return machine.clear(str(0))
-        case "put": return machine.put(str(0), str(1), a[2])
-        case "add": return machine.add(str(0), str(1), a[2])
-        case "remove": return machine.remove(str(0), str(1), a[2])
-        case "flush": return machine.flush()
-        case "refresh": return machine.refresh()
+        case "putAt":
+            return ticket(
+                machine.putAt(str(0), str(1), a[2], baseVersion: base(3), file: a.count > 4 ? SyncFilePointer(json: a[4]) : nil))
+        case "removeAt": return ticket(machine.removeAt(str(0), str(1), baseVersion: base(2)))
+        default: return plain(name, a)
+        }
+    }
+
+    private func plain(_ name: String, _ a: [JSONValue]) -> JSONValue {
+        func str(_ i: Int) -> String { a.count > i ? (a[i].stringValue ?? "") : "" }
+        let r: CallResult
+        switch name {
+        case "set": r = machine.set(str(0), a[1])
+        case "clear": r = machine.clear(str(0))
+        case "put": r = machine.put(str(0), str(1), a[2])
+        case "add": r = machine.add(str(0), str(1), a[2])
+        case "remove": r = machine.remove(str(0), str(1), a[2])
+        case "flush": r = machine.flush()
+        case "refresh": r = machine.refresh()
         default:
             XCTFail("unknown call \(name)")
-            return .failed("unknown")
+            r = .failed("unknown")
         }
+        return r.json
     }
 
     func advance(ms: Int) { machine.advance(ms) }
@@ -301,13 +402,13 @@ final class CloudSyncScenarioAdapter: SyncScenarioMachine {
     func signOut(discardUnsynced: Bool) { machine.signOut(discardUnsynced: discardUnsynced) }
     func relaunch(journalLost: Bool) throws -> SyncScenarioMachine {
         CloudSyncScenarioAdapter(
-            machine: try CloudSyncMachine.relaunch(machine, opts, journalLost: journalLost), opts: opts)
+            machine: try CloudSyncMachine.relaunch(machine, opts, journalLost: journalLost), opts: opts, sink: sink)
     }
     func takeRequests() -> [JSONValue] { machine.takeRequests().map(\.json) }
     func takeEvents() -> [JSONValue] { machine.takeEvents().map(\.json) }
     func get(_ key: String) -> JSONValue? { machine.get(key).json }
     func settingState(_ key: String) -> JSONValue? { machine.settingState(key).json }
-    func record(_ collection: String, _ id: String) -> JSONValue? { machine.record(collection, id)?.json }
+    func record(_ collection: String, _ id: String) -> JSONValue? { machine.record(collection, id)?.json ?? .null }
     func journal() -> JSONValue { machine.journal() }
     func status() -> JSONValue { machine.status().json }
     func encryptionSince() -> JSONValue { machine.encryptionSince.map { .int($0) } ?? .null }

@@ -10,19 +10,41 @@ Card/Body/Row/Status: Label "Offline · changes sync when you reconnect"
 == conflict, Review offered ==
 Card/Body/Row/Glyph: TextureRect
 Card/Body/Row/Status: Label "Some changes conflict."
-Card/Body/Action: Button "Review" [focus 1]
+Card/Body/ActionPad/Action: Button "Review" [focus 1]
 == error ==
 Card/Body/Row/Glyph: TextureRect
 Card/Body/Row/Status: Label "Couldn't sync. Try again later."
 == error: signed out ==
 Card/Body/Row/Glyph: TextureRect
 Card/Body/Row/Status: Label "You're signed out."
-Card/Body/Action: Button "Sign in to sync" [focus 1]
+Card/Body/ActionPad/Action: Button "Sign in to sync" [focus 1]
 == locked ==
 Card/Body/Row/Glyph: TextureRect
 Card/Body/Row/Status: Label "Sync is locked."
-Card/Body/Action: Button "Unlock sync" [focus 1]
+Card/Body/ActionPad/Action: Button "Unlock sync" [focus 1]
 == ring changed ==
 Card/Body/Row/Glyph: TextureRect
 Card/Body/Row/Status: Label "Your sync key changed."
-Card/Body/Action: Button "Review" [focus 1]
+Card/Body/ActionPad/Action: Button "Review" [focus 1]
+== transferring ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Syncing saves…"
+Card/Body/Figures: Label "38 MB of 61 MB"
+Card/Body/Progress: ProgressBar
+== transferring, no figures ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Syncing saves…"
+Card/Body/Progress: ProgressBar
+== waiting for a connection ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Waiting for a connection"
+== waiting for power ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Waiting for power"
+== waiting for the app ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Paused until you open the app"
+== transfer failed ==
+Card/Body/Row/Glyph: TextureRect
+Card/Body/Row/Status: Label "Couldn't sync your saves."
+Card/Body/ActionPad/Action: Button "Try again" [focus 1]

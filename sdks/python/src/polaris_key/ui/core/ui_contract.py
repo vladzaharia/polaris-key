@@ -64,6 +64,8 @@ COMPONENTS: Tuple[str, ...] = (
     "ChannelPicker",
     "Toast",
     "SaveConflict",
+    "LinkPairing",
+    "TransferOffer",
 )
 
 # A component whose required service is off renders nothing in the drop-in and an empty styled part.

@@ -4,7 +4,7 @@
 
 /** The UI matrix version these models implement (`uiMatrixVersion`, the generated
  *  `UI_MATRIX_VERSION` of every SDK's constants). The runner refuses a file of another version. */
-export const UI_MATRIX_VERSION = 10;
+export const UI_MATRIX_VERSION = 8;
 
 /** UI-KITS.md §4.1: every component, must and should. */
 export const COMPONENTS = [
@@ -52,6 +52,14 @@ export type SyncScreenName =
   | "SaveConflict";
 
 /**
+ * The inter-account screens (ui-matrix.json `connect` family, CC-19.9): pairing two people's devices
+ * once and the prompt for a transfer a contact offers. Like the holders' screens they are not in
+ * `COMPONENTS` yet, so no kit's per-component table has to grow before its own package does;
+ * `viewOf` answers them.
+ */
+export type ConnectScreenName = "LinkPairing" | "TransferOffer";
+
+/**
  * The two screens activation without an account adds (ui-matrix.json `holders` family, UK-42): the
  * Done step after a key, and Add your name and email. Like the Cloud Sync screens they are not in
  * `COMPONENTS` yet, so no kit's per-component table has to grow before its own package does;
@@ -60,7 +68,7 @@ export type SyncScreenName =
 export type HolderScreenName = "ActivateDone" | "AddToAccount";
 
 /** Anything a view can be of (a Cloud Sync or holder screen is a component). */
-export type ScreenName = ComponentName | HolderScreenName;
+export type ScreenName = ComponentName | HolderScreenName | ConnectScreenName;
 
 /** The reserved state of a component its service turns off: the drop-in renders nothing and a
  *  styled part renders empty (plans/UK-02b.md §4.3). */

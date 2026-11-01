@@ -8,8 +8,12 @@
 // Swift's ports are synchronous: file reads and libzstd calls block, and only the network is
 // `async`. SHA-256 is always CryptoKit's streaming `SHA256`, so there is no hasher port.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// A readable run of bytes of a known length: a staged object, an installed file, a range of an
 /// installed payload. `read` returns exactly `length` bytes, or fewer only at the end.

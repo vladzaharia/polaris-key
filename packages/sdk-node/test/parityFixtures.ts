@@ -34,11 +34,12 @@ export function entitlement(value: unknown, at = nowSec()): ManagedEntry {
 export async function signedLicense(
   entitlements: Record<string, unknown>,
   at = nowSec(),
+  deviceId = DEVICE,
 ): Promise<string> {
   const doc: LicenseDoc = {
     iss: ISSUER,
     aud: PRODUCT,
-    deviceId: DEVICE,
+    deviceId,
     issuedAt: at,
     expiresAt: at + 3600,
     graceUntil: at + 30 * 86400,
@@ -148,4 +149,21 @@ export async function seededClient(
   });
   await client.init();
   return { client, store, seen: server.seen, dir };
+}
+
+/** A discovery handler whose Identity fragment is `fragment` (merged over `enabled`/`configured`),
+ *  or Identity off for `null`. */
+export function identityDiscovery(
+  fragment: Record<string, unknown> | null,
+): Handler {
+  return () =>
+    json({
+      product: PRODUCT,
+      services: {
+        identity:
+          fragment === null
+            ? { enabled: false }
+            : { enabled: true, configured: true, ...fragment },
+      },
+    });
 }

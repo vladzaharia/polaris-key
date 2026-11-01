@@ -20,11 +20,26 @@ private const val RESERVED_FLAGS = 0xfe
 /** A record body is at most this long: a Noise message less its tag and the three header bytes. */
 public const val MAX_RECORD_BODY: Int = NOISE_MAX - TAG_BYTES - HEADER_BYTES
 
+/**
+ * An open MORE chain in modes v and p (section 15.6.1): their messages are a `HELLO`, the SAS records, a
+ * `VOUCH_REQ` and the held Sync records, all far under this, and the peer is not yet verified.
+ */
+public const val MAX_VP_CHAIN_BYTES: Int = 16_384
+
 /** Records in one MORE chain: a full message in the smallest records, plus one. */
 public const val MAX_CHAIN_RECORDS: Int = (MAX_PEER_MESSAGE_BYTES + MAX_RECORD_BODY - 1) / MAX_RECORD_BODY + 1
 
 /** The channel modes a record table distinguishes (`c` is the content-key channel). */
-public enum class RecordMode { a, v, p, c }
+public enum class RecordMode {
+    a,
+    v,
+    p,
+    c,
+    ;
+
+    /** Modes v and p take their records from a peer that is not yet verified. */
+    internal val unverifiedPeer: Boolean get() = this == v || this == p
+}
 
 /** Why a session closes. The names are the wire's. */
 public enum class PeerCloseCode {
@@ -53,6 +68,7 @@ public object RecordType {
     public const val SAS_COMMIT: Int = 0x8014
     public const val SAS_NONCE: Int = 0x8015
     public const val SAS_REVEAL: Int = 0x8016
+    public const val KEYRING_WRAP: Int = 0x0030
     public const val REKEY: Int = 0x80fe
     public const val CLOSE: Int = 0x80ff
 }
@@ -148,7 +164,16 @@ public class RecordAssembler(private val mode: RecordMode) {
     private var parts = ArrayList<ByteArray>()
     private var dropping = -1
 
+    /**
+     * Set by the session once the capabilities are known (section 15.11): whether `xfer/1` is in both payloads.
+     * While null the transfer types read as any other. When set, a transfer record without the capability is
+     * `peer_not_allowed`, and one with `MORE` set is `peer_bad_frame`.
+     */
+    internal var xferAllowed: Boolean? = null
+
     private fun bad(code: PeerCloseCode): AssembleResult = AssembleResult.Close(code)
+
+    private fun chainTooLong(chain: Boolean, size: Int): Boolean = chain && mode.unverifiedPeer && size > MAX_VP_CHAIN_BYTES
 
     /** Feed one record. */
     public fun push(r: PeerRecord): AssembleResult {
@@ -167,8 +192,17 @@ public class RecordAssembler(private val mode: RecordMode) {
             return AssembleResult.Ignored
         }
         if (mode !in row.modes) return bad(PeerCloseCode.peer_not_allowed)
-        val size = (if (openType >= 0) openSize else 0) + r.body.size
-        if (size > MAX_PEER_MESSAGE_BYTES || parts.size >= MAX_CHAIN_RECORDS) return bad(PeerCloseCode.peer_bad_frame)
+        val xa = xferAllowed
+        if (xa != null && r.type in XferType.OFFER..XferType.CANCEL) {
+            if (!xa) return bad(PeerCloseCode.peer_not_allowed)
+            if (more) return bad(PeerCloseCode.peer_bad_frame)
+        }
+        val chained = openType >= 0
+        val size = (if (chained) openSize else 0) + r.body.size
+        if (size > MAX_PEER_MESSAGE_BYTES) return bad(PeerCloseCode.peer_bad_frame)
+        // Modes v and p: an unverified peer's open chain stays under 16 KiB (N7).
+        if (chainTooLong(more || chained, size)) return bad(PeerCloseCode.peer_bad_frame)
+        if (parts.size >= MAX_CHAIN_RECORDS) return bad(PeerCloseCode.peer_bad_frame)
         parts.add(r.body)
         if (more) {
             openType = r.type

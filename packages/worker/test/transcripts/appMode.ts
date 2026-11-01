@@ -4,6 +4,7 @@ import { expect } from "vitest";
 import type { World } from "./recorder.js";
 import { DEVICE, T0 } from "./client.js";
 import { PRODUCT } from "./world.js";
+import { upsertDevice } from "../../src/core/devices/store.js";
 import {
   platformIdentityWorld,
   PLAYER,
@@ -57,4 +58,48 @@ export function pollDevice(
   now: number,
 ): Promise<Response> {
   return postJson(w, now, POLL, { deviceCode: s.deviceCode, deviceId: DEVICE });
+}
+
+/**
+ * Give the signed-in account a FULL licence `lic_full` (a seat limit of one, taken by another
+ * device), so a card or same-device grant would offer Replace on it. Call after the sign-in.
+ */
+export async function seedFullLicense(w: World): Promise<void> {
+  const account = await w.db.first<{ account_id: string }>(
+    "SELECT account_id FROM account_links WHERE kind = 'oidc' AND subject = ?",
+    PLAYER.sub,
+  );
+  expect(account).toBeTruthy();
+  await w.db.run(
+    `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id, activated_at,
+     expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
+     modified_by, modified_at, account_id)
+   VALUES (?, 'lic_full', 'active', NULL, 'Full', NULL, NULL, NULL, ?, NULL, NULL, '{}', NULL, NULL, NULL, NULL, ?, ?)`,
+    PRODUCT,
+    T0,
+    T0,
+    account!.account_id,
+  );
+  await w.db.run(
+    "UPDATE products SET default_device_limit = 1 WHERE slug = ?",
+    PRODUCT,
+  );
+  await upsertDevice(w.db, {
+    product: PRODUCT,
+    device_id: "other-device",
+    customer_id: null,
+    license_id: "lic_full",
+    status: "authorized",
+    first_seen: T0,
+    last_seen: T0,
+    ua: null,
+    label: "Other PC",
+    overrides_json: null,
+    reported_json: null,
+    token_hash: null,
+  });
+  await w.db.run(
+    "UPDATE devices SET seat_no = 1 WHERE product = ? AND device_id = 'other-device'",
+    PRODUCT,
+  );
 }

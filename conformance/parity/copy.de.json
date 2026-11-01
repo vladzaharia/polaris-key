@@ -97,6 +97,10 @@
       "title": "Limit für Fernverbindungen erreicht",
       "message": "Es wird bald zurückgesetzt. Geräte im selben Netzwerk verbinden sich weiterhin."
     },
+    "connect_links_disabled": {
+      "title": "Verknüpfung aus",
+      "message": "Das Verknüpfen mit anderen Personen ist für diese App ausgeschaltet. Deine eigenen Geräte verbinden sich weiterhin."
+    },
     "relay_ticket_invalid": {
       "title": "Verbindung abgelaufen",
       "message": "Die Verbindungsanfrage ist abgelaufen. Versuchen Sie es erneut."
@@ -204,6 +208,10 @@
     "redirect_uri_mismatch": {
       "title": "Anmeldung kann nicht zur App zurückkehren",
       "message": "Die Anmeldung dieser App ist nicht richtig eingerichtet, deshalb wurde sie hier zum Schutz Ihres Kontos angehalten. Informieren Sie den Entwickler."
+    },
+    "invalid_request_uri": {
+      "title": "Anmeldelink abgelaufen",
+      "message": "Dieser Anmeldelink ist abgelaufen. Gehen Sie zurück zu {product} und beginnen Sie erneut."
     },
     "license_choice_required": {
       "title": "Lizenz wählen",
@@ -525,6 +533,10 @@
       "title": "Code abgelaufen",
       "message": "Der Code ist abgelaufen, bevor die Anmeldung abgeschlossen wurde. Beginnen Sie erneut."
     },
+    "redirect-unavailable": {
+      "title": "Anmeldung im Browser nicht möglich",
+      "message": "Die Anmeldung konnte hier keinen Browser öffnen. Verwenden Sie stattdessen einen Code."
+    },
     "sign-in-denied": {
       "title": "Anmeldung abgelehnt",
       "message": "Die Anmeldung wurde abgelehnt. Beginnen Sie erneut."
@@ -616,6 +628,58 @@
     "nearby-permission-denied": {
       "title": "Lokales Netzwerk gesperrt",
       "message": "Diese App kann keine Geräte in Ihrem lokalen Netzwerk erreichen. Erlauben Sie es in den Systemeinstellungen."
+    },
+    "nearby-unsupported": {
+      "title": "Anmeldung in der Nähe nicht verfügbar",
+      "message": "Dieses Gerät kann hier nicht nach Geräten in der Nähe suchen."
+    },
+    "peer-handshake-failed": {
+      "title": "Sichere Verbindung fehlgeschlagen",
+      "message": "Eine sichere Verbindung zum Gerät in der Nähe konnte nicht hergestellt werden. Versuchen Sie es erneut."
+    },
+    "peer-closed": {
+      "title": "Verbindung beendet",
+      "message": "Die Verbindung zum Gerät in der Nähe wurde beendet. Versuchen Sie es erneut."
+    },
+    "transfer-cancelled": {
+      "title": "Übertragung beendet",
+      "message": "Die Übertragung wurde nicht abgeschlossen. Es wurde nichts empfangen."
+    },
+    "link-unknown": {
+      "title": "Nicht gekoppelt",
+      "message": "Dieses Gerät ist nicht mehr mit diesem gekoppelt."
+    },
+    "peer_revoked": {
+      "title": "Gerät nicht mehr vertrauenswürdig",
+      "message": "Das andere Gerät wurde aus dem Konto entfernt. Es wurde nichts geteilt."
+    },
+    "peer_expired": {
+      "title": "Gerätezertifikat abgelaufen",
+      "message": "Das Zertifikat des anderen Geräts ist abgelaufen. Aktualisieren Sie und versuchen Sie es erneut."
+    },
+    "peer_bad_frame": {
+      "title": "Verbindungsfehler",
+      "message": "Das Gerät in der Nähe hat etwas Unerwartetes gesendet. Versuchen Sie es erneut."
+    },
+    "peer_unknown_critical": {
+      "title": "Nicht unterstützte Anfrage",
+      "message": "Das Gerät in der Nähe hat etwas angefordert, das diese App nicht unterstützt. Versuchen Sie es erneut."
+    },
+    "peer_not_allowed": {
+      "title": "Hier nicht erlaubt",
+      "message": "Das Gerät in der Nähe hat etwas angefordert, das in diesem Schritt nicht erlaubt ist. Versuchen Sie es erneut."
+    },
+    "peer_busy": {
+      "title": "Gerät in der Nähe ausgelastet",
+      "message": "Zu viele Verbindungen sind offen. Versuchen Sie es gleich noch einmal."
+    },
+    "peer_timeout": {
+      "title": "Zeitüberschreitung",
+      "message": "Das Gerät in der Nähe hat nicht rechtzeitig geantwortet. Versuchen Sie es erneut."
+    },
+    "peer_bye": {
+      "title": "Verbindung geschlossen",
+      "message": "Das Gerät in der Nähe hat die Verbindung beendet."
     },
     "platform-error": {
       "title": "Plattformproblem",

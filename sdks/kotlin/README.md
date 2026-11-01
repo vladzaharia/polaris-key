@@ -30,6 +30,7 @@ planned include `packs.transport.steam`, with a note.
 | `:boundary`            | Android app (probe)   | an empty app per flavor; `tools/check_flavours.sh` proves the flavor boundary on its release                                                                                                                                                                                                          |
 | `:ui`                  | Android library (AAR) | the Jetpack Compose UI kit: boot shell, gate, activation, sign-in with QR, settings, devices, update banner and prompt, pack progress; see `ui/README.md`                                                                                                                                             |
 | `:billing`             | Android library (AAR) | Play Billing as license flags (SP-K05): `PolarisPlayBilling` buys with the license binding as `obfuscatedAccountId`, claims, acknowledges after the claim, restores                                                                                                                                   |
+| `:games`               | Android library (AAR) | Play Games Services v2 sign-in (I-45.5): a server auth code handed to `identity.autoSignIn()` as the `pgs` provider; opt-in, `:identity` only                                                                                                                                                         |
 
 `:ui` sees `:sdk` and never `:platform` or `:android`. No JVM module has an Android
 dependency, each service module depends on `:core` only (never on a sibling; `:sdk` is the one
@@ -378,6 +379,26 @@ opens an encrypted channel and `onChannel` receives one another device opens (cl
 On the JVM it tries the LAN first (mDNS and TCP), then the relay. On Android the relay works today; LAN
 discovery needs the Android adapter (CC-12b) and reports `off` with reason `unsupported` until then.
 `stop()` and sign-out close every session within 2 s each. `PolarisKeyFutures` has the Java forms.
+
+### Nearby approval
+
+`client.cloudConnect.nearby` lets a signed-in device approve a device that cannot sign itself in, over the local network, with
+a code both screens show (WIRE-CONTRACT-V5 section 15.6.1). It is gated by the Identity service's discovery (`nearby` and its
+endpoints), never by Connect, so it works with Connect off; a product that does not serve it gets the typed `service-unavailable`,
+and a runtime with no mDNS adapter (Android until the `:android` glue supplies one) or an adapter that cannot start gets
+`nearby-unsupported`. It calls no route: the host calls `nearby/start`, `poll` and `approve` and hands the answers to the handles.
+
+- **The new device (D).** `nearby.request(NearbyRequestOptions(request = handle, label = "New phone"))` browses for approvers and
+  lists them (`approvers`, `onApprovers`) by the label and platform they reported. `choose(id)` starts the code on that approver
+  only and answers the code to show; the others close. `result` is display only (`onResult`); the host's poll decides. Records for
+  Cloud Sync arrive in `onRecord` once `confirmAccount()` ran.
+- **The approver (M).** `nearby.onRequest(handler, NearbyApproverOptions(prompt = true))` advertises while the person has
+  "Approve a nearby device" open, and hands each session to `handler` with three codes. `pick(code)` answers the verified request
+  to give `nearby/approve` (or `Mismatch`); `finish(answer)` maps the HTTP answer to the result D sees. `prompt = false` needs
+  `background = true`. `stop()`, a sign-out, a lost discovery and a failed renewal are final; the handle's `pause()` and
+  `resume()` cannot bring them back.
+- **Sign-out** stops every advert and closes every request, after Connect and before the device leaves it.
+  `PolarisKeyFutures.nearby*` are the Java forms.
 
 ## Cloud Sync settings
 

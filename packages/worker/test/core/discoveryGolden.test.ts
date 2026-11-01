@@ -27,6 +27,9 @@
  * I-01 removed Identity's `endpoints.authPoll` (S-16 §5.3: discovery response only, no SDK reads
  * it, owner decision D10); only its advertisement went then. The `/identity/auth/poll` route
  * itself is retired since (fix/followups-sweep-1006), which changes no discovery byte.
+ * I-15.6 (WIRE-CONTRACT-V5 §12.6, §12.12) added `request` and `signinReturn` to Identity's `endpoints`
+ * (after `token`) and `nativeRedirect` before `endpoints` in the everything product's fragment.
+ * Additive keys a client ignores.
  * U-04 added the seventh service, Cloud Sync (plans/U-01.md §2.5, approved): each golden gained
  * `services.sync` after `identity`, `{"enabled":false}` when off; the everything product turns it
  * on and pins the fragment U-04 ships (every capability false, no endpoint until U-05, U-09 and
@@ -74,6 +77,10 @@
  * `endpoints.restore` (`<base>/identity/restore`) right after `signout`, while Identity, the
  * product setting `identity.restore` and the launch gate `launch.identityRestore` all allow it (the
  * gate is on in this suite's env). Additive; the identity transcripts pin both.
+ * I-40.8 (WIRE-CONTRACT-V5 §12.11.6) added Identity's `nearby: true` after `keyEntryLimit` and the
+ * endpoints `nearbyStart`, `nearbyApprove` and `nearbyPoll` after `link`, while Identity,
+ * `identity.nearby` and the gate `launch.identityNearby` all serve it (the suite's env turns the
+ * gate on). Additive; the transcripts `nearby-disabled` and `nearby-gate-off` pin the absence.
  */
 
 import { readFileSync } from "node:fs";

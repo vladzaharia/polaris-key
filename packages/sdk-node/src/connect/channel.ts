@@ -64,9 +64,12 @@ export function peerPorts(id: LanIdentity, handle: Uint8Array): NoisePorts {
 }
 
 const REFRESH_GAP_S = 60;
-/** Pushed documents handled at once; the rest are refused as `busy`. */
+/** Pushed documents handled at once; the rest are refused as `busy`. A TRUST flood cannot take
+ *  the last slot: it is kept for a RING (at most 7 waiting TRUST documents, 8 in total). */
 const MAX_DOCS_QUEUED = 8;
 const MAX_RETRIES = 5;
+/** At most one `busy` notice per kind per second; the rest are dropped, not notified. */
+const BUSY_NOTICE_GAP_S = 1;
 
 export class PeerDocs {
   #tail: Promise<unknown> = Promise.resolve();
@@ -74,6 +77,7 @@ export class PeerDocs {
   #lastRefresh = -Infinity;
   #retry: NodeJS.Timeout | null = null;
   #tries = 0;
+  #lastBusy = new Map<"ring" | "trust", number>();
   #fns = new Set<(n: ConnectNotice) => void>();
   readonly #src: LanSource;
   readonly #onStored: () => void;
@@ -153,14 +157,19 @@ export class PeerDocs {
   /**
    * A peer is on a newer roster, or the relay said the roster changed: fetch it (a fresh
    * `identity({refresh: true})`, verified under the normal replacement rules). At most one a
-   * minute. True when a fetch started.
+   * minute, on the monotonic clock, so a wall clock set back cannot hold refreshes off. True when
+   * a fetch started.
    */
   wantRing(): boolean {
     return this.#want(false);
   }
 
+  #mono(): number {
+    return this.#src.mono?.() ?? performance.now() / 1000;
+  }
+
   #want(retry: boolean): boolean {
-    const t = this.#src.now();
+    const t = this.#mono();
     if (this.#src.refresh === undefined) return false;
     if (t - this.#lastRefresh < REFRESH_GAP_S) {
       if (retry) this.#defer(this.#lastRefresh + REFRESH_GAP_S - t);
@@ -194,12 +203,21 @@ export class PeerDocs {
     this.#retry.unref();
   }
 
-  /** One at a time, at most `MAX_DOCS_QUEUED` waiting, and a document already waiting is not
-   *  queued twice: the excess is refused visibly, not worked on. */
+  /** One at a time, at most `MAX_DOCS_QUEUED` waiting (a TRUST one fewer: the last slot is kept
+   *  for a RING), and a document already waiting is not queued twice: the excess is refused
+   *  visibly (one `busy` notice a second per kind), not worked on. */
   #run(type: "ring" | "trust", jws: string, f: () => Promise<void>): void {
     const key = `${type}:${jws}`;
-    if (this.#queued.has(key) || this.#queued.size >= MAX_DOCS_QUEUED)
-      return this.#emit({ type, outcome: "refused", reason: "busy" });
+    const limit = type === "ring" ? MAX_DOCS_QUEUED : MAX_DOCS_QUEUED - 1;
+    if (this.#queued.has(key) || this.#queued.size >= limit) {
+      const t = this.#mono();
+      const last = this.#lastBusy.get(type);
+      if (last === undefined || t - last >= BUSY_NOTICE_GAP_S) {
+        this.#lastBusy.set(type, t);
+        this.#emit({ type, outcome: "refused", reason: "busy" });
+      }
+      return;
+    }
     this.#queued.add(key);
     this.#tail = this.#tail
       .then(f)
@@ -250,6 +268,9 @@ export function keysAfterRing(
   return intact ? keys : [keys[0]!];
 }
 
+/** The capabilities a session lists by default: the app channel and Direct Transfer (§15.11). */
+export const DEFAULT_CAPS: readonly string[] = ["app/1", "xfer/1"];
+
 /** What a transport tells every `PeerChannel` it builds (the same for LAN and relay). */
 export function channelBase(
   id: LanIdentity,
@@ -265,7 +286,33 @@ export function channelBase(
     slug: id.slug,
     staticKey: handle,
     account: peerAccount(id, ring),
-    caps: o.caps ?? ["app/1"],
+    caps: o.caps ?? DEFAULT_CAPS,
+    hello: { label: o.label, platform: process.platform, app: id.slug },
+    ports: peerPorts(id, handle),
+    now,
+    timer: o.timer,
+    rekeyMessages: o.rekeyMessages,
+    rekeySeconds: o.rekeySeconds,
+  };
+}
+
+/**
+ * What a mode-`c` channel needs (§15.10): no account, no certificate. The static key is the
+ * device's agreeKey behind the same handle as mode `a`.
+ */
+export function contactChannel(
+  id: LanIdentity,
+  o: Pick<
+    LanOptions,
+    "caps" | "label" | "timer" | "rekeyMessages" | "rekeySeconds"
+  >,
+  handle: Uint8Array,
+  now: () => number,
+): Omit<PeerSessionOptions, "send" | "onEvent" | "mode" | "role"> {
+  return {
+    slug: id.slug,
+    staticKey: handle,
+    caps: o.caps ?? DEFAULT_CAPS,
     hello: { label: o.label, platform: process.platform, app: id.slug },
     ports: peerPorts(id, handle),
     now,

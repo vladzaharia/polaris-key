@@ -29,6 +29,7 @@ import {
   type CloudSyncCatalog,
   type CloudSyncDocument,
   type OpenedBody,
+  type RecordOutcome,
   type EncryptionMode,
   type Json,
   type SettingRoute,
@@ -62,7 +63,23 @@ export interface CloudSyncHostOptions {
   catalog?: ProductCatalog;
   /** Renames the app declares (old name to current name). Never taken from a served body. */
   aliases?: Readonly<Record<string, string>>;
+  /** `cloudSync.saves`: the app's `saves` collection settings (all optional). */
+  saves?: {
+    /** Delta transfer of a changed save (the collection's `files.delta`). Default `true`. */
+    delta?: boolean;
+    /** The collection's `files.maxBytes`. Default 32 MiB. */
+    maxBytes?: number;
+    /** The app's `saveFormatVersion`; absent turns the newer-format check off. */
+    saveFormatVersion?: number;
+  };
 }
+
+/** The collection `cloudSync.saves` writes to: a `revision` collection the machine holds. */
+const SAVES_DECL = {
+  name: "saves",
+  policy: "revision",
+  resolve: "keepServer",
+} as const;
 
 /** What the host needs from the client; each is a function so the host holds no stale copy. */
 export interface CloudSyncHostDeps {
@@ -159,6 +176,8 @@ export class CloudSyncHost {
   #purged = false;
   /** The person the machine's queued requests belong to (null for none). */
   #bound: string | null = null;
+  /** The listener for `putAt` / `removeAt` outcomes; survives a rebuild of the machine. */
+  #outcome: ((o: RecordOutcome) => void) | null = null;
 
   constructor(deps: CloudSyncHostDeps, opts: CloudSyncHostOptions = {}) {
     this.#deps = deps;
@@ -179,6 +198,28 @@ export class CloudSyncHost {
 
   get started(): boolean {
     return this.#started && !this.#closed;
+  }
+
+  /** The one listener for the machine's `putAt` / `removeAt` outcomes (kept across rebuilds). */
+  onOutcome(fn: ((o: RecordOutcome) => void) | null): void {
+    this.#outcome = fn;
+    this.#machine?.onOutcome(fn);
+  }
+
+  /** The `saves` settings the app gave, with defaults. */
+  get savesOptions(): {
+    delta: boolean;
+    maxBytes?: number;
+    saveFormatVersion?: number;
+  } {
+    const o = this.#opts.saves ?? {};
+    return {
+      delta: o.delta ?? true,
+      ...(o.maxBytes !== undefined ? { maxBytes: o.maxBytes } : {}),
+      ...(o.saveFormatVersion !== undefined
+        ? { saveFormatVersion: o.saveFormatVersion }
+        : {}),
+    };
   }
 
   /** Subscribe to the machine's events (batches, in order). Returns an unsubscribe function. */
@@ -233,7 +274,10 @@ export class CloudSyncHost {
     this.#detach?.();
     this.#catalog = this.#effective();
     this.#routes = routesOf(this.#catalog);
-    const catalog: CloudSyncCatalog = { settings: this.#routes };
+    const catalog: CloudSyncCatalog = {
+      settings: this.#routes,
+      collections: [{ ...SAVES_DECL }],
+    };
     const document = this.#deps.document();
     this.#documentJson = JSON.stringify(document);
     const m = new CloudSyncMachine(
@@ -249,6 +293,7 @@ export class CloudSyncHost {
       persisted ?? undefined,
     );
     this.#machine = m;
+    m.onOutcome(this.#outcome);
     this.#applyDiscovery(m);
     this.#detach = this.#deps.keyring.attach(m);
   }

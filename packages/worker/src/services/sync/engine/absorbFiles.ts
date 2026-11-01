@@ -21,7 +21,7 @@
  * is refused for quota or `keepRevisions` (L8); the next `finalize` prunes.
  */
 
-import { refFileChunks } from "./chunks.js";
+import { CHUNK_COLLECTING, refFileChunks } from "./chunks.js";
 import { moveFileUsage } from "./fileRows.js";
 import type {
   FileStatus,
@@ -173,7 +173,9 @@ function takeChunks(
   for (const id of ids) {
     const incoming = imp.chunks.get(chunkRowKey(from.collection, id));
     if (!incoming) continue;
-    if (!store.getChunk(from.collection, id)) {
+    const own = store.getChunk(from.collection, id);
+    // A survivor row the collector had begun to delete may point at nothing: the incoming one wins.
+    if (!own || own.unrefAt === CHUNK_COLLECTING) {
       store.putChunk({ ...incoming, refs: 0, unrefAt: 0 });
       if (incoming.ssecKid !== undefined) {
         const key = keys.get(incoming.ssecKid);

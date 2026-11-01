@@ -193,3 +193,43 @@ describe("resolvePrincipal: the root rule", () => {
     expect(holdsRoot({ PLATFORM_ADMIN_GROUP: "" }, [""])).toBe(false);
   });
 });
+
+describe("can(): levels", () => {
+  const viewOnly = (g: Omit<Grant, "level" | "source">): Grant => ({
+    ...g,
+    level: "view",
+    source: "grant",
+  });
+
+  it("a view-level grant allows reads and refuses edits, in every scope", () => {
+    const product = p(
+      viewOnly({ role: "product_admin", scope: "product:alpha", areas: null }),
+    );
+    expect(can(product, alpha, "sync", "view")).toBe(true);
+    expect(can(product, alpha, "sync", "edit")).toBe(false);
+    const platform = p(
+      viewOnly({ role: "platform_admin", scope: "platform", areas: null }),
+    );
+    expect(can(platform, PLATFORM, "platform", "view")).toBe(true);
+    expect(can(platform, PLATFORM, "platform", "edit")).toBe(false);
+    const root = p(
+      viewOnly({ role: "superadmin", scope: "platform", areas: null }),
+    );
+    expect(can(root, alpha, "sync", "edit")).toBe(false);
+    expect(can(root, alpha, "sync", "view")).toBe(true);
+  });
+
+  it("a grant with no level keeps view and edit, and an edit grant beside a view one still edits", () => {
+    expect(can(PRINCIPALS.alphaAdmin, alpha, "sync", "edit")).toBe(true);
+    const both = p(
+      viewOnly({ role: "product_admin", scope: "product:alpha", areas: null }),
+      {
+        role: "product_admin",
+        scope: "product:alpha",
+        areas: null,
+        source: "grant",
+      },
+    );
+    expect(can(both, alpha, "sync", "edit")).toBe(true);
+  });
+});

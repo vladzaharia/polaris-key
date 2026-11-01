@@ -93,6 +93,7 @@ export {
 } from "./keyring/index.js";
 export {
   CloudConnect,
+  CloudNearby,
   ConnectClient,
   ConnectSession,
   LanError,
@@ -101,6 +102,36 @@ export {
   type CloudConnectOptions,
   type CloudConnectStatus,
   type CloudPeer,
+  CloudLinks,
+  PAIR_WINDOW_SECONDS,
+  type ContactInfo,
+  type LinkOffer,
+  type LinkOpenOptions,
+  type LinkPairHandle,
+  type LinkPairOptions,
+  type PairFailure,
+  type PairedLink,
+  CloudTransfer,
+  TransferError,
+  type IncomingOffer,
+  type OfferDecision,
+  type OfferHandler,
+  type SendOptions,
+  type SentTransfer,
+  type TransferEvent,
+  type TransferPeer,
+  type TransferSource,
+  type ApprovalNotice,
+  type ApproveAnswerInput,
+  type FinishOutcome,
+  type NearbyApproval,
+  type NearbyApproverHandle,
+  type NearbyApproverInfo,
+  type NearbyApproverOptions,
+  type NearbyCloseCode,
+  type NearbyRecord,
+  type NearbyRequest,
+  type NearbyRequestOptions,
   type ConnectDevice,
   type ConnectNotice,
   type OpenOptions,
@@ -155,6 +186,22 @@ export {
   type SignInOutcome,
   type WaitOptions,
 } from "./identity/signIn.js";
+export {
+  type AutoSignInOptions,
+  type AutoSignInReason,
+  type AutoSignInResult,
+  type AutoSignInUnavailable,
+  type NearbyRole,
+} from "./identity/autoSignIn.js";
+export {
+  type NearbyApprovalStep,
+  type NearbyAsk,
+} from "./identity/nearbyApprover.js";
+export {
+  NearbySignInSession,
+  type NearbyApprover,
+  type NearbySignInOptions,
+} from "./identity/nearbySession.js";
 export {
   type AttachLicense,
   type AttachResult,

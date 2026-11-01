@@ -168,24 +168,37 @@ public struct ConnectOptions: Sendable {
     /// default: without it a memory-only store is `invalid-options`, because keys that are gone
     /// at the next launch leave a dead entry in the person's roster.
     public var allowEphemeralKeys: Bool
+    /// The networks nearby approval (CC-15) runs on. Nil: Bonjour, through `PolarisKeyPlatform`. A host that
+    /// wants AWDL, or a test, supplies its own.
+    public var nearbyApproverNetwork: (any NearbyApproverNetwork)?
+    public var nearbyRequesterNetwork: (any NearbyRequesterNetwork)?
 
     public init(
-        keys: (any DeviceKeyPort)? = nil, store: ConnectStateStore? = nil, allowEphemeralKeys: Bool = false
+        keys: (any DeviceKeyPort)? = nil, store: ConnectStateStore? = nil, allowEphemeralKeys: Bool = false,
+        nearbyApproverNetwork: (any NearbyApproverNetwork)? = nil,
+        nearbyRequesterNetwork: (any NearbyRequesterNetwork)? = nil
     ) {
         self.keys = keys
         self.store = store
         self.allowEphemeralKeys = allowEphemeralKeys
+        self.nearbyApproverNetwork = nearbyApproverNetwork
+        self.nearbyRequesterNetwork = nearbyRequesterNetwork
     }
 }
 
 public actor ConnectClient {
-    private let core: CoreContext
+    let core: CoreContext
     private let options: ConnectOptions
     private let accessGroup: String?
     private var madeKeys: (any DeviceKeyPort)?
     private var madeStore: ConnectStateStore?
     /// Moves whenever the held identity is stored or removed, so the LAN and relay services drop their cached copy (N8).
     public nonisolated let identityChanges = ConnectIdentityEpoch()
+    /// Fires when the contacts change or the discovery `interAccount` answer may have.
+    nonisolated let contactChanges = ConnectSignal()
+    /// Called with the `agreeKey` of every device a newly stored roster no longer lists (Direct Transfer deletes
+    /// the partial files of a device that left, §15.11).
+    nonisolated let rosterDeparted = LockedValue<(@Sendable ([String]) -> Void)?>(nil)
 
     public init(core: CoreContext, options: ConnectOptions = ConnectOptions(), accessGroup: String? = nil) {
         self.core = core
@@ -197,10 +210,10 @@ public actor ConnectClient {
     // An actor is reentrant at every `await`, so `identity()`, `listDevices()` and `leave()` run
     // one at a time through this lock: a `leave()` during a fetch waits for it and then clears,
     // and two `identity()` calls never save out of order.
-    private var locked = false
+    var locked = false
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
-    private func acquire() async {
+    func acquire() async {
         if locked {
             await withCheckedContinuation { waiters.append($0) }
         } else {
@@ -208,7 +221,7 @@ public actor ConnectClient {
         }
     }
 
-    private func release() {
+    func release() {
         if waiters.isEmpty {
             locked = false
         } else {
@@ -309,6 +322,20 @@ public actor ConnectClient {
         }
     }
 
+    /// D's device keys (made when none exist) and its `X-PKey-Device` value, for the vouch of nearby approval
+    /// (CC-15). Needs no sign-in, no roster and no Connect. Refuses a memory-only key store, as `identity()`
+    /// does, because keys that die with the process cannot be registered for the approval.
+    public func nearbySigner() async throws -> (port: any DeviceKeyPort, deviceId: String) {
+        let port = try keyPort()
+        if try await port.persistence() == .memory && !options.allowEphemeralKeys {
+            throw PolarisError(
+                code: ErrorCode.invalidOptions,
+                message: "The device key store is memory-only; set allowEphemeralKeys to use it.")
+        }
+        _ = try await port.ensure()
+        return (port, await core.deviceId)
+    }
+
     /// The person's devices (`GET /<p>/connect/devices`).
     public func listDevices() async -> ConnectDevicesResult {
         await serialised { await listDevicesLocked() }
@@ -354,7 +381,10 @@ public actor ConnectClient {
         defer { release() }
         let store = try self.store()
         guard try store.exists() else { return }
-        defer { identityChanges.bump() }
+        defer {
+            identityChanges.bump()
+            contactChanges.fire()
+        }
         try store.clear()
     }
 
@@ -365,10 +395,17 @@ public actor ConnectClient {
     /// `POST /<p>/connect/relay/ticket`: a single-use `pkeyrt_` ticket for the WebSocket. A new one
     /// every call. The four relay refusals come back typed; see `ConnectRelayTicketResult`.
     public func relayTicket() async -> ConnectRelayTicketResult {
-        await serialised { await relayTicketLocked() }
+        await serialised { await relayTicketLocked(rid: nil) }
     }
 
-    private func relayTicketLocked() async -> ConnectRelayTicketResult {
+    /// The same for a contact room (§15.7): the request body is `{"room":"c","rid":…}` and the answer must
+    /// echo `room: "c"`, else the Worker predates contact rooms (`contactUnsupported`). The body is sent as
+    /// given: the Worker is the judge of it. A refusal while links are off is `linksDisabled` (403).
+    public func relayTicket(room: String, rid: String) async -> ConnectRelayTicketResult {
+        await serialised { await relayTicketLocked(rid: rid, room: room) }
+    }
+
+    private func relayTicketLocked(rid: String?, room: String = "c") async -> ConnectRelayTicketResult {
         // The Worker answers `device_keys_required` for a device without registered keys, and 404
         // when the operator's launch gate is off; identity() is what registers and checks discovery.
         guard let token = await core.token else {
@@ -376,15 +413,23 @@ public actor ConnectClient {
         }
         let response: PolarisResponse
         do {
+            var headers = ["authorization": "Bearer \(token)"]
+            var body: Data?
+            if let rid {
+                headers["content-type"] = "application/json"
+                let enc = JSONEncoder()
+                enc.outputFormatting = [.withoutEscapingSlashes, .sortedKeys]
+                body = try? enc.encode(["room": room, "rid": rid])
+            }
             response = try await core.request(
-                core.endpoints.connectRelayTicket, method: "POST", headers: ["authorization": "Bearer \(token)"])
+                core.endpoints.connectRelayTicket, method: "POST", headers: headers, body: body)
         } catch let e as PolarisError {
             return .error(code: e.code, message: e.message)
         } catch {
             return .error(code: ErrorCode.network, message: "The request failed.")
         }
         guard response.isOK else { return relayRefusal(response) }
-        return grant(response.body)
+        return grant(response.body, contact: rid != nil)
     }
 
     private func relayRefusal(_ response: PolarisResponse) -> ConnectRelayTicketResult {
@@ -400,6 +445,11 @@ public actor ConnectClient {
             return .relay(
                 ConnectRelayError(
                     .disabled, "This product has its relay off.", retryAfterSeconds: retry, status: status))
+        case ErrorCode.connectLinksDisabled:
+            return .relay(
+                ConnectRelayError(
+                    .linksDisabled, "This product has links between accounts off.", retryAfterSeconds: retry,
+                    status: status))
         case ErrorCode.relayPaused:
             return .relay(
                 ConnectRelayError(
@@ -428,7 +478,7 @@ public actor ConnectClient {
     static func retryAfterSeconds(_ header: String?, now: Date = Date()) -> Int? {
         let text = (header ?? "").trimmingCharacters(in: .whitespaces)
         if text.isEmpty { return nil }
-        if text.range(of: #"^[0-9]+(\.[0-9]+)?$"#, options: .regularExpression) != nil {
+        if wholeMatches(#"[0-9]+(\.[0-9]+)?"#, text) != nil {
             guard let seconds = Double(text) else { return nil }
             return Self.cappedSeconds(seconds)
         }
@@ -450,21 +500,28 @@ public actor ConnectClient {
 
     /// The ticket answer, shape-checked, and bound to this Worker: the ticket goes only to the
     /// Worker's own host over `wss:` and only for the protocol this client speaks (G13).
-    private func grant(_ data: Data) -> ConnectRelayTicketResult {
+    private func grant(_ data: Data, contact: Bool = false) -> ConnectRelayTicketResult {
         struct Body: Decodable {
             let ticket: String
             let url: String
             let protocolName: String
             let expiresAt: Int
+            let room: String?
             enum CodingKeys: String, CodingKey {
-                case ticket, url, expiresAt
+                case ticket, url, expiresAt, room
                 case protocolName = "protocol"
             }
         }
         func bad() -> ConnectRelayTicketResult {
             .relay(ConnectRelayError(.ticketInvalid, "The relay ticket answer is not in the contract shape."))
         }
+        // A contact request is answered with `room: "c"` echoed (§15.7); an older Worker ignores the body and
+        // hands out an account ticket, which must not be used for a contact room.
+        if contact, let b = StrictJSON.decode(Body.self, from: data), b.room != "c" {
+            return .relay(ConnectRelayError(.contactUnsupported, "This Worker does not serve contact rooms."))
+        }
         guard let b = StrictJSON.decode(Body.self, from: data), b.protocolName == connectRelayProtocol,
+            contact ? b.room == "c" : b.room == nil,
             abs(b.expiresAt) <= 9_007_199_254_740_991,
             Self.ticketShape.firstMatch(in: b.ticket, range: NSRange(b.ticket.startIndex..., in: b.ticket)) != nil,
             let target = URLComponents(string: b.url), let home = URLComponents(string: core.endpoints.baseUrl),
@@ -543,15 +600,20 @@ public actor ConnectClient {
         let removed = heldRing.map { prior in !prior.devices.allSatisfy { ring.devices.contains($0) } } ?? false
         let next = ConnectRecord(
             ring: jws, certificate: held.certificate, discKeys: keys, registered: held.registered, storedAt: now,
-            prevFirstSeen: keys.count == 2 ? held.prevFirstSeen : nil, keysStale: removed || held.keysStale == true)
+            prevFirstSeen: keys.count == 2 ? held.prevFirstSeen : nil, keysStale: removed || held.keysStale == true,
+            contacts: held.contacts)
         do { try store.save(next) } catch { return refuse("store_failed") }
         identityChanges.bump()
+        if let prior = heldRing {
+            let gone = Set(prior.devices.map(\.agreeKey)).subtracting(ring.devices.map(\.agreeKey))
+            if !gone.isEmpty { rosterDeparted.current?(Array(gone)) }
+        }
         return RingAdoption(stored: true, epoch: ring.epoch, reason: nil)
     }
 
     // ── Seams ────────────────────────────────────────────────────────────────────────────
 
-    private func keyPort() throws -> any DeviceKeyPort {
+    func keyPort() throws -> any DeviceKeyPort {
         if let k = options.keys { return k }
         if let k = madeKeys { return k }
         let k = try DeviceKeyStore(productSlug: core.product, accessGroup: accessGroup)
@@ -559,7 +621,7 @@ public actor ConnectClient {
         return k
     }
 
-    private func store() throws -> ConnectStateStore {
+    func store() throws -> ConnectStateStore {
         if let s = options.store { return s }
         if let s = madeStore { return s }
         let s = try ConnectStateStore(productSlug: core.product, accessGroup: accessGroup)
@@ -743,11 +805,15 @@ public actor ConnectClient {
         }
         let record = ConnectRecord(
             ring: body.ring, certificate: body.certificate, discKeys: disc, registered: registered,
-            storedAt: now, prevFirstSeen: prevSeen)
+            storedAt: now, prevFirstSeen: prevSeen, contacts: held?.contacts)
         do { try store.save(record) } catch {
             return .error(code: "store-failed", message: "The identity could not be stored.")
         }
         identityChanges.bump()
+        if let held, case .ok(let was) = PeerDocs.verifyRing(held.ring, trust: trust, expectedAud: core.product) {
+            let gone = Set(was.devices.map(\.agreeKey)).subtracting(ring.devices.map(\.agreeKey))
+            if !gone.isEmpty { rosterDeparted.current?(Array(gone)) }
+        }
         return .ready(
             ConnectIdentity(
                 subject: ring.sub, deviceId: deviceId, ring: ring, certificate: cert, ringJws: body.ring,

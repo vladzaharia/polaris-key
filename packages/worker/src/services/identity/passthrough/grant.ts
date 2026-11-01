@@ -57,11 +57,22 @@ export interface GrantRecord {
   /** Earned by a same-device `authorization_code` (I-43.1): `choice/complete` then marks the step-up. */
   fresh?: true;
   /**
+   * Where the grant came from (WIRE-CONTRACT-V5 §12.5 rule 7): `code` for an `authorization_code`
+   * redemption (web, loopback, scheme, claimed), `exchange` for a token exchange. A grant issued
+   * before this member, and a device-code or restore grant, has none and writes no step-up.
+   */
+  origin?: "code" | "exchange";
+  /**
    * Issued to a device-code sign-in that asked for the app's licence choice (WIRE-CONTRACT-V5
    * §12.5.1 rule 5). That channel can be phished, so this grant never carries `fresh`, cannot list
    * a licence's devices and cannot Replace.
    */
   via?: "device" | "restore";
+  /**
+   * The device label the sign-in carried (the approval page's, `token`'s or the exchange's
+   * `device_name`), already cleaned. `choice/complete` names the bound device by it first.
+   */
+  label?: string;
   /**
    * Set when the exchange answered `confirm` (I-13.5): `choice/complete` then needs the person's
    * `consent` and writes the app consent against this hash, the one the person was shown.

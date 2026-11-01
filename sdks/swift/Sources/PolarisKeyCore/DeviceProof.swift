@@ -5,8 +5,12 @@
 // The signer asks the port for signatures and public halves only; it re-verifies its own
 // result before returning it.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// The nine purposes, in the order of V5 §12.11.1.
 public enum DeviceProofPurpose: String, Sendable, CaseIterable, Codable {

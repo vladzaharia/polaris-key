@@ -5,20 +5,34 @@ export const MAX_PEER_MESSAGE_BYTES = 1_048_576;
 /** A Noise message is at most 65,535 bytes; 16 are the tag and 3 the record header. */
 export const MAX_RECORD_BODY = 65535 - 16 - 3;
 
+/**
+ * An open MORE chain in modes v and p (§15.6.1): their messages are a `HELLO`, the SAS records, a
+ * `VOUCH_REQ` and the held Sync records, all far under this, and the peer is not yet verified.
+ */
+export const MAX_VP_CHAIN_BYTES = 16_384;
+
 /** Records in one MORE chain: a full 1 MiB message in the smallest records, plus one. */
 export const MAX_CHAIN_RECORDS =
   Math.ceil(MAX_PEER_MESSAGE_BYTES / MAX_RECORD_BODY) + 1;
 
 export type RecordMode = "a" | "v" | "p" | "c";
-export type PeerCloseCode =
-  | "peer_revoked"
-  | "peer_expired"
-  | "peer_bad_frame"
-  | "peer_unknown_critical"
-  | "peer_not_allowed"
-  | "peer_busy"
-  | "peer_timeout"
-  | "peer_bye";
+/**
+ * The channel close codes (§15.6, §15.9), the registry's `peer` kind in
+ * `conformance/parity/errors.json`: the SDK constants are generated from it, and
+ * `test/peerSession.test.ts` fails when this list and the registry differ. This package sits below
+ * the SDKs, so it keeps the list itself rather than importing their generated file.
+ */
+export const PEER_CLOSE_CODES = [
+  "peer_revoked",
+  "peer_expired",
+  "peer_bad_frame",
+  "peer_unknown_critical",
+  "peer_not_allowed",
+  "peer_busy",
+  "peer_timeout",
+  "peer_bye",
+] as const;
+export type PeerCloseCode = (typeof PEER_CLOSE_CODES)[number];
 
 export const RECORD = {
   HELLO: 0x8001,
@@ -129,6 +143,13 @@ export class RecordAssembler {
     null;
   /** Set once a non-critical unknown type opened a chain that is being dropped. */
   private dropping: number | null = null;
+  /**
+   * Set by the session once the capabilities are known (§15.11): whether `xfer/1` is in both
+   * payloads. While undefined the xfer types read as any other. When set, an xfer record without
+   * the capability is `peer_not_allowed`, and one with `MORE` set is `peer_bad_frame`.
+   */
+  xferAllowed: boolean | undefined = undefined;
+
   constructor(private readonly mode: RecordMode) {}
 
   push(r: PeerRecord): AssembleResult {
@@ -152,10 +173,20 @@ export class RecordAssembler {
       return { kind: "ignored" };
     }
     if (!row.modes.includes(this.mode)) return bad("peer_not_allowed");
+    if (row.name === "XFER" && this.xferAllowed !== undefined) {
+      if (!this.xferAllowed) return bad("peer_not_allowed");
+      if (more) return bad("peer_bad_frame");
+    }
     // The corpus (`more-empty-parts`) accepts an empty MORE record, so the chain's record count
     // is what bounds the work.
     const size = (this.open?.size ?? 0) + r.body.length;
     if (size > MAX_PEER_MESSAGE_BYTES) return bad("peer_bad_frame");
+    if (
+      (more || this.open !== null) &&
+      (this.mode === "v" || this.mode === "p") &&
+      size > MAX_VP_CHAIN_BYTES
+    )
+      return bad("peer_bad_frame");
     const parts = this.open?.parts ?? [];
     if (parts.length >= MAX_CHAIN_RECORDS) return bad("peer_bad_frame");
     parts.push(r.body);

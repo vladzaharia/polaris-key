@@ -852,8 +852,10 @@ this order:
 1. **Loopback** (I-15, RFC 8252 §7.3): `http://127.0.0.1:<ephemeral port>/pkey/callback`, the IP
    literal and never `localhost`. The listener binds 127.0.0.1 only, accepts one request whose
    `state` matches, and closes on that request or when the flow expires (10 minutes). PKCE S256
-   throughout. This is the default in every desktop kit.
-2. **A registered scheme** (`tidewater://pkey/callback`) when the app registers one and cannot
+   throughout. This is the default in every desktop kit. **Open browser again** reopens the same
+   `authorize` URL: the pushed request lives 600 s and stays resolvable until Continue or Cancel
+   takes it (WIRE-CONTRACT-V5 §12.12).
+2. **A registered scheme** (`com.tidewater.studio:/pkey/callback`, reverse DNS; RFC 8252 §7.1) when the app registers one and cannot
    listen: a policy that blocks loopback, or an App Sandbox build without
    `com.apple.security.network.server`. A registered scheme also lets ReturnStep's **Return to
    <App>** bring the app forward (D-64).
@@ -965,6 +967,14 @@ license list. The body then reads "<Product> is in your account" with the person
 Sync is on for this Mac" (frame 44). The recommendation shows once; AccountAndLicense keeps a
 "Not in an account · Add your name and email" row. With Identity off it reads "Keep your license
 safe in Polaris Locker" and opens Polaris Locker instead.
+
+**The web Add channel (UK-42.22).** On the web, **Add your name and email** and, on a license-owned
+refusal, **Sign in to that account** follow discovery. With `identity.deviceChoice` the kit runs the
+form in the page over the device-code channel (`licenseChoice: "app"`, §6.6); the card opens in
+another tab, asks for the code and ends at the approval page, and the kit completes `keep` and
+attaches. Without it, and with Identity off, both open the Polaris Locker card (the key rides in
+`#key=` for a trusted origin only). A host's explicit `addIn` wins. The desktop bridge stays on the
+card until its next version.
 
 **Step 4, Done** (frame 41, D-84). When a license was added or issued now, the body shows the
 success moment (§3.18): the check, h1 "<Product> is yours", the product row "{tier} · in your
@@ -1367,7 +1377,7 @@ Desktop is a first-class surface (O-12), and every in-app step happens in the on
    A browser that is already signed in skips straight to the return.
 4. The tab lands on the desktop ReturnStep's "choose in the app" variant (frame 26): "You're
    signed in · Go back to Tidewater Studio to choose a license. You can close this tab.", with
-   **Return to Tidewater Studio** because the app registered `tidewater://`.
+   **Return to Tidewater Studio** because the app registered `com.tidewater.studio:`.
 5. The app comes forward and the pane morphs from "Finishing sign-in…" to step 3 (frame 36):
    Tidewater Studio Pro preselected, the full Edu license with **Replace a Device…**.
 6. Optionally **Replace a Device…** (frame 37): the list becomes the Edu license's devices, Work
@@ -1887,9 +1897,9 @@ wire change no approved plan carries is a plan-mode change (CLAUDE.md).
 | Attach              | `POST /<p>/identity/attach {confirm}`                                                                                                                                                                                                    | Planned (I-09 §2.2)                                                  |
 | Web redirect        | `GET /<p>/identity/authorize`, `POST /<p>/identity/token` (`grant_type=authorization_code`)                                                                                                                                              | Planned (I-27 §2.1, I-08)                                            |
 | Device code         | `auth/device/start`, `auth/device/poll` (`ready` + `subject`)                                                                                                                                                                            | Planned (I-04 §2.4, I-08)                                            |
-| Native redirect     | `request` (RFC 9126, answers a `request_uri`), `authorize` and `token` with native redirect URIs                                                                                                                                         | Planned (I-15, I-27 §2.1)                                            |
+| Native redirect     | `request` (RFC 9126, answers a `request_uri`), `authorize` and `token` with native redirect URIs                                                                                                                                         | Contract in WIRE-CONTRACT-V5 §12.12 (I-15, I-27 §2.1)                |
 | Native exchange     | `POST /<p>/identity/nonce`, then `POST /<p>/identity/token` with the token-exchange grant: token, `confirm`, `choose`, or `interstitial_required` (403, `reason`, `url`, `linkHandle`) (WIRE-CONTRACT-V5 §12.11)                         | Planned (I-13)                                                       |
-| Hints               | `login_hint`, `name_hint`, `purpose` on `authorize`; `scope`, `loginHint`, `nameHint`, `purpose` on `auth/device/start` (§6.6; no SDK sends them)                                                                                        | Planned (I-08)                                                       |
+| Hints               | `login_hint`, `name_hint`, `purpose` on `authorize`; `scope`, `loginHint`, `nameHint`, `purpose` on `auth/device/start` (§6.6; Node, React and Python send them; the device start honours them, UK-42.22)                                | Planned (I-08)                                                       |
 | DeviceApproval      | `POST /api/device-login/start`, `GET /api/device-login/<id>`, `POST …/lookup`, `POST …/approve`, `step_up_required`                                                                                                                      | Built (PX-W14); UI PX-15                                             |
 | Identity off        | 303 to `/signin?product=&error=identity_disabled`; `403 identity_disabled` on the passthrough context                                                                                                                                    | Built (PX-W17); card PX-14                                           |
 | Sign-out (device)   | `POST /<p>/identity/signout` → `{released}`; SDK Cloud Sync flush                                                                                                                                                                        | Planned (I-09 §2.2, S-17)                                            |
@@ -1947,19 +1957,27 @@ their Swift and Godot mirrors (`gen transcripts`).
 
 ### 6.4 Desktop: what the wire needs
 
-The desktop experience rides on planned routes and three additions from I-15: the loopback class,
-one browser-facing page and bind-on-redemption. **No device-wire change**: `PROTOCOL_VERSION` stays 4 and `corpusVersion` 2.
+The desktop experience rides on the routes of I-15 (WIRE-CONTRACT-V5 §12.12): the pushed request, the
+native redirect classes, one browser-facing page and bind-on-redemption. **No device-wire change**:
+`PROTOCOL_VERSION` stays 5 and `corpusVersion` 2.
 
-1. **Loopback and scheme redirects:** I-15 (planned). The loopback class must accept
-   `http://127.0.0.1:<any port>/pkey/callback` (RFC 8252 §7.3), compared without the port.
+1. **Loopback and scheme redirects** (I-15, contract in §12.12). Loopback accepts
+   `http://127.0.0.1:<any port>/pkey/callback` (or `[::1]`), compared without the port at
+   registration (RFC 8252 §7.3) and exactly at `token`; it is on unless
+   `identity.nativeRedirect.loopback` is `false`. A scheme is `<scheme>:/pkey/callback` for a
+   reverse-DNS scheme listed in `identity.nativeRedirect.schemes`. Native URIs are accepted only
+   through the pushed request, never on a direct `authorize`.
 2. **The hosted desktop ReturnStep:** `GET /signin/return?request=<handle>[&cancelled=1]`, a
-   browser-facing, same-origin, `no-store` page. It renders §3.10's desktop variant from the
-   request handle (the app header, the chosen license, and **Return to <App>** only when the client
-   record has a registered scheme). Planned in I-15 (OpenAPI and `routeCoverage`, rule 10).
+   browser-facing, same-origin, `no-store` page on the customer host. It renders §3.10's desktop
+   variant from the state the card saved in `sessionStorage` before it navigated (the app header,
+   the chosen license, and **Return to <App>** only when the pushed request carried a registered
+   scheme's `return_uri`). Without that state it shows the generic variant. Served by I-15 (OpenAPI
+   and `routeCoverage`, rule 10).
 3. **Bind on redemption:** for loopback and scheme redirects the choice, any Replace and the grant
    apply when the app redeems the code at `token` (the redirect code record carries the choice,
-   I-04 §2.5), so an app-side Cancel or a crash before redemption changes nothing. I-15 builds this
-   for the native classes. In path B nothing binds before `choice/complete` (§6.5).
+   I-04 §2.5), so an app-side Cancel or a crash before redemption changes nothing. The code from a
+   pushed request is bound to the pusher's device id, and a different `X-PKey-Device` is
+   `invalid_grant`. In path B nothing binds before `choice/complete` (§6.5).
 4. **The computer's label:** the SDK default changes for Windows, JVM, Node and Python (D-73).
    That is display data under PX-W13's normalisation; the wire is unchanged.
 5. **Device code fallback:** I-08's `device/start` and `poll` (planned), with
@@ -2003,9 +2021,9 @@ flow record that I-07 and PX-W13 already keep.
 (§3.17, step 4). The kit starts the sign-in with `loginHint` set to the typed email, `nameHint` to
 the typed name and `purpose: "attach"`, and `license_choice=app`. On the wire these are the optional
 `login_hint`, `name_hint` and `purpose: "signin" | "attach"` on `authorize`, and `loginHint`,
-`nameHint` and `purpose` on `auth/device/start` (I-08, I-10a). A hint prefills the card and verifies
-nothing: an email is shown in the email field and never sent a code by itself, a name prefills
-FinishStep for a new account only, `purpose: "attach"` words the header ("Add {product} to your
+`nameHint` and `purpose` on `auth/device/start` (I-08, I-10a). A hint verifies
+nothing: an email is shown in the email field and never sent a code by itself, a name is only the
+Name field's placeholder (a new account types its own), `purpose: "attach"` words the header ("Add {product} to your
 account"), and an invalid hint is ignored. No other flow sends hints; a plain sign-in sends none.
 After the code the kit completes `{kind: "keep"}` with the device token, previews with
 `attach {confirm: false}` and then attaches, so the same `licenseId` gains a `subject`. No signed
@@ -2126,7 +2144,6 @@ still open:
 | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
 | `docs/security/THREAT-MODEL.md`                                                                      | Rows for Replace a device from the card and for the pending sign-in grant (I-04 §G.6)                                                                                                                                                                                                                                                                                              | I-08                     |
 | `plans/PX-W13.md` §2.1 SDK default label                                                             | D-73: the user-visible computer name; auto-generated Windows names become "Windows PC" or "Windows laptop"; `PRETTY_HOSTNAME` on Linux                                                                                                                                                                                                                                             | I-15 (with I-10a, I-10b) |
-| `wp/I-15-native-redirect.md`                                                                         | **Open browser again** (§3.17): decide whether it reopens the same sign-in or starts a new request, given that a `request_uri` is used once, at `authorize`, and lives 60 s (I-27 §2.1)                                                                                                                                                                                            | I-15                     |
 | `docs/design/SIGN-IN.md` §3.12 (ConsoleMethodsStep), `signin.console.notOperator`                    | "{email} isn't in the operators group." predates console membership as a binding                                                                                                                                                                                                                                                                                                   | ST-30                    |
 | `docs/design/SIGN-IN.md` §3.13 "Single sign-on ended" row, `accounts/platformMigration.ts`           | The page belongs to I-17's sunset, which Q3 withdrew; remove it                                                                                                                                                                                                                                                                                                                    | I-32b                    |
 | `wp/UK-02a`, `UK-02b`, `PX-14`                                                                       | The automatic license (D-95): the `new` fixture case (`ui-matrix.json` still assumes a New row) and `signin.choice.ledeNew`, `signin.choice.tag.new` give way to Consent's "New: <Tier> license, created when you continue" line. `signin.key.skip` reads "Continue without an account" and `signin.cli.opening` reads "Opening Polaris Locker in your browser…", as §5.2 has them | UK-02a, UK-02b, PX-14    |

@@ -155,6 +155,13 @@ prints ▲ with its fix as a command; only a failure prints ✗. `login` tells a
 failed (`failed`, `sign-in-failed`, "Sign-in failed"). `status` points to the product's page with
 a labelled line, "Next step on the Tidewater page:", and the link under it.
 
+`login` looks for the person's other devices first, on an interactive terminal: a signed-in device nearby shows three
+codes, the new device shows one, and the person chooses the matching code on the other device (`c` signs in with a
+code instead, and nothing answering within 2 seconds does the same). `devices approve` is the other side: it listens
+while it runs, then asks which of the three codes the new device shows; `d` or Esc denies, and so does leaving the
+license choice. The full-screen app has the same screens as **Approve a nearby device** in its account section.
+Neither starts under `--json` or without a terminal.
+
 ## Your CLI framework
 
 Each framework mounts the same verbs and gates a command of your own. Pick yours.

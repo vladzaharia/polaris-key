@@ -86,6 +86,9 @@
     "packages/worker/src/scheduled.ts": {
       "size:over-800": 1
     },
+    "packages/worker/src/services/connect/do/relayDo.ts": {
+      "size:over-800": 1
+    },
     "packages/worker/src/services/distribution/availability.ts": {
       "size:over-800": 1
     },
@@ -156,6 +159,9 @@
       "size:over-800": 1
     },
     "packages/worker/src/services/identity/portal/selfService.ts": {
+      "size:over-800": 1
+    },
+    "packages/worker/src/services/identity/productOidc/deviceFlow.ts": {
       "size:over-800": 1
     },
     "packages/worker/src/services/license/admin/licenses.ts": {

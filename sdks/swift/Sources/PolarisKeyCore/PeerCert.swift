@@ -108,11 +108,11 @@ public enum VerifyPeerCertResult: Sendable, Equatable {
 public enum PeerDocs {
     private static func nowSeconds() -> Int { Int(Date().timeIntervalSince1970) }
 
-    private static func matches(_ pattern: String, _ s: String) -> Bool {
-        s.range(of: pattern, options: .regularExpression) != nil
+    static func matches(_ pattern: String, _ s: String) -> Bool {
+        wholeMatches(pattern, s) != nil
     }
-    private static let subPattern = #"^ps_[A-Za-z0-9_-]{22}$"#
-    private static let devicePattern = #"^[A-Za-z0-9_-]{32}$"#
+    static let subPattern = #"^ps_[A-Za-z0-9_-]{22}$"#
+    static let devicePattern = #"^[A-Za-z0-9_-]{32}$"#
 
     /// §15.2 step 4 for one `(signKey, agreeKey)` pair. A verifier stays lenient about the
     /// X25519 spelling: only a low-order point is refused.

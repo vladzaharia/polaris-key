@@ -49,6 +49,8 @@ extension IdentityClient {
     /// licence or its profile names no one. The server signs a profile on every licence; an
     /// anonymous (keyless) enrolment's carries empty strings, which read as nil here.
     public func current() async -> CurrentIdentity? {
+        // A nearby sign-in no person confirmed is no sign-in (§15.6.1 rule 12).
+        if await core.tokenUnconfirmed { return nil }
         guard let p = await core.cache().license?.doc.profile else { return nil }
         let name = p.name.isEmpty ? nil : p.name
         let email = p.email.isEmpty ? nil : p.email

@@ -89,7 +89,12 @@ dependencies {
     // Block Store (I-49.1b): the play flavour only; the direct AAR carries no com.google.android.gms.auth.blockstore class.
     "playImplementation"(libs.play.blockstore)
 
+    // Background transfers (U-41.3): the worker and its scheduling. `implementation`: no WorkManager type is public.
+    implementation(libs.androidx.work.runtime)
+
     testImplementation(libs.junit)
+    testImplementation(libs.androidx.work.testing)
+    testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)
 }

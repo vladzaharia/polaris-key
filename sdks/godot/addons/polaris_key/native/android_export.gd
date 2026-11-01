@@ -52,6 +52,10 @@ const CREDENTIAL_GROUPS := ["androidx.credentials", "com.google.android.librarie
 ## from 4.4 on, so older engines get no Credential Manager (Google sign-in answers `dependency`).
 const CREDENTIALS_MIN_ENGINE := [4, 4]
 const DIRECT_PERMISSIONS := ["android.permission.REQUEST_INSTALL_PACKAGES", "android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION"]
+## Cloud Connect's LAN discovery (CC-14b.9, D-15): from Android 17, an app that targets it needs this
+## runtime permission (the Nearby devices group) to browse, advertise or reach the local network. Both
+## flavours declare it, so the lane can ask at first use (L-11); a device below 17 ignores it.
+const LOCAL_NETWORK_PERMISSION := "android.permission.ACCESS_LOCAL_NETWORK"
 ## The outlet kinds each flavour suits (a mismatch only warns: the stamp is the product's call).
 const PLAY_KINDS := ["play", "play-testing"]
 const NO_PLAY_CORE_KINDS := ["fdroid-repo"]
@@ -144,11 +148,14 @@ static func credentials_warning(flavor: String, engine := {}) -> String:
 	return ""
 
 
-## The <manifest> children for `flavor`: the two install permissions for direct, nothing else.
+## The <manifest> children for `flavor`: the local-network permission for play and direct, and the two
+## install permissions for direct; nothing for none.
 static func manifest_elements(flavor: String) -> String:
-	if flavor != "direct":
+	if flavor != "play" and flavor != "direct":
 		return ""
-	var s := ""
+	var s := "    <uses-permission android:name=\"%s\" />\n" % LOCAL_NETWORK_PERMISSION
+	if flavor != "direct":
+		return s
 	for p in DIRECT_PERMISSIONS:
 		s += "    <uses-permission android:name=\"%s\" />\n" % p
 	return s

@@ -49,8 +49,8 @@ export interface DeviceCodeSignInOptions {
   nameHint?: string;
   purpose?: AuthorizePurpose;
   scope?: string | readonly string[];
-  /** `"app"`: the app shows the licence choice itself. Sent as a hint; the card chooses when the
-   *  Worker does not serve it. */
+  /** `"app"`: the app shows the licence choice itself; `wait` then ends in `choose`. Sent only when
+   *  discovery has `deviceChoice` and the `choice*` endpoints; otherwise the card chooses. */
   licenseChoice?: "app";
 }
 
@@ -102,14 +102,14 @@ export const SLOW_DOWN_STEP_SECONDS = 5;
 const MAX_TIMER_MS = 2 ** 31 - 1;
 
 /** The seconds `wait` actually sleeps: never under one second and never past the code's life. */
-function pollDelay(interval: number, expiresIn: number): number {
+export function pollDelay(interval: number, expiresIn: number): number {
   const ceiling = Number.isFinite(expiresIn) && expiresIn >= 1 ? expiresIn : 1;
   if (!Number.isFinite(interval)) return interval > 0 ? ceiling : 1;
   return Math.min(Math.max(interval, 1), ceiling);
 }
 
 /** Transient failures `wait` rides out at the current interval: the network and a 5xx. */
-const TRANSIENT = new Set<string>([
+export const TRANSIENT = new Set<string>([
   ErrorCode.networkError,
   ErrorCode.serverError,
 ]);
@@ -136,6 +136,8 @@ export interface DeviceCodeDeps {
   ctx: CoreContext;
   tokens: TokenManager;
   discovery: () => ProductDiscoveryDocument | null;
+  /** Discovery, loading it first when this session has not (the `licenseChoice` gate needs it). */
+  loadDiscovery?: () => Promise<ProductDiscoveryDocument | null>;
   /** The post-acquisition sync, as after an activation. */
   onAcquired: () => Promise<void>;
   /** Persist who signed in (`identity.json`), or forget it. */
@@ -153,6 +155,7 @@ type Poll =
   | { s: "pending" }
   | { s: "slow-down"; interval: number }
   | { s: "ready"; outcome: Extract<SignInOutcome, { kind: "signedIn" }> }
+  | { s: "choose"; outcome: ChooseOutcome }
   | { s: "confirm"; identity: ShownIdentity; attachable: boolean }
   | { s: "expired" };
 
@@ -255,7 +258,8 @@ export class DeviceCodeSession {
           continue;
         throw e;
       }
-      if (poll.s === "ready") return poll.outcome;
+      // `choose`: the flow is spent on the Worker, so polling stops here (§12.10.1).
+      if (poll.s === "ready" || poll.s === "choose") return poll.outcome;
       if (this.#cancelled) return { kind: "cancelled" };
       switch (poll.s) {
         case "expired":
@@ -321,6 +325,9 @@ export class DeviceCodeSession {
       attachable?: unknown;
       attached?: unknown;
       reason?: unknown;
+      grant?: unknown;
+      expiresIn?: unknown;
+      choices?: unknown;
     };
     if (res.status === 429) {
       // The Worker's own `slow_down` carries the interval; a rate limiter in front of it may
@@ -351,6 +358,29 @@ export class DeviceCodeSession {
           identity: identity ?? {},
           attachable: answer.attachable === true,
         };
+      case "choose": {
+        // UK-42.22: a start that asked `licenseChoice: "app"` is answered with a grant, no token.
+        if (
+          !isString(answer.grant) ||
+          !isSeconds(answer.expiresIn) ||
+          !answer.choices ||
+          typeof answer.choices !== "object" ||
+          Array.isArray(answer.choices)
+        )
+          throw new PolarisError(
+            ErrorCode.signInFailed,
+            "device sign-in answered choose without a complete grant.",
+          );
+        return {
+          s: "choose",
+          outcome: {
+            kind: "choose",
+            grant: answer.grant,
+            expiresIn: wholeSeconds(answer.expiresIn),
+            choices: answer.choices as Record<string, unknown>,
+          },
+        };
+      }
       case "ready": {
         if (!isString(answer.token))
           throw new PolarisError(
@@ -446,7 +476,10 @@ export async function startDeviceCodeSignIn(
   if (opts.scope !== undefined)
     body.scope =
       typeof opts.scope === "string" ? opts.scope : opts.scope.join(" ");
-  if (opts.licenseChoice !== undefined) body.licenseChoice = opts.licenseChoice;
+  // §12.10.1 / §12.6: ask for the app's own licence choice only when this Worker serves it
+  // (`deviceChoice` and the four `choice*` endpoints); an older one would leave the card choosing.
+  if (opts.licenseChoice === "app" && (await deviceChoiceServed(deps)))
+    body.licenseChoice = "app";
   const res = await post(ctx, "identity/auth/device/start", body);
   // A 404 here means the Worker serves no sign-in for this product (Identity off before
   // discovery said so): the typed N/A, the same answer the Swift and Kotlin sessions give.
@@ -500,6 +533,27 @@ export async function startDeviceCodeSignIn(
   );
 }
 
+const CHOICE_ENDPOINTS = [
+  "choiceLicenses",
+  "choiceDevices",
+  "choiceComplete",
+  "choiceCancel",
+] as const;
+
+/** Does discovery carry `deviceChoice` and the four `choice*` endpoints (§12.6)? */
+async function deviceChoiceServed(deps: DeviceCodeDeps): Promise<boolean> {
+  const load = deps.loadDiscovery ?? (async () => deps.discovery());
+  const doc = await load().catch(() => null);
+  const raw: unknown = doc?.services?.identity;
+  if (!raw || typeof raw !== "object") return false;
+  const f = raw as { deviceChoice?: unknown; endpoints?: unknown };
+  const ep = (f.endpoints ?? {}) as Record<string, unknown>;
+  return (
+    f.deviceChoice === true &&
+    CHOICE_ENDPOINTS.every((k) => typeof ep[k] === "string" && ep[k] !== "")
+  );
+}
+
 /** The identity a poll answer shows, or null. Only `name` and `email`, each a string. */
 function shown(v: unknown): ShownIdentity | null {
   if (!v || typeof v !== "object" || Array.isArray(v)) return null;
@@ -512,7 +566,7 @@ function shown(v: unknown): ShownIdentity | null {
 
 /** Wait `seconds`, or reject with a signal's reason when it aborts first. A wait longer than
  *  one timer can hold is chained, so it never collapses into Node's 1 ms overflow fallback. */
-function sleep(
+export function sleep(
   seconds: number,
   ...signals: (AbortSignal | undefined)[]
 ): Promise<void> {

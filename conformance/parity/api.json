@@ -504,6 +504,11 @@
         "file": "sdks/godot/addons/polaris_key/services/identity/sign_in_session.gd"
       },
       {
+        "ns": "identity",
+        "type": "PKeyIdentityExchange",
+        "file": "sdks/godot/addons/polaris_key/services/identity/exchange.gd"
+      },
+      {
         "ns": "devices",
         "file": "sdks/godot/addons/polaris_key/services/devices.gd"
       },
@@ -538,6 +543,11 @@
       {
         "ns": "presentation",
         "file": "sdks/godot/addons/polaris_key/core/presentation.gd"
+      },
+      {
+        "ns": "cloudConnect",
+        "type": "PKeyCloudConnect",
+        "file": "sdks/godot/addons/polaris_key/services/cloud_connect.gd"
       }
     ]
   },
@@ -908,6 +918,11 @@
       "sdk": "node",
       "path": "license.onDeactivated",
       "reason": "an event-emitter field, not a verb; deactivation reaches apps through the events stream"
+    },
+    {
+      "sdk": "node",
+      "path": "license.beforeRelease",
+      "reason": "the hook the client sets so deactivation leaves Cloud Connect before the licence is released; wiring, not an app verb"
     },
     {
       "sdk": "python",
@@ -1961,6 +1976,16 @@
     },
     {
       "sdk": "godot",
+      "path": "identity.exchange",
+      "reason": "the exchange primitive under identity.autoSignIn (I-48.3), which carries the row; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.nonce",
+      "reason": "the exchange primitive under identity.autoSignIn (I-48.3), which carries the row; not an app verb"
+    },
+    {
+      "sdk": "godot",
       "path": "identity.install_platform_provider",
       "reason": "wiring: installs, lists and clears the platform sign-in providers the ladder and sign_out() use (the platform adapters call it); apps sign in with auto_sign_in() or exchange.exchange()"
     },
@@ -2455,6 +2480,71 @@
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
+      "sdk": "node",
+      "path": "cloudConnect.nearby",
+      "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .onRequest); not a verb"
+    },
+    {
+      "sdk": "node",
+      "path": "identity.nearby",
+      "reason": "the accessor of the identity nearby namespace (identity.nearby.available, .onRequest; I-47.2); not a verb"
+    },
+    {
+      "sdk": "node",
+      "path": "identity.nearbyRoutes",
+      "reason": "internal: the nearby HTTP routes under the sign-in and approver sessions (I-47.4); no host calls it, and approve refuses a call without a matched pick"
+    },
+    {
+      "sdk": "node",
+      "path": "cloudConnect.links",
+      "reason": "the accessor of the links namespace (cloudConnect.links.pair, .list, .remove, .open, .onLink); not a verb"
+    },
+    {
+      "sdk": "node",
+      "path": "cloudConnect.transfer",
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
+    },
+    {
+      "sdk": "python",
+      "path": "cloudConnect.transfer",
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "cloudConnect.transfer",
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "cloudConnect.transfer",
+      "reason": "the accessor of the transfer namespace (cloudConnect.transfer.send, .onOffer, .onResult, .cancel); not a verb"
+    },
+    {
+      "sdk": "python",
+      "path": "cloudConnect.links",
+      "reason": "the accessor of the links namespace (cloud_connect.links.pair, .list, .remove, .open, .onLink); not a verb"
+    },
+    {
+      "sdk": "python",
+      "path": "cloudConnect.nearby",
+      "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .on_request); not a verb"
+    },
+    {
+      "sdk": "swift",
+      "path": "cloudConnect.nearby",
+      "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .onRequest); not a verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "cloudConnect.nearby",
+      "reason": "the accessor of the nearby namespace (cloudConnect.nearby.request, .onRequest); not a verb"
+    },
+    {
+      "sdk": "python",
+      "path": "identity.nearby",
+      "reason": "the accessor of the identity nearby namespace (identity.nearby.available, .on_request; I-47.3); not a verb"
+    },
+    {
       "sdk": "kotlin",
       "path": "client.cloudSync",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
@@ -2507,6 +2597,11 @@
     {
       "sdk": "swift",
       "path": "client.cloudSync",
+      "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
+    },
+    {
+      "sdk": "godot",
+      "path": "client.cloudConnect",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     }
   ],
@@ -3495,9 +3590,7 @@
           "spelling": "ChoiceClient.complete"
         },
         "godot": {
-          "spelling": "PKeyIdentityChoice.complete",
-          "planned": "I-48",
-          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
+          "spelling": "PKeyIdentityChoice.complete"
         }
       },
       "layer": "client"
@@ -3547,26 +3640,18 @@
       ],
       "returns": "json",
       "sdks": {
-        "node": {
-          "planned": "I-47",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
-        },
+        "node": {},
         "react": {
           "spelling": "usePolarisAuth().autoSignIn",
           "shape": "hook"
         },
-        "python": {
-          "planned": "I-47",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
-        },
+        "python": {},
         "swift": {
           "labels": ["_"]
         },
         "kotlin": {},
         "godot": {
-          "spelling": "PKeyIdentity.auto_sign_in",
-          "planned": "I-48",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+          "spelling": "PKeyIdentity.auto_sign_in"
         }
       },
       "layer": "client"
@@ -3872,25 +3957,20 @@
       "kind": "property",
       "feature": "sync.saves",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves",
           "shape": "hook",
           "reason": "a hook returns a render value; its handle carries the verbs"
         },
         "swift": {
-          "planned": "U-23"
+          "shape": "property"
         },
-        "kotlin": {
-          "planned": "U-23"
-        },
+        "kotlin": {},
         "godot": {
-          "planned": "U-23"
+          "shape": "property",
+          "reason": "a property holding the saves (PKeySaves)"
         }
       },
       "layer": "client"
@@ -3900,25 +3980,21 @@
       "kind": "method",
       "feature": "sync.saves",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves().list",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.list"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.list"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.list"
         }
       },
       "layer": "client"
@@ -3934,25 +4010,22 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves().read",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.read",
+          "labels": ["_", "options"]
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.read"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.read"
         }
       },
       "layer": "client"
@@ -3972,25 +4045,22 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves().write",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.write",
+          "labels": ["_", "bytes", "metadata", "options"]
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.write"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.write"
         }
       },
       "layer": "client"
@@ -4006,25 +4076,22 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves().delete",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.delete",
+          "labels": ["_", "baseVersion"]
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.delete"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.delete"
         }
       },
       "layer": "client"
@@ -4040,25 +4107,22 @@
         }
       ],
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useSaves().revisions",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SavesClient.revisions",
+          "labels": ["_"]
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SavesClient.revisions"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeySaves.revisions"
         }
       },
       "layer": "client"
@@ -4068,26 +4132,16 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useTransfers().transfers",
           "shape": "hook",
           "reason": "a hook returns the render value: the transfers in flight"
         },
-        "swift": {
-          "planned": "U-23"
-        },
-        "kotlin": {
-          "planned": "U-23"
-        },
-        "godot": {
-          "planned": "U-23"
-        }
+        "swift": {},
+        "kotlin": {},
+        "godot": {}
       },
       "layer": "client"
     },
@@ -4096,25 +4150,21 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useTransfers().pause",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.pause"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.pause"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeyTransfer.pause"
         }
       },
       "layer": "client"
@@ -4124,25 +4174,21 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useTransfers().resume",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.resume"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.resume"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeyTransfer.resume"
         }
       },
       "layer": "client"
@@ -4152,25 +4198,21 @@
       "kind": "method",
       "feature": "sync.files",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useTransfers().cancel",
           "shape": "hook",
           "reason": "the hook carries the method"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.cancel"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "SaveTransfer.cancel"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "PKeyTransfer.cancel"
         }
       },
       "layer": "client"
@@ -4181,25 +4223,25 @@
       "feature": "sync.files",
       "enum": "transferEvent",
       "sdks": {
-        "node": {
-          "planned": "U-22"
-        },
-        "python": {
-          "planned": "U-22"
-        },
+        "node": {},
+        "python": {},
         "react": {
-          "planned": "U-22",
+          "spelling": "useTransfers().transfers",
           "shape": "hook",
           "reason": "the hook re-renders on each transfer event, so no event listener is exposed"
         },
         "swift": {
-          "planned": "U-23"
+          "spelling": "events",
+          "reason": "one event stream on the client; the transfer cases of CloudSyncEvent"
         },
         "kotlin": {
-          "planned": "U-23"
+          "spelling": "client.events",
+          "reason": "one event stream on the client (client.events), PolarisEvent.CloudSync"
         },
         "godot": {
-          "planned": "U-23"
+          "spelling": "client.event",
+          "shape": "signal",
+          "reason": "Godot observes the one event signal, kind cloudSync (type transferProgress, transferDone, transferFailed)"
         }
       },
       "layer": "client"
@@ -6914,9 +6956,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "CC-14"
-        }
+        "godot": {}
       },
       "layer": "client",
       "args": [
@@ -6940,9 +6980,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "CC-14"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -6960,9 +6998,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "CC-14"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -6980,9 +7016,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "CC-14"
-        }
+        "godot": {}
       },
       "layer": "client"
     },
@@ -7000,9 +7034,7 @@
         "python": {},
         "swift": {},
         "kotlin": {},
-        "godot": {
-          "planned": "CC-14"
-        }
+        "godot": {}
       },
       "layer": "client",
       "args": [
@@ -7027,7 +7059,9 @@
         "swift": {},
         "kotlin": {},
         "godot": {
-          "planned": "CC-14"
+          "spelling": "channel",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         }
       },
       "layer": "client",
@@ -7064,7 +7098,8 @@
         "kotlin": {
           "sdkOnly": true,
           "reason": "Node-first helper; Kotlin carries it too"
-        }
+        },
+        "godot": {}
       },
       "layer": "client"
     },
@@ -7094,7 +7129,8 @@
         "kotlin": {
           "sdkOnly": true,
           "reason": "Node-first helper; Kotlin carries it too"
-        }
+        },
+        "godot": {}
       },
       "layer": "client"
     },
@@ -7124,6 +7160,717 @@
         "kotlin": {
           "sdkOnly": true,
           "reason": "Node-first helper; Kotlin carries it too"
+        },
+        "godot": {
+          "spelling": "notice",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.nearby.request",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "adapter.nearby.request",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the new device; the host holds the session"
+        },
+        "python": {},
+        "swift": {},
+        "kotlin": {
+          "spelling": "CloudNearby.request"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.nearby.onRequest",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "adapter.nearby.approver",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the signed-in device; open while its screen is"
+        },
+        "python": {},
+        "swift": {},
+        "kotlin": {
+          "spelling": "CloudNearby.onRequest"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "handler",
+          "type": "listener"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "identity.nearby.available",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "returns": "bool",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "adapter.supports",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): supports('identity.nearby'); a v4 host answers reason version"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.nearby.onRequest",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "handler",
+          "type": "listener"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "returns": "json",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "adapter.nearby.approver",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the signed-in device; asks arrive as pushed state, one ask id each"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.approvers",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "json",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "session.state.approvers",
+          "shape": "property",
+          "reason": "desktop bridge v5 (I-47b): the requester session (adapter.nearby.request)"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.onApprovers",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "fn",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "session.subscribe",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.code",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "string",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "session.state.code",
+          "shape": "property",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.result",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "string",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "session.phase",
+          "shape": "property",
+          "reason": "desktop bridge v5 (I-47b): the requester session's phase"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.onResult",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "fn",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "session.subscribe",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.choose",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ],
+      "returns": "json",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "session.choose",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.confirmAccount",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "returns": "json",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "session.confirm",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.declineAccount",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "sdks": {
+        "node": {},
+        "react": {
+          "spelling": "session.decline",
+          "shape": "method",
+          "reason": "desktop bridge v5 (I-47b): the requester session"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.wrap",
+      "kind": "property",
+      "feature": "identity.nearby",
+      "returns": "string",
+      "sdks": {
+        "node": {},
+        "react": {
+          "reason": "desktop bridge v5 (I-47b): the key-ring wrap stays in the host and never crosses IPC (D-2)"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.session.onWrap",
+      "kind": "method",
+      "feature": "identity.nearby",
+      "args": [
+        {
+          "name": "fn",
+          "type": "listener"
+        }
+      ],
+      "sdks": {
+        "node": {},
+        "react": {
+          "reason": "desktop bridge v5 (I-47b): the key-ring wrap stays in the host and never crosses IPC (D-2)"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-44",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "kotlin": {
+          "planned": "I-45",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        },
+        "godot": {
+          "planned": "I-48",
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.links.pair",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.list",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.links.remove",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.setReachable",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "reachable",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.open",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.onLink",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.links.interAccount",
+      "kind": "method",
+      "feature": "connect.links",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {},
+        "kotlin": {}
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.transfer.send",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_", "source", "options"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.send",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "peer",
+          "type": "string"
+        },
+        {
+          "name": "source",
+          "type": "json"
+        },
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.onOffer",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.onOffer",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "handler",
+          "type": "listener"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.onResult",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.onResult",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "listener",
+          "type": "listener"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.cancel",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "node": {},
+        "python": {},
+        "swift": {
+          "labels": ["_"]
+        },
+        "kotlin": {},
+        "react": {
+          "spelling": "adapter.cloudConnect.transfer.cancel",
+          "shape": "method",
+          "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        }
+      },
+      "layer": "client",
+      "args": [
+        {
+          "name": "id",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "cloudConnect.transfer.accept",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "python": {
+          "spelling": "IncomingOffer.accept"
+        },
+        "kotlin": {
+          "spelling": "TransferOffer.accept"
+        },
+        "react": {
+          "spelling": "TransferOfferDriver.accept",
+          "shape": "method",
+          "reason": "the offer prompt's driver carries the answer (the kit's useTransferOffer is a kit subpath hook)"
+        },
+        "node": {
+          "spelling": "cloudConnect.transfer.onOffer",
+          "reason": "the handler's return value is the answer: { saveTo } accepts, \"decline\" declines"
+        },
+        "swift": {
+          "spelling": "TransferDecision.accept",
+          "reason": "the handler returns the decision"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "cloudConnect.transfer.decline",
+      "kind": "method",
+      "feature": "connect.transfer",
+      "sdks": {
+        "python": {
+          "spelling": "IncomingOffer.decline"
+        },
+        "kotlin": {
+          "spelling": "TransferOffer.decline"
+        },
+        "react": {
+          "spelling": "TransferOfferDriver.decline",
+          "shape": "method",
+          "reason": "the offer prompt's driver carries the answer (the kit's useTransferOffer is a kit subpath hook)"
+        },
+        "node": {
+          "spelling": "cloudConnect.transfer.onOffer",
+          "reason": "the handler's return value is the answer: { saveTo } accepts, \"decline\" declines"
+        },
+        "swift": {
+          "spelling": "TransferDecision.decline",
+          "reason": "the handler returns the decision"
         }
       },
       "layer": "client"

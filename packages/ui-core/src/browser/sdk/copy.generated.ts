@@ -122,6 +122,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Remote connection limit reached",
     message: "It resets soon. Devices on the same network still connect.",
   },
+  connect_links_disabled: {
+    title: "Pairing is off",
+    message:
+      "Pairing with other people is off for this app. Your own devices still connect.",
+  },
   relay_ticket_invalid: {
     title: "Connection expired",
     message: "The connection request expired. Try again.",
@@ -248,6 +253,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Sign-in can't return to the app",
     message:
       "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.",
+  },
+  invalid_request_uri: {
+    title: "Sign-in link expired",
+    message:
+      "This sign-in link has expired. Go back to {product} and start again.",
   },
   license_choice_required: {
     title: "Choose a license",
@@ -592,6 +602,10 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Code expired",
     message: "The code expired before sign-in finished. Start again.",
   },
+  "redirect-unavailable": {
+    title: "Browser sign-in unavailable",
+    message: "Sign-in could not open a browser here. Use a code instead.",
+  },
   "sign-in-denied": {
     title: "Sign-in declined",
     message: "Sign-in was declined. Start again.",
@@ -692,6 +706,63 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Local network blocked",
     message:
       "This app can't reach devices on your local network. Allow it in system settings.",
+  },
+  "nearby-unsupported": {
+    title: "Nearby sign-in unavailable",
+    message: "This device can't look for nearby devices here.",
+  },
+  "peer-handshake-failed": {
+    title: "Couldn't connect securely",
+    message:
+      "A secure connection to the nearby device couldn't be set up. Try again.",
+  },
+  "peer-closed": {
+    title: "Connection ended",
+    message: "The connection to the nearby device ended. Try again.",
+  },
+  "transfer-cancelled": {
+    title: "Transfer stopped",
+    message: "The transfer didn't finish. Nothing was received.",
+  },
+  "link-unknown": {
+    title: "Not paired",
+    message: "That device is no longer paired with this one.",
+  },
+  peer_revoked: {
+    title: "Device no longer trusted",
+    message:
+      "The other device was removed from the account. Nothing was shared.",
+  },
+  peer_expired: {
+    title: "Device certificate expired",
+    message:
+      "The other device's certificate has expired. Refresh and try again.",
+  },
+  peer_bad_frame: {
+    title: "Connection error",
+    message: "The nearby device sent something unexpected. Try again.",
+  },
+  peer_unknown_critical: {
+    title: "Unsupported request",
+    message:
+      "The nearby device asked for something this app doesn't support. Try again.",
+  },
+  peer_not_allowed: {
+    title: "Not allowed here",
+    message:
+      "The nearby device asked for something that isn't allowed in this step. Try again.",
+  },
+  peer_busy: {
+    title: "Nearby device busy",
+    message: "Too many connections are open. Try again in a moment.",
+  },
+  peer_timeout: {
+    title: "Connection timed out",
+    message: "The nearby device didn't respond in time. Try again.",
+  },
+  peer_bye: {
+    title: "Connection closed",
+    message: "The nearby device ended the connection.",
   },
   "platform-error": {
     title: "Platform problem",

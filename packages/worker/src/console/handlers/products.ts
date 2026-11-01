@@ -115,6 +115,7 @@ import {
   WriteChecks,
 } from "../../core/console/writeChecks.js";
 import { reservedNamesMode } from "../../core/licensing/reservedNames.js";
+import { productNameRefusal } from "../../core/accounts/reservedDisplayNames.js";
 import { resealManagedValue } from "../../core/managedSecrets.js";
 import { handleOutletCredentials } from "./outletCredentials.js";
 
@@ -420,6 +421,17 @@ export async function handleProducts(
       return err(422, ErrorCode.BadRequest, "name must not be blank", {
         fields: ["name"],
       });
+    }
+    // The rename runs the display-name rule the manifest and the listing claims run (D-10): the
+    // name is what the sign-in card, the chooser and every email call the app. An unchanged name
+    // is not judged again, so saving other fields never fails on a name stored earlier.
+    if (typeof body.name === "string" && body.name.trim() !== row.name) {
+      const problem = await productNameRefusal(env, db, slug, body.name.trim());
+      if (problem)
+        return err(422, ErrorCode.BadRequest, problem.message, {
+          reason: problem.reason,
+          fields: ["name"],
+        });
     }
     // ST-08: the web-origins editor. Each entry must be an origin exactly as a browser sends it
     // (the manifest's own rule); the list is bounded and a duplicate is refused, not dropped.

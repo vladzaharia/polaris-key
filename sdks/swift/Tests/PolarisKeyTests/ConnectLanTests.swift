@@ -2,13 +2,17 @@
 // CC-11.12: the LAN service. Two services over real loopback TCP (`BonjourListener` and `BonjourPipes`)
 // with a fake directory in place of Bonjour. Mirrors the Python port's `test_connect_lan.py`.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import PolarisKeyPlatform
 import XCTest
 
 @testable import PolarisKey
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 #if canImport(Network)
     import Network
@@ -127,8 +131,12 @@ import XCTest
         let listener = BonjourListener(policy: BonjourDialPolicy(allowLoopback: true))
         let dialOptions: BonjourDialOptions
         var failListen: BonjourPipeError?
+        /// What `resolve` answers for a hit, when set (the addresses a real resolver found).
+        var resolved: [BonjourEndpoint]?
         private let lock = NSLock()
         private var port: UInt16 = 0
+        private var _dials = 0
+        var dials: Int { lock.withLock { _dials } }
 
         init(_ dir: Directory, loopback: Bool = true) {
             self.dir = dir
@@ -153,8 +161,11 @@ import XCTest
             onError: @escaping @Sendable (BonjourBrowseError) -> Void
         ) throws -> @Sendable () -> Void { dir.browse(up: onUp, down: onDown) }
 
+        func resolve(_ endpoint: BonjourEndpoint) async throws -> [BonjourEndpoint] { resolved ?? [endpoint] }
+
         func dial(_ endpoint: BonjourEndpoint) async throws -> NWPipe {
-            try await BonjourPipes.dial(endpoint, options: dialOptions)
+            lock.withLock { _dials += 1 }
+            return try await BonjourPipes.dial(endpoint, options: dialOptions)
         }
 
         func rescan() { dir.replay() }
@@ -447,6 +458,82 @@ import XCTest
                 _ = try await a.connect(idC)
                 XCTFail("B answered for C")
             } catch { XCTAssertEqual((error as? ConnectLanError)?.reason, .wrongPeer) }
+            await w.close()
+        }
+
+        private func hit(_ name: String, port: UInt16) -> BonjourEndpoint {
+            BonjourEndpoint(name: name, network: .hostPort(host: "127.0.0.1", port: NWEndpoint.Port(rawValue: port)!))
+        }
+
+        /// S2: after a failed handshake the dial tries the next resolved address.
+        func testAFailedHandshakeFallsThroughToTheNextAddress() async throws {
+            let w = try await World()
+            let net = FakeNet(w.dir)
+            let a = try await w.start(w.a, net: net)
+            // A neighbour that answers first: it holds another K_disc, so the handshake fails.
+            let bad = try await w.start(
+                w.b,
+                source: ConnectLanSource(
+                    load: { [w] in w.peerSource(w.b, keys: DiscoveryKeys(current: discKey(), previous: nil)) },
+                    now: { [clock = w.clock] in clock.now }))
+            let b = try await w.start(w.b)
+            let badPort = await bad.listenPort()
+            let bPort = await b.listenPort()
+            await until("A sees B") { await a.currentPeers().map(\.deviceId) == [idB] }
+            net.resolved = [hit("bad", port: badPort), hit("b", port: bPort)]
+            let s = try await a.connect(idB)
+            XCTAssertEqual(s.peerDeviceId, idB)
+            XCTAssertEqual(net.dials, 2, "the first address failed, the second won")
+            await w.close()
+        }
+
+        func testWrongPeerEndsTheDialAndAllFailuresReportTheLastError() async throws {
+            let w = try await World()
+            let net = FakeNet(w.dir)
+            let a = try await w.start(w.a, roster: [idA, idB, idC], net: net)
+            let b = try await w.start(w.b)
+            let bPort = await b.listenPort()
+            let name = try PeerAdvert.accountInstance(
+                discoveryKey: w.key.current.current.bytes, epoch: peerAdvertEpoch(w.clock.now), deviceId: idC)
+            w.dir.inject(
+                BonjourFound(
+                    instance: name, txt: ["v=1", "m=a"],
+                    endpoint: hit(name, port: bPort)))
+            await until("C seen") { await a.currentPeers().map(\.deviceId).contains(idC) }
+            // B answers for C on the first address: an authenticated answer, so the dial ends at once.
+            net.resolved = [hit("one", port: bPort), hit("two", port: bPort)]
+            do {
+                _ = try await a.connect(idC)
+                XCTFail("B answered for C")
+            } catch { XCTAssertEqual((error as? ConnectLanError)?.reason, .wrongPeer) }
+            XCTAssertEqual(net.dials, 1, "wrong_peer is not retried")
+            await w.close()
+        }
+
+        func testEveryAddressFailingEndsWithTheLastError() async throws {
+            let w = try await World()
+            let net = FakeNet(w.dir)
+            let a = try await w.start(w.a, net: net)
+            let bad = try await w.start(
+                w.b,
+                source: ConnectLanSource(
+                    load: { [w] in w.peerSource(w.b, keys: DiscoveryKeys(current: discKey(), previous: nil)) },
+                    now: { [clock = w.clock] in clock.now }))
+            let badPort = await bad.listenPort()
+            let b = try await w.start(w.b)
+            await until("A sees B") { await a.currentPeers().map(\.deviceId) == [idB] }
+            _ = b
+            net.resolved = [hit("bad1", port: badPort), hit("bad2", port: badPort)]
+            do {
+                _ = try await a.connect(idB)
+                XCTFail("every handshake fails")
+            } catch { XCTAssertEqual((error as? ConnectLanError)?.reason, .handshakeFailed) }
+            XCTAssertEqual(net.dials, 2)
+            net.resolved = []
+            do {
+                _ = try await a.connect(idB)
+                XCTFail("nothing to dial")
+            } catch { XCTAssertEqual((error as? ConnectLanError)?.reason, .connectFailed) }
             await w.close()
         }
 

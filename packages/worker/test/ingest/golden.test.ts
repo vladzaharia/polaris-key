@@ -75,6 +75,9 @@
  *     DELETE's key list and the audit statement's `json_each` parameter name one more key, in
  *     every scenario that runs Identity's row settings. Only those key lists changed: no
  *     table's end state, result or trip count moved (the fixture declares no `restore`).
+ *   - I-15.2: `identity.nativeRedirect.loopback`, `.schemes` and `.claimedPaths` are row-backed settings
+ *     after `identity.restore`, so the same key lists name three more keys. Only those lists
+ *     changed (the fixture declares no `nativeRedirect`).
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
