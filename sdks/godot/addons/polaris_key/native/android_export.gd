@@ -56,6 +56,9 @@ const DIRECT_PERMISSIONS := ["android.permission.REQUEST_INSTALL_PACKAGES", "and
 ## runtime permission (the Nearby devices group) to browse, advertise or reach the local network. Both
 ## flavours declare it, so the lane can ask at first use (L-11); a device below 17 ignores it.
 const LOCAL_NETWORK_PERMISSION := "android.permission.ACCESS_LOCAL_NETWORK"
+## Background transfers (U-41.4): a transfer the person starts runs at once as a user-initiated job (Android 14+)
+## with a notification; without these the platform AAR falls back to a WorkManager job.
+const TRANSFER_PERMISSIONS := ["android.permission.RUN_USER_INITIATED_JOBS", "android.permission.POST_NOTIFICATIONS"]
 ## The LAN lane reads the network's subnets and watches the default network; without this normal
 ## (install-time) permission it finds no subnet and dials nothing.
 const NETWORK_STATE_PERMISSION := "android.permission.ACCESS_NETWORK_STATE"
@@ -151,13 +154,15 @@ static func credentials_warning(flavor: String, engine := {}) -> String:
 	return ""
 
 
-## The <manifest> children for `flavor`: the local-network and network-state permissions for play and direct, and the two
+## The <manifest> children for `flavor`: the local-network, network-state and background-transfer permissions for play and direct, and the two
 ## install permissions for direct; nothing for none.
 static func manifest_elements(flavor: String) -> String:
 	if flavor != "play" and flavor != "direct":
 		return ""
 	var s := "    <uses-permission android:name=\"%s\" />\n" % LOCAL_NETWORK_PERMISSION
 	s += "    <uses-permission android:name=\"%s\" />\n" % NETWORK_STATE_PERMISSION
+	for p in TRANSFER_PERMISSIONS:
+		s += "    <uses-permission android:name=\"%s\" />\n" % p
 	if flavor != "direct":
 		return s
 	for p in DIRECT_PERMISSIONS:

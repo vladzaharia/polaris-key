@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- polaris-key-platform: the permissions background transfers need (U-41.4) and the user-initiated job service. A
-     direct build's install permissions are the app's choice (the Godot export plugin adds them to direct presets
-     only). RUN_USER_INITIATED_JOBS (Android 14+) lets a transfer the person starts run at once, with a notification;
-     the notification text carries no save name. -->
+<!-- polaris-key-platform: the user-initiated job service for background transfers (U-41.4). The AAR declares no
+     permission (the app decides; the Godot export plugin adds them): a transfer the person starts needs
+     RUN_USER_INITIATED_JOBS (Android 14+) to run at once, with a notification (POST_NOTIFICATIONS shows it); without
+     it the transfer runs as a WorkManager job. The notification text carries no save name. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
-    <uses-permission android:name="android.permission.RUN_USER_INITIATED_JOBS" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Our jobs live in their own JobScheduler namespace (pkey.sync), so their ids never meet WorkManager's. -->
     <application>
         <service

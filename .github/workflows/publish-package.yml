@@ -56,6 +56,13 @@ on:
         description: The channel (stable, beta or main), from tools/sdk-version.mjs.
         required: true
         type: string
+      pending-registration:
+        description: >-
+          The deliverable is not yet registered on production (an owner step), so its publish
+          may be refused; the refusal is reported as a warning and does not fail the job.
+        required: false
+        type: boolean
+        default: false
       base-url:
         description: The Polaris Key origin whose feeds receive the package.
         required: false
@@ -201,6 +208,7 @@ jobs:
           --origin https://pkg.plrs.im --owner polaris-key --timeout 600
       - name: Publish ${{ inputs.deliverable }}
         id: publish
+        continue-on-error: ${{ inputs.pending-registration }}
         uses: ./actions/publish
         with:
           args: >-
@@ -210,7 +218,13 @@ jobs:
             --dir dist-feed/${{ inputs.dir }}
           base-url: ${{ inputs.base-url }}
           channels: none
+      - name: Not yet registered on production
+        if: inputs.pending-registration && steps.publish.outcome == 'failure'
+        env:
+          DELIVERABLE: ${{ inputs.deliverable }}
+        run: echo "::warning::$DELIVERABLE was not published: production does not know it yet (owner step)."
       - name: Summary
+        if: steps.publish.outcome == 'success'
         env:
           DELIVERABLE: ${{ inputs.deliverable }}
           VERSION: ${{ inputs.version }}
