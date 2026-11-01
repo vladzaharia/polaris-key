@@ -4,7 +4,7 @@
 //
 //  - `send(_:source:options:)` opens a session to the peer (or takes one you pass), offers the content with its
 //    hash, streams the chunks inside the window and returns when the receiver answered `DONE`. It throws
-//    `TransferError`: `transfer-cancelled` with the wire `reason`, `peer-closed` when the session ended first (the
+//    `DirectTransferError`: `transfer-cancelled` with the wire `reason`, `peer-closed` when the session ended first (the
 //    receiver keeps its partial file; send again with the same `id` to resume) or `link-unknown`;
 //  - `onOffer(_:)` is the consent: every offer goes to the handler, which answers `.decline` or `.accept(to:)`.
 //    Without a handler every offer is declined. The handler may take its time (up to 120 s). A mode-`c` offer is
@@ -89,7 +89,7 @@ public struct TransferSent: Sendable, Equatable {
     public let sha256: String
 }
 
-public struct TransferError: Error, Sendable, Equatable, CustomStringConvertible {
+public struct DirectTransferError: Error, Sendable, Equatable, CustomStringConvertible {
     /// `transfer-cancelled`, `peer-closed`, `link-unknown`, `unsupported` or `invalid-options`.
     public let code: String
     /// For `transfer-cancelled`: `declined`, `cancelled`, `hash`, `size`, `category`, `busy`, `quota` or `timeout`.
@@ -98,13 +98,13 @@ public struct TransferError: Error, Sendable, Equatable, CustomStringConvertible
     public let id: String?
     public let message: String
 
-    public var description: String { "TransferError(\(code)\(reason.map { ", " + $0 } ?? ""))" }
+    public var description: String { "DirectTransferError(\(code)\(reason.map { ", " + $0 } ?? ""))" }
 }
 
 /// What became of a transfer this device received.
 public enum TransferReceipt: Sendable, Equatable {
     case delivered(id: String, to: URL)
-    case failed(id: String, error: TransferError)
+    case failed(id: String, error: DirectTransferError)
 }
 
 /// Answers an offer. A throw closes that session (`peer_bye`) and nothing else.
@@ -152,8 +152,8 @@ final class TransferReader: @unchecked Sendable {
         if let cleanup { try? FileManager.default.removeItem(at: cleanup) }
     }
 
-    private static func fail(_ message: String) -> TransferError {
-        TransferError(code: ErrorCode.invalidOptions, reason: nil, id: nil, message: message)
+    private static func fail(_ message: String) -> DirectTransferError {
+        DirectTransferError(code: ErrorCode.invalidOptions, reason: nil, id: nil, message: message)
     }
 
     static func make(_ source: TransferSource, store: XferStore) async throws -> TransferReader {
@@ -215,10 +215,10 @@ final class TransferReader: @unchecked Sendable {
 
 final class TransferWaiter: @unchecked Sendable {
     private let lock = NSLock()
-    private var outcome: Result<Void, TransferError>?
+    private var outcome: Result<Void, DirectTransferError>?
     private var cont: CheckedContinuation<Void, Error>?
 
-    func resolve(_ r: Result<Void, TransferError>) {
+    func resolve(_ r: Result<Void, DirectTransferError>) {
         let c: CheckedContinuation<Void, Error>? = lock.withLock {
             if outcome != nil { return nil }
             outcome = r
@@ -231,7 +231,7 @@ final class TransferWaiter: @unchecked Sendable {
 
     func wait() async throws {
         try await withCheckedThrowingContinuation { (c: CheckedContinuation<Void, Error>) in
-            let done: Result<Void, TransferError>? = lock.withLock {
+            let done: Result<Void, DirectTransferError>? = lock.withLock {
                 if let o = outcome { return o }
                 cont = c
                 return nil
@@ -338,7 +338,7 @@ public final class CloudTransfer: Sendable {
     var listening: Bool { state.with { $0.handler != nil } }
 
     /// Send `source` to `peer`. Opens a session (LAN first, then the relay) and closes it when the transfer is over.
-    /// Returns when the receiver has verified the hash and answered; throws `TransferError` otherwise.
+    /// Returns when the receiver has verified the hash and answered; throws `DirectTransferError` otherwise.
     public func send(
         _ peer: TransferPeer, source: TransferSource, options: TransferSendOptions = TransferSendOptions()
     ) async throws -> TransferSent {
@@ -364,7 +364,7 @@ public final class CloudTransfer: Sendable {
             await session.close()
             return sent
         } catch {
-            if (error as? TransferError)?.code != ErrorCode.peerClosed { await session.close() }
+            if (error as? DirectTransferError)?.code != ErrorCode.peerClosed { await session.close() }
             throw error
         }
     }
@@ -455,9 +455,9 @@ public final class CloudTransfer: Sendable {
     // MARK: Internals
 
     private static func error(_ code: String, _ message: String, reason: String? = nil, id: String? = nil)
-        -> TransferError
+        -> DirectTransferError
     {
-        TransferError(code: code, reason: reason, id: id, message: message)
+        DirectTransferError(code: code, reason: reason, id: id, message: message)
     }
 
     private static func cutName(_ s: String) -> String {

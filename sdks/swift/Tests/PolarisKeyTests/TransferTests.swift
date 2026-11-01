@@ -312,7 +312,7 @@ final class TransferTests: XCTestCase {
         do {
             _ = try await a.transfer.send(over: p.a, source: .data(content(10)))
             XCTFail("sent")
-        } catch let e as TransferError {
+        } catch let e as DirectTransferError {
             XCTAssertEqual(e.code, "transfer-cancelled")
             XCTAssertEqual(e.reason, "declined")
         }
@@ -326,13 +326,13 @@ final class TransferTests: XCTestCase {
         do {
             _ = try await a.transfer.send(over: p.a, source: .data(content(10)))
             XCTFail("sent")
-        } catch let e as TransferError { XCTAssertEqual(e.reason, "declined") }
+        } catch let e as DirectTransferError { XCTAssertEqual(e.reason, "declined") }
         // A destination in a directory that does not exist is a refusal, not a write somewhere else.
         accept(b.transfer, to: b.dir.appendingPathComponent("missing/dir/x"))
         do {
             _ = try await a.transfer.send(over: p.a, source: .data(content(10)))
             XCTFail("sent")
-        } catch let e as TransferError { XCTAssertEqual(e.reason, "declined") }
+        } catch let e as DirectTransferError { XCTAssertEqual(e.reason, "declined") }
         // So is one that exists.
         let there = b.dir.appendingPathComponent("there")
         try Data("x".utf8).write(to: there)
@@ -340,7 +340,7 @@ final class TransferTests: XCTestCase {
         do {
             _ = try await a.transfer.send(over: p.a, source: .data(content(10)))
             XCTFail("sent")
-        } catch let e as TransferError { XCTAssertEqual(e.reason, "declined") }
+        } catch let e as DirectTransferError { XCTAssertEqual(e.reason, "declined") }
         XCTAssertEqual(try Data(contentsOf: there), Data("x".utf8))
     }
 
@@ -352,7 +352,7 @@ final class TransferTests: XCTestCase {
         do {
             _ = try await a.transfer.send(over: p.a, source: .data(content(1000)))
             XCTFail("sent")
-        } catch let e as TransferError { XCTAssertEqual(e.reason, "size") }
+        } catch let e as DirectTransferError { XCTAssertEqual(e.reason, "size") }
     }
 
     func testPeerWithoutTheCapabilityIsUnsupported() async throws {
@@ -361,7 +361,7 @@ final class TransferTests: XCTestCase {
         do {
             _ = try await a.transfer.send(over: p.a, source: .data(content(10)))
             XCTFail("sent")
-        } catch let e as TransferError { XCTAssertEqual(e.code, "unsupported") }
+        } catch let e as DirectTransferError { XCTAssertEqual(e.code, "unsupported") }
         // The generic send path refuses the transfer types.
         do {
             try await p.a.sendRecord(type: XferType.offer, body: Data("{}".utf8))
@@ -391,7 +391,7 @@ final class TransferTests: XCTestCase {
         do {
             _ = try await task.value
             XCTFail("sent")
-        } catch let e as TransferError {
+        } catch let e as DirectTransferError {
             XCTAssertEqual(e.code, "transfer-cancelled")
             XCTAssertEqual(e.reason, "timeout")
         }
@@ -416,7 +416,7 @@ final class TransferTests: XCTestCase {
         do {
             _ = try await task.value
             XCTFail("sent")
-        } catch let e as TransferError { XCTAssertEqual(e.reason, "cancelled") }
+        } catch let e as DirectTransferError { XCTAssertEqual(e.reason, "cancelled") }
         await eventually("question withdrawn") { withdrawn.current }
     }
 
@@ -447,7 +447,7 @@ final class TransferTests: XCTestCase {
             p.pa.release()
             _ = try await task.value
             XCTFail("sent")
-        } catch let e as TransferError {
+        } catch let e as DirectTransferError {
             XCTAssertEqual(e.code, "transfer-cancelled")
             XCTAssertEqual(e.reason, "cancelled")
         }
@@ -474,7 +474,7 @@ final class TransferTests: XCTestCase {
         do {
             _ = try await task.value
             XCTFail("sent")
-        } catch let e as TransferError { XCTAssertEqual(e.reason, "cancelled") }
+        } catch let e as DirectTransferError { XCTAssertEqual(e.reason, "cancelled") }
         await eventually("receiver told") { !receipts.current.isEmpty }
         guard case .failed(_, let err)? = receipts.current.first else { return XCTFail("receipt") }
         XCTAssertEqual(err.reason, "cancelled")
@@ -504,7 +504,7 @@ final class TransferTests: XCTestCase {
         do {
             _ = try await first.value
             XCTFail("sent")
-        } catch let e as TransferError {
+        } catch let e as DirectTransferError {
             XCTAssertEqual(e.code, "peer-closed")
             XCTAssertEqual(e.id, id)
         }
@@ -756,7 +756,7 @@ final class TransferTests: XCTestCase {
         do {
             _ = try await a.transfer.send(over: p.a, source: .data(content(10)))
             XCTFail("sent")
-        } catch let e as TransferError { XCTAssertEqual(e.code, "peer-closed") }
+        } catch let e as DirectTransferError { XCTAssertEqual(e.code, "peer-closed") }
         await eventually("closed") { p.b.closed != nil }
         // Another session of the same two devices still works.
         let p2 = try await openPair()
@@ -788,7 +788,7 @@ final class TransferTests: XCTestCase {
         do {
             _ = try await second.value
             XCTFail("the second offer fits only if the first's bytes were not reserved")
-        } catch let e as TransferError { XCTAssertEqual(e.reason, "quota") }
+        } catch let e as DirectTransferError { XCTAssertEqual(e.reason, "quota") }
         // Once the first is delivered its reservation is released and the same size fits again.
         accept(b.transfer, to: b.dir.appendingPathComponent("two.bin"))
         _ = try await first.value
