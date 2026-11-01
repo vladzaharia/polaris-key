@@ -19,8 +19,10 @@
 
 package im.plrs.key.android
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -97,10 +99,18 @@ private class ConnectivityNetworkPort(private val context: Context) : NetworkPor
 
     override fun factoryOf(network: Network): SocketFactory? = network.socketFactory
 
+    // The one call that needs ACCESS_NETWORK_STATE is behind the run-time check below, which lint cannot follow.
+    @SuppressLint("MissingPermission")
     override fun isNotVpn(network: Network): Boolean {
-        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-        val caps = runCatching { cm?.getNetworkCapabilities(network) }.getOrNull()
-        return caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) == true
+        // The app grants ACCESS_NETWORK_STATE (the library declares none): without it the network is not known to be
+        // free of a VPN, which is the answer for an unknown network.
+        if (context.checkSelfPermission(Manifest.permission.ACCESS_NETWORK_STATE) != PackageManager.PERMISSION_GRANTED) return false
+        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        return try {
+            cm.getNetworkCapabilities(network)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) == true
+        } catch (e: SecurityException) {
+            false
+        }
     }
 
     // The library declares no permission (the app decides); a refusal is caught below. Lint cannot see that for a normal permission.
