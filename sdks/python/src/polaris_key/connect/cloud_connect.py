@@ -267,6 +267,7 @@ class CloudConnect:
             loop = asyncio.get_running_loop()
             ident = await loop.run_in_executor(None, self._connect.identity)
             self._self = ident.device_id
+            await loop.run_in_executor(None, self._transfer.retry_forgotten)
             self._lan_attempt = float(opts.get("lan_attempt_seconds", LAN_ATTEMPT_SECONDS))
             self._lan_failed = None
             self._relay_reason = None

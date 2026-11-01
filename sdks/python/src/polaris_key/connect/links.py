@@ -106,11 +106,8 @@ class CloudLinks:
 
         self._connect.update_contacts(fn)
         for k in gone:
-            # The link's kept partial transfers go with it (§15.11).
-            try:
-                self._cloud.transfer.forget_peer(b64url_decode(k))
-            except Exception:
-                pass
+            # The link's kept partial transfers go with it (§15.11); a failure is logged and retried at start.
+            self._cloud.transfer.forget_peer(b64url_decode(k))
         return found[0]
 
     def set_reachable(self, id: str, reachable: bool) -> bool:  # noqa: A002
