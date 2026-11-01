@@ -2,6 +2,7 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
+// @pkey-feature identity.keyreturn
 // @pkey-feature identity.devicecode identity.devicecode.choice identity.devicelabel identity.toggle config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
@@ -310,6 +311,15 @@ object KotlinReplay {
                             out["licenseId"] = o.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
                         }
 
+                        is SignInOutcome.Activated -> {
+                            // A key return: the licence by key, no account and no scope.
+                            out["result"] = JsonPrimitive("activated")
+                            out["scope"] = JsonPrimitive("")
+                            out["subject"] = o.subject?.let { JsonPrimitive(it) } ?: JsonNull
+                            out["licenseId"] = o.licenseId?.let { JsonPrimitive(it) } ?: JsonNull
+                            out["keyEntries"] = JsonObject(mapOf("used" to jsonInt(o.keyEntries.used), "limit" to jsonInt(o.keyEntries.limit)))
+                        }
+
                         is SignInOutcome.Choose -> out["result"] = JsonPrimitive("choose")
 
                         SignInOutcome.Cancelled -> out["result"] = JsonPrimitive("cancelled")
@@ -319,6 +329,13 @@ object KotlinReplay {
                 } catch (e: SignInError) {
                     out["result"] = JsonPrimitive(redirectResult(e.code))
                     out["code"] = JsonPrimitive(e.code)
+                    e.details?.let { d ->
+                        d.limit?.let { out["limit"] = jsonInt(it) }
+                        d.deviceCount?.let { out["deviceCount"] = jsonInt(it) }
+                        d.manageUrl?.let { out["manageUrl"] = JsonPrimitive(it) }
+                        d.signInUrl?.let { out["signInUrl"] = JsonPrimitive(it) }
+                        d.keyEntries?.let { out["keyEntries"] = JsonObject(mapOf("used" to jsonInt(it.used), "limit" to jsonInt(it.limit))) }
+                    }
                 } catch (e: PolarisException) {
                     out["result"] = JsonPrimitive("error")
                     out["code"] = JsonPrimitive(e.code)
@@ -804,6 +821,9 @@ object KotlinReplay {
                         SignInOutcome.Cancelled -> out["result"] = JsonPrimitive("cancelled")
 
                         is SignInOutcome.Choose -> out["result"] = JsonPrimitive("choose")
+
+                        // The device-code poll never carries a key return.
+                        is SignInOutcome.Activated -> out["result"] = JsonPrimitive("error")
                     }
                 } catch (e: SignInError) {
                     out["result"] = JsonPrimitive("error")
@@ -1041,6 +1061,7 @@ object KotlinReplay {
                 purpose = SignInPurpose.entries.firstOrNull { it.wire == args["purpose"].stringValue },
                 // The recorded authorize request asked the app to show the licence choice.
                 licenseChoice = if (transcript?.asksAppChoice() == true) "app" else null,
+                keyReturn = (args["keyReturn"] as? JsonPrimitive)?.content == "true",
             ),
         )
     }
@@ -1049,9 +1070,20 @@ object KotlinReplay {
         st["exchanges"]!!.obj["items"]!!.arrayValue!!.any { it.obj["request"]!!.obj["path"].stringValue?.contains("license_choice=app") == true }
     }
 
+    private val REDIRECT_RESULT_CODES = setOf(
+        "invalid_grant",
+        "invalid_request",
+        "invalid_client",
+        "license_choice_required",
+        "rate_limited",
+        "device_limit",
+        "key_entry_limit",
+        "license_owned",
+    )
+
     /** `redirectComplete`'s `result` for a refusal's code (`format.ts`). */
     private fun redirectResult(code: String): String = when (code) {
-        "invalid_grant", "invalid_request", "invalid_client", "license_choice_required", "rate_limited" -> code.replace('_', '-')
+        in REDIRECT_RESULT_CODES -> code.replace('_', '-')
         else -> "error"
     }
 
@@ -1516,6 +1548,9 @@ class TranscriptTest : ConformanceSuite() {
             "identity-attach", "identity-attach-errors",
             // I-10b.18: the redirect core and the request hints.
             "redirect-web-happy", "redirect-web-errors", "locker-redirect-web", "identity-request-hints",
+            // LK-SKIP.10: the key return (an opt-in on authorize; the activated outcome and its refusals).
+            "redirect-web-key-return", "redirect-web-key-return-limit",
+            "redirect-web-key-return-refusals",
             // I-15b.5: the native redirect (a pushed request; loopback, scheme).
             "redirect-native-loopback", "redirect-native-scheme", "redirect-native-choose-app",
             "redirect-native-errors", "locker-redirect-native",

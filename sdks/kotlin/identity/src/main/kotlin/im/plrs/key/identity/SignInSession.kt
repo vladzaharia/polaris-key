@@ -55,11 +55,18 @@ public data class SignInOptions @JvmOverloads constructor(
      * a registered scheme or a claimed HTTPS link.
      */
     val native: NativeRedirectOptions? = null,
+    /**
+     * Redirect channel, web or native: the app accepts a key return (WIRE-CONTRACT-V5 §12.4.2). Sends `key_return=allow`
+     * last, so the card may offer "Continue without an account" to a person who has a licence key, and the sign-in may
+     * settle [SignInOutcome.Activated]. Default off, and a Worker that does not take it ignores the parameter. The UI
+     * kits leave it off until the kit renders the activated outcome. Refused on the device-code channel.
+     */
+    val keyReturn: Boolean = false,
 )
 
 /** Where a session stands. `wait()` returns the settled ones; `session.outcome` reads `Pending` until then. */
 public sealed interface SignInOutcome {
-    /** `pending`, `signedIn`, `cancelled` or `expired`. */
+    /** `pending`, `signedIn`, `activated`, `choose`, `cancelled` or `expired`. */
     public val kind: String
 
     /** Not finished: wait [interval] seconds before the next poll ([slowDown]: the Worker asked for a longer one). Only `wait(once = true)` answers it. */
@@ -77,6 +84,21 @@ public sealed interface SignInOutcome {
         val licenseId: String? = null,
     ) : SignInOutcome {
         override val kind: String get() = "signedIn"
+    }
+
+    /**
+     * Redirect channel with [SignInOptions.keyReturn] (§12.4.2): the person continued without an account. The device holds
+     * [licenseId]'s licence by key, as `license.activateWithKey` leaves it, and the sign-in is not an account sign-in:
+     * [subject] is null and any account the device held is forgotten. [keyEntries] is the licence's count (`used` may
+     * exceed `limit`).
+     */
+    public data class Activated @JvmOverloads constructor(
+        val licenseId: String?,
+        val keyEntries: KeyReturnEntries,
+        /** Null: the key return holds no account, and any account the device held is gone. */
+        val subject: String? = null,
+    ) : SignInOutcome {
+        override val kind: String get() = "activated"
     }
 
     /**
@@ -107,6 +129,8 @@ public class SignInError @JvmOverloads constructor(
     message: String,
     /** Seconds to wait before retrying, when the Worker named them (`rate_limited`). */
     public val retryAfterSeconds: Int? = null,
+    /** `device_limit`, `key_entry_limit`, `license_owned` from the token request: the limit, count, links and key entries, each when the Worker named it. */
+    public val details: RefusalDetails? = null,
 ) : Exception(message) {
     override fun toString(): String = "SignInError($code): $message"
 }
@@ -150,6 +174,9 @@ public class SignInNamespace internal constructor(private val client: IdentityCl
     }
 
     private suspend fun startOther(options: SignInOptions): SignInSession {
+        if (options.keyReturn && options.channel != SignInChannel.Redirect) {
+            throw PolarisException(ErrorCode.invalidArgument, "keyReturn belongs to the redirect channel.")
+        }
         if (options.channel == SignInChannel.Redirect) {
             val pending = client.startRedirect(options)
             val session = SignInSession(client, redirectPrompt(options.deviceName), options.opener, pending, options.deviceName)

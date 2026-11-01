@@ -212,9 +212,8 @@
       "status": "implemented"
     },
     "identity.keyreturn": {
-      "status": "planned",
-      "wp": "I-15b",
-      "note": "LK-SKIP.10: the opt-in, the via rule and the activated outcome, with the replayer."
+      "status": "implemented",
+      "note": "LK-SKIP.10: SignInOptions(keyReturn = true) on the redirect channel, web (redirectUri) and native (pushed request), sends key_return=allow last and never otherwise. IdentityRedirect.parseTokenAnswer(status, body, keyReturn) reads a via:\"key\" body as TokenAnswer.Activated only with the opt-in (without it, or with another via, Malformed); the session stores the token as a key activation, sets the stored subject to the answered value (null clears it) and settles SignInOutcome.Activated(licenseId, keyEntries, subject), with no signed-in outcome. device_limit, key_entry_limit and license_owned surface as a SignInError whose details carry limit, deviceCount, manageUrl, keyEntries and signInUrl (links must be https). The device-code channel refuses the option (invalid-argument). The three redirect-web-key-return transcripts replay in TranscriptTest (JCA and Tink); IdentityKeyReturnTest maps each rule. The kits leave it off until their native redirect slice renders the outcome."
     },
     "identity.redirect.native": {
       "status": "implemented",

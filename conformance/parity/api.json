@@ -3518,6 +3518,30 @@
       "layer": "client"
     },
     {
+      "id": "identity.signIn.keyReturn",
+      "kind": "property",
+      "feature": "identity.keyreturn",
+      "returns": "boolean",
+      "sdks": {
+        "node": {
+          "spelling": "RedirectSignInOptions.keyReturn",
+          "shape": "property",
+          "reason": "a member of the options value of signIn.start"
+        },
+        "react": {
+          "spelling": "signIn.start({ keyReturn })",
+          "shape": "property",
+          "reason": "a member of the options value of signIn.start"
+        },
+        "kotlin": {
+          "spelling": "SignInOptions.keyReturn",
+          "shape": "property",
+          "reason": "a member of SignInOptions"
+        }
+      },
+      "layer": "client"
+    },
+    {
       "id": "identity.choice",
       "kind": "namespace",
       "feature": "identity.choice",
