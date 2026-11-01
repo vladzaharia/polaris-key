@@ -93,6 +93,9 @@ public interface PolarisGateActions {
     /** Automatic sign-in (I-45.6); null runs none. The umbrella client's runs `identity.autoSignIn()`. */
     public val autoSignIn: PolarisAutoSignInActions? get() = null
 
+    /** Nearby sign-in (I-45.12), tried when the person presses Sign in; null runs none. The umbrella client's asks the people nearby. */
+    public val nearbySignIn: PolarisNearbyActions? get() = null
+
     /** Licence-state changes the SDK pushes (a sync that changed the document). */
     public val changes: Flow<LicenseState> get() = emptyFlow()
 }
@@ -109,6 +112,8 @@ public fun PolarisKeyClient.gateActions(): PolarisGateActions {
         }
 
         override val autoSignIn: PolarisAutoSignInActions by lazy { client.autoSignInActions() }
+
+        override val nearbySignIn: PolarisNearbyActions by lazy { client.nearbySignInActions() }
 
         override val changes: Flow<LicenseState> get() = client.events.filterIsInstance<PolarisEvent.License>().map { it.state }
     }
@@ -135,6 +140,14 @@ public class PolarisGateState(
      */
     public val auto: PolarisAutoSignInState? = actions.autoSignIn?.let { auto ->
         PolarisAutoSignInState(auto, scope, enabled = autoSignIn, onSignedIn = { scope.launch { reload() } })
+    }
+
+    /**
+     * Nearby sign-in (I-45.12): the kit tries the people nearby before the code view, when the product serves it and
+     * this runtime can discover devices. Null when the actions have none.
+     */
+    public val nearby: PolarisNearbySignInState? = actions.nearbySignIn?.let { n ->
+        PolarisNearbySignInState(n, scope, onSignedIn = { scope.launch { reload() } })
     }
 
     private val _gate = MutableStateFlow(PolarisGateUi(license = initial, nowSeconds = clock()))
