@@ -11354,11 +11354,17 @@ a registered custom scheme or a claimed HTTPS path. Tests are in
   only, on an OS-assigned port, checks `Host`, compares `state` in constant time, answers anything
   else with a 404 and keeps listening, sends no CORS headers and no HTML, and closes on use or after
   600 seconds. The `303` to the return page carries `no-referrer`. Residual: a process running as
-  the same user can read the app's memory anyway. The desktop default is the loopback.
+  the same user can read the app's memory anyway. The `request` route is unauthenticated, so the
+  pusher chooses the port and holds the PKCE verifier. Another user of a shared multi-user computer
+  can bind that port first, so a lured person's code goes to that user's listener. A code redeemed
+  from the pusher's device is a same-device sign-in and earns the link-offer step-up (I-43). The
+  desktop default is the loopback (RFC 8252 §8.3).
 - **A forwarded native authorize URL (R1-07, login CSRF).** The code goes to the victim's own
   loopback or scheme, where the attacker's app does not run. The handle is bound by the
   `__Host-pk_req` binder, and Continue needs the account session. Residual: malware already on the
-  victim's device.
+  victim's device. The claimed and web redirect pages receive the code in the URL; a page that
+  leaks it (Referer, analytics, third-party scripts) hands it to the pusher, who holds the
+  verifier.
 - **Open redirect and URI confusion.** Each class matches exactly: IP literals only for the
   loopback, a fixed path, no query or fragment, `localhost` refused; a registered reverse-DNS scheme
   with the reserved prefixes refused; claimed paths disjoint from the web paths. A native class is
@@ -11378,7 +11384,9 @@ a registered custom scheme or a claimed HTTPS path. Tests are in
   answers the `invalid_request_uri` page. Nothing known remains.
 - **Step-up laundering for the link offer.** `signin-fresh` is written only by a same-device code
   redemption, never by device code, exchange, nearby or restore; it lasts 300 seconds and I-43
-  consumes it. Residual: as I-43's row.
+  consumes it. Residual: a code redeemed from the pusher's device is a same-device sign-in, so the
+  loopback case above reaches the link offer, a persistent link to the person's account that device
+  code never reaches.
 
 ### Licence choice at sign-in (I-08b)
 
