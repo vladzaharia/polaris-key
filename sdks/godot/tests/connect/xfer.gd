@@ -386,6 +386,9 @@ func _delivered(t: PKeyTestContext) -> void:
 		m1.receive(2.0, PKeyPeerXfer.CHUNK, PKeyPeerXfer.chunk_body(ID_A, off, _content(off, mini(2500, off + 1000))))
 	var d1 := m1.receive(3.0, PKeyPeerXfer.DONE, _done_body(ID_A, sha))
 	t.check("delivered: and delivered", d1["results"] == [{"id": ID_A, "outcome": "delivered"}])
+	# Nothing is remembered until the driver has delivered the content.
+	t.check("delivered: not remembered before the delivery", _rx(mem, key).receive(5.0, PKeyPeerXfer.OFFER, _offer(ID_A, 2500, sha, 1000))["send"] == [{"t": "ACCEPT", "id": ID_A, "offset": 0}])
+	m1.remember_delivered(d1["delivered"], 3.0)
 	var m2 := _rx(mem, key)
 	var r2 := m2.receive(10.0, PKeyPeerXfer.OFFER, _offer(ID_A, 2500, sha, 1000))
 	t.check("delivered: a re-offer is answered at the last chunk boundary", r2["send"] == [{"t": "ACCEPT", "id": ID_A, "offset": 2000}])
@@ -401,7 +404,7 @@ func _delivered(t: PKeyTestContext) -> void:
 	m3.receive(20.0, PKeyPeerXfer.OFFER, _offer(ID_B, 2000, sha2k, 1000))
 	for off in [0, 1000]:
 		m3.receive(21.0, PKeyPeerXfer.CHUNK, PKeyPeerXfer.chunk_body(ID_B, off, _content(off, off + 1000)))
-	m3.receive(22.0, PKeyPeerXfer.DONE, _done_body(ID_B, sha2k))
+	m3.remember_delivered(m3.receive(22.0, PKeyPeerXfer.DONE, _done_body(ID_B, sha2k))["delivered"], 22.0)
 	var m4 := _rx(mem, key)
 	var r4 := m4.receive(30.0, PKeyPeerXfer.OFFER, _offer(ID_B, 2000, sha2k, 1000))
 	t.check("delivered: a whole number of chunks accepts at the size", r4["send"] == [{"t": "ACCEPT", "id": ID_B, "offset": 2000}])

@@ -136,6 +136,24 @@ public final class XferStore: @unchecked Sendable {
         return best
     }
 
+    /// Whether the whole of `declared` fits beside what the other live transfers have reserved, with `written` of
+    /// it already on disk. Called under the lock by the effects that start a transfer's file, so the check and the
+    /// reservation are one critical section: an offer that fitted when it was shown can still be refused here.
+    private func fitsLocked(_ ref: String, declared: Int, written: Int) -> Bool {
+        let others = live.reduce(0) { $0 + ($1.key == ref ? 0 : max(0, $1.value.declared - $1.value.written)) }
+        if let v = freeBytes(), declared - written > max(0, v - diskReserve - others) { return false }
+        if let q = quota {
+            var own = 0
+            if let f = try? file(ref), let a = try? fm.attributesOfItem(atPath: f.path),
+                let n = (a[.size] as? NSNumber)?.intValue
+            {
+                own = n
+            }
+            if declared > max(0, q - (onDiskLocked() - own) - others) { return false }
+        }
+        return true
+    }
+
     private func onDiskLocked() -> Int {
         guard let names = try? fm.contentsOfDirectory(atPath: dir.path) else { return 0 }
         var n = 0
@@ -149,10 +167,16 @@ public final class XferStore: @unchecked Sendable {
         return n
     }
 
+    /// The directory is a real directory this user owns, mode 0700: a link or a foreign one is refused.
     private func ensureDir() throws {
-        if fm.fileExists(atPath: dir.path) { return }
-        try fm.createDirectory(
-            at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        var st = stat()
+        if lstat(dir.path, &st) != 0 {
+            try fm.createDirectory(
+                at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            guard lstat(dir.path, &st) == 0 else { throw XferStoreError(.io) }
+        }
+        guard (st.st_mode & S_IFMT) == S_IFDIR, st.st_uid == getuid() else { throw XferStoreError(.badPath) }
+        if (st.st_mode & 0o777) != 0o700 { _ = chmod(dir.path, 0o700) }
     }
 
     // Only a derived name reaches a path: 64 lowercase hex characters.
@@ -233,11 +257,18 @@ public final class XferStore: @unchecked Sendable {
     /// A live transfer takes `ref`: `declared` bytes are reserved, `written` of them are on disk. Called as soon as
     /// the machine accepts, before the file work is done, so an offer that arrives next sees the reservation. A
     /// partial another session holds is not taken: the effects that follow are refused.
-    public func reserve(_ ref: String, declared: Int, written: Int, token t: Token) {
+    ///
+    /// The check and the reservation are one critical section: an offer that fitted when it was shown can be refused
+    /// here, when another transfer has taken the room since. A refused reservation is not taken, and the
+    /// `create` or `truncate` that follows is refused with it.
+    @discardableResult
+    public func reserve(_ ref: String, declared: Int, written: Int, token t: Token) -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        guard (try? check(t)) != nil, mayTouch(ref, t) else { return }
+        guard (try? check(t)) != nil, mayTouch(ref, t) else { return false }
+        guard fitsLocked(ref, declared: declared, written: written) else { return false }
         live[ref] = (t.owner, declared, written)
+        return true
     }
 
     /// The transfer ended (delivered, cancelled, closed): the reservation and the hold are released, if they are
@@ -257,6 +288,7 @@ public final class XferStore: @unchecked Sendable {
         try check(t)
         guard mayTouch(meta.ref, t) else { throw XferStoreError(.notOwner) }
         try ensureDir()
+        guard live[meta.ref]?.owner == t.owner else { throw XferStoreError(.quota) }
         let f = try file(meta.ref)
         let held = live[meta.ref]
         removeLocked(meta.ref)
@@ -288,7 +320,7 @@ public final class XferStore: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         try check(t)
-        guard live[ref]?.owner == t.owner else { throw XferStoreError(.notOwner) }
+        guard let l = live[ref], l.owner == t.owner else { throw XferStoreError(.notOwner) }
         try handle(ref).truncate(atOffset: UInt64(offset))
     }
 

@@ -60,7 +60,7 @@ class Rig extends RefCounted:
 
 
 	func reset() -> void:
-		step = {"send": [], "close": "", "ask": null, "withdraw": [], "results": [], "partial": [], "refused": "", "drop": false}
+		step = PKeyPeerXfer.Machine.blank()
 
 
 	func _to_string() -> String:
@@ -163,6 +163,7 @@ func run(t: PKeyTestContext) -> void:
 	await _queues(t)
 	await _offloading(t)
 	await _closing(t)
+	_delivery(t)
 	_misc(t)
 
 
@@ -430,6 +431,33 @@ func _closing(t: PKeyTestContext) -> void:
 	fault.ep.receive(PKeyPeerXfer.ACK, PKeyPeerXfer.offset_body(ID_B, 0))
 	t.check("closing: a record for an unknown id closes peer_bad_frame", fault.closes == [&"peer_bad_frame"] and fault.ep.is_dead() and fault.finished == 1)
 	await Engine.get_main_loop().process_frame
+
+
+func _receive_all(rig: Rig, id: String, size: int, chunk: int) -> void:
+	rig.ep.receive(PKeyPeerXfer.OFFER, _offer_body(id, size, chunk))
+	for off in range(0, size, chunk):
+		rig.ep.receive(PKeyPeerXfer.CHUNK, PKeyPeerXfer.chunk_body(id, off, XF._content(off, mini(size, off + chunk))))
+	rig.ep.receive(PKeyPeerXfer.DONE, PKeyPeerXfer.done_body(id, _sha(size)))
+
+
+func _delivery(t: PKeyTestContext) -> void:
+	# Delivered memory records only delivered content: a refused finalize records nothing, a done one does.
+	var mem := PKeyPeerXferDelivered.new()
+	var key := XF._key()
+	var opts := {"delivered": mem.for_peer(key)}
+	var bad := Rig.new(_machine("accept", opts))
+	bad.fail_apply = false
+	_receive_all(bad, ID_A, 2500, 1000)
+	t.check("delivery: a finalize that succeeds is remembered", mem.for_peer(key).has(ID_A, _sha(2500), 2500, bad.at))
+	var mem2 := PKeyPeerXferDelivered.new()
+	var failing := Rig.new(_machine("accept", {"delivered": mem2.for_peer(key)}))
+	failing.ep.receive(PKeyPeerXfer.OFFER, _offer_body(ID_A, 2500, 1000))
+	for off in range(0, 2500, 1000):
+		failing.ep.receive(PKeyPeerXfer.CHUNK, PKeyPeerXfer.chunk_body(ID_A, off, XF._content(off, mini(2500, off + 1000))))
+	failing.fail_apply = true
+	failing.ep.receive(PKeyPeerXfer.DONE, PKeyPeerXfer.done_body(ID_A, _sha(2500)))
+	t.check("delivery: a finalize that fails closes the session", failing.closes == [&"peer_bye"])
+	t.check("delivery: and records nothing", not mem2.for_peer(key).has(ID_A, _sha(2500), 2500, failing.at))
 
 
 func _misc(t: PKeyTestContext) -> void:
