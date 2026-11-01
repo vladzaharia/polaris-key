@@ -153,5 +153,19 @@ func set_record(id: String, value: Dictionary, base_version: Variant, cancel: Va
 	return _with_id(await _wait(func(m: Object) -> Dictionary: return m.put_at(COLLECTION, id, value, base_version, file), cancel), id)
 
 
+## Pull the `saves` collection from the server and return when the pull ended. False when there is no
+## machine to ask; a pull that failed still returns true, with the cache as it was.
+func pull_records() -> bool:
+	var m := _machine()
+	if m == null:
+		return false
+	m.pull()
+	_host.deliver_events()
+	await _host.touch()
+	# A pump already running goes round once more; wait for it to end.
+	await _host.idle()
+	return true
+
+
 func delete_record(id: String, base_version: int) -> Dictionary:
 	return _with_id(await _wait(func(m: Object) -> Dictionary: return m.remove_at(COLLECTION, id, base_version), null), id)

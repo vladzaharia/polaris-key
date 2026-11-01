@@ -21,16 +21,19 @@ import type {
   PolarisBridge,
 } from "./bridge.js";
 
-/** The requester's phase as the `AutoSignInInput` step the kit draws, or null when the phase has
- *  no step of its own (a refusal or an end the app words itself: read `phase`). */
+/** The requester's phase as the `AutoSignInInput` step the kit draws. Every phase has a screen
+ *  (UXR-47b B1): a refusal or an end draws its own, with Try again and Use a code instead. */
 export function requesterInput(
   r: BridgeNearbyRequester | null,
 ): AutoSignInInput | null {
   if (!r) return null;
   switch (r.phase) {
     case "searching":
-    case "choose-approver":
       return { step: "nearby-wait" };
+    case "choose-approver":
+      return r.approvers.length > 1
+        ? { step: "nearby-choose" }
+        : { step: "nearby-wait" };
     case "waiting":
       return { step: "nearby-wait", ...(r.code ? { code: r.code } : {}) };
     case "confirm-account":
@@ -39,8 +42,18 @@ export function requesterInput(
       return { step: "nearby-done" };
     case "device-limit":
       return { step: "device-limit" };
-    default:
-      return null;
+    case "denied":
+      return { step: "nearby-denied" };
+    case "expired":
+      return { step: "nearby-expired" };
+    case "not-nearby":
+      return { step: "nearby-not-nearby" };
+    case "rate-limited":
+      return { step: "nearby-rate-limited" };
+    case "unsupported":
+      return { step: "nearby-unavailable" };
+    case "cancelled":
+      return { step: "nearby-cancelled" };
   }
 }
 
@@ -193,6 +206,19 @@ export class DesktopNearbyApprover {
   }
   get asks(): readonly BridgeNearbyAsk[] {
     return this.cur.asks;
+  }
+  /** Why the host stopped listening on its own (declined requests, sign-out), or null. */
+  get stopped(): BridgeNearbyApproverState["stopped"] | null {
+    return this.cur.stopped ?? null;
+  }
+  /** What became of an ask this screen answered, or null while it is open or unknown. */
+  outcome(askId: string): BridgeNearbyStep | null {
+    return this.out.get(askId) ?? null;
+  }
+  /** The host could not carry an answer (the call threw): the person is told nothing was approved. */
+  fail(askId: string): void {
+    this.out.set(askId, { kind: "failed" });
+    this.notify();
   }
   subscribe(cb: () => void): () => void {
     this.subs.add(cb);

@@ -82,11 +82,21 @@ public fun PolarisAccount(
     navigationIcon: (@Composable () -> Unit)? = null,
     onManageLicense: (() -> Unit)? = null,
     onSignOut: (() -> Unit)? = null,
+    /** "Approve a nearby device" (nearby sign-in, the approving side): offered where nearby approval can run here; null offers none. */
+    nearby: PolarisNearbyApprovalState? = null,
 ) {
     val settingsUi by settings.ui.collectAsState()
     val devicesUi by devices.ui.collectAsState()
     androidx.compose.runtime.LaunchedEffect(settings) { settings.load() }
     androidx.compose.runtime.LaunchedEffect(devices) { devices.load() }
+    var offered by androidx.compose.runtime.remember(nearby) { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(nearby) { offered = nearby?.available() == true }
+    val approvalUi = nearby?.ui?.collectAsState()?.value
+    if (nearby != null && approvalUi != null && approvalUi != PolarisApprovalUi.Closed) {
+        // The approver replaces the account list until the person is done; leaving it answers Deny to what is on screen.
+        PolarisNearbyApproval(nearby, modifier, onManage = onManageLicense)
+        return
+    }
     PolarisAccountScreen(
         settingsUi = settingsUi,
         devicesUi = devicesUi,
@@ -103,6 +113,7 @@ public fun PolarisAccount(
         onDeauthorize = devices::deauthorize,
         onRetryDevices = devices::load,
         onDismissDeviceError = devices::dismissActionError,
+        onApproveNearby = if (offered) ({ nearby?.open() ?: Unit }) else null,
     )
 }
 
@@ -124,6 +135,8 @@ public fun PolarisAccountScreen(
     onDeauthorize: (String) -> Unit = {},
     onRetryDevices: () -> Unit = {},
     onDismissDeviceError: () -> Unit = {},
+    /** The "Approve a nearby device" row; null draws none. */
+    onApproveNearby: (() -> Unit)? = null,
 ) {
     val copy = PolarisTheme.copy
     val accountTitle = KitCopy.bundled.format("account.title", kitLocale())
@@ -145,6 +158,7 @@ public fun PolarisAccountScreen(
         val detailTitle = detailPaneTitle(open, copy, channelTitle)
         val manageLabel = KitCopy.bundled.format("menu.manageLicense", kitLocale())
         val signOutLabel = KitCopy.bundled.format("common.signOut", kitLocale())
+        val nearbyLabel = KitCopy.bundled.format("signin.nearby.menu", kitLocale())
         // "N of M in use" once the roster is read and the licence states a limit; the catalog's line otherwise.
         val limit = settingsUi.license?.deviceLimit
         val devicesSupporting = seatLine(devicesUi, settingsUi.license?.deviceLimit) ?: copy.devicesSubtitle
@@ -174,6 +188,19 @@ public fun PolarisAccountScreen(
                         }
                     }
                     if (onManageLicense != null) add { shape -> AccountListItem(manageLabel, null, PolarisSymbols.OpenInNew, chevron = false, selected = false, shape = shape, onClick = onManageLicense) }
+                    if (onApproveNearby != null) {
+                        add { shape ->
+                            AccountListItem(
+                                title = nearbyLabel,
+                                supporting = null,
+                                icon = PolarisSymbols.Devices,
+                                chevron = false,
+                                selected = false,
+                                shape = shape,
+                                onClick = onApproveNearby,
+                            )
+                        }
+                    }
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(ConnectedGap)) {
                     rows.forEachIndexed { i, row -> row(polarisConnectedShape(i, rows.size, PolarisTheme.cardShape)) }

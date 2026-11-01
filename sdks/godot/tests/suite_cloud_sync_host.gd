@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature sync.settings
+# @pkey-feature sync.settings sync.records
 # The Cloud Sync host (U-21.6): transport, state file, catalog vetting, the pump against a loopback
 # server. One check group per rule of the plan's section 3 (H-1 to H-6, H-10) and HOST-BIND.
 #
@@ -48,6 +48,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_state(t)
 	await _host(t)
 	await _bounds(t)
+	await _collections(t)
 	await PKeyTestFixtures.frames(20)  # let abandoned coroutines resume and finish
 	return true
 
@@ -436,7 +437,12 @@ func _bounds(t: PKeyTestContext) -> void:
 	host.machine().set_value("a.x", 2)
 	var settled: bool = await host.flush(5000)
 	t.check("H-8: a listener that touches and edits during delivery neither hangs nor starts a second pump", settled and calls[1] == 1 and calls[0] >= 1)
-	t.check("H-8: the edit made inside the listener reached the server", _posts(c8["server"]) >= 1 and (c8["server"].requests.back()["body"] as PackedByteArray).get_string_from_utf8().contains("\"value\":3"), str(c8["server"].requests.size()))
+	t.check(
+			"H-8: the edit made inside the listener reached the server",
+			_posts(c8["server"]) >= 1
+			and (c8["server"].requests.back()["body"] as PackedByteArray).get_string_from_utf8().contains("\"value\":3"),
+			str(c8["server"].requests.size())
+	)
 	_done(c8)
 
 	# H-9: flush is bounded, includes the trailing touch, and loses no wake-up.
@@ -449,7 +455,13 @@ func _bounds(t: PKeyTestContext) -> void:
 	host.machine().set_value("a.x", 5)
 	var before_posts := _posts(c9["server"])
 	var ok: bool = await host.flush(5000)
-	t.check("H-9: flush commits the debounced edit and sends it before it returns", ok and _posts(c9["server"]) == before_posts + 1 and host.machine().status()["pending"] == 0, str(host.machine().status()))
+	t.check(
+			"H-9: flush commits the debounced edit and sends it before it returns",
+			ok
+			and _posts(c9["server"]) == before_posts + 1
+			and host.machine().status()["pending"] == 0,
+			str(host.machine().status())
+	)
 	# A touch landing as the pump ends: the edit is made from the pump's last event delivery.
 	var once := [false]
 	host.events.connect(func(_b: Array) -> void:
@@ -458,7 +470,13 @@ func _bounds(t: PKeyTestContext) -> void:
 			host.machine().set_value("a.x", 6))
 	host.machine().set_value("a.x", 5.5)
 	ok = await host.flush(5000)
-	t.check("H-9: an edit that lands during the last delivery is still sent (no lost wake-up)", ok and host.machine().status()["pending"] == 0 and (c9["server"].requests.back()["body"] as PackedByteArray).get_string_from_utf8().contains("6"), str(host.machine().status()))
+	t.check(
+			"H-9: an edit that lands during the last delivery is still sent (no lost wake-up)",
+			ok
+			and host.machine().status()["pending"] == 0
+			and (c9["server"].requests.back()["body"] as PackedByteArray).get_string_from_utf8().contains("6"),
+			str(host.machine().status())
+	)
 	_done(c9)
 
 	# H-9 bound: a server that never answers cannot hold flush past its bound.
@@ -501,3 +519,119 @@ func _bounds(t: PKeyTestContext) -> void:
 
 func get_tree_auto_accept() -> bool:
 	return (Engine.get_main_loop() as SceneTree).auto_accept_quit
+
+
+# ── the records handle (C26.7, U-46): PKeyCollection over the host's machine ─────────────────────
+
+func _collections(t: PKeyTestContext) -> void:
+	var version := [0]
+	var catalog := {"schemaVersion": 1, "entries": [], "cloudSync": {"collections": [
+		{"name": "cards", "conflict": "merge"},
+		{"name": "tags", "conflict": "union"},
+		{"name": "saves", "template": "saves"},
+		{"name": "log.*", "template": "session"},
+	]}}
+	var c := _make(t, "collections", _answer(version), {}, {"catalog": catalog})
+	var host: Node = c["host"]
+	await host.start()
+	host.sign_in("sub_a")
+	await _settle(host)
+	var cards := PKeyCollection.new("cards", host)
+	var tags := PKeyCollection.new("tags", host)
+	var saves := PKeyCollection.new("saves", host)
+	var logs := PKeyCollection.new("log.app", host)
+	var nope := PKeyCollection.new("nope", host)
+	t.check(
+			"collection: the catalog's declarations reach the machine (conflict as the policy, a template's policy, a pattern)",
+			cards.policy() == "merge"
+			and tags.policy() == "union"
+			and saves.policy() == "revision"
+			and logs.policy() == "lastWrite"
+			and nope.policy() == ""
+	)
+	var changes: Array = []
+	cards.changed.connect(func(ids: Array, origin: String) -> void: changes.append([ids, origin]))
+	var r: PKeyResult = cards.update("c1", {"set": {"title": "Dragon", "hp": 10}})
+	t.check("collection: update is accepted and reports a local change", r.ok and changes == [[["c1"], "local"]], str(changes))
+	t.check("collection: get_record reads the pending value, ids lists it", _same_json(cards.get_record("c1"), {"value": {"title": "Dragon", "hp": 10}, "from": "pending"}) and cards.ids() == ["c1"])
+	await _settle(host)
+	t.check(
+			"collection: the push went out as field operations and the record reads from the cloud",
+			_same_json(cards.get_record("c1"), {"value": {"title": "Dragon", "hp": 10}, "from": "cloud"}),
+			str(cards.get_record("c1"))
+	)
+
+	# Refusals are returned, nothing is sent or journalled.
+	var posts := _posts(c["server"])
+	var refused := {
+		"an undeclared name": [nope.put("a", 1), "collection_unknown"],
+		"put on a merge record": [cards.put("c1", {}), "op_invalid_for_policy"],
+		"update on a union record": [tags.update("t", {"set": {"a": 1}}), "op_invalid_for_policy"],
+		"add on a merge record": [cards.add("c1", 1), "op_invalid_for_policy"],
+		"an empty id": [cards.update("", {"set": {"a": 1}}), "value_invalid"],
+		"an empty change": [cards.update("c1", {}), "value_invalid"],
+		"a field named twice": [cards.update("c1", {"set": {"a": 1}, "remove": ["a"]}), "value_invalid"],
+		"an empty field name": [cards.update("c1", {"set": {"": 1}}), "value_invalid"],
+		"a field name over 1 KiB": [cards.update("c1", {"set": {"a".repeat(1025): 1}}), "value_invalid"],
+		"an element over 1 KiB": [tags.add("t", "x".repeat(1100)), "value_invalid"],
+		"an element canonical JSON refuses": [tags.add("t", NAN), "value_invalid"],
+		"if_version on a merge delete": [cards.delete("c1", 3), "op_invalid_for_policy"],
+		"if_version on a lastWrite put": [logs.put("k", 1, 2), "op_invalid_for_policy"],
+		"a malformed if_version": [saves.put("s", {}, "later"), "value_invalid"],
+	}
+	for name in refused:
+		var pair: Array = refused[name]
+		var res: PKeyResult = pair[0]
+		t.check("collection: %s is refused with %s" % [name, pair[1]], not res.ok and String(res.code) == pair[1], str(res))
+	await _settle(host)
+	t.check("collection: a refusal sends nothing", _posts(c["server"]) == posts)
+
+	# Union and delete.
+	var a := tags.add("t1", {"k": 1})
+	t.check("collection: add and remove on a union record", a.ok and tags.remove("t1", {"k": 1}).ok and tags.delete("t1").ok)
+
+	# A compare-and-set on a revision collection: a ticket now, the outcome on the signal.
+	var outcomes: Array = []
+	saves.outcome.connect(func(o: Dictionary) -> void: outcomes.append(o))
+	var cas: PKeyResult = saves.put("s1", {"playtime": 5}, "*")
+	t.check("collection: a compare-and-set returns its ticket", cas.ok and cas.detail is Dictionary and int(cas.detail["mutation_id"]) > 0, str(cas))
+	await _settle(host)
+	t.check(
+			"collection: its outcome arrives once on the outcome signal",
+			outcomes.size() == 1
+			and outcomes[0]["status"] == "ok"
+			and int(outcomes[0]["mutationId"]) == int(cas.detail["mutation_id"]),
+			str(outcomes)
+	)
+	var plain := saves.put("s2", {"playtime": 6})
+	await _settle(host)
+	t.check("collection: a put without if_version is a plain write and reports no outcome", plain.ok and outcomes.size() == 1)
+	var gone := saves.delete("s1")
+	await _settle(host)
+	t.check(
+			"collection: delete on a revision record is a compare-and-set on the version held",
+			gone.ok
+			and gone.detail is Dictionary
+			and outcomes.size() == 2
+			and outcomes[1]["status"] == "ok",
+			str(outcomes)
+	)
+
+	# A rebuild keeps the watches and taps.
+	host._rebuild()
+	cards.update("c2", {"set": {"a": 1}})
+	t.check("collection: a rebuilt machine still reports the watched collection", changes.size() >= 2 and changes.back()[0] == ["c2"], str(changes))
+
+	# Signed out.
+	host.machine().sign_out(true)
+	t.check("collection: a verb while nobody is signed in answers signed_out", String(cards.update("c9", {"set": {"a": 1}}).code) == "signed_out")
+	cards.close()
+	tags.close()
+	saves.close()
+	logs.close()
+	nope.close()
+	_done(c)
+
+
+static func _same_json(a: Variant, b: Variant) -> bool:
+	return PKeySyncCanonicalJson.canonicalize_value(a).get("canonical") == PKeySyncCanonicalJson.canonicalize_value(b).get("canonical")

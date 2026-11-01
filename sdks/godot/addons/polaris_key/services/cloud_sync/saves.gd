@@ -54,6 +54,10 @@ const Codecs := preload("res://addons/polaris_key/services/cloud_sync/transfer_c
 const COLLECTION := "saves"
 ## The key of the E2E binding inside a save's sealed metadata (D-3).
 const BINDING_KEY := "$file"
+## SDK-owned metadata keys written with every save (SAVES-META): when it was saved (epoch ms) and the
+## device's display name. A write overwrites an app value under either key. Never a hardware value.
+const SAVED_AT_KEY := "savedAt"
+const DEVICE_KEY := "deviceLabel"
 const DEFAULT_MAX_BYTES := 33554432
 ## How long `purge` waits for cancelled transfers to settle.
 const PURGE_WAIT_MS := 5000
@@ -386,7 +390,29 @@ static func _id_ok(id: Variant) -> bool:
 
 ## Write a save. Returns at once; `await transfer.wait()` settles on the outcome.
 func write(id: String, bytes: PackedByteArray, metadata: Dictionary, opts: Dictionary = {}) -> PKeyTransfer:
-	return _run(id, bytes, metadata, opts, null)
+	return _run(id, bytes, _stamped(metadata), opts, null)
+
+
+## The SDK's own keys: when and where this save was written (SAVES-META).
+func _stamped(metadata: Dictionary) -> Dictionary:
+	var out := metadata.duplicate(true)
+	out.erase(SAVED_AT_KEY)
+	out.erase(DEVICE_KEY)
+	var now: Variant = _d.get("now")
+	out[SAVED_AT_KEY] = int((now as Callable).call()) if now is Callable else int(Time.get_unix_time_from_system() * 1000.0)
+	var label_fn: Variant = _d.get("device_label")
+	var label: String = String((label_fn as Callable).call()) if label_fn is Callable else ""
+	if label != "":
+		out[DEVICE_KEY] = label
+	return out
+
+
+## Pull the collection; true when the records layer pulled. Never errors.
+func _pull() -> bool:
+	var records: Object = _d["records"]
+	if not records.has_method("pull_records"):
+		return false
+	return await records.pull_records()
 
 
 ## Settle a conflict (the `conflict` of a transfer's outcome). `remote` keeps the server's copy and writes
@@ -395,7 +421,12 @@ func write(id: String, bytes: PackedByteArray, metadata: Dictionary, opts: Dicti
 func resolve(conflict: Dictionary, keep: String, bytes: PackedByteArray, opts: Dictionary = {}) -> PKeyTransfer:
 	var id: String = conflict["id"]
 	if keep == "remote":
-		return _tracked(Handle.settled(id, {"state": "done", "id": id, "kept": "remote", "version": conflict.get("server_version")}))
+		# Pull first, so the cache holds the copy the person chose (not this device's old one).
+		var keep_remote := func(_soft: Transfer.Cancel, _hard: Transfer.Cancel) -> Dictionary:
+			await _pull()
+			var rec: Variant = _d["records"].get_record(id)
+			return {"state": "done", "id": id, "kept": "remote", "version": rec["version"] if rec != null else null}
+		return _tracked(Handle.start("saves:" + id, {"done": 0, "total": 0}, keep_remote, func() -> void: pass))
 	if keep == "both" and not conflict.get("both_available", false):
 		return _tracked(Handle.settled(id, {"state": "failed", "error": _err("slots-full")}))
 	if keep != "local" and keep != "both":
@@ -594,7 +625,7 @@ func _attempt(
 	if not r.ok:
 		var mapped := _from_engine(r, codec)
 		if mapped["state"] == "conflict":
-			return _conflict(id, metadata, bytes.size(), mapped["server_version"], null, false)
+			return await _conflict(id, metadata, bytes.size(), mapped["server_version"], null, false)
 		return mapped
 	var file: Dictionary = r.detail
 	var value := metadata.duplicate(true)
@@ -610,7 +641,7 @@ func _attempt(
 		return {"state": "aborted"}
 	if set_r["reason"] == "conflict":
 		var server: Variant = set_r["server"]
-		return _conflict(id, metadata, bytes.size(), server["version"] if server != null else null, server, true)
+		return await _conflict(id, metadata, bytes.size(), server["version"] if server != null else null, server, true)
 	return {"state": "failed", "error": _err("rejected", set_r.get("code", ""))}
 
 
@@ -637,6 +668,9 @@ func _free_id(id: String) -> Variant:
 
 
 func _conflict(id: String, metadata: Dictionary, size: int, server_version: Variant, known: Variant, has_known: bool) -> Dictionary:
+	# The cache may be behind the conflict: pull before reading it, so the screen shows what the server
+	# holds (and a save deleted elsewhere reads as deleted).
+	var pulled: bool = await _pull()
 	var slots: int = _d["records"].list().size()
 	# The server's answer wins. `known` is the copy a rejected set carried (null: deleted). A file begin
 	# answers only a version, and the cached row stands in for it only while it is that very version; a
@@ -654,11 +688,16 @@ func _conflict(id: String, metadata: Dictionary, size: int, server_version: Vari
 		rv = 0
 	else:
 		var row: Variant = _d["records"].get_record(id)
-		if row != null and int(row["version"]) == int(server_version):
+		if row != null and int(row["version"]) >= int(server_version):
 			remote = _summary(row)
+			rv = int(row["version"])
+		elif pulled and row == null:
+			# Pulled and gone: a tombstone's version, not a copy.
+			remote = null
+			rv = null
 		else:
 			remote = {"id": id, "version": int(server_version), "metadata": {}, "file": null, "newer_format": false}
-		rv = int(server_version)
+			rv = int(server_version)
 	return {"state": "conflict", "conflict": {
 		"id": id,
 		"local": {"metadata": metadata, "size": size},

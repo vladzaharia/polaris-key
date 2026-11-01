@@ -696,7 +696,7 @@ func _make_link(peer: PackedByteArray, session_id: int, role: String, ident: PKe
 	rl.pipe = pipe
 	rl.link = made.detail
 	pipe.closing = Callable(rl.link.session, "is_closed")
-	rl.attachment = PKeyConnectChannel.attach(rl.link, _docs, role, "relay", "relay", _budget)
+	rl.attachment = PKeyConnectChannel.attach(rl.link, _docs, role, "relay", "relay", _budget, _o.get("xfer", Callable()))
 	rl.attachment.opened.connect(_on_opened.bind(rl.key))
 	rl.link.closed.connect(_on_link_closed.bind(rl.key))
 	_links[rl.key] = rl

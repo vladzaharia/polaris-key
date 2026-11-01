@@ -9,7 +9,7 @@ extends RefCounted
 # @pkey-feature release.fetch
 # @pkey-feature sync.keyring sync.settings
 # @pkey-feature identity.exchange identity.gamecenter identity.pgs
-# @pkey-feature sync.files sync.files.delta sync.saves
+# @pkey-feature sync.files sync.files.delta sync.saves sync.records
 # @pkey-feature connect.identity connect.relay
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
@@ -160,7 +160,7 @@ static func replay(tr: Dictionary) -> Array:
 			opts.device_keys = exchange_keys
 			break
 	var sdk := PKeyTestFixtures.new_sdk()
-	if tr["id"] == "cloudsync-e2e-settings":
+	if tr["id"] == "cloudsync-e2e-settings" or tr["id"] == "cloudsync-records-e2e":
 		# The end-to-end transcript runs the real host codec over a ring of its own: its root is not the
 		# recorder's, so every recorded `ct` reads `invalid`.
 		sdk.set_meta("pkey_sync_codec", await _fixture_codec(tr))
@@ -1201,6 +1201,14 @@ static func _cloud_sync(sdk: Node, step: Dictionary, out: Dictionary) -> void:
 	if b.get("more") is bool:
 		out["more"] = b["more"]
 	out["empty"] = b.get("empty") == true
+	# A record changed on the server (`changes`) or deleted there (`tombstones`), as `collection/id`.
+	var changed_records: Array = []
+	for c in (b.get("changes", []) as Array if b.get("changes") is Array else []):
+		if c is Dictionary and c.get("record") is Array and c["record"].size() == 2:
+			changed_records.append("%s/%s" % [c["record"][0], c["record"][1]])
+	if not changed_records.is_empty():
+		changed_records.sort()
+		out["records"] = changed_records
 	var deleted: Array = []
 	for t in (b.get("tombstones", []) as Array if b.get("tombstones") is Array else []):
 		if t is Dictionary and t.get("record") is Array and t["record"].size() == 2:

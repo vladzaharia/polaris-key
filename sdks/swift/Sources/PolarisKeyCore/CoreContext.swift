@@ -491,11 +491,6 @@ public actor CoreContext {
         person: Bool = false
     ) async throws {
         let derived = provenance ?? Self.derive(source)
-        // A mark that is going away is dropped before the token changes. A re-acquire keeps it.
-        if derived != nil, unconfirmedValue {
-            try await store.writeRecordChecked(CoreContext.unconfirmedRecord, nil)
-            unconfirmedValue = false
-        }
         // Crash-safe order: the old provenance goes first and the new one is written last, so a
         // crash between leaves none, which rung 1 reads as "not a sign-in".
         if derived != nil { await writeProvenance(nil) }
@@ -504,6 +499,14 @@ public actor CoreContext {
         } catch let error as StoreError {
             lastStoreErrorValue = error
             throw error
+        }
+        // A mark that is going away is dropped after the new token is in, so a failed store leaves the old
+        // token and its mark together. A re-acquire keeps it.
+        if derived != nil, unconfirmedValue {
+            tokenValue = token
+            tokenSourceValue = source
+            try await store.writeRecordChecked(CoreContext.unconfirmedRecord, nil)
+            unconfirmedValue = false
         }
         tokenValue = token
         tokenSourceValue = source
@@ -552,7 +555,9 @@ public actor CoreContext {
     /// flag ends. The provenance is written first, so a crash between leaves the mark over a token the next
     /// start drops. Throws when the mark cannot be removed; the token then stays unconfirmed.
     public func confirmToken() async throws {
-        guard tokenValue != nil, unconfirmedValue else { return }
+        guard tokenValue != nil, unconfirmedValue else {
+            throw PolarisError(code: ErrorCode.signInFailed, message: "There is no unconfirmed sign-in to confirm.")
+        }
         await writeProvenance(.signin)
         do { try await store.writeRecordChecked(CoreContext.unconfirmedRecord, nil) } catch {
             await writeProvenance(nil)

@@ -131,6 +131,7 @@ export async function createBrowserCloudSync(
     locks,
     attach: () => api.attach(),
     subject: () => bearer.account,
+    deviceLabel: () => bearer.deviceLabel(),
   }));
   api = new BrowserCloudSyncApi({
     host,

@@ -162,6 +162,24 @@ export function listEntries(): SettingDef[] {
   );
 }
 
+/**
+ * The live operator scalars of the Cloud Sync and Cloud Connect areas that carry no `[vars]`
+ * alias: the pause switches, the default quotas and the per-SDK minimum builds (strings). Stored
+ * under the registry key itself, listed on the page and served by the platform settings route.
+ */
+export function operatorScalarEntries(): SettingDef[] {
+  return PLATFORM_SLICE.filter(
+    (d) =>
+      !d.pending &&
+      d.ownership === "operator" &&
+      d.storage.kind === "scalar" &&
+      d.storage.storedAs === undefined &&
+      d.varName === undefined &&
+      (d.area === "cloudSync" || d.area === "cloudConnect") &&
+      ["switch", "integer", "string"].includes(d.value.kind),
+  );
+}
+
 /** Ceiling kill switches whose `[vars]` value is an unrecognised string (a hard off). */
 export function unrecognisedCeilingVars(env: SettingsEnv): string[] {
   return aliasedPlatformEntries()

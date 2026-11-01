@@ -3626,11 +3626,11 @@ msgid "signin.nearby.mismatch"
 msgstr "코드가 일치하지 않아 {device}에 로그인하지 않았어요."
 
 #. Approve a nearby device
-#. Account menu entry: opens the nearby approval list on the signed-in device.
+#. Account menu entry: opens the nearby approval list on the signed-in device. macOS menu items use title case and an ellipsis because the item opens a pane.
 msgid "signin.nearby.menu"
 msgstr "근처 기기 승인"
 
-#. macos: Approve a Nearby Device
+#. macos: Approve a Nearby Device…
 msgctxt "macos"
 msgid "signin.nearby.menu"
 msgstr "근처 기기 승인"
@@ -3659,6 +3659,66 @@ msgstr "잠시 기다린 뒤 {device}에서 다시 시도하세요."
 #. Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated).
 msgid "signin.nearby.expiredBody"
 msgstr "{device}에서 처음부터 다시 시작하세요."
+
+#. Choose the device to ask.
+#. Nearby sign-in, on the device that signs in: several devices answered, so the person chooses which one to ask. The devices follow as buttons.
+msgid "signin.nearby.pick"
+msgstr "요청할 기기를 선택하세요."
+
+#. Choose another device
+#. Nearby sign-in, waiting: asks again and lists the devices, to choose a different one.
+msgid "signin.nearby.another"
+msgstr "다른 기기 선택"
+
+#. macos: Choose Another Device
+msgctxt "macos"
+msgid "signin.nearby.another"
+msgstr "다른 기기 선택"
+
+#. No device found
+#. Nearby sign-in, on the device that signs in: no device answered after a while.
+msgid "signin.nearby.noneTitle"
+msgstr "기기를 찾지 못했어요"
+
+#. Open {app} on your other device and choose Approve a Nearby Device.
+#. Nearby sign-in: where to go on the other device. Arguments: {app} = the app's name (never translated).
+msgid "signin.nearby.noneBody"
+msgstr "다른 기기에서 {app}을(를) 열고 ‘근처 기기 승인’을 선택하세요."
+
+#. Approve a Nearby Device
+#. Nearby approval, on the signed-in device: the screen that waits for a request.
+msgid "signin.nearby.listenTitle"
+msgstr "근처 기기 승인"
+
+#. On the new device, choose to sign in with a nearby device. Its request shows here.
+#. Nearby approval: what to do on the new device so its request shows here.
+msgid "signin.nearby.listenBody"
+msgstr "새 기기에서 근처 기기로 로그인을 선택하세요. 요청이 여기에 표시돼요."
+
+#. Approvals paused
+#. Nearby approval: this device stopped listening after requests were declined.
+msgid "signin.nearby.pausedTitle"
+msgstr "승인을 일시 중지했어요"
+
+#. Two requests were declined, so this device stopped listening.
+#. Nearby approval: why it stopped (two declined requests in a short time); Start again listens again.
+msgid "signin.nearby.pausedBody"
+msgstr "요청이 두 번 거절되어 이 기기는 대기를 멈췄어요."
+
+#. Start again
+#. Nearby approval: listen for requests again after it paused.
+msgid "signin.nearby.startAgain"
+msgstr "다시 시작"
+
+#. macos: Start Again
+msgctxt "macos"
+msgid "signin.nearby.startAgain"
+msgstr "다시 시작"
+
+#. Nothing was approved. Try again on {device}.
+#. Nearby approval: the service or the network failed, so nothing was approved. Arguments: {device} = the new device's friendly name (never translated).
+msgid "signin.nearby.failedBody"
+msgstr "아무것도 승인되지 않았어요. {device}에서 다시 시도하세요."
 
 #. Add it in Polaris Locker
 #. The key was refused and the person adds it to their account on the web (↗, opens the browser).

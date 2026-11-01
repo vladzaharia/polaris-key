@@ -174,26 +174,36 @@ public class SyncKeyring internal constructor(
      */
     public suspend fun acceptRingChange(confirmed: SyncRingPin): SyncUnlockResult = gate.withLock { unlockWith(confirmed) }
 
-    private suspend fun unlockWith(accept: SyncRingPin?): SyncUnlockResult = try {
-        unlockSteps(accept)
+    private suspend fun unlockWith(accept: SyncRingPin?, offered: SyncWrapBody? = null): SyncUnlockResult = try {
+        unlockSteps(accept, offered)
     } catch (d: Decided) {
         d.result
     }
 
-    private suspend fun unlockSteps(accept: SyncRingPin?): SyncUnlockResult {
+    /**
+     * Takes the wrap a nearby approval sent over the LAN (a `KEYRING_WRAP` record body) instead of waiting for the
+     * server's copy (WIRE-CONTRACT-V5 section 13.11.3). The ring, epoch and `kid` it names are checked against a FRESH
+     * [read] and the pin before anything is opened: a ring that is not the pinned one answers `RingChanged` and is not
+     * opened; one that is not the served ring, or a record that is not a wrap, is `Locked(UnusableWrap)`. It is opened
+     * through the device keys' `dh` and pinned. A root already held for the same ring and epoch stays: neither the
+     * channel copy nor the server's replaces it. Call it only after the person confirmed the signed-in account
+     * (section 15.6.1 rule 12).
+     */
+    public suspend fun adoptWrap(record: ByteArray): SyncUnlockResult = gate.withLock {
+        val offered = parseWrapRecord(record) ?: return@withLock UNUSABLE
+        unlockWith(null, offered)
+    }
+
+    private suspend fun unlockSteps(accept: SyncRingPin?, offered: SyncWrapBody? = null): SyncUnlockResult {
         val state = readState()
         val ring = state.ring ?: decided(SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoRing))
-        val anchor = anchorOf(accept)
-        // An accept holds only for the ring the person was shown; a ring that moved since is reported again.
-        val expected = accept ?: anchor
         val served = SyncRingPin(ring.ringId, ring.epoch, ring.rootKid)
-        if (expected != null && expected != served) {
-            decided(SyncUnlockResult.RingChanged(anchor ?: expected, served, ring.createdAt, state.wrap?.by))
-        }
+        checkPin(accept, ring, served, state.wrap?.by)
         val unlocked = SyncUnlockResult.Unlocked(ring.ringId, ring.epoch)
         val kid = unhex(ring.rootKid) ?: decided(UNUSABLE)
         val h = memory.held
         if (h != null && h.matches(ring.ringId, ring.epoch, kid)) decided(unlocked)
+        if (offered != null) decided(openOffered(ring, offered, kid))
         // The stored root, when it is this ring's (and, when a pin stands, the pinned one).
         val stored = storedRoot(served)
         if (stored != null) {
@@ -215,6 +225,23 @@ public class SyncKeyring internal constructor(
             return unlocked
         }
         decided(if (wrap == null) SyncUnlockResult.Locked(SyncUnlockResult.LockReason.NoWrap) else UNUSABLE)
+    }
+
+    /** A ring that is not the one this client trusts is reported, never opened. An accept holds only for the ring the person was shown. */
+    private suspend fun checkPin(accept: SyncRingPin?, ring: SyncKeyringRing, served: SyncRingPin, by: String?) {
+        val anchor = anchorOf(accept)
+        val expected = accept ?: anchor
+        if (expected != null && expected != served) decided(SyncUnlockResult.RingChanged(anchor ?: expected, served, ring.createdAt, by))
+    }
+
+    /** The channel copy: it must name the ring the Worker serves now, and is opened with this device's own key. */
+    private suspend fun openOffered(ring: SyncKeyringRing, offered: SyncWrapBody, kid: ByteArray): SyncUnlockResult {
+        val named = offered.ringId == ring.ringId && offered.epoch == ring.epoch && offered.kid == ring.rootKid
+        val info = SyncKeyringWrapInfo(offered.epoch, offered.kid, offered.kem, offered.enc, offered.ct, null)
+        val root = if (named) openOwnWrap(ring, info, kid) else null
+        if (root == null) return UNUSABLE
+        hold(HeldRoot(ring.ringId, ring.epoch, kid, root), store = true)
+        return SyncUnlockResult.Unlocked(ring.ringId, ring.epoch)
     }
 
     /**
@@ -268,13 +295,36 @@ public class SyncKeyring internal constructor(
         wrapTo(deviceId, unb64(agreeKey, SyncHpke.ENC_BYTES) ?: throw badArg("The agreement key must be 32 bytes."))
     }
 
+    /**
+     * The first half of [wrapTo]: seals the root to [agreeKey] for [deviceId] and answers the wrap, storing nothing. A
+     * nearby approver sends [SyncWrapBody.channelRecord] over the channel first and then stores the same bytes with
+     * [putWrap], so a refused or failed `PUT` cannot take the channel copy with it (section 13.11.3).
+     */
+    public suspend fun sealWrapTo(deviceId: String, agreeKey: String): SyncWrapBody = gate.withLock {
+        sealWrap(deviceId, unb64(agreeKey, SyncHpke.ENC_BYTES) ?: throw badArg("The agreement key must be 32 bytes."))
+    }
+
+    /** The second half of [wrapTo]: `PUT .../wraps/{deviceId}` with a wrap [sealWrapTo] made. */
+    public suspend fun putWrap(deviceId: String, body: SyncWrapBody): Unit = gate.withLock {
+        needDeviceId(deviceId)
+        wire.send("PUT", "devices/keyring/wraps/${segment(deviceId)}", body.putJson())
+    }
+
     private suspend fun putWrap(deviceId: String, agreeKey: ByteArray) {
+        val body = sealWrap(deviceId, agreeKey)
+        wire.send("PUT", "devices/keyring/wraps/${segment(deviceId)}", body.putJson())
+    }
+
+    private suspend fun sealWrap(deviceId: String, agreeKey: ByteArray): SyncWrapBody {
         val h = need()
         needDeviceId(deviceId)
         if (agreeKey.size != SyncHpke.ENC_BYTES) throw badArg("The agreement key must be 32 bytes.")
-        val w = SyncHpke.wrapRoot(agreeKey, wrapContext(h.ringId, h.epoch, deviceId), h.kid, h.root)
-        val body = JsonObject(mapOf("epoch" to jsonInt(h.epoch.toLong()), "kid" to str(hex(h.kid))) + wire.wireWrap(w))
-        wire.send("PUT", "devices/keyring/wraps/${segment(deviceId)}", body)
+        val w = try {
+            SyncHpke.wrapRoot(agreeKey, wrapContext(h.ringId, h.epoch, deviceId), h.kid, h.root)
+        } catch (e: IllegalArgumentException) {
+            throw PolarisException(ErrorCode.invalidArgument, "The agreement key is not usable.", cause = e)
+        }
+        return SyncWrapBody(h.ringId, h.epoch, hex(h.kid), jsonInt(SyncHpke.KEM_X25519.toLong()), Base64Url.encode(w.enc), Base64Url.encode(w.ct))
     }
 
     /** `DELETE .../wraps/{deviceId}`: the Worker removes a device's own wrap only. */

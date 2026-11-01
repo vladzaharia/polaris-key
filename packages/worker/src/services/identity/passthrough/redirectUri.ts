@@ -195,10 +195,12 @@ export async function nativeRedirectDiscovery(
   return {
     loopback: reg.loopback !== false,
     schemes: (reg.schemes ?? []).map((s) => `${s}:${NATIVE_REDIRECT_PATH}`),
-    claimedHttps: (reg.claimedPaths ?? []).flatMap((p) =>
-      reg.webOrigins
-        .filter((o) => o.startsWith("https://"))
-        .map((o) => `${o}${p}`),
-    ),
+    claimedHttps: (reg.claimedPaths ?? [])
+      .filter((p) => !reg.redirectPaths.includes(p))
+      .flatMap((p) =>
+        reg.webOrigins
+          .filter((o) => o.startsWith("https://"))
+          .map((o) => `${o}${p}`),
+      ),
   };
 }

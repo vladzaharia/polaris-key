@@ -39,9 +39,6 @@ const Transport := preload("res://addons/polaris_key/services/cloud_sync/transpo
 const State := preload("res://addons/polaris_key/services/cloud_sync/state.gd")
 const CodecPort := preload("res://addons/polaris_key/services/cloud_sync/codec_port.gd")
 
-## The collection `cloud_sync.saves` writes to: a `revision` collection the machine holds.
-const SAVES_DECL := {"name": "saves", "policy": "revision", "resolve": "keepServer"}
-
 ## The machine's events, in batches, in order. A listener may call `touch` or `flush`: the pump
 ## runs again after it, never a second pump.
 signal events(batch: Array)
@@ -250,6 +247,11 @@ static func _routes_of(catalog: Dictionary) -> Array:
 	return out
 
 
+## What the machine is built from besides the document: the routes and the collections.
+static func _shape_of(catalog: Dictionary) -> String:
+	return JSON.stringify([_routes_of(catalog), Routes.collection_decls(catalog)], "", false)
+
+
 ## A catalog fit to route by: the right shape and size, every entry key a valid sync key, and one
 ## entry per key. null when it is not (H-1).
 func _vetted(c: Variant) -> Variant:
@@ -281,7 +283,7 @@ func _build(persisted: Variant) -> Dictionary:
 	var make_id: Callable = _deps.get("new_client_id", _random_client_id)
 	var m := Machine.new({
 		"product": _deps["product"],
-		"catalog": {"settings": routes, "collections": [SAVES_DECL.duplicate()]},
+		"catalog": {"settings": routes, "collections": Routes.collection_decls(catalog)},
 		"document": document,
 		"now": _now(),
 		"encryption": _opts.get("encryption", "e2e"),
@@ -294,6 +296,9 @@ func _build(persisted: Variant) -> Dictionary:
 	_catalog = catalog
 	_routes = routes
 	_document_json = JSON.stringify(document, "", false)
+	# A rebuild keeps the watched collections and outcome taps of the machine it replaces.
+	if _machine != null:
+		m.adopt_observers(_machine)
 	_machine = m
 	m.on_outcome(_outcome)
 	_gen += 1
@@ -520,11 +525,11 @@ func _refetch_catalog(version: Variant) -> void:
 		return
 	if Types.json_equal(fetched, _served):
 		return
-	var before := JSON.stringify(_routes_of(_catalog), "", false)
+	var before := _shape_of(_catalog)
 	_served = fetched
-	# Rebuild only when the routes the machine uses would change.
+	# Rebuild only when the routes or collections the machine uses would change.
 	var effective := _effective()
-	if JSON.stringify(_routes_of(effective), "", false) == before:
+	if _shape_of(effective) == before:
 		_catalog = effective
 		return
 	_rebuild_wanted = true

@@ -73,14 +73,50 @@ func x25519(private_key: PackedByteArray, peer_public: PackedByteArray) -> Varia
 	return out if out.size() == 32 else null
 
 
+## Connect's Noise bound (65,535 bytes a message) stays on these two; Cloud Sync's segment bound is
+## on `sync_seal` and `sync_open`, which share the native call.
 func aes_gcm_seal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
-	if key.size() != 32 or nonce.size() != 12 or plain.size() + 16 > MAX_AEAD_BYTES:
+	if plain.size() + 16 > MAX_AEAD_BYTES:
+		return PackedByteArray()
+	return _seal(key, nonce, aad, plain)
+
+
+func aes_gcm_open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
+	if sealed.size() > MAX_AEAD_BYTES:
+		return null
+	return _open(key, nonce, aad, sealed)
+
+
+## One file segment or chunk object (1 MiB of message) with up to 64 KiB of AAD. The plugin has no
+## bound of its own on the JCA call.
+func sync_max_bytes() -> int:
+	return PKeySyncAesGcm.MAX_BYTES
+
+
+func sync_native() -> bool:
+	return true
+
+
+func sync_seal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
+	if plain.size() > sync_max_bytes() or aad.size() > PKeySyncAesGcm.MAX_AAD_BYTES:
+		return PackedByteArray()
+	return _seal(key, nonce, aad, plain)
+
+
+func sync_open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
+	if sealed.size() - 16 > sync_max_bytes() or aad.size() > PKeySyncAesGcm.MAX_AAD_BYTES:
+		return null
+	return _open(key, nonce, aad, sealed)
+
+
+func _seal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
+	if key.size() != 32 or nonce.size() != 12:
 		return PackedByteArray()
 	return _body(_native.call("cxSeal", key, nonce, aad, plain))
 
 
-func aes_gcm_open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
-	if key.size() != 32 or nonce.size() != 12 or sealed.size() < 16 or sealed.size() > MAX_AEAD_BYTES:
+func _open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
+	if key.size() != 32 or nonce.size() != 12 or sealed.size() < 16:
 		return null
 	var reply = _native.call("cxOpen", key, nonce, aad, sealed)
 	if _status(reply) != OK:

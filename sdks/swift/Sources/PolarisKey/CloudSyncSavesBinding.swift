@@ -161,6 +161,12 @@ final class MachineRecords: SaveRecords, @unchecked Sendable {
         return withId(id, r)
     }
 
+    func pull() async -> Bool {
+        guard await host.requestPull() else { return false }
+        await host.touch()
+        return true
+    }
+
     func delete(_ id: String, baseVersion: Int) async throws -> SaveSetResult {
         let host = self.host
         let r = try await wait(nil) { register in
@@ -242,6 +248,8 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
     }
 
     func release(transferId: String) async { await engine.cancel(id: transferId) }
+
+    func deviceLabel() async -> String? { await core.deviceLabel() }
 
     func dropWaiting() { state.current.records?.dropAll() }
 

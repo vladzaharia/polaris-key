@@ -167,6 +167,20 @@ export async function fileCall(
 }
 
 /**
+ * The answer to a request whose method the route does not take, or `null` when it does. While the
+ * file store is off every file route answers `404` whatever the method, so a wrong method does not
+ * show the route exists.
+ */
+export async function wrongMethod(
+  ctx: ServiceContext,
+  method: "POST" | "GET" | "PUT" | "DELETE",
+): Promise<Response | null> {
+  if (ctx.req.method === method) return null;
+  if (!(await fileStoreOn(ctx.env, ctx.db))) return notFound();
+  return wireError(405, "method_not_allowed");
+}
+
+/**
  * A file route's handler: the method gate and the front door (`fileCall`) in front of `run`, which
  * receives the resolved caller. Every file route is built with it, so none can skip a step.
  */
@@ -186,8 +200,8 @@ export function fileHandler<T = undefined>(
   ) => Promise<Response>,
 ): (ctx: ServiceContext, match: RouteMatch) => Promise<Response> {
   return async (ctx, match) => {
-    if (ctx.req.method !== opts.method)
-      return wireError(405, "method_not_allowed");
+    const wrong = await wrongMethod(ctx, opts.method);
+    if (wrong) return wrong;
     const call = await fileCall(ctx, match, opts);
     if (call instanceof Response) return call;
     if (!opts.body) return run(ctx, match, call, undefined as T);
@@ -430,6 +444,8 @@ export async function handleUploadStatus(
   ctx: ServiceContext,
   match: RouteMatch,
 ): Promise<Response> {
+  const wrong = await wrongMethod(ctx, "GET");
+  if (wrong) return wrong;
   const out = await sessionCall(ctx, match, "fileStatus");
   if (out instanceof Response) return out;
   const r = out.value.outcome;

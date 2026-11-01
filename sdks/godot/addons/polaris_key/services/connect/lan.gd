@@ -70,7 +70,7 @@ var _pump: PKeyPeerPump
 var _mdns: Object
 var _budget: PKeyConnectSession.Budget
 var _docs: PKeyConnectChannel.Docs
-var _limit: PendingLimiter
+var _gate: PKeyPeerLanGate
 var _server: TCPServer
 var _port := 0
 var _adv: Object
@@ -158,10 +158,8 @@ func _init(source: Source, options := {}) -> void:
 	if _mdns == null:
 		_mdns = PKeyMdns.new({"allow_loopback": _loopback(), "only": options.get("interfaces", []), "tree": _tree})
 	_budget = options.get("budget", null) as PKeyConnectSession.Budget
-	_limit = PendingLimiter.new(
-			int(options.get("max_pending", MAX_PENDING)),
-			int(options.get("max_pending_per_address", MAX_PENDING_PER_ADDRESS)),
-			int(options.get("max_pending_per_group", MAX_PENDING_PER_GROUP)))
+	# The gate reads the same options Dictionary (a test moves `dial_stagger` after the start).
+	_gate = PKeyPeerLanGate.new(options)
 	_docs = PKeyConnectChannel.Docs.new({
 		"adopt_ring": source.adopt_ring, "apply_trust": source.apply_trust, "refresh": source.refresh,
 		"mono": Callable(self, "_mono"),
@@ -181,6 +179,11 @@ func _on_notice(n: Dictionary) -> void:
 
 
 ## The TCP port this listen uses.
+## The discovery lane this service runs on (shared with nearby approval).
+func lane() -> Object:
+	return _mdns
+
+
 func port() -> int:
 	return _port
 
@@ -555,45 +558,25 @@ func _gone(instance: String) -> void:
 # ── addresses ────────────────────────────────────────────────────────────────────────────────
 
 
-## May this address text be dialled? The verdict with no local address (D-6), and not link-local (a
-## dial needs a zone Godot's sockets cannot carry).
+## May this address text be dialled? (The gate's rule: `PKeyPeerLanGate.dialable`.)
 func _dialable(host: String) -> bool:
-	if host.contains("%"):
-		return false
-	var raw := PKeyMdnsPacket.address_bytes(host)
-	if raw.size() == 16 and raw[0] == 0xfe and (raw[1] & 0xc0) == 0x80:
-		return false
-	return bool(PKeyLanAddress.verdict(host, null, _loopback())["dial"])
+	return _gate.dialable(host)
 
 
 ## The text to connect to: an IPv4-mapped address connects as its IPv4 address.
 static func connect_text(host: String) -> String:
-	var raw := PKeyMdnsPacket.address_bytes(host)
-	if raw.size() == 16:
-		var mapped := raw[10] == 0xff and raw[11] == 0xff
-		for i in 10:
-			if raw[i] != 0:
-				mapped = false
-		if mapped:
-			return PKeyMdnsPacket.address_text(raw.slice(12))
-	return host
+	return PKeyPeerLanGate.connect_text(host)
 
 
 # ── TCP ──────────────────────────────────────────────────────────────────────────────────────
 
 
 func _listen() -> PKeyResult:
-	var host := str(_o.get("host", ""))
-	var port := int(_o.get("port", 0))
-	var srv := TCPServer.new()
-	var err := srv.listen(port, "*" if host == "" else host)
-	if err != OK and host == "":
-		# No IPv6 here: IPv4 only, on the same single port.
-		err = srv.listen(port, "0.0.0.0")
-	if err != OK:
-		return PKeyConnectErrors.lan("not_listening", "The LAN listener could not be opened.")
-	_server = srv
-	_port = srv.get_local_port()
+	var r := PKeyPeerLanGate.listen(str(_o.get("host", "")), int(_o.get("port", 0)))
+	if not r.ok:
+		return r
+	_server = r.detail
+	_port = _server.get_local_port()
 	return PKeyResult.success()
 
 
@@ -625,26 +608,14 @@ func _tick() -> void:
 ## Take at most ACCEPTS_PER_FRAME connections a frame, each judged first on its own address, before
 ## a slot and before any byte is read: a source off the LAN is closed at once and costs nothing.
 func _accept_ready() -> void:
-	if _server == null:
-		return
-	for i in ACCEPTS_PER_FRAME:
-		if not _server.is_connection_available():
-			return
-		var peer := _server.take_connection()
-		if peer != null:
-			_admit(peer)
+	_gate.drain(_server, Callable(self, "_admit"))
 
 
 func _admit(peer: StreamPeerTCP) -> void:
-	var remote := peer.get_connected_host()
-	var v := PKeyLanAddress.verdict(remote, null, _loopback())
-	if not v["dial"] or v["key"] == null or _stopped or _sessions.size() >= int(_o.get("max_sessions", MAX_SESSIONS)):
-		peer.disconnect_from_host()
+	var slot := _gate.admit(peer, _stopped or _sessions.size() >= int(_o.get("max_sessions", MAX_SESSIONS)))
+	if slot == null:
 		return
-	var release := _limit.take(peer, PendingLimiter.keys_of(v["key"]))
-	if not release.is_valid():
-		peer.disconnect_from_host()
-		return
+	var release := Callable(slot, "settle")
 	# The identity is read before the first byte is handled; the socket buffers meanwhile.
 	var idr := _identity(false)
 	if not idr.ok:
@@ -729,7 +700,7 @@ func _make_link(pipe: PKeyPeerPipe, src: PKeyConnectClient.PeerSource, role: Str
 	if not lr.ok:
 		return {}
 	var link: PKeyPeerLink = lr.detail
-	var att := PKeyConnectChannel.attach(link, _docs, role, pipe.remote_address(), "lan", _budget)
+	var att := PKeyConnectChannel.attach(link, _docs, role, pipe.remote_address(), "lan", _budget, _o.get("xfer", Callable()))
 	_links[link.get_instance_id()] = link
 	_attached[link.get_instance_id()] = att
 	link.closed.connect(_on_link_closed.bind(link.get_instance_id()))
@@ -752,6 +723,11 @@ func _dial_once(hosts: Array, port: int, ident: PKeyConnectClient.PeerSource) ->
 	if not won.has("pipe"):
 		return {"error": PKeyConnectErrors.lan("connect_failed", "The device did not answer."), "host": ""}
 	return await _handshake(won["pipe"], ident, won["host"])
+
+
+## Race the addresses through the shared gate (`PKeyPeerLanGate.race`).
+func _race(hosts: Array, port: int) -> Dictionary:
+	return await _gate.race(hosts, port, Callable(self, "is_stopped"))
 
 
 ## Link `pipe` as the initiator and wait for the session: {session}, or {error, host}.
@@ -782,61 +758,6 @@ func _handshake(pipe: PKeyPeerPipe, ident: PKeyConnectClient.PeerSource, host: S
 	return {"session": session}
 
 
-
-
-## Race the addresses (RFC 8305, as the other lanes): first-seen order, at most DIAL_MAX_IN_FLIGHT
-## attempts, a new one every stagger (at once when one fails). The first connection that passes the
-## verdict on its own address wins; every other attempt closes before a byte is sent on it. A
-## coroutine answering {pipe, host}, or {} when none connected in time.
-func _race(hosts: Array, port: int) -> Dictionary:
-	var stagger := float(_o.get("dial_stagger", DIAL_STAGGER_SECONDS))
-	var deadline := _mono() + float(_o.get("dial_seconds", DIAL_SECONDS))
-	var tries: Array[Attempt] = []
-	var nxt := 0
-	var next_at := -INF
-	while true:
-		while nxt < hosts.size() and tries.size() < DIAL_MAX_IN_FLIGHT and (tries.is_empty() or _mono() >= next_at):
-			var host: String = hosts[nxt]
-			nxt += 1
-			if not _dialable(host):
-				continue
-			var a := _attempt(host, port)
-			if a != null:
-				tries.append(a)
-				next_at = _mono() + stagger
-		if tries.is_empty() and nxt >= hosts.size():
-			return {}
-		var winner: Attempt = null
-		for a: Attempt in tries.duplicate():
-			var state: int = a.poll()
-			if state == Attempt.CONNECTING:
-				continue
-			tries.erase(a)
-			if state == Attempt.FAILED:
-				next_at = -INF  # a failure starts the next at once
-			elif winner == null and bool(PKeyLanAddress.verdict(a.remote(), null, _loopback())["dial"]):
-				winner = a
-			else:
-				a.abort()  # a second winner, or an address the connected socket fails
-		if winner != null:
-			for a: Attempt in tries:
-				a.abort()
-			return {"pipe": winner.take(), "host": winner.host}
-		if _stopped or _mono() >= deadline:
-			for a: Attempt in tries:
-				a.abort()
-			return {}
-		await _tree.process_frame
-	return {}
-
-
-func _attempt(host: String, port: int) -> Attempt:
-	var connector: Variant = _o.get("connector")
-	if connector is Callable and (connector as Callable).is_valid():
-		return (connector as Callable).call(host, port) as Attempt
-	return TcpAttempt.start(host, port)
-
-
 # ── types ────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -848,137 +769,3 @@ class Pending extends RefCounted:
 	var at := 0.0
 	## The native pipe of an inbound socket the OS side counts as unadmitted (null for a TCP socket).
 	var pipe: PKeyPeerPipe
-
-
-## One connection attempt of a race. The base class has already failed.
-class Attempt extends RefCounted:
-	const CONNECTING := 0
-	const CONNECTED := 1
-	const FAILED := -1
-
-	var host := ""
-
-
-	## CONNECTING, CONNECTED or FAILED.
-	func poll() -> int:
-		return FAILED
-
-
-	## The remote address of a connected attempt, as text.
-	func remote() -> String:
-		return ""
-
-
-	## The connected socket as a pipe; no byte has been sent on it.
-	func take() -> PKeyPeerTcpPipe:
-		return null
-
-
-	func abort() -> void:
-		pass
-
-
-class TcpAttempt extends Attempt:
-	var _peer: StreamPeerTCP
-
-
-	static func start(p_host: String, port: int) -> Attempt:
-		var peer := StreamPeerTCP.new()
-		if peer.connect_to_host(PKeyConnectLan.connect_text(p_host), port) != OK:
-			return null
-		var a := TcpAttempt.new()
-		a.host = p_host
-		a._peer = peer
-		return a
-
-
-	func _to_string() -> String:
-		return "PKeyConnectLan.TcpAttempt()"
-
-
-	func poll() -> int:
-		_peer.poll()
-		match _peer.get_status():
-			StreamPeerTCP.STATUS_CONNECTED:
-				return CONNECTED
-			StreamPeerTCP.STATUS_CONNECTING:
-				return CONNECTING
-		return FAILED
-
-
-	func remote() -> String:
-		return _peer.get_connected_host()
-
-
-	func take() -> PKeyPeerTcpPipe:
-		return PKeyPeerTcpPipe.from_peer(_peer)
-
-
-	func abort() -> void:
-		_peer.disconnect_from_host()
-
-
-## Counts of sockets that have not finished the handshake: in total, per address and per group. A slot
-## is taken with `take`, which answers the Callable that gives it back, or an invalid Callable when a
-## limit is met.
-class PendingLimiter extends RefCounted:
-	var _max: int
-	var _per_address: int
-	var _per_group: int
-	var _total := {}
-	var _addr := {}
-	var _group := {}
-
-
-	func _init(maximum := 32, per_address := 4, per_group := 16) -> void:
-		_max = maximum
-		_per_address = per_address
-		_per_group = per_group
-
-
-	func _to_string() -> String:
-		return "PKeyConnectLan.PendingLimiter()"
-
-
-	func size() -> int:
-		return _total.size()
-
-
-	func is_empty() -> bool:
-		return _total.is_empty() and _addr.is_empty() and _group.is_empty()
-
-
-	## The keys a verdict `key` is counted under: {address, group}.
-	static func keys_of(key: String) -> Dictionary:
-		return {"address": key, "group": PKeyLanAddress.group_key(key)}
-
-
-	func take(who: Object, keys: Dictionary) -> Callable:
-		var address: String = keys["address"]
-		var group: Variant = keys["group"]
-		if _total.size() >= _max or int(_addr.get(address, 0)) >= _per_address:
-			return Callable()
-		if group != null and int(_group.get(group, 0)) >= _per_group:
-			return Callable()
-		var id := who.get_instance_id()
-		_total[id] = true
-		_bump(_addr, address, 1)
-		if group != null:
-			_bump(_group, group, 1)
-		var done := [false]
-		return func() -> void:
-			if done[0]:
-				return
-			done[0] = true
-			_total.erase(id)
-			_bump(_addr, address, -1)
-			if group != null:
-				_bump(_group, group, -1)
-
-
-	static func _bump(m: Dictionary, key: Variant, by: int) -> void:
-		var n := int(m.get(key, 0)) + by
-		if n <= 0:
-			m.erase(key)
-		else:
-			m[key] = n

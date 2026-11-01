@@ -8,12 +8,17 @@ import im.plrs.key.core.DeviceKeyPersistence
 import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.DeviceKeyStorage
 import im.plrs.key.core.ErrorCode
+import im.plrs.key.core.JsonText
 import im.plrs.key.core.PlatformBackupStore
 import im.plrs.key.core.PolarisException
+import im.plrs.key.core.jsonInt
+import im.plrs.key.core.longValue
+import im.plrs.key.core.stringValue
 import im.plrs.key.core.sync.SyncBlind
 import im.plrs.key.core.sync.SyncCodecPort
 import im.plrs.key.core.sync.SyncCrypto
 import im.plrs.key.core.sync.SyncEnvelope
+import im.plrs.key.core.sync.SyncHpke
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -99,6 +104,35 @@ public sealed interface SyncUnlockResult {
     public data class RingChanged(val pinned: SyncRingPin, val served: SyncRingPin, val createdAt: Long, val by: String?) : SyncUnlockResult
 
     public enum class LockReason(public val wire: String) { NoRing("no-ring"), NoWrap("no-wrap"), UnusableWrap("unusable-wrap") }
+}
+
+/**
+ * A wrap of the root as the routes and the nearby channel carry it: `PUT .../wraps/{deviceId}` takes [putJson], and
+ * [channelRecord] is the `KEYRING_WRAP` (`0x0030`) body `{ringId, epoch, kid, kem, enc, ct}`. An HPKE ciphertext only
+ * the target's agreement key opens, but it prints as redacted.
+ */
+public class SyncWrapBody internal constructor(
+    public val ringId: String,
+    public val epoch: Int,
+    public val kid: String,
+    internal val kem: JsonElement,
+    internal val enc: String,
+    internal val ct: String,
+) {
+    internal fun putJson(): JsonObject = JsonObject(
+        mapOf(
+            "epoch" to jsonInt(epoch.toLong()),
+            "kid" to str(kid),
+            "kem" to kem,
+            "enc" to str(enc),
+            "ct" to str(ct),
+        ),
+    )
+
+    /** The `KEYRING_WRAP` record body: the same wrap with the ring it belongs to. */
+    public fun channelRecord(): ByteArray = JsonObject(mapOf("ringId" to str(ringId)) + putJson()).toString().toByteArray(Charsets.UTF_8)
+
+    override fun toString(): String = "SyncWrapBody(ring=$ringId, epoch=$epoch)"
 }
 
 /** A new ring. It prints without the recovery code. */

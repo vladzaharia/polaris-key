@@ -280,7 +280,7 @@ internal class CloudSyncApi(
         } else {
             null
         }
-        return SavesDeps(binding.records, binding.engine, binding.transport, codec, decl.delta, decl.maxBytes, h.appOptions.saveFormatVersion, cache)
+        return SavesDeps(binding.records, binding.engine, binding.transport, codec, decl.delta, decl.maxBytes, h.appOptions.saveFormatVersion, cache, core.deviceLabel())
     }
 
     /**

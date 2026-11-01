@@ -59,7 +59,7 @@ static func seal_value(root: PackedByteArray, collection: String, name: Variant,
 	header.append_array(PKeySyncHkdf.derive_kid(root))
 	header.append_array(s)
 	var key := PKeySyncHkdf.derive_value_key(PKeySyncHkdf.derive_coll_key(root, collection), s)
-	var sealed := PKeySyncAesGcm.seal(key, _zero_nonce(), _pad(body), header)
+	var sealed := PKeySyncAead.seal(key, _zero_nonce(), _pad(body), header)
 	if sealed.is_empty():
 		return PackedByteArray()
 	header.append_array(sealed)
@@ -100,7 +100,7 @@ static func _open(root: PackedByteArray, collection: String, env: PackedByteArra
 	if not PKeySyncAesGcm.equal_constant_time(PKeySyncHkdf.derive_kid(root), env.slice(1, 17)):
 		return _bad("kid")
 	var key := PKeySyncHkdf.derive_value_key(PKeySyncHkdf.derive_coll_key(root, collection), env.slice(17, HEADER_BYTES))
-	var padded: Variant = PKeySyncAesGcm.open(key, _zero_nonce(), env.slice(HEADER_BYTES), env.slice(0, HEADER_BYTES))
+	var padded: Variant = PKeySyncAead.open(key, _zero_nonce(), env.slice(HEADER_BYTES), env.slice(0, HEADER_BYTES))
 	if padded == null:
 		return _bad("auth")
 	var body: Variant = _unpad(padded)

@@ -11,6 +11,7 @@
 //                                        a refusal throws `sign-in-denied`
 //   session.confirmAccount()             the person saw the signed-in account and says it is theirs
 //   session.declineAccount()             it is not: the held records are dropped and the device signs out
+//   session.wrap / onWrap(_:)            what became of the KEYRING_WRAP M sent: none, applied or refused
 //   session.cancel()                     stop; the LAN request closes
 //   session.ended / onEnd(_:)            the sign-in ended unconfirmed (decline, cancel, the 300 s deadline)
 //
@@ -30,8 +31,10 @@
 //    only on the token THIS session's poll stored (a later sign-in made another way is left alone);
 //  - the stored subject, the `signedIn` event (and so Cloud Sync and Connect) and the end of the explicit
 //    sign-out state wait for `confirmAccount()`; a confirm after the end throws `sign-in-failed`;
-//  - records `0x0030` to `0x003F` reach the host only after `confirmAccount()`; this client has no key ring to
-//    open a `KEYRING_WRAP` with, so they are dropped and `unlock()` works later from the server copy;
+//  - records `0x0030` to `0x003F` reach the session only after `confirmAccount()` (the engine holds them: rule
+//    12). `KEYRING_WRAP` (0x0030) is kept and opened through the key ring, once, after the confirmation; the
+//    others are not this session's. Without a key ring the wrap is dropped and `unlock()` works later from the
+//    server copy;
 //  - the request handle, the proofs, the token and the code are in no description, mirror or error message.
 
 import Foundation
@@ -44,6 +47,9 @@ public struct NearbySignInOptions: Sendable {
 
     public init(deviceName: String? = nil) { self.deviceName = deviceName }
 }
+
+/// `KEYRING_WRAP`, the Sync record that carries a wrap of the root over the nearby channel.
+let nearbyKeyringWrapRecord = 0x0030
 
 /// One approver D can pick. Display data from an unverified peer: any device on the network can list itself
 /// under any label.
@@ -63,6 +69,7 @@ public protocol NearbyRequestHandle: Sendable {
     func close() async
     func onApprovers(_ fn: @escaping @Sendable ([NearbyApproverInfo]) -> Void) -> @Sendable () -> Void
     func onResult(_ fn: @escaping @Sendable (VouchStatus) -> Void) -> @Sendable () -> Void
+    func onRecord(_ fn: @escaping @Sendable (NearbyRecord) -> Void) -> @Sendable () -> Void
 }
 
 extension NearbyRequester: NearbyRequestHandle {}
@@ -73,6 +80,29 @@ public protocol NearbySignInLan: Sendable {
     func request(_ options: NearbyRequestOptions) async throws -> any NearbyRequestHandle
 }
 
+/// What became of the `KEYRING_WRAP` M sent over the LAN.
+public enum NearbyWrapState: String, Sendable, Equatable {
+    /// None has arrived, or it is not yet taken.
+    case none
+    /// The key ring opened it: the device holds the root.
+    case applied
+    /// The key ring did not take it (another ring, a wrap that did not open, the Worker unreachable).
+    case refused
+}
+
+/// The Cloud Sync key ring, as nearby sign-in uses it: D opens the wrap M sent, M seals one for D. The umbrella
+/// hands `client.keyring` over; a test brings its own.
+public protocol NearbyKeyring: Sendable {
+    /// Whether this device holds the root now.
+    var unlocked: Bool { get }
+    /// D: take the `KEYRING_WRAP` record (strict JSON). True when the device holds the root afterwards.
+    func adoptWrap(_ record: Data) async throws -> Bool
+    /// M: seal the root to `agreeKey` for `deviceId`; nothing is stored. The record's bytes.
+    func sealWrapTo(deviceId: String, agreeKey: String) async throws -> Data
+    /// M: store the wrap `sealWrapTo` made (`PUT .../wraps/{deviceId}`): the fallback when the channel copy is lost.
+    func putWrap(deviceId: String, record: Data) async throws
+}
+
 /// What nearby sign-in needs of the rest of the client (`installNearby`).
 public struct NearbyBinding: Sendable {
     /// D's device keys (made when none exist) and its `X-PKey-Device` value.
@@ -81,14 +111,22 @@ public struct NearbyBinding: Sendable {
     public var lan: (@Sendable () -> (any NearbySignInLan)?)?
     /// The deadline's clock (a test injects its own).
     public var timer: NearbyTimer
+    /// The LAN half of the approving device M; nil where this runtime cannot advertise on the network.
+    public var approver: (@Sendable () -> (any NearbyApproverLan)?)?
+    /// The Cloud Sync key ring; nil leaves the wrap alone (D drops it, M sends none).
+    public var keyring: (@Sendable () -> (any NearbyKeyring)?)?
 
     public init(
         signer: @escaping @Sendable () async throws -> (port: any DeviceKeyPort, deviceId: String),
-        lan: (@Sendable () -> (any NearbySignInLan)?)?, timer: @escaping NearbyTimer = nearbySystemTimer
+        lan: (@Sendable () -> (any NearbySignInLan)?)?, timer: @escaping NearbyTimer = nearbySystemTimer,
+        approver: (@Sendable () -> (any NearbyApproverLan)?)? = nil,
+        keyring: (@Sendable () -> (any NearbyKeyring)?)? = nil
     ) {
         self.signer = signer
         self.lan = lan
         self.timer = timer
+        self.approver = approver
+        self.keyring = keyring
     }
 }
 
@@ -214,6 +252,13 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
         var sleeper: Task<Void, Error>?
         var onEnd: [Int: @Sendable () -> Void] = [:]
         var nextListener = 0
+        /// The `KEYRING_WRAP` held until the account is confirmed (zeroed when taken or dropped).
+        var wrapRecord: Data?
+        var wrapState = NearbyWrapState.none
+        var onWrap: [Int: @Sendable (NearbyWrapState) -> Void] = [:]
+        var nextWrapListener = 0
+        var applying: Task<Void, Never>?
+        var removers: [@Sendable () -> Void] = []
     }
 
     /// The channel this session runs on.
@@ -245,6 +290,63 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
         self.deviceName = label
         self.state = LockedValue(
             State(interval: started.interval, notBefore: Self.uptime() + TimeInterval(started.interval)))
+        // The engine hands records over only after `confirmAccount()`; a wrap that comes later than the
+        // confirmation is taken as it arrives.
+        let remove = request.onRecord { [weak self] record in self?.received(record) }
+        state.with { $0.removers.append(remove) }
+    }
+
+    private func received(_ record: NearbyRecord) {
+        guard record.type == nearbyKeyringWrapRecord else { return }
+        let apply = state.with { s -> Bool in
+            // Dropped sessions keep nothing.
+            if s.ended { return false }
+            s.wrapRecord = record.body
+            return s.confirmed
+        }
+        if apply { applyWrap() }
+    }
+
+    /// What became of the wrap M sent: `.none` until one arrives and is taken (or refused).
+    public var wrap: NearbyWrapState { state.with { $0.wrapState } }
+
+    /// Called with the wrap's state when it is settled. Returns the remover.
+    @discardableResult
+    public func onWrap(_ fn: @escaping @Sendable (NearbyWrapState) -> Void) -> @Sendable () -> Void {
+        let id = state.with { s -> Int in
+            s.nextWrapListener += 1
+            s.onWrap[s.nextWrapListener] = fn
+            return s.nextWrapListener
+        }
+        return { [state] in state.with { _ = $0.onWrap.removeValue(forKey: id) } }
+    }
+
+    /// Open the held wrap through the key ring (once), never throwing into the LAN callback.
+    private func applyWrap() {
+        let taken = state.with { s -> Data? in
+            let r = s.wrapRecord
+            s.wrapRecord = nil
+            return r
+        }
+        guard let record = taken else { return }
+        // No key ring here: the wrap is dropped, and the normal `unlock()` works later.
+        guard let ring = client.nearbyBinding.current?.keyring?() else { return }
+        state.with { s in
+            let previous = s.applying
+            s.applying = Task { [self] in
+                await previous?.value
+                var result = NearbyWrapState.refused
+                // The ring refused or the Worker could not be asked: the device stays locked.
+                if let unlocked = try? await ring.adoptWrap(record), unlocked { result = .applied }
+                let listeners = state.with { s -> [@Sendable (NearbyWrapState) -> Void] in
+                    s.wrapState = result
+                    return Array(s.onWrap.values)
+                }
+                for f in listeners { f(result) }
+                // Nothing else is expected on the channel once the wrap is in.
+                if result == .applied { await closeLan() }
+            }
+        }
     }
 
     public var description: String {
@@ -389,6 +491,8 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
                     return first
                 }
                 if declineLan { await request.declineAccount() }
+                // Whatever was held for the key ring goes with the sign-in.
+                state.with { $0.wrapRecord = nil }
                 await closeLan()
                 let token = state.with { s -> String? in
                     let t = s.token
@@ -416,7 +520,16 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
             s.lanOpen = false
             return w
         }
-        if was { await request.close() }
+        let removers = state.with { s -> [@Sendable () -> Void] in
+            let r = s.removers
+            s.removers = []
+            return r
+        }
+        if was {
+            // A wrap that is still being opened keeps its subscription's callback; none new arrives.
+            for r in removers { r() }
+            await request.close()
+        }
     }
 
     // MARK: The wait
@@ -587,12 +700,16 @@ public final class NearbySignInSession: Sendable, CustomStringConvertible, Custo
             }
             // The chosen session is gone: no records, the server copy is the fallback.
             try? await request.confirmAccount()
+            // A wrap the engine just handed over (or one that came before the confirmation) is taken now.
+            if state.with({ $0.wrapRecord != nil }) { applyWrap() }
         }
     }
 
     /// The account is not the person's: every held record is dropped, the LAN half closes and the device signs
     /// out (rule 12). Safe to call more than once.
     public func declineAccount() async {
+        // A confirmed (or confirming) sign-in is the person's: a late decline leaves it alone.
+        if state.with({ $0.confirmed }) { return }
         halt()
         await discardOnce().value
     }

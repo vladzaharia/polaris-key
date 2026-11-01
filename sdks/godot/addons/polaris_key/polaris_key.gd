@@ -77,7 +77,8 @@ const BOOT_SCENE := "res://addons/polaris_key/ui/boot/pkey_boot.tscn"
 var core: PKeyCore = null
 ## The Cloud Connect API (services/cloud_connect.gd): `start`, `stop`, `peers`, `devices`, `open`,
 ## `refresh_peers`, `status` and the signals `channel` and `notice`. Null until configure(). (Not `connect`:
-## that is Object's.) Sign-out runs its `stop()` and then forgets the Connect state (G18).
+## that is Object's.) Sign-out runs its `stop()`, stops nearby approval (`cloud_connect.nearby`: `request` and
+## `on_request`) and then forgets the Connect state (G18).
 var cloud_connect: PKeyCloudConnect = null
 ## The Cloud Connect identity client (services/connect/client.gd) under it: `identity()`, `list_devices()`,
 ## `current()`, `discovery_keys()` and `leave()`. Null until configure().
@@ -240,10 +241,11 @@ func _build_connect(opts: PKeyOptions, keys: Object) -> void:
 		state = PKeyConnectState.new(core.product, PKeyBackupExclusion.root(opts.store_root))
 	if cloud_connect != null:
 		cloud_connect.stop()
+		cloud_connect.nearby.stop_all()
 	connect_client = PKeyConnectClient.new(core, state, keys)
 	connect_client.devices = devices
 	connect_client.allow_ephemeral_keys = opts.allow_ephemeral_keys
-	cloud_connect = PKeyCloudConnect.new(core, connect_client)
+	cloud_connect = PKeyCloudConnect.new(core, connect_client, {"store_root": opts.store_root})
 	if not _connect_hook_added:
 		_connect_hook_added = true
 		identity.add_before_sign_out(_stop_connect)

@@ -140,6 +140,8 @@ func run(t: PKeyTestContext) -> void:
 	_gdscript(t)
 	_selection(t)
 	_faults(t)
+	_empty_cases(t)
+	_switch(t)
 	_backed(t)
 	_store(t)
 
@@ -178,6 +180,42 @@ func _faults(t: PKeyTestContext) -> void:
 		w.fault = fault
 		var chosen := PKeyPeerCrypto.select([w])
 		t.check("faults: %s answers are never chosen" % fault, chosen != w and chosen.lane_name() == "gdscript" and not w.known_answers_ok())
+
+
+## A lane that skips tag verification when the AAD is empty, or accepts any tag on an empty message.
+class EmptyFault extends Good:
+	var fault := ""
+
+	func aes_gcm_open(k: PackedByteArray, n: PackedByteArray, a: PackedByteArray, s: PackedByteArray) -> Variant:
+		var r = super.aes_gcm_open(k, n, a, s)
+		if r == null and fault == "empty_aad" and a.is_empty() and s.size() >= 16:
+			return s.slice(0, s.size() - 16)
+		if r == null and fault == "empty_message" and s.size() == 16:
+			return PackedByteArray()
+		return r
+
+
+func _empty_cases(t: PKeyTestContext) -> void:
+	t.check("crypto_lanes: a lane is chosen only when it seals and opens an empty message and data with no additional data (control)", Good.new().known_answers_ok())
+	for fault in ["empty_aad", "empty_message"]:
+		var w := EmptyFault.new()
+		w.fault = fault
+		var chosen := PKeyPeerCrypto.select([w])
+		t.check("crypto_lanes: a lane is chosen only when it seals and opens an empty message and data with no additional data (%s)" % fault, not w.known_answers_ok() and chosen != w and chosen.lane_name() == "gdscript")
+
+
+func _switch(t: PKeyTestContext) -> void:
+	var prior := OS.get_environment(PKeyPeerCrypto.ENV_LANE)
+	OS.set_environment(PKeyPeerCrypto.ENV_LANE, "gdscript")
+	var lanes := PKeyPeerCrypto._native_lanes()
+	PKeyPeerCrypto.reset_for_tests()
+	var chosen := PKeyPeerCrypto.for_platform()
+	if prior.is_empty():
+		OS.unset_environment(PKeyPeerCrypto.ENV_LANE)
+	else:
+		OS.set_environment(PKeyPeerCrypto.ENV_LANE, prior)
+	PKeyPeerCrypto.reset_for_tests()
+	t.check("crypto_lanes: PKEY_PEER_CRYPTO=gdscript leaves no native lane", lanes.is_empty() and chosen.lane_name() == "gdscript")
 
 
 func _backed(t: PKeyTestContext) -> void:

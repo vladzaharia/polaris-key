@@ -328,6 +328,9 @@ function renderPython(api: Api): string {
       attrs.push(`(${q(r.id)}, "IdentityClient", "sign_in")`);
     } else if (r.id === "identity.signIn.start") {
       attrs.push(`(${q(r.id)}, "SignInNamespace", "start")`);
+    } else if (r.id === "identity.signIn.handleRedirect") {
+      // I-15 (§12.12): a scheme or claimed delivery goes to the namespace.
+      attrs.push(`(${q(r.id)}, "SignInNamespace", "handle_redirect")`);
     } else if (r.id.startsWith("identity.nearby.")) {
       // M's side of nearby approval (I-47): `available` and `on_request` live on `identity.nearby`.
       attrs.push(`(${q(r.id)}, "NearbyNamespace", ${q(r.name)})`);
@@ -438,6 +441,8 @@ const SWIFT_TYPE: Record<string, string> = {
   SaveTransfer: "SaveTransfer",
   SignInNamespace: "SignInNamespace",
   SignInSession: "SignInSession",
+  NearbyNamespace: "NearbyNamespace",
+  NearbySignInSession: "NearbySignInSession",
   ChoiceNamespace: "ChoiceNamespace",
 };
 /** Rows with no compile-only reference: actor-isolated properties have no key path, and an unapplied generic method cannot infer `T`. */
@@ -676,6 +681,7 @@ const GODOT_SCRIPT: Record<string, string> = {
   identity: `"res://addons/polaris_key/services/identity.gd"`,
   PKeySignInNamespace: `"res://addons/polaris_key/services/identity/sign_in_namespace.gd"`,
   PKeySignInSession: `"res://addons/polaris_key/services/identity/sign_in_session.gd"`,
+  PKeyCloudNearby: `"res://addons/polaris_key/services/connect/nearby.gd"`,
   PKeySaves: `"res://addons/polaris_key/services/cloud_sync/saves.gd"`,
   PKeyTransfer: `"res://addons/polaris_key/services/cloud_sync/transfer_handle.gd"`,
   devices: `"res://addons/polaris_key/services/devices.gd"`,
@@ -689,6 +695,8 @@ const GODOT_SCRIPT: Record<string, string> = {
   options: `"res://addons/polaris_key/core/options.gd"`,
   cloudSync: `"res://addons/polaris_key/services/cloud_sync.gd"`,
   cloudConnect: `"res://addons/polaris_key/services/cloud_connect.gd"`,
+  PKeyCloudTransfer: `"res://addons/polaris_key/services/connect/transfer.gd"`,
+  PKeyTransferOffer: `"res://addons/polaris_key/services/connect/transfer_offer.gd"`,
 };
 const GODOT_HANDLE = `"res://addons/polaris_key/services/config/setting.gd"`;
 const GODOT_OPTIONS = `"res://addons/polaris_key/core/options.gd"`;

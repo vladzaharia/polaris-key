@@ -314,7 +314,8 @@ describe("onRequest: the Worker's answers are the NearbyApproval steps", () => {
     ],
     ["404 still named", 404, { error: { code: "not_found" } }, "expired", 1],
     ["400", 400, { error: { code: "bad_request" } }, "expired", 1],
-    ["500", 500, {}, "expired", 1],
+    // The service failing is not the code expiring (UXR-47b M2).
+    ["500", 500, {}, "failed", 1],
   ];
   for (const [name, status, body, step, closes] of cases)
     it(`${name} is ${step}`, async () => {
@@ -355,14 +356,14 @@ describe("onRequest: the Worker's answers are the NearbyApproval steps", () => {
     expect(a.sentResults).toEqual(["expired"]);
   });
 
-  it("no answer closes the session and is expired", async () => {
+  it("no answer closes the session and is a connection failure, not an expired code", async () => {
     const w = await approver({
       [APPROVE]: () => {
         throw new TypeError("fetch failed");
       },
     });
     const { ask: s, a } = await ask(w);
-    expect(kind(await s.pick(RIGHT))).toBe("expired");
+    expect(kind(await s.pick(RIGHT))).toBe("failed");
     expect(a.sentResults).toEqual([]);
     expect(a.closes).toBeGreaterThan(0);
   });

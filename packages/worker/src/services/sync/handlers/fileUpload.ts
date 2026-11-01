@@ -38,7 +38,7 @@ import { checksumHex } from "../../../core/assets/blobs.js";
 import { notFound, wireError } from "../../../core/errors.js";
 import { callCloudSync } from "../do/client.js";
 import type { FilePartOutcome, FilePrepareOutcome } from "../do/protocol.js";
-import { fileCall, withObject, type FileCall } from "./files.js";
+import { fileCall, withObject, wrongMethod, type FileCall } from "./files.js";
 import { fixedLength, hashBody, parseContentDigest } from "./fileStream.js";
 import { retryable } from "./common.js";
 
@@ -131,7 +131,8 @@ export async function handleUploadPut(
   match: RouteMatch,
 ): Promise<Response> {
   const { req, env } = ctx;
-  if (req.method !== "PUT") return wireError(405, "method_not_allowed");
+  const wrong = await wrongMethod(ctx, "PUT");
+  if (wrong) return wrong;
   const s = await session(ctx, match, null);
   if (s instanceof Response) return refuse(req, s);
   const { prep, call } = s;
@@ -193,7 +194,8 @@ export async function handlePartPut(
   match: RouteMatch,
 ): Promise<Response> {
   const { req, env } = ctx;
-  if (req.method !== "PUT") return wireError(405, "method_not_allowed");
+  const wrong = await wrongMethod(ctx, "PUT");
+  if (wrong) return wrong;
   const n = Number(match.params.n);
   const s = await session(ctx, match, Number.isSafeInteger(n) ? n : 0);
   if (s instanceof Response) return refuse(req, s);

@@ -61,6 +61,7 @@ func run(t: PKeyTestContext) -> void:
 	_browse(t)
 	_errors(t)
 	_advertise(t)
+	_slots(t)
 	_pipes(t)
 	_fix_round(t)
 	_export(t)
@@ -168,20 +169,21 @@ func _advertise(t: PKeyTestContext) -> void:
 	var fake := FakeBin.new()
 	var lane := _lane(fake)
 	var first := lane.advertise({"instance": A, "port": 1234, "txt": ["v=1", "m=a"]})
-	t.check("advertise: starts with the instance and TXT, and no port (the OS listener has its own)", first.ok and fake.json_of("bj_advertise_start") == {"instance": A, "txt": ["v=1", "m=a"]})
+	t.check("advertise: starts with the instance and TXT, and no port (the OS listener has its own)", first.ok
+			and fake.json_of("bj_advertise_start") == {"slot": "a", "instance": A, "txt": ["v=1", "m=a"]})
 	var second := lane.advertise({"instance": B, "port": 1234, "txt": ["v=1", "m=a"]})
 	t.check("advertise: the next name updates the same advert", second.ok and fake.ops().count("bj_advertise_start") == 1 and fake.json_of("bj_advertise_update")["instance"] == B)
 	first.detail.stop()
 	t.check("advertise: the replaced handle's stop() does not stop the new name (lan rotates this way)", not fake.ops().has("bj_advertise_stop") and lane.status()["active"])
 	fake.event("bj_advertise", {"ok": true, "port": 5555})
 	lane.poll()
-	t.check("advertise: the started port is kept", lane._port == 5555)
+	t.check("advertise: the started port is kept", lane.port_of("a") == 5555)
 	second.detail.stop()
 	t.check("advertise: the current handle stops it", fake.ops().has("bj_advertise_stop") and not lane.status()["active"])
 	lane.advertise({"instance": A, "txt": []})
 	fake.event("bj_advertise", {"ok": false, "error": "permission_denied"})
 	lane.poll()
-	t.check("advertise: a failed start is reported and the advert is not running", lane.last_error() == "permission_denied" and not lane._advertising)
+	t.check("advertise: a failed start is reported and the advert is not running", lane.last_error() == "permission_denied" and not lane.advertising("a"))
 
 
 func _id_of(data: PackedByteArray) -> int:
@@ -315,3 +317,118 @@ func _export(t: PKeyTestContext) -> void:
 	var other := apple_export.bonjour_warning("<key>NSBonjourServices</key><string>_x._tcp</string>")
 	var ours := apple_export.bonjour_warning("<key>NSBonjourServices</key><string>_pkeypeer._tcp</string>")
 	t.check("export: a preset list without the peer service warns", other != "" and ours == "" and apple_export.bonjour_warning("") == "")
+
+
+func _caps_lane(slots: bool) -> Array:
+	var fake := FakeBin.new()
+	if slots:
+		fake.raw["bj_caps"] = '{"slots":1}'.to_utf8_buffer()
+	return [fake, _lane(fake)]
+
+
+func _slots(t: PKeyTestContext) -> void:
+	# An older binding: no slots, no tags; slot a and a roster-only browse keep working.
+	var old := _caps_lane(false)
+	var of: FakeBin = old[0]
+	var ol: PKeyAppleMdns = old[1]
+	t.check("slots: an older binding answers no slots and no tags", ol.capabilities() == {"slots": false, "tags": false})
+	var refused := ol.advertise({"instance": A, "slot": "v", "txt": []})
+	t.check("slots: slot v on an older binding is nearby-unsupported and never reaches slot a", not refused.ok and refused.code == PKeyConstants.ErrorCode.NEARBY_UNSUPPORTED
+			and not of.ops().has("bj_advertise_start") and not ol.advertise({"instance": A, "slot": "c", "txt": []}).ok)
+	var no_tags := ol.browse(Callable(), Callable(), Callable(), {"v": ["0123456789abcdef"]})
+	t.check("slots: tags on an older binding are nearby-unsupported before any browse starts", not no_tags.ok
+			and no_tags.code == PKeyConstants.ErrorCode.NEARBY_UNSUPPORTED and not of.ops().has("bj_browse_start"))
+	t.check("slots: slot a and a plain browse still work", ol.advertise({"instance": A, "txt": []}).ok and ol.browse(Callable()).ok)
+
+	var pair := _caps_lane(true)
+	var fake: FakeBin = pair[0]
+	var lane: PKeyAppleMdns = pair[1]
+	t.check("slots: caps are read from bj_caps", lane.capabilities() == {"slots": true, "tags": true} and fake.ops().count("bj_caps") == 1)
+	lane.capabilities()
+	t.check("slots: and asked once", fake.ops().count("bj_caps") == 1)
+	t.check("slots: a bad slot is invalid-argument", lane.advertise({"instance": A, "slot": "x", "txt": []}).code == PKeyConstants.ErrorCode.INVALID_ARGUMENT)
+	var a := lane.advertise({"instance": A, "txt": ["v=1", "m=a"]})
+	var v := lane.advertise({"instance": B, "slot": "v", "port": 99, "txt": ["v=1", "m=v", "h=0123456789abcdef"]})
+	var p := lane.advertise({"instance": C, "slot": "p", "txt": ["v=1", "m=p"]})
+	var starts: Array = fake.calls.filter(func(c): return c[0] == "bj_advertise_start").map(func(c): return JSON.parse_string((c[1] as PackedByteArray).get_string_from_utf8()))
+	t.check("slots: each slot starts its own advert and the port is not passed", a.ok and v.ok and p.ok and starts.size() == 3
+			and starts.map(func(x): return x["slot"]) == ["a", "v", "p"] and not starts[1].has("port"))
+	fake.event("bj_advertise", {"slot": "v", "ok": true, "port": 7001})
+	fake.event("bj_advertise", {"slot": "a", "ok": true, "port": 7000})
+	fake.event("bj_advertise", {"slot": "p", "ok": false, "error": "permission_denied"})
+	lane.poll()
+	t.check("slots: start results are routed by slot", lane.port_of("v") == 7001 and lane.port_of("a") == 7000
+			and lane.advertising("v") and not lane.advertising("p") and lane.last_error() == "permission_denied")
+	t.check("slots: update on a handle moves that slot only", v.detail.update(A.replace("aaaa", "dddd"), ["v=1"]) and fake.json_of("bj_advertise_update")["slot"] == "v"
+			and lane.advertising("a"))
+	v.detail.stop()
+	var stop_body: Dictionary = JSON.parse_string((fake.calls[-1][1] as PackedByteArray).get_string_from_utf8())
+	t.check("slots: stop names the slot and leaves the others", fake.calls[-1][0] == "bj_advertise_stop" and stop_body == {"slot": "v"} and lane.advertising("a") and not lane.advertising("v"))
+	t.check("slots: a stopped handle cannot update", not v.detail.update(B, []))
+
+	# Contact adverts: a whole set on slot a's port.
+	var handles: Array = []
+	for i in PKeyAppleMdns.MAX_CONTACTS:
+		var r := lane.advertise({"instance": "p1-%s" % _name16(100 + i), "slot": "c", "txt": ["v=1", "m=c"]})
+		handles.append(r.detail)
+	var pushed: Dictionary = JSON.parse_string((fake.calls[-1][1] as PackedByteArray).get_string_from_utf8())
+	t.check("slots: contacts push the whole set each time (8 at most)", fake.calls[-1][0] == "bj_contacts" and (pushed["adverts"] as Array).size() == 8 and handles.all(func(h): return h != null))
+	var ninth := lane.advertise({"instance": "p1-%s" % _name16(200), "slot": "c", "txt": []})
+	t.check("slots: a ninth contact is refused", not ninth.ok and fake.ops().count("bj_contacts") == 8)
+	var first: Object = handles[0]
+	t.check("slots: a contact moves by update", first.update("p1-%s" % _name16(300), ["v=1", "m=c"]) and fake.ops().count("bj_contacts") == 9)
+	first.stop()
+	pushed = JSON.parse_string((fake.calls[-1][1] as PackedByteArray).get_string_from_utf8())
+	t.check("slots: stopping a contact pushes the rest", (pushed["adverts"] as Array).size() == 7)
+	fake.event("bj_withdrawn", {"slot": "c", "requested": "p1-%s" % _name16(101), "got": ""})
+	lane.poll()
+	t.check("slots: a contact the daemon withdrew leaves the wanted set", lane._contacts.size() == 6)
+	fake.reply["bj_contacts"] = 3
+	t.check("slots: a contact the native side refuses is not kept", not lane.advertise({"instance": "p1-%s" % _name16(400), "slot": "c", "txt": []}).ok and lane._contacts.size() == 6)
+
+	# Accepted pipes go to their slot's acceptor.
+	var got: Dictionary = {"a": [], "v": [], "p": []}
+	for slot in ["a", "v", "p"]:
+		lane.set_acceptor(slot, func(pp: PKeyApplePipe) -> void: got[slot].append(pp))
+	fake.queued.append(["bj_accepted", JSON.stringify({"id": 51, "remote": "10.0.0.1", "slot": "v"}).to_utf8_buffer()])
+	fake.queued.append(["bj_accepted", JSON.stringify({"id": 52, "remote": "10.0.0.1", "slot": "p"}).to_utf8_buffer()])
+	fake.queued.append(["bj_accepted", JSON.stringify({"id": 53, "remote": "10.0.0.1"}).to_utf8_buffer()])
+	lane.poll()
+	t.check("slots: accepted pipes are routed by slot, a missing slot is a", got["v"].size() == 1 and got["v"][0].id() == 51 and got["p"].size() == 1 and got["p"][0].id() == 52
+			and got["a"].size() == 1 and got["a"][0].id() == 53)
+	lane.set_acceptor("p", Callable())
+	fake.queued.append(["bj_accepted", JSON.stringify({"id": 54, "remote": "10.0.0.1", "slot": "p"}).to_utf8_buffer()])
+	lane.poll()
+	t.check("slots: a slot with no acceptor aborts the socket", fake.calls[-1][0] == "bj_close" and fake.calls[-1][1] == PackedByteArray([0, 0, 0, 54, 1]))
+	lane.stop()
+	t.check("slots: stop() forgets every slot, contact and acceptor", not lane.advertising("a") and lane._contacts.is_empty() and lane._acceptors.is_empty() and not lane.status()["active"])
+	_tags(t)
+
+
+func _tags(t: PKeyTestContext) -> void:
+	var pair := _caps_lane(true)
+	var fake: FakeBin = pair[0]
+	var lane: PKeyAppleMdns = pair[1]
+	var seen := Seen.new()
+	var h := "0123456789abcdef"
+	var h2 := "fedcba9876543210"
+	var r := lane.browse(seen.on_up, seen.on_down, func(n: String) -> bool: return n == A, {"v": [h, h2, "extra"], "p": [], "x": [h]})
+	t.check("tags: browse pushes the cleaned tags (two per kind, v and p only)", r.ok and fake.json_of("bj_accept_tags") == {"v": [h, h2]})
+	fake.event("bj_found", {"instance": A, "txt": ["v=1", "m=a"]})
+	fake.event("bj_found", {"instance": B, "txt": ["v=1", "m=v", "h=" + h]})
+	fake.event("bj_found", {"instance": C, "txt": ["v=1", "m=p", "h=" + h]})
+	fake.event("bj_found", {"instance": "p1-dddddddddddddddd", "txt": ["v=1", "m=v", "h=ffffffffffffffff"]})
+	lane.poll()
+	t.check("tags: a refused name enters only on m and h; a roster name always", seen.up.map(func(x): return x["instance"]) == [A, B])
+	t.check("tags: replacing them is one call", lane.set_tags({"p": [h]}) and fake.json_of("bj_accept_tags") != {} and lane._tags == {"p": [h]})
+	fake.event("bj_found", {"instance": C, "txt": ["v=1", "m=p", "h=" + h]})
+	lane.poll()
+	t.check("tags: and the new kind is admitted", seen.up.size() == 3)
+	r.detail.stop()
+	var body: Dictionary = JSON.parse_string((fake.calls[-1][1] as PackedByteArray).get_string_from_utf8())
+	t.check("tags: ending the browse clears them natively", fake.calls[-1][0] == "bj_accept_tags" and body == {} and lane._tags.is_empty())
+	var refuse := _caps_lane(true)
+	(refuse[0] as FakeBin).reply["bj_accept_tags"] = 3
+	var bad: PKeyAppleMdns = refuse[1]
+	bad.browse(Callable(), Callable(), Callable(), {"v": [h]})
+	t.check("tags: a refused set leaves none in force", bad._tags.is_empty() and (refuse[0] as FakeBin).ops().count("bj_accept_tags") == 2)

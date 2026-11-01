@@ -7,7 +7,7 @@ sidebar:
   order: 2
 ---
 
-A record in a Cloud Sync collection may carry one file, such as a save's data. The Worker serves files only while the operator's `launch.syncFiles` gate is on; until then every file route answers `404` and discovery names no `endpoints.files`. No SDK uploads files yet.
+A record in a Cloud Sync collection may carry one file, such as a save's data. The Worker serves files only while the operator's `launch.syncFiles` gate is on; until then every file route answers `404` and discovery names no `endpoints.files`.
 
 ## Declare it
 
