@@ -106,6 +106,9 @@ class Commands(
     private val flavor: FlavorCommands = (flavorFactory ?: ::createFlavorCommands)(this)
     private val googleId = GoogleIdentityCommands(this, identity)
 
+    /** The bulk-body channel (U-41.6a): byte[] ops next to the crypto entry, events through `poll`. */
+    val bulk = BulkCommands(this)
+
     /** LAN discovery (CC-14b.9, D-15); its events join the `poll` reply. */
     val nsd = NsdCommands(this, nsdBackend)
 
@@ -180,6 +183,7 @@ class Commands(
             .put("cryptoAesGcm", true)
             .put("cryptoX25519", crypto.x25519Supported)
             .put("nsd", nsd.supported())
+            .put("syncBulk", true)
         flavor.capabilities(out)
         return out
     }
@@ -272,6 +276,7 @@ class Commands(
     fun onResume() = event("resumed", JSONObject())
 
     fun close() {
+        bulk.shutdown()
         nsd.close()
         flavor.close()
         worker.shutdown()
