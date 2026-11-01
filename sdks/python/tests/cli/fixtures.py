@@ -305,4 +305,6 @@ OUT_OF_SCOPE = {
     "ActivateDone": "should tier; the activate verb prints the result and the account hint in its own lines",
     "AddToAccount": "should tier; the terminal adds a key to an account through login, not a form",
     "SaveConflict": "should tier; a terminal has no synced save to choose between, and no CLI verb for it yet",
+    "LinkPairing": "should tier; Cloud Connect pairing has no CLI verb yet",
+    "TransferOffer": "should tier; Direct Transfer has no CLI verb yet",
 }
