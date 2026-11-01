@@ -21,13 +21,6 @@ import im.plrs.key.core.stringValue
 import im.plrs.key.core.testing.ScriptedTransport
 import im.plrs.key.core.testing.ScriptedTransport.Companion.respond
 import im.plrs.key.core.testing.path
-import java.io.File
-import java.net.InetAddress
-import java.net.InetSocketAddress
-import java.net.ServerSocket
-import java.net.Socket
-import java.net.URLDecoder
-import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -36,22 +29,19 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
+import java.io.File
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.ServerSocket
+import java.net.Socket
+import java.net.URLDecoder
+import java.util.concurrent.atomic.AtomicReference
 
-class NativeRedirectTest {
-    private val api = "https://key.example/djdl"
-    private val iss = "$api/identity"
-    private val state = "tidewater-state-0123456789"
-    private val verifier = "transcript-verifier-0123456789-abcdefghijklmnopqrst"
-    private val handle = "rq_fxXQ7DEgqPUfZlsJYdm76w"
-    private val requestUri = "urn:ietf:params:oauth:request_uri:A1xUxaz50yGeWfx8JDSnAw"
-    private val scheme = "com.tidewater.studio:/pkey/callback"
-    private val code = "nzMud_COpAeAOKaIdixAP_dJqIpwVVSjV3GCoBfT-eE"
-    private val returnPage = "https://key.example/signin/return"
-    private val tokenOk = """{"access_token":"pkeyt_new","token_type":"Bearer","scope":"profile email","schemaVersion":1,"device":{"id":"D"},"license":null,"subject":"ps_abc"}"""
-
-    private fun recorded(name: String) = JsonText.parse(
-        File(System.getProperty("pkey.repoRoot"), "conformance/transcripts/redirect-native-$name.json").readText(),
-    ).objectValue!!
+class NativeRedirectTest : NativeTestBase() {
+    private companion object {
+        const val DRIP_MAX_NANOS = 8_000_000_000L
+        const val DRIP_CUT_NANOS = 7_500_000_000L
+    }
 
     // ── The pure helpers ─────────────────────────────────────────────────────────────────
 
@@ -85,15 +75,6 @@ class NativeRedirectTest {
         for (s in listOf("https", "", "Com.X", "1x")) assertInvalid { NativeRedirect.schemeUri(s) }
     }
 
-    private fun assertInvalid(block: () -> Unit) {
-        try {
-            block()
-            fail("accepted")
-        } catch (e: PolarisException) {
-            assertEquals(ErrorCode.invalidArgument, e.code)
-        }
-    }
-
     @Test
     fun theClassOrderIsLoopbackThenSchemeThenClaimedThenTheFallback() {
         val claimed = "https://app.example/open/pkey"
@@ -109,10 +90,15 @@ class NativeRedirectTest {
         assertEquals(RedirectChoice.Unavailable("request-not-served"), NativeRedirect.chooseClass(req, null, true))
     }
 
-    private fun push(redirect: String = "http://127.0.0.1:49152/pkey/callback", name: String? = "Ada's Mac", returnUri: String? = null) = NativeRedirect.pushRequest(
-        requestEndpoint = "$api/identity/request", authorizeEndpoint = "$api/identity/authorize", tokenEndpoint = "$api/identity/token",
-        issuer = iss, clientId = "djdl", redirectUri = redirect, deviceName = name, returnUri = returnUri, state = state, codeVerifier = verifier,
-    )
+    private val endpoints = NativeEndpoints("$api/identity/request", "$api/identity/authorize", "$api/identity/token", iss, "djdl")
+
+    private fun push(redirect: String = "http://127.0.0.1:49152/pkey/callback", name: String? = "Ada's Mac", returnUri: String? = null) =
+        NativeRedirect.pushRequest(
+            endpoints,
+            redirect,
+            PushOptions(deviceName = name, returnUri = returnUri),
+            PushEntropy(state = state, codeVerifier = verifier),
+        )
 
     @Test
     fun thePushIsTheRecordedForm() {
@@ -134,32 +120,44 @@ class NativeRedirectTest {
         assertInvalid { push("https://app.example/") }
         assertInvalid { push("http://localhost:49152/pkey/callback") }
         assertInvalid { push(returnUri = "http://127.0.0.1:49152/pkey/callback") }
-        assertInvalid { NativeRedirect.pushRequest("$api/identity/request", "authorize", "$api/identity/token", iss, "djdl", scheme) }
-        assertInvalid { NativeRedirect.pushRequest("$api/identity/request", "$api/a", "$api/t", "", "djdl", scheme) }
-        assertInvalid { NativeRedirect.pushRequest("$api/identity/request", "$api/a", "$api/t", iss, "djdl", scheme, state = "short") }
-        assertInvalid { NativeRedirect.pushRequest("$api/identity/request", "$api/a", "$api/t", iss, "djdl", scheme, codeVerifier = "short") }
+        val bareAuthorize = NativeEndpoints("$api/identity/request", "authorize", "$api/identity/token", iss, "djdl")
+        assertInvalid { NativeRedirect.pushRequest(bareAuthorize, scheme) }
+        assertInvalid { NativeRedirect.pushRequest(NativeEndpoints("$api/identity/request", "$api/a", "$api/t", "", "djdl"), scheme) }
+        assertInvalid { NativeRedirect.pushRequest(endpoints, scheme, PushOptions(), PushEntropy(state = "short")) }
+        assertInvalid { NativeRedirect.pushRequest(endpoints, scheme, PushOptions(), PushEntropy(codeVerifier = "short")) }
     }
 
     @Test
     fun thePushedAnswerIsReadStrictly() {
         fun body(s: String) = JsonText.parseOrNull(s)
-        assertEquals(PushedAnswer.Pushed(requestUri, 600), NativeRedirect.parsePushedAnswer(201, body("""{"request_uri":"$requestUri","expires_in":600}""")))
+        assertEquals(
+            PushedAnswer.Pushed(requestUri, 600),
+            NativeRedirect.parsePushedAnswer(201, body("""{"request_uri":"$requestUri","expires_in":600}""")),
+        )
         for (bad in listOf(
-            """{"request_uri":"urn:x","expires_in":600}""", """{"request_uri":"$requestUri","expires_in":601}""",
-            """{"request_uri":"$requestUri","expires_in":0}""", """{"request_uri":"$requestUri"}""", """[]""",
+            """{"request_uri":"urn:x","expires_in":600}""",
+            """{"request_uri":"$requestUri","expires_in":601}""",
+            """{"request_uri":"$requestUri","expires_in":0}""",
+            """{"request_uri":"$requestUri"}""",
+            """[]""",
         )) {
             assertEquals(bad, PushedAnswer.Malformed, NativeRedirect.parsePushedAnswer(201, body(bad)))
         }
-        assertEquals(PushedAnswer.Refused("redirect_uri_mismatch", 400), NativeRedirect.parsePushedAnswer(400, body("""{"error":"redirect_uri_mismatch"}""")))
+        assertEquals(
+            PushedAnswer.Refused("redirect_uri_mismatch", 400),
+            NativeRedirect.parsePushedAnswer(400, body("""{"error":"redirect_uri_mismatch"}""")),
+        )
         assertEquals(PushedAnswer.Refused("server_error", 503), NativeRedirect.parsePushedAnswer(503, null))
-        assertEquals(PushedAnswer.Refused("rate_limited", 429, 7), NativeRedirect.parsePushedAnswer(429, body("""{"error":"rate_limited","retryAfter":6.2}""")))
+        assertEquals(
+            PushedAnswer.Refused("rate_limited", 429, 7),
+            NativeRedirect.parsePushedAnswer(429, body("""{"error":"rate_limited","retryAfter":6.2}""")),
+        )
         val url = NativeRedirect.authorizeUrlFor("$api/identity/authorize", "djdl", requestUri)
         assertEquals("$api/identity/authorize?client_id=djdl&request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3AA1xUxaz50yGeWfx8JDSnAw", url)
         assertInvalid { NativeRedirect.authorizeUrlFor("$api/identity/authorize", "djdl", "urn:other") }
     }
 
     private fun pending(redirect: String = "http://127.0.0.1:49152/pkey/callback") = push(redirect).pending
-    private val issEnc = "https%3A%2F%2Fkey.example%2Fdjdl%2Fidentity"
 
     @Test
     fun theCallbackIsCheckedInOrder() {
@@ -169,11 +167,17 @@ class NativeRedirectTest {
         fun failed(r: CallbackFailure, e: String? = null) = NativeCallback.Failed(r, e)
         assertEquals(NativeCallback.Code(code, handle), check("$base?code=$code&state=$state&iss=$issEnc&request=$handle"))
         assertEquals(NativeCallback.Cancelled(handle), check("$base?error=access_denied&state=$state&iss=$issEnc&request=$handle"))
-        assertEquals(failed(CallbackFailure.AuthorizationError, "server_error"), check("$base?error=server_error&state=$state&iss=$issEnc&request=$handle"))
+        assertEquals(
+            failed(CallbackFailure.AuthorizationError, "server_error"),
+            check("$base?error=server_error&state=$state&iss=$issEnc&request=$handle"),
+        )
         assertEquals(failed(CallbackFailure.Malformed), check(null))
         assertEquals(failed(CallbackFailure.Malformed), check("$base?code=c&state=$state&iss=$issEnc&request=$handle#f"))
         assertEquals(failed(CallbackFailure.Malformed), check("$base?code=c&code=d&state=$state&iss=$issEnc&request=$handle"))
-        assertEquals(failed(CallbackFailure.RedirectMismatch), check("http://127.0.0.1:49153/pkey/callback?code=c&state=$state&iss=$issEnc&request=$handle"))
+        assertEquals(
+            failed(CallbackFailure.RedirectMismatch),
+            check("http://127.0.0.1:49153/pkey/callback?code=c&state=$state&iss=$issEnc&request=$handle"),
+        )
         assertEquals(failed(CallbackFailure.RedirectMismatch), check("http://127.0.0.1:49152/other?code=c&state=$state&iss=$issEnc&request=$handle"))
         assertEquals(failed(CallbackFailure.StateMismatch), check("$base?code=c&state=another-state-0123456789&iss=$issEnc&request=$handle"))
         assertEquals(failed(CallbackFailure.StateMismatch), check("$base?code=c&iss=$issEnc&request=$handle"))
@@ -197,7 +201,8 @@ class NativeRedirectTest {
         assertEquals("TRANSCRIPTDEVICE0000000000000001", t.deviceId)
         assertEquals("application/x-www-form-urlencoded", t.contentType)
         assertEquals(
-            "grant_type=authorization_code&client_id=djdl&code=$code&code_verifier=$verifier&redirect_uri=http%3A%2F%2F127.0.0.1%3A49152%2Fpkey%2Fcallback",
+            "grant_type=authorization_code&client_id=djdl&code=$code&code_verifier=$verifier" +
+                "&redirect_uri=http%3A%2F%2F127.0.0.1%3A49152%2Fpkey%2Fcallback",
             t.body,
         )
         assertInvalid { NativeRedirect.tokenRequest(pending(), code, "") }
@@ -206,30 +211,9 @@ class NativeRedirectTest {
 
     // ── The loopback listener, rule by rule, over a real socket ──────────────────────────
 
-    private class Reply(val status: Int, val headers: Map<String, String>, val raw: String)
-
-    private fun get(port: Int, target: String, host: String? = "127.0.0.1:$port", method: String = "GET"): Reply {
-        Socket(InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)), port).use { s ->
-            s.soTimeout = 5000
-            val req = "$method $target HTTP/1.1\r\n" + (if (host != null) "Host: $host\r\n" else "") + "Connection: close\r\n\r\n"
-            s.getOutputStream().write(req.toByteArray())
-            val text = s.getInputStream().readBytes().toString(Charsets.ISO_8859_1)
-            val lines = text.split("\r\n")
-            val headers = lines.drop(1).takeWhile { it.isNotEmpty() }.associate { it.substringBefore(':').lowercase() to it.substringAfter(':').trim() }
-            return Reply(lines[0].split(' ')[1].toInt(), headers, text)
-        }
-    }
-
     private fun accepting(seen: MutableList<String>, location: String? = "https://key.example/signin/return?request=$handle") = { url: String ->
         seen += url
         NativeListenerReply(location, true)
-    }
-
-    private fun refused(port: Int): Boolean = try {
-        Socket(InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)), port).close()
-        false
-    } catch (e: java.io.IOException) {
-        true
     }
 
     @Test
@@ -237,17 +221,12 @@ class NativeRedirectTest {
         val l = LoopbackListener()
         try {
             assertTrue(l.port in 1..65535)
-            assertTrue("the redirect URI the port makes is a loopback one", NativeRedirect.classify(NativeRedirect.loopbackUri(l.port)) == NativeRedirectClass.Loopback)
+            assertTrue(
+                "the redirect URI the port makes is a loopback one",
+                NativeRedirect.classify(NativeRedirect.loopbackUri(l.port)) == NativeRedirectClass.Loopback,
+            )
             // The socket exists before `start`: no other socket may take the port.
-            try {
-                ServerSocket().use {
-                    it.reuseAddress = false
-                    it.bind(InetSocketAddress(InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)), l.port))
-                }
-                fail("a second socket shared the port")
-            } catch (e: java.net.BindException) {
-                // Expected.
-            }
+            assertFalse("a second socket shared the port", canBind(l.port))
         } finally {
             l.close()
         }
@@ -262,7 +241,14 @@ class NativeRedirectTest {
         l.start(
             { url ->
                 seen += url
-                if (url.contains("state=ok")) NativeListenerReply("https://key.example/signin/return?request=$handle", true) else NativeListenerReply(null, false)
+                if (url.contains(
+                        "state=ok",
+                    )
+                ) {
+                    NativeListenerReply("https://key.example/signin/return?request=$handle", true)
+                } else {
+                    NativeListenerReply(null, false)
+                }
             },
         )
         try {
@@ -288,7 +274,10 @@ class NativeRedirectTest {
             assertEquals("no-referrer", r.headers["referrer-policy"])
             assertEquals("0", r.headers["content-length"])
             assertFalse(r.headers.keys.any { it.startsWith("access-control-") })
-            assertEquals(listOf("http://127.0.0.1:$p/pkey/callback?state=other", "http://127.0.0.1:$p/pkey/callback?code=c&state=ok&iss=x&request=$handle"), seen)
+            assertEquals(
+                listOf("http://127.0.0.1:$p/pkey/callback?state=other", "http://127.0.0.1:$p/pkey/callback?code=c&state=ok&iss=x&request=$handle"),
+                seen,
+            )
             waitUntil { refused(p) }
             assertTrue(l.closed)
         } finally {
@@ -308,7 +297,7 @@ class NativeRedirectTest {
             Socket(loop, l.port).use { extra ->
                 extra.soTimeout = 3000
                 extra.getOutputStream().write("GET / HTTP/1.1\r\n\r\n".toByteArray())
-                assertEquals(-1, try { extra.getInputStream().read() } catch (e: java.io.IOException) { -1 })
+                assertEquals(-1, runCatching { extra.getInputStream().read() }.getOrDefault(-1))
             }
             // A drip-fed head does not outlive the deadline: a byte every half second still ends in about 5 s.
         } finally {
@@ -318,17 +307,14 @@ class NativeRedirectTest {
             slow.soTimeout = 9000
             val out = slow.getOutputStream()
             val started = System.nanoTime()
-            var cut = false
-            try {
-                while (System.nanoTime() - started < 8_000_000_000L) {
+            val cut = runCatching {
+                while (System.nanoTime() - started < DRIP_MAX_NANOS) {
                     out.write('G'.code)
                     out.flush()
                     Thread.sleep(500)
                 }
-            } catch (e: java.io.IOException) {
-                cut = true // The listener cut it off.
-            }
-            assertTrue("the head deadline ended the connection", cut && System.nanoTime() - started < 7_500_000_000L)
+            }.isFailure // The listener cut it off.
+            assertTrue("the head deadline ended the connection", cut && System.nanoTime() - started < DRIP_CUT_NANOS)
         }
         l.close()
     }
@@ -341,7 +327,7 @@ class NativeRedirectTest {
         val l = LoopbackListener()
         try {
             l.start { throw IllegalStateException("boom") }
-            val r = try { get(l.port, "/pkey/callback?state=a").status } catch (e: Exception) { -1 }
+            val r = runCatching { get(l.port, "/pkey/callback?state=a").status }.getOrDefault(-1)
             assertTrue(r == 404 || r == -1)
             Thread.sleep(200)
             assertTrue(seen.toString(), seen.isEmpty())
@@ -370,320 +356,5 @@ class NativeRedirectTest {
         assertEquals(303, get(p, "/pkey/callback?state=a").status)
         waitUntil { refused(p) }
         assertEquals(1, seen.size)
-    }
-
-    private fun waitUntil(what: () -> Boolean) {
-        val end = System.nanoTime() + 5_000_000_000L
-        while (!what()) {
-            if (System.nanoTime() > end) fail("timed out")
-            Thread.sleep(20)
-        }
-    }
-
-    // ── The session ──────────────────────────────────────────────────────────────────────
-
-    private fun fragment(nativeRedirect: String? = """{"loopback":true,"schemes":["$scheme"],"claimedHttps":[]}""", request: Boolean = true, signinReturn: String? = returnPage) =
-        """{"enabled":true,"configured":true,"issuer":"$iss",""" + (nativeRedirect?.let { """"nativeRedirect":$it,""" } ?: "") +
-            """"endpoints":{"authorize":"$api/identity/authorize","token":"$api/identity/token"""" +
-            (if (request) ""","request":"$api/identity/request"""" else "") + (signinReturn?.let { ""","signinReturn":"$it"""" } ?: "") + "}}"
-
-    private class World(val client: IdentityClient, val core: CoreContext, val transport: ScriptedTransport, val store: InMemoryStore, val clock: AtomicReference<Long>) {
-        suspend fun calls(path: String) = transport.requests().filter { it.path == path }
-    }
-
-    private fun world(
-        identity: String = fragment(),
-        push: (PolarisRequest) -> im.plrs.key.core.PolarisResponse = { respond(201, """{"request_uri":"$requestUri","expires_in":600}""") },
-        tokenReply: (PolarisRequest) -> im.plrs.key.core.PolarisResponse = { respond(200, tokenOk) },
-    ): World {
-        val store = InMemoryStore("djdl", "TRANSCRIPTDEVICE0000000000000001")
-        val clock = AtomicReference(1_700_000_000L)
-        val transport = ScriptedTransport { r: PolarisRequest ->
-            when (r.path) {
-                "/djdl/.well-known/polaris.json" -> respond(200, """{"product":"djdl","services":{"identity":$identity}}""")
-                "/djdl/identity/request" -> push(r)
-                "/djdl/identity/token" -> tokenReply(r)
-                else -> respond(404)
-            }
-        }
-        val core = CoreContext(
-            CoreOptions(
-                productSlug = "djdl", baseUrl = "https://key.example", version = "1.0.0", pinnedKeys = emptyMap(), trustRefresh = false,
-                store = store, transport = transport, clock = { clock.get() }, expectedServices = listOf(ServiceSlug.identity), deviceName = "",
-            ),
-        )
-        runBlocking { core.start() }
-        val client = IdentityClient(core).also {
-            @OptIn(ConformanceReplayOnly::class)
-            it.redirectAcquisitionSync = false
-            @OptIn(ConformanceReplayOnly::class)
-            it.redirectEntropy = RedirectEntropy(state, verifier)
-        }
-        return World(client, core, transport, store, clock)
-    }
-
-    private fun loopbackOptions(openBrowser: Boolean = false) =
-        SignInOptions(channel = SignInChannel.Redirect, native = NativeRedirectOptions(loopback = true, openBrowser = openBrowser), deviceName = "Ada's Mac")
-
-    private fun portOf(session: SignInSession) = Regex("""127\.0\.0\.1:(\d+)""").find(session.redirectUri!!)!!.groupValues[1].toInt()
-
-    private fun recordingPush(): (PolarisRequest) -> im.plrs.key.core.PolarisResponse = { r ->
-        val form = String(r.body!!).split('&').associate { it.substringBefore('=') to URLDecoder.decode(it.substringAfter('='), "UTF-8") }
-        // The port is already ours: nothing else can take it while the push is in flight.
-        Regex("""127\.0\.0\.1:(\d+)""").find(form["redirect_uri"]!!)?.let { m ->
-            try {
-                ServerSocket().use {
-                    it.reuseAddress = false
-                    it.bind(InetSocketAddress(InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1)), m.groupValues[1].toInt()))
-                }
-                bindOrder.add("free")
-            } catch (e: java.net.BindException) {
-                bindOrder.add("held")
-            }
-        }
-        respond(201, """{"request_uri":"$requestUri","expires_in":600}""")
-    }
-    private val bindOrder = ArrayList<String>()
-
-    private val callbackQuery get() = "code=$code&state=$state&iss=$issEnc&request=$handle"
-
-    @Test
-    fun aLoopbackStartBindsBeforePushingThenRedeemsFromThePushingDevice() = runBlocking {
-        val w = world(push = recordingPush())
-        val s = w.client.signIn.start(loopbackOptions())
-        assertEquals(listOf("held"), bindOrder)
-        assertEquals(SignInChannel.Redirect, s.channel)
-        assertEquals(NativeRedirectClass.Loopback, s.redirectClass)
-        assertEquals("$api/identity/authorize?client_id=djdl&request_uri=urn%3Aietf%3Aparams%3Aoauth%3Arequest_uri%3AA1xUxaz50yGeWfx8JDSnAw", s.authorizeUrl)
-        assertEquals(SignInOutcome.Pending(0), s.outcome)
-        assertEquals(SignInOutcome.Pending(0), s.wait(once = true))
-        val push = w.calls("/djdl/identity/request").single()
-        assertEquals("application/x-www-form-urlencoded", push.headers["content-type"])
-        assertEquals("TRANSCRIPTDEVICE0000000000000001", push.headers.entries.first { it.key.equals("x-pkey-device", true) }.value)
-
-        val reply = get(portOf(s), "/pkey/callback?$callbackQuery")
-        assertEquals(303, reply.status)
-        assertEquals("$returnPage?request=$handle", reply.headers["location"])
-        assertTrue("the callback never reached the token endpoint before wait", w.calls("/djdl/identity/token").isEmpty())
-
-        val outcome = s.wait()
-        assertEquals(SignInOutcome.SignedIn("ps_abc", "profile email", null), outcome)
-        assertEquals("pkeyt_new", w.store.getToken())
-        val token = w.calls("/djdl/identity/token").single()
-        assertEquals("TRANSCRIPTDEVICE0000000000000001", token.headers.entries.first { it.key.equals("x-pkey-device", true) }.value)
-        val body = String(token.body!!)
-        assertTrue(body, body.startsWith("grant_type=authorization_code&client_id=djdl&code=$code&code_verifier=$verifier&redirect_uri=http%3A%2F%2F127.0.0.1%3A"))
-        assertFalse("the label went with the push, not the token request", body.contains("device_name"))
-        assertEquals(outcome, s.wait())
-    }
-
-    @Test
-    fun aCancelledCardReturnsToThePageWithTheFlag() = runBlocking {
-        val w = world(push = recordingPush())
-        val s = w.client.signIn.start(loopbackOptions())
-        val reply = get(portOf(s), "/pkey/callback?error=access_denied&state=$state&iss=$issEnc&request=$handle")
-        assertEquals("$returnPage?request=$handle&cancelled=1", reply.headers["location"])
-        assertEquals(SignInOutcome.Cancelled, s.wait())
-        assertTrue(w.calls("/djdl/identity/token").isEmpty())
-    }
-
-    @Test
-    fun aWrongStateOnTheListenerIsIgnoredAndTheRightOneStillWorks() = runBlocking {
-        val w = world(push = recordingPush())
-        val s = w.client.signIn.start(loopbackOptions())
-        val p = portOf(s)
-        assertEquals(404, get(p, "/pkey/callback?code=evil&state=wrong-state-0123456789&iss=$issEnc&request=$handle").status)
-        assertEquals(SignInOutcome.Pending(0), s.wait(once = true))
-        assertEquals(303, get(p, "/pkey/callback?$callbackQuery").status)
-        assertTrue(s.wait() is SignInOutcome.SignedIn)
-    }
-
-    @Test
-    fun aCallbackThatFailsTheIssuerCheckSettlesAsAFailureAndSendsNothing() = runBlocking {
-        val w = world(push = recordingPush())
-        val s = w.client.signIn.start(loopbackOptions())
-        assertEquals(404, get(portOf(s), "/pkey/callback?code=c&state=$state&iss=https%3A%2F%2Fevil.example&request=$handle").status)
-        try {
-            s.wait()
-            fail("settled")
-        } catch (e: SignInError) {
-            assertEquals(ErrorCode.signInFailed, e.code)
-        }
-        assertTrue(w.calls("/djdl/identity/token").isEmpty())
-    }
-
-    @Test
-    fun cancelClosesTheListenerAndTheWaitAnswersCancelled() = runBlocking {
-        val w = world(push = recordingPush())
-        val s = w.client.signIn.start(loopbackOptions())
-        val p = portOf(s)
-        s.cancel()
-        assertEquals(SignInOutcome.Cancelled, s.wait())
-        assertEquals(SignInOutcome.Cancelled, s.outcome)
-        waitUntil { refused(p) }
-        assertFalse(s.reopen())
-    }
-
-    @Test
-    fun aNewStartEndsTheLastOne() = runBlocking {
-        val w = world(push = recordingPush())
-        val first = w.client.signIn.start(loopbackOptions())
-        val firstPort = portOf(first)
-        val second = w.client.signIn.start(loopbackOptions())
-        waitUntil { refused(firstPort) }
-        assertEquals(SignInOutcome.Cancelled, first.wait())
-        assertEquals(SignInOutcome.Pending(0), second.wait(once = true))
-        second.cancel()
-    }
-
-    @Test
-    fun theBrowserOpensOnStartAndOpenAgainIsTheSameUrlUntilItLapses() = runBlocking {
-        val w = world(push = recordingPush())
-        val opened = ArrayList<String>()
-        val s = w.client.signIn.start(
-            SignInOptions(
-                channel = SignInChannel.Redirect, opener = AccountOpener { opened += it; true },
-                native = NativeRedirectOptions(loopback = true),
-            ),
-        )
-        assertTrue(s.opened)
-        assertTrue(s.reopen())
-        assertEquals(listOf(s.authorizeUrl, s.authorizeUrl), opened)
-        assertEquals("one push for all of them", 1, w.calls("/djdl/identity/request").size)
-        w.clock.set(1_700_000_000L + 600)
-        try {
-            s.reopen()
-            fail("reopened a lapsed request")
-        } catch (e: PolarisException) {
-            assertEquals(ErrorCode.signInExpired, e.code)
-        }
-        assertEquals(SignInOutcome.Expired, s.wait())
-    }
-
-    @Test
-    fun aSchemeDeliveryGoesThroughHandleRedirect() = runBlocking {
-        val w = world()
-        val s = w.client.signIn.start(
-            SignInOptions(channel = SignInChannel.Redirect, native = NativeRedirectOptions(loopback = false, registeredSchemes = listOf(scheme), openBrowser = false)),
-        )
-        assertEquals(NativeRedirectClass.Scheme, s.redirectClass)
-        val push = String(w.calls("/djdl/identity/request").single().body!!)
-        assertTrue(push, push.contains("redirect_uri=com.tidewater.studio%3A%2Fpkey%2Fcallback"))
-        // Another URL, a wrong state, a malformed one: refused, and the sign-in keeps waiting.
-        for (bad in listOf(
-            "com.other.app:/pkey/callback?code=c&state=$state&iss=$issEnc",
-            "$scheme?code=c&state=wrong-state-0123456789&iss=$issEnc",
-            "not a url",
-        )) {
-            try {
-                w.client.signIn.handleRedirect(bad)
-                fail("accepted $bad")
-            } catch (e: SignInError) {
-                assertEquals(ErrorCode.signInFailed, e.code)
-            }
-        }
-        assertTrue(w.calls("/djdl/identity/token").isEmpty())
-        val outcome = w.client.signIn.handleRedirect("$scheme?code=$code&state=$state&iss=$issEnc")
-        assertTrue(outcome is SignInOutcome.SignedIn)
-        assertEquals(outcome, s.wait())
-        // Single use: a replayed delivery is refused locally.
-        try {
-            w.client.signIn.handleRedirect("$scheme?code=$code&state=$state&iss=$issEnc")
-            fail("replayed")
-        } catch (e: SignInError) {
-            assertEquals(ErrorCode.signInFailed, e.code)
-        }
-        assertEquals(1, w.calls("/djdl/identity/token").size)
-    }
-
-    @Test
-    fun handleRedirectWithNoSignInWaitingIsRefused() = runBlocking {
-        val w = world()
-        try {
-            w.client.signIn.handleRedirect("$scheme?code=c&state=$state&iss=$issEnc")
-            fail("accepted")
-        } catch (e: SignInError) {
-            assertEquals(ErrorCode.signInFailed, e.code)
-        }
-    }
-
-    private suspend fun assertUnavailable(w: World, options: SignInOptions, code: String = ErrorCode.redirectUnavailable) {
-        try {
-            w.client.signIn.start(options)
-            fail("started")
-        } catch (e: PolarisException) {
-            assertEquals(code, e.code)
-        }
-        assertTrue("nothing was pushed", w.calls("/djdl/identity/request").isEmpty())
-    }
-
-    @Test
-    fun noClassAppliesIsRedirectUnavailableAndNothingIsSent() = runBlocking {
-        // A host that cannot listen and has no scheme.
-        assertUnavailable(world(), SignInOptions(channel = SignInChannel.Redirect, native = NativeRedirectOptions(loopback = false)))
-        // A product that does not serve the pushed request.
-        assertUnavailable(world(identity = fragment(request = false)), loopbackOptions())
-        // A product that lists no native classes.
-        assertUnavailable(world(identity = fragment(nativeRedirect = """{"loopback":false,"schemes":[],"claimedHttps":[]}""")), loopbackOptions())
-        // A loopback with no customer-host return page cannot be used.
-        assertUnavailable(world(identity = fragment(signinReturn = null)), loopbackOptions())
-        // A scheme the product did not register.
-        assertUnavailable(
-            world(),
-            SignInOptions(channel = SignInChannel.Redirect, native = NativeRedirectOptions(loopback = false, registeredSchemes = listOf("com.other.app:/pkey/callback"))),
-        )
-    }
-
-    @Test
-    fun aReturnPageOutsideTheProductIsRefusedBeforeAnyPush() = runBlocking {
-        assertUnavailable(world(identity = fragment(signinReturn = "https://evil.example/signin/return")), loopbackOptions(), ErrorCode.badResponse)
-        assertUnavailable(world(identity = fragment(signinReturn = "http://key.example/signin/return")), loopbackOptions(), ErrorCode.badResponse)
-    }
-
-    @Test
-    fun theWorkersRefusalIsATypedErrorAndTheListenerIsReleased() = runBlocking {
-        val seenPort = AtomicReference<Int?>(null)
-        val w = world(
-            push = { r ->
-                val form = String(r.body!!)
-                seenPort.set(Regex("127\\.0\\.0\\.1%3A(\\d+)").find(form)!!.groupValues[1].toInt())
-                respond(400, """{"error":"redirect_uri_mismatch"}""")
-            },
-        )
-        try {
-            w.client.signIn.start(loopbackOptions())
-            fail("started")
-        } catch (e: SignInError) {
-            assertEquals("redirect_uri_mismatch", e.code)
-        }
-        assertTrue("a refused push closes the port it bound", refused(seenPort.get()!!))
-        assertNull(w.client.nativeActive.get())
-        assertNotNull(w.store)
-    }
-
-    @Test
-    fun aTokenRefusalIsATypedErrorAndKeepsTheToken() = runBlocking {
-        val w = world(push = recordingPush(), tokenReply = { respond(400, """{"error":"invalid_grant"}""") })
-        val s = w.client.signIn.start(loopbackOptions())
-        get(portOf(s), "/pkey/callback?$callbackQuery")
-        try {
-            s.wait()
-            fail("redeemed")
-        } catch (e: SignInError) {
-            assertEquals("invalid_grant", e.code)
-        }
-        assertNull(w.store.getToken())
-    }
-
-    @Test
-    fun theHeadlessRule() {
-        val none = emptyMap<String, String>()
-        assertFalse(NativeHost.isHeadless(none, "Mac OS X"))
-        assertFalse(NativeHost.isHeadless(mapOf("DISPLAY" to ":0"), "Linux"))
-        assertFalse(NativeHost.isHeadless(mapOf("WAYLAND_DISPLAY" to "wayland-0"), "Linux"))
-        assertTrue(NativeHost.isHeadless(none, "Linux"))
-        assertTrue(NativeHost.isHeadless(mapOf("SSH_CONNECTION" to "1 2 3 4"), "Mac OS X"))
-        assertTrue(NativeHost.isHeadless(mapOf("SSH_TTY" to "/dev/pts/0"), "Mac OS X"))
-        assertTrue(NativeHost.isHeadless(mapOf("CI" to "true"), "Windows 11"))
     }
 }

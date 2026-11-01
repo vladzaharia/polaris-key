@@ -95,11 +95,6 @@ import im.plrs.key.identity.ExchangeKind
 import im.plrs.key.identity.ExchangeNonce
 import im.plrs.key.identity.ExchangeOutcome
 import im.plrs.key.identity.LicenseChoice
-import im.plrs.key.identity.NativeListenerReply
-import im.plrs.key.identity.NativeLoopbackListener
-import im.plrs.key.identity.NativeRedirect
-import im.plrs.key.identity.NativeRedirectClass
-import im.plrs.key.identity.NativeRedirectOptions
 import im.plrs.key.identity.RedirectEntropy
 import im.plrs.key.identity.RestoreEnrolResult
 import im.plrs.key.identity.SignInChannel
@@ -111,9 +106,7 @@ import im.plrs.key.identity.SignInSession
 import im.plrs.key.identity.SignOutResult
 import im.plrs.key.identity.SubjectResult
 import im.plrs.key.identity.redirectAcquisitionSync
-import im.plrs.key.identity.nativeListenerFactory
 import im.plrs.key.identity.redirectEntropy
-import im.plrs.key.identity.replayNativeCallback
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.LicenseClientOptions
 import im.plrs.key.packs.ByteStream
@@ -248,26 +241,6 @@ class FixtureKeyPort : DeviceKeyPort {
     override suspend fun wipe() {}
 }
 
-/** The loopback listener of a recorded conversation: the recorded port, no socket. The redirect is handed to the session's own callback handler, as the listener would. */
-class ReplayListener(override val port: Int) : NativeLoopbackListener {
-    private var accept: ((String) -> NativeListenerReply)? = null
-
-    @Volatile
-    private var shut = false
-
-    override fun start(accept: (String) -> NativeListenerReply) {
-        this.accept = accept
-    }
-
-    override fun close() {
-        shut = true
-    }
-
-    override val closed: Boolean get() = shut
-
-    fun deliver(url: String): NativeListenerReply? = accept?.invoke(url)
-}
-
 /** An in-memory store with a state directory, for a transcript that seeds the update journal. */
 class ReplayStore(inner: InMemoryStore, override val stateDirectory: java.io.File?) : Store by inner
 
@@ -302,7 +275,7 @@ object KotlinReplay {
                 }
                 if (authorize != null) {
                     val native = "identity.redirect.native" in replay.transcript.features
-                    val started = if (native) nativeStart(client, step, session) else redirectSession(client, args, replay.transcript)
+                    val started = if (native) NativeReplay.start(client, step, session) else redirectSession(client, args, replay.transcript)
                     val want = replay.transcript.baseUrl + authorize["request"]!!.obj["path"].stringValue
                     if (started.authorizeUrl != want) {
                         replay.recordFailure("authorize URL differs from the recording:\n    want $want\n    got  ${started.authorizeUrl}")
@@ -317,7 +290,7 @@ object KotlinReplay {
                 val native = server?.transcript?.features?.contains("identity.redirect.native") == true
                 try {
                     val outcome = if (native) {
-                        nativeComplete(client, args, session, server!!.transcript)
+                        NativeReplay.complete(client, args, session, server!!.transcript)
                     } else {
                         redirectSession(client, args, server?.transcript).complete(args["callbackUrl"].stringValue ?: "")
                     }
@@ -978,70 +951,6 @@ object KotlinReplay {
         )
     }
 
-    /**
-     * A native sign-in as the host would start it: the SDK pushes the request itself, the label and options being
-     * the recorded push's, and the recording pins every byte it sends. The loopback listener is the replay's own
-     * (the recorded port, no socket); the browser is the recording's.
-     */
-    @OptIn(ConformanceReplayOnly::class)
-    private suspend fun nativeStart(client: PolarisKeyClient, step: JsonObject, session: ReplaySession): SignInSession {
-        val body = pushedForm(step)
-        val redirectUri = body["redirect_uri"] ?: step["args"]!!.obj["redirectUri"].stringValue ?: ""
-        client.identity.redirectEntropy = RedirectEntropy(body["state"] ?: RECORDED_STATE, step["args"]!!.obj["codeVerifier"].stringValue ?: RECORDED_VERIFIER)
-        var native = NativeRedirectOptions(returnUri = body["return_uri"], openBrowser = false, loopback = false)
-        when (NativeRedirect.classify(redirectUri)) {
-            NativeRedirectClass.Loopback -> {
-                val port = Regex(":(\\d+)/").find(redirectUri)!!.groupValues[1].toInt()
-                native = native.copy(loopback = true)
-                client.identity.nativeListenerFactory = { ReplayListener(port).also { session.nativeListener = it } }
-            }
-            NativeRedirectClass.Scheme -> native = native.copy(registeredSchemes = listOf(redirectUri))
-            NativeRedirectClass.Claimed -> native = native.copy(registeredClaimed = listOf(redirectUri))
-            null -> throw AssertionError("the recorded push names no native redirect URI: $redirectUri")
-        }
-        session.asksAppChoice = body["license_choice"] == "app"
-        return client.identity.signIn.start(
-            SignInOptions(
-                channel = SignInChannel.Redirect, deviceName = body["device_name"],
-                scope = body["scope"]?.split(' '), loginHint = body["login_hint"], nameHint = body["name_hint"],
-                purpose = SignInPurpose.entries.firstOrNull { it.wire == body["purpose"] },
-                licenseChoice = if (session.asksAppChoice) "app" else null, native = native,
-            ),
-        ).also { session.nativeSession = it }
-    }
-
-    /**
-     * Hand the recorded redirect to the sign-in waiting for it: a loopback one through its listener (the 303 to the
-     * return page is asserted), a scheme one through `signIn.handleRedirect`. A sign-in already settled is single
-     * use, so a replayed callback is played against a fresh one built on the same pending request (the recording
-     * pins the Worker's refusal of the code, which the SDK would not even ask).
-     */
-    @OptIn(ConformanceReplayOnly::class)
-    private suspend fun nativeComplete(client: PolarisKeyClient, args: JsonObject, session: ReplaySession, transcript: Transcript): SignInOutcome {
-        val url = args["callbackUrl"].stringValue ?: ""
-        val live = session.nativeSession
-        if (live != null && live.outcome is SignInOutcome.Pending) {
-            if (live.redirectClass == NativeRedirectClass.Loopback) {
-                val listener = session.nativeListener ?: throw AssertionError("the loopback listener was not started")
-                val reply = listener.deliver(url) ?: throw AssertionError("the loopback listener was not started")
-                val handle = url.substringAfter('?', "").split('&').firstOrNull { it.startsWith("request=") }?.removePrefix("request=") ?: ""
-                if (reply.location != null && reply.location != "${transcript.baseUrl}/signin/return?request=$handle") {
-                    throw AssertionError("the listener answered 303 to ${reply.location}")
-                }
-                if (!reply.final) throw AssertionError("the listener kept waiting for the redirect")
-                return live.wait()
-            }
-            return client.identity.signIn.handleRedirect(url)
-        }
-        val redirectUri = url.substringBefore('?')
-        val issuer = url.substringAfter('?', "").split('&').firstOrNull { it.startsWith("iss=") }?.removePrefix("iss=")
-            ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: "${transcript.baseUrl}/${transcript.product}/identity"
-        return client.identity.replayNativeCallback(
-            redirectUri, args["state"].stringValue ?: RECORDED_STATE, args["codeVerifier"].stringValue ?: RECORDED_VERIFIER,
-            issuer, url, session.asksAppChoice,
-        )
-    }
-
     private fun Transcript.asksAppChoice(): Boolean = steps.any { st ->
         st["exchanges"]!!.obj["items"]!!.arrayValue!!.any { it.obj["request"]!!.obj["path"].stringValue?.contains("license_choice=app") == true }
     }
@@ -1502,7 +1411,8 @@ class TranscriptTest : ConformanceSuite() {
             // I-10b.18: the redirect core and the request hints.
             "redirect-web-happy", "redirect-web-errors", "locker-redirect-web", "identity-request-hints",
             // I-15b.5: the native redirect (a pushed request; loopback, scheme).
-            "redirect-native-loopback", "redirect-native-scheme", "redirect-native-choose-app", "redirect-native-errors", "locker-redirect-native",
+            "redirect-native-loopback", "redirect-native-scheme", "redirect-native-choose-app",
+            "redirect-native-errors", "locker-redirect-native",
             // I-10b.19: the licence choice.
             "choice-key-app", "choice-replace-app", "choice-grant-errors",
             // UK-42.11: keep sends the device's bearer; a redirect sign-in, then attach.

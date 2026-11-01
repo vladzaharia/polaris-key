@@ -25,6 +25,7 @@ import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import java.security.MessageDigest
 
 /** The class of a native redirect URI (§12.12). */
@@ -34,7 +35,10 @@ public enum class NativeRedirectClass(public val wire: String) {
     Claimed("claimed"),
 }
 
-/** `identity.nativeRedirect` of the discovery document (§12.6): the classes the product accepts through the pushed `request`. `schemes` and `claimedHttps` hold full registered redirect URIs. */
+/**
+ * `identity.nativeRedirect` of the discovery document (§12.6): the classes the product accepts through the pushed
+ * `request`. `schemes` and `claimedHttps` hold full registered redirect URIs.
+ */
 public data class NativeRedirectDiscovery(
     val loopback: Boolean,
     val schemes: List<String> = emptyList(),
@@ -75,21 +79,58 @@ public sealed interface RedirectChoice {
     public data class Unavailable(val reason: String) : RedirectChoice
 }
 
+/** The endpoints and identity a pushed request names; all come from discovery (and the product slug), none are built. */
+public class NativeEndpoints(
+    public val requestEndpoint: String,
+    public val authorizeEndpoint: String,
+    public val tokenEndpoint: String,
+    public val issuer: String,
+    public val clientId: String,
+)
+
 /** One pending native sign-in. A secret holder: [codeVerifier] is never logged or put in a URL. */
 public class NativePending internal constructor(
     public val redirectClass: NativeRedirectClass,
     public val redirectUri: String,
     public val state: String,
     internal val codeVerifier: String,
-    public val clientId: String,
-    public val issuer: String,
-    public val authorizeEndpoint: String,
-    public val tokenEndpoint: String,
+    internal val endpoints: NativeEndpoints,
     /** The push carried `license_choice=app`: the token endpoint may answer `choose`. */
     internal val licenseChoice: Boolean = false,
 ) {
+    public val clientId: String get() = endpoints.clientId
+    public val issuer: String get() = endpoints.issuer
+    public val authorizeEndpoint: String get() = endpoints.authorizeEndpoint
+    public val tokenEndpoint: String get() = endpoints.tokenEndpoint
+
     override fun toString(): String = "NativePending(redirectClass=${redirectClass.wire}, redirectUri=$redirectUri, codeVerifier=[redacted])"
 }
+
+/** Test hooks for the PKCE and `state` entropy of a push: the source, or the exact values of a recorded conversation. */
+public class PushEntropy @JvmOverloads constructor(
+    public val random: RandomBytes? = null,
+    public val state: String? = null,
+    public val codeVerifier: String? = null,
+)
+
+/**
+ * What a push carries beyond its endpoints and redirect URI. [scope] is left out when null (the Worker defaults it);
+ * [licenseChoiceApp] sends `license_choice=app` (the caller decides: asked for AND discovery lists the choice endpoints).
+ */
+public class PushOptions @JvmOverloads constructor(
+    public val deviceName: String? = null,
+    public val returnUri: String? = null,
+    public val scope: List<String>? = null,
+    public val hints: PushHints = PushHints(),
+    public val licenseChoiceApp: Boolean = false,
+)
+
+/** The card's prefill (§12.4): verifies nothing. */
+public class PushHints @JvmOverloads constructor(
+    public val loginHint: String? = null,
+    public val nameHint: String? = null,
+    public val purpose: String? = null,
+)
 
 /** The form of `POST /<p>/identity/request`; the caller adds the SDK headers. */
 public class PushedRequest internal constructor(
@@ -131,21 +172,218 @@ public class NativeTokenRequest internal constructor(
     override fun toString(): String = "NativeTokenRequest(url=$url, body=[redacted])"
 }
 
+private const val MAX_URI_LENGTH = 2048
+private const val MAX_PORT = 65535
+private const val HTTP_PORT = 80
+private const val FIRST_PRINTABLE = 0x20
+private const val DEL = 0x7F
+private const val HTTP_CREATED = 201
+private const val MAX_RETRY_AFTER_SECONDS = 3600
+private const val REQUEST_NOT_SERVED = "request-not-served"
+private const val NO_CLASS = "no-class"
+
+private val RESERVED_SCHEMES = setOf("http", "https", "javascript", "data", "file")
+private val SCHEME_PATTERN = Regex("[a-z][a-z0-9+.-]*")
+private val LOOPBACK = Regex("http://(127\\.0\\.0\\.1|\\[::1]):([0-9]{1,5})(/.*)")
+private val CLAIMED = Regex("https://([^/?#@]+)(/[^?#]*)")
+private val SCHEME_URI = Regex("([a-z][a-z0-9+.-]*):(/[^?#]*)")
+private val REQUEST_URI = Regex("urn:ietf:params:oauth:request_uri:[A-Za-z0-9_-]{22}")
+private val REQUEST_HANDLE = Regex("rq_[A-Za-z0-9_-]{22}")
+private val BASE_OF = Regex("([A-Za-z][A-Za-z0-9+.-]*):(//[^/?#]*)?([^?#]*).*", RegexOption.DOT_MATCHES_ALL)
+private val ABSOLUTE_HTTP = Regex("https?://\\S+")
+private val SUCCESS_PARAMS = setOf("code", "state", "iss", "request")
+private val ERROR_PARAMS = setOf("error", "error_description", "state", "iss", "request")
+
+/** The shape of each class of redirect URI (§12.12). */
+private object ClassRules {
+    fun loopbackClass(uri: String): NativeRedirectClass? {
+        val (_, digits, path) = (LOOPBACK.matchEntire(uri) ?: return null).destructured
+        val leadingZero = digits.length > 1 && digits.startsWith("0")
+        val ok = NativeUri.isUsablePort(digits.toInt()) && path == NativeRedirect.PATH && !leadingZero
+        return NativeRedirectClass.Loopback.takeIf { ok }
+    }
+
+    fun claimedClass(uri: String): NativeRedirectClass? =
+        NativeRedirectClass.Claimed.takeIf { CLAIMED.matchEntire(uri)?.groupValues?.get(2).let { it != null && it != "/" } }
+
+    fun schemeClass(uri: String): NativeRedirectClass? {
+        val m = SCHEME_URI.matchEntire(uri) ?: return null
+        return NativeRedirectClass.Scheme.takeIf { m.groupValues[1] !in RESERVED_SCHEMES && m.groupValues[2] == NativeRedirect.PATH }
+    }
+
+    fun of(uri: String): NativeRedirectClass? = loopbackClass(uri) ?: claimedClass(uri) ?: schemeClass(uri)
+}
+
+/** The URI rules of §12.12, shared with the session layer. */
+internal object NativeUri {
+    private fun isBlank(c: Char) = c.isWhitespace() || Character.isSpaceChar(c) || c == '\uFEFF'
+
+    private fun isControl(c: Char) = c.code < FIRST_PRINTABLE || c.code == DEL
+
+    /** Whitespace, a control character or a backslash anywhere in [s]. */
+    fun hasForbiddenChar(s: String): Boolean = s.any { isBlank(it) || isControl(it) || it == '\\' }
+
+    fun isUsablePort(port: Int): Boolean = port in 1..MAX_PORT && port != HTTP_PORT
+
+    fun ensure(ok: Boolean, message: String) {
+        if (!ok) throw IdentityRedirect.invalid(message)
+    }
+
+    /** The class of [uri], or null when it is none. */
+    fun classify(uri: String?): NativeRedirectClass? = if (uri.isNullOrEmpty() || uri.length > MAX_URI_LENGTH || hasForbiddenChar(uri)) {
+        null
+    } else {
+        ClassRules.of(uri)
+    }
+
+    fun isSchemeName(scheme: String): Boolean = SCHEME_PATTERN.matches(scheme) && scheme !in RESERVED_SCHEMES
+
+    fun isAbsoluteHttp(url: String): Boolean = ABSOLUTE_HTTP.matches(url)
+
+    fun isRequestUri(uri: String): Boolean = REQUEST_URI.matches(uri)
+}
+
+/** Building a push (§12.12): the validated pieces and the form. */
+private object PushRules {
+    fun validate(endpoints: NativeEndpoints, redirectUri: String, options: PushOptions): NativeRedirectClass {
+        val redirectClass = NativeUri.classify(redirectUri) ?: throw IdentityRedirect.invalid("redirectUri is not a native redirect URI.")
+        NativeUri.ensure(
+            options.returnUri == null || NativeUri.classify(options.returnUri) == NativeRedirectClass.Scheme,
+            "returnUri must be a registered scheme's redirect URI.",
+        )
+        for ((name, value) in listOf(
+            "request" to endpoints.requestEndpoint,
+            "authorize" to endpoints.authorizeEndpoint,
+            "token" to endpoints.tokenEndpoint,
+        )) {
+            NativeUri.ensure(NativeUri.isAbsoluteHttp(value), "the $name endpoint is not an absolute URL.")
+        }
+        NativeUri.ensure(endpoints.issuer.isNotEmpty(), "discovery names no issuer.")
+        NativeUri.ensure(endpoints.clientId.isNotEmpty(), "clientId is empty.")
+        return redirectClass
+    }
+
+    fun stateOf(entropy: PushEntropy): String {
+        val state = entropy.state ?: IdentityRedirect.generateState(entropy.random)
+        NativeUri.ensure(
+            state.length in IdentityRedirect.STATE_MIN..IdentityRedirect.STATE_MAX && IdentityRedirect.isPrintable(state),
+            "state must be 16 to 512 printable characters.",
+        )
+        return state
+    }
+
+    private fun isUnreserved(c: Char) = c in 'A'..'Z' || c in 'a'..'z' || c in '0'..'9' || c == '-' || c == '.' || c == '_' || c == '~'
+
+    fun verifierOf(entropy: PushEntropy): String {
+        val verifier = entropy.codeVerifier ?: IdentityRedirect.generateCodeVerifier(entropy.random)
+        NativeUri.ensure(
+            verifier.length in IdentityRedirect.VERIFIER_MIN..IdentityRedirect.VERIFIER_MAX && verifier.all(::isUnreserved),
+            "the PKCE verifier must be 43 to 128 unreserved characters.",
+        )
+        return verifier
+    }
+
+    private fun scopeText(scope: List<String>): String {
+        val parts = scope.joinToString(" ").split(' ').filter { it.isNotEmpty() }
+        NativeUri.ensure(parts.isNotEmpty() && parts.all(IdentityRedirect::isPrintable), "scope must be a space-delimited list of printable scopes.")
+        return parts.joinToString(" ")
+    }
+
+    private fun optional(name: String, value: String?): Pair<String, String>? = value?.takeIf { it.isNotEmpty() }?.let { name to it }
+
+    /**
+     * Member order: `response_type client_id redirect_uri state code_challenge code_challenge_method [scope]
+     * [login_hint] [name_hint] [purpose] [license_choice] [device_name] [return_uri]`.
+     */
+    fun form(endpoints: NativeEndpoints, redirectUri: String, state: String, verifier: String, options: PushOptions): String =
+        IdentityRedirect.formBody(
+            listOfNotNull(
+                "response_type" to "code", "client_id" to endpoints.clientId, "redirect_uri" to redirectUri, "state" to state,
+                "code_challenge" to IdentityRedirect.pkceChallenge(verifier), "code_challenge_method" to "S256",
+                options.scope?.let { "scope" to scopeText(it) },
+                optional("login_hint", options.hints.loginHint), optional("name_hint", options.hints.nameHint),
+                optional("purpose", options.hints.purpose),
+                ("license_choice" to "app").takeIf { options.licenseChoiceApp },
+                optional("device_name", options.deviceName), optional("return_uri", options.returnUri),
+            ),
+        )
+}
+
+/** Reading the Worker's answer to a push (§12.12). */
+private object AnswerRules {
+    fun refusal(status: Int, o: JsonObject?): PushedAnswer {
+        val error = o?.get("error").stringValue?.takeIf { it.isNotEmpty() } ?: "server_error"
+        return PushedAnswer.Refused(error, status, wholeSeconds(o?.get("retryAfter"))?.coerceAtMost(MAX_RETRY_AFTER_SECONDS.toLong())?.toInt())
+    }
+}
+
+/** Reading the redirect back (§12.12): the first failure wins, in the order of [NativeRedirect.parseCallback]. */
+private object CallbackRules {
+    /** `scheme:` + authority lower-cased, path as given; null for anything not an absolute URL. */
+    private fun baseOf(url: String): String? {
+        val (scheme, authority, path) = (BASE_OF.matchEntire(url) ?: return null).destructured
+        return "${scheme.lowercase()}:${authority.lowercase()}$path"
+    }
+
+    private fun failed(reason: CallbackFailure, error: String? = null) = NativeCallback.Failed(reason, error)
+
+    /** The URL is absolute with no fragment, and at the redirect URI the request named. */
+    private fun urlFailure(redirectUri: String, url: String?): NativeCallback.Failed? {
+        val got = url?.takeUnless { it.contains('#') }?.let(::baseOf)
+        val want = baseOf(redirectUri)
+        return when {
+            got == null || want == null -> failed(CallbackFailure.Malformed)
+            got != want -> failed(CallbackFailure.RedirectMismatch)
+            else -> null
+        }
+    }
+
+    private fun sameText(a: String?, b: String) = a != null && MessageDigest.isEqual(a.toByteArray(Charsets.UTF_8), b.toByteArray(Charsets.UTF_8))
+
+    private fun identityFailure(q: Map<String, String>, state: String, issuer: String): NativeCallback.Failed? = when {
+        !sameText(q["state"], state) -> failed(CallbackFailure.StateMismatch)
+        !sameText(q["iss"], issuer) -> failed(CallbackFailure.IssuerMismatch)
+        else -> null
+    }
+
+    private fun requestInvalid(request: String?, required: Boolean) = if (request != null) !REQUEST_HANDLE.matches(request) else required
+
+    private fun shapeFailure(q: Map<String, String>, loopback: Boolean): NativeCallback.Failed? {
+        val error = q["error"]
+        return when {
+            error == null && q["code"].isNullOrEmpty() -> failed(CallbackFailure.MissingCode)
+            q.keys.any { it !in (if (error != null) ERROR_PARAMS else SUCCESS_PARAMS) } -> failed(CallbackFailure.UnexpectedParameter)
+            requestInvalid(q["request"], loopback && error == null) -> failed(CallbackFailure.RequestInvalid)
+            else -> null
+        }
+    }
+
+    private fun outcome(q: Map<String, String>): NativeCallback {
+        val error = q["error"]
+        return when {
+            error == null -> NativeCallback.Code(q.getValue("code"), q["request"])
+            error == "access_denied" -> NativeCallback.Cancelled(q["request"])
+            else -> failed(CallbackFailure.AuthorizationError, error)
+        }
+    }
+
+    private fun parseQuery(q: Map<String, String>, pending: NativePending): NativeCallback = identityFailure(q, pending.state, pending.issuer)
+        ?: shapeFailure(q, pending.redirectClass == NativeRedirectClass.Loopback)
+        ?: outcome(q)
+
+    fun parse(pending: NativePending, callbackUrl: String?): NativeCallback {
+        val bad = urlFailure(pending.redirectUri, callbackUrl)
+        val q = if (bad == null) IdentityRedirect.query(callbackUrl.orEmpty()) else null
+        return bad ?: q?.let { parseQuery(it, pending) } ?: failed(CallbackFailure.Malformed)
+    }
+}
+
 public object NativeRedirect {
     /** §12.12: the one path of the loopback and scheme redirect URIs (RFC 8252 §7). */
     public const val PATH: String = "/pkey/callback"
 
     /** §12.12: how long a pushed request lives. */
     public const val PUSHED_REQUEST_TTL_SECONDS: Long = 600
-
-    private val RESERVED_SCHEMES = setOf("http", "https", "javascript", "data", "file")
-    private val SCHEME_PATTERN = Regex("[a-z][a-z0-9+.-]*")
-    private val LOOPBACK = Regex("http://(127\\.0\\.0\\.1|\\[::1]):([0-9]{1,5})(/.*)")
-    private val CLAIMED = Regex("https://([^/?#@]+)(/[^?#]*)")
-    private val SCHEME_URI = Regex("([a-z][a-z0-9+.-]*):(/[^?#]*)")
-    private val REQUEST_URI = Regex("urn:ietf:params:oauth:request_uri:[A-Za-z0-9_-]{22}")
-    private val REQUEST_HANDLE = Regex("rq_[A-Za-z0-9_-]{22}")
-    private val BASE_OF = Regex("([A-Za-z][A-Za-z0-9+.-]*):(//[^/?#]*)?([^?#]*).*", RegexOption.DOT_MATCHES_ALL)
 
     // ── 1. the class ─────────────────────────────────────────────────────────────────────
 
@@ -160,12 +398,14 @@ public object NativeRedirect {
         canListen: Boolean,
         registeredSchemes: List<String> = emptyList(),
         registeredClaimed: List<String> = emptyList(),
-    ): RedirectChoice {
-        if (requestEndpoint.isNullOrEmpty() || discovery == null) return RedirectChoice.Unavailable("request-not-served")
-        if (canListen && discovery.loopback) return RedirectChoice.Loopback
-        registeredSchemes.firstOrNull { it in discovery.schemes }?.let { return RedirectChoice.Scheme(it) }
-        registeredClaimed.firstOrNull { it in discovery.claimedHttps }?.let { return RedirectChoice.Claimed(it) }
-        return RedirectChoice.Unavailable("no-class")
+    ): RedirectChoice = when {
+        requestEndpoint.isNullOrEmpty() || discovery == null -> RedirectChoice.Unavailable(REQUEST_NOT_SERVED)
+
+        canListen && discovery.loopback -> RedirectChoice.Loopback
+
+        else -> registeredSchemes.firstOrNull { it in discovery.schemes }?.let(RedirectChoice::Scheme)
+            ?: registeredClaimed.firstOrNull { it in discovery.claimedHttps }?.let(RedirectChoice::Claimed)
+            ?: RedirectChoice.Unavailable(NO_CLASS)
     }
 
     // ── 2. the redirect URI ──────────────────────────────────────────────────────────────
@@ -174,149 +414,63 @@ public object NativeRedirect {
      * The class of a native redirect URI, or null when it is none (§12.12: `localhost`, another path, a query, a
      * fragment, userinfo, port 80 or no port are all refused).
      */
-    public fun classify(uri: String?): NativeRedirectClass? {
-        if (uri.isNullOrEmpty() || uri.length > 2048) return null
-        if (uri.any { it.isWhitespace() || Character.isSpaceChar(it) || it == '﻿' || it.code < 0x20 || it.code == 0x7F || it == '\\' }) return null
-        LOOPBACK.matchEntire(uri)?.let { m ->
-            val digits = m.groupValues[2]
-            val port = digits.toInt()
-            return if (port in 1..65535 && port != 80 && m.groupValues[3] == PATH && !(digits.length > 1 && digits.startsWith("0"))) {
-                NativeRedirectClass.Loopback
-            } else {
-                null
-            }
-        }
-        CLAIMED.matchEntire(uri)?.let { m -> if (m.groupValues[2] != "/") return NativeRedirectClass.Claimed }
-        SCHEME_URI.matchEntire(uri)?.let { m ->
-            return if (m.groupValues[1] !in RESERVED_SCHEMES && m.groupValues[2] == PATH) NativeRedirectClass.Scheme else null
-        }
-        return null
-    }
+    public fun classify(uri: String?): NativeRedirectClass? = NativeUri.classify(uri)
 
     /** The loopback redirect URI for a listener's OS-assigned port (IPv4). */
     public fun loopbackUri(port: Int): String {
-        if (port < 1 || port > 65535 || port == 80) throw IdentityRedirect.invalid("the loopback port must be an explicit port other than 80.")
-        return "http://127.0.0.1:$port$PATH".also {
-            if (classify(it) != NativeRedirectClass.Loopback) throw IdentityRedirect.invalid("not a native redirect URI.")
-        }
+        NativeUri.ensure(NativeUri.isUsablePort(port), "the loopback port must be an explicit port other than 80.")
+        return "http://127.0.0.1:$port$PATH".also { NativeUri.ensure(classify(it) == NativeRedirectClass.Loopback, "not a native redirect URI.") }
     }
 
     /** The redirect URI of a registered scheme: `<scheme>:/pkey/callback`. */
     public fun schemeUri(scheme: String): String {
-        if (!SCHEME_PATTERN.matches(scheme) || scheme in RESERVED_SCHEMES) throw IdentityRedirect.invalid("the scheme is not a registrable URL scheme.")
-        return "$scheme:$PATH".also {
-            if (classify(it) != NativeRedirectClass.Scheme) throw IdentityRedirect.invalid("not a native redirect URI.")
-        }
+        NativeUri.ensure(NativeUri.isSchemeName(scheme), "the scheme is not a registrable URL scheme.")
+        return "$scheme:$PATH".also { NativeUri.ensure(classify(it) == NativeRedirectClass.Scheme, "not a native redirect URI.") }
     }
 
     // ── 3. the pushed request ────────────────────────────────────────────────────────────
 
-    /**
-     * Build the pushed request (§12.12). Nothing here touches the network. Member order: `response_type client_id
-     * redirect_uri state code_challenge code_challenge_method [scope] [login_hint] [name_hint] [purpose]
-     * [license_choice] [device_name] [return_uri]`. [scope] is left out when null (the Worker defaults it);
-     * `license_choice=app` is sent only when [choiceAvailable]. [state] and [codeVerifier] are test hooks.
-     */
+    /** Build the pushed request (§12.12). Nothing here touches the network. Throws `invalid-argument`. */
     @JvmOverloads
     public fun pushRequest(
-        requestEndpoint: String,
-        authorizeEndpoint: String,
-        tokenEndpoint: String,
-        issuer: String,
-        clientId: String,
+        endpoints: NativeEndpoints,
         redirectUri: String,
-        deviceName: String? = null,
-        returnUri: String? = null,
-        scope: List<String>? = null,
-        loginHint: String? = null,
-        nameHint: String? = null,
-        purpose: String? = null,
-        licenseChoice: String? = null,
-        choiceAvailable: Boolean = false,
-        random: RandomBytes? = null,
-        state: String? = null,
-        codeVerifier: String? = null,
+        options: PushOptions = PushOptions(),
+        entropy: PushEntropy = PushEntropy(),
     ): PushedRequest {
-        val redirectClass = classify(redirectUri) ?: throw IdentityRedirect.invalid("redirectUri is not a native redirect URI.")
-        if (returnUri != null && classify(returnUri) != NativeRedirectClass.Scheme) {
-            throw IdentityRedirect.invalid("returnUri must be a registered scheme's redirect URI.")
-        }
-        for ((name, value) in listOf("request" to requestEndpoint, "authorize" to authorizeEndpoint, "token" to tokenEndpoint)) {
-            if (!Regex("https?://\\S+").matches(value)) throw IdentityRedirect.invalid("the $name endpoint is not an absolute URL.")
-        }
-        if (issuer.isEmpty()) throw IdentityRedirect.invalid("discovery names no issuer.")
-        if (clientId.isEmpty()) throw IdentityRedirect.invalid("clientId is empty.")
-        val theState = state ?: IdentityRedirect.generateState(random)
-        if (theState.length !in IdentityRedirect.STATE_MIN..IdentityRedirect.STATE_MAX || !IdentityRedirect.isPrintable(theState)) {
-            throw IdentityRedirect.invalid("state must be 16 to 512 printable characters.")
-        }
-        val verifier = codeVerifier ?: IdentityRedirect.generateCodeVerifier(random)
-        if (verifier.length !in IdentityRedirect.VERIFIER_MIN..IdentityRedirect.VERIFIER_MAX ||
-            !verifier.all { it in 'A'..'Z' || it in 'a'..'z' || it in '0'..'9' || it == '-' || it == '.' || it == '_' || it == '~' }
-        ) {
-            throw IdentityRedirect.invalid("the PKCE verifier must be 43 to 128 unreserved characters.")
-        }
-        val pairs = arrayListOf(
-            "response_type" to "code", "client_id" to clientId, "redirect_uri" to redirectUri, "state" to theState,
-            "code_challenge" to IdentityRedirect.pkceChallenge(verifier), "code_challenge_method" to "S256",
-        )
-        if (scope != null) {
-            val parts = scope.joinToString(" ").split(' ').filter { it.isNotEmpty() }
-            if (parts.isEmpty() || !parts.all(IdentityRedirect::isPrintable)) throw IdentityRedirect.invalid("scope must be a space-delimited list of printable scopes.")
-            pairs += "scope" to parts.joinToString(" ")
-        }
-        if (!loginHint.isNullOrEmpty()) pairs += "login_hint" to loginHint
-        if (!nameHint.isNullOrEmpty()) pairs += "name_hint" to nameHint
-        if (!purpose.isNullOrEmpty()) pairs += "purpose" to purpose
-        val choiceApp = licenseChoice == "app" && choiceAvailable
-        if (choiceApp) pairs += "license_choice" to "app"
-        if (!deviceName.isNullOrEmpty()) pairs += "device_name" to deviceName
-        if (!returnUri.isNullOrEmpty()) pairs += "return_uri" to returnUri
+        val redirectClass = PushRules.validate(endpoints, redirectUri, options)
+        val state = PushRules.stateOf(entropy)
+        val verifier = PushRules.verifierOf(entropy)
         return PushedRequest(
-            requestEndpoint, IdentityRedirect.TOKEN_CONTENT_TYPE, IdentityRedirect.formBody(pairs),
-            NativePending(redirectClass, redirectUri, theState, verifier, clientId, issuer, authorizeEndpoint, tokenEndpoint, choiceApp),
+            endpoints.requestEndpoint,
+            IdentityRedirect.TOKEN_CONTENT_TYPE,
+            PushRules.form(endpoints, redirectUri, state, verifier, options),
+            NativePending(redirectClass, redirectUri, state, verifier, endpoints, options.licenseChoiceApp),
         )
     }
 
     /** Read the answer of `POST /<p>/identity/request`: `201 {request_uri, expires_in}`. */
     public fun parsePushedAnswer(status: Int, body: JsonElement?): PushedAnswer {
         val o = body.objectValue
-        if (status != 201) {
-            val error = o?.get("error").stringValue?.takeIf { it.isNotEmpty() } ?: "server_error"
-            return PushedAnswer.Refused(error, status, wholeSeconds(o?.get("retryAfter"))?.coerceAtMost(3600)?.toInt())
+        val uri = o?.get("request_uri").stringValue?.takeIf { NativeUri.isRequestUri(it) }
+        val expires = o?.get("expires_in").longValue?.takeIf { it in 1..PUSHED_REQUEST_TTL_SECONDS }
+        return when {
+            status != HTTP_CREATED -> AnswerRules.refusal(status, o)
+            uri == null || expires == null -> PushedAnswer.Malformed
+            else -> PushedAnswer.Pushed(uri, expires)
         }
-        if (o == null) return PushedAnswer.Malformed
-        val uri = o["request_uri"].stringValue
-        val expires = o["expires_in"].longValue
-        if (uri == null || !REQUEST_URI.matches(uri) || expires == null || expires < 1 || expires > PUSHED_REQUEST_TTL_SECONDS) {
-            return PushedAnswer.Malformed
-        }
-        return PushedAnswer.Pushed(uri, expires)
     }
 
     // ── 5. the authorize URL ─────────────────────────────────────────────────────────────
 
     /** `authorize?client_id=<id>&request_uri=<uri>`: the only parameters a pushed request takes. */
     public fun authorizeUrlFor(authorizeEndpoint: String, clientId: String, requestUri: String): String {
-        if (!REQUEST_URI.matches(requestUri)) throw IdentityRedirect.invalid("not a pushed request URI.")
+        NativeUri.ensure(NativeUri.isRequestUri(requestUri), "not a pushed request URI.")
         val joiner = if (authorizeEndpoint.contains('?')) "&" else "?"
         return "$authorizeEndpoint${joiner}client_id=${ManageLink.formEncode(clientId)}&request_uri=${ManageLink.formEncode(requestUri)}"
     }
 
     // ── 6. the redirect back ─────────────────────────────────────────────────────────────
-
-    /** Constant-time string equality (no early exit on the first differing character). */
-    public fun constantTimeEqual(a: String, b: String): Boolean =
-        MessageDigest.isEqual(a.toByteArray(Charsets.UTF_8), b.toByteArray(Charsets.UTF_8))
-
-    /** `scheme:` + authority lower-cased, path as given; null for anything not an absolute URL. */
-    private fun baseOf(url: String): String? {
-        val m = BASE_OF.matchEntire(url) ?: return null
-        return "${m.groupValues[1].lowercase()}:${m.groupValues[2].lowercase()}${m.groupValues[3]}"
-    }
-
-    private val SUCCESS_PARAMS = setOf("code", "state", "iss", "request")
-    private val ERROR_PARAMS = setOf("error", "error_description", "state", "iss", "request")
 
     /**
      * Check the redirect back to the app. The first failure wins, in this order: absolute URL with no fragment; at
@@ -325,38 +479,7 @@ public object NativeRedirect {
      * `code state iss request` (or `error error_description state iss request`); on loopback, `request=` an `rq_`
      * handle. A delivery that carries `request` must hold a valid handle on any class.
      */
-    public fun parseCallback(pending: NativePending, callbackUrl: String?): NativeCallback =
-        parseCallback(pending.state, pending.issuer, pending.redirectUri, pending.redirectClass, callbackUrl)
-
-    public fun parseCallback(
-        state: String,
-        issuer: String,
-        redirectUri: String,
-        redirectClass: NativeRedirectClass?,
-        callbackUrl: String?,
-    ): NativeCallback {
-        fun fail(reason: CallbackFailure, error: String? = null) = NativeCallback.Failed(reason, error)
-        if (callbackUrl == null || callbackUrl.contains('#')) return fail(CallbackFailure.Malformed)
-        val got = baseOf(callbackUrl)
-        val want = baseOf(redirectUri)
-        if (got == null || want == null) return fail(CallbackFailure.Malformed)
-        if (got != want) return fail(CallbackFailure.RedirectMismatch)
-        val q = IdentityRedirect.query(callbackUrl) ?: return fail(CallbackFailure.Malformed)
-        val theirState = q["state"]
-        if (theirState == null || !constantTimeEqual(theirState, state)) return fail(CallbackFailure.StateMismatch)
-        val iss = q["iss"]
-        if (iss == null || !constantTimeEqual(iss, issuer)) return fail(CallbackFailure.IssuerMismatch)
-        val error = q["error"]
-        val code = q["code"]
-        if (error == null && code.isNullOrEmpty()) return fail(CallbackFailure.MissingCode)
-        val allowed = if (error != null) ERROR_PARAMS else SUCCESS_PARAMS
-        if (q.keys.any { it !in allowed }) return fail(CallbackFailure.UnexpectedParameter)
-        val request = q["request"]
-        val loopback = (redirectClass ?: classify(redirectUri)) == NativeRedirectClass.Loopback
-        if (if (request != null) !REQUEST_HANDLE.matches(request) else loopback && error == null) return fail(CallbackFailure.RequestInvalid)
-        if (error != null) return if (error == "access_denied") NativeCallback.Cancelled(request) else fail(CallbackFailure.AuthorizationError, error)
-        return NativeCallback.Code(code!!, request)
-    }
+    public fun parseCallback(pending: NativePending, callbackUrl: String?): NativeCallback = CallbackRules.parse(pending, callbackUrl)
 
     // ── 7. the token request ─────────────────────────────────────────────────────────────
 
@@ -366,9 +489,11 @@ public object NativeRedirect {
      */
     @JvmOverloads
     public fun tokenRequest(pending: NativePending, code: String, deviceId: String, deviceName: String? = null): NativeTokenRequest {
-        if (!IdentityRedirect.isPrintable(deviceId)) throw IdentityRedirect.invalid("deviceId is empty or not printable.")
+        NativeUri.ensure(IdentityRedirect.isPrintable(deviceId), "deviceId is empty or not printable.")
         return NativeTokenRequest(
-            pending.tokenEndpoint, deviceId, IdentityRedirect.TOKEN_CONTENT_TYPE,
+            pending.tokenEndpoint,
+            deviceId,
+            IdentityRedirect.TOKEN_CONTENT_TYPE,
             IdentityRedirect.tokenForm(pending.clientId, pending.codeVerifier, pending.redirectUri, code, deviceName),
         )
     }

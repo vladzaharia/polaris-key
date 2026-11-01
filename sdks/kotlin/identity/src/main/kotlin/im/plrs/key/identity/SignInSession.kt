@@ -50,7 +50,10 @@ public data class SignInOptions @JvmOverloads constructor(
     val purpose: SignInPurpose? = null,
     /** `"app"` makes the app show the licence choice itself (§12.4). Honoured only when discovery names the `choice*` endpoints (on the device-code channel also `deviceChoice`); otherwise the card chooses. */
     val licenseChoice: String? = null,
-    /** Redirect channel with no [redirectUri]: the native redirect (WIRE-CONTRACT-V5 §12.12) — a loopback listener, a registered scheme or a claimed HTTPS link. */
+    /**
+     * Redirect channel with no [redirectUri]: the native redirect (WIRE-CONTRACT-V5 §12.12), over a loopback listener,
+     * a registered scheme or a claimed HTTPS link.
+     */
     val native: NativeRedirectOptions? = null,
 )
 
@@ -127,13 +130,17 @@ public class SignInNamespace internal constructor(private val client: IdentityCl
      * `sign-in-unavailable`, `invalid-argument`, `network-error`, ...). With [SignInOptions.opener] the page
      * is shown before this returns.
      */
-    public suspend fun start(options: SignInOptions = SignInOptions()): SignInSession {
-        if (options.channel == SignInChannel.Redirect && options.redirectUri == null) {
-            val flow = client.startNative(options)
-            val session = SignInSession(client, nativePrompt(flow), options.opener, native = flow)
-            if (options.native?.openBrowser != false) session.reopen()
-            return session
-        }
+    public suspend fun start(options: SignInOptions = SignInOptions()): SignInSession =
+        if (options.channel == SignInChannel.Redirect && options.redirectUri == null) startNativeSession(options) else startOther(options)
+
+    private suspend fun startNativeSession(options: SignInOptions): SignInSession {
+        val flow = client.startNative(options)
+        val session = SignInSession(client, nativePrompt(flow), options.opener, native = flow)
+        if (options.native?.openBrowser != false) session.reopen()
+        return session
+    }
+
+    private suspend fun startOther(options: SignInOptions): SignInSession {
         if (options.channel == SignInChannel.Redirect) {
             val pending = client.startRedirect(options)
             val session = SignInSession(client, redirectPrompt(options.deviceName), options.opener, pending, options.deviceName)
@@ -147,11 +154,16 @@ public class SignInNamespace internal constructor(private val client: IdentityCl
     }
 }
 
-private fun nativePrompt(flow: NativeFlow): SignInPrompt =
-    SignInPrompt(
-        deviceCode = "", userCode = "", verificationUri = "", verificationUriComplete = "", expiresIn = NativeRedirect.PUSHED_REQUEST_TTL_SECONDS,
-        interval = 0, expiresAt = flow.expiresAt, deviceName = flow.deviceName,
-    )
+private fun nativePrompt(flow: NativeFlow) = SignInPrompt(
+    deviceCode = "",
+    userCode = "",
+    verificationUri = "",
+    verificationUriComplete = "",
+    expiresIn = NativeRedirect.PUSHED_REQUEST_TTL_SECONDS,
+    interval = 0,
+    expiresAt = flow.expiresAt,
+    deviceName = flow.deviceName,
+)
 
 private fun redirectPrompt(deviceName: String?): SignInPrompt =
     SignInPrompt(deviceCode = "", userCode = "", verificationUri = "", verificationUriComplete = "", expiresIn = 0, interval = 0, expiresAt = 0, deviceName = deviceName)
@@ -218,8 +230,9 @@ public class SignInSession internal constructor(
         }
 
     /** Show the verification page again, through the opener given to `start` or the client's. False when no opener could open it. */
-    public suspend fun reopen(): Boolean {
-        if (native != null) return native.reopen()
+    public suspend fun reopen(): Boolean = native?.reopen() ?: reopenPrompt()
+
+    private suspend fun reopenPrompt(): Boolean {
         val open = opener ?: client.opener ?: return false
         return try {
             open.open(authorizeUrl ?: prompt.verificationUriComplete)

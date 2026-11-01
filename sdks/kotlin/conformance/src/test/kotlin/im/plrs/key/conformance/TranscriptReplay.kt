@@ -352,7 +352,8 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
                             arrayOf(
                                 "nativeRedirect" to JsonObject(
                                     mapOf(
-                                        "loopback" to JsonPrimitive(true), "schemes" to JsonArray(schemes.map { JsonPrimitive(it) }),
+                                        "loopback" to JsonPrimitive(true),
+                                        "schemes" to JsonArray(schemes.map { JsonPrimitive(it) }),
                                         "claimedHttps" to JsonArray(emptyList()),
                                     ),
                                 ),
