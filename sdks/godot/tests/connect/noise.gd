@@ -3,7 +3,7 @@ extends RefCounted
 # `noise-vectors.json` and the `prologue` and `psk` rows of `peer-matrix.json` (WIRE-CONTRACT-V5
 # sections 15.5 and 15.6) through PKeyPeerNoise and the GDScript PKeyPeerCrypto port, mirroring the
 # Python, Kotlin and Node runners: the X25519 and AES-256-GCM known answers, the low-order points,
-# the three handshake modes byte for byte with rekey, the 15 failure rows and the external anchors.
+# the four handshake modes (a, v, p and c) byte for byte with rekey, the 19 failure rows and the external anchors.
 # Beyond the corpus: the device key store as the static key (G1), the engine's refusals, nonce
 # exhaustion and the redaction of every type that holds a key. Both files are generator-owned
 # mirrors under res://tests/corpus/v2/ and are never edited.
@@ -208,15 +208,11 @@ func _handshake_rows(h: Dictionary) -> Array:
 func _handshakes(t: PKeyTestContext, v: Dictionary) -> void:
 	var modes := []
 	for h in v["handshakes"]:
-		# Mode c is planned for Godot (connect.links, CC-19): skipped by name.
-		if h["mode"] == "c":
-			t.check("%s skipped: connect.links is planned for Godot" % h["id"], true)
-			continue
 		modes.append(h["mode"])
 		var id: String = h["id"]
 		t.check("%s protocol name" % id, PKeyPeerNoise.protocol_name(h["mode"]) == h["protocol"])
 		t.check("%s prologue" % id, PKeyPeerNoise.prologue(h["slug"], h["mode"]).hex_encode() == h["prologue"])
-		if h.get("psk"):
+		if h["mode"] == "a" and h.get("psk"):
 			var k_disc := PKeySyncHkdf.sha256("pkey-peer/1 noise vector k_disc".to_utf8_buffer())
 			t.check("%s psk from k_disc" % id, PKeyPeerNoise.psk(k_disc, h["slug"]).hex_encode() == h["psk"])
 		var hs := _handshake_rows(h)
@@ -256,7 +252,7 @@ func _handshakes(t: PKeyTestContext, v: Dictionary) -> void:
 		t.check("%s transport records and rekey byte for byte" % id, good and records > 0, "%d records" % records)
 		_tamper(t, h)
 	modes.sort()
-	t.check("the three modes cover a, v and p", modes == ["a", "p", "v"])
+	t.check("the four modes cover a, c, v and p", modes == ["a", "c", "p", "v"])
 
 
 func _tamper(t: PKeyTestContext, h: Dictionary) -> void:
@@ -278,15 +274,8 @@ func _tamper(t: PKeyTestContext, h: Dictionary) -> void:
 
 
 func _failures(t: PKeyTestContext, v: Dictionary) -> void:
-	var claimed := 0
+	t.check("there are at least the 19 failure rows this runner was written for", (v["failures"] as Array).size() >= 19)
 	for f in v["failures"]:
-		if f["mode"] != "c":
-			claimed += 1
-	t.check("there are at least the 15 failure rows this runner was written for", claimed >= 15)
-	for f in v["failures"]:
-		if f["mode"] == "c":
-			t.check("failure %s skipped: connect.links is planned for Godot" % f["id"], true)
-			continue
 		var rp: Variant = f.get("responderPsk") if f.get("responderPsk") else f.get("psk")
 		var payloads: Array = []
 		for p in f["payloads"]:
@@ -347,9 +336,6 @@ func _matrix(t: PKeyTestContext, m: Dictionary) -> void:
 	t.check("peerMatrixVersion is 1", m["peerMatrixVersion"] == 1)
 	t.check("prologue has at least the 6 rows this runner was written for", (m["prologue"] as Array).size() >= 6)
 	for r in m["prologue"]:
-		if r["mode"] == "c":
-			t.check("prologue %s c skipped: connect.links is planned for Godot" % r["slug"], true)
-			continue
 		t.check("prologue %s %s" % [r["slug"], r["mode"]], PKeyPeerNoise.prologue(r["slug"], r["mode"]).hex_encode() == r["prologue"])
 	t.check("psk has 4 rows", (m["psk"] as Array).size() == 4)
 	for r in m["psk"]:

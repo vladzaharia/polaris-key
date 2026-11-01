@@ -493,9 +493,10 @@ func _dials_and_clocks(t: PKeyTestContext) -> void:
 	r.close()
 
 	# At most 4 dials in flight: a dial that never returns holds its slot.
+	var release := [false]
 	var pending := func(c: Dictionary) -> PKeyPeerPipe:
 		_dials.append(c["instance"])
-		while true:
+		while not release[0]:
 			await _tree.process_frame
 		return null
 	var r2 := await _begin(t, lane, {"dial": pending})
@@ -504,6 +505,10 @@ func _dials_and_clocks(t: PKeyTestContext) -> void:
 	await _tree.process_frame
 	t.check("at most 4 approvers are dialled at once", _dials.size() == 4, str(_dials.size()))
 	r2.close()
+	# Let the held dials return, so none resumes after this test is gone.
+	release[0] = true
+	await _tree.process_frame
+	await _tree.process_frame
 
 	# Three tries per advert, a pause between them.
 	var r3 := await _begin(t, lane, {"dial": stuck})

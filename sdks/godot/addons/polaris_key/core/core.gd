@@ -13,6 +13,8 @@ extends RefCounted
 
 ## A store operation failed: {op, path, error, message}.
 signal store_error(err: Dictionary)
+## A discovery fetch succeeded and `discovery_manifest` holds its answer (Cloud Connect re-reads its gates).
+signal discovery_changed
 
 const DEFAULT_BASE := "https://key.plrs.im"
 ## Stable state uses the bare product on the production origin. Other origins include their host
@@ -300,6 +302,7 @@ func discover() -> PKeyResult:
 	# core.presentation: parsed again from every successful discovery; a failed one keeps it.
 	if presentation_source != null:
 		presentation_source.accept(discovery_manifest)
+	discovery_changed.emit()
 	return PKeyResult.success(d)
 
 

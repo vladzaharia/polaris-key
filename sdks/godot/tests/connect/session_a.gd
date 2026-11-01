@@ -594,13 +594,14 @@ func _busy_step(t: PKeyTestContext) -> void:
 		ran.append(1)
 		await tree.process_frame
 		return work.call()
-	# The offload hook sees three steps on the initiator and two on the responder.
+	# The offload hook sees three steps on the initiator and three on the responder (CC-19b.G2: the key trial
+	# of message 1 is one offloaded task, then message 2 and the read of message 3).
 	var a := PKeyTestPeers.account_side("initiator", _a(), [_disc], "", 1, {"offload": slow})
 	var b := PKeyTestPeers.account_side("responder", _b(), [_disc], "", 1, {"offload": slow})
 	await a.session.start()
 	await PKeyTestPeers.pump(a, b)
 	t.check("busy: the handshake is the same through an offload that takes frames", a.of(&"established").size() == 1 and b.of(&"established").size() == 1)
-	t.check("busy: the initiator offloads three steps and the responder two", ran.size() == 5, str(ran.size()))
+	t.check("busy: the initiator offloads three steps and the responder three (the trial, message 2, message 3)", ran.size() == 6, str(ran.size()))
 
 	# close() during a step waits for its end; tick() does nothing; a message meanwhile queues.
 	a = PKeyTestPeers.account_side("initiator", _a(), [_disc], "", 1, {"offload": slow})

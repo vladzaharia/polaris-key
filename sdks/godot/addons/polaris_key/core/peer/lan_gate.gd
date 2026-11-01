@@ -219,6 +219,25 @@ func race(hosts: Array, port: int, stopped := Callable()) -> Dictionary:
 	return {}
 
 
+## A native pipe to an advert the OS resolves (the Apple lane): `mdns.dial(instance)`, then the wait for the
+## connection. The pipe, or null (no dial, a pipe that finished, or `stopped` / the dial window first). A
+## coroutine.
+func open_native(mdns: Object, instance: String, stopped := Callable()) -> PKeyPeerPipe:
+	if mdns == null or not mdns.has_method("dial"):
+		return null
+	var pipe: PKeyPeerPipe = mdns.call("dial", instance)
+	if pipe == null:
+		return null
+	var deadline := _mono() + float(_o.get("dial_seconds", DIAL_SECONDS))
+	var cancelled := func() -> bool: return stopped.is_valid() and bool(stopped.call())
+	while not cancelled.call() and not pipe.is_finished() and not pipe.call("is_connected_native") and _mono() < deadline:
+		await _tree.process_frame
+	if not cancelled.call() and not pipe.is_finished() and pipe.call("is_connected_native"):
+		return pipe
+	pipe.abort()
+	return null
+
+
 func _attempt(host: String, port: int) -> Attempt:
 	var connector: Variant = _o.get("connector")
 	if connector is Callable and (connector as Callable).is_valid():

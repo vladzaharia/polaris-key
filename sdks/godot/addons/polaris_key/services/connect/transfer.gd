@@ -51,6 +51,7 @@ var _quota := -1
 var _open_peer: Callable
 var _open_link: Callable
 var _links: Callable
+var _link_info: Callable
 var _offload: Callable
 var _now: Callable
 var _timer: Callable
@@ -82,6 +83,7 @@ func _init(opts := {}) -> void:
 	_open_peer = opts.get("open_peer", Callable())
 	_open_link = opts.get("open_link", Callable())
 	_links = opts.get("links", Callable())
+	_link_info = opts.get("link_record", Callable())
 	_offload = opts.get("offload", Callable())
 	_now = opts.get("now", Callable())
 	_timer = opts.get("timer", Callable())
@@ -279,7 +281,7 @@ func _scene_timer(seconds: float, fn: Callable) -> Callable:
 ## Called as a session is made, before any record can follow the HELLO (the `xfer` hook of the LAN and relay
 ## services): when both sides listed `xfer/1`, take the session's transfer port.
 func attach(session: PKeyConnectSession) -> void:
-	if not session.caps.has(PKeyPeerXfer.CAP) or session.peer_static.size() != 32:
+	if not session.caps.has(PKeyPeerXfer.CAP) or session.peer_static.size() != 32 or _wires.has(session.get_instance_id()):
 		return
 	var wire := Wire.new()
 	wire.session = session
@@ -315,10 +317,10 @@ func attach(session: PKeyConnectSession) -> void:
 		eo["timer"] = _timer
 	wire.endpoint = PKeyPeerXferEndpoint.new(eo)
 	var categories: Array = []
-	if session.contact is Dictionary:
-		categories = (session.contact as Dictionary).get("categories", [])
+	if not session.contact.is_empty():
+		categories = _link_record(String(session.contact.get("id", ""))).get("categories", [])
 	var machine := PKeyPeerXfer.Machine.new({
-		"mode": "c" if session.contact != null else "a",
+		"mode": "c" if not session.contact.is_empty() else "a",
 		"caps": session.caps,
 		"max_message": PKeyPeerPayload.DEFAULT_MAX_MESSAGE,
 		"peer_key": wire.peer_key,
@@ -355,6 +357,14 @@ func _on_finished(wire: Wire) -> void:
 	wire.dests.clear()
 	wire.meta.clear()
 	wire.endpoint = null
+
+
+## The held link's record {id, label, categories, ...}; empty when it is gone or there is no lookup.
+func _link_record(id: String) -> Dictionary:
+	if not _link_info.is_valid():
+		return {}
+	var r: Variant = _link_info.call(id)
+	return r if r is Dictionary else {}
 
 
 func _session_of(peer: Variant) -> PKeyResult:
@@ -416,8 +426,9 @@ func _on_ask(wire: Wire, ask: Dictionary) -> void:
 	offer.type = String(ask.get("type", ""))
 	offer.category = String(ask.get("cat", ""))
 	offer.from = {"kind": "device", "id": s.peer_device_id, "label": String(s.hello.get("label", ""))}
-	if s.contact is Dictionary:
-		offer.from = {"kind": "link", "id": String((s.contact as Dictionary).get("id", "")), "label": String((s.contact as Dictionary).get("label", ""))}
+	if not s.contact.is_empty():
+		var rec := _link_record(String(s.contact.get("id", "")))
+		offer.from = {"kind": "link", "id": String(s.contact.get("id", "")), "label": String(rec.get("label", "") if rec.get("label") != null else "")}
 	wire.pending[id] = offer
 	if not _handler.is_valid():
 		offer.decline()
