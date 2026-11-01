@@ -377,7 +377,9 @@ func resolve(conflict: Dictionary, keep: String, bytes: PackedByteArray, opts: D
 	if keep != "local" and keep != "both":
 		return _tracked(Handle.settled(id, {"state": "failed", "error": _err("invalid-save", "keep")}))
 	var sv: Variant = conflict.get("server_version")
-	var mode: Variant = {"copy": true} if keep == "both" else {"base_version": sv if sv != null else "*"}
+	# A copy the server no longer holds is replaced on "record must not exist".
+	var must_not_exist: bool = conflict.get("remote") == null or sv == null or int(sv) == 0
+	var mode: Variant = {"copy": true} if keep == "both" else {"base_version": "*" if must_not_exist else sv}
 	return _run(id, bytes, conflict["local"]["metadata"], opts, mode)
 
 
@@ -599,13 +601,32 @@ func _free_id(id: String) -> Variant:
 
 
 func _conflict(id: String, metadata: Dictionary, size: int, server_version: Variant, known: Variant, has_known: bool) -> Dictionary:
-	var rec: Variant = known if has_known else _d["records"].get_record(id)
 	var slots: int = _d["records"].list().size()
-	var rv: Variant = rec["version"] if rec != null else server_version
+	# The server's answer wins. `known` is the copy a rejected set carried (null: deleted). A file begin
+	# answers only a version, and the cached row stands in for it only while it is that very version; a
+	# stale row is never presented as the server's copy.
+	var remote: Variant = null
+	var rv: Variant = null
+	if has_known:
+		remote = _summary(known) if known != null else null
+		rv = known["version"] if known != null else server_version
+	elif server_version == null:
+		var cached: Variant = _d["records"].get_record(id)
+		remote = _summary(cached) if cached != null else null
+		rv = cached["version"] if cached != null else null
+	elif int(server_version) == 0:
+		rv = 0
+	else:
+		var row: Variant = _d["records"].get_record(id)
+		if row != null and int(row["version"]) == int(server_version):
+			remote = _summary(row)
+		else:
+			remote = {"id": id, "version": int(server_version), "metadata": {}, "file": null, "newer_format": false}
+		rv = int(server_version)
 	return {"state": "conflict", "conflict": {
 		"id": id,
 		"local": {"metadata": metadata, "size": size},
-		"remote": _summary(rec) if rec != null else null,
+		"remote": remote,
 		"server_version": rv,
 		"both_available": slots < PKeyConstants.SYNC_SAVE_SLOTS,
 	}}

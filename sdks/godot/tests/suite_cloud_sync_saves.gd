@@ -35,6 +35,8 @@ class FakeFiles:
 	var chunks := {}
 	var seq := 0
 	var calls: Array[String] = []
+	## The baseVersion of each begin, in order.
+	var bases: Array = []
 	var aborted: Array[String] = []
 	var puts: Array[PackedByteArray] = []
 	## Awaited before a GET lands.
@@ -51,6 +53,7 @@ class FakeFiles:
 		calls.append("begin")
 		var cur: int = records[target["record"]]["version"] if records.has(target["record"]) else 0
 		var base: Variant = r.get("baseVersion")
+		bases.append(base)
 		if base != null and not ((base is String and base == "*" and cur == 0) or (not (base is String) and int(base) == cur)):
 			return Transfer.reply_fail(409, "revision_conflict", -1.0, {"server": {"version": cur}})
 		seq += 1
@@ -200,7 +203,12 @@ class FakeRecords:
 				out.append(_row(w, files.records[w]))
 		return out
 
+	## While set, get_record answers this device's stale cache instead of the server's row.
+	var stale_row: Variant = null
+
 	func get_record(id: String) -> Variant:
+		if stale_row != null:
+			return stale_row
 		var w := wire_id(id) if not ring.locked else id
 		if not files.records.has(w) or files.records[w]["value"] == null:
 			return null
@@ -530,6 +538,30 @@ func _conflicts(t: PKeyTestContext) -> void:
 		raced["files"].records[raced["records"].wire_id("s")]["version"] += 5
 	var race: Dictionary = await _write(raced, "s", _noise(30), {"n": 2})
 	t.check("conflict: a metadata set that finds a newer record is a conflict with the server's copy", race["state"] == "conflict" and race["conflict"]["remote"] != null, str(race))
+	# the conflict describes the server's version, not this device's cached copy
+	var two = _rig(false)
+	await _write(two, "s", _noise(30), {"n": 1})
+	var cached: Dictionary = two["records"].get_record("s")
+	two["files"].records[two["records"].wire_id("s")]["version"] = 40
+	two["records"].stale_row = cached
+	var theirs: Dictionary = await _write(two, "s", _noise(30), {"n": 2}, {"base_version": cached["version"]})
+	t.check("conflict: the server's version wins over this device's cached copy", theirs["state"] == "conflict" and theirs["conflict"]["server_version"] == 40 and theirs["conflict"]["remote"]["version"] == 40, str(theirs))
+	var kept_mine: Dictionary = await two["saves"].resolve(theirs["conflict"], "local", _noise(30)).wait()
+	t.check("resolve local after another device's write succeeds", kept_mine["state"] == "done", str(kept_mine))
+	two["records"].stale_row = null
+	var again: Dictionary = await _write(two, "s", _noise(30), {"n": 3})
+	t.check("a write after resolving does not repeat the conflict", again["state"] == "done", str(again))
+	# a save deleted elsewhere: no remote, and keeping this device's save uses the must-not-exist precondition
+	var gone = _rig(false)
+	await _write(gone, "s", _noise(30), {"n": 1})
+	var old_row: Dictionary = gone["records"].get_record("s")
+	gone["files"].records.erase(gone["records"].wire_id("s"))
+	gone["records"].stale_row = old_row
+	var del: Dictionary = await _write(gone, "s", _noise(30), {"n": 2})
+	t.check("conflict: a save deleted elsewhere has no remote", del["state"] == "conflict" and del["conflict"]["remote"] == null and del["conflict"]["server_version"] == 0, str(del))
+	gone["records"].stale_row = null
+	var kept_gone: Dictionary = await gone["saves"].resolve(del["conflict"], "local", _noise(30)).wait()
+	t.check("resolve local after a deletion elsewhere sends *", kept_gone["state"] == "done" and gone["files"].bases.back() == "*", str(kept_gone))
 	# a rejected set
 	var rej = _rig(false)
 	rej["records"].rejected_code = "quota_exceeded"
