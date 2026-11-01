@@ -83,7 +83,7 @@ slice() {
   xcrun --sdk macosx clang -c -fobjc-arc -fmodules -O2 -Wall -Wextra -Werror -Wno-unused-parameter -Wno-cast-function-type \
     $GLUE_DEFS -I"$WORK" -target "$triple" -isysroot "$SDK" "$GLUE" -o "$dir/pkey_apple.o"
   xcrun --sdk macosx swiftc -target "$triple" -sdk "$SDK" -swift-version 6 -warnings-as-errors -O \
-    -parse-as-library -module-name PolarisKeyPlatform -emit-library -static \
+    -parse-as-library -package-name polaris_key -module-name PolarisKeyPlatform -emit-library -static \
     -emit-module -emit-module-path "$dir/mods/PolarisKeyPlatform.swiftmodule" \
     "$SRC"/*.swift -o "$dir/libPolarisKeyPlatform.a"
   if [ "$EXTENSION" = gamecenter ]; then
