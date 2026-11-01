@@ -39,6 +39,8 @@ private final class FakeFiles: FileTransport, FileRevisions, @unchecked Sendable
     var conflictAt: [String: Int] = [:]
     /// The `baseVersion` of each `begin`, in order.
     var bases: [JSONValue?] = []
+    /// Rewrites the answer to `finalize` (the stored file is untouched).
+    var finalizeAnswer: (@Sendable (JSONValue) -> JSONValue)?
 
     func begin(_ target: FileTarget, request: JSONValue) async throws -> FileReply<JSONValue> {
         lock.withLock { calls.append("begin") }
@@ -99,11 +101,11 @@ private final class FakeFiles: FileTransport, FileRevisions, @unchecked Sendable
             let v = (versionSeq[up.record] ?? 0) + 1
             versionSeq[up.record] = v
             files[up.record, default: []].append(Stored(version: v, bytes: body))
-            return .ok(
-                .object([
-                    "version": .int(v), "size": .int(body.count), "sha256": .string(shaHex(body)),
-                    "format": .string("whole"),
-                ]))
+            let answer = JSONValue.object([
+                "version": .int(v), "size": .int(body.count), "sha256": .string(shaHex(body)),
+                "format": .string("whole"),
+            ])
+            return .ok(finalizeAnswer?(answer) ?? answer)
         }
     }
 
@@ -328,6 +330,31 @@ final class CloudSyncSavesTests: XCTestCase {
         guard case .notFound = try await rig.client.read("slot1") else { return XCTFail("a torn save read") }
         let listed = try await rig.client.list()
         XCTAssertEqual(listed.count, 0)
+    }
+
+    func testAFinalizeAnswerNamingAnotherFileFailsTheWriteAndAdoptsNothing() async throws {
+        for e2e in [false, true] {
+            let rig = Rig(e2e: e2e)
+            guard case .done = try await rig.client.write("a", bytes: Data("one".utf8), metadata: obj([:])).outcome()
+            else { return XCTFail("first write") }
+            guard case .done(_, _, let other, nil) = try await rig.client.write(
+                "b", bytes: Data("another".utf8), metadata: obj([:])
+            ).outcome()
+            else { return XCTFail("second write") }
+            let before = rig.records.sets.count
+            rig.files.finalizeAnswer = { a in
+                var o = a.objectValue!
+                o["size"] = .int(other.size)
+                o["sha256"] = .string(other.sha256)
+                return .object(o)
+            }
+            let opts = try await rig.records.get("a").map { SaveWriteOptions(baseVersion: $0.version) }
+            let out = try await rig.client.write(
+                "a", bytes: Data("three!".utf8), metadata: obj([:]), options: opts ?? SaveWriteOptions()
+            ).outcome()
+            guard case .failed = out else { return XCTFail("expected failed, got \(out)") }
+            XCTAssertEqual(rig.records.sets.count, before, "no metadata set for a refused file")
+        }
     }
 
     func testAnEndToEndReadFollowsTheBindingToAKeptRevision() async throws {
