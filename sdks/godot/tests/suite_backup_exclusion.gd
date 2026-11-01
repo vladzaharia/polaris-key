@@ -40,6 +40,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_android(t)
 	_ios(t)
 	_stores(t)
+	_sync_dirs(t)
 	PKeyBackupExclusion.reset_for_tests()
 	return true
 
@@ -121,4 +122,38 @@ func _stores(t: PKeyTestContext) -> void:
 	PKeyBackupExclusion.reset_for_tests()
 	var outside := PKeyDeviceKeyStore.new(PRODUCT, native.no_backup, false, true, PKeyFakeSealer.new())
 	t.check("stores: without the plugin, that directory is refused again", not outside.ensure().ok)
+	PKeyTestFixtures.remove_tree(scratch)
+
+
+## The transfer journal and the chunk cache are kept out of backups on both phones (GM.3).
+func _sync_dirs(t: PKeyTestContext) -> void:
+	var Journal := preload("res://addons/polaris_key/services/cloud_sync/journal.gd")
+	var scratch := PKeyTestFixtures.scratch_dir("bx-sync")
+	var chunk_id := "a".repeat(64)
+	# iOS: each directory is excluded once it exists.
+	PKeyBackupExclusion.reset_for_tests()
+	var native := FakeNative.new()
+	var apple := PKeyApple.new()
+	apple.native = native
+	PKeyBackupExclusion.apple_override = apple
+	var j := Journal.Files.new(scratch.path_join("ios"))
+	j.put("t1", {"id": "t1"})
+	var c := PKeyChunkCache.Files.new(scratch.path_join("ios").path_join(PKeyChunkCache.DIR_NAME))
+	c.put(chunk_id, PackedByteArray([1, 2, 3]))
+	var paths: Array = native.requests.filter(func(q: Dictionary) -> bool: return q.get("op") == "exclude_from_backup").map(func(q: Dictionary) -> String: return str(q.get("path")))
+	t.check("sync dirs ios: the journal directory is excluded", paths.any(func(p: String) -> bool: return p.ends_with("/" + Journal.DIR_NAME)), str(paths))
+	t.check("sync dirs ios: the chunk cache directory is excluded", paths.any(func(p: String) -> bool: return p.ends_with("/" + PKeyChunkCache.DIR_NAME)), str(paths))
+	# Android: the stores live under the plugin's no-backup directory.
+	PKeyBackupExclusion.reset_for_tests()
+	var anative := FakeNative.new()
+	anative.no_backup = ProjectSettings.globalize_path(scratch).path_join("no_backup")
+	_android_with(anative)
+	var root := PKeyBackupExclusion.root("user://pkey")
+	var aj := Journal.Files.new(root.path_join(PRODUCT))
+	aj.put("t1", {"id": "t1"})
+	var ac := PKeyChunkCache.Files.new(root.path_join(PRODUCT).path_join(PKeyChunkCache.DIR_NAME))
+	ac.put(chunk_id, PackedByteArray([1, 2, 3]))
+	t.check("sync dirs android: the journal is under the no-backup directory", aj.dir.begins_with(anative.no_backup) and DirAccess.dir_exists_absolute(aj.dir), aj.dir)
+	t.check("sync dirs android: the chunk cache is under the no-backup directory", ac.dir.begins_with(anative.no_backup) and DirAccess.dir_exists_absolute(ac.dir), ac.dir)
+	PKeyBackupExclusion.reset_for_tests()
 	PKeyTestFixtures.remove_tree(scratch)

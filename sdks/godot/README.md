@@ -1242,10 +1242,12 @@ end it. `PolarisKey.cloud_sync.transfers()` lists the writes in flight, and `tra
 `PKeyResult`s; `read` of a save whose `formatVersion` is above
 `PKeyOptions.cloud_sync_save_format_version` fails with reason `newer-format` and downloads nothing.
 A save is at most 32 MiB (`cloud_sync_saves_max_bytes` lowers it) and the file is held whole in memory:
-the GDScript AES-GCM lane seals about a MiB a second, on a worker thread so the game keeps drawing.
+on desktop the GDScript AES-GCM lane seals about a MiB a second, on a worker thread so the game keeps drawing.
+On iOS and Android the native AES-GCM lane seals each segment inline, a frame at a time.
 `cloud_sync_saves_delta` sends a changed save as content-defined chunks. A row you just wrote shows its
-file once the next pull names it. On iOS and Android every call answers the typed `unsupported` refusal
-until the native lanes (CC-14b).
+file once the next pull names it. On iOS and Android saves and files run with the Polaris Key native plugin; without it every call answers
+the typed `unsupported` refusal with reason `dependency` ("needs the Polaris Key native plugin"). The transfer
+journal and the chunk cache are kept out of device backups on both.
 
 ## License notes
 
