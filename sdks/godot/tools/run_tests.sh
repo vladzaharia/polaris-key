@@ -114,6 +114,11 @@ case "$GODOT_REAL" in
     ;;
   *)
     cp "$GODOT_REAL" "$RUN_DIR/editor/" || exit 2
+    # Windows: the console exe is a thin wrapper that starts its sibling GUI exe (same name
+    # without _console); copied alone it cannot start.
+    case "$GODOT_REAL" in
+      *_console.exe) cp "${GODOT_REAL%_console.exe}.exe" "$RUN_DIR/editor/" || exit 2 ;;
+    esac
     GODOT="$RUN_DIR/editor/$(basename "$GODOT_REAL")"
     ;;
 esac

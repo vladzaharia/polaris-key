@@ -119,6 +119,11 @@ $env:PKEY_TEST_SUITES = "connect"
 $env:PKEY_TEST_STAMPS = "0"
 & $bash (& $fwd "$sdk\tools\run_tests.sh") crypto_win *> "$Work\logs\crypto-tests.log"
 $code = $LASTEXITCODE
+if ($code -ne 0) {
+  Write-Host "── crypto-tests exit $code; tail of the run log:"
+  Get-Content "$Work\logs\crypto-tests.log" -Tail 60 | ForEach-Object { Write-Host $_ }
+  foreach ($l in "import", "editor") { $f = "$sdk\build\logs\$l.log"; if (Test-Path $f) { Write-Host "── tail of $l.log"; Get-Content $f -Tail 40 | ForEach-Object { Write-Host $_ } } }
+}
 Get-Content "$Work\logs\crypto-tests.log" | Select-String -Pattern "crypto_win|real:|PKeyWinCryptoNative|SUMMARY|FAIL" | ForEach-Object { Write-Host $_.Line }
 Copy-Item "$sdk\build\logs\*" "$Work\logs" -Recurse -Force -ErrorAction SilentlyContinue
 Check "crypto: the editor run of crypto_win passed" ($code -eq 0)
