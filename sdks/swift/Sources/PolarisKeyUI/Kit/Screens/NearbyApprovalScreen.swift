@@ -156,7 +156,7 @@ public struct NearbyApprovalView: View {
                         model.onChooseLicense?(choice.id)
                     } label: {
                         HStack(alignment: .center, spacing: style.space(.sm)) {
-                            VStack(alignment: .leading, spacing: 4) {
+                            VStack(alignment: .leading, spacing: style.space(.xxs)) {
                                 Text(choice.name ?? style.identity.name)
                                     .font(style.font(.body))
                                     .foregroundStyle(style.palette.textStrong)
@@ -165,8 +165,8 @@ public struct NearbyApprovalView: View {
                                     Text(choice.tierName)
                                         .font(style.font(.footnote))
                                         .fixedSize()
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 2)
+                                        .padding(.horizontal, style.space(.xs))
+                                        .padding(.vertical, style.space(.xxs) / 2)
                                         .background(Capsule().fill(style.palette.textStrong.opacity(0.09)))
                                     if let seats = choice.seats {
                                         Text(
