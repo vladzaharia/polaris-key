@@ -964,7 +964,8 @@ describe("DesktopAdapter — nearby sign-in over bridge v5", () => {
     await s.decline();
     expect(bridge.nearbyDecline).toHaveBeenCalledWith("s-2");
     expect(s.phase).toBe("cancelled");
-    expect(s.input).toBeNull();
+    // Every phase has a screen (UXR-47b B1).
+    expect(s.input).toEqual({ step: "nearby-cancelled" });
     await s.cancel();
     expect(bridge.nearbyCancel).toHaveBeenCalledWith("s-2");
     expect(s.state).toBeNull();

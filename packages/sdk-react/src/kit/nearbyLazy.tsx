@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 
-type Name = "NearbySignIn" | "NearbyApprover";
+type Name = "NearbySignIn" | "NearbyApprover" | "NearbyEntry";
 type Loose = ComponentType<Record<string, unknown>>;
 
 /** A screen of `nearby.tsx`, imported the first time it is drawn. */

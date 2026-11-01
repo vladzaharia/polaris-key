@@ -19,6 +19,9 @@ export type NearbyApprovalState =
   | "choose"
   | "account-required"
   | "rate-limited"
+  | "listening"
+  | "stopped"
+  | "failed"
   | "hidden";
 
 /** The approver's prompt and its outcomes, and the account menu's entry that opens it. */
@@ -142,6 +145,40 @@ export function nearbyApprovalView(
           "signin.nearby.rateLimitedBody",
           "common.done",
         ],
+        "common.done",
+        "neutral",
+      );
+    case "listening":
+      // The approver's own screen (UXR-47b B3): what it does, that it is listening, and the way out.
+      return outcome(
+        "listening",
+        [
+          "signin.nearby.listenTitle",
+          "signin.nearby.listenBody",
+          "signin.cli.approveWaiting",
+          "common.done",
+        ],
+        "common.done",
+        "neutral",
+      );
+    case "stopped":
+      // Two declined requests in ten minutes stop the advert (the SDK's failure budget): say so.
+      return outcome(
+        "stopped",
+        [
+          "signin.nearby.pausedTitle",
+          "signin.nearby.pausedBody",
+          "signin.nearby.startAgain",
+          "common.done",
+        ],
+        "signin.nearby.startAgain",
+        "neutral",
+      );
+    case "failed":
+      // A server or network failure: nothing was approved, and the retry is on the new device.
+      return outcome(
+        "failed",
+        ["core.codes.network.title", "signin.nearby.failedBody", "common.done"],
         "common.done",
         "neutral",
       );
