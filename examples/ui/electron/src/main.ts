@@ -39,8 +39,14 @@ void (async () => {
   const base = devUrl ?? `app://main/index.html`;
   // PKEY_KIT_PLATFORM=windows|macos|linux forces the kit's chrome (the e2e harness uses it).
   const forced = process.env.PKEY_KIT_PLATFORM;
-  const pageUrl = forced
-    ? `${base}${base.includes("?") ? "&" : "?"}platform=${encodeURIComponent(forced)}`
+  const query = new URLSearchParams();
+  if (forced) query.set("platform", forced);
+  // The nearby e2e opens one nearby screen instead of the gate (nearby-signin | nearby-approver).
+  const e2eNearby = process.env.PKEY_E2E_NEARBY;
+  const screen = process.env.PKEY_E2E_SCREEN;
+  if (e2eNearby && screen) query.set("screen", screen);
+  const pageUrl = query.size
+    ? `${base}${base.includes("?") ? "&" : "?"}${query}`
     : base;
 
   if (!devUrl) {
@@ -55,9 +61,11 @@ void (async () => {
     });
   }
 
-  const client = live
-    ? await (await import("./live")).createLiveClient()
-    : createFixtureClient();
+  const client = e2eNearby
+    ? await (await import("./e2e")).createNearbyE2eClient(JSON.parse(e2eNearby))
+    : live
+      ? await (await import("./live")).createLiveClient()
+      : createFixtureClient();
   await client.update.markBootAttempt();
 
   const win = new BrowserWindow({

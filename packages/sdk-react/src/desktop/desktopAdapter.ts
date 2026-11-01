@@ -41,6 +41,11 @@ import { createStore, type Store } from "../core/store.js";
 import { BeforeSignOutHooks } from "../core/account.js";
 import { BridgeDeviceCodeSession } from "./bridgeSignIn.js";
 import type {
+  DesktopNearbyApprover,
+  DesktopNearbyRequester,
+} from "./nearby.js";
+import type {
+  AutoSignInOptions,
   AutoSignInResult,
   DeviceCodeSignInSession,
   RedirectSignInSession,
@@ -128,7 +133,6 @@ import {
 } from "../core/services.js";
 import { classifyActivation } from "../core/activation.js";
 import {
-  BRIDGE_VERSION,
   resolveBridge,
   type BridgeActivation,
   type BridgeHost,
@@ -156,6 +160,12 @@ const V4_FEATURES = new Set<string>([
   // SP-15: the host's install driver and its app boot guard.
   Feature.updateDriver,
   Feature.updateBootguard,
+]);
+
+/** Features that need bridge protocol v5 (I-47b): a v4 host answers none of their methods. */
+const V5_FEATURES = new Set<string>([
+  Feature.identityAutosignin,
+  Feature.identityNearby,
 ]);
 
 export interface DesktopAdapterOptions {
@@ -264,6 +274,9 @@ export class DesktopAdapter implements PolarisAdapter {
     }
     // core.presentation (HA-13): the host's member rides every state.
     if (s.presentation !== undefined) this.presentation_.adopt(s.presentation);
+    // I-47b: the nearby sessions ride every v5 push; an absent member ends them.
+    this.requester_?.adopt(s.nearby);
+    this.approver_?.adopt(s.nearby);
     // UK-06: the host's OS facts; an older host sends none and the kit keeps its web chrome.
     if (
       s.host &&
@@ -859,6 +872,13 @@ export class DesktopAdapter implements PolarisAdapter {
   }
 
   supports(feature: string): Support {
+    if (V5_FEATURES.has(feature) && !this.speaksV5())
+      return {
+        supported: false,
+        feature,
+        reason: "version",
+        detail: `This desktop bridge (protocol v${this.bridge.version ?? 1}) predates bridge protocol v5, which carries ${feature}.`,
+      };
     if (V4_FEATURES.has(feature) && !this.speaksV4())
       return {
         supported: false,
@@ -871,7 +891,9 @@ export class DesktopAdapter implements PolarisAdapter {
 
   caps(): string[] {
     return capsIn(this.capabilityCtx).filter(
-      (f) => this.speaksV4() || !V4_FEATURES.has(f),
+      (f) =>
+        (this.speaksV4() || !V4_FEATURES.has(f)) &&
+        (this.speaksV5() || !V5_FEATURES.has(f)),
     );
   }
 
@@ -931,10 +953,87 @@ export class DesktopAdapter implements PolarisAdapter {
     cancel: () => this.noChoice(),
   };
 
-  /** The desktop bridge has no platform sign-in verb (D-12): the ladder is unavailable here. */
-  async autoSignIn(): Promise<AutoSignInResult> {
-    return { kind: "unavailable", code: "runtime" };
+  /** Automatic sign-in over the v5 bridge: the host runs its own ladder (a stored token) and
+   *  answers the result; a state push follows a `signedIn`. A v4 host, or a product without
+   *  identity, answers `unavailable`. It is a result, never a throw. */
+  async autoSignIn(opts: AutoSignInOptions = {}): Promise<AutoSignInResult> {
+    if (!this.speaksV5() || !this.bridge.autoSignIn)
+      return { kind: "unavailable", code: "runtime" };
+    if (!this.capabilities.identity.enabled)
+      return { kind: "unavailable", code: "product" };
+    try {
+      const r = await this.bridge.autoSignIn({
+        ...(opts.prompt !== undefined ? { prompt: opts.prompt } : {}),
+        ...(opts.licenseChoice !== undefined
+          ? { licenseChoice: opts.licenseChoice }
+          : {}),
+        ...(opts.deviceName !== undefined
+          ? { deviceName: opts.deviceName }
+          : {}),
+      });
+      switch (r.kind) {
+        case "signedIn":
+          // Re-read what the host just wrote; a push usually has already.
+          await this.load();
+          return {
+            kind: "signedIn",
+            via: r.via,
+            subject: r.subject,
+            activation: { licenseId: r.activation.licenseId },
+          };
+        case "needsSignIn":
+          return {
+            kind: "needsSignIn",
+            reason: r.reason === "signed_out" ? "signedOut" : "noCredential",
+          };
+        case "unavailable":
+          return { kind: "unavailable", code: r.code };
+        default:
+          return { kind: "unavailable", code: "refused" };
+      }
+    } catch {
+      return { kind: "unavailable", code: "refused" };
+    }
   }
+
+  /**
+   * Nearby sign-in (identity.nearby), both roles, over the v5 bridge. A v4 host rejects each
+   * entry point with the typed `UnsupportedError` (reason `version`) before anything crosses.
+   */
+  readonly nearby = {
+    /** This device asks a nearby, signed-in device to approve it (D). */
+    request: async (
+      opts: { deviceName?: string } = {},
+    ): Promise<DesktopNearbyRequester> => {
+      // Loaded on demand: a sign-in screen is rare and every provider ships this adapter.
+      const { DesktopNearbyRequester, nearbyError, nearbyUnsupported } =
+        await import("./nearby.js");
+      if (!this.speaksV5() || !this.bridge.nearbyStart)
+        throw nearbyUnsupported(this.bridge.version);
+      let first;
+      try {
+        first = await this.bridge.nearbyStart(opts);
+      } catch (e) {
+        throw this.fail("identity", nearbyError(e));
+      }
+      const s = new DesktopNearbyRequester(this.bridge, first, () => {
+        if (this.requester_ === s) this.requester_ = null;
+      });
+      this.requester_ = s;
+      return s;
+    },
+    /** This device approves another (M); open while its screen is. Rejects typed on a v4 host. */
+    approver: async (): Promise<DesktopNearbyApprover> => {
+      const { DesktopNearbyApprover, nearbyUnsupported } =
+        await import("./nearby.js");
+      if (!this.speaksV5() || !this.bridge.approverStart)
+        throw nearbyUnsupported(this.bridge.version);
+      return (this.approver_ ??= new DesktopNearbyApprover(this.bridge));
+    },
+  };
+
+  private requester_: DesktopNearbyRequester | null = null;
+  private approver_: DesktopNearbyApprover | null = null;
 
   private noChoice(): Promise<never> {
     return Promise.reject(
@@ -1372,7 +1471,12 @@ export class DesktopAdapter implements PolarisAdapter {
   /** True when the host reports bridge protocol v4 or later (an absent `version` is 1). A v3
    *  host's `invoke` may answer only the v3 verbs, so a v4 verb is never sent to it. */
   private speaksV4(): boolean {
-    return (this.bridge.version ?? 1) >= BRIDGE_VERSION;
+    return (this.bridge.version ?? 1) >= 4;
+  }
+
+  /** True when the host reports bridge protocol v5 or later (I-47b). */
+  private speaksV5(): boolean {
+    return (this.bridge.version ?? 1) >= 5;
   }
 
   /** A bridge v4 `invoke` verb: refused with the typed version N/A before anything crosses the
