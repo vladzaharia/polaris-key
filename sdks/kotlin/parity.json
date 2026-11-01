@@ -594,8 +594,8 @@
       "wp": "U-39"
     },
     "sync.transfer.background": {
-      "status": "planned",
-      "wp": "U-41",
+      "status": "implemented",
+      "note": "Android only (:platform SyncTransfers, bound by :android's AndroidSyncBackground when CloudSyncHostOptions.backgroundTransfers is on; default off). A save write is scheduled as user-initiated work with a transfer id and an owner tag (SHA-256 of the person) and nothing else; the write runs in :sdk and takes its token per request. A scheduled run awaits the live write (SavesClient.awaitBackground). Sign-out: lock, cancelOwner off the main thread, pin. At the first saves call an upload the journal holds that no live write does emits transferFailed once. SyncTransferBindingTest, CloudSyncSavesTest, CloudSyncSavesClientTest, SyncTransferJobTest, SyncTransferWorkerTest. SyncTransferJob.onStartJob is not run on a device yet.",
       "except": [
         {
           "runtime": "jvm",

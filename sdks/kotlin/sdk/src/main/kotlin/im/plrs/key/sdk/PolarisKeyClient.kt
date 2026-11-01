@@ -566,6 +566,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         cleanup = { tempStateDir?.deleteRecursively() },
         lockRing = { keyring.lock() },
         fileCodec = { collection, e2e -> if (e2e) keyring.fileCodec(collection) else ServerFileCodec() },
+        background = options.cloudSync.background(),
     ).also { api ->
         cloudSyncApi.set(api)
         // Registered after Connect's hook: the roster goes first. Then Cloud Sync flushes (bounded) and signs the machine out while

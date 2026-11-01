@@ -175,6 +175,10 @@ internal fun safeSignInUrl(url: String?, origin: String): String? {
 }
 
 private const val HTTPS_PORT = 443
+
+/** The owner tag a scheduler holds in place of the person: SHA-256 hex of the subject. */
+internal fun ownerTag(subject: String): String =
+    java.security.MessageDigest.getInstance("SHA-256").digest(subject.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
 private val RETRY_DELAYS_MS = listOf(1_000L, 5_000L, 30_000L)
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -192,6 +196,8 @@ internal class CloudSyncApi(
     private val lockRing: () -> Unit = {},
     /** The file codec of a collection: end-to-end over the ring's root (refuses `sync-locked` while locked), or the plain server-mode one. */
     private val fileCodec: (collection: String, e2e: Boolean) -> FileCodec = { _, e2e -> if (e2e) throw lockedError() else ServerFileCodec() },
+    /** The platform's background scheduler, when the app turned background transfers on (U-41.7b); null: none. */
+    private val background: CloudSyncBackgroundPort? = null,
 ) {
     private sealed interface Work {
         class Identity(val subject: String?) : Work
@@ -227,7 +233,16 @@ internal class CloudSyncApi(
 
     private val savesHooks = SavesHooks(
         progress = { id, done, total -> emit(CloudSyncEvent.TransferProgress(id, done, total)) },
-        settled = { id, result -> emit(settledEvent(id, result)) },
+        settled = { id, result ->
+            // A failed write keeps its scheduled retry; every other end drops what is still queued for it.
+            background?.takeIf { result !is SaveResult.Failed }?.let { runCatching { it.cancel(id) } }
+            emit(settledEvent(id, result))
+        },
+        started = { id ->
+            // Opaque ids only: the write fetches its own token per request, in this process.
+            val owner = savesSubject?.let(::ownerTag)
+            if (owner != null) background?.let { runCatching { it.enqueue(id, owner) } }
+        },
         readDone = { id, failure ->
             emit(
                 if (failure ==
@@ -242,6 +257,25 @@ internal class CloudSyncApi(
     )
 
     internal val saves: SavesClient = SavesClient(transferScope, savesHooks) { savesDeps() }
+
+    init {
+        background?.attach { id, owner -> backgroundRun(id, owner) }
+    }
+
+    /** One scheduled run: only the signed-in person's own live write, never another's, and nothing once signed out. */
+    private suspend fun backgroundRun(id: String, owner: String): BackgroundTransferOutcome {
+        val who = withContext(dispatcher) { subject } ?: return BackgroundTransferOutcome.STOP
+        return if (ownerTag(who) == owner) saves.awaitBackground(id) else BackgroundTransferOutcome.STOP
+    }
+
+    /** D-11: an upload the journal holds that no live write does was cut short; report it once, so the app can write it again. */
+    private suspend fun surfaceInterrupted(stateDir: java.io.File) {
+        val ids = withContext(Dispatchers.IO) { runCatching { FileJournal(stateDir).list() }.getOrDefault(emptyList()) }
+        for (id in ids) {
+            val write = id.startsWith("saves:") && !id.startsWith("saves:read:")
+            if (write && saves.transfers().none { it.id == id }) emit(CloudSyncEvent.TransferFailed(id, SavesException.TRANSFER_FAILED))
+        }
+    }
 
     private fun settledEvent(id: String, result: SaveResult): CloudSyncEvent = when (result) {
         is SaveResult.Done, is SaveResult.KeptRemote -> CloudSyncEvent.TransferDone(id, "done")
@@ -272,12 +306,15 @@ internal class CloudSyncApi(
         withContext(dispatcher) { attach() }
         val h = withContext(dispatcher) { startedHost() } ?: throw PolarisException(ErrorCode.syncFailed, "Cloud Sync is not running.")
         val decl = h.savesCollection() ?: throw noSaves()
+        var fresh = false
         val binding = savesLock.withLock {
             savesBinding?.takeIf { it.h === h } ?: SavesBinding(h).also {
                 it.records.listen()
                 savesBinding = it
+                fresh = true
             }
         }
+        if (fresh) surfaceInterrupted(h.stateDir)
         val e2e = h.withMachine { it.encryptionMode() == "e2e" }
         val codec = fileCodec(SAVES_COLLECTION, e2e)
         val who = withContext(dispatcher) { subject }
@@ -308,6 +345,11 @@ internal class CloudSyncApi(
      */
     private suspend fun purgeSaves() {
         withContext(NonCancellable) {
+            // The scheduled work goes first (off the main thread: it waits for the scheduler to stop it), then the writes.
+            val owner = savesSubject?.let(::ownerTag)
+            if (owner != null) {
+                background?.let { port -> withContext(Dispatchers.IO) { runCatching { port.cancelOwner(owner) } } }
+            }
             savesBinding?.records?.dropAll()
             runCatching { saves.cancelAll() }
             val dir = hostValue?.stateDir ?: return@withContext

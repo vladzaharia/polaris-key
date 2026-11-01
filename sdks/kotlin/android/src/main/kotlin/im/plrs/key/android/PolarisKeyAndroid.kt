@@ -9,6 +9,7 @@
 //   update.driver         this flavour's driver (unless UpdateClientOptions.installDriver is set), with
 //                         `platform: android`, the flavour's format and binary methods
 //   devices.attest       PlayIntegrityAttestation (unless PolarisKeyClientOptions.attestation is set)
+//   cloudSync.background  :platform's SyncTransfers, when CloudSyncHostOptions.backgroundTransfers is on (default off; U-41.7b)
 //   packs.transport.play  the carried packs Play holds now join PacksOptions.embedded (re-read at
 //                         every client construction, i.e. every launch); the pack store defaults to
 //                         `noBackupFilesDir/pkey/<product>/packs`
@@ -137,6 +138,10 @@ public object PolarisKeyAndroid {
         val attestation = options.attestation ?: PlayIntegrityAttestation.create(ctx, android.playCloudProjectNumber)
         if (options.attestation == null) AttestationProviders.installed = attestation
         installConnectPlatform(ctx) // the LAN edge, process-wide like the attestation
+        // Background saves (U-41.7b), opt-in: the scheduler and the runner that reads the live write. Off: nothing is installed.
+        if (options.cloudSync.backgroundTransfers && options.cloudSync.backgroundPort == null) {
+            options.cloudSync.backgroundPort = AndroidSyncBackground(ctx)
+        }
         val built = PolarisKeyClient(
             keyringOptions(ctx, options).copy(
                 attestation = attestation,
