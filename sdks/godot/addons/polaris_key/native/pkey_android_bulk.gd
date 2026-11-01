@@ -23,7 +23,9 @@ extends "res://addons/polaris_key/services/cloud_sync/bulk_channel.gd"
 ## to the SHA-256 of the id, here, for every call and every `keep` entry.
 
 const SINGLETON := "PolarisKeyAndroid"
-const METHODS := ["sbOpen", "sbStage", "sbPut", "sbGet", "sbTake", "sbCancel", "sbClose"]
+## The methods tried at create (every bulk method but sbClose).
+const PROBED := ["sbOpen", "sbStage", "sbPut", "sbGet", "sbTake", "sbCancel", "sbEnd"]
+const BAD_INPUT := 3
 const OK := 1
 ## The most the plugin takes in one `sbStage` call.
 const PIECE_MAX := 8 * 1048576
@@ -69,16 +71,11 @@ static func create(context: Callable, native: Object = null, events: Object = nu
 		target = Engine.get_singleton(SINGLETON)
 		if target == null:
 			return null
-		# A JNI singleton answers has_method() false for every plugin method (measured on an API 34 emulator,
-		# Godot 4.7.2), so its methods are tried instead: a header that is not JSON is a bad input (3) when the
-		# method exists, and null when it does not. `sbClose` is left alone: it would close a live session.
-		var probe = target.call("sbOpen", PackedByteArray())
-		if _status(probe) != 3 and _status(probe) != 0:
-			return null
-	else:
-		for m in METHODS:
-			if not target.has_method(m):
-				return null
+	# A JNI singleton answers has_method() false for every plugin method (measured on an API 34 emulator,
+	# Godot 4.7.2), so has_method is never asked: each method is tried with a bad input, which a present method
+	# refuses with status 3 and an absent one answers with null. `sbClose` is left alone: it would close a live session.
+	if not _probe(target):
+		return null
 	var source: Object = events if events != null else PKeyAndroid.shared()
 	if source == null or not source.has_signal("bulk_event"):
 		return null
@@ -88,6 +85,16 @@ static func create(context: Callable, native: Object = null, events: Object = nu
 	out._context = context
 	source.connect("bulk_event", out._on_event)
 	return out
+
+
+## True when every bulk method answers a bad input with the plugin's refusal (status 3). A call, not has_method.
+static func _probe(target: Object) -> bool:
+	var empty := PackedByteArray()
+	for m in PROBED:
+		var reply = target.call(m, empty, empty) if m == "sbStage" else target.call(m, empty)
+		if _status(reply) != BAD_INPUT:
+			return false
+	return true
 
 
 ## The origin (`https://host[:port]`) and the path with its query of an absolute URL; `{}` when it has a
@@ -181,19 +188,15 @@ func close() -> void:
 
 func _request(method: String, head: Dictionary, body: PackedByteArray) -> Dictionary:
 	var fail := {"fail": "network"}
-	if not _opened:
-		return fail
 	var req := int(head.get("req", 0))
 	var transfer := str(head.get("transfer", ""))
 	var bearer := str(head.get("bearer", ""))
 	var max_body := int(head.get("max_body", -1))
 	var parts := split_url(str(head.get("url", "")))
-	if req < 1 or req > 2147483647 or _pending.has(req) or transfer == "" or bearer == "" or max_body < 0 or max_body > BODY_MAX:
-		return fail
-	if parts.is_empty() or parts["origin"] != _origin or body.size() > BODY_MAX:
-		return fail
 	var headers: Variant = _request_headers(head.get("headers", {}))
-	if headers == null:
+	var refused := not _opened or req < 1 or req > 2147483647 or _pending.has(req) or transfer == "" or bearer == ""
+	refused = refused or max_body < 0 or max_body > BODY_MAX or parts.is_empty() or body.size() > BODY_MAX
+	if refused or parts["origin"] != _origin or headers == null:
 		return fail
 	var id := transfer_key(transfer)
 	var wait := _Wait.new()
@@ -266,53 +269,50 @@ func _stage(id: String, body: PackedByteArray) -> String:
 ## `sb_done {transfer, req, status, headers, body_len}` or `sb_fail {transfer, req, reason}` from the facade.
 func _on_event(ev: Dictionary) -> void:
 	var kind := str(ev.get("ev", ""))
-	if kind != "sb_done" and kind != "sb_fail":
-		return
 	var req_v: Variant = ev.get("req")
-	if not (req_v is int or req_v is float):
+	if (kind != "sb_done" and kind != "sb_fail") or not (req_v is int or req_v is float):
 		return
 	var req := int(req_v)
 	var p: Variant = _pending.get(req)
 	# A forged or a replayed event: no such request in flight, or it belongs to another transfer.
-	if p == null or str(ev.get("transfer", "")) != p["transfer"]:
+	if p == null or str(ev.get("transfer", "")) != p["transfer"] or (p["wait"] as _Wait).done:
 		return
-	var wait: _Wait = p["wait"]
-	if wait.done:
-		return
-	if kind == "sb_fail":
-		match str(ev.get("reason", "")):
-			"oversize":
-				wait.settle({"fail": "oversize"})
-			"redirect":
-				# Answered as it is: the transport refuses a 3xx, and the bearer never left the origin.
-				wait.settle({"status": 302, "headers": {}, "body": PackedByteArray()})
-			_:
-				wait.settle({"fail": "network"})
-		return
+	(p["wait"] as _Wait).settle(_failed(ev) if kind == "sb_fail" else _answer(ev, req, int(p["max_body"])))
+
+
+## The result of an `sb_fail` event.
+static func _failed(ev: Dictionary) -> Dictionary:
+	match str(ev.get("reason", "")):
+		"oversize":
+			return {"fail": "oversize"}
+		"redirect":
+			# Answered as it is: the transport refuses a 3xx, and the bearer never left the origin.
+			return {"status": 302, "headers": {}, "body": PackedByteArray()}
+	return {"fail": "network"}
+
+
+## The result of an `sb_done` event: the status, the lower-cased headers and the body taken from the plugin.
+func _answer(ev: Dictionary, req: int, max_body: int) -> Dictionary:
 	var status_v: Variant = ev.get("status")
-	if not (status_v is int or status_v is float):
-		wait.settle({"fail": "network"})
-		return
-	var body := PackedByteArray()
 	var body_len := int(ev.get("body_len", 0))
-	if body_len < 0 or body_len > int(p["max_body"]):
-		wait.settle({"fail": "oversize"})
-		return
+	if not (status_v is int or status_v is float):
+		return {"fail": "network"}
+	if body_len < 0 or body_len > max_body:
+		return {"fail": "oversize"}
+	var body := PackedByteArray()
 	if body_len > 0:
 		var reply = _native.call("sbTake", _json({"req": req}))
 		if _status(reply) != OK:
-			wait.settle({"fail": "network"})
-			return
+			return {"fail": "network"}
 		body = _body(reply)
-		if body.size() > int(p["max_body"]):
-			wait.settle({"fail": "oversize"})
-			return
+		if body.size() > max_body:
+			return {"fail": "oversize"}
 	var headers := {}
 	var raw_headers: Variant = ev.get("headers", {})
 	if raw_headers is Dictionary:
 		for k in (raw_headers as Dictionary):
 			headers[str(k).to_lower()] = str((raw_headers as Dictionary)[k])
-	wait.settle({"status": int(status_v), "headers": headers, "body": body})
+	return {"status": int(status_v), "headers": headers, "body": body}
 
 
 # ── replies ─────────────────────────────────────────────────────────────────────────────────────

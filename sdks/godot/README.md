@@ -1336,6 +1336,13 @@ file once the next pull names it. On iOS and Android saves and files run with th
 the typed `unsupported` refusal with reason `dependency` ("needs the Polaris Key native plugin"). The transfer
 journal and the chunk cache are kept out of device backups on both.
 
+On iOS and Android, `PKeyOptions.cloud_sync_background_transfers = true` (default off) sends the bodies of file and save
+transfers through the platform's background transfer, so a write the system suspends carries on or resumes without
+resending the finished parts; JSON calls stay in the foreground. The bearer goes to the native side with each request
+only, never in JSON, an event or a file. After a relaunch, each save write that was cut short (still in the transfer journal,
+no write running) arrives once as `transferFailed` with `code` `transfer-failed`: offer Retry, and call `write(id, bytes)`
+again to resume. Linux, Windows, macOS and web have no background transfer.
+
 ## License notes
 
 - `X-PKey-Channel` is always a canonical §5.1 name: `dev` for `0.0.0-dev*` builds, `pr` for PR

@@ -8,6 +8,12 @@ extends RefCounted
 ## NEXT {"op":"poll"} (as the native queue does). push_event() queues an unsolicited event
 ## (update_state, pack_state, install_status, …). JSON numbers come back as floats, as on a device.
 
+const PLAY_OPS := [
+	"iau_check", "iau_start", "iau_complete", "pad_state", "pad_fetch", "pad_location", "pad_remove", "pad_cancel", "pad_confirm",
+	"integrity_prepare", "integrity_token", "pgs_code", "pgs_sign_in",
+]
+const DIRECT_OPS := ["pi_can_install", "pi_open_settings", "pi_verify", "pi_install", "pi_last", "pi_abandon_stale", "pi_constraints"]
+
 ## `play` or `direct`: which flavour's ops answer (the other's are unsupported, reason outlet).
 var flavor := "play"
 ## getInstallSourceInfo's installing package.
@@ -55,17 +61,6 @@ var pgs_libraries := true
 var pgs_result := {"ok": true, "code": "4/transcript-server-auth-code"}
 var pgs_sign_in_result := {"ok": true, "authenticated": true}
 
-var calls: Array[Dictionary] = []
-var _queue: Array[Dictionary] = []
-var _req := 0
-
-const PLAY_OPS := [
-	"iau_check", "iau_start", "iau_complete", "pad_state", "pad_fetch", "pad_location", "pad_remove", "pad_cancel", "pad_confirm",
-	"integrity_prepare", "integrity_token", "pgs_code", "pgs_sign_in",
-]
-const DIRECT_OPS := ["pi_can_install", "pi_open_settings", "pi_verify", "pi_install", "pi_last", "pi_abandon_stale", "pi_constraints"]
-
-
 ## The bulk-body channel (U-41.6b): the plugin's byte[] ops, recorded. `bulk_open_ok` and `bulk_put_ok` set the
 ## status byte of sbOpen and of sbPut/sbGet; `sb_ops` lists `[name, header (parsed), piece size]` per call.
 var bulk_open_ok := true
@@ -74,7 +69,12 @@ var sb_ops: Array = []
 ## Staged bytes by spool name, and the bodies sbTake gives by req.
 var sb_files := {}
 var sb_answers := {}
+
+var calls: Array[Dictionary] = []
+var _queue: Array[Dictionary] = []
+var _req := 0
 var _sb_names := 0
+
 
 
 func _sb(name: String, header: PackedByteArray, piece := -1) -> Dictionary:
@@ -84,12 +84,25 @@ func _sb(name: String, header: PackedByteArray, piece := -1) -> Dictionary:
 	return h
 
 
+## A JNI singleton answers has_method() false for every plugin method (measured on an API 34 emulator,
+## Godot 4.7.2) while a call works: the fake models that, so the SDK must find the methods by a call.
+@warning_ignore("native_method_override")
+func has_method(_name: StringName) -> bool:
+	return false
+
+
+# gdlint:ignore=function-name
 func sbOpen(header: PackedByteArray) -> PackedByteArray:
+	if header.is_empty():
+		return PackedByteArray([3])
 	_sb("sbOpen", header)
 	return PackedByteArray([1 if bulk_open_ok else 0])
 
 
+# gdlint:ignore=function-name
 func sbStage(header: PackedByteArray, piece: PackedByteArray) -> PackedByteArray:
+	if header.is_empty():
+		return PackedByteArray([3])
 	var h := _sb("sbStage", header, piece.size())
 	var name: String = h.get("file", "")
 	if name == "":
@@ -102,17 +115,26 @@ func sbStage(header: PackedByteArray, piece: PackedByteArray) -> PackedByteArray
 	return PackedByteArray([1]) + JSON.stringify({"file": name, "size": sb_files[name].size()}).to_utf8_buffer()
 
 
+# gdlint:ignore=function-name
 func sbPut(header: PackedByteArray) -> PackedByteArray:
+	if header.is_empty():
+		return PackedByteArray([3])
 	_sb("sbPut", header)
 	return PackedByteArray([1 if bulk_put_ok else 0])
 
 
+# gdlint:ignore=function-name
 func sbGet(header: PackedByteArray) -> PackedByteArray:
+	if header.is_empty():
+		return PackedByteArray([3])
 	_sb("sbGet", header)
 	return PackedByteArray([1 if bulk_put_ok else 0])
 
 
+# gdlint:ignore=function-name
 func sbTake(header: PackedByteArray) -> PackedByteArray:
+	if header.is_empty():
+		return PackedByteArray([3])
 	var h := _sb("sbTake", header)
 	var req := int(h.get("req", -1))
 	if not sb_answers.has(req):
@@ -122,16 +144,23 @@ func sbTake(header: PackedByteArray) -> PackedByteArray:
 	return PackedByteArray([1]) + out
 
 
+# gdlint:ignore=function-name
 func sbCancel(header: PackedByteArray) -> PackedByteArray:
+	if header.is_empty():
+		return PackedByteArray([3])
 	_sb("sbCancel", header)
 	return PackedByteArray([1])
 
 
+# gdlint:ignore=function-name
 func sbEnd(header: PackedByteArray) -> PackedByteArray:
+	if header.is_empty():
+		return PackedByteArray([3])
 	_sb("sbEnd", header)
 	return PackedByteArray([1])
 
 
+# gdlint:ignore=function-name
 func sbClose() -> PackedByteArray:
 	sb_ops.append(["sbClose", {}, -1])
 	return PackedByteArray([1])

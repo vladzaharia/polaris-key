@@ -1531,7 +1531,7 @@ static func capabilities() -> Dictionary:
 		"sync.files": {"status": "implemented", "service": "sync", "na": []},
 		"sync.files.delta": {"status": "implemented", "service": "sync", "na": []},
 		"sync.e2e.recovery": {"status": "planned", "service": "sync", "na": []},
-		"sync.transfer.background": {"status": "planned", "service": "sync", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
+		"sync.transfer.background": {"status": "implemented", "service": "sync", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"sync.e2e": {"status": "implemented", "service": "sync", "na": []},
 		"connect.identity": {"status": "implemented", "service": "connect", "na": []},
 		"connect.noise": {"status": "implemented", "service": "connect", "na": []},

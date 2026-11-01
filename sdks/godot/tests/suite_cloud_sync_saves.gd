@@ -14,6 +14,7 @@ extends RefCounted
 # The machine's own rules (tickets, file-only rows, outcomes) are fileRecordCases in suite_sync_scenarios.
 
 const Transfer := preload("res://addons/polaris_key/services/cloud_sync/transfer.gd")
+const POINTER := {"version": 3, "size": 5, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "format": "whole"}
 const Journal := preload("res://addons/polaris_key/services/cloud_sync/journal.gd")
 const Codec := preload("res://addons/polaris_key/services/cloud_sync/transfer_codec.gd")
 const Host := preload("res://addons/polaris_key/services/cloud_sync/host.gd")
@@ -183,6 +184,11 @@ class FakeRecords:
 	var set_calls := 0
 	var set_files: Array = []
 	var rejected_code := ""
+	## While set, get_record answers this device's stale cache instead of the server's row.
+	var stale_row: Variant = null
+	## What a pull does (another device wrote meanwhile); invalid: this port cannot pull.
+	var on_pull := Callable()
+	var pulls := 0
 
 	## What a pull does (another device wrote meanwhile); invalid: this port cannot pull.
 	var on_pull := Callable()
@@ -279,6 +285,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _conflicts(t)
 	await _delete(t)
 	await _pause_cancel(t)
+	await _interrupted(t)
 	await _stale_off_thread(t)
 	await _locked(t)
 	await _chunked(t)
@@ -468,10 +475,18 @@ func _e2e(t: PKeyTestContext) -> void:
 	t.check("e2e write: the Worker holds ciphertext of the sealed size, not the plaintext", sealed_ok and not leaks)
 	var wire = rig["records"].wire_id("slot1")
 	var value: Dictionary = rig["files"].records[wire]["value"]
-	t.check("e2e write: the metadata carries the $file binding of the stored file", value.has("$file") and value["$file"]["sha256"] == rig["files"].records[wire]["file"]["sha256"] and value["$file"]["size"] == stored.size() and value["$file"]["format"] == "whole", str(value))
+	t.check(
+			"e2e write: the metadata carries the $file binding of the stored file",
+			value.has("$file") and value["$file"]["sha256"] == rig["files"].records[wire]["file"]["sha256"] and value["$file"]["size"] == stored.size() and value["$file"]["format"] == "whole",
+			str(value)
+	)
 	t.check("e2e write: the id travels blinded", wire.begins_with("x:") and not rig["files"].records.has("slot1"))
 	var listed = await saves.list()
-	t.check("e2e list: the metadata without the binding, the file pointer", listed.ok and _bare(listed.detail[0]["metadata"]) == {"progress": 0.5} and listed.detail[0]["file"] != null, str(listed.detail))
+	t.check(
+			"e2e list: the metadata without the binding, the file pointer",
+			listed.ok and _bare(listed.detail[0]["metadata"]) == {"progress": 0.5} and listed.detail[0]["file"] != null,
+			str(listed.detail)
+	)
 	var read = await saves.read("slot1")
 	t.check("e2e read: the plaintext back", read.ok and read.detail["bytes"] == data)
 	# a Worker that swaps the files of two slots is caught by the binding
@@ -506,7 +521,11 @@ func _e2e(t: PKeyTestContext) -> void:
 	await _write(rig2, "a", _noise(120), {"v": 2})
 	rig2["files"].records[wa]["value"]["$file"] = first_binding
 	var older = await rig2["saves"].read("a")
-	t.check("e2e read: the revision the binding names is read even when it is not the newest", older.ok and older.detail["bytes"].size() == 100 and rig2["files"].calls.has("revisions") and first_bytes.size() == PKeySyncFileStream.sealed_size(100), str(older.detail.get("reason")))
+	t.check(
+			"e2e read: the revision the binding names is read even when it is not the newest",
+			older.ok and older.detail["bytes"].size() == 100 and rig2["files"].calls.has("revisions") and first_bytes.size() == PKeySyncFileStream.sealed_size(100),
+			str(older.detail.get("reason"))
+	)
 	var revs = await rig2["saves"].revisions("a")
 	t.check("revisions: newest first", revs.ok and revs.detail.size() == 2 and revs.detail[0]["version"] > revs.detail[1]["version"])
 	var nope = await rig2["saves"].revisions("zzz")
@@ -524,7 +543,11 @@ func _format_and_binding(t: PKeyTestContext) -> void:
 		flags[s["id"]] = s["newer_format"]
 	t.check("format: only a save above the app's version is newer_format", flags == {"old": false, "new": true, "none": false}, str(flags))
 	var r = await rig["saves"].read("new")
-	t.check("format: read refuses a newer save with its versions, and downloads nothing", not r.ok and r.detail["reason"] == "newer-format" and r.detail["format_version"] == 3 and r.detail["supported"] == 2 and not rig["files"].calls.has("get_file"), str(r.detail))
+	t.check(
+			"format: read refuses a newer save with its versions, and downloads nothing",
+			not r.ok and r.detail["reason"] == "newer-format" and r.detail["format_version"] == 3 and r.detail["supported"] == 2 and not rig["files"].calls.has("get_file"),
+			str(r.detail)
+	)
 	var ok = await rig["saves"].read("old")
 	t.check("format: an older save reads", ok.ok)
 	var off = _rig(false)
@@ -556,12 +579,24 @@ func _conflicts(t: PKeyTestContext) -> void:
 	var stale = await _write(rig, "slot1", _noise(100), {"who": "b"}, {"base_version": 1})
 	t.check("conflict: a stale base_version is a conflict outcome, not an error", stale["state"] == "conflict", str(stale))
 	var c: Dictionary = stale["conflict"]
-	t.check("conflict: the local metadata, the server's copy, the slots", c["id"] == "slot1" and _bare(c["local"]["metadata"]) == {"who": "b"} and c["local"]["metadata"].has("savedAt") and _bare(c["remote"]["metadata"]) == {"who": "a"} and c["server_version"] == 2 and c["both_available"], str(c))
+	t.check(
+			"conflict: the local metadata, the server's copy, the slots",
+			c["id"] == "slot1"
+				and _bare(c["local"]["metadata"]) == {"who": "b"}
+				and c["local"]["metadata"].has("savedAt")
+				and _bare(c["remote"]["metadata"]) == {"who": "a"}
+				and c["server_version"] == 2
+				and c["both_available"],
+			str(c)
+	)
 	var types := _types(rig["events"])
 	t.check("conflict: the transfer ends with transferDone state conflict", types.back() == "transferDone" and rig["events"].back()["state"] == "conflict")
 	var calls_before: int = rig["files"].calls.size()
 	var kept: Dictionary = await saves.resolve(c, "remote", _noise(100)).wait()
-	t.check("resolve remote: writes nothing, keeps the server's copy", kept["state"] == "done" and kept["kept"] == "remote" and kept["version"] == 2 and rig["files"].calls.size() == calls_before and rig["files"].records[rig["records"].wire_id("slot1")]["version"] == 2)
+	t.check(
+			"resolve remote: writes nothing, keeps the server's copy",
+			kept["state"] == "done" and kept["kept"] == "remote" and kept["version"] == 2 and rig["files"].calls.size() == calls_before and rig["files"].records[rig["records"].wire_id("slot1")]["version"] == 2
+	)
 	var local: Dictionary = await saves.resolve(c, "local", _noise(100)).wait()
 	t.check("resolve local: writes on top of the server's version", local["state"] == "done" and _bare((await saves.read("slot1")).detail["metadata"]) == {"who": "b"}, str(local))
 	var both: Dictionary = await saves.resolve(c, "both", _noise(100)).wait()
@@ -588,7 +623,11 @@ func _conflicts(t: PKeyTestContext) -> void:
 	two["files"].records[two["records"].wire_id("s")]["version"] = 40
 	two["records"].stale_row = cached
 	var theirs: Dictionary = await _write(two, "s", _noise(30), {"n": 2}, {"base_version": cached["version"]})
-	t.check("conflict: the server's version wins over this device's cached copy", theirs["state"] == "conflict" and theirs["conflict"]["server_version"] == 40 and theirs["conflict"]["remote"]["version"] == 40, str(theirs))
+	t.check(
+			"conflict: the server's version wins over this device's cached copy",
+			theirs["state"] == "conflict" and theirs["conflict"]["server_version"] == 40 and theirs["conflict"]["remote"]["version"] == 40,
+			str(theirs)
+	)
 	var kept_mine: Dictionary = await two["saves"].resolve(theirs["conflict"], "local", _noise(30)).wait()
 	t.check("resolve local after another device's write succeeds", kept_mine["state"] == "done", str(kept_mine))
 	two["records"].stale_row = null
@@ -616,7 +655,11 @@ func _conflicts(t: PKeyTestContext) -> void:
 	pulled["records"].on_pull = func() -> void: pulled["records"].stale_row = null
 	var pc: Dictionary = await _write(pulled, "s", _noise(30), {"n": 2}, {"base_version": old_cache["version"]})
 	t.check("conflict: pulls first, so the other card is the server's copy", pulled["records"].pulls == 1 and pc["state"] == "conflict" and pc["conflict"]["remote"]["metadata"] == {"n": 9}, str(pc))
-	t.check("conflict: this device's card carries when and where it was saved", pc["conflict"]["local"]["metadata"].get("savedAt") == 1000 and pc["conflict"]["local"]["metadata"].get("deviceLabel") == "Steam Deck", str(pc["conflict"]["local"]))
+	t.check(
+			"conflict: this device's card carries when and where it was saved",
+			pc["conflict"]["local"]["metadata"].get("savedAt") == 1000 and pc["conflict"]["local"]["metadata"].get("deviceLabel") == "Steam Deck",
+			str(pc["conflict"]["local"])
+	)
 	pulled["records"].stale_row = old_cache
 	var pk: Dictionary = await pulled["saves"].resolve(pc["conflict"], "remote", _noise(30)).wait()
 	t.check("resolve remote: pulls again and answers the version held", pulled["records"].pulls == 2 and pk["state"] == "done" and pk["kept"] == "remote" and pk["version"] == 40, str(pk))
@@ -668,7 +711,10 @@ func _pause_cancel(t: PKeyTestContext) -> void:
 	t.check("cancel: the write reached the metadata set and waits", rig["records"].set_calls == 1 and h.outcome == null and rig["saves"].transfers().size() == 1, str(h.state))
 	await h.cancel()
 	t.check("cancel: the waiting write settles as cancelled, not failed", h.outcome != null and h.outcome["state"] == "cancelled" and h.state == "cancelled")
-	t.check("cancel: transferDone with state cancelled, no transferFailed", _types(rig["events"]).has("transferDone") and rig["events"].back()["state"] == "cancelled" and not _types(rig["events"]).has("transferFailed"))
+	t.check(
+			"cancel: transferDone with state cancelled, no transferFailed",
+			_types(rig["events"]).has("transferDone") and rig["events"].back()["state"] == "cancelled" and not _types(rig["events"]).has("transferFailed")
+	)
 	t.check("cancel: the handle leaves transfers()", rig["saves"].transfers().is_empty())
 
 	# pause between steps, resume carries on
@@ -715,6 +761,46 @@ func _pause_cancel(t: PKeyTestContext) -> void:
 		await tree.process_frame
 		spins += 1
 	t.check("cancel mid-upload: cancelled, the Worker's upload is released", c.outcome != null and c.outcome["state"] == "cancelled" and rig3["files"].aborted.size() == 1, str(c.outcome))
+
+
+# ── D-11: a journaled upload no live write holds is told once as transferFailed ─────────────────
+
+func _journaled(id: String) -> Dictionary:
+	return {"v": 1, "id": id, "kind": "upload", "collection": "saves", "record": "slot", "uploadId": "u1", "mode": "single",
+			"partBytes": null, "done": [], "sha256": "0".repeat(64), "size": 10, "expiresAt": 9999999999, "state": "uploading"}
+
+
+func _interrupted(t: PKeyTestContext) -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var rig = _rig(false)
+	var saves: PKeySaves = rig["saves"]
+	rig["journal"].put("saves:slot1", _journaled("saves:slot1"))
+	rig["journal"].put("saves:slot2", _journaled("saves:slot2"))
+	var told: Array = saves.surface_interrupted(rig["journal"].list())
+	var failed: Array = rig["events"].filter(func(e: Dictionary) -> bool: return e["type"] == "transferFailed")
+	t.check(
+			"interrupted: each journaled upload is told as transferFailed",
+			told.size() == 2 and failed.size() == 2 and failed[0]["code"] == "transfer-failed" and failed[0]["id"].begins_with("saves:"),
+			str(failed)
+	)
+	t.check("interrupted: told once", saves.surface_interrupted(rig["journal"].list()).is_empty() and rig["events"].size() == 2)
+	t.check("interrupted: no bytes or token in the event", str(failed).find("pkeyt_") < 0 and failed[0].keys().size() == 3)
+	# a live write holds its own id: not told
+	var rig2 = _rig(false)
+	var gate := [false]
+	rig2["files"].before_put = func() -> void:
+		while not gate[0]:
+			await tree.process_frame
+	var h: PKeyTransfer = rig2["saves"].write("slot1", _noise(100), {})
+	rig2["journal"].put("saves:slot1", _journaled("saves:slot1"))
+	rig2["journal"].put("saves:slot9", _journaled("saves:slot9"))
+	var told2: Array = rig2["saves"].surface_interrupted(rig2["journal"].list())
+	t.check("interrupted: a live write is not told", told2 == ["saves:slot9"], str(told2))
+	gate[0] = true
+	await h.wait()
+	# the retry is a plain write again
+	var again = await _write(rig, "slot1", _noise(50), {})
+	t.check("interrupted: write(id, bytes) again runs as normal", again["state"] == "done", str(again))
 
 
 # ── cancel is terminal; a result computed off-thread under an old root is thrown away ───────────
@@ -849,7 +935,11 @@ func _locked(t: PKeyTestContext) -> void:
 		mid["ring"].locked = true
 		return c
 	var out = await _write(mid, "slot1", _noise(300))
-	t.check("locked mid-transfer: the write fails sync-locked, nothing is uploaded and the metadata is never set", out["state"] == "failed" and out["error"]["code"] == "sync-locked" and mid["records"].set_calls == 0 and mid["files"].calls.is_empty(), str(out))
+	t.check(
+			"locked mid-transfer: the write fails sync-locked, nothing is uploaded and the metadata is never set",
+			out["state"] == "failed" and out["error"]["code"] == "sync-locked" and mid["records"].set_calls == 0 and mid["files"].calls.is_empty(),
+			str(out)
+	)
 	# the seal itself: a ring that locks after the codec was made gives nothing to upload
 	var sealing = _rig(true)
 	var guarded = sealing["saves"]._d["file_codec"].call()
@@ -890,9 +980,16 @@ func _unsupported(t: PKeyTestContext) -> void:
 		all = all and not r.ok and r.code == &"unsupported"
 	t.check("unsupported: list, read, revisions and delete answer the typed unsupported refusal", all, str(results[0].detail))
 	var u: PKeyResult = results[0]
-	t.check("unsupported: it names sync.saves and the dependency reason", str(u.detail).contains("sync.saves") and str(u.detail).contains("dependency") and str(u.message).contains("native plugin"), str(u.detail))
+	t.check(
+			"unsupported: it names sync.saves and the dependency reason",
+			str(u.detail).contains("sync.saves") and str(u.detail).contains("dependency") and str(u.message).contains("native plugin"),
+			str(u.detail)
+	)
 	var h: PKeyTransfer = saves.write("a", _noise(10), {})
-	t.check("unsupported: a write is over at once, failed unsupported, nothing sent", h.outcome != null and h.outcome["state"] == "failed" and h.outcome["error"]["code"] == "unsupported" and rig["files"].calls.is_empty())
+	t.check(
+			"unsupported: a write is over at once, failed unsupported, nothing sent",
+			h.outcome != null and h.outcome["state"] == "failed" and h.outcome["error"]["code"] == "unsupported" and rig["files"].calls.is_empty()
+	)
 	var res: PKeyTransfer = saves.resolve({"id": "a", "local": {"metadata": {}, "size": 1}, "remote": null, "server_version": 1, "both_available": true}, "local", _noise(10))
 	t.check("unsupported: resolve local too", res.outcome != null and res.outcome["error"]["code"] == "unsupported")
 	var na: Array = PKeyConstants.capabilities()["sync.saves"].get("na", [])
@@ -987,7 +1084,11 @@ func _purge_order(t: PKeyTestContext) -> void:
 	api._keyring = OrderRing.new(log)
 	await api._forget()
 	t.check("forget: lock the ring, then purge the saves, then remove the pin", log == ["lock", "purge-files", "forget"], str(log))
-	t.check("forget: the waiting write is settled as dropped and the transfer cancelled", rig["records"].dropped == 1 and h.outcome != null and h.outcome["state"] == "cancelled" and rig["saves"].transfers().is_empty(), str(h.outcome))
+	t.check(
+			"forget: the waiting write is settled as dropped and the transfer cancelled",
+			rig["records"].dropped == 1 and h.outcome != null and h.outcome["state"] == "cancelled" and rig["saves"].transfers().is_empty(),
+			str(h.outcome)
+	)
 	t.check("forget: the chunk cache tree is gone (every person's)", not DirAccess.dir_exists_absolute(cache_root))
 	t.check("forget: the transfer journal is empty", journal.get_record("saves:other") == null)
 	PKeyTestFixtures.remove_tree(dir)
@@ -1086,7 +1187,11 @@ func _records_binding(t: PKeyTestContext) -> void:
 	var ids := []
 	for r: Dictionary in rows:
 		ids.append(r["id"])
-	t.check("records: the machine's rows, by id, a file-only row with an empty value", ids == ["filesonly", "slot1"] and rows[0]["value"] == {} and rows[0]["file"]["version"] == 3 and rows[1]["value"] == {"chapter": "one"} and rows[1]["file"]["format"] == "whole", str(rows))
+	t.check(
+			"records: the machine's rows, by id, a file-only row with an empty value",
+			ids == ["filesonly", "slot1"] and rows[0]["value"] == {} and rows[0]["file"]["version"] == 3 and rows[1]["value"] == {"chapter": "one"} and rows[1]["file"]["format"] == "whole",
+			str(rows)
+	)
 	t.check("records: get finds one, or null", records.get_record("slot1")["version"] == 3 and records.get_record("zzz") == null)
 	t.check("records: wire_id is the id in server mode", records.wire_id("slot1") == "slot1" and not records.e2e())
 	var ok: Dictionary = await records.set_record("slot1", {"chapter": "two"}, 3)
@@ -1095,14 +1200,22 @@ func _records_binding(t: PKeyTestContext) -> void:
 	t.check("records: it went as an exact set, with no journal-only member", sent["op"] == "set" and sent["baseVersion"] == 3 and not sent.has("ticket"), str(sent))
 	t.check("records: the machine's row is the acknowledged one, its file kept", host.machine().records("saves")[1]["version"] == 4 and host.machine().records("saves")[1]["file"]["version"] == 3)
 	var stale: Dictionary = await records.set_record("slot1", {"chapter": "three"}, 3)
-	t.check("records: a stale base is a conflict with the server's copy", not stale["ok"] and stale["reason"] == "conflict" and stale["server"]["id"] == "slot1" and stale["server"]["value"] == {"chapter": "theirs"} and stale["server"]["file"]["version"] == 3, str(stale))
+	t.check(
+			"records: a stale base is a conflict with the server's copy",
+			not stale["ok"] and stale["reason"] == "conflict" and stale["server"]["id"] == "slot1" and stale["server"]["value"] == {"chapter": "theirs"} and stale["server"]["file"]["version"] == 3,
+			str(stale)
+	)
 	var denied: Dictionary = await records.set_record("deny", {"a": 1}, "*")
 	t.check("records: a rejection carries its code", denied == {"ok": false, "reason": "rejected", "code": "quota_exceeded"}, str(denied))
 	var created: Dictionary = await records.set_record("fresh", {"a": 1}, "*")
 	t.check("records: create-only with * creates", created["ok"] and created["version"] == 1)
 	var pointer := {"version": 1, "size": 7, "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "format": "whole"}
 	var with_file: Dictionary = await records.set_record("fresh2", {"a": 1}, "*", null, pointer)
-	t.check("records: a write that gives the finalized pointer lists its file at once (no pull)", with_file["ok"] and records.get_record("fresh2")["file"] == pointer and records.list().any(func(r: Dictionary) -> bool: return r["id"] == "fresh2" and r["file"] == pointer), str(records.get_record("fresh2")))
+	t.check(
+			"records: a write that gives the finalized pointer lists its file at once (no pull)",
+			with_file["ok"] and records.get_record("fresh2")["file"] == pointer and records.list().any(func(r: Dictionary) -> bool: return r["id"] == "fresh2" and r["file"] == pointer),
+			str(records.get_record("fresh2"))
+	)
 	t.check("records: the pointer is never sent", not pushes.back()["mutations"][0].has("file"), str(pushes.back()))
 	t.check("records: without a pointer a new row has no file", records.get_record("fresh")["file"] == null)
 	var gone: Dictionary = await records.delete_record("fresh", 1)
@@ -1180,8 +1293,15 @@ func _host_record_keys(t: PKeyTestContext) -> void:
 	m.set_network("online")
 	host.touch()
 	await host.idle()
-	t.check("host: every pull is opened with the records the machine holds", codec.pulls.size() >= 2 and codec.pulls[0] == [] and codec.pulls[codec.pulls.size() - 1] == [["saves", "x:blindedid"]], str(codec.pulls))
-	t.check("host: the saves collection is declared to the machine", m.put_at("saves", "a", {}, "*")["ok"] and not m.put_at("other", "a", {}, "*")["ok"] and m.put_at("other", "a", {}, "*")["error"] == "collection-unknown")
+	t.check(
+			"host: every pull is opened with the records the machine holds",
+			codec.pulls.size() >= 2 and codec.pulls[0] == [] and codec.pulls[codec.pulls.size() - 1] == [["saves", "x:blindedid"]],
+			str(codec.pulls)
+	)
+	t.check(
+			"host: the saves collection is declared to the machine",
+			m.put_at("saves", "a", {}, "*")["ok"] and not m.put_at("other", "a", {}, "*")["ok"] and m.put_at("other", "a", {}, "*")["error"] == "collection-unknown"
+	)
 	_free_host(c)
 
 
@@ -1279,24 +1399,49 @@ func _through_the_sdk(t: PKeyTestContext) -> void:
 	var h: PKeyTransfer = saves.write("slot1", data, {"chapter": "two", "formatVersion": 1})
 	t.check("sdk: the handle is listed while it runs", sdk.cloud_sync.transfers().size() == 1 and sdk.cloud_sync.transfers()[0] == h or h.outcome != null)
 	var out := await h.wait()
-	t.check("sdk: the write is done at the record version the Worker answered", out["state"] == "done" and out["version"] == 2 and Types.json_equal(_bare(worker.value), {"chapter": "two", "formatVersion": 1}) and worker.value.has("savedAt") and worker.data == data, "%s | %s | %s" % [str(out), str(worker.value), worker.data == data])
+	t.check(
+			"sdk: the write is done at the record version the Worker answered",
+			out["state"] == "done" and out["version"] == 2 and Types.json_equal(_bare(worker.value), {"chapter": "two", "formatVersion": 1}) and worker.value.has("savedAt") and worker.data == data,
+			"%s | %s | %s" % [str(out), str(worker.value), worker.data == data]
+	)
 	# The acknowledged row takes the pointer finalize returned, so it lists its file before any pull.
 	var before_pull = await saves.list()
-	t.check("sdk: the acknowledged row is listed at once with its new file, before any pull", before_pull.ok and before_pull.detail.size() == 1 and before_pull.detail[0]["file"] != null and before_pull.detail[0]["file"]["size"] == out["file"]["size"] and before_pull.detail[0]["file"]["sha256"] == out["file"]["sha256"], str(before_pull.detail))
+	t.check(
+			"sdk: the acknowledged row is listed at once with its new file, before any pull",
+			before_pull.ok
+				and before_pull.detail.size() == 1
+				and before_pull.detail[0]["file"] != null
+				and before_pull.detail[0]["file"]["size"] == out["file"]["size"]
+				and before_pull.detail[0]["file"]["sha256"] == out["file"]["sha256"],
+			str(before_pull.detail)
+	)
 	var machine = sdk.cloud_sync.host.machine()
 	machine.set_network("offline")
 	machine.set_network("online")
 	sdk.cloud_sync.host.touch()
 	await sdk.cloud_sync.host.idle()
 	var listed = await saves.list()
-	t.check("sdk: list shows the save from the machine's rows", listed.ok and listed.detail.size() == 1 and listed.detail[0]["metadata"]["chapter"] == "two" and listed.detail[0]["file"] != null and listed.detail[0]["file"]["size"] == 3000 and not listed.detail[0]["newer_format"], "%s | %s | %s" % [str(listed.detail), str(sdk.cloud_sync.host.machine().records("saves")), str(worker.paths)])
+	t.check(
+			"sdk: list shows the save from the machine's rows",
+			listed.ok
+				and listed.detail.size() == 1
+				and listed.detail[0]["metadata"]["chapter"] == "two"
+				and listed.detail[0]["file"] != null
+				and listed.detail[0]["file"]["size"] == 3000
+				and not listed.detail[0]["newer_format"],
+			"%s | %s | %s" % [str(listed.detail), str(sdk.cloud_sync.host.machine().records("saves")), str(worker.paths)]
+	)
 	var read = await saves.read("slot1")
 	t.check("sdk: read downloads through the file transport", read.ok and read.detail["bytes"] == data, str(read.detail.get("reason")))
 	var stale = await saves.write("slot1", _noise(10), {"chapter": "stale"}, {"base_version": 1}).wait()
 	t.check("sdk: a stale base is a conflict outcome with the server's copy", stale["state"] == "conflict" and stale["conflict"]["remote"]["metadata"]["chapter"] == "two", str(stale))
 	var types := _types(events)
 	t.check("sdk: the transfer events reach the cloudSync stream", types.has("transferProgress") and types.has("transferDone") and events.back()["state"] == "conflict", str(types))
-	t.check("sdk: every file request stayed on the product's file routes", worker.paths.all(func(p: String) -> bool: return p.contains("/diceroll/sync") or p == "GET /diceroll/config/schema"), str(worker.paths))
+	t.check(
+			"sdk: every file request stayed on the product's file routes",
+			worker.paths.all(func(p: String) -> bool: return p.contains("/diceroll/sync") or p == "GET /diceroll/config/schema"),
+			str(worker.paths)
+	)
 	t.check("sdk: no timeout, no leftover transfer", sdk.cloud_sync.transfers().is_empty())
 	sdk.cloud_sync.close()
 	sdk.queue_free()
