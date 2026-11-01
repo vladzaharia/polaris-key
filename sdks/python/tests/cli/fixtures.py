@@ -106,21 +106,41 @@ def _gate(status: str, **kw: object) -> Callable[[Kit], List[Line]]:
     def draw(k: Kit) -> List[Line]:
         # The product page the real `status` verb links to for a state no command fixes.
         portal = "https://polaris.locker/activate?product=tidewater"
-        return screens.gate(k, gate_view(status, now=NOW, developer=k.identity.developer, **kw), "status", portal)  # type: ignore[arg-type]
+        view = gate_view(status, now=NOW, developer=k.identity.developer, **kw)  # type: ignore[arg-type]
+        return screens.gate(k, view, "status", portal)
 
     return draw
 
 
-_ACCOUNT = dict(holder="Mara Fennick", email="mara@fennick.studio", signed_in=True, tier="Pro", term="Lifetime", version="2.4.1", channel="stable")
+_ACCOUNT = dict(
+    holder="Mara Fennick",
+    email="mara@fennick.studio",
+    signed_in=True,
+    tier="Pro",
+    term="Lifetime",
+    version="2.4.1",
+    channel="stable",
+)
 _ROWS = (
     DeviceRow("dev_9k2", "Work laptop", "Windows 11", False, "41 days ago"),
     DeviceRow("dev_4m7", "Mara’s iPad", "iPadOS 26", False, "yesterday"),
     DeviceRow("dev_1c3", "MacBook Pro", "macOS 26", True, "today"),
 )
 _NOTES = ("Stem export in one click, with loudness matching", "Track freeze now works with every plug-in")
-_UPDATE = dict(version="2.5", current="2.4.1", size="61 MB", notes=_NOTES, notes_url="https://tidewater.app/releases/2.5")
+_UPDATE = dict(
+    version="2.5", current="2.4.1", size="61 MB", notes=_NOTES, notes_url="https://tidewater.app/releases/2.5"
+)
 _ASK = NearbyApprovalView("ask", device="New phone", codes=("111 111", "482 913", "777 777"))
-_LIMIT = ActivateView("DeviceLimit", "browser-mode", "device-limit", "device_limit", KEY, 3, 3, "https://polaris.locker/#/p/tidewater/devices")
+_LIMIT = ActivateView(
+    "DeviceLimit",
+    "browser-mode",
+    "device-limit",
+    "device_limit",
+    KEY,
+    3,
+    3,
+    "https://polaris.locker/#/p/tidewater/devices",
+)
 
 
 FIXTURES: Tuple[Fixture, ...] = (
@@ -593,6 +613,7 @@ _AUTO_SIGN_IN = (
 )
 
 _NEARBY_ENDS = "a nearby sign-in that ends is drawn as the SignIn state of the same outcome (denied, expired, failed)"
+_NEARBY_WAITS = "the command waits on its own entry screen; no app keeps listening in the background"
 
 #: Catalog states the terminal never draws, and why (UI-KITS §1.3: the terminal is the browser
 #: presentation of sign-in, SIGN-IN.md D-93; layer 1 has no device list for a key, §4.3).
@@ -626,8 +647,8 @@ NOT_DRAWN = {
     ("SignIn", "nearby-unavailable"): _NEARBY_ENDS,
     ("SignIn", "nearby-cancelled"): "Esc closes the block on Nothing changed. (SignIn cancelled is drawn)",
     ("SignIn", "nearby-signed-out"): "drawn as SignIn nearby-done signed-out",
-    ("NearbyApproval", "listening"): "the command waits on its own entry screen; no app keeps listening in the background",
-    ("NearbyApproval", "stopped"): "the command waits on its own entry screen; no app keeps listening in the background",
+    ("NearbyApproval", "listening"): _NEARBY_WAITS,
+    ("NearbyApproval", "stopped"): _NEARBY_WAITS,
     ("NearbyApproval", "failed"): "the command's error line and exit code show a failed listen",
     ("SignInHandoff", "finishing"): "the SDK redeems the code inside wait_for_sign_in; SignIn finishing is drawn",
     ("DeviceLimit", "default"): "no device list for a key in layer 1 (UI-KITS §4.3); browser mode is drawn",

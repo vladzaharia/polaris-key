@@ -30,17 +30,17 @@ import Foundation
 import PolarisKeyPlatform
 
 #if canImport(Glibc)
-import Glibc
+    import Glibc
 #elseif canImport(Musl)
-import Musl
+    import Musl
 #endif
 
 /// Clears `count` bytes in a way the optimiser cannot drop: `memset_s` on Apple platforms, `explicit_bzero` on Linux.
 private func zeroBytes(_ p: UnsafeMutableRawPointer, _ count: Int) {
     #if canImport(Glibc) || canImport(Musl)
-    explicit_bzero(p, count)
+        explicit_bzero(p, count)
     #else
-    _ = memset_s(p, count, 0, count)
+        _ = memset_s(p, count, 0, count)
     #endif
 }
 

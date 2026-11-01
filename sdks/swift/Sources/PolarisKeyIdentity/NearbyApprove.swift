@@ -274,7 +274,7 @@ public enum NearbyApprovalStep: Sendable {
 private let nearbyMaxAsks = 3
 
 /// One `nearby/approve` for the verified request, then the answer to the LAN session; and the wrap after it.
-fileprivate final class Decision: Sendable {
+private final class Decision: Sendable {
     private let client: IdentityClient
     private let approval: NearbyApproval
     private let vouch: VerifiedVouch

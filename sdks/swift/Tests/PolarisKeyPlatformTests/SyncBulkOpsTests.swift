@@ -464,7 +464,8 @@ final class SyncBulkOpsTests: XCTestCase {
         // the session is made natively; the completion waits for its events
         let first = PlatformLock<Bool>(false)
         XCTAssertTrue(
-            h.registry.handleBackgroundEvents(identifier: "pkey.sync.djdl", completion: { first.withLock { $0 = true } }))
+            h.registry.handleBackgroundEvents(
+                identifier: "pkey.sync.djdl", completion: { first.withLock { $0 = true } }))
         try? await Task.sleep(nanoseconds: 200_000_000)
         XCTAssertFalse(first.withLock { $0 }, "held until the session has delivered its events")
         h.session.sink?.sessionFinishedEvents()

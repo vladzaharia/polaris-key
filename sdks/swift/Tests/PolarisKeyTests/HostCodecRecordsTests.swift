@@ -313,7 +313,8 @@ private func recordOf(_ c: [String: JSONValue]) -> [JSONValue]? { c["record"]?.a
         #expect(r.opened.conflicts[10] == invalidRow && r.opened.conflicts[11] == invalidRow)
         #expect(r.opened.conflicts[12] == SyncOpenedRow(seq: 3))
         let f = try pull(
-            obj(["results": arr([result(7, ["fields": arr([]), "ct": str("AAAA"), "version": .int(3)])])]), mutations: ms)
+            obj(["results": arr([result(7, ["fields": arr([]), "ct": str("AAAA"), "version": .int(3)])])]),
+            mutations: ms)
         #expect(f.opened.conflicts[7] == invalidRow)
     }
 

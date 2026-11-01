@@ -165,7 +165,9 @@ private func cell(_ kind: String, _ blinded: String, _ ct: String) -> JSONValue 
             "two ids in one row": with([
                 a, cell("field", bl(.field, prefs, "b"), ct(prefs, "other\u{0}b", .int(1))),
             ]),
-            "a field named other than served": with([cell("field", bl(.field, prefs, "z"), ct(prefs, "main\u{0}a", .int(1)))]),
+            "a field named other than served": with([
+                cell("field", bl(.field, prefs, "z"), ct(prefs, "main\u{0}a", .int(1)))
+            ]),
             "a field that is not blinded": with([cell("field", "a", ct(prefs, "main\u{0}a", .int(1)))]),
             "a repeated field": with([a, a]),
             "an empty field name": with([cell("field", bl(.field, prefs, ""), ct(prefs, "main\u{0}", .int(1)))]),
@@ -175,9 +177,12 @@ private func cell(_ kind: String, _ blinded: String, _ ct: String) -> JSONValue 
             ]),
             "another root": with([cell("field", bl(.field, prefs, "a"), ct(prefs, "main\u{0}a", .int(1), otherRoot))]),
             "a tampered ct": with([cell("field", bl(.field, prefs, "a"), Base64URL.encode(tampered))]),
-            "a ct that is not canonical": with([cell("field", bl(.field, prefs, "a"), ct(prefs, "main\u{0}a", .int(1)) + "=")]),
+            "a ct that is not canonical": with([
+                cell("field", bl(.field, prefs, "a"), ct(prefs, "main\u{0}a", .int(1)) + "=")
+            ]),
             "a cell that is not an object": with([str("a")]),
-            "elements named as fields": with([cell("element", bl(.field, prefs, "a"), ct(prefs, "main\u{0}a", .int(1)))]),
+            "elements named as fields": with([cell("element", bl(.field, prefs, "a"), ct(prefs, "main\u{0}a", .int(1)))]
+            ),
             "a ct beside the fields": good.merging(["ct": str(ct(prefs, "main", .int(1)))]) { $1 },
             "fields beside elements": good.merging(["elements": arr([])]) { $1 },
         ]

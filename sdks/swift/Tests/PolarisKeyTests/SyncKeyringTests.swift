@@ -439,7 +439,8 @@ final class SyncKeyringTests: XCTestCase {
         let server = RingServer()
         let d = try await device("d", server: server)
         let record = SyncWrapBody(
-            ringId: "rg_" + String(repeating: "A", count: 22), epoch: 1, kid: String(repeating: "0", count: 32), kem: 32, enc: "AA", ct: "AA")
+            ringId: "rg_" + String(repeating: "A", count: 22), epoch: 1, kid: String(repeating: "0", count: 32),
+            kem: 32, enc: "AA", ct: "AA")
         let got = try await d.keyring.adoptWrap(record.record())
         XCTAssertEqual(got, .locked(reason: .noRing))
     }

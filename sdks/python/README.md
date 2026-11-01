@@ -518,21 +518,34 @@ working with Connect off. It calls no route: use it only to build your own route
 `poll` and `approve` handing their answers to the handles.
 
 ```python
+from typing import Any, List, Tuple
+
+from polaris_key.connect import ApproveAnswerInput, NearbyApproval
+
+
+def show(approvers: List[Any]) -> None: ...  # draw the list: label and platform, as the device reports them
+def call_approve(vouch: Any) -> Tuple[int, str]:
+    raise NotImplementedError  # your POST nearby/approve with exactly `vouch`
+
+
 # D: the new device. `request` is the handle `nearby/start` answered.
-req = client.cloud_connect.nearby.request(request, label="Ana's phone")
-req.on_approvers(lambda approvers: show(approvers))     # label and platform, as the device reports them
-shown = req.choose(approver.id)                         # the person tapped one: show shown.code
-req.on_result(lambda status: ...)                       # display only: your poll is the authority
+def sign_in_nearby(request: str, approver_id: str) -> None:
+    req = client.cloud_connect.nearby.request(request, label="Ana's phone")
+    req.on_approvers(show)
+    shown = req.choose(approver_id)  # the person tapped one: show shown.code
+    req.on_result(lambda status: None)  # display only: your poll is the authority
+
 
 # M: a signed-in device. The handler runs on the Connect thread: hand the approval to your UI thread.
-handle = client.cloud_connect.nearby.on_request(on_approval, prompt=True, label="Ana's laptop")
-
-def on_approval(approval):
-    ...                                                 # show approval.codes; the person picks one
-    got = approval.pick(code)                           # a VouchRequest, "mismatch" or "invalid"
+def on_approval(approval: NearbyApproval) -> None:
+    code = "123 456"  # show approval.codes; the person picks one
+    got = approval.pick(code)  # a VouchRequest, "mismatch" or "invalid"
     if not isinstance(got, str):
-        status, body = call_approve(got)                # your POST nearby/approve with exactly `got`
+        status, body = call_approve(got)
         approval.finish(ApproveAnswerInput(status, body, discovery_nearby=True))
+
+
+handle = client.cloud_connect.nearby.on_request(on_approval, prompt=True, label="Ana's laptop")
 ```
 
 Name the device in `label` (`"Ana's laptop"`); never use an account identifier. The label D reports is

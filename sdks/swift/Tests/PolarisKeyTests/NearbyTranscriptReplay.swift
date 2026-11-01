@@ -72,7 +72,6 @@ enum NearbyReplay {
         }
     }
 
-
     /// M's `nearby/approve` for one step, from a client of its own.
     private static func approve(
         step: Transcript.Step, transcript t: Transcript, session: ReplaySession, server: ReplayServer,

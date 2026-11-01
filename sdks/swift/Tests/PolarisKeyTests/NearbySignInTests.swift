@@ -614,7 +614,8 @@ final class NearbySignInSessionTests: XCTestCase {
         try await r.core.setToken("pkeyt_new", source: .signin, person: true)
         let after = await r.core.tokenUnconfirmed
         XCTAssertFalse(after)
-        XCTAssertEqual(r.store.log.suffix(2), ["token:set", "mark:clear"], "the new token is written before the mark goes")
+        XCTAssertEqual(
+            r.store.log.suffix(2), ["token:set", "mark:clear"], "the new token is written before the mark goes")
     }
 
     func testADeclineSignsOutAndDropsEverythingOnce() async throws {
@@ -962,7 +963,9 @@ final class NearbySignInWrapTests: XCTestCase {
         XCTAssertFalse(server.requestLog().contains { $0.hasPrefix("PUT /wraps/") }, "the channel copy was enough")
     }
 
-    private func ringDevice(_ name: String, server: RingServer) async throws -> (CoreContext, SyncKeyring, DeviceKeyStore) {
+    private func ringDevice(_ name: String, server: RingServer) async throws -> (
+        CoreContext, SyncKeyring, DeviceKeyStore
+    ) {
         let store = InMemoryStore(productSlug: product, deviceId: "dev_\(name)")
         await store.setToken("pkeyt_\(name)")
         let core = try CoreContext(
@@ -972,7 +975,9 @@ final class NearbySignInWrapTests: XCTestCase {
         try await core.start()
         let keys = try DeviceKeyStore.inMemory(productSlug: product)
         let ring = SyncKeyring(
-            core: core, options: SyncKeyringOptions(keys: keys, rootStore: RingRootStore.inMemory(), backup: .off, subject: { nil }))
+            core: core,
+            options: SyncKeyringOptions(keys: keys, rootStore: RingRootStore.inMemory(), backup: .off, subject: { nil })
+        )
         return (core, ring, keys)
     }
 }
