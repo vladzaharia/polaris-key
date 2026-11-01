@@ -705,6 +705,146 @@ import XCTest
             XCTAssertTrue(after.allSatisfy { $0.pendingSince == nil })
         }
 
+        // ── The links layer on its own: a session that is established is checked before it is handed on ──
+
+        private final class RecordingLink: ConnectSessionLink, @unchecked Sendable {
+            let closes = LockedValue<[PeerCloseCode]>([])
+            func sendRecord(type: Int, body: Data) async throws {}
+            func close(_ code: PeerCloseCode) async { closes.with { $0.append(code) } }
+            func closeSoon(_ code: PeerCloseCode) { closes.with { $0.append(code) } }
+            func pause(_ on: Bool) {}
+        }
+
+        private struct Held {
+            let c: PolarisKeyClient
+            let id: String
+            let key: String
+            let secret: Data
+            let adopted: LockedValue<Int>
+            let delivered: LockedValue<Int>
+            func session(_ link: RecordingLink, tag: String? = nil) -> ConnectSession {
+                ConnectSession(
+                    link: link, peerDeviceId: "", caps: ["app/1"],
+                    hello: PeerHello(label: nil, platform: "t", app: "djdl", maxMessage: 65_536),
+                    role: "responder", remoteAddress: "10.0.0.9",
+                    contact: ConnectContactRef(
+                        id: id, label: "Ben", categories: ["docs"], agreeKey: key, pending: false,
+                        tag: tag ?? ConnectContacts.tag(secret)))
+            }
+        }
+
+        private func held() async throws -> Held {
+            let c = try await client()
+            await server.reply(
+                "/djdl/.well-known/polaris.json",
+                body: #"{"product":"djdl","services":{"connect":{"enabled":true,"interAccount":true}}}"#)
+            await c.discover()
+            await serveIdentity(try await port.ensure())
+            _ = await c.connect.identity(refresh: true)
+            let key = Base64URL.encode(rnd())
+            let secret = rnd()
+            _ = try await c.connect.updateContacts { rows, now in
+                ConnectContacts.store(rows, agreeKey: key, secret: secret, label: "Ben", cats: ["docs"], now: now)?.rows
+            }
+            let adopted = LockedValue(0)
+            let delivered = LockedValue(0)
+            c.cloudConnect.links.core.hooks.adopt.set { _ in adopted.with { $0 += 1 } }
+            c.cloudConnect.links.onLink { _ in delivered.with { $0 += 1 } }
+            return Held(
+                c: c, id: ConnectContacts.id(key), key: key, secret: secret, adopted: adopted, delivered: delivered)
+        }
+
+        func testLinksASessionThatCompletesAfterItsContactIsGoneIsClosedPeerRevokedLinksLayer() async throws {
+            let h = try await held()
+            _ = await h.c.cloudConnect.links.remove(h.id)
+            let link = RecordingLink()
+            await h.c.cloudConnect.links.core.inbound(h.session(link))
+            XCTAssertEqual(link.closes.current, [.peerRevoked])
+            XCTAssertEqual(h.delivered.current, 0)
+        }
+
+        func testLinksASessionThatCompletesAfterLinksGoOffIsClosedPeerByeLinksLayer() async throws {
+            let h = try await held()
+            await server.reply(
+                "/djdl/.well-known/polaris.json",
+                body: #"{"product":"djdl","services":{"connect":{"enabled":true,"interAccount":false}}}"#)
+            await h.c.discover()
+            let link = RecordingLink()
+            await h.c.cloudConnect.links.core.inbound(h.session(link))
+            XCTAssertEqual(link.closes.current, [.peerBye])
+            XCTAssertEqual(h.delivered.current, 0)
+        }
+
+        func testLinksASessionUnderAReplacedPendingSecretPromotesNothingAndIsClosed() async throws {
+            let h = try await held()
+            let link = RecordingLink()
+            await h.c.cloudConnect.links.core.inbound(h.session(link, tag: ConnectContacts.tag(rnd())))
+            XCTAssertEqual(link.closes.current, [.peerRevoked])
+            XCTAssertEqual(h.delivered.current, 0)
+        }
+
+        func testLinksAnInboundSessionThatIsNoLongerHeldIsNotHandedToDirectTransfer() async throws {
+            let h = try await held()
+            _ = await h.c.cloudConnect.links.remove(h.id)
+            await h.c.cloudConnect.links.core.inbound(h.session(RecordingLink()))
+            XCTAssertEqual(h.adopted.current, 0)
+            // A held contact is handed over once it has been checked.
+            let h2 = try await held()
+            await h2.c.cloudConnect.links.core.inbound(h2.session(RecordingLink()))
+            XCTAssertEqual(h2.adopted.current, 1)
+            XCTAssertEqual(h2.delivered.current, 1)
+        }
+
+        func testLinksAHandshakeUnderAPendingContactPromotesOnlyTheRowWhoseSecretOpenedIt() async throws {
+            let c = try await client()
+            await serveIdentity(try await port.ensure())
+            _ = await c.connect.identity(refresh: true)
+            let key = Base64URL.encode(rnd())
+            _ = try await c.connect.updateContacts { rows, now in
+                ConnectContacts.store(rows, agreeKey: key, secret: rnd(), label: "Ben", cats: ["docs"], now: now)?.rows
+            }
+            let pendingSecret = rnd()
+            _ = try await c.connect.updateContacts { rows, now in
+                ConnectContacts.store(rows, agreeKey: key, secret: pendingSecret, label: "Ben2", cats: ["docs"], now: now)?
+                    .rows
+            }
+            let before = await c.connect.contactRows()
+            XCTAssertEqual(before.count, 2)
+            let src = ConnectLanSource.client(c.connect)
+            func ref(_ tag: String) -> ConnectContactRef {
+                ConnectContactRef(
+                    id: ConnectContacts.id(key), label: nil, categories: [], agreeKey: key, pending: true, tag: tag)
+            }
+            await src.contactEstablished?(ref(ConnectContacts.tag(rnd())))
+            let same = await c.connect.contactRows()
+            XCTAssertEqual(same.count, 2, "a session under another secret promotes nothing")
+            await src.contactEstablished?(ref(ConnectContacts.tag(pendingSecret)))
+            let after = await c.connect.contactRows()
+            XCTAssertEqual(after.count, 1)
+        }
+
+        // ── A discovery read outside discover() ──
+
+        func testLinksADocumentReadOutsideDiscoverAlsoLapsesAfterADay() async throws {
+            let c = try await client()
+            await server.reply(
+                "/djdl/.well-known/polaris.json",
+                body: #"{"product":"djdl","services":{"connect":{"enabled":true,"interAccount":true}}}"#)
+            // A read made straight on the core (a sign-in, a restore, a nearby, update or packs read).
+            _ = await c.core.discover()
+            let stamp = c.connect.linksUntil.current
+            XCTAssertNotNil(stamp, "the read stamped the cached answer")
+            let on = await c.cloudConnect.links.interAccount()
+            XCTAssertTrue(on)
+            c.connect.linksUntil.set(1)
+            let lapsed = await c.cloudConnect.links.interAccount()
+            XCTAssertFalse(lapsed)
+            // A failed read outside discover() closes the gate.
+            await server.reply("/djdl/.well-known/polaris.json", status: 404, body: "")
+            _ = await c.core.discover()
+            XCTAssertEqual(c.connect.linksUntil.current, 0)
+        }
+
         func testPairAndOpenAreTheTypedNAWhileLinksAreOff() async throws {
             let c = try await client()
             let off = await c.cloudConnect.links.interAccount()
