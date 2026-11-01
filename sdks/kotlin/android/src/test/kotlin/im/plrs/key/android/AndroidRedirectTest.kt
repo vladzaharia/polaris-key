@@ -93,7 +93,7 @@ class AndroidRedirectTest {
     @Test
     fun theCustomTabOpensTheAuthorizeUrlForTheChosenRedirect() = runBlocking {
         val tabs = RecordingTabs()
-        val browser = AndroidRedirectBrowser(redirect, tabs)
+        val browser = AndroidRedirectBrowser(redirect, tabs, "key.example")
         assertTrue(browser.open(authorize, schemeUri))
         assertTrue(browser.open(authorize, claimed))
         assertEquals(listOf(Uri.parse(authorize), Uri.parse(authorize)), tabs.customTabs)
@@ -102,7 +102,7 @@ class AndroidRedirectTest {
     @Test
     fun theRealTabIsAViewIntentForTheSystemBrowser() = runBlocking {
         val activity = Robolectric.buildActivity(Activity::class.java).create().get()
-        val browser = AndroidRedirectBrowser.createWith(activity, redirect) {}
+        val browser = AndroidRedirectBrowser.createWith(activity, redirect, "key.example") {}
         assertTrue(browser.open(authorize, schemeUri))
         val started = shadowOf(activity).nextStartedActivity
         assertEquals(Intent.ACTION_VIEW, started.action)
@@ -118,10 +118,12 @@ class AndroidRedirectTest {
     @Test
     fun onlyTheProductsHttpsPageOpensTowardARegisteredRedirect() = runBlocking {
         val tabs = RecordingTabs()
-        val browser = AndroidRedirectBrowser(redirect, tabs)
+        val browser = AndroidRedirectBrowser(redirect, tabs, "key.example")
         assertFalse(browser.open("http://key.example/djdl/identity/authorize", schemeUri))
         assertFalse(browser.open("javascript:alert(1)", schemeUri))
         assertFalse(browser.open("intent://x#Intent;end", schemeUri))
+        assertFalse(browser.open(authorize.replace("key.example", "evil.example"), schemeUri))
+        assertFalse(browser.open("https://key.example.evil.example/authorize", schemeUri))
         assertFalse(browser.open(authorize, "com.other.app:/pkey/callback"))
         assertFalse(browser.open(authorize, "http://127.0.0.1:5000/pkey/callback"))
         assertTrue(tabs.customTabs.isEmpty())
@@ -177,7 +179,35 @@ class AndroidRedirectTest {
         assertTrue(delivered.isEmpty())
     }
 
+    @Test
+    fun theSameIntentTwiceOrAfterRecreationIsHandedOverOnce() {
+        install()
+        val url = "$schemeUri?code=c&state=s&iss=i"
+        val controller = Robolectric.buildActivity(PKeyRedirectActivity::class.java, view(url))
+        val activity = controller.create().get()
+        assertEquals(listOf(url), delivered)
+        // A re-created activity (or the stored intent read again) has nothing left to deliver.
+        controller.newIntent(activity.intent)
+        controller.newIntent(Intent())
+        assertEquals(listOf(url), delivered)
+        // The OS delivering the very same redirect again is not handed over a second time.
+        controller.newIntent(view(url))
+        assertEquals(listOf(url), delivered)
+    }
+
     // ── Delivery to the sign-in ──────────────────────────────────────────────────────────
+
+    @Test
+    fun aFailureAtRedemptionDoesNotCrashOrStopLaterDeliveries() = runBlocking {
+        val second = CompletableDeferred<Unit>()
+        val sink = redirectSink(CoroutineScope(SupervisorJob() + Dispatchers.Default)) { url ->
+            if (url == "first") throw im.plrs.key.core.PolarisException("network-error", "offline")
+            second.complete(Unit)
+        }
+        sink("first")
+        sink("second")
+        withTimeout(5_000) { second.await() }
+    }
 
     @Test
     fun aRefusalFromTheSignInDoesNotStopLaterDeliveries() = runBlocking {

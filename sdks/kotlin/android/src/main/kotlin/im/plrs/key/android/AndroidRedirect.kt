@@ -16,7 +16,7 @@ package im.plrs.key.android
 import im.plrs.key.identity.NativeRedirect
 import im.plrs.key.identity.NativeRedirectClass
 import im.plrs.key.identity.NativeRedirectOptions
-import im.plrs.key.identity.SignInError
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -67,8 +67,10 @@ internal object RedirectInbox {
     internal class Registration(val redirect: AndroidRedirect, val host: Class<*>, val sink: (String) -> Unit)
 
     private val current = AtomicReference<Registration?>(null)
+    private val last = AtomicReference<String?>(null)
 
     fun install(registration: Registration) {
+        last.set(null)
         current.set(registration)
     }
 
@@ -79,6 +81,7 @@ internal object RedirectInbox {
     /** Test hook: forget any registration. */
     fun reset() {
         current.set(null)
+        last.set(null)
     }
 
     fun hostActivity(): Class<*>? = current.get()?.host
@@ -86,7 +89,8 @@ internal object RedirectInbox {
     /** Hand a delivery to the sink once. False when nobody waits or the URL is not a registered redirect. */
     fun deliver(url: String?): Boolean {
         val registration = current.get()
-        val ok = registration != null && url != null && registration.redirect.accepts(url)
+        // The very same URL is never handed over twice (a replayed intent): a redirect is single use.
+        val ok = registration != null && url != null && registration.redirect.accepts(url) && last.getAndSet(url) != url
         if (ok) registration?.sink?.invoke(requireNotNull(url))
         return ok
     }
@@ -104,8 +108,10 @@ internal fun redirectSink(scope: CoroutineScope, handle: suspend (String) -> Uni
     scope.launch {
         try {
             handle(url)
-        } catch (_: SignInError) {
-            // The sign-in went on waiting (or was over already); the person can open the browser again.
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Refused (the sign-in went on waiting) or failed at redemption (settled; wait() reports it). Never a crash.
         }
     }
 }
