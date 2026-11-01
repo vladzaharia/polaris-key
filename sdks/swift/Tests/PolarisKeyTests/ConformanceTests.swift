@@ -26,11 +26,15 @@
 // Everything reads `conformance/corpus/v2/` from the checkout through `CorpusLocator`.
 // The wire-v2 corpus is gone; there is one corpus.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import PolarisKeyLicense
 import XCTest
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 // ── Corpus shapes ──────────────────────────────────────────────────────────────────
 

@@ -12,11 +12,15 @@
 // bytes, stored raw (`clen == len`), so the planner's request weight (16 KiB per request) leaves
 // chunk the cheapest strategy once a seed exists.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 @testable import PolarisKeyPacks
 import XCTest
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 let CHUNK = 64 * 1024
 

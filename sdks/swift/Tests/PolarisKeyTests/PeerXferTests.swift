@@ -3,11 +3,15 @@
 // `peer-matrix.json` (codecs, window, offer order, hash, ending, resume, name, limits). Mirrors client-core's
 // `peerXfer.test.ts` and the Node runner's `xferRun`. One side of a session is a machine over its steps.
 
-import CryptoKit
 import Foundation
 import XCTest
 
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private func unhex(_ s: String) -> Data {
     let c = Array(s.utf8)

@@ -4,12 +4,16 @@
 // D-4) is proven against a real loopback WebSocket server on `NWListener` + `NWProtocolWebSocket`. Mirrors the
 // socket half of Python's `test_connect_relay.py` and Node's `relay.test.ts`.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import XCTest
 
 @testable import PolarisKey
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 #if canImport(Network)
     import Network

@@ -28,9 +28,13 @@
 // host's back: a malformed one throws `.unreadable`, a failed unwrap throws `.wrap`, a Keychain
 // error (locked, denied) is thrown, and none is taken for "no keys". `wipe()` is the way out.
 
-import CryptoKit
 import Foundation
 import Security
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// A device's two public keys: raw 32 bytes, canonical base64url (43 characters).
 public struct DevicePublicKeys: Sendable, Equatable {

@@ -7,8 +7,12 @@
 //
 // Nothing here prints a body, a name or a key.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 public let xferMaxControlBytes = 4096
 public let xferMaxSize = 1 << 40

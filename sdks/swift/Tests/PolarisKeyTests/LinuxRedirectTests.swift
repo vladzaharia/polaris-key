@@ -54,7 +54,10 @@
             return heads
         }
 
-        func stop() { shutdown(fd, Int32(SHUT_RDWR)); close(fd) }
+        func stop() {
+            shutdown(fd, Int32(SHUT_RDWR))
+            close(fd)
+        }
 
         private func serve() {
             while true {

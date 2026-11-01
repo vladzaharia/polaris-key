@@ -3,7 +3,6 @@
 // off switches (G21), inbound sessions with no listener (G9), the bounded stop (S6) and the LAN-then-relay
 // race. Mirrors the Python port's `test_cloud_connect.py`.
 
-import CryptoKit
 import Foundation
 import Network
 import PolarisKeyCore
@@ -11,6 +10,11 @@ import PolarisKeyPlatform
 import XCTest
 
 @testable import PolarisKey
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private let selfId = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 private let otherId = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"

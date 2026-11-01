@@ -6,11 +6,15 @@
 // attacker would: a manifest that substitutes a pinned kid, a hand-written cache, a header with
 // two `alg` members, an oversized header, a bundle minted for another machine.
 
-import CryptoKit
 import Foundation
 import PolarisKeyConfig
 import PolarisKeyCore
 import PolarisKeyLicense
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 // ── Signing ────────────────────────────────────────────────────────────────────────
 

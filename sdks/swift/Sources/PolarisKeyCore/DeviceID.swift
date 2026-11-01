@@ -5,8 +5,12 @@
 // identifierForVendor on iOS, iPadOS, Mac Catalyst, tvOS, visionOS and watchOS (SP-S16); a random
 // UUID is the last-resort fallback.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 #if os(macOS)
 import IOKit

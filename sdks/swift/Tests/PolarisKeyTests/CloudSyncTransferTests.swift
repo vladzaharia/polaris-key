@@ -6,13 +6,17 @@
 // is `sync-file-invalid`, cache damage is a miss, journal and cache names that no id can steer, and the
 // real zstd decoder behind codec 1 chunks.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import XCTest
 import libzstd
 
 @testable import PolarisKey
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private let mib = 1_048_576
 private let clockNow = 1000.0

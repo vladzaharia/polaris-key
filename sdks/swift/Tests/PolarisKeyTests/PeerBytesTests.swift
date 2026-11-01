@@ -3,11 +3,15 @@
 // and `relayEnvelopes` rows of `conformance/corpus/v2/peer-matrix.json`, read in place. Records
 // (`records`) are the next slice's.
 
-import CryptoKit
 import Foundation
 import XCTest
 
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private func unhex(_ s: String) -> Data {
     let c = Array(s.utf8)

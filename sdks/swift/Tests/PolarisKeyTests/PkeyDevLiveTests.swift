@@ -50,7 +50,6 @@
 // `key-entry-limit` is `key_entry_limit`. Codes and shapes are asserted, never counters that move
 // with the server's history, and never the server's own URLs.
 
-import CryptoKit
 import Foundation
 import PolarisKey
 import PolarisKeyConfig
@@ -60,6 +59,11 @@ import PolarisKeyUpdate
 import XCTest
 
 @testable import PolarisKeyIdentity
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 final class PkeyDevLiveTests: XCTestCase {
     // ── B0: the generated config is the server's ─────────────────────────────────────────

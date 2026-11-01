@@ -6,13 +6,17 @@
 // attempt, every outcome, `unavailable` without a request, and that no token, grant, handle or
 // nonce prints.
 
-import CryptoKit
 import Foundation
 import PolarisKey
 import XCTest
 
 @testable import PolarisKeyCore
 @testable import PolarisKeyIdentity
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// The fixture device keys of `label` (format.ts "exchange"): the signing seed is SHA-256(label),
 /// the agreement key SHA-256(label + ":agree") with bit 255 clear. Durable or memory by choice.

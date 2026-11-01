@@ -8,8 +8,12 @@
 // Delivery is the host's: a partial that verified is linked (or copied through a temporary file in the
 // destination's directory) to a path the host chose, and never over an existing file.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 public struct XferStoreError: Error, Sendable, Equatable {
     public enum Kind: Sendable, Equatable { case io, exists, badPath, quota, purged, notOwner }

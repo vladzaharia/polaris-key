@@ -5,8 +5,12 @@
 // followed by a NUL and then the UTF-8 name. Every symmetric key seals one plaintext, so the
 // AES-GCM nonce is a constant of 12 zero bytes.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 public enum SyncCrypto {
     /// The HKDF `info` labels, ASCII, without the NUL that scopes some of them.

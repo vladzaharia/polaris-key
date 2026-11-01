@@ -30,9 +30,13 @@
 //     the next launch checks again. A sign-out waits for one in flight, then revokes what it enrolled;
 //   - the secret is never logged, printed or put in an error: `RestoreItem` redacts it.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// The restore key the platform backup carries: an id and a secret. Printing it shows the secret `[redacted]`.
 public struct RestoreItem: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,

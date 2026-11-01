@@ -4,8 +4,12 @@
 // slow, plain implementation (16-limb integers) used only to reproduce those recorded bytes; the
 // SDK itself signs through CryptoKit. Not for production use.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 enum DeterministicEd25519 {
     private typealias N = [UInt32]  // 16 little-endian 32-bit limbs

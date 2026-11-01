@@ -14,8 +14,12 @@
 //
 // Nothing here prints a secret: every type's `description` is fixed text and its mirror is empty.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// Why a Noise call refused. `code` is the string the other SDKs use.
 public enum PeerNoiseError: Error, Sendable, Equatable, CustomStringConvertible {

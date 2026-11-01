@@ -45,7 +45,6 @@
 // `CoreContext`, against the blobs template the last discover returned, and the replay server
 // behind the `PackObjectTransport` seam (`ReplayPackObjectTransport`).
 
-import CryptoKit
 import Foundation
 import PolarisKey
 import PolarisKeyGameCenter
@@ -57,6 +56,11 @@ import XCTest
 @testable import PolarisKeyCore
 @testable import PolarisKeyIdentity
 @testable import PolarisKeyPacks
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// A settable clock the client reads through `CoreOptions.clock`.
 final class ReplayClock: @unchecked Sendable {

@@ -4,12 +4,16 @@
 // Mirrors the Python port's `test_connect_session.py` and sdk-node's `connect.test.ts`. The pipes are
 // in memory; no socket is opened.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import XCTest
 
 @testable import PolarisKey
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private let sub = "ps_AAAAAAAAAAAAAAAAAAAAAA"
 private let idA = "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH"
