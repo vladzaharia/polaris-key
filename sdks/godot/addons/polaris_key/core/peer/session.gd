@@ -23,7 +23,9 @@ extends RefCounted
 ##                      newest first}. The initiator uses the first key, the responder tries the
 ##                      first two (G2)
 ##   caps               the capabilities this side offers. Mode v adds `vouch/1` itself and requires
-##                      it of the peer (section 15.6.1 rule 1); the order guard itself is CC-15b's
+##                      it of the peer (section 15.6.1 rule 1)
+##   hold_sas           the mode v initiator only: send no SAS_COMMIT at HELLO; the host starts the
+##                      code with `start_sas()` once the person chose this approver (CC-15 N9)
 ##   hello              {label?, platform, app, max_message?}
 ##   send               Callable(noise: PackedByteArray), one Noise message to the peer
 ##   on_event           Callable(event: Dictionary), see below
@@ -46,9 +48,12 @@ extends RefCounted
 ## Everything after the transport exists runs inline. A secret is held in a PackedByteArray and
 ## filled with zeros when it is replaced or the session ends (best effort).
 ##
-## Not built here, for CC-15b before any mode v consumer exists (R-6G): the VOUCH flow guard (the SAS
-## commit is made at HELLO instead of being held, the direction and order table of VOUCH_REQ and
-## VOUCH_RESULT, the failure budget) and the NFC step of HELLO labels. Only mode a is wired to a host.
+## Mode v (CC-15b.G1, R-6G ruling 5): one `PKeyPeerVouch.Flow` per session judges every vouch and Sync
+## record in both directions (rule 7 and 12: what arrives, and what `send_record` is about to send), so
+## a record in the wrong direction or order closes the session and nothing reaches the host. The host
+## drives it through `vouch()`; a record the flow hands over is delivered as a `record` event (held first
+## while the person's own code is unconfirmed). The code deadline restarts once: D's at `start_sas()`,
+## M's when SAS_COMMIT arrives. A MORE chain over 16 KiB closes `peer_bad_frame` in modes v and p.
 ##
 ## Bounds on unauthenticated or hostile input (R-6G): a responder reads a first message of at most
 ## FIRST_MESSAGE_MAX bytes (a longer one closes `peer_bad_frame`, silently, with no AEAD run); an
@@ -122,6 +127,8 @@ var _max_send := PKeyPeerRecord.MAX_MESSAGE
 var _sent_count := 0
 var _keyed_at := 0.0
 var _held: Array = []
+var _flow: PKeyPeerVouch.Flow
+var _hold_sas := false
 var _ticket: PKeyPeerLimiter.Ticket
 var _clock_started := false
 var _transport_deadline := INF
@@ -160,6 +167,8 @@ static func create(options: Dictionary) -> PKeyResult:
 		return _invalid("account")
 	if mode != "a" and role == "responder" and not options.get("admission") is PKeyPeerLimiter:
 		return _invalid("an approver needs an admission limiter")
+	if options.get("hold_sas", false) != false and not (options["hold_sas"] == true and mode == "v" and role == "initiator"):
+		return _invalid("hold_sas is for the mode v initiator")
 	var hello: Variant = options.get("hello")
 	if not hello is Dictionary or not (hello as Dictionary).get("platform") is String or not (hello as Dictionary).get("app") is String:
 		return _invalid("hello")
@@ -199,8 +208,11 @@ func _init(options: Dictionary, port: Variant) -> void:
 	_account = options.get("account", {})
 	_caps = (options.get("caps", []) as Array).duplicate()
 	# Both mode-v payloads list `vouch/1` (section 15.6.1 rule 1); the host cannot leave it out.
-	if _mode == "v" and not _caps.has(VOUCH_CAP):
-		_caps.append(VOUCH_CAP)
+	if _mode == "v":
+		if not _caps.has(VOUCH_CAP):
+			_caps.append(VOUCH_CAP)
+		_flow = PKeyPeerVouch.Flow.new("requester" if _role == "initiator" else "approver")
+		_hold_sas = options.get("hold_sas", false) == true
 	_hello = options["hello"]
 	_send_cb = options["send"]
 	_on_event = options["on_event"]
@@ -282,6 +294,12 @@ func send_record(type: int, body: PackedByteArray) -> PKeyResult:
 		return PKeyResult.failure(&"state", "That record type belongs to the session.")
 	if body.size() > _max_send:
 		return PKeyResult.failure(&"too_large", "The message is larger than the peer accepts.")
+	if _flow != null:
+		# The sender's checks are the receiver's (rule 7): a record out of order or direction ends the session.
+		var verdict := _flow.send({"type": type, "body": body})
+		if not verdict["ok"]:
+			close(verdict["close"])
+			return PKeyResult.failure(&"state", "The record is not allowed now.")
 	var code := _emit_records(type, body)
 	if code != &"":
 		_fail(code, false)
@@ -335,6 +353,25 @@ func confirm_sas() -> void:
 		if _phase == &"closed":
 			return
 		_emit({"type": &"record", "record_type": m["type"], "body": m["body"]})
+
+
+## Mode v, a `hold_sas` initiator: the person chose this approver. Sends SAS_COMMIT now and starts the
+## code deadline over. Only once and only after `established`; any other call closes the session
+## `peer_not_allowed`.
+func start_sas() -> void:
+	if not _hold_sas or _phase != &"sas" or _sas_step != 0 or not _n_d.is_empty():
+		close(PEER_NOT_ALLOWED)
+		return
+	# The code deadline counts from the person's choice, not from the first byte (N9).
+	_sas_deadline = _mono() + SAS_DEADLINE_SECONDS
+	var code := _commit_sas()
+	if code != &"":
+		_fail(code, false)
+
+
+## Mode v: the host's handle on this session's vouch flow (`PKeyPeerVouchPort`); a new one each call.
+func vouch() -> PKeyPeerVouchPort:
+	return PKeyPeerVouchPort.new(self)
 
 
 ## The deadlines: call it every frame (the link does). A transport or code that takes too long closes
@@ -638,6 +675,23 @@ func _on_trust(body: PackedByteArray) -> StringName:
 
 ## A record the host owns, and only once the code is settled.
 func _on_host_record(type: int, body: PackedByteArray) -> StringName:
+	if _flow == null:
+		return _deliver_host_record(type, body)
+	# Before the code is settled on this side there is nothing to hold a record for.
+	if _phase != &"sas_shown" and _phase != &"open":
+		return PEER_NOT_ALLOWED
+	var verdict := _flow.receive({"type": type, "body": body})
+	if not verdict["ok"]:
+		return verdict["close"]
+	for r in verdict["deliver"]:
+		var code := _deliver_host_record(r["type"], r["body"])
+		if code != &"":
+			return code
+	return &""
+
+
+## Hands a record to the host: held (bounded) until this side's person confirms, delivered after.
+func _deliver_host_record(type: int, body: PackedByteArray) -> StringName:
 	if _phase == &"sas_shown":
 		# The peer may confirm first: hold the record (bounded) until this side's person does.
 		var bytes := 0
@@ -661,8 +715,10 @@ func _on_hello(type: int, body: PackedByteArray) -> StringName:
 	_max_send = mini(PKeyPeerRecord.MAX_MESSAGE, int(hello["max_message"]))
 	var caps := PKeyPeerPayload.caps_intersection(_caps, _peer_caps)
 	# Rule 1 (section 15.6.1): without `vouch/1` on both sides, close before any SAS record.
-	if _mode == "v" and not caps.has(VOUCH_CAP):
-		return PEER_NOT_ALLOWED
+	if _flow != null:
+		var negotiated := _flow.negotiate(_caps, _peer_caps)
+		if not negotiated["ok"]:
+			return negotiated["close"]
 	_caps = caps
 	_phase = &"open" if _mode == "a" else &"sas"
 	var shown := {"platform": hello["platform"], "app": hello["app"], "max_message": hello["max_message"]}
@@ -676,8 +732,8 @@ func _on_hello(type: int, body: PackedByteArray) -> StringName:
 		return &""
 	if _mode == "a":
 		return _push_ring()
-	# D commits first.
-	return _commit_sas() if _role == "initiator" else &""
+	# D commits first, unless the host holds the code back until the person chose this approver.
+	return _commit_sas() if _role == "initiator" and not _hold_sas else &""
 
 
 func _on_peer_close(body: PackedByteArray) -> StringName:
@@ -765,6 +821,9 @@ func _sas_commit_received(body: PackedByteArray) -> StringName:
 	if c == null:
 		return PEER_BAD_FRAME
 	_commit = PKeyPeerSas.encode_value(c)
+	if _mode == "v":
+		# The code deadline counts from D's choice, as D's does from `start_sas()` (N5).
+		_sas_deadline = _mono() + SAS_DEADLINE_SECONDS
 	_n_m = _crypto.random_bytes(32)
 	var sent := _emit_records(PKeyPeerRecord.SAS_NONCE, PKeyPeerSas.body("nM", _n_m))
 	_sas_step = 1

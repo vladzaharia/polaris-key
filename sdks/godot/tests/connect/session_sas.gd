@@ -71,7 +71,8 @@ func _same_code_then_records(t: PKeyTestContext) -> void:
 		if mode == "p":
 			t.check("p: CONFIRM is the session's to send", d.session.send_record(PKeyPeerRecord.CONFIRM, PackedByteArray()).code == &"state")
 		else:
-			t.check("v: the host may send a vouch record once open", d.session.send_record(PKeyPeerRecord.VOUCH_REQ, "{}".to_utf8_buffer()).ok)
+			d.session.vouch().shown()
+			t.check("v: the host may send a request once open and its screen shows the code", d.session.send_record(PKeyPeerRecord.VOUCH_REQ, "{}".to_utf8_buffer()).ok)
 		# Confirming twice closes: the second call finds the session already open.
 		d.session.confirm_sas()
 		await PKeyTestPeers.pump(d, m)
@@ -79,50 +80,55 @@ func _same_code_then_records(t: PKeyTestContext) -> void:
 
 
 func _held_records(t: PKeyTestContext) -> void:
-	# A record that arrives before this side's person confirms is held, not refused, then delivered.
-	var sides := await _open_pair("v")
+	# A record that arrives before this side's person confirms is held, not refused, then delivered. Mode
+	# p's CONTACT is a host record with no order of its own (mode v's records go through the vouch flow,
+	# tested in vouch.gd); mode p's own CONFIRM is held too, so it counts as one of the 16.
+	var sides := await _open_pair("p")
 	var d: PKeyTestPeers.Peer = sides[0]
 	var m: PKeyTestPeers.Peer = sides[1]
 	d.session.confirm_sas()
-	d.session.send_record(PKeyPeerRecord.VOUCH_REQ, "{}".to_utf8_buffer())
+	d.session.send_record(PKeyPeerRecord.CONTACT, "{}".to_utf8_buffer())
 	await PKeyTestPeers.pump(d, m)
 	t.check("held: an early record is held, not delivered and not refused", m.of(&"record").is_empty() and not m.session.is_closed())
 	m.session.confirm_sas()
-	var got := m.of(&"record")
-	t.check("held: and delivered when this side confirms", got.size() == 1 and got[0]["record_type"] == PKeyPeerRecord.VOUCH_REQ)
+	var got := m.of(&"record").map(func(e: Dictionary) -> int: return e["record_type"])
+	t.check("held: and delivered when this side confirms, in order", got == [PKeyPeerRecord.CONFIRM, PKeyPeerRecord.CONTACT], str(got))
 
-	# 16 KiB at most before the confirmation, then peer_busy.
-	sides = await _open_pair("v")
+	# 16 KiB at most before the confirmation, then peer_busy (CONFIRM is 2 bytes).
+	sides = await _open_pair("p")
 	d = sides[0]
 	m = sides[1]
 	d.session.confirm_sas()
-	d.session.send_record(PKeyPeerRecord.VOUCH_REQ, _bytes(8 * 1024))
+	d.session.send_record(PKeyPeerRecord.CONTACT, _bytes(8 * 1024))
 	await PKeyTestPeers.pump(d, m)
 	t.check("held: 8 KiB is held", not m.session.is_closed())
-	d.session.send_record(PKeyPeerRecord.VOUCH_REQ, _bytes(8 * 1024 + 1))
+	d.session.send_record(PKeyPeerRecord.CONTACT, _bytes(8 * 1024 - 2))
+	await PKeyTestPeers.pump(d, m)
+	t.check("held: exactly 16 KiB is held", not m.session.is_closed())
+	d.session.send_record(PKeyPeerRecord.CONTACT, _bytes(1))
 	await PKeyTestPeers.pump(d, m)
 	t.check("held: over 16 KiB closes peer_busy", m.closes() == [[&"peer_busy", false]], str(m.closes()))
 	t.check("held: and the sender is told", d.closes() == [[&"peer_busy", true]])
 
 	# 16 records at most.
-	sides = await _open_pair("v")
+	sides = await _open_pair("p")
 	d = sides[0]
 	m = sides[1]
 	d.session.confirm_sas()
-	for i in 16:
-		d.session.send_record(PKeyPeerRecord.VOUCH_REQ, "{}".to_utf8_buffer())
+	for i in 15:
+		d.session.send_record(PKeyPeerRecord.CONTACT, "{}".to_utf8_buffer())
 	await PKeyTestPeers.pump(d, m)
 	t.check("held: 16 records are held", not m.session.is_closed())
-	d.session.send_record(PKeyPeerRecord.VOUCH_REQ, "{}".to_utf8_buffer())
+	d.session.send_record(PKeyPeerRecord.CONTACT, "{}".to_utf8_buffer())
 	await PKeyTestPeers.pump(d, m)
 	t.check("held: the 17th closes peer_busy", m.closes() == [[&"peer_busy", false]], str(m.closes()))
 
 	# After a close the held records are gone.
-	sides = await _open_pair("v")
+	sides = await _open_pair("p")
 	d = sides[0]
 	m = sides[1]
 	d.session.confirm_sas()
-	d.session.send_record(PKeyPeerRecord.VOUCH_REQ, "{}".to_utf8_buffer())
+	d.session.send_record(PKeyPeerRecord.CONTACT, "{}".to_utf8_buffer())
 	await PKeyTestPeers.pump(d, m)
 	m.session.close()
 	m.session.confirm_sas()
