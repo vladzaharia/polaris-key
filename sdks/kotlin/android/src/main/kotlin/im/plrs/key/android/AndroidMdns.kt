@@ -104,13 +104,10 @@ private class ConnectivityNetworkPort(private val context: Context) : NetworkPor
     override fun isNotVpn(network: Network): Boolean {
         // The app grants ACCESS_NETWORK_STATE (the library declares none): without it the network is not known to be
         // free of a VPN, which is the answer for an unknown network.
-        if (context.checkSelfPermission(Manifest.permission.ACCESS_NETWORK_STATE) != PackageManager.PERMISSION_GRANTED) return false
-        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
-        return try {
-            cm.getNetworkCapabilities(network)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) == true
-        } catch (e: SecurityException) {
-            false
-        }
+        val granted = context.checkSelfPermission(Manifest.permission.ACCESS_NETWORK_STATE) == PackageManager.PERMISSION_GRANTED
+        val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        val caps = if (granted) runCatching { cm?.getNetworkCapabilities(network) }.getOrNull() else null
+        return caps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) == true
     }
 
     // The library declares no permission (the app decides); a refusal is caught below. Lint cannot see that for a normal permission.
