@@ -113,6 +113,14 @@ async function mount(id: string, scheme: "dark" | "light", rootPx: number) {
     await new Promise((r) => setTimeout(r, 20));
   await document.fonts.ready;
   await new Promise<void>((r) => requestAnimationFrame(() => r()));
+  // The step's entrance fades in: measure the settled colours, not a frame of the fade.
+  for (const a of document.getAnimations())
+    try {
+      a.finish();
+    } catch {
+      // An infinite animation (a spinner) has no end.
+    }
+  await new Promise<void>((r) => requestAnimationFrame(() => r()));
   return host.querySelector<HTMLElement>(".pk-root")!;
 }
 
