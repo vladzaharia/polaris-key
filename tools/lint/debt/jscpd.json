@@ -4749,7 +4749,7 @@
       "jscpd:duplicate": 4
     },
     "packages/worker/test/transcripts/scenarios/redirect.ts": {
-      "jscpd:duplicate": 5
+      "jscpd:duplicate": 6
     },
     "packages/worker/test/transcripts/scenarios/release.ts": {
       "jscpd:duplicate": 4
