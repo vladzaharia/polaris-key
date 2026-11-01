@@ -2,7 +2,7 @@
 title: "Cloud Sync"
 description: "A signed-in person's settings, saves and records, synced across their devices: what works, how a product declares its data and the quota."
 type: "concept"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-11-01"
 sidebar:
   order: 1
 ---
@@ -100,7 +100,7 @@ A collection has a `name` (the key charset `[A-Za-z0-9._:-]`, a trailing `.*` ma
 
 `cloudSync.encryption` is `e2e` (the default) or `server`. With `e2e` the server holds ciphertext and cannot read synced values; `server` is a per-product opt-out that lets it read them, and only then can a migration use `mapValues`. Names starting with `x:` are reserved for the blinded names an E2E client writes, so no config key or collection may use them.
 
-`template: "saves"` declares 16 save slots per player, which nothing raises. A save holds `playtime`, `progress`, `chapter`, `formatVersion` and a `thumbnail`, plus one file of up to 32 MiB, and the last 5 versions of the file are kept. `template: "session"` is 16 records, last write wins, one 8 MiB file.
+`template: "saves"` declares 16 save slots per player, which nothing raises. A save holds `playtime`, `progress`, `chapter`, `formatVersion` and a `thumbnail`, plus one file of up to 32 MiB, and the last 5 versions of the file are kept. `template: "session"` is 16 records, last write wins, one 8 MiB file. How an app reads and writes saves: [Cloud Sync saves](/docs/features/cloud-sync/saves/).
 
 ## Conflicts
 

@@ -1,0 +1,177 @@
+---
+title: "Cloud Sync saves"
+description: "Save a game or document file for a signed-in person and read it on another device: the calls, metadata, conflicts and errors."
+type: "reference"
+lastReviewed: "2026-11-01"
+sidebar:
+  order: 3
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+
+A save is a record in a collection declared with `template: "saves"`, plus one file. The SDK writes the file first and the record after it, so a save that fails halfway is never read. A save file is at most 32 MiB, the last 5 versions are kept, and a person has at most 16 slots. Saves sync across the person's devices through [Cloud Sync](/docs/features/cloud-sync/#records-and-saves), and they are end-to-end encrypted unless the product opts out.
+
+There is no implicit `saves` collection: the app declares it in its catalog.
+
+```json title=".pkey/schema"
+{
+  "schemaVersion": 4,
+  "entries": [],
+  "cloudSync": { "collections": [{ "name": "saves", "template": "saves" }] }
+}
+```
+
+A save id is 1 to 128 characters of `[A-Za-z0-9._:-]`. Saves need a signed-in person and the Cloud Sync service. The Worker serves their files only while [files](/docs/features/cloud-sync/files/) are on.
+
+## The calls
+
+<Tabs syncKey="sdk">
+  <TabItem label="Node">
+
+`client.cloudSync.saves` has `list()`, `read(id)`, `write(id, bytes, metadata)`, `resolve(conflict, keep, bytes)`, `delete(id)` and `revisions(id)`. `write` and `resolve` resolve at once with a transfer: `transfer.done` settles on `done`, `cancelled`, `failed` or `conflict`, and never rejects. `transfer.pause()`, `resume()` and `cancel()` control it, and `client.cloudSync.transfers()` lists the writes in flight. The SDK journals each transfer, so an interrupted one resumes.
+
+```ts
+import type { PolarisKeyClient } from "@polaris-key/node";
+
+export async function saveGame(client: PolarisKeyClient, bytes: Uint8Array) {
+  const transfer = await client.cloudSync.saves.write("slot-1", bytes, {
+    chapter: 3,
+    formatVersion: 2,
+  });
+  const outcome = await transfer.done;
+  if (outcome.state === "failed") {
+    // "transfer-failed" with detail "quota_exceeded", or "sync-file-invalid"
+    console.log(outcome.error.code, outcome.error.detail);
+  }
+  if (outcome.state === "conflict") {
+    // Keep this device's copy; "remote" keeps the other, "both" needs a free slot.
+    await client.cloudSync.saves.resolve(outcome.conflict, "local", bytes);
+  }
+}
+
+export async function loadGame(client: PolarisKeyClient, id: string) {
+  const save = await client.cloudSync.saves.read(id);
+  if (save.ok) return save.bytes;
+  return save.reason; // "not-found" or "newer-format"
+}
+
+export function watchTransfers(client: PolarisKeyClient) {
+  client.events.on("cloudSync", (event) => {
+    if (event.type === "transferProgress") console.log(event.done, event.total);
+    if (event.type === "transferDone") console.log(event.id, event.state);
+    if (event.type === "transferFailed") console.log(event.id, event.code);
+  });
+}
+```
+
+The app's settings go in the client options: `cloudSync: { saves: { saveFormatVersion: 2 } }`. `maxBytes` and `delta` are there too, and default to 32 MiB and on.
+
+  </TabItem>
+  <TabItem label="React">
+
+`useSaves()` returns `saves` (as `list()` last read them), `list`, `read`, `write`, `resolve`, `delete`, `revisions` and `unsupported`, which says why saves cannot run here, such as on a cookie-only page. `useTransfers()` returns `transfers` (each with `id`, `state` and `progress`), `pause`, `resume` and `cancel`. A hook re-renders on every transfer event. A save's bytes never pass through hook state. The [SaveConflict](/docs/build/ui/components/save-conflict/) screen settles a conflict for you.
+
+```tsx
+import { useSaves, useTransfers } from "@polaris-key/react";
+
+export function SaveButton({ bytes }: { bytes: Uint8Array }) {
+  const { saves, list, write } = useSaves();
+  const { transfers, cancel } = useTransfers();
+  return (
+    <div>
+      <button
+        onClick={async () => {
+          const transfer = await write("slot-1", bytes, { chapter: 3 });
+          const outcome = await transfer.done;
+          if (outcome.state === "failed") console.log(outcome.error.code);
+        }}
+      >
+        Save
+      </button>
+      <button onClick={() => list()}>{saves?.length ?? 0} saves</button>
+      {transfers.map((t) => (
+        <button key={t.id} onClick={() => cancel(t.id)}>
+          {t.id} {t.state} {t.progress.done} of {t.progress.total}
+        </button>
+      ))}
+    </div>
+  );
+}
+```
+
+  </TabItem>
+  <TabItem label="Python">
+
+`client.cloud_sync.saves` is synchronous: `list()`, `read(id)`, `write(id, data, metadata)`, `resolve(conflict, keep, data)`, `delete(id)`, `revisions(id)` and `transfers()`. Calls return plain dicts with the same members as Node. `write` and `resolve` return a transfer at once; `transfer.wait()` blocks until it settles, and `pause()`, `resume()` and `cancel()` control it. `client.events.on("cloudSync", …)` receives `transferProgress`, `transferDone` and `transferFailed`.
+
+```python
+from polaris_key import PolarisKeyClient
+
+
+def save_game(client: PolarisKeyClient, data: bytes) -> None:
+    transfer = client.cloud_sync.saves.write("slot-1", data, {"chapter": 3, "formatVersion": 2})
+    outcome = transfer.wait()
+    if outcome["state"] == "failed":
+        # code "transfer-failed" with detail "quota_exceeded", or "sync-file-invalid"
+        print(outcome["error"].code, outcome["error"].detail)
+    if outcome["state"] == "conflict":
+        # Keep this device's copy; "remote" keeps the other, "both" needs a free slot.
+        client.cloud_sync.saves.resolve(outcome["conflict"], "local", data).wait()
+
+
+def load_game(client: PolarisKeyClient, id: str) -> object:
+    save = client.cloud_sync.saves.read(id)
+    if save["ok"]:
+        return save["bytes"]
+    return save["reason"]  # "not-found" or "newer-format"
+```
+
+The app's settings go in the client options: `cloud_sync={"saves": {"save_format_version": 2}}`. `max_bytes` and `delta` are there too, and default to 32 MiB and on.
+
+  </TabItem>
+</Tabs>
+
+## Metadata
+
+The metadata you pass is a small JSON object kept in the record. In end-to-end mode it is sealed with the record. The SDK adds two members to every save, so the conflict screen can describe each copy without your help:
+
+| Member        | Value                                                                       |
+| ------------- | --------------------------------------------------------------------------- |
+| `savedAt`     | When the save was written, in milliseconds                                  |
+| `deviceLabel` | The device's display name, never a hardware value. Absent while it has none |
+
+A `savedAt` or `deviceLabel` of your own is overwritten.
+
+`formatVersion` is yours: an integer you raise when the save layout changes. Give the SDK the highest version your app reads (`saveFormatVersion`). A save above it is not opened: `list` marks it `newerFormat: true`, and `read` answers `ok` false with reason `newer-format`, the save's `formatVersion` and the `supported` one. Without `saveFormatVersion` the check is off.
+
+## Conflicts
+
+Two devices that save from the same version conflict. `transfer.done` settles on `conflict`, and the SDK pulls the server's copy first so the other version has its details. Show both versions and let the person choose, which the [SaveConflict](/docs/build/ui/components/save-conflict/) screen does:
+
+| Keep     | Result                                                                                        |
+| -------- | --------------------------------------------------------------------------------------------- |
+| `local`  | This device's save is written over the server's version                                       |
+| `remote` | Nothing is written. The SDK pulls the server copy, so the next `read` returns it              |
+| `both`   | This device's save is written as a new save in a free slot. Without one it fails `slots-full` |
+
+`conflict.bothAvailable` says whether a slot is free. A save deleted on another device conflicts too: there is then no other version, and keeping this device's copy creates the save again.
+
+## Errors
+
+A failed write or read carries one of these codes. A call that throws carries the code as `code`; a write reports it in the outcome as `error`.
+
+| Code                | Meaning                                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `sync-file-invalid` | The downloaded file failed a check: a segment tag, the manifest, a chunk, the hash or the binding. Nothing is returned |
+| `transfer-failed`   | The transfer ended. `detail` has the Worker's code, such as `quota_exceeded` or `entitlement_required`                 |
+| `slots-full`        | `both` with all 16 slots used                                                                                          |
+| `too-large`         | The file is over the collection's `maxBytes`                                                                           |
+| `not-found`         | No such save                                                                                                           |
+| `invalid-save`      | The id or the metadata is not acceptable                                                                               |
+| `rejected`          | The Worker refused the record write; `detail` has its code                                                             |
+
+`quota_exceeded` means the file does not fit the person's [quota](/docs/features/cloud-sync/#the-quota); free space or raise the tier. `entitlement_required` means the collection's `requires` flag, or file storage, is not granted. Both are Worker answers listed under [Cloud Sync files](/docs/features/cloud-sync/files/#errors). A canceled transfer is the state `cancelled`, not a failure.
+
+## What the SDK keeps
+
+A transfer journal and a chunk cache sit on the device, per person, and are removed at sign-out. See [From an SDK](/docs/features/cloud-sync/files/#from-an-sdk).
