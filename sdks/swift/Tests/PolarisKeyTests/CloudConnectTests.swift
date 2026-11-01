@@ -19,7 +19,9 @@ private let sub = "ps_AbCdEfGhIjKlMnOpQrStUv"
 private final class Link: ConnectSessionLink, @unchecked Sendable {
     let log = LockedValue<[String]>([])
     func sendRecord(type: Int, body: Data) async throws {}
-    func close(_ code: PeerCloseCode) async { log.with { $0.append(code == .peerBye ? "close" : "close:\(code.rawValue)") } }
+    func close(_ code: PeerCloseCode) async {
+        log.with { $0.append(code == .peerBye ? "close" : "close:\(code.rawValue)") }
+    }
     func closeSoon(_ code: PeerCloseCode) { log.with { $0.append("close") } }
     func pause(_ on: Bool) {}
 }
@@ -281,7 +283,8 @@ final class CloudConnectTests: XCTestCase {
         try await c.cloudConnect.start(options: lanOnly)
         _ = c.cloudConnect.onChannel { _ in }
         guard case .ready = await c.connect.identity() else { return XCTFail("identity") }
-        let src = await c.cloudConnect.core.watch(ConnectLanSource.client(c.connect, now: { Int(Date().timeIntervalSince1970) }))
+        let src = await c.cloudConnect.core.watch(
+            ConnectLanSource.client(c.connect, now: { Int(Date().timeIntervalSince1970) }))
         let adopt = try XCTUnwrap(src.adoptRing)
         let link = Link()
         await c.cloudConnect.deliverInbound(session(link))

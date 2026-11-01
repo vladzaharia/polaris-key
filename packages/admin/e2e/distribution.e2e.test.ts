@@ -345,14 +345,10 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
         .getByRole("button", { name: "Set credential…" })
         .first()
         .click();
-      await page
-        .getByRole("dialog", { name: "Set a credential" })
-        .waitFor();
+      await page.getByRole("dialog", { name: "Set a credential" }).waitFor();
     });
     await page.getByRole("button", { name: "Set credential…" }).first().click();
-    await page
-      .getByRole("dialog", { name: "Set a credential" })
-      .waitFor();
+    await page.getByRole("dialog", { name: "Set a credential" }).waitFor();
     await violations(page);
     // The product offers one kind here: it is said, not asked.
     await page.getByText("Sentry internal integration").first().waitFor();

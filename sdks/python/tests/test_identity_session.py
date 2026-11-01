@@ -7,19 +7,33 @@ in ``test_identity_mint.py``; the same semantics as Node's ``identity.test.ts``.
 from __future__ import annotations
 
 import json
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import httpx
 import pytest
+from helpers import PRODUCT, TOKEN, make_client
+from test_identity_account import SUBJECT, Worker, discovery, ok
+from test_identity_mint import BASE, T0
 
 from polaris_key import PolarisError
 from polaris_key.core.caps import UnsupportedError
 from polaris_key.devices.store import InMemoryStore
 
-from helpers import PRODUCT, TOKEN, make_client
-from test_identity_account import SUBJECT, Worker, discovery, ok
-from test_identity_mint import BASE, T0, clock  # noqa: F401
+
+@pytest.fixture(name="clock")
+def _clock(monkeypatch: pytest.MonkeyPatch) -> Dict[str, float]:
+    """``time.time`` driven by a fake ``time.sleep``: the clock of ``test_identity_mint.py``."""
+    c = {"now": float(T0)}
+    monkeypatch.setattr(time, "time", lambda: c["now"])
+
+    def sleep(seconds: float) -> None:
+        c["now"] += seconds
+
+    monkeypatch.setattr(time, "sleep", sleep)
+    return c
+
 
 START = {
     "status": "pending",

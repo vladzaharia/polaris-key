@@ -18,7 +18,10 @@ import { readFileSync } from "node:fs";
 
 const x = loadExtract();
 const t = buildTables(x);
-const node16 = parseFloat(process.versions.unicode ?? "0") >= 16;
+// The tables are pinned to UCD 16.0. A Node built with newer Unicode data (ICU 78 =
+// Unicode 17) composes pairs the pinned tables do not know, so the comparison is only
+// meaningful when Node carries exactly 16.0; it is skipped on any other version.
+const node16 = parseFloat(process.versions.unicode ?? "0") === 16;
 
 function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
