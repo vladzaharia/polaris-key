@@ -328,3 +328,41 @@ def test_only_the_session_holding_a_partial_delivers_it(tmp_path: Path) -> None:
     assert list(out.iterdir()) == []
     s.deliver(ref, str(out / "x"), owner=a)
     assert (out / "x").read_bytes() == b"content"
+
+
+def test_a_peer_whose_kept_transfers_cannot_be_deleted_is_logged_and_tried_again(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import logging
+
+    from polaris_key.connect.transfer import Transfer
+
+    t = Transfer(lambda: str(tmp_path))
+    store = t._get_store(create=True)  # noqa: SLF001 - the facade makes it on first use
+    assert store is not None
+    ref = xfer_partial_path(KEY, ID, SHA)
+    store.apply(KEY, {"create": ref}, META)
+    store.apply(KEY, {"keep": ref})
+
+    real = PartialStore.purge
+    calls: List[Any] = []
+
+    def failing(self: PartialStore, peer_key: Any = None) -> None:
+        calls.append(peer_key)
+        raise PermissionError("secret-path-" + KEY.hex())
+
+    monkeypatch.setattr(PartialStore, "purge", failing)
+    with caplog.at_level(logging.WARNING, logger="polaris_key"):
+        t.forget_peer(KEY)  # does not raise
+    assert len(calls) == 1
+    # Logged without the key or the error's text.
+    assert "PermissionError" in caplog.text and KEY.hex() not in caplog.text and "secret-path" not in caplog.text
+    assert len(store.partials(KEY)) == 1
+
+    # The next start tries again, and a success is not tried a third time.
+    monkeypatch.setattr(PartialStore, "purge", real)
+    t.retry_forgotten()
+    assert store.partials(KEY) == []
+    monkeypatch.setattr(PartialStore, "purge", failing)
+    t.retry_forgotten()
+    assert len(calls) == 1

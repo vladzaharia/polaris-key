@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 import os
 import re
 import secrets
@@ -56,6 +57,8 @@ from ..core.peer_xfer import (
 from ..core.peer_xfer_endpoint import XferEndpoint, XferEvents
 from .errors import LanError
 from .transfer_store import DEFAULT_QUOTA_BYTES, PartialStore
+
+_log = logging.getLogger("polaris_key")
 
 __all__ = [
     "Accept",
@@ -316,6 +319,8 @@ class Transfer:
         self._wires: Dict[int, _Wire] = {}
         self._store: Optional[PartialStore] = None
         self._store_dir: Optional[str] = None
+        #: Peer keys whose kept partials could not be deleted; tried again at the next start.
+        self._unforgotten: Set[bytes] = set()
 
     def __repr__(self) -> str:
         return "<Transfer sessions=%d>" % len(self._wires)
@@ -431,10 +436,30 @@ class Transfer:
                 store.purge()
 
     def forget_peer(self, peer_key: bytes) -> None:
-        """Delete the kept partials of one peer key (a removed link)."""
-        store = self._get_store(create=False)
-        if store is not None:
-            store.purge(bytes(peer_key))
+        """Delete the kept partials of one peer key (a removed link or a device that left the roster). A
+        failure is logged (the error's type only) and the key is tried again at the next start."""
+        key = bytes(peer_key)
+        try:
+            store = self._get_store(create=False)
+            if store is not None:
+                store.purge(key)
+        except Exception as err:  # noqa: BLE001 - one peer's cleanup never ends the caller
+            _log.warning(
+                "polaris_key: the kept transfers of a removed contact could not be deleted (%s); retrying at the next start",
+                type(err).__name__,
+            )
+            with self._lock:
+                self._unforgotten.add(key)
+            return
+        with self._lock:
+            self._unforgotten.discard(key)
+
+    def retry_forgotten(self) -> None:
+        """Try again for the peers whose kept transfers could not be deleted earlier. Called at start."""
+        with self._lock:
+            keys = list(self._unforgotten)
+        for key in keys:
+            self.forget_peer(key)
 
     # -- the sessions -------------------------------------------------------------------------------
 
