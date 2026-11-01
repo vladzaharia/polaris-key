@@ -43,7 +43,8 @@ public class AndroidRedirectBrowser internal constructor(
     public companion object {
         /**
          * [activity] is the one the tab opens from (held weakly); its class is the one the redirect brings back to the
-         * front. [issuerHost] is the host of the product's issuer (the only host the tab opens). [signIn] is `client.identity.signIn`: every redirect that arrives is handed to its `handleRedirect`,
+         * front. [issuerHost] is the host of the product's issuer (the only host the tab opens).
+         * [signIn] is `client.identity.signIn`: every redirect that arrives is handed to its `handleRedirect`,
          * and a refusal leaves the sign-in waiting. The last browser created is the one that receives redirects.
          */
         @JvmStatic
