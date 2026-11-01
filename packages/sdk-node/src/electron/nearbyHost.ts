@@ -12,6 +12,7 @@ import type {
   NearbyAsk,
 } from "../identity/nearbyApprover.js";
 import type { NearbySignInSession } from "../identity/nearbySession.js";
+import { cleanLabel } from "@polaris-key/client-core/peer";
 import { ErrorCode } from "../constants.generated.js";
 
 /** The refusal a method answers with (the host maps it onto its envelope). */
@@ -29,6 +30,7 @@ export type RequesterPhase =
   | "choose-approver"
   | "waiting"
   | "confirm-account"
+  | "confirming"
   | "done"
   | "denied"
   | "expired"
@@ -51,7 +53,7 @@ const TERMINAL: ReadonlySet<RequesterPhase> = new Set([
 
 export interface NearbyRequesterView {
   sessionId: string;
-  phase: RequesterPhase;
+  phase: Exclude<RequesterPhase, "confirming">;
   approvers: { id: string; device: string | null; platform: string }[];
   code?: string;
   email?: string;
@@ -148,6 +150,11 @@ const refuse = (message: string, code = "invalid-argument"): never => {
   throw new NearbyRefusal(code, message);
 };
 
+/** A renderer's device name, cleaned and cut as the SDK's own device label is (64 code points);
+ *  `undefined` when nothing is left. */
+const boundName = (v: unknown): string | undefined =>
+  (typeof v === "string" ? cleanLabel(v) : null) ?? undefined;
+
 const NOT_OPEN = "That nearby request is not open.";
 
 export function createNearbyHost(deps: NearbyHostDeps) {
@@ -167,7 +174,8 @@ export function createNearbyHost(deps: NearbyHostDeps) {
 
   const requesterView = (r: RequesterRec): NearbyRequesterView => ({
     sessionId: r.id,
-    phase: r.phase,
+    // `confirming` is the host's own step; the renderer keeps seeing the account it is confirming.
+    phase: r.phase === "confirming" ? "confirm-account" : r.phase,
     approvers: [...r.session.approvers].map((a) => {
       let ref = r.byId.get(a.id);
       if (ref === undefined) {
@@ -345,9 +353,8 @@ export function createNearbyHost(deps: NearbyHostDeps) {
       if (b.prompt === "none" || b.prompt === "optional") o.prompt = b.prompt;
       if (b.licenseChoice === "app" || b.licenseChoice === "card")
         o.licenseChoice = b.licenseChoice;
-      const name = typeof b.deviceName === "string" ? b.deviceName : undefined;
-      if (name !== undefined || deps.deviceName !== undefined)
-        o.deviceName = name ?? deps.deviceName;
+      const name = boundName(b.deviceName) ?? deps.deviceName;
+      if (name !== undefined) o.deviceName = name;
       const r = await deps.identity.autoSignIn(o);
       if (r.kind === "signedIn") {
         deps.pushAll();
@@ -368,16 +375,18 @@ export function createNearbyHost(deps: NearbyHostDeps) {
         args && typeof args === "object"
           ? (args as Record<string, unknown>)
           : {};
-      const name =
-        typeof b.deviceName === "string" && b.deviceName !== ""
-          ? b.deviceName
-          : deps.deviceName;
+      const name = boundName(b.deviceName) ?? deps.deviceName;
       const session = await deps.identity.signIn.start({
         channel: "nearby",
         ...(name ? { deviceName: name } : {}),
       });
       // One requester per host: a new one replaces the old.
-      if (requester) endRequester(requester, "cancelled");
+      if (requester) {
+        const old = requester;
+        endRequester(old, "cancelled");
+        // Tell the window that lost its session (a no-op when it is the same window).
+        pushTo(old.wc);
+      }
       const r: RequesterRec = {
         id: hex(16),
         wc,
@@ -426,8 +435,17 @@ export function createNearbyHost(deps: NearbyHostDeps) {
       const r = mine(wc, sessionId);
       if (r.phase !== "confirm-account")
         return refuse("There is no account to confirm.");
-      await r.session.confirmAccount();
+      // Synchronously, before the await: a second confirm or a decline now finds no account.
+      r.phase = "confirming";
+      try {
+        await r.session.confirmAccount();
+      } catch (e) {
+        if (r.phase === "confirming") r.phase = "confirm-account";
+        throw e;
+      }
       for (const off of r.offs.splice(0)) off();
+      // A sign-out that landed meanwhile ended the requester: nothing is signed in to announce.
+      if (r.phase !== "confirming") return requesterView(r);
       r.phase = "done";
       deps.pushAll();
       deps.signedIn();
@@ -438,9 +456,13 @@ export function createNearbyHost(deps: NearbyHostDeps) {
       const r = mine(wc, sessionId);
       if (r.phase !== "confirm-account")
         return refuse("There is no account to decline.");
+      r.phase = "confirming";
       for (const off of r.offs.splice(0)) off();
-      r.phase = "cancelled";
-      await r.session.declineAccount();
+      try {
+        await r.session.declineAccount();
+      } finally {
+        r.phase = "cancelled";
+      }
       deps.pushAll();
       return requesterView(r);
     },
@@ -477,6 +499,12 @@ export function createNearbyHost(deps: NearbyHostDeps) {
             }
             const k: AskRec = { id: hex(16), ask, phase: "open" };
             a.asks.set(k.id, k);
+            // The session ended unanswered (expired, or the peer left): the ask is no longer open.
+            ask.onEnd?.(() => {
+              if (a.asks.get(k.id) !== k || k.phase !== "open") return;
+              a.asks.delete(k.id);
+              pushTo(wc);
+            });
             pushTo(wc);
           },
           { prompt: true },

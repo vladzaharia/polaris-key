@@ -1891,6 +1891,7 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
     "SDK_APPROVER_ID",
   ];
 
+  const ends: (() => void)[] = [];
   function fakeAsk(over: Partial<{ pick: unknown; deny: unknown }> = {}) {
     const pick = vi.fn(async (_code: string) => ({ kind: "approved" }));
     const deny = vi.fn(async () => undefined);
@@ -1900,6 +1901,10 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
       codes: ["111 111", "222 222", "333 333"] as const,
       pick: (over.pick as typeof pick) ?? pick,
       deny: (over.deny as typeof deny) ?? deny,
+      onEnd: (f: () => void) => {
+        ends.push(f);
+        return () => undefined;
+      },
       // Secrets a spread would leak:
       requestId: "REQ_SECRET_ID",
       wrap: "WRAP_SECRET",
@@ -2310,5 +2315,80 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
     const text = JSON.stringify(seen);
     for (const secret of SECRETS) expect(text).not.toContain(secret);
     expect(text).not.toMatch(/requestId|wrap|token/i);
+  });
+  it("holds a confirming phase so confirm and decline cannot both land", async () => {
+    const { bridge, session, states } = host();
+    let release!: () => void;
+    session.confirmAccount.mockImplementation(
+      () => new Promise<undefined>((r) => (release = () => r(undefined))),
+    );
+    const s = await bridge.nearbyStart!();
+    await bridge.nearbyChoose!(s.sessionId, s.approvers[0]!.id);
+    await vi.waitFor(() =>
+      expect(
+        (
+          states[states.length - 1] as {
+            nearby: { requester?: { phase: string } };
+          }
+        ).nearby.requester?.phase,
+      ).toBe("confirm-account"),
+    );
+    const first = bridge.nearbyConfirm!(s.sessionId);
+    await expect(bridge.nearbyDecline!(s.sessionId)).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+    await expect(bridge.nearbyConfirm!(s.sessionId)).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+    // A sign-out while the confirmation is in flight ends the requester; it never turns "done".
+    await bridge.signOut();
+    release();
+    expect(await first).toMatchObject({ phase: "cancelled" });
+    expect(session.declineAccount).not.toHaveBeenCalled();
+  });
+
+  it("drops an ask from the list when its session ends", async () => {
+    const { bridge, ask, states } = host();
+    ends.length = 0;
+    await bridge.approverStart!();
+    const a = fakeAsk();
+    ask(a.ask);
+    const askId = askIdOf(states);
+    ends[0]!();
+    expect(
+      (states[states.length - 1] as { nearby: { approver: { asks: [] } } })
+        .nearby.approver.asks,
+    ).toEqual([]);
+    await expect(bridge.approverPick!(askId, "111 111")).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+  });
+
+  it("tells the first window when a second window replaces its requester", async () => {
+    const { bridge, states, asOther } = host();
+    const s = await bridge.nearbyStart!();
+    expect(s.phase).toBe("choose-approver");
+    expect(await asOther("nearbyStart")).toMatchObject({ ok: true });
+    const last = states[states.length - 1] as {
+      nearby: { requester?: { phase: string } };
+    };
+    expect(last.nearby.requester?.phase).toBe("cancelled");
+    await expect(bridge.nearbyCancel!(s.sessionId)).rejects.toMatchObject({
+      code: "invalid-argument",
+    });
+  });
+
+  it("bounds the device name at the bridge", async () => {
+    const { bridge, identity } = host();
+    await bridge.nearbyStart!({ deviceName: "x".repeat(300) });
+    const used = (
+      identity.signIn.start.mock.calls[0] as unknown as [{ deviceName: string }]
+    )[0].deviceName;
+    expect([...used].length).toBe(64);
+    await bridge.autoSignIn!({ deviceName: "y".repeat(300) });
+    const o = (
+      identity.autoSignIn.mock.calls[0] as unknown as [{ deviceName: string }]
+    )[0];
+    expect([...o.deviceName].length).toBe(64);
   });
 });
