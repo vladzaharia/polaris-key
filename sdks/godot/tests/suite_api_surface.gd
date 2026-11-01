@@ -197,6 +197,12 @@ const ROWS := [
 	["cloudConnect.onNotice", "res://addons/polaris_key/services/cloud_connect.gd", "signal", "notice"],
 	["cloudConnect.nearby.request", "res://addons/polaris_key/services/connect/nearby.gd", "method", "request"],
 	["cloudConnect.nearby.onRequest", "res://addons/polaris_key/services/connect/nearby.gd", "method", "on_request"],
+	["cloudConnect.transfer.send", "res://addons/polaris_key/services/connect/transfer.gd", "method", "send"],
+	["cloudConnect.transfer.onOffer", "res://addons/polaris_key/services/connect/transfer.gd", "method", "on_offer"],
+	["cloudConnect.transfer.onResult", "res://addons/polaris_key/services/connect/transfer.gd", "signal", "result"],
+	["cloudConnect.transfer.cancel", "res://addons/polaris_key/services/connect/transfer.gd", "method", "cancel"],
+	["cloudConnect.transfer.accept", "res://addons/polaris_key/services/connect/transfer_offer.gd", "method", "accept"],
+	["cloudConnect.transfer.decline", "res://addons/polaris_key/services/connect/transfer_offer.gd", "method", "decline"],
 ]
 
 ## [concept, script, name]

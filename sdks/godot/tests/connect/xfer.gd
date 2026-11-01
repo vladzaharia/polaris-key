@@ -10,6 +10,7 @@ extends RefCounted
 const MATRIX := "res://tests/corpus/v2/peer-matrix.json"
 const SECTIONS := ["window", "offer", "hash", "ending", "resume", "limits"]
 const ID_A := "D9FghtxWIhxlaxzwysyg4w"
+const ID_B := "mM6QZzGG1pHeEeIOBHXPjQ"
 const SHA_EMPTY := "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
 
@@ -37,6 +38,7 @@ func run(t: PKeyTestContext) -> void:
 			ran += int(_row(t, s, r))
 	t.check("every machine row ran green", ran == 197, "%d/197" % ran)
 	_extras(t)
+	_delivered(t)
 
 
 func _constants(t: PKeyTestContext, c: Dictionary) -> void:
@@ -194,8 +196,8 @@ static func _want(o: Dictionary) -> Dictionary:
 	return w
 
 
-func _row(t: PKeyTestContext, section: String, row: Dictionary) -> bool:
-	var c: Dictionary = row["ctx"]
+## The machine a corpus row describes (its ctx): the handlers, the kept partials and the re-read.
+func machine_of(c: Dictionary) -> PKeyPeerXfer.Machine:
 	var corrupt := {}
 	var partials: Array = []
 	for p in c["partials"]:
@@ -223,7 +225,7 @@ func _row(t: PKeyTestContext, section: String, row: Dictionary) -> bool:
 		return "n%d" % n
 	var cats: Array = c["cats"]
 	var free: int = -1 if c["free"] == null else int(c["free"])
-	var mach := PKeyPeerXfer.Machine.new({
+	return PKeyPeerXfer.Machine.new({
 		"mode": c["mode"],
 		"caps": PKeyPeerPayload.caps_intersection(c["capsLocal"], c["capsRemote"]),
 		"max_message": int(c["maxMessage"]),
@@ -237,6 +239,10 @@ func _row(t: PKeyTestContext, section: String, row: Dictionary) -> bool:
 		"new_ref": new_ref,
 		"withhold_acks": c.get("withholdAcks") == true,
 	})
+
+
+func _row(t: PKeyTestContext, section: String, row: Dictionary) -> bool:
+	var mach := machine_of(row["ctx"])
 	var got: Array = []
 	var wants: Array = []
 	for w in row["want"]:
@@ -340,3 +346,117 @@ static func _key() -> PackedByteArray:
 	k.resize(32)
 	k.fill(7)
 	return k
+
+
+# a re-offer of delivered content
+
+static func _sha_of(b: PackedByteArray) -> String:
+	var h := PKeyPeerXfer.new_hasher()
+	h.update(b)
+	return h.finish().hex_encode()
+
+
+static func _done_body(id: String, sha := "") -> PackedByteArray:
+	return PKeyPeerXfer.done_body(id, sha)
+
+
+func _rx(mem: PKeyPeerXferDelivered, key: PackedByteArray) -> PKeyPeerXfer.Machine:
+	var o := {
+		"mode": "a", "caps": ["xfer/1"], "max_message": 1048576, "peer_key": key,
+		"handler": func(_a: Dictionary) -> String: return "accept",
+	}
+	if mem != null:
+		o["delivered"] = mem.for_peer(key)
+	return PKeyPeerXfer.Machine.new(o)
+
+
+static func _offer(id: String, size: int, sha: String, chunk: int) -> PackedByteArray:
+	return PKeyPeerXfer.offer_body({"id": id, "size": size, "sha256": sha, "chunk": chunk})
+
+
+func _delivered(t: PKeyTestContext) -> void:
+	var key := _key()
+	var sha := _sha_of(_content(0, 2500))
+	# Delivered once, then offered again on a new session.
+	var mem := PKeyPeerXferDelivered.new()
+	var m1 := _rx(mem, key)
+	var o1 := m1.receive(1.0, PKeyPeerXfer.OFFER, _offer(ID_A, 2500, sha, 1000))
+	t.check("delivered: a first offer is accepted at 0", o1["send"] == [{"t": "ACCEPT", "id": ID_A, "offset": 0}])
+	for off in [0, 1000, 2000]:
+		m1.receive(2.0, PKeyPeerXfer.CHUNK, PKeyPeerXfer.chunk_body(ID_A, off, _content(off, mini(2500, off + 1000))))
+	var d1 := m1.receive(3.0, PKeyPeerXfer.DONE, _done_body(ID_A, sha))
+	t.check("delivered: and delivered", d1["results"] == [{"id": ID_A, "outcome": "delivered"}])
+	var m2 := _rx(mem, key)
+	var r2 := m2.receive(10.0, PKeyPeerXfer.OFFER, _offer(ID_A, 2500, sha, 1000))
+	t.check("delivered: a re-offer is answered at the last chunk boundary", r2["send"] == [{"t": "ACCEPT", "id": ID_A, "offset": 2000}])
+	t.check("delivered: with no question, no partial and no room check", r2["ask"] == null and (r2["partial"] as Array).is_empty())
+	var c2 := m2.receive(11.0, PKeyPeerXfer.CHUNK, PKeyPeerXfer.chunk_body(ID_A, 2000, _content(2000, 2500)))
+	t.check("delivered: the tail is read and acknowledged but stores nothing", c2["send"] == [{"t": "ACK", "id": ID_A, "offset": 2500}] and (c2["partial"] as Array).is_empty())
+	var f2 := m2.receive(12.0, PKeyPeerXfer.DONE, _done_body(ID_A, sha))
+	t.check("delivered: DONE answers and the result is flagged again", f2["send"] == [{"t": "DONE", "id": ID_A}]
+			and f2["results"] == [{"id": ID_A, "outcome": "delivered", "again": true}] and (f2["partial"] as Array).is_empty())
+	# A size that is a whole number of chunks accepts at the size; a wrong hash is refused without a result.
+	var sha2k := _sha_of(_content(0, 2000))
+	var m3 := _rx(mem, key)
+	m3.receive(20.0, PKeyPeerXfer.OFFER, _offer(ID_B, 2000, sha2k, 1000))
+	for off in [0, 1000]:
+		m3.receive(21.0, PKeyPeerXfer.CHUNK, PKeyPeerXfer.chunk_body(ID_B, off, _content(off, off + 1000)))
+	m3.receive(22.0, PKeyPeerXfer.DONE, _done_body(ID_B, sha2k))
+	var m4 := _rx(mem, key)
+	var r4 := m4.receive(30.0, PKeyPeerXfer.OFFER, _offer(ID_B, 2000, sha2k, 1000))
+	t.check("delivered: a whole number of chunks accepts at the size", r4["send"] == [{"t": "ACCEPT", "id": ID_B, "offset": 2000}])
+	var bad := m4.receive(31.0, PKeyPeerXfer.DONE, _done_body(ID_B, "0".repeat(64)))
+	t.check("delivered: a wrong hash cancels with hash and reports nothing", bad["send"] == [{"t": "CANCEL", "id": ID_B, "reason": "hash"}] and (bad["results"] as Array).is_empty())
+	# A short tail (DONE before the tail) is a size cancel, also unreported.
+	var m5 := _rx(mem, key)
+	m5.receive(40.0, PKeyPeerXfer.OFFER, _offer(ID_A, 2500, sha, 1000))
+	var early := m5.receive(41.0, PKeyPeerXfer.DONE, _done_body(ID_A, sha))
+	t.check("delivered: a DONE before the tail cancels with size", early["send"] == [{"t": "CANCEL", "id": ID_A, "reason": "size"}] and (early["results"] as Array).is_empty(), str(early))
+	# Received again for another peer, another hash or size, no memory, or after expiry.
+	var offer_send := func(m: PKeyPeerXfer.Machine, at: float, size := 2000, h := sha2k) -> Array:
+		return m.receive(at, PKeyPeerXfer.OFFER, _offer(ID_B, size, h, 1000))["send"]
+	var fresh := [{"t": "ACCEPT", "id": ID_B, "offset": 0}]
+	var other_key := PackedByteArray()
+	other_key.resize(32)
+	other_key.fill(9)
+	t.check("delivered: another peer receives again", offer_send.call(_rx(mem, other_key), 50.0) == fresh)
+	t.check("delivered: another size receives again", offer_send.call(_rx(mem, key), 50.0, 3000) == fresh)
+	t.check("delivered: another hash receives again", offer_send.call(_rx(mem, key), 50.0, 2000, "1".repeat(64)) == fresh)
+	t.check("delivered: no memory receives again", offer_send.call(_rx(null, key), 50.0) == fresh)
+	t.check("delivered: still known on the 24-hour mark", offer_send.call(_rx(mem, key), 22.0 + PKeyPeerXfer.DELIVERED_SECONDS) == [{"t": "ACCEPT", "id": ID_B, "offset": 2000}])
+	t.check("delivered: after 24 hours it receives again", offer_send.call(_rx(mem, key), 22.0 + PKeyPeerXfer.DELIVERED_SECONDS + 1.0) == fresh)
+	var known := PKeyPeerXferDelivered.new()
+	known.for_peer(key).add(ID_B, sha2k, 2000, 1.0)
+	known.forget(key)
+	t.check("delivered: forgetting a peer forgets its entries", offer_send.call(_rx(known, key), 10.0) == fresh)
+	# A re-offer skips the consent: no question even when the handler would ask or decline.
+	var asking := PKeyPeerXfer.Machine.new({
+		"mode": "a", "caps": ["xfer/1"], "max_message": 1048576, "peer_key": key,
+		"handler": func(_a: Dictionary) -> String: return "decline",
+		"free": func() -> int: return 0,
+		"delivered": _seeded(key, ID_B, sha2k, 2000),
+	})
+	var skip := asking.receive(5.0, PKeyPeerXfer.OFFER, _offer(ID_B, 2000, sha2k, 1000))
+	t.check("delivered: a re-offer needs neither consent nor room", skip["send"] == [{"t": "ACCEPT", "id": ID_B, "offset": 2000}] and skip["ask"] == null)
+	# The bounds: 64 per peer, 256 peers, oldest first.
+	var bounded := PKeyPeerXferDelivered.new()
+	var v := bounded.for_peer(_key())
+	for i in PKeyPeerXfer.MAX_DELIVERED_PER_PEER + 1:
+		v.add("id%d" % i, "a".repeat(64), 1, float(i))
+	t.check("delivered: the oldest entry of a full peer goes first", not v.has("id0", "a".repeat(64), 1, 70.0) and v.has("id1", "a".repeat(64), 1, 70.0))
+	for i in PKeyPeerXfer.MAX_DELIVERED_PEERS + 2:
+		var k := PackedByteArray()
+		k.resize(32)
+		k.encode_u32(0, i)
+		bounded.for_peer(k).add("x", "b".repeat(64), 1, 1.0)
+	t.check("delivered: at most 256 peers are held", bounded.peer_count() == PKeyPeerXfer.MAX_DELIVERED_PEERS)
+	bounded.clear()
+	t.check("delivered: clear forgets all", bounded.peer_count() == 0)
+	t.check("delivered: the memory prints nothing", str(bounded) == "PKeyPeerXferDelivered()")
+
+
+func _seeded(key: PackedByteArray, id: String, sha: String, size: int) -> Object:
+	var mem := PKeyPeerXferDelivered.new()
+	var view := mem.for_peer(key)
+	view.add(id, sha, size, 1.0)
+	return view
