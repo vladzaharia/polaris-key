@@ -42,6 +42,10 @@ func _run() -> void:
 			break
 		await process_frame
 	print("PROBE boot ", booted.size())
+	# The persistent gate checks the account when it is shown. Let that request end before the gate is freed:
+	# Godot 4.4 reports the coroutine of a node freed while it awaits as a leak at exit (the game's own await).
+	for i in 120:
+		await process_frame
 	var layer: Node = pk.get_node_or_null("PKeyBootLayer")
 	if layer != null:
 		layer.queue_free()
@@ -77,6 +81,14 @@ func _run() -> void:
 	await sync_host.purge()
 	sync_host.close()
 	sync_host.queue_free()
+	await process_frame
+	# Cloud Connect: the links and Direct Transfer are built with the SDK; start (no network: it fails at the
+	# identity), the transfer hub's begin and end, and stop leave nothing behind.
+	var connected: PKeyResult = await pk.cloud_connect.start({"lan": false})
+	print("PROBE connect ", connected.ok)
+	pk.cloud_connect.transfer.begin()
+	pk.cloud_connect.transfer.end()
+	pk.cloud_connect.stop()
 	await process_frame
 	print("PROBE done")
 	quit()
