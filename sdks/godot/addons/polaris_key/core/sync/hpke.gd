@@ -28,7 +28,7 @@ static func seal(recipient_public: PackedByteArray, info: PackedByteArray, aad: 
 	if _all_zero(dh):
 		return {}
 	var kn := _key_schedule(_shared_secret(dh, enc + recipient_public), info)
-	var ct := PKeySyncAesGcm.seal(kn[0], kn[1], plain, aad)
+	var ct := PKeySyncAead.seal(kn[0], kn[1], plain, aad)
 	if ct.is_empty():
 		return {}
 	return {"enc": enc, "ct": ct}
@@ -43,7 +43,7 @@ static func open(dh: Callable, recipient_public: PackedByteArray, enc: PackedByt
 	if not (shared is PackedByteArray) or (shared as PackedByteArray).size() != 32 or _all_zero(shared):
 		return null
 	var kn := _key_schedule(_shared_secret(shared, enc + recipient_public), info)
-	return PKeySyncAesGcm.open(kn[0], kn[1], ct, aad)
+	return PKeySyncAead.open(kn[0], kn[1], ct, aad)
 
 
 ## A `dh` Callable over a raw X25519 private scalar (vectors and tests; a device's own key stays in

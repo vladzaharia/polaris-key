@@ -45,8 +45,8 @@ class FakeBin:
 		var aad := d.slice(48, 48 + n)
 		var body := d.slice(48 + n)
 		if op == "cx_seal":
-			return _ok(base.aes_gcm_seal(d.slice(0, 32), d.slice(32, 44), aad, body))
-		var r = base.aes_gcm_open(d.slice(0, 32), d.slice(32, 44), aad, body)
+			return _ok(PKeySyncAesGcm.seal(d.slice(0, 32), d.slice(32, 44), body, aad))
+		var r = PKeySyncAesGcm.open(d.slice(0, 32), d.slice(32, 44), body, aad)
 		return _ok(r) if r != null else PackedByteArray([0])
 
 	func _ok(b: PackedByteArray) -> PackedByteArray:
@@ -85,6 +85,13 @@ func _fake(t: PKeyTestContext) -> void:
 	t.check("fake: open returns the plaintext, and null for a wrong aad", lane.aes_gcm_open(key, nonce, aad, sealed) == PackedByteArray([1, 2, 3]) \
 			and lane.aes_gcm_open(key, nonce, PackedByteArray(), sealed) == null)
 	t.check("fake: an empty message opens to empty, not null", lane.aes_gcm_open(key, nonce, aad, lane.aes_gcm_seal(key, nonce, aad, PackedByteArray())) is PackedByteArray)
+	var sync_sealed := lane.sync_seal(key, nonce, aad, PackedByteArray([1, 2, 3]))
+	t.check("fake: the sync entry points use the same wire layout, with a bound of 16 MiB less the header", sync_sealed == want and lane.sync_native() \
+			and lane.sync_open(key, nonce, aad, sync_sealed) == PackedByteArray([1, 2, 3]) and lane.sync_max_bytes() == PKeyAppleCrypto.MAX_BYTES - 65536 - 16)
+	var over := PackedByteArray()
+	over.resize(lane.sync_max_bytes() + 1)
+	var ops_before := fake.ops.size()
+	t.check("fake: a sync message over the bound is refused before the native side", lane.sync_seal(key, nonce, aad, over).is_empty() and fake.ops.size() == ops_before)
 	t.check("fake: unusable arguments never reach the native side", _no_calls(fake, lane, key, nonce))
 	fake.unknown = true
 	t.check("fake: a build without the ops answers empty and fails the known answers", lane.x25519_public(key).is_empty() and not lane.known_answers_ok()
@@ -140,6 +147,12 @@ func _real(t: PKeyTestContext) -> void:
 	var sealed := lane.aes_gcm_seal(k, n, PackedByteArray(), big)
 	var opened = lane.aes_gcm_open(k, n, PackedByteArray(), sealed)
 	t.check("real: a 1 MiB chunk seals and opens (no 64 KiB cap on this lane)", sealed.size() == big.size() + 16 and opened == big)
+	var seg := lane.sync_seal(k, n, "pkey-sync-kat".to_utf8_buffer(), big)
+	t.check("real: a 1 MiB sync segment seals to the pinned digest and opens", seg.size() == big.size() + 16 \
+			and lane.sync_open(k, n, "pkey-sync-kat".to_utf8_buffer(), seg) == big)
+	var four := crypto.generate_random_bytes(4 << 20)
+	var four_sealed := lane.sync_seal(k, n, PackedByteArray([1]), four)
+	t.check("real: a 4 MiB message seals and opens through the sync entry points", lane.sync_open(k, n, PackedByteArray([1]), four_sealed) == four)
 	sealed[5] ^= 1
 	t.check("real: a flipped ciphertext bit does not open", lane.aes_gcm_open(k, n, PackedByteArray(), sealed) == null)
 	# The device key store reaches it through the port.

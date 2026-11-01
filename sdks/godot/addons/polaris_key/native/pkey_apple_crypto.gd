@@ -45,6 +45,28 @@ func available() -> bool:
 	return _apple != null and _apple.binary_available()
 
 
+## Cloud Sync takes a whole file segment: the entry's bound, less the header, the largest AAD
+## (`PKeySyncAesGcm.MAX_AAD_BYTES`) and the tag.
+func sync_max_bytes() -> int:
+	return MAX_BYTES - PKeySyncAesGcm.MAX_AAD_BYTES - 16
+
+
+func sync_native() -> bool:
+	return true
+
+
+func sync_seal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
+	if plain.size() > sync_max_bytes() or aad.size() > PKeySyncAesGcm.MAX_AAD_BYTES:
+		return PackedByteArray()
+	return _seal(key, nonce, aad, plain)
+
+
+func sync_open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
+	if sealed.size() - 16 > sync_max_bytes() or aad.size() > PKeySyncAesGcm.MAX_AAD_BYTES:
+		return null
+	return _open(key, nonce, aad, sealed)
+
+
 func x25519_public(private_key: PackedByteArray) -> PackedByteArray:
 	if private_key.size() != 32:
 		return PackedByteArray()
@@ -63,6 +85,14 @@ func x25519(private_key: PackedByteArray, peer_public: PackedByteArray) -> Varia
 
 
 func aes_gcm_seal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
+	return _seal(key, nonce, aad, plain)
+
+
+func aes_gcm_open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
+	return _open(key, nonce, aad, sealed)
+
+
+func _seal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
 	if key.size() != 32 or nonce.size() != 12 or aad.size() + plain.size() > MAX_BYTES:
 		return PackedByteArray()
 	var input := _gcm_input(key, nonce, aad, plain)
@@ -71,7 +101,7 @@ func aes_gcm_seal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteA
 	return out if out.size() == plain.size() + 16 else PackedByteArray()
 
 
-func aes_gcm_open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
+func _open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
 	if key.size() != 32 or nonce.size() != 12 or sealed.size() < 16 or aad.size() + sealed.size() > MAX_BYTES:
 		return null
 	var input := _gcm_input(key, nonce, aad, sealed)
