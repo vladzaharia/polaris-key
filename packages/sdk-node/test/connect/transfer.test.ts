@@ -11,6 +11,7 @@ import {
   readdirSync,
   rmSync,
   statSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from "node:fs";
@@ -72,6 +73,7 @@ interface World {
   /** Where the receiver's state lives. */
   stateOf(c: PolarisKeyClient): string;
   out: string;
+  worker?: MultiWorker;
 }
 
 async function lanWorld(): Promise<World> {
@@ -88,7 +90,7 @@ async function lanWorld(): Promise<World> {
   await a.cloudConnect.start({ lan: loopLan(net), relay: false });
   await b.cloudConnect.start({ lan: loopLan(net), relay: false });
   await until(() => b.cloudConnect.peers().some((p) => p.deviceId === A));
-  return world(a, b, inn);
+  return { ...world(a, b, inn), worker };
 }
 
 async function relayWorld(): Promise<World> {
@@ -455,6 +457,134 @@ describe.each([
     expect(calls).toBe(Math.ceil(size / chunk));
   });
 
+  it("delivered memory records only delivered content", async () => {
+    const w = await make();
+    let asked = 0;
+    w.a.cloudConnect.transfer.onOffer(() => {
+      asked++;
+      return { saveTo: join(w.out, "got.bin") };
+    });
+    const results: string[] = [];
+    w.a.cloudConnect.transfer.onResult((e) => results.push(e.outcome));
+    const size = 300_000;
+    // The host's delivery fails once (a vanished folder, a throwing sink fail the same way).
+    const realDeliver = PartialStore.prototype.deliver;
+    let n = 0;
+    vi.spyOn(PartialStore.prototype, "deliver").mockImplementation(
+      async function (this: PartialStore, ...args) {
+        if (++n === 1) throw new Error("delivery failed");
+        return realDeliver.apply(this, args);
+      },
+    );
+    let id = "";
+    await expect(
+      w.b.cloudConnect.transfer.send(A, content(size), {
+        chunk: 4096,
+        onStart: (t) => (id = t.id),
+      }),
+    ).rejects.toBeDefined();
+    expect(results).not.toContain("delivered");
+    await sleep(300);
+    // The same transfer again goes through consent again and is received whole.
+    await w.b.cloudConnect.transfer.send(A, content(size), { chunk: 4096, id });
+    expect(asked).toBe(2);
+    expect(readFileSync(join(w.out, "got.bin"))).toEqual(
+      Buffer.from(content(size)),
+    );
+  });
+
+  it("truncate takes the claim (a resume with bytes under one chunk)", async () => {
+    const w = await make();
+    const size = 1_200_000;
+    const chunk = 4096;
+    w.a.cloudConnect.transfer.onOffer(() => ({
+      saveTo: join(w.out, "big.bin"),
+    }));
+    let calls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const real = PartialStore.prototype.write;
+    const spy = vi
+      .spyOn(PartialStore.prototype, "write")
+      .mockImplementation(async function (this: PartialStore, ...args) {
+        calls++;
+        await real.apply(this, args);
+        if (calls === 2) {
+          void w.inn.at(-1)!.close();
+          await gate;
+        }
+      });
+    let id = "";
+    await expect(
+      w.b.cloudConnect.transfer.send(A, content(size), {
+        chunk,
+        onStart: (t) => (id = t.id),
+      }),
+    ).rejects.toMatchObject({ code: "peer-closed" });
+    await until(() => partsOf(w, w.a).length === 2);
+    // Under one chunk is kept: the resume truncates to 0 with no re-read, and that is its only claim.
+    const realList = PartialStore.prototype.list;
+    vi.spyOn(PartialStore.prototype, "list").mockImplementation(async function (
+      this: PartialStore,
+      ...args
+    ) {
+      return (await realList.apply(this, args)).map((p) => ({
+        ...p,
+        bytes: 100,
+      }));
+    });
+    let takenOver = false;
+    const realTruncate = PartialStore.prototype.truncate;
+    const takeover = vi
+      .spyOn(PartialStore.prototype, "truncate")
+      .mockImplementation(async function (this: PartialStore, ...args) {
+        await realTruncate.apply(this, args);
+        takenOver = true;
+      });
+    const second = w.b.cloudConnect.transfer.send(A, content(size), {
+      chunk,
+      id,
+    });
+    await until(() => takenOver);
+    release();
+    await second;
+    spy.mockRestore();
+    takeover.mockRestore();
+    expect(readFileSync(join(w.out, "big.bin"))).toEqual(
+      Buffer.from(content(size)),
+    );
+    // Two writes by the old session, one per chunk by the new one: none of the old queue ran.
+    expect(calls).toBe(2 + Math.ceil(size / chunk));
+  });
+
+  it("a purge ends effects queued before it", async () => {
+    const w = await make();
+    w.a.cloudConnect.transfer.onOffer(() => ({
+      saveTo: join(w.out, "p.bin"),
+    }));
+    let calls = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    const real = PartialStore.prototype.write;
+    vi.spyOn(PartialStore.prototype, "write").mockImplementation(
+      async function (this: PartialStore, ...args) {
+        calls++;
+        await real.apply(this, args);
+        if (calls === 2) await gate;
+      },
+    );
+    const sent = w.b.cloudConnect.transfer
+      .send(A, content(1_200_000), { chunk: 4096 })
+      .catch(() => undefined);
+    await until(() => calls === 2);
+    await w.a.cloudConnect.transfer.purge();
+    release();
+    await sent;
+    await sleep(100);
+    expect(calls).toBe(2);
+    expect(existsSync(join(w.out, "p.bin"))).toBe(false);
+  });
+
   it("a kept partial that vanished before the resume starts the transfer afresh, without ending the process", async () => {
     const w = await make();
     const size = 600_000;
@@ -554,6 +684,31 @@ describe.each([
     await until(() => partsOf(w, w.a).length === 2);
     await w.a.cloudConnect.stopForSignOut();
     expect(existsSync(transferRoot(w, w.a))).toBe(false);
+  });
+});
+
+describe("a device that leaves the roster", () => {
+  it("roster leave purges the partials of that key", async () => {
+    const w = await lanWorld();
+    w.a.cloudConnect.transfer.onOffer(() => ({
+      saveTo: join(w.out, "r.bin"),
+    }));
+    let writes = 0;
+    const real = PartialStore.prototype.write;
+    vi.spyOn(PartialStore.prototype, "write").mockImplementation(
+      async function (this: PartialStore, ...args) {
+        await real.apply(this, args);
+        if (++writes === 3) void w.inn.at(-1)!.close();
+      },
+    );
+    await expect(
+      w.b.cloudConnect.transfer.send(A, content(900_000), { chunk: 4096 }),
+    ).rejects.toMatchObject({ code: "peer-closed" });
+    await until(() => partsOf(w, w.a).length === 2);
+    w.worker!.members.delete(B);
+    w.worker!.epoch++;
+    await w.a.connect.identity({ refresh: true });
+    await until(() => partsOf(w, w.a).length === 0);
   });
 });
 
@@ -694,6 +849,30 @@ describe("the partial store", () => {
     await s.create(r3, key, meta(r3));
     expect(existsSync(join(root, "p", `${r2}.part`))).toBe(true);
     expect(existsSync(join(root, "p", `${ref}.part`))).toBe(false);
+  });
+
+  it("a planted symlink at the partial path is refused", async () => {
+    const s = new PartialStore(root);
+    await s.ready();
+    await s.create(ref, key, meta(ref));
+    await s.keep(ref);
+    const target = join(tmpDir(dirs), "victim");
+    writeFileSync(target, "keep");
+    const part = join(root, "p", `${ref}.part`);
+    rmSync(part);
+    symlinkSync(target, part);
+    await expect(s.write(ref, 0, content(10))).rejects.toThrow();
+    expect(readFileSync(target, "utf8")).toBe("keep");
+  });
+
+  it("reserve at accept refuses what no longer fits", async () => {
+    const s = new PartialStore(root, { quotaBytes: 1000 });
+    await s.ready();
+    expect(s.reserve("t1", 800)).toBe(true);
+    expect(s.reserve("t2", 800)).toBe(false);
+    expect(s.free()).toBeLessThanOrEqual(200);
+    s.release("t1");
+    expect(s.reserve("t2", 800)).toBe(true);
   });
 
   it("a purge starts a new generation", async () => {

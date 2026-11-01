@@ -573,6 +573,11 @@ export class CloudTransfer {
     }
     // finalize: the hash matched. The content goes where the host said, whole.
     if (!("finalize" in e)) return;
+    // Only the session that holds the partial hands it over; one that was purged or has lost it
+    // to another session delivers nothing.
+    live();
+    if (this.#live.get(e.finalize) !== wire)
+      throw new TransferStoreError("a live transfer holds that partial");
     const meta = await store.metaOf(e.finalize);
     const inc = meta === null ? undefined : wire.inc.get(meta.id);
     if (inc === undefined) throw new TransferStoreError("no destination");
@@ -625,12 +630,17 @@ export class CloudTransfer {
     const token = `${wire.seq}:${id}`;
     try {
       if (answer === "accept" && to !== null) {
-        wire.inc.set(id, { size, to, done: false });
-        // The bytes are promised from now on: the next offer sees them as taken.
+        // The bytes are promised from now on: the next offer sees them as taken. The check and
+        // the promise are one step; an offer that no longer fits is declined.
         if (store !== null) {
-          store.reserve(token, size);
+          const kept = wire.ep.machine.partials().find((p) => p.id === id);
+          if (!store.reserve(token, size, kept?.ref ?? null)) {
+            wire.ep.consent(id, "decline");
+            return;
+          }
           wire.tokens.set(id, token);
         }
+        wire.inc.set(id, { size, to, done: false });
       }
       wire.ep.consent(id, answer);
     } catch {
