@@ -720,6 +720,139 @@ class ConnectLinksTest : ConnectLanBase() {
             assertEquals(403, e.httpStatus)
         }
     }
+
+    // -- the links layer on its own: a session that is established is checked before it is handed on ------------
+
+    private class RecordingLink : im.plrs.key.core.peer.PeerLinkPort {
+        override val remoteAddress = "10.0.0.9"
+        val closes = CopyOnWriteArrayList<im.plrs.key.core.peer.PeerCloseCode>()
+        override suspend fun sendRecord(type: Int, body: ByteArray) {}
+        override suspend fun close(code: im.plrs.key.core.peer.PeerCloseCode) {
+            closes += code
+        }
+        override fun closeNow(code: im.plrs.key.core.peer.PeerCloseCode) {
+            closes += code
+        }
+        override fun pause(on: Boolean) {}
+    }
+
+    private class Held(val c: PolarisKeyClient, val id: String, val key: String, val secret: ByteArray) {
+        val adopted = CopyOnWriteArrayList<ConnectSession>()
+        val delivered = CopyOnWriteArrayList<ConnectSession>()
+        fun session(link: RecordingLink, tag: String = secretTag(secret)) = ConnectSession(
+            link, "", listOf("app/1"), im.plrs.key.core.peer.PeerHello("test", "demo", 1 shl 20),
+            im.plrs.key.core.peer.NoiseRole.responder, "10.0.0.9", "lan",
+            contact = ContactRef(id, "Ben", listOf("docs"), key, false, tag),
+        )
+    }
+
+    private fun held(): Held = runBlocking {
+        interAccount = true
+        val c = client()
+        c.discover()
+        c.connect.identity(refresh = true)
+        val key = Base64Url.encode(rnd())
+        val secret = rnd()
+        c.connect.updateContacts { rows, t -> storeRow(rows, key, secret, "Ben", listOf("docs"), t)?.rows }
+        val h = Held(c, contactId(key), key, secret)
+        c.cloudConnect.links.onSession = { h.adopted += it }
+        c.cloudConnect.links.onLink { h.delivered += it }
+        h
+    }
+
+    @Test
+    fun linksASessionThatCompletesAfterItsContactIsGoneIsClosedPeerRevokedControlRevokeInFlightLinksLayer() = runBlocking {
+        val h = held()
+        h.c.cloudConnect.links.remove(h.id)
+        val link = RecordingLink()
+        h.c.cloudConnect.links.inbound(h.session(link))
+        until { link.closes.isNotEmpty() }
+        assertEquals(listOf(im.plrs.key.core.peer.PeerCloseCode.peer_revoked), link.closes.toList())
+        Thread.sleep(100)
+        assertTrue(h.delivered.isEmpty())
+    }
+
+    @Test
+    fun linksASessionThatCompletesAfterLinksGoOffIsClosedPeerByeControlRevokeInFlightLinksLayer() = runBlocking {
+        val h = held()
+        interAccount = false
+        h.c.discover()
+        val link = RecordingLink()
+        h.c.cloudConnect.links.inbound(h.session(link))
+        until { link.closes.isNotEmpty() }
+        assertEquals(listOf(im.plrs.key.core.peer.PeerCloseCode.peer_bye), link.closes.toList())
+        Thread.sleep(100)
+        assertTrue(h.delivered.isEmpty())
+    }
+
+    @Test
+    fun linksASessionUnderAReplacedPendingSecretPromotesNothingAndIsClosed() = runBlocking {
+        val h = held()
+        val link = RecordingLink()
+        h.c.cloudConnect.links.inbound(h.session(link, tag = secretTag(rnd())))
+        until { link.closes.isNotEmpty() }
+        assertEquals(listOf(im.plrs.key.core.peer.PeerCloseCode.peer_revoked), link.closes.toList())
+        assertTrue(h.delivered.isEmpty())
+    }
+
+    @Test
+    fun linksAnInboundSessionThatIsNoLongerHeldIsNotHandedToDirectTransfer() = runBlocking {
+        val h = held()
+        val gone = RecordingLink()
+        h.c.cloudConnect.links.remove(h.id)
+        h.c.cloudConnect.links.inbound(h.session(gone))
+        until { gone.closes.isNotEmpty() }
+        Thread.sleep(100)
+        assertTrue(h.adopted.isEmpty())
+        // A held contact is handed over once it has been checked.
+        val h2 = held()
+        val ok = RecordingLink()
+        val s = h2.session(ok)
+        h2.c.cloudConnect.links.inbound(s)
+        until { h2.delivered.isNotEmpty() }
+        assertEquals(listOf(s), h2.adopted.toList())
+    }
+
+    @Test
+    fun linksAHandshakeUnderAPendingContactPromotesOnlyTheRowWhoseSecretOpenedIt() = runBlocking {
+        val c = client()
+        c.connect.identity(refresh = true)
+        val key = Base64Url.encode(rnd())
+        c.connect.updateContacts { rows, t -> storeRow(rows, key, rnd(), "Ben", listOf("docs"), t)?.rows }
+        val pendingSecret = rnd()
+        c.connect.updateContacts { rows, t -> storeRow(rows, key, pendingSecret, "Ben2", listOf("docs"), t)?.rows }
+        assertEquals(2, c.connect.contactRows().size)
+        val src = lanSource(c.connect)
+        fun ref(tag: String) = ContactRef(contactId(key), null, emptyList(), key, true, tag)
+        src.contactEstablished!!(ref(secretTag(rnd())))
+        assertEquals("a session under another secret promotes nothing", 2, c.connect.contactRows().size)
+        src.contactEstablished!!(ref(secretTag(pendingSecret)))
+        assertEquals(1, c.connect.contactRows().size)
+    }
+
+    // -- a discovery read outside discover() ------------------------------------------------------------------
+
+    @Test
+    fun linksADocumentReadOutsideDiscoverAlsoLapsesAfterADay() = runBlocking {
+        interAccount = true
+        val c = client()
+        // A read made straight on the core (a pinned service's first read, a sign-in, a nearby read).
+        c.core.discover()
+        assertTrue(c.cloudConnect.links.interAccount())
+        now += 25 * 3600
+        assertFalse(c.cloudConnect.links.interAccount())
+    }
+
+    @Test
+    fun linksAFailedReadOutsideDiscoverClosesTheGate() = runBlocking {
+        interAccount = true
+        val c = client()
+        c.core.discover()
+        assertTrue(c.cloudConnect.links.interAccount())
+        discoveryStatus = 404
+        c.core.discover()
+        assertFalse(c.cloudConnect.links.interAccount())
+    }
 }
 
 class ConnectLinksSecretTest {

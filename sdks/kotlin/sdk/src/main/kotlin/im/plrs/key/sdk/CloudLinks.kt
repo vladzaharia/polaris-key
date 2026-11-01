@@ -273,12 +273,14 @@ public class CloudLinks internal constructor(private val connect: ConnectClient)
         for (p in pairs) quiet { p.stop() }
     }
 
-    private fun inbound(s: ConnectSession) {
-        track(s)
-        // The handshake may have begun before the contact was removed or the gate went off: the session is delivered
-        // only while the contact (same secret) is held and links are on.
+    internal fun inbound(s: ConnectSession) {
+        // The handshake may have begun before the contact was removed or the gate went off: the session is handed to
+        // Direct Transfer and delivered only while the contact (same secret) is held and links are on.
         scope.launch {
-            if (stillHeld(s)) deliver(s)
+            if (stillHeld(s)) {
+                track(s)
+                deliver(s)
+            }
         }
     }
 

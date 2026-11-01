@@ -904,6 +904,16 @@ public class CoreContext(options: CoreOptions) {
 
     public suspend fun discoveryDocument(): ProductDiscoveryDocument? = lock.withLock { discoveryDocumentValue }
 
+    private val discoveryObservers = java.util.concurrent.CopyOnWriteArrayList<suspend (DiscoveryResult) -> Unit>()
+
+    /**
+     * Called after every discovery read finishes, whichever caller made it (the client's `discover()`, a pinned
+     * service's first read, a sign-in or a nearby read): the one place a read is noted.
+     */
+    public fun onDiscovery(fn: suspend (DiscoveryResult) -> Unit) {
+        discoveryObservers += fn
+    }
+
     /** Fetch the discovery document and install the product's real capability map. */
     public suspend fun discover(): DiscoveryResult {
         val result = Discovery.fetch(endpoints, transport, headers(), requestTimeoutSeconds)
@@ -915,6 +925,7 @@ public class CoreContext(options: CoreOptions) {
             // No member (or an invalid one) clears the last; a failed discovery keeps it.
             presentation.accept(result.document.presentation)
         }
+        for (fn in discoveryObservers) fn(result)
         return result
     }
 
