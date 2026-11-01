@@ -598,5 +598,3 @@ export function createNearbyHost(deps: NearbyHostDeps) {
     },
   };
 }
-
-export type NearbyHost = ReturnType<typeof createNearbyHost>;

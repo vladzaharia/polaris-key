@@ -6327,6 +6327,36 @@ exports[`bridge views: signIn (ui.signin) > NearbyApproval/approved 1`] = `
 }
 `;
 
+exports[`bridge views: signIn (ui.signin) > NearbyApproval/ask: choose the code the other device shows 1`] = `
+{
+  "actions": [],
+  "args": {
+    "device": "Kitchen iPad",
+    "product": "Tidewater Studio",
+  },
+  "component": "NearbyApproval",
+  "copy": [
+    "signin.approve.deny",
+    "signin.approve.warning",
+    "signin.nearby.ask",
+    "signin.nearby.askBody",
+  ],
+  "decisions": {
+    "errorSlot": null,
+    "focus": "heading",
+    "link": null,
+    "primary": null,
+    "qr": false,
+    "tone": null,
+  },
+  "isolate": [
+    "device",
+    "product",
+  ],
+  "state": "ask",
+}
+`;
+
 exports[`bridge views: signIn (ui.signin) > NearbyApproval/ask: tap the code the other device shows 1`] = `
 {
   "actions": [],
@@ -6354,6 +6384,35 @@ exports[`bridge views: signIn (ui.signin) > NearbyApproval/ask: tap the code the
     "product",
   ],
   "state": "ask",
+}
+`;
+
+exports[`bridge views: signIn (ui.signin) > NearbyApproval/choose: one tap per license, Deny to leave; chosen here, never on the new device 1`] = `
+{
+  "actions": [],
+  "args": {
+    "device": "Kitchen iPad",
+    "product": "Tidewater Studio",
+  },
+  "component": "NearbyApproval",
+  "copy": [
+    "signin.approve.deny",
+    "signin.nearby.chooseLede",
+    "signin.nearby.chooseTitle",
+  ],
+  "decisions": {
+    "errorSlot": null,
+    "focus": "heading",
+    "link": null,
+    "primary": null,
+    "qr": false,
+    "tone": null,
+  },
+  "isolate": [
+    "device",
+    "product",
+  ],
+  "state": "choose",
 }
 `;
 
