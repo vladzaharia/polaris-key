@@ -61,7 +61,11 @@ import {
 } from "../../core/settings/resolve.js";
 import { snapshotValue } from "../../core/settings/snapshot.js";
 import { forgetRegistrySettings } from "../../services/distribution/public.js";
-import { writeSetting, type WriteRefusal } from "../../core/settings/write.js";
+import {
+  confirmLevelFor,
+  writeSetting,
+  type WriteRefusal,
+} from "../../core/settings/write.js";
 import type { ServiceHooks } from "../../core/hooks.js";
 import { tryParseJson } from "../../platform/json.js";
 import { SETTINGS } from "../../mount.js";
@@ -587,6 +591,24 @@ export async function handleProductSettings(
         const gate = relaxGate(session, def, body, now);
         if (gate) return gate;
       }
+    }
+    // An operator cost control whose raise is L2 (the relay ceiling) takes the typed key here too,
+    // not only in the console dialog: the route is the enforcement.
+    if (
+      adapter === undefined &&
+      isRowServed(def) &&
+      def.ownership === "operator" &&
+      def.critical === true &&
+      "up" in def.confirm &&
+      body.confirm !== def.key
+    ) {
+      const [cur] = await readViews(r, [def]);
+      const level = confirmLevelFor(def, cur?.value ?? null, body.value);
+      if (level === "L2" || level === "L3")
+        return err(400, ErrorCode.BadRequest, `type ${def.key} to confirm`, {
+          reason: "confirm_required",
+          level,
+        });
     }
     await adapter?.beforeWrite?.(adapterCtx(r));
     const before = adapter?.audit ? (await readViews(r, [def]))[0] : undefined;

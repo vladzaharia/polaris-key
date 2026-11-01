@@ -465,6 +465,14 @@ describe("refusals, in the contract's order (§12.4.2 item 3)", () => {
       await expectGone(handle, binder);
     });
 
+    it("for a request opened while launch.identityKeyReturn was off (the opt-in is dropped at authorize)", async () => {
+      gate("off");
+      const { handle, binder } = await begin();
+      gate("on");
+      await expectGone(handle, binder);
+      expect(await alive(handle, binder)).toBe(true);
+    });
+
     it("for a device-code request, which never carries the opt-in", async () => {
       const made = await createSignInRequest(
         env,

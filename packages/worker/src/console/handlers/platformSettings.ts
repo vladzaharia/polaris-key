@@ -46,6 +46,7 @@ import { displayNameSkeleton, invalidDisplayText } from "@polaris-key/manifest";
 import {
   aliasedPlatformEntries,
   listEntries,
+  operatorScalarEntries,
   platformSettingResolved,
   productDefaultEntries,
   unrecognisedCeilingVars,
@@ -260,6 +261,9 @@ function settingView(def: SettingDef, r: ResolvedSetting, env: Env) {
           maxLength: v.of.kind === "string" ? v.of.maxLength : 64,
         }
       : {}),
+    ...(v.kind === "string"
+      ? { pattern: v.pattern ?? null, maxLength: v.maxLength }
+      : {}),
     ...(v.kind === "integer" ? { unit: v.unit, min: v.min, max: v.max } : {}),
     ...(v.kind === "enum"
       ? {
@@ -320,6 +324,7 @@ async function list(env: Env, db: Db, now: number): Promise<Response> {
     ...aliasedPlatformEntries(),
     ...productDefaultEntries(),
     ...listEntries(),
+    ...operatorScalarEntries(),
   ];
   const resolved = await Promise.all(
     defs.map((d) => platformSettingResolved(env, db, d.key, { fresh: true })),
@@ -348,7 +353,7 @@ function expectedVersionOf(raw: unknown): number | undefined {
 
 /**
  * The registry entries this route serves, by key or alias: a live platform setting an operator
- * edits, whose value is a switch, an integer, one of a short list or a list of terms. Anything else is a 404.
+ * edits, whose value is a switch, an integer, a string checked by its own pattern, one of a short list or a list of terms. Anything else is a 404.
  */
 function servedDef(key: string): SettingDef | undefined {
   const def = SETTINGS.get(key, "platform");
@@ -357,7 +362,7 @@ function servedDef(key: string): SettingDef | undefined {
     def.pending ||
     def.ownership !== "operator" ||
     def.storage.kind !== "scalar" ||
-    !["switch", "integer", "enum", "list"].includes(def.value.kind)
+    !["switch", "integer", "enum", "list", "string"].includes(def.value.kind)
   )
     return undefined;
   return def;

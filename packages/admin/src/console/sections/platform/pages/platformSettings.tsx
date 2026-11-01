@@ -91,6 +91,7 @@ const SECTIONS: { id: SectionId; title: string }[] = [
 export const SECTION_OF_AREA: Record<string, SectionId> = {
   "product-defaults": "platform-defaults",
   cloudSync: "platform-defaults",
+  cloudConnect: "platform-defaults",
   identity: "platform-signin",
   storefront: "platform-hosting",
   delivery: "platform-hosting",
