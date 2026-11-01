@@ -84,11 +84,18 @@ public struct PlatformServices: Sendable {
     public protocol KeychainBackendBox: Sendable {}
 #endif
 
+/// A synchronous binary op: the input bytes (valid for the call only; never retain them), the
+/// output bytes (empty is a refusal).
+public typealias PlatformBinaryOp = @Sendable (UnsafeBufferPointer<UInt8>) -> [UInt8]
+
 /// The router. `PlatformHost.shared` serves the C surface; tests and Swift hosts build their own
 /// over fakes.
 public final class PlatformHost: Sendable {
     /// The process-wide host the C functions use (created on first use, thread-safe).
-    public static let shared = PlatformHost(services: .system())
+    public static let shared: PlatformHost = {
+        let sink = PlatformEventSink()
+        return PlatformHost(services: .system(), sink: sink, binaryOps: PlatformBinaryOps.system(sink: sink))
+    }()
 
     /// The C surface's protocol version, bumped on an incompatible shape change.
     public static let protocolVersion = 1
@@ -99,10 +106,15 @@ public final class PlatformHost: Sendable {
     let packs: AssetPackService
     let appAttest: AppAttestService
     private let reqCounter = PlatformLock(0)
+    let binaryOps: [String: PlatformBinaryOp]
 
-    public init(services: PlatformServices, sink: PlatformEventSink = PlatformEventSink()) {
+    public init(
+        services: PlatformServices, sink: PlatformEventSink = PlatformEventSink(),
+        binaryOps: [String: PlatformBinaryOp] = [:]
+    ) {
         self.services = services
         self.sink = sink
+        self.binaryOps = binaryOps
         store = services.store.map { StoreService(client: $0, sink: sink) }
         packs = AssetPackService(client: services.assetPacks, availability: services.availability, sink: sink)
         appAttest = AppAttestService(client: services.appAttest)
@@ -113,6 +125,18 @@ public final class PlatformHost: Sendable {
         guard let q = decodePlatformJSON(json) else { return encodePlatformJSON(["ok": false, "error": "bad_json"]) }
         return encodePlatformJSON(handle(q))
     }
+
+    /// The binary entry (D-13): `op` and raw bytes in, raw bytes out, with no JSON and no base64.
+    /// An unknown op, an unusable input or any refusal answers empty (`[]`), never an error string
+    /// that could echo input. Binary ops are synchronous and run on the caller's thread.
+    public func callBinary(_ op: String, _ input: UnsafeBufferPointer<UInt8>) -> [UInt8] {
+        guard input.count <= PlatformHost.maxBinaryBytes, let run = binaryOps[op] else { return [] }
+        let out = run(input)
+        return out.count <= PlatformHost.maxBinaryBytes ? out : []
+    }
+
+    /// The largest input or output of the binary entry (16 MiB: U-40.2's chunks are 1 MiB).
+    public static let maxBinaryBytes = 16 << 20
 
     private func nextReq() -> Int {
         reqCounter.withLock { n in

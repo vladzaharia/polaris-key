@@ -136,6 +136,76 @@ class FakeMdns extends RefCounted:
 		(b["up"] as Callable).call({"instance": e["instance"], "host": "127.0.0.1", "hosts": ["127.0.0.1"], "port": e["port"], "txt": e["txt"]})
 
 
+## CC-14b.5: an adapter whose peers have no address (the OS resolves them): rows are {native: true}, and
+## `dial` hands back an in-memory pipe whose far end goes to the other service's acceptor.
+class NativeEnd extends PKeyPeerMemoryPipe:
+	var admits := 0
+	var up := true
+
+	func _init(shared: PKeyPeerMemoryPipe.Shared = null, side := 0) -> void:
+		super(shared, side)
+
+	func is_connected_native() -> bool:
+		return up
+
+	func admit() -> void:
+		admits += 1
+
+
+class NativeBus extends Bus:
+	var by_instance := {}
+
+
+class NativeMdns extends FakeMdns:
+	var acceptor := Callable()
+	var accepted: Array = []
+	var dialled := 0
+	var close_calls := 0
+
+	func advertise(advert: Dictionary) -> PKeyResult:
+		var h := FakeHandle.new()
+		var entry := {"instance": advert["instance"], "port": 0, "txt": advert["txt"], "handle": h, "owner": get_instance_id()}
+		bus.adverts.append(entry)
+		(bus as NativeBus).by_instance[advert["instance"]] = self
+		for b: Dictionary in bus.browsers:
+			if b["owner"] != get_instance_id():
+				_native_row(b, entry)
+		return PKeyResult.success(h)
+
+	func browse(on_up: Callable, on_down := Callable(), accept := Callable()) -> PKeyResult:
+		browse_handle = FakeHandle.new()
+		var b := {"owner": get_instance_id(), "up": on_up, "down": on_down, "accept": accept}
+		bus.browsers.append(b)
+		for e: Dictionary in bus.adverts:
+			if e["owner"] != get_instance_id():
+				_native_row(b, e)
+		return PKeyResult.success(browse_handle)
+
+	static func _native_row(b: Dictionary, e: Dictionary) -> void:
+		var accept: Callable = b["accept"]
+		if accept.is_valid() and not accept.call(e["instance"]):
+			return
+		(b["up"] as Callable).call({"instance": e["instance"], "hosts": [], "host": "", "port": 0, "txt": e["txt"], "native": true})
+
+	func set_acceptor(a: Callable) -> void:
+		acceptor = a
+
+	func close_pipes() -> void:
+		close_calls += 1
+
+	func dial(instance: String) -> PKeyPeerPipe:
+		var other: NativeMdns = (bus as NativeBus).by_instance.get(instance)
+		if other == null or not other.acceptor.is_valid():
+			return null
+		dialled += 1
+		var shared := PKeyPeerMemoryPipe.Shared.new()
+		var mine := NativeEnd.new(shared, 0)
+		var theirs := NativeEnd.new(shared, 1)
+		other.accepted.append(theirs)
+		other.acceptor.call(theirs)
+		return mine
+
+
 class Events extends RefCounted:
 	var peers: Array = []
 	var lost: Array = []
@@ -202,6 +272,7 @@ func run(t: PKeyTestContext) -> void:
 	_advert(t)
 	_browse(t)
 	await _end_to_end(t)
+	await _native_peers(t)
 	await _gate(t)
 	await _limits(t)
 	await _race(t)
@@ -540,6 +611,45 @@ func _end_to_end(t: PKeyTestContext) -> void:
 	a.stop()
 	b.stop()
 	t.check("e2e: both stop", a.is_stopped() and b.is_stopped())
+
+
+## The native-peer path (CC-14b.5): found rows without an address, a dial through the adapter's pipe,
+## the acceptor, admission told to the adapter, and pipes closed when the service aborts.
+func _native_peers(t: PKeyTestContext) -> void:
+	var bus := NativeBus.new()
+	var env_a := _env(_pair["a"], _ring3, [_pair["a"]["id"], ID_C, _pair["b"]["id"]])
+	var env_b := _env(_pair["b"], _ring3, [_pair["a"]["id"], ID_C, _pair["b"]["id"]])
+	var mdns_a := NativeMdns.new(bus)
+	var mdns_b := NativeMdns.new(bus)
+	var ra := _service(env_a, mdns_a, {"pump": _pump(true)})
+	var rb := _service(env_b, mdns_b, {"pump": _pump(true)})
+	if not t.check("native: both services start over the native adapter", ra.ok and rb.ok, "%s %s" % [ra, rb]):
+		return
+	var a: PKeyConnectLan = ra.detail
+	var b: PKeyConnectLan = rb.detail
+	var ev_a := Events.new().watch(a)
+	t.check("native: a hit with no address is a peer", b.peers().size() == 1 and b.peers()[0]["native"] == true and b.peers()[0]["hosts"].is_empty())
+	t.check("native: the acceptor is registered", mdns_a.acceptor.is_valid())
+	var dialled := await b.dial(_pair["a"]["id"])
+	if not t.check("native: B dials A through the adapter", dialled.ok, str(dialled)):
+		return
+	var sb: PKeyConnectSession = dialled.detail
+	await _wait_until(func() -> bool: return ev_a.sessions.size() == 1)
+	t.check("native: A is told of the inbound session", ev_a.sessions.size() == 1 and mdns_b.dialled == 1)
+	var sa: PKeyConnectSession = ev_a.sessions[0]
+	t.check("native: the roles and the path are right", sb.role == "initiator" and sa.role == "responder" and sb.path == "lan" and sb.peer_device_id == _pair["a"]["id"])
+	t.check("native: the accepted pipe was admitted natively once the session opened", (mdns_a.accepted[0] as NativeEnd).admits == 1)
+	sb.send("over bonjour".to_utf8_buffer())
+	var got: PKeyResult = await sa.receive()
+	t.check("native: a message crosses", got.ok and (got.detail["body"] as PackedByteArray).get_string_from_utf8() == "over bonjour")
+	var wrong := await b.dial({"device_id": ID_C, "host": "", "hosts": [], "port": 0, "native": true, "instance": "p1-zzzzzzzzzzzzzzzz"})
+	t.check("native: an instance the adapter does not know is connect_failed", not wrong.ok and PKeyConnectErrors.reason_of(wrong) == "connect_failed", str(wrong))
+	var down: PKeyResult = await b.dial({"device_id": _pair["a"]["id"], "instance": "x", "native": true})
+	t.check("native: a bad instance name is connect_failed too", not down.ok)
+	b.abort()
+	t.check("native: abort closes the adapter's pipes", mdns_b.close_calls == 1 and not mdns_b.acceptor.is_valid())
+	a.stop()
+	t.check("native: a graceful stop leaves them to the goodbye and clears the acceptor", mdns_a.close_calls == 0 and not mdns_a.acceptor.is_valid())
 
 
 # ── the gate ─────────────────────────────────────────────────────────────────────────────────

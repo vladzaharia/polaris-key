@@ -279,7 +279,11 @@ func _export_apple(v: Dictionary) -> void:
 	if on and bundle_id == "":
 		push_warning("Polaris Key Apple plugin: no application/bundle_identifier, so no App Group can be named; Background Assets is left off.")
 		on = false
-	var content := Apple.plist_content(on, bundle_id)
+	var existing := _preset_string("application/additional_plist_content")
+	var warn := Apple.bonjour_warning(existing)
+	if warn != "":
+		push_warning("Polaris Key Apple plugin: %s" % warn)
+	var content := Apple.plist_content(on, bundle_id) + Apple.local_network_plist(existing)
 	if has_method("add_apple_embedded_platform_plist_content"):
 		call("add_apple_embedded_platform_plist_content", content)
 	else:

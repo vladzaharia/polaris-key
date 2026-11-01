@@ -146,6 +146,8 @@ public enum BonjourErrors {
 struct BonjourTable {
     static let maxInstances = 256
     static let maxTxt = 8
+    /// An instance name is `p1-` and 16 characters.
+    static let nameBytes = 19
 
     enum Change: Equatable {
         case up(BonjourFound)
@@ -192,6 +194,9 @@ struct BonjourTable {
         return [.down(instance)]
     }
 
+    /// The instances in the table.
+    var instances: [String] { order }
+
     mutating func clear() {
         order = []
         rows = [:]
@@ -237,7 +242,7 @@ public final class BonjourBrowse: Sendable {
         self.configurationCheck = configurationCheck ?? Self.processConfigurationCheck
     }
 
-    @Sendable private static func processConfigurationCheck() -> BonjourBrowseError? {
+    @Sendable static func processConfigurationCheck() -> BonjourBrowseError? {
         #if os(iOS) || os(tvOS) || os(visionOS)
             return BonjourErrors.configurationError(infoDictionary: Bundle.main.infoDictionary, requiresPlist: true)
         #else
@@ -281,7 +286,9 @@ public final class BonjourBrowse: Sendable {
         let (changes, up, down) = state.withLock {
             s -> ([BonjourTable.Change], (@Sendable (BonjourFound) -> Void)?, (@Sendable (String) -> Void)?) in
             guard s.running else { return ([], nil, nil) }
-            return (results.filter { admit($0) }.flatMap { s.table.upsert($0) }, s.onUp, s.onDown)
+            // A name that is no longer accepted leaves the table first (a revoked device, an old epoch).
+            let retired = s.table.instances.filter { !(accept?($0) ?? true) }.flatMap { s.table.remove($0) }
+            return (retired + results.filter { admit($0) }.flatMap { s.table.upsert($0) }, s.onUp, s.onDown)
         }
         guard let up, let down else { return }
         deliver(changes, onUp: up, onDown: down)
