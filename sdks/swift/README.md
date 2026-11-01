@@ -759,16 +759,25 @@ Identity discovery to name `nearby`; it does not need the `connect` service, and
 product that does not serve it answers the typed N/A (`service-unavailable`, or `nearby-unsupported` here).
 
 ```swift
+import Foundation
+import PolarisKey
+
 // The new device (D): list the approvers nearby; the person taps one.
-let request = try await client.cloudConnect.nearby.request(NearbyRequestOptions(request: handle, label: "Living room TV"))
-request.onApprovers { list in /* show label and platform; they are reported by the device, not proven */ }
-let code = try await request.choose(list[0].id)        // show this code, "123 456"
-request.onResult { status in /* display only: poll is the authority */ }
+func ask(_ client: PolarisKeyClient, handle: String) async throws {
+    let request = try await client.cloudConnect.nearby.request(
+        NearbyRequestOptions(request: handle, label: "Living room TV"))
+    request.onApprovers { list in /* show label and platform; they are reported by the device, not proven */ }
+    let code = try await request.choose("approver-id")  // show this code, "123 456"
+    _ = code
+    request.onResult { status in /* display only: poll is the authority */ }
+}
 
 // The signed-in device (M): while "Approve a nearby device" is open.
-let approver = try await client.cloudConnect.nearby.onRequest(
-    { approval in /* show approval.codes, label and platform */ },
-    options: NearbyApproverOptions(prompt: true, label: "Ana's laptop"))
+func approve(_ client: PolarisKeyClient) async throws {
+    _ = try await client.cloudConnect.nearby.onRequest(
+        { approval in /* show approval.codes, label and platform */ },
+        options: NearbyApproverOptions(prompt: true, label: "Ana's laptop"))
+}
 // when the person picks a code:  switch try await approval.pick(code) { case .request(let r): ...approve with r... }
 // then:                           try await approval.finish(VouchApproveAnswer(http:body:discoveryNearby:))
 ```
