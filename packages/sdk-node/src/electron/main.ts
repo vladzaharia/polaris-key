@@ -256,6 +256,8 @@ export type PolarisBridgeHandle = {
 
 interface FlowEntry {
   prompt: DeviceCodeSession;
+  /** The window that began the flow: only it may poll it. */
+  windowId: number;
   timer: ReturnType<typeof setTimeout>;
 }
 
@@ -724,6 +726,7 @@ export function exposePolarisBridge(
       pushState();
       notify("signedIn");
     },
+    discard: () => client.identity.signOut(),
     ended: (flowId) => forgetFlow(flowId),
   });
   const onIdentity = (e: { kind: string }): void => {
@@ -1183,7 +1186,7 @@ export function exposePolarisBridge(
       await client.sync({ force: true });
       return currentState(e.sender.id);
     },
-    beginSignIn: async (_e, begin) => {
+    beginSignIn: async (e, begin) => {
       // v4: the renderer's device name wins over the host option, which stays the default.
       const deviceName = optStr(bag(begin).deviceName) ?? opts.deviceName;
       // UK-42.17: the hints the Node SDK's own `signIn.start` takes, and nothing more (no scope,
@@ -1198,7 +1201,7 @@ export function exposePolarisBridge(
       const ttl = Math.max(0, prompt.expiresIn * 1000) + graceMs;
       const timer = setTimeout(() => flows.delete(flowId), ttl);
       timer.unref?.();
-      flows.set(flowId, { prompt, timer });
+      flows.set(flowId, { prompt, windowId: e.sender.id, timer });
       return {
         flowId,
         verificationUrl: prompt.verificationUriComplete,
@@ -1210,7 +1213,7 @@ export function exposePolarisBridge(
     },
     pollSignIn: async (e, flowId) => {
       const flow = flows.get(str(flowId, "flowId"));
-      if (!flow) return { kind: "expired" };
+      if (!flow || flow.windowId !== e.sender.id) return { kind: "expired" };
       // v6: a flow that ended in `choose` answers it again to the same window, and nothing to
       // another.
       if (choiceHost.has(flowId as string))

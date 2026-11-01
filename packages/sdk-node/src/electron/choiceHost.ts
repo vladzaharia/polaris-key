@@ -27,6 +27,9 @@ export interface ChoiceHostDeps {
   choice(): PolarisKeyClient["identity"]["choice"];
   /** A choice completed: push state and notify. */
   signedIn(): void;
+  /** A choice finished after its ref had ended (a sign-out, expiry or closed window got there
+   *  first): undo what the late result stored. */
+  discard(): Promise<unknown>;
   /** A ref ended (its sign-in flow can go). */
   ended(flowId: string): void;
   now?: () => number;
@@ -183,6 +186,12 @@ export function createChoiceHost(deps: ChoiceHostDeps) {
       try {
         const res = await deps.choice().complete(r.grant, choice);
         if (res.kind === "ok") {
+          // The ref may have ended while the Worker answered. The client has stored the token by
+          // now, so the late result is undone, not announced.
+          if (recs.get(ref) !== r) {
+            await deps.discard().catch(() => undefined);
+            return REFUSED;
+          }
           end(ref);
           deps.signedIn();
         }

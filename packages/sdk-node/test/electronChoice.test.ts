@@ -2,10 +2,14 @@
 // Bridge v6 (UK-42.22.7): a device sign-in that ends in `choose`, and the four `identity.choice.*`
 // verbs that finish it. The Worker's grant stays in the host; the renderer holds a ref bound to
 // its window.
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PolarisBridge } from "@polaris-key/react/desktop";
 import type { PolarisKeyClient } from "../src/client.js";
 import { PolarisEventEmitter } from "../src/core/events.js";
+import {
+  createChoiceHost,
+  type ChoiceWindow,
+} from "../src/electron/choiceHost.js";
 import { exposePolarisBridge } from "../src/electron/main.js";
 import { createPreloadBridge } from "../src/electron/renderer.js";
 import { channelOf, DEFAULT_BRIDGE_CHANNEL } from "../src/electron/protocol.js";
@@ -148,7 +152,7 @@ describe("bridge v6: licence and device choice", () => {
 
   it("refuses a foreign window, a guessed ref and a malformed choice", async () => {
     const h = setup();
-    const { r } = await chosen(h);
+    const { begin, r } = await chosen(h);
     const refused = { kind: "refused", code: "invalid_grant", httpStatus: 400 };
     expect(
       (
@@ -218,5 +222,105 @@ describe("bridge v6: licence and device choice", () => {
       await call("choice.licenses", { grant: second.r.grant }),
     ).toMatchObject({ code: "invalid_grant" });
     h.handle.close();
+  });
+});
+
+// The host's own controls, driven directly.
+describe("choice host controls", () => {
+  afterEach(() => vi.useRealTimers());
+  const GR = { grant: "sg_x", expiresIn: 300, choices: {} };
+  const OK = { kind: "ok", licenseId: "l", subject: "ps_x", scope: "openid" };
+
+  function host() {
+    let release!: (v: never) => void;
+    const choice = {
+      licenses: vi.fn(async () => ({ kind: "ok" })),
+      devices: vi.fn(),
+      complete: vi.fn(
+        () => new Promise((res) => (release = res)) as Promise<never>,
+      ),
+      cancel: vi.fn(async () => ({ kind: "ok" })),
+    };
+    const ended: string[] = [];
+    const signedIn = vi.fn();
+    const discard = vi.fn(async () => undefined);
+    const h = createChoiceHost({
+      choice: () => choice as never,
+      signedIn,
+      discard,
+      ended: (f) => void ended.push(f),
+    });
+    let destroyed: (() => void) | undefined;
+    const wc: ChoiceWindow = {
+      id: 1,
+      once: (_e, l) => void (destroyed = l),
+    };
+    return {
+      h,
+      wc,
+      choice,
+      ended,
+      signedIn,
+      discard,
+      destroy: () => destroyed?.(),
+      release: (v: unknown) => release(v as never),
+    };
+  }
+  const refused = { kind: "refused", code: "invalid_grant", httpStatus: 400 };
+
+  it("a sign-out during an in-flight complete discards the late result", async () => {
+    const t = host();
+    const { grant } = t.h.issue(t.wc, "f", GR);
+    const p = t.h.complete(t.wc, { grant, choice: { kind: "keep" } });
+    t.h.dropAll();
+    t.release(OK);
+    expect(await p).toEqual(refused);
+    expect(t.discard).toHaveBeenCalledTimes(1);
+    expect(t.signedIn).not.toHaveBeenCalled();
+  });
+
+  it("a second complete and a cancel while one is in flight are refused", async () => {
+    const t = host();
+    const { grant } = t.h.issue(t.wc, "f", GR);
+    const p = t.h.complete(t.wc, { grant, choice: { kind: "keep" } });
+    expect(
+      await t.h.complete(t.wc, { grant, choice: { kind: "keep" } }),
+    ).toEqual(refused);
+    expect(await t.h.cancel(t.wc, { grant })).toEqual(refused);
+    expect(t.choice.complete).toHaveBeenCalledTimes(1);
+    expect(t.choice.cancel).not.toHaveBeenCalled();
+    t.release(OK);
+    expect(await p).toMatchObject({ kind: "ok" });
+    expect(t.signedIn).toHaveBeenCalledTimes(1);
+    expect(t.discard).not.toHaveBeenCalled();
+  });
+
+  it("a ref expires with its grant", async () => {
+    vi.useFakeTimers();
+    const t = host();
+    const { grant } = t.h.issue(t.wc, "f", GR);
+    vi.advanceTimersByTime(299_000);
+    expect(await t.h.licenses(t.wc, { grant })).toMatchObject({ kind: "ok" });
+    vi.advanceTimersByTime(2_000);
+    expect(await t.h.licenses(t.wc, { grant })).toEqual(refused);
+    expect(t.ended).toEqual(["f"]);
+  });
+
+  it("closing the window ends its ref", async () => {
+    const t = host();
+    const { grant } = t.h.issue(t.wc, "f", GR);
+    t.destroy();
+    expect(await t.h.licenses(t.wc, { grant })).toEqual(refused);
+    expect(t.ended).toEqual(["f"]);
+  });
+
+  it("closing the bridge removes the choice verbs", async () => {
+    const h = setup();
+    const { r } = await chosen(h);
+    h.handle.close();
+    await expect(
+      h.bridge.invoke!("identity", "choice.licenses", { grant: r.grant }),
+    ).rejects.toThrow();
+    expect(h.choice.licenses).not.toHaveBeenCalled();
   });
 });
