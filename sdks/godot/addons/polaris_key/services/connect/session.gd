@@ -52,6 +52,8 @@ var role: String
 var remote_address: String
 ## "lan" or "relay".
 var path: String
+## A session opened under an inter-account link (mode c): {id, pending}, with no device id. Empty otherwise.
+var contact: Dictionary = {}
 
 var _link: Object
 var _budget: Budget

@@ -57,6 +57,16 @@ static func session_options(src: PKeyConnectClient.PeerSource, o: Dictionary) ->
 	return out
 
 
+## The session options of a mode-c initiator (an inter-account link, section 15.10): no account, the device key
+## port as the static key, and the one `contact` ({secret, agree_key}) it dials. `o` as `session_options`.
+static func contact_session_options(src: PKeyConnectClient.PeerSource, o: Dictionary, contact: Dictionary) -> Dictionary:
+	var out := session_options(src, o)
+	out["mode"] = "c"
+	out.erase("account")
+	out["contacts"] = [contact]
+	return out
+
+
 ## Binds a link to the host: when the link is admitted a `PKeyConnectSession` is made and `opened`
 ## fires; its APP records are routed to the session; pushed documents go to `docs`; the link's end
 ## ends the session. The caller keeps the Attachment (it is what holds the session).
@@ -73,6 +83,8 @@ class Attachment extends RefCounted:
 	signal settled
 
 	var session: PKeyConnectSession
+	## The `{id, pending}` of each contact the session was given, in its order: a mode-c session names one.
+	var contacts: Array = []
 
 	var _link: PKeyPeerLink
 	var _docs: Docs
@@ -113,10 +125,18 @@ class Attachment extends RefCounted:
 
 
 	func _on_established(info: Dictionary) -> void:
-		# Mode a only: a session in another mode has no device id and is not a Connect session.
-		if str(info.get("peer_device_id", "")) == "" or session != null:
+		if session != null:
 			return
-		session = PKeyConnectSession.new(_link, info["peer_device_id"], info["caps"], info["hello"], _role, _remote, _path, _budget)
+		var index := int(info.get("contact_index", -1))
+		if index >= 0 and index < contacts.size():
+			# Mode c (section 15.10): the pin has passed; the session has a contact and no device id.
+			session = PKeyConnectSession.new(_link, "", info["caps"], info["hello"], _role, _remote, _path, _budget)
+			session.contact = (contacts[index] as Dictionary).duplicate()
+		elif str(info.get("peer_device_id", "")) != "":
+			session = PKeyConnectSession.new(_link, info["peer_device_id"], info["caps"], info["hello"], _role, _remote, _path, _budget)
+		else:
+			# Another mode has no device id and is not a Connect session.
+			return
 		opened.emit(session)
 		settled.emit()
 

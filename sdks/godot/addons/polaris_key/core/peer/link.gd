@@ -34,6 +34,9 @@ signal established(info: Dictionary)
 signal record(record_type: int, body: PackedByteArray)
 ## Modes v and p: the code both screens show.
 signal sas(code: int, display: String)
+## Mode p with the exchange: the peer's CONTACT, once both people confirmed. `info` is the session's `contact`
+## event ({secret, agree_key, label?, cats, pending}); the secret is key material: store it, zero it, never log it.
+signal contact(info: Dictionary)
 ## Mode a: a roster that replaced the held one at `epoch`; the host stores it.
 signal ring(jws: String, epoch: int)
 ## Mode a: a `TRUST` document the peer sent. Not verified here.
@@ -226,6 +229,8 @@ func _on_event(e: Dictionary) -> void:
 			sas.emit(e["code"], e["display"])
 		&"record":
 			record.emit(e["record_type"], e["body"])
+		&"contact":
+			contact.emit(e)
 		&"ring":
 			ring.emit(e["jws"], e["epoch"])
 		&"trust_unverified":
