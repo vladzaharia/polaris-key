@@ -36,7 +36,8 @@ const NODE_RELAY := {
 	"ticket_invalid": "relay_ticket_invalid", "rate_limited": "rate_limited", "busy": "rate_limited",
 	"unavailable": "network-error", "not_connected": "connect-unavailable", "not_member": "peer-cert-invalid",
 	"handshake_failed": "peer-cert-invalid", "wrong_peer": "peer-cert-invalid", "unknown_peer": "invalid-argument",
-	"mode_not_allowed": "invalid-argument", "replaced": "cancelled", "stopped": "cancelled",
+	"mode_not_allowed": "invalid-argument", "links_disabled": "connect_links_disabled", "contact_unsupported": "connect-unavailable",
+	"replaced": "cancelled", "stopped": "cancelled",
 }
 
 var _seed := PackedByteArray()
@@ -461,6 +462,29 @@ func _ticket(t: PKeyTestContext) -> void:
 			and JSON.stringify(server.requests.map(func(q): return q["headers"])).find(TICKET) == -1)
 	var again := await c.relay_ticket()
 	t.check("every call asks for a new ticket", again.ok and server.requests.size() == 2)
+	# A contact ticket (section 15.7): the body {room: "c", rid}, and the answer must echo the room.
+	var rid := "lXg0MgIHVN5qAmGFUen7vA"
+	reply["body"] = _with_d(ok_body, "room", "c")
+	var contact := await c.relay_ticket({"room": "c", "rid": rid})
+	var creq: Dictionary = server.requests[server.requests.size() - 1]
+	t.check("a contact ticket: the two members as JSON", contact.ok and creq["headers"].get("content-type") == "application/json" \
+			and PKeyPeerContact.parse_ticket_body(creq["body"]) == {"ok": true, "rid": rid})
+	reply["body"] = JSON.stringify(ok_body)
+	var no_echo := await c.relay_ticket({"room": "c", "rid": rid})
+	t.check("a contact answer with no room echo is contact_unsupported", not no_echo.ok and PKeyConnectErrors.reason_of(no_echo) == "contact_unsupported" \
+			and String(no_echo.code) == "connect-unavailable" and str(no_echo).find("pkeyrt_") == -1)
+	reply["body"] = _with_d(ok_body, "room", "c")
+	var stray := await c.relay_ticket()
+	t.check("an account ticket with a room member is bad", not stray.ok and PKeyConnectErrors.reason_of(stray) == "ticket_invalid")
+	reply["body"] = _with_d(ok_body, "room", "a")
+	var wrong_room := await c.relay_ticket({"room": "c", "rid": rid})
+	t.check("a contact answer for another room is contact_unsupported", PKeyConnectErrors.reason_of(wrong_room) == "contact_unsupported")
+	_reply(reply, {"status": 403, "headers": {"content-type": "application/json"}, "body": '{"error":{"code":"connect_links_disabled"}}'})
+	var off := await c.relay_ticket({"room": "c", "rid": rid})
+	t.check("links off: links_disabled, connect_links_disabled and the status", not off.ok and PKeyConnectErrors.reason_of(off) == "links_disabled" \
+			and String(off.code) == "connect_links_disabled" and off.detail["status"] == 403)
+	reply["status"] = 200
+	reply["body"] = JSON.stringify(ok_body)
 	# The refusals, in the Worker's own words.
 	var refusals := [
 		[403, {"error": {"code": "relay_disabled"}}, {}, "disabled", "relay_disabled", {}],

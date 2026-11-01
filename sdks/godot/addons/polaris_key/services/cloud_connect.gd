@@ -16,6 +16,8 @@ extends RefCounted
 ##   devices()           the person's devices as the Worker lists them (display data). A coroutine
 ##   open(device_id)     a session to one device: LAN first (bounded, 4 s), the relay after. ok with a
 ##                       PKeyConnectSession (`session.path` says which), or a typed failure. A coroutine
+##   links               the inter-account links (`cloud_connect.links`, services/connect/links.gd): `pair`, `list`,
+##                       `remove`, `set_reachable`, `open` and the signal `link(session)`
 ##   status()            {running, lan, lan_reason, lan_error, relay, relay_error, relay_reason}
 ##   signals             `channel(session)`: a session another device opened to this one, on either path;
 ##                       `notice(n)`: a roster or trust manifest a peer pushed was stored, applied or refused
@@ -46,6 +48,10 @@ signal notice(n: Dictionary)
 
 const LAN_ATTEMPT_SECONDS := 4.0
 
+## Inter-account links (`cloud_connect.links`): pair, list, remove, open and the `link` signal. Gated by
+## discovery's `interAccount`; the adverts and rooms run only while Cloud Connect does.
+var links: PKeyCloudLinks = null
+
 ## Nearby approval (`cloud_connect.nearby`): gated by Identity's discovery, it works with Connect stopped.
 var nearby: PKeyCloudNearby = null
 
@@ -56,6 +62,7 @@ var _budget := PKeyConnectSession.Budget.new()
 var _pump: PKeyPeerPump
 var _lan: PKeyConnectLan = null
 var _relay: PKeyConnectRelay = null
+var _contact_relay: PKeyConnectContactRelay = null
 var _lan_reason := ""
 var _lan_error: PKeyResult = null
 var _relay_reason := ""
@@ -87,6 +94,9 @@ func _init(core: PKeyCore, client: PKeyConnectClient, options := {}) -> void:
 		if options.has("nearby_" + k):
 			near[k] = options["nearby_" + k]
 	nearby = PKeyCloudNearby.new(core, client, near)
+	links = PKeyCloudLinks.new(core, client, {
+		"tree": _tree, "lane": Callable(self, "_links_lane"), "pump": Callable(self, "_links_pump"), "web": Callable(self, "_on_web"),
+	})
 
 
 func _to_string() -> String:
@@ -210,8 +220,14 @@ func _start(core: PKeyCore, opts: Dictionary, gen: int) -> PKeyResult:
 		_relay.session_opened.connect(_inbound)
 		_relay.notice.connect(_notice)
 		_relay.start()
+		# The contact rooms (section 15.7): none on web, where links are N/A; a room exists only for a link
+		# marked reachable while the gate is open, and a one-dial room is made by `links.open`.
+		if not web:
+			_contact_relay = PKeyConnectContactRelay.new(src, Callable(self, "_contact_ticket"), ro)
+			_contact_relay.start()
 	else:
 		_relay_reason = relay_reason
+	links.attach(_lan, _contact_relay, {"lan_attempt_seconds": _lan_attempt, "relay_on": _contact_relay != null})
 	_running = true
 	return PKeyResult.success()
 
@@ -224,8 +240,11 @@ func stop() -> void:
 	_running = false
 	var lan := _lan
 	var relay := _relay
+	var contact_relay := _contact_relay
 	_lan = null
 	_relay = null
+	_contact_relay = null
+	links.detach()
 	for s: PKeyConnectSession in _sessions.values():
 		s.close()
 	_sessions = {}
@@ -233,6 +252,8 @@ func stop() -> void:
 		lan.stop()
 	if relay != null:
 		relay.stop()
+	if contact_relay != null:
+		contact_relay.stop()
 	_pump = null
 
 
@@ -332,6 +353,19 @@ func _shared_lane(options := {}) -> Object:
 		lane = PKeyMdns.new({"allow_loopback": bool(options.get("allow_loopback", false)), "only": options.get("interfaces", []), "tree": _tree})
 	_lane_shared = lane
 	return lane
+
+
+## A ticket for one contact room (the contact relay's `ticket`).
+func _contact_ticket(rid: String) -> PKeyResult:
+	return await _client.relay_ticket({"room": "c", "rid": rid})
+
+
+func _links_lane() -> Object:
+	return _shared_lane({})
+
+
+func _links_pump() -> PKeyPeerPump:
+	return _pump
 
 
 # ── discovery's word on the relay (G21) ──────────────────────────────────────────────────────

@@ -135,6 +135,8 @@ static func source_of(client: PKeyConnectClient, apply_trust := Callable()) -> S
 	s.refresh = Callable(client, "identity").bind(true)
 	s.adopt_ring = Callable(client, "adopt_ring")
 	s.apply_trust = apply_trust
+	s.contacts = Callable(client, "live_contacts")
+	s.contact_established = Callable(client, "contact_established")
 	return s
 
 

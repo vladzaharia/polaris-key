@@ -197,6 +197,13 @@ const ROWS := [
 	["cloudConnect.onNotice", "res://addons/polaris_key/services/cloud_connect.gd", "signal", "notice"],
 	["cloudConnect.nearby.request", "res://addons/polaris_key/services/connect/nearby.gd", "method", "request"],
 	["cloudConnect.nearby.onRequest", "res://addons/polaris_key/services/connect/nearby.gd", "method", "on_request"],
+	["cloudConnect.links.pair", "res://addons/polaris_key/services/connect/links.gd", "method", "pair"],
+	["cloudConnect.links.list", "res://addons/polaris_key/services/connect/links.gd", "method", "list"],
+	["cloudConnect.links.remove", "res://addons/polaris_key/services/connect/links.gd", "method", "remove"],
+	["cloudConnect.links.setReachable", "res://addons/polaris_key/services/connect/links.gd", "method", "set_reachable"],
+	["cloudConnect.links.open", "res://addons/polaris_key/services/connect/links.gd", "method", "open"],
+	["cloudConnect.links.onLink", "res://addons/polaris_key/services/connect/links.gd", "signal", "link"],
+	["cloudConnect.links.interAccount", "res://addons/polaris_key/services/connect/links.gd", "method", "inter_account"],
 ]
 
 ## [concept, script, name]

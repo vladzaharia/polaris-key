@@ -135,10 +135,11 @@ func receive() -> PKeyResult:
 	return PKeyConnectErrors.lan("closed", "The session is closed.")
 
 
-## Close with `peer_bye` (or `peer_busy`); the CLOSE record is sent first.
+## Close with `peer_bye` (or `peer_busy`, or `peer_revoked` for a link that was removed); the CLOSE record is
+## sent first.
 func close(code: StringName = PKeyPeerSession.PEER_BYE) -> void:
 	if _link != null and not _ended:
-		_link.close(code if code == PKeyPeerSession.PEER_BUSY else PKeyPeerSession.PEER_BYE)
+		_link.close(code if code == PKeyPeerSession.PEER_BUSY or code == PKeyPeerSession.PEER_REVOKED else PKeyPeerSession.PEER_BYE)
 
 
 ## A newer roster was stored: the session ends `peer_revoked` when it no longer lists the peer.

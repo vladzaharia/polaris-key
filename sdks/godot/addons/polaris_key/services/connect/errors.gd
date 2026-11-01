@@ -29,6 +29,8 @@ const LAN_CODE := {
 ## The registered code of each relay reason: the Worker's own for the four it answers with.
 const RELAY_CODE := {
 	"disabled": PKeyConstants.ErrorCode.RELAY_DISABLED,
+	"links_disabled": PKeyConstants.ErrorCode.CONNECT_LINKS_DISABLED,
+	"contact_unsupported": PKeyConstants.ErrorCode.CONNECT_UNAVAILABLE,
 	"paused": PKeyConstants.ErrorCode.RELAY_PAUSED,
 	"quota": PKeyConstants.ErrorCode.RELAY_QUOTA_EXCEEDED,
 	"ticket_invalid": PKeyConstants.ErrorCode.RELAY_TICKET_INVALID,
