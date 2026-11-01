@@ -2,13 +2,17 @@
 // CC-11.12: the LAN service. Two services over real loopback TCP (`BonjourListener` and `BonjourPipes`)
 // with a fake directory in place of Bonjour. Mirrors the Python port's `test_connect_lan.py`.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import PolarisKeyPlatform
 import XCTest
 
 @testable import PolarisKey
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 #if canImport(Network)
     import Network

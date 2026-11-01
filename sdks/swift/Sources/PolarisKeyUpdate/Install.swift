@@ -16,9 +16,13 @@
 //                     winsparkle, velopack, appInstaller, zsync. A product that publishes no such
 //                     template answers the typed N/A (`product`).
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 #if os(macOS)
     import AppKit

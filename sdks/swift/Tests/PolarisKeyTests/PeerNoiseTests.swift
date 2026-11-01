@@ -6,11 +6,15 @@
 // for byte with rekey, the 15 failure rows and the external anchors; then the engine's own
 // refusals, the key port, and the no-leak checks.
 
-import CryptoKit
 import Foundation
 import XCTest
 
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private func unhex(_ s: String) -> Data {
     let c = Array(s.utf8)

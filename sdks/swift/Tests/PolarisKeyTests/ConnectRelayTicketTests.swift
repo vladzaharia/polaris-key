@@ -3,12 +3,16 @@
 // (G13), the typed refusals, `peerSource()`, `adoptRing()` and `keysStale` (G11, G12), the error
 // taxonomy (G20) and the no-leak checks (G19). The ticket route is a stub Worker.
 
-import CryptoKit
 import Foundation
 import XCTest
 
 @testable import PolarisKey
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private let selfId = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 private let otherId = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"

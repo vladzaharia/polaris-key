@@ -8,8 +8,12 @@
 // so a secret cannot be zeroed once it has been handed to HKDF or HMAC; callers keep the copies
 // they hold short-lived and overwrite the ones they own (`PeerContacts.wipe`).
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 public let maxContacts = 64
 public let maxContactCats = 8

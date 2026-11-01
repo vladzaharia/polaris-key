@@ -16,9 +16,13 @@
 //
 // Nothing here logs a name, a path or a byte of content.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// Where a transfer goes: one of the person's own devices, or a link made with `cloudConnect.links`.
 public enum TransferPeer: Sendable, Equatable, ExpressibleByStringLiteral {

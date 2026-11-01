@@ -2,8 +2,12 @@
 // ports to the network, the timer, the error, a value that one side resolves and several await, and the
 // one-time static key. Core owns the engine and these ports; the umbrella wires them to Bonjour.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// Schedule `fn` after `seconds`; returns the cancel. A test injects its own.
 public typealias NearbyTimer = @Sendable (TimeInterval, @escaping @Sendable () -> Void) -> @Sendable () -> Void

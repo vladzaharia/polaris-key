@@ -29,9 +29,13 @@
 //   - A refusal is a typed `ExchangeError` and changes nothing local. `404` (either route) is `unavailable(not_found)`.
 //   - The sign-in card `url` of an interstitial must be https, or http on loopback.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// The platform providers an ID token can come from (§12.11.3).
 public enum ExchangeKind: String, Sendable, Equatable, CaseIterable {

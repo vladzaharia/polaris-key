@@ -4,11 +4,15 @@
 // a fake byte server with Range/If-Range, and a `files` delta set whose one `delta` entry is the
 // probe vector (a real `zstd --patch-from` frame over a 432-byte base).
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import PolarisKeyPacks
 import XCTest
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 enum PackFixtures {
     static let product = "djdl"

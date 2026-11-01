@@ -5,12 +5,16 @@
 // transfer events. The records layer is an in-memory `SaveRecords`; the file routes are a fake behind the
 // engine's `FileTransport`; the real engine, codecs and journal run.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import XCTest
 
 @testable import PolarisKey
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private let root = Data((0..<32).map { UInt8(truncatingIfNeeded: 3 * $0 + 1) })
 

@@ -4,11 +4,15 @@
 // read in place), and the mode-a `records.sessions` rows driven through a real session. Mirrors
 // client-core's `peerSession.test.ts` and the Python port's `test_connect_peer_session.py`.
 
-import CryptoKit
 import Foundation
 import XCTest
 
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 private let sub = "ps_AAAAAAAAAAAAAAAAAAAAAA"
 private let nowT = 1_700_001_000

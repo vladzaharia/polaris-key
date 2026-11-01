@@ -2,12 +2,16 @@
 // CC-26.4: the Swift device key store and `pkey-proof/1` signer. Mirrors client-core's
 // deviceKeys.test.ts, and runs conformance/corpus/v2/device-proof.json through the verifier.
 
-import CryptoKit
 import Foundation
 import Security
 import XCTest
 
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 // ── Fakes ────────────────────────────────────────────────────────────────────────────
 

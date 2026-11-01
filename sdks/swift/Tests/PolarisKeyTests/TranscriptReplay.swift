@@ -10,12 +10,16 @@
 // (a best-effort report does exactly that), so a thrown mismatch could vanish. Every problem is
 // RECORDED and answered with a 599, and `endStep()` fails with the full list.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 
 @testable import PolarisKey
 @testable import PolarisKeyPacks
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 // ── The format ─────────────────────────────────────────────────────────────────────────────
 

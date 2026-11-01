@@ -16,8 +16,12 @@
 // the call; Swift cannot zero them (a recorded residual). The input is never retained, and the
 // reply buffer is zeroed by the C surface once copied out.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 enum CryptoOps {
     static let ok: UInt8 = 1

@@ -4,13 +4,17 @@
 // K_disc, and makes the Cloud Sync key ring forget its root and pin. A root that cannot be
 // deleted stops the sign-out.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
 import XCTest
 
 @testable import PolarisKey
 @testable import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 final class SignOutForgetTests: XCTestCase {
     private let signer = TestSigner(kid: "connect-kid")

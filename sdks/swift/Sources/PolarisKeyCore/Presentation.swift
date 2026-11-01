@@ -21,8 +21,12 @@
 // `String` cannot hold a lone surrogate (JSONDecoder refuses one), so rule 2's surrogate clause
 // holds by construction.
 
-import CryptoKit
 import Foundation
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 /// One WebP width of the icon and the SHA-256 of its bytes.
 public struct PresentationIconSize: Sendable, Equatable, Hashable, Codable {

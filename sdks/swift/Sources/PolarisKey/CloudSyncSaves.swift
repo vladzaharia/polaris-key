@@ -23,9 +23,13 @@
 //
 // Nothing here puts a key, a plaintext byte or a bearer token in an error, an event or a log line.
 
-import CryptoKit
 import Foundation
 import PolarisKeyCore
+#if canImport(CryptoKit)
+    import CryptoKit
+#else
+    import Crypto
+#endif
 
 public let savesCollection = "saves"
 /// The key of the E2E binding inside a save's sealed metadata (D-3).
