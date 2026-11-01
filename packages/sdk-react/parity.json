@@ -585,8 +585,8 @@
       "note": "U-38.2: the browser bearer engine's key ring (RingEngine, ui-core browser/ring) on client-core's sync crypto and WebCrypto. The seven keyring-* transcripts replay through it (test/transcripts.test.ts); test/keyring.test.ts pins create, unwrap of this device's wrap, wrap to another device, recover and set the recovery code, reset and adopt, the lock and the codec keys. The root is a non-extractable HKDF key in IndexedDB; its bytes live in memory for 300 s after a create or recovery. A browser unlocks only with the recovery code (Q8). A browser whose device keys are memory-only (WebKit) cannot create or reset a ring (the Worker needs registered keys): it unlocks with the code and keeps the root in memory, so every load asks for the code again. A cookie page, the local adapter and the desktop bridge answer the typed N/A (runtime, runtime, version): the host serves no ring verb yet."
     },
     "sync.records": {
-      "status": "planned",
-      "wp": "U-46"
+      "status": "implemented",
+      "note": "U-46 (C26.3R): adapter.cloudSync.collection(name) and useCollection(name) over client-core's SyncCollection and the browser host's machine (src/browser/cloudSync/collection.ts). The catalog's collections (exact names and prefix.* patterns) reach the machine; the hook loads the handle, re-renders on its change events and exposes ids, get(id) and the handle's verbs (put with ifVersion, update, add, remove, delete, on); a refusal is returned and nothing is sent. The machine is read at each call, and a rebuild keeps the watched collections and outcome taps. Only the writer tab writes: another tab's write verb throws sync-not-writer. A cookie page, the local adapter and the desktop bridge answer the typed N/A (feature sync.records). test/cloudSyncCollection.test.tsx; the seven cloudsync-records-* transcripts replay in test/transcripts.test.ts."
     },
     "sync.files": {
       "status": "implemented",

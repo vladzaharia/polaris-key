@@ -74,6 +74,9 @@ const KB = 1000;
  * provider+use-license 94.0 -> 95.5 KB (integration CP2, 2026-10-31): measured 94.4 after the
  * nearby sign-in, the inter-account link and the Direct Transfer clients joined the provider's
  * engine. Same rule: ordinary feature growth, no lazy split.
+ *
+ * provider+use-license 95.5 -> 96.5 KB (C26.3R, 2026-11-01): measured 95.54 after useCollection
+ * and the collection handle joined the provider's engine. Same rule.
  */
 export const BUDGETS = JSON.parse(
   readFileSync(join(here, "size-budget.json"), "utf8"),

@@ -9,7 +9,7 @@
 // @pkey-feature core.presentation identity.keyentry identity.account identity.attach
 // @pkey-feature identity.toggle identity.redirect.web identity.signin.hints
 // @pkey-feature sync.keyring identity.exchange identity.link identity.keyreturn identity.devicecode.choice
-// @pkey-feature sync.files sync.files.delta
+// @pkey-feature sync.files sync.files.delta sync.records
 //
 // `cloudSyncPull` / `cloudSyncPush` (U-20.4, sync.settings, WIRE-CONTRACT-V4 section 13.3, 13.4, V5 13.10):
 // the request goes through the browser host's own transport (`sendSync`, over `session.ringRequest`:
@@ -1871,8 +1871,8 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // identity.link is I-43.3's link-* transcripts (I-46.13), replayed through `session.linkOffer`
     // and `session.linkAccept`; the Node runner also replays them with a reference client.
     // connect.identity is CC-06.4's connect-identity* transcripts, replayed here (CC-09.1).
-    // sync.records (U-09.10) stays planned here (D-2: v1 is saves only; `collection()` is C-26), so the
-    // cloudsync-records-* transcripts, the Worker's record-engine conversations, are not replayed.
+    // sync.records (U-46) replays the cloudsync-records-* transcripts, the Worker's record-engine
+    // conversations, through the same cloudSyncPull and cloudSyncPush steps as the settings.
     // sync.saves (SAVES.R) replays cloudsync-files-single (also tagged sync.saves) through the file transport.
     // sync.files (U-10.12) and sync.files.delta (U-37) are U-22.6's: the other cloudsync-files-*
     // transcripts and cloudsync-chunks* replay through the file transport (cloudSyncFile, cloudSyncChunk).
@@ -1881,7 +1881,7 @@ describe("HTTP transcripts: @polaris-key/react", () => {
     // identity.redirect.native stays planned here (parity.json, I-15b): the pushed request and the
     // loopback listener are a native app's, so the locker-redirect-native and redirect-native-*
     // transcripts are not replayed by the web engine.
-    const plannedHere: string[] = ["sync.records", "identity.redirect.native"];
+    const plannedHere: string[] = ["identity.redirect.native"];
     // Not applicable here: ui.cli.portal is the terminal kits' product page link (LK-18's
     // discovery-portal transcript); React's widget kit shows only server or integrator links.
     // identity.gamecenter and identity.pgs are N/A on the web (parity.json), so exchange-gamecenter-*,

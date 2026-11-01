@@ -3667,15 +3667,15 @@
         },
         "swift": {
           "planned": "I-44",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "reason": "the link offer (plan-auto-sign-in \u00a72.3)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "reason": "the link offer (plan-auto-sign-in \u00a72.3)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "reason": "the link offer (plan-auto-sign-in \u00a72.3)"
         }
       },
       "layer": "client",
@@ -3692,15 +3692,15 @@
         },
         "swift": {
           "planned": "I-44",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "reason": "the link offer (plan-auto-sign-in \u00a72.3)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "reason": "the link offer (plan-auto-sign-in \u00a72.3)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "reason": "the link offer (plan-auto-sign-in \u00a72.3)"
         }
       },
       "layer": "client",
@@ -3723,15 +3723,15 @@
         },
         "swift": {
           "planned": "I-44",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "reason": "the link offer (plan-auto-sign-in \u00a72.3)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "reason": "the link offer (plan-auto-sign-in \u00a72.3)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "the link offer (plan-auto-sign-in §2.3)"
+          "reason": "the link offer (plan-auto-sign-in \u00a72.3)"
         }
       },
       "layer": "client",
@@ -4262,9 +4262,9 @@
           "planned": "U-46"
         },
         "react": {
-          "planned": "U-46",
           "shape": "hook",
-          "reason": "useCollection(name) is the hook; it returns the handle"
+          "reason": "useCollection(name) is the hook; it returns the handle",
+          "spelling": "useCollection"
         },
         "swift": {
           "planned": "U-46"
@@ -4294,9 +4294,9 @@
           "planned": "U-46"
         },
         "react": {
-          "planned": "U-46",
           "shape": "hook",
-          "reason": "the hook returns the record; its handle carries the verb"
+          "reason": "the hook returns the record; its handle carries the verb",
+          "spelling": "useCollection(name).get"
         },
         "swift": {
           "planned": "U-46"
@@ -4320,9 +4320,9 @@
           "planned": "U-46"
         },
         "react": {
-          "planned": "U-46",
           "shape": "hook",
-          "reason": "the hook returns the ids; its handle carries the verb"
+          "reason": "the hook returns the ids; its handle carries the verb",
+          "spelling": "useCollection(name).ids"
         },
         "swift": {
           "planned": "U-46"
@@ -4356,9 +4356,9 @@
           "planned": "U-46"
         },
         "react": {
-          "planned": "U-46",
           "shape": "hook",
-          "reason": "the hook's handle carries the verb"
+          "reason": "the hook's handle carries the verb",
+          "spelling": "useCollection(name).handle.put"
         },
         "swift": {
           "planned": "U-46"
@@ -4392,9 +4392,9 @@
           "planned": "U-46"
         },
         "react": {
-          "planned": "U-46",
           "shape": "hook",
-          "reason": "the hook's handle carries the verb"
+          "reason": "the hook's handle carries the verb",
+          "spelling": "useCollection(name).handle.update"
         },
         "swift": {
           "planned": "U-46"
@@ -4428,9 +4428,9 @@
           "planned": "U-46"
         },
         "react": {
-          "planned": "U-46",
           "shape": "hook",
-          "reason": "the hook's handle carries the verb"
+          "reason": "the hook's handle carries the verb",
+          "spelling": "useCollection(name).handle.add"
         },
         "swift": {
           "planned": "U-46"
@@ -4464,9 +4464,9 @@
           "planned": "U-46"
         },
         "react": {
-          "planned": "U-46",
           "shape": "hook",
-          "reason": "the hook's handle carries the verb"
+          "reason": "the hook's handle carries the verb",
+          "spelling": "useCollection(name).handle.remove"
         },
         "swift": {
           "planned": "U-46"
@@ -4496,9 +4496,9 @@
           "planned": "U-46"
         },
         "react": {
-          "planned": "U-46",
           "shape": "hook",
-          "reason": "the hook's handle carries the verb"
+          "reason": "the hook's handle carries the verb",
+          "spelling": "useCollection(name).handle.delete"
         },
         "swift": {
           "planned": "U-46"
@@ -4528,9 +4528,9 @@
           "planned": "U-46"
         },
         "react": {
-          "planned": "U-46",
           "shape": "hook",
-          "reason": "the hook re-renders on each change, so no event listener is exposed"
+          "reason": "the hook re-renders on each change, so no event listener is exposed",
+          "spelling": "useCollection(name).handle.on"
         },
         "swift": {
           "planned": "U-46"
@@ -7226,15 +7226,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"
@@ -7264,15 +7264,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"
@@ -7292,15 +7292,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"
@@ -7325,15 +7325,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"
@@ -7353,15 +7353,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"
@@ -7381,15 +7381,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"
@@ -7414,15 +7414,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"
@@ -7448,15 +7448,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"
@@ -7476,15 +7476,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"
@@ -7503,15 +7503,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"
@@ -7529,15 +7529,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"
@@ -7560,15 +7560,15 @@
         "python": {},
         "swift": {
           "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "kotlin": {
           "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         },
         "godot": {
           "planned": "I-48",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
         }
       },
       "layer": "client"

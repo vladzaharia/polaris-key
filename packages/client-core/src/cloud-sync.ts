@@ -1062,6 +1062,14 @@ export class CloudSyncMachine {
     return d ? { ...d } : undefined;
   }
 
+  /** Carry over what observers registered on a machine this one replaces (a rebuild from the
+   *  catalog or document): the outcome taps and the watched collections. */
+  adoptObservers(from: CloudSyncMachine): void {
+    for (const tap of from.outcomeTaps) this.outcomeTaps.add(tap);
+    for (const collection of from.watched.keys())
+      this.watchRecords(collection, true);
+  }
+
   /** Report record changes of `collection` as `records` events from now on (`false`: stop). */
   watchRecords(collection: string, on: boolean): void {
     if (!on) {

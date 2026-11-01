@@ -57,6 +57,27 @@ const PUT_POLICIES: ReadonlySet<CollectionPolicy> = new Set([
   "revision",
 ]);
 
+/** The collections a host gives the machine, from the catalog's resolved declarations: each
+ *  member's policy, merge/max/min field and (for `revision`) the keep-server resolution, and the
+ *  `saves` collection unless the catalog declares it. */
+export function collectionDecls(
+  resolved: ReadonlyArray<{
+    name: string;
+    conflict: CollectionPolicy;
+    conflictField: string | null;
+  }>,
+): CollectionDecl[] {
+  const out: CollectionDecl[] = resolved.map((r) => ({
+    name: r.name,
+    policy: r.conflict,
+    ...(r.conflictField !== null ? { field: r.conflictField } : {}),
+    ...(r.conflict === "revision" ? { resolve: "keepServer" as const } : {}),
+  }));
+  if (!out.some((c) => c.name === "saves"))
+    out.push({ name: "saves", policy: "revision", resolve: "keepServer" });
+  return out;
+}
+
 /** The handle `cloudSync.collection(name)` returns. */
 export class SyncCollection {
   readonly name: string;

@@ -39,7 +39,11 @@ import {
   type SyncResponse,
   type WireMutation,
 } from "@polaris-key/client-core/cloud-sync";
-import { openPull, sealPush } from "@polaris-key/client-core/sync";
+import {
+  collectionDecls,
+  openPull,
+  sealPush,
+} from "@polaris-key/client-core/sync";
 import { SYNC_KEY_PATTERN } from "@polaris-key/protocol/sync";
 import {
   resolveCollection,
@@ -79,27 +83,16 @@ export interface CloudSyncHostOptions {
   };
 }
 
-/** The collection `cloudSync.saves` writes to: a `revision` collection the machine holds. */
-const SAVES_DECL = {
-  name: "saves",
-  policy: "revision",
-  resolve: "keepServer",
-} as const;
+/** What the machine is built from besides the document: the routes and the collections. */
+function shapeOf(catalog: ProductCatalog): string {
+  return JSON.stringify([routesOf(catalog), collectionsOf(catalog)]);
+}
 
 /** The collections the machine knows: the catalog's declarations, and `saves` unless declared. */
 function collectionsOf(catalog: ProductCatalog): CollectionDecl[] {
-  const out: CollectionDecl[] = [];
-  for (const c of catalog.cloudSync?.collections ?? []) {
-    const r = resolveCollection(c);
-    out.push({
-      name: r.name,
-      policy: r.conflict,
-      ...(r.conflictField !== null ? { field: r.conflictField } : {}),
-      ...(r.conflict === "revision" ? { resolve: "keepServer" as const } : {}),
-    });
-  }
-  if (!out.some((c) => c.name === SAVES_DECL.name)) out.push({ ...SAVES_DECL });
-  return out;
+  return collectionDecls(
+    (catalog.cloudSync?.collections ?? []).map(resolveCollection),
+  );
 }
 
 /** What the host needs from the client; each is a function so the host holds no stale copy. */
@@ -292,6 +285,7 @@ export class CloudSyncHost {
 
   /** (Re)build the machine from the journal, the catalog and the document. */
   #build(persisted: CloudSyncFile["persisted"]): void {
+    const previous = this.#machine;
     this.#detach?.();
     this.#catalog = this.#effective();
     this.#routes = routesOf(this.#catalog);
@@ -314,6 +308,8 @@ export class CloudSyncHost {
       persisted ?? undefined,
     );
     this.#machine = m;
+    // A rebuild keeps the watched collections and outcome taps of the machine it replaces.
+    if (previous !== null) m.adoptObservers(previous);
     m.onOutcome(this.#outcome);
     this.#applyDiscovery(m);
     this.#detach = this.#deps.keyring.attach(m);
@@ -495,10 +491,10 @@ export class CloudSyncHost {
     const fetched = vetted(await this.#deps.fetchSchema().catch(() => null));
     if (fetched === null) return;
     if (JSON.stringify(fetched) === JSON.stringify(this.#served)) return;
-    const before = JSON.stringify(routesOf(this.#catalog));
+    const before = shapeOf(this.#catalog);
     this.#served = fetched;
-    // Rebuild only when the routes the machine uses would change.
-    if (JSON.stringify(routesOf(this.#effective())) === before) {
+    // Rebuild only when the routes or collections the machine uses would change.
+    if (shapeOf(this.#effective()) === before) {
       this.#catalog = this.#effective();
       return;
     }

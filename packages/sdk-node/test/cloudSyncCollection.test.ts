@@ -7,6 +7,8 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { SyncCollection } from "@polaris-key/client-core/sync";
+import { CloudSyncHost } from "../src/cloudSync/host.js";
 import {
   CATALOG,
   SUBJECT,
@@ -124,6 +126,60 @@ describe("cloudSync.collection", () => {
       origin: "remote",
     });
     expect(prefs.get("main")).toEqual({ value: { a: 1 }, from: "cloud" });
+    client.close();
+  });
+});
+
+describe("a rebuilt machine", () => {
+  it("keeps the watched collections and outcome taps of the machine it replaces", async () => {
+    const { w, client } = await rig();
+    const doc = { values: {} as Record<string, never> };
+    const inner = client as unknown as { core: never; tokens: never };
+    const host = new CloudSyncHost(
+      {
+        ctx: inner.core,
+        tokens: inner.tokens,
+        keyring: client.keyring,
+        discovery: () => null,
+        fetchSchema: () => client.config.fetchSchema(),
+        document: () => doc,
+      },
+      {
+        catalog: { ...CATALOG(1), cloudSync: CLOUD } as never,
+        encryption: "server",
+      },
+    );
+    await host.start();
+    host.bindSubject(SUBJECT);
+    host.machine.signIn(SUBJECT);
+    const prefs = new SyncCollection("prefs", {
+      get machine() {
+        return host.machine;
+      },
+      onEvents: (fn) => host.onEvents(fn),
+      touch: () => void host.touch(),
+    });
+    const seen: unknown[] = [];
+    prefs.on((e) => seen.push(e));
+    const old = host.machine;
+    (doc.values as Record<string, unknown>).changed = 1;
+    host.noteDocumentRefreshed();
+    await host.flush();
+    expect(host.machine).not.toBe(old);
+    w.pull = () =>
+      w.body({
+        cursor: 5,
+        changes: [{ record: ["prefs", "main"], version: 5, value: { a: 1 } }],
+      });
+    host.machine.setNetwork("online");
+    await host.touch();
+    await host.flush();
+    expect(seen).toContainEqual({
+      type: "change",
+      ids: ["main"],
+      origin: "remote",
+    });
+    await host.close();
     client.close();
   });
 });

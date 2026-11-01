@@ -18,6 +18,7 @@ import type {
   SaveTransfer,
   WriteOptions,
 } from "@polaris-key/client-core/sync";
+import type { SyncCollection } from "@polaris-key/client-core/sync";
 import type { FileRevision } from "@polaris-key/protocol/sync";
 import type { Json } from "@polaris-key/client-core/cloud-sync";
 import type {
@@ -103,6 +104,12 @@ export interface CloudSyncClient {
   /** Send what is waiting now (bounded) and save the journal. */
   flush(): Promise<SyncStatus>;
   /**
+   * The records handle of a collection the product's catalog declares (sync.records). Loads the
+   * host. An undeclared name answers `collection_unknown` from each call. Only the writer tab
+   * writes (`sync-not-writer` otherwise). Throws the typed unsupported where Cloud Sync cannot run.
+   */
+  collection(name: string): Promise<SyncCollection>;
+  /**
    * Delete the synced data of the person on this device (the record in IndexedDB) and forget it in
    * memory, in every tab. Sign-out, deactivation and `account_required` call it beside
    * `keyring.forget()`. Throws if the record is still there after. Where nothing is held (the host
@@ -161,6 +168,10 @@ export function unsupportedCloudSync(
     host: () => Promise.reject(new UnsupportedError(unsupported)),
     status: refuse,
     flush: () => Promise.reject(new UnsupportedError(unsupported)),
+    collection: () =>
+      Promise.reject(
+        new UnsupportedError({ ...unsupported, feature: Feature.syncRecords }),
+      ),
     // Nothing can be held here, so there is nothing to delete.
     purge: async () => undefined,
     onEvents: () => () => undefined,
@@ -241,6 +252,8 @@ export function lazyCloudSync(src: LazyCloudSyncSource): CloudSyncClient {
           ? real.status()
           : { state: "local", pending: 0 },
     flush: async () => (await ready()).flush(),
+    collection: async (name) =>
+      src.enabled() ? (await ready()).collection(name) : off().collection(name),
     async purge() {
       // A load in flight is waited for, so its record is not written after the purge.
       const c = real ?? (await loading?.catch(() => null)) ?? null;
