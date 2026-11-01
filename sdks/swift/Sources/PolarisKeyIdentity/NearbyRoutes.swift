@@ -266,6 +266,8 @@ extension IdentityClient {
             throw PolarisError(
                 code: ErrorCode.signInFailed, message: "nearby sign-in could not store the sign-in.")
         }
+        // The previous person is no longer the stored subject under the new, unconfirmed token.
+        updateSubject(nil)
         if redirectAcquisitionSync.current { await onAcquired?() }
         func text(_ key: String) -> String? {
             license?[key]?.stringValue.flatMap { $0.isEmpty ? nil : $0 }

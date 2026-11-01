@@ -131,10 +131,14 @@ public struct SyncWrapBody: Sendable, Equatable, CustomStringConvertible, Custom
         let ct: String
     }
 
-    /// A record that is not strict JSON of this shape, or is empty or over 4096 bytes, is nil.
+    /// A record that is not exactly `{ringId, epoch, kid, kem, enc, ct}` (a missing or extra member, a wrong
+    /// type, a kid that is not 32 lowercase hex characters), or is empty or over 2048 bytes, is nil.
     static func parse(_ record: Data) -> SyncWrapBody? {
-        guard !record.isEmpty, record.count <= 4096, let w = try? JSONDecoder().decode(Wire.self, from: record),
-            isRingId(w.ringId), w.epoch >= 1
+        guard !record.isEmpty, record.count <= 2048,
+            let members = (try? JSONSerialization.jsonObject(with: record)) as? [String: Any],
+            Set(members.keys) == ["ringId", "epoch", "kid", "kem", "enc", "ct"],
+            let w = try? JSONDecoder().decode(Wire.self, from: record),
+            isRingId(w.ringId), w.epoch >= 1, wholeMatches("[0-9a-f]{32}", w.kid) != nil
         else { return nil }
         return SyncWrapBody(ringId: w.ringId, epoch: w.epoch, kid: w.kid, kem: w.kem, enc: w.enc, ct: w.ct)
     }
