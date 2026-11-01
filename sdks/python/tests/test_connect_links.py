@@ -174,10 +174,12 @@ def _hold_after_first_send(monkeypatch: Any) -> Any:
     return state
 
 
-def _in_flight(world: Any, monkeypatch: Any, then: Any) -> List[Any]:
+def _in_flight(world: Any, monkeypatch: Any, then: Any, before: Any = None) -> List[Any]:
     import threading
 
     a, b, net = world
+    if before is not None:
+        before()
     _pair(a, b, net)
     ida, idb = a.cloud_connect.links.list()[0].id, b.cloud_connect.links.list()[0].id
     opts = {"lan": {"mdns": net, "host": "127.0.0.1", "allow_loopback": True}, "relay": False}
@@ -266,3 +268,95 @@ def test_promotion_follows_the_secret_not_the_peer_key() -> None:
     rows = [row(s1), row(s2, 5)]
     assert promote_row(rows, key, secret_tag(s1)) == rows
     assert [r.secret for r in promote_row(rows, key, secret_tag(s2))] == [b64url_encode(s2)]
+
+
+def _only_the_lan_layer(monkeypatch: Any) -> Any:
+    """Revert the links layer: an established session is always taken as still held."""
+    from polaris_key.connect.links import CloudLinks
+
+    async def held(self: Any, s: Any) -> bool:
+        return True
+
+    monkeypatch.setattr(CloudLinks, "_still_held", held)
+
+
+def _only_the_links_layer(monkeypatch: Any) -> Any:
+    """Revert the LAN layer: the LAN service never reloads its contacts, so it cannot see a change."""
+    from polaris_key.connect.lan import LanService
+
+    monkeypatch.setattr(LanService, "_contacts_changed", lambda self, *a, **k: None)
+    seen: List[Any] = []
+    from polaris_key.connect.links import CloudLinks
+
+    orig = CloudLinks._still_held
+
+    async def watch(self: Any, s: Any) -> bool:
+        ok = await orig(self, s)
+        seen.append(ok)
+        return ok
+
+    monkeypatch.setattr(CloudLinks, "_still_held", watch)
+    return seen
+
+
+def test_links_a_handshake_whose_contact_was_removed_is_ended_by_the_lan_layer_alone(world: Any, monkeypatch: Any) -> None:
+    def then(a: Any, ida: str) -> None:
+        assert a.cloud_connect.links.remove(a.cloud_connect.links.list()[0].id) is True
+        time.sleep(0.3)  # the LAN service reloads its contacts
+
+    got = _in_flight(world, monkeypatch, then, before=lambda: _only_the_lan_layer(monkeypatch))
+    assert got == []
+
+
+def test_links_a_session_that_completes_after_its_contact_is_gone_is_closed_peer_revoked_by_the_links_layer(
+    world: Any, monkeypatch: Any
+) -> None:
+    seen: List[Any] = []
+
+    def then(a: Any, ida: str) -> None:
+        assert a.cloud_connect.links.remove(a.cloud_connect.links.list()[0].id) is True
+
+    got = _in_flight(world, monkeypatch, then, before=lambda: seen.append(_only_the_links_layer(monkeypatch)))
+    assert got == []
+    assert False in seen[0]
+
+
+def test_links_a_session_that_completes_after_links_go_off_is_closed_peer_bye_by_the_links_layer(
+    world: Any, monkeypatch: Any
+) -> None:
+    seen: List[Any] = []
+
+    def then(a: Any, _ida: str) -> None:
+        a._discovery_doc = {"services": {"connect": {"enabled": True, "interAccount": False}}}
+
+    got = _in_flight(world, monkeypatch, then, before=lambda: seen.append(_only_the_links_layer(monkeypatch)))
+    assert got == []
+    assert False in seen[0]
+
+
+def test_links_a_session_under_a_replaced_pending_secret_promotes_nothing(world: Any) -> None:
+    import dataclasses
+
+    from polaris_key.connect.contacts import secret_tag
+    from polaris_key.connect.lan import lan_source
+    from polaris_key.core.b64url import b64url_decode, b64url_encode
+
+    a, b, net = world
+    _pair(a, b, net)
+    held = a.connect.contact_rows()[0]
+    new_secret = bytes([9]) * 32
+    pend = dataclasses.replace(held, secret=b64url_encode(new_secret), pending_since=int(time.time()))
+    a.connect.update_contacts(lambda rows, _now: list(rows) + [pend])
+    assert len(a.connect.contact_rows()) == 2
+    src = lan_source(a.connect)
+    ref = a.connect.live_contacts()  # the live list is what the LAN service reads
+    assert ref is not None
+    from polaris_key.connect.contacts import ContactRef
+
+    mk = lambda tag: ContactRef(id="x", label=None, categories=("notes",), agree_key=held.agree_key, pending=True, tag=tag)
+    assert src.contact_established is not None
+    src.contact_established(mk("A" * 16))
+    assert len(a.connect.contact_rows()) == 2
+    src.contact_established(mk(secret_tag(new_secret)))
+    assert len(a.connect.contact_rows()) == 1
+    assert b64url_decode(a.connect.contact_rows()[0].secret) == new_secret
