@@ -766,7 +766,7 @@ describe("metering bounds: a room counts its bytes before it erases", () => {
   });
 });
 
-describe("erase critical section and alarm re-arm (C2-G2, C2-G3)", () => {
+describe("erase critical section and alarm re-arm", () => {
   const SUBJECT = "ps_AAAAAAAAAAAAAAAAAAAAAA";
   /** Fail the first count while a concurrent caller (behind the input gate) tries to enter. */
   const hooked = (

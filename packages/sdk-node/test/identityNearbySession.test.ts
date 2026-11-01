@@ -541,7 +541,7 @@ describe("nearby sign-in session: no secret is printed", () => {
   });
 });
 
-// ── D-21 / C4-G1: the sign-in is unconfirmed until the person confirms ───────────────────────
+// ── D-21: the sign-in is unconfirmed until the person confirms ───────────────────────
 
 const tokensOf = (c: Client): { unconfirmed: boolean; signedIn: boolean } =>
   (c as unknown as { tokens: { unconfirmed: boolean; signedIn: boolean } })

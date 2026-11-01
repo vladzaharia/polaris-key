@@ -397,7 +397,7 @@ describe.each([
     counted.mockRestore();
   });
 
-  it("writes queued by a closed session cannot land after a new session took the partial over (R-9b)", async () => {
+  it("writes queued by a closed session cannot land after a new session took the partial over", async () => {
     const w = await make();
     const size = 1_200_000;
     const chunk = 4096;

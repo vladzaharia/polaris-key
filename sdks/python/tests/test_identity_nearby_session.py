@@ -528,7 +528,7 @@ def test_no_key_ring_means_the_wrap_is_dropped(clock) -> None:
     assert s.confirm_account() is None
 
 
-# ── D-21 / C4-G1: the sign-in is unconfirmed until the person confirms ──────────────────────
+# ── D-21: the sign-in is unconfirmed until the person confirms ──────────────────────
 
 
 class _FakeTimer:

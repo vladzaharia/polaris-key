@@ -9,7 +9,7 @@
 //                              with where the content goes, or declines
 //   onResult(fn)               called when a transfer, either way, ends
 //
-// Rules this module keeps (R-9b):
+// Rules this module keeps:
 //  - consent is per transfer: with no offer handler every offer is declined, and so is one whose
 //    handler throws, answers nothing or names an unusable destination. There is no default accept;
 //  - the peer's `name`, `type` and `category` are display data handed to the handler. Nothing here

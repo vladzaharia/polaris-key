@@ -2,7 +2,7 @@
 // §15.11): mode `a` over the relay only (a page cannot pair, D-14). Loaded with the Connect
 // engine on the first `start()`; `index.ts` holds the lean facade and the types.
 //
-// Rules this module keeps (R-9b, as the Node host):
+// Rules this module keeps (as the Node host):
 //  - consent is per transfer: with no offer handler every offer is declined, and so is one whose
 //    handler throws, answers nothing or names an unusable sink. There is no default accept and
 //    nothing downloads by itself;
