@@ -244,6 +244,12 @@ export const GODOT_COMPONENTS: Readonly<Record<string, GodotComponent>> = {
     shows:
       "Your sync key changed: the device that changed it, Use recovery code first, That was me for the ring the person was shown, and Cancel",
   },
+  SaveConflict: {
+    view: "cloud_sync/pkey_save_conflict",
+    model: "SaveConflict",
+    shows:
+      "The same save changed on two devices: two cards say whose copy is whose and when each was saved, and the person picks Keep this device's version, Keep the other version, Keep both or Cancel. Nothing is chosen for them, and it follows the saves of Cloud Sync",
+  },
   About: {
     view: "about/pkey_about",
     model: "About",

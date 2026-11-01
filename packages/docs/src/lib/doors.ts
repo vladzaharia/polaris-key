@@ -453,6 +453,7 @@ export const DOOR_TREES: readonly DoorTree[] = [
           "features/cloud-connect/index",
           "features/cloud-connect/channels",
           "features/cloud-connect/relay",
+          "features/cloud-connect/transfer",
         ),
       },
       {

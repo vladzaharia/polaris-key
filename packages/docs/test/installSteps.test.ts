@@ -240,7 +240,8 @@ describe("InstallSteps FEEDS mapping", () => {
     ]
       .map((m) => m[1])
       .sort();
-    expect(deps).toEqual(["Sparkle"]);
+    // Sparkle on Apple platforms; swift-crypto is a Linux-only dependency (the pages say so).
+    expect(deps).toEqual(["Sparkle", "swift-crypto"]);
     const sentence = `macOS ${floors.macOS}, iOS ${floors.iOS}, tvOS ${floors.tvOS} and visionOS ${floors.visionOS}`;
     // The install page names every floor; the first-product page, under its word budget, names
     // the one a macOS command-line package needs.
@@ -254,6 +255,7 @@ describe("InstallSteps FEEDS mapping", () => {
         `.product(name: "PolarisKey", package: "${FEEDS.swift.package}")`,
       );
       expect(text, page).toContain("`Sparkle`");
+      expect(text, page).toContain("`swift-crypto` on Linux");
       expect(text, page).toContain(".swiftpm/configuration/registries.json");
     }
   });
