@@ -482,6 +482,8 @@ Neither AAR declares a permission: a direct app adds `REQUEST_INSTALL_PACKAGES` 
 `UPDATE_PACKAGES_WITHOUT_USER_ACTION` itself (the Godot export plugin does it for direct presets).
 `asset-delivery` brings `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_DATA_SYNC` and WorkManager's
 permissions into play builds (notes/S-10 §2).
+An app that uses LAN Connect declares `ACCESS_NETWORK_STATE` itself (the Godot export plugin does it for play
+and direct presets): the AARs stay permission-free, and without it the LAN lane is off.
 
 ## :platform API
 

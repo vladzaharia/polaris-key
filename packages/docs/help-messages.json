@@ -1206,6 +1206,76 @@
       "entry": "license_owned",
       "why": "It's already in another Polaris Locker account.",
       "fix": "Sign in with that account."
+    },
+    "connect_links_disabled": {
+      "page": "devices",
+      "why": "Pairing with other people is turned off for this app.",
+      "fix": "Use your own devices, or ask the app's developer to turn pairing on."
+    },
+    "nearby-unsupported": {
+      "page": "devices",
+      "why": "This device or app can't look for nearby devices.",
+      "fix": "Use another way to sign in or connect, such as a code or your library at polaris.locker."
+    },
+    "peer-handshake-failed": {
+      "page": "devices",
+      "why": "A secure connection to the nearby device couldn't be set up, so nothing was shared.",
+      "fix": "Try again. Both devices must be signed in to the same account and close to each other."
+    },
+    "peer-closed": {
+      "page": "devices",
+      "why": "The connection to the nearby device ended before the exchange finished.",
+      "fix": "Keep both devices close and awake, then try again."
+    },
+    "transfer-cancelled": {
+      "page": "devices",
+      "why": "The transfer ended before the content arrived. The other device may have declined it, you may have canceled it, or it timed out.",
+      "fix": "Send it again. If it keeps stopping, check that the other device has room and the app is open."
+    },
+    "link-unknown": {
+      "page": "devices",
+      "why": "That device is no longer paired with this one, or the pairing was removed.",
+      "fix": "Pair the devices again, then try again."
+    },
+    "peer_revoked": {
+      "page": "devices",
+      "why": "The other device was removed from the account, so it is no longer trusted. Nothing was shared.",
+      "fix": "Sign the other device in again, or pair it again, then try again."
+    },
+    "peer_expired": {
+      "page": "devices",
+      "why": "The other device's certificate has expired.",
+      "fix": "Open the app on both devices while online so they refresh, then try again."
+    },
+    "peer_bad_frame": {
+      "page": "devices",
+      "why": "The nearby device sent something this app didn't expect, so the connection closed.",
+      "fix": "Try again. If it keeps happening, update the app on both devices."
+    },
+    "peer_unknown_critical": {
+      "page": "devices",
+      "why": "The nearby device asked for something this app doesn't support, so the connection closed.",
+      "fix": "Update the app on both devices, then try again."
+    },
+    "peer_not_allowed": {
+      "page": "devices",
+      "why": "The nearby device asked for something that isn't allowed at this step, so the connection closed.",
+      "fix": "Try again. If it keeps happening, update the app on both devices."
+    },
+    "peer_busy": {
+      "page": "devices",
+      "why": "This device has too many connections open.",
+      "fix": "Wait a moment, then try again."
+    },
+    "peer_timeout": {
+      "page": "devices",
+      "why": "The nearby device didn't respond in time.",
+      "fix": "Keep both devices close and the app open on both, then try again."
+    },
+    "peer_bye": {
+      "page": "devices",
+      "why": "The nearby device ended the connection on purpose.",
+      "fix": "Nothing to fix. Start again if you still need it."
     }
   },
   "developerOnly": [

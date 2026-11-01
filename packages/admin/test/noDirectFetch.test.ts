@@ -7,12 +7,15 @@
  */
 
 import {
+  mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
   statSync,
   writeFileSync,
 } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
@@ -58,11 +61,11 @@ function fetchCalls(text: string): number[] {
   return lines;
 }
 
-function callsByFile(): Map<string, number[]> {
+function callsByFile(root = SRC): Map<string, number[]> {
   const found = new Map<string, number[]>();
-  for (const file of sources(SRC)) {
+  for (const file of sources(root)) {
     const lines = fetchCalls(readFileSync(file, "utf8"));
-    if (lines.length) found.set(relative(SRC, file), lines);
+    if (lines.length) found.set(relative(root, file), lines);
   }
   return found;
 }
@@ -91,13 +94,18 @@ describe("no direct fetch", () => {
   });
 
   it("a new call in another file fails the scan", () => {
-    const probe = join(SRC, "lib", "__fetchProbe__.ts");
-    writeFileSync(probe, 'export const x = () => fetch("/x");\n');
+    // A scratch tree of its own: a probe written under src/ is seen (and can vanish) mid-scan by
+    // the other test files that read src/ in parallel.
+    const root = mkdtempSync(join(tmpdir(), "pkey-fetch-probe-"));
     try {
-      const probed = callsByFile();
-      expect(probed.has("lib/__fetchProbe__.ts")).toBe(true);
+      mkdirSync(join(root, "lib"));
+      writeFileSync(
+        join(root, "lib", "probe.ts"),
+        'export const x = () => fetch("/x");\n',
+      );
+      expect(callsByFile(root).has(join("lib", "probe.ts"))).toBe(true);
     } finally {
-      rmSync(probe, { force: true });
+      rmSync(root, { recursive: true, force: true });
     }
   });
 });
