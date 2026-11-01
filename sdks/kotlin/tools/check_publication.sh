@@ -57,7 +57,8 @@ done
 # flavour> at the same version (no :core, :license, :update, :packs or :sdk; never the other
 # flavour); Play Core arrives only through the platform POM (so does Credential Manager). And the Godot export plugin adds, for a
 # play export, exactly the Play Core and Credential Manager libraries the platform play POM names (android_export.gd's
-# PLAY_DEPENDENCIES), so the two lists cannot drift apart again.
+# PLAY_DEPENDENCIES), and for both flavours the androidx.work libraries (WORK_DEPENDENCIES, U-41.6b), so the lists
+# cannot drift apart again.
 GODOT_EXPORT="$ROOT/../godot/addons/polaris_key/native/android_export.gd"
 if [ -d "$REPO/polaris-key-godot-play" ] || [ -d "$REPO/polaris-key-godot-direct" ]; then
   for flavor in play direct; do
@@ -97,6 +98,19 @@ if [ -d "$REPO/polaris-key-godot-play" ] || [ -d "$REPO/polaris-key-godot-direct
   else
     fail "android_export.gd's PLAY_DEPENDENCIES are '$have'; the platform play POM names '$want'"
   fi
+  # U-41.6b: WorkManager (the androidx.work group). The Godot AARs are local files and carry no transitive
+  # dependencies, so both flavours' exports add it; WORK_DEPENDENCIES must equal what each platform POM names.
+  have_work="$(sed -n '/^const WORK_DEPENDENCIES := \[/,/^\]/p' "$GODOT_EXPORT" | sed 's/^const WORK_DEPENDENCIES := \[//' | tr ',' '\n' | tr -d ' \t"[]' | grep . | sort | tr '\n' ' ' | sed 's/ $//')"
+  for flavor in play direct; do
+    pom="$REPO/polaris-key-platform-$flavor/$VERSION/polaris-key-platform-$flavor-$VERSION.pom"
+    want_work="$(sed '/<dependencies>/,$!d' "$pom" | tr -d ' \n' | grep -oE '<groupId>androidx.work</groupId><artifactId>[^<]*</artifactId><version>[^<]*</version>' |
+      sed 's|<groupId>\([^<]*\)</groupId><artifactId>\([^<]*\)</artifactId><version>\([^<]*\)</version>|\1:\2:\3|' | sort | tr '\n' ' ' | sed 's/ $//')"
+    if [ -n "$want_work" ] && [ "$want_work" = "$have_work" ]; then
+      ok "android_export.gd's WORK_DEPENDENCIES match the platform $flavor POM ($want_work)"
+    else
+      fail "android_export.gd's WORK_DEPENDENCIES are '$have_work'; the platform $flavor POM names '$want_work'"
+    fi
+  done
 fi
 
 # The Kotlin SDK's Android glue (P6-12): per flavour the AAR, POM, sources jar and module metadata;

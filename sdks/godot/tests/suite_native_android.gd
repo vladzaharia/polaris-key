@@ -346,21 +346,26 @@ func _export(t: PKeyTestContext) -> void:
 	t.check("export: play carries both play AARs", E.libraries("play") == PackedStringArray(["polaris_key/native/android/bin/polaris-key-platform-play-release.aar", "polaris_key/native/android/bin/polaris-key-godot-play-release.aar"]))
 	t.check("export: direct carries both direct AARs", E.libraries("direct") == PackedStringArray(["polaris_key/native/android/bin/polaris-key-platform-direct-release.aar", "polaris_key/native/android/bin/polaris-key-godot-direct-release.aar"]))
 	t.check("export: none carries nothing", E.libraries("none").is_empty() and E.dependencies("none").is_empty() and E.manifest_elements("none") == "")
-	t.check("export: play depends on Play Core (In-App Updates, Asset Delivery, Integrity) and Credential Manager", E.dependencies("play") == PackedStringArray(E.PLAY_DEPENDENCIES) and E.dependencies("play").slice(0, 3) == PackedStringArray(["com.google.android.play:app-update:2.1.0", "com.google.android.play:asset-delivery:2.3.0", "com.google.android.play:integrity:1.6.0"]))
-	t.check("export: direct depends on no Play Core", E.dependencies("direct").is_empty())
+	t.check("export: play depends on Play Core (In-App Updates, Asset Delivery, Integrity) and Credential Manager", E.dependencies("play") == PackedStringArray(E.WORK_DEPENDENCIES + E.PLAY_DEPENDENCIES) and E.dependencies("play").slice(1, 4) == PackedStringArray(["com.google.android.play:app-update:2.1.0", "com.google.android.play:asset-delivery:2.3.0", "com.google.android.play:integrity:1.6.0"]))
+	t.check("export: direct depends on WorkManager and no Play Core", E.dependencies("direct") == PackedStringArray(E.WORK_DEPENDENCIES) and E.WORK_DEPENDENCIES == ["androidx.work:work-runtime:2.12.0"])
+	t.check("export: both flavours carry WorkManager (the AARs bring no transitive dependency)", E.dependencies("play").has("androidx.work:work-runtime:2.12.0") and E.dependencies("direct").has("androidx.work:work-runtime:2.12.0"))
 	var direct := E.manifest_elements("direct")
 	t.check("export: a direct preset gets REQUEST_INSTALL_PACKAGES", direct.contains("<uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />"))
 	t.check("export: …and UPDATE_PACKAGES_WITHOUT_USER_ACTION", direct.contains("<uses-permission android:name=\"android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION\" />"))
-	t.check("export: …and exactly those two install entries beside it (no ENFORCE_UPDATE_OWNERSHIP)", direct.count("<uses-permission") == 6 and not direct.contains("ENFORCE_UPDATE_OWNERSHIP"))
-	var wanted := ["ACCESS_LOCAL_NETWORK", "ACCESS_NETWORK_STATE", "RUN_USER_INITIATED_JOBS", "POST_NOTIFICATIONS"]
-	var has_all := true
-	for w in wanted:
-		has_all = has_all and direct.contains("android.permission." + w)
-	t.check("export: …and the six entries are the two install permissions, the local-network, network-state and two background-transfer ones", has_all)
+	t.check("export: …and exactly those two install entries beside the other entries (no ENFORCE_UPDATE_OWNERSHIP)", direct.count("<uses-permission") == 4 and not direct.contains("ENFORCE_UPDATE_OWNERSHIP"))
+	t.check("export: …and the four entries are the two install permissions, the local-network one and the network-state one", direct.contains("android.permission.ACCESS_LOCAL_NETWORK") and direct.contains("android.permission.ACCESS_NETWORK_STATE"))
 	var play := E.manifest_elements("play")
 	var one := "<uses-permission android:name=\"android.permission.ACCESS_LOCAL_NETWORK\" />"
-	var play_ok := play.count("<uses-permission") == 4 and play.contains(one) and not play.contains("INSTALL")
-	t.check("export: a play preset gets the local-network, network-state and background-transfer permissions only", play_ok and play.contains("android.permission.ACCESS_NETWORK_STATE"))
+	t.check("export: a play preset gets the local-network and network-state permissions only, not the install ones", play.count("<uses-permission") == 2 and play.contains(one) and play.contains("android.permission.ACCESS_NETWORK_STATE") and not play.contains("INSTALL"))
+	# D-10: the job and notification permissions are declared only when the preset opts in to background transfer.
+	var on_play := E.manifest_elements("play", true)
+	var on_direct := E.manifest_elements("direct", true)
+	var bg_ok := true
+	for w in ["RUN_USER_INITIATED_JOBS", "POST_NOTIFICATIONS"]:
+		bg_ok = bg_ok and on_play.contains("android.permission." + w) and on_direct.contains("android.permission." + w) and not play.contains(w) and not direct.contains(w)
+	t.check("export: background off declares neither job nor notification permission; on declares both (both flavours)", bg_ok and on_play.count("<uses-permission") == 4 and on_direct.count("<uses-permission") == 6)
+	t.check("export: the option is off unless set", not E.background_enabled(null) and not E.background_enabled(false) and not E.background_enabled("") and E.background_enabled(true) and E.background_enabled(" TRUE ") and E.background_enabled("1") and not E.background_enabled("no"))
+	t.check("export: the background option names are stable", E.BACKGROUND_OPTION == "polaris_key/cloud_sync_background" and E.BACKGROUND_ENV == "PKEY_CLOUD_SYNC_BACKGROUND")
 	t.check("export: flavours are forgiving about case and spaces", E.canonical(" Direct ") == "direct" and E.canonical("beta") == "" and E.canonical(null) == "")
 	t.check("export: a missing AAR is listed", E.missing_libraries("play", "res://no_such_addons_dir").size() == 2)
 	t.check("export: the plugin rides only with the Gradle build and its AARs", E.carries_plugin("play", true, PackedStringArray()) and not E.carries_plugin("play", false, PackedStringArray()) and not E.carries_plugin("play", true, PackedStringArray(["x.aar"])) and not E.carries_plugin("none", true, PackedStringArray()))

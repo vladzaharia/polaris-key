@@ -44,6 +44,9 @@ signal resumed()
 ## A LAN discovery event from the plugin (CC-14b.9): `nsd_found`, `nsd_lost`, `nsd_advert` or
 ## `nsd_error`. PKeyAndroidMdns is the one consumer.
 signal nsd_event(event: Dictionary)
+## A bulk-body channel event (U-41.6b): `sb_done` or `sb_fail`, routed by kind to PKeyAndroidBulk, which matches
+## it to a request in flight and drops any other.
+signal bulk_event(event: Dictionary)
 
 const SINGLETON := "PolarisKeyAndroid"
 const PLAY_STORE := "com.android.vending"
@@ -309,6 +312,8 @@ func poll() -> int:
 				resumed.emit()
 			"nsd_found", "nsd_lost", "nsd_advert", "nsd_error":
 				nsd_event.emit(ev)
+			"sb_done", "sb_fail":
+				bulk_event.emit(ev)
 	return events.size()
 
 

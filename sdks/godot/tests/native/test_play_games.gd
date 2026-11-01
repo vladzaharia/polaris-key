@@ -87,7 +87,7 @@ func _export(t: PKeyTestContext) -> void:
 	var with_pgs := E.dependencies("play", {}, true)
 	t.check("pgs: a play export without the opt-in carries no Play Games library", not Array(plain).has(E.PLAY_GAMES_DEPENDENCY))
 	t.check("pgs: …and with it carries exactly one more, the pin", with_pgs.size() == plain.size() + 1 and with_pgs[-1] == E.PLAY_GAMES_DEPENDENCY)
-	t.check("pgs: a direct export never carries it", E.dependencies("direct", {}, true).is_empty() and E.dependencies("none", {}, true).is_empty())
+	t.check("pgs: a direct export never carries it", E.dependencies("direct", {}, true) == PackedStringArray(E.WORK_DEPENDENCIES) and E.dependencies("none", {}, true).is_empty())
 	t.check("pgs: the app id is digits only", E.play_games_app_id("123456789012") == "123456789012" and E.play_games_app_id(" 42 ") == "42")
 	for bad in ["", "abc", "12a", "-5", "+5", "1.5", "1 2", null]:
 		t.check("pgs: app id %s is refused" % str(bad), E.play_games_app_id(bad) == "")

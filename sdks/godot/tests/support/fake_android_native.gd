@@ -66,6 +66,82 @@ const PLAY_OPS := [
 const DIRECT_OPS := ["pi_can_install", "pi_open_settings", "pi_verify", "pi_install", "pi_last", "pi_abandon_stale", "pi_constraints"]
 
 
+## The bulk-body channel (U-41.6b): the plugin's byte[] ops, recorded. `bulk_open_ok` and `bulk_put_ok` set the
+## status byte of sbOpen and of sbPut/sbGet; `sb_ops` lists `[name, header (parsed), piece size]` per call.
+var bulk_open_ok := true
+var bulk_put_ok := true
+var sb_ops: Array = []
+## Staged bytes by spool name, and the bodies sbTake gives by req.
+var sb_files := {}
+var sb_answers := {}
+var _sb_names := 0
+
+
+func _sb(name: String, header: PackedByteArray, piece := -1) -> Dictionary:
+	var q = JSON.parse_string(header.get_string_from_utf8())
+	var h: Dictionary = q if q is Dictionary else {}
+	sb_ops.append([name, h, piece])
+	return h
+
+
+func sbOpen(header: PackedByteArray) -> PackedByteArray:
+	_sb("sbOpen", header)
+	return PackedByteArray([1 if bulk_open_ok else 0])
+
+
+func sbStage(header: PackedByteArray, piece: PackedByteArray) -> PackedByteArray:
+	var h := _sb("sbStage", header, piece.size())
+	var name: String = h.get("file", "")
+	if name == "":
+		_sb_names += 1
+		name = "%032x" % _sb_names
+		sb_files[name] = PackedByteArray()
+	if not sb_files.has(name):
+		return PackedByteArray([0])
+	sb_files[name].append_array(piece)
+	return PackedByteArray([1]) + JSON.stringify({"file": name, "size": sb_files[name].size()}).to_utf8_buffer()
+
+
+func sbPut(header: PackedByteArray) -> PackedByteArray:
+	_sb("sbPut", header)
+	return PackedByteArray([1 if bulk_put_ok else 0])
+
+
+func sbGet(header: PackedByteArray) -> PackedByteArray:
+	_sb("sbGet", header)
+	return PackedByteArray([1 if bulk_put_ok else 0])
+
+
+func sbTake(header: PackedByteArray) -> PackedByteArray:
+	var h := _sb("sbTake", header)
+	var req := int(h.get("req", -1))
+	if not sb_answers.has(req):
+		return PackedByteArray([0])
+	var out: PackedByteArray = sb_answers[req]
+	sb_answers.erase(req)
+	return PackedByteArray([1]) + out
+
+
+func sbCancel(header: PackedByteArray) -> PackedByteArray:
+	_sb("sbCancel", header)
+	return PackedByteArray([1])
+
+
+func sbEnd(header: PackedByteArray) -> PackedByteArray:
+	_sb("sbEnd", header)
+	return PackedByteArray([1])
+
+
+func sbClose() -> PackedByteArray:
+	sb_ops.append(["sbClose", {}, -1])
+	return PackedByteArray([1])
+
+
+## The ops named `name`, with their parsed headers.
+func sb_calls(name: String) -> Array:
+	return sb_ops.filter(func(o: Array) -> bool: return o[0] == name).map(func(o: Array) -> Dictionary: return o[1])
+
+
 func push_event(ev: Dictionary) -> void:
 	_queue.append(ev)
 

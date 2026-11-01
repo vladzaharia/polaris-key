@@ -23,6 +23,13 @@
 #   play    capabilities, Keystore, In-App Updates refused for a non-Play install (outlet), and Play
 #           Asset Delivery under local testing: fetch, COMPLETED, getPackLocation, mount
 #
+# Background transfer (U-41.6b): every export carries androidx.work (WorkManager) in the dex and, with the
+# polaris_key/cloud_sync_background option off, NEITHER RUN_USER_INITIATED_JOBS nor POST_NOTIFICATIONS in the merged
+# manifest (D-10: the export adds them only when opted in); a third, debuggable direct export with the option on keeps both. With DEVICE=<an API 34+ emulator>
+# that export uploads 30 MiB as four parts to a loopback server (adb reverse, e2e/bulk_server.py), the script
+# presses Home while the parts are in flight, and checks that every part arrives with the bearer, and that the
+# notification reads "Syncing" (dumpsys notification).
+#
 # Env: GODOT_BIN (default: godot on PATH; 4.7.2 with its export templates installed, or
 #      GODOT_TEMPLATES=<dir with android_source.zip and version.txt>), JAVA_HOME (JDK 17+; default
 #      mise's temurin-17 when mise is there), ANDROID_HOME (default ~/Library/Android/sdk),
@@ -111,6 +118,10 @@ project() {
   mkdir -p "$B/android/build"
   (cd "$B/android/build" && unzip -q "$TPL/android_source.zip")
   echo "$TVER" >"$B/android/.build_version"
+  # The device probe talks http to a loopback server: the app must allow cleartext (a throwaway project only).
+  if [ -n "${CLEARTEXT:-}" ]; then
+    sed -i.bak 's|<application|<application android:usesCleartextTraffic="true"|' "$B/android/build/src/main/AndroidManifest.xml"
+  fi
   : >"$B/android/build/.gdignore"
   if [ "$flavor" = play ]; then
     local n=probeod
@@ -143,6 +154,9 @@ architectures/armeabi-v7a=false
 architectures/arm64-v8a=true
 architectures/x86=false
 architectures/x86_64=false
+keystore/debug="$OUT/keys/probe.keystore"
+keystore/debug_user="probe"
+keystore/debug_password="probetest"
 keystore/release="$OUT/keys/probe.keystore"
 keystore/release_user="probe"
 keystore/release_password="probetest"
@@ -166,7 +180,7 @@ export_one() {
   "$GODOT" --headless --path "$B" --import >"$LOGS/import_$tag.log" 2>&1 || true
   local t0
   t0=$(date +%s)
-  if ! "$GODOT" --headless --path "$B" --export-release Android "$OUT/$tag.$ext" >"$LOGS/export_$tag.log" 2>&1; then
+  if ! "$GODOT" --headless --path "$B" --export-"${MODE:-release}" Android "$OUT/$tag.$ext" >"$LOGS/export_$tag.log" 2>&1; then
     tail -40 "$LOGS/export_$tag.log"
     fail "export $tag"
     return 1
@@ -186,8 +200,8 @@ dex_has() { # dex_has <apk> <regex> -> count
   echo "$n"
 }
 
-check_apk() { # check_apk <apk> <flavor>
-  local apk="$1" flavor="$2" perms manifest
+check_apk() { # check_apk <apk> <flavor> [bg: the cloud_sync_background option is on]
+  local apk="$1" flavor="$2" bg="${3:-off}" perms manifest
   perms="$("$BT/aapt2" dump permissions "$apk")"
   manifest="$("$BT/aapt2" dump xmltree "$apk" --file AndroidManifest.xml)"
   echo "$manifest" | grep -q 'org.godotengine.plugin.v2.PolarisKeyAndroid' && ok "$flavor: v2 plugin meta-data" || fail "$flavor: no PolarisKeyAndroid meta-data"
@@ -202,6 +216,17 @@ check_apk() { # check_apk <apk> <flavor>
   else
     fail "$flavor: an SDK class outside the binding and the platform module is packaged"
   fi
+  # U-41.6b: the AARs carry no transitive dependencies, so the export adds WorkManager; D-10 declares the job and
+  # notification permissions only when the preset opted in.
+  [ "$(dex_has "$apk" "Class descriptor *: 'Landroidx/work/WorkManager;'")" = 1 ] && ok "$flavor: androidx.work (WorkManager) packaged" || fail "$flavor: androidx.work missing from the dex (SyncTransfers would not link)"
+  for p in RUN_USER_INITIATED_JOBS POST_NOTIFICATIONS; do
+    if [ "$bg" = on ]; then
+      echo "$perms" | grep -q "android.permission.$p" && ok "$flavor (background on): $p kept" || fail "$flavor (background on): $p missing"
+    else
+      echo "$perms" | grep -q "android.permission.$p" && fail "$flavor (background off): $p present" || ok "$flavor (background off): no $p"
+    fi
+  done
+  echo "$manifest" | grep -q 'im.plrs.key.platform.transfer.SyncTransferJob' && ok "$flavor: the transfer job service is merged" || fail "$flavor: no SyncTransferJob in the merged manifest"
   if [ "$flavor" = direct ]; then
     for p in REQUEST_INSTALL_PACKAGES UPDATE_PACKAGES_WITHOUT_USER_ACTION; do
       echo "$perms" | grep -q "android.permission.$p" && ok "direct: $p" || fail "direct: no $p"
@@ -226,6 +251,10 @@ check_apk() { # check_apk <apk> <flavor>
 export_one direct-v1 direct 1 0 im.plrs.key.probe.direct
 export_one direct-v2 direct 2 0 im.plrs.key.probe.direct
 export_one play-v1 play 1 1 im.plrs.key.probe.play
+# Background transfer on (U-41.6b): a debuggable direct export that allows cleartext, so the device run can send
+# to a loopback server (the plugin takes loopback http only from a debuggable app).
+PRESET_EXTRA=$'polaris_key/cloud_sync_background=true' MODE=debug CLEARTEXT=1 \
+  export_one direct-bg direct 1 0 im.plrs.key.probe.bg
 # The Play Games opt-in (I-48.7a): the library and the APP_ID meta-data arrive only with the option on.
 PRESET_EXTRA=$'polaris_key/play_games=true\npolaris_key/play_games_app_id="123456789012"' \
   export_one play-games play 1 1 im.plrs.key.probe.playgames
@@ -278,6 +307,7 @@ if [ -f "$OUT/play-v1.aab" ] && [ -f "$OUT/play-games.aab" ]; then
   [ "$(aab_dex "$OUT/play-v1.aab" "Class descriptor *: 'Landroidx/credentials/CredentialManager;'")" = 1 ] && ok "play: androidx/credentials packaged" || fail "play: androidx/credentials missing"
 fi
 check_apk "$OUT/direct-v1.apk" direct
+[ -f "$OUT/direct-bg.apk" ] && check_apk "$OUT/direct-bg.apk" direct on
 if [ -n "${BUNDLETOOL:-}" ] && [ -f "$OUT/play-v1.aab" ]; then
   "$JAVA_HOME/bin/java" -jar "$BUNDLETOOL" build-apks --local-testing --overwrite --bundle "$OUT/play-v1.aab" \
     --output "$OUT/play-v1.apks" --ks "$OUT/keys/probe.keystore" --ks-key-alias probe --ks-pass pass:probetest \
@@ -294,6 +324,9 @@ fi
 # 4. The device run.
 if [ -n "${DEVICE:-}" ]; then
   A() { "$ADB" -s "$DEVICE" "$@"; }
+  # Godot's exporter may stop the adb server; start it again and wait for the device to come back.
+  "$ADB" start-server >/dev/null 2>&1 || true
+  for _ in $(seq 1 60); do A get-state 2>/dev/null | grep -q device && break; sleep 1; done
   A get-state >/dev/null 2>&1 || "$ADB" connect "$DEVICE" >/dev/null
   # run_plan <pkg> <case> <steps-json> [versionCode] [timeout]: launch the probe, wait, pull.
   run_plan() { # run_plan <pkg> <case> <steps> [versionCode] [timeout] [extra plan members, ending in a comma]
@@ -368,6 +401,58 @@ EOP
     expect p_basic 's["update_check"]["detail"]["reason"] == "outlet"' "play: In-App Updates unsupported for a non-Play install (outlet)"
     expect p_basic 'int(s["pack_status:probeod"]["detail"]["state"]["status"]) == 8' "play: the on-demand pack starts NOT_INSTALLED"
     expect p_basic 's["pack_mount:probeod"]["ok"]' "play: fetched, COMPLETED, located and mounted"
+  fi
+  # U-41.6b: a 30 MiB save sent to the background. Four 7.5 MiB parts go to a throttled loopback server; the
+  # script presses Home once the first part is in flight, then needs the "Syncing" notification and every part.
+  if [ -f "$OUT/direct-bg.apk" ]; then
+    echo "── device $DEVICE: background transfer"
+    P=im.plrs.key.probe.bg
+    SIZE=31457280
+    A uninstall "$P" >/dev/null 2>&1 || true
+    A install -r "$OUT/direct-bg.apk" >/dev/null
+    A shell pm grant "$P" android.permission.POST_NOTIFICATIONS >/dev/null 2>&1 || true
+    : >"$OUT/bulk.log"
+    python3 "$HERE/e2e/bulk_server.py" 8766 "$OUT/bulk.log" >"$LOGS/bulk_server.log" 2>&1 &
+    BULK_PID=$!
+    A reverse tcp:8766 tcp:8766 >/dev/null
+    sleep 1
+    EXT="/sdcard/Android/data/$P/files"
+    printf '{"serverOrigin":"http://127.0.0.1:8766","size":%s,"case":"bg_upload","versionCode":-1,"steps":["bulk_upload"]}' "$SIZE" >"$OUT/plan_bg_upload.json"
+    A shell mkdir -p "$EXT"
+    A push "$OUT/plan_bg_upload.json" "$EXT/plan.json" >/dev/null
+    A shell rm -f "$EXT/result_bg_upload.json"
+    A shell am force-stop "$P"
+    A shell am start -W -n "$P/com.godot.game.GodotAppLauncher" >/dev/null
+    for _ in $(seq 1 120); do grep -q '^START' "$OUT/bulk.log" 2>/dev/null && break; sleep 0.5; done
+    if grep -q '^START' "$OUT/bulk.log"; then
+      A shell input keyevent KEYCODE_HOME
+      ok "bg: the first part is in flight; Home pressed"
+      NOTIFIED=0
+      for _ in $(seq 1 40); do
+        if A shell dumpsys notification --noredact | grep -q 'Syncing'; then NOTIFIED=1; break; fi
+        sleep 0.5
+      done
+      [ "$NOTIFIED" = 1 ] && ok "bg: the notification reads \"Syncing\" while the game is in the background" || fail "bg: no \"Syncing\" notification"
+      for _ in $(seq 1 240); do
+        [ "$(grep -c '^PART' "$OUT/bulk.log")" -ge 4 ] && break
+        sleep 0.5
+      done
+      GOT="$(awk '/^PART/ {n++; b += $3} END {print n+0, b+0}' "$OUT/bulk.log")"
+      [ "$GOT" = "4 $SIZE" ] && ok "bg: every part arrived while the game was in the background (4 parts, $SIZE bytes)" || fail "bg: parts arrived: '$GOT', expected '4 $SIZE'"
+      grep -q '^BAD' "$OUT/bulk.log" && fail "bg: the server saw a request without the bearer or on a bad path" || ok "bg: every request carried the bearer and a file route"
+      A shell am start -W -n "$P/com.godot.game.GodotAppLauncher" >/dev/null
+      for _ in $(seq 1 120); do
+        A shell "grep -q '\"done\"' $EXT/result_bg_upload.json 2>/dev/null && echo y" | grep -q y && break
+        sleep 0.5
+      done
+      A pull "$EXT/result_bg_upload.json" "$OUT/result_bg_upload.json" >/dev/null 2>&1 || true
+      expect bg_upload 'r.get("done") and s["bulk_upload"]["ok"] and s["bulk_upload"]["statuses"] == [204, 204, 204, 204]' "bg: the game resumed to four 204 answers"
+    else
+      fail "bg: the probe never reached the server"
+    fi
+    kill "$BULK_PID" 2>/dev/null || true
+    A reverse --remove tcp:8766 >/dev/null 2>&1 || true
+    A shell am force-stop "$P" >/dev/null 2>&1 || true
   fi
   for f in "$OUT"/result_*.json; do echo "  $(basename "$f"): $(python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print([(s["step"], round(s["ms"],1)) for s in r.get("steps",[])])' "$f")"; done
 fi

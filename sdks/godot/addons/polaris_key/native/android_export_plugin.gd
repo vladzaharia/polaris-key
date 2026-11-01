@@ -26,6 +26,10 @@ func _get_export_options(platform: EditorExportPlatform) -> Array[Dictionary]:
 			"update_visibility": true,
 		},
 		{
+			"option": {"name": A.BACKGROUND_OPTION, "type": TYPE_BOOL},
+			"default_value": false,
+		},
+		{
 			"option": {"name": A.PLAY_GAMES_OPTION, "type": TYPE_BOOL},
 			"default_value": false,
 			"update_visibility": true,
@@ -85,6 +89,11 @@ func _play_games() -> bool:
 	return v == true or str(v).to_lower() in ["1", "true", "yes", "on"]
 
 
+## Whether this export opted in to background transfer (default off; D-10).
+func _background() -> bool:
+	return A.background_enabled(_option(A.BACKGROUND_OPTION, A.BACKGROUND_ENV))
+
+
 func _gradle_build() -> bool:
 	var preset := get_export_preset()
 	if preset == null or not preset.has("gradle_build/use_gradle_build"):
@@ -134,7 +143,7 @@ func _get_android_dependencies(_platform: EditorExportPlatform, _debug: bool) ->
 
 
 func _get_android_manifest_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:
-	return A.manifest_elements(_flavor())
+	return A.manifest_elements(_flavor(), _background())
 
 
 func _get_android_manifest_application_element_contents(_platform: EditorExportPlatform, _debug: bool) -> String:

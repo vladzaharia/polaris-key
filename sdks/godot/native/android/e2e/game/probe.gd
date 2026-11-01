@@ -12,6 +12,10 @@ extends Node
 ##   verify_wrong_hash                  apk_verify(ext/update.apk copied private, a wrong hash)
 ##   apk_install                        copy ext/update.apk into user://, hash it, apk_install(vc)
 ##   verify_public                      apk_verify straight from external storage (path_not_private)
+##   bulk_upload                        U-41.6b: plan.size bytes as four parts through PKeyAndroidBulk to
+##                                      plan.serverOrigin (a loopback server; the app is debuggable and allows
+##                                      cleartext). The export check presses Home meanwhile; the step ends
+##                                      when the four answers arrive, after the game resumes.
 ##   adapter_install                    the update driver end to end: PKeyDirectAdapter.apply on a
 ##                                      binary {method: native} decision, through a host whose
 ##                                      install_apk(check) is PKeyUpdater.install_apk's body
@@ -110,6 +114,36 @@ static func _sha256(path: String) -> String:
 	return h.finish().hex_encode()
 
 
+func _send(ch: PKeyAndroidBulk, head: Dictionary, body: PackedByteArray, out: Array, i: int) -> void:
+	out[i] = await ch.put(head, body)
+
+
+func _bulk_upload(plan: Dictionary) -> Dictionary:
+	var origin := str(plan.get("serverOrigin", ""))
+	var ctx := func() -> Dictionary: return {"product": "probe", "origin": origin, "subject": "probe-user"}
+	var ch := PKeyAndroidBulk.create(ctx, null, android)
+	if ch == null:
+		return {"ok": false, "error": "no channel"}
+	await ch.open([])
+	var parts := 4
+	var each := floori(float(plan.get("size", 0)) / parts)
+	var out: Array = []
+	out.resize(parts)
+	for i in parts:
+		var body := PackedByteArray()
+		body.resize(each)
+		body.fill(i + 1)
+		var head := {"req": i + 1, "transfer": "saves:probe", "url": "%s/probe/sync/files/saves/slot1/upload/u1/parts/%d" % [origin, i + 1],
+				"headers": {"content-type": "application/octet-stream"}, "bearer": "pkeyt_probe_bearer", "max_body": 4096, "part": i + 1}
+		_send(ch, head, body, out, i)
+	var t0 := Time.get_ticks_msec()
+	while out.any(func(r) -> bool: return r == null) and Time.get_ticks_msec() - t0 < 300000:
+		await get_tree().process_frame
+	ch.close()
+	var statuses: Array = out.map(func(r) -> int: return int(r["status"]) if r is Dictionary and r.has("status") else -1)
+	return {"ok": statuses == [204, 204, 204, 204], "statuses": statuses, "ms": Time.get_ticks_msec() - t0}
+
+
 func _step(st: String, plan: Dictionary) -> Dictionary:
 	var arg := st.get_slice(":", 1) if st.contains(":") else ""
 	match st.get_slice(":", 0):
@@ -160,6 +194,8 @@ func _step(st: String, plan: Dictionary) -> Dictionary:
 			var r := _r(await android.apk_install(p, _sha256(p), int(plan.get("versionCode", -1))))
 			r["can_install"] = _r(android.apk_can_install())
 			return r
+		"bulk_upload":
+			return await _bulk_upload(plan)
 		"adapter_install":
 			var host := ProbeHost.new()
 			host.android = android
