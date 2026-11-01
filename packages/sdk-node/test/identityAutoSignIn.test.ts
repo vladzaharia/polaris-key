@@ -336,6 +336,25 @@ describe("autoSignIn(): the unconfirmed nearby token (V5 15.6.1 rule 12, D-21)",
     client.close();
   });
 
+  it("token marks: a failed store write keeps the unconfirmed mark over the old token", async () => {
+    const { client, store } = await seededClient({
+      token: null,
+      extra,
+      routes: routes(),
+    });
+    const t = tokensOf(client);
+    await t.set("pkeyt_nearby", "signin", { unconfirmed: true });
+    const file = join(stateOf(client), "sign-in.json");
+    store.setToken = async () => {
+      throw new Error("write failed");
+    };
+    await expect(t.set("pkeyt_other", "register")).rejects.toThrow(
+      "write failed",
+    );
+    expect(readFileSync(file, "utf8")).toContain('"unconfirmed"');
+    client.close();
+  });
+
   it("auto sign-in: an unconfirmed token is dropped at load and rung 1 answers needsSignIn", async () => {
     const { client, store, dir } = await seededClient({
       token: null,

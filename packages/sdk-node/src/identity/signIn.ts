@@ -177,6 +177,8 @@ export class DeviceCodeSession {
   readonly deviceName: string | null;
   readonly #deviceCode: string;
   readonly #deps: DeviceCodeDeps;
+  /** Whether this start sent `licenseChoice: "app"`; only then may a poll answer `choose`. */
+  readonly #choiceAsked: boolean;
   #cancelled = false;
   #abort = new AbortController();
 
@@ -190,9 +192,11 @@ export class DeviceCodeSession {
       interval: number;
       expiresAt: number;
       deviceName: string | null;
+      licenseChoice?: boolean;
     },
     deps: DeviceCodeDeps,
   ) {
+    this.#choiceAsked = start.licenseChoice === true;
     this.#deviceCode = start.deviceCode;
     this.userCode = start.userCode;
     this.verificationUri = start.verificationUri;
@@ -360,7 +364,9 @@ export class DeviceCodeSession {
         };
       case "choose": {
         // UK-42.22: a start that asked `licenseChoice: "app"` is answered with a grant, no token.
+        // A start that did not ask is never answered with one.
         if (
+          !this.#choiceAsked ||
           !isString(answer.grant) ||
           !isSeconds(answer.expiresIn) ||
           !answer.choices ||
@@ -480,6 +486,7 @@ export async function startDeviceCodeSignIn(
   // (`deviceChoice` and the four `choice*` endpoints); an older one would leave the card choosing.
   if (opts.licenseChoice === "app" && (await deviceChoiceServed(deps)))
     body.licenseChoice = "app";
+  const choiceAsked = body.licenseChoice === "app";
   const res = await post(ctx, "identity/auth/device/start", body);
   // A 404 here means the Worker serves no sign-in for this product (Identity off before
   // discovery said so): the typed N/A, the same answer the Swift and Kotlin sessions give.
@@ -528,6 +535,7 @@ export async function startDeviceCodeSignIn(
             ? b.deviceName
             : null
           : label,
+      licenseChoice: choiceAsked,
     },
     deps,
   );

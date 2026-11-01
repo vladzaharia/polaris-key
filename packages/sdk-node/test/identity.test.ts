@@ -660,6 +660,25 @@ describe("licenseChoice behind the deviceChoice discovery gate (UK-42.22.6, V5 Â
     expect(await store.getToken()).toBeNull();
   });
 
+  it("a choose answer to a start that did not ask is sign-in-failed", async () => {
+    const p = plane({
+      [START]: [started()],
+      [POLL]: [
+        json({
+          status: "choose",
+          grant: "sg_x",
+          expiresIn: 300,
+          choices: { state: "choose", choices: [], keep: true },
+        }),
+      ],
+    });
+    const { c } = await client(p.fetchImpl);
+    const prompt = await start(c);
+    await expect(prompt.wait({ once: true })).rejects.toMatchObject({
+      code: "sign-in-failed",
+    });
+  });
+
   it("a choose answer without a grant is sign-in-failed", async () => {
     const p = plane({
       [START]: [started()],

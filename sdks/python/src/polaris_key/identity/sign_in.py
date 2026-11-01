@@ -228,8 +228,11 @@ class SignInSession:
         expires_at: int,
         device_name: Optional[str],
         deps: SignInDeps,
+        license_choice: bool = False,
     ) -> None:
         self.__device_code = device_code
+        # Whether this start sent ``licenseChoice: "app"``; only then may a poll answer ``choose``.
+        self._choice_asked = license_choice
         #: What the person types on the verification page, e.g. ``WDJB-MJHT``.
         self.user_code = user_code
         #: The page the person opens and types the code into.
@@ -406,7 +409,9 @@ class SignInSession:
             grant = answer.get("grant")
             expires_in = answer.get("expiresIn")
             choices = answer.get("choices")
-            if not (_is_str(grant) and _is_seconds(expires_in) and isinstance(choices, dict)):
+            # A start that did not ask is never answered with one.
+            complete = _is_str(grant) and _is_seconds(expires_in) and isinstance(choices, dict)
+            if not self._choice_asked or not complete:
                 raise PolarisError(
                     ErrorCode.SIGN_IN_FAILED,
                     "device sign-in answered choose without a complete grant.",
@@ -514,6 +519,7 @@ def start_device_code(
     # choosing.
     if license_choice == "app" and _device_choice_served(deps):
         body["licenseChoice"] = "app"
+    choice_asked = body.get("licenseChoice") == "app"
     res = _post(ctx, "identity/auth/device/start", body)
     if res.status_code == 404:
         raise UnsupportedError(
@@ -558,6 +564,7 @@ def start_device_code(
             else label
         ),
         deps=deps,
+        license_choice=choice_asked,
     )
 
 
