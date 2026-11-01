@@ -229,17 +229,16 @@ FIXTURES: Tuple[Fixture, ...] = (
     ),
     Fixture(
         "SignIn",
-        "nearby-wait",
+        "nearby-choose",
         "login",
         lambda k: nearby_login(k, NearbyLoginView("pick", approvers=("Ana's laptop", "Ben's phone")), "login"),
-        "pick",
     ),
     Fixture(
         "SignIn",
-        "nearby-wait",
+        "nearby-choose",
         "login",
         lambda k: nearby_login(k, NearbyLoginView("pick", approvers=("Ana's laptop",)), "login"),
-        "pick-one",
+        "one",
     ),
     Fixture(
         "SignIn",
@@ -593,6 +592,8 @@ _AUTO_SIGN_IN = (
     "the terminal signs in by browser or code"
 )
 
+_NEARBY_ENDS = "a nearby sign-in that ends is drawn as the SignIn state of the same outcome (denied, expired, failed)"
+
 #: Catalog states the terminal never draws, and why (UI-KITS §1.3: the terminal is the browser
 #: presentation of sign-in, SIGN-IN.md D-93; layer 1 has no device list for a key, §4.3).
 NOT_DRAWN = {
@@ -616,6 +617,18 @@ NOT_DRAWN = {
         "the terminal's device limit is Activate device-limit, drawn by the activate verb"
     ),
     ("SignIn", "expired"): "the terminal's sign-in expires with its code: SignInHandoff expired",
+    ("SignIn", "nearby-none-found"): "no device answered: login goes on to the browser or code sign-in, which is drawn",
+    ("SignIn", "nearby-denied"): _NEARBY_ENDS,
+    ("SignIn", "nearby-expired"): _NEARBY_ENDS,
+    ("SignIn", "nearby-not-nearby"): _NEARBY_ENDS,
+    ("SignIn", "nearby-failed"): _NEARBY_ENDS,
+    ("SignIn", "nearby-rate-limited"): _NEARBY_ENDS,
+    ("SignIn", "nearby-unavailable"): _NEARBY_ENDS,
+    ("SignIn", "nearby-cancelled"): "Esc closes the block on Nothing changed. (SignIn cancelled is drawn)",
+    ("SignIn", "nearby-signed-out"): "drawn as SignIn nearby-done signed-out",
+    ("NearbyApproval", "listening"): "the command waits on its own entry screen; no app keeps listening in the background",
+    ("NearbyApproval", "stopped"): "the command waits on its own entry screen; no app keeps listening in the background",
+    ("NearbyApproval", "failed"): "the command's error line and exit code show a failed listen",
     ("SignInHandoff", "finishing"): "the SDK redeems the code inside wait_for_sign_in; SignIn finishing is drawn",
     ("DeviceLimit", "default"): "no device list for a key in layer 1 (UI-KITS §4.3); browser mode is drawn",
     ("DeviceLimit", "busy"): "no in-app replace in layer 1",
