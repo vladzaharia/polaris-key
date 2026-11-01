@@ -51,6 +51,8 @@ var _start := 0
 func _init(tree: SceneTree = null, threads := true) -> void:
 	_tree = tree if tree != null else (Engine.get_main_loop() as SceneTree)
 	_threads = threads and OS.has_feature("threads")
+	# Build the Ed25519 base table here, on the creating thread, before any worker can ask for it.
+	PKeyEd25519.warmup()
 
 
 func _to_string() -> String:

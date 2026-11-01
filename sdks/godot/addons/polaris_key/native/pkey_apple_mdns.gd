@@ -37,6 +37,8 @@ const BIN_NONE := 0
 const BIN_PERMISSION := 4
 const BIN_NOT_CONFIGURED := 5
 const MAX_ROWS := 256
+## Rows admitted only by a nearby tag are counted apart and never take a roster row's room.
+const MAX_TAG_ROWS := 32
 const MAX_PIPES := 64
 const MAX_CONTACTS := 8
 const MAX_TAGS := 2
@@ -426,14 +428,26 @@ func _found(d: Dictionary) -> void:
 	for t in d.get("txt", []):
 		if t is String and txt.size() < 8:
 			txt.append(t)
-	if _accept.is_valid() and not bool(_accept.call(name)) and not _tag_admits(txt):
-		return
-	if not _up.has(name) and _up.size() >= MAX_ROWS:
+	var tag_only := false
+	if _accept.is_valid() and not bool(_accept.call(name)):
+		if not _tag_admits(txt):
+			return
+		tag_only = true
+	if not _up.has(name) and _row_count(tag_only) >= (MAX_TAG_ROWS if tag_only else MAX_ROWS):
 		return
 	var fresh := not _up.has(name)
-	_up[name] = true
+	_up[name] = tag_only
 	if fresh:
 		_on_up.call({"instance": name, "txt": txt, "hosts": [], "host": "", "port": 0, "native": true})
+
+
+## How many rows are tag-only (`true`) or roster rows (`false`).
+func _row_count(tag_only: bool) -> int:
+	var n := 0
+	for k in _up:
+		if bool(_up[k]) == tag_only:
+			n += 1
+	return n
 
 
 ## Whether a TXT is `m=<k>` with an `h` in `_tags[k]`.

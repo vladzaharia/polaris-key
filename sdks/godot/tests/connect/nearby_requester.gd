@@ -553,6 +553,22 @@ func _dials_and_clocks(t: PKeyTestContext) -> void:
 	r5.close()
 	t.check("closing again says nothing more", seen5.ends == [&"expired"])
 
+	# A full candidate table gives a stale place up to a fresh advert, and holds a fresh one.
+	_clock.t = 0.0
+	var lane6 := Lane.new()
+	var r6 := await _begin(t, lane6, {"dial": stuck})
+	for i in PKeyPeerNearbyRequester.MAX_CANDIDATES:
+		var key := "p1-x%015d" % i
+		r6._candidates[key] = {"instance": key, "hosts": [], "port": 1, "native": true, "tries": 3, "seen": 0.0}
+	var full: int = r6._candidates.size()
+	_clock.t = 10.0
+	lane6.hit(_name(1), _txt(_tag()))
+	t.check("a fresh table keeps its candidates: a new advert is not listed", r6._candidates.size() == full and not r6._candidates.has(_name(1)))
+	_clock.t = PKeyPeerNearbyRequester.CANDIDATE_TTL_SECONDS + 5.0
+	lane6.hit(_name(1), _txt(_tag()))
+	t.check("a stale candidate gives its place to a new advert", r6._candidates.has(_name(1)) and r6._candidates.size() == full)
+	r6.close()
+
 
 # -- a native lane --------------------------------------------------------------------------------------
 

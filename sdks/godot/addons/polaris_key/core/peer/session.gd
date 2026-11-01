@@ -605,6 +605,9 @@ func _open_transport(hs: PKeyPeerNoise.Handshake, remote: PackedByteArray, peer_
 		return HANDSHAKE_FAILED
 	_tp = tp.detail
 	_hs = null
+	# The one-time static key is not needed past the handshake (V5 15.6.1 rule 10): zero our copy.
+	_wipe_static()
+	_static = null
 	_transport_deadline = INF
 	_keyed_at = _mono()
 	_phase = &"hello"
@@ -920,8 +923,13 @@ func _wipe() -> void:
 	_account = {}
 	_n_d.fill(0)
 	_n_m.fill(0)
+	_wipe_static()
+
+
+## Zero a raw static key in place (the buffer the session holds, not a copy of it).
+func _wipe_static() -> void:
 	if _static is PackedByteArray:
-		(_static as PackedByteArray).fill(0)
+		PKeyPeerNoise._wipe(_static)
 
 
 func _emit(event: Dictionary) -> void:

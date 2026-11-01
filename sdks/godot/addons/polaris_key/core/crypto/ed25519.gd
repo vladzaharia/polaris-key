@@ -44,10 +44,20 @@ const BI := [
 static var _bi: Array = []  # Array of [PackedInt64Array x3], built from BI once.
 
 
+static var _warm_lock := Mutex.new()
+
+
 static func warmup() -> void:
+	if not _bi.is_empty():
+		return
+	_warm_lock.lock()
 	if _bi.is_empty():
+		# Built aside and published whole, so a reader never sees a part-filled table.
+		var built: Array = []
 		for e in BI:
-			_bi.append([PackedInt64Array(e[0]), PackedInt64Array(e[1]), PackedInt64Array(e[2])])
+			built.append([PackedInt64Array(e[0]), PackedInt64Array(e[1]), PackedInt64Array(e[2])])
+		_bi = built
+	_warm_lock.unlock()
 
 
 static func fe_new() -> PackedInt64Array:

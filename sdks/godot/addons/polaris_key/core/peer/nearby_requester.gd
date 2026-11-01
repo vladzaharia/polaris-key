@@ -49,6 +49,8 @@ signal closed(code: StringName)
 const MAX_DIALS := 4
 const MAX_LIST := 8
 const MAX_CANDIDATES := 64
+## A candidate not heard from in this long (and not being dialled) gives its place up when the table is full.
+const CANDIDATE_TTL_SECONDS := 90.0
 const EXPIRES_SECONDS := 300.0
 const TRIES_PER_ADVERT := 3
 const REDIAL_SECONDS := 0.25
@@ -305,10 +307,26 @@ func _found(f: Dictionary) -> void:
 		return
 	var instance := str(f.get("instance", ""))
 	if not _candidates.has(instance) and _candidates.size() >= MAX_CANDIDATES:
-		return
+		_age_out_candidate()
+		if _candidates.size() >= MAX_CANDIDATES:
+			return
 	var had: Variant = _candidates.get(instance)
-	_candidates[instance] = {"instance": instance, "hosts": hosts, "port": int(f.get("port", 0)), "native": native, "tries": int(had["tries"]) if had != null else 0}
+	_candidates[instance] = {"instance": instance, "hosts": hosts, "port": int(f.get("port", 0)), "native": native, "tries": int(had["tries"]) if had != null else 0, "seen": _mono()}
 	_dial_more()
+
+
+## Drop the stalest candidate that is past its time to live and not in a dial.
+func _age_out_candidate() -> void:
+	var now := _mono()
+	var oldest := ""
+	var oldest_seen := INF
+	for c: Dictionary in _candidates.values():
+		var seen := float(c.get("seen", 0.0))
+		if now - seen >= CANDIDATE_TTL_SECONDS and not _active.has(c["instance"]) and seen < oldest_seen:
+			oldest = str(c["instance"])
+			oldest_seen = seen
+	if oldest != "":
+		_candidates.erase(oldest)
 
 
 func _gone(instance: String) -> void:

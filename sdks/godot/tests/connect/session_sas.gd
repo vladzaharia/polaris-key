@@ -13,6 +13,7 @@ var _re: RegEx
 
 func run(t: PKeyTestContext) -> void:
 	_re = RegEx.create_from_string(SAS_RE)
+	await _static_key_zeroed(t)
 	await _same_code_then_records(t)
 	await _held_records(t)
 	await _hello_display(t)
@@ -41,6 +42,22 @@ func _open_pair(mode: String, hello := {}) -> Array:
 	return sides
 
 
+## The session zeroes the very buffer it holds, not a copy of it: a typed reference taken before the
+## handshake reads all zeros after it. The caller's own buffer is the caller's to wipe.
+func _static_key_zeroed(t: PKeyTestContext) -> void:
+	for mode in ["v", "p"]:
+		var kd: PackedByteArray = PKeyTestPeers.random32()
+		var d := PKeyTestPeers.side(mode, "initiator", kd)
+		var m := PKeyTestPeers.side(mode, "responder", PKeyTestPeers.random32())
+		var held_d: PackedByteArray = d.session._static
+		var held_m: PackedByteArray = m.session._static
+		t.check("%s: the held keys start non-zero" % mode, held_d.count(0) < 32 and held_m.count(0) < 32)
+		await d.session.start()
+		await PKeyTestPeers.pump(d, m)
+		t.check("%s: both held static key buffers are all zero once the transport is open" % mode, held_d.count(0) == 32 and held_m.count(0) == 32)
+		t.check("%s: the caller's buffer is left alone" % mode, kd.count(0) < 32)
+
+
 func _same_code_then_records(t: PKeyTestContext) -> void:
 	for mode in ["v", "p"]:
 		var sides := await _open_pair(mode)
@@ -55,6 +72,7 @@ func _same_code_then_records(t: PKeyTestContext) -> void:
 		var caps: Array = ["app/1", "ring/1", "vouch/1"] if mode == "v" else ["app/1", "ring/1"]
 		t.check("%s: the capabilities are the intersection (mode v adds vouch/1 itself)" % mode, est["caps"] == caps, str(est["caps"]))
 		t.check("%s: HELLO display data is not authenticated" % mode, est["hello_authenticated"] == false and est["peer_device_id"] == "")
+		t.check("%s: the one-time static key is dropped on both sides once the transport is open" % mode, d.session._static == null and m.session._static == null)
 		t.check("%s: both share the handshake hash" % mode, d.session.handshake_hash() == m.session.handshake_hash() and d.session.handshake_hash().size() == 32)
 		t.check("%s: nothing flows until the person confirms" % mode, not d.session.is_open() and d.session.send_record(PKeyPeerRecord.VOUCH_RESULT, PackedByteArray()).code == &"state")
 		t.check("%s: the sas event came after established" % mode, d.events.find(est) < d.events.find(sd[0]))
