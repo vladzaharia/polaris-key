@@ -146,6 +146,24 @@ class _AsyncFacet:
         return call
 
 
+class _AsyncCloudSync:
+    """``client.cloud_sync`` on the async client: everything is the sync client's own (``status`` and
+    ``flush`` stay as they were), except ``collection(name)``, a coroutine that answers an async view of
+    the records handle (``get``, ``put`` ... are coroutines; ``on`` stays synchronous)."""
+
+    def __init__(self, target: Any) -> None:
+        self._target = target
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._target, name)
+
+    def collection(self, name: str) -> GuardedCoroutine:
+        async def run() -> Any:
+            return _AsyncFacet(await _to_thread(self._target.collection, name))
+
+        return GuardedCoroutine(run(), "collection")
+
+
 class _AsyncSignInSession:
     """An async view of a :class:`~polaris_key.identity.sign_in.SignInSession`: ``wait`` is a
     coroutine, and cancelling its task cancels the session."""
@@ -379,6 +397,7 @@ class AsyncPolarisKeyClient:
         self.cloud_connect = _AsyncCloudConnect(sync_client.cloud_connect)
         #: The Cloud Sync host: ``touch``, ``flush``, ``purge`` and the rest run on a worker thread.
         self.cloud_sync_host = _AsyncFacet(sync_client.cloud_sync_host)
+        self.cloud_sync = _AsyncCloudSync(sync_client.cloud_sync)
 
     @classmethod
     async def create(cls, *, auto_discover: Optional[bool] = None, **opts: Any) -> "AsyncPolarisKeyClient":

@@ -52,7 +52,7 @@ from ..core.context import CoreContext
 from ..core.token import TokenManager
 from .host_codec import open_pull, seal_push
 from .machine import CloudSyncMachine
-from .routes import synced_settings
+from .routes import COLLECTION_CONFLICTS, resolve_collection, synced_settings
 from .state import OPEN_KEYS_MAX, CloudSyncFile, CloudSyncStateFile, is_catalog_shape
 from .transport import send_sync
 
@@ -122,6 +122,24 @@ class CloudSyncHostDeps:
     subject: Optional[Callable[[], Optional[str]]] = field(default=None)
     #: Test seam: the clock, in epoch milliseconds.
     clock: Optional[Callable[[], int]] = field(default=None)
+
+
+def _collections_of(catalog: Mapping[str, Any]) -> List[Obj]:
+    """The collections the machine knows: the catalog's declarations, and ``saves`` unless declared. A
+    malformed declaration is skipped."""
+    out: List[Obj] = []
+    block = catalog.get("cloudSync")
+    for c in (block.get("collections") if isinstance(block, dict) else None) or []:
+        if (
+            isinstance(c, dict)
+            and isinstance(c.get("name"), str)
+            and c["name"] != ""
+            and (c.get("conflict") is None or c.get("conflict") in COLLECTION_CONFLICTS)
+        ):
+            out.append(resolve_collection(c))
+    if not any(c["name"] == _SAVES_DECL["name"] for c in out):
+        out.append(dict(_SAVES_DECL))
+    return out
 
 
 def _routes_of(catalog: Mapping[str, Any]) -> List[Obj]:
@@ -205,6 +223,44 @@ class CloudSyncHost:
         self._pump_thread: Optional[int] = None
         #: The listener for ``put_at`` / ``remove_at`` outcomes; survives a rebuild of the machine.
         self._outcome: Optional[Callable[[Obj], None]] = None
+        #: Outcome taps and watched collections of the records handles; both survive a rebuild.
+        self._taps: List[Callable[[Obj], None]] = []
+        self._tap_offs: Dict[int, Callable[[], None]] = {}
+        self._watching: Dict[str, int] = {}
+
+    def tap_outcomes(self, fn: Callable[[Obj], None]) -> Callable[[], None]:
+        """Another listener for ``put_at`` / ``remove_at`` outcomes, beside :meth:`on_outcome`'s (kept across
+        rebuilds). It is told of every outcome. Returns its remover."""
+        self._taps.append(fn)
+        if self._machine is not None:
+            self._tap_offs[id(fn)] = self._machine.tap_outcomes(fn)
+
+        def off() -> None:
+            if fn in self._taps:
+                self._taps.remove(fn)
+            undo = self._tap_offs.pop(id(fn), None)
+            if undo is not None:
+                undo()
+
+        return off
+
+    def watch_records(self, collection: str, on: bool) -> None:
+        """Report ``collection``'s record changes as ``records`` events while any watcher holds it (kept
+        across rebuilds); calls pair, ``True`` then ``False``."""
+        if on:
+            self._watching[collection] = self._watching.get(collection, 0) + 1
+            if self._machine is not None:
+                with self._lock:
+                    self._machine.watch_records(collection, True)
+        else:
+            n = self._watching.get(collection, 0) - 1
+            if n > 0:
+                self._watching[collection] = n
+            else:
+                self._watching.pop(collection, None)
+                if self._machine is not None:
+                    with self._lock:
+                        self._machine.watch_records(collection, False)
 
     def on_outcome(self, fn: Optional[Callable[[Obj], None]]) -> None:
         """The one listener for the machine's ``put_at`` / ``remove_at`` outcomes (kept across rebuilds)."""
@@ -317,7 +373,7 @@ class CloudSyncHost:
         m = CloudSyncMachine(
             {
                 "product": self._deps.ctx.product,
-                "catalog": {"settings": self._routes, "collections": [dict(_SAVES_DECL)]},
+                "catalog": {"settings": self._routes, "collections": _collections_of(self._catalog)},
                 "document": document,
                 "now": self._now(),
                 "encryption": self._opts.encryption,
@@ -328,6 +384,9 @@ class CloudSyncHost:
         )
         self._machine = m
         m.on_outcome(self._outcome)
+        self._tap_offs = {id(fn): m.tap_outcomes(fn) for fn in self._taps}
+        for name in self._watching:
+            m.watch_records(name, True)
         self._apply_discovery(m)
         self._building = True
         try:

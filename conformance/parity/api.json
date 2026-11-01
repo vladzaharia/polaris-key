@@ -4258,9 +4258,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "planned": "U-46",
           "shape": "hook",
@@ -4290,9 +4288,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "planned": "U-46",
           "shape": "hook",
@@ -4316,9 +4312,7 @@
       "feature": "sync.records",
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "planned": "U-46",
           "shape": "hook",
@@ -4352,9 +4346,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "planned": "U-46",
           "shape": "hook",
@@ -4388,9 +4380,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "planned": "U-46",
           "shape": "hook",
@@ -4424,9 +4414,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "planned": "U-46",
           "shape": "hook",
@@ -4460,9 +4448,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "planned": "U-46",
           "shape": "hook",
@@ -4492,9 +4478,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "planned": "U-46",
           "shape": "hook",
@@ -4524,9 +4508,7 @@
       ],
       "sdks": {
         "node": {},
-        "python": {
-          "planned": "U-46"
-        },
+        "python": {},
         "react": {
           "planned": "U-46",
           "shape": "hook",

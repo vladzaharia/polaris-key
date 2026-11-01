@@ -19,14 +19,18 @@ What it guarantees:
   mutation of the request; served ``aliases`` are replaced by the app's, ``renamedTo`` is kept only
   when the app declares it; a name holding U+0000 is refused.
 
-Scope: settings (the ``$settings`` collection), and records with a scalar value (D-2: saves are
-``revision`` records; U-22.10). A record value is sealed under its collection with ``k = id``, its id
-travels as ``blind("record", collection, id)``, and a pulled record opens only when the ``k`` inside the
-envelope re-blinds to the id on the wire (§13.10.4), so a Worker cannot place a sealed value under
-another record. A record mutation other than ``set`` and ``delete`` (a ``merge`` field, a ``union``
-element) and a sealed ``merge`` or ``union`` change (``fields``, ``elements``) are outside this codec: a
-mutation is refused with ``invalid-options`` and a change reads as ``invalid``. client-core seals every
-record shape.
+Scope: settings (the ``$settings`` collection) and records of every shape (C-26 / U-46). A record's
+collection travels in the clear and its id, field and element names only blinded
+(``blind("record" | "field" | "element", c, name)``). Every sealed record value shares ``K_coll(c)``, so
+the envelope's ``k`` places it::
+
+    value    k = id                              wire name blind("record", c, id)
+    field    k = id U+0000 field                 and blind("field", c, field)
+    element  k = id U+0000 canonicalJson(e)      and blind("element", c, canonicalJson(e))
+
+A pulled record opens only when the id is blinded and the ``k`` inside every envelope re-blinds to the
+names the row came under, so a Worker cannot place a sealed value under another record, field or
+element. A conflict copy carries no names and opens under the mutation's own record.
 """
 
 from __future__ import annotations
@@ -38,9 +42,16 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 from ..constants_generated import ErrorCode
 from ..core.b64url import b64url_decode, b64url_encode
 from ..core.errors import PolarisError
-from ..core.sync_crypto import is_blinded_name
+from ..core.sync_crypto import canonical_json, is_blinded_name
 
-__all__ = ["SETTINGS_COLLECTION", "member_envelope_name", "open_pull", "seal_push"]
+__all__ = [
+    "SETTINGS_COLLECTION",
+    "element_envelope_name",
+    "field_envelope_name",
+    "member_envelope_name",
+    "open_pull",
+    "seal_push",
+]
 
 #: The collection every setting is sealed under.
 SETTINGS_COLLECTION = "$settings"
@@ -90,6 +101,16 @@ def member_envelope_name(setting: str, member: str) -> str:
     return f"{setting}\0{member}"
 
 
+def field_envelope_name(record_id: str, field: str) -> str:
+    """The envelope name of a record field: the id, U+0000, the field."""
+    return f"{record_id}\0{field}"
+
+
+def element_envelope_name(record_id: str, canonical: str) -> str:
+    """The envelope name of a union element: the id, U+0000, the element's canonical JSON."""
+    return f"{record_id}\0{canonical}"
+
+
 # ── Push ─────────────────────────────────────────────────────────────────────────────────────
 
 
@@ -124,26 +145,72 @@ def _record_ref(v: Any) -> Optional[Tuple[str, str]]:
     return c, i
 
 
+def _canonical(e: Any) -> str:
+    """The canonical JSON of an element, or a refusal: a number or text that cannot be spelled
+    identically everywhere is never sent."""
+    try:
+        return canonical_json(e)
+    except (ValueError, TypeError):
+        raise _refuse("an element cannot be spelled canonically") from None
+
+
 def _seal_record_mutation(m: Entry, target: Entry, codec: Any) -> Entry:
-    """A record mutation (scalar value, D-2): ``set`` seals the value under the collection with
-    ``k = id``; ``delete`` carries none. Either sends the id blinded. The collection travels in the
-    clear (§13.10.2)."""
+    """A record mutation (section 13.10.4). ``set`` seals the value under ``k = id``; ``setField`` under
+    ``id U+0000 field``; ``add`` seals the element under ``id U+0000 canonicalJson(e)``. ``delete``,
+    ``removeField`` and ``remove`` carry no value. Every name goes blinded, the collection in the clear."""
     ref = _record_ref(target.get("record"))
     if ref is None:
         raise _refuse("a record reference is malformed")
-    if "ct" in m or "field" in m or "element" in m or "member" in m:
+    if "ct" in m:
         raise _refuse("mutation carries a member this codec does not seal")
     collection, rid = ref
     out: Entry = dict(m)
+
+    def absent(*names: str) -> None:
+        for n in names:
+            if n in m:
+                raise _refuse("mutation carries a member its operation does not take")
+
+    def field() -> str:
+        f = m.get("field")
+        if not isinstance(f, str) or f == "" or _has_nul(f):
+            raise _refuse("a field name is empty or holds U+0000")
+        return f
+
+    def element() -> Json:
+        if m.get("element", _MISSING) is _MISSING:
+            raise _refuse("an element is missing")
+        return m["element"]
+
     op = m.get("op")
     if op == "set":
+        absent("field", "element", "member")
         if m.get("value", _MISSING) is _MISSING:
             raise _refuse("set needs a value")
         del out["value"]
         out["ct"] = _to_ct(codec.seal(collection, rid, m["value"]))
     elif op == "delete":
-        if "value" in m:
-            raise _refuse("delete carries no value")
+        absent("value", "field", "element", "member")
+    elif op == "setField":
+        absent("element", "member")
+        f = field()
+        if m.get("value", _MISSING) is _MISSING:
+            raise _refuse("setField needs a value")
+        del out["value"]
+        out["field"] = codec.blind("field", collection, f)
+        out["ct"] = _to_ct(codec.seal(collection, field_envelope_name(rid, f), m["value"]))
+    elif op == "removeField":
+        absent("value", "element", "member")
+        out["field"] = codec.blind("field", collection, field())
+    elif op == "add":
+        absent("value", "field", "member")
+        e = element()
+        name = _canonical(e)
+        out["element"] = codec.blind("element", collection, name)
+        out["ct"] = _to_ct(codec.seal(collection, element_envelope_name(rid, name), e))
+    elif op == "remove":
+        absent("value", "field", "member")
+        out["element"] = codec.blind("element", collection, _canonical(element()))
     else:
         raise _refuse("unsupported operation")
     out["target"] = {**target, "record": [collection, codec.blind("record", collection, rid)]}
@@ -248,7 +315,7 @@ def open_pull(
                 changes.append(c)
                 rows.append(None)
                 continue
-            entry, row = _open_change(c, codec, aliases)
+            entry, row = _open_change(c, codec, aliases, record_keys)
             changes.append(entry)
             rows.append(row)
         out["changes"] = changes
@@ -370,62 +437,169 @@ def _invalid_row(e: Entry) -> Tuple[Entry, Entry]:
 
 
 def _plain_row(e: Entry) -> Tuple[Entry, Entry]:
+    # Sealed cells with no `ct` are not a plaintext row: only the host's open can read them.
+    if isinstance(e.get("fields"), list) or isinstance(e.get("elements"), list):
+        return _invalid_row(e)
     v = e.get("version")
     return _stripped(e), ({"seq": v} if isinstance(v, (int, float)) and not isinstance(v, bool) else {})
 
 
-def _open_change(c: Entry, codec: Any, aliases: Optional[Mapping[str, str]]) -> Tuple[Entry, Entry]:
+def _open_change(
+    c: Entry,
+    codec: Any,
+    aliases: Optional[Mapping[str, str]],
+    record_keys: Optional[Iterable[Tuple[str, str]]] = None,
+) -> Tuple[Entry, Entry]:
     if isinstance(c.get("setting"), str):
         return _open_setting_change(c, codec, aliases)
     if "record" in c:
-        return _open_record_change(c, codec)
+        return _open_record_change(c, codec, record_keys)
     # Neither a setting nor a record: a sealed one cannot be placed.
     if "ct" in c:
         return _invalid_row(c)
     return _plain_row(c)
 
 
-def _open_record_change(c: Entry, codec: Any) -> Tuple[Entry, Entry]:
-    """A record change: ``{record: [collection, id], ct, version}``. A sealed ``merge`` or ``union``
-    change (``fields``, ``elements``) is outside the scalar codec and reads as invalid; a plaintext row
-    is legacy (the machine checks its ``seq`` against ``encryptionSince``). A sealed id is accepted only
-    when it is blinded and the ``k`` inside the envelope re-blinds to it; it is then replaced by the id."""
-    if isinstance(c.get("fields"), list) or isinstance(c.get("elements"), list):
-        return _invalid_row(c)
-    if "ct" not in c:
-        return _plain_row(c)
-    ref = _record_ref(c["record"])
-    if ref is None or not is_blinded_name(ref[1]):
-        return _invalid_row(c)
-    env = _from_ct(c["ct"])
-    if env is None:
-        return _invalid_row(c)
-    r = codec.open_any(ref[0], env)
-    if not r.ok or r.name == "" or _has_nul(r.name):
-        return _invalid_row(c)
-    if codec.blind("record", ref[0], r.name) != ref[1]:
-        return _invalid_row(c)
-    entry = _stripped(c)
-    entry["record"] = [ref[0], r.name]
-    entry["value"] = r.value
+def _shape(e: Entry) -> Optional[str]:
+    """The sealed shape of a record row: one ``ct``, sealed ``fields``, or sealed ``elements``."""
+    shapes = [
+        n
+        for n, there in (
+            ("ct", "ct" in e),
+            ("fields", isinstance(e.get("fields"), list)),
+            ("elements", isinstance(e.get("elements"), list)),
+        )
+        if there
+    ]
+    if not shapes:
+        return "plain"
+    return shapes[0] if len(shapes) == 1 else None
+
+
+def _sealed_record(e: Entry, record: Json, value: Json) -> Tuple[Entry, Entry]:
+    entry = _stripped(e)
+    entry.pop("fields", None)
+    entry.pop("elements", None)
+    entry["record"] = record
+    entry["value"] = value
     return entry, {"sealed": True}
+
+
+def _open_record_change(
+    c: Entry, codec: Any, record_keys: Optional[Iterable[Tuple[str, str]]] = None
+) -> Tuple[Entry, Entry]:
+    """A record change. A plaintext row is legacy (the machine judges its ``seq``, section 13.10.7). A
+    sealed one needs a blinded id and opens only when every envelope's ``k`` re-blinds to the names the
+    row came under; the row then carries the plaintext id and the opened value (a ``merge`` record's
+    object, a ``union`` record's array in the served order)."""
+    shape = _shape(c)
+    if shape == "plain":
+        return _plain_row(c)
+    ref = _record_ref(c.get("record"))
+    if shape is None or ref is None or not is_blinded_name(ref[1]):
+        return _invalid_row(c)
+    collection, served = ref
+    if shape == "ct":
+        env = _from_ct(c["ct"])
+        if env is None:
+            return _invalid_row(c)
+        r = codec.open_any(collection, env)
+        if not r.ok or r.name == "" or _has_nul(r.name):
+            return _invalid_row(c)
+        if codec.blind("record", collection, r.name) != served:
+            return _invalid_row(c)
+        return _sealed_record(c, [collection, r.name], r.value)
+    cells = _open_cells(c, shape, collection, None, codec)
+    if cells is None:
+        return _invalid_row(c)
+    rid, value = cells
+    if rid is None:
+        # No cell names the record, so the id comes from a record the machine holds, if any.
+        rid = _record_key_names(codec, record_keys).get((collection, served))
+    elif codec.blind("record", collection, rid) != served:
+        return _invalid_row(c)
+    return _sealed_record(c, [collection, rid if rid is not None else served], value)
 
 
 def _open_record_copy(e: Entry, rec: Tuple[str, str], codec: Any) -> Tuple[Entry, Entry]:
-    """A conflict's server copy of the record ``rec`` of the mutation: one ``ct``, opened under that id."""
-    if isinstance(e.get("fields"), list) or isinstance(e.get("elements"), list):
-        return _invalid_row(e)
-    if "ct" not in e:
+    """A conflict's server copy of the record ``rec`` of the mutation: opened under that id."""
+    shape = _shape(e)
+    if shape == "plain":
         return _plain_row(e)
-    env = _from_ct(e["ct"])
-    if env is None:
+    if shape is None:
         return _invalid_row(e)
-    r = codec.open(rec[0], rec[1], env, [])
-    if not r.ok:
+    collection, rid = rec
+    if shape == "ct":
+        env = _from_ct(e["ct"])
+        if env is None:
+            return _invalid_row(e)
+        r = codec.open(collection, rid, env, [])
+        if not r.ok:
+            return _invalid_row(e)
+        entry = _stripped(e)
+        entry["value"] = r.value
+        return entry, {"sealed": True}
+    cells = _open_cells(e, shape, collection, rid, codec)
+    if cells is None:
         return _invalid_row(e)
     entry = _stripped(e)
-    entry["value"] = r.value
+    entry.pop("fields", None)
+    entry.pop("elements", None)
+    entry["value"] = cells[1]
     return entry, {"sealed": True}
+
+
+def _open_cells(
+    e: Entry, shape: str, collection: str, expect_id: Optional[str], codec: Any
+) -> Optional[Tuple[Optional[str], Json]]:
+    """Opens the sealed cells of a ``merge`` record (``fields``) or a ``union`` record (``elements``).
+    Each envelope's ``k`` splits at its first U+0000 into the id and the cell name; the cell's blinded
+    name must be what the row carries (and, for an element, the opened value must spell the name), and
+    every cell must name the same id (``expect_id``, when the caller knows it). The id is ``None`` for a
+    record with no cells."""
+    kind = "field" if shape == "fields" else "element"
+    rid: Optional[str] = expect_id
+    names: "set[str]" = set()
+    fields: Dict[str, Any] = {}
+    elements: List[Any] = []
+    for cell in e[shape]:
+        if not _is_obj(cell):
+            return None
+        wire = cell.get(kind)
+        if not isinstance(wire, str) or not is_blinded_name(wire):
+            return None
+        env = _from_ct(cell.get("ct"))
+        if env is None:
+            return None
+        r = codec.open_any(collection, env)
+        if not r.ok:
+            return None
+        cut = r.name.find("\0")
+        if cut <= 0:
+            return None
+        cell_id = r.name[:cut]
+        name = r.name[cut + 1 :]
+        if name == "" or _has_nul(name):
+            return None
+        if rid is not None and cell_id != rid:
+            return None
+        rid = cell_id
+        if codec.blind(kind, collection, name) != wire:
+            return None
+        if name in names:
+            return None
+        names.add(name)
+        if kind == "field":
+            fields[name] = r.value
+        else:
+            try:
+                spelled = canonical_json(r.value)
+            except (ValueError, TypeError):
+                return None
+            if spelled != name:
+                return None
+            elements.append(r.value)
+    return rid, fields if kind == "field" else elements
 
 
 def _open_setting_change(c: Entry, codec: Any, aliases: Optional[Mapping[str, str]]) -> Tuple[Entry, Entry]:

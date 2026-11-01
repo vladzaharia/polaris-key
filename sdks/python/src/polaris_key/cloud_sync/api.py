@@ -31,6 +31,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional
 from ..config.client import ConfigClient
 from ..constants_generated import SYNC_SIGNOUT_FLUSH_MS, Feature
 from ..core.context import CoreContext
+from .collection import SyncCollection
 from .host import CloudSyncHost
 
 __all__ = ["CloudSyncApi", "CloudSyncClient"]
@@ -68,6 +69,13 @@ class CloudSyncClient:
         """Send what is waiting now (bounded by the sign-out flush window), save the journal and answer
         the status."""
         return self._api.flush()
+
+    def collection(self, name: str) -> SyncCollection:
+        """The records handle of a collection the product's catalog declares (U-46): ``get``, ``ids``,
+        ``put`` (``if_version`` compare-and-set), ``update``, ``add``, ``remove``, ``delete`` and ``on``.
+        An undeclared name answers ``collection_unknown`` from each call, never raises. Raises the typed
+        ``product`` N/A when the product does not run the Sync service."""
+        return self._api.collection(name)
 
 
 class CloudSyncApi:
@@ -118,6 +126,11 @@ class CloudSyncApi:
             return {"state": "local", "pending": 0}
         with self._host.locked() as m:
             return m.status()
+
+    def collection(self, name: str) -> SyncCollection:
+        self._ctx.require_service("sync", Feature.SYNC_RECORDS)
+        self._attach()
+        return SyncCollection(name, self._host)
 
     def flush(self) -> Obj:
         self._ctx.require_service("sync", Feature.SYNC_SETTINGS)

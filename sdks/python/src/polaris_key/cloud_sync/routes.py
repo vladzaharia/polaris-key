@@ -83,6 +83,25 @@ def synced_settings(catalog: Mapping[str, Any]) -> List[Dict[str, Any]]:
     return [{**r, "encryption": mode} for r in routes]
 
 
+#: The conflict a collection template supplies (``CLOUD_SYNC_TEMPLATES``); no template means ``revision``.
+_TEMPLATE_CONFLICT = {"saves": "revision", "session": "lastWrite"}
+COLLECTION_CONFLICTS = ("lastWrite", "max", "min", "revision", "merge", "union")
+
+
+def resolve_collection(c: Mapping[str, Any]) -> Dict[str, Any]:
+    """The machine's declaration of a catalog collection: ``name``, ``policy`` (its ``conflict`` over
+    its template over ``revision``), ``field`` (``conflictField``) and, for ``revision``, ``resolve``.
+    Mirrors ``resolveCollection``."""
+    conflict = c.get("conflict") or _TEMPLATE_CONFLICT.get(str(c.get("template")), "revision")
+    out: Dict[str, Any] = {"name": c["name"], "policy": conflict}
+    field = c.get("conflictField")
+    if field is not None:
+        out["field"] = field
+    if conflict == "revision":
+        out["resolve"] = "keepServer"
+    return out
+
+
 def _schema_type_in(schema: Mapping[str, Any], types: Sequence[str]) -> bool:
     t = schema.get("type")
     if isinstance(t, str):
