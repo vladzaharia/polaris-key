@@ -64,6 +64,7 @@ func apiSurface() async {
     _ = SaveTransfer.resume  // cloudSync.transfer.resume
     _ = SaveTransfer.cancel  // cloudSync.transfer.cancel
     _ = \PolarisKeyClient.events  // cloudSync.transferEvent
+    _ = CloudSyncClient.collection(_:)  // cloudSync.collection
     _ = PolarisKeyClient.discover  // client.discover
     _ = \PolarisKeyClient.presentation  // client.presentation
     _ = PolarisKeyClient.presentationIcon  // client.presentationIcon

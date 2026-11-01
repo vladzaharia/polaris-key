@@ -230,9 +230,35 @@ public actor CloudSyncHost {
     private var outcomeListener: (@Sendable (Int, SyncRecordOutcome) -> Void)?
     /// The person whose chunk cache a purge removes: the last one the machine was signed in as.
     private var person: String?
+    /// The collections handles watch (a count each) and the outcome taps they hold; both are applied to every
+    /// machine the host builds, so a rebuild or a purge loses neither.
+    private var watchCounts: [String: Int] = [:]
+    private let outcomeTaps = LockedValue<[Int: @Sendable (Int, SyncRecordOutcome) -> Void]>([:])
+    private var nextTap = 0
 
     /// The `saves` collection `cloudSync.saves` writes to: a `revision` collection the machine holds.
     static let savesDecl = SyncCollectionDecl(name: savesCollection, policy: "revision", resolve: "keepServer")
+
+    /// The collections the machine knows: the catalog's `cloudSync.collections` (each member's policy, a
+    /// `max`/`min` field and, for `revision`, the keep-server resolution), and `saves` unless it declares it.
+    static func collectionsOf(_ catalog: JSONValue) -> [SyncCollectionDecl] {
+        let templates = ["saves": "revision", "session": "lastWrite"]
+        let policies: Set<String> = ["revision", "union", "lastWrite", "max", "min", "merge"]
+        var out: [SyncCollectionDecl] = []
+        let list = catalog.objectValue?["cloudSync"]?.objectValue?["collections"]?.arrayValue ?? []
+        for c in list {
+            guard let o = c.objectValue, let name = o["name"]?.stringValue, !name.isEmpty else { continue }
+            let policy =
+                o["conflict"]?.stringValue ?? o["template"]?.stringValue.flatMap { templates[$0] } ?? "revision"
+            guard policies.contains(policy) else { continue }
+            out.append(
+                SyncCollectionDecl(
+                    name: name, policy: policy, field: o["conflictField"]?.stringValue,
+                    resolve: policy == "revision" ? "keepServer" : nil))
+        }
+        if !out.contains(where: { $0.name == savesCollection }) { out.append(savesDecl) }
+        return out
+    }
 
     private static let emptyCatalog: JSONValue = .object(["schemaVersion": .int(0), "entries": .array([])])
 
@@ -298,6 +324,132 @@ public actor CloudSyncHost {
     func wireId(_ collection: String, _ id: String) throws -> String {
         try HostCodec.wireId(machine?.encryptionMode == .e2e ? deps.codec : nil, collection, id)
     }
+
+    // MARK: collections (the records handle)
+
+    /// What a collection handle asks the host to do.
+    enum CollectionVerb: Sendable {
+        case put(JSONValue, SyncBase?)
+        case update(set: [String: JSONValue], remove: [String])
+        case add(JSONValue)
+        case remove(JSONValue)
+        case delete(SyncBase?)
+    }
+
+    func collectionPolicy(_ name: String) -> String? { machine?.collectionDecl(name)?.policy }
+
+    /// The effective value of a record, or nil (an undeclared name too).
+    func collectionGet(_ name: String, _ id: String) -> SyncEffectiveValue? {
+        guard let m = machine, m.collectionDecl(name) != nil else { return nil }
+        return m.record(name, id)
+    }
+
+    /// The ids of a collection in byte order. E2E drops a file-only row that is listed under its blinded id.
+    func collectionIds(_ name: String) -> [String] {
+        guard let m = machine, m.collectionDecl(name) != nil else { return [] }
+        let e2e = m.encryptionMode == .e2e
+        return m.recordIds(name).filter { !(e2e && SyncBlind.isBlindedName($0)) }
+    }
+
+    /// One verb of a collection handle: the catalog checks first (a refusal changes nothing and sends nothing),
+    /// then the machine's operation, then the events it raised and a pump.
+    func collectionApply(
+        _ name: String, _ id: String, _ verb: CollectionVerb, onTicket: (@Sendable (Int) -> Void)? = nil
+    ) -> CollectionResult {
+        guard let m = machine else { return .refused(.signedOut) }
+        guard let decl = m.collectionDecl(name) else { return .refused(.collectionUnknown) }
+        let policy = decl.policy
+        func refuse(_ e: CollectionError) -> CollectionResult { .refused(e) }
+        func finish(_ r: CallResult) -> CollectionResult {
+            switch r {
+            case .ok:
+                emit(m)
+                wakePump()
+                return .ok(mutationId: nil)
+            case .failed(let why):
+                return refuse(why == "signed-out" ? .signedOut : .collectionUnknown)
+            }
+        }
+        func ticketed(_ r: SyncTicketResult) -> CollectionResult {
+            switch r {
+            case .ticket(let t):
+                onTicket?(t)
+                emit(m)
+                wakePump()
+                return .ok(mutationId: t)
+            case .failed(let why):
+                return refuse(why == "signed-out" ? .signedOut : .collectionUnknown)
+            }
+        }
+        var allowed: Bool
+        switch verb {
+        case .put: allowed = ["lastWrite", "max", "min", "revision"].contains(policy)
+        case .update: allowed = policy == "merge"
+        case .add, .remove: allowed = policy == "union"
+        case .delete: allowed = true
+        }
+        if !allowed { return refuse(.opInvalidForPolicy) }
+        if id.isEmpty { return refuse(.valueInvalid) }
+        catchUp()
+        switch verb {
+        case .put(let value, let base):
+            if let base {
+                guard policy == "revision" else { return refuse(.opInvalidForPolicy) }
+                return ticketed(m.putAt(name, id, value, baseVersion: base))
+            }
+            return finish(m.put(name, id, value))
+        case .update(let set, let remove):
+            let names = Array(set.keys) + remove
+            if names.isEmpty || Set(names).count != names.count
+                || names.contains(where: { $0.isEmpty || $0.utf8.count > collectionMaxFieldBytes })
+            {
+                return refuse(.valueInvalid)
+            }
+            return finish(m.update(name, id, set: set, remove: remove))
+        case .add(let element), .remove(let element):
+            guard let spelled = try? CanonicalJSON.encode(element), spelled.utf8.count <= SYNC_MAX_UNION_ELEMENT_BYTES
+            else { return refuse(.valueInvalid) }
+            if case .add = verb { return finish(m.add(name, id, element)) }
+            return finish(m.remove(name, id, element))
+        case .delete(let base):
+            if policy == "revision" {
+                let held = m.records(name).first { $0.id == id }?.version
+                let at = base ?? held.map { SyncBase.version($0) } ?? .any
+                return ticketed(m.removeAt(name, id, baseVersion: at))
+            }
+            if base != nil { return refuse(.opInvalidForPolicy) }
+            return finish(m.delete(name, id))
+        }
+    }
+
+    private func wakePump() { Task { await self.touch() } }
+
+    /// Report a collection's record changes to the host's listeners as `records` events (counted).
+    func watchCollection(_ name: String) {
+        watchCounts[name, default: 0] += 1
+        machine?.watchRecords(name, true)
+    }
+
+    func unwatchCollection(_ name: String) {
+        guard let n = watchCounts[name] else { return }
+        if n > 1 {
+            watchCounts[name] = n - 1
+        } else {
+            watchCounts[name] = nil
+            machine?.watchRecords(name, false)
+        }
+    }
+
+    /// Another listener for `putAt` / `removeAt` outcomes, beside `onOutcome`'s (kept across rebuilds). It is
+    /// told of every outcome and must not call back into the host.
+    func addOutcomeTap(_ fn: @escaping @Sendable (Int, SyncRecordOutcome) -> Void) -> Int {
+        nextTap += 1
+        let id = nextTap
+        outcomeTaps.with { $0[id] = fn }
+        return id
+    }
+
+    func removeOutcomeTap(_ id: Int) { outcomeTaps.with { $0[id] = nil } }
 
     // MARK: start
 
@@ -386,7 +538,7 @@ public actor CloudSyncHost {
         routes = Self.routesOf(catalog)
         documentJSON = Self.dump(document)
         var o = SyncMachineOptions(
-            product: deps.product, catalog: SyncMachineCatalog(settings: routes, collections: [Self.savesDecl]),
+            product: deps.product, catalog: SyncMachineCatalog(settings: routes, collections: Self.collectionsOf(catalog)),
             document: document,
             now: deps.clock(), newClientId: { "c_" + Base64URL.encode(SyncCrypto.random(16)) })
         o.encryption = options.encryption
@@ -395,6 +547,11 @@ public actor CloudSyncHost {
         let m = try CloudSyncMachine(o, persisted: snapshot)
         machine = m
         m.onOutcome(outcomeListener)
+        for collection in watchCounts.keys { m.watchRecords(collection, true) }
+        let taps = outcomeTaps
+        _ = m.tapOutcomes { ticket, outcome in
+            for tap in taps.current.keys.sorted() { taps.current[tap]?(ticket, outcome) }
+        }
         if let who = m.subject { person = who }
         generation += 1
         let f = RootFeed(wake: { [weak self] in Task { await self?.touch() } })
@@ -649,10 +806,11 @@ public actor CloudSyncHost {
         guard let fetched = Self.vetted(await deps.fetchSchema()), generation == gen else { return }
         if jsonCanonical(fetched) == served.flatMap(jsonCanonical) { return }
         let before = Self.routesOf(catalog)
+        let collectionsBefore = Self.collectionsOf(catalog)
         served = fetched
-        // Rebuild only when the routes the machine uses would change.
+        // Rebuild only when the routes or collections the machine uses would change.
         let effective = effective()
-        if Self.routesOf(effective) == before {
+        if Self.routesOf(effective) == before, Self.collectionsOf(effective) == collectionsBefore {
             catalog = effective
             return
         }

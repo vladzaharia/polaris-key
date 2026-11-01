@@ -10,7 +10,7 @@
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
 // @pkey-feature connect.relay identity.redirect.native
-// @pkey-feature identity.exchange sync.keyring sync.settings identity.restore identity.gamecenter identity.devicecode.choice sync.files sync.files.delta sync.saves
+// @pkey-feature identity.exchange sync.keyring sync.settings identity.restore identity.gamecenter identity.devicecode.choice sync.files sync.files.delta sync.saves sync.records
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read in
 // place through `CorpusLocator`): drive `PolarisKeyClient` through every
@@ -1234,10 +1234,13 @@ final class TranscriptTests: XCTestCase {
         print("transcripts replayed by Swift: \(replayed.joined(separator: ", "))")
         XCTAssertFalse(replayed.isEmpty)
         // The Cloud Sync settings conversations are required, not optional: a regression in the manifest or
-        // the replayer must not quietly drop them. The records conversations (`sync.records`) are planned.
+        // the replayer must not quietly drop them. So are the records conversations (`sync.records`).
         let cloud = try transcripts().filter { $0.features.contains("sync.settings") }.map(\.id)
         XCTAssertFalse(cloud.isEmpty)
         for id in cloud { XCTAssertTrue(replayed.contains(id), "\(id) was not replayed") }
+        let records = try transcripts().filter { $0.features.contains("sync.records") }.map(\.id)
+        XCTAssertGreaterThanOrEqual(records.count, 7)
+        for id in records { XCTAssertTrue(replayed.contains(id), "\(id) was not replayed") }
         // So are the file and chunk conversations (U-23.S6), but for `cloudsync-files-single`, which also proves
         // `sync.saves` and waits for it.
         let files = try transcripts().filter {

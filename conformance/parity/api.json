@@ -4325,7 +4325,7 @@
           "spelling": "useCollection"
         },
         "swift": {
-          "planned": "U-46"
+          "labels": ["_"]
         },
         "kotlin": {
           "planned": "U-46"
@@ -4355,7 +4355,8 @@
           "spelling": "useCollection(name).get"
         },
         "swift": {
-          "planned": "U-46"
+          "spelling": "CloudSyncCollection.get",
+          "labels": ["_"]
         },
         "kotlin": {
           "planned": "U-46"
@@ -4379,7 +4380,7 @@
           "spelling": "useCollection(name).ids"
         },
         "swift": {
-          "planned": "U-46"
+          "spelling": "CloudSyncCollection.ids"
         },
         "kotlin": {
           "planned": "U-46"
@@ -4413,7 +4414,8 @@
           "spelling": "useCollection(name).handle.put"
         },
         "swift": {
-          "planned": "U-46"
+          "spelling": "CloudSyncCollection.put",
+          "labels": ["_", "_", "ifVersion"]
         },
         "kotlin": {
           "planned": "U-46"
@@ -4447,7 +4449,8 @@
           "spelling": "useCollection(name).handle.update"
         },
         "swift": {
-          "planned": "U-46"
+          "spelling": "CloudSyncCollection.update",
+          "labels": ["_", "set", "remove"]
         },
         "kotlin": {
           "planned": "U-46"
@@ -4481,7 +4484,8 @@
           "spelling": "useCollection(name).handle.add"
         },
         "swift": {
-          "planned": "U-46"
+          "spelling": "CloudSyncCollection.add",
+          "labels": ["_", "_"]
         },
         "kotlin": {
           "planned": "U-46"
@@ -4515,7 +4519,8 @@
           "spelling": "useCollection(name).handle.remove"
         },
         "swift": {
-          "planned": "U-46"
+          "spelling": "CloudSyncCollection.remove",
+          "labels": ["_", "_"]
         },
         "kotlin": {
           "planned": "U-46"
@@ -4545,7 +4550,8 @@
           "spelling": "useCollection(name).handle.delete"
         },
         "swift": {
-          "planned": "U-46"
+          "spelling": "CloudSyncCollection.delete",
+          "labels": ["_", "ifVersion"]
         },
         "kotlin": {
           "planned": "U-46"
@@ -4575,7 +4581,8 @@
           "spelling": "useCollection(name).handle.on"
         },
         "swift": {
-          "planned": "U-46"
+          "spelling": "CloudSyncCollection.on",
+          "labels": ["_"]
         },
         "kotlin": {
           "planned": "U-46"

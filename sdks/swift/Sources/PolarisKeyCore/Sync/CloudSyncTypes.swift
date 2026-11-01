@@ -312,6 +312,8 @@ public enum SyncEvent: Sendable, Equatable {
     case rejected(mutationId: Int, code: String)
     case signedOut(reason: SyncSignedOutReason, unsynced: Int)
     case unsyncedData(count: Int)
+    /// The effective rows of a watched collection changed (`watchRecords`); ids in byte order.
+    case records(collection: String, ids: [String], origin: SyncChangeOrigin)
     case signInOffered(signInUrl: String?)
 
     /// The corpus's event form (`type` plus members).
@@ -330,6 +332,11 @@ public enum SyncEvent: Sendable, Equatable {
             ])
         case .unsyncedData(let count):
             return .object(["type": .string("unsyncedData"), "count": .int(count)])
+        case .records(let collection, let ids, let origin):
+            return .object([
+                "type": .string("records"), "collection": .string(collection),
+                "ids": .array(ids.map { .string($0) }), "origin": .string(origin.rawValue),
+            ])
         case .signInOffered(let url):
             return .object(["type": .string("signInOffered"), "signInUrl": url.map { .string($0) } ?? .null])
         }

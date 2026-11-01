@@ -410,6 +410,11 @@ public final class CloudSyncMachine {
     var pullWanted = false
     var paused = false
     var outcome: ((Int, SyncRecordOutcome) -> Void)?
+    var outcomeTaps: [Int: (Int, SyncRecordOutcome) -> Void] = [:]
+    var nextTap = 0
+    /// The collections whose record changes are reported as `records` events, with the last state
+    /// reported (id to the effective value). Empty: nothing is computed.
+    var watched: [String: [String: SyncEffectiveValue]] = [:]
     var outbox: [SyncRequest] = []
     var events: [SyncEvent] = []
     var s: SyncMachineState
@@ -462,6 +467,7 @@ public final class CloudSyncMachine {
     }
 
     public func takeEvents() -> [SyncEvent] {
+        noteRecordChanges(.remote)
         defer { events = [] }
         return events
     }
@@ -624,6 +630,7 @@ public final class CloudSyncMachine {
                 }
             }
         }
+        noteRecordChanges(.local)
         kick()
         return .ok
     }
@@ -684,13 +691,123 @@ public final class CloudSyncMachine {
         mutation.ticket = ticket
         mutation.file = file
         _ = enqueue(name, mutation)
+        noteRecordChanges(.local)
         kick()
         return .ticket(ticket)
     }
 
     func emitOutcome(_ op: SyncOp, _ outcome: SyncRecordOutcome) {
-        guard let ticket = op.ticket, let listener = self.outcome else { return }
-        listener(ticket, outcome)
+        guard let ticket = op.ticket else { return }
+        self.outcome?(ticket, outcome)
+        for tap in outcomeTaps.keys.sorted() { outcomeTaps[tap]?(ticket, outcome) }
+    }
+
+    /// Another listener for `putAt` / `removeAt` outcomes, beside `onOutcome`'s: returns its remover.
+    /// A tap is told of every outcome, so it must tell its own ticket from another's. It must not call
+    /// the machine.
+    public func tapOutcomes(_ fn: @escaping (Int, SyncRecordOutcome) -> Void) -> () -> Void {
+        nextTap += 1
+        let id = nextTap
+        outcomeTaps[id] = fn
+        return { [weak self] in self?.outcomeTaps[id] = nil }
+    }
+
+    /// Report record changes of `collection` as `records` events from now on (`false`: stop).
+    public func watchRecords(_ collection: String, _ on: Bool) {
+        if !on {
+            watched[collection] = nil
+        } else if watched[collection] == nil {
+            watched[collection] = recordStates(collection)
+        }
+    }
+
+    /// The collections watched now (a host carries them over to a machine that replaces this one).
+    public var watchedCollections: [String] { Array(watched.keys) }
+
+    /// The ids of a collection's effective records (pending edits applied), in byte order.
+    public func recordIds(_ collection: String) -> [String] {
+        recordStates(collection).keys.sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) }
+    }
+
+    func recordStates(_ collection: String) -> [String: SyncEffectiveValue] {
+        var out: [String: SyncEffectiveValue] = [:]
+        guard s.subject != nil else { return out }
+        let prefix = "\(collection)/"
+        let p = s.partitions[activeName]!
+        var ids = Set<String>()
+        for rk in p.records.keys where rk.hasPrefix(prefix) { ids.insert(String(rk.dropFirst(prefix.count))) }
+        for rk in p.held.keys where rk.hasPrefix(prefix) { ids.insert(String(rk.dropFirst(prefix.count))) }
+        for op in p.pending {
+            if case .record(let c, let i) = op.target, c == collection { ids.insert(i) }
+        }
+        for id in ids { if let v = record(collection, id) { out[id] = v } }
+        return out
+    }
+
+    /// Push a `records` event for each watched collection whose effective rows changed.
+    func noteRecordChanges(_ origin: SyncChangeOrigin) {
+        for collection in watched.keys.sorted() {
+            let last = watched[collection] ?? [:]
+            let now = recordStates(collection)
+            let changed = Set(last.keys).union(now.keys).filter { last[$0] != now[$0] }
+            watched[collection] = now
+            if !changed.isEmpty {
+                events.append(
+                    .records(
+                        collection: collection, ids: changed.sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) },
+                        origin: origin))
+            }
+        }
+    }
+
+    /// Update a `merge` record: `set` writes the named fields and `remove` drops the named ones; any
+    /// other field is untouched (a field this version does not know survives). One clock stamp.
+    public func update(
+        _ collection: String, _ recordId: String, set: [String: JSONValue] = [:], remove: [String] = []
+    ) -> CallResult {
+        guard let decl = collectionDecl(collection), decl.policy == "merge" else {
+            return .failed("collection-unknown")
+        }
+        guard s.subject != nil else { return .failed("signed-out") }
+        let names = Array(set.keys) + remove
+        if Set(names).count != names.count || names.isEmpty { return .failed("bad_request") }
+        let name = activeName
+        let target = SyncTarget.record(collection, recordId)
+        let edited = tickHLC()
+        let pre = !s.contacted
+        for field in set.keys.sorted(by: syncUTF16Less) {
+            _ = enqueue(
+                name,
+                SyncOp(
+                    mutationId: 0, target: target, op: .setField, value: set[field], field: field, editedHlc: edited,
+                    preContact: pre))
+        }
+        for field in remove.sorted(by: syncUTF16Less) {
+            _ = enqueue(
+                name,
+                SyncOp(
+                    mutationId: 0, target: target, op: .removeField, field: field, editedHlc: edited, preContact: pre))
+        }
+        noteRecordChanges(.local)
+        kick()
+        return .ok
+    }
+
+    /// Delete a record of any policy but `revision` (use `removeAt` there).
+    public func delete(_ collection: String, _ recordId: String) -> CallResult {
+        guard let decl = collectionDecl(collection), decl.policy != "revision" else {
+            return .failed("collection-unknown")
+        }
+        guard s.subject != nil else { return .failed("signed-out") }
+        let union = decl.policy == "union"
+        _ = enqueue(
+            activeName,
+            SyncOp(
+                mutationId: 0, target: .record(collection, recordId), op: .delete,
+                editedHlc: union ? nil : tickHLC(), preContact: !union && !s.contacted))
+        noteRecordChanges(.local)
+        kick()
+        return .ok
     }
 
     /// Add to a `union` record (an OR-set).
@@ -930,7 +1047,24 @@ public final class CloudSyncMachine {
         return .setting(key, .user)
     }
 
-    func collectionDecl(_ name: String) -> SyncCollectionDecl? { catalog.collections.first { $0.name == name } }
+    /// The declaration governing a concrete name: an exact name, else the longest `prefix.*` pattern with
+    /// something after the prefix (V5 §13.7, "Matching").
+    public func collectionDecl(_ name: String) -> SyncCollectionDecl? {
+        var pattern: SyncCollectionDecl?
+        var patternPrefix = 0
+        for c in catalog.collections {
+            if c.name.utf8.elementsEqual(name.utf8) { return c }
+            guard c.name.hasSuffix(".*") else { continue }
+            let prefix = String(c.name.dropLast())
+            if name.utf8.count > prefix.utf8.count, name.utf8.starts(with: prefix.utf8),
+                prefix.utf8.count > patternPrefix
+            {
+                pattern = c
+                patternPrefix = prefix.utf8.count
+            }
+        }
+        return pattern
+    }
     func alias(_ key: String) -> String { s.aliases[key] ?? key }
     func isLocked(_ key: String) -> Bool { document.locked.contains(key) }
 
@@ -1195,6 +1329,7 @@ public final class CloudSyncMachine {
             SyncOp(
                 mutationId: 0, target: .record(collection, recordId), op: op, element: element,
                 observedSeq: op == .remove ? s.partitions[name]!.cursor : nil))
+        noteRecordChanges(.local)
         kick()
         return .ok
     }
