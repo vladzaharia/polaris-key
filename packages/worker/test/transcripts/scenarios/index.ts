@@ -68,6 +68,7 @@ import {
   redirectWebKeyReturnLimit,
   redirectWebKeyReturnRefusals,
 } from "./redirect.js";
+import { REDIRECT_NATIVE_SCENARIOS } from "./redirectNative.js";
 
 import { CHOICE_SCENARIOS } from "./choice.js";
 import { CLOUD_SYNC_SCENARIOS } from "./cloudSync.js";
@@ -133,6 +134,7 @@ export const SCENARIOS: Scenario[] = [
   redirectWebKeyReturnLimit,
   redirectWebKeyReturnRefusals,
   identityRequestHints,
+  ...REDIRECT_NATIVE_SCENARIOS,
   ...CHOICE_SCENARIOS,
   ...LOCKER_SCENARIOS,
   ...EXCHANGE_SCENARIOS,

@@ -186,6 +186,11 @@
       "wp": "I-15b",
       "note": "LK-SKIP.9: the opt-in, the via rule and the activated outcome, with the replayer."
     },
+    "identity.redirect.native": {
+      "status": "planned",
+      "wp": "I-15b",
+      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
+    },
     "identity.exchange": {
       "status": "implemented",
       "note": "identity.exchange(kind:subjectToken:nonce:) and exchangeNonce(kind:) (PolarisKeyIdentity): the nonce route registers the device keys, the token route takes the pkey-proof/1 exchange proof over nonce.key and the token hash; the outcome is signedIn, confirm (PendingConsent, completed through identity.choice.complete(grant:choice:consent:)), choose, needsSignIn or unavailable, and refusals are a typed ExchangeError. A 404 on either route, a discovery with no exchange member or a memory-only key port is unavailable with no request. Replayed against the exchange-* transcripts (TranscriptTests). Sign in with Apple itself is I-44.4."

@@ -50,7 +50,7 @@ type Who = Awaited<ReturnType<typeof world>>;
 type Json = Record<string, JsonValue>;
 
 /** A licence for the account (a device limit), with its key; no email, so no sweep claims it. */
-async function ownedLicense(
+export async function ownedLicense(
   w: World,
   who: Who,
   id: string,
