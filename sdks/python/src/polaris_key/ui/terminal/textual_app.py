@@ -23,19 +23,19 @@ from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.theme import Theme as TextualTheme
 from textual.widgets import Button, Footer, Input, ListItem, ListView, Select, Static, Switch
 
-from .. import _tokens, ansi
 from ...constants_generated import ErrorCode
+from ...core.models import license_user
+from .. import _tokens, ansi
 from ..core.copy import Copy
 from ..core.identity import ResolvedIdentity, presentation_source, resolve_identity
-from ...core.models import license_user
-from ..core.models import DevicesView, DeviceRow, GateView, UpdateView, gate_view, update_view
+from ..core.models import DeviceRow, DevicesView, GateView, UpdateView, gate_view, update_view
 from ..core.theme import Theme
 from ..qt.rows import Row, _setting_row
 from . import fmt
 from .fmt import platform_name
 from .nearby import NearbyApprovalView
-from .settings_rows import settings_rows
 from .screens import portal_url
+from .settings_rows import settings_rows
 from .text import clean
 
 __all__ = ["PolarisKeyApp", "run_app", "SECTIONS"]
@@ -703,7 +703,9 @@ class PolarisKeyApp(App):
         # A lone action is the primary (DL4).
         buttons = [Button(_out(t("common.manage")), classes="pk-primary", id="pk-manage")] if self.manage_url else []
         if g.signed_in and self.nearby_offered():
-            buttons.append(Button(t("signin.nearby.menu"), classes="pk-secondary" if buttons else "pk-primary", id="pk-approve"))
+            buttons.append(
+                Button(t("signin.nearby.menu"), classes="pk-secondary" if buttons else "pk-primary", id="pk-approve")
+            )
         buttons.append(sign_out(not buttons))
         return out + [self._actions(*buttons), self._note()]
 
@@ -734,8 +736,14 @@ class PolarisKeyApp(App):
         out: List[Any] = []
         done = Button(t("common.done"), classes="pk-primary", id="pk-approve-done")
         if v.state == "entry":
-            out += [_text(t("signin.nearby.menu"), classes="pk-title"), _text(t("signin.cli.approveWaiting"), classes="pk-muted")]
-            return out + [self._actions(Button(t("common.cancel"), classes="pk-secondary", id="pk-approve-cancel")), self._note()]
+            out += [
+                _text(t("signin.nearby.menu"), classes="pk-title"),
+                _text(t("signin.cli.approveWaiting"), classes="pk-muted"),
+            ]
+            return out + [
+                self._actions(Button(t("common.cancel"), classes="pk-secondary", id="pk-approve-cancel")),
+                self._note(),
+            ]
         if v.state in ("ask", "working"):
             out.append(_text(t("signin.nearby.ask", device=device), classes="pk-title"))
             if v.state == "working":
@@ -745,30 +753,62 @@ class PolarisKeyApp(App):
             buttons.append(Button(t("signin.approve.deny"), classes="pk-secondary", id="pk-approve-deny"))
             return out + [self._actions(*buttons), self._note()]
         if v.state == "choose":
-            out += [_text(t("signin.nearby.chooseTitle", device=device), classes="pk-title"), _text(t("signin.nearby.chooseLede", product=self.identity.name), classes="pk-muted")]
-            buttons = [Button(clean(n), classes="pk-secondary", id=f"pk-choice-{i}") for i, n in enumerate(v.choices, 1)]
+            out += [
+                _text(t("signin.nearby.chooseTitle", device=device), classes="pk-title"),
+                _text(t("signin.nearby.chooseLede", product=self.identity.name), classes="pk-muted"),
+            ]
+            buttons = [
+                Button(clean(n), classes="pk-secondary", id=f"pk-choice-{i}") for i, n in enumerate(v.choices, 1)
+            ]
             if v.create:
                 buttons.append(Button(t("signin.choice.create"), classes="pk-secondary", id="pk-choice-create"))
             buttons.append(Button(t("signin.approve.deny"), classes="pk-secondary", id="pk-approve-deny"))
             return out + [self._actions(*buttons), self._note()]
         if v.state == "approved":
-            out.append(Static(Text("✓ ", "bold") + Text(clean(t("signin.nearby.approved", device=title_device))), markup=False, classes="pk-row"))
+            out.append(
+                Static(
+                    Text("✓ ", "bold") + Text(clean(t("signin.nearby.approved", device=title_device))),
+                    markup=False,
+                    classes="pk-row",
+                )
+            )
         elif v.state == "denied":
             out.append(_text(t("signin.approve.deniedDone"), classes="pk-muted"))
         elif v.state == "mismatch":
-            out += [self._refusal(t("signin.nearby.mismatch", device=device)), _text(t("signin.nearby.expiredBody", device=device), classes="pk-muted")]
+            out += [
+                self._refusal(t("signin.nearby.mismatch", device=device)),
+                _text(t("signin.nearby.expiredBody", device=device), classes="pk-muted"),
+            ]
         elif v.state == "not-nearby":
-            out += [self._refusal(t("signin.nearby.notNearby", device=title_device)), _text(t("signin.nearby.notNearbyBody", device=device), classes="pk-muted")]
+            out += [
+                self._refusal(t("signin.nearby.notNearby", device=title_device)),
+                _text(t("signin.nearby.notNearbyBody", device=device), classes="pk-muted"),
+            ]
         elif v.state == "expired":
-            out += [self._refusal(t("core.codes.sign-in-expired.title")), _text(t("signin.nearby.expiredBody", device=device), classes="pk-muted")]
+            out += [
+                self._refusal(t("core.codes.sign-in-expired.title")),
+                _text(t("signin.nearby.expiredBody", device=device), classes="pk-muted"),
+            ]
         elif v.state == "device-limit":
-            out += [self._refusal(t("core.codes.device_limit.title")), _text(t("signin.nearby.deviceLimitBody", device=device), classes="pk-muted")]
+            out += [
+                self._refusal(t("core.codes.device_limit.title")),
+                _text(t("signin.nearby.deviceLimitBody", device=device), classes="pk-muted"),
+            ]
         elif v.state == "rate-limited":
-            out += [self._refusal(t("core.codes.rate_limited.title")), _text(t("signin.nearby.rateLimitedBody", device=device), classes="pk-muted")]
+            out += [
+                self._refusal(t("core.codes.rate_limited.title")),
+                _text(t("signin.nearby.rateLimitedBody", device=device), classes="pk-muted"),
+            ]
         elif v.state == "account-required":
-            out += [self._refusal(t("core.codes.account_required.title")), _text(t("core.codes.account_required.message"), classes="pk-muted")]
+            out += [
+                self._refusal(t("core.codes.account_required.title")),
+                _text(t("core.codes.account_required.message"), classes="pk-muted"),
+            ]
         elif v.state == "unsupported":
-            out += [self._refusal(t("signin.cli.approveUnsupportedTitle")), _text(t("signin.cli.approveUnsupported"), classes="pk-muted")]
+            out += [
+                self._refusal(t("signin.cli.approveUnsupportedTitle")),
+                _text(t("signin.cli.approveUnsupported"), classes="pk-muted"),
+            ]
         return out + [self._actions(done), self._note()]
 
     def _approval_set(self, view: NearbyApprovalView, *, stop: bool = False) -> None:
@@ -779,7 +819,9 @@ class PolarisKeyApp(App):
         if stop:
             self._approval_stop()
         self._reshow()
-        self.call_after_refresh(lambda: self.query(".pk-primary").first().focus() if self.query(".pk-primary") else None)
+        self.call_after_refresh(
+            lambda: self.query(".pk-primary").first().focus() if self.query(".pk-primary") else None
+        )
 
     def _approval_stop(self) -> None:
         handle = (self.approval or {}).get("handle")
@@ -797,7 +839,13 @@ class PolarisKeyApp(App):
                 self.approval["handle"] = self.client.identity.nearby.on_request(self._on_ask, prompt=True)
             except Exception as e:
                 code = getattr(e, "code", None)
-                state = "unsupported" if code == ErrorCode.NEARBY_UNSUPPORTED else "account-required" if code in (ErrorCode.ACCOUNT_REQUIRED, ErrorCode.NO_TOKEN) else "expired"
+                state = (
+                    "unsupported"
+                    if code == ErrorCode.NEARBY_UNSUPPORTED
+                    else "account-required"
+                    if code in (ErrorCode.ACCOUNT_REQUIRED, ErrorCode.NO_TOKEN)
+                    else "expired"
+                )
                 self.approval["view"] = NearbyApprovalView(state)
         self._reshow()
 
@@ -823,7 +871,9 @@ class PolarisKeyApp(App):
                 step = fn()
             except Exception as e:
                 code = getattr(e, "code", None)
-                step = type("Step", (), {"kind": "account-required" if code == ErrorCode.ACCOUNT_REQUIRED else "expired"})()
+                step = type(
+                    "Step", (), {"kind": "account-required" if code == ErrorCode.ACCOUNT_REQUIRED else "expired"}
+                )()
             self.call_from_thread(self._stepped, step)
 
         self.run_worker(work, thread=True, exclusive=True)
@@ -837,7 +887,11 @@ class PolarisKeyApp(App):
             choices = [c for c in (step.choices or {}).get("choices", []) if c.get("state") == "free"][:9]
             names = tuple((c.get("name") or c.get("tierName") or "") for c in choices)
             self.approval["free"] = choices
-            self._approval_set(NearbyApprovalView("choose", device=v.device, choices=names, create=(step.choices or {}).get("create") is not None))
+            self._approval_set(
+                NearbyApprovalView(
+                    "choose", device=v.device, choices=names, create=(step.choices or {}).get("create") is not None
+                )
+            )
             return
         self._approval_set(NearbyApprovalView(step.kind, device=v.device), stop=True)
 
@@ -873,7 +927,11 @@ class PolarisKeyApp(App):
         elif bid.startswith("pk-choice-"):
             step = a["step"]
             tail = bid[len("pk-choice-"):]
-            choice = {"kind": "create"} if tail == "create" else {"kind": "license", "licenseId": a["free"][int(tail) - 1]["id"]}
+            choice = (
+                {"kind": "create"}
+                if tail == "create"
+                else {"kind": "license", "licenseId": a["free"][int(tail) - 1]["id"]}
+            )
             self._approval_set(replace(v, state="working"))
             self._approval_work(lambda: step.choose(choice))
 

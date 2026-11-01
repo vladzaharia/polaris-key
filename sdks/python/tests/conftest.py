@@ -18,6 +18,7 @@ import sys
 from typing import List
 
 import pytest
+from test_identity_mint import clock  # noqa: F401  (the fixture every identity test shares)
 
 
 def _banner() -> List[str]:

@@ -14,6 +14,10 @@ from typing import Any, Dict, Iterator, List, Optional
 
 import httpx
 import pytest
+from helpers import BASE_URL, PRODUCT, make_client
+from nearby_fixtures import memory_keys, until
+from test_connect_lan import Network
+from test_keyring import FakeServer as KeyRing
 
 from polaris_key import PolarisError
 from polaris_key.core.device_proof import DeviceProof, verify_device_proof
@@ -21,11 +25,6 @@ from polaris_key.identity.nearby import _grant
 from polaris_key.identity.nearby_approver import NearbyAsk
 from polaris_key.identity.sign_in import SignedInIdentity
 from polaris_key.keyring import KeyringError
-
-from helpers import BASE_URL, PRODUCT, make_client
-from nearby_fixtures import memory_keys, until
-from test_connect_lan import Network
-from test_keyring import FakeServer as KeyRing
 
 BASE = f"{BASE_URL}/{PRODUCT}"
 M_ID = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
@@ -74,7 +73,9 @@ class StubWorker:
             },
         }
 
-    def _proof_ok(self, r: httpx.Request, body: Dict[str, Any], purpose: str, value: str, sign_key: Optional[str]) -> bool:
+    def _proof_ok(
+        self, r: httpx.Request, body: Dict[str, Any], purpose: str, value: str, sign_key: Optional[str]
+    ) -> bool:
         p = DeviceProof(
             purpose=purpose,
             product=PRODUCT,
@@ -105,7 +106,9 @@ class StubWorker:
                 self.m_registered = True
                 return httpx.Response(200, json={"keySeq": 1})
             if name == "start":
-                if not self._proof_ok(r, body, "nearby-start", f"{body['signKey']}.{body['agreeKey']}", body["signKey"]):
+                if not self._proof_ok(
+                    r, body, "nearby-start", f"{body['signKey']}.{body['agreeKey']}", body["signKey"]
+                ):
                     return httpx.Response(400, json={"error": {"code": "invalid_grant"}})
                 self.next_handle += 1
                 handle = "nr_" + str(self.next_handle).rjust(22, "x")
@@ -122,7 +125,10 @@ class StubWorker:
                 rec = self.requests.get(body.get("request", ""))
                 if rec is None:
                     return httpx.Response(200, json={"status": "timeout"})
-                if not self._proof_ok(r, body, "nearby-poll", body["request"], rec["signKey"]) or r.headers["x-pkey-device"] != rec["device"]:
+                if (
+                    not self._proof_ok(r, body, "nearby-poll", body["request"], rec["signKey"])
+                    or r.headers["x-pkey-device"] != rec["device"]
+                ):
                     return httpx.Response(400, json={"error": {"code": "invalid_grant"}})
                 if rec["state"] == "denied":
                     return httpx.Response(200, json={"status": "error", "reason": "access_denied"})
@@ -172,7 +178,11 @@ class StubWorker:
             return httpx.Response(204)
         if self.choose_first and "choice" not in body:
             return httpx.Response(
-                200, json={"status": "choose", "choices": {"state": "choose", "choices": [{"id": "lic_a"}, {"id": "lic_b"}]}}
+                200,
+                json={
+                    "status": "choose",
+                    "choices": {"state": "choose", "choices": [{"id": "lic_a"}, {"id": "lic_b"}]},
+                },
             )
         rec["state"] = "approved"
         return httpx.Response(200, json={"status": "approved", "deviceLabel": rec["label"]})
@@ -425,6 +435,10 @@ def approved_d(w: World) -> Any:
     assert step.kind == "approved"
     until(lambda: s.result == "approved")
     poll_until(s)
+    if step.wrap_sent:
+        # The wrap travels the LAN on its own thread: wait until D holds it (rule 12), so that the
+        # confirmation below has a record to hand over.
+        until(lambda: bool(s._request._core._flow._queue), timeout=10)
     return s, step
 
 

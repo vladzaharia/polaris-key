@@ -7,7 +7,7 @@ dots), no redirects, ``Content-Digest``, bodies read under the size asked for, t
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Callable, List, Optional
+from typing import Callable, List, Optional
 
 import httpx
 import pytest
@@ -50,7 +50,7 @@ def test_path_allow_list() -> None:
         f"{p}/saves/slot.1/begin?version=1",
         f"{p}/saves/slot.1?version=x",
         f"{p}/saves/slot.1?other=1",
-        f"/other/sync/files/saves/slot.1",
+        "/other/sync/files/saves/slot.1",
         f"{p}/saves/slot 1/begin",
     ):
         assert not is_files_path(PRODUCT, bad), bad

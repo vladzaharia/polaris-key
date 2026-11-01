@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import time
 from collections import deque
 from typing import Any, Awaitable, Callable, Deque, Dict, List, Optional, Tuple
 
@@ -196,6 +195,7 @@ class ContactRoom:
         if peer is None:
             raise RelayError("unknown_peer", "That contact is not online.")
         ident = await self._identity()
+        assert ident is not None  # not quiet: a failed load raised
         link = self._make_link(peer, self._new_session_id(peer), "initiator", ident)
         if link is None:
             raise RelayError("busy", "Too many relay sessions are open.")

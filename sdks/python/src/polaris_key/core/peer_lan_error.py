@@ -28,7 +28,6 @@ LAN_CODE: Dict[str, str] = {
     "bad_type": ErrorCode.INVALID_ARGUMENT,
     "not_picked": ErrorCode.INVALID_ARGUMENT,
     "bad_input": ErrorCode.INVALID_ARGUMENT,
-    "bad_input": ErrorCode.INVALID_ARGUMENT,
 }
 
 class LanError(PolarisError):

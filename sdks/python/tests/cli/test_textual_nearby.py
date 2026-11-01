@@ -23,14 +23,25 @@ from .fixtures import Presentation  # noqa: E402
 from .test_textual import _texts  # noqa: E402
 
 C = Copy("en")
-GATE = gate_view("ok", now=0, holder="Mara Fennick", email="mara@fennick.studio", signed_in=True, tier="Pro", term="Lifetime", version="2.4.1")
+GATE = gate_view(
+    "ok",
+    now=0,
+    holder="Mara Fennick",
+    email="mara@fennick.studio",
+    signed_in=True,
+    tier="Pro",
+    term="Lifetime",
+    version="2.4.1",
+)
 
 
 class _Client:
     product = "tidewater"
     presentation_source = Presentation()
 
-    def __init__(self, ask: Optional[FakeAsk] = None, *, available: bool = True, calls: Optional[List[str]] = None) -> None:
+    def __init__(
+        self, ask: Optional[FakeAsk] = None, *, available: bool = True, calls: Optional[List[str]] = None
+    ) -> None:
         self.calls = calls if calls is not None else []
 
         def on_request(handler: Any, **opts: Any) -> Any:
@@ -39,7 +50,9 @@ class _Client:
                 handler(ask)
             return SimpleNamespace(stop=lambda: self.calls.append("stop"))
 
-        self.identity = SimpleNamespace(nearby=SimpleNamespace(available=lambda *, role: available, on_request=on_request), sign_out=lambda: None)
+        self.identity = SimpleNamespace(
+            nearby=SimpleNamespace(available=lambda *, role: available, on_request=on_request), sign_out=lambda: None
+        )
 
 
 def _app(client: _Client) -> PolarisKeyApp:
@@ -112,7 +125,10 @@ def test_the_license_choice_is_buttons_and_a_hostile_name_is_text() -> None:
     async def run() -> None:
         chosen: List[Any] = []
         view = {
-            "choices": [{"id": "lic_1", "tierName": "Pro", "name": None, "state": "free"}, {"id": "lic_2", "tierName": "Team", "name": "Harbor team", "state": "free"}],
+            "choices": [
+                {"id": "lic_1", "tierName": "Pro", "name": None, "state": "free"},
+                {"id": "lic_2", "tierName": "Team", "name": "Harbor team", "state": "free"},
+            ],
             "create": {"tierName": "Pro", "access": "account"},
         }
         step = SimpleNamespace(
@@ -139,7 +155,13 @@ def test_the_license_choice_is_buttons_and_a_hostile_name_is_text() -> None:
     asyncio.run(run())
 
 
-@pytest.mark.parametrize("code,key", [("nearby-unsupported", "signin.cli.approveUnsupported"), ("account_required", "core.codes.account_required.title")])
+@pytest.mark.parametrize(
+    "code,key",
+    [
+        ("nearby-unsupported", "signin.cli.approveUnsupported"),
+        ("account_required", "core.codes.account_required.title"),
+    ],
+)
 def test_an_unsupported_runtime_and_a_signed_out_device_are_said_in_words(code: str, key: str) -> None:
     async def run() -> None:
         from polaris_key.core.errors import PolarisError

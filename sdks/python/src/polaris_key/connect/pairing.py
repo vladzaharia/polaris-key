@@ -27,8 +27,8 @@ import asyncio
 import os
 import re
 import sys
-import threading
 from dataclasses import dataclass
+from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from ..core.peer_advert import advert_epoch, base32_lower, parse_txt, product_tag
@@ -361,13 +361,7 @@ class LinkPairing:
             socket_text(transport.get_extra_info("sockname")),
             bool(self._o.get("allow_loopback")),
         )
-        if (
-            not v.dial
-            or v.key is None
-            or self._stopped
-            or not self._src.allowed()
-            or len(self._live) >= MAX_SESSIONS
-        ):
+        if not v.dial or v.key is None or self._stopped or not self._src.allowed() or len(self._live) >= MAX_SESSIONS:
             return False
         release = self._limit.take(transport, limiter_keys(v.key))
         if release is None:
@@ -424,7 +418,10 @@ class LinkPairing:
         try:
             try:
                 sock, _host = await dial_race(
-                    c["hosts"], c["port"], bool(self._o.get("allow_loopback")), timeout=float(self._o.get("dial_seconds", 10))
+                    c["hosts"],
+                    c["port"],
+                    bool(self._o.get("allow_loopback")),
+                    timeout=float(self._o.get("dial_seconds", 10)),
                 )
                 reader, writer = await asyncio.open_connection(sock=sock)
             except OSError:
@@ -557,7 +554,7 @@ class LinkPairing:
             live.slot()
             live.slot = None
         for f in list(live.closers):
-            _guarded(lambda f=f: f(c))
+            _guarded(partial(f, c))
         if live.shown and not live.linked and not self._stopped and self._on_failed is not None:
             reason = live.failure or ("timeout" if c.code == "peer_timeout" else "closed")
             fn = self._on_failed

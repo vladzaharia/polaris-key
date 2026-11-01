@@ -16,6 +16,9 @@ from typing import Any, Dict, Optional
 
 import httpx
 import pytest
+from helpers import PRODUCT, TOKEN, make_client
+from test_identity_account import BASE, ENDPOINTS, NEW_TOKEN, SUBJECT, Worker, discovery, ok
+from test_identity_session import READY, START, make, queue
 
 from polaris_key import AsyncClient, PolarisError
 from polaris_key.devices.store import InMemoryStore
@@ -24,11 +27,6 @@ from polaris_key.identity import (
     AutoSignInSignedIn,
     AutoSignInUnavailable,
 )
-
-from helpers import BASE_URL, PRODUCT, TOKEN, make_client
-from test_identity_account import BASE, ENDPOINTS, NEW_TOKEN, SUBJECT, Worker, discovery, ok
-from test_identity_mint import clock  # noqa: F401
-from test_identity_session import READY, START, make, queue
 
 LICENSE_ID = "lic_auto_1"
 
@@ -132,7 +130,9 @@ def test_a_reacquire_leaves_the_provenance_alone(clock, tmp_path: Any) -> None:
 
 
 def test_an_attach_makes_the_token_a_sign_in() -> None:
-    w = Worker(discovery(), attach=ok(token=NEW_TOKEN, subject=SUBJECT, attached="claimed"), subject=ok(subject=SUBJECT))
+    w = Worker(
+        discovery(), attach=ok(token=NEW_TOKEN, subject=SUBJECT, attached="claimed"), subject=ok(subject=SUBJECT)
+    )
     c = _licensed(make(w, token=TOKEN))
     assert c.identity.auto_sign_in().reason == "no_credential"
     c.identity.attach(confirm=True)
@@ -146,7 +146,9 @@ def test_the_provenance_survives_a_restart_and_goes_with_the_token(clock, tmp_pa
     c = make_client(w, store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path))
     c.identity.sign_in.start().wait()
     c.close()
-    again = _licensed(make_client(w, store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path)))
+    again = _licensed(
+        make_client(w, store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path))
+    )
     assert again.identity.auto_sign_in().kind == "signed_in"
     again._tokens.clear()
     assert again._tokens.provenance is None
@@ -155,7 +157,14 @@ def test_the_provenance_survives_a_restart_and_goes_with_the_token(clock, tmp_pa
 
 def test_the_unconfirmed_provenance_is_written_before_the_token(tmp_path: Any) -> None:
     store = InMemoryStore(PRODUCT)
-    c = _licensed(make_client(Worker(discovery()), store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path)))
+    c = _licensed(
+        make_client(
+            Worker(discovery()),
+            store=store,
+            expected_services=["license", "config", "identity"],
+            state_dir=str(tmp_path),
+        )
+    )
     seen = []
     set_token = store.set_token
     store.set_token = lambda t: (seen.append(c._tokens.provenance), set_token(t))[1]  # type: ignore[method-assign]
@@ -179,7 +188,9 @@ def test_an_unconfirmed_token_is_dropped_at_load_and_rung_1_needs_sign_in(tmp_pa
     c._tokens.set_explicit_sign_out(True)
     c.close()
     # A restart finds the mark: the token goes before anything reads it, and the sign-out reason stays.
-    again = _licensed(make_client(w, store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path)))
+    again = _licensed(
+        make_client(w, store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path))
+    )
     assert again._tokens.current is None and store.get_token() is None
     assert again._tokens.provenance is None and again._tokens.explicit_sign_out is True
     assert again.identity.auto_sign_in().reason == "signed_out"
@@ -201,7 +212,9 @@ def test_sign_out_sets_the_flag_and_rung_1_stops_counting(clock, tmp_path: Any) 
 
 
 def test_a_released_sign_out_is_signed_out_and_clears_the_token(clock, tmp_path: Any) -> None:
-    w = Worker(discovery(), start=ok(**START), poll=queue(READY), subject=ok(subject=SUBJECT), signout=ok(released=True))
+    w = Worker(
+        discovery(), start=ok(**START), poll=queue(READY), subject=ok(subject=SUBJECT), signout=ok(released=True)
+    )
     c = _licensed(make(w, state_dir=str(tmp_path)))
     c.identity.sign_in.start().wait()
     c.identity.sign_out()
@@ -211,7 +224,9 @@ def test_a_released_sign_out_is_signed_out_and_clears_the_token(clock, tmp_path:
 
 def test_the_flag_survives_a_restart_and_a_sign_in_clears_it(clock, tmp_path: Any) -> None:
     store = InMemoryStore(PRODUCT)
-    opts: Dict[str, Any] = dict(store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path))
+    opts: Dict[str, Any] = dict(
+        store=store, expected_services=["license", "config", "identity"], state_dir=str(tmp_path)
+    )
     w = _signed_in_worker()
     c = make_client(w, **opts)
     c.identity.sign_in.start().wait()
@@ -293,7 +308,12 @@ def test_available_needs_discovery_the_roles_endpoints_and_the_runtime() -> None
 
 
 def test_available_is_false_when_the_runtime_cannot_take_part() -> None:
-    assert _nearby(nearby_discovery(), supported=lambda role: role == "approver").identity.nearby.available(role="requester") is False
+    assert (
+        _nearby(nearby_discovery(), supported=lambda role: role == "approver").identity.nearby.available(
+            role="requester"
+        )
+        is False
+    )
     # With no runtime wired the answer is false, never an error.
     assert _nearby(nearby_discovery(), supported=None).identity.nearby.available(role="approver") is False
 

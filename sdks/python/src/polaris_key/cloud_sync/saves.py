@@ -31,7 +31,7 @@ import re
 import threading
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
-from ..constants_generated import Feature, SYNC_FILE_MAX_BYTES, SYNC_SAVE_SLOTS, TransferEvent
+from ..constants_generated import SYNC_FILE_MAX_BYTES, SYNC_SAVE_SLOTS, Feature, TransferEvent
 from ..core import sync_files as sf
 from ..core.sync_crypto import is_blinded_name
 from .chunk_cache import (
@@ -44,7 +44,6 @@ from .chunk_cache import (
 from .files import FileRoutes
 from .journal import FileJournal
 from .transfer import (
-    BytesSource,
     ChunkedUploadRequest,
     DownloadRequest,
     FileTarget,
