@@ -263,13 +263,17 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   // is its default); the monthly ceiling has a Change… dialog (members with Cloud Connect edit).
   "cloudConnect.relay.enabled": at("connect-setup", "Relay"),
   "cloudConnect.ceiling.relayBytes": at("connect-setup", "Relay"),
+  // Linking devices across accounts has no control in Setup yet (hidden below).
+  "cloudConnect.interAccount": at("connect-setup", "Relay"),
 };
 
 /**
  * Settings the console does not offer yet: not in All settings, search or the palette. The key and
  * its server handling stay. `portal.keyReissue` waits for G7: the Locker never reads
  * `canGetNewKey` or calls the reissue endpoint, so the switch would promise what it cannot do.
+ * `cloudConnect.interAccount` has no control in Cloud Connect → Setup yet.
  */
 export const HIDDEN_SETTINGS: ReadonlySet<string> = new Set([
   "portal.keyReissue",
+  "cloudConnect.interAccount",
 ]);
