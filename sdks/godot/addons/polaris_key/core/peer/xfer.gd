@@ -20,6 +20,12 @@ extends RefCounted
 ##   {keep = ref}  {discard = ref}  {evict = ref}  {delete = ref}
 ##   {finalize = ref}                                   the content is complete and verified
 ## A kept partial is read as {ref, id, sha256, size, chunk, bytes, writtenAt, held?, reread?}.
+##
+## Delivered content. The `delivered` option (`DeliveredMemory.for_peer`) lets a receiver answer a
+## re-offer of content it already delivered to the same peer (the sender never saw the last `DONE`):
+## no consent and no room are needed, `ACCEPT` goes out at the last chunk boundary, the tail is read
+## and dropped, `DONE` answers, and the result is `delivered` with `again = true`. No partial is
+## made and no content is stored.
 
 const MAX_CONTROL_BYTES := 4096
 const MAX_SIZE := 1099511627776  # 2^40
@@ -35,6 +41,10 @@ const MAX_PARTIALS_PER_PEER := 8
 const ENDED_IDS := 64
 const CHUNK_HEAD := 24
 const CAP := "xfer/1"
+## How long a receiver remembers a delivered (id, sha256, size) of one peer, and how many it keeps.
+const DELIVERED_SECONDS := 86400
+const MAX_DELIVERED_PER_PEER := 64
+const MAX_DELIVERED_PEERS := 256
 
 const OFFER := 0x0020
 const ACCEPT := 0x0021
@@ -269,6 +279,108 @@ static func new_hasher() -> HashingContext:
 	return h
 
 
+## What a receiver remembers of the transfers it delivered, so a re-offer is answered as done and not
+## received again. Per peer key the last `MAX_DELIVERED_PER_PEER` entries, each for
+## `DELIVERED_SECONDS`; at most `MAX_DELIVERED_PEERS` peer keys, the least recently used going first.
+## Ids, hashes and sizes only, never content, a name or a path; memory only. One Mutex guards it (a
+## machine may run on a worker thread while the host forgets a peer).
+class DeliveredMemory extends RefCounted:
+	var _peers := {}
+	var _mutex := Mutex.new()
+
+
+	func _to_string() -> String:
+		return "PKeyPeerXfer.DeliveredMemory()"
+
+
+	## The view of one peer key (32 raw bytes) for a machine's `delivered` option.
+	func for_peer(peer_key: PackedByteArray) -> View:
+		return View.new(self, peer_key.hex_encode())
+
+
+	## Forget one peer key (a link removed, a device left the roster).
+	func forget(peer_key: PackedByteArray) -> void:
+		_mutex.lock()
+		_peers.erase(peer_key.hex_encode())
+		_mutex.unlock()
+
+
+	## Forget everything (sign-out).
+	func clear() -> void:
+		_mutex.lock()
+		_peers.clear()
+		_mutex.unlock()
+
+
+	## The number of peer keys held.
+	func peer_count() -> int:
+		_mutex.lock()
+		var n := _peers.size()
+		_mutex.unlock()
+		return n
+
+
+	func _has(key: String, id: String, sha: String, size: int, at: float) -> bool:
+		_mutex.lock()
+		var found := false
+		for r in _fresh(key, at):
+			if r["id"] == id and r["sha"] == sha and r["size"] == size:
+				found = true
+				break
+		_mutex.unlock()
+		return found
+
+
+	func _add(key: String, id: String, sha: String, size: int, at: float) -> void:
+		_mutex.lock()
+		var rows := _fresh(key, at)
+		rows.append({"id": id, "sha": sha, "size": size, "at": at})
+		while rows.size() > PKeyPeerXfer.MAX_DELIVERED_PER_PEER:
+			rows.pop_front()
+		# Most recently used peer last.
+		_peers.erase(key)
+		_peers[key] = rows
+		while _peers.size() > PKeyPeerXfer.MAX_DELIVERED_PEERS:
+			_peers.erase(_peers.keys()[0])
+		_mutex.unlock()
+
+
+	## The live rows of a peer (the mutex is held).
+	func _fresh(key: String, at: float) -> Array:
+		var rows: Array = []
+		for r in _peers.get(key, []):
+			if at - float(r["at"]) <= PKeyPeerXfer.DELIVERED_SECONDS and at >= float(r["at"]):
+				rows.append(r)
+		if rows.is_empty():
+			_peers.erase(key)
+		else:
+			_peers[key] = rows
+		return rows
+
+
+	## A machine's window on one peer key: `has(id, sha256, size, at)` and `add(id, sha256, size, at)`.
+	class View extends RefCounted:
+		var _mem: DeliveredMemory
+		var _key: String
+
+
+		func _init(mem: DeliveredMemory, key: String) -> void:
+			_mem = mem
+			_key = key
+
+
+		func _to_string() -> String:
+			return "PKeyPeerXfer.DeliveredMemory.View()"
+
+
+		func has(id: String, sha256: String, size: int, at: float) -> bool:
+			return _mem._has(_key, id, sha256, size, at)
+
+
+		func add(id: String, sha256: String, size: int, at: float) -> void:
+			_mem._add(_key, id, sha256, size, at)
+
+
 ## The machine. One per (peer key, session); `new_session` reuses it across sessions so the kept
 ## partials survive.
 class Machine extends RefCounted:
@@ -285,6 +397,7 @@ class Machine extends RefCounted:
 	var _cats: Array
 	var _rehash: Callable
 	var _new_ref: Callable
+	var _delivered: Object = null
 	var _withhold := false
 	var _tr := {}
 	var _ended: Array = []
@@ -300,7 +413,8 @@ class Machine extends RefCounted:
 	## `categories` (mode c), `partials` (the kept partials of this peer key), `rehash`
 	## (Callable(ref, offset) -> a started HashingContext fed with the first `offset` bytes the store
 	## re-read, or null when it could not), `new_ref` (Callable(id, sha256) -> a partial's name;
-	## default `partial_path`) and `withhold_acks`.
+	## default `partial_path`), `withhold_acks` and `delivered` (this peer's view of a
+	## `DeliveredMemory`; none: every re-offer is received again).
 	func _init(o: Dictionary) -> void:
 		_peer_key = o.get("peer_key", PackedByteArray())
 		assert(_peer_key.size() == 32, "peer_key")
@@ -314,6 +428,7 @@ class Machine extends RefCounted:
 		_rehash = o.get("rehash", Callable())
 		_new_ref = o.get("new_ref", Callable())
 		_withhold = o.get("withhold_acks", false) == true
+		_delivered = o.get("delivered", null) as Object
 		for p in o.get("partials", []):
 			_parts.append((p as Dictionary).duplicate())
 		_out = blank()
@@ -508,6 +623,9 @@ class Machine extends RefCounted:
 	func _result(t: _Tr, r: Dictionary) -> void:
 		if t.st == "asking":
 			return
+		# A re-offer answered from the memory reports only its own `delivered`, flagged.
+		if t.again and r["outcome"] != "delivered":
+			return
 		_out["results"].append(r)
 
 	func _remember(id: String, dir: String, cancelled_here: bool) -> void:
@@ -638,6 +756,15 @@ class Machine extends RefCounted:
 		var reason := _refusal(f)
 		if reason != "":
 			return _refuse(id, reason)
+		# Content this device already delivered to this peer needs no room and no new consent: it
+		# is answered as done, reading at most the last chunk again.
+		if _delivered != null and _delivered.has(id, f["sha256"], f["size"], _clock):
+			var again := _new_tr(id, "in", f["size"], f["chunk"], f["sha256"])
+			again.again = true
+			return _accept_again(again)
+		reason = _room_refusal(f)
+		if reason != "":
+			return _refuse(id, reason)
 		# Step 7: consent.
 		var ask := {"id": id, "size": f["size"]}
 		var shown: Variant = PKeyDeviceLabel.clean_name(f["name"]) if f.has("name") else null
@@ -657,7 +784,7 @@ class Machine extends RefCounted:
 		else:
 			_accept(t)
 
-	## Steps 4 to 6, in order: the reason an offer is refused before the person is asked, or "".
+	## Steps 4 and 5, in order: the reason an offer is refused before anything else, or "".
 	func _refusal(f: Dictionary) -> String:
 		var kept: Variant = null
 		for p in _parts:
@@ -675,12 +802,32 @@ class Machine extends RefCounted:
 		# Step 5: the category, before the person is asked.
 		if _mode == "c" and (not f.has("cat") or not _cats.has(f["cat"])):
 			return "category"
-		# Step 6: size and quota; a resume counts only the bytes still to come.
+		return ""
+
+	## Step 6: size and quota; a resume counts only the bytes still to come.
+	func _room_refusal(f: Dictionary) -> String:
+		var kept: Variant = null
+		for p in _parts:
+			if p["id"] == f["id"] and p["sha256"] == f["sha256"]:
+				kept = p
+				break
 		if _host_limit >= 0 and f["size"] > _host_limit:
 			return "size"
 		var free := int(_free.call()) if _free.is_valid() else -1
 		var need: int = f["size"] - (int(kept["bytes"]) if kept != null and _resumable(f, kept) else 0)
 		return "quota" if free >= 0 and need > free else ""
+
+	## `ACCEPT` at the last chunk boundary of delivered content; the tail is read and dropped.
+	func _accept_again(t: _Tr) -> void:
+		@warning_ignore("integer_division")
+		var offset: int = (t.size / t.chunk) * t.chunk
+		_tr[t.id] = t
+		t.recv = offset
+		t.acked_end = offset
+		t.st = "active"
+		t.accepted = true
+		t.since = _clock
+		_out["send"].append({"t": "ACCEPT", "id": t.id, "offset": offset})
 
 	## A refusal `CANCEL` ends that id at once.
 	func _refuse(id: String, reason: String) -> void:
@@ -823,7 +970,8 @@ class Machine extends RefCounted:
 			return _fault()
 		var data := body.slice(PKeyPeerXfer.CHUNK_HEAD)
 		var end: int = v["offset"] + v["length"]
-		t.hash.update(data)
+		if t.hash != null:
+			t.hash.update(data)
 		var offset: int = t.recv
 		t.recv = end
 		t.since_ack += 1
@@ -853,11 +1001,20 @@ class Machine extends RefCounted:
 			return _fault()
 		if t.recv < t.size:
 			return _cancel_in(t, "size")
+		if t.again:
+			if sha != t.sha:
+				return _cancel_in(t, "hash")
+			_out["send"].append({"t": "DONE", "id": t.id})
+			_result(t, {"id": t.id, "outcome": "delivered", "again": true})
+			_end(t, false)
+			return
 		if sha != t.sha or t.hash.finish().hex_encode() != t.sha:
 			return _cancel_in(t, "hash")
 		_out["send"].append({"t": "DONE", "id": t.id})
 		if t.partial != "":
 			_eff({"finalize": t.partial})
+		if _delivered != null:
+			_delivered.add(t.id, t.sha, t.size, _clock)
 		_result(t, {"id": t.id, "outcome": "delivered"})
 		_end(t, false)
 
@@ -897,3 +1054,5 @@ class Machine extends RefCounted:
 		var ack_end := 0
 		var seekable := true
 		var full := false
+		## A re-offer of delivered content answered from the memory.
+		var again := false

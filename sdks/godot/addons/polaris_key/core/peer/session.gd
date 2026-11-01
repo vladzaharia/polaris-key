@@ -638,6 +638,9 @@ func _on_trust(body: PackedByteArray) -> StringName:
 
 ## A record the host owns, and only once the code is settled.
 func _on_host_record(type: int, body: PackedByteArray) -> StringName:
+	# Direct Transfer records need `xfer/1` on both sides (section 15.11).
+	if PKeyPeerXfer.is_xfer_type(type) and not _caps.has(PKeyPeerXfer.CAP):
+		return PEER_NOT_ALLOWED
 	if _phase == &"sas_shown":
 		# The peer may confirm first: hold the record (bounded) until this side's person does.
 		var bytes := 0

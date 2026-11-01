@@ -729,7 +729,7 @@ func _make_link(pipe: PKeyPeerPipe, src: PKeyConnectClient.PeerSource, role: Str
 	if not lr.ok:
 		return {}
 	var link: PKeyPeerLink = lr.detail
-	var att := PKeyConnectChannel.attach(link, _docs, role, pipe.remote_address(), "lan", _budget)
+	var att := PKeyConnectChannel.attach(link, _docs, role, pipe.remote_address(), "lan", _budget, _o.get("xfer", Callable()))
 	_links[link.get_instance_id()] = link
 	_attached[link.get_instance_id()] = att
 	link.closed.connect(_on_link_closed.bind(link.get_instance_id()))

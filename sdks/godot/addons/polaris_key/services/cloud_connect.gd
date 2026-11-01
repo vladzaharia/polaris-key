@@ -17,6 +17,9 @@ extends RefCounted
 ##   open(device_id)     a session to one device: LAN first (bounded, 4 s), the relay after. ok with a
 ##                       PKeyConnectSession (`session.path` says which), or a typed failure. A coroutine
 ##   status()            {running, lan, lan_reason, lan_error, relay, relay_error, relay_reason}
+##   transfer            Direct Transfer (PKeyCloudTransfer): `send`, `on_offer`, `result`, `cancel`. On
+##                       unless `start` is given `transfer = false` (then `xfer/1` is not listed); `transfer`
+##                       may also be {quota = bytes} for the partial files
 ##   signals             `channel(session)`: a session another device opened to this one, on either path;
 ##                       `notice(n)`: a roster or trust manifest a peer pushed was stored, applied or refused
 ##
@@ -64,6 +67,8 @@ var _lan_attempt := LAN_ATTEMPT_SECONDS
 var _mono: Callable
 var _sessions: Dictionary = {}
 var _has_feature: Callable
+## Direct Transfer (CC-20b): `send`, `on_offer`, the `result` signal and `cancel`.
+var transfer: PKeyCloudTransfer
 
 
 ## `core` and `client` are the SDK's own; `tree` and `mono` (Callable() -> monotonic seconds) and
@@ -77,6 +82,16 @@ func _init(core: PKeyCore, client: PKeyConnectClient, options := {}) -> void:
 	_mono = options.get("mono", Callable())
 	_has_feature = options.get("has_feature", Callable())
 	_client.on_stored = Callable(self, "_recheck_sessions")
+	_client.on_left = Callable(self, "_forget_left")
+	var root := str(options.get("store_root", PKeyOptions.DEFAULT_STORE_ROOT))
+	transfer = PKeyCloudTransfer.new({
+		"store_dir": func() -> String:
+			var c := _core()
+			return PKeyTransferStore.default_directory(root, c.storage_namespace) if c != null and c.storage_namespace != "" else "",
+		"open_peer": Callable(self, "open"),
+		"offload": Callable(self, "_offload"),
+		"web": _on_web(),
+	})
 
 
 func _to_string() -> String:
@@ -167,6 +182,10 @@ func _start(core: PKeyCore, opts: Dictionary, gen: int) -> PKeyResult:
 	for k in ["label", "caps"]:
 		if opts.has(k):
 			shared[k] = opts[k]
+	var xfer_opt: Variant = opts.get("transfer", true)
+	var xfer_on: bool = not (xfer_opt is bool and not xfer_opt)
+	if xfer_opt is Dictionary and (xfer_opt as Dictionary).has("quota"):
+		transfer.set_quota(int((xfer_opt as Dictionary)["quota"]))
 	var lan_opt: Variant = opts.get("lan", true)
 	var unsupported := _lan_unsupported(_has_feature)
 	# The OS's own discovery (Bonjour on iOS and macOS, NsdManager on Android) where the build has it.
@@ -183,6 +202,7 @@ func _start(core: PKeyCore, opts: Dictionary, gen: int) -> PKeyResult:
 		if lane != null:
 			lo["mdns"] = lane
 		lo.merge(lan_opt if lan_opt is Dictionary else {}, true)
+		_with_transfer(lo, xfer_on)
 		var made := PKeyConnectLan.start(src, lo)
 		if made.ok:
 			_lan = made.detail
@@ -196,6 +216,7 @@ func _start(core: PKeyCore, opts: Dictionary, gen: int) -> PKeyResult:
 	if relay_on:
 		var ro := shared.duplicate()
 		ro.merge(relay_opt if relay_opt is Dictionary else {}, true)
+		_with_transfer(ro, xfer_on)
 		_relay = PKeyConnectRelay.new(src, Callable(_client, "relay_ticket"), ro)
 		_relay.session_opened.connect(_inbound)
 		_relay.notice.connect(_notice)
@@ -203,7 +224,35 @@ func _start(core: PKeyCore, opts: Dictionary, gen: int) -> PKeyResult:
 	else:
 		_relay_reason = relay_reason
 	_running = true
+	transfer.begin()
 	return PKeyResult.success()
+
+
+## Lists `xfer/1` among the capabilities and hands the transport the transfer hook, when Direct Transfer is
+## on.
+func _with_transfer(o: Dictionary, on: bool) -> void:
+	if not on:
+		o.erase("xfer")
+		return
+	var caps: Array = (o.get("caps", ["app/1"]) as Array).duplicate()
+	if not caps.has(PKeyPeerXfer.CAP):
+		caps.append(PKeyPeerXfer.CAP)
+	o["caps"] = caps
+	o["xfer"] = Callable(transfer, "attach")
+
+
+## Runs `work` off the main thread while the pump is up, else inline. A coroutine.
+func _offload(work: Callable) -> Variant:
+	var pump := _pump
+	if pump != null:
+		return await pump.offload(work)
+	return work.call()
+
+
+## Devices a newer roster dropped lose their kept partial transfers.
+func _forget_left(keys: Array) -> void:
+	for k: PackedByteArray in keys:
+		transfer.forget_peer(k)
 
 
 ## Close the sessions, the relay socket and the LAN service. Safe to call more than once, and before
@@ -219,6 +268,7 @@ func stop() -> void:
 	for s: PKeyConnectSession in _sessions.values():
 		s.close()
 	_sessions = {}
+	transfer.end()
 	if lan != null:
 		lan.stop()
 	if relay != null:
@@ -230,6 +280,9 @@ func stop() -> void:
 ## cannot be removed the failure is returned and the sign-out stops. ok when nothing is held.
 func _sign_out_step() -> PKeyResult:
 	stop()
+	var purged := transfer.purge()
+	if not purged.ok:
+		return purged
 	return _client.leave()
 
 
@@ -396,7 +449,8 @@ func _on_session_closed(_code: StringName, _by_peer: bool, id: int) -> void:
 
 ## An inbound session: closed (G9) when nothing listens to `channel`.
 func _inbound(session: PKeyConnectSession) -> void:
-	if not _running or get_signal_connection_list("channel").is_empty():
+	# Kept open when nobody listens to `channel` only for a transfer handler (Direct Transfer).
+	if not _running or (get_signal_connection_list("channel").is_empty() and not transfer.wants(session)):
 		session.close()
 		return
 	_track(session)
