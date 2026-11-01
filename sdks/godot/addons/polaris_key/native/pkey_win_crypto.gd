@@ -76,6 +76,28 @@ func x25519(private_key: PackedByteArray, peer_public: PackedByteArray) -> Varia
 	return out if out.size() == 32 else null
 
 
+## The native entry stops at 65,535 bytes, so Cloud Sync settings go native here and files (1 MiB
+## segments) stay on the GDScript lane through `PKeySyncAead`.
+func sync_max_bytes() -> int:
+	return MAX_AEAD_BYTES - 16
+
+
+func sync_native() -> bool:
+	return true
+
+
+func sync_seal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
+	if aad.size() >= MAX_AEAD_BYTES:
+		return PackedByteArray()
+	return aes_gcm_seal(key, nonce, aad, plain)
+
+
+func sync_open(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> Variant:
+	if aad.size() >= MAX_AEAD_BYTES:
+		return null
+	return aes_gcm_open(key, nonce, aad, sealed)
+
+
 func aes_gcm_seal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
 	if key.size() != 32 or nonce.size() != 12 or plain.size() + 16 > MAX_AEAD_BYTES:
 		return PackedByteArray()

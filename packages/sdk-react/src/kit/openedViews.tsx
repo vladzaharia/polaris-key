@@ -7,6 +7,7 @@ import type { PolarisAdapter } from "../core/index.js";
 import type { KitView } from "../desktop/bridge.js";
 import type { KitProps } from "./component.js";
 import { DrivenSettings, DrivenUpdate } from "./drive.js";
+import { NearbyDialog } from "./nearby.js";
 
 export default function OpenedViews(props: {
   view: KitView;
@@ -37,5 +38,7 @@ export default function OpenedViews(props: {
         {...(version !== undefined ? { version } : {})}
       />
     );
+  if (view === "nearby")
+    return <NearbyDialog adapter={adapter} onClose={onClose} {...theme} />;
   return null;
 }

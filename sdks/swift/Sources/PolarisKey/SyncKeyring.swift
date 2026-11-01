@@ -100,6 +100,50 @@ public enum SyncUnlockResult: Sendable, Equatable {
     }
 }
 
+/// A wrap of the root to one device, as `sealWrapTo` returns it and `KEYRING_WRAP` (0x0030) carries it: strict
+/// JSON `{ringId, epoch, kid, kem, enc, ct}`.
+public struct SyncWrapBody: Sendable, Equatable, CustomStringConvertible, CustomReflectable {
+    public let ringId: String
+    public let epoch: Int
+    public let kid: String
+    public let kem: Int
+    public let enc: String
+    public let ct: String
+
+    /// A wrap is key material: it prints as nothing.
+    public var description: String { "SyncWrapBody()" }
+    public var customMirror: Mirror { Mirror(self, children: [:]) }
+
+    /// The record's bytes, the same ones the `PUT` stores.
+    public func record() -> Data {
+        let object: [String: Any] = [
+            "ringId": ringId, "epoch": epoch, "kid": kid, "kem": kem, "enc": enc, "ct": ct,
+        ]
+        return (try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])) ?? Data()
+    }
+
+    private struct Wire: Decodable {
+        let ringId: String
+        let epoch: Int
+        let kid: String
+        let kem: Int
+        let enc: String
+        let ct: String
+    }
+
+    /// A record that is not exactly `{ringId, epoch, kid, kem, enc, ct}` (a missing or extra member, a wrong
+    /// type, a kid that is not 32 lowercase hex characters), or is empty or over 2048 bytes, is nil.
+    static func parse(_ record: Data) -> SyncWrapBody? {
+        guard !record.isEmpty, record.count <= 2048,
+            let members = (try? JSONSerialization.jsonObject(with: record)) as? [String: Any],
+            Set(members.keys) == ["ringId", "epoch", "kid", "kem", "enc", "ct"],
+            let w = try? JSONDecoder().decode(Wire.self, from: record),
+            isRingId(w.ringId), w.epoch >= 1, wholeMatches("[0-9a-f]{32}", w.kid) != nil
+        else { return nil }
+        return SyncWrapBody(ringId: w.ringId, epoch: w.epoch, kid: w.kid, kem: w.kem, enc: w.enc, ct: w.ct)
+    }
+}
+
 /// A new ring. It prints without the recovery code.
 public struct SyncCreatedRing: Sendable, Equatable, CustomStringConvertible, CustomDebugStringConvertible,
     CustomReflectable
@@ -734,9 +778,23 @@ public actor SyncKeyring: CustomReflectable {
             return .unlocked(ringId: ring.ringId, epoch: ring.epoch)
         }
         guard let wrap = state.wrap else { return .locked(reason: .noWrap) }
+        return try await openWrap(
+            ring: ring, epoch: wrap.epoch, kid: wrap.kid, kem: wrap.kem, enc: wrap.enc, ct: wrap.ct, gen: gen)
+    }
+
+    /// Opens `wrap` (this device's, for `ring`) and holds the root. A root already held for this ring and epoch
+    /// is never replaced: the answer is `unlocked` and the wrap is not opened again.
+    private func openWrap(
+        ring: SyncKeyringRing, epoch: Int, kid wrapKid: String, kem: JSONValue, enc encText: String, ct ctText: String,
+        gen: Int
+    ) async throws -> SyncUnlockResult {
+        guard let kid = unhex(ring.rootKid) else { return .locked(reason: .unusableWrap) }
+        if let h = memory.held, h.ringId == ring.ringId, h.epoch == ring.epoch, same(h.kid, kid) {
+            return .unlocked(ringId: ring.ringId, epoch: ring.epoch)
+        }
         guard
-            let keys = try? keyPort(), let enc = unb64(wrap.enc, 32), let ct = unb64(wrap.ct),
-            wrap.kid == ring.rootKid, wrap.epoch == ring.epoch, Self.kemOK(wrap.kem),
+            let keys = try? keyPort(), let enc = unb64(encText, 32), let ct = unb64(ctText),
+            wrapKid == ring.rootKid, epoch == ring.epoch, Self.kemOK(kem),
             let mine = try await keys.publicKeys(), let agree = unb64(mine.agreeKey, 32)
         else { return .locked(reason: .unusableWrap) }
         let root = try await SyncHPKE.unwrapRoot(
@@ -746,6 +804,28 @@ public actor SyncKeyring: CustomReflectable {
         guard let root, same(SyncCrypto.deriveKid(root: root), kid) else { return .locked(reason: .unusableWrap) }
         try await hold(HeldRoot(ringId: ring.ringId, epoch: ring.epoch, kid: kid, root: root), store: true, gen: gen)
         return .unlocked(ringId: ring.ringId, epoch: ring.epoch)
+    }
+
+    /// Takes the wrap a nearby approver sent over the channel (`KEYRING_WRAP`, V5 §13.11.3). Call it only after
+    /// the person confirmed the signed-in account (§15.6.1 rule 12). The record must name the ring the Worker
+    /// serves right now: this reads the ring afresh and compares `ringId`, `epoch` and `kid` before anything is
+    /// opened, then opens it through this device's own agreement key and pins it. A ring that is not the pinned
+    /// one is `ringChanged` and nothing is opened; a record that does not match, does not parse or does not
+    /// open leaves the device locked. A root already held for the ring is kept.
+    public func adoptWrap(_ record: Data) async throws -> SyncUnlockResult {
+        guard let w = SyncWrapBody.parse(record) else { return .locked(reason: .unusableWrap) }
+        let gen = forgetGeneration
+        let state = try await read()
+        guard let ring = state.ring else { return .locked(reason: .noRing) }
+        let anchor = try await anchorForUnlock()
+        let served = SyncRingPin(ringId: ring.ringId, epoch: ring.epoch, rootKid: ring.rootKid)
+        if let anchor, anchor != served {
+            return .ringChanged(pinned: anchor, served: served, createdAt: ring.createdAt, by: nil)
+        }
+        guard w.ringId == ring.ringId, w.epoch == ring.epoch, w.kid == ring.rootKid, w.kem == SyncHPKE.kemX25519
+        else { return .locked(reason: .unusableWrap) }
+        return try await openWrap(
+            ring: ring, epoch: w.epoch, kid: w.kid, kem: .int(w.kem), enc: w.enc, ct: w.ct, gen: gen)
     }
 
     private static func kemOK(_ k: JSONValue) -> Bool {
@@ -769,15 +849,37 @@ public actor SyncKeyring: CustomReflectable {
     /// Wraps the root to another device of the same person (`PUT .../wraps/{deviceId}`).
     /// `agreeKey` is that device's X25519 key, from the nearby approval (R-9).
     public func wrapTo(deviceId: String, agreeKey: Data) async throws {
+        try await putWrap(deviceId: deviceId, try await sealWrapTo(deviceId: deviceId, agreeKey: agreeKey))
+    }
+
+    /// The first half of `wrapTo`: seal the root to `agreeKey` for `deviceId` and answer the wrap, storing
+    /// nothing. A nearby approver sends this over the channel first and then stores the same bytes with
+    /// `putWrap` (V5 §13.11.3), so a refused or failed `PUT` cannot take the channel copy with it.
+    public func sealWrapTo(deviceId: String, agreeKey: Data) async throws -> SyncWrapBody {
         let h = try need()
         guard Self.deviceIdOK(deviceId) else { throw Self.badArg("A device id is required.") }
         guard agreeKey.count == 32 else { throw Self.badArg("The agreement key must be 32 bytes.") }
         let w = try SyncHPKE.wrapRoot(
             recipientPublicKey: agreeKey, context: await wrapContext(h.ringId, h.epoch, deviceId), kid: h.kid,
             root: h.root)
-        var body: [String: Any] = ["epoch": h.epoch, "kid": hexOf(h.kid)]
-        body.merge(Self.wireWrap(w)) { a, _ in a }
-        try await send("PUT", "devices/keyring/wraps/\(Self.segment(deviceId))", body)
+        return SyncWrapBody(
+            ringId: h.ringId, epoch: h.epoch, kid: hexOf(h.kid), kem: SyncHPKE.kemX25519,
+            enc: Base64URL.encode(w.enc), ct: Base64URL.encode(w.ct))
+    }
+
+    /// `sealWrapTo` with the key as base64url text, as a nearby approval carries it.
+    public func sealWrapTo(deviceId: String, agreeKey: String) async throws -> SyncWrapBody {
+        guard let k = unb64(agreeKey, 32) else { throw Self.badArg("The agreement key must be 32 bytes.") }
+        return try await sealWrapTo(deviceId: deviceId, agreeKey: k)
+    }
+
+    /// The second half of `wrapTo`: `PUT .../wraps/{deviceId}` with a wrap `sealWrapTo` made.
+    public func putWrap(deviceId: String, _ body: SyncWrapBody) async throws {
+        guard Self.deviceIdOK(deviceId) else { throw Self.badArg("A device id is required.") }
+        let put: [String: Any] = [
+            "epoch": body.epoch, "kid": body.kid, "kem": body.kem, "enc": body.enc, "ct": body.ct,
+        ]
+        try await send("PUT", "devices/keyring/wraps/\(Self.segment(deviceId))", put)
     }
 
     /// `wrapTo` with the key as base64url text, as a nearby approval carries it.

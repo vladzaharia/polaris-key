@@ -263,6 +263,13 @@ public actor CloudSyncHost {
         machine?.onOutcome(fn)
     }
 
+    /// Ask the machine for a pull; the caller's `touch()` sends it. False while signed out.
+    func requestPull() -> Bool {
+        guard let m = machine else { return false }
+        _ = m.pull()
+        return true
+    }
+
     /// The readable cloud rows of a collection (empty while signed out).
     func records(_ collection: String) -> [SyncRecordRow] { machine?.records(collection) ?? [] }
 

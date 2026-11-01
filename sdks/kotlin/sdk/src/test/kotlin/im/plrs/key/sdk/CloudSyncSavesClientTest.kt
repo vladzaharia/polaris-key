@@ -212,6 +212,17 @@ private class Cloud(private val e2e: Boolean) :
     /** While set, `get` answers this device's stale cache instead of the server's row. */
     var cache: ((String) -> SaveRecord?)? = null
 
+    /** What a pull does (another device wrote meanwhile); null: this port cannot pull. */
+    var onPull: (() -> Unit)? = null
+    var pulls = 0
+
+    override suspend fun pull(): Boolean {
+        val f = onPull ?: return false
+        pulls++
+        f()
+        return true
+    }
+
     override suspend fun get(id: String): SaveRecord? = cache?.invoke(id) ?: records[wireId(id)]?.let { saved(wireId(id), it) }
 
     /** The `baseVersion` of each `begin`, in order. */
@@ -251,11 +262,12 @@ class CloudSyncSavesClientTest {
         formatVersion: Int? = null,
         maxBytes: Long = 32L * 1024 * 1024,
         journal: JournalStore = MemoryJournal(),
+        deviceLabel: String? = null,
     ): SavesClient {
         val engine = FileTransferEngine(cloud, journal, sleeper = { })
         val codec: FileCodec = if (e2e) E2eFileCodec(root, SAVES_COLLECTION) else ServerFileCodec()
         return SavesClient(scope, SavesHooks(settled = { id, r -> settled += id to r })) {
-            SavesDeps(cloud, engine, cloud, codec, delta = false, maxBytes = maxBytes, saveFormatVersion = formatVersion)
+            SavesDeps(cloud, engine, cloud, codec, delta = false, maxBytes = maxBytes, saveFormatVersion = formatVersion, deviceLabel = deviceLabel, now = { 1_000L })
         }
     }
 
@@ -428,6 +440,49 @@ class CloudSyncSavesClientTest {
         assertTrue(saves.resolve(conflict, SaveKeep.LOCAL, bytes(120, 3)).result() is SaveResult.Done)
         cloud.cache = null
         assertTrue(saves.write("s", bytes(90, 4), meta("again")).result() is SaveResult.Done)
+    }
+
+    @Test
+    fun aConflictAndKeepingTheOtherVersionPullFirstAndSavesRecordWhenAndWhere() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false, deviceLabel = "Steam Deck")
+        assertTrue(saves.write("s", bytes(100), meta("old")).result() is SaveResult.Done)
+        val stale = cloud.get("s")!!
+        // Another device wrote on top; this device's cache still holds the first row until it pulls.
+        cloud.records.values.single().let {
+            it.version += 40
+            it.value = buildJsonObject { put("chapter", "theirs") }
+        }
+        cloud.cache = { stale }
+        cloud.onPull = { cloud.cache = null }
+        val conflict = (saves.write("s", bytes(120, 3), meta("mine"), baseVersion = stale.version).result() as SaveResult.Conflict).conflict
+        assertEquals(1, cloud.pulls)
+        assertEquals("theirs", conflict.remote!!.metadata["chapter"].stringValue)
+        // This device's card carries when and where it was saved (never a hardware value).
+        assertEquals(1_000L, conflict.localMetadata[SAVE_SAVED_AT_KEY].longValue)
+        assertEquals("Steam Deck", conflict.localMetadata[SAVE_DEVICE_KEY].stringValue)
+        // Keeping the other version pulls again, and the chosen copy is what is held.
+        cloud.cache = { stale }
+        val kept = saves.resolve(conflict, SaveKeep.REMOTE, bytes(1)).result() as SaveResult.KeptRemote
+        assertEquals(2, cloud.pulls)
+        assertEquals(cloud.records.values.single().version, kept.version)
+    }
+
+    @Test
+    fun aSaveDeletedElsewhereReadsAsDeletedAfterThePull() = runBlocking {
+        val cloud = Cloud(e2e = false)
+        val saves = client(cloud, e2e = false)
+        assertTrue(saves.write("s", bytes(100), meta("old")).result() is SaveResult.Done)
+        val stale = cloud.get("s")!!
+        // A tombstone answers its version, not 0; the pull removes the row.
+        cloud.records.values.single().version = stale.version + 40
+        cloud.cache = { stale }
+        cloud.onPull = {
+            cloud.cache = null
+            cloud.records.clear()
+        }
+        val conflict = (saves.write("s", bytes(120, 3), meta("mine"), baseVersion = stale.version).result() as SaveResult.Conflict).conflict
+        assertNull(conflict.remote)
     }
 
     @Test

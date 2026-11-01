@@ -164,6 +164,16 @@ private final class FakeRecords: SaveRecords, @unchecked Sendable {
     /// While set, `set` waits (as the machine's outcome wait does) until the caller cancels it.
     var holdSet = false
     var dropped = false
+    /// What a pull does (the test's "another device wrote meanwhile"); nil: the port cannot pull.
+    var onPull: (@Sendable () -> Void)?
+    var pulls = 0
+
+    func pull() async -> Bool {
+        guard let onPull else { return false }
+        lock.withLock { pulls += 1 }
+        onPull()
+        return true
+    }
 
     init(files: FakeFiles, e2e: Bool) {
         self.files = files
@@ -230,8 +240,11 @@ private final class Env: SavesEnvironment, @unchecked Sendable {
     var droppedWaiting = 0
     var purged = 0
     var refusal: (any Error)?
+    var label: String?
 
     init(context: SavesContext) { self.context = context }
+
+    func deviceLabel() async -> String? { label }
 
     func savesContext() async throws -> SavesContext {
         if let refusal { throw refusal }
@@ -268,11 +281,21 @@ private struct Rig {
         let ctx = SavesContext(records: records, engine: engine, revisions: files, codec: codec, cache: nil)
         let ev = events
         env = Env(context: ctx)
-        client = SavesClient(env: env, options: options, emit: { ev.add($0) })
+        client = SavesClient(env: env, options: options, emit: { ev.add($0) }, now: { savedAtNow })
     }
 }
 
 private func obj(_ pairs: [String: JSONValue]) -> JSONValue { .object(pairs) }
+
+/// The clock every rig's saves are stamped with.
+private let savedAtNow = 1_000
+
+/// What a write stores for the app's metadata: the app's keys plus the SDK's `savedAt`.
+private func stamped(_ pairs: [String: JSONValue]) -> JSONValue {
+    var all = pairs
+    all[saveSavedAtKey] = .int(savedAtNow)
+    return .object(all)
+}
 
 final class CloudSyncSavesTests: XCTestCase {
     func testAnEndToEndWritePushesTheFileThenTheBoundMetadata() async throws {
@@ -297,7 +320,7 @@ final class CloudSyncSavesTests: XCTestCase {
         // And it reads back.
         guard case .ok(let content) = try await rig.client.read("slot1") else { return XCTFail("not found") }
         XCTAssertEqual(content.bytes, payload)
-        XCTAssertEqual(content.metadata, obj(["chapter": .string("3")]))
+        XCTAssertEqual(content.metadata, stamped(["chapter": .string("3")]))
         XCTAssertEqual(content.file, file)
     }
 
@@ -506,7 +529,7 @@ final class CloudSyncSavesTests: XCTestCase {
         XCTAssertEqual(t.state, .conflict)
         XCTAssertEqual(conflict.serverVersion, 1)
         XCTAssertEqual(conflict.remote?.metadata, obj(["who": .string("remote")]))
-        XCTAssertEqual(conflict.local.metadata, obj(["who": .string("local")]))
+        XCTAssertEqual(conflict.local.metadata, stamped(["who": .string("local")]))
         XCTAssertEqual(conflict.local.size, 5)
         XCTAssertTrue(conflict.bothAvailable)
 
@@ -529,13 +552,13 @@ final class CloudSyncSavesTests: XCTestCase {
         let r1 = try await rig.records.get("slot1")
         XCTAssertEqual(r1?.value, ["who": .string("remote")])
         let r2 = try await rig.records.get("slot1.copy")
-        XCTAssertEqual(r2?.value, ["who": .string("local")])
+        XCTAssertEqual(r2?.value, ["who": .string("local"), saveSavedAtKey: .int(savedAtNow)])
 
         // local: written on top of the server's version.
         guard case .done = try await rig.client.resolve(conflict, keep: .local, bytes: Data("local".utf8)).outcome()
         else { return XCTFail("keep local") }
         let r3 = try await rig.records.get("slot1")
-        XCTAssertEqual(r3?.value, ["who": .string("local")])
+        XCTAssertEqual(r3?.value, ["who": .string("local"), saveSavedAtKey: .int(savedAtNow)])
     }
 
     func testAConflictDescribesTheServersVersionNotTheCachedCopy() async throws {
@@ -556,6 +579,49 @@ final class CloudSyncSavesTests: XCTestCase {
         else { return XCTFail("keep local") }
         guard case .done = try await rig.client.write("slot1", bytes: Data("again".utf8), metadata: obj([:])).outcome()
         else { return XCTFail("a repeated conflict") }
+    }
+
+    func testAConflictAndKeepingTheOtherVersionPullFirstAndSavesRecordWhenAndWhere() async throws {
+        let rig = Rig(e2e: false)
+        rig.env.label = "Steam Deck"
+        rig.records.seed("slot1", ["who": .string("old")], bytes: Data("old".utf8))
+        rig.files.conflictAt["slot1"] = 40
+        // The pull brings in the server's version-40 row (this device's cache held version 1).
+        let records = rig.records
+        rig.records.onPull = {
+            records.lock.withLock {
+                records.rows["slot1"] = SaveRecord(
+                    id: "slot1", version: 40, value: ["who": .string("theirs")], file: nil)
+            }
+        }
+        let t = try await rig.client.write(
+            "slot1", bytes: Data("mine".utf8), metadata: obj(["who": .string("mine")]))
+        guard case .conflict(let c) = await t.outcome() else { return XCTFail("not a conflict") }
+        XCTAssertEqual(rig.records.pulls, 1)
+        XCTAssertEqual(c.remote?.version, 40)
+        XCTAssertEqual(c.remote?.metadata, obj(["who": .string("theirs")]))
+        // This device's card carries when and where it was saved.
+        XCTAssertEqual(
+            c.local.metadata, stamped(["who": .string("mine"), saveDeviceKey: .string("Steam Deck")]))
+        // Keeping the other version pulls again, and the chosen copy is what is held.
+        guard
+            case .keptRemote(_, let v) = try await rig.client.resolve(c, keep: .remote, bytes: Data()).outcome()
+        else { return XCTFail("keep remote") }
+        XCTAssertEqual(rig.records.pulls, 2)
+        XCTAssertEqual(v, 40)
+    }
+
+    func testASaveDeletedElsewhereReadsAsDeletedAfterThePull() async throws {
+        let rig = Rig(e2e: false)
+        rig.records.seed("slot1", ["who": .string("old")], bytes: Data("old".utf8))
+        // A tombstone answers its version, not 0; the pull removes the row.
+        rig.files.conflictAt["slot1"] = 99
+        let records = rig.records
+        rig.records.onPull = { records.lock.withLock { _ = records.rows.removeValue(forKey: "slot1") } }
+        let t = try await rig.client.write(
+            "slot1", bytes: Data("mine".utf8), metadata: obj(["who": .string("mine")]))
+        guard case .conflict(let c) = await t.outcome() else { return XCTFail("not a conflict") }
+        XCTAssertNil(c.remote)
     }
 
     func testASaveDeletedElsewhereHasNoRemoteAndKeepMineUsesMustNotExist() async throws {

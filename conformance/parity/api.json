@@ -2595,6 +2595,16 @@
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
+      "sdk": "kotlin",
+      "path": "identity.nearby",
+      "reason": "the accessor of the identity nearby namespace (identity.nearby.available, .onRequest; I-45.12); not a verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.installNearby",
+      "reason": "internal: the facade hands the identity client the LAN half, the device keys and the key ring's wrap halves (I-45.12, I-45.13); no host calls it"
+    },
+    {
       "sdk": "swift",
       "path": "client.cloudSync",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
@@ -3320,6 +3330,59 @@
         },
         "godot": {
           "spelling": "PKeySignInNamespace.start"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.startNearby",
+      "kind": "method",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "spelling": "SignInNamespace.startNearby",
+          "reason": "Kotlin has the nearby channel of signIn.start as a verb of its own; the other SDKs pass channel nearby to signIn.start"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.handleRedirect",
+      "kind": "method",
+      "feature": "identity.redirect.native",
+      "args": [
+        {
+          "name": "url",
+          "type": "string"
+        }
+      ],
+      "sdks": {
+        "node": {
+          "planned": "I-15b",
+          "reason": "native redirect sign-in lands in the Node SDK with I-15b.2"
+        },
+        "react": {
+          "planned": "I-15b",
+          "reason": "the desktop adapter forwards to the Node host; a browser signs in by identity.redirect.web"
+        },
+        "python": {},
+        "swift": {
+          "planned": "I-15b",
+          "reason": "native redirect sign-in lands in the Swift SDK with I-15b.4"
+        },
+        "kotlin": {
+          "planned": "I-15b",
+          "reason": "native redirect sign-in lands in the Kotlin SDK with I-15b.5"
+        },
+        "godot": {
+          "planned": "I-15b",
+          "reason": "native redirect sign-in lands in the Godot SDK with I-15b.7"
         }
       },
       "layer": "client"
@@ -4273,7 +4336,7 @@
           "planned": "U-46"
         },
         "godot": {
-          "planned": "U-46"
+          "spelling": "PKeyCloudSync.collection"
         }
       },
       "layer": "client"
@@ -4305,7 +4368,8 @@
           "planned": "U-46"
         },
         "godot": {
-          "planned": "U-46"
+          "spelling": "PKeyCollection.get_record",
+          "reason": "Object.get is the engine's property getter"
         }
       },
       "layer": "client"
@@ -4331,7 +4395,7 @@
           "planned": "U-46"
         },
         "godot": {
-          "planned": "U-46"
+          "spelling": "PKeyCollection.ids"
         }
       },
       "layer": "client"
@@ -4367,7 +4431,7 @@
           "planned": "U-46"
         },
         "godot": {
-          "planned": "U-46"
+          "spelling": "PKeyCollection.put"
         }
       },
       "layer": "client"
@@ -4403,7 +4467,7 @@
           "planned": "U-46"
         },
         "godot": {
-          "planned": "U-46"
+          "spelling": "PKeyCollection.update"
         }
       },
       "layer": "client"
@@ -4439,7 +4503,7 @@
           "planned": "U-46"
         },
         "godot": {
-          "planned": "U-46"
+          "spelling": "PKeyCollection.add"
         }
       },
       "layer": "client"
@@ -4475,7 +4539,7 @@
           "planned": "U-46"
         },
         "godot": {
-          "planned": "U-46"
+          "spelling": "PKeyCollection.remove"
         }
       },
       "layer": "client"
@@ -4507,7 +4571,7 @@
           "planned": "U-46"
         },
         "godot": {
-          "planned": "U-46"
+          "spelling": "PKeyCollection.delete"
         }
       },
       "layer": "client"
@@ -4539,7 +4603,9 @@
           "planned": "U-46"
         },
         "godot": {
-          "planned": "U-46"
+          "spelling": "PKeyCollection.changed",
+          "shape": "signal",
+          "reason": "Godot observes signals: changed (ids, origin) for the records and outcome for a compare-and-set's result"
         }
       },
       "layer": "client"
@@ -7166,6 +7232,9 @@
         "swift": {},
         "kotlin": {
           "spelling": "CloudNearby.request"
+        },
+        "godot": {
+          "spelling": "PKeyCloudNearby.request"
         }
       },
       "layer": "client",
@@ -7191,6 +7260,9 @@
         "swift": {},
         "kotlin": {
           "spelling": "CloudNearby.onRequest"
+        },
+        "godot": {
+          "spelling": "PKeyCloudNearby.on_request"
         }
       },
       "layer": "client",
@@ -7225,12 +7297,11 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbyNamespace.available",
+          "labels": ["role"]
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbyNamespace.available"
         },
         "godot": {
           "planned": "I-48",
@@ -7263,12 +7334,11 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbyNamespace.onRequest",
+          "labels": ["_", "handler"]
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbyNamespace.onRequest"
         },
         "godot": {
           "planned": "I-48",
@@ -7291,12 +7361,10 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.approvers"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.approvers"
         },
         "godot": {
           "planned": "I-48",
@@ -7324,12 +7392,10 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.onApprovers"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.onApprovers"
         },
         "godot": {
           "planned": "I-48",
@@ -7352,12 +7418,11 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.code",
+          "shape": "property"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.code"
         },
         "godot": {
           "planned": "I-48",
@@ -7380,12 +7445,10 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.result"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.result"
         },
         "godot": {
           "planned": "I-48",
@@ -7413,12 +7476,10 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.onResult"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.onResult"
         },
         "godot": {
           "planned": "I-48",
@@ -7447,12 +7508,10 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.choose"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.choose"
         },
         "godot": {
           "planned": "I-48",
@@ -7475,12 +7534,10 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.confirmAccount"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.confirmAccount"
         },
         "godot": {
           "planned": "I-48",
@@ -7502,12 +7559,10 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.declineAccount"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.declineAccount"
         },
         "godot": {
           "planned": "I-48",
@@ -7528,12 +7583,11 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.wrap",
+          "shape": "property"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.wrap"
         },
         "godot": {
           "planned": "I-48",
@@ -7559,12 +7613,10 @@
         },
         "python": {},
         "swift": {
-          "planned": "I-44",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.onWrap"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan \u00a72)"
+          "spelling": "NearbySignInSession.onWrap"
         },
         "godot": {
           "planned": "I-48",
@@ -7710,6 +7762,9 @@
           "spelling": "adapter.cloudConnect.transfer.send",
           "shape": "method",
           "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        },
+        "godot": {
+          "spelling": "PKeyCloudTransfer.send"
         }
       },
       "layer": "client",
@@ -7743,6 +7798,9 @@
           "spelling": "adapter.cloudConnect.transfer.onOffer",
           "shape": "method",
           "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        },
+        "godot": {
+          "spelling": "PKeyCloudTransfer.on_offer"
         }
       },
       "layer": "client",
@@ -7768,6 +7826,11 @@
           "spelling": "adapter.cloudConnect.transfer.onResult",
           "shape": "method",
           "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        },
+        "godot": {
+          "spelling": "PKeyCloudTransfer.result",
+          "shape": "signal",
+          "reason": "Godot observes a signal"
         }
       },
       "layer": "client",
@@ -7793,6 +7856,9 @@
           "spelling": "adapter.cloudConnect.transfer.cancel",
           "shape": "method",
           "reason": "the adapter carries it: no hook yet (the browser adapter's cloudConnect.transfer)"
+        },
+        "godot": {
+          "spelling": "PKeyCloudTransfer.cancel"
         }
       },
       "layer": "client",
@@ -7826,6 +7892,9 @@
         "swift": {
           "spelling": "TransferDecision.accept",
           "reason": "the handler returns the decision"
+        },
+        "godot": {
+          "spelling": "PKeyTransferOffer.accept"
         }
       },
       "layer": "client"
@@ -7853,6 +7922,9 @@
         "swift": {
           "spelling": "TransferDecision.decline",
           "reason": "the handler returns the decision"
+        },
+        "godot": {
+          "spelling": "PKeyTransferOffer.decline"
         }
       },
       "layer": "client"

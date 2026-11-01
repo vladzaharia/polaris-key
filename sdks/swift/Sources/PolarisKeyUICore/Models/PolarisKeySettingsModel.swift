@@ -11,6 +11,7 @@ import Foundation
 import Observation
 import PolarisKey
 import PolarisKeyCore
+import PolarisKeyIdentity
 import PolarisKeyLicense
 
 /// What the host can act on in the settings pane; a row for a nil handler is not drawn.
@@ -131,6 +132,10 @@ public final class PolarisKeySettingsModel {
     private var saveFailed = false
     private var accountSignedIn = false
     private var developer: String?
+    /// The nearby approval screen over this client's Identity, or nil for a preview model.
+    public private(set) var nearbyApproval: NearbyApprovalModel?
+    /// The account menu offers "Approve a nearby device": signed in, the product serves it, the runtime can.
+    public private(set) var canApproveNearby = false
     private var observation: Task<Void, Never>?
 
     /// A live model over `client`.
@@ -144,6 +149,9 @@ public final class PolarisKeySettingsModel {
         self.autoUpdate = options.autoUpdate
         self.inputs = KitInputs(
             bundle: KitBundle(slug: client.product), platform: platform)
+        self.nearbyApproval = NearbyApprovalModel(
+            identity: client.identity,
+            inputs: KitInputs(bundle: KitBundle(slug: client.product), platform: platform))
     }
 
     /// A still model for previews and snapshot tests: it shows what it is given and reaches no network.
@@ -228,6 +236,9 @@ public final class PolarisKeySettingsModel {
         licensed = await client.status()
         let current = await client.identity.current()
         accountSignedIn = current != nil
+        let nearbyOffered = await client.identity.nearby.available(role: .approver)
+        canApproveNearby = current != nil && nearbyOffered
+        nearbyApproval?.update(inputs: base)
         holder = current?.name ?? current?.email
         let info = await client.licenseInfo()
         tier = info?.tierLabel ?? info?.tier

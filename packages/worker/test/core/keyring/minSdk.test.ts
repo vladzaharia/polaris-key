@@ -11,6 +11,7 @@ import {
   seedLicenseWithKey,
   seedProduct,
 } from "../../seed.js";
+import { adminCall } from "../../consoleAdminCall.js";
 import { newKeys } from "../../deviceKeyFixtures.js";
 import { dispatchWith } from "../../../src/dispatch.js";
 import { loadProduct } from "../../../src/core/products.js";
@@ -26,6 +27,7 @@ import type { Db } from "../../../src/db/types.js";
 import type { Env } from "../../../src/platform/env.js";
 
 const P = "djdl";
+const OP_GROUP = "platform-admins";
 const D1 = "dev-ring-1";
 const D2 = "dev-ring-2";
 
@@ -103,19 +105,29 @@ async function world(sync = true): Promise<World> {
 
 const MIN_KEY = (sdk: string) => `cloudSync.minSdk.${sdk}`;
 
+/** Set a minimum the way an operator does: the console's platform settings route. */
 async function setMin(
   w: World | { db: Db; env: Env },
   sdk: string,
   value: string,
 ): Promise<void> {
   const { db, env } = w;
-  await db.run(
-    `INSERT OR REPLACE INTO platform_settings (key, value_json, version, updated_at, updated_by)
-     VALUES (?, ?, 1, ?, 'test')`,
+  env.ADMIN_SESSION_SECRET = "min-sdk-secret";
+  env.PLATFORM_ADMIN_GROUP = OP_GROUP;
+  const row = await db.first<{ version: number }>(
+    "SELECT version FROM platform_settings WHERE key = ?",
     MIN_KEY(sdk),
-    JSON.stringify(value),
-    NOW,
   );
+  const res = await adminCall(
+    env,
+    db,
+    `/api/platform/settings/${MIN_KEY(sdk)}`,
+    {
+      method: "PATCH",
+      body: { value, expectedVersion: row?.version ?? 0 },
+    },
+  );
+  expect(res.status).toBe(200);
   // The activations before this write already read the settings; drop that snapshot.
   invalidatePlatformSettings(env, db);
 }

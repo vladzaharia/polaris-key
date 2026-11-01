@@ -18,12 +18,12 @@ class FakeNative extends RefCounted:
 	# gdlint:ignore=function-name
 	func cxSeal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
 		calls.append("cxSeal")
-		return _ok(port.aes_gcm_seal(key, nonce, aad, plain))
+		return _ok(PKeySyncAesGcm.seal(key, nonce, plain, aad))
 
 	# gdlint:ignore=function-name
 	func cxOpen(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> PackedByteArray:
 		calls.append("cxOpen")
-		var r = port.aes_gcm_open(key, nonce, aad, sealed)
+		var r = PKeySyncAesGcm.open(key, nonce, sealed, aad)
 		return PackedByteArray([0]) if r == null else _ok(r)
 
 	# gdlint:ignore=function-name
@@ -67,6 +67,7 @@ func run(t: PKeyTestContext) -> void:
 	_x25519(t, a, fake, v["x25519"])
 	_gcm(t, a, fake, v["aesGcm"])
 	_refusals(t, a, v)
+	_sync(t, a, fake)
 	_fallback(t, v["x25519"])
 	_replies(t)
 
@@ -116,6 +117,29 @@ func _refusals(t: PKeyTestContext, a: PKeyAndroidCrypto, v: Dictionary) -> void:
 		t.check("low-order %s is dh_zero (null)" % row["id"], a.x25519(sk, String(row["u"]).hex_decode()) == null)
 	t.check("x25519 length checked", a.x25519(PackedByteArray([1]), key) == null and a.x25519(key, PackedByteArray([1])) == null)
 	t.check("public length checked", a.x25519_public(PackedByteArray([1])).is_empty())
+
+
+## Cloud Sync's entry points lift the Noise bound: a 1 MiB file segment seals and opens, while the
+## Noise methods keep refusing past 65,535 bytes.
+func _sync(t: PKeyTestContext, a: PKeyAndroidCrypto, fake: FakeNative) -> void:
+	var key := PackedByteArray(range(32))
+	var nonce := PackedByteArray(range(12))
+	var aad := _zeros(64)
+	var seg := _zeros(1 << 20)
+	seg.fill(0x3C)
+	var before := fake.calls.size()
+	var sealed := a.sync_seal(key, nonce, aad, seg)
+	t.check("sync: a 1 MiB segment seals through the plugin", sealed.size() == seg.size() + 16 and fake.calls.size() == before + 1 and a.sync_native())
+	var opened = a.sync_open(key, nonce, aad, sealed)
+	t.check("sync: a 1 MiB segment opens", opened is PackedByteArray and (opened as PackedByteArray) == seg)
+	var bad := sealed.duplicate()
+	bad[bad.size() - 1] ^= 1
+	t.check("sync: a flipped tag bit is refused", a.sync_open(key, nonce, aad, bad) == null)
+	t.check("sync: the same segment is still refused as a Noise message", a.aes_gcm_seal(key, nonce, aad, seg).is_empty() and a.aes_gcm_open(key, nonce, aad, sealed) == null)
+	t.check("sync: the bound is 1 MiB of message", a.sync_max_bytes() == 1 << 20 and a.sync_seal(key, nonce, aad, _zeros((1 << 20) + 1)).is_empty())
+	t.check("sync: more than 64 KiB of AAD is refused", a.sync_seal(key, nonce, _zeros(65537), PackedByteArray()).is_empty())
+	t.check("sync: an empty message and an empty AAD", a.sync_open(key, nonce, PackedByteArray(), a.sync_seal(key, nonce, PackedByteArray(), PackedByteArray())) is PackedByteArray)
+	t.check("sync: the lane passes its known answers, 1 MiB included", a.known_answers_ok())
 
 
 ## Below API 33 the plugin answers "unsupported" and X25519 runs on the GDScript ladder (D-3, D-14).

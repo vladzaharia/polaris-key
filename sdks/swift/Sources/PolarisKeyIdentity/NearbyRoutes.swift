@@ -73,7 +73,7 @@ private let requestPattern = "^nr_[A-Za-z0-9_-]{22}$"
 private let longestRetry = 60
 
 extension IdentityClient {
-    private func nearbyUnavailable(_ detail: String) -> PolarisError {
+    func nearbyUnavailable(_ detail: String) -> PolarisError {
         let u = Unsupported(feature: Feature.identityNearby, reason: UnsupportedReason.product, detail: detail)
         return PolarisError(
             code: PolarisError.serviceUnavailable, message: "Nearby sign-in is not available here.",
@@ -81,7 +81,7 @@ extension IdentityClient {
     }
 
     /// The endpoint discovery names, else the typed N/A. Nothing is sent before this answers.
-    private func nearbyEndpoint(_ name: String, fresh: Bool = false) async throws -> URL {
+    func nearbyEndpoint(_ name: String, fresh: Bool = false) async throws -> URL {
         if fresh {
             _ = await core.discover()
         } else if await core.discoveryDocument == nil {
@@ -101,7 +101,7 @@ extension IdentityClient {
         return url
     }
 
-    private func nearbyPost(_ url: URL, _ body: [String: JSONValue]) async throws -> PolarisResponse {
+    func nearbyPost(_ url: URL, _ body: [String: JSONValue]) async throws -> PolarisResponse {
         let data = try JSONEncoder().encode(JSONValue.object(body))
         do {
             return try await core.request(
@@ -113,7 +113,7 @@ extension IdentityClient {
         }
     }
 
-    private func nearbyProof(
+    func nearbyProof(
         _ port: any DeviceKeyPort, _ purpose: DeviceProofPurpose, deviceId: String, value: String
     ) async throws -> String {
         // Conformance replay only: a proof by another key or over another value.
@@ -134,7 +134,7 @@ extension IdentityClient {
 
     /// The Worker's error code of a refusal: the nested `{error:{code}}` or a flat `{error}`, else the
     /// registry code of the status.
-    private func nearbyRefusalCode(_ response: PolarisResponse) -> String {
+    func nearbyRefusalCode(_ response: PolarisResponse) -> String {
         let object = (try? JSONDecoder().decode(JSONValue.self, from: response.body))?.objectValue
         if let code = object?["error"]?.objectValue?["code"]?.stringValue, !code.isEmpty { return code }
         if let code = object?["error"]?.stringValue, !code.isEmpty { return code }
@@ -266,6 +266,8 @@ extension IdentityClient {
             throw PolarisError(
                 code: ErrorCode.signInFailed, message: "nearby sign-in could not store the sign-in.")
         }
+        // The previous person is no longer the stored subject under the new, unconfirmed token.
+        updateSubject(nil)
         if redirectAcquisitionSync.current { await onAcquired?() }
         func text(_ key: String) -> String? {
             license?[key]?.stringValue.flatMap { $0.isEmpty ? nil : $0 }

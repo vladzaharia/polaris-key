@@ -887,15 +887,13 @@ export function nearbyCode(c: KitCtx): ReactNode {
   return (
     <div className="field" data-part="code">
       <span className="code-row">
-        <span
-          className="code"
-          role="text"
-          data-key="a11y.nearbyCode"
-          aria-label={plain(c, "a11y.nearbyCode", {
-            code: spellOut(String(code)),
-          })}
-        >
-          {code}
+        <span className="code" data-key="a11y.nearbyCode">
+          {/* Chromium drops an aria-label on a bare span: the spoken text is real text, and the
+              digits as drawn are hidden from the reader so they are not read twice. */}
+          <span className="visually-hidden">
+            {plain(c, "a11y.nearbyCode", { code: spellOut(String(code)) })}
+          </span>
+          <span aria-hidden="true">{code}</span>
         </span>
       </span>
     </div>

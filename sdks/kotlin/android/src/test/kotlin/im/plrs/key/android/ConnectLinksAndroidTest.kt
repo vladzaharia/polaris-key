@@ -50,7 +50,7 @@ class ConnectLinksAndroidTest {
             return NsdStop { r.stopped = true }
         }
 
-        override fun browse(listener: PeerNsdListener): NsdStop {
+        override fun browse(listener: PeerNsdListener, accept: (String) -> Boolean): NsdStop {
             browser = listener
             return NsdStop {}
         }
@@ -65,6 +65,8 @@ class ConnectLinksAndroidTest {
         override fun subnetsOf(network: Network) = listOf(Subnet(InetAddress.getByName("192.168.1.5"), 24))
 
         override fun factoryOf(network: Network) = factory
+
+        override fun isNotVpn(network: Network) = true
 
         override fun onDefaultNetworkChange(onChange: () -> Unit) = NsdStop {}
     }

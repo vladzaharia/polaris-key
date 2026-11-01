@@ -633,11 +633,22 @@ export interface PlatformListSetting extends PlatformSettingBase {
   confirm: { change: PlatformConfirmLevel };
 }
 
+/** A plain text value checked by a pattern (`cloudSync.minSdk.*`: a release version). */
+export interface PlatformStringSetting extends PlatformSettingBase {
+  kind: "string";
+  pattern: string | null;
+  maxLength: number;
+  default: string | null;
+  value: string | null;
+  confirm: { change: PlatformConfirmLevel };
+}
+
 export type PlatformSetting =
   | PlatformSwitchSetting
   | PlatformIntegerSetting
   | PlatformChoiceSetting
-  | PlatformListSetting;
+  | PlatformListSetting
+  | PlatformStringSetting;
 
 /** `GET /manage/api/platform/reserved-names` (LX-05, worker `console/handlers/reservedNames.ts`). */
 export interface PlatformReservedNames {

@@ -214,6 +214,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_journal(t)
 	_cache(t)
 	await _lane(t)
+	await _native_lane(t)
 	return true
 
 
@@ -898,6 +899,77 @@ func _lane(t: PKeyTestContext) -> void:
 	j.put("z", _rec({"id": "z", "uploadId": "upX", "size": 5, "expiresAt": (NOW + 9) * 1000.0}))
 	await _engine(srv, j).cancel("z")
 	t.check("cancel: aborts the upload and forgets the record", srv.aborted == ["upX"] and j.get_record("z") == null)
+
+
+## A native-lane stand-in with no real cipher (the tag is 16 zero bytes), fast enough for 32 MiB. It records
+## which thread called it and lets a test act on a seal.
+class QuickLane:
+	extends PKeyPeerCrypto
+	var seals := 0
+	var opens := 0
+	var off_main := 0
+	var on_seal := Callable()
+
+	func lane_name() -> String:
+		return "quick-native"
+
+	func sync_native() -> bool:
+		return true
+
+	func sync_max_bytes() -> int:
+		return 1048576
+
+	func sync_seal(_k: PackedByteArray, _n: PackedByteArray, _a: PackedByteArray, p: PackedByteArray) -> PackedByteArray:
+		seals += 1
+		if OS.get_thread_caller_id() != OS.get_main_thread_id():
+			off_main += 1
+		if on_seal.is_valid():
+			on_seal.call(seals)
+		var out := p.duplicate()
+		out.append_array(PackedByteArray([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+		return out
+
+	func sync_open(_k: PackedByteArray, _n: PackedByteArray, _a: PackedByteArray, s: PackedByteArray) -> Variant:
+		opens += 1
+		if OS.get_thread_caller_id() != OS.get_main_thread_id():
+			off_main += 1
+		if s.size() < 16 or s.slice(s.size() - 16) != PackedByteArray([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]):
+			return null
+		return s.slice(0, s.size() - 16)
+
+
+func _native_lane(t: PKeyTestContext) -> void:
+	var root := PackedByteArray()
+	root.resize(32)
+	for i in 32:
+		root[i] = i + 3
+	var lane := QuickLane.new()
+	PKeySyncAead.use_lane_for_tests(lane)
+	var plain := PackedByteArray()
+	plain.resize(32 * MIB)
+	var codec := Codec.E2e.new(root, "saves")
+	var frames := Engine.get_process_frames()
+	var stored: PackedByteArray = await Transfer.codec_off(codec, "seal_whole", [plain], plain.size(), PackedByteArray())
+	var yielded := Engine.get_process_frames() - frames
+	t.check("native lane: a 32 MiB seal answers the stored size", stored.size() == PKeySyncFileStream.sealed_size(plain.size()))
+	t.check("native lane: ... every segment sealed inline on the main thread", lane.seals == 32 and lane.off_main == 0, "%d seals, %d off main" % [lane.seals, lane.off_main])
+	t.check("native lane: ... with a frame yield every 4 MiB", yielded >= 7, "%d frames" % yielded)
+	var opened: Dictionary = await Transfer.codec_off(codec, "open_whole", [stored], stored.size(), {"ok": false, "reason": "locked"})
+	t.check("native lane: it opens again the same way", opened.get("ok", false) and (opened["plain"] as PackedByteArray) == plain and lane.off_main == 0)
+	# A root replaced mid-seal discards the result.
+	var flag := [false]
+	var guarded := Codec.Guarded.new(Codec.E2e.new(root, "saves"), func() -> bool: return flag[0])
+	var before := lane.seals
+	lane.on_seal = func(_n: int) -> void:
+		if lane.seals - before == 5:
+			flag[0] = true
+	var dropped: PackedByteArray = await Transfer.codec_off(guarded, "seal_whole", [plain], plain.size(), PackedByteArray())
+	t.check("native lane: a root replaced mid-seal discards the result and stops sealing", dropped.is_empty() and guarded.tripped and lane.seals - before < 8, "%d" % (lane.seals - before))
+	# The chunk cut runs on a worker thread even then.
+	var cut_src := Transfer.BytesSource.new(_noise(3 * MIB))
+	var cut: Dictionary = await _engine(FakeServer.new())._cut({"source": cut_src, "codec": Codec.Server.new()})
+	t.check("native lane: the chunk cut still answers", cut["ok"] and cut["plain_size"] == 3 * MIB)
+	PKeySyncAead.use_lane_for_tests(null)
 
 
 func _rm(path: String) -> void:

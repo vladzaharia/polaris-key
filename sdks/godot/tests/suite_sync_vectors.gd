@@ -57,7 +57,156 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	_chunks(t, d["chunkCases"])
 	_manifest(t, d["manifestCases"])
 	_cdc_edit(t, d["cdcEditCases"], d["deltaCases"])
+	_through_native_lane(t, d)
 	return true
+
+
+## A stand-in for a native lane: it counts the calls that reach it and answers from the GDScript
+## code, so a differing byte anywhere would fail the same vectors. `limit` is its message bound.
+class FakeLane extends PKeyPeerCrypto:
+	var seals := 0
+	var opens := 0
+	var limit := PKeySyncAesGcm.MAX_BYTES
+
+	func lane_name() -> String:
+		return "fake-native"
+
+	func sync_native() -> bool:
+		return true
+
+	func sync_max_bytes() -> int:
+		return limit
+
+	func sync_seal(k: PackedByteArray, n: PackedByteArray, a: PackedByteArray, p: PackedByteArray) -> PackedByteArray:
+		seals += 1
+		return super.sync_seal(k, n, a, p)
+
+	func sync_open(k: PackedByteArray, n: PackedByteArray, a: PackedByteArray, s: PackedByteArray) -> Variant:
+		opens += 1
+		return super.sync_open(k, n, a, s)
+
+
+## Names its checks apart from the GDScript pass and hands its counts back.
+class LaneContext extends PKeyTestContext:
+	func check(name: String, ok: bool, detail: String = "") -> bool:
+		return super.check("native lane: " + name, ok, detail)
+
+
+## The sections that seal or open run again with the facade forced onto a fake native lane (which
+## proves the dispatch), then the facade's own edges: a message over the lane's bound, a call off
+## the main thread, and a lane that fails its known answers.
+func _through_native_lane(t: PKeyTestContext, d: Dictionary) -> void:
+	t.check("aead: the facade names the platform's lane", PKeySyncAead.lane_name() == PKeyPeerCrypto.for_platform().lane_name())
+	var lane := FakeLane.new()
+	PKeySyncAead.use_lane_for_tests(lane)
+	var lt := LaneContext.new(t.suite)
+	lt.check("the facade names the lane", PKeySyncAead.lane_name() == "fake-native")
+	_facade_gcm(lt)
+	_envelope(lt, d["envelopeCases"])
+	_hpke_anchor(lt, d["hpkeAnchor"]["vector"])
+	_wrap(lt, d["wrapCases"])
+	_adopt(lt, d["adoptCases"])
+	_chunks(lt, d["chunkCases"])
+	_recovery_blobs(lt, d["recoveryCodeCases"])
+	_u405_extras(lt)
+	lt.check("every section reached the lane", lane.seals > 0 and lane.opens > 0, "%d seals, %d opens" % [lane.seals, lane.opens])
+	_edges(lt, lane)
+	PKeySyncAead.use_lane_for_tests(null)
+	_faulty_lane(lt)
+	t.checks += lt.checks
+	t.failed += lt.failed
+
+
+## The NIST table and tamper cases through the facade; the lane in force decides the path.
+func _facade_gcm(t: PKeyTestContext) -> void:
+	for c in _gcm_nist:
+		var key := _hex(c[1])
+		var nonce := _hex(c[2])
+		var pt := _hex(c[3])
+		var aad := _hex(c[4])
+		var want := _hex(c[5] + c[6])
+		t.check("aead %s seals" % c[0], PKeySyncAead.seal(key, nonce, pt, aad) == want)
+		var opened: Variant = PKeySyncAead.open(key, nonce, want, aad)
+		t.check("aead %s opens" % c[0], opened != null and (opened as PackedByteArray) == pt)
+		var bad := want.duplicate()
+		bad[bad.size() - 1] ^= 1
+		t.check("aead %s refuses a flipped tag bit" % c[0], PKeySyncAead.open(key, nonce, bad, aad) == null)
+	var key0 := PackedByteArray()
+	key0.resize(32)
+	var nonce0 := PackedByteArray()
+	nonce0.resize(12)
+	var empty := PKeySyncAead.seal(key0, nonce0, PackedByteArray())
+	t.check("aead: an empty message seals to its tag and opens to empty", empty.size() == 16 and PKeySyncAead.open(key0, nonce0, empty) is PackedByteArray \
+			and (PKeySyncAead.open(key0, nonce0, empty) as PackedByteArray).is_empty())
+	t.check("aead: a short key, a short nonce and a short input are refused", PKeySyncAead.seal(key0.slice(0, 31), nonce0, PackedByteArray()).is_empty() \
+			and PKeySyncAead.seal(key0, nonce0.slice(0, 11), PackedByteArray()).is_empty() and PKeySyncAead.open(key0, nonce0, empty.slice(0, 15)) == null)
+
+
+func _edges(t: PKeyTestContext, lane: FakeLane) -> void:
+	var key := PackedByteArray()
+	key.resize(32)
+	var nonce := PackedByteArray()
+	nonce.resize(12)
+	var aad := PackedByteArray([1, 2])
+	var small := PackedByteArray([9, 8, 7])
+	var before := lane.seals
+	lane.limit = 2
+	var over := PKeySyncAead.seal(key, nonce, small, aad)
+	t.check("a message over the lane's bound runs in GDScript", lane.seals == before and over == PKeySyncAesGcm.seal(key, nonce, small, aad))
+	var opens := lane.opens
+	t.check("an open over the lane's bound runs in GDScript", PKeySyncAead.open(key, nonce, over, aad) == small and lane.opens == opens)
+	lane.limit = PKeySyncAesGcm.MAX_BYTES
+	# A whole 1 MiB segment goes to the lane, and no more than that does.
+	var seg := PackedByteArray()
+	seg.resize(PKeySyncAesGcm.MAX_BYTES)
+	seg.fill(0x5A)
+	var sealed := PKeySyncAead.seal(key, nonce, seg, aad)
+	t.check("a 1 MiB segment seals through the lane", lane.seals == before + 1 and sealed.size() == seg.size() + 16)
+	var back: Variant = PKeySyncAead.open(key, nonce, sealed, aad)
+	t.check("a 1 MiB segment opens through the lane", lane.opens == opens + 1 and back is PackedByteArray and (back as PackedByteArray) == seg)
+	var tail: PackedByteArray = sealed.duplicate()
+	tail[tail.size() - 1] ^= 1
+	t.check("a 1 MiB segment with a flipped tag bit is refused", PKeySyncAead.open(key, nonce, tail, aad) == null)
+	var over_mib := PackedByteArray()
+	over_mib.resize(PKeySyncAesGcm.MAX_BYTES + 1)
+	t.check("a message over 1 MiB is refused by both paths", PKeySyncAead.seal(key, nonce, over_mib, aad).is_empty())
+	# Off the main thread the call stays in GDScript.
+	var seen := [lane.seals]
+	var th := Thread.new()
+	th.start(func() -> Array:
+		var s := PKeySyncAead.seal(key, nonce, small, aad)
+		return [s, PKeySyncAead.lane_name()])
+	var res: Array = th.wait_to_finish()
+	t.check("a call off the main thread does not reach the lane", lane.seals == seen[0] and res[1] == "gdscript" and res[0] == PKeySyncAesGcm.seal(key, nonce, small, aad))
+
+
+## A lane that fails a known answer is never chosen, so sync stays on GDScript through the facade.
+func _faulty_lane(t: PKeyTestContext) -> void:
+	var faulty := FaultyLane.new()
+	t.check("a lane that answers an empty message wrongly fails its known answers", not faulty.known_answers_ok())
+	var chosen := PKeyPeerCrypto.select([faulty])
+	t.check("a lane that fails its known answers is not chosen", chosen != faulty and chosen.lane_name() == "gdscript")
+	faulty.seals = 0
+	PKeySyncAead.use_lane_for_tests(chosen)
+	var key := PackedByteArray()
+	key.resize(32)
+	var nonce := PackedByteArray()
+	nonce.resize(12)
+	var sealed := PKeySyncAead.seal(key, nonce, PackedByteArray([1]))
+	t.check("sync then runs in GDScript and the faulty lane is never called", faulty.seals == 0 and PKeySyncAead.lane_name() == "gdscript" \
+			and PKeySyncAead.open(key, nonce, sealed) == PackedByteArray([1]))
+	PKeySyncAead.use_lane_for_tests(null)
+	var good := FakeLane.new()
+	t.check("a correct lane passes the sync answers and is chosen", good.known_answers_ok() and PKeyPeerCrypto.select([good]) == good)
+
+
+## A native lane that mishandles the empty message: its sync_open accepts any 16 bytes.
+class FaultyLane extends FakeLane:
+	func sync_open(k: PackedByteArray, n: PackedByteArray, a: PackedByteArray, s: PackedByteArray) -> Variant:
+		var r = super.sync_open(k, n, a, s)
+		if r == null and s.size() == 16:
+			return PackedByteArray()
+		return r
 
 
 func _hkdf(t: PKeyTestContext, rows: Array) -> void:

@@ -268,9 +268,8 @@
       "note": "Link offer (I-43.3 transcripts, I-45)."
     },
     "identity.nearby": {
-      "status": "planned",
-      "wp": "I-45",
-      "note": "Nearby approval (I-40.8 transcripts, I-45). CC-15 built the LAN half: the vouch codecs, the mode-v session hooks, the approver and requester over MdnsAdapter and TcpPipe, and client.cloudConnect.nearby (PeerMatrixVouchTest runs the 78 request, 26 result, 30 flow and 29 finish rows on JCA and Tink; NearbyApproverTest, NearbyRequesterTest and ConnectNearbyTest cover the rest). Android answers nearby-unsupported until an mDNS adapter is passed (CC-15b). The routes stay with I-45."
+      "status": "implemented",
+      "note": "Nearby sign-in (I-40.8 transcripts, I-45). CC-15 built the LAN half: the vouch codecs, the mode-v session hooks, the approver and requester over MdnsAdapter and TcpPipe, and client.cloudConnect.nearby (PeerMatrixVouchTest runs the 78 request, 26 result, 30 flow and 29 finish rows on JCA and Tink; NearbyApproverTest, NearbyRequesterTest and ConnectNearbyTest cover the rest). Android answers nearby-unsupported until an mDNS adapter is passed (CC-15b). I-45.12 built the new device (D): identity.signIn.startNearby, the nearby-start and nearby-poll routes with their proofs, the unconfirmed token, NearbySignInSession and identity.nearby.available (NearbySignInTest, NearbySignInE2eTest, PolarisNearbySignInState). I-45.13 built the approving device (M): identity.nearby.onRequest and NearbyAsk (pick, deny; the licence choice), nearby/approve with the permit of a matched code, M's proof, bearer and device id, the device-keys retry and a 404 read through a fresh discovery (NearbyApprovalTest), the key ring's sealWrapTo, putWrap and adoptWrap with the wrap record codec (SyncKeyringTest; the approver sends KEYRING_WRAP before the PUT, and the new device adopts it only after its person confirms), the facade wiring for both, and the Compose kit's approve screens and account-menu entry (PolarisNearbyApprovalState, NearbyApprovalScreensTest). The six nearby-* transcripts replay for both devices (NearbyTranscriptTest, TranscriptTest), on JCA and Tink."
     },
     "identity.keyentry": {
       "status": "implemented",

@@ -791,6 +791,83 @@ describe("Hosted assets (HA-10)", () => {
   });
 });
 
+describe("Cloud Sync minimum build and the relay pause", () => {
+  const minSdk = (over: Setting = {}): Setting => ({
+    key: "cloudSync.minSdk.swift",
+    area: "cloudSync",
+    label: "Cloud Sync minimum Swift SDK",
+    description: "The oldest Swift SDK version allowed to use the key ring.",
+    kind: "string",
+    pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+    maxLength: 32,
+    scripts: ["main"],
+    link: null,
+    precedence: "runtime",
+    default: null,
+    deployValue: null,
+    value: null,
+    source: "default",
+    forcedOff: false,
+    stored: null,
+    version: 0,
+    confirm: { change: "L1" },
+    ...over,
+  });
+  const relayPaused = (over: Setting = {}): Setting =>
+    lazyDeltas({
+      key: "cloudConnect.relayPaused",
+      area: "cloudConnect",
+      label: "Pause the Cloud Connect relay",
+      deployValue: null,
+      precedence: "runtime",
+      confirm: { on: "L2", off: "L1" },
+      ...over,
+    });
+
+  it("lists a text row and the relay pause, and saves a version through the route", async () => {
+    const log = boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/platform/settings": writable(
+          () => minSdk({ value: "0.10.0", source: "runtime", version: 1 }),
+          () =>
+            view({
+              settings: [
+                lazyDeltas(),
+                maxBytes(),
+                gcMode(),
+                grace(),
+                reservedNames(),
+                reservedDisplayNames(),
+                minSdk(),
+                relayPaused(),
+              ],
+            }),
+        ),
+      }),
+    });
+    const rows = await screen.findByText("Cloud Sync minimum Swift SDK");
+    expect(rows).toBeTruthy();
+    expect(screen.getByText("Pause the Cloud Connect relay")).toBeTruthy();
+    const field = screen.getByRole("textbox", {
+      name: /Cloud Sync minimum Swift SDK/,
+    });
+    await userEvent.type(field, "0.10.0");
+    await userEvent.click(screen.getByRole("button", { name: /^save/i }));
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /0\.10\.0$/ }),
+    );
+    await waitFor(() => expect(writes(log, "PATCH")).toHaveLength(1));
+    expect(writes(log, "PATCH")[0]!.path).toBe(
+      "/manage/api/platform/settings/cloudSync.minSdk.swift",
+    );
+    expect(JSON.parse(writes(log, "PATCH")[0]!.body!)).toMatchObject({
+      value: "0.10.0",
+      expectedVersion: 0,
+    });
+  });
+});
+
 /**
  * A deep link lands on its row "at once": `landOn` finds the row on a frame and focuses it after
  * one 50 ms turn, and only gives up on the row for its section after `rowWaitMs` of wall clock.

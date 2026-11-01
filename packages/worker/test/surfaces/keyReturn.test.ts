@@ -465,6 +465,14 @@ describe("refusals, in the contract's order (§12.4.2 item 3)", () => {
       await expectGone(handle, binder);
     });
 
+    it("for a request opened while launch.identityKeyReturn was off (the opt-in is dropped at authorize)", async () => {
+      gate("off");
+      const { handle, binder } = await begin();
+      gate("on");
+      await expectGone(handle, binder);
+      expect(await alive(handle, binder)).toBe(true);
+    });
+
     it("for a device-code request, which never carries the opt-in", async () => {
       const made = await createSignInRequest(
         env,
@@ -1068,5 +1076,98 @@ describe("POST identity/token for a key code (§12.4.2 items 5 and 6, §12.5 rul
         SLUG,
       ),
     ).toEqual([]);
+  });
+});
+
+describe("key return on a pushed request", () => {
+  const LOOP = "http://127.0.0.1:49152/pkey/callback";
+
+  async function pushedHandle(uri?: string) {
+    if (uri === undefined) {
+      const res = await dispatchWith(
+        new Request(`${BASE}/${SLUG}/identity/request`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/x-www-form-urlencoded",
+            "x-pkey-device": DEVICE_A,
+          },
+          body: new URLSearchParams({
+            response_type: "code",
+            client_id: SLUG,
+            redirect_uri: LOOP,
+            state: STATE,
+            code_challenge: CHALLENGE,
+            code_challenge_method: "S256",
+            key_return: "allow",
+            device_name: "Ada's Mac",
+          }).toString(),
+        }) as never,
+        env,
+        db,
+        NOW,
+      );
+      expect(res.status).toBe(201);
+      uri = ((await res.json()) as { request_uri: string }).request_uri;
+    }
+    const res = await dispatchWith(
+      new Request(
+        `${BASE}/${SLUG}/identity/authorize?${new URLSearchParams({ client_id: SLUG, request_uri: uri })}`,
+      ) as never,
+      env,
+      db,
+      NOW,
+    );
+    expect(res.status).toBe(303);
+    return {
+      uri,
+      handle: new URL(res.headers.get("location")!).searchParams.get(
+        "request",
+      )!,
+      binder: res.headers.get("set-cookie")!.split(";")[0]!,
+    };
+  }
+
+  it("two reopened handles yield one code", async () => {
+    const a = await pushedHandle();
+    const b = await pushedHandle(a.uri);
+    const first = await press(a.handle, {
+      binder: a.binder,
+      body: withKey(),
+    });
+    expect(first.status).toBe(200);
+    const second = await press(b.handle, {
+      binder: b.binder,
+      body: withKey(),
+    });
+    expect(second.status).toBe(404);
+  });
+
+  it("the code is redeemed only by the pushing device", async () => {
+    const a = await pushedHandle();
+    const res = await press(a.handle, { binder: a.binder, body: withKey() });
+    expect(res.status).toBe(200);
+    const code = new URL(
+      ((await res.json()) as { redirect: string }).redirect,
+    ).searchParams.get("code")!;
+    const wrong = await dispatchWith(
+      new Request(`${BASE}/${SLUG}/identity/token`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          "x-pkey-device": DEVICE_B,
+        },
+        body: new URLSearchParams({
+          grant_type: "authorization_code",
+          client_id: SLUG,
+          code,
+          code_verifier: VERIFIER,
+          redirect_uri: LOOP,
+        }).toString(),
+      }) as never,
+      env,
+      db,
+      NOW,
+    );
+    await expectInvalidGrant(wrong);
   });
 });

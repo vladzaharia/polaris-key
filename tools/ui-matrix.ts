@@ -74,6 +74,11 @@
 // the four ways a session ends without a link, links off for the product) and TransferOffer (D-8:
 // consent per transfer). Like `cloudSync` it sits outside COMPONENT_FAMILIES, so only ui-core runs
 // it; the native kits learn it with their own packages.
+// The `nearby` family (UXR-47b, additive within version 8): the nearby sign-in screens the desktop kit
+// adds from its built UX review. SignIn's nearby-choose, nearby-none-found and one ending per way a
+// request ends (denied, expired, not-nearby, failed, cancelled, signed-out), and NearbyApproval's
+// listening, stopped and failed. Like `holders` it sits outside COMPONENT_FAMILIES, so only ui-core
+// runs it; its rows count toward the state coverage of the must components they name.
 // Version 8 (U-22.UX2): the saveConflict family from the built UX reviews. The `newer` input
 // member and the Newer tag; the `choose-again` action (a failed choice returns to its choices,
 // nothing applied); keeping is busy (`a11y.busy`) and keeps the deleted variant's title; kept
@@ -175,6 +180,7 @@ export interface UiMatrix {
   saveConflict: Row[];
   holders: Row[];
   connect: Row[];
+  nearby: Row[];
   theme: ThemeRow[];
   i18n: I18nRow[];
   cli: CliFamily;
@@ -726,9 +732,9 @@ const INPUTS: Record<string, string> = {
   provider:
     "The sign-in provider's name (Apple, Google, Steam), for the strings that name it: the link offer, the failed sign-in. Absent: Polaris Locker, the sign-in the generic row opens.",
   autoSignIn:
-    "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
+    "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | nearby-choose | nearby-none-found | nearby-denied | nearby-expired | nearby-not-nearby | nearby-failed | nearby-rate-limited | nearby-unavailable | nearby-cancelled | nearby-signed-out | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
   nearbyApproval:
-    "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby, device?}. Absent: the account-menu entry.",
+    "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby | mismatch | denied | expired | device-limit | choose | account-required | rate-limited | listening | stopped | failed, device?}. Absent: the account-menu entry. `listening` is the screen open with nothing asking yet; `stopped` the advert stopped after declined requests; `failed` a server or network failure.",
   linkPairing:
     "Pairing with someone nearby: {step: open | code | confirm | linked | failed | unavailable, device?, code?, categories?, reason?: declined | timeout | full | closed}. `device` is the label the other device reported: nothing authenticates it, so the screen words it as reported and, without one, says the device gave no name. `code` is drawn as served and compared by both people. `categories` (ids, at most 8) are listed before the confirm button; none says nothing is shared yet. `unavailable`: links are off for the product (the typed connect_links_disabled). Absent: LinkPairing is hidden.",
   transferOffer:
@@ -3848,6 +3854,47 @@ function finish(d: Draft): Row {
   return out;
 }
 
+// ── nearby (UXR-47b) ────────────────────────────────────────────────────────────────────────
+
+function nearbyFamily(a: A): Draft[] {
+  const { row } = a;
+  const SI = "SignIn";
+  const NA = "NearbyApproval";
+  const auto = (step: string): Obj => ({
+    signIn: si(),
+    autoSignIn: { step },
+  });
+  const ask = (step: string): Obj => ({
+    nearbyApproval: { step, device: "Kitchen iPad" },
+  });
+  return [
+    ...[
+      ["nearby-choose", "several devices answered: choose which to ask"],
+      [
+        "nearby-none-found",
+        "nobody answered: open the app on the other device",
+      ],
+      ["nearby-denied", "the other device denied it"],
+      ["nearby-expired", "the request expired"],
+      ["nearby-not-nearby", "the other device is not on this network"],
+      ["nearby-failed", "the network failed"],
+      ["nearby-rate-limited", "too many attempts"],
+      ["nearby-unavailable", "this computer cannot look for nearby devices"],
+      ["nearby-cancelled", "cancelled, or another account chosen"],
+      ["nearby-signed-out", "Not you? signed this device out"],
+    ].map(([state, what]) =>
+      row(`${SI}/${state}: ${what}`, auto(state!), SI, state!, "all"),
+    ),
+    ...[
+      ["listening", "open, nothing has asked yet"],
+      ["stopped", "the advert stopped after declined requests"],
+      ["failed", "a server or network failure; nothing approved"],
+    ].map(([state, what]) =>
+      row(`${NA}/${state}: ${what}`, ask(state!), NA, state!, "all"),
+    ),
+  ];
+}
+
 // ── holders (UK-42.2) ───────────────────────────────────────────────────────────────────────
 
 function holdersFamily(a: A): Draft[] {
@@ -6668,6 +6715,101 @@ function checkConnect(doc: UiMatrix, S: UiMatrixSources): string[] {
   return errors;
 }
 
+/** A row's copy keys against its state's list: a `core.*` key is in copy.en.json, any other is listed. */
+function copyErrors(
+  S: UiMatrixSources,
+  where: string,
+  component: string,
+  state: string,
+  copy: readonly string[],
+  listed: readonly string[],
+): string[] {
+  const errors: string[] = [];
+  for (const k of copy) {
+    if (k.startsWith("core.")) {
+      if (!(k in (S.core.en ?? {})))
+        errors.push(`${where}: ${k} is not in copy.en.json`);
+    } else if (!listed.includes(k))
+      errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
+  }
+  return errors;
+}
+
+/** Every pinned state has a row, and the rows together show every key its list holds. */
+function coverageErrors(
+  family: string,
+  states: Record<string, readonly string[]>,
+  shown: Map<string, Set<string>>,
+  S: UiMatrixSources,
+): string[] {
+  const errors: string[] = [];
+  for (const [c, list] of Object.entries(states))
+    for (const st of list) {
+      const union = shown.get(`${c}.${st}`);
+      if (!union) {
+        errors.push(`${family}: no row for ${c}.${st}`);
+        continue;
+      }
+      for (const k of S.components[c]?.states[st]?.copy ?? [])
+        if (!union.has(k))
+          errors.push(`${family}: no row shows ${k} in ${c}.${st}`);
+    }
+  return errors;
+}
+
+/** The nearby family's states (a must component's rows also count toward its coverage). */
+const NEARBY_STATES: Record<string, readonly string[]> = {
+  SignIn: [
+    "nearby-choose",
+    "nearby-none-found",
+    "nearby-denied",
+    "nearby-expired",
+    "nearby-not-nearby",
+    "nearby-failed",
+    "nearby-rate-limited",
+    "nearby-unavailable",
+    "nearby-cancelled",
+    "nearby-signed-out",
+  ],
+  NearbyApproval: ["listening", "stopped", "failed"],
+};
+
+/** The nearby family's structure: components, states, copy and actions. */
+function checkNearby(doc: UiMatrix, S: UiMatrixSources): string[] {
+  const errors: string[] = [];
+  const rows = doc.nearby;
+  if (!Array.isArray(rows) || rows.length === 0)
+    return ["nearby: the family is empty"];
+  const names = new Set<string>();
+  const shown = new Map<string, Set<string>>();
+  for (const r of rows) {
+    const where = `nearby "${r.name}"`;
+    if (names.has(r.name)) errors.push(`${where}: duplicate name`);
+    names.add(r.name);
+    const { component, state, copy } = r.expect;
+    const actions = r.expect.actions ?? [];
+    if (!NEARBY_STATES[component]?.includes(state)) {
+      errors.push(`${where}: ${component}.${state} is not a nearby state`);
+      continue;
+    }
+    if ([...copy].sort().join() !== copy.join())
+      errors.push(`${where}: copy is not sorted`);
+    const derived = actionsFor(copy);
+    if (derived.join() !== actions.join())
+      errors.push(
+        `${where}: actions ${actions.join(",")} are not its controls' (${derived.join(",")})`,
+      );
+    const listed = stateList(S, component, state, where, errors);
+    if (!listed) continue;
+    errors.push(...copyErrors(S, where, component, state, copy, listed));
+    const set = shown.get(`${component}.${state}`) ?? new Set<string>();
+    for (const k of copy) set.add(k);
+    shown.set(`${component}.${state}`, set);
+  }
+  errors.push(...coverageErrors("nearby", NEARBY_STATES, shown, S));
+  return errors;
+}
+
 /** The holders family's components. */
 export const HOLDERS_COMPONENTS = [
   "ActivateDone",
@@ -6738,13 +6880,7 @@ function checkHolders(doc: UiMatrix, S: UiMatrixSources): string[] {
     }
     const listed = stateList(S, component, state, where, errors);
     if (!listed) continue;
-    for (const k of copy) {
-      if (k.startsWith("core.")) {
-        if (!(k in (S.core.en ?? {})))
-          errors.push(`${where}: ${k} is not in copy.en.json`);
-      } else if (!listed.includes(k))
-        errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
-    }
+    errors.push(...copyErrors(S, where, component, state, copy, listed));
     const on = (s: string) => services.includes(s);
     // The reasons rule (UK-42.3): Cloud Sync only with sync; get it back and move it only with
     // Identity; Identity off, the portal line alone.
@@ -6777,17 +6913,7 @@ function checkHolders(doc: UiMatrix, S: UiMatrixSources): string[] {
     for (const k of copy) set.add(k);
     shown.set(`${component}.${state}`, set);
   }
-  for (const [c, states] of Object.entries(HOLDERS_STATES))
-    for (const st of states) {
-      const union = shown.get(`${c}.${st}`);
-      if (!union) {
-        errors.push(`holders: no row for ${c}.${st}`);
-        continue;
-      }
-      for (const k of S.components[c]?.states[st]?.copy ?? [])
-        if (!union.has(k))
-          errors.push(`holders: no row shows ${k} in ${c}.${st}`);
-    }
+  errors.push(...coverageErrors("holders", HOLDERS_STATES, shown, S));
   for (const c of ["ActivateDone", "AddToAccount"])
     if (
       !rows.some((r) => r.expect.component === c && r.expect.state === "hidden")
@@ -7212,8 +7338,8 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
     }
   }
 
-  // The holders family's rows count toward the states of the must components they name.
-  for (const r of doc.holders ?? []) {
+  // The holders and nearby families' rows count toward the states of the must components they name.
+  for (const r of [...(doc.holders ?? []), ...(doc.nearby ?? [])]) {
     const { component, state } = r.expect;
     if (state === "hidden" || !mustNames.includes(component)) continue;
     const key = `${component}.${state}`;
@@ -7383,6 +7509,7 @@ export function checkUiMatrix(doc: UiMatrix, S: UiMatrixSources): string[] {
   errors.push(...checkSaveConflict(doc, S));
   errors.push(...checkHolders(doc, S));
   errors.push(...checkConnect(doc, S));
+  errors.push(...checkNearby(doc, S));
   return errors;
 }
 
@@ -7522,6 +7649,7 @@ export function buildUiMatrix(
     saveConflict: saveConflictFamily(a).map(finish),
     holders: holdersFamily(a).map(finish),
     connect: connectFamily(a).map(finish),
+    nearby: nearbyFamily(a).map(finish),
     theme: themeRows(),
     i18n: i18nRows(S),
     cli: cliFamily(),

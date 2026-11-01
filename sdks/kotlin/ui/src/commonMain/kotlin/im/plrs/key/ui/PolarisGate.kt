@@ -132,6 +132,7 @@ public fun PolarisGate(
         onRetry = state::refresh,
         signIn = signIn,
         auto = state.auto.takeIf { autoSignIn },
+        nearby = state.nearby.takeIf { autoSignIn },
         onUpdate = onUpdate,
         onRenew = onRenew,
         toast = toast,
@@ -180,7 +181,7 @@ internal fun keyEntriesLeftLine(used: Long, limit: Long, locale: String): String
 )
 
 /** Which screen a gate state shows; the key Crossfade animates between. */
-internal enum class GateScreen { Loading, Content, Grace, Activation, Message, SignIn, Auto }
+internal enum class GateScreen { Loading, Content, Grace, Activation, Message, SignIn, Auto, Nearby }
 
 internal fun gateScreen(status: LicenseStatus?): GateScreen = when (status) {
     null -> GateScreen.Loading
@@ -213,6 +214,7 @@ public fun PolarisGateScreen(
     manageAsQr: Boolean = false,
     signIn: PolarisSignInState? = null,
     auto: PolarisAutoSignInState? = null,
+    nearby: PolarisNearbySignInState? = null,
     onUpdate: (() -> Unit)? = null,
     toast: PolarisToastSpec? = null,
     onToastDismiss: () -> Unit = {},
@@ -249,9 +251,13 @@ public fun PolarisGateScreen(
 
         else -> base
     }
+    // Nearby sign-in (I-45.12) comes before the code view: the person pressed Sign in and the people nearby are tried first.
+    NearbyGateEffect(nearby, signingIn && screen == GateScreen.SignIn)
+    val nearbyUi = nearby?.ui?.collectAsState()?.value
+    val shownScreen = if (screen == GateScreen.SignIn && nearbyShown(nearbyUi, signingIn)) GateScreen.Nearby else screen
     val startSignIn: (() -> Unit)? = onSignIn ?: signIn?.let { { signingIn = true } }
     Box(modifier) {
-        Crossfade(targetState = screen, label = "PolarisGate") { shown ->
+        Crossfade(targetState = shownScreen, label = "PolarisGate") { shown ->
             when (shown) {
                 GateScreen.Loading -> PolarisProgressScreen(copy.gateLoading)
 
@@ -286,6 +292,8 @@ public fun PolarisGateScreen(
                 )
 
                 GateScreen.Auto -> if (auto != null && autoUi != null) PolarisAutoSignInScreen(autoUi, auto)
+
+                GateScreen.Nearby -> if (nearby != null && nearbyUi != null) PolarisNearbySignInScreen(nearbyUi, nearby)
 
                 GateScreen.SignIn -> if (signIn != null) {
                     PolarisSignIn(

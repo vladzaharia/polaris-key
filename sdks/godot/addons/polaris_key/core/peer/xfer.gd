@@ -20,6 +20,12 @@ extends RefCounted
 ##   {keep = ref}  {discard = ref}  {evict = ref}  {delete = ref}
 ##   {finalize = ref}                                   the content is complete and verified
 ## A kept partial is read as {ref, id, sha256, size, chunk, bytes, writtenAt, held?, reread?}.
+##
+## Delivered content. The `delivered` option (`PKeyPeerXferDelivered.for_peer`) lets a receiver answer a
+## re-offer of content it already delivered to the same peer (the sender never saw the last `DONE`):
+## no consent and no room are needed, `ACCEPT` goes out at the last chunk boundary, the tail is read
+## and dropped, `DONE` answers, and the result is `delivered` with `again = true`. No partial is
+## made and no content is stored.
 
 const MAX_CONTROL_BYTES := 4096
 const MAX_SIZE := 1099511627776  # 2^40
@@ -35,6 +41,10 @@ const MAX_PARTIALS_PER_PEER := 8
 const ENDED_IDS := 64
 const CHUNK_HEAD := 24
 const CAP := "xfer/1"
+## How long a receiver remembers a delivered (id, sha256, size) of one peer, and how many it keeps.
+const DELIVERED_SECONDS := 86400
+const MAX_DELIVERED_PER_PEER := 64
+const MAX_DELIVERED_PEERS := 256
 
 const OFFER := 0x0020
 const ACCEPT := 0x0021
@@ -285,6 +295,7 @@ class Machine extends RefCounted:
 	var _cats: Array
 	var _rehash: Callable
 	var _new_ref: Callable
+	var _delivered: Object = null
 	var _withhold := false
 	var _tr := {}
 	var _ended: Array = []
@@ -300,7 +311,8 @@ class Machine extends RefCounted:
 	## `categories` (mode c), `partials` (the kept partials of this peer key), `rehash`
 	## (Callable(ref, offset) -> a started HashingContext fed with the first `offset` bytes the store
 	## re-read, or null when it could not), `new_ref` (Callable(id, sha256) -> a partial's name;
-	## default `partial_path`) and `withhold_acks`.
+	## default `partial_path`), `withhold_acks` and `delivered` (this peer's view of a
+	## `PKeyPeerXferDelivered`; none: every re-offer is received again).
 	func _init(o: Dictionary) -> void:
 		_peer_key = o.get("peer_key", PackedByteArray())
 		assert(_peer_key.size() == 32, "peer_key")
@@ -314,6 +326,7 @@ class Machine extends RefCounted:
 		_rehash = o.get("rehash", Callable())
 		_new_ref = o.get("new_ref", Callable())
 		_withhold = o.get("withhold_acks", false) == true
+		_delivered = o.get("delivered", null) as Object
 		for p in o.get("partials", []):
 			_parts.append((p as Dictionary).duplicate())
 		_out = blank()
@@ -508,6 +521,9 @@ class Machine extends RefCounted:
 	func _result(t: _Tr, r: Dictionary) -> void:
 		if t.st == "asking":
 			return
+		# A re-offer answered from the memory reports only its own `delivered`, flagged.
+		if t.again and r["outcome"] != "delivered":
+			return
 		_out["results"].append(r)
 
 	func _remember(id: String, dir: String, cancelled_here: bool) -> void:
@@ -635,9 +651,15 @@ class Machine extends RefCounted:
 		var id: String = f["id"]
 		if _tr.has(id) or _was_ended(id):
 			return _fault()
-		var reason := _refusal(f)
-		if reason != "":
-			return _refuse(id, reason)
+		var verdict := _screen(f)
+		if verdict == "again":
+			# Content this device already delivered to this peer needs no room and no new consent: it
+			# is answered as done, reading at most the last chunk again.
+			var again := _new_tr(id, "in", f["size"], f["chunk"], f["sha256"])
+			again.again = true
+			return _accept_again(again)
+		if verdict != "":
+			return _refuse(id, verdict)
 		# Step 7: consent.
 		var ask := {"id": id, "size": f["size"]}
 		var shown: Variant = PKeyDeviceLabel.clean_name(f["name"]) if f.has("name") else null
@@ -657,7 +679,17 @@ class Machine extends RefCounted:
 		else:
 			_accept(t)
 
-	## Steps 4 to 6, in order: the reason an offer is refused before the person is asked, or "".
+	## Steps 4 to 6 and the delivered memory: the reason an offer is refused, "again" for delivered content
+	## offered once more, or "" when the person is to be asked.
+	func _screen(f: Dictionary) -> String:
+		var reason := _refusal(f)
+		if reason != "":
+			return reason
+		if _delivered != null and _delivered.has(f["id"], f["sha256"], f["size"], _clock):
+			return "again"
+		return _room_refusal(f)
+
+	## Steps 4 and 5, in order: the reason an offer is refused before anything else, or "".
 	func _refusal(f: Dictionary) -> String:
 		var kept: Variant = null
 		for p in _parts:
@@ -675,12 +707,32 @@ class Machine extends RefCounted:
 		# Step 5: the category, before the person is asked.
 		if _mode == "c" and (not f.has("cat") or not _cats.has(f["cat"])):
 			return "category"
-		# Step 6: size and quota; a resume counts only the bytes still to come.
+		return ""
+
+	## Step 6: size and quota; a resume counts only the bytes still to come.
+	func _room_refusal(f: Dictionary) -> String:
+		var kept: Variant = null
+		for p in _parts:
+			if p["id"] == f["id"] and p["sha256"] == f["sha256"]:
+				kept = p
+				break
 		if _host_limit >= 0 and f["size"] > _host_limit:
 			return "size"
 		var free := int(_free.call()) if _free.is_valid() else -1
 		var need: int = f["size"] - (int(kept["bytes"]) if kept != null and _resumable(f, kept) else 0)
 		return "quota" if free >= 0 and need > free else ""
+
+	## `ACCEPT` at the last chunk boundary of delivered content; the tail is read and dropped.
+	func _accept_again(t: _Tr) -> void:
+		@warning_ignore("integer_division")
+		var offset: int = (t.size / t.chunk) * t.chunk
+		_tr[t.id] = t
+		t.recv = offset
+		t.acked_end = offset
+		t.st = "active"
+		t.accepted = true
+		t.since = _clock
+		_out["send"].append({"t": "ACCEPT", "id": t.id, "offset": offset})
 
 	## A refusal `CANCEL` ends that id at once.
 	func _refuse(id: String, reason: String) -> void:
@@ -823,7 +875,8 @@ class Machine extends RefCounted:
 			return _fault()
 		var data := body.slice(PKeyPeerXfer.CHUNK_HEAD)
 		var end: int = v["offset"] + v["length"]
-		t.hash.update(data)
+		if t.hash != null:
+			t.hash.update(data)
 		var offset: int = t.recv
 		t.recv = end
 		t.since_ack += 1
@@ -843,21 +896,36 @@ class Machine extends RefCounted:
 	## `sha` "" is none.
 	func _on_done(t: _Tr, sha: String) -> void:
 		if t.dir == "out":
-			# A DONE toward the sender carries no hash, and only follows its own DONE.
-			if sha != "" or t.st != "doneSent":
-				return _fault()
-			_result(t, {"id": t.id, "outcome": "delivered"})
-			_end(t, false)
-			return
+			_on_done_out(t, sha)
+		else:
+			_on_done_in(t, sha)
+
+	func _on_done_out(t: _Tr, sha: String) -> void:
+		# A DONE toward the sender carries no hash, and only follows its own DONE.
+		if sha != "" or t.st != "doneSent":
+			return _fault()
+		_result(t, {"id": t.id, "outcome": "delivered"})
+		_end(t, false)
+
+	func _on_done_in(t: _Tr, sha: String) -> void:
 		if sha == "" or t.st != "active":
 			return _fault()
 		if t.recv < t.size:
 			return _cancel_in(t, "size")
+		if t.again:
+			if sha != t.sha:
+				return _cancel_in(t, "hash")
+			_out["send"].append({"t": "DONE", "id": t.id})
+			_result(t, {"id": t.id, "outcome": "delivered", "again": true})
+			_end(t, false)
+			return
 		if sha != t.sha or t.hash.finish().hex_encode() != t.sha:
 			return _cancel_in(t, "hash")
 		_out["send"].append({"t": "DONE", "id": t.id})
 		if t.partial != "":
 			_eff({"finalize": t.partial})
+		if _delivered != null:
+			_delivered.add(t.id, t.sha, t.size, _clock)
 		_result(t, {"id": t.id, "outcome": "delivered"})
 		_end(t, false)
 
@@ -897,3 +965,5 @@ class Machine extends RefCounted:
 		var ack_end := 0
 		var seekable := true
 		var full := false
+		## A re-offer of delivered content answered from the memory.
+		var again := false

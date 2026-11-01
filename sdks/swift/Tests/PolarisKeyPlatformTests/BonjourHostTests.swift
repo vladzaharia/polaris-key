@@ -181,7 +181,8 @@ import XCTest
             let ops = PlatformBinaryOps.system(sink: PlatformEventSink(), environment: [:])
             for op in [
                 "bj_browse_start", "bj_browse_stop", "bj_accept", "bj_advertise_start", "bj_advertise_update",
-                "bj_advertise_stop", "bj_stop_all", "bj_dial", "bj_send", "bj_credit", "bj_admit", "bj_close",
+                "bj_advertise_stop", "bj_contacts", "bj_accept_tags", "bj_caps", "bj_stop_all", "bj_dial", "bj_send",
+                "bj_credit", "bj_admit", "bj_close",
             ] {
                 XCTAssertNotNil(ops[op], op)
             }
@@ -425,6 +426,141 @@ import XCTest
             XCTAssertEqual(ev.map(\.0), ["bj_lost"])
             XCTAssertEqual(ev[0].1["instance"] as? String, inst(2))
             XCTAssertEqual(run(m.ops, "bj_dial", json(["instance": inst(2)])), [0], "no longer dialable")
+        }
+
+        // MARK: discovery slots (CC-15b.GA)
+
+        private func tagged(_ i: Int, m: String, h: String) -> BonjourFound {
+            BonjourFound(
+                instance: inst(i), txt: ["v=1", "m=\(m)", "h=\(h)"], endpoint: BonjourEndpoint(name: inst(i)))
+        }
+
+        func testCapsAnswerOneSlotPerKind() {
+            let m = make()
+            XCTAssertEqual(String(decoding: run(m.ops, "bj_caps", []), as: UTF8.self), #"{"slots":1}"#)
+        }
+
+        func testSlotsAreValidatedAndEachHasItsOwnListener() {
+            let m = make()
+            let bad = json(["slot": "x", "instance": inst(1), "txt": []])
+            XCTAssertEqual(run(m.ops, "bj_advertise_start", bad), [3])
+            XCTAssertEqual(run(m.ops, "bj_advertise_update", bad), [3])
+            XCTAssertEqual(run(m.ops, "bj_advertise_stop", json(["slot": "c0"])), [3])
+            XCTAssertEqual(run(m.ops, "bj_advertise_stop", json(["slot": 5])), [3])
+            for slot in ["a", "v", "p"] {
+                let body = json(["slot": slot, "instance": inst(1), "txt": ["v=1"]])
+                XCTAssertEqual(run(m.ops, "bj_advertise_start", body), [1], slot)
+                XCTAssertEqual(run(m.ops, "bj_advertise_start", body), [7], "one advert per slot: \(slot)")
+            }
+            XCTAssertEqual(run(m.ops, "bj_advertise_stop", json(["slot": "v"])), [1])
+            XCTAssertEqual(run(m.ops, "bj_advertise_stop", json(["slot": "v"])), [0])
+            XCTAssertEqual(run(m.ops, "bj_advertise_start", json(["slot": "v", "instance": inst(2), "txt": []])), [1])
+            XCTAssertEqual(run(m.ops, "bj_stop_all", []), [1])
+            XCTAssertEqual(run(m.ops, "bj_advertise_stop", json(["slot": "p"])), [0])
+        }
+
+        func testContactsAreBoundedAndFollowSlotAsPort() {
+            let contacts = BonjourContactAdverts()
+            let sink = PlatformEventSink()
+            let host = BonjourHost(
+                sink: sink, makeDriver: { Driver() }, configurationCheck: { nil }, contacts: contacts)
+            var ops: [String: PlatformBinaryOp] = [:]
+            host.register(into: &ops)
+            defer { _ = run(ops, "bj_stop_all", []) }
+            let base = Int(UInt32.random(in: 1000...1_000_000))
+            func advert(_ i: Int) -> [String: Any] { ["instance": inst(base + i), "txt": ["v=1", "m=c"]] }
+            func set(_ n: Int) -> [UInt8] { run(ops, "bj_contacts", json(["adverts": (0..<n).map(advert)])) }
+            XCTAssertEqual(run(ops, "bj_contacts", []), [3])
+            XCTAssertEqual(run(ops, "bj_contacts", json(["adverts": 5])), [3])
+            XCTAssertEqual(set(9), [3], "at most 8")
+            XCTAssertEqual(run(ops, "bj_contacts", json(["adverts": [advert(1), advert(1)]])), [3], "no repeats")
+            XCTAssertEqual(run(ops, "bj_contacts", json(["adverts": [["instance": "x", "txt": []]]])), [3])
+            // No slot-a port: the set is held, nothing is registered.
+            XCTAssertEqual(set(3), [1])
+            XCTAssertTrue(contacts.names.isEmpty)
+            host.learnPort("a", 40_201)
+            XCTAssertEqual(contacts.names.count, 3)
+            XCTAssertEqual(Set(contacts.ports.values), [40_201])
+            // A smaller set replaces the whole; a new port moves what is kept.
+            XCTAssertEqual(set(2), [1])
+            XCTAssertEqual(contacts.names.count, 2)
+            host.learnPort("a", 40_202)
+            XCTAssertEqual(Set(contacts.ports.values), [40_202])
+            // Stopping slot a withdraws them; slot a coming back registers the same set again.
+            XCTAssertEqual(run(ops, "bj_advertise_stop", []), [0])
+            XCTAssertTrue(contacts.names.isEmpty)
+            host.learnPort("a", 40_203)
+            XCTAssertEqual(Set(contacts.ports.values), [40_203])
+            XCTAssertEqual(set(0), [1])
+            XCTAssertTrue(contacts.names.isEmpty)
+            XCTAssertEqual(set(1), [1])
+            XCTAssertEqual(contacts.names.count, 1)
+            // bj_stop_all withdraws them and forgets the set.
+            XCTAssertEqual(run(ops, "bj_stop_all", []), [1])
+            XCTAssertTrue(contacts.names.isEmpty)
+            host.learnPort("a", 40_204)
+            XCTAssertTrue(contacts.names.isEmpty)
+        }
+
+        func testTagsAdmitAResultByItsTxtAndAreBounded() {
+            let m = make()
+            let h1 = "0123456789abcdef"
+            let h2 = "fedcba9876543210"
+            _ = run(m.ops, "bj_browse_start", json([:]))
+            m.driver.send(
+                .upserted([
+                    tagged(1, m: "v", h: h1), tagged(2, m: "v", h: h2), tagged(3, m: "p", h: h1),
+                    tagged(4, m: "a", h: h1),
+                ]))
+            XCTAssertTrue(events(m.sink).isEmpty, "no tags, no roster: nothing enters")
+            XCTAssertEqual(run(m.ops, "bj_accept_tags", json(["v": [h1], "p": []])), [1])
+            var ev = events(m.sink)
+            XCTAssertEqual(ev.map(\.0), ["bj_found"], "the rescan admits the match only")
+            XCTAssertEqual(ev[0].1["instance"] as? String, inst(1))
+            m.driver.send(.upserted([tagged(5, m: "v", h: h1), tagged(6, m: "v", h: "ffffffffffffffff")]))
+            XCTAssertEqual(events(m.sink).compactMap { $0.1["instance"] as? String }, [inst(5)])
+            // The previous tag too; a kind does not borrow the other's tag.
+            XCTAssertEqual(run(m.ops, "bj_accept_tags", json(["v": [h1, h2], "p": [h1]])), [1])
+            XCTAssertEqual(Set(events(m.sink).compactMap { $0.1["instance"] as? String }), [inst(2), inst(3)])
+            // A roster name still enters whatever its TXT.
+            _ = run(m.ops, "bj_accept", names([4]))
+            XCTAssertEqual(events(m.sink).compactMap { $0.1["instance"] as? String }, [inst(4)])
+            // Dropping a tag retires what only it admitted; the roster's row stays.
+            XCTAssertEqual(run(m.ops, "bj_accept_tags", json(["v": [h2]])), [1])
+            ev = events(m.sink)
+            XCTAssertEqual(Set(ev.compactMap { $0.1["instance"] as? String }), [inst(1), inst(3), inst(5)])
+            XCTAssertEqual(Set(ev.map(\.0)), ["bj_lost"])
+        }
+
+        func testBadTagListsAreRefusedAndClearTheTags() {
+            let m = make()
+            let h = "0123456789abcdef"
+            _ = run(m.ops, "bj_browse_start", json([:]))
+            XCTAssertEqual(run(m.ops, "bj_accept_tags", json(["v": [h]])), [1])
+            m.driver.send(.upserted([tagged(1, m: "v", h: h)]))
+            XCTAssertEqual(events(m.sink).map(\.0), ["bj_found"])
+            let bad: [[UInt8]] = [
+                [], Array("[]".utf8), json(["v": [h, h, h]]), json(["v": ["0123"]]), json(["v": ["0123456789ABCDEF"]]),
+                json(["v": [5]]), json(["v": h]), json(["x": [h]]),
+                [UInt8](repeating: 0x20, count: BonjourHost.maxControlBytes + 1),
+            ]
+            for b in bad {
+                XCTAssertEqual(run(m.ops, "bj_accept_tags", b), [3], "\(b.count)")
+            }
+            XCTAssertEqual(events(m.sink).map(\.0), ["bj_lost"], "a bad list leaves no tag in force")
+            m.driver.send(.upserted([tagged(2, m: "v", h: h)]))
+            XCTAssertTrue(events(m.sink).isEmpty)
+        }
+
+        func testTagRowsShareTheSameBoundedTable() {
+            let m = make()
+            let h = "0123456789abcdef"
+            _ = run(m.ops, "bj_browse_start", json([:]))
+            _ = run(m.ops, "bj_accept_tags", json(["v": [h]]))
+            m.driver.send(.upserted((0..<(BonjourTable.maxInstances + 20)).map { tagged($0, m: "v", h: h) }))
+            let ev = events(m.sink)
+            XCTAssertEqual(ev.filter { $0.0 == "bj_found" }.count, BonjourTable.maxInstances + 20)
+            XCTAssertEqual(ev.filter { $0.0 == "bj_lost" }.count, 20, "the oldest rows leave: 256 rows at most")
         }
     }
 

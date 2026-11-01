@@ -165,9 +165,11 @@ The Update prompt installs through the update driver you set on the client. In E
 
 ## Sign in from a nearby device
 
-With bridge v5 the kit's `NearbySignIn` screen signs this device in from another signed-in device on the same network, and `NearbyApprover` is the other end: it lists the devices that ask and approves the one whose code the person picks. The main process runs both; the window never holds a key, token or request id. How it works is on [Sign in from a nearby device](/docs/features/sign-in/nearby/).
+With bridge v5 the kit's `NearbySignIn` screen signs this device in from another signed-in device on the same network, and `NearbyApprover` is the other end: it waits for a request, shows one ask at a time, and approves the one whose code the person picks. The app menu has an **Approve a Nearby Device** item (`bridge.menuItems()`) that opens it over the app, and Settings has the same row when the person is signed in. The main process runs both; the window never holds a key, token or request id. How it works is on [Sign in from a nearby device](/docs/features/sign-in/nearby/).
 
 Both screens need a v5 host: `@polaris-key/node` 0.10 or later in main and preload. On a v4 host the adapter reports nearby as unavailable and the screens close with `unsupported`.
+
+Pass `onClose` to both. `NearbySignIn` calls it with the end kind: `signed-in`, `signed-out`, `use-code` and `not-now` hand the window back to the app. Every other ending (`denied`, `expired`, `not-nearby`, `rate-limited`, `cancelled`, a failed start) draws its own screen with Try again and Use a code instead, so the window is never blank. Mount the screens with `fill` so they own the window.
 
 On macOS the system asks for Local Network access the first time the app looks for a nearby device. Set both keys in the app's `Info.plist`; without them the browse fails without a prompt. With Electron Forge:
 
@@ -176,7 +178,7 @@ export default {
   packagerConfig: {
     extendInfo: {
       NSLocalNetworkUsageDescription:
-        "Looks for your other signed-in devices on this network, so you can sign in without typing.",
+        "Finds your other signed-in devices on this network, and lets them find this one, so you can sign in without typing.",
       NSBonjourServices: ["_pkeypeer._tcp"],
     },
   },

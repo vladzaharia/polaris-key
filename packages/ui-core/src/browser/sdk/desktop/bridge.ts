@@ -370,6 +370,9 @@ export interface BridgeNearbyAsk {
 export interface BridgeNearbyApproverState {
   /** True while the host listens (between `approverStart` and `approverStop`). */
   listening: boolean;
+  /** Why the host stopped listening on its own (`budget`: declined requests; `signed-out`;
+   *  `discovery`). Absent while listening or after the screen stopped it. */
+  stopped?: "budget" | "signed-out" | "discovery";
   asks: BridgeNearbyAsk[];
 }
 
@@ -390,6 +393,7 @@ export type BridgeNearbyStep =
   | { kind: "device-limit" }
   | { kind: "account-required" }
   | { kind: "rate-limited" }
+  | { kind: "failed" }
   | { kind: "choose"; choices: { licenseId: string; name: string }[] };
 
 /** v5 (I-47b): the licence the approver gives the new device, or a decline. */
@@ -422,7 +426,7 @@ export interface BridgeUpdateProgress {
 }
 
 /** v4 (UK-06): a view the host can ask the renderer to open (`onOpen`). */
-export type KitView = "settings" | "update";
+export type KitView = "settings" | "update" | "nearby";
 
 /** One pushed pack-progress event. Reserved for a later bridge revision: declared, not yet
  *  subscribed by this package. */

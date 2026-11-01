@@ -11,6 +11,8 @@ const USER_SETTING_CONFLICTS := ["lastWrite", "max", "min", "merge"]
 const CLOUD_SYNC_MAX_MERGE_MEMBERS := PKeyConstants.SYNC_MAX_MERGE_MEMBERS
 const CLOUD_SYNC_ENCRYPTION_MODES := ["e2e", "server"]
 const _USER_BLOCK_MEMBERS := ["sync", "conflict", "listed"]
+## The conflict a collection template supplies; no template means `revision`.
+const _TEMPLATE_CONFLICT := {"saves": "revision", "session": "lastWrite"}
 
 
 static func _one_of(v: Variant, values: Array) -> bool:
@@ -73,6 +75,41 @@ static func synced_settings(catalog: Dictionary) -> Array:
 	for r: Dictionary in routes:
 		r["encryption"] = mode
 	return routes
+
+
+## The machine's declaration of a catalog collection: `name`, `policy` (its `conflict`, else its
+## template's, else `revision`), `field` (`conflictField`) and, for `revision`, `resolve`.
+static func resolve_collection(c: Dictionary) -> Dictionary:
+	var conflict: Variant = c.get("conflict")
+	if not Types.is_string(conflict) or String(conflict) == "":
+		var tpl: Variant = c.get("template")
+		conflict = _TEMPLATE_CONFLICT.get(String(tpl), "revision") if Types.is_string(tpl) else "revision"
+	var out := {"name": c["name"], "policy": String(conflict)}
+	var field: Variant = c.get("conflictField")
+	if Types.is_string(field):
+		out["field"] = String(field)
+	if out["policy"] == "revision":
+		out["resolve"] = "keepServer"
+	return out
+
+
+## The collections a host gives the machine: the catalog's declarations, and `saves` unless the
+## catalog declares it.
+static func collection_decls(catalog: Dictionary) -> Array:
+	var out: Array = []
+	var block: Variant = catalog.get("cloudSync")
+	var declared: Variant = block.get("collections") if block is Dictionary else null
+	if declared is Array:
+		for c in declared:
+			if c is Dictionary and Types.is_string(c.get("name")) and String(c["name"]) != "":
+				out.append(resolve_collection(c))
+	var has_saves := false
+	for d: Dictionary in out:
+		if d["name"] == "saves":
+			has_saves = true
+	if not has_saves:
+		out.append({"name": "saves", "policy": "revision", "resolve": "keepServer"})
+	return out
 
 
 static func _schema_type_in(schema: Dictionary, types: Array) -> bool:

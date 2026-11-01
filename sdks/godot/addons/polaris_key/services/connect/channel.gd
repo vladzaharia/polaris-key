@@ -59,9 +59,11 @@ static func session_options(src: PKeyConnectClient.PeerSource, o: Dictionary) ->
 
 ## Binds a link to the host: when the link is admitted a `PKeyConnectSession` is made and `opened`
 ## fires; its APP records are routed to the session; pushed documents go to `docs`; the link's end
-## ends the session. The caller keeps the Attachment (it is what holds the session).
-static func attach(link: PKeyPeerLink, docs: Docs, role: String, remote_address := "", path := "lan", budget: PKeyConnectSession.Budget = null) -> Attachment:
-	return Attachment.new(link, docs, role, remote_address, path, budget)
+## ends the session. The caller keeps the Attachment (it is what holds the session). `xfer`
+## (Callable(session)) is called as the session is made, before `opened` and so before any record can follow
+## the HELLO: Direct Transfer takes its port there (section 15.11).
+static func attach(link: PKeyPeerLink, docs: Docs, role: String, remote_address := "", path := "lan", budget: PKeyConnectSession.Budget = null, xfer := Callable()) -> Attachment:
+	return Attachment.new(link, docs, role, remote_address, path, budget, xfer)
 
 
 ## The glue between one link and the host (sdk-node `SocketLink`'s session half).
@@ -80,11 +82,13 @@ class Attachment extends RefCounted:
 	var _remote: String
 	var _path: String
 	var _budget: PKeyConnectSession.Budget
+	var _xfer: Callable
 	var _refused_code: StringName = &""
 
 
-	func _init(p_link: PKeyPeerLink, p_docs: Docs, p_role: String, p_remote: String, p_path: String, p_budget: PKeyConnectSession.Budget) -> void:
+	func _init(p_link: PKeyPeerLink, p_docs: Docs, p_role: String, p_remote: String, p_path: String, p_budget: PKeyConnectSession.Budget, p_xfer := Callable()) -> void:
 		_link = p_link
+		_xfer = p_xfer
 		_docs = p_docs
 		_role = p_role
 		_remote = p_remote
@@ -117,6 +121,9 @@ class Attachment extends RefCounted:
 		if str(info.get("peer_device_id", "")) == "" or session != null:
 			return
 		session = PKeyConnectSession.new(_link, info["peer_device_id"], info["caps"], info["hello"], _role, _remote, _path, _budget)
+		session.peer_static = (info.get("remote_static", PackedByteArray()) as PackedByteArray).duplicate()
+		if _xfer.is_valid() and (info["caps"] as Array).has(PKeyPeerXfer.CAP):
+			_xfer.call(session)
 		opened.emit(session)
 		settled.emit()
 

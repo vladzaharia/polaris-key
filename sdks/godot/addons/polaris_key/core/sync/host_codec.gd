@@ -23,21 +23,25 @@ extends "res://addons/polaris_key/services/cloud_sync/codec_port.gd"
 ##   HC-5  a `ct` that does not open is `invalid` and its row has no value; a blinded name is accepted
 ##         only when the `k` inside the envelope re-blinds to it; a merge member only when it is under
 ##         the setting's prefix, re-blinds, and appears once.
-##   HC-6  a locked codec seals nothing and opens nothing; a mutation that cannot be sealed (a record
-##         mutation, a value canonical JSON refuses, a member op on an open key) sends nothing, and a
-##         half-valid batch returns nothing.
+##   HC-6  a locked codec seals nothing and opens nothing; a mutation that cannot be sealed (a field or
+##         element name that is empty or holds U+0000, an element or value canonical JSON refuses, a
+##         member op on an open key) sends nothing, and a half-valid batch returns nothing.
 ##
 ## Results are Dictionaries, never exceptions: `{"ok": false, "code": <error code>}` (`sync-locked`,
 ## `invalid-options`, `sync-failed`) means nothing is sent or delivered. No value, root or key is in
 ## any result's message (there is none).
 ##
-## Scope: the `$settings` collection, and records with a scalar value (D-2: saves are `revision`
-## records; U-23.G3). A record value is sealed under its collection with `k = id`, its id travels as
-## `blind("record", collection, id)`, and a pulled record opens only when the `k` inside the envelope
-## re-blinds to the id on the wire (§13.10.4), so a Worker cannot place a sealed value under another
-## record. A record mutation other than `set` and `delete` (a `merge` field, a `union` element), and a
-## sealed `merge` or `union` change (`fields`, `elements`), are outside this codec: a mutation is
-## refused (`invalid-options`) and a change reads as `invalid`.
+## Scope: the `$settings` collection and records of every shape (C-26 / U-46). A record's collection
+## travels in the clear and its id, field and element names only blinded (`blind("record" | "field" |
+## "element", c, name)`). Every sealed record value shares `K_coll(c)`, so the envelope's `k` places it:
+##
+##   value    k = id                              wire name blind("record", c, id)
+##   field    k = id U+0000 field                 and blind("field", c, field)
+##   element  k = id U+0000 canonicalJson(e)      and blind("element", c, canonicalJson(e))
+##
+## A pulled record opens only when the id is blinded and the `k` inside every envelope re-blinds to the
+## names the row came under, so a Worker cannot place a sealed value under another record, field or
+## element. A conflict copy carries no names and opens under the mutation's own record.
 
 const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 const SETTINGS_COLLECTION := "$settings"
@@ -165,20 +169,30 @@ static func _seal_mutation(m: Dictionary, codec: Object, declared: Dictionary) -
 	return {"ok": true, "mutation": out}
 
 
-## A record mutation (scalar value, D-2): `set` seals the value under the collection with `k = id`;
-## `delete` carries none. Either sends the id blinded. The collection travels in the clear (§13.10.2).
+## The envelope name of a record field: the id, U+0000, the field.
+static func field_name(record_id: String, field: String) -> PackedByteArray:
+	return PKeySyncEnvelope.member_name(record_id, field)
+
+
+## The envelope name of a union element: the id, U+0000, the element's canonical JSON.
+static func element_name(record_id: String, canonical: String) -> PackedByteArray:
+	return PKeySyncEnvelope.member_name(record_id, canonical)
+
+
+## A record mutation (V5 section 13.10.4). `set` seals the value under `k = id`; `setField` under
+## `id U+0000 field`; `add` seals the element under `id U+0000 canonicalJson(e)`. `delete`,
+## `removeField` and `remove` carry no value. Every name goes blinded, the collection in the clear.
 static func _seal_record_mutation(m: Dictionary, target: Dictionary, codec: Object) -> Dictionary:
 	var ref: Variant = _record_ref(target.get("record"))
-	if ref == null:
-		return _refuse()
-	if m.has("ct") or m.has("field") or m.has("element") or m.has("member"):
+	if ref == null or m.has("ct"):
 		return _refuse()
 	var collection: String = ref[0]
 	var id: String = ref[1]
 	var out := m.duplicate()
-	match m.get("op"):
+	var op: Variant = m.get("op")
+	match op:
 		"set":
-			if not m.has("value"):
+			if not m.has("value") or _has_any(m, ["field", "element", "member"]):
 				return _refuse()
 			out.erase("value")
 			var env: PackedByteArray = codec.seal(collection, id, m["value"])
@@ -186,7 +200,44 @@ static func _seal_record_mutation(m: Dictionary, target: Dictionary, codec: Obje
 				return _refuse()
 			out["ct"] = PKeyB64Url.encode(env)
 		"delete":
-			if m.has("value"):
+			if _has_any(m, ["value", "field", "element", "member"]):
+				return _refuse()
+		"setField":
+			var f: Variant = _field_of(m)
+			if f == null or not m.has("value") or _has_any(m, ["element", "member"]):
+				return _refuse()
+			out.erase("value")
+			out["field"] = codec.blind("field", collection, f)
+			var env: PackedByteArray = codec.seal(collection, field_name(id, f), m["value"])
+			if env.is_empty() or out["field"] == "":
+				return _refuse()
+			out["ct"] = PKeyB64Url.encode(env)
+		"removeField":
+			var f2: Variant = _field_of(m)
+			if f2 == null or _has_any(m, ["value", "element", "member"]):
+				return _refuse()
+			out["field"] = codec.blind("field", collection, f2)
+			if out["field"] == "":
+				return _refuse()
+		"add":
+			if not m.has("element") or _has_any(m, ["value", "field", "member"]):
+				return _refuse()
+			var canon: Variant = _canonical(m["element"])
+			if canon == null:
+				return _refuse()
+			out["element"] = codec.blind("element", collection, canon)
+			var env: PackedByteArray = codec.seal(collection, element_name(id, canon), m["element"])
+			if env.is_empty() or out["element"] == "":
+				return _refuse()
+			out["ct"] = PKeyB64Url.encode(env)
+		"remove":
+			if not m.has("element") or _has_any(m, ["value", "field", "member"]):
+				return _refuse()
+			var canon2: Variant = _canonical(m["element"])
+			if canon2 == null:
+				return _refuse()
+			out["element"] = codec.blind("element", collection, canon2)
+			if out["element"] == "":
 				return _refuse()
 		_:
 			return _refuse()
@@ -197,6 +248,27 @@ static func _seal_record_mutation(m: Dictionary, target: Dictionary, codec: Obje
 	t["record"] = [collection, blinded]
 	out["target"] = t
 	return {"ok": true, "mutation": out}
+
+
+static func _has_any(m: Dictionary, names: Array) -> bool:
+	for n: String in names:
+		if m.has(n):
+			return true
+	return false
+
+
+## The field of a `setField` / `removeField`: a non-empty String with no U+0000, else null.
+static func _field_of(m: Dictionary) -> Variant:
+	var f: Variant = m.get("field")
+	if not (f is String) or f == "" or _has_nul(f):
+		return null
+	return f
+
+
+## The canonical JSON of an element, or null when canonical JSON refuses it.
+static func _canonical(e: Variant) -> Variant:
+	var r := PKeySyncCanonicalJson.canonicalize_value(e)
+	return r["canonical"] if r["ok"] else null
 
 
 ## `[collection, id]` when `v` is a pair of non-empty strings that can name a record: no U+0000 (the blind
@@ -236,7 +308,7 @@ static func open_pull_with(body: Dictionary, codec: Object, mutations: Variant, 
 				changes.append(c)
 				rows.append(null)
 				continue
-			var pair := _open_change(c, codec, app_aliases)
+			var pair := _open_change(c, codec, app_aliases, record_keys)
 			changes.append(pair[0])
 			rows.append(pair[1])
 		out["changes"] = changes
@@ -371,68 +443,165 @@ static func _invalid_row(e: Dictionary) -> Array:
 	var out := _stripped(e)
 	out.erase("value")
 	out.erase("members")
+	out.erase("fields")
+	out.erase("elements")
 	return [out, {"invalid": true}]
 
 
 static func _plain_row(e: Dictionary) -> Array:
+	# Sealed cells with no `ct` are not a plaintext row: only the host's open can read them.
+	if e.get("fields") is Array or e.get("elements") is Array:
+		return _invalid_row(e)
 	var v: Variant = e.get("version")
 	return [_stripped(e), {"seq": v} if Types.is_number(v) else {}]
 
 
-static func _open_change(c: Dictionary, codec: Object, aliases: Dictionary) -> Array:
+static func _open_change(c: Dictionary, codec: Object, aliases: Dictionary, record_keys: Array = []) -> Array:
 	if c.get("setting") is String:
 		return _open_setting_change(c, codec, aliases)
 	if c.has("record"):
-		return _open_record_change(c, codec)
+		return _open_record_change(c, codec, record_keys)
 	# Neither a setting nor a record: a sealed one cannot be placed.
 	if c.has("ct"):
 		return _invalid_row(c)
 	return _plain_row(c)
 
 
-## A record change: `{record: [collection, id], ct, version}`. A sealed `merge` or `union` change
-## (`fields`, `elements`) is outside the scalar codec and reads as invalid; a plaintext row is legacy
-## (the machine checks its `seq` against `encryptionSince`). A sealed id is accepted only when it is
-## blinded and the `k` inside the envelope re-blinds to it (HC-5), then it is replaced by the id.
-static func _open_record_change(c: Dictionary, codec: Object) -> Array:
-	if c.get("fields") is Array or c.get("elements") is Array:
-		return _invalid_row(c)
-	if not c.has("ct"):
-		return _plain_row(c)
-	var ref: Variant = _record_ref(c["record"])
-	if ref == null or not PKeySyncBlind.is_blinded_name(ref[1]):
-		return _invalid_row(c)
-	var env: Variant = _from_ct(c["ct"])
-	if env == null:
-		return _invalid_row(c)
-	var r: Dictionary = codec.open_any(ref[0], env)
-	if not r["ok"] or (r["name_bytes"] as PackedByteArray).has(0):
-		return _invalid_row(c)
-	var id: String = r["name"]
-	if id == "" or codec.blind("record", ref[0], id) != ref[1]:
-		return _invalid_row(c)
-	var entry := _stripped(c)
-	entry["record"] = [ref[0], id]
-	entry["value"] = r["value"]
-	return [entry, {"sealed": true}]
+## The sealed shape of a record row: "ct", "fields", "elements", "plain" (none), or "" (more than one).
+static func _shape(e: Dictionary) -> String:
+	var shapes: Array = []
+	if e.has("ct"):
+		shapes.append("ct")
+	if e.get("fields") is Array:
+		shapes.append("fields")
+	if e.get("elements") is Array:
+		shapes.append("elements")
+	if shapes.is_empty():
+		return "plain"
+	return shapes[0] if shapes.size() == 1 else ""
 
 
-## A conflict's server copy of the record `rec` (`[collection, id]` of the mutation): one `ct`, opened
-## under that id. Nothing else is accepted but a plaintext copy.
-static func _open_record_copy(e: Dictionary, rec: Variant, codec: Object) -> Array:
-	if e.get("fields") is Array or e.get("elements") is Array:
-		return _invalid_row(e)
-	if not e.has("ct"):
-		return _plain_row(e)
-	var env: Variant = _from_ct(e["ct"])
-	if env == null:
-		return _invalid_row(e)
-	var r: Dictionary = codec.open(rec[0], rec[1], env, [])
-	if not r["ok"]:
-		return _invalid_row(e)
+static func _sealed_record(e: Dictionary, record: Array, value: Variant) -> Array:
 	var entry := _stripped(e)
-	entry["value"] = r["value"]
+	entry.erase("fields")
+	entry.erase("elements")
+	entry["record"] = record
+	entry["value"] = value
 	return [entry, {"sealed": true}]
+
+
+## A record change. A plaintext row is legacy (the machine judges its `seq`, section 13.10.7). A sealed
+## one needs a blinded id and opens only when every envelope's `k` re-blinds to the names the row came
+## under; the row then carries the plaintext id and the opened value (a `merge` record's object, a
+## `union` record's array in the served order) (HC-5).
+static func _open_record_change(c: Dictionary, codec: Object, record_keys: Array = []) -> Array:
+	var shape := _shape(c)
+	if shape == "plain":
+		return _plain_row(c)
+	var ref: Variant = _record_ref(c.get("record"))
+	if shape == "" or ref == null or not PKeySyncBlind.is_blinded_name(ref[1]):
+		return _invalid_row(c)
+	var collection: String = ref[0]
+	var served: String = ref[1]
+	if shape == "ct":
+		var env: Variant = _from_ct(c["ct"])
+		if env == null:
+			return _invalid_row(c)
+		var r: Dictionary = codec.open_any(collection, env)
+		if not r["ok"] or (r["name_bytes"] as PackedByteArray).has(0):
+			return _invalid_row(c)
+		var id: String = r["name"]
+		if id == "" or codec.blind("record", collection, id) != served:
+			return _invalid_row(c)
+		return _sealed_record(c, [collection, id], r["value"])
+	var cells: Variant = _open_cells(c, shape, collection, null, codec)
+	if cells == null:
+		return _invalid_row(c)
+	var rid: Variant = cells["id"]
+	if rid == null:
+		# No cell names the record, so the id comes from a record the machine holds, if any.
+		rid = _record_key_names(codec, record_keys).get(JSON.stringify([collection, served]))
+	elif codec.blind("record", collection, rid) != served:
+		return _invalid_row(c)
+	return _sealed_record(c, [collection, rid if rid != null else served], cells["value"])
+
+
+## A conflict's server copy of the record `rec` (`[collection, id]` of the mutation): opened under that
+## id. Nothing else is accepted but a plaintext copy.
+static func _open_record_copy(e: Dictionary, rec: Variant, codec: Object) -> Array:
+	var shape := _shape(e)
+	if shape == "plain":
+		return _plain_row(e)
+	if shape == "":
+		return _invalid_row(e)
+	var collection: String = rec[0]
+	var rid: String = rec[1]
+	var value: Variant
+	if shape == "ct":
+		var env: Variant = _from_ct(e["ct"])
+		if env == null:
+			return _invalid_row(e)
+		var r: Dictionary = codec.open(collection, rid, env, [])
+		if not r["ok"]:
+			return _invalid_row(e)
+		value = r["value"]
+	else:
+		var cells: Variant = _open_cells(e, shape, collection, rid, codec)
+		if cells == null:
+			return _invalid_row(e)
+		value = cells["value"]
+	var entry := _stripped(e)
+	entry.erase("fields")
+	entry.erase("elements")
+	entry["value"] = value
+	return [entry, {"sealed": true}]
+
+
+## Opens the sealed cells of a `merge` record (`fields`) or a `union` record (`elements`). Each envelope's
+## `k` splits at its first U+0000 into the id and the cell name; the cell's blinded name must be what the
+## row carries (and, for an element, the opened value must spell the name), and every cell must name the
+## same id (`expect_id`, when the caller knows it). `{id, value}` (`id` null for a record with no cells), or
+## null.
+static func _open_cells(e: Dictionary, shape: String, collection: String, expect_id: Variant, codec: Object) -> Variant:
+	var kind := "field" if shape == "fields" else "element"
+	var rid: Variant = expect_id
+	var names := {}
+	var fields := {}
+	var elements: Array = []
+	for cell in e[shape]:
+		if not (cell is Dictionary):
+			return null
+		var wire: Variant = cell.get(kind)
+		if not (wire is String) or not PKeySyncBlind.is_blinded_name(wire):
+			return null
+		var env: Variant = _from_ct(cell.get("ct"))
+		if env == null:
+			return null
+		var r: Dictionary = codec.open_any(collection, env)
+		if not r["ok"]:
+			return null
+		var nb: PackedByteArray = r["name_bytes"]
+		var at := nb.find(0)
+		if at <= 0:
+			return null
+		var cell_id := nb.slice(0, at).get_string_from_utf8()
+		var rest := nb.slice(at + 1)
+		if rest.is_empty() or rest.has(0):
+			return null
+		var name := rest.get_string_from_utf8()
+		if rid != null and cell_id != rid:
+			return null
+		rid = cell_id
+		if codec.blind(kind, collection, name) != wire or names.has(name):
+			return null
+		names[name] = true
+		if kind == "field":
+			fields[name] = r["value"]
+		else:
+			if _canonical(r["value"]) != name:
+				return null
+			elements.append(r["value"])
+	return {"id": rid, "value": fields if kind == "field" else elements}
 
 
 static func _open_setting_change(c: Dictionary, codec: Object, aliases: Dictionary) -> Array:

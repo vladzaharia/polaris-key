@@ -1352,7 +1352,7 @@
     <string name="signin_nearby_notNearbyBody">Conecte os dois ao mesmo Wi-Fi ou entre com um código em %1$s.</string>
     <!-- Nearby approval: the person tapped a code that did not match; the request is denied. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_mismatch">Esse código não correspondeu, então %1$s não foi conectado.</string>
-    <!-- Account menu entry: opens the nearby approval list on the signed-in device. -->
+    <!-- Account menu entry: opens the nearby approval list on the signed-in device. macOS menu items use title case and an ellipsis because the item opens a pane. -->
     <string name="signin_nearby_menu">Aprovar um dispositivo próximo</string>
     <string name="signin_nearby_menu__macos">Aprovar um dispositivo próximo</string>
     <!-- Nearby approval, on the signed-in device: choose which license the new device gets. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
@@ -1365,6 +1365,28 @@
     <string name="signin_nearby_rateLimitedBody">Aguarde um instante e tente de novo em %1$s.</string>
     <!-- Nearby approval: the code expired. Body under the Code expired title; the person starts again on the new device. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
     <string name="signin_nearby_expiredBody">Comece de novo em %1$s.</string>
+    <!-- Nearby sign-in, on the device that signs in: several devices answered, so the person chooses which one to ask. The devices follow as buttons. -->
+    <string name="signin_nearby_pick">Escolha o dispositivo a consultar.</string>
+    <!-- Nearby sign-in, waiting: asks again and lists the devices, to choose a different one. -->
+    <string name="signin_nearby_another">Escolher outro dispositivo</string>
+    <string name="signin_nearby_another__macos">Escolher outro dispositivo</string>
+    <!-- Nearby sign-in, on the device that signs in: no device answered after a while. -->
+    <string name="signin_nearby_noneTitle">Nenhum dispositivo encontrado</string>
+    <!-- Nearby sign-in: where to go on the other device. Arguments: {app} = the app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_nearby_noneBody">Abra %1$s no seu outro dispositivo e escolha Aprovar um dispositivo próximo.</string>
+    <!-- Nearby approval, on the signed-in device: the screen that waits for a request. -->
+    <string name="signin_nearby_listenTitle">Aprovar um dispositivo próximo</string>
+    <!-- Nearby approval: what to do on the new device so its request shows here. -->
+    <string name="signin_nearby_listenBody">No dispositivo novo, escolha entrar com um dispositivo próximo. O pedido aparece aqui.</string>
+    <!-- Nearby approval: this device stopped listening after requests were declined. -->
+    <string name="signin_nearby_pausedTitle">Aprovações pausadas</string>
+    <!-- Nearby approval: why it stopped (two declined requests in a short time); Start again listens again. -->
+    <string name="signin_nearby_pausedBody">Dois pedidos foram recusados, então este dispositivo parou de escutar.</string>
+    <!-- Nearby approval: listen for requests again after it paused. -->
+    <string name="signin_nearby_startAgain">Começar de novo</string>
+    <string name="signin_nearby_startAgain__macos">Começar de novo</string>
+    <!-- Nearby approval: the service or the network failed, so nothing was approved. Arguments: {device} = the new device's friendly name (never translated). Arguments: 1=device. -->
+    <string name="signin_nearby_failedBody">Nada foi aprovado. Tente novamente em %1$s.</string>
     <!-- The key was refused and the person adds it to their account on the web (↗, opens the browser). -->
     <string name="signin_key_addInLocker">Adicionar no Polaris Locker</string>
     <string name="signin_key_addInLocker__macos">Adicionar no Polaris Locker</string>

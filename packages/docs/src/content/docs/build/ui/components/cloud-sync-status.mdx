@@ -36,7 +36,7 @@ A small Cloud Sync status. It shows only while Cloud Sync is on and never implie
 
     **Headless.** `viewOf("CloudSyncStatus", input)` returns the view: its state and the copy keys it shows.
 
-    **Saves.** Inside the provider the strip follows the saves: moving, waiting for a connection, failed or in conflict. Review on a conflict opens `<SaveConflict />`; give the strip `bytes` and `describe` for it. The saves hold no time or device name, so `describe` supplies each card's `when`, the other device and `newer` from your own metadata. Without `bytes`, Keep this and Keep both cannot run (a development warning says so). Try again calls `onRetry`: write the save again. Cancel leaves the conflict pending and the strip keeps asking.
+    **Saves.** Inside the provider the strip follows the saves: moving, waiting for a connection, paused, failed or in conflict. Review on a conflict opens [`<SaveConflict />`](/docs/build/ui/components/save-conflict/); give the strip `bytes` for it. While that screen is open the strip stays on the conflict and is silent, and closing it returns focus to the strip. Every SDK stores `savedAt` and `deviceLabel` with a save, so the cards fill in on their own; `describe` is optional and overrides them. Without `bytes`, Keep this and Keep both cannot run (a development warning says so). Try again calls `onRetry` (or `onAction`): write the save again. With neither, Try again is not offered and the strip reads "Couldn't sync" until the next save succeeds. Cancel leaves the conflict pending and the strip keeps asking.
 
     ```tsx
     import { CloudSyncStatus, SaveConflict } from "@polaris-key/react/kit";

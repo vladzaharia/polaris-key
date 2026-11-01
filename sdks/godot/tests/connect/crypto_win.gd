@@ -176,6 +176,11 @@ func _refusals_gcm(t: PKeyTestContext, a: PKeyWinCrypto) -> void:
 	t.check("shorter than a tag refused", a.aes_gcm_open(key, nonce, PackedByteArray(), _zeros(15)) == null)
 	t.check("over a Noise message refused (seal)", a.aes_gcm_seal(key, nonce, PackedByteArray(), _zeros(PKeyPeerCrypto.MAX_AEAD_BYTES)).is_empty())
 	t.check("over a Noise message refused (open)", a.aes_gcm_open(key, nonce, PackedByteArray(), _zeros(PKeyPeerCrypto.MAX_AEAD_BYTES + 1)) == null)
+	# Cloud Sync: settings go native within the bound, and a larger message is left to GDScript.
+	var top := a.sync_max_bytes()
+	var s2 := a.sync_seal(key, nonce, PackedByteArray([1]), _zeros(top))
+	t.check("sync: the bound is the Noise message less the tag, and a message at it seals", top == PKeyPeerCrypto.MAX_AEAD_BYTES - 16 and s2.size() == top + 16 and a.sync_native())
+	t.check("sync: a message over the bound is refused", a.sync_seal(key, nonce, PackedByteArray(), _zeros(top + 1)).is_empty() and a.sync_open(key, nonce, PackedByteArray(), _zeros(top + 17)) == null)
 
 
 ## Any change to the tag, the text, the AAD, the nonce or the key opens to null: no plaintext.

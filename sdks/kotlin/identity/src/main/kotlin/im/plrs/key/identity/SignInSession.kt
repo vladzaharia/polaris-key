@@ -109,6 +109,15 @@ public class SignInError @JvmOverloads constructor(
 /** `client.identity.signIn`. */
 public class SignInNamespace internal constructor(private val client: IdentityClient) {
     /**
+     * Begin a nearby sign-in (WIRE-CONTRACT-V5 section 15.6.1): a signed-in device nearby approves this one. The
+     * Worker request first, then the LAN request. Throws the typed `service-unavailable` N/A when the product serves no
+     * nearby approval, and `nearby-unsupported` when this runtime cannot discover devices. The token the poll yields
+     * is held unconfirmed until [NearbySignInSession.confirmAccount].
+     */
+    @JvmOverloads
+    public suspend fun startNearby(options: NearbySignInOptions = NearbySignInOptions()): NearbySignInSession = client.startNearbySignIn(options)
+
+    /**
      * Ask for a device code (or, on the redirect channel, build the authorize URL) and return the session.
      * Throws `PolarisException` (`service-unavailable` when the product runs no Identity,
      * `sign-in-unavailable`, `invalid-argument`, `network-error`, ...). With [SignInOptions.opener] the page

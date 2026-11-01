@@ -149,6 +149,9 @@ public struct AccountAndLicenseSection: View {
     var devices: String?
     var onManage: () -> Void
     var onSignOut: () -> Void
+    /// The account menu's "Approve a nearby device" row; nil draws none (the device is signed out, or the
+    /// product or runtime offers no nearby approval).
+    var onApproveNearby: (() -> Void)?
     @Binding var autoUpdate: Bool
     var onCheckNow: () -> Void
     /// Manage ↗ and the automatic-update switch draw only when the host can act on them
@@ -179,8 +182,9 @@ public struct AccountAndLicenseSection: View {
         onCheckNow: @escaping () -> Void = {}, canManage: Bool = true, canAutoUpdate: Bool = true,
         channel: KitChannelState = .hidden, onChannel: ((String) -> Void)? = nil,
         checking: Bool = false, checkNote: CopyLine? = nil, checkFailed: Bool = false,
-        part: Part = .all
+        part: Part = .all, onApproveNearby: (() -> Void)? = nil
     ) {
+        self.onApproveNearby = onApproveNearby
         self.checkFailed = checkFailed
         self.canManage = canManage
         self.canAutoUpdate = canAutoUpdate
@@ -244,6 +248,19 @@ public struct AccountAndLicenseSection: View {
                             Image(systemName: PolarisKitGlyph.newWindow)
                                 .foregroundStyle(style.palette.textMuted)
                                 .accessibilityLabel(strings.string("a11y.externalLink"))
+                        }
+                        .kitRowHeight(52)
+                    }
+                    .tint(style.palette.accentFg)
+                }
+                if let onApproveNearby {
+                    Button(action: onApproveNearby) {
+                        HStack {
+                            PaneText(CopyLine("signin.nearby.menu"), .body, color: .default)
+                            Spacer()
+                            Image(systemName: "iphone.radiowaves.left.and.right")
+                                .foregroundStyle(style.palette.textMuted)
+                                .accessibilityHidden(true)
                         }
                         .kitRowHeight(52)
                     }

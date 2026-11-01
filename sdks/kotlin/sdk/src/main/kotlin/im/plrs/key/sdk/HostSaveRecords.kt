@@ -96,6 +96,12 @@ internal class HostSaveRecords(private val host: CloudSyncHost) : SaveRecords {
         }
     }
 
+    override suspend fun pull(): Boolean {
+        val asked = host.withMachine { it.pull(); true }
+        host.touch()
+        return asked
+    }
+
     override suspend fun set(id: String, value: JsonObject, baseVersion: JsonElement, file: RecordFile?): SaveSetResult =
         await(id) { it.putAt(SAVES_COLLECTION, id, value, baseVersion, file) }
 

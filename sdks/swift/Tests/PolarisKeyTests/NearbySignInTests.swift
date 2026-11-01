@@ -7,6 +7,7 @@
 import Foundation
 import XCTest
 
+@testable import PolarisKey
 @testable import PolarisKeyCore
 @testable import PolarisKeyIdentity
 
@@ -28,6 +29,7 @@ private final class LoggedStore: Store, @unchecked Sendable {
     private let lock = NSLock()
     private var events: [String] = []
     var failMark = false
+    var failToken = false
 
     init() { inner = InMemoryStore(productSlug: product, deviceId: String(repeating: "D", count: 32)) }
 
@@ -36,6 +38,7 @@ private final class LoggedStore: Store, @unchecked Sendable {
 
     func getToken() async throws -> String? { try await inner.getToken() }
     func setToken(_ token: String) async throws {
+        if failToken { throw StoreError.io(path: "token", code: 5) }
         note("token:set")
         await inner.setToken(token)
     }
@@ -70,6 +73,8 @@ private final class Plane: PolarisTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var answers: [String: [(Int, String)]] = [:]
     private var callsValue: [Call] = []
+    /// The key ring's routes (`/devices/keyring...`), when a test brings a ring server.
+    var ring: (any PolarisTransport)?
 
     var calls: [Call] { lock.withLock { callsValue } }
     func count(_ path: String) -> Int { calls.filter { $0.path == path }.count }
@@ -77,6 +82,7 @@ private final class Plane: PolarisTransport, @unchecked Sendable {
 
     func send(_ request: PolarisRequest) async throws -> PolarisResponse {
         let path = request.url.path
+        if let ring, path.contains("/devices/keyring") { return try await ring.send(request) }
         let body = request.body.flatMap { try? JSONDecoder().decode(JSONValue.self, from: $0) }?.objectValue
         let answer: (Int, String)? = lock.withLock {
             callsValue.append(Call(path: path, body: body, authorization: request.headers["authorization"]))
@@ -125,6 +131,19 @@ private final class FakeRequest: NearbyRequestHandle, @unchecked Sendable {
     var list: [NearbyApproverInfo] = []
     var listeners: [@Sendable ([NearbyApproverInfo]) -> Void] = []
     var code = "482913"
+    private var recordListeners: [@Sendable (NearbyRecord) -> Void] = []
+    private var heldRecords: [NearbyRecord] = []
+    private var confirmed = false
+
+    /// M sent a record: held until the person confirms (rule 12), then handed on as it arrives.
+    func emit(_ record: NearbyRecord) {
+        let fns = lock.withLock { () -> [@Sendable (NearbyRecord) -> Void] in
+            if confirmed { return recordListeners }
+            heldRecords.append(record)
+            return []
+        }
+        for fn in fns { fn(record) }
+    }
 
     func count(_ k: String) -> Int { lock.withLock { counts[k] ?? 0 } }
     private func bump(_ k: String) { lock.withLock { counts[k, default: 0] += 1 } }
@@ -135,7 +154,15 @@ private final class FakeRequest: NearbyRequestHandle, @unchecked Sendable {
         bump("choose")
         return code
     }
-    func confirmAccount() async throws { bump("confirm") }
+    func confirmAccount() async throws {
+        bump("confirm")
+        let (fns, records) = lock.withLock { () -> ([@Sendable (NearbyRecord) -> Void], [NearbyRecord]) in
+            confirmed = true
+            defer { heldRecords = [] }
+            return (recordListeners, heldRecords)
+        }
+        for r in records { for fn in fns { fn(r) } }
+    }
     func declineAccount() async { bump("decline") }
     func close() async { bump("close") }
     func onApprovers(_ fn: @escaping @Sendable ([NearbyApproverInfo]) -> Void) -> @Sendable () -> Void {
@@ -143,6 +170,10 @@ private final class FakeRequest: NearbyRequestHandle, @unchecked Sendable {
         return {}
     }
     func onResult(_ fn: @escaping @Sendable (VouchStatus) -> Void) -> @Sendable () -> Void { {} }
+    func onRecord(_ fn: @escaping @Sendable (NearbyRecord) -> Void) -> @Sendable () -> Void {
+        lock.withLock { recordListeners.append(fn) }
+        return {}
+    }
 }
 
 private final class FakeLan: NearbySignInLan, @unchecked Sendable {
@@ -179,11 +210,13 @@ private struct Rig {
 }
 
 private func rig(
-    lanAvailable: Bool = true, token: String? = nil, naming: Bool = true, keys: String = "nearby-d-1"
+    lanAvailable: Bool = true, token: String? = nil, naming: Bool = true, keys: String = "nearby-d-1",
+    keyring: (any NearbyKeyring)? = nil, ring: (any PolarisTransport)? = nil
 ) async throws -> Rig {
     let store = LoggedStore()
     if let token { await store.inner.setToken(token) }
     let plane = Plane()
+    plane.ring = ring
     plane.set(discoveryPath, [(200, try discovery(naming: naming))])
     plane.set(startPath, [(201, startedBody)])
     plane.set(signoutPath, [(200, #"{"released":true}"#)])
@@ -214,7 +247,10 @@ private func rig(
     let signer: @Sendable () async throws -> (port: any DeviceKeyPort, deviceId: String) = { (port, deviceId) }
     let lanProbe: (@Sendable () -> (any NearbySignInLan)?)? =
         lanAvailable ? { @Sendable () -> (any NearbySignInLan)? in lan } : nil
-    identity.installNearby(NearbyBinding(signer: signer, lan: lanProbe, timer: timers.timer))
+    identity.installNearby(
+        NearbyBinding(
+            signer: signer, lan: lanProbe, timer: timers.timer,
+            keyring: keyring.map { k in { @Sendable () -> (any NearbyKeyring)? in k } }))
     return Rig(
         core: core, store: store, plane: plane, identity: identity, lan: lan, timers: timers, events: events,
         acquired: acquired, clock: clock, sleeps: sleeps)
@@ -286,11 +322,11 @@ final class NearbyUnconfirmedMarkTests: XCTestCase {
         XCTAssertFalse(held)
     }
 
-    func testAnotherSignInDropsTheMarkBeforeTheToken() async throws {
+    func testAnotherSignInWritesTheTokenBeforeDroppingTheMark() async throws {
         let r = try await rig()
         try await r.core.setUnconfirmedToken("pkeyt_a")
         try await r.core.setToken("pkeyt_b", source: .register)
-        XCTAssertEqual(r.store.log, ["mark:set", "token:set", "mark:clear", "token:set"])
+        XCTAssertEqual(r.store.log, ["mark:set", "token:set", "token:set", "mark:clear"])
         let held = await r.core.tokenUnconfirmed
         XCTAssertFalse(held)
     }
@@ -526,6 +562,59 @@ final class NearbySignInSessionTests: XCTestCase {
         XCTAssertEqual(r.plane.count(signoutPath), 0)
     }
 
+    func testTheUnconfirmedTokenDoesNotLeaveThePreviousPersonAsTheSubject() async throws {
+        let r = try await rig()
+        let a = "ps_" + String(repeating: "Z", count: 22)
+        try await r.core.setToken("pkeyt_A", source: .signin, person: true)
+        _ = r.identity.holdSubjectFirst(a)
+        XCTAssertEqual(r.identity.account, a)
+        let (_, outcome) = try await ready(r)
+        guard case .signedIn = outcome else { return XCTFail("expected signedIn, got \(outcome)") }
+        XCTAssertNil(r.identity.account, "no stored subject under the unconfirmed token")
+        XCTAssertEqual(r.events.kinds, ["subjectChanged"])
+    }
+
+    func testADeclineAfterTheConfirmationLeavesTheSignInAlone() async throws {
+        let r = try await rig()
+        let (session, _) = try await ready(r)
+        try await session.confirmAccount()
+        await session.declineAccount()
+        let token = await r.core.token
+        XCTAssertEqual(token, "pkeyt_nearby_token")
+        XCTAssertEqual(r.plane.count(signoutPath), 0)
+        XCTAssertEqual(r.identity.account, subject)
+    }
+
+    func testConfirmingWithNoUnconfirmedTokenThrows() async throws {
+        let r = try await rig()
+        try await r.core.setToken("pkeyt_plain", source: .signin, person: true)
+        do {
+            try await r.core.confirmToken()
+            XCTFail("expected a throw")
+        } catch let e as PolarisError {
+            XCTAssertEqual(e.code, ErrorCode.signInFailed)
+        }
+    }
+
+    func testAReplacingSignInKeepsTheOldMarkWhenTheNewTokenCannotBeWritten() async throws {
+        let r = try await rig()
+        try await r.core.setUnconfirmedToken("pkeyt_old")
+        r.store.failToken = true
+        do {
+            try await r.core.setToken("pkeyt_new", source: .signin, person: true)
+            XCTFail("expected a throw")
+        } catch {}
+        let unconfirmed = await r.core.tokenUnconfirmed
+        let token = await r.core.token
+        XCTAssertTrue(unconfirmed)
+        XCTAssertEqual(token, "pkeyt_old")
+        r.store.failToken = false
+        try await r.core.setToken("pkeyt_new", source: .signin, person: true)
+        let after = await r.core.tokenUnconfirmed
+        XCTAssertFalse(after)
+        XCTAssertEqual(r.store.log.suffix(2), ["token:set", "mark:clear"], "the new token is written before the mark goes")
+    }
+
     func testADeclineSignsOutAndDropsEverythingOnce() async throws {
         let r = try await rig()
         let (session, _) = try await ready(r)
@@ -720,6 +809,169 @@ final class NearbySignInSessionTests: XCTestCase {
         XCTAssertEqual(code, "482913")
         XCTAssertEqual(session.code, "482913")
         XCTAssertFalse("\(session)".contains("482913"))
+    }
+}
+
+// MARK: - The wrap M sends (V5 §13.11.3)
+
+/// A key ring that logs what it was given.
+private final class FakeKeyring: NearbyKeyring, @unchecked Sendable {
+    private let lock = NSLock()
+    private var adopted: [Data] = []
+    var unlocked: Bool { true }
+    var takes = true
+    var throwsOnAdopt = false
+    var records: [Data] { lock.withLock { adopted } }
+    func adoptWrap(_ record: Data) async throws -> Bool {
+        lock.withLock { adopted.append(record) }
+        if throwsOnAdopt { throw PolarisError(code: ErrorCode.networkError, message: "down") }
+        return takes
+    }
+    func sealWrapTo(deviceId: String, agreeKey: String) async throws -> Data { Data() }
+    func putWrap(deviceId: String, record: Data) async throws {}
+}
+
+/// A key ring built after the rig (it needs the rig's core).
+private final class LateKeyring: NearbyKeyring, @unchecked Sendable {
+    let box: NBox<SyncKeyringNearby?>
+    init(_ box: NBox<SyncKeyringNearby?>) { self.box = box }
+    var unlocked: Bool { box.value?.unlocked ?? false }
+    func adoptWrap(_ record: Data) async throws -> Bool {
+        guard let k = box.value else { return false }
+        return try await k.adoptWrap(record)
+    }
+    func sealWrapTo(deviceId: String, agreeKey: String) async throws -> Data { Data() }
+    func putWrap(deviceId: String, record: Data) async throws {}
+}
+
+final class NearbySignInWrapTests: XCTestCase {
+    private let wrapRecord = NearbyRecord(type: 0x0030, body: Data(#"{"ringId":"rg_x"}"#.utf8))
+
+    /// Waits for the wrap's state to settle.
+    private func settled(_ session: NearbySignInSession) async -> NearbyWrapState {
+        await nearbyUntil("the wrap settles") { session.wrap != .none }
+        return session.wrap
+    }
+
+    func testTheWrapIsHeldUntilTheConfirmationThenOpenedOnceAndTheChannelCloses() async throws {
+        let ring = FakeKeyring()
+        let r = try await rig(keyring: ring)
+        let (session, _) = try await ready(r)
+        let states = NBox<[NearbyWrapState]>([])
+        session.onWrap { s in states.mutate { $0.append(s) } }
+        r.lan.request.emit(wrapRecord)
+        await nearbySettle()
+        XCTAssertTrue(ring.records.isEmpty, "the engine holds records until the person confirms (rule 12)")
+        try await session.confirmAccount()
+        let state = await settled(session)
+        XCTAssertEqual(state, .applied)
+        XCTAssertEqual(ring.records, [wrapRecord.body], "opened once, with the bytes M sent")
+        XCTAssertEqual(states.value, [.applied])
+        await nearbyUntil("the channel closes") { r.lan.request.count("close") >= 1 }
+    }
+
+    func testAWrapThatArrivesAfterTheConfirmationIsTakenAsItArrives() async throws {
+        let ring = FakeKeyring()
+        let r = try await rig(keyring: ring)
+        let (session, _) = try await ready(r)
+        try await session.confirmAccount()
+        r.lan.request.emit(wrapRecord)
+        let state = await settled(session)
+        XCTAssertEqual(state, .applied)
+        XCTAssertEqual(ring.records.count, 1)
+    }
+
+    func testAKeyRingThatRefusesOrCannotBeAskedLeavesTheDeviceSignedInAndLocked() async throws {
+        for throwing in [false, true] {
+            let ring = FakeKeyring()
+            ring.takes = false
+            ring.throwsOnAdopt = throwing
+            let r = try await rig(keyring: ring)
+            let (session, _) = try await ready(r)
+            r.lan.request.emit(wrapRecord)
+            try await session.confirmAccount()
+            let state = await settled(session)
+            XCTAssertEqual(state, .refused)
+            let token = await r.core.token
+            XCTAssertEqual(token, "pkeyt_nearby_token", "the sign-in stands; unlock() works from the server copy")
+            XCTAssertEqual(r.lan.request.count("close"), 0, "a refused wrap does not close the channel")
+        }
+    }
+
+    func testOnlyKeyringWrapIsTakenAndAClientWithoutAKeyRingDropsIt() async throws {
+        let ring = FakeKeyring()
+        let r = try await rig(keyring: ring)
+        let (session, _) = try await ready(r)
+        r.lan.request.emit(NearbyRecord(type: 0x0031, body: Data("other".utf8)))
+        try await session.confirmAccount()
+        await nearbySettle()
+        XCTAssertTrue(ring.records.isEmpty)
+        XCTAssertEqual(session.wrap, .none)
+        let bare = try await rig()
+        let (second, _) = try await ready(bare)
+        bare.lan.request.emit(wrapRecord)
+        try await second.confirmAccount()
+        await nearbySettle()
+        XCTAssertEqual(second.wrap, .none, "no key ring: the wrap is dropped")
+        let token = await bare.core.token
+        XCTAssertEqual(token, "pkeyt_nearby_token")
+    }
+
+    func testADeclineDropsTheWrapAndOpensNothing() async throws {
+        let ring = FakeKeyring()
+        let r = try await rig(keyring: ring)
+        let (session, _) = try await ready(r)
+        r.lan.request.emit(wrapRecord)
+        await session.declineAccount()
+        await nearbySettle()
+        XCTAssertTrue(ring.records.isEmpty)
+        XCTAssertEqual(session.wrap, .none)
+    }
+
+    /// A nearby approval hands over the sync key: M seals the root for D's agreement key, D opens it after the
+    /// confirmation, and D then reads what M sealed, with no wrap stored on the Worker for D.
+    func testTheSyncKeyReachesTheNewDeviceThroughTheChannelCopy() async throws {
+        let server = RingServer()
+        let (_, mRing, _) = try await ringDevice("m", server: server)
+        _ = try await mRing.create()
+        // D's key ring is built on D's own core (its device id and bearer), which the rig makes.
+        let late = NBox<SyncKeyringNearby?>(nil)
+        let r = try await rig(keyring: LateKeyring(late), ring: server)
+        let dKeys = try DeviceKeyStore.inMemory(productSlug: product)
+        let ring = SyncKeyring(
+            core: r.core,
+            options: SyncKeyringOptions(
+                keys: dKeys, rootStore: RingRootStore.inMemory(), backup: .off, subject: { nil }))
+        late.mutate { $0 = SyncKeyringNearby(ring: ring) }
+        r.plane.set(pollPath, [(200, readyBody())])
+        let session = try await r.identity.signIn.startNearby()
+        _ = try await session.wait()
+        let dPub = try await dKeys.ensure().agreeKey
+        let record = try await mRing.sealWrapTo(deviceId: await r.core.deviceId, agreeKey: dPub).record()
+        r.lan.request.emit(NearbyRecord(type: 0x0030, body: record))
+        try await session.confirmAccount()
+        let state = await settled(session)
+        XCTAssertEqual(state, .applied)
+        XCTAssertTrue(ring.unlocked)
+        let env = try mRing.codec.seal(collection: "saves", name: "slot", value: .int(41))
+        guard case .ok(_, let v) = try ring.codec.open(collection: "saves", name: "slot", envelope: env)
+        else { return XCTFail("the new device could not open what M sealed") }
+        XCTAssertEqual(v, .int(41))
+        XCTAssertFalse(server.requestLog().contains { $0.hasPrefix("PUT /wraps/") }, "the channel copy was enough")
+    }
+
+    private func ringDevice(_ name: String, server: RingServer) async throws -> (CoreContext, SyncKeyring, DeviceKeyStore) {
+        let store = InMemoryStore(productSlug: product, deviceId: "dev_\(name)")
+        await store.setToken("pkeyt_\(name)")
+        let core = try CoreContext(
+            options: CoreOptions(
+                productSlug: product, baseUrl: base, version: "1.0.0", pinnedKeys: [:], trustRefresh: false,
+                store: store, transport: server))
+        try await core.start()
+        let keys = try DeviceKeyStore.inMemory(productSlug: product)
+        let ring = SyncKeyring(
+            core: core, options: SyncKeyringOptions(keys: keys, rootStore: RingRootStore.inMemory(), backup: .off, subject: { nil }))
+        return (core, ring, keys)
     }
 }
 

@@ -84,6 +84,8 @@ var _journal: Object = null
 var _saves_port: _SavesPort = null
 var _cache: Object = null
 var _cache_for: Variant = null
+## The records handles handed out, by collection name (one per name, so its signals persist).
+var _collections := {}
 
 
 ## Build the host over this Core. `emit` is `func(data: Dictionary)`: one cloudSync event.
@@ -156,6 +158,22 @@ func status() -> PKeyResult:
 	return PKeyResult.success(out)
 
 
+## The records handle of a collection the product's catalog declares (U-46, `sync.records`): a
+## `PKeyCollection`, the same one for the same name, in `detail`. Starts the host first. An undeclared
+## name answers `collection_unknown` from each call of the handle, never an error here. The typed
+## `product` N/A when the product does not run the Sync service. A coroutine.
+func collection(name: String) -> PKeyResult:
+	var refused: Variant = _core.require_service("sync", PKeyConstants.Feature.SYNC_RECORDS) if _core != null else PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	if refused != null:
+		return refused
+	await attach()
+	if host == null or not host.is_started():
+		return PKeyResult.failure(PKeyConstants.ErrorCode.SYNC_FAILED, "Cloud Sync could not start.", {"reason": "sync-not-started"})
+	if not _collections.has(name):
+		_collections[name] = PKeyCollection.new(name, host)
+	return PKeyResult.success(_collections[name])
+
+
 ## Send what is waiting now (bounded by the sign-out flush window), save the journal and answer the
 ## status. A coroutine.
 func flush() -> PKeyResult:
@@ -195,6 +213,7 @@ func _build_saves() -> void:
 		"format_version": o["save_format_version"],
 		"emit": port.emit_transfer,
 		"purge_files": port.purge_files,
+		"device_label": func() -> String: return PKeyDeviceLabel.resolve("", _core.options) if _core != null else "",
 	})
 
 
@@ -362,6 +381,9 @@ func _allow_ring_holds() -> void:
 
 func close() -> void:
 	_closed = true
+	for handle: PKeyCollection in _collections.values():
+		handle.close()
+	_collections = {}
 	if host != null and is_instance_valid(host):
 		host.close()
 		host.queue_free()

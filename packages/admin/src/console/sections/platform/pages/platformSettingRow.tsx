@@ -54,6 +54,12 @@ export function specOf(s: PlatformSetting): SettingSpec {
       of: { kind: "string", maxLength: s.maxLength },
       max: s.max,
     };
+  if (s.kind === "string")
+    return {
+      kind: "string",
+      maxLength: s.maxLength,
+      ...(s.pattern ? { pattern: s.pattern } : {}),
+    };
   // The hosted-asset quotas are gigabytes of images and mirrored files, not megabytes.
   const gib = s.unit === "bytes" && s.key.startsWith("assets.quota.");
   return {
@@ -69,7 +75,7 @@ export function specOf(s: PlatformSetting): SettingSpec {
 export function confirmOf(s: PlatformSetting): SettingConfirm {
   if (s.kind === "switch") return s.confirm;
   if (s.kind === "choice") return { byValue: s.confirm };
-  if (s.kind === "list") return s.confirm;
+  if (s.kind === "list" || s.kind === "string") return s.confirm;
   return { up: s.confirm.raise, down: s.confirm.lower };
 }
 
@@ -99,7 +105,7 @@ export function isConflict(error: unknown): boolean {
 function parsedDeployValue(
   setting: PlatformSetting,
 ): string | number | undefined {
-  if (setting.kind === "list") return undefined;
+  if (setting.kind === "list" || setting.kind === "string") return undefined;
   const raw = setting.deployValue?.trim();
   if (!raw) return undefined;
   if (setting.kind === "switch") {
@@ -116,7 +122,7 @@ function parsedDeployValue(
 
 /** What a revert leaves in effect, and where it comes from. */
 export function afterRevert(setting: PlatformSetting): {
-  value: string | number | string[];
+  value: string | number | string[] | null;
   from: "deploy" | "default";
 } {
   const deploy = parsedDeployValue(setting);
@@ -444,7 +450,9 @@ export function EditableRow({
       value={setting.value}
       version={setting.version}
       commit={
-        setting.kind === "integer" || setting.kind === "list"
+        setting.kind === "integer" ||
+        setting.kind === "list" ||
+        setting.kind === "string"
           ? "explicit"
           : "immediate"
       }

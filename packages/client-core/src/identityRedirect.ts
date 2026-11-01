@@ -216,7 +216,9 @@ export async function startRedirect(
   };
 }
 
-function formBody(pairs: readonly (readonly [string, string])[]): string {
+export function formBody(
+  pairs: readonly (readonly [string, string])[],
+): string {
   return pairs
     .map(([k, v]) => `${manageFormEncode(k)}=${manageFormEncode(v)}`)
     .join("&");
@@ -257,7 +259,7 @@ function fail(reason: CallbackFailure, error?: string): CallbackResult {
 
 /** The query pairs of `url` (before any `#`), raw and un-decoded names compared decoded; `null`
  *  when a name repeats. A `+` is a space. */
-function queryOf(url: string): Map<string, string> | null {
+export function queryOf(url: string): Map<string, string> | null {
   const q = url.indexOf("?");
   if (q === -1) return new Map();
   const end = url.indexOf("#");

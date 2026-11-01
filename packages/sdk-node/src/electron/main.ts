@@ -230,6 +230,12 @@ const MENU_ITEMS: readonly { id: string; key: string; view: KitView }[] = [
     key: "menu.manageLicense",
     view: "settings",
   },
+  // The approving device's screen (UXR-47b M5): where a new device's request shows.
+  {
+    id: "polaris-key.approveNearby",
+    key: "signin.nearby.menu",
+    view: "nearby",
+  },
 ];
 
 /** What `exposePolarisBridge` returns: tear down every handler and listener. */

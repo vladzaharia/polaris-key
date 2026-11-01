@@ -471,6 +471,33 @@ export {
 } from "./identityRedirect.js";
 
 export {
+  REDIRECT_UNAVAILABLE,
+  authorizeUrlFor,
+  chooseRedirectClass,
+  classifyNativeRedirectUri,
+  closeNativeSession,
+  constantTimeEqual,
+  nativeRedirectUri,
+  nativeTokenRequest,
+  parseNativeCallback,
+  parsePushedAnswer,
+  pushRequest,
+  reopen,
+  startNativeSession,
+  type ChooseRedirectClassOptions,
+  type NativeCallbackFailure,
+  type NativeCallbackResult,
+  type NativePending,
+  type NativeSession,
+  type NativeTokenRequest,
+  type PushRequestOptions,
+  type PushedAnswer,
+  type PushedRequest,
+  type RedirectChoice,
+  type ReopenResult,
+} from "./redirect.js";
+
+export {
   DEVICE_PROOF_KEYS_SKEW_SECONDS,
   DEVICE_PROOF_PURPOSES,
   deviceProofKeysValue,
