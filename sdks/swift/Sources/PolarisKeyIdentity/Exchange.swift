@@ -396,7 +396,8 @@ extension IdentityClient {
                     consent: consent))
         }
         switch IdentityRedirect.parseTokenAnswer(status: 200, body: body) {
-        case .malformed, .refused:
+        case .malformed, .refused, .activated:
+            // An exchange never opts into a key return, so `activated` cannot come back.
             throw Self.badAnswer
         case .choose(let grant, let expiresIn, let choices):
             guard let view = LicenseChoiceView.read(.object(choices)) else { throw Self.badAnswer }

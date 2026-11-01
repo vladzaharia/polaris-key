@@ -8,7 +8,7 @@
 // @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 // @pkey-feature license.manage
 // @pkey-feature release.fetch identity.keyentry identity.account identity.attach identity.toggle
-// @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity
+// @pkey-feature identity.redirect.web identity.signin.hints identity.keyreturn identity.choice connect.identity
 // @pkey-feature connect.relay identity.redirect.native
 // @pkey-feature identity.exchange sync.keyring sync.settings identity.restore identity.gamecenter identity.devicecode.choice sync.files sync.files.delta sync.saves sync.records
 //
@@ -227,6 +227,14 @@ enum SwiftReplay {
                     out["scope"] = ready.scope.map(JSONValue.string) ?? .null
                     out["subject"] = ready.subject.map(JSONValue.string) ?? .null
                     out["licenseId"] = ready.licenseId.map(JSONValue.string) ?? .null
+                case .activated(let activated):
+                    out["result"] = .string("activated")
+                    out["scope"] = .string("")
+                    out["subject"] = .null
+                    out["licenseId"] = activated.licenseId.map(JSONValue.string) ?? .null
+                    out["keyEntries"] = .object([
+                        "used": .int(activated.keyEntries.used), "limit": .int(activated.keyEntries.limit),
+                    ])
                 case .chooseLicense: out["result"] = .string("choose")
                 case .cancelled: out["result"] = .string("cancelled")
                 default: out["result"] = .string("error")
@@ -234,6 +242,16 @@ enum SwiftReplay {
             } catch let e as SignInError {
                 out["result"] = .string(redirectResult(e.code))
                 out["code"] = .string(e.code)
+                // The flat refusal's details (device_limit, key_entry_limit, license_owned).
+                if let d = e.details {
+                    if let v = d.limit { out["limit"] = .int(v) }
+                    if let v = d.deviceCount { out["deviceCount"] = .int(v) }
+                    if let v = d.manageUrl { out["manageUrl"] = .string(v) }
+                    if let v = d.signInUrl { out["signInUrl"] = .string(v) }
+                    if let v = d.keyEntries {
+                        out["keyEntries"] = .object(["used": .int(v.used), "limit": .int(v.limit)])
+                    }
+                }
             } catch let e as PolarisError {
                 out["result"] = .string("error")
                 out["code"] = .string(e.code)
@@ -332,6 +350,7 @@ enum SwiftReplay {
                 case .signedIn: out["result"] = .string("ready")
                 case .choose: out["result"] = .string("confirm")
                 case .chooseLicense: out["result"] = .string("choose")
+                case .activated: out["result"] = .string("activated")
                 case .expired: out["result"] = .string("expired")
                 case .cancelled: out["result"] = .string("cancelled")
                 case .pending: out["result"] = .string("pending")
@@ -712,7 +731,7 @@ enum SwiftReplay {
                 loginHint: step.args["loginHint"]?.stringValue,
                 nameHint: step.args["nameHint"]?.stringValue,
                 purpose: step.args["purpose"]?.stringValue.flatMap(SignInPurpose.init(rawValue:)),
-                licenseChoice: licenseChoice))
+                licenseChoice: licenseChoice, keyReturn: step.args["keyReturn"] == .bool(true)))
     }
 
     /// `exchange` (`identity.exchange`, I-44.3): the platform's ID token is the recording's
@@ -992,7 +1011,7 @@ enum SwiftReplay {
     private static func redirectResult(_ code: String) -> String {
         switch code {
         case "invalid_grant", "invalid_request", "invalid_client", "license_choice_required",
-            "rate_limited":
+            "rate_limited", "device_limit", "license_owned", "key_entry_limit":
             return code.replacingOccurrences(of: "_", with: "-")
         default: return "error"
         }

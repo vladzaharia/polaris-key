@@ -798,9 +798,10 @@ public final class PolarisKeyGateModel {
             case .chooseLicense(let grant):
                 // A redirect session with `licenseChoice: .app`: the kit draws the choice itself.
                 presentLicenseChoice(grant)
-            case .pending, .choose:
+            case .pending, .choose, .activated:
                 // The gate's sign-in runs the device code, which never holds the flow at a choice
-                // (D4); a session that does is a failure here.
+                // (D4), and the kit does not opt into a key return; a session that settles either
+                // way is a failure here.
                 signInError = KitError(code: "sign-in-failed")
                 rebuild()
             }
@@ -817,7 +818,8 @@ public final class PolarisKeyGateModel {
     /// app draws (`chooseLicense`) is the matrix's `choose`.
     public static func kitOutcome(_ outcome: SignInOutcome) -> KitSignInOutcome {
         switch outcome {
-        case .pending: return .pending
+        // `activated` needs the key-return opt-in, which no kit sets until it renders that outcome.
+        case .pending, .activated: return .pending
         case .choose, .chooseLicense: return .choose
         case .signedIn: return .signedIn
         case .cancelled: return .cancelled
