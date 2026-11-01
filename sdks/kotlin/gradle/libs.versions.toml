@@ -39,7 +39,7 @@ junit = "4.13.2"
 # AAR declares minCompileSdk 35 and minAndroidGradlePluginVersion 8.6.0 (aar-metadata.properties), so it builds under
 # compileSdk 36 and AGP 8.6.1. CoroutineWorker is in work-runtime itself since 2.9.
 androidxWork = "2.12.0"
-robolectric = "4.14.1"
+robolectric = "4.17"
 androidxTestCore = "1.6.1"
 coroutines = "1.11.0"
 serialization = "1.8.1"
