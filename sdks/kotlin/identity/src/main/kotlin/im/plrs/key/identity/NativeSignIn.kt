@@ -233,7 +233,8 @@ internal suspend fun IdentityClient.startNative(options: SignInOptions): NativeF
     if (returnPage != null) {
         // The 303 target is the product's own customer host: the API origin or the issuer's.
         val allowed = setOfNotNull(origin(core.endpoints.baseUrl), issuer?.let(::origin))
-        if (origin(returnPage) !in allowed || !returnPage.startsWith("https://")) {
+        val clean = returnPage.none { it.isWhitespace() || Character.isSpaceChar(it) || it == '\uFEFF' || it.code < 0x20 || it.code == 0x7F || it == '\\' }
+        if (!clean || origin(returnPage) !in allowed || !returnPage.startsWith("https://")) {
             throw PolarisException(ErrorCode.badResponse, "the return page points outside this product.")
         }
     }

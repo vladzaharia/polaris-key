@@ -297,6 +297,63 @@ class NativeRedirectTest {
     }
 
     @Test
+    fun connectionsAreCappedAndASlowHeadIsCutOffByAWallClockDeadline() {
+        val l = LoopbackListener()
+        l.start { NativeListenerReply(null, false) }
+        val loop = InetAddress.getByAddress(byteArrayOf(127, 0, 0, 1))
+        val held = (1..8).map { Socket(loop, l.port) }
+        try {
+            Thread.sleep(300)
+            // The ninth is closed unanswered while eight are held open.
+            Socket(loop, l.port).use { extra ->
+                extra.soTimeout = 3000
+                extra.getOutputStream().write("GET / HTTP/1.1\r\n\r\n".toByteArray())
+                assertEquals(-1, try { extra.getInputStream().read() } catch (e: java.io.IOException) { -1 })
+            }
+            // A drip-fed head does not outlive the deadline: a byte every half second still ends in about 5 s.
+        } finally {
+            held.forEach { it.close() }
+        }
+        Socket(loop, l.port).use { slow ->
+            slow.soTimeout = 9000
+            val out = slow.getOutputStream()
+            val started = System.nanoTime()
+            var cut = false
+            try {
+                while (System.nanoTime() - started < 8_000_000_000L) {
+                    out.write('G'.code)
+                    out.flush()
+                    Thread.sleep(500)
+                }
+            } catch (e: java.io.IOException) {
+                cut = true // The listener cut it off.
+            }
+            assertTrue("the head deadline ended the connection", cut && System.nanoTime() - started < 7_500_000_000L)
+        }
+        l.close()
+    }
+
+    @Test
+    fun nothingEscapesAConnectionHandler() {
+        val seen = java.util.concurrent.CopyOnWriteArrayList<Throwable>()
+        val old = Thread.getDefaultUncaughtExceptionHandler()
+        Thread.setDefaultUncaughtExceptionHandler { _, e -> seen += e }
+        val l = LoopbackListener()
+        try {
+            l.start { throw IllegalStateException("boom") }
+            val r = try { get(l.port, "/pkey/callback?state=a").status } catch (e: Exception) { -1 }
+            assertTrue(r == 404 || r == -1)
+            Thread.sleep(200)
+            assertTrue(seen.toString(), seen.isEmpty())
+            assertFalse("the listener still serves", l.closed)
+            assertEquals(404, get(l.port, "/").status)
+        } finally {
+            l.close()
+            Thread.setDefaultUncaughtExceptionHandler(old)
+        }
+    }
+
+    @Test
     fun theListenerClosesAfterItsLifetime() {
         val l = LoopbackListener(lifetimeMillis = 300)
         l.start { NativeListenerReply(null, false) }

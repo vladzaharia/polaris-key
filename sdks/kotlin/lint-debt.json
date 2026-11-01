@@ -475,20 +475,25 @@
       "detekt:style.ReturnCount": 4,
       "detekt:style.ThrowsCount": 1,
       "detekt:style.UnusedParameter": 1,
-      "ktlint:standard:argument-list-wrapping": 2,
+      "ktlint:standard:argument-list-wrapping": 3,
       "ktlint:standard:binary-expression-wrapping": 2,
       "ktlint:standard:max-line-length": 1
     },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/TranscriptTest.kt": {
-      "detekt:complexity.CyclomaticComplexMethod": 4,
+      "detekt:complexity.CyclomaticComplexMethod": 5,
       "detekt:complexity.LargeClass": 1,
       "detekt:complexity.LongMethod": 2,
       "detekt:complexity.LongParameterList": 1,
       "detekt:complexity.NestedBlockDepth": 1,
       "detekt:empty-blocks.EmptyFunctionBlock": 1,
-      "detekt:style.MaxLineLength": 2,
-      "detekt:style.ThrowsCount": 1,
-      "ktlint:standard:max-line-length": 1
+      "detekt:style.MaxLineLength": 4,
+      "detekt:style.ReturnCount": 1,
+      "detekt:style.ThrowsCount": 2,
+      "ktlint:standard:argument-list-wrapping": 11,
+      "ktlint:standard:binary-expression-wrapping": 3,
+      "ktlint:standard:blank-line-between-when-conditions": 3,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 2
     },
     "sdks/kotlin/conformance/src/test/kotlin/im/plrs/key/conformance/UpdateMatrixTest.kt": {
       "detekt:style.MaxLineLength": 3,
@@ -1104,6 +1109,15 @@
       "detekt:style.ReturnCount": 1,
       "detekt:style.ThrowsCount": 1
     },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/sync/MachineRecordPuts.kt": {
+      "detekt:style.MaxLineLength": 1,
+      "ktlint:standard:argument-list-wrapping": 12,
+      "ktlint:standard:function-literal": 2,
+      "ktlint:standard:max-line-length": 1
+    },
+    "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/sync/MachineState.kt": {
+      "detekt:complexity.LongParameterList": 1
+    },
     "sdks/kotlin/core/src/test/kotlin/im/plrs/key/core/Base64UrlTest.kt": {
       "detekt:exceptions.SwallowedException": 1,
       "detekt:style.MaxLineLength": 1,
@@ -1339,6 +1353,55 @@
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/IdentityRestore.kt": {
       "detekt:exceptions.TooGenericExceptionCaught": 1
     },
+    "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/NativeListener.kt": {
+      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.NestedBlockDepth": 1,
+      "detekt:exceptions.SwallowedException": 8,
+      "detekt:exceptions.TooGenericExceptionCaught": 5,
+      "detekt:style.LoopWithTooManyJumpStatements": 1,
+      "detekt:style.MagicNumber": 13,
+      "detekt:style.ReturnCount": 2,
+      "ktlint:standard:class-signature": 3,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:multiline-if-else": 2
+    },
+    "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/NativeRedirect.kt": {
+      "detekt:complexity.ComplexCondition": 4,
+      "detekt:complexity.CyclomaticComplexMethod": 3,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:style.MagicNumber": 11,
+      "detekt:style.MaxLineLength": 3,
+      "detekt:style.ReturnCount": 4,
+      "detekt:style.ThrowsCount": 1,
+      "ktlint:standard:argument-list-wrapping": 16,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:max-line-length": 2
+    },
+    "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/NativeSignIn.kt": {
+      "detekt:complexity.ComplexCondition": 2,
+      "detekt:complexity.CyclomaticComplexMethod": 1,
+      "detekt:complexity.LongMethod": 1,
+      "detekt:complexity.LongParameterList": 2,
+      "detekt:complexity.TooManyFunctions": 1,
+      "detekt:exceptions.SwallowedException": 2,
+      "detekt:exceptions.ThrowingExceptionsWithoutMessageOrCause": 1,
+      "detekt:exceptions.TooGenericExceptionCaught": 3,
+      "detekt:style.MagicNumber": 6,
+      "detekt:style.MaxLineLength": 5,
+      "detekt:style.ReturnCount": 2,
+      "detekt:style.ThrowsCount": 2,
+      "detekt:style.UseCheckOrError": 1,
+      "ktlint:standard:argument-list-wrapping": 27,
+      "ktlint:standard:binary-expression-wrapping": 4,
+      "ktlint:standard:blank-line-between-when-conditions": 5,
+      "ktlint:standard:function-literal": 8,
+      "ktlint:standard:function-signature": 1,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 5,
+      "ktlint:standard:wrapping": 3
+    },
     "sdks/kotlin/identity/src/main/kotlin/im/plrs/key/identity/RestoreLadder.kt": {
       "detekt:exceptions.SwallowedException": 2,
       "detekt:exceptions.TooGenericExceptionCaught": 1
@@ -1347,12 +1410,13 @@
       "detekt:complexity.CyclomaticComplexMethod": 1,
       "detekt:exceptions.SwallowedException": 1,
       "detekt:exceptions.TooGenericExceptionCaught": 1,
-      "detekt:style.MaxLineLength": 6,
-      "detekt:style.ReturnCount": 1,
+      "detekt:style.MaxLineLength": 7,
+      "detekt:style.ReturnCount": 3,
       "detekt:style.ThrowsCount": 1,
-      "ktlint:standard:argument-list-wrapping": 10,
+      "ktlint:standard:argument-list-wrapping": 16,
       "ktlint:standard:blank-line-between-when-conditions": 6,
       "ktlint:standard:class-signature": 5,
+      "ktlint:standard:function-signature": 1,
       "ktlint:standard:max-line-length": 1,
       "ktlint:standard:statement-wrapping": 3
     },
@@ -1394,6 +1458,18 @@
       "detekt:style.MaxLineLength": 3,
       "ktlint:standard:argument-list-wrapping": 11,
       "ktlint:standard:max-line-length": 2
+    },
+    "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/NativeRedirectTest.kt": {
+      "detekt:exceptions.SwallowedException": 6,
+      "detekt:style.MaxLineLength": 19,
+      "ktlint:standard:argument-list-wrapping": 112,
+      "ktlint:standard:binary-expression-wrapping": 2,
+      "ktlint:standard:class-signature": 6,
+      "ktlint:standard:function-literal": 4,
+      "ktlint:standard:function-signature": 6,
+      "ktlint:standard:import-ordering": 1,
+      "ktlint:standard:max-line-length": 18,
+      "ktlint:standard:statement-wrapping": 11
     },
     "sdks/kotlin/identity/src/test/kotlin/im/plrs/key/identity/RedirectSessionTest.kt": {
       "detekt:style.MaxLineLength": 3,

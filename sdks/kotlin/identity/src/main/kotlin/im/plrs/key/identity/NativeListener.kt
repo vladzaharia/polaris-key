@@ -52,6 +52,7 @@ public class LoopbackListener @JvmOverloads public constructor(
     private var started = false
     private var done = false
     private val shut = AtomicBoolean(false)
+    private val slots = java.util.concurrent.Semaphore(MAX_CONNECTIONS)
     private val host = "127.0.0.1:$port"
 
     override val closed: Boolean get() = shut.get()
@@ -74,10 +75,24 @@ public class LoopbackListener @JvmOverloads public constructor(
                 } catch (e: SocketTimeoutException) {
                     continue
                 }
-                Thread({ handle(socket) }, "pkey-native-redirect-conn").also { it.isDaemon = true }.start()
+                // At most MAX_CONNECTIONS at once; the extras are closed unanswered.
+                if (!slots.tryAcquire()) {
+                    try {
+                        socket.close()
+                    } catch (e: java.io.IOException) {
+                        // Already gone.
+                    }
+                    continue
+                }
+                try {
+                    Thread({ handle(socket) }, "pkey-native-redirect-conn").also { it.isDaemon = true }.start()
+                } catch (e: Throwable) {
+                    slots.release()
+                    socket.close()
+                }
             }
-        } catch (e: java.io.IOException) {
-            // The socket was closed under accept().
+        } catch (e: Throwable) {
+            // The socket was closed under accept(), or anything else: nothing is printed.
         } finally {
             close()
         }
@@ -101,8 +116,10 @@ public class LoopbackListener @JvmOverloads public constructor(
                 answer(it, if (reply.location != null) 303 else 404, reply.location)
                 if (reply.final) close()
             }
-        } catch (e: java.io.IOException) {
-            // A client that went away; nothing request-derived is reported.
+        } catch (e: Throwable) {
+            // A client that went away, or anything else; nothing request-derived is reported or printed.
+        } finally {
+            slots.release()
         }
     }
 
@@ -126,7 +143,12 @@ public class LoopbackListener @JvmOverloads public constructor(
         val out = ByteArrayOutputStream()
         val input = socket.getInputStream()
         var tail = 0
+        val deadline = System.nanoTime() + CONNECTION_MILLIS * 1_000_000L
         while (out.size() < MAX_HEAD) {
+            // One wall-clock budget for the whole head, not per read.
+            val left = (deadline - System.nanoTime()) / 1_000_000L
+            if (left <= 0) return null
+            socket.soTimeout = left.toInt()
             val b = input.read()
             if (b < 0) return null
             out.write(b)
@@ -160,6 +182,7 @@ public class LoopbackListener @JvmOverloads public constructor(
         const val POLL_MILLIS = 250
         const val CONNECTION_MILLIS = 5000
         const val MAX_HEAD = 16 * 1024
+        const val MAX_CONNECTIONS = 8
     }
 }
 
