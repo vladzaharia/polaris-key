@@ -82,7 +82,8 @@ internal object SyncValues {
     fun applyRecordOp(base: JsonElement?, op: Op): JsonElement? = when (op.op) {
         "delete" -> null
         "set" -> op.value ?: JsonNull
-        "setMember", "removeMember" -> applySettingOp("merge", base, op.op, op.value, op.member)
+        "setField" -> JsonObject(((base as? JsonObject) ?: JsonObject(emptyMap())) + (op.field!! to (op.value ?: JsonNull)))
+        "removeField" -> JsonObject(((base as? JsonObject) ?: JsonObject(emptyMap())) - op.field!!)
         "add" -> addTo((base as? JsonArray) ?: JsonArray(emptyList()), op.element!!)
         "remove" -> JsonArray(((base as? JsonArray) ?: JsonArray(emptyList())).filterNot { SyncJson.jsonEqual(it, op.element) })
         else -> base
