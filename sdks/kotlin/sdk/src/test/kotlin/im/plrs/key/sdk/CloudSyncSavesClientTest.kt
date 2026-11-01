@@ -14,6 +14,7 @@ import im.plrs.key.core.sync.RecordFile
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.KSerializer
@@ -594,5 +595,42 @@ class CloudSyncSavesClientTest {
         t.resume()
         cloud.gate!!.complete(Unit)
         assertTrue(t.result() is SaveResult.Done)
+    }
+
+    // -- background runs (U-41.7b): a scheduled run waits for the live write --------------------------------------
+
+    @Test
+    fun aBackgroundRunWaitsForTheLiveWriteAndAnswersDone() = runBlocking {
+        val cloud = Cloud(e2e = false).also { it.gate = CompletableDeferred() }
+        val started = CopyOnWriteArrayList<String>()
+        val engine = FileTransferEngine(cloud, MemoryJournal(), sleeper = { })
+        val saves = SavesClient(scope, SavesHooks(started = { started += it })) {
+            SavesDeps(cloud, engine, cloud, ServerFileCodec(), delta = false, now = { 1_000L })
+        }
+        val t = saves.write("s", bytes(500), meta("c"))
+        assertEquals(listOf("saves:s"), started.toList())
+        val run = scope.async { saves.awaitBackground("saves:s") }
+        kotlinx.coroutines.delay(100)
+        assertFalse(run.isCompleted)
+        cloud.gate!!.complete(Unit)
+        assertEquals(BackgroundTransferOutcome.DONE, withTimeout(10_000) { run.await() })
+        assertTrue(t.result() is SaveResult.Done)
+    }
+
+    @Test
+    fun aBackgroundRunStopsForANoSuchWriteACancelledOneAndAPausedOne() = runBlocking {
+        val cloud = Cloud(e2e = false).also { it.gate = CompletableDeferred() }
+        val saves = client(cloud, e2e = false)
+        assertEquals(BackgroundTransferOutcome.STOP, saves.awaitBackground("saves:none"))
+        val t = saves.write("s", bytes(500), meta("c"))
+        kotlinx.coroutines.delay(100)
+        val run = scope.async { saves.awaitBackground("saves:s") }
+        t.pause()
+        withTimeout(5000) { while (t.state != TransferState.PAUSED) kotlinx.coroutines.delay(5) }
+        assertEquals(BackgroundTransferOutcome.STOP, withTimeout(10_000) { run.await() })
+        val cancelled = scope.async { saves.awaitBackground("saves:s") }
+        t.cancel()
+        assertEquals(SaveResult.Cancelled, t.result())
+        assertEquals(BackgroundTransferOutcome.STOP, withTimeout(10_000) { cancelled.await() })
     }
 }

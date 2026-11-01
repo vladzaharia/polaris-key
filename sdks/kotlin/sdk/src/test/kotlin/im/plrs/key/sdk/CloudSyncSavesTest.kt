@@ -270,7 +270,13 @@ class CloudSyncSavesTest {
         }
     }
 
-    private inner class Rig(roots: DeviceKeyStorage = InMemoryDeviceKeyStorage(), seedRoot: Boolean = false, e2e: Boolean = false) {
+    private inner class Rig(
+        roots: DeviceKeyStorage = InMemoryDeviceKeyStorage(),
+        seedRoot: Boolean = false,
+        e2e: Boolean = false,
+        port: CloudSyncBackgroundPort? = null,
+        background: Boolean = true,
+    ) {
         val dir: File = tmp.newFolder()
         val transport = ScriptedTransport(::handle)
         val client: PolarisKeyClient
@@ -298,6 +304,8 @@ class CloudSyncSavesTest {
                         cloudSync = CloudSyncHostOptions().also {
                             it.encryption = if (e2e) "e2e" else "server"
                             it.catalog = mirror
+                            it.backgroundPort = port
+                            it.backgroundTransfers = background
                         },
                     ),
                 )
@@ -601,5 +609,103 @@ class CloudSyncSavesTest {
         }
         assertNull(null)
         client.close()
+    }
+
+    private class FakePort(val log: CopyOnWriteArrayList<String>, val onCancelOwner: () -> String = { "" }) : CloudSyncBackgroundPort {
+        @Volatile var runner: CloudSyncBackgroundRunner? = null
+
+        override fun attach(runner: CloudSyncBackgroundRunner) {
+            this.runner = runner
+            log += "attach"
+        }
+
+        override fun enqueue(transferId: String, owner: String) {
+            log += "enqueue:$transferId:$owner"
+        }
+
+        override fun cancel(transferId: String) {
+            log += "cancel:$transferId"
+        }
+
+        override fun cancelOwner(owner: String) {
+            log += "cancelOwner:$owner:${onCancelOwner()}"
+        }
+    }
+
+    private fun tag(s: String) = MessageDigest.getInstance("SHA-256").digest(s.toByteArray()).joinToString("") { "%02x".format(it) }
+
+    @Test
+    fun aWriteIsHandedToTheBackgroundPortByOpaqueIdsAndDroppedWhenItEnds() = runBlocking {
+        val log = CopyOnWriteArrayList<String>()
+        val r = Rig(port = FakePort(log))
+        r.signIn()
+        assertTrue(r.saves.write("slot-1", bytes(100), meta("x")).result() is SaveResult.Done)
+        eventually("the port heard the end") { log.contains("cancel:saves:slot-1") }
+        assertEquals(listOf("attach", "enqueue:saves:slot-1:${tag(ALICE)}", "cancel:saves:slot-1"), log.toList())
+        // Nothing the port saw is a token or the subject itself.
+        assertTrue(log.none { it.contains("pkeyt_") || it.contains(ALICE) })
+        r.client.close()
+    }
+
+    @Test
+    fun noBackgroundPortIsToldOfAnythingWhileTheOptionIsOff() = runBlocking {
+        val log = CopyOnWriteArrayList<String>()
+        val r = Rig(port = FakePort(log), background = false)
+        r.signIn()
+        assertTrue(r.saves.write("slot-1", bytes(100), meta("x")).result() is SaveResult.Done)
+        assertEquals(emptyList<String>(), log.toList())
+        r.client.close()
+    }
+
+    @Test
+    fun theBackgroundRunnerServesOnlyTheSignedInPersonsLiveWrite() = runBlocking {
+        val log = CopyOnWriteArrayList<String>()
+        val port = FakePort(log)
+        val r = Rig(port = port)
+        r.signIn()
+        world.opsDown = true
+        val t = r.saves.write("slot-1", bytes(100), meta("x"))
+        eventually("the file is stored and the write waits") { world.rows["slot-1"]?.file != null }
+        val runner = port.runner!!
+        assertEquals(BackgroundTransferOutcome.STOP, runner.run("saves:slot-1", tag("ps_Bob")))
+        assertEquals(BackgroundTransferOutcome.STOP, runner.run("saves:other", tag(ALICE)))
+        t.cancel()
+        assertEquals(BackgroundTransferOutcome.STOP, runner.run("saves:slot-1", tag(ALICE)))
+        r.client.close()
+    }
+
+    @Test
+    fun signOutLocksTheRingThenCancelsTheScheduledWorkThenRemovesThePin() = runBlocking {
+        val log = CopyOnWriteArrayList<String>()
+        lateinit var rig: Rig
+        val roots = LoggedStorage(InMemoryDeviceKeyStorage()) {
+            log += "pin:locked=${!rig.client.keyring.unlocked}"
+        }
+        val port = FakePort(log, onCancelOwner = { "locked=${!rig.client.keyring.unlocked},pinStillThere=${log.none { it.startsWith("pin:") }}" })
+        rig = Rig(roots = roots, seedRoot = true, port = port)
+        rig.signIn()
+        assertTrue(rig.saves.write("slot-1", bytes(100), meta("x")).result() is SaveResult.Done)
+        eventually("the port heard the end") { log.contains("cancel:saves:slot-1") }
+        log.clear()
+        rig.client.identity.signOut()
+        assertEquals(listOf("cancelOwner:${tag(ALICE)}:locked=true,pinStillThere=true", "pin:locked=true"), log.toList())
+        rig.client.close()
+    }
+
+    @Test
+    fun anUploadTheJournalHoldsThatNoLiveWriteDoesIsReportedOnceAtSavesStart() = runBlocking {
+        val r = Rig()
+        r.signIn()
+        // A cut-short upload from an earlier run, left in the journal.
+        FileJournal(r.dir).put(
+            "saves:slot-9",
+            JournalRecord("saves:slot-9", SAVES_COLLECTION, "slot-9", "u1", "single", null, emptyList(), "a".repeat(64), 10, 4_000_000_000_000.0, "uploading"),
+        )
+        r.saves.list()
+        r.saves.list()
+        eventually("one failed event") { r.events.any { it is CloudSyncEvent.TransferFailed } }
+        val failed = r.events.filterIsInstance<CloudSyncEvent.TransferFailed>()
+        assertEquals(listOf(CloudSyncEvent.TransferFailed("saves:slot-9", "transfer-failed")), failed)
+        r.client.close()
     }
 }

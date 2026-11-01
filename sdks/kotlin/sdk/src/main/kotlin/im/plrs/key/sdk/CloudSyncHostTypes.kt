@@ -21,6 +21,53 @@ public class CloudSyncHostOptions {
 
     /** The newest save `formatVersion` this build reads (D-11); a save above it reads as `NewerFormat`. Null turns the check off. */
     public var saveFormatVersion: Int? = null
+
+    /**
+     * Keep a save write going while the app is in the background (U-41.7b). Off by default. On, a platform binding that
+     * sets [backgroundPort] (the Android entry point does) is told of each write; with no port it changes nothing.
+     */
+    public var backgroundTransfers: Boolean = false
+
+    /** The platform's scheduler for background transfers; set by the platform binding, not by app code. */
+    public var backgroundPort: CloudSyncBackgroundPort? = null
+
+    internal fun background(): CloudSyncBackgroundPort? = if (backgroundTransfers) backgroundPort else null
+}
+
+/** How a scheduled background run of one transfer came out; the platform maps it to its scheduler's result. */
+public enum class BackgroundTransferOutcome {
+    /** The write finished (or ended in a conflict the app settles). */
+    DONE,
+
+    /** Not finished and worth another run: the system stopped it. */
+    RETRY,
+
+    /** Never run again: cancelled, failed, paused, signed out, another person, or no such write. */
+    STOP,
+}
+
+/** The SDK's side of a background run, handed to the port once. It reads the live write; it carries and needs no credential. */
+public fun interface CloudSyncBackgroundRunner {
+    public suspend fun run(transferId: String, owner: String): BackgroundTransferOutcome
+}
+
+/**
+ * What a platform gives the SDK to keep a write alive in the background. Only opaque ids cross it: a transfer id and an
+ * owner tag (the SHA-256 hex of the signed-in person), never a token, a key or a file name. The write itself runs in the
+ * SDK, which fetches its token per request.
+ */
+public interface CloudSyncBackgroundPort {
+    /** Called once, when the client is built: the platform runs a scheduled transfer through [runner]. */
+    public fun attach(runner: CloudSyncBackgroundRunner)
+
+    /** A write the person started: schedule it (user-initiated work). */
+    public fun enqueue(transferId: String, owner: String)
+
+    /** The write ended, or was cancelled: drop what is still scheduled for it. */
+    public fun cancel(transferId: String)
+
+    /** Sign-out and forget: drop everything scheduled for [owner] and wait until it has stopped. Called off the main thread. */
+    public fun cancelOwner(owner: String)
 }
 
 /** What the host needs from the client; each is a function so the host holds no stale copy. */

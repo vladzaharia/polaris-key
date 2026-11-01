@@ -41,6 +41,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -66,6 +67,7 @@ public const val SAVES_MAX_RETRY_AFTER_SECONDS: Double = 3600.0
 private const val DEFAULT_MAX_BYTES: Long = 32L * 1024 * 1024
 private const val HTTP_NOT_FOUND = 404
 private const val COPY_ATTEMPTS = 1000
+private const val BACKGROUND_POLL_MS = 1_000L
 private const val COPY_ID_ROOM = 120
 private val SAVE_KEY = Regex(SYNC_KEY_PATTERN)
 private val HEX64 = Regex("[0-9a-f]{64}")
@@ -257,6 +259,8 @@ internal class SavesHooks(
     val progress: (id: String, done: Long, total: Long) -> Unit = { _, _, _ -> },
     val settled: (id: String, result: SaveResult) -> Unit = { _, _ -> },
     val readDone: (id: String, failure: SavesException?) -> Unit = { _, _ -> },
+    /** A write has been accepted and is about to start (U-41.7b). */
+    val started: (id: String) -> Unit = {},
 )
 
 /**
@@ -446,6 +450,24 @@ public class SavesClient internal constructor(
     /** The writes in flight (running, paused or waiting on the network). */
     public fun transfers(): List<SaveTransfer> = running.values.sortedBy { it.id }
 
+    /**
+     * A scheduled background run of [id]: wait for the live write and say how it came out. No such write, a cancelled,
+     * failed or paused one is [BackgroundTransferOutcome.STOP]; one the host stopped (the transfer scope went away) is
+     * RETRY. The caller's own cancellation is the system stopping the run and passes through.
+     */
+    internal suspend fun awaitBackground(id: String): BackgroundTransferOutcome {
+        val t = running[id] ?: return BackgroundTransferOutcome.STOP
+        var result: SaveResult? = null
+        while (result == null && t.state != TransferState.PAUSED) result = withTimeoutOrNull(BACKGROUND_POLL_MS) { t.await() }
+        return when (result) {
+            null, SaveResult.Cancelled -> BackgroundTransferOutcome.STOP
+            is SaveResult.Done, is SaveResult.KeptRemote, is SaveResult.Conflict -> BackgroundTransferOutcome.DONE
+            is SaveResult.Failed -> if (result.error.isStopped()) BackgroundTransferOutcome.RETRY else BackgroundTransferOutcome.STOP
+        }
+    }
+
+    private fun SavesException.isStopped(): Boolean = code == SavesException.TRANSFER_FAILED && detail == "stopped"
+
     /** Cancel every write in flight (the person's data is gone). Each is tried whatever the other did. */
     internal suspend fun cancelAll() {
         val all = running.values.toList()
@@ -535,6 +557,7 @@ public class SavesClient internal constructor(
             hooks.settled(transferId, r)
         }, total = source.size.toLong())
         running[transferId] = transfer
+        hooks.started(transferId)
         transfer.start()
         return transfer
     }
