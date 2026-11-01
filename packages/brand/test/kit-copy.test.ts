@@ -572,7 +572,34 @@ describe("renderers (goldens over a synthetic catalog)", () => {
 });
 
 describe("the lead markers (`**like this**`)", () => {
-  it("no generated native table or the Node terminal's carries them", () => {
+  const count = (v: string): number => v.split("**").length - 1;
+  const leadKeys = Object.entries(REAL.en.messages)
+    .filter(([, m]) => m.value.includes("**"))
+    .map(([k]) => k);
+
+  it("sit only in lead-in keys, never in a11y, button or label roles", () => {
+    expect(leadKeys.length).toBeGreaterThan(0);
+    for (const [k, m] of Object.entries(REAL.en.messages)) {
+      if (!m.value.includes("**")) continue;
+      expect(m.role, k).not.toMatch(/^(a11y|button|label)$/);
+      expect(k, k).not.toMatch(/\.a11y(\.|$)/);
+    }
+  });
+  it("come as one balanced pair in every locale", () => {
+    for (const k of leadKeys) {
+      expect(count(REAL.en.messages[k]!.value), `en ${k}`).toBe(2);
+      for (const [l, pack] of Object.entries(REAL.packs)) {
+        const v = pack.messages[k];
+        if (v !== undefined) expect(count(v), `${l} ${k}`).toBe(2);
+      }
+    }
+  });
+  it("no locale adds markers to another key", () => {
+    for (const [l, pack] of Object.entries(REAL.packs))
+      for (const [k, v] of Object.entries(pack.messages))
+        if (v.includes("**")) expect(leadKeys, `${l} ${k}`).toContain(k);
+  });
+  it("every native table and the Node terminal carry them, as the web kits do", () => {
     const REPO = join(import.meta.dirname, "..", "..", "..");
     const files = [
       "packages/sdk-node/src/kitCopy.generated.ts",
@@ -587,13 +614,6 @@ describe("the lead markers (`**like this**`)", () => {
       "sdks/kotlin/ui/src/commonMain/composeResources/values-fr/strings.xml",
     ];
     for (const f of files)
-      expect(readFileSync(join(REPO, f), "utf8"), f).not.toMatch(/\*\*[^\s*/]/);
-  });
-  it("the source catalog keeps them, for the web kits and the portal", () => {
-    const REPO = join(import.meta.dirname, "..", "..", "..");
-    const src = JSON.parse(
-      readFileSync(join(REPO, "packages/brand/kit-copy/en.json"), "utf8"),
-    ) as { messages: Record<string, { value: string }> };
-    expect(src.messages["activate.recommend.sync"]!.value).toContain("**");
+      expect(readFileSync(join(REPO, f), "utf8"), f).toMatch(/\*\*[^\s*/]/);
   });
 });

@@ -316,11 +316,11 @@
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">Recomendado</string>
     <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">Mantén tus ajustes iguales en todos tus dispositivos</string>
+    <string name="activate_recommend_sync">**Mantén tus ajustes** iguales en todos tus dispositivos</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_recover">Recupera tu licencia si pierdes la clave o este dispositivo</string>
+    <string name="activate_recommend_recover">**Recupera tu licencia** si pierdes la clave o este dispositivo</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
-    <string name="activate_recommend_devices">Pásala a un dispositivo nuevo tú mismo, sin pedírselo a %1$s</string>
+    <string name="activate_recommend_devices">**Pásala a un dispositivo nuevo** tú mismo, sin pedírselo a %1$s</string>
     <!-- ActivateDone: the recommendation card's action; opens AddToAccount. -->
     <string name="activate_recommend_action">Añade tu nombre y correo</string>
     <string name="activate_recommend_action__macos">Añade tu nombre y correo</string>

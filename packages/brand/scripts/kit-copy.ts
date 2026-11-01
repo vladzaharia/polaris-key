@@ -1697,20 +1697,9 @@ const portalModel = (): KitCopyModel => {
   return { ...m, entries: m.entries.filter(isPortalKey) };
 };
 
-/** A reason's bold lead is marked `**like this**` in the catalog; the web kits and the portal draw
- *  it bold. The native tables and the Node terminal do not parse the markers yet (UK-43 styles
- *  them), so they carry the plain text. */
+/** A reason's bold lead is marked `**like this**` in the catalog. Every kit draws it bold; a
+ *  surface that cannot (the docs page) strips the markers with this. */
 export const stripLead = (text: string): string => text.replaceAll("**", "");
-const plain = (m: KitCopyModel): KitCopyModel => ({
-  ...m,
-  entries: m.entries.map((e) => ({
-    ...e,
-    english: stripLead(e.english),
-    values: Object.fromEntries(
-      Object.entries(e.values).map(([l, v]) => [l, stripLead(v)]),
-    ),
-  })),
-});
 
 const GODOT_LOCALE_DIR = "sdks/godot/addons/polaris_key/ui/locale";
 const PY_UI = "sdks/python/src/polaris_key/ui";
@@ -1753,43 +1742,39 @@ export const KIT_COPY_TARGETS: KitCopyTarget[] = [
   },
   {
     path: "packages/sdk-node/src/kitCopy.generated.ts",
-    render: () => nodeModule(plain(model())),
+    render: () => nodeModule(model()),
     parser: "typescript",
   },
   {
     path: "sdks/swift/Sources/PolarisKeyUICore/Resources/kit-copy.json",
-    render: () => swiftBundleJson(plain(model())),
+    render: () => swiftBundleJson(model()),
   },
   {
     path: "sdks/kotlin/ui-core/src/main/resources/kit-copy.json",
-    render: () => swiftCoreJson(plain(model())),
+    render: () => swiftCoreJson(model()),
     parser: "json",
   },
   ...KIT_LOCALES.map((l) => ({
     path: `sdks/kotlin/ui/src/commonMain/composeResources/values${COMPOSE_QUALIFIER[l]}/strings.xml`,
-    render: () => stringsXml(plain(model()), l),
+    render: () => stringsXml(model(), l),
   })),
   {
     path: `${GODOT_LOCALE_DIR}/polaris_key_ui.pot`,
-    render: () => gettextFile(plain(model()), null, "Godot kit template"),
+    render: () => gettextFile(model(), null, "Godot kit template"),
   },
   ...KIT_LOCALES.map((l) => ({
     path: `${GODOT_LOCALE_DIR}/${GETTEXT_LOCALE[l]}.po`,
-    render: () => gettextFile(plain(model()), l, `Godot kit, ${l}`),
+    render: () => gettextFile(model(), l, `Godot kit, ${l}`),
   })),
 
   {
     path: `${PY_UI}/kit_copy_generated.py`,
-    render: () => pythonModule(plain(pythonModel())),
+    render: () => pythonModule(pythonModel()),
   },
   {
     path: `${PY_UI}/locale/polaris_key_ui.pot`,
     render: () =>
-      gettextFile(
-        plain(pythonModel()),
-        null,
-        "Python Qt and terminal kit template",
-      ),
+      gettextFile(pythonModel(), null, "Python Qt and terminal kit template"),
   },
 ];
 

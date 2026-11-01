@@ -173,11 +173,11 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · this {deviceKind} is device {n} of {limit}.",
     "activate.recommend.title": "Keep {product} in your account",
     "activate.recommend.badge": "Recommended",
-    "activate.recommend.sync": "Sync your settings across your devices",
+    "activate.recommend.sync": "**Sync your settings** across your devices",
     "activate.recommend.recover":
-      "Get your license back if you lose the key or this device",
+      "**Get your license back** if you lose the key or this device",
     "activate.recommend.devices":
-      "Move it to a new device yourself, without asking {developer}",
+      "**Move it to a new device** yourself, without asking {developer}",
     "activate.recommend.action": "Add your name and email",
     "activate.recommend.skip":
       "Or continue without an account. {product} works the same.",
@@ -2148,11 +2148,11 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "{product} in Ihrem Konto behalten",
     "activate.recommend.badge": "Empfohlen",
     "activate.recommend.sync":
-      "Ihre Einstellungen auf jedem Gerät gleich halten",
+      "**Ihre Einstellungen** auf jedem Gerät gleich halten",
     "activate.recommend.recover":
-      "Ihre Lizenz zurückholen, wenn Sie den Schlüssel oder dieses Gerät verlieren",
+      "**Ihre Lizenz zurückholen**, wenn Sie den Schlüssel oder dieses Gerät verlieren",
     "activate.recommend.devices":
-      "Auf ein neues Gerät umziehen, selbst und ohne {developer} zu fragen",
+      "**Auf ein neues Gerät umziehen**, selbst und ohne {developer} zu fragen",
     "activate.recommend.action": "Namen und E-Mail hinzufügen",
     "activate.recommend.skip":
       "Oder ohne Konto fortfahren. {product} funktioniert genauso.",
@@ -4255,11 +4255,11 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Gardez {product} dans votre compte",
     "activate.recommend.badge": "Recommandé",
     "activate.recommend.sync":
-      "Gardez vos réglages identiques sur chaque appareil",
+      "**Gardez vos réglages** identiques sur chaque appareil",
     "activate.recommend.recover":
-      "Récupérez votre licence si vous perdez la clé ou cet appareil",
+      "**Récupérez votre licence** si vous perdez la clé ou cet appareil",
     "activate.recommend.devices":
-      "Passez-la sur un nouvel appareil vous-même, sans solliciter {developer}",
+      "**Passez-la sur un nouvel appareil** vous-même, sans solliciter {developer}",
     "activate.recommend.action": "Ajouter votre nom et e-mail",
     "activate.recommend.skip":
       "Ou continuez sans compte. {product} fonctionne de la même façon.",
@@ -6344,11 +6344,11 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Conserva {product} en tu cuenta",
     "activate.recommend.badge": "Recomendado",
     "activate.recommend.sync":
-      "Mantén tus ajustes iguales en todos tus dispositivos",
+      "**Mantén tus ajustes** iguales en todos tus dispositivos",
     "activate.recommend.recover":
-      "Recupera tu licencia si pierdes la clave o este dispositivo",
+      "**Recupera tu licencia** si pierdes la clave o este dispositivo",
     "activate.recommend.devices":
-      "Pásala a un dispositivo nuevo tú mismo, sin pedírselo a {developer}",
+      "**Pásala a un dispositivo nuevo** tú mismo, sin pedírselo a {developer}",
     "activate.recommend.action": "Añade tu nombre y correo",
     "activate.recommend.skip":
       "O continúa sin cuenta. {product} funciona igual.",
@@ -8424,11 +8424,11 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Guarde {product} na sua conta",
     "activate.recommend.badge": "Recomendado",
     "activate.recommend.sync":
-      "Mantenha suas configurações iguais em todos os dispositivos",
+      "**Mantenha suas configurações** iguais em todos os dispositivos",
     "activate.recommend.recover":
-      "Recupere sua licença se perder a chave ou este dispositivo",
+      "**Recupere sua licença** se perder a chave ou este dispositivo",
     "activate.recommend.devices":
-      "Passe-a para um novo dispositivo você mesmo, sem pedir a {developer}",
+      "**Passe-a para um novo dispositivo** você mesmo, sem pedir a {developer}",
     "activate.recommend.action": "Adicionar seu nome e e-mail",
     "activate.recommend.skip":
       "Ou continue sem conta. {product} funciona do mesmo jeito.",
@@ -10462,11 +10462,11 @@ export const KIT_COPY: Readonly<
     "activate.recommend.title": "Tieni {product} nel tuo account",
     "activate.recommend.badge": "Consigliato",
     "activate.recommend.sync":
-      "Mantieni le impostazioni uguali su ogni dispositivo",
+      "**Mantieni le impostazioni** uguali su ogni dispositivo",
     "activate.recommend.recover":
-      "Riavere la licenza se perdi la chiave o questo dispositivo",
+      "**Riavere la licenza** se perdi la chiave o questo dispositivo",
     "activate.recommend.devices":
-      "Spostala su un nuovo dispositivo da solo, senza chiedere a {developer}",
+      "**Spostala su un nuovo dispositivo** da solo, senza chiedere a {developer}",
     "activate.recommend.action": "Aggiungi nome ed e-mail",
     "activate.recommend.skip":
       "Oppure continua senza account. {product} funziona allo stesso modo.",
@@ -12522,11 +12522,11 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · この{deviceKind}は{limit}台中{n}台目のデバイスです。",
     "activate.recommend.title": "{product}をアカウントに保存",
     "activate.recommend.badge": "おすすめ",
-    "activate.recommend.sync": "設定をすべてのデバイスで同じに保てます",
+    "activate.recommend.sync": "設定を**すべてのデバイスで同じに**保てます",
     "activate.recommend.recover":
-      "キーやこのデバイスを失ってもライセンスを取り戻せます",
+      "キーやこのデバイスを失っても**ライセンスを取り戻せます**",
     "activate.recommend.devices":
-      "{developer}に頼まずに、新しいデバイスへ自分で移せます",
+      "{developer}に頼まずに、**新しいデバイスへ自分で移せます**",
     "activate.recommend.action": "名前とメールアドレスを追加",
     "activate.recommend.skip":
       "またはアカウントなしで続ける。{product}は同じように使えます。",
@@ -14598,10 +14598,11 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · 이 {deviceKind}은(는) {limit}대 중 {n}번째 기기입니다.",
     "activate.recommend.title": "{product}을(를) 계정에 보관하세요",
     "activate.recommend.badge": "추천",
-    "activate.recommend.sync": "설정을 모든 기기에서 똑같이 유지하세요",
-    "activate.recommend.recover": "키나 이 기기를 잃어도 라이선스를 되찾으세요",
+    "activate.recommend.sync": "설정을 **모든 기기에서 똑같이** 유지하세요",
+    "activate.recommend.recover":
+      "키나 이 기기를 잃어도 **라이선스를 되찾으세요**",
     "activate.recommend.devices":
-      "{developer}에게 묻지 않고 직접 새 기기로 옮기세요",
+      "{developer}에게 묻지 않고 **직접 새 기기로 옮기세요**",
     "activate.recommend.action": "이름과 이메일 추가",
     "activate.recommend.skip":
       "또는 계정 없이 계속하세요. {product}은(는) 똑같이 작동합니다.",
@@ -16576,9 +16577,10 @@ export const KIT_COPY: Readonly<
       "{tier} · {term} · 这台{deviceKind}是第 {n} 台设备，共 {limit} 台。",
     "activate.recommend.title": "将{product}保存到你的账户",
     "activate.recommend.badge": "推荐",
-    "activate.recommend.sync": "让你的设置在每台设备上保持一致",
-    "activate.recommend.recover": "丢失密钥或这台设备后，可找回你的许可证",
-    "activate.recommend.devices": "无需联系{developer}，自己就能迁移到新设备",
+    "activate.recommend.sync": "让你的设置**在每台设备上保持一致**",
+    "activate.recommend.recover": "丢失密钥或这台设备后，可**找回你的许可证**",
+    "activate.recommend.devices":
+      "无需联系{developer}，自己就能**迁移到新设备**",
     "activate.recommend.action": "添加姓名和电子邮件",
     "activate.recommend.skip":
       "或不使用账户继续。{product}的使用方式完全相同。",

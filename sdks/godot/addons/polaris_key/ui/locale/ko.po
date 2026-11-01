@@ -851,20 +851,20 @@ msgstr "{product}을(를) 계정에 보관하세요"
 msgid "activate.recommend.badge"
 msgstr "추천"
 
-#. Sync your settings across your devices
+#. **Sync your settings** across your devices
 #. ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them.
 msgid "activate.recommend.sync"
-msgstr "설정을 모든 기기에서 똑같이 유지하세요"
+msgstr "설정을 **모든 기기에서 똑같이** 유지하세요"
 
-#. Get your license back if you lose the key or this device
+#. **Get your license back** if you lose the key or this device
 #. ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them.
 msgid "activate.recommend.recover"
-msgstr "키나 이 기기를 잃어도 라이선스를 되찾으세요"
+msgstr "키나 이 기기를 잃어도 **라이선스를 되찾으세요**"
 
-#. Move it to a new device yourself, without asking {developer}
+#. **Move it to a new device** yourself, without asking {developer}
 #. ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them.
 msgid "activate.recommend.devices"
-msgstr "{developer}에게 묻지 않고 직접 새 기기로 옮기세요"
+msgstr "{developer}에게 묻지 않고 **직접 새 기기로 옮기세요**"
 
 #. Add your name and email
 #. ActivateDone: the recommendation card's action; opens AddToAccount.

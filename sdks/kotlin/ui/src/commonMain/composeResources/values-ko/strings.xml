@@ -312,11 +312,11 @@
     <!-- ActivateDone: the badge on the recommendation card. -->
     <string name="activate_recommend_badge">추천</string>
     <!-- ActivateDone: a reason line, shown only when the product has sync. Plain words: no feature name. The first words are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_sync">설정을 모든 기기에서 똑같이 유지하세요</string>
+    <string name="activate_recommend_sync">설정을 **모든 기기에서 똑같이** 유지하세요</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. The first words ("Get your license back") are a lead-in; the kit may style them. -->
-    <string name="activate_recommend_recover">키나 이 기기를 잃어도 라이선스를 되찾으세요</string>
+    <string name="activate_recommend_recover">키나 이 기기를 잃어도 **라이선스를 되찾으세요**</string>
     <!-- ActivateDone: a reason line, shown when Identity is on. Arguments: {developer} = the developer's name (never translated). The first words ("Move it to a new device") are a lead-in; the kit may style them. Arguments: 1=developer. -->
-    <string name="activate_recommend_devices">%1$s에게 묻지 않고 직접 새 기기로 옮기세요</string>
+    <string name="activate_recommend_devices">%1$s에게 묻지 않고 **직접 새 기기로 옮기세요**</string>
     <!-- ActivateDone: the recommendation card's action; opens AddToAccount. -->
     <string name="activate_recommend_action">이름과 이메일 추가</string>
     <string name="activate_recommend_action__macos">이름과 이메일 추가</string>
