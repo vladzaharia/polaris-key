@@ -39,6 +39,7 @@ const ROWS := [
 	["identity.subject", "res://addons/polaris_key/services/identity.gd", "method", "subject"],
 	["identity.signOut", "res://addons/polaris_key/services/identity.gd", "method", "sign_out"],
 	["identity.signIn.start", "res://addons/polaris_key/services/identity/sign_in_namespace.gd", "method", "start"],
+	["identity.signIn.handleRedirect", "res://addons/polaris_key/services/identity/sign_in_namespace.gd", "method", "handle_redirect"],
 	["identity.signIn.session.reopen", "res://addons/polaris_key/services/identity/sign_in_session.gd", "method", "reopen"],
 	["identity.signIn.session.cancel", "res://addons/polaris_key/services/identity/sign_in_session.gd", "method", "cancel"],
 	["identity.signIn.session.wait", "res://addons/polaris_key/services/identity/sign_in_session.gd", "method", "wait"],

@@ -89,6 +89,11 @@ var device_keys: Object = null
 ## Conformance replay only: the exact `state` and `code_verifier` of a recorded redirect
 ## conversation ({state, code_verifier}); empty draws fresh entropy.
 var redirect_entropy: Dictionary = {}
+## Conformance replay and tests only: a Callable returning the loopback listener (an object with the
+## members of PKeyLoopbackListener: port, start, close, poll, is_closed) instead of a bound socket.
+var listener_factory: Callable = Callable()
+## Tests only: "" reads the platform; "desktop" or "other" forces whether a listener can be bound.
+var native_platform := ""
 ## Conformance replay only: false skips the forced sync after a redirect token (the `redirect-web-*`
 ## recordings hold the token exchange, not the sync that follows it).
 var redirect_acquisition_sync := true
@@ -329,6 +334,10 @@ func _start(opts: Dictionary) -> PKeySignInSession:
 	if gen != _starts:
 		# A newer start or a rebind landed while this one was in flight.
 		session.cancel()
+	elif session._native != null:
+		# A native sign-in opens the browser unless the host said not to (`browser: false`).
+		if opts.get("browser", true) != false:
+			session.opened = session.reopen()
 	elif opts.get("browser", false) == true:
 		session.reopen()
 	return session
@@ -339,6 +348,9 @@ func _start(opts: Dictionary) -> PKeySignInSession:
 ## from a guessed path), with the S256 challenge, the `state` and the hints. The token endpoint
 ## must be on this product's origin: the device's headers go nowhere else.
 func _begin_redirect(opts: Dictionary) -> PKeySignInSession:
+	var given = opts.get("redirect_uri")
+	if given == null or (given is String and given == ""):
+		return await _begin_native(opts)
 	var core := _core()
 	if core == null or not core.started:
 		return _failed(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() before sign_in.start().")
@@ -377,6 +389,134 @@ func _begin_redirect(opts: Dictionary) -> PKeySignInSession:
 	return session
 
 
+## `sign_in.start({channel = "redirect"})` with no `redirect_uri` (WIRE-CONTRACT-V5 §12.12): the
+## native redirect. The order is the listener's bind, the pushed request, then the browser (in
+## `_start`), so the port is held before the Worker learns it. Every endpoint is used only when
+## discovery names it, and the ones the device's headers reach must be on this product. Nothing is
+## sent when no class applies: `redirect-unavailable`, and the kit offers a code.
+func _begin_native(opts: Dictionary) -> PKeySignInSession:
+	var core := _core()
+	if core == null or not core.started:
+		return _failed(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() before sign_in.start().")
+	if core.discovery_manifest == null:
+		await core.discover()
+	if not core.enabled("identity") or not is_available():
+		var off := _failed(PKeyErrors.SERVICE_UNAVAILABLE, "The identity service is not enabled (or not set up) for %s." % core.product)
+		off.detail = PKeyResult.product_detail(PKeyConstants.Feature.IDENTITY_REDIRECT_NATIVE, "identity")
+		return off
+	var fragment := PKeyDiscovery.identity_from(core.discovery_manifest)
+	var raw = core.discovery_manifest.get("services", {}).get("identity") if core.discovery_manifest is Dictionary and core.discovery_manifest.get("services") is Dictionary else null
+	var endpoints: Dictionary = fragment.get("endpoints", {})
+	var request_endpoint: String = endpoints.get("request", "")
+	var authorize: String = endpoints.get("authorize", "")
+	var token: String = endpoints.get("token", "")
+	var issuer: String = fragment.get("issuer", "")
+	var return_page: String = endpoints.get("signinReturn", "")
+	if return_page != "":
+		# The 303 target is the product's own customer host: the API origin or the issuer's.
+		var page := PKeyTransport.parse_url(return_page)
+		var allowed: Array = []
+		for u in [core.base_url, issuer]:
+			var parsed := PKeyTransport.parse_url(u)
+			if not parsed.is_empty():
+				allowed.append(parsed["origin"])
+		# https, or the API's own origin (a local Worker for development).
+		var own_origin: bool = page.get("origin") == PKeyTransport.parse_url(core.base_url).get("origin")
+		if page.is_empty() or not (return_page.begins_with("https://") or own_origin) or not (page["origin"] in allowed):
+			return _failed(PKeyErrors.INVALID_OPTIONS, "The return page is outside this product.")
+	var advertised = raw.get("nativeRedirect") if raw is Dictionary else null
+	var native: Variant = advertised if advertised is Dictionary else null
+	if request_endpoint != "" and (authorize == "" or token == "" or issuer == ""):
+		return _failed(PKeyConstants.ErrorCode.SIGN_IN_UNAVAILABLE, "This product's discovery serves no redirect sign-in.")
+	var desktop := PKeyNativeRedirect.is_desktop() if native_platform == "" else native_platform == "desktop"
+	var can_listen: bool = (not PKeyNativeRedirect.is_headless() if not opts.has("loopback") else opts["loopback"] == true) and desktop and return_page != ""
+	var choice := PKeyNativeRedirect.choose_redirect_class({
+		"request_endpoint": request_endpoint, "discovery": native, "can_listen": can_listen,
+		"registered_schemes": opts.get("registered_schemes", []), "registered_claimed": opts.get("registered_claimed", []),
+	})
+	if choice["kind"] == "unavailable":
+		var gone := _failed(StringName(choice["code"]), "No native redirect can start here; sign in with a code instead (%s)." % choice["reason"])
+		gone.detail = {"reason": choice["reason"]}
+		return gone
+	if not _own(token) or not _own(request_endpoint):
+		return _failed(PKeyErrors.INVALID_RESPONSE, "An endpoint points outside this product.")
+	var label := PKeyDeviceLabel.resolve(String(opts.get("device_name", "")), core.options)
+	var listener: Object = null
+	var redirect_uri := ""
+	if choice["kind"] == "loopback":
+		# Bind first, push second: the port is ours before the Worker learns it.
+		listener = listener_factory.call() if listener_factory.is_valid() else PKeyLoopbackListener.new()
+		if listener.port < 1:
+			return _failed(PKeyErrors.NETWORK, "The loopback listener could not be bound.")
+		redirect_uri = PKeyNativeRedirect.native_redirect_uri("loopback", {"port": listener.port})
+	else:
+		redirect_uri = choice["redirect_uri"]
+	var pushed := PKeyNativeRedirect.push_request({
+		"request_endpoint": request_endpoint, "authorize_endpoint": authorize, "token_endpoint": token,
+		"issuer": issuer, "client_id": core.product, "redirect_uri": redirect_uri, "device_name": label,
+		"return_uri": opts.get("return_uri"), "scope": opts.get("scope"),
+		"login_hint": opts.get("login_hint"), "name_hint": opts.get("name_hint"), "purpose": opts.get("purpose"),
+		"license_choice": opts.get("license_choice"), "choice_available": PKeyIdentityChoice.available(fragment),
+		"state": redirect_entropy.get("state"), "code_verifier": redirect_entropy.get("code_verifier"),
+	})
+	if not pushed["ok"]:
+		if listener != null:
+			listener.close()
+		return _failed(PKeyConstants.ErrorCode.INVALID_ARGUMENT, pushed["message"])
+	var r := await core.transport.request("POST", pushed["url"], core.headers({"Content-Type": pushed["content_type"]}), String(pushed["body"]).to_utf8_buffer())
+	var failure := _push_failure(r)
+	if failure == null:
+		var status := _status(r)
+		var parsed := PKeyJson.parse_bytes(r.detail["body"])
+		var answer := PKeyNativeRedirect.parse_pushed_answer(status, parsed["value"] if parsed["ok"] else null)
+		if answer["kind"] == "refused":
+			var retry = answer.get("retry_after_seconds")
+			if retry == null:
+				var header = r.detail["headers"].get("retry-after") if r.detail["headers"] is Dictionary else null
+				if header is String and (header as String).strip_edges().is_valid_int():
+					retry = mini(int((header as String).strip_edges()), 3600)
+			failure = _failed(StringName(answer["error"]), "The Worker refused the sign-in request (%s)." % answer["error"])
+			failure.detail = {"status": status}
+			if retry != null:
+				failure.detail["retry_after_seconds"] = retry
+		elif answer["kind"] == "malformed":
+			failure = _failed(PKeyErrors.INVALID_RESPONSE, "The request endpoint answered without a complete pushed request.")
+			failure.detail = {"status": status}
+		else:
+			var n := PKeyNativeSignIn.new()
+			n.pending = pushed["pending"]
+			n.redirect_class = pushed["pending"]["redirect_class"]
+			n.redirect_uri = redirect_uri
+			n.authorize_url = PKeyNativeRedirect.authorize_url_for(authorize, core.product, answer["request_uri"])
+			n.expires_at = core.clock.system_now() + float(answer["expires_in"])
+			n.listener = listener
+			n.return_page = return_page
+			var session := PKeySignInSession.new(true)
+			session.channel = &"redirect"
+			session._native = n
+			session.authorize_url = n.authorize_url
+			session.redirect_class = n.redirect_class
+			session.redirect_uri = redirect_uri
+			session.expires_in = int(answer["expires_in"])
+			session.expires_at = n.expires_at
+			session.device_name = label
+			session.license_choice = pushed["pending"]["license_choice"]
+			if listener != null:
+				listener.start(Callable(n, "on_listener_callback"))
+				n.drive(_host)
+			return session
+	if listener != null:
+		listener.close()
+	return failure
+
+
+## A push that got no answer, as the failed session (null when there was one).
+static func _push_failure(r: PKeyResult) -> PKeySignInSession:
+	if r.ok:
+		return null
+	return _failed(r.code if r.code == PKeyErrors.LOCAL_ONLY else PKeyErrors.NETWORK, r.message)
+
+
 func _own(url: String) -> bool:
 	var u := PKeyTransport.parse_url(url)
 	var base := PKeyTransport.parse_url(_core().base_url)
@@ -387,12 +527,20 @@ func _own(url: String) -> bool:
 ## a PKeySignInOutcome: signed_in, or an error carrying the Worker's own code (`invalid_grant`,
 ## `invalid_client`, `rate_limited` with detail {retry_after_seconds}, `server-error` for a 5xx).
 ## A refusal never touches the stored token or the cache. A coroutine.
-func _redeem(session: PKeySignInSession, pending: Dictionary, code: String) -> PKeySignInOutcome:
+func _redeem(session: PKeySignInSession, pending: Dictionary, code: String, native := false) -> PKeySignInOutcome:
 	var core := _core()
 	if core == null or not core.started:
 		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
-	var form := PKeyIdentityRedirect.token_form(pending, code, session.device_name)
+	# A native sign-in's label went with the push (the token request does not repeat it) and the
+	# request names the pushing device.
+	var form := PKeyIdentityRedirect.token_form(pending, code, "" if native else session.device_name)
 	var h := core.headers({"Content-Type": PKeyIdentityRedirect.TOKEN_CONTENT_TYPE})
+	if native:
+		var tr := PKeyNativeRedirect.native_token_request(pending, code, core.device_id)
+		if tr.is_empty():
+			return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, PKeyErrors.NOT_CONFIGURED, "The device has no usable id.")
+		form = tr["body"]
+		h = core.headers(tr["headers"])
 	var r := await core.transport.request("POST", pending["token_endpoint"], h, form.to_utf8_buffer())
 	if not r.ok:
 		return PKeySignInOutcome.ended(PKeySignInOutcome.KIND_ERROR, r.code if r.code == PKeyErrors.LOCAL_ONLY else PKeyErrors.NETWORK, r.message)

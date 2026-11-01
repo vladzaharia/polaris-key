@@ -870,6 +870,25 @@ if out.kind == PKeySignInOutcome.KIND_LICENSE_CHOICE:
 	print(done.ok, done.attachable)                      # keep: attach() may follow
 ```
 
+**Native redirect (desktop).** A desktop game needs no registered `https:` address: leave out
+`redirect_uri` and the SDK does the rest. It binds a listener on `127.0.0.1` (an OS-assigned port,
+held until the callback), pushes the request, opens the system browser with `OS.shell_open` and
+redeems the code from this device; the person sees the return page on the Worker's host, not an
+error. `session.redirect_class` says which delivery ran, `session.reopen()` opens the SAME page again
+while the request lives (600 s), and `cancel()` closes the listener. A registered scheme or claimed
+link (`registered_schemes` / `registered_claimed` in the start options, your export's deep-link
+hook) is handed to `PolarisKey.identity.sign_in.handle_redirect(url)`. Mobile, web, a headless host
+(SSH, CI, no display) and a product without the pushed-request endpoint fail with `redirect-unavailable`
+before anything is sent: offer the device code instead.
+
+```gdscript
+var s := await PolarisKey.identity.sign_in.start({channel = "redirect"})
+if not s.ok and s.code == &"redirect-unavailable":
+	pass                                                 # fall back to the device code
+else:
+	var outcome := await s.wait()                        # the browser, the listener, the token
+```
+
 - **Account calls.** `subject()`, `sign_out()` and `open_account()` use only the endpoints
   discovery's Identity fragment publishes (`account: true`, `subject`, `signout`, `accountPortal`,
   on the product's own origin) and never build a URL; a product without them answers

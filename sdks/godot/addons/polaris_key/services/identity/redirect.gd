@@ -231,6 +231,11 @@ static func _query_of(url: String) -> Variant:
 	return out
 
 
+## The query pairs of `url` (see `_query_of`): null when a name repeats or an escape is bad.
+static func query_of(url: String) -> Variant:
+	return _query_of(url)
+
+
 ## `scheme://authority/path` with the scheme and host lower-cased, or "" when `url` is not one.
 static func _origin_path(url: String) -> String:
 	var m := _origin_re.search(url)
