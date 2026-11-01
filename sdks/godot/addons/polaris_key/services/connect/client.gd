@@ -212,6 +212,21 @@ func identity(refresh := false) -> PKeyResult:
 	return r
 
 
+## D's signer for a nearby request: the device key store (it signs `VOUCH_REQ`) and this device's
+## `X-PKey-Device` value. Makes the keys on first need; nothing is registered here (the host's
+## `nearby/start` carries them). ok with {port, device_id}. A coroutine.
+func nearby_signer() -> PKeyResult:
+	var core := _core()
+	if core == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "The SDK is gone.")
+	if _keys == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Cloud Connect has no device keys.")
+	var made := _ensure_keys(_keys)
+	if not made.ok:
+		return made
+	return PKeyResult.success({"port": _keys, "device_id": core.device_id})
+
+
 ## `GET /<p>/connect/devices`: the person's devices, display data only. ok with an Array of
 ## {device_id, label, platform, last_seen, self}; label, platform and last_seen are null when the
 ## Worker does not know them. Registers the device keys first when they are not yet registered.

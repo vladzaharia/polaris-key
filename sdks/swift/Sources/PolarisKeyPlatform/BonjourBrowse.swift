@@ -194,6 +194,8 @@ struct BonjourTable {
         return [.down(instance)]
     }
 
+    func row(_ instance: String) -> BonjourFound? { rows[instance] }
+
     /// The instances in the table.
     var instances: [String] { order }
 
@@ -221,6 +223,7 @@ public final class BonjourBrowse: Sendable {
     private let configurationCheck: @Sendable () -> BonjourBrowseError?
     private let accept: (@Sendable (String) -> Bool)?
     private let acceptFound: (@Sendable (BonjourFound) -> Bool)?
+    private let admitAlso: (@Sendable (BonjourFound) -> Bool)?
     private let state = PlatformLock(State())
 
     /// `configurationCheck` defaults to this process's Info.plist; a test passes its own.
@@ -229,10 +232,12 @@ public final class BonjourBrowse: Sendable {
         driver: (any BonjourBrowseDriver)? = nil,
         configurationCheck: (@Sendable () -> BonjourBrowseError?)? = nil,
         accept: (@Sendable (String) -> Bool)? = nil,
-        acceptFound: (@Sendable (BonjourFound) -> Bool)? = nil
+        acceptFound: (@Sendable (BonjourFound) -> Bool)? = nil,
+        admitAlso: (@Sendable (BonjourFound) -> Bool)? = nil
     ) {
         self.accept = accept
         self.acceptFound = acceptFound
+        self.admitAlso = admitAlso
         self.options = options
         #if canImport(Network)
             self.driver = driver ?? NWBrowserDriver()
@@ -281,13 +286,16 @@ public final class BonjourBrowse: Sendable {
     /// The accept filter's answer changed (a roster or key arrived): offer the browser's current results
     /// to it again, so a peer seen before it was known enters the table now, with no new browse event.
     public func rescan() {
-        guard accept != nil || acceptFound != nil else { return }
+        guard accept != nil || acceptFound != nil || admitAlso != nil else { return }
         let results = driver.snapshot()
         let (changes, up, down) = state.withLock {
             s -> ([BonjourTable.Change], (@Sendable (BonjourFound) -> Void)?, (@Sendable (String) -> Void)?) in
             guard s.running else { return ([], nil, nil) }
             // A name that is no longer accepted leaves the table first (a revoked device, an old epoch).
-            let retired = s.table.instances.filter { !(accept?($0) ?? true) }.flatMap { s.table.remove($0) }
+            let retired = s.table.instances.filter { name in
+                guard let row = s.table.row(name) else { return false }
+                return !admit(row)
+            }.flatMap { s.table.remove($0) }
             return (retired + results.filter { admit($0) }.flatMap { s.table.upsert($0) }, s.onUp, s.onDown)
         }
         guard let up, let down else { return }
@@ -336,8 +344,9 @@ public final class BonjourBrowse: Sendable {
     /// A result enters the table only when the name filter and the result filter both let it in. The result
     /// filter sees the TXT, which the nearby requester needs: an approver's name is random, so only its `m=v`
     /// and product tag say it is one.
+    /// `admitAlso` is a second way in (the nearby tags): a result it accepts enters whatever the name filter says.
     private func admit(_ f: BonjourFound) -> Bool {
-        (accept?(f.instance) ?? true) && (acceptFound?(f) ?? true)
+        ((accept?(f.instance) ?? true) && (acceptFound?(f) ?? true)) || (admitAlso?(f) ?? false)
     }
 
     private func deliver(
