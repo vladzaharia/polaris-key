@@ -128,7 +128,17 @@ Get-Content "$Work\logs\crypto-tests.log" | Select-String -Pattern "crypto_win|r
 Copy-Item "$sdk\build\logs\*" "$Work\logs" -Recurse -Force -ErrorAction SilentlyContinue
 Check "crypto: the editor run of crypto_win passed" ($code -eq 0)
 $log = Get-Content "$Work\logs\crypto-tests.log" -Raw
-Check "crypto: the real DLL ran (class registered, CNG and Monocypher lanes)" (($log -match "PASS PKeyWinCryptoNative is registered") -and ($log -match "real: Windows CNG AES-256-GCM") -and ($log -match "real: Monocypher X25519"))
+# The runner prefixes each line with the suite name ("PASS connect ..."), so match the check text, not its start.
+$registered = $log -match "(?m)^PASS .*PKeyWinCryptoNative is registered"
+$cng = $log -match "real: Windows CNG AES-256-GCM"
+$mono = $log -match "real: Monocypher X25519"
+if (-not ($registered -and $cng -and $mono)) {
+  Write-Host "── real-DLL evidence: registered=$registered cng=$cng monocypher=$mono; lines naming the class or lanes:"
+  $log -split "`n" | Where-Object { $_ -match "PKeyWinCryptoNative|real:|pkey_win|crypto_win" } | ForEach-Object { Write-Host $_.TrimEnd() }
+  Write-Host "── DLLs installed in the SDK project:"
+  Get-ChildItem "$sdk\addons\polaris_key\native\bin" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+}
+Check "crypto: the real DLL ran (class registered, CNG and Monocypher lanes)" ($registered -and $cng -and $mono)
 Check "crypto: no failed check" (($log -notmatch "(?m)^FAIL ") -and ($log -match "failed=0"))
 Phase ""
 Stop-Run
