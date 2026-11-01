@@ -43,6 +43,8 @@ class FakeFiles:
 	var before_get := Callable()
 	## Awaited before a PUT lands (a coroutine): a window to pause or lock in.
 	var before_put := Callable()
+	## Rewrites the finalize answer: Callable(answer) -> answer (the stored file is untouched).
+	var finalize_answer := Callable()
 
 	func rec(wire: String) -> Dictionary:
 		if not records.has(wire):
@@ -124,7 +126,8 @@ class FakeFiles:
 		r["revs"].push_front(entry)
 		r["file"] = {"version": entry["version"], "size": entry["size"], "sha256": entry["sha256"], "format": entry["format"]}
 		uploads.erase(request["uploadId"])
-		return Transfer.reply_ok({"version": entry["version"], "size": entry["size"], "sha256": entry["sha256"], "format": entry["format"]})
+		var answer := {"version": entry["version"], "size": entry["size"], "sha256": entry["sha256"], "format": entry["format"]}
+		return Transfer.reply_ok(finalize_answer.call(answer) if finalize_answer.is_valid() else answer)
 
 	func get_file(target: Dictionary, query: Dictionary) -> Dictionary:
 		calls.append("get_file")
@@ -261,6 +264,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _server_mode(t)
 	await _e2e(t)
 	await _format_and_binding(t)
+	await _finalize_answer(t)
 	await _conflicts(t)
 	await _delete(t)
 	await _pause_cancel(t)
@@ -504,6 +508,20 @@ func _format_and_binding(t: PKeyTestContext) -> void:
 
 
 # ── conflicts and resolve ───────────────────────────────────────────────────────────────────────
+
+func _finalize_answer(t: PKeyTestContext) -> void:
+	for e2e_mode: bool in [false, true]:
+		var rig = _rig(e2e_mode)
+		var first = await _write(rig, "a", _noise(3000), {"n": 1})
+		var other = await _write(rig, "b", _noise(3100), {"n": 2})
+		var listed_before: int = (await rig["saves"].list()).detail.size()
+		rig["files"].finalize_answer = func(a: Dictionary) -> Dictionary: return a.merged({"size": other["file"]["size"], "sha256": other["file"]["sha256"]}, true)
+		var out = await _write(rig, "a", _noise(3200), {"n": 3}, {"base_version": first["version"]})
+		t.check("finalize answer naming another file fails the write (e2e %s)" % e2e_mode, out["state"] == "failed", str(out))
+		var read = await rig["saves"].read("a")
+		t.check("finalize answer naming another file adopts nothing: the save keeps its metadata (e2e %s)" % e2e_mode, read.ok and read.detail["metadata"]["n"] == 1, str(read))
+		t.check("finalize answer: the other save is untouched (e2e %s)" % e2e_mode, (await rig["saves"].list()).detail.size() == listed_before)
+
 
 func _conflicts(t: PKeyTestContext) -> void:
 	var rig = _rig(false)

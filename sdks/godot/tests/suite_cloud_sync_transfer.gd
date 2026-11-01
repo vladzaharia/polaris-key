@@ -35,6 +35,8 @@ class FakeServer:
 	var hook := Callable()
 	var tamper_chunk := Callable()
 	var tamper_file := Callable()
+	## Rewrites the finalize answer: Callable(answer) -> answer (the stored file is untouched).
+	var finalize_answer := Callable()
 
 	func _h(kind: String) -> Variant:
 		calls.append(kind)
@@ -48,7 +50,7 @@ class FakeServer:
 		seq += 1
 		var id := "up%d" % seq
 		var mode := "chunks" if r["format"] == "chunks" else ("single" if r["size"] <= 16 * MIB else "multipart")
-		uploads[id] = {"size": r["size"], "sha256": r["sha256"], "mode": mode, "parts": {}, "manifest": null}
+		uploads[id] = {"size": r["size"], "sha256": r["sha256"], "format": r["format"], "mode": mode, "parts": {}, "manifest": null}
 		var out := {"uploadId": id, "mode": mode, "expiresAt": (NOW + 86400) * 1000.0}
 		if mode == "multipart":
 			out["partBytes"] = part_bytes
@@ -146,7 +148,8 @@ class FakeServer:
 			return Transfer.reply_fail(400, "upload_mismatch")
 		files.append(data)
 		uploads.erase(request["uploadId"])
-		return Transfer.reply_ok({"version": files.size()})
+		var answer := {"version": files.size(), "size": u["size"], "sha256": u["sha256"], "format": u["format"]}
+		return Transfer.reply_ok(finalize_answer.call(answer) if finalize_answer.is_valid() else answer)
 
 	func get_file(_target: Dictionary, query: Dictionary) -> Dictionary:
 		var h: Variant = _h("get_file")
@@ -204,6 +207,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	await _single_and_multipart(t)
 	await _resume_and_restart(t)
 	await _retries(t)
+	await _finalize_answer(t)
 	await _chunks_upload(t)
 	await _downloads(t)
 	await _tampering(t)
@@ -463,6 +467,29 @@ func _retries(t: PKeyTestContext) -> void:
 	srv.hook = func(kind: String) -> Variant: return Transfer.reply_fail(400, "upload_mismatch") if kind == "finalize" else null
 	r = await _engine(srv).upload(_upload_req("r5", data))
 	t.check("upload_mismatch surfaces and releases the upload", not r.ok and r.detail["reason"] == "mismatch" and srv.aborted.size() == 1, str(r))
+
+
+func _finalize_answer(t: PKeyTestContext) -> void:
+	var lies := {
+		"size": func(a: Dictionary) -> Dictionary: return a.merged({"size": a["size"] + 1}, true),
+		"sha256": func(a: Dictionary) -> Dictionary: return a.merged({"sha256": "ab".repeat(32)}, true),
+		"format": func(a: Dictionary) -> Dictionary: return a.merged({"format": "chunks" if a["format"] == "whole" else "whole"}, true),
+		"version": func(a: Dictionary) -> Dictionary: return a.merged({"version": 0}, true),
+	}
+	for name: String in lies:
+		for data: PackedByteArray in [_noise(100), _noise(350000)]:
+			var srv := FakeServer.new()
+			srv.finalize_answer = lies[name]
+			var r: PKeyResult = await _engine(FakeMulti.new(srv)).upload(_upload_req("f-" + name, data))
+			t.check("finalize answer: a different %s is refused, nothing adopted (%d bytes)" % [name, data.size()], not r.ok and r.detail["reason"] == "file-invalid" and r.detail["detail"] == "finalize", str(r))
+		var csrv := FakeServer.new()
+		csrv.finalize_answer = lies[name]
+		var cr: PKeyResult = await _engine(csrv).upload_chunked(_chunked_req("fc-" + name, _noise(200000), Codec.Server.new()))
+		t.check("finalize answer: a different %s is refused for a chunked file" % name, not cr.ok and cr.detail["reason"] == "file-invalid" and cr.detail["detail"] == "finalize", str(cr))
+	var bsrv := FakeServer.new()
+	bsrv.finalize_answer = func(a: Dictionary) -> Dictionary: return a.merged({"version": 3}, true)
+	var br: PKeyResult = await _engine(bsrv).upload(_upload_req("f-base", _noise(100), {"base_version": 3}))
+	t.check("finalize answer: a version that is not newer than the base is refused", not br.ok and br.detail["reason"] == "file-invalid", str(br))
 
 
 func _chunked_req(id: String, data: PackedByteArray, codec: Object, extra := {}) -> Dictionary:
