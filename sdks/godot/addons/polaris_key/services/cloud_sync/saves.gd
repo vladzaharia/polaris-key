@@ -66,6 +66,8 @@ const PURGE_WAIT_MS := 5000
 ## id -> the conflict a write ended with that nobody has settled or dismissed (`conflicts()`).
 var _conflicts: Dictionary = {}
 var _last_failed := false
+## Journal ids already told as interrupted this session.
+var _surfaced: Dictionary = {}
 
 
 static func sealed_gen_of(sealed: Array) -> Variant:
@@ -111,6 +113,24 @@ func _supported() -> bool:
 
 func transfers() -> Array:
 	return _live.duplicate()
+
+
+## D-11: at saves start, each journaled upload that no live write holds is an interrupted write. It is
+## told once, as a failed transfer (`code: transfer-failed`), so the app can offer Retry; `write(id, bytes)`
+## again resumes from the journal. `journaled` is the journal's ids. Returns the ids told.
+func surface_interrupted(journaled: Array) -> Array:
+	var told: Array = []
+	var live := {}
+	for t in _live:
+		live[t.id] = true
+	for jid in journaled:
+		var tid := String(jid)
+		if not tid.begins_with("saves:") or tid.begins_with("saves:read:") or live.has(tid) or _surfaced.has(tid):
+			continue
+		_surfaced[tid] = true
+		told.append(tid)
+		_emit({"type": PKeyConstants.TransferEvent.TRANSFERFAILED, "id": tid, "code": "transfer-failed"})
+	return told
 
 
 ## The conflicts a write ended with that nobody has settled or dismissed yet, oldest first. Each is the

@@ -15,36 +15,68 @@ class FakeNative extends RefCounted:
 	var calls: Array[String] = []
 	var wrong := false
 
+	## A JNI singleton answers has_method() false for every plugin method while a call works.
+	@warning_ignore("native_method_override")
+	func has_method(_name: StringName) -> bool:
+		return false
+
 	# gdlint:ignore=function-name
 	func cxSeal(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, plain: PackedByteArray) -> PackedByteArray:
+		if key.size() != 32:
+			return PackedByteArray([3])
 		calls.append("cxSeal")
 		return _ok(PKeySyncAesGcm.seal(key, nonce, plain, aad))
 
 	# gdlint:ignore=function-name
 	func cxOpen(key: PackedByteArray, nonce: PackedByteArray, aad: PackedByteArray, sealed: PackedByteArray) -> PackedByteArray:
+		if key.size() != 32:
+			return PackedByteArray([3])
 		calls.append("cxOpen")
 		var r = PKeySyncAesGcm.open(key, nonce, sealed, aad)
 		return PackedByteArray([0]) if r == null else _ok(r)
 
 	# gdlint:ignore=function-name
 	func cxX25519(priv: PackedByteArray, pub: PackedByteArray) -> PackedByteArray:
-		calls.append("cxX25519")
 		if not x25519_ok:
 			return PackedByteArray([2])
+		if priv.size() != 32 or pub.size() != 32:
+			return PackedByteArray([3])
+		calls.append("cxX25519")
 		var r = port.x25519(priv, pub)
 		return PackedByteArray([0]) if r == null else _ok(r)
 
 	# gdlint:ignore=function-name
 	func cxX25519Pub(priv: PackedByteArray) -> PackedByteArray:
-		calls.append("cxX25519Pub")
 		if not x25519_ok:
 			return PackedByteArray([2])
+		if priv.size() != 32:
+			return PackedByteArray([3])
+		calls.append("cxX25519Pub")
 		return _ok(port.x25519_public(priv))
 
 	func _ok(body: PackedByteArray) -> PackedByteArray:
 		var out := PackedByteArray([1])
 		out.append_array(body)
 		return out
+
+
+## Answers "ok" to anything, even a bad input: a plugin that does not refuse is not trusted as a lane.
+class Lax extends RefCounted:
+	# gdlint:ignore=function-name
+	func cxSeal(_a, _b, _c, _d) -> PackedByteArray:
+		return PackedByteArray([1])
+
+	# gdlint:ignore=function-name
+	func cxOpen(_a, _b, _c, _d) -> PackedByteArray:
+		return PackedByteArray([1])
+
+	# gdlint:ignore=function-name
+	func cxX25519(_a, _b) -> PackedByteArray:
+		return PackedByteArray([1])
+
+	# gdlint:ignore=function-name
+	func cxX25519Pub(_a) -> PackedByteArray:
+		return PackedByteArray([1])
 
 
 class Bare extends RefCounted:
@@ -59,6 +91,8 @@ func run(t: PKeyTestContext) -> void:
 		return
 	var v: Dictionary = j.data
 	t.check("a missing method is no lane", PKeyAndroidCrypto.create(Bare.new()) == null)
+	t.check("a plugin that does not refuse a bad input is no lane", PKeyAndroidCrypto.create(Lax.new()) == null)
+	_no_has_method(t)
 	t.check("no singleton is no lane", PKeyAndroidCrypto.create(null) == null or Engine.has_singleton(PKeyAndroidCrypto.SINGLETON))
 	var fake := FakeNative.new()
 	var a := PKeyAndroidCrypto.create(fake)
@@ -70,6 +104,20 @@ func run(t: PKeyTestContext) -> void:
 	_sync(t, a, fake)
 	_fallback(t, v["x25519"])
 	_replies(t)
+
+
+## A JNI singleton answers has_method() false for every plugin method (measured on an API 34 emulator), so
+## the Android natives are found by a call. The sources never ask has_method of the plugin, and the fake's
+## methods answer through `call` alone.
+func _no_has_method(t: PKeyTestContext) -> void:
+	for f in ["pkey_android_crypto.gd", "pkey_android_bulk.gd", "pkey_android.gd"]:
+		var code := ""
+		for line in FileAccess.get_file_as_string("res://addons/polaris_key/native/" + f).split("\n"):
+			if not line.strip_edges().begins_with("#"):
+				code += line + "\n"
+		t.check("%s never probes the plugin with has_method" % f, not code.contains(".has_method("))
+	var fake := FakeNative.new()
+	t.check("a plugin found by call: the adapter is created and native", PKeyAndroidCrypto.create(fake) != null and fake.calls.is_empty())
 
 
 func _x25519(t: PKeyTestContext, a: PKeyAndroidCrypto, fake: FakeNative, x: Dictionary) -> void:

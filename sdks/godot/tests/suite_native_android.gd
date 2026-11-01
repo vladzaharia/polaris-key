@@ -148,7 +148,10 @@ func _outlet(t: PKeyTestContext) -> void:
 	direct.installer = "com.android.vending"
 	a = _android("android", direct)
 	t.check("outlet: In-App Updates on a direct build is Unsupported (outlet)", (await a.update_check()).detail.get("reason") == "outlet")
-	t.check("outlet: Play Asset Delivery on a direct build is Unsupported (outlet)", (await a.pack_fetch("foes")).detail.get("reason") == "outlet" and a.pack_location("foes").detail.get("reason") == "outlet")
+	t.check(
+			"outlet: Play Asset Delivery on a direct build is Unsupported (outlet)",
+			(await a.pack_fetch("foes")).detail.get("reason") == "outlet" and a.pack_location("foes").detail.get("reason") == "outlet"
+	)
 	t.check("outlet: the direct build installs", (await a.apk_verify("user://u.apk", "0".repeat(64))).ok)
 
 	a = _android("android", _fake("play"))
@@ -214,7 +217,10 @@ func _facade(t: PKeyTestContext) -> void:
 	var fetch: PKeyResult = await a.pack_fetch("foes")
 	t.check("facade: pack_fetch is only accepted (PENDING)", fetch.ok and int(fetch.detail["state"]["status"]) == 1)
 	a.poll()
-	t.check("facade: pack_progress follows to COMPLETED with ints", packs.size() == 2 and packs[1][0] == "foes" and packs[1][1]["status"] == PKeyAndroid.PACK_COMPLETED and packs[1][1]["status"] is int)
+	t.check(
+			"facade: pack_progress follows to COMPLETED with ints",
+			packs.size() == 2 and packs[1][0] == "foes" and packs[1][1]["status"] == PKeyAndroid.PACK_COMPLETED and packs[1][1]["status"] is int
+	)
 	var loc := a.pack_location("foes")
 	t.check("facade: a completed pack's location is an absolute .pck path", loc.ok and str(loc.detail["location"]["pck"]) == "/data/data/gg.vlad.diceroll/files/assetpacks/foes/11/11/assets/foes.pck")
 	var install_time := a.pack_location("assetPackInstallTime")
@@ -343,42 +349,97 @@ func _keystore(t: PKeyTestContext) -> void:
 
 
 func _export(t: PKeyTestContext) -> void:
-	t.check("export: play carries both play AARs", E.libraries("play") == PackedStringArray(["polaris_key/native/android/bin/polaris-key-platform-play-release.aar", "polaris_key/native/android/bin/polaris-key-godot-play-release.aar"]))
-	t.check("export: direct carries both direct AARs", E.libraries("direct") == PackedStringArray(["polaris_key/native/android/bin/polaris-key-platform-direct-release.aar", "polaris_key/native/android/bin/polaris-key-godot-direct-release.aar"]))
+	t.check(
+			"export: play carries both play AARs",
+			E.libraries("play") == PackedStringArray(["polaris_key/native/android/bin/polaris-key-platform-play-release.aar", "polaris_key/native/android/bin/polaris-key-godot-play-release.aar"])
+	)
+	t.check(
+			"export: direct carries both direct AARs",
+			E.libraries("direct") == PackedStringArray(["polaris_key/native/android/bin/polaris-key-platform-direct-release.aar", "polaris_key/native/android/bin/polaris-key-godot-direct-release.aar"])
+	)
 	t.check("export: none carries nothing", E.libraries("none").is_empty() and E.dependencies("none").is_empty() and E.manifest_elements("none") == "")
-	t.check("export: play depends on Play Core (In-App Updates, Asset Delivery, Integrity) and Credential Manager", E.dependencies("play") == PackedStringArray(E.WORK_DEPENDENCIES + E.PLAY_DEPENDENCIES) and E.dependencies("play").slice(1, 4) == PackedStringArray(["com.google.android.play:app-update:2.1.0", "com.google.android.play:asset-delivery:2.3.0", "com.google.android.play:integrity:1.6.0"]))
-	t.check("export: direct depends on WorkManager and no Play Core", E.dependencies("direct") == PackedStringArray(E.WORK_DEPENDENCIES) and E.WORK_DEPENDENCIES == ["androidx.work:work-runtime:2.12.0"])
-	t.check("export: both flavours carry WorkManager (the AARs bring no transitive dependency)", E.dependencies("play").has("androidx.work:work-runtime:2.12.0") and E.dependencies("direct").has("androidx.work:work-runtime:2.12.0"))
+	t.check(
+			"export: play depends on Play Core (In-App Updates, Asset Delivery, Integrity) and Credential Manager",
+			E.dependencies("play") == PackedStringArray(E.WORK_DEPENDENCIES + E.PLAY_DEPENDENCIES)
+				and E.dependencies("play").slice(1, 4) == PackedStringArray(["com.google.android.play:app-update:2.1.0", "com.google.android.play:asset-delivery:2.3.0", "com.google.android.play:integrity:1.6.0"])
+	)
+	t.check(
+			"export: direct depends on WorkManager and no Play Core",
+			E.dependencies("direct") == PackedStringArray(E.WORK_DEPENDENCIES) and E.WORK_DEPENDENCIES == ["androidx.work:work-runtime:2.12.0"]
+	)
+	t.check(
+			"export: both flavours carry WorkManager (the AARs bring no transitive dependency)",
+			E.dependencies("play").has("androidx.work:work-runtime:2.12.0") and E.dependencies("direct").has("androidx.work:work-runtime:2.12.0")
+	)
 	var direct := E.manifest_elements("direct")
 	t.check("export: a direct preset gets REQUEST_INSTALL_PACKAGES", direct.contains("<uses-permission android:name=\"android.permission.REQUEST_INSTALL_PACKAGES\" />"))
 	t.check("export: …and UPDATE_PACKAGES_WITHOUT_USER_ACTION", direct.contains("<uses-permission android:name=\"android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION\" />"))
-	t.check("export: …and exactly those two install entries beside the other entries (no ENFORCE_UPDATE_OWNERSHIP)", direct.count("<uses-permission android:name=\"android.permission.") == 6 and direct.count("tools:node") == 2 and not direct.contains("ENFORCE_UPDATE_OWNERSHIP"))
-	t.check("export: …and the four entries are the two install permissions, the local-network one and the network-state one", direct.contains("android.permission.ACCESS_LOCAL_NETWORK") and direct.contains("android.permission.ACCESS_NETWORK_STATE"))
+	t.check(
+			"export: …and exactly those two install entries beside the other entries (no ENFORCE_UPDATE_OWNERSHIP)",
+			direct.count("<uses-permission android:name=\"android.permission.") == 6 and direct.count("tools:node") == 2 and not direct.contains("ENFORCE_UPDATE_OWNERSHIP")
+	)
+	t.check(
+			"export: …and the four entries are the two install permissions, the local-network one and the network-state one",
+			direct.contains("android.permission.ACCESS_LOCAL_NETWORK") and direct.contains("android.permission.ACCESS_NETWORK_STATE")
+	)
 	var play := E.manifest_elements("play")
 	var one := "<uses-permission android:name=\"android.permission.ACCESS_LOCAL_NETWORK\" />"
-	t.check("export: a play preset gets the local-network and network-state permissions only, not the install ones", play.count("<uses-permission") == 4 and play.count("tools:node") == 2 and play.contains(one) and play.contains("android.permission.ACCESS_NETWORK_STATE") and not play.contains("INSTALL"))
+	t.check(
+			"export: a play preset gets the local-network and network-state permissions only, not the install ones",
+			play.count("<uses-permission") == 4 and play.count("tools:node") == 2 and play.contains(one) and play.contains("android.permission.ACCESS_NETWORK_STATE") and not play.contains("INSTALL")
+	)
 	# D-10: off, the job and notification permissions the platform library adds are removed; on, they stay.
 	var removed := "<uses-permission android:name=\"%s\" tools:node=\"remove\" />"
-	t.check("export: background off removes RUN_USER_INITIATED_JOBS and POST_NOTIFICATIONS (both flavours)", [play, direct].all(func(m: String) -> bool: return m.contains(removed % "android.permission.RUN_USER_INITIATED_JOBS") and m.contains(removed % "android.permission.POST_NOTIFICATIONS")))
+	t.check(
+			"export: background off removes RUN_USER_INITIATED_JOBS and POST_NOTIFICATIONS (both flavours)",
+			[play, direct].all(func(m: String) -> bool: return m.contains(removed % "android.permission.RUN_USER_INITIATED_JOBS") and m.contains(removed % "android.permission.POST_NOTIFICATIONS"))
+	)
 	var on_play := E.manifest_elements("play", true)
 	var on_direct := E.manifest_elements("direct", true)
-	t.check("export: background on removes nothing", not on_play.contains("tools:node") and not on_direct.contains("tools:node") and on_play.count("<uses-permission") == 2 and on_direct.count("<uses-permission") == 4)
-	t.check("export: the option is off unless set", not E.background_enabled(null) and not E.background_enabled(false) and not E.background_enabled("") and E.background_enabled(true) and E.background_enabled(" TRUE ") and E.background_enabled("1") and not E.background_enabled("no"))
+	t.check(
+			"export: background on removes nothing",
+			not on_play.contains("tools:node") and not on_direct.contains("tools:node") and on_play.count("<uses-permission") == 2 and on_direct.count("<uses-permission") == 4
+	)
+	t.check(
+			"export: the option is off unless set",
+			not E.background_enabled(null)
+				and not E.background_enabled(false)
+				and not E.background_enabled("")
+				and E.background_enabled(true)
+				and E.background_enabled(" TRUE ")
+				and E.background_enabled("1")
+				and not E.background_enabled("no")
+	)
 	t.check("export: the background option names are stable", E.BACKGROUND_OPTION == "polaris_key/cloud_sync_background" and E.BACKGROUND_ENV == "PKEY_CLOUD_SYNC_BACKGROUND")
 	t.check("export: flavours are forgiving about case and spaces", E.canonical(" Direct ") == "direct" and E.canonical("beta") == "" and E.canonical(null) == "")
 	t.check("export: a missing AAR is listed", E.missing_libraries("play", "res://no_such_addons_dir").size() == 2)
-	t.check("export: the plugin rides only with the Gradle build and its AARs", E.carries_plugin("play", true, PackedStringArray()) and not E.carries_plugin("play", false, PackedStringArray()) and not E.carries_plugin("play", true, PackedStringArray(["x.aar"])) and not E.carries_plugin("none", true, PackedStringArray()))
+	t.check(
+			"export: the plugin rides only with the Gradle build and its AARs",
+			E.carries_plugin("play", true, PackedStringArray())
+				and not E.carries_plugin("play", false, PackedStringArray())
+				and not E.carries_plugin("play", true, PackedStringArray(["x.aar"]))
+				and not E.carries_plugin("none", true, PackedStringArray())
+	)
 	t.check("export: a Play outlet with the direct flavour is an export error", E.error("direct", "play").contains("refused") and E.error("direct", "play-testing") != "")
 	t.check("export: …and only that combination", E.error("play", "play") == "" and E.error("direct", "direct") == "" and E.error("none", "play") == "" and E.error("direct", "obtainium") == "")
 	t.check("export: a refused export depends on an unresolvable coordinate that names why", E.REFUSAL_DEPENDENCY.contains("direct-flavour-on-a-play-outlet") and E.REFUSAL_DEPENDENCY.count(":") == 2)
 	t.check("export: an F-Droid outlet with the play flavour warns", "\n".join(E.warnings("play", "fdroid-repo", true, PackedStringArray())).contains("Play Core"))
 	t.check("export: no Gradle build warns", "\n".join(E.warnings("play", "play", false, PackedStringArray())).contains("Gradle build"))
 	t.check("export: an unknown flavour warns", "\n".join(E.warnings("beta", "", true, PackedStringArray())).contains("expected one of"))
-	t.check("export: a matching choice has no warning", E.warnings("play", "play", true, PackedStringArray()).is_empty() and E.warnings("direct", "direct", true, PackedStringArray()).is_empty() and E.warnings("none", "play", false, PackedStringArray()).is_empty())
+	t.check(
+			"export: a matching choice has no warning",
+			E.warnings("play", "play", true, PackedStringArray()).is_empty()
+				and E.warnings("direct", "direct", true, PackedStringArray()).is_empty()
+				and E.warnings("none", "play", false, PackedStringArray()).is_empty()
+	)
 
 
 func _play(t: PKeyTestContext) -> void:
-	var store := {"action": "store", "release": {"version": "1.1.0", "seq": 2}, "listingUrl": "https://play.google.com/store/apps/details?id=gg.vlad.diceroll", "mandatory": false, "critical": false, "discardStaged": false}
+	var store := {
+		"action": "store", "release": {"version": "1.1.0", "seq": 2},
+		"listingUrl": "https://play.google.com/store/apps/details?id=gg.vlad.diceroll",
+		"mandatory": false, "critical": false, "discardStaged": false,
+	}
 	var urgent := store.duplicate()
 	urgent["mandatory"] = true
 
@@ -454,7 +515,10 @@ func _direct(t: PKeyTestContext) -> void:
 	var r: PKeyApplyResult = await PKeyApkUpdate.run(a, req.call({"sha256": sha, "size": apk.size()}))
 	t.check("direct: a verified APK is downloaded and committed", r.ok and r.behaviour == PKeyApplyResult.HOOK and r.bridge == "apk" and r.version == "1.1.0" and int(r.detail.get("session")) == 7)
 	var q: Dictionary = d.last_call("pi_install")
-	t.check("direct: apk_install gets the record's SHA-256 and a private absolute path", q.get("sha256") == sha and str(q.get("path")).is_absolute_path() and str(q.get("path")).ends_with("/update.apk") and not str(q.get("path")).begins_with("user://"))
+	t.check(
+			"direct: apk_install gets the record's SHA-256 and a private absolute path",
+			q.get("sha256") == sha and str(q.get("path")).is_absolute_path() and str(q.get("path")).ends_with("/update.apk") and not str(q.get("path")).begins_with("user://")
+	)
 	t.check("direct: no versionCode is invented (the record carries none)", not q.has("versionCode"))
 	t.check("direct: the player already chose to update: no extra Android prompt is asked for", q.get("silent") == true and q.get("prompt") == true)
 	t.check("direct: the downloaded file is removed once the session holds it", not FileAccess.file_exists(dir.path_join("update.apk")))
@@ -495,7 +559,10 @@ func _direct(t: PKeyTestContext) -> void:
 
 	var hits := server.requests.size()
 	r = await PKeyApkUpdate.run(_android("android", _fake("play")), req.call({"sha256": sha, "size": apk.size()}))
-	t.check("direct: a play build answers unsupported (outlet) without downloading", not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "outlet" and server.requests.size() == hits)
+	t.check(
+			"direct: a play build answers unsupported (outlet) without downloading",
+			not r.ok and r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "outlet" and server.requests.size() == hits
+	)
 	r = await PKeyApkUpdate.run(_android("linux"), req.call({"sha256": sha, "size": apk.size()}))
 	t.check("direct: off Android it answers unsupported (runtime)", r.code == PKeyErrors.UNSUPPORTED and r.detail.get("reason") == "runtime")
 	server.queue_free()
@@ -512,7 +579,10 @@ func _direct(t: PKeyTestContext) -> void:
 	u.env = env
 	t.check("direct: the updater's native bridge on Android is apk", u.native_bridge_name() == "apk" and u.bridge("apk") is PKeyApkBridge)
 
-	var decision := {"action": "binary", "method": "native", "release": {"version": "1.1.0", "seq": 3, "sha256": "ab".repeat(32)}, "build": "b1", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false}
+	var decision := {
+		"action": "binary", "method": "native", "release": {"version": "1.1.0", "seq": 3, "sha256": "ab".repeat(32)},
+		"build": "b1", "mandatory": false, "critical": false, "prestage": [], "discardStaged": false,
+	}
 	var adapter := PKeyDirectAdapter.new()
 	var check := PKeyUpdateCheck.new(true)
 	check.decision = decision

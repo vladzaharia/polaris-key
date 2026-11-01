@@ -12,7 +12,7 @@ extends PKeyPeerCrypto
 ##
 ## The lane selector (`PKeyPeerCrypto.for_platform()`, CC-14b.1) takes this adapter only after its
 ## known-answer self-test: this class does not vouch for itself. `create()` answers null when the
-## plugin or one of its methods is missing, which is the GDScript lane (an older native binding).
+## plugin or one of its methods is missing (tried by a call, never by has_method), which is the GDScript lane (an older native binding).
 ## Nothing here prints or stores a key; the reply buffers are cleared after use (best effort:
 ## `PackedByteArray` copy-on-write is a recorded residual).
 
@@ -20,6 +20,7 @@ const SINGLETON := "PolarisKeyAndroid"
 const METHODS := ["cxSeal", "cxOpen", "cxX25519", "cxX25519Pub"]
 const OK := 1
 const UNSUPPORTED := 2
+const BAD_INPUT := 3
 
 var _native: Object = null
 var _x25519_unsupported := false
@@ -35,12 +36,24 @@ static func create(native: Object = null) -> PKeyAndroidCrypto:
 		target = Engine.get_singleton(SINGLETON)
 	if target == null:
 		return null
-	for m in METHODS:
-		if not target.has_method(m):
-			return null
+	# has_method() is false for every method of a JNI singleton (measured on an API 34 emulator), so each method
+	# is tried with a bad input instead: a present one refuses it (3, or 2 for X25519 below API 33), an absent one
+	# answers null.
+	if not _probe(target):
+		return null
 	var out := PKeyAndroidCrypto.new()
 	out._native = target
 	return out
+
+
+static func _probe(target: Object) -> bool:
+	var bad := PackedByteArray([1])
+	for m in METHODS:
+		var args: Array = [bad] if m == "cxX25519Pub" else ([bad, bad] if m == "cxX25519" else [bad, bad, bad, bad])
+		var st := _status(target.callv(m, args))
+		if st != BAD_INPUT and not (st == UNSUPPORTED and m.begins_with("cxX25519")):
+			return false
+	return true
 
 
 ## False once the plugin has said X25519 is unsupported here (API below 33): the ladder is GDScript.

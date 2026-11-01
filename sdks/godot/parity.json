@@ -716,8 +716,8 @@
       "wp": "U-40"
     },
     "sync.transfer.background": {
-      "status": "planned",
-      "wp": "U-41",
+      "status": "implemented",
+      "note": "Opt-in (PKeyOptions.cloud_sync_background_transfers, default off): on iOS the bulk bodies of file and save transfers go through PKeyAppleBulk to a background URLSession (the binary entry's sb_* ops), on Android through PKeyAndroidBulk to the plugin's sb* methods (WorkManager, or a user-initiated job on API 34+); JSON calls stay in the foreground. The bearer crosses into native per request only, in the op's header, never in JSON, an event, a file or scheduler data. At saves start each journaled saves upload no live write holds is told once as transferFailed (code transfer-failed), and write(id, bytes) again resumes from the journal. Proven by tests/suite_cloud_sync_bulk.gd (fake channels), tests/suite_cloud_sync_saves.gd, suite_native_apple.gd and suite_native_android.gd; a real suspension is an owner device step. Linux, Windows, macOS and web have no bulk channel.",
       "except": [
         {
           "runtime": "linux",

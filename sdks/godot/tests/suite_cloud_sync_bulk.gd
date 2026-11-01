@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature sync.files sync.files.delta
+# @pkey-feature sync.files sync.files.delta sync.transfer.background
 # The bulk-body channel of Cloud Sync file transfers (U-41.G), against a fake channel: the file transport
 # routes only the body calls through it (the bearer in the head, never a header; a 3xx refused; an answer
 # over the cap is bad_response; a lost reply is cancelled and answers status 0), and the engine enqueues a
@@ -7,6 +7,8 @@ extends RefCounted
 
 const FilesTransport := preload("res://addons/polaris_key/services/cloud_sync/files_transport.gd")
 const BulkChannel := preload("res://addons/polaris_key/services/cloud_sync/bulk_channel.gd")
+const ORIGIN := "https://sync.example"
+const TOKEN := "pkeyt_secret_bearer"
 const Transfer := preload("res://addons/polaris_key/services/cloud_sync/transfer.gd")
 const Journal := preload("res://addons/polaris_key/services/cloud_sync/journal.gd")
 const Codec := preload("res://addons/polaris_key/services/cloud_sync/transfer_codec.gd")
@@ -275,7 +277,7 @@ class BatchTransport:
 	func finalize(a, b): return s.finalize(a, b)
 	func plan_chunks(a, b, c): return s.plan_chunks(a, b, c)
 	func get_file(a, b): return s.get_file(a, b)
-	func get_chunk(a, b, c = ""): return s.get_chunk(a, b)
+	func get_chunk(a, b, _c = ""): return s.get_chunk(a, b)
 
 	func put_single(a, b, c, d):
 		transfers.append(a.get("transfer"))
@@ -531,10 +533,6 @@ func _late_reply(t: PKeyTestContext) -> void:
 
 # ── The Android lane (U-41.6b): PKeyAndroidBulk over the plugin's byte[] ops, events through the facade ─────────
 
-const ORIGIN := "https://sync.example"
-const TOKEN := "pkeyt_secret_bearer"
-
-
 func _a_head(req: int, transfer := "saves:slot1", path := "/diceroll/sync/files/saves/slot1/upload/u1/parts/1") -> Dictionary:
 	return {"req": req, "transfer": transfer, "url": ORIGIN + path, "headers": {"Content-Type": "application/octet-stream", "X-PKey-Device": "dev1"},
 			"bearer": TOKEN, "max_body": 4096, "part": 1}
@@ -556,15 +554,22 @@ func _a_rig() -> Dictionary:
 
 
 static func _done(f: PKeyFakeAndroidNative, req: int, transfer: String, status := 204, body_len := 0) -> void:
-	f.push_event({"ev": "sb_done", "transfer": PKeyAndroidBulk.transfer_key(transfer), "req": float(req), "status": float(status), "headers": {"ETag": "\"e1\"", "Content-Type": "x"}, "body_len": float(body_len)})
+	f.push_event(
+			{"ev": "sb_done", "transfer": PKeyAndroidBulk.transfer_key(transfer), "req": float(req), "status": float(status), "headers": {"ETag": "\"e1\"", "Content-Type": "x"}, "body_len": float(body_len)}
+	)
 
 
 func _android(t: PKeyTestContext) -> void:
 	var f0 := PKeyFakeAndroidNative.new()
-	t.check("android bulk: no channel without the plugin or with a plugin missing a method", PKeyAndroidBulk.create(_ctx, null, PKeyAndroid.new()) == null)
+	t.check("android bulk: no channel with a plugin whose probe is not refused", PKeyAndroidBulk.create(_ctx, Partial.new(), PKeyAndroid.new()) == null)
 	t.check("android bulk: a plugin with all seven ops makes a channel", PKeyAndroidBulk.create(_ctx, f0, PKeyAndroid.new()) != null)
-	t.check("android bulk: a plugin without sbTake makes none", PKeyAndroidBulk.create(_ctx, Node.new(), PKeyAndroid.new()) == null)
-	t.check("android bulk: urls split into origin and path, userinfo and fragments refused", PKeyAndroidBulk.split_url("https://h:8443/a/b?version=2") == {"origin": "https://h:8443", "path": "/a/b?version=2"} and PKeyAndroidBulk.split_url("https://u@h/a").is_empty() and PKeyAndroidBulk.split_url("https://h/a#f").is_empty() and PKeyAndroidBulk.split_url("https://h").is_empty())
+	t.check(
+			"android bulk: urls split into origin and path, userinfo and fragments refused",
+			PKeyAndroidBulk.split_url("https://h:8443/a/b?version=2") == {"origin": "https://h:8443", "path": "/a/b?version=2"}
+				and PKeyAndroidBulk.split_url("https://u@h/a").is_empty()
+				and PKeyAndroidBulk.split_url("https://h/a#f").is_empty()
+				and PKeyAndroidBulk.split_url("https://h").is_empty()
+	)
 
 	# Before open, and after a refused open, nothing is sent.
 	var cold := PKeyAndroidBulk.create(_ctx, f0, PKeyAndroid.new())
@@ -580,7 +585,10 @@ func _android(t: PKeyTestContext) -> void:
 	var a: PKeyAndroid = rig["a"]
 	var ch: PKeyAndroidBulk = rig["ch"]
 	var opened: Dictionary = f.sb_calls("sbOpen")[0]
-	t.check("android bulk: open pins product, origin and subject and sends the keep ids hashed", opened == {"product": PRODUCT, "origin": ORIGIN, "subject": "user:1", "keep": [PKeyAndroidBulk.transfer_key("saves:slot1")]})
+	t.check(
+			"android bulk: open pins product, origin and subject and sends the keep ids hashed",
+			opened == {"product": PRODUCT, "origin": ORIGIN, "subject": "user:1", "keep": [PKeyAndroidBulk.transfer_key("saves:slot1")]}
+	)
 	t.check("android bulk: the channel is available", ch.available())
 
 	# put: staged in pieces of at most 8 MiB, queued by file name, resolved by the event.
@@ -591,11 +599,27 @@ func _android(t: PKeyTestContext) -> void:
 	(func() -> void: out[0] = await ch.put(_a_head(5), body)).call()
 	await PKeyTestFixtures.frames(4)
 	var stages: Array = f.sb_ops.filter(func(o: Array) -> bool: return o[0] == "sbStage")
-	t.check("android bulk: a body over 8 MiB is staged in two pieces, the second names the file", stages.size() == 2 and stages[0][2] == 8 * 1048576 and stages[1][2] == 10 and not (stages[0][1] as Dictionary).has("file") and (stages[1][1] as Dictionary).has("file"))
+	t.check(
+			"android bulk: a body over 8 MiB is staged in two pieces, the second names the file",
+			stages.size() == 2 and stages[0][2] == 8 * 1048576 and stages[1][2] == 10 and not (stages[0][1] as Dictionary).has("file") and (stages[1][1] as Dictionary).has("file")
+	)
 	var puts := f.sb_calls("sbPut")
-	t.check("android bulk: one sbPut with the path (no origin), the staged file, the lower-cased headers and the cap", puts.size() == 1 and puts[0]["path"] == "/diceroll/sync/files/saves/slot1/upload/u1/parts/1" and puts[0]["file"] == (stages[0][1] as Dictionary).get("file", (stages[1][1] as Dictionary)["file"]) and puts[0]["max_body"] == 4096 and puts[0]["headers"]["content-type"] == "application/octet-stream" and puts[0]["headers"]["x-pkey-device"] == "dev1")
+	t.check(
+			"android bulk: one sbPut with the path (no origin), the staged file, the lower-cased headers and the cap",
+			puts.size() == 1
+				and puts[0]["path"] == "/diceroll/sync/files/saves/slot1/upload/u1/parts/1"
+				and puts[0]["file"] == (stages[0][1] as Dictionary).get("file", (stages[1][1] as Dictionary)["file"])
+				and puts[0]["max_body"] == 4096
+				and puts[0]["headers"]["content-type"] == "application/octet-stream"
+				and puts[0]["headers"]["x-pkey-device"] == "dev1"
+	)
 	t.check("android bulk: the transfer id is the SHA-256 of the journal id", puts[0]["transfer"] == PKeyAndroidBulk.transfer_key("saves:slot1") and (puts[0]["transfer"] as String).length() == 64)
-	t.check("android bulk: the bearer rides only in the request's own header, nowhere else", puts[0]["headers"]["authorization"] == "Bearer " + TOKEN and f.sb_ops.all(func(o: Array) -> bool: return o[0] == "sbPut" or not JSON.stringify(o[1]).contains(TOKEN)) and not JSON.stringify(puts[0]).replace("Bearer " + TOKEN, "").contains(TOKEN))
+	t.check(
+			"android bulk: the bearer rides only in the request's own header, nowhere else",
+			puts[0]["headers"]["authorization"] == "Bearer " + TOKEN
+				and f.sb_ops.all(func(o: Array) -> bool: return o[0] == "sbPut" or not JSON.stringify(o[1]).contains(TOKEN))
+				and not JSON.stringify(puts[0]).replace("Bearer " + TOKEN, "").contains(TOKEN)
+	)
 	t.check("android bulk: the staged bytes are the sealed body, whole", f.sb_files[puts[0]["file"]] == body)
 	t.check("android bulk: the request waits for the event", out[0] == null)
 	# Forged or replayed events change nothing.
@@ -613,13 +637,19 @@ func _android(t: PKeyTestContext) -> void:
 	_done(f, 6, "saves:slot1", 200)
 	_done(f, 6, "saves:slot1", 500)
 	a.poll()
-	t.check("android bulk: the answer carries status, lower-case headers and an empty body; a replay changes nothing", again[0] is Dictionary and again[0]["status"] == 200 and again[0]["headers"] == {"etag": "\"e1\"", "content-type": "x"} and (again[0]["body"] as PackedByteArray).is_empty())
+	t.check(
+			"android bulk: the answer carries status, lower-case headers and an empty body; a replay changes nothing",
+			again[0] is Dictionary and again[0]["status"] == 200 and again[0]["headers"] == {"etag": "\"e1\"", "content-type": "x"} and (again[0]["body"] as PackedByteArray).is_empty()
+	)
 
 	# fetch: the body comes with sbTake; a body over the cap is oversize.
 	var got := [null]
 	(func() -> void: got[0] = await ch.fetch(_a_head(7, "saves:slot1", "/diceroll/sync/files/saves/slot1"))).call()
 	await PKeyTestFixtures.frames(1)
-	t.check("android bulk: a fetch is one sbGet with no file", f.sb_calls("sbGet").size() == 1 and not (f.sb_calls("sbGet")[0] as Dictionary).has("file") and f.sb_calls("sbGet")[0]["path"] == "/diceroll/sync/files/saves/slot1")
+	t.check(
+			"android bulk: a fetch is one sbGet with no file",
+			f.sb_calls("sbGet").size() == 1 and not (f.sb_calls("sbGet")[0] as Dictionary).has("file") and f.sb_calls("sbGet")[0]["path"] == "/diceroll/sync/files/saves/slot1"
+	)
 	f.sb_answers[7] = PackedByteArray([9, 8, 7])
 	_done(f, 7, "saves:slot1", 200, 3)
 	a.poll()
@@ -671,14 +701,20 @@ func _android(t: PKeyTestContext) -> void:
 	await PKeyTestFixtures.frames(1)
 	ch.cancel(40)
 	var cancels := f.sb_calls("sbCancel")
-	t.check("android bulk: cancel(req) sends the hashed transfer and the req and ends the wait", cancels[-1]["transfer"] == PKeyAndroidBulk.transfer_key("saves:slot1") and int(cancels[-1]["req"]) == 40 and cancels[-1].size() == 2 and c1[0] == {"fail": "network"})
+	t.check(
+			"android bulk: cancel(req) sends the hashed transfer and the req and ends the wait",
+			cancels[-1]["transfer"] == PKeyAndroidBulk.transfer_key("saves:slot1") and int(cancels[-1]["req"]) == 40 and cancels[-1].size() == 2 and c1[0] == {"fail": "network"}
+	)
 	_done(f, 40, "saves:slot1", 200)
 	a.poll()
 	var c2 := [null]
 	(func() -> void: c2[0] = await ch.put(_a_head(41), PackedByteArray([1]))).call()
 	await PKeyTestFixtures.frames(1)
 	ch.cancel("saves:slot1")
-	t.check("android bulk: cancel(transfer id) cancels natively and ends its waits", f.sb_calls("sbCancel")[-1] == {"transfer": PKeyAndroidBulk.transfer_key("saves:slot1")} and c2[0] == {"fail": "network"})
+	t.check(
+			"android bulk: cancel(transfer id) cancels natively and ends its waits",
+			f.sb_calls("sbCancel")[-1] == {"transfer": PKeyAndroidBulk.transfer_key("saves:slot1")} and c2[0] == {"fail": "network"}
+	)
 	ch.cancel("")
 	t.check("android bulk: an empty id is the unscoped tag", f.sb_calls("sbCancel")[-1] == {"transfer": PKeyAndroidBulk.transfer_key("unscoped")})
 
@@ -694,6 +730,15 @@ func _android(t: PKeyTestContext) -> void:
 	t.check("android bulk: open again after close", f.sb_calls("sbOpen").size() == 2)
 
 # ── The iOS channel (U-41.5c): PKeyAppleBulk over a fake of the binary entry ────────────────────────
+
+
+## A plugin whose first method does not answer a bad input with a refusal: the probe stops there.
+class Partial:
+	extends RefCounted
+
+	# gdlint:ignore=function-name
+	func sbOpen(_header: PackedByteArray) -> PackedByteArray:
+		return PackedByteArray()
 
 
 func _bulk_rig() -> Dictionary:

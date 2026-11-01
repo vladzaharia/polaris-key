@@ -315,6 +315,7 @@ func attach() -> void:
 	if stored != "":
 		await _sign_in(stored)
 	await _open_bulk()
+	_surface_interrupted()
 	_attached = true
 	_attaching = false
 
@@ -470,6 +471,12 @@ func _bulk_context() -> Dictionary:
 	var ctx: Dictionary = host.request_context()
 	var parts := PKeyAndroidBulk.split_url((ctx["url"] as Callable).call("/"))
 	return {"product": ctx["product"], "origin": parts.get("origin", ""), "subject": _subject}
+
+
+## D-11: tell the journaled saves uploads no live write holds, once, as `transferFailed` (code `transfer-failed`).
+func _surface_interrupted() -> void:
+	if saves != null and _journal != null and _subject is String:
+		saves.surface_interrupted(_journal.list())
 
 
 ## Open the bulk channel once per session, naming the journaled transfers to keep (D-7: the journal and the

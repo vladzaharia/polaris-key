@@ -23,7 +23,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 112 | 25 | 5 | 0 |
 | Python | `python` | 107 | 16 | 19 | 0 |
 | Swift | `macos`, `ios` | 118 | 10 | 13 | 1 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 118 | 9 | 15 | 0 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 119 | 9 | 14 | 0 |
 | Kotlin | `android`, `jvm` | 119 | 9 | 13 | 1 |
 
 ## Core
@@ -86,7 +86,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `sync.files` | cloudSync files: single and multipart upload, resume, progress and ranged download | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.files.delta` | cloudSync file delta: content-defined chunks, only the missing chunks travel | `sync-vectors.json` `cdcCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `sync.e2e.recovery` | The recovery code, and the platform backup of the root where the OS has one | `sync-vectors.json` `recoveryCodeCases` + transcripts (U-36) | planned (U-38) | planned (U-20) | planned (U-06) | planned (U-39) | planned (U-40) | planned (U-39) | web, node, python, jvm, windows, linux: runtime |
-| `sync.transfer.background` | Background transfer: an upload or download that continues when the app is suspended | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (U-41) | planned (U-41); N/A (linux: runtime); N/A (windows: runtime); N/A (macos: runtime); N/A (web: runtime) | planned (U-41); N/A (jvm: runtime) | linux, windows, macos, web, desktop-bridge, node, python, jvm: runtime |
+| `sync.transfer.background` | Background transfer: an upload or download that continues when the app is suspended | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (U-41) | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (macos: runtime); N/A (web: runtime) | planned (U-41); N/A (jvm: runtime) | linux, windows, macos, web, desktop-bridge, node, python, jvm: runtime |
 | `sync.e2e` | End-to-end encrypted Cloud Sync on the client: envelope, blinding, root wrap and the encryption-mode machine | `sync-vectors.json` + `sync-scenarios.json` + transcripts (U-33) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Cloud Connect
