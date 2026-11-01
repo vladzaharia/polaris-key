@@ -2,6 +2,8 @@ extends RefCounted
 ## The Cloud Sync file transfer engine (U-23.G4; WIRE-CONTRACT-V5 §13.8): uploads in modes `single` and
 ## `multipart` (`upload`) and `chunks` (`upload_chunked`), and downloads of both formats (`download`). A
 ## port of Python `cloud_sync/transfer.py`, sequential (Godot's GDScript lane runs one request at a time).
+## With a bulk channel (U-41.G, D-6) it enqueues a phase's bodies at once instead: every remaining part (at most
+## `SYNC_UPLOAD_PARALLELISM`) or up to `BATCH_CHUNKS` missing chunks, and writes `done` as each reply arrives.
 ## The engine owns the order of calls and the recovery rules and nothing else. The ports keep it pure:
 ##
 ##   transport  the routes of §13.8, typed (the host maps them to HTTP and never lets a server-chosen path
@@ -15,7 +17,9 @@ extends RefCounted
 ##                get_file(target, query)   query {version, range: [start, end) | null, if_match}; the
 ##                                          value is {status, data, etag, content_range: [s, e, total] | null}
 ##                get_chunk(collection, chunk_id)      the value is the object's bytes
-##              `target` is {collection, record}. A reply is `reply_ok(value)` or `reply_fail(status, code,
+##              A transport that has `batching()` answering true is a bulk channel's: `get_chunk` then takes the
+##              transfer id as a third argument and `cancel_transfer(id)` drops its requests in flight.
+##              `target` is {collection, record, transfer} (`transfer` is the journal id, for a bulk channel). A reply is `reply_ok(value)` or `reply_fail(status, code,
 ##              retry_after, body)`; status 0 is "no answer" (the network, a timeout) and is retried.
 ##   journal    `journal.gd` Memory or Files; what survives a kill
 ##   codec      `transfer_codec.gd` E2e or Server
@@ -45,6 +49,8 @@ const Codec := preload("res://addons/polaris_key/services/cloud_sync/transfer_co
 
 const DOWNLOAD_RANGE_BYTES := 8 * 1024 * 1024
 const FEATURE := "sync.files"
+## The most missing chunks enqueued at once with a bulk channel (under SYNC_CHUNK_REQUESTS_PER_MINUTE = 600).
+const BATCH_CHUNKS := 256
 const _HASH_SLICE := 1048576
 ## A seal or an open of at least this many bytes runs on a worker thread (the GDScript AES-GCM lane takes
 ## about a second a MiB, so on the main thread a 32 MiB save would freeze the game).
@@ -74,7 +80,19 @@ var _pending_aborts := []
 ## journal keeps the progress.
 class Cancel:
 	extends RefCounted
-	var cancelled := false
+	## Emitted when `cancelled` is set: a batch drops its requests in flight.
+	signal fired
+	var cancelled := false:
+		set(v):
+			cancelled = v
+			if v:
+				fired.emit()
+
+
+## The wait for a set of calls that run together.
+class _Join:
+	extends RefCounted
+	signal finished
 
 
 ## A source over bytes in memory: `size` and `read(start, end)`.
@@ -260,7 +278,7 @@ func download(req: Dictionary) -> PKeyResult:
 	var sha: Variant = req["sha256"]
 	if not (sha is String) or not Journal._hex_re.search(sha):
 		return _result(_invalid("sha256"))
-	var ps := _new_pass(req["collection"], req["record"], req.get("cancel"))
+	var ps := _new_pass(req["collection"], req["record"], req.get("cancel"), String(req.get("id", "")))
 	var r: Dictionary
 	if req["format"] == "whole":
 		r = await _download_whole(ps, req)
@@ -271,6 +289,8 @@ func download(req: Dictionary) -> PKeyResult:
 
 ## Drop a transfer: abort the server's upload (best effort) and forget the record.
 func cancel(id: String) -> void:
+	if transport.has_method("cancel_transfer"):
+		transport.cancel_transfer(id)
 	var raw: Variant = journal.get_record(id)
 	if raw == null:
 		return
@@ -334,8 +354,8 @@ static func _is_int(x: Variant) -> bool:
 
 # ── Passes and calls ────────────────────────────────────────────────────────────────────────────
 
-func _new_pass(collection: String, record: String, cancel: Variant) -> Dictionary:
-	return {"target": {"collection": collection, "record": record}, "cancel": cancel, "hold_until": 0.0, "rec": {}}
+func _new_pass(collection: String, record: String, cancel: Variant, id := "") -> Dictionary:
+	return {"id": id, "target": {"collection": collection, "record": record, "transfer": id}, "cancel": cancel, "hold_until": 0.0, "rec": {}}
 
 
 static func _is_cancelled(ps: Dictionary) -> bool:
@@ -569,7 +589,7 @@ func _part_count(rec: Dictionary) -> int:
 
 func _run_upload(req: Dictionary, resume: Variant) -> Dictionary:
 	await _flush_aborts()
-	var ps := _new_pass(req["collection"], req["record"], req.get("cancel"))
+	var ps := _new_pass(req["collection"], req["record"], req.get("cancel"), String(req.get("id", "")))
 	if resume == null:
 		var b := await _begin_for(ps, req)
 		if not b["ok"]:
@@ -652,14 +672,57 @@ func _reconcile(ps: Dictionary) -> Dictionary:
 	return {"ok": true}
 
 
+## Whether the transport is a bulk channel's, so a phase's bodies are enqueued together.
+func _batching() -> bool:
+	return transport.has_method("batching") and transport.batching()
+
+
+## Run `calls` (Callables, each a coroutine answering a result Dictionary) together and answer the first
+## failure in order, or `{ok: true}`. A cancel of the pass drops the transfer's requests in flight; a
+## request whose reply is lost answers status 0 and retries on its own.
+func _together(ps: Dictionary, calls: Array) -> Dictionary:
+	var results := []
+	results.resize(calls.size())
+	var state := {"left": calls.size()}
+	var join := _Join.new()
+	var cancel: Variant = ps["cancel"]
+	var drop := func() -> void: transport.cancel_transfer(ps["id"])
+	if cancel != null and cancel.has_signal("fired") and transport.has_method("cancel_transfer"):
+		cancel.fired.connect(drop)
+	for i in calls.size():
+		_run_into(calls[i], results, i, state, join)
+	if state["left"] > 0:
+		await join.finished
+	if cancel != null and cancel.has_signal("fired") and cancel.fired.is_connected(drop):
+		cancel.fired.disconnect(drop)
+	for r in results:
+		if not r["ok"]:
+			return r
+	return {"ok": true}
+
+
+func _run_into(fn: Callable, results: Array, i: int, state: Dictionary, join: _Join) -> void:
+	results[i] = await fn.call()
+	state["left"] -= 1
+	if state["left"] == 0:
+		join.finished.emit()
+
+
 func _send_missing(ps: Dictionary, req: Dictionary) -> Dictionary:
 	var rec: Dictionary = ps["rec"]
+	var batch := _batching()
+	var calls := []
 	for n in range(1, _part_count(rec) + 1):
 		if (rec["done"] as Array).has(n):
+			continue
+		if batch:
+			calls.append(func() -> Dictionary: return await _send_part(ps, req, n))
 			continue
 		var r := await _send_part(ps, req, n)
 		if not r["ok"]:
 			return r
+	if batch and not calls.is_empty():
+		return await _together(ps, calls)
 	return {"ok": true}
 
 
@@ -748,7 +811,7 @@ func _cut(req: Dictionary) -> Dictionary:
 
 
 func _run_chunked(req: Dictionary, cut: Dictionary) -> Dictionary:
-	var ps := _new_pass(req["collection"], req["record"], req.get("cancel"))
+	var ps := _new_pass(req["collection"], req["record"], req.get("cancel"), String(req.get("id", "")))
 	var codec = req["codec"]
 	var records: Array = cut["records"]
 	# hex id -> the first record that has it
@@ -812,11 +875,26 @@ func _run_chunked(req: Dictionary, cut: Dictionary) -> Dictionary:
 		if said.size() != asked.size():
 			return await _bad_reply(ps)
 	# send the missing chunks, in file order
+	var batch := _batching()
+	var wave := []
 	for id in ids:
-		if missing.has(id):
-			var sent := await _send_chunk(ps, req, cut, unique, id, st)
-			if not sent["ok"]:
-				return sent
+		if not missing.has(id):
+			continue
+		if batch:
+			wave.append(func() -> Dictionary: return await _send_chunk(ps, req, cut, unique, id, st))
+			if wave.size() >= BATCH_CHUNKS:
+				var together := await _together(ps, wave)
+				wave = []
+				if not together["ok"]:
+					return together
+			continue
+		var sent := await _send_chunk(ps, req, cut, unique, id, st)
+		if not sent["ok"]:
+			return sent
+	if not wave.is_empty():
+		var rest := await _together(ps, wave)
+		if not rest["ok"]:
+			return rest
 	# the manifest, then finalize
 	var up: String = ps["rec"]["uploadId"]
 	var mr := await _call(ps, func() -> Dictionary: return await transport.put_single(ps["target"], up, stored, stored_sha))
@@ -1010,7 +1088,12 @@ func _fetch_one(ps: Dictionary, req: Dictionary, codec, cache: Variant, rec: Dic
 				return {"ok": true, "plain": o["plain"]}
 			cache.delete(id)  # damage costs a fetch
 	var collection: String = req["collection"]
-	var got := await _call(ps, func() -> Dictionary: return await transport.get_chunk(collection, id))
+	var tid: String = ps["id"]
+	var batch := _batching()
+	var got := await _call(ps, func() -> Dictionary:
+		if batch:
+			return await transport.get_chunk(collection, id, tid)
+		return await transport.get_chunk(collection, id))
 	if got.has("reason"):
 		return got
 	if not got["ok"]:
