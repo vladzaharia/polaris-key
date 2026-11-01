@@ -580,6 +580,124 @@ describe("the root in the browser", () => {
     );
   });
 
+  /** A vault whose `put` can be held, to act while `accept` is storing the new root. */
+  function gatedVault() {
+    const inner = memoryRootVault();
+    let hold = false;
+    let release: () => void = () => undefined;
+    let entered: () => void = () => undefined;
+    const gate = {
+      arm() {
+        hold = true;
+        const waiting = new Promise<void>((r) => (release = r));
+        const reached = new Promise<void>((r) => (entered = r));
+        return { release: () => release(), reached, waiting };
+      },
+    };
+    let waiting: Promise<void> = Promise.resolve();
+    const vault: RootVault = {
+      ...inner,
+      put: async (rec) => {
+        if (hold) {
+          hold = false;
+          entered();
+          await waiting;
+        }
+        return inner.put(rec);
+      },
+    };
+    return {
+      vault,
+      hold() {
+        const g = gate.arm();
+        waiting = g.waiting;
+        return g;
+      },
+    };
+  }
+  type Accepting = {
+    accept(r: Uint8Array, i: string, e: number, k: string): Promise<boolean>;
+  };
+
+  it("a file codec made before accept fails while accept stores the new root, and after it", async () => {
+    const server = new FakeRingServer();
+    const v = gatedVault();
+    const a = device(server, A, { vault: v.vault });
+    await a.engine.create();
+    const codec = (await a.engine.fileCodec("saves"))!;
+    const plain = Uint8Array.from({ length: 32 }, (_, i) => i);
+    const id = await codec.chunkId(plain);
+    const root = await rootOfWrap(server, a);
+    const ring = server.ring!;
+    const g = v.hold();
+    const accepting = (a.engine as unknown as Accepting).accept(
+      root,
+      ring.ringId,
+      ring.epoch,
+      ring.rootKid,
+    );
+    await g.reached;
+    // The new root is not stored yet: the old codec is already dead.
+    await expect(codec.sealChunk(id, plain)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+    g.release();
+    await accepting;
+    await expect(codec.sealChunk(id, plain)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+  });
+
+  it("a file codec made while accept stores the new root fails once it has", async () => {
+    const server = new FakeRingServer();
+    const v = gatedVault();
+    const a = device(server, A, { vault: v.vault });
+    await a.engine.create();
+    const root = await rootOfWrap(server, a);
+    const ring = server.ring!;
+    const g = v.hold();
+    const accepting = (a.engine as unknown as Accepting).accept(
+      root,
+      ring.ringId,
+      ring.epoch,
+      ring.rootKid,
+    );
+    await g.reached;
+    // Built from the root being replaced (the vault still holds it).
+    const mid = (await a.engine.fileCodec("saves"))!;
+    expect(mid).not.toBeNull();
+    const plain = Uint8Array.from({ length: 32 }, (_, i) => i);
+    g.release();
+    await accepting;
+    await expect(mid.chunkId(plain)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+    const fresh = (await a.engine.fileCodec("saves"))!;
+    await expect(fresh.chunkId(plain)).resolves.toBeInstanceOf(Uint8Array);
+  });
+
+  it("a file codec fails after the ring is released and held again", async () => {
+    const server = new FakeRingServer();
+    const a = device(server, A);
+    await a.engine.create();
+    const codec = (await a.engine.fileCodec("saves"))!;
+    const plain = Uint8Array.from({ length: 32 }, (_, i) => i);
+    await expect(codec.chunkId(plain)).resolves.toBeInstanceOf(Uint8Array);
+    const ring = server.ring!;
+    const kid = ring.rootKid;
+    // The served ring moves on: the device stops holding its root (the vault keeps it).
+    ring.rootKid = "f".repeat(32);
+    await a.engine.status();
+    expect(a.engine.hasRoot()).toBe(false);
+    // The ring is the one this device holds again: the same root is held, with no accept.
+    ring.rootKid = kid;
+    await a.engine.status();
+    expect(a.engine.hasRoot()).toBe(true);
+    await expect(codec.chunkId(plain)).rejects.toMatchObject({
+      code: "sync-locked",
+    });
+  });
+
   it("lock() forgets the root and tells subscribers", async () => {
     const server = new FakeRingServer();
     const a = device(server, A);

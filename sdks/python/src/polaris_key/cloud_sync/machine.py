@@ -460,6 +460,12 @@ class CloudSyncMachine:
         self._kick()
         return _OK()
 
+    def pull(self) -> CallResult:
+        """Ask for a pull now (the cursor's changes); the host's next ``touch()`` sends it."""
+        self._pull_wanted = True
+        self._kick()
+        return _OK()
+
     def refresh(self) -> CallResult:
         """A licence or config document fetch succeeded: the only thing that lifts a ``/sync`` 401 or
         a non-``account_required`` 403."""

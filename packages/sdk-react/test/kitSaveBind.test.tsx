@@ -122,7 +122,10 @@ describe("CloudSyncStatus follows the saves", () => {
 
   it("is transfer-failed after a failed write, until the next one starts", async () => {
     const f = fakeSaves();
-    const { container } = inProvider(f.saves, <CloudSyncStatus />);
+    const { container } = inProvider(
+      f.saves,
+      <CloudSyncStatus onRetry={() => undefined} />,
+    );
     act(() =>
       f.emit({ type: "transferFailed", id: "saves:slot1", code: "rejected" }),
     );
@@ -131,6 +134,29 @@ describe("CloudSyncStatus follows the saves", () => {
         container.querySelector('button[data-key="common.tryAgain"]'),
       ).not.toBeNull(),
     );
+  });
+
+  it("without a way to retry, a failed write reads not synced (no Try again, never Synced) until the next write succeeds", async () => {
+    const f = fakeSaves();
+    const { container } = inProvider(
+      f.saves,
+      <CloudSyncStatus
+        input={{ cloudSync: { state: "synced", lastSynced: "2 min ago" } }}
+      />,
+    );
+    expect(container.textContent).toMatch(/Synced/);
+    act(() =>
+      f.emit({ type: "transferFailed", id: "saves:slot1", code: "rejected" }),
+    );
+    await waitFor(() => expect(container.textContent).toMatch(/Couldn't sync/));
+    expect(container.textContent).not.toMatch(/Synced/);
+    expect(
+      container.querySelector('button[data-key="common.tryAgain"]'),
+    ).toBeNull();
+    act(() =>
+      f.emit({ type: "transferDone", id: "saves:slot1", state: "done" }),
+    );
+    await waitFor(() => expect(container.textContent).toMatch(/Synced/));
   });
 
   it("leaves the host's input alone while nothing moves", () => {
@@ -346,6 +372,170 @@ describe("CloudSyncStatus states", () => {
       expect(
         container.querySelector('button[data-key="common.tryAgain"]'),
       ).toBeNull(),
+    );
+  });
+});
+
+describe("the strip and the screen together (final round)", () => {
+  const host = {
+    cloudSync: { state: "synced", lastSynced: "just now" },
+  } as const;
+
+  it("N1: while a conflict screen is open the strip stays on the conflict, silent, never the host's Synced", async () => {
+    const f = fakeSaves();
+    f.setConflicts([CONFLICT]);
+    const { container } = inProvider(
+      f.saves,
+      <>
+        <CloudSyncStatus input={host} />
+        <SaveConflict />
+      </>,
+    );
+    const strip = container.querySelector<HTMLElement>("[data-pk-strip]")!;
+    expect(strip.textContent).toMatch(/conflict/i);
+    expect(strip.textContent).not.toMatch(/Synced/);
+    expect(strip.getAttribute("aria-hidden")).toBe("true");
+    expect(strip.querySelector("button")).toBeNull();
+    // Cancel closes the screen: the strip asks again, and speaks again.
+    fireEvent.click(
+      container.querySelector('button[data-key="common.cancel"]')!,
+    );
+    await waitFor(() => expect(strip.getAttribute("aria-hidden")).toBeNull());
+    expect(
+      strip.querySelector('button[data-key="common.review"]'),
+    ).not.toBeNull();
+  });
+
+  it("N1: a conflict that appears after mount takes focus once", async () => {
+    const f = fakeSaves();
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    opener.focus();
+    const { container } = inProvider(f.saves, <SaveConflict />);
+    expect(container.querySelector("h1")).toBeNull();
+    f.setConflicts([CONFLICT]);
+    act(() => f.emit(null));
+    await waitFor(() => expect(container.querySelector("h1")).not.toBeNull());
+    await waitFor(() =>
+      expect(container.contains(document.activeElement)).toBe(true),
+    );
+    expect(document.activeElement?.tagName).toBe("H1");
+    opener.remove();
+  });
+
+  it("M7: closing the dialog the strip's Review opened returns focus to the strip, never the page", async () => {
+    const f = fakeSaves();
+    f.setConflicts([CONFLICT]);
+    const { container } = inProvider(
+      f.saves,
+      <CloudSyncStatus input={host} bytes={() => Uint8Array.of(1)} />,
+    );
+    const review = () =>
+      container.querySelector<HTMLButtonElement>(
+        'button[data-key="common.review"]',
+      );
+    // Nothing is open: the strip already asks for review.
+    await waitFor(() => expect(review()).not.toBeNull());
+    review()!.focus();
+    fireEvent.click(review()!);
+    await waitFor(() =>
+      expect(
+        container.querySelector('button[data-key="common.cancel"]'),
+      ).not.toBeNull(),
+    );
+    fireEvent.click(
+      container.querySelector('button[data-key="common.cancel"]')!,
+    );
+    await waitFor(() => expect(document.activeElement).toBe(review()));
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("cards default from savedAt and deviceLabel in the metadata; describe() still overrides", () => {
+    const f = fakeSaves();
+    f.setConflicts([
+      {
+        ...CONFLICT,
+        local: { metadata: { savedAt: Date.now() }, size: 10 },
+        remote: {
+          ...CONFLICT.remote!,
+          metadata: {
+            savedAt: Date.now() - 3_600_000,
+            deviceLabel: "Steam Deck",
+          },
+        },
+      },
+    ]);
+    const { container } = inProvider(f.saves, <SaveConflict />);
+    expect(container.textContent).toMatch(/Steam Deck/);
+    expect(container.textContent).toMatch(/Today/);
+    expect(container.textContent).toMatch(/Newer/i);
+  });
+
+  it("N2: after Cancel, a later conflict on the same save shows again", async () => {
+    const f = fakeSaves();
+    f.setConflicts([CONFLICT]);
+    const { container } = inProvider(f.saves, <SaveConflict />);
+    fireEvent.click(
+      container.querySelector('button[data-key="common.cancel"]')!,
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector('button[data-key="saveConflict.keepThis"]'),
+      ).toBeNull(),
+    );
+    f.setConflicts([{ ...CONFLICT }]);
+    act(() => f.emit(null));
+    await waitFor(() =>
+      expect(
+        container.querySelector('button[data-key="saveConflict.keepThis"]'),
+      ).not.toBeNull(),
+    );
+  });
+
+  it("N3: a choice that ends in a newer conflict goes back to choose, on the new one", async () => {
+    const f = fakeSaves();
+    f.setConflicts([CONFLICT]);
+    const newer: Conflict = {
+      ...CONFLICT,
+      serverVersion: 9,
+      remote: { ...CONFLICT.remote!, version: 9, metadata: { n: 7 } },
+    };
+    f.resolve.mockImplementationOnce(async () => ({
+      id: "saves:slot1",
+      state: "conflict",
+      progress: { done: 0, total: 0 },
+      pause() {},
+      resume() {},
+      cancel: async () => undefined,
+      done: Promise.resolve({ state: "conflict", conflict: newer }),
+    }));
+    const { container } = inProvider(
+      f.saves,
+      <SaveConflict bytes={() => Uint8Array.of(1)} />,
+    );
+    fireEvent.click(
+      container.querySelector('button[data-key="saveConflict.keepThis"]')!,
+    );
+    await waitFor(() =>
+      expect(
+        container.querySelector('button[data-key="saveConflict.keepThis"]'),
+      ).not.toBeNull(),
+    );
+    expect(
+      container.querySelector('button[data-key="common.tryAgain"]'),
+    ).toBeNull();
+  });
+
+  it("m1: a paused save reads waiting once the transfer says so", async () => {
+    const f = fakeSaves();
+    const t = write(10, 100);
+    f.setRunning([t]);
+    const { container } = inProvider(f.saves, <CloudSyncStatus />);
+    expect(container.textContent).toMatch(/Syncing saves/);
+    (t as { state: string }).state = "paused";
+    act(() => f.emit(null));
+    await waitFor(() =>
+      expect(container.textContent).toMatch(/Paused until you open the app/),
     );
   });
 });

@@ -825,6 +825,13 @@ export class CloudSyncMachine {
     return { ok: true };
   }
 
+  /** Ask for a pull now (the cursor's changes); the host's next `touch()` sends it. */
+  pull(): CallResult {
+    this.pullWanted = true;
+    this.kick();
+    return { ok: true };
+  }
+
   /** A licence or config document fetch succeeded: the only thing that lifts a `/sync` 401 or a
    *  non-`account_required` 403. */
   refresh(): CallResult {

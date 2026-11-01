@@ -157,6 +157,9 @@ private class SavesWorld(val e2e: Boolean = false) {
     }
 }
 
+/** The app's metadata, without the SDK's own `savedAt` / `deviceLabel` stamps. */
+private fun bare(v: JsonObject?): JsonObject? = v?.let { JsonObject(it.filterKeys { k -> k != SAVE_SAVED_AT_KEY && k != SAVE_DEVICE_KEY }) }
+
 class CloudSyncSavesTest {
     @get:Rule val tmp = TemporaryFolder()
 
@@ -345,7 +348,7 @@ class CloudSyncSavesTest {
         val set = world.pushes.flatMap { (it["mutations"] as JsonArray).map { m -> m as JsonObject } }.single { it["op"].stringValue == "set" }
         assertEquals(done.file.version, set["baseVersion"].longValue)
         assertEquals(sha(data), world.rows.getValue("slot-1").file?.get("sha256").stringValue)
-        assertEquals(meta("one"), world.rows.getValue("slot-1").value)
+        assertEquals(meta("one"), bare(world.rows.getValue("slot-1").value))
         assertTrue(r.client.cloudSync.transfers().isEmpty())
         eventually("events") { r.events.any { it is CloudSyncEvent.TransferDone } }
         assertTrue(r.events.any { it is CloudSyncEvent.TransferProgress })
@@ -355,11 +358,11 @@ class CloudSyncSavesTest {
         assertEquals("transferDone", doneEvent.type)
         val listed = r.saves.list().single()
         assertEquals("slot-1", listed.id)
-        assertEquals(meta("one"), listed.metadata)
+        assertEquals(meta("one"), bare(listed.metadata))
         assertEquals(3000L, listed.file?.size)
         val read = r.saves.read("slot-1") as SaveRead.Ok
         assertArrayEquals(data, read.bytes)
-        assertEquals(meta("one"), read.metadata)
+        assertEquals(meta("one"), bare(read.metadata))
         r.client.close()
     }
 
@@ -376,11 +379,11 @@ class CloudSyncSavesTest {
         assertTrue(kept is SaveResult.KeptRemote)
         val both = r.saves.resolve(out.conflict, SaveKeep.BOTH, bytes(500)).result() as SaveResult.Done
         assertEquals("slot-1.copy", both.copyId)
-        assertEquals(meta("mine"), world.rows.getValue("slot-1.copy").value)
+        assertEquals(meta("mine"), bare(world.rows.getValue("slot-1.copy").value))
         assertEquals(meta("two"), world.rows.getValue("slot-1").value)
         val local = r.saves.resolve(out.conflict, SaveKeep.LOCAL, bytes(500, 9)).result()
         assertTrue(local.toString(), local is SaveResult.Done)
-        assertEquals(meta("mine"), world.rows.getValue("slot-1").value)
+        assertEquals(meta("mine"), bare(world.rows.getValue("slot-1").value))
         eventually("a conflict event") { r.events.any { it is CloudSyncEvent.TransferDone && it.state == "conflict" } }
         r.client.close()
     }
@@ -553,7 +556,7 @@ class CloudSyncSavesTest {
         // List, read and delete go through the machine's rows, opened with the ring's root.
         val listed = r.saves.list().single()
         assertEquals("slot-1", listed.id)
-        assertEquals(meta("secret chapter"), listed.metadata)
+        assertEquals(meta("secret chapter"), bare(listed.metadata))
         assertEquals(done.file.sha256, listed.file?.sha256)
         assertArrayEquals(data, (r.saves.read("slot-1") as SaveRead.Ok).bytes)
         assertTrue(r.saves.delete("slot-1") is SaveSetResult.Ok)
