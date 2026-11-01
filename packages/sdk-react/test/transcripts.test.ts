@@ -1846,11 +1846,15 @@ async function replay(t: Transcript): Promise<void> {
   }
 }
 
+// Features implemented on the desktop bridge only (excepted on the web runtime this replayer drives).
+const onDesktopBridgeOnly = (t: { features: string[] }): boolean =>
+  t.features.includes("identity.nearby");
+
 describe("HTTP transcripts: @polaris-key/react", () => {
   it("replays every transcript but the planned features': the cookie-free bearer engine closed the device-token ones", () => {
-    const ids = TRANSCRIPTS.filter((t) => applies(t, MANIFEST)).map(
-      (t) => t.id,
-    );
+    const ids = TRANSCRIPTS.filter(
+      (t) => applies(t, MANIFEST) && !onDesktopBridgeOnly(t),
+    ).map((t) => t.id);
     // Planned here, so its transcript does not apply: commerce.receipt is SP-16's,
     // telemetry.updates SP-14's. identity.keyentry, identity.account and identity.attach run here
     // (I-10a.9: the keyentry-* and identity-* transcripts, over the bearer engine), and so do
@@ -1886,8 +1890,10 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       "identity.gamecenter",
       "identity.pgs",
       "identity.restore",
-      // identity.nearby is N/A (runtime) here: a browser tab has no mode v handshake and the
-      // renderer holds no device key (I-40.8); the Node runner replays the nearby-* transcripts.
+      // identity.nearby is excepted on the web runtime: a browser tab has no mode v handshake and
+      // holds no device key (I-40.8). It is implemented on the desktop bridge (I-47b), where the
+      // host plays both devices; this replayer drives the web engine, so the Node runner replays
+      // the nearby-* transcripts.
       "identity.nearby",
       // connect.links is N/A (runtime) here too (CC-19.9): the contact store and the pairing sockets
       // are the host's; the Node and Python runners replay the connect-links-* and
@@ -1902,7 +1908,7 @@ describe("HTTP transcripts: @polaris-key/react", () => {
   });
 
   for (const t of TRANSCRIPTS) {
-    const run = applies(t, MANIFEST) ? it : it.skip;
+    const run = applies(t, MANIFEST) && !onDesktopBridgeOnly(t) ? it : it.skip;
     run(`${t.id} (${t.features.join(", ")})`, async () => {
       await replay(t);
     });
