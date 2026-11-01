@@ -61,13 +61,12 @@ func _limit() -> int:
 	return WINDOWS_TIMEOUT_MSEC if platform() == "windows" else TIMEOUT_MSEC
 
 
-## True when this engine's `OS.execute_with_pipe` has the `blocking` argument (4.5 and later).
+## True when this engine's `OS.execute_with_pipe` has the `blocking` argument (4.5 and later). Read
+## from the engine version: listing OS's methods through ClassDB crashed the 4.5.2 release template.
 static func _bounded_pipes() -> bool:
 	if not _pipes_checked:
 		_pipes_checked = true
-		for m: Dictionary in ClassDB.class_get_method_list(&"OS", true):
-			if m["name"] == "execute_with_pipe":
-				_pipes_bounded = (m["args"] as Array).size() >= 3
+		_pipes_bounded = int(Engine.get_version_info().get("hex", 0)) >= 0x040500
 	return _pipes_bounded
 
 
