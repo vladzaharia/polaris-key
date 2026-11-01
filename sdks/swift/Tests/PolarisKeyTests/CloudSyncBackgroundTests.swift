@@ -466,6 +466,7 @@ final class CloudSyncBackgroundTests: XCTestCase {
             token: { "tok-1" }, bulk: rig.channel)
         let engine = FileTransferEngine(transport: transport, journal: rig.journal)
         let data = Data("a small save".utf8)
+        foreground.sha = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         rig.session.onStart = { [session = rig.session] t in session.finish(t, status: 204) }
         let req = UploadRequest(
             id: "save-1", collection: "saves", record: "rec1", source: DataSource(data), size: data.count,
@@ -493,6 +494,8 @@ private final class JSONStub: PolarisTransport, @unchecked Sendable {
     let lock = NSLock()
     private var seen: [String] = []
     var paths: [String] { lock.withLock { seen } }
+    /// The hash `finalize` answers: the stored file's.
+    var sha = String(repeating: "a", count: 64)
     func send(_ request: PolarisRequest) async throws -> PolarisResponse {
         lock.withLock { seen.append(request.url.path) }
         let path = request.url.path
@@ -505,7 +508,7 @@ private final class JSONStub: PolarisTransport, @unchecked Sendable {
             return PolarisResponse(
                 status: 200,
                 body: Data(
-                    #"{"version":1,"size":12,"sha256":"\#(String(repeating: "a", count: 64))","format":"whole"}"#.utf8))
+                    #"{"version":1,"size":12,"sha256":"\#(sha)","format":"whole"}"#.utf8))
         }
         return PolarisResponse(status: 404, body: Data())
     }

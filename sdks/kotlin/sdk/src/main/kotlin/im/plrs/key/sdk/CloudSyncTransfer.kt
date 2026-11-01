@@ -603,15 +603,31 @@ private open class UploadPass(val engine: FileTransferEngine, collection: String
         update { it }
     }
 
+    /** The answer must describe the file that was begun: its size, hash and format, and a newer version. */
+    private fun checkFinalized(got: JsonObject, format: String, baseVersion: JsonElement?) {
+        val rec = record
+        val version = got["version"].longValue
+        val base = baseVersion.longValue
+        if (got["size"].longValue != rec.size.toLong() ||
+            got["sha256"].stringValue != rec.sha256 ||
+            got["format"].stringValue != format ||
+            version == null || version < 1 ||
+            (base != null && version <= base)
+        ) {
+            throw invalid("finalize")
+        }
+    }
+
     /**
      * `finalize`. On `409 upload_incomplete` (at most twice) [resend] gets the `missing` list and sends those again,
      * answering false when the list is not one this upload could have; a 409 or a mismatch otherwise releases the upload.
      */
-    suspend fun finalizeCall(resend: suspend (JsonElement?) -> Boolean): JsonObject {
+    suspend fun finalizeCall(format: String, baseVersion: JsonElement?, resend: suspend (JsonElement?) -> Boolean): JsonObject {
         var again = 0
         while (true) {
             val reply = send { engine.transport.finalize(target, buildJsonObject { put("uploadId", uploadId) }) }
             if (reply is FileReply.Ok) {
+                checkFinalized(reply.value, format, baseVersion)
                 engine.journal.delete(record.id)
                 return reply.value
             }
@@ -640,7 +656,7 @@ private class UploadRun(engine: FileTransferEngine, val req: UploadRequest, val 
             sendMissing()
             update { it.copy(state = "finalizing") }
         }
-        return finalizeCall { missing ->
+        return finalizeCall("whole", req.baseVersion) { missing ->
             val parts = partCount()
             val list = missing.arrayValue
             val lost = list?.map { it.longValue }
@@ -755,7 +771,7 @@ private class ChunkedRun(engine: FileTransferEngine, val req: ChunkedUploadReque
         val missing = plan()
         pool(missing, engine.parallelism) { id -> sendChunk(id) }
         sendManifest()
-        return finalizeCall { lost ->
+        return finalizeCall("chunks", req.baseVersion) { lost ->
             val ids = lost.arrayValue?.map { it.stringValue }
             if (ids == null || ids.any { it == null || it !in unique }) {
                 false

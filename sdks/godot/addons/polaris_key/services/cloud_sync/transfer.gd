@@ -428,15 +428,44 @@ func _begin_call(ps: Dictionary, request: Dictionary) -> Dictionary:
 	return {"ok": true, "begun": b}
 
 
+## The finalize answer must describe the file that was begun: its size, hash and format, and a newer version.
+static func _finalized_matches(got: Variant, rec: Dictionary, format: String, base_version: Variant) -> bool:
+	if not (got is Dictionary):
+		return false
+	var size: Variant = _whole(got.get("size"))
+	var version: Variant = _whole(got.get("version"))
+	if size == null or size != int(rec["size"]):
+		return false
+	if got.get("sha256") != rec["sha256"] or got.get("format") != format:
+		return false
+	if version == null or version < 1:
+		return false
+	var base: Variant = _whole(base_version)
+	if base != null and version <= base:
+		return false
+	return true
+
+
+## A JSON number that is a whole value in the range of an int, as an int; else null.
+static func _whole(x: Variant) -> Variant:
+	if typeof(x) == TYPE_INT:
+		return x
+	if typeof(x) == TYPE_FLOAT and is_finite(x) and absf(x) <= 9007199254740991.0 and x == floorf(x):
+		return int(x)
+	return null
+
+
 ## `finalize`. On 409 upload_incomplete (at most twice) `resend` (a Callable(missing) -> bool, may be a
 ## coroutine) sends those again; a 409 or a mismatch otherwise releases the upload.
-func _finalize_call(ps: Dictionary, resend: Callable) -> Dictionary:
+func _finalize_call(ps: Dictionary, resend: Callable, format: String, base_version: Variant) -> Dictionary:
 	var again := 0
 	while true:
 		var reply := await _call(ps, func() -> Dictionary: return await transport.finalize(ps["target"], {"uploadId": ps["rec"]["uploadId"]}))
 		if reply.has("reason"):
 			return reply
 		if reply["ok"]:
+			if not _finalized_matches(reply["value"], ps["rec"], format, base_version):
+				return _invalid("finalize")
 			journal.delete(ps["rec"]["id"])
 			return {"ok": true, "value": reply["value"]}
 		var body: Variant = reply.get("body")
@@ -515,7 +544,7 @@ func _run_upload(req: Dictionary, resume: Variant) -> Dictionary:
 			return again
 		_update(ps, {"state": "finalizing"})
 		return true
-	return await _finalize_call(ps, resend)
+	return await _finalize_call(ps, resend, "whole", req.get("base_version"))
 
 
 func _begin_for(ps: Dictionary, req: Dictionary) -> Dictionary:
@@ -748,7 +777,7 @@ func _run_chunked(req: Dictionary, cut: Dictionary) -> Dictionary:
 			if not r["ok"]:
 				return r
 		return true
-	return await _finalize_call(ps, resend)
+	return await _finalize_call(ps, resend, "chunks", req.get("base_version"))
 
 
 func _bad_reply(ps: Dictionary) -> Dictionary:

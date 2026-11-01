@@ -208,6 +208,7 @@ describe("chunks upload", () => {
       seen = r;
       return orig(t, r);
     };
+    s.nextVersion = () => 4;
     const codec = e2eCodec();
     const e = engine(s);
     const out = await e.uploadChunked(up(data, codec, { baseVersion: 3 }));
@@ -219,6 +220,27 @@ describe("chunks upload", () => {
     });
     expect(seen!.sha256).toBe(out.sha256);
   });
+
+  it.each([
+    ["size", (f: FinalizeResponse) => ({ ...f, size: f.size + 1 })],
+    ["sha256", (f: FinalizeResponse) => ({ ...f, sha256: "ab".repeat(32) })],
+    ["format", (f: FinalizeResponse) => ({ ...f, format: "whole" as const })],
+    ["version", (f: FinalizeResponse) => ({ ...f, version: 3 })],
+  ])(
+    "refuses a finalize answer whose %s is not the one begun",
+    async (_n, change) => {
+      const s = new FakeServer();
+      const orig = s.finalize;
+      s.finalize = async (t, r) => {
+        const reply = await orig(t, r);
+        return reply.ok ? ok(change(reply.value)) : reply;
+      };
+      const j = memoryJournal();
+      await expect(
+        engine(s, j).uploadChunked(up(data, serverCodec, { baseVersion: 3 })),
+      ).rejects.toMatchObject({ reason: "file-invalid", detail: "finalize" });
+    },
+  );
 
   it("refuses a begin that does not answer chunks", async () => {
     const s = new FakeServer();
@@ -437,6 +459,27 @@ describe("whole download", () => {
         download(s, serverCodec, asReply(file)),
       ).rejects.toMatchObject({ reason: "bad-reply" });
     }
+  });
+
+  it("refuses a 206 for another offset than the one asked, at once", async () => {
+    const plain = noise(300_000, 2);
+    const { s, file } = await stage(serverCodec, plain);
+    // Self-consistent, but it starts one byte after the offset asked.
+    s.tamperFile = (q, b) =>
+      q.range!.start !== 0
+        ? b
+        : {
+            ...b,
+            bytes: b.bytes.subarray(1),
+            contentRange: {
+              start: 1,
+              end: b.contentRange!.end,
+              total: file.bytes.length,
+            },
+          };
+    await expect(download(s, serverCodec, asReply(file))).rejects.toMatchObject(
+      { reason: "bad-reply", detail: "content-range" },
+    );
   });
 
   it("accepts a self-consistent 206 that is shorter than asked and carries on", async () => {

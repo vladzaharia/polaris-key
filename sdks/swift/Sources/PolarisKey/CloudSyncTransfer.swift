@@ -675,10 +675,24 @@ private class UploadPass: @unchecked Sendable {
         update { _ in }
     }
 
+    /// The answer must describe the file that was begun: its size, hash and format, and a newer version.
+    private func checkFinalized(_ v: JSONValue, format: String, baseVersion: JSONValue?) throws {
+        let rec = record
+        guard case .object(let o) = v,
+            let size = o["size"]?.intValue, size == rec.size,
+            case .string(let sha)? = o["sha256"], sha == rec.sha256,
+            case .string(let fmt)? = o["format"], fmt == format,
+            let version = o["version"]?.intValue, version >= 1
+        else { throw TransferError.invalid("finalize") }
+        if let base = baseVersion?.intValue, version <= base { throw TransferError.invalid("finalize") }
+    }
+
     /// `finalize`. On `409 upload_incomplete` (at most twice) `resend` gets the `missing` list and sends
     /// those again, answering false when the list is not one this upload could have; a 409 or a mismatch
     /// otherwise releases the upload.
-    func finalizeCall(resend: (JSONValue?) async throws -> Bool) async throws -> JSONValue {
+    func finalizeCall(
+        format: String, baseVersion: JSONValue?, resend: (JSONValue?) async throws -> Bool
+    ) async throws -> JSONValue {
         var again = 0
         while true {
             let reply = try await send {
@@ -686,6 +700,7 @@ private class UploadPass: @unchecked Sendable {
             }
             switch reply {
             case .ok(let v):
+                try checkFinalized(v, format: format, baseVersion: baseVersion)
                 engine.journal.delete(record.id)
                 return v
             case .refused(let r):
@@ -724,7 +739,7 @@ private final class UploadRun: UploadPass, @unchecked Sendable {
             try await sendMissing()
             update { $0.state = "finalizing" }
         }
-        return try await finalizeCall { missing in
+        return try await finalizeCall(format: "whole", baseVersion: req.baseVersion) { missing in
             let parts = self.partCount
             guard case .array(let list)? = missing else { return false }
             var lost = Set<Int>()
@@ -864,7 +879,7 @@ private final class ChunkedRun: UploadPass, @unchecked Sendable {
         let missing = try await plan()
         try await pool(missing, width: engine.parallelism) { id in try await self.sendChunk(id) }
         try await sendManifest()
-        return try await finalizeCall { lost in
+        return try await finalizeCall(format: "chunks", baseVersion: req.baseVersion) { lost in
             guard case .array(let list)? = lost else { return false }
             var wanted: [String] = []
             for v in list {

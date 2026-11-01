@@ -17,7 +17,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { TransferEvent } from "../src/constants.generated.js";
-import { chunkCachePersonDir } from "../src/cloudSync/chunkCache.js";
+import {
+  chunkCachePersonDir,
+  chunkCacheRoot,
+} from "../src/cloudSync/chunkCache.js";
 import {
   PRODUCT,
   SUBJECT,
@@ -385,6 +388,28 @@ describe("cloudSync.saves", () => {
     expect(existsSync(mine)).toBe(false);
     expect(existsSync(join(theirs, "c", "x"))).toBe(true);
     expect(existsSync(stateDir)).toBe(true);
+    client.close();
+  });
+
+  it("removes every chunk cache when the leaving person is not known in this run", async () => {
+    const { w } = savesWorld();
+    const stateDir = mkdtempSync(join(tmpdir(), "pkey-csaves-"));
+    // A fresh process: nobody is signed in and saves were never used.
+    const client = await open(w, stateDir, {
+      encryption: "server",
+      saves: { delta: true },
+    });
+    const state = (client as unknown as { core: { dirs: { state: string } } })
+      .core.dirs.state;
+    for (const who of ["earlier-person", "another"]) {
+      const d = chunkCachePersonDir(state, who);
+      mkdirSync(join(d, "c"), { recursive: true });
+      writeFileSync(join(d, "c", "x"), "x");
+    }
+    await (
+      client as unknown as { savesApi: { purge(): Promise<void> } }
+    ).savesApi.purge();
+    expect(existsSync(chunkCacheRoot(state))).toBe(false);
     client.close();
   });
 

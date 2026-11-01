@@ -87,6 +87,9 @@ private class Cloud(private val e2e: Boolean) :
     private var counter = 0L
     var gate: CompletableDeferred<Unit>? = null
     var quota = false
+
+    /** Rewrites the answer to `finalize` (the stored file is untouched). */
+    var finalizeAnswer: (JsonObject) -> JsonObject = { it }
     val aborted = CopyOnWriteArrayList<String>()
 
     private fun hex(d: ByteArray) = d.joinToString("") { "%02x".format(it) }
@@ -139,6 +142,8 @@ private class Cloud(private val e2e: Boolean) :
         if (quota) return refused(403, "quota_exceeded", buildJsonObject { put("scope", "user") })
         val u = uploads.remove(request["uploadId"].stringValue) ?: return refused(404, "not_found")
         val bytes = u.third ?: return refused(409, "upload_incomplete")
+        // A version is always newer than the record's current one.
+        counter = maxOf(counter, records[target.record]?.version ?: 0L)
         val version = ++counter
         val file = RecordFile(version, bytes.size.toLong(), sha(bytes), "whole")
         revisions.getOrPut(target.record) { ArrayList() }.add(Triple(version, bytes, file.sha256))
@@ -150,12 +155,14 @@ private class Cloud(private val e2e: Boolean) :
             rec.file = file
         }
         return FileReply.Ok(
-            buildJsonObject {
-                put("version", version)
-                put("size", bytes.size)
-                put("sha256", file.sha256)
-                put("format", "whole")
-            },
+            finalizeAnswer(
+                buildJsonObject {
+                    put("version", version)
+                    put("size", bytes.size)
+                    put("sha256", file.sha256)
+                    put("format", "whole")
+                },
+            ),
         )
     }
 
@@ -436,6 +443,24 @@ class CloudSyncSavesClientTest {
         assertEquals(0L, conflict.serverVersion)
         assertTrue(saves.resolve(conflict, SaveKeep.LOCAL, bytes(120, 3)).result() is SaveResult.Done)
         assertEquals(JsonPrimitive("*"), cloud.bases.last())
+    }
+
+    @Test
+    fun aFinalizeAnswerNamingAnotherFileFailsTheWriteAndAdoptsNothing() = runBlocking {
+        for (e2e in listOf(false, true)) {
+            val cloud = Cloud(e2e = e2e)
+            val saves = client(cloud, e2e = e2e)
+            assertTrue(saves.write("a", bytes(100, 1), meta("one")).result() is SaveResult.Done)
+            val other = saves.write("b", bytes(120, 2), meta("two")).result() as SaveResult.Done
+            val before = cloud.records.mapValues { it.value.value.toString() }
+            cloud.finalizeAnswer = { a ->
+                JsonObject(a + mapOf("size" to JsonPrimitive(other.file.size), "sha256" to JsonPrimitive(other.file.sha256)))
+            }
+            val failed = saves.write("a", bytes(140, 3), meta("three")).result()
+            assertTrue("expected failed, got $failed", failed is SaveResult.Failed)
+            // No metadata was pushed for the refused file.
+            assertEquals(before, cloud.records.mapValues { it.value.value.toString() })
+        }
     }
 
     @Test

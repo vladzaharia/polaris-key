@@ -779,7 +779,22 @@ class _UploadPass(_Pass):
             self.refuse_begin(reply)
         return reply.value
 
-    def finalize_call(self, resend: Callable[[Any], bool]) -> Dict[str, Any]:
+    def _check_finalized(self, got: Any, fmt: str, base_version: Any) -> None:
+        """The answer must describe the file that was begun: its size, hash and format, and a newer version."""
+        v = got.get("version") if isinstance(got, dict) else None
+        if (
+            not isinstance(got, dict)
+            or not _is_int(got.get("size"))
+            or got.get("size") != self.rec["size"]
+            or got.get("sha256") != self.rec["sha256"]
+            or got.get("format") != fmt
+            or not _is_int(v)
+            or v < 1
+            or (_is_int(base_version) and v <= base_version)
+        ):
+            raise _invalid("finalize")
+
+    def finalize_call(self, fmt: str, base_version: Any, resend: Callable[[Any], bool]) -> Dict[str, Any]:
         """``finalize``. On ``409 upload_incomplete`` (at most twice) ``resend`` gets the ``missing`` list
         and sends those again, answering False when the list is not one this upload could have; a 409 or a
         mismatch otherwise releases the upload."""
@@ -789,6 +804,7 @@ class _UploadPass(_Pass):
                 lambda: self.transport.finalize(self.target, {"uploadId": self.rec["uploadId"]}, self.cancel)
             )
             if reply.ok:
+                self._check_finalized(reply.value, fmt, base_version)
                 self.finish()
                 return reply.value
             missing = reply.body.get("missing") if isinstance(reply.body, dict) else None
@@ -920,7 +936,7 @@ class _Run(_UploadPass):
             self.update({"state": "finalizing"})
             return True
 
-        return self.finalize_call(resend)
+        return self.finalize_call("whole", self.req.base_version, resend)
 
 
 @dataclass
@@ -1062,7 +1078,7 @@ class _ChunkedRun(_UploadPass):
             self._send_chunks(lost)
             return True
 
-        return self.finalize_call(resend)
+        return self.finalize_call("chunks", self.req.base_version, resend)
 
 
 class _Download(_Pass):

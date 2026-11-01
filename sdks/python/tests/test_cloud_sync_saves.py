@@ -38,6 +38,8 @@ class SavesWorld(World):
         self.stored: Dict[int, bytes] = {}
         self.uploads: Dict[str, Dict[str, Any]] = {}
         self.files: List[str] = []
+        #: Rewrites the finalize answer (the stored file is untouched).
+        self.finalize_answer: Any = None
         self.pull = lambda url: self.body(
             cursor=self.version, changes=[self._change(i, r) for i, r in self.rows.items()]
         )
@@ -116,7 +118,7 @@ class SavesWorld(World):
             file = {"version": self.version, "size": len(data), "sha256": sha(data), "format": "whole"}
             self.stored[self.version] = data
             self.rows[id] = {"value": None, "version": self.version, "file": file}
-            return httpx.Response(200, json=file)
+            return httpx.Response(200, json=self.finalize_answer(file) if self.finalize_answer else file)
         if r.method == "GET" and not rest:
             row = self.rows.get(id)
             data = self.stored.get(row["file"]["version"]) if row and row.get("file") else None
@@ -172,6 +174,41 @@ def test_write_then_metadata_at_the_finalize_version_and_read_back(tmp_path: Pat
     assert [(s["id"], s["metadata"], s["file"]["size"]) for s in listed] == [("slot-1", {"chapter": "one"}, 3000)]
     read = c.cloud_sync.saves.read("slot-1")
     assert read["ok"] and read["metadata"] == {"chapter": "one"} and read["bytes"] == payload
+    c.close()
+
+
+def test_a_finalize_answer_naming_another_file_fails_the_write_and_adopts_nothing(tmp_path: Path) -> None:
+    w = SavesWorld()
+    c = signed_in(w, tmp_path)
+    first = data(3000)
+    other = data(3000, seed=9)
+    assert c.cloud_sync.saves.write("a", first, {"n": 1}).wait(10)["state"] == "done"
+    assert c.cloud_sync.saves.write("b", other, {"n": 2}).wait(10)["state"] == "done"
+    theirs = dict(w.rows["b"]["file"])
+    listed_before = [s for s in c.cloud_sync.saves.list() if s["id"] == "a"]
+    w.finalize_answer = lambda f: {**theirs, "version": f["version"]}
+    out = c.cloud_sync.saves.write("a", data(3000, seed=11), {"n": 3}, base_version=w.rows["a"]["version"]).wait(10)
+    assert out["state"] == "failed"
+    # No metadata was pushed for the refused file.
+    assert w.rows["a"]["value"] != {"n": 3}
+    assert [s for s in c.cloud_sync.saves.list() if s["id"] == "a"] == listed_before
+    c.close()
+
+
+@pytest.mark.parametrize("bad", ["slot\n", "slot\n\n", "a" * 128 + "\n"])
+def test_a_save_id_with_a_trailing_newline_is_refused(tmp_path: Path, bad: str) -> None:
+    from polaris_key.cloud_sync.saves import SavesError
+
+    w = SavesWorld()
+    c = signed_in(w, tmp_path)
+    for call in (
+        lambda: c.cloud_sync.saves.read(bad),
+        lambda: c.cloud_sync.saves.revisions(bad),
+        lambda: c.cloud_sync.saves.delete(bad),
+    ):
+        with pytest.raises(SavesError) as ei:
+            call()
+        assert ei.value.code == "invalid-save"
     c.close()
 
 

@@ -46,7 +46,7 @@ private fun noise(n: Int): ByteArray = SyncCrypto.random(n)
 
 private fun shaHex(d: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(d).joinToString("") { "%02x".format(it) }
 
-private class Upload(val size: Int, val sha256: String, val mode: String) {
+private class Upload(val size: Int, val sha256: String, val mode: String, val format: String = "whole") {
     val parts = java.util.TreeMap<Int, ByteArray>()
     var manifest: ByteArray? = null
 }
@@ -80,6 +80,9 @@ private class FakeServer : FileTransport {
 
     @Volatile var planAnswer: JsonObject? = null
 
+    /** Rewrites the answer to `finalize` (the stored file is untouched). */
+    @Volatile var finalizeAnswer: (JsonObject) -> JsonObject = { it }
+
     private fun <T> enter(kind: String): FileReply<T>? {
         calls.add(kind)
         return hook(kind)?.let { FileReply.Refused(it) }
@@ -105,7 +108,7 @@ private class FakeServer : FileTransport {
             } else {
                 "multipart"
             }
-            uploads[id] = Upload(size, sha, mode)
+            uploads[id] = Upload(size, sha, mode, (request["format"] as JsonPrimitive).content)
             return FileReply.Ok(
                 buildJsonObject {
                     put("uploadId", id)
@@ -210,7 +213,16 @@ private class FakeServer : FileTransport {
             if (shaHex(data) != u.sha256) return FileReply.Refused(FileRefusal(400, "upload_mismatch"))
             files.add(data)
             uploads.remove(id)
-            return FileReply.Ok(buildJsonObject { put("version", files.size) })
+            return FileReply.Ok(
+                finalizeAnswer(
+                    buildJsonObject {
+                        put("version", files.size)
+                        put("size", u.size)
+                        put("sha256", u.sha256)
+                        put("format", u.format)
+                    },
+                ),
+            )
         }
     }
 
@@ -454,6 +466,28 @@ class CloudSyncTransferTest {
         val s4 = FakeServer().apply { hook = { if (it == "finalize") FileRefusal(400, "upload_mismatch") else null } }
         expect(Reason.MISMATCH) { engine(s4).upload(upReq("r4", data)) }
         assertEquals("a mismatch releases the upload", 1, s4.aborted.size)
+    }
+
+    @Test
+    fun aFinalizeAnswerThatIsNotTheFileBegunIsRefused() = runBlocking {
+        fun JsonObject.with(key: String, v: JsonElement) = JsonObject(this + (key to v))
+        val lies: Map<String, (JsonObject) -> JsonObject> = mapOf(
+            "size" to { a -> a.with("size", JsonPrimitive((a["size"] as JsonPrimitive).content.toInt() + 1)) },
+            "sha256" to { a -> a.with("sha256", JsonPrimitive("ab".repeat(32))) },
+            "format" to { a -> a.with("format", JsonPrimitive(if ((a["format"] as JsonPrimitive).content == "whole") "chunks" else "whole")) },
+            "version" to { a -> a.with("version", JsonPrimitive(0)) },
+        )
+        for ((name, lie) in lies) {
+            for (data in listOf(noise(100), noise(300_000))) {
+                val s = FakeServer().apply { finalizeAnswer = lie }
+                expect(Reason.FILE_INVALID, "finalize") { engine(s).upload(upReq("f-$name", data)) }
+            }
+            val s = FakeServer().apply { finalizeAnswer = lie }
+            expect(Reason.FILE_INVALID, "finalize") { engine(s).uploadChunked(chunkedReq("fc-$name", noise(200_000), ServerFileCodec())) }
+        }
+        // A version that is not newer than the base is refused.
+        val s = FakeServer().apply { finalizeAnswer = { it.with("version", JsonPrimitive(3)) } }
+        expect(Reason.FILE_INVALID, "finalize") { engine(s).upload(upReq("f-base", noise(100), baseVersion = JsonPrimitive(3))) }
     }
 
     @Test

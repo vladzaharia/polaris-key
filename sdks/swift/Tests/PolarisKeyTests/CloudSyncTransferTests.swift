@@ -31,6 +31,7 @@ private final class FakeServer: FileTransport, @unchecked Sendable {
         var size: Int
         var sha256: String
         var mode: String
+        var format = "whole"
         var parts: [Int: Data] = [:]
         var manifest: Data?
     }
@@ -58,6 +59,9 @@ private final class FakeServer: FileTransport, @unchecked Sendable {
     /// Replace the answer to `begin` or to a plan call (a server that answers what it should not).
     var beginAnswer: JSONValue?
     var planAnswer: JSONValue?
+    /// Rewrites the answer to `finalize` (the stored file is untouched).
+    var finalizeAnswer: (@Sendable (JSONValue) -> JSONValue)?
+    var versionBase = 0
 
     private func enter<T: Sendable>(_ kind: String, _: T.Type) throws -> FileReply<T>? {
         lock.withLock { calls.append(kind) }
@@ -79,7 +83,8 @@ private final class FakeServer: FileTransport, @unchecked Sendable {
             let mode =
                 o["format"] == .string("chunks")
                 ? "chunks" : (size <= 16 * mib && !multipartAlways ? "single" : "multipart")
-            uploads[id] = Upload(size: size, sha256: sha, mode: mode)
+            uploads[id] = Upload(
+                size: size, sha256: sha, mode: mode, format: o["format"]?.stringValue ?? "whole")
             var out: [String: JSONValue] = [
                 "uploadId": .string(id), "mode": .string(mode), "expiresAt": .double((clockNow + 86400) * 1000),
             ]
@@ -183,7 +188,11 @@ private final class FakeServer: FileTransport, @unchecked Sendable {
             guard shaHex(data) == u.sha256 else { return .refused(FileRefusal(status: 400, code: "upload_mismatch")) }
             files.append(data)
             uploads[id] = nil
-            return .ok(.object(["version": .int(files.count)]))
+            let answer = JSONValue.object([
+                "version": .int(versionBase + files.count), "size": .int(u.size), "sha256": .string(u.sha256),
+                "format": .string(u.format),
+            ])
+            return .ok(finalizeAnswer?(answer) ?? answer)
         }
     }
 
@@ -350,7 +359,8 @@ final class CloudSyncTransferTests: XCTestCase {
         var req = upReq("t1", data)
         req.onProgress = { sent, total in seen.add(Data([UInt8(sent == total ? 1 : 0)])) }
         let out = try await engine(s, j).upload(req)
-        XCTAssertEqual(out, .object(["version": .int(1)]))
+        XCTAssertEqual(out.objectValue?["version"], .int(1))
+        XCTAssertEqual(out.objectValue?["sha256"], .string(shaHex(data)))
         XCTAssertEqual(s.files, [data])
         XCTAssertTrue(j.list().isEmpty)
         XCTAssertEqual(seen.data, Data([1]))
@@ -454,6 +464,39 @@ final class CloudSyncTransferTests: XCTestCase {
             await expect(.rejected) { try await self.engine(s3).upload(self.upReq("g3", data)) }
             XCTAssertEqual(s3.beginRequests.count, 1, "\(status) on begin is not a restart")
         }
+    }
+
+    func testAFinalizeAnswerThatIsNotTheFileBegunIsRefused() async throws {
+        let lies: [(String, @Sendable (JSONValue) -> JSONValue)] = [
+            ("size", { a in Self.changed(a, "size", .int(a.objectValue!["size"]!.intValue! + 1)) }),
+            ("sha256", { a in Self.changed(a, "sha256", .string(String(repeating: "ab", count: 32))) }),
+            ("format", { a in Self.changed(a, "format", .string("chunks")) }),
+            ("version", { a in Self.changed(a, "version", .int(0)) }),
+        ]
+        for (name, lie) in lies {
+            for data in [noise(100), noise(300_000)] {
+                let s = FakeServer()
+                s.finalizeAnswer = lie
+                await expect(.fileInvalid, "finalize") { try await self.engine(s).upload(self.upReq("f-\(name)", data)) }
+            }
+            let s = FakeServer()
+            s.finalizeAnswer = name == "format" ? { a in Self.changed(a, "format", .string("whole")) } : lie
+            await expect(.fileInvalid, "finalize") {
+                try await self.engine(s).uploadChunked(self.chunkedReq("fc-\(name)", noise(200_000), ServerFileCodec()))
+            }
+        }
+        // A version that is not newer than the base is refused.
+        let s = FakeServer()
+        s.finalizeAnswer = { a in Self.changed(a, "version", .int(3)) }
+        await expect(.fileInvalid, "finalize") {
+            try await self.engine(s).upload(self.upReq("f-base", noise(100), baseVersion: .int(3)))
+        }
+    }
+
+    private static func changed(_ a: JSONValue, _ key: String, _ v: JSONValue) -> JSONValue {
+        var o = a.objectValue!
+        o[key] = v
+        return .object(o)
     }
 
     func testA409CarriesTheServersVersion() async {

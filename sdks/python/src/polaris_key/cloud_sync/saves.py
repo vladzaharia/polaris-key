@@ -78,8 +78,8 @@ SAVE_FILE_BINDING_KEY = "$file"
 #: The client code for a downloaded file that fails a check (D-8).
 SAVES_FILE_INVALID = "sync-file-invalid"
 
-_KEY = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
-_SHA = re.compile(r"^[0-9a-f]{64}$")
+_KEY = re.compile(r"[A-Za-z0-9._:-]{1,128}")
+_SHA = re.compile(r"[0-9a-f]{64}")
 _DEFAULT_MAX_BYTES = 32 * 1024 * 1024
 
 
@@ -288,7 +288,7 @@ def _split_binding(value: Obj) -> "tuple[Obj, Optional[Obj]]":
         sha, size, fmt = raw.get("sha256"), raw.get("size"), raw.get("format")
         if (
             isinstance(sha, str)
-            and _SHA.match(sha)
+            and _SHA.fullmatch(sha)
             and isinstance(size, int)
             and not isinstance(size, bool)
             and size > 0
@@ -657,7 +657,7 @@ class SavesClient:
 
     @staticmethod
     def _check_id(id: str) -> None:
-        if not isinstance(id, str) or not _KEY.match(id):
+        if not isinstance(id, str) or not _KEY.fullmatch(id):
             raise SavesError("invalid-save", "id")
 
     def _target(self, id: str) -> FileTarget:
@@ -777,7 +777,7 @@ class SavesClient:
         )
 
     def _precheck(self, id: str, source: RangedSource, metadata: Obj) -> Optional[SavesError]:
-        if not isinstance(id, str) or not _KEY.match(id):
+        if not isinstance(id, str) or not _KEY.fullmatch(id):
             return SavesError("invalid-save", "id")
         if SAVE_FILE_BINDING_KEY in metadata:
             return SavesError("invalid-save", "reserved-key")

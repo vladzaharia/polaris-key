@@ -51,6 +51,7 @@ import type { SaveTransferEvent } from "../core/events.js";
 import type { KeyringClient } from "../keyring/client.js";
 import {
   chunkCachePersonDir,
+  chunkCacheRoot,
   FileChunkCache,
   chunkCacheDir,
 } from "./chunkCache.js";
@@ -359,16 +360,18 @@ export class SavesApi {
     this.#records.dropAll();
     await Promise.all(running.map((t) => t.cancel().catch(() => undefined)));
     const journal = this.#journal.clear().catch(() => undefined);
-    // Only the leaving person's cache goes (the last one a call used, else the signed-in one).
+    // The leaving person's cache goes (the last one a call used, else the signed-in one). When
+    // that person is not known in this run, the whole cache root goes: what this run remembers
+    // never decides what stays on disk.
     const subject = this.#cacheSubject ?? this.#d.subject();
     this.#cacheSubject = null;
-    const cache =
+    const state = this.#d.ctx.dirs.state;
+    const cache = rm(
       subject === null
-        ? Promise.resolve()
-        : rm(chunkCachePersonDir(this.#d.ctx.dirs.state, subject), {
-            recursive: true,
-            force: true,
-          }).catch(() => undefined);
+        ? chunkCacheRoot(state)
+        : chunkCachePersonDir(state, subject),
+      { recursive: true, force: true },
+    ).catch(() => undefined);
     await Promise.all([journal, cache]);
   }
 

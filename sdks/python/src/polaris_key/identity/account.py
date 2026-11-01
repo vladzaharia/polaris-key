@@ -52,7 +52,7 @@ _SUBJECT = re.compile(PAIRWISE_SUBJECT_PATTERN)
 
 
 def _is_subject(v: Any) -> bool:
-    return isinstance(v, str) and _SUBJECT.match(v) is not None
+    return isinstance(v, str) and _SUBJECT.fullmatch(v) is not None
 
 
 @dataclass(frozen=True)
