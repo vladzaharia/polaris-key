@@ -3,6 +3,10 @@
 // controls open the screen they name when the host does not answer them: given no `onAction`,
 // inside `<PolarisKeyProvider>`, UnlockSync or RingChange opens in the kit's modal dialog over the
 // strip, and focus returns to the control that opened it. A host that passes `onAction` answers them itself.
+// Review on a pending save conflict opens SaveConflict (its `bytes` and `describe` are passed on);
+// RingChange is for a changed ring. Try again on a failed transfer calls `onRetry`, then `onAction`:
+// the saves hold no bytes to resend, so the app writes again. With neither, it clears the notice
+// and the app's next write syncs.
 
 import { useContext, useState, type ReactNode } from "react";
 
@@ -10,21 +14,37 @@ import { PolarisContext } from "../react/context.js";
 import { kitComponent } from "./kitComponent.js";
 import type { KitProps } from "./component.js";
 import { syncScreen } from "./syncLazy.js";
-import { useTransferInput } from "./saveScreens.js";
-import type { RingChangeProps, UnlockSyncProps } from "./syncScreens.js";
+import { useBoundSaves, useTransferInput } from "./saveScreens.js";
+import type {
+  RingChangeProps,
+  SaveConflictProps,
+  UnlockSyncProps,
+} from "./syncScreens.js";
 
 const Status = kitComponent("CloudSyncStatus");
 const UnlockSync = syncScreen<UnlockSyncProps>("UnlockSync");
 const RingChange = syncScreen<RingChangeProps>("RingChange");
+const SaveConflict = syncScreen<SaveConflictProps>("SaveConflict");
 
-export function CloudSyncStatus(props: KitProps): ReactNode {
-  const [open, setOpen] = useState<"unlock" | "review" | null>(null);
+export interface CloudSyncStatusProps extends KitProps {
+  /** Try again on a failed transfer: write the save again. */
+  onRetry?: () => void;
+  /** For the SaveConflict that Review opens: the local copy's bytes. */
+  bytes?: SaveConflictProps["bytes"];
+  /** For the SaveConflict that Review opens: the cards' times, device and Newer. */
+  describe?: SaveConflictProps["describe"];
+}
+
+export function CloudSyncStatus(allProps: CloudSyncStatusProps): ReactNode {
+  const { onRetry, bytes, describe, ...props } = allProps;
+  const [open, setOpen] = useState<"unlock" | "review" | "save" | null>(null);
   const sdk = useContext(PolarisContext);
+  const saves = useBoundSaves();
   const answers = props.onAction !== undefined || !sdk;
   const close = () => setOpen(null);
   const { theme, className } = props;
   // While a save moves, its transfer states draw over the host's input (K.2T).
-  const input = useTransferInput(props.input);
+  const { input, clearFailure } = useTransferInput(props.input);
   // The screen opens in the kit's modal dialog over the strip; closing it hands focus back to
   // the control that opened it.
   return (
@@ -34,9 +54,15 @@ export function CloudSyncStatus(props: KitProps): ReactNode {
         {...(input ? { input } : {})}
         onAction={(a) => {
           props.onAction?.(a);
+          if (a.key === "common.tryAgain") {
+            onRetry?.();
+            clearFailure();
+            return;
+          }
           if (answers) return;
           if (a.key === "cloudSync.unlock") setOpen("unlock");
-          else if (a.key === "common.review") setOpen("review");
+          else if (a.key === "common.review")
+            setOpen(saves && saves.conflicts().length > 0 ? "save" : "review");
         }}
       />
       {open === "unlock" ? (
@@ -46,6 +72,15 @@ export function CloudSyncStatus(props: KitProps): ReactNode {
           onDismiss={close}
           onCancel={close}
           onUnlocked={close}
+        />
+      ) : null}
+      {open === "save" ? (
+        <SaveConflict
+          theme={theme}
+          className={className}
+          onDismiss={close}
+          {...(bytes ? { bytes } : {})}
+          {...(describe ? { describe } : {})}
         />
       ) : null}
       {open === "review" ? (

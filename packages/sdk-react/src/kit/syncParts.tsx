@@ -378,6 +378,25 @@ function saveCard(
  *  described by its reason, while every slot is in use. */
 function SaveConflictBody(props: { c: KitCtx }): ReactNode {
   const { c } = props;
+  // One status node across every step, empty until keeping: a node that mounts holding its text
+  // may not be announced (UX2-web 6).
+  const keeping = c.view.state === "keeping";
+  return (
+    <>
+      <SaveConflictStep c={c} />
+      <p
+        className={keeping ? "body" : "visually-hidden"}
+        role="status"
+        data-key={keeping ? "saveConflict.keeping" : undefined}
+      >
+        {keeping ? text(c, "saveConflict.keeping") : ""}
+      </p>
+    </>
+  );
+}
+
+function SaveConflictStep(props: { c: KitCtx }): ReactNode {
+  const { c } = props;
   const state = c.view.state;
   if (state === "choose") {
     const gone = shown(c, "saveConflict.deletedElsewhere");
@@ -434,13 +453,8 @@ function SaveConflictBody(props: { c: KitCtx }): ReactNode {
       </>
     );
   }
-  // keeping: the busy indicator is the card's; this line is the one live announcement.
-  if (state === "keeping")
-    return (
-      <p className="body" role="status" data-key="saveConflict.keeping">
-        {text(c, "saveConflict.keeping")}
-      </p>
-    );
+  // keeping: the busy indicator is the card's; the status line below is the one announcement.
+  if (state === "keeping") return null;
   // kept: the title is the result; Done is the only control.
   if (state === "kept")
     return (
