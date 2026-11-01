@@ -111,6 +111,31 @@ describe("the launch gate launch.syncFiles", () => {
     expect(w.ns.calls.length).toBe(calls);
   });
 
+  it("off: a method the route does not take is 404 too, not 405", async () => {
+    const w = await filesWorld();
+    setGate(w, "off");
+    const base = `/${SLUG}/sync/files/saves/s1`;
+    for (const path of [
+      filesPath("saves", "s1", "begin"),
+      filesPath("saves", "s1", "finalize"),
+      filesPath("saves", "s1", "revisions"),
+      uploadPath("saves", "s1", GHOST),
+      base,
+    ])
+      for (const method of ["GET", "POST", "PUT", "DELETE"] as const)
+        expect((await call(w, method, path)).status, `${method} ${path}`).toBe(
+          404,
+        );
+    // With the gate on, a wrong method is a 405, the upload status route included.
+    setGate(w, "on");
+    expect(
+      (await call(w, "GET", filesPath("saves", "s1", "begin"))).status,
+    ).toBe(405);
+    expect(
+      (await call(w, "POST", uploadPath("saves", "s1", GHOST))).status,
+    ).toBe(405);
+  });
+
   it("unset reads off, and on turns the routes on", async () => {
     const w = await filesWorld();
     setGate(w, undefined);
