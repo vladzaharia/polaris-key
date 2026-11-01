@@ -247,8 +247,22 @@ private final class Collected: @unchecked Sendable {
 private final class TaskBox: @unchecked Sendable {
     private let lock = NSLock()
     private var task: Task<JSONValue, Error>?
-    func set(_ t: Task<JSONValue, Error>) { lock.withLock { task = t } }
-    func cancel() { lock.withLock { task }?.cancel() }
+    private var cancelRequested = false
+    /// A cancel asked before the task is stored is applied as soon as it is (the hook can run first).
+    func set(_ t: Task<JSONValue, Error>) {
+        let late = lock.withLock { () -> Bool in
+            task = t
+            return cancelRequested
+        }
+        if late { t.cancel() }
+    }
+    func cancel() {
+        let t = lock.withLock { () -> Task<JSONValue, Error>? in
+            cancelRequested = true
+            return task
+        }
+        t?.cancel()
+    }
 }
 
 private let root = Data(repeating: 7, count: 32)
@@ -430,8 +444,8 @@ final class CloudSyncTransferTests: XCTestCase {
         let task = Task<JSONValue, Error> { try await e.upload(req) }
         box.set(task)
         _ = try? await task.value
-        let up = s.uploads.keys.first!
-        s.uploads[up]!.parts[2] = nil
+        let up = try XCTUnwrap(s.uploads.keys.first, "the upload had started before the cancel")
+        s.uploads[up]?.parts[2] = nil
         s.hook = { _ in nil }
         try await engine(s, j).upload(req)
         XCTAssertEqual(s.files, [big])

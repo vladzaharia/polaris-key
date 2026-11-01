@@ -241,8 +241,11 @@ private final class Env: SavesEnvironment, @unchecked Sendable {
     var purged = 0
     var refusal: (any Error)?
     var label: String?
+    var interrupted: [String] = []
 
     init(context: SavesContext) { self.context = context }
+
+    func interruptedWrites() -> [String] { lock.withLock { interrupted } }
 
     func deviceLabel() async -> String? { label }
 
@@ -298,6 +301,28 @@ private func stamped(_ pairs: [String: JSONValue]) -> JSONValue {
 }
 
 final class CloudSyncSavesTests: XCTestCase {
+    // sync.transfer.background: an upload an earlier run left unfinished is reported once, with no new verb.
+    func testAnInterruptedWriteIsReportedOnceAtStartAndWritingItAgainClearsIt() async throws {
+        let rig = Rig(e2e: false)
+        rig.env.lock.withLock { rig.env.interrupted = ["saves:slot1", "saves:read:x", "files:other", "saves:"] }
+        _ = try await rig.client.list()
+        _ = try await rig.client.list()
+        func failures() -> [String] {
+            rig.events.all.compactMap {
+                if case .transferFailed(let id, let code) = $0 {
+                    XCTAssertEqual(code, "transfer-failed")
+                    return id
+                }
+                return nil
+            }
+        }
+        XCTAssertEqual(failures(), ["saves:slot1"])
+        // Writing that save again is the retry: no second failure is reported for it by the write itself.
+        let t = try await rig.client.write("slot1", bytes: Data("again".utf8), metadata: obj([:]))
+        guard case .done = await t.outcome() else { return XCTFail("not done") }
+        XCTAssertEqual(failures(), ["saves:slot1"])
+    }
+
     func testAnEndToEndWritePushesTheFileThenTheBoundMetadata() async throws {
         let rig = Rig(e2e: true)
         let payload = Data("a save".utf8)
