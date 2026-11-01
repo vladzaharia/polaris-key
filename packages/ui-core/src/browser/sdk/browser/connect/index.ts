@@ -63,6 +63,11 @@ export interface ConnectClient {
   relayTicket(): Promise<RelayGrant>;
   /** The record's Web Lock name; the relay lock is derived from it. @internal */
   readonly lockName: string;
+  /**
+   * Called with the agreeKeys (32 raw bytes) of devices a newer roster no longer lists: what they
+   * left half-sent is not kept (§15.11). @internal
+   */
+  onRosterRemoved?: ((agreeKeys: Uint8Array[]) => void) | null;
 }
 
 /** A cookie page holds no device token, so it has no Connect identity. */
@@ -100,12 +105,24 @@ export function lazyConnect(
   load: () => Promise<ConnectClient>,
 ): ConnectClient {
   let client: Promise<ConnectClient> | null = null;
+  let rosterHook: ((agreeKeys: Uint8Array[]) => void) | null = null;
   const ready = (): Promise<ConnectClient> =>
-    (client ??= load().catch((e: unknown) => {
-      client = null;
-      throw e;
-    }));
+    (client ??= load()
+      .then((c) => {
+        c.onRosterRemoved = (keys) => rosterHook?.(keys);
+        return c;
+      })
+      .catch((e: unknown) => {
+        client = null;
+        throw e;
+      }));
   return {
+    get onRosterRemoved() {
+      return rosterHook;
+    },
+    set onRosterRemoved(f) {
+      rosterHook = f ?? null;
+    },
     lockName: host.lockName,
     identity: async (opts) => (await ready()).identity(opts),
     current: async () => (await ready()).current(),
@@ -292,6 +309,17 @@ export function createCloudConnect(
         },
       }));
     }));
+  // A device the roster dropped leaves nothing half-sent behind (§15.11), whether or not a session
+  // with it is open (or the engine loaded): its kept partials are purged on the roster change.
+  if (transferStore !== null)
+    connect.onRosterRemoved = (keys) => {
+      void load()
+        .then((e) => {
+          for (const k of keys)
+            void e.transfer.purgePeer(k).catch(() => undefined);
+        })
+        .catch(() => undefined);
+    };
   const transfer: TransferClient = {
     send: async (peer, source, opts) => {
       const e = await load();

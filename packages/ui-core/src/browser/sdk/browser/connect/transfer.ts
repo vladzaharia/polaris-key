@@ -541,10 +541,17 @@ export class CloudTransfer {
     }
     if (to === null)
       return full ? wire.noRoom(a.id) : wire.consent(a.id, "decline");
-    // A kept partial is read back now, at the accept, not when the session began.
+    // A kept partial is read back now, at the accept, not when the session began, and only once
+    // this session holds it: while another session does, its bytes are not read as ours.
     if (store !== null)
       for (const p of wire.ep.machine.partials())
         if (p.id === a.id && p.bytes > 0 && !p.held) {
+          try {
+            this.#claim(wire, p.ref);
+          } catch {
+            wire.hashed.delete(p.ref);
+            continue;
+          }
           const r = await store
             .reread(p.ref, p.chunk, p.bytes)
             .catch(() => null);

@@ -21,13 +21,24 @@ export function createConnect(env: ConnectEnv): ConnectClient {
     return run;
   };
   let engine: Promise<import("./client.js").ConnectEngine> | null = null;
+  let rosterHook: ((agreeKeys: Uint8Array[]) => void) | null = null;
   const load = (): Promise<import("./client.js").ConnectEngine> =>
-    (engine ??= import("./client.js").then((m) => new m.ConnectEngine(env)));
+    (engine ??= import("./client.js").then((m) => {
+      const e = new m.ConnectEngine(env);
+      e.onRosterRemoved = (keys) => rosterHook?.(keys);
+      return e;
+    }));
   const lockName = env.lockName ?? `pkey-connect:${env.product}`;
   /** One call at a time in this tab, and one at a time across tabs for the record. */
   const locked = <T>(f: () => Promise<T>): Promise<T> =>
     serial(() => withLock(lockName, f));
   return {
+    get onRosterRemoved() {
+      return rosterHook;
+    },
+    set onRosterRemoved(f) {
+      rosterHook = f ?? null;
+    },
     lockName,
     identity: (opts = {}) =>
       locked(async () => (await load()).identity(opts.refresh === true)),
