@@ -1,4 +1,4 @@
-// @pkey-feature sync.keyring
+// @pkey-feature sync.keyring identity.nearby
 // U-39.3: the Cloud Sync key ring client (`client.keyring`) against a stub Worker that keeps one
 // ring, its wraps, the recovery blob and the adopted roots. The crypto bytes are pinned by
 // SyncVectorsTests; this file pins the client's rules: the pin, the Keychain root, the typed
@@ -15,7 +15,7 @@ import XCTest
 @testable import PolarisKeyPlatform
 
 /// A Worker's key ring routes, in memory. A bearer token names the device: `pkeyt_<x>` is `dev_<x>`.
-private final class RingServer: PolarisTransport, @unchecked Sendable {
+final class RingServer: PolarisTransport, @unchecked Sendable {
     private let lock = NSLock()
     private var ring: [String: Any]?
     private var recoveryCt: [String: Any]?
@@ -334,6 +334,102 @@ final class SyncKeyringTests: XCTestCase {
         try await a.keyring.removeWrap(deviceId: b.id)
         let log = server.requestLog()
         XCTAssertTrue(log.contains { $0.hasPrefix("DELETE /wraps/") })
+    }
+
+    // MARK: The wrap over the nearby channel (V5 §13.11.3)
+
+    func testSealWrapToStoresNothingAndTheChannelCopyOpensWithoutAServerWrap() async throws {
+        let server = RingServer()
+        let m = try await device("m", server: server)
+        _ = try await m.keyring.create()
+        let d = try await device("d", server: server)
+        let dPub = try await d.keys.ensure().agreeKey
+        let record = try await m.keyring.sealWrapTo(deviceId: d.id, agreeKey: dPub).record()
+        XCTAssertFalse(server.requestLog().contains { $0.hasPrefix("PUT /wraps/") }, "sealing stores nothing")
+        // D has no wrap on the Worker: only the channel copy can open.
+        let none = try await d.keyring.unlock()
+        XCTAssertEqual(none, .locked(reason: .noWrap))
+        let opened = try await d.keyring.adoptWrap(record)
+        guard case .unlocked = opened else { return XCTFail("\(opened)") }
+        let env = try m.keyring.codec.seal(collection: "saves", name: "slot", value: .int(9))
+        guard case .ok(_, let v) = try d.keyring.codec.open(collection: "saves", name: "slot", envelope: env)
+        else { return XCTFail("d could not open m's envelope") }
+        XCTAssertEqual(v, .int(9))
+        let pinned = await d.keyring.pin()
+        let mPin = await m.keyring.pin()
+        XCTAssertEqual(pinned?.ringId, mPin?.ringId, "the adopted root is pinned")
+        // The same bytes are stored afterwards: the fallback for a lost channel.
+        guard let body = SyncWrapBody.parse(record) else { return XCTFail("the record does not parse") }
+        try await m.keyring.putWrap(deviceId: d.id, body)
+        XCTAssertTrue(server.requestLog().contains { $0.hasPrefix("PUT /wraps/") })
+    }
+
+    func testAdoptWrapRefusesWhatIsNotTheServedRingsWrapForThisDevice() async throws {
+        let server = RingServer()
+        let m = try await device("m", server: server)
+        _ = try await m.keyring.create()
+        let d = try await device("d", server: server)
+        let dPub = try await d.keys.ensure().agreeKey
+        let good = try await m.keyring.sealWrapTo(deviceId: d.id, agreeKey: dPub)
+        // Not strict JSON of the wrap shape, empty, or over 4096 bytes.
+        for junk in [Data(), Data("{}".utf8), Data("[1]".utf8), Data(repeating: 0x20, count: 5000)] {
+            let r = try await d.keyring.adoptWrap(junk)
+            XCTAssertEqual(r, .locked(reason: .unusableWrap))
+        }
+        // A wrap that names another ring, epoch or key id is not the served ring's.
+        let other = SyncWrapBody(
+            ringId: "rg_" + String(repeating: "A", count: 22), epoch: good.epoch, kid: good.kid, kem: good.kem,
+            enc: good.enc, ct: good.ct)
+        let wrongRing = try await d.keyring.adoptWrap(other.record())
+        XCTAssertEqual(wrongRing, .locked(reason: .unusableWrap))
+        let wrongKid = SyncWrapBody(
+            ringId: good.ringId, epoch: good.epoch, kid: String(repeating: "0", count: good.kid.count),
+            kem: good.kem, enc: good.enc, ct: good.ct)
+        let kidResult = try await d.keyring.adoptWrap(wrongKid.record())
+        XCTAssertEqual(kidResult, .locked(reason: .unusableWrap))
+        // A wrap sealed for another device's key does not open here.
+        let e = try await device("e", server: server)
+        let ePub = try await e.keys.ensure().agreeKey
+        let forOther = try await m.keyring.sealWrapTo(deviceId: d.id, agreeKey: ePub)
+        let notMine = try await d.keyring.adoptWrap(forOther.record())
+        XCTAssertEqual(notMine, .locked(reason: .unusableWrap))
+        XCTAssertFalse(d.keyring.unlocked)
+        // The good one still opens.
+        let ok = try await d.keyring.adoptWrap(good.record())
+        guard case .unlocked = ok else { return XCTFail("\(ok)") }
+    }
+
+    func testAdoptWrapOnADevicePinnedToAnotherRingReportsItAndOpensNothing() async throws {
+        let server = RingServer()
+        let d = try await device("d", server: server)
+        let first = try await d.keyring.create()
+        // Another device starts over; the Worker now serves a ring D has not pinned.
+        let m = try await device("m", server: server)
+        let second = try await m.keyring.reset()
+        XCTAssertNotEqual(first.ringId, second.ringId)
+        let dPub = try await d.keys.ensure().agreeKey
+        let record = try await m.keyring.sealWrapTo(deviceId: d.id, agreeKey: dPub).record()
+        let got = try await d.keyring.adoptWrap(record)
+        guard case .ringChanged(let pinned, let served, _, _) = got else { return XCTFail("\(got)") }
+        XCTAssertEqual(pinned.ringId, first.ringId)
+        XCTAssertEqual(served.ringId, second.ringId)
+        XCTAssertEqual(d.keyring.codec.kid, first.rootKid, "nothing was replaced")
+    }
+
+    func testAdoptWrapWithNoRingServedIsLocked() async throws {
+        let server = RingServer()
+        let d = try await device("d", server: server)
+        let record = SyncWrapBody(
+            ringId: "rg_" + String(repeating: "A", count: 22), epoch: 1, kid: "00", kem: 32, enc: "AA", ct: "AA")
+        let got = try await d.keyring.adoptWrap(record.record())
+        XCTAssertEqual(got, .locked(reason: .noRing))
+    }
+
+    func testAWrapRecordIsKeyMaterialAndPrintsAsNothing() throws {
+        let w = SyncWrapBody(ringId: "rg_x", epoch: 1, kid: "ab", kem: 32, enc: "ENCSECRET", ct: "CTSECRET")
+        XCTAssertFalse("\(w)".contains("SECRET"))
+        XCTAssertFalse(String(reflecting: w).contains("SECRET"))
+        XCTAssertTrue(Mirror(reflecting: w).children.isEmpty)
     }
 
     func testWrapToRefusesBadInputBeforeAnyRequest() async throws {

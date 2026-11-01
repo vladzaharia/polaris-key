@@ -5,6 +5,7 @@
 
 import Foundation
 import PolarisKeyCore
+import PolarisKeyIdentity
 import PolarisKeyPlatform
 
 #if canImport(Network)
@@ -173,6 +174,9 @@ import PolarisKeyPlatform
         }
     }
 
+    /// M's approval reads the LAN advert through this (`identity.nearby.onRequest`, I-44.13).
+    extension CloudNearby: NearbyApproverLan {}
+
     /// D's sign-in session reads the LAN request through this (`identity.signIn.startNearby`, I-44.12).
     struct CloudNearbyLan: NearbySignInLan {
         let nearby: CloudNearby
@@ -320,3 +324,26 @@ import PolarisKeyPlatform
         }
     }
 #endif
+
+/// The Cloud Sync key ring, as nearby sign-in uses it (the wrap of the root between the two devices).
+struct SyncKeyringNearby: NearbyKeyring {
+    let ring: SyncKeyring
+
+    var unlocked: Bool { ring.unlocked }
+
+    func adoptWrap(_ record: Data) async throws -> Bool {
+        if case .unlocked = try await ring.adoptWrap(record) { return true }
+        return false
+    }
+
+    func sealWrapTo(deviceId: String, agreeKey: String) async throws -> Data {
+        try await ring.sealWrapTo(deviceId: deviceId, agreeKey: agreeKey).record()
+    }
+
+    func putWrap(deviceId: String, record: Data) async throws {
+        guard let body = SyncWrapBody.parse(record) else {
+            throw PolarisError(code: ErrorCode.invalidOptions, message: "The wrap is not usable.")
+        }
+        try await ring.putWrap(deviceId: deviceId, body)
+    }
+}

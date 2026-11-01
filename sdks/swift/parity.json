@@ -214,9 +214,8 @@
       "note": "Link offer (I-43.3 transcripts, I-44)."
     },
     "identity.nearby": {
-      "status": "planned",
-      "wp": "I-44",
-      "note": "Nearby approval (I-40.8 transcripts, I-44). The LAN half is in (CC-15.S1 to S4: client.cloudConnect.nearby.request and onRequest, the vouch rows of peer-matrix.json run in PeerVouchTests); the routes and the kit screens follow in I-44."
+      "status": "implemented",
+      "note": "Nearby sign-in, both devices (I-44.12, I-44.13). The LAN half is CC-15 (client.cloudConnect.nearby.request and onRequest). D: identity.signIn.startNearby (NearbySignInSession: approvers, choose, code, wait, confirmAccount, declineAccount, wrap) over nearby/start and nearby/poll, with the unconfirmed mark and the KEYRING_WRAP opened through the key ring (SyncKeyring.adoptWrap) only after the confirmation. M: identity.nearby.onRequest (NearbyAsk: pick behind number matching, deny; NearbyChoose: one tap per licence, cancel denies) over nearby/approve, taking only a VouchRequest a matched code verified and sending D's deviceId from it; the wrap is sealed, sent as 0x0030 and only then stored (SyncKeyring.sealWrapTo, putWrap). The kit: NearbyApprovalModel bound to the SDK, the account menu's Approve a nearby device row in PolarisKeySettings, the licence choice and the waiting screen; the nearby-* transcripts are replayed for D's start and poll steps and M's approve steps. A runtime without the Network framework answers nearby-unsupported; the real-device run is owed (OS-6)."
     },
     "identity.keyentry": {
       "status": "implemented"

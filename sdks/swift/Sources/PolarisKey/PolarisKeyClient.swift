@@ -325,20 +325,25 @@ public actor PolarisKeyClient {
                 requesterNetwork: options.connect.nearbyRequesterNetwork ?? SystemNearbyRequesterNetwork()),
             transferDirectory: core.dirs.state.appendingPathComponent("xfer", isDirectory: true))
         self.cloudConnect = cloudConnect
-        // Nearby sign-in (D): the Identity module reads the LAN half through this. A platform that cannot browse
-        // the network (no Network framework) leaves it nil and answers the typed `nearby-unsupported`.
-        #if canImport(Network)
-            let nearbyLan = CloudNearbyLan(nearby: cloudConnect.nearby)
-            identityClient.installNearby(
-                NearbyBinding(signer: { try await connect.nearbySigner() }, lan: { nearbyLan }))
-        #else
-            identityClient.installNearby(
-                NearbyBinding(signer: { try await connect.nearbySigner() }, lan: nil))
-        #endif
         let attachments = self.attachments
         let ring: @Sendable () -> SyncKeyring = {
             PolarisKeyClient.keyring(core: core, attachments: attachments, subject: { identityClient.account })
         }
+        // Nearby sign-in: the Identity module reads the LAN halves (D's request, M's approver) and the key ring
+        // (the wrap) through this. A platform that cannot use the network (no Network framework) leaves the LAN
+        // halves nil and answers the typed `nearby-unsupported`.
+        let nearbyRing: @Sendable () -> (any NearbyKeyring)? = { SyncKeyringNearby(ring: ring()) }
+        #if canImport(Network)
+            let nearbyLan = CloudNearbyLan(nearby: cloudConnect.nearby)
+            let nearbyApprover: any NearbyApproverLan = cloudConnect.nearby
+            identityClient.installNearby(
+                NearbyBinding(
+                    signer: { try await connect.nearbySigner() }, lan: { nearbyLan },
+                    approver: { nearbyApprover }, keyring: nearbyRing))
+        #else
+            identityClient.installNearby(
+                NearbyBinding(signer: { try await connect.nearbySigner() }, lan: nil, keyring: nearbyRing))
+        #endif
         let syncOptions = options.cloudSync
         let savesBox = LockedValue<SavesClient?>(nil)
         let savesEnvBox = LockedValue<LiveSavesEnvironment?>(nil)
