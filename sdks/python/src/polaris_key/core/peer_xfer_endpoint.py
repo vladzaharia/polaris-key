@@ -20,6 +20,7 @@ from typing import Any, Callable, Deque, Dict, Optional, Set, Tuple
 from .peer_xfer import (
     XFER,
     XferMachine,
+    XferNoRoom,
     XferOut,
     is_xfer_type,
     xfer_cancel_body,
@@ -110,6 +111,10 @@ class XferEndpoint:
     def consent(self, id_: str, answer: str) -> None:
         self._do(lambda at: self.machine.consent(at, id_, answer))
 
+    def no_room(self, id_: str) -> None:
+        """The room check failed at accept: ``CANCEL`` ``quota`` for that transfer; the session stays."""
+        self._do(lambda at: self.machine.no_room(at, id_))
+
     def cancel(self, id_: str) -> None:
         self._do(lambda at: self.machine.cancel(at, id_))
 
@@ -198,11 +203,22 @@ class XferEndpoint:
                 pass
             return
         failed: Set[str] = set()
+        full: Optional[str] = None
         if not self._failed:
             try:
                 for e in out.partial:
-                    self._apply(e)
+                    try:
+                        self._apply(e)
+                    except XferNoRoom:
+                        # No room for the transfer the person just accepted: it alone is cancelled.
+                        ref = e.get("create", e.get("truncate"))
+                        p = next((x for x in self.machine.partials() if x["ref"] == ref), None)
+                        if ref is None or p is None:
+                            raise
+                        full = p["id"]
                 for s in out.send:
+                    if full is not None and s["t"] == "ACCEPT" and s["id"] == full:
+                        continue
                     self._perform(s, failed)
             except Exception as err:  # noqa: BLE001 - a port failed: end the session, keep the partials
                 self._failed = True
@@ -230,6 +246,10 @@ class XferEndpoint:
                 if self._dead:
                     continue
                 self._enqueue(self.machine.fail(self._now(), id_), None)
+        if full is not None:
+            with self._lock:
+                if not self._dead:
+                    self._enqueue(self.machine.no_room(self._now(), full), None)
 
     @staticmethod
     def _safe(fn: Callable[[Any], None], arg: Any) -> None:

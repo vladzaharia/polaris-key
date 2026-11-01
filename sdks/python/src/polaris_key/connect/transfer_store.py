@@ -27,7 +27,7 @@ import threading
 import time
 from typing import Any, BinaryIO, Callable, Dict, List, Optional
 
-from ..core.peer_xfer import XFER_PARTIAL_SECONDS
+from ..core.peer_xfer import XFER_PARTIAL_SECONDS, XferNoRoom
 
 __all__ = ["DEFAULT_QUOTA_BYTES", "FREE_RESERVE_BYTES", "PartialStore", "peer_tag"]
 
@@ -62,8 +62,12 @@ def _chmod(path: str, mode: int) -> None:
 
 
 class StoreRefused(OSError):
-    """An effect the store will not perform: no room left after what is promised, a partial another session
-    holds, or a late effect from before a purge. It ends the one session that asked."""
+    """An effect the store will not perform: a partial another session holds, or a late effect from before
+    a purge. It ends the one session that asked."""
+
+
+class StoreFull(XferNoRoom, StoreRefused):
+    """No room left after what is promised. Only the one transfer is cancelled (``quota``)."""
 
 
 class PartialStore:
@@ -239,7 +243,7 @@ class PartialStore:
             self._quota - (self._held_bytes() - own) - p - have,
         )
         if need > room:
-            raise StoreRefused(errno.ENOSPC, "not enough room for the transfer")
+            raise StoreFull(errno.ENOSPC, "not enough room for the transfer")
         self._promised[ref] = [size, have]
 
     def _mine(self, ref: str, owner: Any) -> bool:
