@@ -982,10 +982,10 @@ def test_a_key_or_upload_id_with_a_trailing_newline_is_refused(bad: str) -> None
     from polaris_key.cloud_sync import files as cf
 
     assert cf._KEY.fullmatch(bad) is None
-    with pytest.raises(Exception):
+    with pytest.raises(TransferError):
         cf.FileRoutes._seg(bad, "record")
     assert cf._CHUNK_ID.fullmatch("a" * 64 + "\n") is None
-    with pytest.raises(Exception):
+    with pytest.raises(TransferError):
         cf.FileRoutes._chunk_id("a" * 64 + "\n")
 
 
