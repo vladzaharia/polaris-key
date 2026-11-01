@@ -19,6 +19,7 @@
  *                                 security-widening and the console warns while it is on.
  *   identity.terms                `identity.terms` `{version, url?}` (`productTerms.ts`).
  *   identity.redirectPaths        `identity.redirectPaths`: critical; read by I-08's redirect.
+ *   identity.nativeRedirect.*     `loopback`, `schemes`, `claimedPaths` (I-15): the native redirect classes.
  *
  * The row-backed ones (`IDENTITY_ROW_SETTINGS`) are written by the descriptor's
  * `manifestIngestAlways` on every link and resync (`core/rowSettings.ts`, omit-clears); claimByKey
@@ -35,6 +36,9 @@ import {
   MAX_GOOGLE_CLIENT_IDS,
   MAX_IDENTITY_REDIRECT_PATH_LENGTH,
   MAX_IDENTITY_REDIRECT_PATHS,
+  MAX_NATIVE_REDIRECT_CLAIMED_PATHS,
+  MAX_NATIVE_REDIRECT_SCHEMES,
+  NATIVE_REDIRECT_SCHEME_RE,
   PLAY_GAMES_APPLICATION_ID_RE,
   OIDC_SYNC_TIER_ON_SIGN_IN_VALUES,
   type OidcSyncTierOnSignIn,
@@ -432,6 +436,107 @@ const PS_PLAY_SERVER = audienceSetting(
   true,
   "I-14.3",
 );
+// ── Native redirect (I-15; WIRE-CONTRACT-V5 §12.12): the registered scheme and claimed HTTPS classes ──
+
+const NR_AREA = "identity.nativeRedirect";
+/** The loopback class: on unless the developer turns it off, which narrows what an app may use. */
+const NR_LOOPBACK: SettingDef = setting({
+  key: "identity.nativeRedirect.loopback",
+  rbacArea: "settings",
+  scope: "product",
+  service: "identity",
+  area: NR_AREA,
+  label: "Loopback sign-in",
+  description:
+    "Whether a desktop app may sign in through a loopback address on the person's own computer. On unless you turn it off.",
+  keywords: ["loopback", "127.0.0.1", "desktop", "native", "redirect"],
+  docs: "/docs/features/sign-in/",
+  value: { kind: "boolean" },
+  defaultValue: true,
+  merge: "cascade",
+  ownership: "claimable",
+  manifest: { path: "product:identity.nativeRedirect.loopback" },
+  confirm: { on: "L0", off: "L0" },
+  visibleWhen: VISIBLE,
+  storage: { kind: "scalar" },
+  readers: ["services/identity/passthrough/redirectUri.ts"],
+  since: "I-15.2",
+});
+/** The registered-scheme class: each scheme is a place a code can be delivered, so adding one widens. */
+const NR_SCHEMES: SettingDef = setting({
+  key: "identity.nativeRedirect.schemes",
+  rbacArea: "keys",
+  scope: "product",
+  service: "identity",
+  area: NR_AREA,
+  label: "App URL schemes",
+  description:
+    "The reverse-DNS URL schemes a native app registers to receive its sign-in, such as com.example.app. The redirect is the scheme plus /pkey/callback.",
+  keywords: ["scheme", "deep link", "custom url", "native", "redirect_uri"],
+  docs: "/docs/features/sign-in/",
+  value: {
+    kind: "list",
+    of: {
+      kind: "string",
+      pattern: NATIVE_REDIRECT_SCHEME_RE.source,
+      maxLength: 64,
+    },
+    max: MAX_NATIVE_REDIRECT_SCHEMES,
+  },
+  defaultValue: [],
+  merge: "cascade",
+  ownership: "claimable",
+  manifest: { path: "product:identity.nativeRedirect.schemes" },
+  securityWidening: true,
+  widensWhen: "any",
+  critical: true,
+  confirm: { change: "L1" },
+  visibleWhen: VISIBLE,
+  storage: { kind: "scalar" },
+  readers: ["services/identity/passthrough/redirectUri.ts"],
+  since: "I-15.2",
+});
+/** The claimed-HTTPS class: a path on one of the product's web origins that the app's OS link opens. */
+const NR_CLAIMED: SettingDef = setting({
+  key: "identity.nativeRedirect.claimedPaths",
+  rbacArea: "keys",
+  scope: "product",
+  service: "identity",
+  area: NR_AREA,
+  label: "App link paths",
+  description:
+    "The paths on the product's web origins that open the native app (iOS universal links, Android App Links). They cannot also be redirect paths.",
+  keywords: [
+    "universal link",
+    "app link",
+    "claimed https",
+    "native",
+    "redirect_uri",
+  ],
+  docs: "/docs/features/sign-in/",
+  value: {
+    kind: "list",
+    of: {
+      kind: "string",
+      pattern: "^(?!.*//)(?!.*\\.\\.)/[^?#*\\u0000-\\u0020\\u007f]*$",
+      maxLength: MAX_IDENTITY_REDIRECT_PATH_LENGTH,
+    },
+    max: MAX_NATIVE_REDIRECT_CLAIMED_PATHS,
+  },
+  defaultValue: [],
+  merge: "cascade",
+  ownership: "claimable",
+  manifest: { path: "product:identity.nativeRedirect.claimedPaths" },
+  securityWidening: true,
+  widensWhen: "any",
+  critical: true,
+  confirm: { change: "L1" },
+  visibleWhen: VISIBLE,
+  storage: { kind: "scalar" },
+  readers: ["services/identity/passthrough/redirectUri.ts"],
+  since: "I-15.2",
+});
+
 /** `identity.nearby`: on unless a developer switches it off; widens nothing by itself. */
 const NEARBY: SettingDef = setting({
   key: "identity.nearby",
@@ -507,6 +612,9 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
     PS_PLAY_SERVER,
     NEARBY,
     IDENTITY_RESTORE,
+    NR_LOOPBACK,
+    NR_SCHEMES,
+    NR_CLAIMED,
     setting({
       key: "identity.oidc",
       rbacArea: "keys",
@@ -636,6 +744,9 @@ export const IDENTITY_ROW_SETTINGS: readonly SettingDef[] = [
   PS_PLAY_SERVER,
   NEARBY,
   IDENTITY_RESTORE,
+  NR_LOOPBACK,
+  NR_SCHEMES,
+  NR_CLAIMED,
 ];
 
 /** The platform-sign-in rows, in the order the console lists them. */

@@ -220,6 +220,10 @@ export const SETTING_HOMES: Readonly<Record<string, SettingHome>> = {
   "identity.terms": manifest("product"),
   // The paths a web app's sign-in may return to (I-08's `authorize` reads them).
   "identity.redirectPaths": manifest("product"),
+  // App sign-in, Native apps (the loopback switch, URL schemes and app link paths).
+  "identity.nativeRedirect.loopback": at("app-sign-in", "Native apps"),
+  "identity.nativeRedirect.schemes": at("app-sign-in", "Native apps"),
+  "identity.nativeRedirect.claimedPaths": at("app-sign-in", "Native apps"),
   // Sign-in reads the provider and the group map; the page's one action is a resync.
   // App sign-in, Platform sign-in (the Google and Apple audiences and the nearby switch).
   "identity.platformSignIn.google.serverClientId": at(
