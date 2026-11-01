@@ -10,7 +10,7 @@ extends RefCounted
 # @pkey-feature sync.keyring sync.settings
 # @pkey-feature identity.exchange identity.gamecenter identity.pgs
 # @pkey-feature sync.files sync.files.delta sync.saves
-# @pkey-feature connect.identity connect.relay identity.redirect.native
+# @pkey-feature connect.identity connect.relay connect.links identity.redirect.native
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that

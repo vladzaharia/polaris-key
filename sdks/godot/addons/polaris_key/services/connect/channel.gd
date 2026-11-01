@@ -70,8 +70,9 @@ static func contact_session_options(src: PKeyConnectClient.PeerSource, o: Dictio
 ## Binds a link to the host: when the link is admitted a `PKeyConnectSession` is made and `opened`
 ## fires; its APP records are routed to the session; pushed documents go to `docs`; the link's end
 ## ends the session. The caller keeps the Attachment (it is what holds the session). `xfer`
-## (Callable(session)) is called as the session is made, before `opened` and so before any record can follow
-## the HELLO: Direct Transfer takes its port there (section 15.11).
+## (Callable(session)) is called as an account session (mode a) is made, before `opened` and so before any
+## record can follow the HELLO: Direct Transfer takes its port there (section 15.11). A link session (mode c)
+## is taken by `links.adopt` once its link has been checked.
 static func attach(link: PKeyPeerLink, docs: Docs, role: String, remote_address := "", path := "lan", budget: PKeyConnectSession.Budget = null, xfer := Callable()) -> Attachment:
 	return Attachment.new(link, docs, role, remote_address, path, budget, xfer)
 
@@ -143,7 +144,8 @@ class Attachment extends RefCounted:
 			# Another mode has no device id and is not a Connect session.
 			return
 		session.peer_static = (info.get("remote_static", PackedByteArray()) as PackedByteArray).duplicate()
-		if _xfer.is_valid() and (info["caps"] as Array).has(PKeyPeerXfer.CAP):
+		# A contact session joins Direct Transfer through `links.adopt`, once its link has been checked.
+		if _xfer.is_valid() and session.contact.is_empty() and (info["caps"] as Array).has(PKeyPeerXfer.CAP):
 			_xfer.call(session)
 		opened.emit(session)
 		settled.emit()

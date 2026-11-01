@@ -158,7 +158,7 @@ func store(incoming: Dictionary) -> PKeyResult:
 
 ## A handshake under the pending contact of `agree_key` passed the pin: it takes the held one's place,
 ## the held one's `reachable` choice kept.
-func promote(agree_key: String, tag := "") -> PKeyResult:
+func promote(agree_key: String, tag: String) -> PKeyResult:
 	var loaded := _load()
 	if not loaded.ok:
 		return loaded
@@ -171,8 +171,9 @@ func promote(agree_key: String, tag := "") -> PKeyResult:
 				pend = r
 			else:
 				held = r
-	# Only the row whose secret opened the session is promoted: a pending row that replaced it is not.
-	if pend == null or (tag != "" and PKeyConnectContacts.tag_of(pend.stored.secret) != tag):
+	# Only the row whose secret opened the session is promoted: a pending row that replaced it is not, and a
+	# session that names no secret promotes nothing.
+	if pend == null or tag == "" or PKeyConnectContacts.tag_of(pend.stored.secret) != tag:
 		_wipe_rows(rows)
 		return PKeyResult.success()
 	var next: Array = []

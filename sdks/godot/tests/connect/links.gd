@@ -34,6 +34,24 @@ class StubClient extends PKeyConnectClient:
 		return agree
 
 
+## A transport that answers what it is told, in order (the last answer repeats).
+class FakeTransport extends PKeyTransport:
+	var answers: Array = []
+	var asked := 0
+
+
+	func request(_method: String, _url: String, _headers: Dictionary = {}, _body: PackedByteArray = PackedByteArray(), _opts: Dictionary = {}) -> PKeyResult:
+		asked += 1
+		return answers[mini(asked - 1, answers.size() - 1)]
+
+	static func good() -> PKeyResult:
+		var doc := {"product": "djdl", "services": {"connect": {"enabled": true, "lan": true, "relay": true, "interAccount": true}}}
+		return PKeyResult.success({"status": 200, "headers": {}, "body": JSON.stringify(doc).to_utf8_buffer()})
+
+	static func down() -> PKeyResult:
+		return PKeyResult.failure(PKeyErrors.NETWORK, "down")
+
+
 ## One device: its client, its facade and what it was told.
 class Device extends RefCounted:
 	var core: PKeyCore
@@ -46,6 +64,11 @@ class Device extends RefCounted:
 	var removed: Array = []
 	var tickets := 0
 	var id := ""
+	## Direct Transfer over this device's links (`_linked` with `hubs`): the hub, what the channel hook was
+	## called for, and the offers the host was asked about.
+	var hub: PKeyCloudTransfer
+	var hooked: Array = []
+	var asked: Array = []
 
 
 	func ticket(_rid: String) -> PKeyResult:
@@ -63,6 +86,12 @@ class Device extends RefCounted:
 		removed.append_array(keys)
 
 
+	## The transport's transfer hook: counts the sessions it is handed, then does what the hub does.
+	func hook(session: PKeyConnectSession) -> void:
+		hooked.append(session)
+		hub.attach(session)
+
+
 func run(t: PKeyTestContext) -> void:
 	_pair = PKeyTestPeers.pair(1)
 	_host = Node.new()
@@ -74,8 +103,12 @@ func run(t: PKeyTestContext) -> void:
 	await _lan_first(t)
 	await _gate_moves(t)
 	await _late_changes(t)
+	await _transfer_after_check(t)
 	await _lan_in_flight(t)
 	await _cache_and_promotion(t)
+	await _discovery_reads(t)
+	await _reread(t)
+	await _promotion_wiring(t)
 	await _frames(20)
 	_host.queue_free()
 
@@ -141,7 +174,7 @@ func _record(rows: Array, device_id := "AAAABBBBCCCCDDDDEEEEFFFFGGGGHHHH") -> PK
 
 
 ## A device `d` holding `rows` in its record, with the gate `inter_account`.
-func _device(d: Dictionary, rows: Array, inter_account: Variant = true, web := false) -> Device:
+func _device(d: Dictionary, rows: Array, inter_account: Variant = true, web := false, extra := {}) -> Device:
 	var n := Device.new()
 	n.id = d["id"]
 	n.core = _core(inter_account)
@@ -166,7 +199,9 @@ func _device(d: Dictionary, rows: Array, inter_account: Variant = true, web := f
 	n.env.source = s
 	n.env.now_value = PKeyTestPeers.NOW
 	var lane := Pairing.Lane.new(Pairing.Bus.new())
-	n.links = PKeyCloudLinks.new(n.core, n.client, {"tree": _tree(), "web": func() -> bool: return web, "lane": func() -> Object: return lane})
+	var lopts := {"tree": _tree(), "web": func() -> bool: return web, "lane": func() -> Object: return lane}
+	lopts.merge(extra, true)
+	n.links = PKeyCloudLinks.new(n.core, n.client, lopts)
 	n.links.removed = Callable(n, "purged")
 	var inbound := n.inbound
 	n.links.link.connect(func(x: PKeyConnectSession) -> void: inbound.append(x))
@@ -182,7 +217,7 @@ func _source(n: Device) -> PKeyConnectLan.Source:
 
 
 ## Two devices of two accounts holding one link, and a fake room both reach.
-func _linked(inter_account: Variant = true) -> Dictionary:
+func _linked(inter_account: Variant = true, hubs := false) -> Dictionary:
 	var secret := _key(7)
 	var a: Dictionary = _pair["a"]
 	var b: Dictionary = _pair["b"]
@@ -193,12 +228,30 @@ func _linked(inter_account: Variant = true) -> Dictionary:
 	for pair in [[na, a], [nb, b]]:
 		var n: Device = pair[0]
 		var d: Dictionary = pair[1]
-		n.relay = PKeyConnectContactRelay.new(_source(n), Callable(n, "ticket"), {
-			"opener": room.opener_for(PKeyPeerContact.alias(rid, d["id"])), "tree": _tree(), "ping_seconds": 100000.0,
-		})
+		var ropts := {"opener": room.opener_for(PKeyPeerContact.alias(rid, d["id"])), "tree": _tree(), "ping_seconds": 100000.0}
+		if hubs:
+			_wire_hub(n)
+			ropts["caps"] = ["app/1", PKeyPeerXfer.CAP]
+			ropts["xfer"] = Callable(n, "hook")
+		n.relay = PKeyConnectContactRelay.new(_source(n), Callable(n, "ticket"), ropts)
 		n.links.attach(null, n.relay, {"relay_on": true})
 		n.relay.start()
 	return {"a": na, "b": nb, "room": room, "id_a": PKeyConnectContacts.id_of(PKeyB64Url.encode(b["pub"])), "id_b": PKeyConnectContacts.id_of(PKeyB64Url.encode(a["pub"]))}
+
+
+## A Direct Transfer hub for `n`, taking the sessions its links adopt; its host declines every offer it is asked about.
+func _wire_hub(n: Device) -> void:
+	var dir := "user://links-xfer-%s" % Crypto.new().generate_random_bytes(5).hex_encode()
+	DirAccess.make_dir_recursive_absolute(dir)
+	n.hub = PKeyCloudTransfer.new({
+		"store_dir": func() -> String: return dir, "budget_usec": 0,
+		"link_record": func(id: String) -> Dictionary: return {"id": id, "categories": ["games"]},
+	})
+	var asked := n.asked
+	n.hub.on_offer(func(o: PKeyTransferOffer) -> void:
+		asked.append(o)
+		o.decline())
+	n.links.adopt = Callable(n.hub, "attach")
 
 
 func _finish(r: Dictionary) -> void:
@@ -478,6 +531,62 @@ func _late_changes(t: PKeyTestContext) -> void:
 	_finish(o)
 
 
+## Direct Transfer takes a link session only after the links layer has checked its link: the transport's hook is
+## never handed one, and a session closed at establish is never taken, so the host is never asked about it.
+func _transfer_after_check(t: PKeyTestContext) -> void:
+	# Inbound: the link was removed before the session came up.
+	var r := _linked(true, true)
+	var na: Device = r["a"]
+	var nb: Device = r["b"]
+	await _until(func() -> bool: return na.relay.rooms().size() == 1 and na.relay.rooms()[0]["state"] == "open" and nb.relay.rooms()[0]["state"] == "open")
+	var caught: Array = []
+	nb.relay.session_opened.disconnect(nb.links._inbound)
+	nb.relay.session_opened.connect(func(s: PKeyConnectSession) -> void: caught.append(s))
+	var first: PKeyResult = await na.links.open(r["id_a"])
+	var up: bool = first.ok and await _until(func() -> bool: return not caught.is_empty())
+	if not t.check("transfer: a session is up on both sides", up):
+		_finish(r)
+		return
+	t.check("transfer: the transport hook is not handed a link session", nb.hooked.is_empty() and na.hooked.is_empty())
+	nb.client.contacts().remove(r["id_b"])
+	nb.links._inbound(caught[0])
+	var out: PKeyConnectSession = first.detail
+	await _until(func() -> bool: return out.is_closed())
+	t.check("transfer: a contact session closed at establish never asks the host (inbound)",
+			(caught[0] as PKeyConnectSession).is_closed() and nb.hooked.is_empty() and nb.hub._wires.is_empty() and nb.asked.is_empty() and nb.inbound.is_empty())
+	_finish(r)
+	# Outbound: the link is removed while open() is still dialling.
+	var o := _linked(true, true)
+	var oa: Device = o["a"]
+	var ob: Device = o["b"]
+	await _until(func() -> bool: return oa.relay.rooms().size() == 1 and oa.relay.rooms()[0]["state"] == "open" and ob.relay.rooms()[0]["state"] == "open")
+	var res: Array = [null]
+	var runner := func() -> void:
+		res[0] = await oa.links.open(o["id_a"])
+	runner.call()
+	oa.client.contacts().remove(o["id_a"])
+	await _until(func() -> bool: return res[0] != null)
+	await _frames(10)
+	t.check("transfer: a contact session closed at establish never asks the host (outbound)",
+			res[0] != null and not (res[0] as PKeyResult).ok and oa.hooked.is_empty() and oa.hub._wires.is_empty() and oa.asked.is_empty())
+	_finish(o)
+	# A session that passed the check is taken, and its peer's offer reaches the host.
+	var g := _linked(true, true)
+	var ga: Device = g["a"]
+	var gb: Device = g["b"]
+	await _until(func() -> bool: return ga.relay.rooms().size() == 1 and ga.relay.rooms()[0]["state"] == "open" and gb.relay.rooms()[0]["state"] == "open")
+	var opened: PKeyResult = await ga.links.open(g["id_a"])
+	await _until(func() -> bool: return not gb.inbound.is_empty())
+	t.check("transfer: a checked link session is taken by Direct Transfer on both sides",
+			opened.ok and ga.hub._wires.size() == 1 and gb.hub._wires.size() == 1 and ga.hooked.is_empty() and gb.hooked.is_empty())
+	if opened.ok:
+		var bytes := PackedByteArray([1, 2, 3, 4])
+		var sent: PKeyResult = await ga.hub.send(opened.detail, bytes, {"category": "games"})
+		await _until(func() -> bool: return not gb.asked.is_empty())
+		t.check("transfer: and an offer over it reaches the host", sent.ok and gb.asked.size() == 1)
+	_finish(g)
+
+
 ## LAN service and links layer together, the PoC shapes: a handshake that began before `remove()`, and an `open()`
 ## in flight when its own link is removed.
 func _lan_in_flight(t: PKeyTestContext) -> void:
@@ -556,3 +665,141 @@ func _cache_and_promotion(t: PKeyTestContext) -> void:
 	m.client.contact_established({"id": PKeyConnectContacts.id_of(key), "agree_key": key, "tag": PKeyConnectContacts.tag_of(PKeyB64Url.decode_strict(_key(32)))})
 	var after: Array = m.state.read().detail.contacts
 	t.check("promotion: the secret that opened it is promoted", after.size() == 1 and after[0]["secret"] == _key(32) and not after[0].has("pendingSince"), str(after.size()))
+
+
+## The gate follows what discovery reads, through the core's own request path (not by calling the failure hook).
+func _discovery_reads(t: PKeyTestContext) -> void:
+	var core := _core()
+	var tr := FakeTransport.new(_host)
+	core.transport = tr
+	tr.answers = [FakeTransport.good()]
+	var good: PKeyResult = await core.discover()
+	var n := _device(_pair["a"], [])
+	t.check("links: a discovery read that succeeds opens the gate", good.ok and core.discovery_fresh() and PKeyConnectClient.new(core, n.state, null).inter_account())
+	var failures := [
+		FakeTransport.down(),
+		PKeyResult.success({"status": 404, "headers": {}, "body": PackedByteArray()}),
+		PKeyResult.success({"status": 503, "headers": {}, "body": PackedByteArray()}),
+		PKeyResult.success({"status": 200, "headers": {}, "body": "{".to_utf8_buffer()}),
+		PKeyResult.success({"status": 200, "headers": {}, "body": "{\"product\":\"other\",\"services\":{}}".to_utf8_buffer()}),
+	]
+	var closed := 0
+	for f: PKeyResult in failures:
+		tr.answers = [FakeTransport.good()]
+		tr.asked = 0
+		await core.discover()
+		tr.answers = [f]
+		tr.asked = 0
+		var moved := [0]
+		var watch := func() -> void: moved[0] += 1
+		core.discovery_changed.connect(watch)
+		var failed: PKeyResult = await core.discover()
+		core.discovery_changed.disconnect(watch)
+		closed += int(not failed.ok and not core.discovery_fresh() and not PKeyConnectClient.new(core, n.state, null).inter_account() and moved[0] == 1)
+	t.check("links: a discovery read that fails closes the gate (transport, 404, 5xx, bad JSON, wrong product)", closed == failures.size(), "%d/%d" % [closed, failures.size()])
+
+
+## Promotion follows the secret, end to end: A holds a pending contact for B and B dials it under that secret. When
+## the row is replaced (a new pairing, no notice to the readers) before the session comes up, nothing is promoted;
+## otherwise the pending row is. On the LAN and through the relay.
+func _promotion_wiring(t: PKeyTestContext) -> void:
+	for lane in ["lan", "relay"]:
+		var kept := await _promotion_run(lane, false)
+		t.check("links: a session under the pending secret promotes it (%s)" % lane, kept.size() == 1 and not kept[0].has("pendingSince") and kept[0]["secret"] == _key(42), str(kept.size()))
+		var replaced := await _promotion_run(lane, true)
+		var new_pending := replaced.any(func(r: Dictionary) -> bool: return r.has("pendingSince") and r["secret"] == _key(43))
+		t.check("links: a session under a replaced pending secret promotes nothing (%s)" % lane, replaced.size() == 2 and new_pending, str(replaced.size()))
+
+
+## The rows A holds after B dialled; `replace` swaps A's pending secret in the record first.
+func _promotion_run(lane: String, replace: bool) -> Array:
+	var a: Dictionary = _pair["a"]
+	var b: Dictionary = _pair["b"]
+	var key_b := PKeyB64Url.encode(b["pub"])
+	var key_a := PKeyB64Url.encode(a["pub"])
+	var old_secret := _key(42)
+	var held := _raw(key_b, _key(41), false)
+	var na := _device(a, [held, _raw(key_b, old_secret, true, PKeyTestPeers.NOW - 10)])
+	var nb := _device(b, [_raw(key_a, old_secret)])
+	var room := PKeyRelayFakeRoom.new()
+	var rid := PKeyPeerContact.rid(PKeyB64Url.decode_strict(old_secret))
+	var bus := Lan.Bus.new()
+	var lans: Array = []
+	for p in [[na, a], [nb, b]]:
+		var n: Device = p[0]
+		if lane == "lan":
+			var l: PKeyConnectLan = PKeyConnectLan.start(_source(n), {"allow_loopback": true, "host": "127.0.0.1", "mdns": Lan.FakeMdns.new(bus)}).detail
+			n.links.attach(l, null, {})
+			lans.append(l)
+		else:
+			n.relay = PKeyConnectContactRelay.new(_source(n), Callable(n, "ticket"), {
+				"opener": room.opener_for(PKeyPeerContact.alias(rid, (p[1] as Dictionary)["id"])), "tree": _tree(), "ping_seconds": 100000.0,
+			})
+			n.links.attach(null, n.relay, {"relay_on": true})
+			n.relay.start()
+	if lane == "lan":
+		await _until(func() -> bool: return not (lans[1] as PKeyConnectLan).contact_peers().is_empty())
+	else:
+		await _until(func() -> bool: return na.relay.rooms().size() == 1 and na.relay.rooms()[0]["state"] == "open" and nb.relay.rooms()[0]["state"] == "open")
+	if replace:
+		var row := _raw(key_b, _key(43), true, PKeyTestPeers.NOW - 10)
+		na.state.write(_record([held, row], a["id"]))
+	var res: Array = [null]
+	var runner := func() -> void:
+		res[0] = await nb.links.open(PKeyConnectContacts.id_of(key_a))
+	runner.call()
+	await _until(func() -> bool: return res[0] != null, 600)
+	await _frames(20)
+	var rows: Array = na.state.read().detail.contacts
+	for n: Device in [na, nb]:
+		n.links.detach()
+		if n.relay != null:
+			n.relay.stop()
+	for l: PKeyConnectLan in lans:
+		l.stop()
+	return rows
+
+
+func _contact_adverts(m: Lan.FakeMdns) -> int:
+	var n := 0
+	for e: Dictionary in m.adverts:
+		if (e["txt"] as Array).has("m=c") and (e["handle"] as Lan.FakeHandle).stops == 0:
+			n += 1
+	return n
+
+
+## The cached answer lapses on a timer: the readers are told, discovery is read again, and a read that failed is
+## tried again soon, until one succeeds.
+func _reread(t: PKeyTestContext) -> void:
+	var a: Dictionary = _pair["a"]
+	var b: Dictionary = _pair["b"]
+	var armed: Array = []
+	var timer := func(seconds: float, fn: Callable) -> void: armed.append([seconds, fn])
+	var n := _device(a, [_raw(PKeyB64Url.encode(b["pub"]), _key(50))], true, false, {"timer": timer})
+	var tr := FakeTransport.new(_host)
+	n.core.transport = tr
+	t.check("links: the re-read is armed when links start, at the life of the answer", armed.size() == 1 and is_equal_approx(armed[0][0], PKeyCore.DISCOVERY_TTL_SECONDS))
+	var mdns := Lan.FakeMdns.new(Lan.Bus.new())
+	var lan: PKeyConnectLan = PKeyConnectLan.start(_source(n), {"allow_loopback": true, "host": "127.0.0.1", "mdns": mdns}).detail
+	n.links.attach(lan, null, {})
+	t.check("links: a reachable link is advertised", await _until(func() -> bool: return _contact_adverts(mdns) == 1))
+	# The answer lapses by age; the timer fires and the read fails.
+	n.core.set_meta("discovery_expires", float(Time.get_ticks_msec()) / 1000.0 - 1.0)
+	tr.answers = [FakeTransport.down()]
+	await (armed.back()[1] as Callable).call()
+	t.check("links: a failed re-read is retried soon", armed.size() == 2 and armed[1][0] == PKeyCloudLinks.REREAD_RETRY_SECONDS and tr.asked == 1)
+	t.check("links: and the lapse withdraws the adverts", not n.links.inter_account() and _contact_adverts(mdns) == 0)
+	await (armed.back()[1] as Callable).call()
+	t.check("links: and again after the next failure", armed.size() == 3 and armed[2][0] == PKeyCloudLinks.REREAD_RETRY_SECONDS and tr.asked == 2)
+	# The next read succeeds: the answer is back and the adverts with it.
+	tr.answers = [FakeTransport.good()]
+	await (armed.back()[1] as Callable).call()
+	t.check("links: a read that succeeds ends the retries and brings the adverts back",
+			n.links.inter_account() and armed.size() == 4 and armed[3][0] > PKeyCloudLinks.REREAD_RETRY_SECONDS and await _until(func() -> bool: return _contact_adverts(mdns) == 1))
+	# A timer that was replaced meanwhile does nothing.
+	var stale: Callable = armed[0][1]
+	var asked := tr.asked
+	await stale.call()
+	t.check("links: a timer that was replaced reads nothing", tr.asked == asked)
+	n.links.detach()
+	lan.stop()
