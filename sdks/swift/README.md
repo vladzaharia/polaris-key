@@ -407,8 +407,8 @@ A custom provider conforms to `PlatformIdentityProvider` and is passed as
 
 **Setup for Sign in with Apple.** Add the _Sign in with Apple_ capability to every target that
 signs in (the `com.apple.developer.applesignin` entitlement) and note your Apple **Team ID**: the
-product's `identity.platformSignIn.apple.teamId` setting names it, with the bundle ids. The full
-walkthrough is planned.
+product's `identity.platformSignIn.apple.teamId` setting names it, with the bundle ids. The walkthrough is
+[Platform sign-in setup](https://key.plrs.im/docs/features/sign-in/platform-setup/).
 
 In the SwiftUI kit the gate runs the ladder once at launch with no sheet, and the provider row's
 Sign in with Apple button opens the sheet and then the exchange. Pass

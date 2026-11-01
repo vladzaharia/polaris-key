@@ -46,7 +46,7 @@ the gate shows its normal sign-in. A page that cannot do it (a cookie page, the 
 
 After an explicit sign-out the gate stays signed out on this device until the person signs in
 again. It needs the product's platform sign-in: the identity service on, with Google set up for
-the product.
+the product ([setup](https://key.plrs.im/docs/features/sign-in/platform-setup/), [how it works](https://key.plrs.im/docs/features/sign-in/automatic/)).
 
 With a Content-Security-Policy, automatic sign-in needs `connect-src https://accounts.google.com`
 (the browser fetches its FedCM configuration from there); inside an iframe the frame needs
