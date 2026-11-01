@@ -74,7 +74,7 @@ discover returned. ``range`` is the fetch's status; ``bytes`` the body it return
 # @pkey-feature core.presentation ui.cli.portal
 # @pkey-feature identity.redirect.web identity.choice identity.signin.hints identity.devicecode.choice
 # @pkey-feature sync.keyring connect.identity connect.relay sync.settings
-# @pkey-feature sync.files sync.files.delta sync.saves identity.nearby
+# @pkey-feature sync.files sync.files.delta sync.saves identity.nearby identity.redirect.native
 
 from __future__ import annotations
 
@@ -90,7 +90,7 @@ import tempfile
 import time
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
-from urllib.parse import parse_qs, urljoin, urlsplit
+from urllib.parse import parse_qs, quote_plus, urljoin, urlsplit
 
 import httpx
 import pytest
@@ -119,6 +119,11 @@ from polaris_key.core.models import ReleaseRecordDoc
 from polaris_key.core.store import CacheRecord
 from polaris_key.devices.keys import create_device_key_store
 from polaris_key.identity.account import identity_fragment_from
+from polaris_key.identity.native_redirect import (
+    NativePending,
+    NativeSignInSession,
+    classify_native_redirect_uri,
+)
 from polaris_key.identity.nearby import NearbyCredentials, NearbyStarted, _grant
 from polaris_key.update.packs import chunk_range_fetch
 
@@ -512,11 +517,15 @@ def _act(
         out.update(_browser_step(client, step, session))
     elif action == "redirectComplete":
         cb = urlsplit(args["callbackUrl"])
-        s = _start_redirect_for(
-            client, step, f"{cb.scheme}://{cb.netloc}{cb.path}", session.get("license_choice")
-        )
+        native = "identity.redirect.native" in session["transcript"]["features"]
         try:
-            done = s.complete(args["callbackUrl"])
+            if native:
+                done = _native_complete(client, step, session)
+            else:
+                s = _start_redirect_for(
+                    client, step, f"{cb.scheme}://{cb.netloc}{cb.path}", session.get("license_choice")
+                )
+                done = s.complete(args["callbackUrl"])
             out["result"] = "ok" if done.kind == "signed_in" else done.kind
             if done.kind == "signed_in":
                 out["scope"] = done.scope
@@ -1065,6 +1074,134 @@ def _start_redirect_for(
     return client.identity.sign_in.start(channel="redirect", redirect_uri=redirect_uri, **opts)
 
 
+class ReplayListener:
+    """The loopback listener of a recorded conversation: the recorded port, no socket. The
+    redirect is handed to the session's own callback handler, as the listener would."""
+
+    def __init__(self, port: int) -> None:
+        self.port = port
+        self.closed = False
+        self._accept: Any = None
+
+    def start(self, accept: Any) -> None:
+        self._accept = accept
+
+    def close(self) -> None:
+        self.closed = True
+
+    def deliver(self, url: str) -> Any:
+        return self._accept(url)
+
+
+def _recorded_redirect_uri(t: Dict[str, Any]) -> str:
+    """The redirect URI a step that names none uses: the transcript's first one, else the web default."""
+    for step in t["steps"]:
+        uri = step["args"].get("redirectUri")
+        if isinstance(uri, str):
+            return uri
+    return REDIRECT_DEFAULTS["redirect_uri"]
+
+
+def _is_native(t: Dict[str, Any]) -> bool:
+    return "identity.redirect.native" in t["features"]
+
+
+def _pushed_body(step: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """The form the recorded push carries (the first ``identity/request`` exchange), or ``None``."""
+    for item in step["exchanges"]["items"]:
+        req = item["request"]
+        if req["method"] == "POST" and req["path"].endswith("/identity/request") and req["body"]:
+            return req["body"]["json"]  # type: ignore[no-any-return]
+    return None
+
+
+def _start_native_for(
+    client: PolarisKeyClient, step: Dict[str, Any], session: Dict[str, Any]
+) -> NativeSignInSession:
+    """A native sign-in as the host would start it: the SDK pushes the request itself, the label
+    and options being the recorded push's."""
+    body = _pushed_body(step) or {}
+    redirect_uri = step["args"].get("redirectUri") or _recorded_redirect_uri(session["transcript"])
+    deps = client.identity._deps
+    deps.entropy = {
+        "state": body.get("state") or step["args"].get("state", REDIRECT_DEFAULTS["state"]),
+        "code_verifier": step["args"].get("codeVerifier", REDIRECT_DEFAULTS["code_verifier"]),
+    }
+    deps.headless = lambda: False
+    opts: Dict[str, Any] = {}
+    for member, name in (
+        ("login_hint", "login_hint"),
+        ("name_hint", "name_hint"),
+        ("purpose", "purpose"),
+        ("scope", "scope"),
+        ("device_name", "device_name"),
+        ("return_uri", "return_uri"),
+    ):
+        if isinstance(body.get(member), str):
+            opts[name] = body[member]
+    if body.get("license_choice") == "app":
+        opts["license_choice"] = "app"
+    session["license_choice"] = opts.get("license_choice")
+    cls = classify_native_redirect_uri(redirect_uri)
+    if cls == "loopback":
+        port = int(urlsplit(redirect_uri).port or 0)
+        deps.listener_factory = lambda: ReplayListener(port)
+    elif cls == "scheme":
+        opts["loopback"] = False
+        opts["registered_schemes"] = [redirect_uri]
+    else:
+        opts["loopback"] = False
+        opts["registered_claimed"] = [redirect_uri]
+    s = client.identity.sign_in.start(channel="redirect", open_browser=False, **opts)
+    assert isinstance(s, NativeSignInSession)
+    assert s.redirect_class == cls
+    session["native"] = s
+    return s
+
+
+def _native_complete(client: PolarisKeyClient, step: Dict[str, Any], session: Dict[str, Any]) -> Any:
+    """Hand the recorded redirect to the sign-in waiting for it. A sign-in already settled is single
+    use, so a replayed callback is played against a fresh one built on the same pending request
+    (the recording pins the Worker's refusal of the code, which the SDK would not even ask)."""
+    t, args = session["transcript"], step["args"]
+    url = args["callbackUrl"]
+    live = session.get("native")
+    if live is not None and not live._closed:
+        listener = live._listener
+        if isinstance(listener, ReplayListener):
+            location, final = listener.deliver(url)
+            handle = parse_qs(urlsplit(url).query).get("request", [""])[0]
+            if location is not None:
+                assert location == f"{t['baseUrl']}/signin/return?request={handle}", location
+            assert final
+            return live.wait(timeout=5)
+        return live.handle_redirect(url)
+    cb = urlsplit(url)
+    base = f"{t['baseUrl']}/{t['product']}/identity"
+    redirect_uri = f"{cb.scheme}://{cb.netloc}{cb.path}"
+    pending = NativePending(
+        redirect_class=classify_native_redirect_uri(redirect_uri) or "loopback",
+        redirect_uri=redirect_uri,
+        state=args.get("state", REDIRECT_DEFAULTS["state"]),
+        code_verifier=args.get("codeVerifier", REDIRECT_DEFAULTS["code_verifier"]),
+        client_id=t["product"],
+        issuer=_redirect_issuer(t),
+        authorize_endpoint=f"{base}/authorize",
+        token_endpoint=f"{base}/token",
+        license_choice=session.get("license_choice") == "app",
+    )
+    fresh = NativeSignInSession(
+        pending=pending,
+        authorize_url=f"{base}/authorize",
+        expires_at=time.time() + 600,
+        deps=client.identity._deps,
+        listener=None,
+        return_page=None,
+        device_name=None,
+    )
+    return fresh.handle_redirect(url)
+
+
 def _browser_step(
     client: PolarisKeyClient, step: Dict[str, Any], session: Dict[str, Any]
 ) -> Dict[str, Any]:
@@ -1077,13 +1214,36 @@ def _browser_step(
     t, server = session["transcript"], session["server"]
     base = t["baseUrl"]
     authorize_path = f"/{t['product']}/identity/authorize"
-    redirect_uri = step["args"].get("redirectUri", REDIRECT_DEFAULTS["redirect_uri"])
+    redirect_uri = step["args"].get("redirectUri") or _recorded_redirect_uri(t)
     out: Dict[str, Any] = {}
     last: Optional[httpx.Response] = None
+    last_path = ""
+    pushed = False
     for item in step["exchanges"]["items"]:
         req = item["request"]
         path = req["path"]
-        if req["method"] == "GET" and path.startswith(authorize_path) and "error" not in step["expect"]:
+        native = _is_native(t)
+        if (
+            native
+            and req["method"] == "POST"
+            and path == f"/{t['product']}/identity/request"
+            and "error" not in step["expect"]
+        ):
+            # The app's own request: the SDK pushes it, and the recording pins what it sends.
+            _start_native_for(client, step, session)
+            pushed = True
+            continue
+        if native and req["method"] == "GET" and path.startswith(authorize_path) and (
+            "error" not in step["expect"] and session.get("native") is not None
+        ):
+            built = urlsplit(session["native"].authorize_url)
+            path = built.path + "?" + built.query
+        elif (
+            not native
+            and req["method"] == "GET"
+            and path.startswith(authorize_path)
+            and "error" not in step["expect"]
+        ):
             recorded = parse_qs(urlsplit(path).query)
             choice = "app" if recorded.get("license_choice") == ["app"] else None
             s = _start_redirect_for(client, step, redirect_uri, choice)
@@ -1091,7 +1251,20 @@ def _browser_step(
             built = urlsplit(s.authorize_url)
             path = built.path + "?" + built.query
         kwargs: Dict[str, Any] = {}
-        if req["body"] is not None:
+        if req["body"] is not None and (req["headers"].get("content-type") or "").startswith(
+            "application/x-www-form-urlencoded"
+        ):
+            # A form the browser plays as recorded: the SDK's headers, the recorded device when it
+            # names another one (the code redeemed from a different device).
+            headers = client.core.headers({"content-type": req["headers"]["content-type"]})
+            if not req["headers"].get("x-pkey-device", "{").startswith("{"):
+                headers = {k: v for k, v in headers.items() if k.lower() != "x-pkey-device"}
+                headers["x-pkey-device"] = req["headers"]["x-pkey-device"]
+            kwargs["headers"] = headers
+            kwargs["content"] = "&".join(
+                f"{quote_plus(k)}={quote_plus(v)}" for k, v in req["body"]["json"].items()
+            ).encode("utf-8")
+        elif req["body"] is not None:
             kwargs["json"] = req["body"]["json"]
         # A CORS exchange (`cloudsync-cors`) is the browser's own: the recorded headers are played as
         # recorded, and the SDK asserts nothing about them (React's Chromium job does).
@@ -1108,7 +1281,11 @@ def _browser_step(
                     "origin": origin,
                 }
         last = server(httpx.Request(req["method"], base + path, **kwargs))
+        last_path = path
     if last is None:
+        if pushed:
+            # The push alone, its request_uri left unopened: the app's window shows no page.
+            out["navigated"] = "page"
         return out
     app = urlsplit(redirect_uri)
     location = last.headers.get("location")
@@ -1133,6 +1310,18 @@ def _browser_step(
     if last.status_code == 404:
         out["navigated"] = "refused"
         return out
+    if _is_native(t) and last.headers.get("content-type", "").startswith("application/json"):
+        flat = last.json()
+        flat_error = flat.get("error") if isinstance(flat, dict) else None
+        if last_path.endswith("/identity/token") and isinstance(flat_error, str):
+            # A code redeemed by a browser step (another device): the token endpoint's refusal.
+            out["result"] = flat_error.replace("_", "-")
+            out["code"] = flat_error
+            return out
+        if last_path.endswith("/identity/request") and isinstance(flat_error, str):
+            out["navigated"] = "page"
+            out["error"] = flat_error
+            return out
     if last.headers.get("content-type", "").startswith("text/html"):
         out["navigated"] = "page"
         # The refusal page names no code in its body; the Worker's mapping is by status.
@@ -1210,7 +1399,21 @@ def _standard_discovery(t: Dict[str, Any]) -> Dict[str, Any]:
             "/identity/choice/" in x["request"]["path"]
             for s in t["steps"]
             for x in s["exchanges"]["items"]
-        )
+        ) or any((_pushed_body(s) or {}).get("license_choice") == "app" for s in t["steps"])
+        native: Dict[str, Any] = {}
+        if _is_native(t):
+            # I-15 (§12.6): the pushed-request endpoint, the customer-host return page and the
+            # classes the product accepts (its registered schemes are the transcript's).
+            schemes = sorted(
+                {
+                    s["args"]["redirectUri"]
+                    for s in t["steps"]
+                    if classify_native_redirect_uri(s["args"].get("redirectUri")) == "scheme"
+                }
+            )
+            native = {
+                "nativeRedirect": {"loopback": True, "schemes": schemes, "claimedHttps": []},
+            }
         # A slug discovery omits reads as off, so the account transcripts name their services;
         # the Identity fragment names the account endpoints (WIRE-CONTRACT-V4 §12.6).
         return {
@@ -1224,7 +1427,16 @@ def _standard_discovery(t: Dict[str, Any]) -> Dict[str, Any]:
                     "account": True,
                     **({"deviceChoice": True} if _asks_device_choice(t) else {}),
                     "issuer": _redirect_issuer(t),
+                    **native,
                     "endpoints": {
+                        **(
+                            {
+                                "request": f"{base}/identity/request",
+                                "signinReturn": f"{t['baseUrl']}/signin/return",
+                            }
+                            if native
+                            else {}
+                        ),
                         "subject": f"{base}/identity/subject",
                         "signout": f"{base}/identity/signout",
                         "attach": f"{base}/identity/attach",

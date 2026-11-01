@@ -182,9 +182,8 @@
       "note": "LK-SKIP.8: the opt-in, the via rule and the activated outcome, with the replayer."
     },
     "identity.redirect.native": {
-      "status": "planned",
-      "wp": "I-15b",
-      "note": "I-15b: the pushed request, the system-browser session or loopback listener, and the redemption from the pushing device, with the replayer."
+      "status": "implemented",
+      "note": "I-15b.3: identity.sign_in.start(channel=\"redirect\") with no redirect_uri binds a 127.0.0.1 listener (http.server, OS-assigned port, exclusive), pushes the request (identity/native_redirect.py, the client-core redirect.ts helpers), opens the system browser (webbrowser) and redeems the code from the pushing device; a registered scheme or claimed link is delivered with identity.sign_in.handle_redirect(url); headless hosts (SIGN-IN D-68) and a product that serves no request endpoint raise redirect-unavailable. The four redirect-native-* transcripts and locker-redirect-native are replayed in tests/test_transcripts.py; tests/test_identity_native_redirect.py maps each listener rule."
     },
     "identity.exchange": {
       "status": "na",

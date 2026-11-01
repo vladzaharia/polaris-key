@@ -200,6 +200,12 @@ class SignInDeps:
         #: Conformance replay only: the exact ``state`` and ``code_verifier`` of a recorded
         #: redirect conversation.
         self.entropy: Optional[Dict[str, str]] = None
+        #: Native redirect sign-in: does this host lack a browser (SIGN-IN D-68)? ``None`` reads the
+        #: environment. A test or an embedding host may set it.
+        self.headless: Optional[Callable[[], bool]] = None
+        #: Native redirect sign-in: builds the loopback listener (bound on construction). ``None``
+        #: binds a real one on ``127.0.0.1``; conformance replay supplies the recorded port.
+        self.listener_factory: Optional[Callable[[], Any]] = None
 
 
 def _post(
@@ -569,21 +575,25 @@ class SignInNamespace:
         start: Callable[..., SignInSession],
         start_redirect: Optional[Callable[..., Any]] = None,
         start_nearby: Optional[Callable[..., Any]] = None,
+        handle_redirect: Optional[Callable[[str], SignInOutcome]] = None,
     ) -> None:
         self._start = start
         self._start_redirect = start_redirect
         self._start_nearby = start_nearby
+        self._handle_redirect = handle_redirect
 
     def start(self, channel: str = "device-code", **opts: Any) -> Any:
         """Start a sign-in. ``channel="device-code"`` (the default) takes ``device_name``,
         ``login_hint``, ``name_hint``, ``purpose``, ``scope`` and ``license_choice`` and answers a
         :class:`SignInSession`. ``channel="redirect"`` takes the same plus the required https
         ``redirect_uri`` and answers a :class:`~polaris_key.identity.redirect.RedirectSession`
-        with ``authorize_url`` and ``complete(callback_url)``. ``channel="nearby"`` (``device_name``) is the
+        with ``authorize_url`` and ``complete(callback_url)``; with no ``redirect_uri`` it is the native
+        redirect (I-15), a :class:`~polaris_key.identity.native_redirect.NativeSignInSession` (loopback
+        listener, registered scheme or claimed HTTPS), or the typed ``redirect-unavailable``.
+        ``channel="nearby"`` (``device_name``) is the
         new device's side of nearby sign-in and answers a
         :class:`~polaris_key.identity.nearby_session.NearbySignInSession`: the typed N/A when the product
-        or this runtime does not serve it. Any other channel answers the typed ``version`` N/A (loopback,
-        scheme and claimed-HTTPS redirects are I-15's)."""
+        or this runtime does not serve it. Any other channel answers the typed ``version`` N/A."""
         if channel == "device-code":
             return self._start(**opts)
         if channel == "redirect" and self._start_redirect is not None:
@@ -597,3 +607,18 @@ class SignInNamespace:
                 f"this SDK version has no {channel!r} sign-in channel",
             ),
         )
+
+    def handle_redirect(self, url: str) -> SignInOutcome:
+        """A scheme or claimed-HTTPS delivery (I-15): hand the URL the OS gave the app to the native
+        sign-in waiting for it. Checks the redirect URI, ``state`` and ``iss`` before anything is
+        sent, then redeems the code from this device. ``sign-in-failed`` when no native sign-in is
+        waiting or the URL is not its own."""
+        if self._handle_redirect is None:
+            raise UnsupportedError(
+                Unsupported(
+                    Feature.IDENTITY_REDIRECT_NATIVE,
+                    UnsupportedReason.VERSION,
+                    "this SDK build has no native redirect sign-in",
+                ),
+            )
+        return self._handle_redirect(url)
