@@ -62,6 +62,7 @@ describe(`${MATRIX_FILE}: the version`, () => {
       "cloudSync",
       "saveConflict",
       "connect",
+      "nearby",
       "theme",
       "i18n",
     ])
@@ -79,6 +80,8 @@ for (const [family, feature] of Object.entries({
   saveConflict: "ui.settings",
   // CC-19.9: the inter-account screens, also only ui-core's until the native kits take them.
   connect: "ui.settings",
+  // UXR-47b: the nearby sign-in screens the desktop kit added; ui-core only.
+  nearby: "ui.settings",
 })) {
   const rows = matrix[family] as Row[];
   describe(`${MATRIX_FILE} ${family} (${feature})`, () => {

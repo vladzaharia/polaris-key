@@ -615,6 +615,16 @@ function endOf(
         ],
         result: result(EXIT.failed, "rate-limited"),
       };
+    case "failed":
+      // The service or the network failed: nothing was approved.
+      return {
+        rows: [
+          stepRow("warn", ctx.copy.code("network", "title")),
+          textRow(t("signin.nearby.failedBody", { device })),
+          endRow(),
+        ],
+        result: result(EXIT.failed, "failed"),
+      };
     case "account-required":
       return accountRequired(ctx);
   }

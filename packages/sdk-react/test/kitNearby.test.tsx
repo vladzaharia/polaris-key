@@ -13,9 +13,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 
-import { PolarisKeyProvider } from "@polaris-key/react";
 import { NearbyApprover, NearbySignIn } from "@polaris-key/react/kit";
-import { DesktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type {
   BridgeNearbyAsk,
   BridgeNearbyRequester,
@@ -23,53 +21,13 @@ import type {
   PolarisBridge,
 } from "../src/desktop/bridge.js";
 import { stubResizeObserver } from "./autoFixtures.js";
-import { NOW_SEC, emptyBridgeState, makeFakeBridge } from "./fixtures.js";
+import { emptyBridgeState } from "./fixtures.js";
+import { adapterOf, control, req, shows, v5, wrap } from "./nearbyHelpers.js";
 
 beforeAll(stubResizeObserver);
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
-});
-
-type Fake = PolarisBridge & { push(s: BridgeState): void };
-
-function v5(over: Partial<PolarisBridge> = {}, version = 5): Fake {
-  return Object.assign(makeFakeBridge(emptyBridgeState()), {
-    version,
-    ...over,
-  }) as Fake;
-}
-
-async function adapterOf(bridge: Fake): Promise<DesktopAdapter> {
-  const a = new DesktopAdapter({ bridge, now: () => NOW_SEC });
-  for (let i = 0; i < 50 && a.snapshot().phase === "loading"; i++)
-    await new Promise((r) => setTimeout(r, 0));
-  return a;
-}
-
-const wrap = (a: DesktopAdapter, ui: React.ReactNode) =>
-  render(
-    <PolarisKeyProvider
-      config={{ productSlug: "acme", adapter: a }}
-      autoSignIn={false}
-    >
-      {ui}
-    </PolarisKeyProvider>,
-  );
-
-const control = (c: HTMLElement, key: string) =>
-  c.querySelector<HTMLButtonElement>(`button[data-key="${key}"]`);
-const shows = (c: HTMLElement, key: string) =>
-  waitFor(() => expect(control(c, key)).not.toBeNull());
-
-const req = (
-  phase: BridgeNearbyRequester["phase"],
-  extra: Partial<BridgeNearbyRequester> = {},
-): BridgeNearbyRequester => ({
-  sessionId: "s-1",
-  phase,
-  approvers: [{ id: "ref-1", device: "Mac", platform: "macos" }],
-  ...extra,
 });
 
 describe("<NearbySignIn> on the desktop bridge", () => {
@@ -81,7 +39,10 @@ describe("<NearbySignIn> on the desktop bridge", () => {
     });
     const a = await adapterOf(bridge);
     const onClose = vi.fn();
-    const { container } = wrap(a, <NearbySignIn onClose={onClose} />);
+    const { container } = wrap(
+      a,
+      <NearbySignIn onClose={onClose} settleMs={0} />,
+    );
     // The pre-prompt comes before anything crosses the bridge.
     await shows(container, "common.continue");
     expect(bridge.nearbyStart).not.toHaveBeenCalled();
@@ -105,8 +66,11 @@ describe("<NearbySignIn> on the desktop bridge", () => {
     await waitFor(() =>
       expect(bridge.nearbyConfirm).toHaveBeenCalledWith("s-1"),
     );
-    await shows(container, "signin.nearby.notYou");
-    expect(container.textContent).toContain("Signed in as a@b.c");
+    await waitFor(() =>
+      expect(container.textContent).toContain("Signed in as a@b.c"),
+    );
+    // The confirm was the decision: no second "Not you?".
+    expect(control(container, "signin.nearby.notYou")).toBeNull();
     fireEvent.click(control(container, "common.continue")!);
     expect(onClose).toHaveBeenCalledWith({ kind: "signed-in" });
     a.dispose();
@@ -240,8 +204,9 @@ describe("<NearbyApprover> on the desktop bridge", () => {
         }),
       );
     });
-    await shows(container, "common.done");
-    expect(container.textContent).toContain("Studio PC is signed in");
+    await waitFor(() =>
+      expect(container.textContent).toContain("Studio PC is signed in"),
+    );
     fireEvent.click(control(container, "common.done")!);
     expect(onClose).toHaveBeenCalled();
     unmount();

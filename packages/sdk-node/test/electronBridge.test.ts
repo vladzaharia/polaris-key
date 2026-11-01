@@ -1684,6 +1684,7 @@ describe("menu items and open(view) (UK-06.4)", () => {
     expect(labels({ platform: "linux" })).toEqual([
       "Check for updates",
       "Manage license",
+      "Approve a nearby device",
     ]);
     expect(labels({ platform: "win32" })).toEqual(
       labels({ platform: "linux" }),
@@ -1691,6 +1692,7 @@ describe("menu items and open(view) (UK-06.4)", () => {
     expect(labels({ platform: "darwin" })).toEqual([
       "Check for Updates…",
       "Manage License…",
+      "Approve a Nearby Device…",
     ]);
     expect(labels({ platform: "macos", locale: "en-US" })).toEqual(
       labels({ platform: "darwin" }),
@@ -1699,6 +1701,7 @@ describe("menu items and open(view) (UK-06.4)", () => {
     expect(labels({ platform: "darwin", locale: "de" })).toEqual([
       "Nach Updates suchen",
       "Lizenz verwalten",
+      "Gerät in der Nähe bestätigen",
     ]);
     expect(labels({ platform: "linux", locale: "pt-BR" })[1]).toBe(
       "Gerenciar a licença",
@@ -1722,6 +1725,7 @@ describe("menu items and open(view) (UK-06.4)", () => {
     expect(handle.menuItems().map((m) => m.id)).toEqual([
       "polaris-key.checkForUpdates",
       "polaris-key.manageLicense",
+      "polaris-key.approveNearby",
     ]);
     // Plain objects (Electron's MenuItemConstructorOptions takes them as they are).
     for (const m of handle.menuItems())
@@ -1739,17 +1743,18 @@ describe("menu items and open(view) (UK-06.4)", () => {
     const bridge = createPreloadBridge(ipc.ipcRenderer);
     const typed: PolarisBridge = bridge;
     const seen: string[] = [];
-    const [update, settings] = handle.menuItems();
+    const [update, settings, nearby] = handle.menuItems();
     update!.click(); // nobody subscribed yet
     const off = typed.onOpen!((v) => seen.push(v));
     await new Promise((r) => setTimeout(r, 0)); // the preload's subscribe call lands
     update!.click();
     settings!.click();
-    expect(seen).toEqual(["update", "settings"]);
+    nearby!.click();
+    expect(seen).toEqual(["update", "settings", "nearby"]);
     off();
     await new Promise((r) => setTimeout(r, 0));
     settings!.click();
-    expect(seen).toEqual(["update", "settings"]);
+    expect(seen).toEqual(["update", "settings", "nearby"]);
     handle.close();
   });
 
@@ -1946,6 +1951,8 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
     const events = new PolarisEventEmitter();
     const stop = vi.fn(async () => undefined);
     let handler: ((a: unknown) => void) | null = null;
+    let opts: { onStopped?: (why: string) => void; label?: string } = {};
+    const reopen = vi.fn(async () => undefined);
     const session = fakeSession();
     const identity = {
       autoSignIn: vi.fn(async () => ({
@@ -1956,9 +1963,10 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
       })),
       signIn: { start: vi.fn(async () => session) },
       nearby: {
-        onRequest: vi.fn(async (h: (a: unknown) => void) => {
+        onRequest: vi.fn(async (h: (a: unknown) => void, o: typeof opts) => {
           handler = h;
-          return { stop };
+          opts = o;
+          return { stop, reopen };
         }),
       },
       signOut: vi.fn(async () => {
@@ -1980,6 +1988,9 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
       identity,
       session,
       stop,
+      reopen,
+      stopOnItsOwn: (why: string) => opts.onStopped?.(why),
+      label: () => opts.label,
       ask: (a: unknown) => handler!(a),
     };
   }
@@ -2120,6 +2131,30 @@ describe("PolarisBridge v5: automatic and nearby sign-in (I-47b)", () => {
       code: "invalid-argument",
     });
     expect(a.pick).toHaveBeenCalledTimes(1);
+  });
+
+  it("says why the advert stopped, and the same window starting again reopens it (UXR-47b B4)", async () => {
+    const { bridge, ask, states, stopOnItsOwn, reopen, label } = host();
+    await bridge.approverStart!();
+    // The device is named for the other side, never by its host name.
+    expect(label()).toMatch(/^(Mac|Windows PC|Linux PC)$/);
+    const a = fakeAsk();
+    ask(a.ask);
+    stopOnItsOwn("budget");
+    const last = states[states.length - 1] as {
+      nearby: { approver: { listening: boolean; stopped?: string; asks: [] } };
+    };
+    expect(last.nearby.approver).toEqual({
+      listening: false,
+      stopped: "budget",
+      asks: [],
+    });
+    expect(a.deny).toHaveBeenCalledTimes(1);
+    expect(await bridge.approverStart!()).toEqual({
+      listening: true,
+      asks: [],
+    });
+    expect(reopen).toHaveBeenCalledTimes(1);
   });
 
   it("deny closes the ask without a pick", async () => {

@@ -219,6 +219,19 @@ export type AutoSignInStep =
   | "nearby-prompt"
   | "nearby-wait"
   | "nearby-done"
+  /** Several devices answered: the person chooses which to ask (UXR-47b B2). */
+  | "nearby-choose"
+  /** Nobody answered in a while (UXR-47b M4). */
+  | "nearby-none-found"
+  /** How a nearby request ended (UXR-47b B1): each draws its own screen. */
+  | "nearby-denied"
+  | "nearby-expired"
+  | "nearby-not-nearby"
+  | "nearby-failed"
+  | "nearby-cancelled"
+  | "nearby-signed-out"
+  | "nearby-rate-limited"
+  | "nearby-unavailable"
   | "device-limit";
 
 export interface AutoSignInInput {
@@ -265,7 +278,13 @@ export interface NearbyApprovalInput {
     | "device-limit"
     | "choose"
     | "account-required"
-    | "rate-limited";
+    | "rate-limited"
+    /** The screen is open and nothing has asked yet (UXR-47b B3). */
+    | "listening"
+    /** The advert stopped after declined requests (UXR-47b B4). */
+    | "stopped"
+    /** The Worker or the network failed; nothing was approved (UXR-47b M2). */
+    | "failed";
   /** The new device's friendly name. */
   device?: string;
 }
