@@ -166,13 +166,14 @@ func _found(d: Dictionary) -> void:
 	if _accept.is_valid() and not bool(_accept.call(name)):
 		return
 	var port := int(d.get("port", 0))
-	if port < 1 or port > 65535:
-		return
 	var hosts: Array = []
 	for h in d.get("hosts", []):
 		if h is String and (h as String).length() <= 64 and hosts.size() < MAX_HOSTS and not hosts.has(h):
 			hosts.append(h)
-	if hosts.is_empty():
+	if port < 1 or port > 65535 or hosts.is_empty():
+		# Nothing dialable is left: the name is lost, not kept at its old address.
+		if _up.erase(name) and _on_down.is_valid():
+			_on_down.call(name)
 		return
 	var txt: Array = []
 	for t in d.get("txt", []):

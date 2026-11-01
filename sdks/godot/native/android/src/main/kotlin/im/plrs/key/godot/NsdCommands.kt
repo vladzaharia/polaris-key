@@ -171,7 +171,10 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
                     // a fresh discovery does for every service already on the network.
                     for (n in watches.keys.toList()) if (n !in next) dropWatch(n)
                     runCatching { browse?.invoke() }
-                    browse = openBrowse()
+                    browse = null
+                    // The permission may have been withdrawn since the browse started: judge it again.
+                    if (gate() == null) browse = runCatching { openBrowse() }.getOrNull()
+                    if (browse == null) for (n in watches.keys.toList()) dropWatch(n)
                 }
             }
         }
@@ -212,7 +215,11 @@ class NsdCommands(private val c: Commands, private val backend: Backend) {
     }
 
     private fun found(instance: String, r: NsdResolved) {
-        if (r.port !in 1..65535 || r.addresses.isEmpty()) return
+        if (r.port !in 1..65535 || r.addresses.isEmpty()) {
+            // Nothing dialable is left (the last address expired): the name is lost, not kept at its old address.
+            events.lost(instance)
+            return
+        }
         val row = JSONObject()
             .put("ev", "nsd_found")
             .put("instance", instance)

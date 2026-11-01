@@ -251,7 +251,7 @@ private class RealNsdApi(context: Context) : NsdApi {
             override fun onServiceUpdated(serviceInfo: NsdServiceInfo) {
                 // Every address the OS knows, the dialable kinds first, so the cut at MAX_ADDRESSES drops
                 // the link-local ones (which need a zone) and never the IPv4 one.
-                val addresses = orderAddresses(serviceInfo.hostAddresses).map { a ->
+                val addresses = orderAddresses(serviceInfo.hostAddresses.filter { lanCandidate(it) }).map { a ->
                     val text = a.hostAddress.orEmpty()
                     // A link-local IPv6 address keeps the zone the OS gave it; Inet6Address prints it.
                     if (a is Inet6Address && !text.contains('%') && a.scopeId != 0) "$text%${a.scopeId}" else text
@@ -277,4 +277,20 @@ private fun rank(a: InetAddress): Int = when {
     a is Inet4Address -> 0
     a.isLinkLocalAddress -> 2
     else -> 1
+}
+
+/**
+ * Whether the LAN address policy could let [a] through: private IPv4 (10/8, 172.16/12, 192.168/16),
+ * IPv6 link-local, unique-local, or global unicast other than Teredo and 6to4. Everything else
+ * (carrier-grade NAT, IPv4 link-local, public IPv4, loopback, multicast) is dropped before the cut at
+ * [PeerNsd.MAX_ADDRESSES], so a refused address never takes the place of a usable one.
+ */
+internal fun lanCandidate(a: InetAddress): Boolean {
+    val b = a.address.map { it.toInt() and 0xff }
+    if (a is Inet4Address) return b[0] == 10 || (b[0] == 172 && b[1] in 16..31) || (b[0] == 192 && b[1] == 168)
+    if (a !is Inet6Address) return false
+    val g0 = (b[0] shl 8) or b[1]
+    val teredo = g0 == 0x2001 && b[2] == 0 && b[3] == 0
+    val global = (g0 and 0xe000) == 0x2000 && !teredo && g0 != 0x2002
+    return (g0 and 0xffc0) == 0xfe80 || (g0 and 0xfe00) == 0xfc00 || global
 }

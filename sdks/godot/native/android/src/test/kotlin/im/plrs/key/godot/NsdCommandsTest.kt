@@ -310,4 +310,32 @@ class NsdCommandsTest {
         assertEquals("unknown_op", c.nsd.handle("nsd_nope", JSONObject()).getString("error"))
         assertNull(op("poll").optJSONObject("nsd"))
     }
+
+    @Test
+    fun anUpdateWithNothingDialableRetractsTheName() {
+        watching(a)
+        val w = fake.watchListeners[a]!!
+        w.onResolved(resolved(a, "192.168.1.9"))
+        poll()
+        w.onResolved(resolved(a))
+        assertEquals("nsd_lost", poll().single().getString("ev"))
+        w.onResolved(resolved(a, "192.168.1.9"))
+        poll()
+        w.onResolved(resolved(a, "192.168.1.9", port = 0))
+        assertEquals("nsd_lost", poll().single().getString("ev"))
+    }
+
+    @Test
+    fun aChangedNameSetReopensOnlyThroughThePermissionGate() {
+        watching(a)
+        fake.watchListeners[a]!!.onResolved(resolved(a, "192.168.1.9"))
+        poll()
+        fake.permission = NsdCommands.Permission.DENIED
+        assertTrue(op("nsd_accept") { put("names", names(b)) }.getBoolean("ok"))
+        assertEquals(1, fake.browses)
+        assertEquals("nsd_lost", poll().single().getString("ev"))
+        fake.permission = NsdCommands.Permission.NOT_REQUIRED
+        assertTrue(op("nsd_browse_start").getBoolean("ok"))
+        assertEquals(2, fake.browses)
+    }
 }
