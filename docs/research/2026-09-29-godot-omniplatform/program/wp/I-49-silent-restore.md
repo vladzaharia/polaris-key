@@ -5,7 +5,7 @@
 | Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16)                                                                        |
 | Size        | 0.8–1.2 engineer-weeks                                                                                                                    |
 | Depends on  | [I-13](I-13-exchange-endpoint.md), [I-44](I-44-swift-auto-signin.md), [I-45](I-45-kotlin-auto-signin.md), [CC-01](CC-01-combined-plan.md) |
-| Unblocks    | [U-39](U-39-e2e-client-swift-kotlin.md)                                                                                                   |
+| Unblocks    | [U-39](U-39-e2e-client-swift-kotlin.md), [I-53](I-53-device-removal.md)                                                                   |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                     |
 | Plan mode   | yes: executes the approved [`plans/CC-01.md`](../plans/CC-01.md) and the plan above                                                       |
 | Gates       | plan-mode, rule-10, migration, threat-model                                                                                               |
