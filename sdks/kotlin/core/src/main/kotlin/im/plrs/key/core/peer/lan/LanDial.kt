@@ -147,7 +147,7 @@ private fun CoroutineScope.launchAttempt(r: Race, host: String) {
         val failure = if (s == null) made.exceptionOrNull() else runCatching { connectJudged(r, s, host) }.exceptionOrNull()
         if (s != null && failure == null) {
             r.win(s, host)
-        } else if (r.lose(s, failure as? Exception ?: IOException(failure ?: IOException("no socket")))) {
+        } else if (r.lose(s, failure as? IOException ?: IOException("connect failed", failure))) {
             r.take()?.let { launchAttempt(r, it) }
         }
     }

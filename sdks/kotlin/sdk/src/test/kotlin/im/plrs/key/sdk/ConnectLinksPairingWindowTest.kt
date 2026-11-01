@@ -6,6 +6,10 @@
 
 package im.plrs.key.sdk
 
+import im.plrs.key.core.peer.lan.MdnsAdapter
+import im.plrs.key.core.peer.lan.MdnsAdvert
+import im.plrs.key.core.peer.lan.MdnsFound
+import im.plrs.key.core.peer.lan.MdnsHandle
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -36,7 +40,7 @@ class ConnectLinksPairingWindowTest : ConnectLanBase() {
             allowed = { true },
         )
 
-        fun options(net: Network) = LinkPairOptions(
+        fun options(net: MdnsAdapter) = LinkPairOptions(
             categories = listOf("docs"),
             onCode = { offer ->
                 codes += offer.code
@@ -71,6 +75,76 @@ class ConnectLinksPairingWindowTest : ConnectLanBase() {
         assertEquals("Ana", b.rows.first().label)
         assertEquals(listOf("docs"), a.linked.first().categories)
         assertTrue(a.failed.isEmpty() && b.failed.isEmpty())
+        runBlocking {
+            ha.stop()
+            hb.stop()
+        }
+    }
+
+    /** Hands every found advert the given factory, as the Android adapter does with the found network's. */
+    private class WithFactory(val inner: MdnsAdapter, val factory: javax.net.SocketFactory) : MdnsAdapter {
+        override suspend fun advertise(advert: MdnsAdvert): MdnsHandle = inner.advertise(advert)
+
+        override suspend fun browse(onUp: (MdnsFound) -> Unit, onDown: (String) -> Unit, accept: (String) -> Boolean): MdnsHandle =
+            inner.browse({ onUp(MdnsFound(it.instance, it.host, it.port, it.txt, it.hosts, factory)) }, onDown, accept)
+    }
+
+    private class CountingFactory : javax.net.SocketFactory() {
+        val made = java.util.concurrent.atomic.AtomicInteger()
+
+        override fun createSocket(): java.net.Socket = java.net.Socket().also { made.incrementAndGet() }
+
+        override fun createSocket(h: String?, p: Int): java.net.Socket = throw UnsupportedOperationException()
+
+        override fun createSocket(h: String?, p: Int, a: java.net.InetAddress?, lp: Int): java.net.Socket = throw UnsupportedOperationException()
+
+        override fun createSocket(a: java.net.InetAddress?, p: Int): java.net.Socket = throw UnsupportedOperationException()
+
+        override fun createSocket(a: java.net.InetAddress?, p: Int, la: java.net.InetAddress?, lp: Int): java.net.Socket =
+            throw UnsupportedOperationException()
+    }
+
+    @Test
+    fun aPairingDialUsesTheFoundNetworksFactory() {
+        val a = Person(device(idA), "Ana", true)
+        val b = Person(device(idB), "Ben", true)
+        val net = Network()
+        val fa = CountingFactory()
+        val fb = CountingFactory()
+        val (ha, hb) = runBlocking {
+            LinkPairing.start(a.source, a.options(WithFactory(net, fa))) to LinkPairing.start(b.source, b.options(WithFactory(net, fb)))
+        }
+        until { a.linked.isNotEmpty() && b.linked.isNotEmpty() }
+        // Exactly one side dials (the lower instance does not); its sockets all came from the found network's factory.
+        assertEquals(1, fa.made.get() + fb.made.get())
+        runBlocking {
+            ha.stop()
+            hb.stop()
+        }
+    }
+
+    @Test
+    fun aPairingDialFailsClosedWhenTheFoundNetworksFactoryCannotMakeASocket() {
+        val a = Person(device(idA), "Ana", true)
+        val b = Person(device(idB), "Ben", true)
+        val net = Network()
+        val broken = object : javax.net.SocketFactory() {
+            override fun createSocket(): java.net.Socket = throw java.io.IOException("network is gone")
+
+            override fun createSocket(h: String?, p: Int): java.net.Socket = throw UnsupportedOperationException()
+
+            override fun createSocket(h: String?, p: Int, a: java.net.InetAddress?, lp: Int): java.net.Socket = throw UnsupportedOperationException()
+
+            override fun createSocket(a: java.net.InetAddress?, p: Int): java.net.Socket = throw UnsupportedOperationException()
+
+            override fun createSocket(a: java.net.InetAddress?, p: Int, la: java.net.InetAddress?, lp: Int): java.net.Socket =
+                throw UnsupportedOperationException()
+        }
+        val (ha, hb) = runBlocking {
+            LinkPairing.start(a.source, a.options(WithFactory(net, broken))) to LinkPairing.start(b.source, b.options(WithFactory(net, broken)))
+        }
+        Thread.sleep(1500)
+        assertTrue(a.codes.isEmpty() && b.codes.isEmpty() && a.rows.isEmpty() && b.rows.isEmpty())
         runBlocking {
             ha.stop()
             hb.stop()

@@ -97,6 +97,8 @@ private class ConnectivityNetworkPort(private val context: Context) : NetworkPor
 
     override fun factoryOf(network: Network): SocketFactory? = network.socketFactory
 
+    // The library declares no permission (the app decides); a refusal reads as a VPN, which fails closed.
+    @SuppressLint("MissingPermission")
     override fun isNotVpn(network: Network): Boolean {
         val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
         val caps = runCatching { cm?.getNetworkCapabilities(network) }.getOrNull()
@@ -105,7 +107,7 @@ private class ConnectivityNetworkPort(private val context: Context) : NetworkPor
 
     // The library declares no permission (the app decides); a refusal is caught below. Lint cannot see that for a normal permission.
     @SuppressLint("MissingPermission")
-    @Suppress("SwallowedException")
+    @Suppress("SwallowedException", "TooGenericExceptionCaught")
     override fun onDefaultNetworkChange(onChange: () -> Unit): NsdStop {
         val cm = context.applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return NsdStop {}
         val callback = object : ConnectivityManager.NetworkCallback() {
@@ -293,7 +295,7 @@ public class AndroidMdns internal constructor(
         private val accept: (String) -> Boolean,
     ) {
         private val lock = Any()
-        private val watches = HashMap<String, NsdStop>()
+        private val watches = LinkedHashMap<String, NsdStop>()
         private val up = HashSet<String>()
         private var browse: NsdStop? = null
         private var stopped = false
@@ -322,7 +324,20 @@ public class AndroidMdns internal constructor(
         private fun watch(instance: String) {
             // The name is judged before anything is kept for it.
             if (!accept(instance)) return
-            val admitted = synchronized(lock) { !stopped && instance !in watches }
+            // At the watch cap the oldest name that never resolved makes room, so a host holding many names cannot
+            // keep a real one from being watched.
+            var evicted: NsdStop? = null
+            val admitted = synchronized(lock) {
+                if (stopped || instance in watches) {
+                    false
+                } else {
+                    if (watches.size >= PeerNsd.MAX_WATCHED) {
+                        watches.keys.firstOrNull { it !in up }?.let { evicted = watches.remove(it) }
+                    }
+                    true
+                }
+            }
+            evicted?.stop()
             if (!admitted) return
             val w = nsd.watch(
                 instance,

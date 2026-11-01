@@ -263,6 +263,35 @@ class LanJudgeTest {
         }
     }
 
+    private fun throwingFactory(boom: Throwable): javax.net.SocketFactory = object : javax.net.SocketFactory() {
+        override fun createSocket(): Socket = throw boom
+
+        override fun createSocket(h: String?, p: Int): Socket = throw boom
+
+        override fun createSocket(h: String?, p: Int, a: java.net.InetAddress?, lp: Int): Socket = throw boom
+
+        override fun createSocket(a: java.net.InetAddress?, p: Int): Socket = throw boom
+
+        override fun createSocket(a: java.net.InetAddress?, p: Int, la: java.net.InetAddress?, lp: Int): Socket = throw boom
+    }
+
+    @Test
+    fun lanDialFailsClosedWithAnIoExceptionWhateverTheFactoryThrows() {
+        server().use { srv ->
+            val connected = CopyOnWriteArrayList<Socket>()
+            val booms = listOf(RuntimeException("gone"), SecurityException("denied"), IllegalStateException("fd"))
+            for (boom in booms) {
+                val o = LanDialOptions(true, 3000, 30) { s, _, _ ->
+                    connected += s
+                    s.connect(InetSocketAddress("127.0.0.1", srv.localPort))
+                }.withSocketFactory(throwingFactory(boom))
+                val r = runCatching { runBlocking { lanDialRaceTo(listOf("10.0.0.1"), srv.localPort, o) } }
+                assertTrue(r.exceptionOrNull() is java.io.IOException)
+            }
+            assertEquals(0, connected.size)
+        }
+    }
+
     @Test
     fun aConnectionThatWinsJustBeforeTheTimeoutIsClosed() {
         server().use { srv ->

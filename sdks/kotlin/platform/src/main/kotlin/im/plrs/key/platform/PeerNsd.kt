@@ -127,16 +127,22 @@ public class PeerNsd internal constructor(private val api: NsdApi, private val e
     /**
      * Report each service name that appears or goes; the first [MAX_FOUND] names are tracked. A name
      * [accept] refuses is dropped before it takes a slot, so names a caller does not know cannot crowd out
-     * the ones it does.
+     * the ones it does. When the table is full the oldest name makes room ([PeerNsdListener.onLost] for it),
+     * so a host holding many names cannot keep a later one from being seen.
      */
     public fun browse(listener: PeerNsdListener, accept: (String) -> Boolean = { true }): PeerNsdHandle {
         check(isSupported()) { "unsupported" }
-        val found = HashSet<String>()
+        val found = LinkedHashSet<String>()
         val token = api.discover(
             SERVICE_TYPE,
             onFound = { name ->
-                val fresh = accept(name) && synchronized(found) { found.size < MAX_FOUND && found.add(name) }
-                if (fresh) executor.execute { listener.onFound(name) }
+                val taken = if (accept(name)) take(found, name) else null
+                if (taken != null) {
+                    executor.execute {
+                        taken.second?.let { listener.onLost(it) }
+                        listener.onFound(name)
+                    }
+                }
             },
             onLost = { name ->
                 val was = synchronized(found) { found.remove(name) }
@@ -171,6 +177,15 @@ public class PeerNsd internal constructor(private val api: NsdApi, private val e
             synchronized(lock) { watched.remove(instance) }
             runCatching { api.unwatch(token) }
         }
+    }
+
+    /** Add [name] to [found]; null when it is there already, else the pair (true, the oldest name that made room). */
+    private fun take(found: LinkedHashSet<String>, name: String): Pair<Boolean, String?>? = synchronized(found) {
+        if (name in found) return@synchronized null
+        val oldest = if (found.size >= MAX_FOUND) found.first() else null
+        if (oldest != null) found.remove(oldest)
+        found.add(name)
+        true to oldest
     }
 
     public companion object {

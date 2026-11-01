@@ -529,6 +529,63 @@ class ConnectLinksTest : ConnectLanBase() {
         assertTrue(c.cloudConnect.links.interAccount())
     }
 
+    // -- Android: pairing uses the platform's adapter and permission (CC-12b) ---------------------------
+
+    private class FakePlatform(override val mdns: im.plrs.key.core.peer.lan.MdnsAdapter?, var verdict: LocalNetworkVerdict = LocalNetworkVerdict.Ok) :
+        ConnectPlatform {
+        override suspend fun localNetwork(): LocalNetworkVerdict = verdict
+    }
+
+    private fun <T> asAndroid(platform: ConnectPlatform?, block: () -> T): T {
+        ConnectPlatforms.android = true
+        ConnectPlatforms.installed = platform
+        try {
+            return block()
+        } finally {
+            ConnectPlatforms.android = im.plrs.key.core.RuntimeFamily.isAndroid
+            ConnectPlatforms.installed = null
+        }
+    }
+
+    private fun pairOptions() = LinkPairOptions(listOf("docs"), { }, seconds = 30.0, host = "127.0.0.1", allowLoopback = true)
+
+    @Test
+    fun pairOnAndroidReadsTheLocalNetworkPermissionAndUsesThePlatformAdapter() = runBlocking {
+        interAccount = true
+        val c = client()
+        c.discover()
+        val net = Network()
+        for ((verdict, code) in listOf(
+            LocalNetworkVerdict.Denied to ErrorCode.nearbyPermissionDenied,
+            LocalNetworkVerdict.NotDeclared to ErrorCode.notConfigured,
+        )) {
+            asAndroid(FakePlatform(net, verdict)) {
+                val e = org.junit.Assert.assertThrows(im.plrs.key.core.PolarisException::class.java) {
+                    runBlocking { c.cloudConnect.links.pair(pairOptions()) }
+                }
+                assertEquals(code, e.code)
+            }
+        }
+        for (platform in listOf(null, FakePlatform(null))) {
+            asAndroid(platform) {
+                val e = org.junit.Assert.assertThrows(im.plrs.key.core.PolarisException::class.java) {
+                    runBlocking { c.cloudConnect.links.pair(pairOptions()) }
+                }
+                assertEquals(im.plrs.key.core.Feature.connectLinks, e.unsupported?.feature)
+            }
+        }
+        assertTrue(net.adverts.isEmpty() && net.browsers.isEmpty())
+        asAndroid(FakePlatform(net, LocalNetworkVerdict.Ok)) {
+            runBlocking {
+                val h = c.cloudConnect.links.pair(pairOptions())
+                assertEquals(1, net.adverts.size)
+                assertTrue(net.adverts.values.single().txt.contains("m=p"))
+                assertEquals(1, net.browsers.size)
+                h.stop()
+            }
+        }
+    }
+
     @Test
     fun theContactTicketBodyAndTheRoomEcho() = runBlocking {
         val c = client()

@@ -52,6 +52,7 @@ import im.plrs.key.core.peer.VouchStatus
 import im.plrs.key.core.peer.VouchVerdict
 import im.plrs.key.core.peer.advertEpoch
 import im.plrs.key.core.peer.buildVouchRequest
+import im.plrs.key.core.peer.isInstanceName
 import im.plrs.key.core.peer.lan.JvmMdns
 import im.plrs.key.core.peer.lan.LanDialOptions
 import im.plrs.key.core.peer.lan.MdnsAdapter
@@ -632,7 +633,7 @@ public class NearbyRequester private constructor(private val src: RequesterSourc
             cancels += { reg.dispose() }
         }
         try {
-            browse = mdns.browse({ f -> scope.launch { found(f) } }, { instance -> scope.launch { gone(instance) } }, { true })
+            browse = mdns.browse({ f -> scope.launch { found(f) } }, { instance -> scope.launch { gone(instance) } }, { isInstanceName(it) })
         } catch (e: Throwable) {
             stopNow(null)
             throw e
