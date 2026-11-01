@@ -46,6 +46,7 @@ extends RefCounted
 ##  - nothing is bound or joined until `advertise` or `browse` is called, and the last `stop()`
 ##    closes the socket.
 ##
+## The discovery port (CC-15b): slots on `advertise`, `capabilities()`, `set_tags` and `browse` tags (ignored).
 ## Driving. The adapter polls once a frame (`SceneTree.process_frame`) while a handle is open;
 ## `poll()` does one round by hand (tests, hosts with no tree).
 
@@ -135,7 +136,15 @@ func _to_string() -> String:
 # ── the seam ─────────────────────────────────────────────────────────────────────────────────
 
 
-## Advertise `advert` {instance, port, txt}. ok with a Handle (`stop()` sends the goodbye and
+func capabilities() -> Dictionary:
+	return {"slots": true, "tags": true}
+
+
+func set_tags(_tags: Dictionary) -> bool:
+	return true
+
+
+## Advertise `advert` {instance, port, txt, slot? (a, v, p or c)}. ok with a Handle (`stop()` sends the goodbye and
 ## closes), or a connect-unavailable failure (reason `mdns_unavailable`) when no socket can be
 ## opened. A querier-only device returns a handle that says nothing: see `status()`.
 func advertise(advert: Dictionary) -> PKeyResult:
@@ -145,16 +154,14 @@ func advertise(advert: Dictionary) -> PKeyResult:
 		return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "Bad instance name.", {"reason": "instance_name"})
 	if port < 1 or port > 65535:
 		return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "Bad port.", {"reason": "port"})
+	if not ["a", "v", "p", "c"].has(str(advert.get("slot", "a"))):
+		return PKeyResult.failure(PKeyConstants.ErrorCode.INVALID_ARGUMENT, "Bad slot.", {"reason": "slot"})
 	var opened := _acquire()
 	if not opened.ok:
 		return opened
 	var ad := Advertisement.new()
-	ad.instance = instance
-	ad.fqdn = instance + "." + PKeyMdnsPacket.PEER_SERVICE
-	ad.host = instance + ".local"
 	ad.port = port
-	ad.txt = (advert.get("txt", []) as Array).duplicate()
-	ad.addresses = _advert_addresses()
+	_name_advert(ad, instance, advert.get("txt", []) as Array)
 	ad.next_again = _now() + 1.0
 	_adverts.append(ad)
 	_announce(ad, TTL)
@@ -165,7 +172,7 @@ func advertise(advert: Dictionary) -> PKeyResult:
 ## TXT and at least one address are known (again when they change); `on_down` with the instance
 ## when it leaves or lapses; `accept` (Callable(instance) -> bool) says whether a name may enter
 ## the tables (default: every well-formed name). ok with a Handle, or a failure as `advertise`.
-func browse(on_up: Callable, on_down := Callable(), accept := Callable()) -> PKeyResult:
+func browse(on_up: Callable, on_down := Callable(), accept := Callable(), _tags := {}) -> PKeyResult:
 	var opened := _acquire()
 	if not opened.ok:
 		return opened
@@ -451,6 +458,23 @@ func _announce(ad: Advertisement, ttl: int) -> void:
 	if ad.stopped or not _responder or ad.addresses.is_empty():
 		return
 	_send(PKeyMdnsPacket.build_response(_records(ad, ttl)))
+
+
+func _name_advert(ad: Advertisement, instance: String, txt: Array) -> void:
+	ad.instance = instance
+	ad.fqdn = instance + "." + PKeyMdnsPacket.PEER_SERVICE
+	ad.host = instance + ".local"
+	ad.txt = txt.duplicate()
+	ad.addresses = _advert_addresses()
+
+
+func _update_advert(ad: Advertisement, instance: String, txt: Array) -> bool:
+	if ad.stopped or not PKeyPeerAdvert.is_instance_name(instance):
+		return false
+	_announce(ad, 0)
+	_name_advert(ad, instance, txt)
+	_announce(ad, TTL)
+	return true
 
 
 func _stop_advert(ad: Advertisement) -> void:
@@ -776,6 +800,11 @@ class Handle extends RefCounted:
 	## A browse handle: how many instances its table holds (0 for an advert, or once stopped).
 	func tracked() -> int:
 		return (_what as Browser).seen.size() if _owner != null and _what is Browser else 0
+
+
+	## Move an advert to its next name and TXT: the old name says goodbye. False for a browse, a stopped one or a bad name.
+	func update(instance: String, txt: Array) -> bool:
+		return _owner != null and _what is Advertisement and _owner._update_advert(_what, instance, txt)
 
 
 	func stop() -> void:
