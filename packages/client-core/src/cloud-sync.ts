@@ -394,6 +394,12 @@ export type SyncEvent =
       unsynced: number;
     }
   | { type: "unsyncedData"; count: number }
+  | {
+      type: "records";
+      collection: string;
+      ids: string[];
+      origin: ChangeOrigin;
+    }
   | { type: "signInOffered"; signInUrl: string | null };
 
 export type ValueFrom = "pending" | "cloud" | "device" | "document";
@@ -705,6 +711,10 @@ export class CloudSyncMachine {
   private outbox: SyncRequest[] = [];
   private events: SyncEvent[] = [];
   private outcome: ((o: RecordOutcome) => void) | null = null;
+  private outcomeTaps = new Set<(o: RecordOutcome) => void>();
+  /** The collections whose record changes are reported as `records` events, with the last state
+   *  reported (record key to canonical JSON, `null` for absent). Empty: nothing is computed. */
+  private watched = new Map<string, Map<string, string>>();
 
   constructor(opts: CloudSyncOptions, persisted?: CloudSyncPersisted) {
     this.product = opts.product;
@@ -762,6 +772,7 @@ export class CloudSyncMachine {
   }
 
   takeEvents(): SyncEvent[] {
+    this.noteRecordChanges("remote");
     const out = this.events;
     this.events = [];
     return out;
@@ -943,6 +954,7 @@ export class CloudSyncMachine {
           });
       }
     }
+    this.noteRecordChanges("local");
     this.kick();
     return { ok: true };
   }
@@ -1025,13 +1037,143 @@ export class CloudSyncMachine {
     op.ticket = ticket;
     const pointer = fileOf(file);
     if (pointer) op.file = pointer;
+    this.noteRecordChanges("local");
     this.kick();
     return { ok: true, mutationId: ticket };
   }
 
   private emitOutcome(op: JournalOp, o: OutcomeBody): void {
     if (op.ticket === undefined) return;
-    this.outcome?.({ ...o, mutationId: op.ticket } as RecordOutcome);
+    const full = { ...o, mutationId: op.ticket } as RecordOutcome;
+    this.outcome?.(full);
+    for (const tap of this.outcomeTaps) tap(full);
+  }
+
+  /** Another listener for `putAt` / `removeAt` outcomes, beside `onOutcome`'s: returns its remover.
+   *  A tap is told of every outcome, so it must tell its own ticket from another's. */
+  tapOutcomes(fn: (o: RecordOutcome) => void): () => void {
+    this.outcomeTaps.add(fn);
+    return () => this.outcomeTaps.delete(fn);
+  }
+
+  /** The declaration of a collection in the catalog, or `undefined`. */
+  collectionDecl(name: string): CollectionDecl | undefined {
+    const d = this.collection(name);
+    return d ? { ...d } : undefined;
+  }
+
+  /** Report record changes of `collection` as `records` events from now on (`false`: stop). */
+  watchRecords(collection: string, on: boolean): void {
+    if (!on) {
+      this.watched.delete(collection);
+      return;
+    }
+    if (!this.watched.has(collection))
+      this.watched.set(collection, this.recordStates(collection));
+  }
+
+  /** The ids of a collection's effective records (pending edits applied), in byte order. */
+  recordIds(collection: string): string[] {
+    return [...this.recordStates(collection).keys()].sort(byteOrder);
+  }
+
+  private recordStates(collection: string): Map<string, string> {
+    const out = new Map<string, string>();
+    if (this.s.subject === null) return out;
+    const prefix = `${collection}/`;
+    const p = this.active();
+    const keys = new Set(Object.keys(p.records));
+    for (const op of p.pending)
+      if ("record" in op.target && op.target.record[0] === collection)
+        keys.add(recordKey(...op.target.record));
+    for (const rk of Object.keys(p.held)) keys.add(rk);
+    for (const rk of keys) {
+      if (!rk.startsWith(prefix)) continue;
+      const id = rk.slice(prefix.length);
+      const v = this.record(collection, id);
+      if (v) out.set(id, JSON.stringify([v.value, v.from]));
+    }
+    return out;
+  }
+
+  /** Push a `records` event for each watched collection whose effective rows changed. */
+  private noteRecordChanges(origin: ChangeOrigin): void {
+    for (const [collection, last] of this.watched) {
+      const now = this.recordStates(collection);
+      const ids: string[] = [];
+      for (const id of new Set([...last.keys(), ...now.keys()]))
+        if (last.get(id) !== now.get(id)) ids.push(id);
+      this.watched.set(collection, now);
+      if (ids.length > 0)
+        this.events.push({
+          type: "records",
+          collection,
+          ids: ids.sort(byteOrder),
+          origin,
+        });
+    }
+  }
+
+  /** Update a `merge` record: `set` writes the named fields and `remove` drops the named ones; any
+   *  other field is untouched (a field this version does not know survives). One clock stamp. */
+  update(
+    collection: string,
+    id: string,
+    change: { set?: Record<string, Json>; remove?: string[] },
+  ): CallResult {
+    const decl = this.collection(collection);
+    if (!decl || decl.policy !== "merge")
+      return { ok: false, error: "collection-unknown" };
+    if (this.s.subject === null) return { ok: false, error: "signed-out" };
+    const set = change.set ?? {};
+    const remove = change.remove ?? [];
+    const names = [...Object.keys(set), ...remove];
+    if (new Set(names).size !== names.length || names.length === 0)
+      return { ok: false, error: "bad_request" };
+    const p = this.active();
+    const target = { record: [collection, id] as [string, string] };
+    const editedHlc = this.tickHlc();
+    const marks = this.s.contacted ? {} : { preContact: true as const };
+    for (const field of Object.keys(set).sort(byteOrder))
+      this.enqueue(p, {
+        target,
+        op: "setField",
+        field,
+        value: clone(set[field] as Json),
+        editedHlc,
+        ...marks,
+      });
+    for (const field of [...remove].sort(byteOrder))
+      this.enqueue(p, {
+        target,
+        op: "removeField",
+        field,
+        editedHlc,
+        ...marks,
+      });
+    this.noteRecordChanges("local");
+    this.kick();
+    return { ok: true };
+  }
+
+  /** Delete a record of any policy but `revision` (use `removeAt` there). */
+  delete(collection: string, id: string): CallResult {
+    const decl = this.collection(collection);
+    if (!decl || decl.policy === "revision")
+      return { ok: false, error: "collection-unknown" };
+    if (this.s.subject === null) return { ok: false, error: "signed-out" };
+    const p = this.active();
+    this.enqueue(p, {
+      target: { record: [collection, id] },
+      op: "delete",
+      ...(decl.policy === "union" ? {} : { editedHlc: this.tickHlc() }),
+      ...(this.s.contacted || decl.policy === "union"
+        ? {}
+        : { preContact: true as const }),
+    });
+    this.noteRecordChanges("local");
+    this.kick();
+    return { ok: true };
   }
 
   /** Add to a `union` record (an OR-set). */
@@ -1764,6 +1906,7 @@ export class CloudSyncMachine {
         ? { target, op, element: clone(element) }
         : { target, op, element: clone(element), observedSeq: p.cursor },
     );
+    this.noteRecordChanges("local");
     this.kick();
     return { ok: true };
   }
