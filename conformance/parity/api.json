@@ -504,6 +504,11 @@
         "file": "sdks/godot/addons/polaris_key/services/identity/sign_in_session.gd"
       },
       {
+        "ns": "identity",
+        "type": "PKeyIdentityExchange",
+        "file": "sdks/godot/addons/polaris_key/services/identity/exchange.gd"
+      },
+      {
         "ns": "devices",
         "file": "sdks/godot/addons/polaris_key/services/devices.gd"
       },
@@ -1968,6 +1973,16 @@
       "sdk": "godot",
       "path": "identity.bind",
       "reason": "wiring PolarisKey.configure calls; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.exchange",
+      "reason": "the exchange primitive under identity.autoSignIn (I-48.3), which carries the row; not an app verb"
+    },
+    {
+      "sdk": "godot",
+      "path": "identity.nonce",
+      "reason": "the exchange primitive under identity.autoSignIn (I-48.3), which carries the row; not an app verb"
     },
     {
       "sdk": "godot",
@@ -3575,9 +3590,7 @@
           "spelling": "ChoiceClient.complete"
         },
         "godot": {
-          "spelling": "PKeyIdentityChoice.complete",
-          "planned": "I-48",
-          "reason": "gains consent: complete(grant, choice, consent?) answers a confirm result (plan-auto-sign-in §2.2)"
+          "spelling": "PKeyIdentityChoice.complete"
         }
       },
       "layer": "client"
@@ -3638,9 +3651,7 @@
         },
         "kotlin": {},
         "godot": {
-          "spelling": "PKeyIdentity.auto_sign_in",
-          "planned": "I-48",
-          "reason": "automatic sign-in (plan-auto-sign-in §2.2)"
+          "spelling": "PKeyIdentity.auto_sign_in"
         }
       },
       "layer": "client"

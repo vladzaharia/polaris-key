@@ -1531,7 +1531,7 @@ static func capabilities() -> Dictionary:
 		"connect.identity": {"status": "implemented", "service": "connect", "na": []},
 		"connect.noise": {"status": "implemented", "service": "connect", "na": []},
 		"connect.protocol": {"status": "implemented", "service": "connect", "na": []},
-		"connect.lan": {"status": "planned", "service": "connect", "na": []},
+		"connect.lan": {"status": "implemented", "service": "connect", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"connect.relay": {"status": "implemented", "service": "connect", "na": []},
 		"connect.links": {"status": "planned", "service": "connect", "na": []},
 		"connect.transfer": {"status": "planned", "service": "connect", "na": []},
@@ -1558,7 +1558,7 @@ static func capabilities() -> Dictionary:
 		"identity.exchange": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
 		"identity.gamecenter": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"identity.pgs": {"status": "implemented", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
-		"identity.autosignin": {"status": "planned", "service": "identity", "na": []},
+		"identity.autosignin": {"status": "implemented", "service": "identity", "na": []},
 		"identity.restore": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
 		"identity.link": {"status": "planned", "service": "identity", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}]},
 		"identity.nearby": {"status": "planned", "service": "identity", "na": [{"runtime": "web", "reason": "runtime"}]},
@@ -1629,4 +1629,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "4ddf13935f60ae44b2aefabe5b1bf0599cf625d15ea494f150ac1b72586190f3"
+const CAPABILITY_DIGEST := "c998e039898aeed5d1b0fef438a4f7002824f7eb6f1681baa93d85fd5e529486"

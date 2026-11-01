@@ -4,7 +4,7 @@ sidebar:
 title: "Godot"
 description: "The Godot addon — install it from Polaris Key's Godot feed, set it up in the editor dock, await PolarisKey.boot(), then license, config, devices, sign-in, updates by outlet and packs, in pure GDScript."
 type: "reference"
-lastReviewed: "2026-10-16"
+lastReviewed: "2026-11-01"
 sdks: ["godot"]
 ---
 
@@ -20,10 +20,52 @@ the finished screens, the [Godot UI kit](/docs/build/ui/frameworks/godot/); to d
 
 <GodotReadme />
 
+## Automatic sign-in
+
+`PolarisKey.identity.auto_sign_in()` signs the person in without a form. It never throws and answers a
+`PKeyAutoSignInResult`. The rungs, in order:
+
+1. **Stored session.** A token from an earlier sign-in and a held license: `signed_in`, no network.
+2. **Silent restore.** Planned, so the ladder skips it. See [Restore from backup](#restore-from-backup).
+3. **Platform account, silently.** Each installed provider (Sign in with Apple, Game Center, Play Games,
+   Google through Credential Manager, FedCM on web), over a fresh nonce from the Worker.
+4. **Platform sheet.** One account sheet, only when you pass `prompt = "optional"`.
+
+Anything else is the regular sign-in form. Linux and Windows exports have no platform account: the
+ladder is rung 1, then `needs_sign_in`.
+
+```gdscript
+func sign_in_at_launch() -> void:
+	PKeyPlatformProviders.install(PolarisKey.identity)
+	var r := await PolarisKey.identity.auto_sign_in({prompt = "optional"})
+	match r.kind:
+		&"signed_in": pass
+		&"confirm": pass
+		&"choose": pass
+		&"needs_sign_in": pass
+		&"device_limit": pass
+		&"unavailable": pass
+```
+
+`confirm` is the consent to show, then `identity.choice.complete(r.pending.grant, null, {claims = [...]})`.
+`choose` is the license choice in `r.pending.view`. `needs_sign_in` carries a `reason` (`no_link`, `terms`,
+`signed_out`, `no_credential` or `cancelled`). `device_limit` has `r.manage_url`. The gate and the sign-in
+dialog install the providers for you; call `PKeyPlatformProviders.install()` when you drive the ladder
+yourself.
+
+The export options are opt-in, because an entitlement the app ID lacks breaks signing:
+`polaris_key/apple_sign_in`, `polaris_key/game_center` (with the Game Center extension),
+`polaris_key/play_games` and `polaris_key/play_games_app_id`.
+
+`sign_out()` sets a flag once the Worker accepts it, and the silent rungs stay off until the person signs
+in again. The ladder's own exchange never clears it, a sign-out during a prompt makes the run store
+nothing, and a provider whose credential was revoked signs the device out the same way. No token, grant or
+link handle appears in a result, a `str()` or a log.
+
 ## Restore from backup
 
 Planned. Silent restore, rung 2 of automatic sign-in, comes to the Godot SDK's Apple and Android
-exports once Godot has the automatic sign-in ladder. It follows the same rules as the
+exports. It follows the same rules as the
 [Swift](/docs/build/sdks/swift/#restore-from-backup) and
 [Kotlin](/docs/build/sdks/kotlin/#restore-from-backup) SDKs: the key is kept in iCloud Keychain or
 Block Store, redeemed once, and revoked at sign-out, and an opt-out is on by default. Linux and Windows

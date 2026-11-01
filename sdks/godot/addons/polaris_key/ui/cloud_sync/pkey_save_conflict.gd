@@ -19,8 +19,13 @@ extends PKeyUiView
 ## returns to the versions, Cancel leaves; none is filled and the first focus is Cancel, never a
 ## control that overwrites. `newer` tags the card the app names with **Newer**; it chooses nothing.
 ##
-## Not bound to a live client: the host sets `step` and the display-ready fields, and connects the
-## signals. `model` is the ui-core view of the state, so a binding reads it rather than redoing it.
+## Bound to the saves (K.5T): with `follow_sdk` (the default) the screen follows
+## `PolarisKey.cloud_sync.saves` through `PKeySaveScreensHost`: it shows the
+## first conflict a write ended with, hidden while there is none, runs the choice (`saves.resolve`) and moves
+## on (keeping, kept, failed with Try again). The game's one line is
+## `PKeySaveScreensHost.of(PolarisKey).local_copy = func(conflict): return <the local save's bytes>`.
+## With `follow_sdk` off the host sets `step` and the display-ready fields and connects the signals itself.
+## `model` is the ui-core view of the state, so a binding reads it rather than redoing it.
 ## Hidden when the Sync service is off (`sync_on`).
 
 ## A way on was chosen: "local", "remote" (a deletion when `remote_deleted`) or "both".
@@ -81,7 +86,12 @@ signal done()
 		sync_on = value
 		refresh_view()
 
+## Follow `PolarisKey.cloud_sync.saves` and settle the conflict itself. Read when the screen enters the tree.
+@export var follow_sdk := true
+
 var model: Dictionary = {}
+## The binding, once following (see `follow()`).
+var host: PKeySaveScreensHost = null
 
 var _product: PKeyProductHeader
 var _cols: BoxContainer
@@ -114,6 +124,67 @@ var _cancel_button: Button
 ## then a host update or a resize must not scroll the versions away to the focused Cancel.
 var _moved := false
 var _seen_state := ""
+
+
+func _ready() -> void:
+	super()
+	if sdk != null and follow_sdk:
+		follow(sdk)
+
+
+func _exit_tree() -> void:
+	_unfollow()
+
+
+## Bind to `p_sdk`'s saves: the screen then shows the pending conflict (and hides while there is none), and
+## its choices run `saves.resolve`. The signals are still emitted, for a game that wants to see them.
+func follow(p_sdk: Node) -> void:
+	var h := PKeySaveScreensHost.of(p_sdk)
+	if h == null or h == host:
+		return
+	_unfollow()
+	host = h
+	host.changed.connect(_from_host)
+	keep_requested.connect(_host_keep)
+	retry_requested.connect(_host_retry)
+	choose_again_requested.connect(host.choose_again)
+	cancelled.connect(host.cancel)
+	done.connect(host.done)
+	host.start()
+	_from_host()
+
+
+func _unfollow() -> void:
+	if host == null:
+		return
+	host.changed.disconnect(_from_host)
+	keep_requested.disconnect(_host_keep)
+	retry_requested.disconnect(_host_retry)
+	choose_again_requested.disconnect(host.choose_again)
+	cancelled.disconnect(host.cancel)
+	done.disconnect(host.done)
+	host = null
+
+
+func _host_keep(p_keep: String) -> void:
+	host.choose(p_keep)
+
+
+func _host_retry(_keep: String) -> void:
+	host.retry()
+
+
+func _from_host() -> void:
+	var v := host.view()
+	if v.is_empty():
+		refresh_view()
+		return
+	# Set the fields in one go; each setter redraws, so end on the step.
+	keep = String(v["keep"])
+	remote_deleted = bool(v["remote_deleted"])
+	both_available = bool(v["both_available"])
+	step = String(v["step"])
+	refresh_view()
 
 
 func _build() -> void:
@@ -336,7 +407,8 @@ func _render() -> void:
 	var inp := PKeySaveConflict.input(step, local_when, remote_when, remote_device, remote_deleted, both_available, keep, sync_on, newer)
 	model = preload("res://addons/polaris_key/ui/model/models.gd").view_of("SaveConflict", inp)
 	var state: String = model.get("state", "hidden")
-	visible = state != "hidden"
+	# Following the saves, the screen is there only while a conflict is.
+	visible = state != "hidden" and (host == null or not host.conflict().is_empty())
 	if state != _seen_state:
 		_seen_state = state
 		_moved = false

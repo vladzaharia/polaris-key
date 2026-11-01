@@ -44,6 +44,9 @@ extends RefCounted
 ## GDScript AES-GCM runs about 1 s per MiB), at most 32 MiB each. iOS and Android wait for the native lanes
 ## (CC-14b, `sync.saves` is N/A there): every call answers the typed `unsupported` refusal.
 
+## The transfers, the held conflicts or the last failure changed (K.5T): the save screens redraw on it.
+signal changed()
+
 const Transfer := preload("res://addons/polaris_key/services/cloud_sync/transfer.gd")
 const Handle := preload("res://addons/polaris_key/services/cloud_sync/transfer_handle.gd")
 const Codecs := preload("res://addons/polaris_key/services/cloud_sync/transfer_codec.gd")
@@ -54,6 +57,10 @@ const BINDING_KEY := "$file"
 const DEFAULT_MAX_BYTES := 33554432
 ## How long `purge` waits for cancelled transfers to settle.
 const PURGE_WAIT_MS := 5000
+
+## id -> the conflict a write ended with that nobody has settled or dismissed (`conflicts()`).
+var _conflicts: Dictionary = {}
+var _last_failed := false
 
 
 static func sealed_gen_of(sealed: Array) -> Variant:
@@ -99,6 +106,23 @@ func _supported() -> bool:
 
 func transfers() -> Array:
 	return _live.duplicate()
+
+
+## The conflicts a write ended with that nobody has settled or dismissed yet, oldest first. Each is the
+## `conflict` of the write's outcome, the argument `resolve` takes.
+func conflicts() -> Array:
+	return _conflicts.values()
+
+
+## Forget a conflict without settling it. Both copies stay as they were.
+func dismiss_conflict(id: String) -> void:
+	if _conflicts.erase(id):
+		changed.emit()
+
+
+## The last write to end failed, and no write has started since (a cancelled write is not a failure).
+func last_failed() -> bool:
+	return _last_failed
 
 
 # ── Results ─────────────────────────────────────────────────────────────────────────────────────
@@ -424,9 +448,12 @@ func _run(id: String, bytes: PackedByteArray, metadata: Dictionary, opts: Dictio
 
 ## Register a handle: it is in `transfers()` until it settles, and its end is an event.
 func _tracked(t: PKeyTransfer) -> PKeyTransfer:
+	# A write that starts ends the last failure (a write that is already over sets it again if it failed).
+	_last_failed = false
 	if t.outcome == null:
 		_live.append(t)
 		t.finished.connect(_on_finished.bind(t), CONNECT_ONE_SHOT)
+		changed.emit()
 	else:
 		_note_outcome(t)
 	return t
@@ -439,10 +466,18 @@ func _on_finished(_out: Dictionary, t: PKeyTransfer) -> void:
 
 func _note_outcome(t: PKeyTransfer) -> void:
 	var out: Dictionary = t.outcome
-	if out["state"] == "failed":
+	var state := String(out["state"])
+	if state == "conflict":
+		var c: Dictionary = out["conflict"]
+		_conflicts[String(c["id"])] = c
+	elif state == "done" and out.has("id"):
+		_conflicts.erase(String(out["id"]))
+	if state == "failed":
+		_last_failed = true
 		_emit({"type": PKeyConstants.TransferEvent.TRANSFERFAILED, "id": t.id, "code": out["error"]["code"]})
 	else:
 		_emit({"type": PKeyConstants.TransferEvent.TRANSFERDONE, "id": t.id, "state": out["state"]})
+	changed.emit()
 
 
 func _emit(event: Dictionary) -> void:
@@ -513,6 +548,7 @@ func _attempt(
 	var on_progress := func(done: int, total: int) -> void:
 		progress["done"] = done
 		progress["total"] = total
+		changed.emit()
 		if caller_progress is Callable:
 			(caller_progress as Callable).call(done, total)
 		_emit({"type": PKeyConstants.TransferEvent.TRANSFERPROGRESS, "id": transfer_id, "done": done, "total": total})
@@ -616,6 +652,9 @@ func _conflict(id: String, metadata: Dictionary, size: int, server_version: Vari
 func purge() -> void:
 	var running := _live.duplicate()
 	_live.clear()
+	_conflicts.clear()
+	_last_failed = false
+	changed.emit()
 	_d["records"].drop_all()
 	# Cancel is asked of each and waited for a bounded time: a transfer stuck in a call must not hold up
 	# the sign-out.
