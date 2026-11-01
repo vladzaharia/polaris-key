@@ -303,10 +303,14 @@ public protocol SavesEnvironment: Sendable {
     func purgeFiles() async
     /// The device's display name, stored with each save; nil stores none.
     func deviceLabel() async -> String?
+    /// The journal ids (`saves:<id>`) of uploads an earlier run left unfinished: journaled, or handed back by a
+    /// background reconcile. The client reports each once; it never reads their content.
+    func interruptedWrites() -> [String]
 }
 
 extension SavesEnvironment {
     public func deviceLabel() async -> String? { nil }
+    public func interruptedWrites() -> [String] { [] }
 }
 
 private struct Binding: Equatable {
@@ -360,6 +364,7 @@ public final class SavesClient: Sendable {
     private let options: SavesOptions
     private let emit: @Sendable (CloudSyncEvent) -> Void
     private let live = LockedValue<[String: SaveTransfer]>([:])
+    private let reported = LockedValue<Set<String>>([])
     private let now: @Sendable () -> Int
 
     init(
@@ -370,6 +375,21 @@ public final class SavesClient: Sendable {
         self.options = options
         self.emit = emit
         self.now = now
+    }
+
+    /// The context for a verb. An upload an earlier run left unfinished, and no live write holds, is reported
+    /// once as `transferFailed` (code `transfer-failed`); writing the save again resumes it from the journal.
+    private func context(excluding id: String? = nil) async throws -> SavesContext {
+        let ctx = try await env.savesContext()
+        let skip = id.map(transferId)
+        for tid in env.interruptedWrites().sorted() where tid != skip {
+            guard tid.hasPrefix("saves:"), !tid.hasPrefix("saves:read:"), tid.count > "saves:".count else { continue }
+            if live.current[tid] != nil { continue }
+            if reported.with({ $0.insert(tid).inserted }) {
+                emit(.transferFailed(id: tid, code: SavesError.Code.transferFailed.rawValue))
+            }
+        }
+        return ctx
     }
 
     /// The SDK's own keys: when and where this save was written (SAVES-META).
@@ -394,7 +414,7 @@ public final class SavesClient: Sendable {
 
     /// The saves of this person, by id.
     public func list() async throws -> [SaveSummary] {
-        let ctx = try await env.savesContext()
+        let ctx = try await context()
         let e2e = ctx.codec.enc == "e2e"
         return try await ctx.records.list().map { summary($0, e2e: e2e) }.sorted { $0.id < $1.id }
     }
@@ -402,7 +422,7 @@ public final class SavesClient: Sendable {
     /// The kept revisions of a save's file, newest first.
     public func revisions(_ id: String) async throws -> [SaveRevision] {
         guard isSaveKey(id) else { throw SavesError(.invalidSave, detail: "id") }
-        let ctx = try await env.savesContext()
+        let ctx = try await context()
         return try await revisionList(ctx, id)
     }
 
@@ -447,7 +467,7 @@ public final class SavesClient: Sendable {
 
     private func readNow(_ id: String, options readOptions: SaveReadOptions) async throws -> SaveRead {
         guard isSaveKey(id) else { throw SavesError(.invalidSave, detail: "id") }
-        let ctx = try await env.savesContext()
+        let ctx = try await context()
         guard let rec = try await ctx.records.get(id) else { return .notFound }
         let (metadata, binding) = splitBinding(rec.value)
         if let supported = options.saveFormatVersion, let fv = formatOf(metadata), fv > supported {
@@ -517,7 +537,7 @@ public final class SavesClient: Sendable {
         _ id: String, source: any RangedSource, metadata: JSONValue,
         options writeOptions: SaveWriteOptions = SaveWriteOptions()
     ) async throws -> SaveTransfer {
-        _ = try await env.savesContext()  // the typed refusal (no Sync service, locked, not started) is thrown here
+        _ = try await context(excluding: id)  // the typed refusal (no Sync service, locked, not started) is thrown here
         return run(id, source, await stamped(metadata), writeOptions, mode: nil)
     }
 
@@ -535,7 +555,7 @@ public final class SavesClient: Sendable {
         _ conflict: SaveConflict, keep: SaveKeep, bytes: Data,
         options writeOptions: SaveWriteOptions = SaveWriteOptions()
     ) async throws -> SaveTransfer {
-        let ctx = try await env.savesContext()
+        let ctx = try await context()
         switch keep {
         case .remote:
             // Pull first, so the cache holds the copy the person chose (not this device's old one).
@@ -561,7 +581,7 @@ public final class SavesClient: Sendable {
     @discardableResult
     public func delete(_ id: String, baseVersion: Int? = nil) async throws -> SaveSetResult {
         guard isSaveKey(id) else { throw SavesError(.invalidSave, detail: "id") }
-        let ctx = try await env.savesContext()
+        let ctx = try await context()
         var base = baseVersion
         if base == nil {
             guard let rec = try await ctx.records.get(id) else { return .rejected(code: "not_found") }
@@ -579,6 +599,7 @@ public final class SavesClient: Sendable {
             return v
         }
         env.dropWaiting()
+        reported.with { $0.removeAll() }
         // The server's upload is released best effort in the background: a sign-out never waits on the network.
         for t in running { Task { await t.cancel() } }
         await env.purgeFiles()
@@ -606,6 +627,7 @@ public final class SavesClient: Sendable {
     {
         let transferId = self.transferId(id)
         let emit = self.emit
+        reported.with { _ = $0.remove(transferId) }
         let stop = SaveStop()
         let progress = LockedValue<(done: Int, total: Int)>((0, source.size))
         let attempt: @Sendable () async throws -> SaveOutcome = { [self] in

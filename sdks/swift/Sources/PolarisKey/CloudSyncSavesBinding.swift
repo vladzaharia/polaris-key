@@ -185,6 +185,7 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
     private let journal: FileJournal
     private let engine: FileTransferEngine
     private let background: CloudSyncBackground?
+    private let resumed = LockedValue<Set<String>>([])
     private let state = LockedValue<(records: MachineRecords?, host: CloudSyncHost?, subject: String?)>(
         (nil, nil, nil))
 
@@ -199,10 +200,13 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
         let journal = FileJournal(stateDir: core.dirs.state)
         self.journal = journal
         var bulk: CloudSyncBackground?
+        let resumed = self.resumed
         #if canImport(Darwin)
             if let backgroundTokens {
+                // Reconcile's ids (transfers to send again) join the journaled ones in `interruptedWrites`.
                 bulk = CloudSyncBackground(
-                    product: core.product, stateDir: core.dirs.state, journal: journal, tokens: backgroundTokens)
+                    product: core.product, stateDir: core.dirs.state, journal: journal, tokens: backgroundTokens,
+                    onResume: { ids in resumed.with { $0.formUnion(ids) } })
             }
         #endif
         background = bulk
@@ -253,12 +257,17 @@ final class LiveSavesEnvironment: SavesEnvironment, @unchecked Sendable {
 
     func dropWaiting() { state.current.records?.dropAll() }
 
+    func interruptedWrites() -> [String] {
+        Array(Set(journal.list()).union(resumed.current)).filter { $0.hasPrefix("saves:") }
+    }
+
     /// Lock, sign-out and forget: cancel every background task and delete the spool before anything else.
     func closeBackground() async { await background?.close() }
 
     func purgeFiles() async {
         await background?.close()
         journal.clear()
+        resumed.with { $0.removeAll() }
         // Only the signed-in person's cache (the last one a context used), never another's.
         let subject = state.with { s -> String? in
             let v = s.subject

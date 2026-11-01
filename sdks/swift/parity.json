@@ -524,8 +524,8 @@
       "wp": "U-39"
     },
     "sync.transfer.background": {
-      "status": "planned",
-      "wp": "U-41"
+      "status": "implemented",
+      "note": "CloudSyncBackground (PolarisKey/CloudSyncBackground.swift) behind CloudSyncOptions(backgroundTransfers: true): a background URLSession pkey.sync.<product> carrying each sealed part or chunk from a protected spool file, the bearer read per task and refreshed once on a 401, reconcile after a launch, and PolarisKeyClient.handleBackgroundEvents from the app delegate. An upload the system or a kill interrupted is reported once at saves start as transferFailed (transfer-failed) under saves:<id>; calling write again resumes it from the journal. Default off. CloudSyncBackgroundTests over a stubbed session port; the real session is proven on a device."
     },
     "sync.e2e": {
       "status": "implemented",
