@@ -6668,6 +6668,16 @@ msgstr "로그인 후 앱으로 돌아갈 수 없어요"
 msgid "core.codes.redirect_uri_mismatch.message"
 msgstr "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요."
 
+#. Sign-in link expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.title"
+msgstr "로그인 링크 만료"
+
+#. This sign-in link has expired. Go back to {product} and start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_request_uri.message"
+msgstr "이 로그인 링크가 만료되었습니다. {product}(으)로 돌아가 다시 시작하세요."
+
 #. Choose a license
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_choice_required.title"
@@ -7467,6 +7477,16 @@ msgstr "코드 만료됨"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.sign-in-expired.message"
 msgstr "로그인이 완료되기 전에 코드가 만료됐어요. 다시 시작하세요."
+
+#. Browser sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.title"
+msgstr "브라우저 로그인을 사용할 수 없음"
+
+#. Sign-in could not open a browser here. Use a code instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.redirect-unavailable.message"
+msgstr "여기서는 브라우저를 열 수 없습니다. 대신 코드를 사용하세요."
 
 #. Sign-in declined
 #. Core copy (conformance/parity/copy.en.json, codes).

@@ -209,6 +209,10 @@
       "title": "Não foi possível voltar ao app",
       "message": "O acesso por este app não está configurado corretamente e foi interrompido aqui para proteger sua conta. Avise o desenvolvedor."
     },
+    "invalid_request_uri": {
+      "title": "Link de login expirado",
+      "message": "Este link de login expirou. Volte para {product} e comece de novo."
+    },
     "license_choice_required": {
       "title": "Escolha uma licença",
       "message": "Escolha qual licença este dispositivo usa e continue."
@@ -528,6 +532,10 @@
     "sign-in-expired": {
       "title": "Código expirado",
       "message": "O código expirou antes de o acesso ser concluído. Comece de novo."
+    },
+    "redirect-unavailable": {
+      "title": "Login pelo navegador indisponível",
+      "message": "O login não conseguiu abrir um navegador aqui. Use um código."
     },
     "sign-in-denied": {
       "title": "Acesso recusado",

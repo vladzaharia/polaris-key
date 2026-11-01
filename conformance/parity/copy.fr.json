@@ -209,6 +209,10 @@
       "title": "La connexion ne peut pas revenir à l’app",
       "message": "La connexion de cette app n’est pas correctement configurée. Elle s’est donc arrêtée ici pour protéger votre compte. Prévenez son développeur."
     },
+    "invalid_request_uri": {
+      "title": "Lien de connexion expiré",
+      "message": "Ce lien de connexion a expiré. Retournez dans {product} et recommencez."
+    },
     "license_choice_required": {
       "title": "Choisissez une licence",
       "message": "Choisissez la licence que cet appareil utilise, puis continuez."
@@ -528,6 +532,10 @@
     "sign-in-expired": {
       "title": "Code expiré",
       "message": "Le code a expiré avant la fin de la connexion. Recommencez."
+    },
+    "redirect-unavailable": {
+      "title": "Connexion par navigateur indisponible",
+      "message": "La connexion n'a pas pu ouvrir de navigateur ici. Utilisez un code à la place."
     },
     "sign-in-denied": {
       "title": "Connexion refusée",

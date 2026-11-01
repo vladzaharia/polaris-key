@@ -254,6 +254,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "This app's sign-in isn't set up correctly, so it stopped here to keep your account safe. Let its developer know.",
   },
+  invalid_request_uri: {
+    title: "Sign-in link expired",
+    message:
+      "This sign-in link has expired. Go back to {product} and start again.",
+  },
   license_choice_required: {
     title: "Choose a license",
     message: "Choose which license this device uses, then continue.",
@@ -596,6 +601,10 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   "sign-in-expired": {
     title: "Code expired",
     message: "The code expired before sign-in finished. Start again.",
+  },
+  "redirect-unavailable": {
+    title: "Browser sign-in unavailable",
+    message: "Sign-in could not open a browser here. Use a code instead.",
   },
   "sign-in-denied": {
     title: "Sign-in declined",

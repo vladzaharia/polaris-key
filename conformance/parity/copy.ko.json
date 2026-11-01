@@ -209,6 +209,10 @@
       "title": "로그인 후 앱으로 돌아갈 수 없어요",
       "message": "이 앱의 로그인이 올바르게 설정되지 않아 계정을 보호하기 위해 여기서 중단했어요. 개발자에게 알려 주세요."
     },
+    "invalid_request_uri": {
+      "title": "로그인 링크 만료",
+      "message": "이 로그인 링크가 만료되었습니다. {product}(으)로 돌아가 다시 시작하세요."
+    },
     "license_choice_required": {
       "title": "라이선스 선택",
       "message": "이 기기에서 사용할 라이선스를 선택한 다음 계속하세요."
@@ -528,6 +532,10 @@
     "sign-in-expired": {
       "title": "코드 만료됨",
       "message": "로그인이 완료되기 전에 코드가 만료됐어요. 다시 시작하세요."
+    },
+    "redirect-unavailable": {
+      "title": "브라우저 로그인을 사용할 수 없음",
+      "message": "여기서는 브라우저를 열 수 없습니다. 대신 코드를 사용하세요."
     },
     "sign-in-denied": {
       "title": "로그인 거부됨",
