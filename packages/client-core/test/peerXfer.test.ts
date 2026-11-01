@@ -7,6 +7,9 @@ import { base64UrlEncodeBytes, signJws, type TrustSet } from "@polaris-key/jws";
 import {
   PeerChannel,
   XFER,
+  XFER_DELIVERED_SECONDS,
+  XFER_MAX_DELIVERED_PER_PEER,
+  XferDeliveredMemory,
   XferEndpoint,
   XferHasher,
   XferMachine,
@@ -546,5 +549,139 @@ describe("the machine's edges", () => {
       { id, outcome: "cancelled", reason: "cancelled" },
     ]);
     expect(a.s.closed).toBe(false);
+  });
+});
+
+describe("a re-offer of delivered content (CC-20.F)", () => {
+  const dec = new TextEncoder();
+  const doneBody = (id: string, sha?: string): Uint8Array =>
+    dec.encode(
+      JSON.stringify(sha === undefined ? { id } : { id, sha256: sha }),
+    );
+  const rx = (mem: XferDeliveredMemory | null, key: Uint8Array) =>
+    new XferMachine({
+      mode: "a",
+      caps: ["xfer/1"],
+      maxMessage: 1_048_576,
+      handler: () => "accept",
+      peerKey: key,
+      ...(mem ? { delivered: mem.forPeer(key) } : {}),
+    });
+  const receive = async (
+    m: XferMachine,
+    id: string,
+    size: number,
+    chunk: number,
+    at: number,
+  ) => {
+    const sha = await shaHex(content(0, size));
+    const o = m.receive(
+      at,
+      XFER.OFFER,
+      xferOfferBody({ id, size, sha256: sha, chunk }),
+    );
+    return { sha, o };
+  };
+
+  it("answers a delivered tuple at the last chunk boundary, reads the tail and reports nothing", async () => {
+    const mem = new XferDeliveredMemory();
+    const key = rnd();
+    const id = base64UrlEncodeBytes(rnd().slice(0, 16));
+    const m1 = rx(mem, key);
+    const { sha, o } = await receive(m1, id, 2500, 1000, 1);
+    expect(o.send).toEqual([{ t: "ACCEPT", id, offset: 0 }]);
+    for (let off = 0; off < 2500; off += 1000)
+      m1.receive(
+        2,
+        XFER.CHUNK,
+        xferChunkBody(id, off, content(off, Math.min(2500, off + 1000))),
+      );
+    const d = m1.receive(3, XFER.DONE, doneBody(id, sha));
+    expect(d.results).toEqual([{ id, outcome: "delivered" }]);
+    // A new session (the sender never saw the final DONE) offers the same transfer again.
+    const m2 = rx(mem, key);
+    const r = m2.receive(
+      10,
+      XFER.OFFER,
+      xferOfferBody({ id, size: 2500, sha256: sha, chunk: 1000 }),
+    );
+    expect(r.send).toEqual([{ t: "ACCEPT", id, offset: 2000 }]);
+    expect(r.ask).toBeUndefined();
+    expect(r.partial).toEqual([]);
+    const c = m2.receive(
+      11,
+      XFER.CHUNK,
+      xferChunkBody(id, 2000, content(2000, 2500)),
+    );
+    expect(c.send).toEqual([{ t: "ACK", id, offset: 2500 }]);
+    expect(c.partial).toEqual([]);
+    const f = m2.receive(12, XFER.DONE, doneBody(id, sha));
+    expect(f.send).toEqual([{ t: "DONE", id }]);
+    expect(f.results).toEqual([{ id, outcome: "delivered", again: true }]);
+    expect(f.partial).toEqual([]);
+  });
+
+  it("accepts at size when the size is a whole number of chunks, and refuses a wrong hash", async () => {
+    const mem = new XferDeliveredMemory();
+    const key = rnd();
+    const id = base64UrlEncodeBytes(rnd().slice(0, 16));
+    const m1 = rx(mem, key);
+    const { sha } = await receive(m1, id, 2000, 1000, 1);
+    for (let off = 0; off < 2000; off += 1000)
+      m1.receive(
+        2,
+        XFER.CHUNK,
+        xferChunkBody(id, off, content(off, off + 1000)),
+      );
+    m1.receive(3, XFER.DONE, doneBody(id, sha));
+    const m2 = rx(mem, key);
+    const r = m2.receive(
+      10,
+      XFER.OFFER,
+      xferOfferBody({ id, size: 2000, sha256: sha, chunk: 1000 }),
+    );
+    expect(r.send).toEqual([{ t: "ACCEPT", id, offset: 2000 }]);
+    const bad = m2.receive(11, XFER.DONE, doneBody(id, "0".repeat(64)));
+    expect(bad.send).toEqual([{ t: "CANCEL", id, reason: "hash" }]);
+    expect(bad.results).toEqual([]);
+  });
+
+  it("receives again for another peer, another hash or size, no memory, or after expiry", async () => {
+    const mem = new XferDeliveredMemory();
+    const key = rnd();
+    const id = base64UrlEncodeBytes(rnd().slice(0, 16));
+    const m1 = rx(mem, key);
+    const { sha } = await receive(m1, id, 1000, 1000, 1);
+    m1.receive(2, XFER.CHUNK, xferChunkBody(id, 0, content(0, 1000)));
+    m1.receive(3, XFER.DONE, doneBody(id, sha));
+    const offer = (m: XferMachine, at: number, size = 1000, h = sha) =>
+      m.receive(
+        at,
+        XFER.OFFER,
+        xferOfferBody({ id, size, sha256: h, chunk: 1000 }),
+      ).send;
+    expect(offer(rx(mem, rnd()), 10)).toEqual([{ t: "ACCEPT", id, offset: 0 }]);
+    expect(offer(rx(mem, key), 10, 2000)).toEqual([
+      { t: "ACCEPT", id, offset: 0 },
+    ]);
+    expect(offer(rx(mem, key), 10, 1000, "1".repeat(64))).toEqual([
+      { t: "ACCEPT", id, offset: 0 },
+    ]);
+    expect(offer(rx(null, key), 10)).toEqual([{ t: "ACCEPT", id, offset: 0 }]);
+    expect(offer(rx(mem, key), 3 + XFER_DELIVERED_SECONDS + 1)).toEqual([
+      { t: "ACCEPT", id, offset: 0 },
+    ]);
+    // Forgetting a peer (a deleted link) forgets its entries.
+    mem.forget(key);
+    expect(offer(rx(mem, key), 10)).toEqual([{ t: "ACCEPT", id, offset: 0 }]);
+  });
+
+  it("keeps at most XFER_MAX_DELIVERED_PER_PEER entries per peer, oldest first", () => {
+    const mem = new XferDeliveredMemory();
+    const v = mem.forPeer(new Uint8Array(32).fill(1));
+    for (let i = 0; i <= XFER_MAX_DELIVERED_PER_PEER; i++)
+      v.add(`id${i}`, "a".repeat(64), 1, i);
+    expect(v.has("id0", "a".repeat(64), 1, 70)).toBe(false);
+    expect(v.has("id1", "a".repeat(64), 1, 70)).toBe(true);
   });
 });
