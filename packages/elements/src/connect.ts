@@ -16,6 +16,11 @@
 //     `.driver` + `name` + `device` draws one offer the host answers itself.
 //
 // `pk-linked` is the pairing's own event, when the link was made.
+//
+// Bound mode: mount `<pk-transfer-offer>` once. It draws itself when an offer arrives (`pk-offer`
+// says so) and nothing while idle. `pk-close` fires only when the last offer was answered and none
+// is waiting, so a host may remove the element on it; offers queued behind the shown one are never
+// declined unseen. Removing the element declines whatever is still waiting.
 
 import {
   LinkPairingModel,
@@ -177,6 +182,8 @@ export class PkLinkPairing extends PkConnectElement {
 export interface OfferInfo {
   id: string;
   name?: string;
+  type?: string;
+  size?: number;
   from: { label: string | null };
 }
 
@@ -336,7 +343,20 @@ export class PkTransferOffer extends PkConnectElement {
         },
         device: w.offer.from.label,
         name: w.offer.name ?? "",
+        size: w.offer.size,
+        type: w.offer.type,
         base: this.input,
+      }),
+    );
+    this.dispatchEvent(
+      new CustomEvent("pk-offer", {
+        detail: {
+          id: w.offer.id,
+          name: w.offer.name ?? "",
+          device: w.offer.from.label,
+        },
+        bubbles: true,
+        composed: true,
       }),
     );
     // Set after `open`, which clears the last offer's.
@@ -353,6 +373,9 @@ export class PkTransferOffer extends PkConnectElement {
         this.dropSession();
         this.next();
         this.requestUpdate();
+        // Bound to the SDK, the screen is finished with only when nothing is waiting: a host that
+        // removes the element on `pk-close` never loses an offer it has not been shown.
+        if (this.bound && !this.session && this.queue.length === 0) close(this);
       }
     });
     this.sessionOff = off;
@@ -389,7 +412,7 @@ export class PkTransferOffer extends PkConnectElement {
         void model?.accept();
         return;
       case "transferOffer.decline":
-        if (model) void model.decline().then(() => close(this));
+        if (model) void model.decline().then(() => this.bound || close(this));
         else close(this);
         return;
       case "common.cancel":
@@ -397,8 +420,8 @@ export class PkTransferOffer extends PkConnectElement {
         else close(this);
         return;
       case "common.done":
-        if (model) model.close();
-        close(this);
+        model?.close();
+        if (!this.bound) close(this);
         return;
     }
   }

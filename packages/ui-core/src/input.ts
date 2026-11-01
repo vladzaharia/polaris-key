@@ -311,6 +311,10 @@ export interface TransferOfferInput {
   step: "ask" | "receiving" | "done" | "failed";
   device?: string;
   name: string;
+  /** The size in bytes, when the contact said. */
+  size?: number;
+  /** The media type, when the contact said (text the contact chose). */
+  type?: string;
 }
 
 export interface DeviceCodeInput {

@@ -128,8 +128,17 @@ describe("pk-link-pairing", () => {
     expect(q(el, ".pair-code")!.textContent).toBe("123 456");
     expect(q(el, '[role="status"]')).toBe(status);
     expect(status.textContent).toContain("Waiting");
+    // The title is read; the words beside the dot are not announced again.
+    expect(
+      status.querySelector('[aria-hidden="true"]:not(.pair-dot)'),
+    ).not.toBeNull();
     expect(el.shadowRoot!.querySelectorAll('[role="status"]')).toHaveLength(1);
     expect(keys(el, ".btn")).toEqual(["common.cancel"]);
+  });
+
+  it("an idle live region is empty, so the rhythm leaves it out", async () => {
+    const el = await mount("LinkPairing", { input: CODE_INPUT });
+    expect(q(el, ".pair-wait:empty")).not.toBeNull();
   });
 
   it("has sentence-case titles except the two names", async () => {
@@ -277,19 +286,40 @@ describe("pk-transfer-offer", () => {
     },
   };
 
-  it("asks with the contact's label and the whole name on its own row", async () => {
+  it("asks with the contact's label; the file is on its own row, middle elided, with size and type", async () => {
     const long = `${"a".repeat(120)}.zip`;
     const el = await mount("TransferOffer", {
-      input: { transferOffer: { step: "ask", name: long, device: "Maya" } },
+      input: {
+        transferOffer: {
+          step: "ask",
+          name: long,
+          device: "Maya",
+          size: 4_200_000,
+          type: "application/zip",
+        },
+      },
     });
-    expect(q(el, "h1")!.textContent).toContain("Maya");
-    // The heading carries a shortened name; the row below it the whole one, clamped by CSS.
-    expect(q(el, ".pair-file bdi")!.textContent).toBe(long);
-    expect(q(el, "h1")!.textContent!.length).toBeLessThan(long.length);
+    expect(q(el, "h1")!.textContent!.trim()).toBe(
+      "Maya wants to send you a file",
+    );
+    const row = q(el, ".pair-file")!;
+    expect(row.textContent).toMatch(/….*\.zip$/);
+    expect(row.textContent!.length).toBeLessThanOrEqual(48);
+    expect(row.getAttribute("title")).toBe(long);
+    expect(q(el, ".pair-meta")!.textContent!.trim()).toBe(
+      "4.2 MB · application/zip",
+    );
     expect(keys(el, ".btn").sort()).toEqual([
       "transferOffer.accept",
       "transferOffer.decline",
     ]);
+  });
+
+  it("draws a success mark when it was received", async () => {
+    const el = await mount("TransferOffer", {
+      input: { transferOffer: { step: "done", name: "a.zip", device: "M" } },
+    });
+    expect(q(el, ".success, [data-part='success']")).not.toBeNull();
   });
 
   it("shows a bar while it arrives, with Cancel", async () => {
@@ -306,7 +336,7 @@ describe("pk-transfer-offer", () => {
     expect(keys(el, ".btn")).toEqual(["common.cancel"]);
   });
 
-  it("answers Escape with Decline, Cancel or Done", async () => {
+  it("answers Escape with Decline or Done, and not while it arrives", async () => {
     const act = async (step: "ask" | "receiving" | "done") => {
       const el = await mount("TransferOffer", {
         input: { transferOffer: { step, name: "a.zip", device: "M" } },
@@ -316,7 +346,8 @@ describe("pk-transfer-offer", () => {
       return seen;
     };
     expect(await act("ask")).toEqual(["transferOffer.decline"]);
-    expect(await act("receiving")).toEqual(["common.cancel"]);
+    // A transfer in flight is stopped by its Cancel, never by a stray key.
+    expect(await act("receiving")).toEqual([]);
     expect(await act("done")).toEqual(["common.done"]);
   });
 
@@ -431,6 +462,31 @@ describe("pk-transfer-offer", () => {
       await settle(el);
       expect(s.cancelled).toEqual(["t1"]);
       expect(el.view.state).toBe("failed");
+    });
+
+    it("says pk-offer when an offer opens and pk-close only when nothing is waiting", async () => {
+      const s = source();
+      const el = await mount("TransferOffer", {
+        transfer: s.src,
+        receive: () => undefined,
+      });
+      const offered = heard(el, "pk-offer");
+      const closed = heard(el, "pk-close");
+      const first = s.offer(OFFER);
+      const second = s.offer({ ...OFFER, id: "t2", name: "b.zip" });
+      await settle(el);
+      expect(offered).toHaveLength(1);
+      (q(el, '[data-key="transferOffer.decline"]') as HTMLElement).click();
+      expect(await first).toBe("decline");
+      await settle(el);
+      // The second is on screen, unanswered, and the host was not told to close.
+      expect(closed).toEqual([]);
+      expect(offered).toHaveLength(2);
+      expect(q(el, ".pair-file")!.textContent).toContain("b.zip");
+      (q(el, '[data-key="transferOffer.decline"]') as HTMLElement).click();
+      expect(await second).toBe("decline");
+      await settle(el);
+      expect(closed).toHaveLength(1);
     });
 
     it("shows offers one at a time and declines what waits when it is removed", async () => {

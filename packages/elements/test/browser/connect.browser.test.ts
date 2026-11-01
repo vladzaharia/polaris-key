@@ -245,3 +245,59 @@ describe("text and keyboard", () => {
     expect(order).toEqual(["linkPairing.confirm", "linkPairing.decline"]);
   });
 });
+
+describe("bound to the SDK's offers", () => {
+  it("a host that removes the element on pk-close never loses a queued offer", async () => {
+    await page.viewport(1440, 900);
+    let handler:
+      | ((o: {
+          id: string;
+          name?: string;
+          from: { label: string | null };
+        }) => Promise<unknown>)
+      | null = null;
+    const el = document.createElement("pk-transfer-offer") as PkElement &
+      Record<string, unknown>;
+    el.colorScheme = "light";
+    el.fill = true;
+    el.input = { elapsedMs: 60_000, ...m.vocabulary.defaults } as UiInput;
+    el.transfer = {
+      onOffer: (h: typeof handler) => {
+        handler = h;
+        return () => void (handler = null);
+      },
+    };
+    el.receive = () => undefined;
+    const answers: unknown[] = [];
+    el.addEventListener("pk-close", () => el.remove());
+    document.body.replaceChildren(el);
+    await el.updateComplete;
+    // Idle: nothing is drawn.
+    expect(el.shadowRoot!.querySelector(".pk-root")).toBeNull();
+    for (const [id, name] of [
+      ["p1", "one.jpg"],
+      ["p2", "two.jpg"],
+    ] as const)
+      void handler!({ id, name, from: { label: "Maya" } }).then((a) =>
+        answers.push(a),
+      );
+    await el.updateComplete;
+    const press = async (key: string) => {
+      el.shadowRoot!.querySelector<HTMLElement>(`[data-key="${key}"]`)!.click();
+      await new Promise((r) => setTimeout(r, 0));
+      await el.updateComplete;
+    };
+    expect(el.shadowRoot!.querySelector(".pair-file")!.textContent).toContain(
+      "one.jpg",
+    );
+    await press("transferOffer.decline");
+    expect(el.isConnected, "the host was told to close too early").toBe(true);
+    expect(el.shadowRoot!.querySelector(".pair-file")!.textContent).toContain(
+      "two.jpg",
+    );
+    expect(answers).toEqual(["decline"]);
+    await press("transferOffer.decline");
+    expect(answers).toEqual(["decline", "decline"]);
+    expect(el.isConnected).toBe(false);
+  });
+});

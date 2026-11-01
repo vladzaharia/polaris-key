@@ -373,6 +373,8 @@ function screen(c: RenderCtx, layout: Layout): TemplateResult {
         (view.state === "done" || view.state === "link-done")) ||
       (view.component as string) === "ActivateDone" ||
       (view.component === "SaveConflict" && view.state === "kept") ||
+      ((view.component as string) === "TransferOffer" &&
+        view.state === "done") ||
       ((view.component as string) === "AddToAccount" && view.state === "added")
         ? successMark()
         : view.component === "SignIn" &&

@@ -6173,15 +6173,15 @@ msgstr "连接已关闭。未建立任何链接。"
 msgid "a11y.linkCode"
 msgstr "链接验证码 {code}"
 
-#. {device} wants to send you {name}
-#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose.
+#. {device} wants to send you a file
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label (text it chose). The file’s own name, size and type are drawn on a row below.
 msgid "transferOffer.ask"
-msgstr "{device}想向你发送{name}"
+msgstr "{device}想向你发送文件"
 
-#. A paired device wants to send you {name}
-#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
+#. A paired device wants to send you a file
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label.
 msgid "transferOffer.askUnnamed"
-msgstr "联系人想向你发送{name}"
+msgstr "联系人想向你发送文件"
 
 #. Only accept what you expect.
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title.

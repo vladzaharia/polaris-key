@@ -6186,15 +6186,15 @@ msgstr "The connection closed. Nothing was paired."
 msgid "a11y.linkCode"
 msgstr "Pairing code {code}"
 
-#. {device} wants to send you {name}
-#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose.
+#. {device} wants to send you a file
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label (text it chose). The file’s own name, size and type are drawn on a row below.
 msgid "transferOffer.ask"
-msgstr "{device} wants to send you {name}"
+msgstr "{device} wants to send you a file"
 
-#. A paired device wants to send you {name}
-#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
+#. A paired device wants to send you a file
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label.
 msgid "transferOffer.askUnnamed"
-msgstr "A paired device wants to send you {name}"
+msgstr "A paired device wants to send you a file"
 
 #. Only accept what you expect.
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title.

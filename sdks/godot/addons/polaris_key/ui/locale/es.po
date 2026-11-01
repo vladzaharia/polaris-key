@@ -6199,15 +6199,15 @@ msgstr "Se cerró la conexión. No se vinculó nada."
 msgid "a11y.linkCode"
 msgstr "Código de vinculación {code}"
 
-#. {device} wants to send you {name}
-#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose.
+#. {device} wants to send you a file
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label (text it chose). The file’s own name, size and type are drawn on a row below.
 msgid "transferOffer.ask"
-msgstr "{device} quiere enviarte {name}"
+msgstr "{device} quiere enviarte un archivo"
 
-#. A paired device wants to send you {name}
-#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends.
+#. A paired device wants to send you a file
+#. TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label.
 msgid "transferOffer.askUnnamed"
-msgstr "Un contacto quiere enviarte {name}"
+msgstr "Un contacto quiere enviarte un archivo"
 
 #. Only accept what you expect.
 #. TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title.

@@ -26,6 +26,15 @@ export const CONNECT_CSS = `
 .pair-actions {
   display: contents;
 }
+.pair-offer {
+  display: grid;
+  gap: var(--pk-space-1);
+}
+.pair-meta {
+  margin: 0;
+  color: var(--pk-text-muted);
+  overflow-wrap: anywhere;
+}
 .pair-file {
   margin: 0;
   color: var(--pk-text-strong);

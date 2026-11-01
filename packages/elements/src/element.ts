@@ -8,6 +8,7 @@ import { html } from "lit";
 import {
   BareViewModel,
   CONNECT_MODELS,
+  connectEscape,
   focusOnMount,
   HOLDER_MODELS,
   renewTarget,
@@ -50,14 +51,6 @@ import { LAYOUTS } from "./layout.js";
 import { CONNECT_LAYOUTS } from "./connectLayouts.js";
 import { SYNC_LAYOUTS } from "./syncLayouts.js";
 import { renderView } from "./views.js";
-
-/** The control Escape answers on the inter-account screens, in order: decline, cancel, done. */
-const CONNECT_ESCAPE = [
-  "linkPairing.decline",
-  "transferOffer.decline",
-  "common.cancel",
-  "common.done",
-] as const;
 
 /** DL9: the ring shows only after a key was pressed since load (no ring at rest on a cold start). */
 let keyboard = false;
@@ -838,7 +831,7 @@ export abstract class PkElement extends LitElement {
       !e.defaultPrevented &&
       v.component in CONNECT_LAYOUTS
     ) {
-      const key = CONNECT_ESCAPE.find((k) => v.copy.includes(k));
+      const key = connectEscape(v);
       if (key) {
         e.preventDefault();
         c.act(key);

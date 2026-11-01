@@ -10,7 +10,7 @@
 // is announced where it changes; a label the other device sent is isolated text.
 
 import { html, nothing, type TemplateResult } from "lit";
-import { categoryFallback } from "@polaris-key/ui-core";
+import { categoryFallback, formatBytes, shortName } from "@polaris-key/ui-core";
 
 import { actions, plain, progressBar, text, type RenderCtx } from "./render.js";
 import { spellOut } from "./spell.js";
@@ -66,24 +66,18 @@ function shares(c: RenderCtx): Out {
   </div>`;
 }
 
-/** The one live region of the pairing window. It is the same node in every state, so the wait is
- *  announced where it changes: the search while the window is open, the wait after Codes match. */
+/** The one live region of the pairing window. It is the same node in every state, so the search is
+ *  announced where it appears. After Codes match the title says the wait (focus lands on it), so the
+ *  visible words beside the dot are not read a second time. The template has no whitespace around its
+ *  parts: an idle region is `:empty`, and the kit's rhythm leaves it out. */
+// prettier-ignore
 function wait(c: RenderCtx): Out {
   const state = c.view.state;
   if (!["open", "code", "confirm"].includes(state)) return nothing;
-  return html`<p class="pair-wait" role="status" data-part="wait">
-    ${state === "open"
-      ? html`<span class="pair-dot" aria-hidden="true"></span
-          ><span data-key="linkPairing.searching"
-            >${text(c, "linkPairing.searching")}</span
-          >`
-      : state === "confirm"
-        ? html`<span class="pair-dot" aria-hidden="true"></span
-            ><span class="visually-hidden"
-              >${plain(c, "linkPairing.waiting")}</span
-            >`
-        : nothing}
-  </p>`;
+  const dot = html`<span class="pair-dot" aria-hidden="true"></span>`;
+  const searching = html`${dot}<span data-key="linkPairing.searching">${text(c, "linkPairing.searching")}</span>`;
+  const waiting = html`${dot}<span aria-hidden="true">${text(c, "linkPairing.waiting")}</span>`;
+  return html`<p class="pair-wait" role="status" data-part="wait">${state === "open" ? searching : state === "confirm" ? waiting : nothing}</p>`;
 }
 
 /** LinkPairing: in the DOM order the person reads and acts in. */
@@ -114,14 +108,26 @@ function pairing(c: RenderCtx): Out {
     </div>`;
 }
 
-/** TransferOffer: the whole file name apart from the heading (clamped to three lines), and a bar
- *  while it arrives. */
+/** TransferOffer: the offered file on its own row, apart from the heading: its name with the middle
+ *  elided so the extension stays, then its size and type when the contact said; a bar while it
+ *  arrives. */
 function offer(c: RenderCtx): Out {
-  const name = c.input.transferOffer?.name ?? "";
-  if (c.view.state === "ask" && name !== "")
-    return html`<p class="pair-file" part="file" data-part="file">
-      <bdi>${name}</bdi>
-    </p>`;
+  const t = c.input.transferOffer;
+  const name = t?.name ?? "";
+  if (c.view.state === "ask" && name !== "") {
+    const facts = [
+      t?.size !== undefined ? formatBytes(t.size, c.copy.locale) : "",
+      t?.type ?? "",
+    ].filter(Boolean);
+    return html`<div class="pair-offer" part="file" data-part="file">
+      <p class="pair-file" title=${name}><bdi>${shortName(name, 48)}</bdi></p>
+      ${facts.length
+        ? html`<p class="meta pair-meta" data-part="file-meta">
+            <bdi>${facts.join(" · ")}</bdi>
+          </p>`
+        : nothing}
+    </div>`;
+  }
   if (c.view.state === "receiving") return progressBar(c, undefined);
   return nothing;
 }

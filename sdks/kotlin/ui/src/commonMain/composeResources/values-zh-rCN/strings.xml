@@ -2314,10 +2314,10 @@
     <string name="linkPairing_failedClosed">连接已关闭。未建立任何链接。</string>
     <!-- Screen reader label; never shown. Names the pairing code both people compare. Arguments: {code} = the pairing code, spelled out by the kit. Arguments: 1=code. -->
     <string name="a11y_linkCode">链接验证码 %1$s</string>
-    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label; {name} = what it sends. Both are text the other side chose. Arguments: 1=device, 2=name. -->
-    <string name="transferOffer_ask">%1$s想向你发送%2$s</string>
-    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. Arguments: {name} = what it sends. Arguments: 1=name. -->
-    <string name="transferOffer_askUnnamed">联系人想向你发送%1$s</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Arguments: {device} = the contact’s label (text it chose). The file’s own name, size and type are drawn on a row below. Arguments: 1=device. -->
+    <string name="transferOffer_ask">%1$s想向你发送文件</string>
+    <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Used when the contact has no label. -->
+    <string name="transferOffer_askUnnamed">联系人想向你发送文件</string>
     <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Under the title. -->
     <string name="transferOffer_askBody">只接收你预期的内容。</string>
     <!-- TransferOffer: a contact offers to send something (CC-19.9, D-8). Accepts the offer. -->
