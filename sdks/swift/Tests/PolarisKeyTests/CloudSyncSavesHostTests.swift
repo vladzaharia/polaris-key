@@ -59,7 +59,7 @@ final class CloudSyncSavesHostTests: XCTestCase {
         script(rig) { ok($0, 5) }
         let (recs, _) = try await records(rig)
         let value: [String: JSONValue] = ["chapter": .string("2")]
-        let result = try await recs.set("slot1", value: value, base: .version(4), stop: nil)
+        let result = try await recs.set("slot1", value: value, base: .version(4), file: nil, stop: nil)
         XCTAssertEqual(result, .ok(version: 5))
         let push = try XCTUnwrap(lastPush(rig))
         let m = try XCTUnwrap(mutations(push).first)
@@ -77,11 +77,27 @@ final class CloudSyncSavesHostTests: XCTestCase {
         XCTAssertEqual(row.version, 5)
     }
 
+    func testAWriteThatGivesTheFinalizedPointerListsItsFileAtOnce() async throws {
+        let rig = HostRig()
+        script(rig) { ok($0, 3) }
+        let (recs, _) = try await records(rig)
+        let pointer = SaveFile(version: 3, size: 12, sha256: String(repeating: "a", count: 64), format: .whole)
+        let result = try await recs.set("slot1", value: ["a": .int(1)], base: .any, file: pointer, stop: nil)
+        XCTAssertEqual(result, .ok(version: 3))
+        // No pull has run: the row carries the pointer only because the write did.
+        let got = try await recs.get("slot1")
+        XCTAssertEqual(got?.file, pointer)
+        let listed = try await recs.list()
+        XCTAssertEqual(listed.first?.file, pointer)
+        let body = try XCTUnwrap(mutations(try XCTUnwrap(lastPush(rig))).first)
+        XCTAssertNil(body["file"], "the pointer is never sent")
+    }
+
     func testACreateOnlyWriteSendsStarAsItsBase() async throws {
         let rig = HostRig()
         script(rig) { ok($0, 1) }
         let (recs, _) = try await records(rig)
-        _ = try await recs.set("slot1", value: [:], base: .any, stop: nil)
+        _ = try await recs.set("slot1", value: [:], base: .any, file: nil, stop: nil)
         let m = try XCTUnwrap(mutations(try XCTUnwrap(lastPush(rig))).first)
         XCTAssertEqual(m["baseVersion"], .string("*"))
     }
@@ -95,7 +111,7 @@ final class CloudSyncSavesHostTests: XCTestCase {
             ])
         }
         let (recs, _) = try await records(rig)
-        let r = try await recs.set("slot1", value: ["a": .int(1)], base: .version(2), stop: nil)
+        let r = try await recs.set("slot1", value: ["a": .int(1)], base: .version(2), file: nil, stop: nil)
         guard case .conflict(let server?) = r else { return XCTFail("not a conflict: \(r)") }
         XCTAssertEqual(server.id, "slot1")
         XCTAssertEqual(server.version, 9)
@@ -111,7 +127,7 @@ final class CloudSyncSavesHostTests: XCTestCase {
             .object(["mutationId": m["mutationId"]!, "status": .string("rejected"), "code": .string("value_invalid")])
         }
         let (recs, _) = try await records(rig)
-        let r = try await recs.set("slot1", value: [:], base: .any, stop: nil)
+        let r = try await recs.set("slot1", value: [:], base: .any, file: nil, stop: nil)
         XCTAssertEqual(r, .rejected(code: "value_invalid"))
     }
 
@@ -174,7 +190,7 @@ final class CloudSyncSavesHostTests: XCTestCase {
         let rig = HostRig()
         rig.responder = { req, _ in req.method == .get ? .answer(status: 200, body: hReply()) : .transport }
         let (recs, h) = try await records(rig)
-        let task = Task { try await recs.set("slot1", value: [:], base: .any, stop: nil) }
+        let task = Task { try await recs.set("slot1", value: [:], base: .any, file: nil, stop: nil) }
         for _ in 0..<200 where lastPush(rig) == nil { try await Task.sleep(nanoseconds: 5_000_000) }
         _ = await h.signOut(discardUnsynced: true)
         await h.touch()
@@ -190,7 +206,7 @@ final class CloudSyncSavesHostTests: XCTestCase {
         let finished = LockedValue<String?>(nil)
         let task = Task {
             do {
-                _ = try await recs.set("slot1", value: [:], base: .any, stop: stop)
+                _ = try await recs.set("slot1", value: [:], base: .any, file: nil, stop: stop)
                 finished.set("returned")
             } catch let e as TransferError where e.reason == .aborted {
                 finished.set("aborted")

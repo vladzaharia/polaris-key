@@ -151,10 +151,12 @@ final class MachineRecords: SaveRecords, @unchecked Sendable {
         return r
     }
 
-    func set(_ id: String, value: [String: JSONValue], base: SyncBase, stop: SaveStop?) async throws -> SaveSetResult {
+    func set(
+        _ id: String, value: [String: JSONValue], base: SyncBase, file: SaveFile?, stop: SaveStop?
+    ) async throws -> SaveSetResult {
         let host = self.host
         let r = try await wait(stop) { register in
-            await host.putAt(savesCollection, id, .object(value), base: base, onTicket: register)
+            await host.putAt(savesCollection, id, .object(value), base: base, file: file, onTicket: register)
         }
         return withId(id, r)
     }
