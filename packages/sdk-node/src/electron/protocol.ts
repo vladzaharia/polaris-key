@@ -19,8 +19,8 @@ export const POLARIS_BRIDGE_VERSION = 5;
 export const DEFAULT_BRIDGE_CHANNEL = "polaris-key";
 export const DEFAULT_BRIDGE_KEY = "polarisKey";
 
-/** The bridge methods that cross IPC, each an `ipcMain.handle` channel `<prefix>:<method>`. */
-export const BRIDGE_METHODS = [
+/** The v4 bridge methods that cross IPC, each an `ipcMain.handle` channel `<prefix>:<method>`. */
+const BRIDGE_V4_METHODS = [
   "getSyncState",
   "refresh",
   "beginSignIn",
@@ -34,13 +34,9 @@ export const BRIDGE_METHODS = [
   "subscribe",
   "unsubscribe",
 ] as const;
-export type BridgeMethod = (typeof BRIDGE_METHODS)[number];
 
-/** v5 (I-47b): the automatic and nearby sign-in methods, each an `ipcMain.handle` channel
- *  `<prefix>:<method>`. Declared here by the contract slice (I47B.0); the host registers them in
- *  I47B.1, which folds this list into `BRIDGE_METHODS`. Until then a v5 host answers none of them
- *  and the renderer sees them absent. Permits never cross IPC: the renderer holds only an `askId`
- *  (128 random bits, single use, bound to the sender's `webContents.id`). */
+/** v5 (I-47b): the automatic and nearby sign-in methods. Permits never cross IPC: the renderer
+ *  holds only an `askId` (128 random bits, single use, bound to the sender's `webContents.id`). */
 export const BRIDGE_V5_METHODS = [
   "autoSignIn",
   "nearbyStart",
@@ -55,6 +51,13 @@ export const BRIDGE_V5_METHODS = [
   "approverChoose",
 ] as const;
 export type BridgeV5Method = (typeof BRIDGE_V5_METHODS)[number];
+
+/** Every bridge method that crosses IPC (v4 and v5), each an `ipcMain.handle` channel. */
+export const BRIDGE_METHODS = [
+  ...BRIDGE_V4_METHODS,
+  ...BRIDGE_V5_METHODS,
+] as const;
+export type BridgeMethod = (typeof BRIDGE_METHODS)[number];
 
 /** The `invoke(service, method, args)` verbs a host answers by default: every one the React
  *  desktop adapter sends to a v4 host (`test/electronBridge.test.ts` enumerates the adapter's
@@ -110,10 +113,7 @@ export type BridgeEnvelope =
   | { ok: true; value: unknown }
   | { ok: false; code: string; message: string; detail?: string | null };
 
-export function channelOf(
-  prefix: string,
-  method: BridgeMethod | BridgeV5Method,
-): string {
+export function channelOf(prefix: string, method: BridgeMethod): string {
   return `${prefix}:${method}`;
 }
 
