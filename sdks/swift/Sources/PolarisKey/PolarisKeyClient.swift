@@ -513,9 +513,26 @@ public actor PolarisKeyClient {
     public func discover() async -> DiscoveryResult {
         let result = await core.discover()
         cloudSyncApi.attachSoon()
+        // Not found, invalid or unreachable: the cached links answer is no longer trusted.
+        var isOk = false
+        if case .ok = result { isOk = true }
+        await connect.noteDiscovery(ok: isOk)
+        if isOk { rereadLinksGate() }
         // `interAccount` may have moved: links follow the document (§15.10 "Gates").
         connect.notifyContacts()
         return result
+    }
+
+    private var linksReread: Task<Void, Never>?
+
+    /// Read discovery again when the cached links answer lapses, so a lapse withdraws the adverts.
+    private func rereadLinksGate() {
+        linksReread?.cancel()
+        linksReread = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(interAccountTTLSeconds) * 1_000_000_000)
+            guard !Task.isCancelled, let self else { return }
+            await self.discover()
+        }
     }
 
     // ── Presentation (plans/HA-13.md) ────────────────────────────────────────────────────
@@ -638,8 +655,9 @@ public actor PolarisKeyClient {
                 else { return nil }
                 return Reacquired(token: token, source: .register)
             case .licenseToken:
-                guard case .ok(let token, _, _) = await LicenseEndpoints.reacquireToken(
-                    core, token: current)
+                guard
+                    case .ok(let token, _, _) = await LicenseEndpoints.reacquireToken(
+                        core, token: current)
                 else { return nil }
                 return Reacquired(token: token, source: .reacquire)
             }
@@ -867,6 +885,8 @@ public actor PolarisKeyClient {
 
     /// Stop the refresh loop. Safe to call more than once.
     public func close() {
+        linksReread?.cancel()
+        linksReread = nil
         refreshTask?.cancel()
         refreshTask = nil
         // Bounded like the sign-out step: a hanging advert withdrawal cannot keep a closed client's sockets.

@@ -97,6 +97,8 @@ import XCTest
 
         func names() -> Set<String> { lock.withLock { Set(adverts.keys) } }
 
+        func endpoints() -> [BonjourEndpoint] { lock.withLock { adverts.values.map(\.found.endpoint) } }
+
         func browse(up: @escaping @Sendable (BonjourFound) -> Void, down: @escaping @Sendable (String) -> Void)
             -> @Sendable () -> Void
         {
@@ -279,6 +281,41 @@ import XCTest
                 _ = try await a.connectContact(link.contactForA().id)
                 XCTFail("B answered a removed contact")
             } catch {}
+            await a.stop()
+            await b.stop()
+        }
+
+        func testAHandshakeInFlightWhenTheContactIsRemovedIsEnded() async throws {
+            let link = Link(a: try await Dev(idA), b: try await Dev(idB))
+            let dir = Directory()
+            let ca = Contacts([link.contactForA()])
+            let cb = Contacts([link.contactForB()])
+            let a = try await start(link.a, ca, dir)
+            let b = try await start(link.b, cb, dir)
+            await until("A sees B") { await !a.currentContactPeers().isEmpty }
+            // A raw connection to B's listener that sends nothing: B holds its contacts for this handshake.
+            let endpoints = dir.endpoints().filter { $0.name.hasSuffix("#1") }
+            XCTAssertEqual(endpoints.count, 2)
+            let ended = expectation(description: "B ended the handshake")
+            ended.assertForOverFulfill = false
+            var conns: [NWConnection] = []
+            for e in endpoints {
+                let conn = NWConnection(to: e.network!, using: .tcp)
+                let ready = expectation(description: "ready")
+                conn.stateUpdateHandler = { if case .ready = $0 { ready.fulfill() } }
+                conn.start(queue: .global())
+                await fulfillment(of: [ready], timeout: 5)
+                conns.append(conn)
+            }
+            try await Task.sleep(nanoseconds: 500_000_000)
+            cb.set([])
+            for conn in conns {
+                conn.receive(minimumIncompleteLength: 1, maximumLength: 16) { _, _, complete, error in
+                    if complete || error != nil { ended.fulfill() }
+                }
+            }
+            await fulfillment(of: [ended], timeout: 4)
+            for conn in conns { conn.cancel() }
             await a.stop()
             await b.stop()
         }
@@ -617,6 +654,51 @@ import XCTest
             for bad in ["Photos", "a b", "a.b", "caf\u{e9}", "", String(repeating: "a", count: 33)] {
                 XCTAssertFalse(row([bad]).valid, bad)
             }
+        }
+
+        func testADiscoveryThatIsNotFoundClosesTheGate() async throws {
+            let c = try await client()
+            await server.reply(
+                "/djdl/.well-known/polaris.json",
+                body: #"{"product":"djdl","services":{"connect":{"enabled":true,"interAccount":true}}}"#)
+            await c.discover()
+            let on = await c.cloudConnect.links.interAccount()
+            XCTAssertTrue(on)
+            await server.reply("/djdl/.well-known/polaris.json", status: 404, body: "")
+            await c.discover()
+            let off = await c.cloudConnect.links.interAccount()
+            XCTAssertFalse(off)
+        }
+
+        func testADiscoveryAnswerOlderThanADayNoLongerCounts() async throws {
+            let c = try await client()
+            await server.reply(
+                "/djdl/.well-known/polaris.json",
+                body: #"{"product":"djdl","services":{"connect":{"enabled":true,"interAccount":true}}}"#)
+            await c.discover()
+            let on = await c.cloudConnect.links.interAccount()
+            XCTAssertTrue(on)
+            c.connect.linksUntil.set(1)
+            let lapsed = await c.cloudConnect.links.interAccount()
+            XCTAssertFalse(lapsed)
+        }
+
+        func testASessionUnderAReplacedPendingSecretDoesNotPromoteTheNewerPendingRow() {
+            let key = Base64URL.encode(Data(repeating: 7, count: 32))
+            let s1 = Data(repeating: 1, count: 32)
+            let s2 = Data(repeating: 2, count: 32)
+            func row(_ secret: Data, _ pending: Int?) -> ConnectContactRow {
+                ConnectContactRow(
+                    agreeKey: key, secret: Base64URL.encode(secret), label: nil, cats: ["docs"], createdAt: 1,
+                    reachable: true, pendingSince: pending)
+            }
+            let rows = [row(s1, nil), row(s2, 5)]
+            XCTAssertEqual(
+                ConnectContacts.promote(rows, agreeKey: key, tag: ConnectContacts.tag(s1)).map(\.secret),
+                rows.map(\.secret))
+            let after = ConnectContacts.promote(rows, agreeKey: key, tag: ConnectContacts.tag(s2))
+            XCTAssertEqual(after.map(\.secret), [Base64URL.encode(s2)])
+            XCTAssertTrue(after.allSatisfy { $0.pendingSince == nil })
         }
 
         func testPairAndOpenAreTheTypedNAWhileLinksAreOff() async throws {

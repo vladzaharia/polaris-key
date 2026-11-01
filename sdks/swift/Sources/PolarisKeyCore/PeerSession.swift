@@ -112,7 +112,7 @@ public struct PeerEstablished: Sendable, Equatable {
 }
 
 /// A contact the device holds (mode c): its secret (the PSK) and the peer's agreeKey.
-public struct PeerContactLink: Sendable {
+public struct PeerContactLink: Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let secret: Data
     /// The peer's agreeKey, 43 canonical base64url characters: the remote static key must equal it.
     public let agreeKey: String
@@ -120,6 +120,10 @@ public struct PeerContactLink: Sendable {
         self.secret = secret
         self.agreeKey = agreeKey
     }
+
+    public var description: String { "PeerContactLink(redacted)" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: [:]) }
 }
 
 /// This device's side of the contact exchange (mode p, §15.10).

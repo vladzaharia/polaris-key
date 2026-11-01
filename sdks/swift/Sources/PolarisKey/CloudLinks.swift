@@ -202,9 +202,26 @@ import PolarisKeyCore
             for p in pairs { await p.stop() }
         }
 
-        private func inbound(_ s: ConnectSession) {
+        private func inbound(_ s: ConnectSession) async {
             track(s)
-            listeners.fire(s)
+            // The handshake may have begun before the contact was removed or the gate went off: the session is
+            // delivered only while the contact (same secret) is held and links are on.
+            if await stillHeld(s) { listeners.fire(s) }
+        }
+
+        /// Close `s` (`peer_revoked`, or `peer_bye` when the gate is off) unless its contact is still held.
+        private func stillHeld(_ s: ConnectSession) async -> Bool {
+            guard let ref = s.contact else { return true }
+            let on = await connect.interAccount()
+            if on, await connect.holdsContact(agreeKey: ref.agreeKey, tag: ref.tag) { return true }
+            await s.close(on ? .peerRevoked : .peerBye)
+            return false
+        }
+
+        private func trackHeld(_ s: ConnectSession) async throws -> ConnectSession {
+            track(s)
+            if await stillHeld(s) { return s }
+            throw ConnectLanError(.unknownPeer, "That link was removed.")
         }
 
         private func track(_ s: ConnectSession) {
@@ -297,8 +314,7 @@ import PolarisKeyCore
                         late: { await $0.close() })
                     switch outcome {
                     case .value(let s):
-                        track(s)
-                        return s
+                        return try await trackHeld(s)
                     case .failed(let e): last = e
                     case .timedOut:
                         last = ConnectLanError(.connectFailed, "The LAN attempt took too long; trying the relay.")
@@ -307,8 +323,7 @@ import PolarisKeyCore
                 if let relay, relayOpt, relayOn {
                     do {
                         let s = try await relay.dial(id, pending: pending)
-                        track(s)
-                        return s
+                        return try await trackHeld(s)
                     } catch { last = error }
                 }
             }

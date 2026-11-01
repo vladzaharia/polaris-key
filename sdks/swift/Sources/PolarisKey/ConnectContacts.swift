@@ -14,6 +14,9 @@
 import Foundation
 import PolarisKeyCore
 
+/// How long a discovery answer of `interAccount: true` counts without a fresh read (24 h).
+let interAccountTTLSeconds = 24 * 60 * 60
+
 /// What the host sees of one link. No key of any kind.
 public struct ContactInfo: Sendable, Equatable {
     /// Names the link on this device (16 characters). Not the peer's key and not shared.
@@ -39,6 +42,8 @@ public struct ConnectContactRef: Sendable, Equatable {
     public let agreeKey: String
     /// The session was opened under a pending contact: it is the first handshake of a re-pair.
     public let pending: Bool
+    /// A one-way tag of the secret the session opened under (not the secret).
+    public internal(set) var tag: String = ""
 }
 
 /// A contact in use: the row with its secret decoded. `wipe()` overwrites the secret this value owns.
@@ -52,8 +57,11 @@ public struct ConnectLiveContact: Sendable, CustomStringConvertible, CustomRefle
     public let reachable: Bool
     public let pending: Bool
 
+    /// A one-way tag of this contact's secret: tells two secrets apart without holding either.
+    public var tag: String { ConnectContacts.tag(secret) }
+
     public var ref: ConnectContactRef {
-        ConnectContactRef(id: id, label: label, categories: cats, agreeKey: agreeKey, pending: pending)
+        ConnectContactRef(id: id, label: label, categories: cats, agreeKey: agreeKey, pending: pending, tag: tag)
     }
 
     public var description: String { "ConnectLiveContact(redacted)" }
@@ -82,6 +90,10 @@ enum ConnectContacts {
     static func id(_ agreeKey: String) -> String {
         let raw = Base64URL.decode(agreeKey) ?? Data()
         return Base64URL.encode(PeerNoiseHash.sha256(Data("pkey-contact/1".utf8), Data([0]), raw).prefix(12))
+    }
+
+    static func tag(_ secret: Data) -> String {
+        Base64URL.encode(PeerNoiseHash.sha256(Data("pkey-contact-tag/1".utf8), Data([0]), secret).prefix(12))
     }
 
     static func live(_ r: ConnectContactRow) -> ConnectLiveContact {
@@ -141,8 +153,13 @@ enum ConnectContacts {
     }
 
     /// A handshake under the pending contact of `agreeKey` passed the pin: it takes the held one's place.
-    static func promote(_ rows: [ConnectContactRow], agreeKey: String) -> [ConnectContactRow] {
-        guard let pend = rows.first(where: { $0.pendingSince != nil && $0.agreeKey == agreeKey }) else { return rows }
+    static func promote(_ rows: [ConnectContactRow], agreeKey: String, tag: String? = nil) -> [ConnectContactRow] {
+        guard
+            let pend = rows.first(where: {
+                $0.pendingSince != nil && $0.agreeKey == agreeKey
+                    && (tag == nil || Self.tag(Base64URL.decode($0.secret) ?? Data()) == tag)
+            })
+        else { return rows }
         let held = rows.first { $0.pendingSince == nil && $0.agreeKey == agreeKey }
         return PeerContacts.promote(rows.map(stored), agreeKey: agreeKey).compactMap { c in
             if c.pendingSince == nil && c.agreeKey == agreeKey {
@@ -166,8 +183,24 @@ extension ConnectClient {
     /// the product's setting, `launch.connectLinks` and the service are on. It never fetches: false while no
     /// document is held.
     public func interAccount() async -> Bool {
+        // A cached answer lapses (`interAccountTTLSeconds`); a failed or empty re-read clears it.
+        if let until = linksUntil.current, await core.now() >= until { return false }
         guard let f = await core.discoveryDocument?.services[.connect] else { return false }
         return f.enabled && f.extras["interAccount"] == .bool(true)
+    }
+
+    /// A discovery read finished: stamp the cached answer, or clear it when the read was not a document.
+    func noteDiscovery(ok: Bool) async {
+        linksUntil.set(ok ? await core.now() + interAccountTTLSeconds : 0)
+    }
+
+    /// Whether the contact a session opened under is still held (same peer key, same secret) and links are
+    /// still on.
+    func holdsContact(agreeKey: String, tag: String) async -> Bool {
+        if !(await interAccount()) { return false }
+        return (await contactRows()).contains {
+            $0.agreeKey == agreeKey && ConnectContacts.tag(Base64URL.decode($0.secret) ?? Data()) == tag
+        }
     }
 
     /// The contact rows held for this device, pending ones that lapsed (24 h) dropped. Empty without a held
