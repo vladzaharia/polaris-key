@@ -213,7 +213,7 @@ final class CloudSyncCollectionHandleTests: XCTestCase {
         let none = await h.collectionPolicy("nope")
         XCTAssertEqual(best, "max")
         XCTAssertEqual(scratch, "lastWrite", "a template's conflict")
-        XCTAssertEqual(saves, "revision", "saves stays unless the catalog declares it")
+        XCTAssertNil(saves, "there is no implicit saves collection")
         XCTAssertNil(none)
         XCTAssertEqual(CloudSyncHost.collectionsOf(collectionsCatalog).first { $0.name == "best" }?.field, "score")
     }
@@ -387,5 +387,74 @@ final class CloudSyncCollectionHandleTests: XCTestCase {
         _ = try await h.signIn(hALICE)
         _ = await prefs.update("main", set: ["a": .int(1)])
         XCTAssertTrue(seen.current.contains(.change(ids: ["main"], origin: .local)))
+    }
+
+    func testWhatCannotBeSealedIsRefusedWithoutJournallingOrSending() async throws {
+        let rig = HostRig()
+        let (prefs, h) = try await handle(rig, "prefs")
+        let notes = CloudSyncCollection(name: "notes.work", host: h)
+        let tags = CloudSyncCollection(name: "tags", host: h)
+        await h.flush()
+        let before = pushes(rig).count
+        let bad = CollectionResult.refused(.valueInvalid)
+        let r1 = await notes.put("a\u{0}b", .int(1))
+        let r2 = await notes.put("n", .double(.nan))
+        let r3 = await notes.put("n", .int(1 << 60))
+        let r4 = await notes.put(String(repeating: "x", count: 129), .int(1))
+        let r5 = await notes.put("a b", .int(1))
+        let r6 = await notes.put("x:" + String(repeating: "A", count: 43), .int(1))
+        let r7 = await prefs.update("p", set: ["f\u{0}": .int(1)])
+        let r8 = await prefs.update("p", set: ["f": .double(.infinity)])
+        let r9 = await tags.add("t", .double(.nan))
+        let r10 = await notes.delete("a\u{0}b")
+        for r in [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10] { XCTAssertEqual(r, bad) }
+        await h.flush()
+        XCTAssertEqual(pushes(rig).count, before, "nothing was sent")
+        let ids = await notes.ids()
+        XCTAssertEqual(ids, [])
+    }
+
+    func testRefusalsComeInOneOrder() async throws {
+        let rig = HostRig()
+        let h = try await rig.host(options())
+        let nope = CloudSyncCollection(name: "nope", host: h)
+        let tags = CloudSyncCollection(name: "tags", host: h)
+        let unknown = await nope.put("a\u{0}", .int(1))
+        XCTAssertEqual(unknown, .refused(.collectionUnknown))
+        let out = await tags.put("a\u{0}", .int(1))
+        XCTAssertEqual(out, .refused(.signedOut), "signed out before the policy and the value")
+        let (tags2, _) = (try await handle(HostRig(), "tags"))
+        let policy = await tags2.put("a\u{0}", .int(1))
+        XCTAssertEqual(policy, .refused(.opInvalidForPolicy))
+    }
+
+    func testTwoHandlesOnOneCollectionDoNotSilenceEachOther() async throws {
+        let rig = HostRig()
+        let (a, h) = try await handle(rig, "prefs")
+        let b = CloudSyncCollection(name: "prefs", host: h)
+        let seen = LockedValue<[CollectionEvent]>([])
+        _ = await a.on { e in seen.with { $0.append(e) } }
+        let sub = await b.on { _ in }
+        await sub.cancel()
+        _ = await a.update("main", set: ["v": .int(1)])
+        XCTAssertTrue(seen.current.contains(.change(ids: ["main"], origin: .local)))
+    }
+
+    func testAnUnsealableJournaledMutationIsDroppedAndTheNextOneIsPushed() async throws {
+        let rig = HostRig()
+        let h = try await hSignedIn(rig, options: options())
+        await h.flush()
+        let before = pushes(rig).count
+        // Journaled around the collection handle: a setting name no codec spells.
+        _ = await h.set("x\u{0}y", .string("v"))
+        await h.flush()
+        XCTAssertEqual(pushes(rig).count, before, "nothing unsealable was sent")
+        let good = CloudSyncCollection(name: "notes.work", host: h)
+        let r = await good.put("n1", .int(2))
+        XCTAssertEqual(r, .ok(mutationId: nil))
+        await h.flush()
+        XCTAssertEqual(pushes(rig).count - before, 1, "the next mutation went out")
+        let st = await h.status()
+        XCTAssertEqual(st?.pending, 0)
     }
 }

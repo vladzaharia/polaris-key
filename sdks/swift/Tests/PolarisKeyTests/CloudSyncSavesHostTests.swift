@@ -45,9 +45,16 @@ private func ok(_ m: [String: JSONValue], _ version: Int) -> JSONValue {
     .object(["mutationId": m["mutationId"]!, "status": .string("ok"), "version": .int(version)])
 }
 
+/// There is no implicit collection: the catalog declares `saves`.
+private let savesOptions = CloudSyncOptions(
+    catalog: .object(
+        (hMirror.objectValue ?? [:]).merging([
+            "cloudSync": .object(["collections": .array([.object(["name": .string("saves"), "conflict": .string("revision")])])])
+        ]) { $1 }))
+
 final class CloudSyncSavesHostTests: XCTestCase {
     private func records(_ rig: HostRig, changes: [JSONValue] = []) async throws -> (MachineRecords, CloudSyncHost) {
-        let h = try await hSignedIn(rig)
+        let h = try await hSignedIn(rig, options: savesOptions)
         await h.touch()
         let r = MachineRecords(host: h)
         await r.bind()
@@ -225,7 +232,7 @@ final class CloudSyncSavesHostTests: XCTestCase {
 
     func testAPurgeRemovesThePersonsChunkCacheAndTheJournalAndNothingBeside() async throws {
         let rig = HostRig()
-        let h = try await hSignedIn(rig)
+        let h = try await hSignedIn(rig, options: savesOptions)
         let mine = chunkCacheDirectory(stateDir: rig.dir, subject: hALICE, collection: "saves")
         let theirs = chunkCacheDirectory(stateDir: rig.dir, subject: hBOB, collection: "saves")
         let journal = rig.dir.appendingPathComponent(cloudSyncTransfersDirName, isDirectory: true)

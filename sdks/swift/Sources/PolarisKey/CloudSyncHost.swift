@@ -236,11 +236,8 @@ public actor CloudSyncHost {
     private let outcomeTaps = LockedValue<[Int: @Sendable (Int, SyncRecordOutcome) -> Void]>([:])
     private var nextTap = 0
 
-    /// The `saves` collection `cloudSync.saves` writes to: a `revision` collection the machine holds.
-    static let savesDecl = SyncCollectionDecl(name: savesCollection, policy: "revision", resolve: "keepServer")
-
     /// The collections the machine knows: the catalog's `cloudSync.collections` (each member's policy, a
-    /// `max`/`min` field and, for `revision`, the keep-server resolution), and `saves` unless it declares it.
+    /// `max`/`min` field and, for `revision`, the keep-server resolution). There is no implicit collection.
     static func collectionsOf(_ catalog: JSONValue) -> [SyncCollectionDecl] {
         let templates = ["saves": "revision", "session": "lastWrite"]
         let policies: Set<String> = ["revision", "union", "lastWrite", "max", "min", "merge"]
@@ -256,7 +253,6 @@ public actor CloudSyncHost {
                     name: name, policy: policy, field: o["conflictField"]?.stringValue,
                     resolve: policy == "revision" ? "keepServer" : nil))
         }
-        if !out.contains(where: { $0.name == savesCollection }) { out.append(savesDecl) }
         return out
     }
 
@@ -356,8 +352,11 @@ public actor CloudSyncHost {
     func collectionApply(
         _ name: String, _ id: String, _ verb: CollectionVerb, onTicket: (@Sendable (Int) -> Void)? = nil
     ) -> CollectionResult {
-        guard let m = machine else { return .refused(.signedOut) }
-        guard let decl = m.collectionDecl(name) else { return .refused(.collectionUnknown) }
+        // One refusal order: collection_unknown, signed_out, op_invalid_for_policy, value_invalid.
+        let declared =
+            machine?.collectionDecl(name) ?? SyncCollectionDecl.match(name, in: Self.collectionsOf(catalog))
+        guard let decl = declared else { return .refused(.collectionUnknown) }
+        guard let m = machine, m.signedIn else { return .refused(.signedOut) }
         let policy = decl.policy
         func refuse(_ e: CollectionError) -> CollectionResult { .refused(e) }
         func finish(_ r: CallResult) -> CollectionResult {
@@ -389,7 +388,13 @@ public actor CloudSyncHost {
         case .delete: allowed = true
         }
         if !allowed { return refuse(.opInvalidForPolicy) }
-        if id.isEmpty { return refuse(.valueInvalid) }
+        switch verb {
+        case .put(_, let base?), .delete(let base?):
+            if policy != "revision" { return refuse(.opInvalidForPolicy) }
+            _ = base
+        default: break
+        }
+        if !Self.sealable(id, verb) { return refuse(.valueInvalid) }
         catchUp()
         switch verb {
         case .put(let value, let base):
@@ -400,11 +405,7 @@ public actor CloudSyncHost {
             return finish(m.put(name, id, value))
         case .update(let set, let remove):
             let names = Array(set.keys) + remove
-            if names.isEmpty || Set(names).count != names.count
-                || names.contains(where: { $0.isEmpty || $0.utf8.count > collectionMaxFieldBytes })
-            {
-                return refuse(.valueInvalid)
-            }
+            if names.isEmpty || Set(names).count != names.count { return refuse(.valueInvalid) }
             return finish(m.update(name, id, set: set, remove: remove))
         case .add(let element), .remove(let element):
             guard let spelled = try? CanonicalJSON.encode(element), spelled.utf8.count <= SYNC_MAX_UNION_ELEMENT_BYTES
@@ -419,6 +420,21 @@ public actor CloudSyncHost {
             }
             if base != nil { return refuse(.opInvalidForPolicy) }
             return finish(m.delete(name, id))
+        }
+    }
+
+    /// The record id and every field name and value can be sealed: a refused call journals nothing.
+    static func sealable(_ id: String, _ verb: CollectionVerb) -> Bool {
+        guard wholeMatches(SYNC_KEY_PATTERN, id) != nil, !SyncBlind.isBlindedName(id) else { return false }
+        func spells(_ v: JSONValue) -> Bool { (try? CanonicalJSON.encode(v)) != nil }
+        func field(_ n: String) -> Bool {
+            !n.isEmpty && n.utf8.count <= collectionMaxFieldBytes && !n.unicodeScalars.contains("\u{0}")
+        }
+        switch verb {
+        case .put(let value, _): return spells(value)
+        case .update(let set, let remove): return (Array(set.keys) + remove).allSatisfy(field) && set.values.allSatisfy(spells)
+        case .add(let e), .remove(let e): return spells(e)
+        case .delete: return true
         }
     }
 
@@ -742,7 +758,11 @@ public actor CloudSyncHost {
                         method: .post, path: req.path,
                         body: try HostCodec.sealPush(body, codec: codec, routes: routes))
                 } catch {
-                    // Locked, or a mutation that cannot be sealed: nothing is sent.
+                    // Nothing is sent. A mutation that cannot be sealed is dropped as refused (it would
+                    // otherwise head the journal for ever); the others go out on the next push.
+                    if !codec.locked {
+                        m.refuseMutations(HostCodec.unsealableMutations(body, codec: codec, routes: routes))
+                    }
                     return receive(m, gen, .transport)
                 }
             }

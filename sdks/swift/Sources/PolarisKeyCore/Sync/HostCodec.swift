@@ -130,6 +130,22 @@ public enum HostCodec {
         try sealPush(body, codec: codec, declared: routes.map(\.key))
     }
 
+    /// The ids of the mutations of a push body that cannot be sealed (one at a time, so the others are not
+    /// blamed). Empty when the codec is locked: that is not the mutation's fault.
+    public static func unsealableMutations(_ body: JSONValue, codec: any SyncCodecPort, routes: [SettingRoute])
+        -> [Int]
+    {
+        guard !codec.locked, case .object(let o) = body, case .array(let list)? = o["mutations"] else { return [] }
+        var out: [Int] = []
+        for m in list {
+            guard case .object(let mo) = m, case .int(let mid)? = mo["mutationId"] else { continue }
+            var one = o
+            one["mutations"] = .array([m])
+            if (try? sealPush(.object(one), codec: codec, routes: routes)) == nil, !codec.locked { out.append(mid) }
+        }
+        return out
+    }
+
     private static func sealMutation(_ m: [String: JSONValue], _ codec: any SyncCodecPort, _ declared: Set<[UInt8]>)
         throws -> [String: JSONValue]
     {
