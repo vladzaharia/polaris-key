@@ -442,7 +442,7 @@ const NR_AREA = "identity.nativeRedirect";
 /** The loopback class: on unless the developer turns it off, which narrows what an app may use. */
 const NR_LOOPBACK: SettingDef = setting({
   key: "identity.nativeRedirect.loopback",
-  rbacArea: "settings",
+  rbacArea: "keys",
   scope: "product",
   service: "identity",
   area: NR_AREA,
@@ -456,7 +456,10 @@ const NR_LOOPBACK: SettingDef = setting({
   merge: "cascade",
   ownership: "claimable",
   manifest: { path: "product:identity.nativeRedirect.loopback" },
-  confirm: { on: "L0", off: "L0" },
+  securityWidening: true,
+  widensWhen: "on",
+  critical: true,
+  confirm: { on: "L1", off: "L0" },
   visibleWhen: VISIBLE,
   storage: { kind: "scalar" },
   readers: ["services/identity/passthrough/redirectUri.ts"],

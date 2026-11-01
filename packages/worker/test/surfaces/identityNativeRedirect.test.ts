@@ -577,6 +577,19 @@ describe("discovery, the return page and association files", () => {
     });
   });
 
+  it("discovery leaves out a claimed path that is also a web path", async () => {
+    await db.run(
+      "UPDATE product_settings SET value_json = ? WHERE product = ? AND key = 'identity.nativeRedirect.claimedPaths'",
+      JSON.stringify(["/open", "/auth/callback"]),
+      SLUG,
+    );
+    const res = await route("GET", `/${SLUG}/.well-known/polaris.json`);
+    const id = (
+      (await res.json()) as { services: { identity: Record<string, any> } }
+    ).services.identity;
+    expect(id.nativeRedirect.claimedHttps).toEqual([`${APP}/open`]);
+  });
+
   it("serves the card shell for a well-formed handle only, GET and HEAD", async () => {
     const handle = `rq_${"A".repeat(22)}`;
     const ok = await route("GET", `/signin/return?request=${handle}`);
@@ -603,13 +616,22 @@ describe("discovery, the return page and association files", () => {
     ).toBe(405);
   });
 
-  it("never serves association files on the API host", async () => {
-    for (const p of [
-      "/.well-known/apple-app-site-association",
-      "/.well-known/assetlinks.json",
-      `/${SLUG}/.well-known/apple-app-site-association`,
-      `/${SLUG}/.well-known/assetlinks.json`,
-    ])
-      expect((await route("GET", p)).status, p).toBe(404);
+  it("never serves association files on the API or the customer host", async () => {
+    env.CUSTOMER_ORIGIN = "https://polaris.locker";
+    for (const base of [BASE, "https://polaris.locker"])
+      for (const p of [
+        "/.well-known/apple-app-site-association",
+        "/.well-known/assetlinks.json",
+        `/${SLUG}/.well-known/apple-app-site-association`,
+        `/${SLUG}/.well-known/assetlinks.json`,
+      ]) {
+        const res = await dispatchWith(
+          new Request(`${base}${p}`) as unknown as Request,
+          env,
+          db,
+          NOW,
+        );
+        expect(res.status, base + p).toBe(404);
+      }
   });
 });

@@ -77,6 +77,9 @@ const FAIL_MODE: Record<string, FailMode> = {
   // mint tells an attacker to keep going.
   register: "closed",
   browserSessionLicense: "closed",
+  // Pushed native sign-in requests (per network and per device id): unauthenticated, so closed.
+  identityRequest: "closed",
+  identityRequestDevice: "closed",
   authStart: "closed",
   authDeviceStart: "closed",
   authDeviceVerify: "closed",
