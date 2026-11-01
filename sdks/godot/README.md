@@ -1082,6 +1082,12 @@ the answers to the handles. Deciding handlers are methods; observers are signals
 
 ```gdscript
 # M, signed in: advertise while "Approve a nearby device" is open.
+func show_codes(_label: String, _platform: String, _codes: Array) -> void:
+	pass   # draw the label and the codes on your approval screen
+
+func show_list() -> void:
+	pass   # redraw the approver list from req.approvers()
+
 func _on_approval(approval: PKeyPeerNearbyApprover.Approval) -> void:
 	show_codes(approval.label, approval.platform, approval.codes)   # the person picks the code D shows
 	# on the pick: var picked := await approval.pick(code); call nearby/approve with picked.detail,
