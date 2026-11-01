@@ -461,7 +461,8 @@ extension IdentityClient {
         } catch let error as PolarisError where error.code == PolarisError.localOnly {
             throw error
         } catch {
-            throw PolarisError(code: IdentityClient.networkError, message: "\(error)")
+            throw PolarisError(
+                code: IdentityClient.networkError, message: "the token request could not be sent.")
         }
         let body = try? JSONDecoder().decode(JSONValue.self, from: response.body)
         switch IdentityRedirect.parseTokenAnswer(status: response.status, body: body) {

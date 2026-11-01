@@ -87,6 +87,8 @@ enum NativeCallbackFailure: String, Sendable, Equatable {
     case unexpectedParameter = "unexpected-parameter"
     /// The `request=` handle is absent on loopback, or not an `rq_` handle.
     case requestInvalid = "request-invalid"
+    /// The system browser session ended with an error (not a dismissal).
+    case browserFailed = "browser-failed"
 
     /// A delivery that is not this sign-in's (another URL, a wrong `state`, an unreadable query)
     /// cannot be allowed to end it: the sign-in keeps waiting.
@@ -112,7 +114,8 @@ enum NativeCallbackResult: Sendable, Equatable {
 extension NativeCallbackResult: CustomStringConvertible, CustomDebugStringConvertible {
     var description: String {
         switch self {
-        case .code(_, let request): return "NativeCallbackResult.code(\(redactedCredential), request: \(request ?? "nil"))"
+        case .code(_, let request):
+            return "NativeCallbackResult.code(\(redactedCredential), request: \(request ?? "nil"))"
         case .cancelled(let request): return "NativeCallbackResult.cancelled(request: \(request ?? "nil"))"
         case .failed(let reason, let error):
             return "NativeCallbackResult.failed(\(reason.rawValue), error: \(error ?? "nil"))"

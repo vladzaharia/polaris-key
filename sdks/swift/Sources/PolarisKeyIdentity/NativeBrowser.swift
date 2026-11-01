@@ -19,11 +19,12 @@ import PolarisKeyCore
 
 /// The browser a native sign-in opens its authorize URL in when the host gave none, or nil where
 /// the platform has none for that redirect class. `deliver` takes the callback URL a system
-/// browser session hands back; `cancelled` is the person closing it.
+/// browser session hands back; `failed` is the session ending with an error. The person closing
+/// the sheet is neither: the sign-in keeps waiting and `reopen()` shows the page again.
 @MainActor
 func defaultNativeBrowser(
     for flow: NativeFlow, deliver: @escaping @Sendable (String) -> Void,
-    cancelled: @escaping @Sendable () -> Void
+    failed: @escaping @Sendable () -> Void
 ) -> (any SignInBrowser)? {
     #if os(macOS)
         if flow.redirectClass == .loopback { return SystemBrowser() }
@@ -32,7 +33,7 @@ func defaultNativeBrowser(
         if flow.redirectClass != .loopback {
             return NativeAuthSessionBrowser(
                 redirectClass: flow.redirectClass, redirectUri: flow.redirectUri, deliver: deliver,
-                cancelled: cancelled)
+                failed: failed)
         }
     #endif
     return nil
@@ -55,35 +56,70 @@ func defaultNativeBrowser(
 #endif
 
 #if canImport(AuthenticationServices) && (os(iOS) || os(macOS) || os(visionOS))
+    /// What an `ASWebAuthenticationSession` completion means for the sign-in.
+    enum NativeBrowserEvent: Equatable {
+        /// The callback URL the session was waiting for.
+        case callback(String)
+        /// The person closed the sheet: the sign-in keeps waiting.
+        case dismissed
+        /// Any other end: the sign-in fails.
+        case failed
+
+        static func map(url: URL?, error: (any Error)?) -> NativeBrowserEvent {
+            if let url { return .callback(url.absoluteString) }
+            if let error = error as? ASWebAuthenticationSessionError, error.code == .canceledLogin {
+                return .dismissed
+            }
+            return .failed
+        }
+    }
+
     /// `ASWebAuthenticationSession` for a registered scheme or a claimed HTTPS callback.
     @MainActor
     final class NativeAuthSessionBrowser: NSObject, SignInBrowser {
         private var session: ASWebAuthenticationSession?
         private var anchor: AnchorProvider?
+        private var generation = 0
         private let redirectClass: NativeRedirectClass
         private let redirectUri: String
         private let deliver: @Sendable (String) -> Void
-        private let cancelled: @Sendable () -> Void
+        private let failed: @Sendable () -> Void
 
         init(
             redirectClass: NativeRedirectClass, redirectUri: String,
-            deliver: @escaping @Sendable (String) -> Void, cancelled: @escaping @Sendable () -> Void
+            deliver: @escaping @Sendable (String) -> Void, failed: @escaping @Sendable () -> Void
         ) {
             self.redirectClass = redirectClass
             self.redirectUri = redirectUri
             self.deliver = deliver
-            self.cancelled = cancelled
+            self.failed = failed
             super.init()
         }
 
+        /// The sheet is gone (closed by the person or ended): forget the handle of that generation.
+        private func ended(_ generation: Int) {
+            guard generation == self.generation else { return }
+            session = nil
+            anchor = nil
+        }
+
         func open(_ url: URL) async throws {
+            // "Open browser again": a sheet still showing is dismissed first, never left behind.
+            session?.cancel()
+            session = nil
+            anchor = nil
+            generation += 1
+            let mine = generation
             let provider = AnchorProvider(anchor: WebAuthenticationSignInBrowser.currentAnchor())
             let deliver = self.deliver
-            let cancelled = self.cancelled
-            let completion: @Sendable (URL?, (any Error)?) -> Void = { callback, _ in
-                // A callback is delivered; anything else (the person closed the sheet, or it
-                // could not be shown) ends the sign-in.
-                if let callback { deliver(callback.absoluteString) } else { cancelled() }
+            let failed = self.failed
+            let completion: @Sendable (URL?, (any Error)?) -> Void = { [weak self] callback, error in
+                switch NativeBrowserEvent.map(url: callback, error: error) {
+                case .callback(let url): deliver(url)
+                case .dismissed: break
+                case .failed: failed()
+                }
+                Task { @MainActor in self?.ended(mine) }
             }
             let session: ASWebAuthenticationSession
             if redirectClass == .claimed {
@@ -99,16 +135,13 @@ func defaultNativeBrowser(
             }
             session.presentationContextProvider = provider
             session.prefersEphemeralWebBrowserSession = false
+            guard session.start() else { throw Self.unavailable() }
             self.anchor = provider
             self.session = session
-            guard session.start() else {
-                self.session = nil
-                self.anchor = nil
-                throw Self.unavailable()
-            }
         }
 
         func close() {
+            generation += 1
             session?.cancel()
             session = nil
             anchor = nil

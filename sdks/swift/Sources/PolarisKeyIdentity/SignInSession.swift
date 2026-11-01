@@ -418,6 +418,12 @@ public final class SignInSession: Sendable {
         return try await settleNative(flow)
     }
 
+    /// The system browser session ended with an error other than the person closing it: the
+    /// sign-in ends with `sign-in-failed`.
+    func receiveBrowserFailure() {
+        native?.arrivals.arrive(.callback(.failed(.browserFailed, error: nil)))
+    }
+
     /// The callback URL the system browser session handed back. Only a delivery that is this
     /// sign-in's counts; `wait()` redeems it.
     func receiveFromBrowser(_ url: String) {
@@ -483,7 +489,7 @@ public final class SignInSession: Sendable {
                 opener = await defaultNativeBrowser(
                     for: flow,
                     deliver: { [weak self] callback in self?.receiveFromBrowser(callback) },
-                    cancelled: { [weak self] in self?.cancel() })
+                    failed: { [weak self] in self?.receiveBrowserFailure() })
             }
             guard let opener else {
                 throw UnsupportedError(

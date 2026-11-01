@@ -26,6 +26,9 @@ import XCTest
 #if canImport(Network)
     import Darwin
 #endif
+#if canImport(AuthenticationServices) && os(macOS)
+    import AuthenticationServices
+#endif
 
 private let api = "https://key.example/djdl"
 private let state = "tidewater-state-0123456789"
@@ -224,7 +227,9 @@ final class NativeRedirectHelperTests: XCTestCase {
             check("HTTP://127.0.0.1:49152/pkey/callback?code=C&state=\(state)&\(iss)&request=\(handle)"),
             .code("C", request: handle))
         XCTAssertEqual(
-            check("\(base.replacingOccurrences(of: "callback", with: "CALLBACK"))?code=C&state=\(state)&\(iss)&request=\(handle)"),
+            check(
+                "\(base.replacingOccurrences(of: "callback", with: "CALLBACK"))?code=C&state=\(state)&\(iss)&request=\(handle)"
+            ),
             .failed(.redirectMismatch, error: nil))
     }
 
@@ -309,7 +314,8 @@ final class NativeRedirectSessionTests: XCTestCase {
     }
 
     private func options(
-        _ native: NativeRedirectOptions = NativeRedirectOptions(loopback: true, registeredSchemes: [], openBrowser: false),
+        _ native: NativeRedirectOptions = NativeRedirectOptions(
+            loopback: true, registeredSchemes: [], openBrowser: false),
         browser: (any SignInBrowser)? = nil
     ) -> SignInOptions {
         SignInOptions(channel: .redirect, browser: browser, native: native)
@@ -380,7 +386,8 @@ final class NativeRedirectSessionTests: XCTestCase {
         install(c, listeners)
         let s = try await c.identity.signIn.start(options())
         let reply = try XCTUnwrap(listeners.made[0].deliver(callback()))
-        XCTAssertEqual(reply, NativeListenerReply(location: "https://key.example/signin/return?request=\(handle)", final: true))
+        XCTAssertEqual(
+            reply, NativeListenerReply(location: "https://key.example/signin/return?request=\(handle)", final: true))
         let outcome = try await s.wait()
         guard case .signedIn(let ready) = outcome else { return XCTFail("\(outcome)") }
         XCTAssertEqual(ready.subject, "ps_abc")
@@ -516,7 +523,8 @@ final class NativeRedirectSessionTests: XCTestCase {
         XCTAssertFalse(listener.closed)
         XCTAssertEqual(s.outcome, .pending)
         // A failure that IS this sign-in's ends it, with a 404 and no redemption.
-        let bad = listener.deliver(callback(49152, "code=C&state=\(state)&iss=https%3A%2F%2Fevil.example&request=\(handle)"))
+        let bad = listener.deliver(
+            callback(49152, "code=C&state=\(state)&iss=https%3A%2F%2Fevil.example&request=\(handle)"))
         XCTAssertEqual(bad, NativeListenerReply(location: nil, final: true))
         do {
             _ = try await s.wait()
@@ -621,6 +629,24 @@ final class NativeRedirectSessionTests: XCTestCase {
         s.cancel()
         let afterCancel = await s.reopen()
         XCTAssertFalse(afterCancel)
+    }
+
+    func testABrowserSessionThatFailsEndsTheSignInWithSignInFailed() async throws {
+        await discovery()
+        let c = try await client()
+        let listeners = Listeners()
+        install(c, listeners)
+        let s = try await c.identity.signIn.start(options())
+        s.receiveBrowserFailure()
+        do {
+            _ = try await s.wait()
+            XCTFail("settled")
+        } catch let e as SignInError {
+            XCTAssertEqual(e.code, ErrorCode.signInFailed)
+            XCTAssertTrue(e.message.contains("browser-failed"))
+        }
+        let tokens = await server.requests(forPath: tokenPath)
+        XCTAssertTrue(tokens.isEmpty)
     }
 
     func testCancelClosesTheListenerDropsTheRequestAndRefusesALaterDelivery() async throws {
@@ -758,7 +784,8 @@ final class NativeRedirectSessionTests: XCTestCase {
 
         private func get(_ port: Int, _ target: String, host: String? = nil, method: String = "GET") async -> String? {
             await raw(
-                port, "\(method) \(target) HTTP/1.1\r\nHost: \(host ?? "127.0.0.1:\(port)")\r\nConnection: close\r\n\r\n")
+                port,
+                "\(method) \(target) HTTP/1.1\r\nHost: \(host ?? "127.0.0.1:\(port)")\r\nConnection: close\r\n\r\n")
         }
 
         private func bound(lifetime: TimeInterval = 600) async throws -> (NWLoopbackListener, LockedValue<[String]>) {
@@ -819,7 +846,8 @@ final class NativeRedirectSessionTests: XCTestCase {
             let (listener, seen) = try await bound()
             defer { listener.close() }
             for target in [
-                "/", "/other", "/pkey/callbackx", "/pkey/callback/", "/PKEY/CALLBACK", "/pkey/callback%2f", "pkey/callback",
+                "/", "/other", "/pkey/callbackx", "/pkey/callback/", "/PKEY/CALLBACK", "/pkey/callback%2f",
+                "pkey/callback",
                 "//pkey/callback", "/pkey/../pkey/callback",
             ] {
                 let answer = await get(listener.port, target)
@@ -864,10 +892,48 @@ final class NativeRedirectSessionTests: XCTestCase {
         func testAnUnfinishedRequestIsDroppedAndNothingReachesTheSession() async throws {
             let (listener, seen) = try await bound()
             defer { listener.close() }
-            let answer = await raw(listener.port, "GET /pkey/callback?code=C HTTP/1.1\r\nHost: 127.0.0.1:\(listener.port)\r\n")
+            let answer = await raw(
+                listener.port, "GET /pkey/callback?code=C HTTP/1.1\r\nHost: 127.0.0.1:\(listener.port)\r\n")
             // No blank line ever arrives: the connection is closed after its deadline with no redirect.
             XCTAssertTrue(answer?.contains("303") != true)
             XCTAssertTrue(seen.current.isEmpty)
+        }
+
+        func testConnectionsBeyondTheCapAreClosedAtOnce() async throws {
+            let (listener, seen) = try await bound()
+            defer { listener.close() }
+            func open() -> Int32 {
+                let fd = socket(AF_INET, SOCK_STREAM, 0)
+                var address = sockaddr_in()
+                address.sin_family = sa_family_t(AF_INET)
+                address.sin_port = in_port_t(listener.port).bigEndian
+                address.sin_addr.s_addr = inet_addr("127.0.0.1")
+                _ = withUnsafePointer(to: &address) {
+                    $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                        connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                    }
+                }
+                return fd
+            }
+            let idle = (0..<NWLoopbackListener.connectionCap).map { _ in open() }
+            defer { for fd in idle { close(fd) } }
+            try await Task.sleep(nanoseconds: 300_000_000)
+            // The next connection is closed by the listener well inside the 5 s head deadline.
+            let extra = open()
+            defer { close(extra) }
+            var timeout = timeval(tv_sec: 2, tv_usec: 0)
+            setsockopt(extra, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
+            var byte: UInt8 = 0
+            let started = Date()
+            let n = recv(extra, &byte, 1, 0)
+            XCTAssertEqual(n, 0, "the extra connection was not closed")
+            XCTAssertLessThan(Date().timeIntervalSince(started), 1.5)
+            XCTAssertTrue(seen.current.isEmpty)
+            // Closing the idle ones frees the slots again.
+            for fd in idle { close(fd) }
+            try await Task.sleep(nanoseconds: 400_000_000)
+            let answer = await get(listener.port, "/other")
+            XCTAssertTrue(answer?.hasPrefix("HTTP/1.1 404") == true, answer ?? "nil")
         }
 
         func testTheListenerClosesAtItsLifetime() async throws {
@@ -925,7 +991,8 @@ final class NativeRedirectSessionTests: XCTestCase {
             let pending = try XCTUnwrap(flow.pendingView)
             let iss = "https%3A%2F%2Fkey.example%2Fdjdl%2Fidentity"
             // A request with another person's state is a 404 and the sign-in goes on waiting.
-            let stray = await get(port, "/pkey/callback?code=X&state=other-state-0123456789&iss=\(iss)&request=\(handle)")
+            let stray = await get(
+                port, "/pkey/callback?code=X&state=other-state-0123456789&iss=\(iss)&request=\(handle)")
             XCTAssertTrue(stray?.hasPrefix("HTTP/1.1 404") == true, stray ?? "nil")
             XCTAssertEqual(s.outcome, .pending)
             let good = await get(
@@ -937,6 +1004,27 @@ final class NativeRedirectSessionTests: XCTestCase {
             guard case .signedIn = outcome else { return XCTFail("\(outcome)") }
             let held = await c.core.token
             XCTAssertEqual(held, "pkeyt_new")
+        }
+    }
+#endif
+
+#if canImport(AuthenticationServices) && os(macOS)
+    final class NativeBrowserEventTests: XCTestCase {
+        func testTheCompletionOfASystemBrowserSession() {
+            let url = URL(string: "com.tidewater.studio:/pkey/callback?code=C")!
+            XCTAssertEqual(NativeBrowserEvent.map(url: url, error: nil), .callback(url.absoluteString))
+            // The person closing the sheet leaves the sign-in waiting (Open browser again works).
+            let closed = NSError(
+                domain: ASWebAuthenticationSessionErrorDomain,
+                code: ASWebAuthenticationSessionError.canceledLogin.rawValue)
+            XCTAssertEqual(NativeBrowserEvent.map(url: nil, error: closed), .dismissed)
+            // Any other end fails the sign-in.
+            let other = NSError(
+                domain: ASWebAuthenticationSessionErrorDomain,
+                code: ASWebAuthenticationSessionError.presentationContextInvalid.rawValue)
+            XCTAssertEqual(NativeBrowserEvent.map(url: nil, error: other), .failed)
+            XCTAssertEqual(NativeBrowserEvent.map(url: nil, error: nil), .failed)
+            XCTAssertEqual(NativeBrowserEvent.map(url: nil, error: URLError(.cancelled)), .failed)
         }
     }
 #endif

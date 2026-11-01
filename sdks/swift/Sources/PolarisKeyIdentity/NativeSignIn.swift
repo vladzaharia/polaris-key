@@ -59,6 +59,9 @@ struct NativeListenerUnavailable: Error {}
         private var closed = false
         private var timer: DispatchSourceTimer?
         private let lifetime: TimeInterval
+        private var liveConnections = 0
+        /// Concurrent connections served; the rest are closed at once.
+        static let connectionCap = 16
 
         var port: Int { lock.withLock { boundPort } }
 
@@ -97,7 +100,10 @@ struct NativeListenerUnavailable: Error {}
                                 defer { taken = true }
                                 return !taken
                             })
-                        else { bound.close(); return }
+                        else {
+                            bound.close()
+                            return
+                        }
                         continuation.resume(throwing: NativeListenerUnavailable())
                     default: break
                     }
@@ -145,6 +151,27 @@ struct NativeListenerUnavailable: Error {}
         // One request per connection: read the head, answer, close.
 
         private func handle(_ connection: NWConnection) {
+            let admitted = lock.withLock { () -> Bool in
+                guard liveConnections < Self.connectionCap else { return false }
+                liveConnections += 1
+                return true
+            }
+            guard admitted else {
+                connection.cancel()
+                return
+            }
+            let released = LockedValue(false)
+            connection.stateUpdateHandler = { [weak self] state in
+                switch state {
+                case .cancelled, .failed:
+                    let first = released.with { done -> Bool in
+                        defer { done = true }
+                        return !done
+                    }
+                    if first { self?.lock.withLock { self?.liveConnections -= 1 } }
+                default: break
+                }
+            }
             connection.start(queue: queue)
             let deadline = DispatchWorkItem { connection.cancel() }
             queue.asyncAfter(deadline: .now() + 5, execute: deadline)
@@ -222,7 +249,8 @@ struct NativeListenerUnavailable: Error {}
             {
                 head += "Location: \(location)\r\n"
             }
-            head += "Cache-Control: no-store\r\nReferrer-Policy: no-referrer\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            head +=
+                "Cache-Control: no-store\r\nReferrer-Policy: no-referrer\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
             connection.send(
                 content: Data(head.utf8),
                 completion: .contentProcessed { [weak self] _ in
@@ -276,7 +304,10 @@ final class NativeArrivals: Sendable {
         }
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<NativeArrival, any Error>) in
-                enum Step { case resume(NativeArrival), cancel, wait }
+                enum Step {
+                    case resume(NativeArrival)
+                    case cancel, wait
+                }
                 let step = state.with { st -> Step in
                     if let arrival = st.arrival { return .resume(arrival) }
                     if Task.isCancelled { return .cancel }
@@ -578,7 +609,7 @@ extension IdentityClient {
             } catch let error as PolarisError where error.code == PolarisError.localOnly {
                 throw error
             } catch {
-                throw PolarisError(code: IdentityClient.networkError, message: "\(error)")
+                throw PolarisError(code: IdentityClient.networkError, message: "the sign-in request could not be sent.")
             }
             let body = try? JSONDecoder().decode(JSONValue.self, from: response.body)
             let (requestUri, expiresIn): (String, Int)
