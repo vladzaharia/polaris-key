@@ -55,8 +55,14 @@ var model: Dictionary = {}
 ## The binding, once following (see `follow()`).
 var host: PKeyCloudSyncKitHost = null
 
+## The saves binding, once following and the SDK has saves (K.5T).
+var saves_host: PKeySaveScreensHost = null
+
 var _layer: CanvasLayer = null
 var _screen: PKeyUiView = null
+var _save_screen := false
+## `can_review` as the game set it; a save conflict adds Review while it is pending.
+var _game_can_review := false
 var _card: BoxContainer
 var _glyph: TextureRect
 var _text: Label
@@ -135,6 +141,9 @@ func _exit_tree() -> void:
 		host.changed.disconnect(_from_host)
 		host.screen_changed.disconnect(_present)
 		host = null
+	if saves_host != null:
+		saves_host.changed.disconnect(_from_host)
+		saves_host = null
 
 
 ## Bind to `p_sdk`'s Cloud Sync: the strip then shows the machine's state (locked and ring-changed
@@ -149,6 +158,13 @@ func follow(p_sdk: Node) -> void:
 	host = h
 	host.changed.connect(_from_host)
 	host.screen_changed.connect(_present)
+	# The saves, when the SDK has them: while one moves the strip says so (K.5T).
+	if saves_host == null:
+		saves_host = PKeySaveScreensHost.of(p_sdk)
+		if saves_host != null:
+			_game_can_review = can_review
+			saves_host.changed.connect(_from_host)
+			saves_host.start()
 	await host.start()
 	_from_host()
 
@@ -158,10 +174,28 @@ func _from_host() -> void:
 	signed_in = not host.signed_out
 	sync_time = host.sync_time
 	service_on = true
+	_over_saves()
 	refresh_view()
+	# A save conflict that settled (or was dismissed) takes its screen with it.
+	if _save_screen and saves_host != null and saves_host.conflict().is_empty():
+		_drop_screen()
 	# A screen is already in front (another strip opened it): draw it here too.
 	if host.screen != "" and _screen == null:
 		_present(host.screen)
+
+
+## While a save moves, fails or conflicts, that is the state (a ring that is locked or changed is more
+## urgent and stands). Otherwise the host's own state stands and the transfer figures are cleared.
+func _over_saves() -> void:
+	var o: Dictionary = saves_host.transfer_input() if saves_host != null else {}
+	var t: Dictionary = o.get("transfer", {}) if o.get("transfer") is Dictionary else {}
+	if not o.is_empty() and state != "locked" and state != "ring-changed":
+		state = String(o["state"])
+	var shown := state == String(o.get("state", "-"))
+	transfer_size = String(t.get("size", "")) if shown else ""
+	transfer_total = String(t.get("total", "")) if shown else ""
+	transfer_fraction = float(t["fraction"]) if shown and t.has("fraction") else -1.0
+	can_review = _game_can_review or (shown and bool(o.get("can_review", false)))
 
 
 ## The screen in front (`""` closes it). Keeps the host's models; a recovery code lives only on its view.
@@ -194,6 +228,22 @@ func _present(which: String) -> void:
 			return
 	view.auto_sdk = false
 	view.sdk = host.sdk
+	_show(view)
+
+
+## The save conflict screen, over the game, bound to the saves: the strip's Review on a save conflict.
+func _present_save_conflict() -> void:
+	if not present_screens or not is_inside_tree() or saves_host == null:
+		return
+	_drop_screen()
+	var view := PKeySaveConflict.new()
+	view.auto_sdk = false
+	view.sdk = saves_host.sdk
+	_save_screen = true
+	_show(view)
+
+
+func _show(view: PKeyUiView) -> void:
 	_layer = CanvasLayer.new()
 	_layer.name = "PKeyCloudSyncScreens"
 	_layer.layer = 100
@@ -209,6 +259,7 @@ func _drop_screen() -> void:
 		_layer.queue_free()
 	_layer = null
 	_screen = null
+	_save_screen = false
 
 
 func _card_shown() -> bool:
@@ -326,6 +377,8 @@ func _on_action() -> void:
 			review_requested.emit()
 			if state == "ring-changed" and host != null:
 				host.open_review()
+			elif state == "conflict" and saves_host != null and not saves_host.conflict().is_empty():
+				_present_save_conflict()
 		"locked":
 			unlock_requested.emit()
 			if host != null:

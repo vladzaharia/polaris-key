@@ -271,6 +271,17 @@ func _lan_lanes(t: PKeyTestContext) -> void:
 		var st := n.api.status()
 		t.check("D-8: %s: the LAN is off with reason unsupported, nothing opened" % tag, r.ok and st["lan"] == "off" and st["lan_reason"] == "unsupported", str(st))
 		n.api.stop()
+	t.check("CC-14b: with no native bridge in this process there is no native lane", PKeyCloudConnect._native_lane() == null)
+	for tag in ["ios", "android"]:
+		var m := _node(_pair["a"], core, func(f: String) -> bool: return f == tag or f == "mobile")
+		var lane := LAN_TEST.FakeMdns.new()
+		var ms: PKeyResult = await m.api.start(_opts(m, {"lan": {"mdns": lane, "allow_loopback": true}}))
+		t.check("CC-14b: %s: a discovery lane the host hands in runs the LAN" % tag, ms.ok and m.api.status()["lan"] == "on", str(m.api.status()))
+		m.api.stop()
+	var web := _node(_pair["a"], core, func(f: String) -> bool: return f == "web")
+	var ws: PKeyResult = await web.api.start(_opts(web, {"lan": {"mdns": LAN_TEST.FakeMdns.new()}}))
+	t.check("CC-14b: web: the LAN stays off even with a lane handed in", ws.ok and web.api.status()["lan"] == "off" and web.api.status()["lan_reason"] == "unsupported", str(web.api.status()))
+	web.api.stop()
 	var q := _node(_pair["a"], core)
 	var querier := LAN_TEST.FakeMdns.new()
 	querier.querier_only = true

@@ -27,9 +27,9 @@ extends RefCounted
 ##  - the relay stays `off`, with no socket and no ticket asked for, when the host turned it off (`relay =
 ##    false`) and when discovery says so: `services.connect.relay` is false, or the ticket endpoint is null
 ##    (G21). `status().relay_reason` says which (`host`, `product`, `no_ticket`);
-##  - the LAN is `off` on mobile and on web (reason `unsupported`: GDScript UDP needs the iOS multicast
-##    entitlement and an Android MulticastLock, until the native lanes of CC-14b) and when the host turned it
-##    off (`host`). On a desktop that cannot bind port 5353 it is `querier_only`: it finds others and others
+##  - the LAN is `off` on web (reason `unsupported`) and on mobile builds without a native discovery lane
+##    (GDScript UDP needs the iOS multicast entitlement and an Android MulticastLock; the lanes are Bonjour on
+##    iOS and macOS and NsdManager on Android, CC-14b), and when the host turned it off (`host`). On a desktop that cannot bind port 5353 it is `querier_only`: it finds others and others
 ##    do not find it. `status().lan` is `on`, `querier_only`, `off` or `failed`;
 ##  - one `Budget` holds the unread bytes of the LAN and the relay sessions together (G10), and one pump
 ##    drives both;
@@ -169,12 +169,19 @@ func _start(core: PKeyCore, opts: Dictionary, gen: int) -> PKeyResult:
 			shared[k] = opts[k]
 	var lan_opt: Variant = opts.get("lan", true)
 	var unsupported := _lan_unsupported(_has_feature)
+	# The OS's own discovery (Bonjour on iOS and macOS, NsdManager on Android) where the build has it.
+	# A host-supplied `lan.mdns` wins; the lane is never made on web.
+	var host_mdns: bool = lan_opt is Dictionary and (lan_opt as Dictionary).has("mdns")
+	var web := _on_web()
+	var lane: Object = null if host_mdns or web else _native_lane()
 	if lan_opt is bool and not lan_opt:
 		_lan_reason = "host"
-	elif unsupported != "":
+	elif unsupported != "" and (web or (lane == null and not host_mdns)):
 		_lan_reason = unsupported
 	else:
 		var lo := shared.duplicate()
+		if lane != null:
+			lo["mdns"] = lane
 		lo.merge(lan_opt if lan_opt is Dictionary else {}, true)
 		var made := PKeyConnectLan.start(src, lo)
 		if made.ok:
@@ -314,7 +321,21 @@ static func _relay_wanted(manifest: Variant) -> String:
 	return ""
 
 
-## "unsupported" where the GDScript LAN lane cannot run (mobile and web), else "" (D-8).
+## The native discovery lane of this build, or null: PKeyAppleMdns (iOS, macOS; the binary entry and the
+## Bonjour ops), else PKeyAndroidMdns (the plugin's `nsd_*` ops). Both answer null anywhere else.
+static func _native_lane() -> Object:
+	var apple: Object = PKeyAppleMdns.create()
+	if apple != null:
+		return apple
+	return PKeyAndroidMdns.create()
+
+
+func _on_web() -> bool:
+	return bool(_has_feature.call("web")) if _has_feature.is_valid() else OS.has_feature("web")
+
+
+## "unsupported" where the GDScript LAN lane cannot run (mobile and web), else "" (D-8). A native lane
+## (CC-14b) replaces it on mobile; `start` asks for the lane first.
 static func _lan_unsupported(has_feature := Callable()) -> String:
 	for tag in ["mobile", "android", "ios", "web"]:
 		var on: bool = bool(has_feature.call(tag)) if has_feature.is_valid() else OS.has_feature(tag)
