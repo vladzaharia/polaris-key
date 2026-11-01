@@ -184,6 +184,10 @@ class FakeRecords:
 	var set_files: Array = []
 	var rejected_code := ""
 
+	## What a pull does (another device wrote meanwhile); invalid: this port cannot pull.
+	var on_pull := Callable()
+	var pulls := 0
+
 	func _init(f: FakeFiles) -> void:
 		files = f
 
@@ -249,10 +253,6 @@ class FakeRecords:
 
 	func drop_all() -> void:
 		dropped += 1
-
-	## What a pull does (another device wrote meanwhile); invalid: this port cannot pull.
-	var on_pull := Callable()
-	var pulls := 0
 
 	func pull_records() -> bool:
 		if not on_pull.is_valid():
@@ -409,11 +409,14 @@ func _server_mode(t: PKeyTestContext) -> void:
 	t.check("write: done with the version the metadata set answered", out["state"] == "done" and out["id"] == "slot1" and out["version"] == 2, str(out))
 	t.check("write: the Worker holds the plaintext file in server mode", rig["files"].puts.size() == 1 and rig["files"].puts[0] == data)
 	var listed = await saves.list()
-	t.check("list: the save with its metadata and file", listed.ok and listed.detail.size() == 1 and listed.detail[0]["id"] == "slot1" and _bare(listed.detail[0]["metadata"]) == {"playtime": 12, "chapter": "one"} and listed.detail[0]["file"]["size"] == 5000 and not listed.detail[0]["newer_format"], str(listed.detail))
+	t.check("list: the save with its metadata and file", listed.ok and listed.detail.size() == 1 and listed.detail[0]["id"] == "slot1" and _bare(listed.detail[0]["metadata"]) == {"playtime": 12, "chapter": "one"} and listed.detail[0]["file"]["size"] == 5000 and not listed.detail[0]["newer_format"],
+		str(listed.detail))
 	var read = await saves.read("slot1")
-	t.check("read: the bytes and the metadata", read.ok and read.detail["bytes"] == data and read.detail["metadata"]["chapter"] == "one" and read.detail["file"]["format"] == "whole", str(read.detail.get("file")))
+	t.check("read: the bytes and the metadata", read.ok and read.detail["bytes"] == data and read.detail["metadata"]["chapter"] == "one" and read.detail["file"]["format"] == "whole",
+		str(read.detail.get("file")))
 	var types := _types(rig["events"])
-	t.check("events: progress then done for the write, progress then done for the read", types.has("transferProgress") and types.count("transferDone") == 2 and not types.has("transferFailed"), str(types))
+	t.check("events: progress then done for the write, progress then done for the read", types.has("transferProgress") and types.count("transferDone") == 2 and not types.has("transferFailed"),
+		str(types))
 	var ids := []
 	for e: Dictionary in rig["events"]:
 		ids.append(e["id"])

@@ -60,6 +60,16 @@ class FakeRing extends RefCounted:
 		return _next("set_recovery_code", [])
 
 
+## A records port with nothing on it: keeping the other version pulls, finds nothing, and settles.
+class EmptyRecords extends RefCounted:
+	func pull_records() -> bool:
+		return true
+
+
+	func get_record(_id: String) -> Variant:
+		return null
+
+
 ## `PolarisKey.cloud_sync`, scripted: `status()` answers the queued status (the last one repeats);
 ## `flush()` is counted.
 class FakeCloud extends RefCounted:
@@ -1208,8 +1218,9 @@ static func _conflict_outcome(id: String, deleted := false, both := true) -> Dic
 
 
 func _saves() -> PKeySaves:
-	# No engine: a write answers the typed unsupported refusal at once, and resolve(remote) settles at once.
-	return PKeySaves.new({"supported": func() -> bool: return false})
+	# No engine: a write answers the typed unsupported refusal at once, and resolve(remote) pulls from an empty
+	# records port (nothing to pull) and then settles.
+	return PKeySaves.new({"supported": func() -> bool: return false, "records": EmptyRecords.new()})
 
 
 func _held(saves: PKeySaves, id: String, progress: Dictionary) -> Array:
