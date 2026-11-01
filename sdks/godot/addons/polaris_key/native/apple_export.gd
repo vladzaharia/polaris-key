@@ -50,6 +50,11 @@ const GAME_CENTER_EXTENSION_FILES := {
 	"macos": "res://addons/polaris_key/native/bin/pkey_gamecenter_macos.gdextension",
 }
 const XCFRAMEWORK := "res://addons/polaris_key/native/ios/pkey_apple.xcframework"
+## Cloud Connect's LAN discovery plist entries (see `local_network_plist`).
+const BONJOUR_SERVICE := "_pkeypeer._tcp"
+const LOCAL_NETWORK_KEY := "NSLocalNetworkUsageDescription"
+const BONJOUR_KEY := "NSBonjourServices"
+const DEFAULT_LOCAL_NETWORK_USAGE := "Find your other devices on this network."
 
 
 ## Whether the Background Assets extension is wanted for `mode` and the build's outlet kind.
@@ -120,6 +125,33 @@ static func sign_in_warning(on: bool, platform: String, option := SIGN_IN_OPTION
 	if on and platform == "macos":
 		var why := "Godot's macOS export has no entitlement text option. Add %s to the preset's custom entitlements file."
 		return "%s: %s" % [option, why % entitlement]
+	return ""
+
+
+## What Cloud Connect's LAN discovery needs in an iOS Info.plist (CC-14b.4, D-16): NSBonjourServices
+## listing the peer service type and a Local Network usage sentence. The OS refuses to browse or
+## advertise without them (`not-configured`). Each key is added only when `existing` (the preset's
+## own additional plist content) does not already carry it, so a key is never doubled. The
+## permission prompt appears when Connect first browses, not at launch.
+
+static func local_network_plist(existing: String, description := DEFAULT_LOCAL_NETWORK_USAGE) -> String:
+	var lines := PackedStringArray()
+	if not existing.contains(BONJOUR_KEY):
+		lines.append("<key>%s</key>" % BONJOUR_KEY)
+		lines.append("<array>")
+		lines.append("<string>%s</string>" % BONJOUR_SERVICE)
+		lines.append("</array>")
+	if not existing.contains(LOCAL_NETWORK_KEY):
+		var text := description.strip_edges() if description.strip_edges() != "" else DEFAULT_LOCAL_NETWORK_USAGE
+		lines.append("<key>%s</key>" % LOCAL_NETWORK_KEY)
+		lines.append("<string>%s</string>" % text.xml_escape())
+	return "" if lines.is_empty() else "\n".join(lines) + "\n"
+
+
+## A warning when the preset's own NSBonjourServices does not list the peer service.
+static func bonjour_warning(existing: String) -> String:
+	if existing.contains(BONJOUR_KEY) and not existing.contains(BONJOUR_SERVICE):
+		return "additional_plist_content has %s without %s: Cloud Connect's local discovery will answer not-configured." % [BONJOUR_KEY, BONJOUR_SERVICE]
 	return ""
 
 

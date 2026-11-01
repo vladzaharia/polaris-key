@@ -257,6 +257,9 @@ public enum BonjourRegistration {
 
         public func close() async { shut() }
 
+        /// Close now, without suspending.
+        public func shutDown() { shut() }
+
         /// The session is admitted: this socket no longer counts against the unauthenticated limits.
         public func markAuthenticated() {
             lock.withLock { authenticated = true }

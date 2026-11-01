@@ -14,6 +14,13 @@ public typealias PlatformEventCallback = @convention(c) (UnsafePointer<CChar>) -
 /// Where events go: the C callback when one is installed, else an in-process observer (Swift
 /// hosts and tests), else a bounded in-memory buffer that `drain()` empties.
 public final class PlatformEventSink: Sendable {
+    /// Binary events (the Godot binary entry, D-13): `kind` names the event; `data` is the payload.
+    /// The pointers are valid only for the call.
+    public typealias BinaryCallback = @convention(c) (UnsafePointer<CChar>, UnsafePointer<UInt8>?, Int) -> Void
+
+    private let binaryCallback = PlatformLock<BinaryCallback?>(nil)
+    private let binaryBuffer = PlatformLock<[(String, [UInt8])]>([])
+
     /// Events buffered while nobody listens are capped, oldest dropped, so a host that never
     /// registers a callback cannot grow memory without bound.
     public static let bufferLimit = 512
@@ -34,6 +41,28 @@ public final class PlatformEventSink: Sendable {
         buffer.withLock { b in
             defer { b = [] }
             return b
+        }
+    }
+
+    public func setBinaryCallback(_ cb: BinaryCallback?) { binaryCallback.withLock { $0 = cb } }
+
+    /// The binary events buffered while no callback is installed (capped like `buffer`).
+    public func drainBinary() -> [(String, [UInt8])] {
+        binaryBuffer.withLock { b in
+            defer { b = [] }
+            return b
+        }
+    }
+
+    /// One binary event: to the C callback when one is installed, else the bounded buffer.
+    public func emitBinary(_ kind: String, _ data: [UInt8]) {
+        if let cb = binaryCallback.withLock({ $0 }) {
+            kind.withCString { k in data.withUnsafeBufferPointer { cb(k, $0.baseAddress, $0.count) } }
+        } else {
+            binaryBuffer.withLock { b in
+                b.append((kind, data))
+                if b.count > PlatformEventSink.bufferLimit { b.removeFirst(b.count - PlatformEventSink.bufferLimit) }
+            }
         }
     }
 
