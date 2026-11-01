@@ -34,6 +34,8 @@ class SavesWorld(World):
 
     def __init__(self) -> None:
         super().__init__()
+        # There is no implicit collection: the catalog declares `saves`.
+        self.schema = {**self.schema, "cloudSync": {"collections": [{"name": "saves", "conflict": "revision"}]}}
         self.rows: Dict[str, Dict[str, Any]] = {}
         self.stored: Dict[int, bytes] = {}
         self.uploads: Dict[str, Dict[str, Any]] = {}

@@ -26,7 +26,7 @@ from __future__ import annotations
 import copy
 import math
 import re
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from ..constants_generated import (
     SYNC_CLIENT_ID_PATTERN,
@@ -369,6 +369,7 @@ class CloudSyncMachine:
         #: The collections whose record changes are reported as ``records`` events, with the last state
         #: reported (record id to a canonical string). Empty: nothing is computed.
         self._watched: Dict[str, Dict[str, str]] = {}
+        self._watch_counts: Dict[str, int] = {}
         if persisted is not None:
             self._s: Obj = _clone(persisted)
         else:
@@ -675,10 +676,45 @@ class CloudSyncMachine:
 
     def watch_records(self, collection: str, on: bool) -> None:
         """Report record changes of ``collection`` as ``records`` events from now on (``False``: stop)."""
+        n = self._watch_counts.get(collection, 0)
         if not on:
-            self._watched.pop(collection, None)
-        elif collection not in self._watched:
+            # Reference-counted: two watchers of one collection do not silence each other.
+            if n > 1:
+                self._watch_counts[collection] = n - 1
+            else:
+                self._watch_counts.pop(collection, None)
+                self._watched.pop(collection, None)
+            return
+        self._watch_counts[collection] = n + 1
+        if collection not in self._watched:
             self._watched[collection] = self._record_states(collection)
+
+    def signed_in(self) -> bool:
+        """Whether a person is signed in (a record call before that is ``signed-out``)."""
+        return self._s["subject"] is not None
+
+    def refuse_mutations(self, ids: Sequence[int], code: str = "value_invalid") -> None:
+        """The host could not seal these mutations of the push in flight (a name or value no codec
+        spells): each is dropped as ``rejected`` / ``value_invalid``, as a refusal would be, instead of
+        being retried for ever at the head of the journal. The caller then reports the transport
+        failure for the request."""
+        req = self._in_flight
+        if req is None or req.get("kind") != "push" or req.get("partition") != self._s["subject"]:
+            return
+        p = self._active()
+        before = self._value_map()
+        overrides: Dict[str, str] = {}
+        for mid in ids:
+            at = next(
+                (i for i, o in enumerate(p["pending"]) if o["mutationId"] == mid and mid in req["mutationIds"]),
+                -1,
+            )
+            if at < 0:
+                continue
+            op = p["pending"].pop(at)
+            self._result(p, op, {"mutationId": mid, "status": "rejected", "code": code}, overrides, {}, req["cursor"])
+        self._emit_changes(before, overrides, "remote")
+        self._note_record_changes("remote")
 
     def record_ids(self, collection: str) -> List[str]:
         """The ids of a collection's effective records (pending edits applied), in byte order."""
@@ -1911,6 +1947,7 @@ class CloudSyncMachine:
         if unsynced > 0 and not discard:
             self._events.append({"type": "unsyncedData", "count": unsynced})
         self._emit_changes(before, {}, "remote")
+        self._note_record_changes("remote")
 
     def _expire_partitions(self) -> None:
         for name, p in list(self._s["partitions"].items()):

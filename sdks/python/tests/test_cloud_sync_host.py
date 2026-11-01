@@ -381,11 +381,16 @@ def test_a_name_holding_nul_is_refused_both_ways(rigs: Callable[..., Rig]) -> No
     r = live(rigs, w)
     assert r.m("setting_state", "a\0b")["invalid"] is True
     assert r.m("get", "a\0b")["value"] is None
-    # Sending: a NUL name cannot be sealed, so nothing is sent and the edit stays pending.
+    # Sending: a NUL name cannot be sealed, so nothing is sent and the edit is dropped as refused
+    # (it would otherwise head the journal for ever).
     r.m("set", "x\0y", "v")
     r.host.flush(1000)
     assert w.pushes() == []
-    assert r.m("status")["pending"] == 1
+    assert r.m("status")["pending"] == 0
+    # The mutations after it still go out.
+    r.m("set", "theme", "mine")
+    r.host.flush(1000)
+    assert len(w.pushes()) == 1 and r.m("status")["pending"] == 0
 
 
 def test_a_worker_that_answers_in_server_mode_is_not_read_when_the_app_requires_e2e(
