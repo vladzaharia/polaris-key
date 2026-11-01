@@ -620,6 +620,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
         scope.launch { config.changes.collect { eventFlow.emit(PolarisEvent.Config(it)) } }
         scope.launch { update.offers.collect { eventFlow.emit(PolarisEvent.UpdateAvailable(it)) } }
         packs.on { eventFlow.tryEmit(PolarisEvent.Packs(it)) }
+        core.onDiscovery { discoveryRead(it) }
     }
     private var refreshJob: Job? = null
     private val startLock = kotlinx.coroutines.sync.Mutex()
@@ -662,7 +663,10 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     }
 
     // ── Capabilities (D-21) ──────────────────────────────────────────────────────────────────
-    public suspend fun discover(): DiscoveryResult = core.discover().also {
+    public suspend fun discover(): DiscoveryResult = core.discover()
+
+    /** Every discovery read lands here, whoever made it (see [CoreContext.onDiscovery]). */
+    private suspend fun discoveryRead(it: DiscoveryResult) {
         cloudSyncImpl.noteDiscovery()
         // Not found, invalid or unreachable: the cached links answer is no longer trusted.
         connect.noteDiscovery(it is DiscoveryResult.Ok)
