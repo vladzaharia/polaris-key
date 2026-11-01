@@ -94,12 +94,15 @@
 // the `login` outcomes `sign-in-nearby` and `sign-in-nearby-handoff` and the `approve-*` outcomes.
 // `uiMatrixVersion` 8 (integration CP2, D-1): NearbyApproval's `choose` state (I-47.U, UXR-47) has one control per license and Deny, as `ask`
 // has one per code and Deny: no "Use this license" step, and no primary.
+// Version 9 (UCP.1, UI-CONFIRM-PROVIDER): the `autoSignIn.kind` input member (the exchange that made
+// the grant); the confirm step's no-email line follows it (asApple, asGameCenter, asPlayGames) and
+// is absent when no kind is known; the email row drops all four no-email keys.
 
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-export const UI_MATRIX_VERSION = 8;
+export const UI_MATRIX_VERSION = 9;
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -587,12 +590,6 @@ export const UNREACHED: Readonly<
       "The card's email-code step (SIGN-IN.md §3.4, §4.16). Credentials are entered only on the card (S-16 D17); the kit form's `code` step is the device-code view, which SignInHandoff draws.",
     ]),
   ),
-  "SignIn.confirm": {
-    "signin.auto.confirm.asGameCenter":
-      "The no-email line of a Game Center grant. The confirm model picks its line by email alone, so no input reaches it until UI-CONFIRM-PROVIDER (UCP.1) adds the exchange-kind input member.",
-    "signin.auto.confirm.asPlayGames":
-      "The no-email line of a Google Play Games grant. The confirm model picks its line by email alone, so no input reaches it until UI-CONFIRM-PROVIDER (UCP.1) adds the exchange-kind input member.",
-  },
   "SignIn.choose": {
     "signin.consent.licenseInApp":
       "The card's ConsentStep in app mode (plans/I-04.md §G.3), not the kit form.",
@@ -726,7 +723,7 @@ const INPUTS: Record<string, string> = {
   provider:
     "The sign-in provider's name (Apple, Google, Steam), for the strings that name it: the link offer, the failed sign-in. Absent: Polaris Locker, the sign-in the generic row opens.",
   autoSignIn:
-    "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | device-limit, email?, reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none. The provider is `provider`.",
+    "Automatic sign-in's step in the sign-in form (needs signIn): {step: confirm | link-offer | link-done | link-conflict | nearby-prompt | nearby-wait | nearby-done | device-limit, email?, kind? (the exchange that made the grant: apple | google | gamecenter | pgs; absent after a Polaris Locker sign-in), reach?: global | developer | unknown, manageUrl? (device-limit: where a device is replaced)}. No email: the provider shared none, and the confirm line follows `kind`. The provider is `provider`.",
   nearbyApproval:
     "The approving device's side of nearby sign-in: {step: entry | ask | approved | not-nearby, device?}. Absent: the account-menu entry.",
   linkPairing:
@@ -2251,13 +2248,69 @@ function signInFamily(a: A): Draft[] {
       {
         provider: "Apple",
         signIn: si(),
-        autoSignIn: { step: "confirm", license: "existing" },
+        autoSignIn: { step: "confirm", kind: "apple", license: "existing" },
       },
       "SignIn",
       "confirm",
       [
         "signin.auto.confirm.title",
         "signin.auto.confirm.asApple",
+        "signin.consent.license",
+        "signin.consent.licenseLine",
+        "signin.auto.confirm.primary",
+        "signin.auto.confirm.other",
+      ],
+    ),
+    row(
+      "SignIn/confirm: Game Center shared no email, an existing license",
+      {
+        provider: "Game Center",
+        signIn: si(),
+        autoSignIn: {
+          step: "confirm",
+          kind: "gamecenter",
+          license: "existing",
+        },
+      },
+      "SignIn",
+      "confirm",
+      [
+        "signin.auto.confirm.title",
+        "signin.auto.confirm.asGameCenter",
+        "signin.consent.license",
+        "signin.consent.licenseLine",
+        "signin.auto.confirm.primary",
+        "signin.auto.confirm.other",
+      ],
+    ),
+    row(
+      "SignIn/confirm: Play Games shared no email, an existing license",
+      {
+        provider: "Google Play Games",
+        signIn: si(),
+        autoSignIn: { step: "confirm", kind: "pgs", license: "existing" },
+      },
+      "SignIn",
+      "confirm",
+      [
+        "signin.auto.confirm.title",
+        "signin.auto.confirm.asPlayGames",
+        "signin.consent.license",
+        "signin.consent.licenseLine",
+        "signin.auto.confirm.primary",
+        "signin.auto.confirm.other",
+      ],
+    ),
+    row(
+      "SignIn/confirm: no email and no known exchange names no account",
+      {
+        signIn: si(),
+        autoSignIn: { step: "confirm", license: "existing" },
+      },
+      "SignIn",
+      "confirm",
+      [
+        "signin.auto.confirm.title",
         "signin.consent.license",
         "signin.consent.licenseLine",
         "signin.auto.confirm.primary",

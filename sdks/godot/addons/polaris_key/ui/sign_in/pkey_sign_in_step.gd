@@ -18,7 +18,8 @@ const LAYOUT := {
 	"confirm": [
 		"signin.auto.confirm.title",
 		[
-			"signin.auto.confirm.as", "signin.auto.confirm.asApple", "signin.consent.license", "signin.consent.newLicense",
+			"signin.auto.confirm.as", "signin.auto.confirm.asApple", "signin.auto.confirm.asGameCenter", "signin.auto.confirm.asPlayGames",
+			"signin.consent.license", "signin.consent.newLicense",
 			"signin.consent.licenseLine", "signin.consent.alsoGets", "signin.consent.profile", "signin.consent.pairwise",
 		],
 		["signin.auto.confirm.other"],
@@ -40,6 +41,12 @@ const LAYOUT := {
 @export var email := "":
 	set(value):
 		email = value
+		refresh_view()
+## The exchange that made the grant ("apple", "google", "gamecenter", "pgs"); with no email the confirm
+## line names the provider by it. "" shows no account line.
+@export var exchange_kind := "":
+	set(value):
+		exchange_kind = value
 		refresh_view()
 ## Whom the provider's identity is shared with: "global" across apps, "developer" per developer.
 @export_enum("unknown", "global", "developer") var reach := "unknown":
@@ -240,6 +247,8 @@ func _render() -> void:
 	var auto := {"step": step}
 	if email != "":
 		auto["email"] = email
+	if exchange_kind != "":
+		auto["kind"] = exchange_kind
 	if reach != "unknown":
 		auto["reach"] = reach
 	var inp := {"signIn": {"outcome": "pending"}, "autoSignIn": auto}
@@ -336,7 +345,13 @@ func _render_plain(copy: Array, row: Array, args: Dictionary) -> void:
 ## over the strong licence line; "{app} will also get" over the profile and the pairwise line. A label
 ## draws only with its value, and a line missing an argument is not drawn.
 func _render_confirm(copy: Array, args: Dictionary, tier_known: bool, level: int) -> void:
-	cat_text(_lede, "signin.auto.confirm.as" if copy.has("signin.auto.confirm.as") else ("signin.auto.confirm.asApple" if copy.has("signin.auto.confirm.asApple") else ""), args)
+	# The account line is the model's one `signin.auto.confirm.as*` key, taken by prefix (never a fixed list).
+	var account := ""
+	for k in copy:
+		if String(k).begins_with("signin.auto.confirm.as"):
+			account = k
+			break
+	cat_text(_lede, account, args)
 	var value := ""
 	if copy.has("signin.consent.licenseLine"):
 		value = "signin.consent.licenseLine"

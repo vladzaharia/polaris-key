@@ -118,7 +118,7 @@ static func auto_action(result: PKeyAutoSignInResult) -> String:
 	return "form"
 
 
-## The consent step's drawing from the consent view: {email, license_line, anchor, also_gets, claims}.
+## The consent step's drawing from the consent view: {email, kind, license_line, anchor, also_gets, claims}.
 ## `license_line` is `existing` when the licence item names an anchor, `new` when it names none and
 ## `none` without a licence item; `anchor` is that licence's `{name, tierName, term, position, limit}`
 ## (`position` and `limit` 0 when it has no free seat to name; {} without an anchor); `also_gets` when
@@ -127,6 +127,9 @@ static func auto_action(result: PKeyAutoSignInResult) -> String:
 static func consent_step(consent: Dictionary) -> Dictionary:
 	var who = consent.get("as")
 	var email: String = String(who.get("email")) if who is Dictionary and who.get("email") is String else ""
+	var kind: String = String(who.get("provider")) if who is Dictionary and who.get("provider") is String else ""
+	if not ["apple", "google", "gamecenter", "pgs"].has(kind):
+		kind = ""
 	var license_line := "none"
 	var anchor := {}
 	var claims: Array = []
@@ -144,6 +147,7 @@ static func consent_step(consent: Dictionary) -> Dictionary:
 					claims.append(c)
 	return {
 		"email": email,
+		"kind": kind,
 		"license_line": license_line,
 		"anchor": anchor,
 		"also_gets": PKeyClaims.is_true(consent.get("firstTime")) or PKeyClaims.is_true(consent.get("changed")),

@@ -12,6 +12,26 @@ Card/Scroll/Body/Top/Words/Title: Label "Continue to \u2068Polaris Key SDK\u2069
 Card/Scroll/Body/Top/Words/Lede: Label "with your Apple Account"
 Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
 Card/Scroll/Body/Actions/Secondary: Button "Use another account" [focus 2]
+== confirm, Game Center shared no email ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Continue to \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Lede: Label "with Game Center"
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Use another account" [focus 2]
+== confirm, Play Games shared no email ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Continue to \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Lede: Label "with Google Play Games"
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Use another account" [focus 2]
+== confirm, no known exchange names no account ==
+Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
+Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Top/Words/Title: Label "Continue to \u2068Polaris Key SDK\u2069"
+Card/Scroll/Body/Actions/Primary: Button "Continue" [focus 1]
+Card/Scroll/Body/Actions/Secondary: Button "Use another account" [focus 2]
 == confirm, a new license and what the app also gets ==
 Card/Scroll/Body/Top/Product/Monogram/Initial: Label "P"
 Card/Scroll/Body/Top/Product/Name: Label "\u2068Polaris Key SDK\u2069"

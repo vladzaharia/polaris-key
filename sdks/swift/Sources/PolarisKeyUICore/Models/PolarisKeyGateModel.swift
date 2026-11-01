@@ -1117,7 +1117,7 @@ public final class PolarisKeyGateModel {
         case .signedIn(let ready):
             await finishAuto(ready, personStarted: personStarted)
         case .confirm(let held):
-            await presentConsent(held, fallback: name)
+            await presentConsent(held, fallback: name, kind: kind)
         case .choose(let grant):
             signInProvider = name
             presentLicenseChoice(grant)
@@ -1183,8 +1183,8 @@ public final class PolarisKeyGateModel {
 
     /// The confirm step: the account, the license line the device gets (with its seat, when the
     /// consent view carries one) and what the app also receives.
-    private func presentConsent(_ held: PendingConsent, fallback: String) async {
-        var auto = KitAutoSignIn(step: .confirm, email: held.consent.as.email)
+    private func presentConsent(_ held: PendingConsent, fallback: String, kind: ExchangeKind) async {
+        var auto = KitAutoSignIn(step: .confirm, email: held.consent.as.email, kind: kind.rawValue)
         for item in held.consent.items {
             guard let o = item.objectValue, let kind = o["kind"]?.stringValue else { continue }
             if kind == "profile" {

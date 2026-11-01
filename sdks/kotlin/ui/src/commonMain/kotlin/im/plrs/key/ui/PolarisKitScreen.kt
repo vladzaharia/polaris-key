@@ -737,6 +737,8 @@ private fun KitScreenBody(
  * overline labels over their values, the license line strong. A label whose value did not draw
  * (a seat the view does not know) is left out with it. 4 dp inside a group, 16 dp between groups.
  */
+internal const val CONFIRM_ACCOUNT_PREFIX = "signin.auto.confirm.as"
+
 @Composable
 private fun KitConfirmLines(lines: List<KitLine>) {
     val scheme = MaterialTheme.colorScheme
@@ -745,7 +747,7 @@ private fun KitConfirmLines(lines: List<KitLine>) {
         if (line.key == "signin.consent.license" && !hasLicense) continue
         when (line.key) {
             "signin.consent.license", "signin.consent.alsoGets" -> {
-                if (index > 0 && lines.take(index).any { it.key.startsWith("signin.consent.") }) Spacer(Modifier.height(PolarisSpace.controls))
+                if (index > 0 && !lines[index - 1].key.startsWith(CONFIRM_ACCOUNT_PREFIX)) Spacer(Modifier.height(PolarisSpace.controls))
                 Text(line.text, style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(PolarisSpace.hairline))
             }
@@ -765,12 +767,10 @@ private fun KitConfirmLines(lines: List<KitLine>) {
                 Text(line.text, style = MaterialTheme.typography.bodyMedium, color = scheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth())
             }
 
-            "signin.auto.confirm.as", "signin.auto.confirm.asApple" -> {
+            else -> if (line.key.startsWith(CONFIRM_ACCOUNT_PREFIX)) {
                 PolarisBody(line.text)
                 Spacer(Modifier.height(PolarisSpace.controls + 4.dp))
-            }
-
-            else -> {
+            } else {
                 if (index == 0) {
                     PolarisTitle(line.text)
                     Spacer(Modifier.height(PolarisSpace.hairline))

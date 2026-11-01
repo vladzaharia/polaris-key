@@ -77,6 +77,7 @@ func _controller(t: PKeyTestContext) -> void:
 		and shown["also_gets"] == false
 		and shown["claims"] == ["name", "email"],
 		str(shown))
+	t.check("gate auto: the consent's provider is the confirm kind", shown["kind"] == "gamecenter" and ctl.consent_step(X.CONSENT)["kind"] in ["", "apple", "google", "gamecenter", "pgs"])
 	rich["items"][0] = {"kind": "license", "anchor": null, "more": 0}
 	rich["changed"] = true
 	shown = ctl.consent_step(rich)
@@ -426,7 +427,16 @@ func _steps(t: PKeyTestContext) -> void:
 	_no_placeholder(t, "a new licence with a tier", _texts(step))
 	step.email = ""
 	await tree.process_frame
-	t.check("steps: no email is the provider line", _texts(step).has("with your Apple Account"), str(_texts(step)))
+	t.check("steps: no email and no kind names no account", not _texts(step).has("with your Apple Account"), str(_texts(step)))
+	step.exchange_kind = "apple"
+	await tree.process_frame
+	t.check("steps: no email, Apple is the provider line", _texts(step).has("with your Apple Account"), str(_texts(step)))
+	step.exchange_kind = "gamecenter"
+	await tree.process_frame
+	t.check("steps: no email, Game Center is the provider line", _texts(step).has("with Game Center"), str(_texts(step)))
+	step.exchange_kind = "pgs"
+	await tree.process_frame
+	t.check("steps: no email, Play Games is the provider line", _texts(step).has("with Google Play Games"), str(_texts(step)))
 	step.step = "device-limit"
 	step.manage_url = ""
 	await tree.process_frame

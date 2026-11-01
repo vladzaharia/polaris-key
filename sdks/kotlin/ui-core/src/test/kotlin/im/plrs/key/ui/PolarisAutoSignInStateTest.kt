@@ -217,6 +217,23 @@ class PolarisAutoSignInStateTest {
     }
 
     @Test
+    fun theConfirmLineNamesTheExchangeWhenNoEmailWasShared() {
+        fun consentOf(provider: String?, email: String?): ExchangeConsentView = ExchangeConsentView.of(
+            obj(
+                """{"client":{"appName":"Drift Kart","nameVerified":true},"as":{"provider":${provider?.let { "\"$it\"" }},""" +
+                    """"email":${email?.let { "\"$it\"" }}},"items":[],"scopeHash":"abc","firstTime":false,"changed":false}""",
+            ),
+        )!!
+        fun keys(c: ExchangeConsentView) = KitStates.resolve(KitComponent.signIn, c.toKitInputs()).copy.map { it.key }
+        assertTrue("signin.auto.confirm.asPlayGames" in keys(consentOf("pgs", null)))
+        assertTrue("signin.auto.confirm.asGameCenter" in keys(consentOf("gamecenter", null)))
+        assertTrue("signin.auto.confirm.asApple" in keys(consentOf("apple", null)))
+        assertTrue("signin.auto.confirm.as" in keys(consentOf("pgs", "a@example.com")))
+        val none = keys(consentOf(null, null))
+        assertTrue(none.none { it.startsWith("signin.auto.confirm.as") })
+    }
+
+    @Test
     fun theConsentLineCarriesLicenseTermDevicePositionAndLimit() {
         val screen = KitStates.resolve(KitComponent.signIn, consent.toKitInputs(device = "Pixel 9"))
         assertEquals("confirm", screen.state)

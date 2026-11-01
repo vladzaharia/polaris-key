@@ -225,6 +225,10 @@ export interface AutoSignInInput {
   step: AutoSignInStep;
   /** The account's email; absent when the provider shared none (Sign in with Apple, private). */
   email?: string;
+  /** The exchange that produced the grant; the confirm line names the provider by it when there
+   *  is no email. Absent after a Polaris Locker sign-in (no account line, never "your Apple
+   *  Account" by default). */
+  kind?: "apple" | "google" | "gamecenter" | "pgs";
   /** Whom the provider's identity is shared with: `global` across apps, `developer` per
    *  developer. Apple is always per developer; absent is treated as `unknown` (per developer). */
   reach?: "global" | "developer" | "unknown";

@@ -6,6 +6,12 @@ import type { AutoOutcome } from "../../signInModel.js";
 import { isLicenseChoiceView } from "./core/choice.js";
 import type { AutoSignInResult, PolarisAdapter } from "./core/index.js";
 
+/** The exchange kinds the confirm line names; any other provider names no kind. */
+type AsKind = NonNullable<
+  Extract<AutoOutcome, { kind: "confirm" }>["input"]["kind"]
+>;
+const AS_KINDS: readonly string[] = ["apple", "google", "gamecenter", "pgs"];
+
 /** The longest the gate holds its checking screen for automatic sign-in. */
 export const AUTO_WAIT_MS = 10_000;
 
@@ -44,6 +50,10 @@ export function outcomeOf(r: AutoSignInResult): AutoOutcome | null {
         claims,
         input: {
           ...(c.as.email ? { email: c.as.email } : {}),
+          // The exchange that made the grant: names the provider when no email was shared.
+          ...(c.as.provider !== undefined && AS_KINDS.includes(c.as.provider)
+            ? { kind: c.as.provider as AsKind }
+            : {}),
           license: a ? "existing" : "new",
           alsoGets: c.firstTime || c.changed,
           ...(a

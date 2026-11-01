@@ -104,6 +104,21 @@ def _per_developer(provider: str, reach: Any) -> bool:
     return provider == "Apple" or reach != "global"
 
 
+_CONFIRM_KIND_LINE = {
+    "gamecenter": "signin.auto.confirm.asGameCenter",
+    "pgs": "signin.auto.confirm.asPlayGames",
+    "apple": "signin.auto.confirm.asApple",
+}
+
+
+def _confirm_account_line(auto: Mapping[str, Any]) -> Optional[str]:
+    """The confirm step's account line: the email when shared, else the exchange kind's wording,
+    else none."""
+    if auto.get("email"):
+        return "signin.auto.confirm.as"
+    return _CONFIRM_KIND_LINE.get(auto.get("kind"))
+
+
 def _auto_step_view(ctx: Context, auto: Mapping[str, Any], args: Mapping[str, Any], provider: str) -> View:
     """Automatic sign-in's steps, drawn in the form's body: confirm the account, offer to link the
     provider, and the nearby wait (plans/auto-sign-in.md §3). Every outcome has a title that takes
@@ -131,7 +146,7 @@ def _auto_step_view(ctx: Context, auto: Mapping[str, Any], args: Mapping[str, An
             "confirm",
             [
                 "signin.auto.confirm.title",
-                "signin.auto.confirm.as" if auto.get("email") else "signin.auto.confirm.asApple",
+                _confirm_account_line(auto),
                 "signin.consent.license" if license_kind else None,
                 "signin.consent.newLicense" if license_kind == "new" else None,
                 "signin.consent.licenseLine" if license_kind == "existing" else None,

@@ -901,6 +901,9 @@ public enum KitLinkReach: String, Sendable, Codable, CaseIterable {
 public struct KitAutoSignIn: Sendable, Codable, Equatable, Hashable {
     public var step: KitAutoSignInStep
     public var email: String?
+    /// The exchange that produced the grant (`apple`, `google`, `gamecenter`, `pgs`). With no
+    /// email the confirm line names the provider by it; absent: no account line.
+    public var kind: String?
     public var reach: KitLinkReach?
     /// The license line of the confirm step: `new` or `existing`.
     public var license: String?
@@ -923,8 +926,9 @@ public struct KitAutoSignIn: Sendable, Codable, Equatable, Hashable {
         step: KitAutoSignInStep, email: String? = nil, reach: KitLinkReach? = nil,
         license: String? = nil, alsoGets: Bool? = nil, code: String? = nil,
         licenseName: String? = nil, term: Int? = nil, device: String? = nil,
-        position: Int? = nil, limit: Int? = nil, manageUrl: String? = nil
+        position: Int? = nil, limit: Int? = nil, manageUrl: String? = nil, kind: String? = nil
     ) {
+        self.kind = kind
         self.manageUrl = manageUrl
         self.licenseName = licenseName
         self.term = term

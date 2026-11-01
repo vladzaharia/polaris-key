@@ -174,6 +174,18 @@ extension KitStates {
     /// Automatic sign-in's steps: confirm the account, offer to link the provider, and the nearby
     /// wait. The provider is per developer for Apple always, and for Google unless it is shared
     /// across apps.
+    /// The confirm step's account line: the email when shared, else the exchange kind's wording,
+    /// else none.
+    static func confirmAccountLine(_ auto: KitAutoSignIn) -> String? {
+        if auto.email != nil { return "signin.auto.confirm.as" }
+        switch auto.kind {
+        case "gamecenter": return "signin.auto.confirm.asGameCenter"
+        case "pgs": return "signin.auto.confirm.asPlayGames"
+        case "apple": return "signin.auto.confirm.asApple"
+        default: return nil
+        }
+    }
+
     static func autoStep(_ c: Ctx, _ auto: KitAutoSignIn) -> KitScreen<SignInState> {
         let provider = c.i.provider ?? "Polaris Locker"
         var args: [String: CopyArgument] =
@@ -208,7 +220,7 @@ extension KitStates {
                 .confirm,
                 lines(
                     "signin.auto.confirm.title",
-                    auto.email == nil ? "signin.auto.confirm.asApple" : "signin.auto.confirm.as",
+                    Self.confirmAccountLine(auto),
                     license != nil ? "signin.consent.license" : nil,
                     // Without a tier the line would read "New:  license"; the tierless copy is
                     // the choice row's "Created when you continue".

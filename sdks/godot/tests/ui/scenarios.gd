@@ -411,6 +411,9 @@ func activation_refusal(kind: String, how: String) -> Control:
 const SIGN_IN_STEP_CASES := [
 	["confirm, the account's email", "confirm"],
 	["confirm, Apple shared no email", "confirm-apple"],
+	["confirm, Game Center shared no email", "confirm-gc"],
+	["confirm, Play Games shared no email", "confirm-pgs"],
+	["confirm, no known exchange names no account", "confirm-none"],
 	["confirm, a new license and what the app also gets", "confirm-license"],
 	["link offer, Google shared across apps", "link-offer-global"],
 	["link offer, per developer", "link-offer-developer"],
@@ -432,6 +435,15 @@ func sign_in_step(kind: String) -> Control:
 			s.email = "ada@mail.io"
 		"confirm-apple":
 			s.provider = "Apple"
+			s.exchange_kind = "apple"
+		"confirm-gc":
+			s.provider = "Game Center"
+			s.exchange_kind = "gamecenter"
+		"confirm-pgs":
+			s.provider = "Play Games"
+			s.exchange_kind = "pgs"
+		"confirm-none":
+			pass
 		"confirm-license":
 			s.email = "ada@mail.io"
 			s.license_line = "new"
@@ -450,7 +462,7 @@ func sign_in_step(kind: String) -> Control:
 			s.code = "482 913"
 		_:
 			s.step = kind
-	if kind == "confirm" or kind == "confirm-apple" or kind == "confirm-license":
+	if kind.begins_with("confirm"):
 		s.step = "confirm"
 	s.refresh_view()
 	return s
