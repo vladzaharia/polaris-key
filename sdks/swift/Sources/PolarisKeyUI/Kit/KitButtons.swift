@@ -254,7 +254,7 @@ struct KitLabelTint: ViewModifier {
     }
 }
 
-/// The iOS 18 capsule: solid or material, pressed at 0.98, dimmed to 42 % when disabled.
+/// The iOS 18 capsule: solid or material, pressed at 0.98, dimmed to 62 % when disabled (a label stays 4.5:1).
 struct KitCapsuleStyle: ButtonStyle {
     let fill: AnyShapeStyle
     let label: Color
@@ -293,7 +293,7 @@ struct KitCapsuleStyle: ButtonStyle {
             }
             .contentShape(Capsule())
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
-            .opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.42)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.62)
             .animation(
                 reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
@@ -365,7 +365,7 @@ struct KitGlassStyle: ButtonStyle {
                 .regular.tint(ground.opacity(dark ? 0.55 : 0.85)).interactive(), in: Capsule()
             )
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
-            .opacity(isEnabled ? 1 : 0.42)
+            .opacity(isEnabled ? 1 : 0.62)
             .animation(
                 reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
@@ -384,7 +384,7 @@ struct KitQuietStyle: ButtonStyle {
             .foregroundStyle(color)
             .padding(.horizontal, 4)
             .contentShape(Rectangle())
-            .opacity(isEnabled ? (configuration.isPressed ? 0.6 : 1) : 0.42)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.6 : 1) : 0.62)
     }
 }
 

@@ -513,13 +513,16 @@ public struct CloudSyncStatusView: View {
     /// The glyph and tone per state, as ui-core assigns them: locked, ring-changed, waiting and
     /// signed-out are neutral, an error and a failed transfer are danger, a conflict is the one
     /// warning.
-    private func glyph(_ state: CloudSyncStatusState, signedOut: Bool) -> (String, Tone) {
+    private func glyph(_ state: CloudSyncStatusState, signedOut: Bool, line: CopyLine) -> (String, Tone) {
         switch state {
         case .locked: return ("lock.fill", .neutral)
         case .synced: return ("checkmark.circle", .neutral)
         case .syncing, .transferring: return ("arrow.triangle.2.circlepath", .neutral)
         case .offline: return ("icloud.slash", .neutral)
-        case .waiting: return ("pause.circle", .neutral)
+        case .waiting:
+            // D-9: the offline glyph for a connection, the info glyph for power or background;
+            // never a warning.
+            return (line.key == "cloudSync.waitingNetwork" ? "wifi.slash" : "info.circle", .neutral)
         case .ringChanged: return ("exclamationmark.triangle", .neutral)
         case .conflict: return ("exclamationmark.triangle", .warning)
         case .transferFailed: return ("exclamationmark.circle", .danger)
@@ -530,7 +533,7 @@ public struct CloudSyncStatusView: View {
     private func text(_ style: KitResolvedStyle, _ state: CloudSyncStatusState, _ line: CopyLine)
         -> some View
     {
-        let (name, tone) = glyph(state, signedOut: signedOut(line))
+        let (name, tone) = glyph(state, signedOut: signedOut(line), line: line)
         let color: Color
         switch tone {
         case .neutral: color = style.palette.textMuted
@@ -555,7 +558,9 @@ public struct CloudSyncStatusView: View {
     /// The transfer bar, on its own row at the row's full width: determinate only for counted bytes
     /// (never an invented percentage).
     @ViewBuilder private func bar(_ style: KitResolvedStyle, _ label: CopyLine) -> some View {
-        let figures = screen.line("cloudSync.transferProgress").map { strings.string($0) } ?? ""
+        // The label above is the only element: it carries the state and the figures, so one
+        // announcement per state change and none per byte update (D-9). The 4 pt bar is not a
+        // target, so it is not an element.
         Group {
             if let fraction {
                 ProgressView(value: max(0, min(1, fraction)))
@@ -566,8 +571,7 @@ public struct CloudSyncStatusView: View {
         }
         .tint(style.palette.accentSolid)
         .frame(maxWidth: .infinity)
-        .accessibilityLabel(Text(strings.string(label)))
-        .accessibilityValue(Text(figures))
+        .accessibilityHidden(true)
     }
 }
 
