@@ -58,6 +58,7 @@ internal suspend fun apiSurface() {
     IdentityClient::subject  // identity.subject
     IdentityClient::signOut  // identity.signOut
     SignInNamespace::start  // identity.signIn.start
+    SignInNamespace::startNearby  // identity.signIn.startNearby
     SignInSession::reopen  // identity.signIn.session.reopen
     SignInSession::cancel  // identity.signIn.session.cancel
     SignInSession::wait  // identity.signIn.session.wait

@@ -51,6 +51,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
+@Suppress("LargeClass")
 class SyncKeyringTest {
     @get:Rule val tmp = TemporaryFolder()
 
@@ -809,5 +810,118 @@ class SyncKeyringTest {
         w.client.license.deactivate()
         assertEquals(0, watched.writes)
         assertEquals(emptyList<String>(), other.list()!!.filter { it.contains("sync") })
+    }
+
+    // -- The wrap a nearby approval carries (I-45.13; V5 section 13.11.3) ------------------------------------------
+
+    /** M makes the ring and seals its root to a new device D (own keys, nothing stored); returns M, D, D's keys and the sealed wrap. */
+    private class Duo(val m: Rig, val d: Rig, val dKeys: DeviceKeyPort, val worker: Worker)
+
+    private suspend fun pair(): Duo {
+        val worker = Worker()
+        val m = rig(worker, newKeys(), InMemoryDeviceKeyStorage(), tmp.newFolder())
+        m.keyring.create()
+        val dKeys = newKeys()
+        val d = rig(worker, dKeys, InMemoryDeviceKeyStorage(), tmp.newFolder())
+        return Duo(m, d, dKeys, worker)
+    }
+
+    @Test
+    fun aSealedWrapStoresNothingAndTheChannelRecordOpensOnTheNewDeviceWithTheSameRoot() = runBlocking {
+        val p = pair()
+        val dId = p.d.client.core.deviceId()
+        p.worker.seen.clear()
+        val sealed = p.m.keyring.sealWrapTo(dId, p.dKeys.ensure().agreeKey)
+        // Nothing is stored until the second half; the wrap names the ring and the epoch it belongs to.
+        assertTrue(p.worker.seen.none { it.contains("/wraps/") })
+        assertFalse(sealed.toString().contains(sealed.channelRecord().toString(Charsets.UTF_8).substringAfter("\"ct\":\"").take(20)))
+        val record = sealed.channelRecord()
+        assertTrue(record.toString(Charsets.UTF_8).startsWith("{\"ringId\":\"rg_"))
+        assertTrue(p.d.keyring.codec.locked)
+        val res = p.d.keyring.adoptWrap(record)
+        assertTrue(res is SyncUnlockResult.Unlocked)
+        // The same root: D opens what M sealed, and the ring is pinned.
+        val env = p.m.keyring.codec.seal("saves", "slot", JsonPrimitive("v"))
+        assertTrue(p.d.keyring.codec.open("saves", "slot", env) is SyncEnvelope.Opened.Ok)
+        assertEquals(p.m.keyring.pin(), p.d.keyring.pin())
+        // The store half PUTs the same bytes.
+        p.m.keyring.putWrap(dId, sealed)
+        assertEquals(sealed.channelRecord().toString(Charsets.UTF_8).contains(p.worker.wrap!!["ct"].stringValue!!), true)
+    }
+
+    @Test
+    fun aRecordThatIsNotExactlyAWrapIsRefusedBeforeAnyRequest() = runBlocking {
+        val p = pair()
+        val good = p.m.keyring.sealWrapTo(p.d.client.core.deviceId(), p.dKeys.ensure().agreeKey).channelRecord().toString(Charsets.UTF_8)
+        p.worker.seen.clear()
+        val bad = listOf(
+            "",
+            "not json",
+            "[]",
+            good.replace("}", ",\"x\":1}"),
+            good.replace("\"epoch\":1", "\"epoch\":0"),
+            good.replace("\"kem\":32", "\"kem\":7"),
+            good.replace("rg_", "xx_"),
+            good.replace(Regex("\"kid\":\"[0-9a-f]+\""), "\"kid\":\"abc\""),
+            good.replace("\"enc\":\"", "\"enc\":1,\"z\":\""),
+            good + " ".repeat(3000),
+        )
+        for (b in bad) {
+            val res = p.d.keyring.adoptWrap(b.toByteArray())
+            assertEquals("$b", SyncUnlockResult.Locked(SyncUnlockResult.LockReason.UnusableWrap), res)
+        }
+        assertTrue(p.worker.seen.isEmpty())
+        assertTrue(p.d.keyring.codec.locked)
+    }
+
+    @Test
+    fun aWrapForAnotherRingOrSealedToAnotherDeviceDoesNotOpen() = runBlocking {
+        val p = pair()
+        val dId = p.d.client.core.deviceId()
+        // Sealed to a different agreement key: it names the served ring but D's key cannot open it.
+        val other = newKeys()
+        val forOther = p.m.keyring.sealWrapTo(dId, other.ensure().agreeKey).channelRecord()
+        assertEquals(SyncUnlockResult.Locked(SyncUnlockResult.LockReason.UnusableWrap), p.d.keyring.adoptWrap(forOther))
+        // Sealed for another device id: the wrap context differs.
+        val forElse = p.m.keyring.sealWrapTo("SOMEOTHERDEVICE0000000000000001", p.dKeys.ensure().agreeKey).channelRecord()
+        assertEquals(SyncUnlockResult.Locked(SyncUnlockResult.LockReason.UnusableWrap), p.d.keyring.adoptWrap(forElse))
+        // A record that names another ring than the one served.
+        val good = p.m.keyring.sealWrapTo(dId, p.dKeys.ensure().agreeKey).channelRecord().toString(Charsets.UTF_8)
+        val ring = Regex("rg_[A-Za-z0-9_-]{22}").find(good)!!.value
+        val moved = good.replace(ring, "rg_" + "A".repeat(22))
+        assertEquals(SyncUnlockResult.Locked(SyncUnlockResult.LockReason.UnusableWrap), p.d.keyring.adoptWrap(moved.toByteArray()))
+        assertTrue(p.d.keyring.codec.locked)
+        // The right one still opens afterwards.
+        assertTrue(p.d.keyring.adoptWrap(good.toByteArray()) is SyncUnlockResult.Unlocked)
+    }
+
+    @Test
+    fun aRingThatIsNotThePinnedOneIsNeverOpenedFromTheChannel() = runBlocking {
+        val p = pair()
+        val dId = p.d.client.core.deviceId()
+        assertTrue(p.d.keyring.adoptWrap(p.m.keyring.sealWrapTo(dId, p.dKeys.ensure().agreeKey).channelRecord()) is SyncUnlockResult.Unlocked)
+        val pinned = p.d.keyring.pin()!!
+        p.d.keyring.lock()
+        // M starts over: the Worker now serves another ring, and a wrap for it arrives over the channel.
+        p.m.keyring.reset()
+        val fresh = p.m.keyring.sealWrapTo(dId, p.dKeys.ensure().agreeKey).channelRecord()
+        val res = p.d.keyring.adoptWrap(fresh)
+        assertTrue(res is SyncUnlockResult.RingChanged)
+        assertEquals(pinned, (res as SyncUnlockResult.RingChanged).pinned)
+        assertTrue(p.d.keyring.codec.locked)
+        assertEquals(pinned, p.d.keyring.pin())
+    }
+
+    @Test
+    fun aRootAlreadyHeldForTheRingIsKept() = runBlocking {
+        val p = pair()
+        val dId = p.d.client.core.deviceId()
+        val good = p.m.keyring.sealWrapTo(dId, p.dKeys.ensure().agreeKey).channelRecord()
+        assertTrue(p.d.keyring.adoptWrap(good) is SyncUnlockResult.Unlocked)
+        val kid = p.d.keyring.codec.kid
+        // The same ring again, with a ciphertext that would not open: the held root stays and the answer is unlocked.
+        val scrambled = good.toString(Charsets.UTF_8).replace(Regex("\"ct\":\"[A-Za-z0-9_-]{4}"), "\"ct\":\"AAAA")
+        assertTrue(p.d.keyring.adoptWrap(scrambled.toByteArray()) is SyncUnlockResult.Unlocked)
+        assertEquals(kid, p.d.keyring.codec.kid)
     }
 }

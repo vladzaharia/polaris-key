@@ -108,6 +108,7 @@ public fun PolarisBoot(
         onUpdate = onUpdate,
         signIn = signIn,
         auto = gate?.auto,
+        nearby = gate?.nearby,
         content = content,
     )
 }
@@ -146,6 +147,7 @@ public fun PolarisBootScreen(
     onUpdate: (() -> Unit)? = null,
     signIn: PolarisSignInState? = null,
     auto: PolarisAutoSignInState? = null,
+    nearby: PolarisNearbySignInState? = null,
     content: @Composable () -> Unit = {},
 ) {
     val copy = PolarisTheme.copy
@@ -168,6 +170,7 @@ public fun PolarisBootScreen(
                     manageAsQr = isTelevision(),
                     signIn = signIn,
                     auto = auto,
+                    nearby = nearby,
                     onUpdate = onUpdate,
                 )
             }
