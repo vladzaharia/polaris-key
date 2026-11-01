@@ -57,6 +57,8 @@ import im.plrs.key.core.peer.nearby.NearbyRequestOptions
 import im.plrs.key.core.peer.nearby.RequesterSigner
 import im.plrs.key.core.stringValue
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -251,7 +253,7 @@ internal class NearbyRoutes(private val client: IdentityClient) {
      * and answered once as [NearbyPoll.Ready]. A `429` is slow-down (with the interval to use); a `5xx` throws
      * `server-error` with the `Retry-After` in `retryAfterSeconds` and the request kept; pacing is the caller's.
      */
-    suspend fun poll(started: NearbyStarted): NearbyPoll {
+    suspend fun poll(started: NearbyStarted, onStored: (token: String, subject: String) -> Unit = { _, _ -> }): NearbyPoll {
         val url = endpoint(POLL)
         val signer = host().signer()
         val keys = signer.port.publicKeys()
@@ -294,15 +296,20 @@ internal class NearbyRoutes(private val client: IdentityClient) {
         // Held unconfirmed (section 15.6.1 rule 12): not a sign-in, no stored subject and no `signedIn` event until the
         // person confirms the account (`NearbySignInSession.confirmAccount`), so Sync and Connect do not start for an
         // account nobody has accepted. A mark that cannot be written fails the poll with nothing stored.
-        // Whoever was signed in here before is not any more: the facade hears of it.
-        if (core.setUnconfirmedToken(t.accessToken)) client.onSubject(null)
-        try {
-            // The acquisition sync (the licence documents). A failure here is not the sign-in's: the token is stored.
-            if (client.redirectAcquisitionSyncValue) client.onAcquired?.invoke()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // The next sync repeats it.
+        // Whoever was signed in here before is not any more: the facade hears of it. The store, the hand-over of
+        // the token to its owner (`onStored`) and the acquisition sync run as one step that a cancelled wait cannot
+        // split, so a stored unconfirmed token always has an owner that discards it.
+        withContext(NonCancellable) {
+            if (core.setUnconfirmedToken(t.accessToken)) client.onSubject(null)
+            onStored(t.accessToken, t.subject)
+            try {
+                // The acquisition sync (the licence documents). A failure here is not the sign-in's: the token is stored.
+                if (client.redirectAcquisitionSyncValue) client.onAcquired?.invoke()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // The next sync repeats it.
+            }
         }
         return NearbyPoll.Ready(
             t.accessToken,

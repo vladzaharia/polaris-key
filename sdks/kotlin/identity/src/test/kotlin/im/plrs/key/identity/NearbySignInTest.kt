@@ -40,6 +40,7 @@ import im.plrs.key.core.testing.path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -95,8 +96,11 @@ class NearbySignInTest {
             return ChosenCode("482 913")
         }
 
+        @Volatile var confirmGate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+
         override suspend fun confirmAccount() {
             confirms.incrementAndGet()
+            confirmGate?.await()
         }
 
         override suspend fun declineAccount() {
@@ -154,6 +158,9 @@ class NearbySignInTest {
         /** Runs inside the next poll request, before the Worker answers it. */
         @Volatile var onPoll: (() -> Unit)? = null
 
+        /** Holds the acquisition sync that follows the stored token until a test releases it. */
+        @Volatile var acquireGate: kotlinx.coroutines.CompletableDeferred<Unit>? = null
+
         val transport = ScriptedTransport { r: PolarisRequest ->
             when (r.path) {
                 "/djdl/.well-known/polaris.json" -> respond(200, discovery())
@@ -183,7 +190,10 @@ class NearbySignInTest {
         val keys: DeviceKeyPort = DeviceKeyStore(Durable())
         val client = IdentityClient(
             core,
-            onAcquired = { acquired.incrementAndGet() },
+            onAcquired = {
+                acquired.incrementAndGet()
+                acquireGate?.await()
+            },
             onSubject = { events += it },
             sleep = { sleeps += it },
         ).also { c ->
@@ -501,6 +511,84 @@ class NearbySignInTest {
             }
             assertNull(w.core.token())
             assertFalse(w.core.tokenUnconfirmed())
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
+
+    // ── a wait cancelled mid-acquisition, a late decline, a second confirm, the replacing token ──
+
+    @Test
+    fun cancellingTheWaitDuringTheAcquisitionStillDiscardsTheToken() = runBlocking {
+        val w = World()
+        w.acquireGate = kotlinx.coroutines.CompletableDeferred()
+        w.polls.add(200 to ready("pkeyt_orphan"))
+        val s = w.start()
+        val job = kotlinx.coroutines.GlobalScope.launch(Dispatchers.Default) { s.wait() }
+        awaitTrue { w.acquired.get() == 1 }
+        // The kit ends a run by cancelling the wait and then the session.
+        job.cancel()
+        s.cancel()
+        w.acquireGate!!.complete(Unit)
+        job.join()
+        awaitTrue { w.core.token() == null }
+        w.assertDropped()
+        assertEquals(1, w.reqs("/djdl/identity/signout").size)
+    }
+
+    @Test
+    fun aWaitCancelledAfterTheStoreLeavesTheDeadlineToDiscard() = runBlocking {
+        val w = World()
+        w.acquireGate = kotlinx.coroutines.CompletableDeferred()
+        w.polls.add(200 to ready("pkeyt_orphan"))
+        val s = w.start()
+        val job = kotlinx.coroutines.GlobalScope.launch(Dispatchers.Default) { s.wait() }
+        awaitTrue { w.acquired.get() == 1 }
+        job.cancel()
+        w.acquireGate!!.complete(Unit)
+        job.join()
+        awaitTrue { w.timers.isNotEmpty() }
+        w.timers.single().second()
+        awaitTrue { w.core.token() == null }
+        w.assertDropped()
+    }
+
+    @Test
+    fun aDeclineAfterTheConfirmationLeavesTheSignInAlone() = runBlocking {
+        val w = World()
+        val s = w.signedIn()
+        s.confirmAccount()
+        s.declineAccount()
+        assertEquals("pkeyt_nearby_one", w.core.token())
+        assertEquals(subject, w.core.storedSubject())
+        assertEquals(0, w.reqs("/djdl/identity/signout").size)
+    }
+
+    @Test
+    fun aSecondConfirmWaitsForTheFirstToFinish() = runBlocking {
+        val w = World()
+        val s = w.signedIn()
+        w.request.confirmGate = kotlinx.coroutines.CompletableDeferred()
+        val first = async(Dispatchers.Default) { s.confirmAccount() }
+        awaitTrue { w.request.confirms.get() == 1 }
+        val second = async(Dispatchers.Default) { s.confirmAccount() }
+        delayBriefly()
+        assertEquals("the second confirm waits", 1, w.request.confirms.get())
+        w.request.confirmGate!!.complete(Unit)
+        awaitAll(first, second)
+        assertEquals(1, w.events.count { it == subject })
+    }
+
+    @Test
+    fun aReplacingTokenIsWrittenBeforeTheOldMarkGoes() = runBlocking {
+        val dir = java.nio.file.Files.createTempDirectory("pkey-mark").toFile()
+        try {
+            val w = World(directory = dir)
+            w.signedIn()
+            w.core.setToken("pkeyt_other", TokenSource.activate)
+            assertEquals("pkeyt_other", w.core.token())
+            assertFalse(w.core.tokenUnconfirmed())
+            assertFalse(java.io.File(dir, "token-unconfirmed").readText().trim() == "1")
         } finally {
             dir.deleteRecursively()
         }
