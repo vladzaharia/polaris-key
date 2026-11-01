@@ -264,6 +264,24 @@ describe("the IndexedDB journal and chunk cache", () => {
     expect((await idb.databases()).some((d) => d.name === "db3")).toBe(false);
   });
 
+  it("a scoped purge removes the leaving person's chunks and leaves another's", async () => {
+    const idb = new IDBFactory();
+    const s = filesStore("db4", undefined, idb);
+    const id = (n: number) => String(n).repeat(64).slice(0, 64);
+    await s.scoped("alice").put(id(1), new Uint8Array([1]));
+    await s.scoped("bob").put(id(1), new Uint8Array([2]));
+    await s.journal.put("t1", record("t1"));
+    await s.purge("alice");
+    expect((await idb.databases()).some((d) => d.name === "db4")).toBe(true);
+    const again = filesStore("db4", undefined, idb);
+    expect(await again.scoped("alice").get(id(1))).toBeNull();
+    expect(await again.scoped("bob").get(id(1))).toEqual(new Uint8Array([2]));
+    expect(await again.journal.list()).toEqual([]);
+    // The last person's purge takes the database with it.
+    await again.purge("bob");
+    expect((await idb.databases()).some((d) => d.name === "db4")).toBe(false);
+  });
+
   it("falls back to memory where the page has no IndexedDB", async () => {
     const prev = (globalThis as { indexedDB?: unknown }).indexedDB;
     delete (globalThis as { indexedDB?: unknown }).indexedDB;

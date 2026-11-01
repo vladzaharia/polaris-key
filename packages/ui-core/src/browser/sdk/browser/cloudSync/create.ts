@@ -109,7 +109,9 @@ export async function createBrowserCloudSync(
       // The saves layer is closed first, so a transfer still running cannot recreate the database.
       onPurge: async () => {
         await saves?.purge().catch(() => undefined);
-        await purgeFilesStore(filesDbName(dbName));
+        // A page that built the files layer purged the leaving person's chunks only; one that never
+        // did knows no person's cache and deletes the database.
+        if (!saves?.built()) await purgeFilesStore(filesDbName(dbName));
       },
     },
     {
@@ -128,6 +130,7 @@ export async function createBrowserCloudSync(
     fileFetch: (path, init) => bearer.fileFetch(path, init),
     locks,
     attach: () => api.attach(),
+    subject: () => bearer.account,
   }));
   api = new BrowserCloudSyncApi({
     host,

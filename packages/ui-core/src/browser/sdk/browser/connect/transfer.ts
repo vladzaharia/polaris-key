@@ -19,6 +19,7 @@ import {
   XFER_DEFAULT_CHUNK,
   XFER_MAX_CHUNK,
   XFER_MAX_SIZE,
+  XferDeliveredMemory,
   XferEndpoint,
   XferHasher,
   isXferId,
@@ -103,6 +104,8 @@ export class CloudTransfer {
   readonly #open = new Set<Wire>();
   /** Partials a live transfer holds, and by whom. */
   readonly #live = new Map<string, Wire>();
+  /** What this page delivered, per peer key: a re-offer is answered as done (CC-20.F). */
+  readonly #delivered = new XferDeliveredMemory();
   /** Sessions this module opened for `send`, reused while they stay open. */
   readonly #sessions = new Map<string, ConnectSession>();
   /** The machine's clock (seconds) and timer; tests drive them. @internal */
@@ -126,12 +129,14 @@ export class CloudTransfer {
    * nothing they still had queued reaches the store afterwards.
    */
   async purge(): Promise<void> {
+    this.#delivered.clear();
     await this.#killWires();
     await this.deps.store?.purgeAll();
   }
 
   /** Remove the partials kept for one peer key (a device that left the roster). */
   async purgePeer(peerKey: Uint8Array): Promise<void> {
+    this.#delivered.forget(peerKey);
     await this.deps.store?.purgePeer(peerKey);
   }
 
@@ -313,6 +318,7 @@ export class CloudTransfer {
         handler: () => (this.deps.handler() === null ? "decline" : "ask"),
         peerKey: port.peerKey,
         partials,
+        delivered: this.#delivered.forPeer(port.peerKey),
         ...(store !== null
           ? {
               // The prefix was re-read before the first record. When it is not there (or is not
@@ -551,6 +557,8 @@ export class CloudTransfer {
 
   async #result(wire: Wire, r: XferResult): Promise<void> {
     this.#unreserve(wire, r.id);
+    // A re-offer of delivered content, answered as done: the host is told nothing.
+    if (r.outcome === "delivered" && r.again === true) return;
     const out = wire.out.get(r.id);
     if (out !== undefined) {
       if (r.outcome === "delivered") out.resolve();

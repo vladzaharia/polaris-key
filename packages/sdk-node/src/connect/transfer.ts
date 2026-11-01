@@ -32,6 +32,7 @@ import {
   XFER_DEFAULT_CHUNK,
   XFER_MAX_CHUNK,
   XFER_MAX_SIZE,
+  XferDeliveredMemory,
   XferEndpoint,
   isXferId,
   type XferAsk,
@@ -191,6 +192,8 @@ export class CloudTransfer {
   readonly #live = new Map<string, Wire>();
   /** Sessions this module opened for `send`, reused while they stay open. */
   readonly #sessions = new Map<string, ConnectSession>();
+  /** What this process delivered, per peer key: a re-offer is answered as done (CC-20.F). */
+  readonly #delivered = new XferDeliveredMemory();
   #maxSize: number | null = null;
   /** The machine's clock (seconds) and timer; tests drive them. @internal */
   timing: {
@@ -249,11 +252,13 @@ export class CloudTransfer {
 
   /** Remove every partial file and spooled stream: the sign-out step. */
   async purge(): Promise<void> {
+    this.#delivered.clear();
     await this.deps.store?.purgeAll();
   }
 
   /** Remove the partials kept for one peer key (a deleted link). @internal */
   async purgePeer(peerKey: Uint8Array): Promise<void> {
+    this.#delivered.forget(peerKey);
     // Sessions of that peer make no more partials (a late `create` would bring one back).
     const hex = Buffer.from(peerKey).toString("hex");
     for (const w of this.#open)
@@ -421,6 +426,7 @@ export class CloudTransfer {
           : {}),
         peerKey: port.peerKey,
         partials,
+        delivered: this.#delivered.forPeer(port.peerKey),
         ...(store !== null
           ? {
               // The partial is claimed before it is read, so no other session can change the
@@ -643,6 +649,8 @@ export class CloudTransfer {
       this.deps.store?.release(tok);
       wire.tokens.delete(r.id);
     }
+    // A re-offer of delivered content, answered as done: the host is told nothing.
+    if (r.outcome === "delivered" && r.again === true) return;
     const out = wire.out.get(r.id);
     if (out !== undefined) {
       if (r.outcome === "delivered") out.resolve();

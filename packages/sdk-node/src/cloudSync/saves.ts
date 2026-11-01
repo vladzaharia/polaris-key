@@ -10,12 +10,11 @@
 //   codec        end-to-end: the ring's `fileCodec("saves")`; server mode: `serverFileCodec`.
 //   events       `transferProgress` / `transferDone` / `transferFailed` on `client.events` under the
 //                `cloudSync` kind. A cancelled transfer is a state (`transferDone`), not a failure.
-//   purge        the journal, the chunk cache and any waiting write go with the person.
+//   purge        the journal, the leaving person's chunk cache (not another's) and any waiting write go.
 //
 // Nothing here logs a value, a key or a path; events carry ids, counts and codes.
 
 import { rm } from "node:fs/promises";
-import { join } from "node:path";
 import type { Json, RecordOutcome } from "@polaris-key/client-core/cloud-sync";
 import {
   SAVES_COLLECTION,
@@ -51,7 +50,7 @@ import type { TokenManager } from "../core/token.js";
 import type { SaveTransferEvent } from "../core/events.js";
 import type { KeyringClient } from "../keyring/client.js";
 import {
-  CLOUD_SYNC_CHUNKS_DIR,
+  chunkCachePersonDir,
   FileChunkCache,
   chunkCacheDir,
 } from "./chunkCache.js";
@@ -238,6 +237,8 @@ export class SavesApi {
   readonly #transport: NodeFileTransport;
   readonly #engine: TransferEngine;
   readonly #active = new Map<string, SaveTransfer>();
+  /** The person the last call used the chunk cache for: the one a purge removes, never another's. */
+  #cacheSubject: string | null = null;
 
   constructor(deps: SavesApiDeps) {
     this.#d = deps;
@@ -358,10 +359,16 @@ export class SavesApi {
     this.#records.dropAll();
     await Promise.all(running.map((t) => t.cancel().catch(() => undefined)));
     const journal = this.#journal.clear().catch(() => undefined);
-    const cache = rm(join(this.#d.ctx.dirs.state, CLOUD_SYNC_CHUNKS_DIR), {
-      recursive: true,
-      force: true,
-    }).catch(() => undefined);
+    // Only the leaving person's cache goes (the last one a call used, else the signed-in one).
+    const subject = this.#cacheSubject ?? this.#d.subject();
+    this.#cacheSubject = null;
+    const cache =
+      subject === null
+        ? Promise.resolve()
+        : rm(chunkCachePersonDir(this.#d.ctx.dirs.state, subject), {
+            recursive: true,
+            force: true,
+          }).catch(() => undefined);
     await Promise.all([journal, cache]);
   }
 
@@ -389,6 +396,7 @@ export class SavesApi {
       : serverFileCodec(webCryptoSyncPort);
     const o = host.savesOptions;
     const subject = this.#d.subject();
+    this.#cacheSubject = subject;
     const cache =
       o.delta && subject !== null
         ? new FileChunkCache(
