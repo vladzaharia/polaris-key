@@ -340,6 +340,9 @@ public class ConnectClient internal constructor(
         RequesterSigner(p, core.deviceId())
     }
 
+    /** Registers this device's keys with the Worker, for an approval that answered `device_keys_required` (nearby sign-in, M). */
+    internal suspend fun registerNearbyKeys(): Unit = lock.withLock { register(usePort()) }
+
     /**
      * The held identity as it stands, verified again now; null when none is held, it does not verify
      * any more or its roster expired. Sends nothing and makes no keys.
@@ -877,8 +880,12 @@ public class ConnectClient internal constructor(
         throw PolarisException(ErrorCode.storeFailed, "The device keys could not be used: ${e.message}", cause = e)
     }
 
-    private suspend fun requireToken(): String =
-        core.token() ?: throw PolarisException(ErrorCode.noToken, "Register or sign in before using Cloud Connect.")
+    private suspend fun requireToken(): String {
+        val token = core.token() ?: throw PolarisException(ErrorCode.noToken, "Register or sign in before using Cloud Connect.")
+        // A nearby sign-in nobody has confirmed is not a sign-in yet (V5 section 15.6.1 rule 12).
+        if (core.tokenUnconfirmed()) throw PolarisException(ErrorCode.noToken, "Confirm the sign-in before using Cloud Connect.")
+        return token
+    }
 
     /** One bearer GET; the body text, or the Worker's refusal as a typed exception. */
     private suspend fun get(url: String, what: String): String {

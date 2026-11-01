@@ -149,7 +149,7 @@ public class IdentityClient(
     /** This device's keys, for the `exchange` proof. Null: `exchange` answers `Unavailable(noDeviceKeys)`. */
     deviceKeys: DeviceKeyPort? = null,
 ) {
-    private val sleep: suspend (Long) -> Unit = sleep ?: { seconds -> delay(seconds * 1000) }
+    internal val sleep: suspend (Long) -> Unit = sleep ?: { seconds -> delay(seconds * 1000) }
     internal val beforeSignOut = java.util.concurrent.CopyOnWriteArrayList<BeforeSignOutHook>()
     internal val platformProvider = java.util.concurrent.atomic.AtomicReference<PlatformIdentityProvider?>(null)
     private val revokeRestore: BeforeSignOutHook = { restoreSignOut() }
@@ -284,6 +284,27 @@ public class IdentityClient(
 
     internal var redirectEntropyValue: RedirectEntropy? = null
     internal var redirectAcquisitionSyncValue: Boolean = true
+
+    // ── Nearby sign-in (I-45.12) ─────────────────────────────────────────────────────────────
+    internal val nearbyHost = java.util.concurrent.atomic.AtomicReference<NearbyHost?>(null)
+
+    /** The nearby routes (`nearby/start`, `nearby/poll`) under the nearby sign-in session. No host calls them. */
+    internal val nearbyRoutes: NearbyRoutes by lazy { NearbyRoutes(this) }
+
+    /** Test seam for the confirm screen's deadline: schedule the callback after the seconds; returns the cancel. Null: a monotonic delay. */
+    internal var nearbyTimer: ((Double, () -> Unit) -> (() -> Unit))? = null
+
+    /**
+     * The facade installs the LAN half of nearby sign-in (`cloudConnect.nearby.request`, the device keys, the runtime
+     * check): this module cannot reach the Connect module. With none installed `signIn.startNearby` answers
+     * `nearby-unsupported`.
+     */
+    public fun installNearby(host: NearbyHost?) {
+        nearbyHost.set(host)
+    }
+
+    /** `identity.nearby.available(role)` (see NearbySignIn.kt). */
+    public val nearby: NearbyNamespace get() = NearbyNamespace(this)
 
     /** `signIn.start(options)`: the device-code or redirect session (see SignInSession.kt). */
     public val signIn: SignInNamespace get() = SignInNamespace(this)

@@ -10,6 +10,7 @@
 // @pkey-feature core.presentation identity.account identity.attach
 // @pkey-feature identity.redirect.web identity.signin.hints identity.choice connect.identity connect.relay connect.links
 // @pkey-feature identity.exchange identity.pgs sync.keyring sync.settings identity.restore sync.files sync.files.delta sync.saves
+// @pkey-feature identity.nearby
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -60,10 +61,12 @@ import im.plrs.key.core.CacheRecord
 import im.plrs.key.core.CoreOptions
 import im.plrs.key.core.DeviceKeyPort
 import im.plrs.key.core.DeviceKeyStore
+import im.plrs.key.core.DeviceProofs
 import im.plrs.key.core.DevicePublicKeys
 import im.plrs.key.core.DiscoveryResult
 import im.plrs.key.core.DocOutcome
 import im.plrs.key.core.ERROR_CODE_VALUES
+import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.FingerprintSource
 import im.plrs.key.core.HardwareFingerprint
 import im.plrs.key.core.HostOutlet
@@ -106,6 +109,11 @@ import im.plrs.key.identity.SignOutResult
 import im.plrs.key.identity.SubjectResult
 import im.plrs.key.identity.redirectAcquisitionSync
 import im.plrs.key.identity.redirectEntropy
+import im.plrs.key.identity.replayNearbyApprove
+import im.plrs.key.identity.replayNearbyPoll
+import im.plrs.key.identity.replayNearbyProofs
+import im.plrs.key.identity.replayNearbyProofsReset
+import im.plrs.key.identity.replayNearbyStart
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.LicenseClientOptions
 import im.plrs.key.packs.ByteStream
@@ -421,6 +429,12 @@ object KotlinReplay {
                     // identity.restore: the fragment's `restore` flag and the endpoint (V5 section 12.11.6).
                     out["restore"] = JsonPrimitive(identity?.enabled == true && identity.extras["restore"].boolValue == true)
                     out["restoreEndpoint"] = JsonPrimitive(identity?.enabled == true && identity.endpoints["restore"] != null)
+                    // identity.nearby (I-45.12): the fragment's `nearby` flag and its three routes (V5 section 12.11.5).
+                    out["nearby"] = if (identity?.enabled == true && identity.extras["nearby"].boolValue == true) JsonPrimitive(true) else JsonNull
+                    out["nearbyEndpoints"] = JsonPrimitive(
+                        identity?.enabled == true &&
+                            listOf("nearbyStart", "nearbyApprove", "nearbyPoll").all { !identity.endpoints[it].isNullOrEmpty() },
+                    )
                 }
                 // connect.links (CC-19): the cached `services.connect.interAccount` the SDK gates links on.
                 out["interAccount"] = JsonPrimitive(client.connect.interAccount())
@@ -482,6 +496,9 @@ object KotlinReplay {
                 }
                 out["tokenHeld"] = JsonPrimitive(store.getToken().let { it != null && it != before })
             }
+
+            // `identity.nearby` (V5 section 12.11.5): the new device D's routes (I-45.12) and the approving device M's (I-45.13).
+            "nearbyStart", "nearbyPoll", "nearbyApprove" -> nearbyStep(client, step, session, out)
 
             // `identity.restore` (I-49.12, V5 section 12.11.8): the recorded client is the new device; the backup item is the step's args.
             "restoreRedeem" -> {
@@ -914,6 +931,83 @@ object KotlinReplay {
         return out
     }
 
+    /**
+     * `nearbyStart` / `nearbyPoll`: D's `nearby/start` and `nearby/poll` through the identity client, with the fixture device keys of
+     * the step's `keyLabel`. A step may doctor its proof (`proofKeyLabel` signs with another key, `proofValue` over another value) to
+     * show the Worker refuses it; an ordinary step signs through the key port. Refusals read as the transcripts' `expect` does.
+     */
+    @OptIn(ConformanceReplayOnly::class)
+    private suspend fun nearbyStep(client: PolarisKeyClient, step: JsonObject, session: ReplaySession, out: MutableMap<String, JsonElement>) {
+        val args = step["args"]!!.obj
+        val label = args["keyLabel"].stringValue!!
+        if (session.keyLabel != label) {
+            session.keys.use(label)
+            session.keyLabel = label
+        }
+        val other = args["proofKeyLabel"].stringValue?.let { l -> FixtureKeyPort().also { it.use(l) } }
+        val value = args["proofValue"].stringValue
+        if (other != null || value != null) {
+            client.identity.replayNearbyProofs { port, f ->
+                val message =
+                    DeviceProofs.message(if (value != null) f.copy(value = value) else f) ?: throw AssertionError("a proof line is not printable")
+                Base64Url.encode((other ?: port).sign(message))
+            }
+        } else {
+            client.identity.replayNearbyProofsReset()
+        }
+        try {
+            if (step["action"].stringValue == "nearbyApprove") {
+                nearbyApproveStep(client, args, session, out)
+            } else if (step["action"].stringValue == "nearbyStart") {
+                val started = client.identity.replayNearbyStart(args["deviceName"].stringValue)
+                out["result"] = JsonPrimitive("ok")
+                out["expiresIn"] = JsonPrimitive(started.expiresIn)
+                out["interval"] = JsonPrimitive(started.interval)
+            } else {
+                val p = client.identity.replayNearbyPoll(args["request"].stringValue ?: "", session.keys.publicKeys()!!.signKey)
+                out["result"] = JsonPrimitive(p.result)
+                p.interval?.let { out["interval"] = JsonPrimitive(it) }
+                p.reason?.let { out["reason"] = JsonPrimitive(it) }
+                p.scope?.let { out["scope"] = JsonPrimitive(it) }
+            }
+        } catch (e: PolarisException) {
+            if (e.code == ErrorCode.serviceUnavailable) {
+                out["result"] = JsonPrimitive("unavailable")
+            } else {
+                out["result"] = JsonPrimitive("refused")
+                e.httpStatus?.let { out["status"] = jsonInt(it.toLong()) }
+                out["code"] = JsonPrimitive(e.code)
+            }
+        }
+    }
+
+    /**
+     * `nearbyApprove`: M's `nearby/approve`. M is the `approver*` device: its id, its bearer and its key. The permit is made here,
+     * because no route offers one without a matched code; it vouches for what the recording sent (it may carry other keys than D's).
+     */
+    @OptIn(ConformanceReplayOnly::class)
+    private suspend fun nearbyApproveStep(client: PolarisKeyClient, args: JsonObject, session: ReplaySession, out: MutableMap<String, JsonElement>) {
+        val dk = session.keys.publicKeys()!!
+        val agree = args["agreeKeyLabel"].stringValue?.let { l -> FixtureKeyPort().also { it.use(l) }.publicKeys()!!.agreeKey } ?: dk.agreeKey
+        val m = FixtureKeyPort().also { it.use(args["approverKeyLabel"].stringValue!!) }
+        val a = client.identity.replayNearbyApprove(
+            approverDeviceId = args["approverDeviceId"].stringValue!!,
+            approverToken = args["approverToken"].stringValue!!,
+            approverKeys = m,
+            request = args["request"].stringValue!!,
+            deviceId = client.core.deviceId(),
+            signKey = dk.signKey,
+            agreeKey = agree,
+            decision = args["decision"].stringValue!!,
+            choice = args["choice"]?.objectValue,
+        )
+        out["result"] = JsonPrimitive(a.result)
+        a.deviceLabel?.let { out["deviceLabel"] = JsonPrimitive(it) }
+        a.choices?.let { out["choices"] = it }
+        a.status?.let { out["status"] = jsonInt(it.toLong()) }
+        a.code?.let { out["code"] = JsonPrimitive(it) }
+    }
+
     /** The recorder's constants for a redirect conversation (`packages/worker/test/transcripts`). */
     private const val RECORDED_STATE = "tidewater-state-0123456789"
     private const val RECORDED_VERIFIER = "transcript-verifier-0123456789-abcdefghijklmnopqrst"
@@ -1114,7 +1208,8 @@ object KotlinReplay {
     }
 
     /** Replay [t] step by step; throws on the first step whose traffic or outcome disagrees. */
-    fun replay(t: Transcript) = runBlocking {
+    @Suppress("CyclomaticComplexMethod")
+    fun replay(t: Transcript, servedFromRecording: Set<String> = emptySet()) = runBlocking {
         val server = ReplayServer(t)
         var clock = t.now
         val memory = InMemoryStore(t.product, t.initial["deviceId"].stringValue!!)
@@ -1135,11 +1230,13 @@ object KotlinReplay {
         val redirects = (t.id != "cloudsync-cors" && t.steps.any { it["action"].stringValue in setOf("browser", "redirectComplete") }) ||
             // identity.devicecode.choice rides the same product: License, Config and Identity.
             t.steps.any { it["action"].stringValue == "beginSignIn" && it["args"].objectValue?.get("licenseChoice").stringValue == "app" }
+        // identity.nearby (I-45.12): the new device's product runs Licence, Config and Identity.
+        val nearby = t.id.startsWith("nearby-")
         val services = (
             t.initial["services"]?.arrayValue?.map { it.stringValue!! }
                 ?: if (u != null) {
                     listOf("release", "distribution", "update")
-                } else if (redirects) {
+                } else if (redirects || nearby) {
                     listOf("license", "config", "identity")
                 } else {
                     null
@@ -1182,7 +1279,7 @@ object KotlinReplay {
         )
         // The redirect and platform-exchange recordings hold the token exchange, not the sync a sign-in triggers after it.
         @OptIn(ConformanceReplayOnly::class)
-        if (redirects ||
+        if (redirects || nearby ||
             t.steps.any { it["action"].stringValue in setOf("exchange", "restoreRedeem") }
         ) {
             client.identity.redirectAcquisitionSync = false
@@ -1192,7 +1289,13 @@ object KotlinReplay {
                 val step = server.beginStep(i)
                 clock = step["now"].longValue ?: t.now
                 session.now = clock
-                val observed = act(client, store, step, session, ReplayPackObjectTransport(server), server)
+                val observed = if (step["action"].stringValue in servedFromRecording) {
+                    // Another device's step (the approving device's): its half is the recording's, and its `expect` is what was recorded.
+                    server.serveBrowserExchanges()
+                    step["expect"]!!.obj
+                } else {
+                    act(client, store, step, session, ReplayPackObjectTransport(server), server)
+                }
                 server.endStep()
                 for ((key, want) in step["expect"]!!.obj.entries.sortedBy { it.key }) {
                     val got = observed[key]

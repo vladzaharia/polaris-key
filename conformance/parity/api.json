@@ -2595,6 +2595,16 @@
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
     },
     {
+      "sdk": "kotlin",
+      "path": "identity.nearby",
+      "reason": "the accessor of the identity nearby namespace (identity.nearby.available, .onRequest; I-45.12); not a verb"
+    },
+    {
+      "sdk": "kotlin",
+      "path": "identity.installNearby",
+      "reason": "internal: the facade hands the identity client the LAN half, the device keys and the key ring's wrap halves (I-45.12, I-45.13); no host calls it"
+    },
+    {
       "sdk": "swift",
       "path": "client.cloudSync",
       "reason": "the client's namespace accessors are the namespaces themselves, not verbs"
@@ -3320,6 +3330,24 @@
         },
         "godot": {
           "spelling": "PKeySignInNamespace.start"
+        }
+      },
+      "layer": "client"
+    },
+    {
+      "id": "identity.signIn.startNearby",
+      "kind": "method",
+      "args": [
+        {
+          "name": "options",
+          "type": "json"
+        }
+      ],
+      "sdks": {
+        "kotlin": {
+          "sdkOnly": true,
+          "spelling": "SignInNamespace.startNearby",
+          "reason": "Kotlin has the nearby channel of signIn.start as a verb of its own; the other SDKs pass channel nearby to signIn.start"
         }
       },
       "layer": "client"
@@ -7247,8 +7275,7 @@
           "labels": ["role"]
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbyNamespace.available"
         },
         "godot": {
           "planned": "I-48",
@@ -7285,8 +7312,7 @@
           "labels": ["_", "handler"]
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbyNamespace.onRequest"
         },
         "godot": {
           "planned": "I-48",
@@ -7312,8 +7338,7 @@
           "spelling": "NearbySignInSession.approvers"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbySignInSession.approvers"
         },
         "godot": {
           "planned": "I-48",
@@ -7344,8 +7369,7 @@
           "spelling": "NearbySignInSession.onApprovers"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbySignInSession.onApprovers"
         },
         "godot": {
           "planned": "I-48",
@@ -7372,8 +7396,7 @@
           "shape": "property"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbySignInSession.code"
         },
         "godot": {
           "planned": "I-48",
@@ -7399,8 +7422,7 @@
           "spelling": "NearbySignInSession.result"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbySignInSession.result"
         },
         "godot": {
           "planned": "I-48",
@@ -7431,8 +7453,7 @@
           "spelling": "NearbySignInSession.onResult"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbySignInSession.onResult"
         },
         "godot": {
           "planned": "I-48",
@@ -7464,8 +7485,7 @@
           "spelling": "NearbySignInSession.choose"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbySignInSession.choose"
         },
         "godot": {
           "planned": "I-48",
@@ -7491,8 +7511,7 @@
           "spelling": "NearbySignInSession.confirmAccount"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbySignInSession.confirmAccount"
         },
         "godot": {
           "planned": "I-48",
@@ -7517,8 +7536,7 @@
           "spelling": "NearbySignInSession.declineAccount"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbySignInSession.declineAccount"
         },
         "godot": {
           "planned": "I-48",
@@ -7543,8 +7561,7 @@
           "shape": "property"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbySignInSession.wrap"
         },
         "godot": {
           "planned": "I-48",
@@ -7573,8 +7590,7 @@
           "spelling": "NearbySignInSession.onWrap"
         },
         "kotlin": {
-          "planned": "I-45",
-          "reason": "nearby sign-in (CC-01-auto-sign-in; I-47 plan §2)"
+          "spelling": "NearbySignInSession.onWrap"
         },
         "godot": {
           "planned": "I-48",

@@ -350,6 +350,13 @@ public class CoreContext(options: CoreOptions) {
                 // The in-memory state is already rebound; the next start repeats the repair.
             }
         }
+        // A start that finds the unconfirmed mark means the process ended on the confirm screen (V5 section 15.6.1
+        // rule 12): the token goes, locally, before anything reads it.
+        if (readUnconfirmedMark()) {
+            dropMarkedToken()
+            token = null
+        }
+        unconfirmedMemory = false
         val channelPreference = io { channelSlot.read() }
         lock.withLock {
             deviceIdValue = deviceId
@@ -389,6 +396,8 @@ public class CoreContext(options: CoreOptions) {
         provenance: TokenProvenance? = TokenProvenance.of(source),
     ) {
         ensureStarted()
+        // Another token replaces an unconfirmed one: the mark goes first, so a crash never leaves a mark over a bare token.
+        if (source != TokenSource.reacquire && unconfirmedMemory) clearUnconfirmedMark()
         // Crash-safe: cleared first, written last, so a crash between leaves "unknown" (never signin).
         if (provenance != null) writeProvenance(null)
         onStore { store.setToken(token) }
@@ -450,6 +459,124 @@ public class CoreContext(options: CoreOptions) {
 
     /** Record that the stored token no longer stands for a signed-in person (a sign-out that kept the token). */
     public suspend fun setTokenProvenance(p: TokenProvenance?): Unit = writeProvenance(p)
+
+    // ── The unconfirmed nearby sign-in (V5 section 15.6.1 rule 12) ──────────────────────────────
+    // A nearby sign-in's token is held under a mark the person has not yet lifted by confirming the account. The mark
+    // is written BEFORE the token and removed AFTER it, so a crash leaves the old token or the marked one, never a bare
+    // one; a start that finds it drops the token. While it stands the token is not a sign-in: no subject is stored,
+    // rung 1 of the automatic ladder does not count it, Cloud Sync and Connect do not start, and the explicit
+    // sign-out flag is left as it was.
+    private val unconfirmedSlot: StateSlot by lazy {
+        store.stateDirectory?.let { FileStateSlot(File(it, "token-unconfirmed")) } ?: MemoryStateSlot()
+    }
+
+    @Volatile private var unconfirmedMemory = false
+
+    /** Remove the token a marked start found, then the mark. Not to be used this run either way. */
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
+    private suspend fun dropMarkedToken() {
+        try {
+            onStore { store.clearToken() }
+            clearUnconfirmedMark()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Not removable: memory holds none this run and the mark stands, so the next start tries again.
+        }
+    }
+
+    /** The mark on disk. A file that exists but cannot be read reads as marked (fail closed). */
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
+    private suspend fun readUnconfirmedMark(): Boolean = try {
+        io {
+            val slot = unconfirmedSlot
+            val text = slot.read()
+            if (text == null && slot is FileStateSlot && slot.file.exists()) true else text?.trim() == "1"
+        }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        true
+    }
+
+    private suspend fun clearUnconfirmedMark() {
+        unconfirmedMemory = false
+        io { unconfirmedSlot.write("") }
+    }
+
+    /** True while the held token is a nearby sign-in's that the person has not confirmed. */
+    public suspend fun tokenUnconfirmed(): Boolean = locked { tokenValue != null && unconfirmedMemory }
+
+    /**
+     * Hold [token] as a nearby sign-in nobody has confirmed. The previous person's subject goes first (no sync may
+     * pair this token with it), then the mark, then the token. A mark that cannot be written fails the call with
+     * nothing stored. True when the stored subject was dropped (the facade then tells its listeners).
+     */
+    @Suppress("TooGenericExceptionCaught", "SwallowedException", "ThrowsCount")
+    public suspend fun setUnconfirmedToken(token: String): Boolean {
+        ensureStarted()
+        val moved = setSubject(null)
+        try {
+            io { unconfirmedSlot.write("1") }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            throw PolarisException(ErrorCode.storeFailed, "The sign-in state could not be saved.")
+        }
+        unconfirmedMemory = true
+        try {
+            // Not a sign-in until confirmed: the provenance is cleared, never written as `signin`.
+            writeProvenance(null)
+            onStore { store.setToken(token) }
+        } catch (e: Throwable) {
+            runCatching { clearUnconfirmedMark() }
+            throw e
+        }
+        lock.withLock {
+            tokenValue = token
+            tokenSourceValue = TokenSource.signin
+        }
+        return moved
+    }
+
+    /**
+     * The person confirmed the account: [token] (which must still be the held, unconfirmed one) becomes a sign-in. The
+     * subject is stored, the provenance is `signin`, the explicit sign-out ends, and the mark goes last. False when
+     * the token is no longer the unconfirmed one this call was made for: nothing is written.
+     */
+    public suspend fun confirmUnconfirmedToken(token: String, subject: String): Boolean {
+        ensureStarted()
+        if (!lock.withLock { tokenValue == token && unconfirmedMemory }) return false
+        setSubject(subject)
+        writeProvenance(TokenProvenance.signin)
+        setExplicitSignOut(false)
+        clearUnconfirmedMark()
+        return true
+    }
+
+    /**
+     * Drop [token] locally when it is still the held token (confirmed or not): the token first, then the mark, the
+     * stored subject and the provenance. False (nothing touched) when another token has replaced it. A token that
+     * cannot be removed keeps its mark, so the next start drops it.
+     */
+    public suspend fun dropHeldToken(token: String): Boolean {
+        ensureStarted()
+        val own = lock.withLock {
+            if (tokenValue == token) {
+                tokenValue = null
+                tokenSourceValue = null
+                true
+            } else {
+                false
+            }
+        }
+        if (!own) return false
+        onStore { store.clearToken() }
+        clearUnconfirmedMark()
+        setSubject(null)
+        writeProvenance(null)
+        return true
+    }
 
     // ── Explicit sign-out (I-45.2) ─────────────────────────────────────────────────────────
     // True after `identity.signOut()` until the person's next sign-in: the automatic sign-in ladder
@@ -583,6 +710,8 @@ public class CoreContext(options: CoreOptions) {
         }
         try {
             onStore { store.clearToken() }
+            // The token goes before its mark.
+            clearUnconfirmedMark()
         } catch (e: Exception) {
             failure = e
         }

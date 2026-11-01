@@ -358,6 +358,30 @@ class ReplayServer(val transcript: Transcript) : PolarisTransport {
                 mapOf("product" to JsonPrimitive(transcript.product), "services" to JsonObject(redirectServices)),
             ).toString()
         }
+        // identity.nearby (I-45.12): a transcript with nearby steps and no discover step rides a product whose Identity fragment
+        // names nearby approval and its three routes (V5 section 12.11.5).
+        if (transcript.steps.any { it["action"].stringValue in setOf("nearbyStart", "nearbyPoll", "nearbyApprove") }) {
+            val identity = JsonObject(
+                mapOf(
+                    "enabled" to JsonPrimitive(true),
+                    "configured" to JsonPrimitive(true),
+                    "nearby" to JsonPrimitive(true),
+                    "endpoints" to JsonObject(
+                        mapOf(
+                            "nearbyStart" to "$base/identity/nearby/start",
+                            "nearbyApprove" to "$base/identity/nearby/approve",
+                            "nearbyPoll" to "$base/identity/nearby/poll",
+                        ).mapValues { JsonPrimitive(it.value) },
+                    ),
+                ),
+            )
+            return JsonObject(
+                mapOf(
+                    "product" to JsonPrimitive(transcript.product),
+                    "services" to JsonObject(mapOf("license" to service(emptyMap()), "config" to service(emptyMap()), "identity" to identity)),
+                ),
+            ).toString()
+        }
         // identity.restore (I-49.12): a transcript with restore steps and no discover step rides a product whose Identity
         // fragment offers silent restore (V5 section 12.11.6, 12.11.8): the grant route, the enrol route, the
         // grant-completion route a confirm answer is finished at, and the account endpoints a sign-out uses.

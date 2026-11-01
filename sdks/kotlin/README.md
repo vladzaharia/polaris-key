@@ -400,6 +400,53 @@ and a runtime with no mDNS adapter (Android until the `:android` glue supplies o
 - **Sign-out** stops every advert and closes every request, after Connect and before the device leaves it.
   `PolarisKeyFutures.nearby*` are the Java forms.
 
+#### Nearby sign-in on the new device
+
+`client.identity.signIn.startNearby()` does the whole of D for you: `nearby/start`, the LAN request, then the paced `nearby/poll`.
+It checks the runtime first (`nearby-unsupported`, no request) and discovery (`service-unavailable`, no request).
+`session.approvers` / `onApprovers` list who answered; `choose(id)` answers the code to show; `wait()` settles
+`SignedIn`, `Expired` or `Cancelled` (`wait(once = true)` may answer `Pending`) and throws `SignInError(sign-in-denied)` for a
+refusal. `client.identity.nearby.available(role)` says whether it can run here.
+
+The token the poll brings is held **unconfirmed** (`CoreContext.tokenUnconfirmed()`): it is not a sign-in, no subject is stored,
+no `Identity` event is raised, Cloud Sync and Connect do not start, and the automatic ladder's first rung does not count it. Show
+`session.identity` (the account's name and email) and ask:
+
+- `confirmAccount()` makes it a sign-in, stores the subject, raises the event and hands over what the approver sent.
+- `declineAccount()`, `cancel()` (leaving the screen by any route) and the `expiresIn`-second deadline (a monotonic timer from the
+  moment the poll answered) end it: the wrap is dropped, the LAN request declines and closes, the Worker is asked to sign out, and
+  the token, its mark and the identity are removed locally whatever it answered. The next start also drops an unconfirmed token.
+  The LAN peer closing is not an end.
+
+The Compose kit does this when the person presses Sign in (`PolarisNearbySignInState`; `PolarisGate(autoSignIn = false)` turns it
+off): the pre-prompt where the platform asks (macOS), the code to tap, the approvers to pick from, and the account to confirm.
+`PolarisKeyFutures.signInStartNearby` and `nearbySignIn*` are the Java forms.
+
+#### Nearby sign-in on the approving device
+
+`client.identity.nearby.onRequest(handler, NearbyApproverOptions(prompt = true))` advertises while the person has "Approve a
+nearby device" open and hands each session that reaches the code stage to `handler` as a `NearbyAsk` (it needs a signed-in device;
+`account_required` otherwise). The ask carries `codes` (three, each like `123 456`) and `device`, the label the other device
+reported (cleaned display data, never proof of who is asking). The person taps the code the other device shows:
+
+- `ask.pick(code)` with the matching code sends `nearby/approve` with the verified request's device id and keys, this device's
+  bearer and its `nearby-approve` proof; the step is one of `Approved`, `Mismatch`, `NotNearby`, `Denied`, `Expired`, `DeviceLimit`,
+  `AccountRequired`, `RateLimited` or `Choose` (the licences to choose from; `choose(LicenseChoice.License(id))` or `Create` finishes
+  it, `cancel()` is a deny). A wrong code is `Mismatch` and calls no route.
+- `ask.deny()` before a matched pick is "None of these match": the session closes and nothing is sent. After one it sends `deny`.
+- There is no way to approve but a matched code; leaving the ask or the licence choice answers Deny.
+
+After `Approved` the device seals its Cloud Sync root to the new device's agreement key, sends it over the channel as
+`KEYRING_WRAP`, and only then stores the same wrap as the server's copy (`wrapSent` says one of them went). Nothing is sent when this
+device holds no root. The new device hands the record to `client.keyring.adoptWrap(record)` after its person confirms the account;
+the ring, epoch and `kid` are checked against a fresh read and the pin first. `client.keyring.sealWrapTo` and `putWrap` are the two
+halves of `wrapTo`.
+
+The Compose kit offers it in the account screen: `PolarisAccount(settings, devices, nearby = PolarisNearbyApprovalState(
+client.nearbyApprovalActions(), scope))` adds the "Approve a nearby device" row where nearby approval can run, and draws the codes,
+the licence choice and the outcomes (`PolarisNearbyApproval`). `PolarisKeyFutures.identityNearbyOnRequest`, `nearbyAskPick`,
+`nearbyAskDeny`, `nearbyApprovalChoose` and `nearbyApprovalCancel` are the Java forms.
+
 ## Cloud Sync settings
 
 `client.cloudSync.status()` answers the machine's state (`local` before it starts), `flush()` sends what is waiting (bounded) and
