@@ -39,7 +39,7 @@ internal class CloudSyncHostExchange(private val st: CloudSyncHostState) {
         // S3: a locked ring sends nothing, a pull included. A request bound to another person is never sent.
         val blocked = (e2e && deps.codec.locked) || otherPerson(bound)
         val mutations = ((req["body"] as? JsonObject)?.get("mutations")).arrayValue
-        val wire = if (blocked) null else prepared(req, e2e, mutations)
+        val wire = if (blocked) null else prepared(m, req, e2e, mutations)
         if (wire == null) {
             m.receive(SyncResponse.TRANSPORT)
         } else {
@@ -66,15 +66,22 @@ internal class CloudSyncHostExchange(private val st: CloudSyncHostState) {
     }
 
     /** The request as it goes on the wire (sealed in E2E mode), or null when nothing may be sent. */
-    private fun prepared(req: JsonObject, e2e: Boolean, mutations: List<JsonElement>?): JsonObject? {
+    private fun prepared(m: CloudSyncMachine, req: JsonObject, e2e: Boolean, mutations: List<JsonElement>?): JsonObject? {
         if (req["method"] != JsonPrimitive("POST")) return req
         st.noteOwnMutations(mutations?.let { kotlinx.serialization.json.JsonArray(it) })
-        return if (e2e) sealed(req, req["body"]) else req
+        return if (e2e) sealed(m, req, req["body"]) else req
     }
 
-    /** The sealed request, or null when the ring locked or a mutation cannot be sealed: nothing is sent. */
-    private fun sealed(req: JsonObject, body: JsonElement?): JsonObject? =
-        runCatching { JsonObject(req + ("body" to HostCodec.sealPush(body ?: JsonObject(emptyMap()), deps.codec, st.routes))) }.getOrNull()
+    /**
+     * The sealed request, or null when the ring locked or a mutation cannot be sealed: nothing is sent. A mutation that
+     * cannot be sealed is dropped as refused (it would otherwise head the journal for ever); the others go out on the
+     * next push.
+     */
+    private fun sealed(m: CloudSyncMachine, req: JsonObject, body: JsonElement?): JsonObject? {
+        val sealed = runCatching { JsonObject(req + ("body" to HostCodec.sealPush(body ?: JsonObject(emptyMap()), deps.codec, st.routes))) }
+        if (sealed.isFailure && body != null) m.refuseMutations(HostCodec.unsealableMutations(body, deps.codec, st.routes))
+        return sealed.getOrNull()
+    }
 
     private suspend fun answer(m: CloudSyncMachine, res: SyncResponse, e2e: Boolean, mutations: List<JsonElement>) {
         val isOk = !res.transportError && res.status == STATUS_OK

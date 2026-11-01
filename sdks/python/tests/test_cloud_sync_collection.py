@@ -259,9 +259,9 @@ def test_last_write_put_reads_back_pending_then_cloud_and_is_sent_stamped(client
 def test_ids_are_in_byte_order(client: Any) -> None:
     notes = client.cloud_sync.collection("notes")
     offline(client)
-    for i in ("b", "B", "a", "é", "10", "9"):
+    for i in ("b", "B", "a", "_", "10", "9"):
         notes.put(i, 1)
-    assert notes.ids() == sorted(["b", "B", "a", "é", "10", "9"], key=lambda s: s.encode("utf-8"))
+    assert notes.ids() == sorted(["b", "B", "a", "_", "10", "9"], key=lambda s: s.encode("utf-8"))
 
 
 def test_max_keeps_the_better_value_locally_and_sends_it(client: Any, world: World) -> None:
@@ -533,3 +533,48 @@ def test_the_async_client_mirrors_the_handle(tmp_path: Path) -> None:
         asyncio.run(run())
     finally:
         c.close()
+
+
+def test_what_cannot_be_sealed_is_refused_without_journalling_or_sending(client: Any, world: World) -> None:
+    notes = client.cloud_sync.collection("notes")
+    cards = client.cloud_sync.collection("cards")
+    tags = client.cloud_sync.collection("tags")
+    bad = {"ok": False, "error": "value_invalid"}
+    assert notes.put("a\x00b", 1) == bad
+    assert notes.put("n", float("nan")) == bad
+    assert notes.put("n", 2**60) == bad
+    assert notes.put("x" * 129, 1) == bad
+    assert notes.put("a b", 1) == bad
+    assert notes.put("x:" + "A" * 43, 1) == bad
+    assert cards.update("c", {"set": {"f\x00": 1}}) == bad
+    assert cards.update("c", {"set": {"f": float("inf")}}) == bad
+    assert tags.add("t", float("nan")) == bad
+    assert notes.delete("a\x00b") == bad
+    client.cloud_sync.flush()
+    assert sent(world) == []
+    assert notes.ids() == [] and cards.ids() == []
+
+
+def test_refusals_come_in_one_order(client: Any) -> None:
+    assert client.cloud_sync.collection("nope").put("a\x00", 1) == {"ok": False, "error": "collection_unknown"}
+    assert client.cloud_sync.collection("tags").put("a\x00", 1) == {"ok": False, "error": "op_invalid_for_policy"}
+    with client.cloud_sync_host.locked() as m:
+        m.sign_out(True)
+    assert client.cloud_sync.collection("tags").put("a\x00", 1) == {"ok": False, "error": "signed_out"}
+
+
+def test_there_is_no_implicit_saves_collection(client: Any) -> None:
+    saves = client.cloud_sync.collection("saves")
+    assert saves.policy is None
+    assert saves.put("s", {"n": 1}) == {"ok": False, "error": "collection_unknown"}
+
+
+def test_two_handles_on_one_collection_do_not_silence_each_other(client: Any) -> None:
+    a = client.cloud_sync.collection("notes")
+    b = client.cloud_sync.collection("notes")
+    seen: List[Dict[str, Any]] = []
+    a.on(seen.append)
+    off_b = b.on(lambda _e: None)
+    off_b()
+    assert a.put("n1", 1) == {"ok": True}
+    assert any(e["type"] == "change" and e["ids"] == ["n1"] for e in seen)

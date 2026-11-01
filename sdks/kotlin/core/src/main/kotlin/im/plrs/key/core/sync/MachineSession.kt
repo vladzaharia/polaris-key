@@ -98,6 +98,7 @@ internal class MachineSession(private val p: MachineParts) : SyncSession {
         core.events.add(SyncEvent.SignedOut(reason, unsynced))
         if (unsynced > 0 && !discard) core.events.add(SyncEvent.UnsyncedData(unsynced))
         p.layers.emitChanges(before, emptyMap(), "remote")
+        p.records.noteChanges("remote")
     }
 
     fun expirePartitions() {

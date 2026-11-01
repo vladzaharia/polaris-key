@@ -193,6 +193,35 @@ describe("cloudSync.collection", () => {
 });
 
 describe("useCollection", () => {
+  it("refuses what cannot be sealed, and two hooks on one collection do not silence each other", async () => {
+    const { w, host, client } = await rig();
+    const adapter = { cloudSync: client } as unknown as PolarisAdapter;
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <PolarisContext.Provider value={{ adapter } as never}>
+        {children}
+      </PolarisContext.Provider>
+    );
+    const a = renderHook(() => useCollection("prefs"), { wrapper });
+    const b = renderHook(() => useCollection("prefs"), { wrapper });
+    await waitFor(() => expect(a.result.current.handle).not.toBeNull());
+    await waitFor(() => expect(b.result.current.handle).not.toBeNull());
+    const before = w.pushes.length;
+    expect(
+      a.result.current.handle!.update("m\u0000", { set: { v: 1 } }),
+    ).toEqual({ ok: false, error: "value_invalid" });
+    expect(
+      a.result.current.handle!.update("main", { set: { v: Number.NaN } }),
+    ).toEqual({ ok: false, error: "value_invalid" });
+    await host.flush();
+    expect(w.pushes.length).toBe(before);
+    b.unmount();
+    act(() => {
+      a.result.current.handle!.update("main", { set: { v: 1 } });
+    });
+    await waitFor(() => expect(a.result.current.ids).toEqual(["main"]));
+    await host.close();
+  });
+
   it("re-renders on a pulled record and on this device's edit", async () => {
     const { w, host, client } = await rig();
     const adapter = { cloudSync: client } as unknown as PolarisAdapter;

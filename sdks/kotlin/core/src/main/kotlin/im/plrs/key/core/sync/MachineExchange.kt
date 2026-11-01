@@ -49,6 +49,23 @@ internal class MachineExchange(private val p: MachineParts) {
         p.layers.emitChanges(before, overrides, "remote")
     }
 
+    /** The host could not seal these mutations of the push in flight: each is dropped as a rejected result would be. */
+    fun refuse(ids: List<Long>, code: String) {
+        val req = core.inFlight?.takeIf { it.kind == "push" && it.partition == core.s.subject } ?: return
+        val part = core.active()
+        val before = p.layers.valueMap()
+        val overrides = linkedMapOf<String, String>()
+        for (id in ids) {
+            val at = part.pending.indexOfFirst { it.mutationId == id && id in req.mutationIds }
+            if (at < 0) continue
+            val op = part.pending.removeAt(at)
+            val r = JsonObject(mapOf("mutationId" to JsonPrimitive(id), "status" to JsonPrimitive("rejected"), "code" to JsonPrimitive(code)))
+            p.results.apply(op, ResultCtx(part, r, overrides, OpenedBody(), req.cursor))
+        }
+        p.layers.emitChanges(before, overrides, "remote")
+        p.records.noteChanges("remote")
+    }
+
     private fun applyResults(part: SyncPartition, req: InFlight, body: JsonObject, opened: OpenedBody, overrides: MutableMap<String, String>) {
         val batch = part.pending.filter { it.mutationId in req.mutationIds }
         val parkedNow = body["results"].arrayValue.orEmpty().mapNotNull { r ->

@@ -57,6 +57,20 @@ private func cell(_ kind: String, _ blinded: String, _ ct: String) -> JSONValue 
 @Suite struct HostCodecCellsTests {
     // MARK: sealPush
 
+    @Test func anEmptyFieldsOrElementsListOpensAsAnEmptyRecordUnderTheHeldIdElseTheBlindedId() throws {
+        let served = bl(.record, prefs, "main")
+        let fields = obj(["record": arr([str(prefs), str(served)]), "fields": arr([]), "version": .int(2)])
+        let held = try pull(obj(["changes": arr([fields])]), recordKeys: [(prefs, "main")])
+        #expect(held.opened.changes == [sealedRow])
+        #expect(changes(held.body)[0]["value"] == obj([:]))
+        #expect(changes(held.body)[0]["record"] == arr([str(prefs), str("main")]))
+        let bare = try pull(obj(["changes": arr([fields])]))
+        #expect(changes(bare.body)[0]["record"] == arr([str(prefs), str(served)]))
+        let elements = obj(["record": arr([str(prefs), str(served)]), "elements": arr([]), "version": .int(2)])
+        let list = try pull(obj(["changes": arr([elements])]), recordKeys: [(prefs, "main")])
+        #expect(changes(list.body)[0]["value"] == arr([]))
+    }
+
     @Test func aFieldSealsUnderIdNulField() throws {
         let ms = try sealed([
             mutation(1, "setField", prefs, "main", ["field": str("volume"), "value": .int(3), "editedHlc": str("h")]),

@@ -16,6 +16,25 @@ import Foundation
 // MARK: - Options and persisted state
 
 public struct SyncCollectionDecl: Sendable, Equatable {
+    /// The declaration governing a concrete name: an exact name, else the longest `prefix.*` pattern with
+    /// something after the prefix (V5 section 13.7, "Matching").
+    public static func match(_ name: String, in decls: [SyncCollectionDecl]) -> SyncCollectionDecl? {
+        var pattern: SyncCollectionDecl?
+        var patternPrefix = 0
+        for c in decls {
+            if c.name.utf8.elementsEqual(name.utf8) { return c }
+            guard c.name.hasSuffix(".*") else { continue }
+            let prefix = String(c.name.dropLast())
+            if name.utf8.count > prefix.utf8.count, name.utf8.starts(with: prefix.utf8),
+                prefix.utf8.count > patternPrefix
+            {
+                pattern = c
+                patternPrefix = prefix.utf8.count
+            }
+        }
+        return pattern
+    }
+
     public var name: String
     /// `revision`, `union`, `lastWrite`, `max`, `min` or `merge`.
     public var policy: String
@@ -721,6 +740,32 @@ public final class CloudSyncMachine {
         }
     }
 
+    /// Whether a person is signed in (a record call before that is `signed-out`).
+    public var signedIn: Bool { s.subject != nil }
+
+    /// The host could not seal these mutations of the push in flight (a name or value no codec spells): each
+    /// is dropped as `rejected` / `value_invalid`, as a refusal would be, instead of being retried for ever at
+    /// the head of the journal. The caller then reports the transport failure for the request.
+    public func refuseMutations(_ ids: [Int], code: String = "value_invalid") {
+        guard let req = inFlight, req.kind == .push, req.partition == s.subject else { return }
+        let name = req.partition
+        let before = valueMap()
+        var overrides: [String: SyncChangeOrigin] = [:]
+        for mid in ids {
+            guard
+                let at = s.partitions[name]!.pending.firstIndex(where: {
+                    $0.mutationId == mid && req.mutationIds.contains(mid)
+                })
+            else { continue }
+            let op = s.partitions[name]!.pending.remove(at: at)
+            result(
+                name, op, ["mutationId": .int(mid), "status": .string("rejected"), "code": .string(code)], &overrides,
+                SyncOpenedBody(), cursor: req.cursor)
+        }
+        emitChanges(before, overrides, .remote)
+        noteRecordChanges(.remote)
+    }
+
     /// The collections watched now (a host carries them over to a machine that replaces this one).
     public var watchedCollections: [String] { Array(watched.keys) }
 
@@ -1050,20 +1095,7 @@ public final class CloudSyncMachine {
     /// The declaration governing a concrete name: an exact name, else the longest `prefix.*` pattern with
     /// something after the prefix (V5 §13.7, "Matching").
     public func collectionDecl(_ name: String) -> SyncCollectionDecl? {
-        var pattern: SyncCollectionDecl?
-        var patternPrefix = 0
-        for c in catalog.collections {
-            if c.name.utf8.elementsEqual(name.utf8) { return c }
-            guard c.name.hasSuffix(".*") else { continue }
-            let prefix = String(c.name.dropLast())
-            if name.utf8.count > prefix.utf8.count, name.utf8.starts(with: prefix.utf8),
-                prefix.utf8.count > patternPrefix
-            {
-                pattern = c
-                patternPrefix = prefix.utf8.count
-            }
-        }
-        return pattern
+        SyncCollectionDecl.match(name, in: catalog.collections)
     }
     func alias(_ key: String) -> String { s.aliases[key] ?? key }
     func isLocked(_ key: String) -> Bool { document.locked.contains(key) }
@@ -1431,6 +1463,7 @@ public final class CloudSyncMachine {
         events.append(.signedOut(reason: reason, unsynced: unsynced))
         if unsynced > 0 && !discard { events.append(.unsyncedData(count: unsynced)) }
         emitChanges(before, [:], .remote)
+        noteRecordChanges(.remote)
     }
 
     func expirePartitions() {

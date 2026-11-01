@@ -75,6 +75,9 @@ internal class MachineCore(val opts: CloudSyncOptions, var s: MachineState) {
      */
     val watched: LinkedHashMap<String, Map<String, String>> = linkedMapOf()
 
+    /** How many watchers each watched collection has: it is reported until the last one stops. */
+    val watchCounts: LinkedHashMap<String, Int> = linkedMapOf()
+
     /** The app requires E2E, or this device has accepted it before: the pin cannot be undone. */
     fun requiresE2e(): Boolean = appEncryption == "e2e" || s.e2eSeen
 

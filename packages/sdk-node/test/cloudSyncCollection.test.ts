@@ -107,6 +107,21 @@ describe("cloudSync.collection", () => {
     client.close();
   });
 
+  it("refuses an id, field or value that cannot be sealed without journalling or sending", async () => {
+    const { w, client } = await rig();
+    await client.cloudSync.flush();
+    const before = pushes(w).length;
+    const bad = { ok: false, error: "value_invalid" };
+    const notes = await client.cloudSync.collection("notes.work");
+    const prefs = await client.cloudSync.collection("prefs");
+    expect(notes.put("a\u0000b", 1)).toEqual(bad);
+    expect(notes.put("n", Number.NaN)).toEqual(bad);
+    expect(prefs.update("main", { set: { "f\u0000": 1 } })).toEqual(bad);
+    await client.cloudSync.flush();
+    expect(pushes(w).length).toBe(before);
+    client.close();
+  });
+
   it("reports a pulled record as a change on the handle", async () => {
     const { w, client } = await rig();
     const prefs = await client.cloudSync.collection("prefs");

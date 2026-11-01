@@ -22,6 +22,7 @@ import {
   chunkCacheRoot,
 } from "../src/cloudSync/chunkCache.js";
 import {
+  CATALOG,
   PRODUCT,
   SUBJECT,
   World,
@@ -182,6 +183,11 @@ async function signedIn(w: World) {
   const client = await open(w, stateDir, {
     encryption: "server",
     saves: { delta: false },
+    // There is no implicit collection: the catalog declares `saves`.
+    catalog: {
+      ...CATALOG(1),
+      cloudSync: { collections: [{ name: "saves", conflict: "revision" }] },
+    },
   });
   await client.cloudSyncHost.start();
   client.events.safeEmit("identity", { kind: "signedIn", subject: SUBJECT });

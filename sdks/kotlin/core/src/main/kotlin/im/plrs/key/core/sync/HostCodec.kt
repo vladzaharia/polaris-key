@@ -108,6 +108,21 @@ public object HostCodec {
         sealPush(body, codec, routes.map { it["key"].stringValue!! })
 
     /**
+     * The ids of the mutations of a push body that cannot be sealed (one at a time, so the others are not blamed).
+     * Empty when the codec is locked: that is not the mutation's fault.
+     */
+    public fun unsealableMutations(body: JsonElement, codec: SyncCodecPort, routes: List<JsonObject>): List<Long> {
+        val o = body as? JsonObject
+        val list = o?.get("mutations").arrayValue
+        if (codec.locked || o == null || list == null) return emptyList()
+        return list.mapNotNull { m ->
+            val id = SyncNum.long((m as? JsonObject)?.get("mutationId")) ?: return@mapNotNull null
+            val one = JsonObject(o + ("mutations" to JsonArray(listOf(m))))
+            if (runCatching { sealPush(one, codec, routes) }.isFailure && !codec.locked) id else null
+        }
+    }
+
+    /**
      * Opens a pull or push answer. The body has plaintext `value`s and plaintext setting names where they
      * could be proven; `opened` is the typed result for the machine's `receive`. Throws (and so delivers
      * nothing to the machine) when the codec is locked or the answer repeats a `mutationId`.

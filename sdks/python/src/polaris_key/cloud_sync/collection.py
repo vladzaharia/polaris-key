@@ -13,10 +13,11 @@ Results are mappings: ``{"ok": True}`` (a compare-and-set also carries ``"mutati
 
 from __future__ import annotations
 
+import re
 import threading
-from typing import Any, Callable, Dict, List, Mapping, Optional, Set, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Set, Union
 
-from ..constants_generated import SYNC_MAX_UNION_ELEMENT_BYTES
+from ..constants_generated import SYNC_KEY_PATTERN, SYNC_MAX_UNION_ELEMENT_BYTES
 from ..core.sync_crypto import canonical_json, is_blinded_name
 from .host import CloudSyncHost
 
@@ -32,6 +33,30 @@ Version = Union[int, str]
 _MAX_FIELD_BYTES = 1024
 
 _PUT_POLICIES = frozenset(("lastWrite", "max", "min", "revision"))
+
+_KEY = re.compile(SYNC_KEY_PATTERN)
+
+
+def _spellable(v: Any) -> bool:
+    """Whether the SDK's own canonical JSON can spell ``v``: a number or text that cannot be spelled
+    identically everywhere is never sealed."""
+    try:
+        canonical_json(v)
+        return True
+    except (ValueError, TypeError, RecursionError):
+        return False
+
+
+def _field_ok(n: Any) -> bool:
+    """A field name the host can seal: non-empty, at most 1 KiB, no U+0000, no lone surrogate."""
+    return isinstance(n, str) and n != "" and "\x00" not in n and _utf8(n) <= _MAX_FIELD_BYTES and _spellable(n)
+
+
+def _sealable(id: Any, values: Sequence[Any]) -> bool:
+    """The record id and every value can be sealed: a refused call journals nothing."""
+    return isinstance(id, str) and _KEY.fullmatch(id) is not None and not is_blinded_name(id) and all(
+        _spellable(v) for v in values
+    )
 
 
 def _err(code: str) -> Result:
@@ -97,7 +122,7 @@ class SyncCollection:
             if if_version is not None:
                 if d["policy"] != "revision":
                     return _err("op_invalid_for_policy")
-                if not _version_ok(if_version):
+                if not _version_ok(if_version) or not _sealable(id, [value]):
                     return _err("value_invalid")
                 self._host.catch_up()
                 r = m.put_at(self.name, id, value, if_version)
@@ -105,6 +130,8 @@ class SyncCollection:
                     return self._fail(r["error"])
                 self._track(r["mutationId"])
             else:
+                if not _sealable(id, [value]):
+                    return _err("value_invalid")
                 self._host.catch_up()
                 r = m.put(self.name, id, value)
                 if not r["ok"]:
@@ -126,7 +153,8 @@ class SyncCollection:
             if (
                 not names
                 or len(set(names)) != len(names)
-                or any(not isinstance(n, str) or n == "" or _utf8(n) > _MAX_FIELD_BYTES for n in names)
+                or not all(_field_ok(n) for n in names)
+                or not _sealable(id, list(sets.values()))
             ):
                 return _err("value_invalid")
             self._host.catch_up()
@@ -150,6 +178,8 @@ class SyncCollection:
             d = self._check(m, id, lambda _p: True)
             if "error" in d:
                 return d
+            if not _sealable(id, []):
+                return _err("value_invalid")
             self._host.catch_up()
             if d["policy"] == "revision":
                 base = if_version
@@ -201,10 +231,10 @@ class SyncCollection:
         d = m.collection_decl(self.name)
         if d is None:
             return _err("collection_unknown")
+        if not m.signed_in():
+            return _err("signed_out")
         if not allowed(d["policy"]):
             return _err("op_invalid_for_policy")
-        if not isinstance(id, str) or id == "":
-            return _err("value_invalid")
         return d
 
     def _element(self, id: str, element: Json, adding: bool) -> Result:
@@ -212,6 +242,8 @@ class SyncCollection:
             d = self._check(m, id, lambda p: p == "union")
             if "error" in d:
                 return d
+            if not _sealable(id, [element]):
+                return _err("value_invalid")
             try:
                 spelled = canonical_json(element)
             except (ValueError, TypeError):

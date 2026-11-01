@@ -7,6 +7,7 @@
 package im.plrs.key.sdk
 
 import im.plrs.key.core.ErrorCode
+import im.plrs.key.core.SYNC_KEY_PATTERN
 import im.plrs.key.core.SYNC_MAX_UNION_ELEMENT_BYTES
 import im.plrs.key.core.sync.CallResult
 import im.plrs.key.core.sync.CanonicalJson
@@ -101,6 +102,7 @@ public class SyncCollection internal constructor(public val name: String, privat
         val r = apply(id, { it in PUT_POLICIES }) { m, policy ->
             when {
                 ifVersion != null && policy != "revision" -> refused(CollectionError.OpInvalidForPolicy)
+                !sealable(id, listOf(value)) -> refused(CollectionError.ValueInvalid)
                 ifVersion != null -> exact(m.putAt(name, id, value, ifVersion.toJson()))
                 else -> done(m.put(name, id, value))
             }
@@ -112,8 +114,7 @@ public class SyncCollection internal constructor(public val name: String, privat
     public suspend fun update(id: String, set: Map<String, JsonElement> = emptyMap(), remove: List<String> = emptyList()): CollectionResult {
         val names = set.keys.toList() + remove
         val r = apply(id, { it == "merge" }) { m, _ ->
-            val bad = names.isEmpty() || names.toSet().size != names.size ||
-                names.any { it.isEmpty() || it.toByteArray(Charsets.UTF_8).size > MAX_FIELD_BYTES }
+            val bad = names.isEmpty() || names.toSet().size != names.size || !names.all(::fieldOk) || !sealable(id, set.values.toList())
             if (bad) refused(CollectionError.ValueInvalid) else done(m.update(name, id, set, remove))
         }
         return touched(r)
@@ -132,12 +133,14 @@ public class SyncCollection internal constructor(public val name: String, privat
     public suspend fun delete(id: String, ifVersion: IfVersion? = null): CollectionResult {
         val r = apply(id, { true }) { m, policy ->
             when {
+                ifVersion != null && policy != "revision" -> refused(CollectionError.OpInvalidForPolicy)
+
+                !sealable(id, emptyList()) -> refused(CollectionError.ValueInvalid)
+
                 policy == "revision" -> {
                     val base = ifVersion ?: m.records(name).firstOrNull { it.id == id }?.let { IfVersion.At(it.version) } ?: IfVersion.Absent
                     exact(m.removeAt(name, id, base.toJson()))
                 }
-
-                ifVersion != null -> refused(CollectionError.OpInvalidForPolicy)
 
                 else -> done(m.delete(name, id))
             }
@@ -165,8 +168,8 @@ public class SyncCollection internal constructor(public val name: String, privat
             val policy = m.collectionDecl(name)?.policy
             when {
                 policy == null -> refused(CollectionError.CollectionUnknown)
+                !m.signedIn -> refused(CollectionError.SignedOut)
                 !allowed(policy) -> refused(CollectionError.OpInvalidForPolicy)
-                id.isEmpty() -> refused(CollectionError.ValueInvalid)
                 else -> block(m, policy)
             }
         }
@@ -179,13 +182,28 @@ public class SyncCollection internal constructor(public val name: String, privat
                 Int.MAX_VALUE
             }
             when {
-                size > SYNC_MAX_UNION_ELEMENT_BYTES -> refused(CollectionError.ValueInvalid)
+                !sealable(id, listOf(element)) || size > SYNC_MAX_UNION_ELEMENT_BYTES -> refused(CollectionError.ValueInvalid)
                 add -> done(m.add(name, id, element))
                 else -> done(m.remove(name, id, element))
             }
         }
         return touched(r)
     }
+
+    /** The record id and every value can be sealed: a refused call journals nothing. */
+    private fun sealable(id: String, values: List<JsonElement>): Boolean =
+        KEY.matches(id) && !SyncBlind.isBlindedName(id) && values.all { spellable(it) }
+
+    private fun spellable(v: JsonElement): Boolean = try {
+        CanonicalJson.encodeBytes(v)
+        true
+    } catch (_: SyncCryptoException) {
+        false
+    }
+
+    /** A field name the host can seal: non-empty, at most 1 KiB, no U+0000, no lone surrogate. */
+    private fun fieldOk(n: String): Boolean =
+        n.isNotEmpty() && '\u0000' !in n && n.toByteArray(Charsets.UTF_8).size <= MAX_FIELD_BYTES && spellable(JsonPrimitive(n))
 
     private fun refused(e: CollectionError): CollectionResult = CollectionResult.Refused(e)
 
@@ -242,5 +260,6 @@ public class SyncCollection internal constructor(public val name: String, privat
         /** A merge field name: non-empty, at most 1 KiB (section 13.3). */
         const val MAX_FIELD_BYTES = 1024
         val PUT_POLICIES = setOf("lastWrite", "max", "min", "revision")
+        val KEY = Regex(SYNC_KEY_PATTERN)
     }
 }

@@ -50,7 +50,7 @@ from ..constants_generated import SYNC_KEY_PATTERN, SYNC_SIGNOUT_FLUSH_MS
 from ..core.b64url import b64url_encode
 from ..core.context import CoreContext
 from ..core.token import TokenManager
-from .host_codec import open_pull, seal_push
+from .host_codec import open_pull, seal_push, unsealable_mutations
 from .machine import CloudSyncMachine
 from .routes import COLLECTION_CONFLICTS, resolve_collection, synced_settings
 from .state import OPEN_KEYS_MAX, CloudSyncFile, CloudSyncStateFile, is_catalog_shape
@@ -81,10 +81,6 @@ CATALOG_REFETCH_MS = 5 * 60_000
 
 _EMPTY_CATALOG: Obj = {"schemaVersion": 0, "entries": []}
 _SYNC_KEY = re.compile(SYNC_KEY_PATTERN)
-
-
-#: The collection ``cloud_sync.saves`` writes to: a ``revision`` collection the machine holds.
-_SAVES_DECL: Obj = {"name": "saves", "policy": "revision", "resolve": "keepServer"}
 
 
 @dataclass
@@ -125,7 +121,7 @@ class CloudSyncHostDeps:
 
 
 def _collections_of(catalog: Mapping[str, Any]) -> List[Obj]:
-    """The collections the machine knows: the catalog's declarations, and ``saves`` unless declared. A
+    """The collections the machine knows: the catalog's declarations (there is no implicit collection). A
     malformed declaration is skipped."""
     out: List[Obj] = []
     block = catalog.get("cloudSync")
@@ -137,8 +133,6 @@ def _collections_of(catalog: Mapping[str, Any]) -> List[Obj]:
             and (c.get("conflict") is None or c.get("conflict") in COLLECTION_CONFLICTS)
         ):
             out.append(resolve_collection(c))
-    if not any(c["name"] == _SAVES_DECL["name"] for c in out):
-        out.append(dict(_SAVES_DECL))
     return out
 
 
@@ -258,6 +252,9 @@ class CloudSyncHost:
                 self._watching[collection] = n
             else:
                 self._watching.pop(collection, None)
+                if self._machine is not None:
+                    with self._lock:
+                        self._machine.watch_records(collection, False)
                 if self._machine is not None:
                     with self._lock:
                         self._machine.watch_records(collection, False)
@@ -540,7 +537,10 @@ class CloudSyncHost:
                 try:
                     wire = {"method": "POST", "path": req["path"], "body": seal_push(body, codec, self._routes)}
                 except Exception:  # noqa: BLE001
-                    # Locked, or a mutation that cannot be sealed: nothing is sent.
+                    # Nothing is sent. A mutation that cannot be sealed is dropped as refused (it would
+                    # otherwise head the journal for ever); the others go out on the next push.
+                    with self._lock:
+                        m.refuse_mutations(unsealable_mutations(body, codec, self._routes))
                     return self._receive(m, {"error": "transport"})
 
         # Queued for one person: if the session is another person's now, nothing is sent.

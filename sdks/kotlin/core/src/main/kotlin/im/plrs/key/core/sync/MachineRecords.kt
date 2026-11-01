@@ -50,7 +50,7 @@ public interface SyncCollections {
     /** Another listener for `putAt` / `removeAt` outcomes, beside `onOutcome`'s: returns its remover. A tap is told of every outcome. */
     public fun tapOutcomes(tap: (RecordOutcome) -> Unit): () -> Unit
 
-    /** Carry over what observers registered on a machine this one replaces: the outcome taps and the watched collections. */
+    /** Carry over what observers registered on a machine this one replaces: the outcome taps and the watched collections (with their counts). */
     public fun adoptObservers(from: CloudSyncMachine)
 }
 
@@ -235,16 +235,24 @@ internal class MachineRecords(private val p: MachineParts) :
     override fun adoptObservers(from: CloudSyncMachine) {
         from.observers().let { (taps, collections) ->
             core.outcomeTaps.addAll(taps)
-            collections.forEach { watchRecords(it, true) }
+            collections.forEach { (name, n) -> repeat(n) { watchRecords(name, true) } }
         }
     }
 
     override fun watchRecords(collection: String, on: Boolean) {
+        val n = core.watchCounts[collection] ?: 0
         if (!on) {
-            core.watched.remove(collection)
-        } else if (collection !in core.watched) {
-            core.watched[collection] = recordStates(collection)
+            // Reference-counted: two watchers of one collection do not silence each other.
+            if (n > 1) {
+                core.watchCounts[collection] = n - 1
+            } else {
+                core.watchCounts.remove(collection)
+                core.watched.remove(collection)
+            }
+            return
         }
+        core.watchCounts[collection] = n + 1
+        if (collection !in core.watched) core.watched[collection] = recordStates(collection)
     }
 
     override fun recordIds(collection: String): List<String> = recordStates(collection).keys.sorted()

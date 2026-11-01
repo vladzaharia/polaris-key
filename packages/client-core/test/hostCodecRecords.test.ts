@@ -26,6 +26,7 @@ import {
   recordRef,
   sealPush,
   sealValue,
+  unsealableMutations,
   webCryptoSyncPort as port,
   wireId,
   type HostCodec,
@@ -759,6 +760,46 @@ describe("openPull into CloudSyncMachine.receive: records", () => {
       [["saves", id]],
     );
     expect(m.record("saves", id)).toBeNull();
+  });
+
+  it("drops a mutation the codec cannot seal as rejected, and the next one is pushed", async () => {
+    const [m] = first();
+    await receive(m, {});
+    // Journaled around the handle: a value no codec spells.
+    m.put("saves", "a\u0000b", { n: 1 });
+    const bad = m.takeRequests().find((r) => r.method === "POST")!;
+    const ids = await unsealableMutations((bad as any).body, codec, []);
+    expect(ids).toHaveLength(1);
+    m.refuseMutations(ids);
+    m.receive({ error: "transport" });
+    expect(m.takeEvents()).toContainEqual({
+      type: "rejected",
+      mutationId: ids[0],
+      code: "value_invalid",
+    });
+    expect(m.journal()[ALICE]).toMatchObject({ pending: [] });
+    m.put("saves", "slot-2", { n: 2 });
+    m.flush();
+    const next = m.takeRequests().find((r) => r.method === "POST")!;
+    const muts = (next as any).body.mutations;
+    expect(muts).toHaveLength(1);
+    expect(muts[0].target.record).toEqual(["saves", "slot-2"]);
+    const sealed = await sealPush((next as any).body, codec, []);
+    expect((sealed as any).mutations).toHaveLength(1);
+  });
+
+  it("an empty fields or elements list opens as an empty record under the held id", async () => {
+    const [m] = first();
+    const wire = await wireId(codec, "saves", id);
+    await receive(
+      m,
+      {
+        encryptionSince: 1,
+        changes: [{ record: ["saves", wire], fields: [], version: 2 }],
+      },
+      [["saves", id]],
+    );
+    expect(m.record("saves", id)).toMatchObject({ value: {} });
   });
 });
 

@@ -181,6 +181,26 @@ export async function sealPush(
   return { ...body, mutations };
 }
 
+/** The ids of the mutations of a push body that cannot be sealed (one at a time, so the others
+ *  are not blamed). Empty when the codec is locked: that is not the mutation's fault. */
+export async function unsealableMutations(
+  body: Json,
+  codec: HostCodec,
+  routes: ReadonlyArray<SettingRoute>,
+): Promise<number[]> {
+  if (codec.locked || !isObj(body) || !Array.isArray(body.mutations)) return [];
+  const out: number[] = [];
+  for (const m of body.mutations) {
+    if (!isObj(m) || typeof m.mutationId !== "number") continue;
+    try {
+      await sealPush({ ...body, mutations: [m] }, codec, routes);
+    } catch {
+      if (!codec.locked) out.push(m.mutationId);
+    }
+  }
+  return out;
+}
+
 async function sealMutation(
   m: { [k: string]: Json },
   codec: HostCodec,

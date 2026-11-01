@@ -132,6 +132,23 @@ def seal_push(body: Json, codec: Any, routes: Sequence[Mapping[str, Any]]) -> Js
     return {**body, "mutations": mutations}
 
 
+def unsealable_mutations(body: Json, codec: Any, routes: Sequence[Mapping[str, Any]]) -> List[int]:
+    """The ids of the mutations of a push body that cannot be sealed (one at a time, so the others are
+    not blamed). Empty when the codec is locked: that is not the mutation's fault."""
+    if codec.locked or not _is_obj(body) or not isinstance(body.get("mutations"), list):
+        return []
+    out: List[int] = []
+    for m in body["mutations"]:
+        if not _is_obj(m) or not isinstance(m.get("mutationId"), int):
+            continue
+        try:
+            seal_push({**body, "mutations": [m]}, codec, routes)
+        except Exception:  # noqa: BLE001
+            if not codec.locked:
+                out.append(m["mutationId"])
+    return out
+
+
 def _record_ref(v: Any) -> Optional[Tuple[str, str]]:
     """``(collection, id)`` when ``v`` is a pair of non-empty strings that can name a record: no U+0000
     (the blind input has no length prefix) and not the settings collection's namespace (``$``)."""
