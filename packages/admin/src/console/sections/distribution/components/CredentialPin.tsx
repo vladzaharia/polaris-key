@@ -8,14 +8,13 @@ import {
   type OutletCredentialKind,
   type OutletCredentialsResponse,
 } from "../../../../api.js";
-import { Button } from "../../../../ui/Button.js";
-import { Callout } from "../../../../ui/Callout.js";
-import { Dialog, DialogBody, DialogFooter } from "../../../../ui/Dialog.js";
+import { Dialog, DialogBody } from "../../../../ui/Dialog.js";
 import { FormField } from "../../../../ui/form.js";
 import { Input } from "../../../../ui/Input.js";
 import { toast } from "../../../../ui/toast.js";
 import { mutate } from "../../../data/mutations.js";
 import { KIND, describe, pinField } from "../model/credentialKinds.js";
+import { FailureCallout, SubmitFooter, useSubmitState } from "./dialogParts.js";
 
 export function PinDialog({
   slug,
@@ -33,9 +32,8 @@ export function PinDialog({
   const [value, setValue] = React.useState(
     field ? (cred.meta[field] ?? "") : "",
   );
-  const [error, setError] = React.useState<string | undefined>();
-  const [failure, setFailure] = React.useState<unknown>(null);
-  const [busy, setBusy] = React.useState(false);
+  const { error, setError, failure, setFailure, busy, setBusy } =
+    useSubmitState();
   const label = spec?.label ?? data?.pins?.[cred.kind]?.label ?? "App id";
   const submit = async (e: React.FormEvent): Promise<void> => {
     e.preventDefault();
@@ -103,20 +101,11 @@ export function PinDialog({
               />
             )}
           </FormField>
-          {copy ? (
-            <Callout tone="danger" title={copy.title} live>
-              {copy.description}
-            </Callout>
-          ) : null}
+          <FailureCallout copy={copy} />
         </DialogBody>
-        <DialogFooter>
-          <Button variant="outline" disabled={busy} onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" loading={busy}>
-            Pin
-          </Button>
-        </DialogFooter>
+        <SubmitFooter busy={busy} onClose={onClose}>
+          Pin
+        </SubmitFooter>
       </form>
     </Dialog>
   );
