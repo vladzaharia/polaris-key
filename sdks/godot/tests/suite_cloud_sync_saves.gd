@@ -25,6 +25,7 @@ const Types := preload("res://addons/polaris_key/core/sync/cloud_sync_types.gd")
 
 const PRODUCT := "diceroll"
 const MIB := 1048576
+const POINTER := {"version": 3, "size": 5, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "format": "whole"}
 
 
 ## The Worker's file routes for any number of records, behind the transport port the engine calls.
@@ -177,6 +178,8 @@ class FakeRecords:
 	## Holds a set until `release` or a cancel (a coroutine wait).
 	var hold_set := false
 	var release_set := false
+	## While set, get_record answers this device's stale cache instead of the server's row.
+	var stale_row: Variant = null
 	var set_calls := 0
 	var set_files: Array = []
 	var rejected_code := ""
@@ -205,9 +208,6 @@ class FakeRecords:
 			if files.records[w]["value"] != null:
 				out.append(_row(w, files.records[w]))
 		return out
-
-	## While set, get_record answers this device's stale cache instead of the server's row.
-	var stale_row: Variant = null
 
 	func get_record(id: String) -> Variant:
 		if stale_row != null:
@@ -342,7 +342,8 @@ func _guarded(t: PKeyTestContext) -> void:
 	ring.locked = true
 	var refused: Array = [g.chunk_id(plain).is_empty(), g.seal_chunk(id, plain).is_empty(), g.seal_manifest(plain).is_empty(), g.seal_whole(plain).is_empty()]
 	t.check("guarded: once the ring locks, every seal and id answers nothing", not refused.has(false), str(refused))
-	t.check("guarded: once the ring locks, every open refuses", g.open_chunk(id, obj) == {"ok": false, "reason": "locked"} and g.open_whole(whole) == {"ok": false, "reason": "locked"} and g.open_manifest(whole) == {"ok": false, "reason": "locked"})
+	var locked := {"ok": false, "reason": "locked"}
+	t.check("guarded: once the ring locks, every open refuses", g.open_chunk(id, obj) == locked and g.open_whole(whole) == locked and g.open_manifest(whole) == locked)
 	t.check("guarded: sizes are refused too, and the lock is remembered", g.stored_size(10) == -1 and g.plain_size(10) == -1 and g.tripped and g.locked())
 	ring.locked = false
 	t.check("guarded: a ring that unlocks again does not revive a codec that saw the lock (a new codec is made per operation)", g.chunk_id(plain).is_empty())
@@ -364,13 +365,15 @@ func _root_replaced(t: PKeyTestContext) -> void:
 	var plain := _noise(500)
 	var id: PackedByteArray = codec.chunk_id(plain)
 	var sealed: PackedByteArray = codec.seal_whole(plain)
-	t.check("replaced root: while the root is the one it was made for, the codec works", codec != null and not id.is_empty() and not sealed.is_empty() and codec.open_whole(sealed)["ok"] and not codec.tripped)
+	var usable: bool = codec != null and not id.is_empty() and not sealed.is_empty()
+	t.check("replaced root: while the root is the one it was made for, the codec works", usable and codec.open_whole(sealed)["ok"] and not codec.tripped)
 	var gen := port.root_generation()
 	ring._memory.set_held(PKeySyncRing._Held.new(ring_id, 2, PKeySyncHkdf.derive_kid(root_b), root_b))
 	t.check("replaced root: every replacement moves the generation", port.root_generation() == gen + 1 and not port.locked())
 	var refused := [codec.chunk_id(plain).is_empty(), codec.seal_chunk(id, plain).is_empty(), codec.seal_manifest(plain).is_empty(), codec.seal_whole(plain).is_empty()]
 	t.check("replaced root: the old codec seals nothing (no lock was taken)", not refused.has(false), str(refused))
-	t.check("replaced root: it opens nothing, and the cause is the lock the saves layer reports", codec.open_whole(sealed) == {"ok": false, "reason": "locked"} and codec.open_chunk(id, sealed) == {"ok": false, "reason": "locked"} and codec.tripped)
+	var no := {"ok": false, "reason": "locked"}
+	t.check("replaced root: it opens nothing, and the cause is the lock the saves layer reports", codec.open_whole(sealed) == no and codec.open_chunk(id, sealed) == no and codec.tripped)
 	var fresh = Codec.e2e_for(port, "saves")
 	t.check("replaced root: a codec made now is for the new root and works", fresh != null and not fresh.seal_whole(plain).is_empty() and not fresh.tripped)
 	ring.lock()
@@ -955,9 +958,6 @@ func _free_host(c: Dictionary) -> void:
 	c["host"].queue_free()
 	c["server"].stop()
 	PKeyTestFixtures.remove_tree(c["dir"])
-
-
-const POINTER := {"version": 3, "size": 5, "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "format": "whole"}
 
 
 func _records_binding(t: PKeyTestContext) -> void:

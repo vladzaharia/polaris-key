@@ -201,7 +201,8 @@ func _empty_cases(t: PKeyTestContext) -> void:
 		var w := EmptyFault.new()
 		w.fault = fault
 		var chosen := PKeyPeerCrypto.select([w])
-		t.check("crypto_lanes: a lane is chosen only when it seals and opens an empty message and data with no additional data (%s)" % fault, not w.known_answers_ok() and chosen != w and chosen.lane_name() == "gdscript")
+		var refused: bool = not w.known_answers_ok() and chosen != w and chosen.lane_name() == "gdscript"
+		t.check("crypto_lanes: a lane is chosen only when it seals and opens an empty message and data with no additional data (%s)" % fault, refused)
 
 
 func _switch(t: PKeyTestContext) -> void:

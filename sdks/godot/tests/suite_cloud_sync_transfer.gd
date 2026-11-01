@@ -481,7 +481,8 @@ func _finalize_answer(t: PKeyTestContext) -> void:
 			var srv := FakeServer.new()
 			srv.finalize_answer = lies[name]
 			var r: PKeyResult = await _engine(FakeMulti.new(srv)).upload(_upload_req("f-" + name, data))
-			t.check("finalize answer: a different %s is refused, nothing adopted (%d bytes)" % [name, data.size()], not r.ok and r.detail["reason"] == "file-invalid" and r.detail["detail"] == "finalize", str(r))
+			var refused: bool = not r.ok and r.detail["reason"] == "file-invalid" and r.detail["detail"] == "finalize"
+			t.check("finalize answer: a different %s is refused, nothing adopted (%d bytes)" % [name, data.size()], refused, str(r))
 		var csrv := FakeServer.new()
 		csrv.finalize_answer = lies[name]
 		var cr: PKeyResult = await _engine(csrv).upload_chunked(_chunked_req("fc-" + name, _noise(200000), Codec.Server.new()))
