@@ -291,7 +291,7 @@
           "note": "No mode v handshake in a browser tab, and the page holds no device key (I-40)."
         }
       ],
-      "note": "I-47b: on the desktop bridge (v5) the host plays either device. adapter.nearby.request() is the new device (D) and adapter.nearby.approver() the signed-in one (M); the kit draws them as <NearbySignIn> and <NearbyApproval>. The renderer holds an ask id, never a request id, key or token. A v4 host answers the typed unsupported (reason version). test/desktopAdapter.test.ts and test/kitNearby.test.tsx."
+      "note": "I-47b: on the desktop bridge (v5) the host plays either device. adapter.nearby.request() is the new device (D) and adapter.nearby.approver() the signed-in one (M); the kit draws them as <NearbySignIn> and <NearbyApproval>. The renderer holds an ask id, never a request id, key or token. A v4 host answers the typed unsupported (reason version). UXR-47b: every ending of a request draws its own screen (Try again, Use a code instead), several approvers are listed, the approver has a screen of its own and says when it stopped. test/desktopAdapter.test.ts, test/kitNearby.test.tsx and test/kitNearbyFix.test.tsx."
     },
     "identity.keyentry": {
       "status": "implemented",

@@ -226,6 +226,11 @@ function adopt(doc: Document): void {
   }
 }
 
+/** A line of copy the view's own list does not carry (a status line, an extra control): left out
+ *  while English's second table is still loading, drawn once it is (the kit redraws on load). */
+const said = (c: KitCtx, key: string): string | null =>
+  c.copy.has(key) ? plain(c, key) : null;
+
 /** The warning mark (▲) above an outcome that did not sign anyone in; decorative, the title says it. */
 function warningMark(): ReactNode {
   return (
@@ -727,7 +732,7 @@ export function NearbySignIn(props: NearbySignInProps): ReactNode {
               <p className="nearby-status" role="status" data-part="status">
                 <span className="nearby-spin" aria-hidden="true" />
                 <span>
-                  {plain(
+                  {said(
                     c,
                     auto.code
                       ? "signin.cli.nearbyWaiting"
@@ -743,7 +748,7 @@ export function NearbySignIn(props: NearbySignInProps): ReactNode {
                   data-key="signin.nearby.another"
                   onClick={() => c.act("signin.nearby.another")}
                 >
-                  {plain(c, "signin.nearby.another")}
+                  {said(c, "signin.nearby.another")}
                 </button>
               ) : null}
             </>
@@ -1002,7 +1007,7 @@ export function NearbyApprover(props: NearbyApproverProps): ReactNode {
           return (
             <p className="nearby-status" role="status" data-part="status">
               <span className="nearby-spin" aria-hidden="true" />
-              <span>{plain(c, "signin.cli.approveWaiting")}</span>
+              <span>{said(c, "signin.cli.approveWaiting")}</span>
             </p>
           );
         return null;

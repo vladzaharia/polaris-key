@@ -6715,6 +6715,48 @@ function checkConnect(doc: UiMatrix, S: UiMatrixSources): string[] {
   return errors;
 }
 
+/** A row's copy keys against its state's list: a `core.*` key is in copy.en.json, any other is listed. */
+function copyErrors(
+  S: UiMatrixSources,
+  where: string,
+  component: string,
+  state: string,
+  copy: readonly string[],
+  listed: readonly string[],
+): string[] {
+  const errors: string[] = [];
+  for (const k of copy) {
+    if (k.startsWith("core.")) {
+      if (!(k in (S.core.en ?? {})))
+        errors.push(`${where}: ${k} is not in copy.en.json`);
+    } else if (!listed.includes(k))
+      errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
+  }
+  return errors;
+}
+
+/** Every pinned state has a row, and the rows together show every key its list holds. */
+function coverageErrors(
+  family: string,
+  states: Record<string, readonly string[]>,
+  shown: Map<string, Set<string>>,
+  S: UiMatrixSources,
+): string[] {
+  const errors: string[] = [];
+  for (const [c, list] of Object.entries(states))
+    for (const st of list) {
+      const union = shown.get(`${c}.${st}`);
+      if (!union) {
+        errors.push(`${family}: no row for ${c}.${st}`);
+        continue;
+      }
+      for (const k of S.components[c]?.states[st]?.copy ?? [])
+        if (!union.has(k))
+          errors.push(`${family}: no row shows ${k} in ${c}.${st}`);
+    }
+  return errors;
+}
+
 /** The nearby family's states (a must component's rows also count toward its coverage). */
 const NEARBY_STATES: Record<string, readonly string[]> = {
   SignIn: [
@@ -6746,10 +6788,7 @@ function checkNearby(doc: UiMatrix, S: UiMatrixSources): string[] {
     names.add(r.name);
     const { component, state, copy } = r.expect;
     const actions = r.expect.actions ?? [];
-    if (
-      !(component in NEARBY_STATES) ||
-      !NEARBY_STATES[component]!.includes(state)
-    ) {
+    if (!NEARBY_STATES[component]?.includes(state)) {
       errors.push(`${where}: ${component}.${state} is not a nearby state`);
       continue;
     }
@@ -6762,28 +6801,12 @@ function checkNearby(doc: UiMatrix, S: UiMatrixSources): string[] {
       );
     const listed = stateList(S, component, state, where, errors);
     if (!listed) continue;
-    for (const k of copy) {
-      if (k.startsWith("core.")) {
-        if (!(k in (S.core.en ?? {})))
-          errors.push(`${where}: ${k} is not in copy.en.json`);
-      } else if (!listed.includes(k))
-        errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
-    }
+    errors.push(...copyErrors(S, where, component, state, copy, listed));
     const set = shown.get(`${component}.${state}`) ?? new Set<string>();
     for (const k of copy) set.add(k);
     shown.set(`${component}.${state}`, set);
   }
-  for (const [c, states] of Object.entries(NEARBY_STATES))
-    for (const st of states) {
-      const union = shown.get(`${c}.${st}`);
-      if (!union) {
-        errors.push(`nearby: no row for ${c}.${st}`);
-        continue;
-      }
-      for (const k of S.components[c]?.states[st]?.copy ?? [])
-        if (!union.has(k))
-          errors.push(`nearby: no row shows ${k} in ${c}.${st}`);
-    }
+  errors.push(...coverageErrors("nearby", NEARBY_STATES, shown, S));
   return errors;
 }
 
@@ -6857,13 +6880,7 @@ function checkHolders(doc: UiMatrix, S: UiMatrixSources): string[] {
     }
     const listed = stateList(S, component, state, where, errors);
     if (!listed) continue;
-    for (const k of copy) {
-      if (k.startsWith("core.")) {
-        if (!(k in (S.core.en ?? {})))
-          errors.push(`${where}: ${k} is not in copy.en.json`);
-      } else if (!listed.includes(k))
-        errors.push(`${where}: ${k} is not in ${component}.${state}'s list`);
-    }
+    errors.push(...copyErrors(S, where, component, state, copy, listed));
     const on = (s: string) => services.includes(s);
     // The reasons rule (UK-42.3): Cloud Sync only with sync; get it back and move it only with
     // Identity; Identity off, the portal line alone.
@@ -6896,17 +6913,7 @@ function checkHolders(doc: UiMatrix, S: UiMatrixSources): string[] {
     for (const k of copy) set.add(k);
     shown.set(`${component}.${state}`, set);
   }
-  for (const [c, states] of Object.entries(HOLDERS_STATES))
-    for (const st of states) {
-      const union = shown.get(`${c}.${st}`);
-      if (!union) {
-        errors.push(`holders: no row for ${c}.${st}`);
-        continue;
-      }
-      for (const k of S.components[c]?.states[st]?.copy ?? [])
-        if (!union.has(k))
-          errors.push(`holders: no row shows ${k} in ${c}.${st}`);
-    }
+  errors.push(...coverageErrors("holders", HOLDERS_STATES, shown, S));
   for (const c of ["ActivateDone", "AddToAccount"])
     if (
       !rows.some((r) => r.expect.component === c && r.expect.state === "hidden")
